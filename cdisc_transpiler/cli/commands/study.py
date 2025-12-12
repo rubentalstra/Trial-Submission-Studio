@@ -18,7 +18,7 @@ from ...submission import build_suppqual
 from ...metadata import load_study_metadata, StudyMetadata
 from ...domains import get_domain, list_domains
 from ...domains import SDTMVariable
-from ...define_xml_module.constants import ACRF_HREF
+from ...xml.define.constants import ACRF_HREF
 from ...cli_utils import ProgressTracker, log_success, log_warning, log_error
 from ...cli_helpers import (
     unquote_safe,
@@ -151,11 +151,11 @@ def study_command(
         # Custom output directory and study ID
         cdisc-transpiler study data/ --output-dir submission/ --study-id STUDY123
     """
-    from ...define_xml_module import (
+    from ...xml.define import (
         StudyDataset,
         write_study_define_file,
     )
-    from ...define_xml_module.constants import (
+    from ...xml.define.constants import (
         CONTEXT_SUBMISSION,
         CONTEXT_OTHER,
     )

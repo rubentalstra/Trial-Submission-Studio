@@ -1,11 +1,9 @@
-"""Utility functions for Define-XML generation.
+"""Shared utilities for XML generation.
 
-This module contains helper functions used across different builders.
+Common functions used by both Define-XML and Dataset-XML modules.
 """
 
 from pathlib import Path
-
-from .constants import DEF_NS, XLINK_NS, XML_NS
 
 
 def tag(namespace: str, name: str) -> str:
