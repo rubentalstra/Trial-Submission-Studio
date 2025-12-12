@@ -23,7 +23,7 @@ from cdisc_transpiler.dataset_xml import (
     build_dataset_xml_tree,
     write_dataset_xml,
 )
-from cdisc_transpiler.define_xml import (
+from cdisc_transpiler.define_xml_module import (
     build_define_tree,
     build_study_define_tree,
     write_define_file,
