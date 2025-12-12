@@ -12,6 +12,7 @@ Services:
     - FileOrganizationService: Manages output directory structure
     - ProgressReportingService: Reports progress and status to users
     - StudyOrchestrationService: Orchestrates study processing workflows
+    - DomainProcessingCoordinator: Coordinates domain file processing workflow
 """
 
 from .domain_service import DomainProcessingService, DomainProcessingResult
@@ -21,6 +22,7 @@ from .domain_discovery_service import DomainDiscoveryService
 from .file_organization_service import FileOrganizationService
 from .progress_reporting_service import ProgressReportingService
 from .study_orchestration_service import StudyOrchestrationService
+from .domain_processing_coordinator import DomainProcessingCoordinator
 
 __all__ = [
     "DomainProcessingService",
@@ -32,4 +34,5 @@ __all__ = [
     "FileOrganizationService",
     "ProgressReportingService",
     "StudyOrchestrationService",
+    "DomainProcessingCoordinator",
 ]
