@@ -13,6 +13,7 @@ Services:
     - ProgressReportingService: Reports progress and status to users
     - StudyOrchestrationService: Orchestrates study processing workflows
     - DomainProcessingCoordinator: Coordinates domain file processing workflow
+    - DomainSynthesisCoordinator: Coordinates domain synthesis with file generation
 """
 
 from .domain_service import DomainProcessingService, DomainProcessingResult
@@ -23,6 +24,7 @@ from .file_organization_service import FileOrganizationService
 from .progress_reporting_service import ProgressReportingService
 from .study_orchestration_service import StudyOrchestrationService
 from .domain_processing_coordinator import DomainProcessingCoordinator
+from .domain_synthesis_coordinator import DomainSynthesisCoordinator
 
 __all__ = [
     "DomainProcessingService",
@@ -35,4 +37,5 @@ __all__ = [
     "ProgressReportingService",
     "StudyOrchestrationService",
     "DomainProcessingCoordinator",
+    "DomainSynthesisCoordinator",
 ]
