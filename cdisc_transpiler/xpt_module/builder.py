@@ -25,13 +25,14 @@ from .transformers import (
 )
 from .validators import XPTValidator
 
-# Import from original xpt module for backward compatibility
-from ..xpt import XportGenerationError
-
 if TYPE_CHECKING:
     from ..metadata import StudyMetadata
 
 _SAFE_NAME_RE = re.compile(r'^(?P<quoted>"(?:[^"]|"")*")n$', re.IGNORECASE)
+
+
+class XportGenerationError(RuntimeError):
+    """Raised when XPT export cannot be completed."""
 
 # Re-export the exception for API compatibility
 __all__ = ["XportGenerationError", "build_domain_dataframe", "DomainFrameBuilder"]
@@ -198,27 +199,22 @@ class DomainFrameBuilder:
         return unescaped
 
     def _post_process_domain(self, result: pd.DataFrame) -> None:
-        """Perform domain-specific post-processing.
+        """Perform domain-specific post-processing using the domain processor system.
         
-        This method contains extensive domain-specific logic for all SDTM domains.
-        It delegates to the original xpt.py implementation for now.
-        
-        TODO: Refactor domain-specific logic into separate domain handler modules.
+        This method delegates to domain-specific processors that handle the unique
+        requirements of each SDTM domain.
         """
-        # Import here to avoid circular dependency
-        from ..xpt import _DomainFrameBuilder as OriginalBuilder
+        from .domain_processors import get_domain_processor
         
-        # Create a temporary builder with the same state to use original method
-        temp_builder = OriginalBuilder(
-            self.frame,
-            self.config,
-            reference_starts=self.reference_starts,
-            lenient=self.lenient,
-            metadata=self.metadata,
+        # Get the appropriate processor for this domain
+        processor = get_domain_processor(
+            self.domain,
+            self.reference_starts,
+            self.metadata,
         )
         
-        # Call the original _post_process_domain method
-        temp_builder._post_process_domain(result)
+        # Apply domain-specific processing
+        processor.process(result)
 
 
 # Backward compatibility alias

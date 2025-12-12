@@ -121,7 +121,7 @@ def write_variant_splits(
     Returns:
         List of paths to generated split files
     """
-    from .xpt import write_xpt_file
+    from .xpt_module import write_xpt_file
     
     split_paths: list[Path] = []
     for variant_name, variant_df in variant_frames:
