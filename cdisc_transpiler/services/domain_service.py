@@ -24,7 +24,6 @@ if TYPE_CHECKING:
 from ..io import load_input_dataset, build_column_hints
 from ..mapping import build_config, create_mapper
 from ..xpt_module import build_domain_dataframe
-from ..domains import get_domain
 from ..submission import build_suppqual
 
 

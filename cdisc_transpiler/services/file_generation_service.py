@@ -147,7 +147,7 @@ class FileGenerationService:
             config: Mapping configuration
             output_path: Output file path
         """
-        from ..dataset_xml import write_dataset_xml, generate_dataset_xml_streaming
+        from ..xml.dataset import write_dataset_xml, generate_dataset_xml_streaming
 
         if self.streaming:
             generate_dataset_xml_streaming(
