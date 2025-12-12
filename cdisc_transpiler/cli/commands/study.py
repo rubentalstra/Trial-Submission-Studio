@@ -19,8 +19,8 @@ from ...metadata import load_study_metadata, StudyMetadata
 from ...domains import get_domain, list_domains
 from ...domains import SDTMVariable
 from ...xml.define.constants import ACRF_HREF
-from ...cli_utils import ProgressTracker, log_success, log_warning, log_error
-from ...cli_helpers import (
+from ..utils import ProgressTracker, log_success, log_warning, log_error
+from ..helpers import (
     unquote_safe,
     log_verbose,
     ensure_acrf_pdf,
@@ -426,9 +426,11 @@ def study_command(
                     cleaned["RFSTDTC"] = pd.to_datetime(
                         cleaned["RFSTDTC"], errors="coerce"
                     ).fillna(pd.to_datetime(baseline_default))
-                    baseline_map = cleaned.set_index("USUBJID")[
-                        "RFSTDTC"
-                    ].dt.date.astype(str).to_dict()
+                    baseline_map = (
+                        cleaned.set_index("USUBJID")["RFSTDTC"]
+                        .dt.date.astype(str)
+                        .to_dict()
+                    )
                     reference_starts.update(baseline_map)
 
             # Collect for Define-XML
@@ -564,9 +566,8 @@ def study_command(
     )
 
 
-
-
 # Helper functions
+
 
 def _discover_domain_files(
     csv_files: list[Path],
@@ -622,8 +623,6 @@ def _discover_domain_files(
             log_verbose(verbose, f"No domain match for: {csv_file.name}")
 
     return domain_files
-
-
 
 
 def _process_and_merge_domain(
@@ -1002,8 +1001,6 @@ def _process_and_merge_domain(
     return result
 
 
-
-
 def _synthesize_trial_design_domain(
     domain_code: str,
     study_id: str,
@@ -1120,7 +1117,11 @@ def _synthesize_trial_design_domain(
     elif upper == "DS":
         subjects = reference_starts.keys() if reference_starts else [subject_id]
         for usubjid in subjects:
-            start_date = reference_starts.get(usubjid, base_date) if reference_starts else base_date
+            start_date = (
+                reference_starts.get(usubjid, base_date)
+                if reference_starts
+                else base_date
+            )
             # Informed consent
             row = _base_row()
             row.update(
@@ -1240,8 +1241,6 @@ def _synthesize_trial_design_domain(
         result["sas_path"] = sas_path
 
     return result
-
-
 
 
 def _synthesize_empty_observation_domain(
@@ -1493,8 +1492,6 @@ def _synthesize_empty_observation_domain(
     return result
 
 
-
-
 def _synthesize_relrec(
     *,
     study_id: str,
@@ -1577,8 +1574,6 @@ def _synthesize_relrec(
         result["sas_path"] = sas_path
 
     return result
-
-
 
 
 def _build_relrec_records(domain_results: list[dict], study_id: str) -> pd.DataFrame:
@@ -1677,8 +1672,6 @@ def _build_relrec_records(domain_results: list[dict], study_id: str) -> pd.DataF
             _add_pair("DS", str(usubjid), "DSSEQ", _stringify(ds_seq, 1), relid, None)
 
     return pd.DataFrame(records)
-
-
 
 
 def _reshape_vs_to_long(frame: pd.DataFrame, study_id: str) -> pd.DataFrame:
@@ -1802,8 +1795,6 @@ def _reshape_vs_to_long(frame: pd.DataFrame, study_id: str) -> pd.DataFrame:
     if not records:
         return pd.DataFrame()
     return pd.DataFrame(records)
-
-
 
 
 def _reshape_lb_to_long(frame: pd.DataFrame, study_id: str) -> pd.DataFrame:
@@ -1978,5 +1969,3 @@ def _reshape_lb_to_long(frame: pd.DataFrame, study_id: str) -> pd.DataFrame:
     if not records:
         return pd.DataFrame()
     return pd.DataFrame(records)
-
-

@@ -26,10 +26,10 @@ console = Console()
 
 class ProgressTracker:
     """Track progress of domain processing."""
-    
+
     def __init__(self, total_domains: int):
         """Initialize progress tracker.
-        
+
         Args:
             total_domains: Total number of domains to process
         """
@@ -37,10 +37,10 @@ class ProgressTracker:
         self.processed = 0
         self.errors = 0
         self.warnings = 0
-        
+
     def increment(self, *, error: bool = False, warning: bool = False) -> None:
         """Increment progress counters.
-        
+
         Args:
             error: Whether this domain had errors
             warning: Whether this domain had warnings
@@ -50,12 +50,12 @@ class ProgressTracker:
             self.errors += 1
         if warning:
             self.warnings += 1
-    
+
     @property
     def success_count(self) -> int:
         """Number of successful domains."""
         return self.processed - self.errors
-    
+
     def print_summary(self) -> None:
         """Print progress summary."""
         console.print(f"\n[bold]Progress:[/bold]")
@@ -70,11 +70,11 @@ class ProgressTracker:
 @contextmanager
 def progress_bar(description: str, total: int | None = None):
     """Create a progress bar context manager.
-    
+
     Args:
         description: Task description
         total: Total steps (None for indeterminate)
-        
+
     Yields:
         Progress task
     """
@@ -112,7 +112,7 @@ def log_error(message: str) -> None:
 
 def print_domain_header(domain_code: str, files: list[Path]) -> None:
     """Print domain processing header.
-    
+
     Args:
         domain_code: Domain code
         files: List of input files
@@ -120,15 +120,17 @@ def print_domain_header(domain_code: str, files: list[Path]) -> None:
     if len(files) == 1:
         console.print(f"\n[bold]Processing {domain_code}[/bold]")
     else:
-        console.print(f"\n[bold]Processing {domain_code}[/bold] (merging {len(files)} files)")
-    
+        console.print(
+            f"\n[bold]Processing {domain_code}[/bold] (merging {len(files)} files)"
+        )
+
     for file_path in files:
         console.print(f"  - {file_path.name}")
 
 
 def print_file_generated(file_type: str, path: Path) -> None:
     """Print file generation success.
-    
+
     Args:
         file_type: Type of file (XPT, XML, SAS)
         path: Path to generated file

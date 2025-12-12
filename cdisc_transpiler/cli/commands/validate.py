@@ -14,7 +14,7 @@ from ...validators.validators import (
     format_validation_report,
 )
 from ...domains import get_domain
-from ...cli_utils import log_success, log_warning, log_error
+from ..utils import log_success, log_warning, log_error
 
 
 console = Console()

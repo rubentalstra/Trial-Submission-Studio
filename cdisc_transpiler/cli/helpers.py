@@ -13,17 +13,17 @@ import pandas as pd
 from rich.console import Console
 
 if TYPE_CHECKING:
-    from .domains import SDTMDomain
+    from ..domains import SDTMDomain
 
 console = Console()
 
 
 def unquote_safe(name: str | None) -> str:
     """Remove quotes from a column name safely.
-    
+
     Args:
         name: Column name that may be quoted
-        
+
     Returns:
         Unquoted column name
     """
@@ -40,7 +40,7 @@ def unquote_safe(name: str | None) -> str:
 
 def log_verbose(enabled: bool, message: str) -> None:
     """Log a verbose message if verbose mode is enabled.
-    
+
     Args:
         enabled: Whether verbose logging is enabled
         message: Message to log
@@ -51,9 +51,9 @@ def log_verbose(enabled: bool, message: str) -> None:
 
 def ensure_acrf_pdf(path: Path) -> None:
     """Create a minimal, valid PDF at path if one is not already present.
-    
+
     This creates a placeholder Annotated CRF PDF file required by Define-XML.
-    
+
     Args:
         path: Path where PDF should be created
     """
@@ -110,19 +110,19 @@ def write_variant_splits(
     console: Console,
 ) -> list[Path]:
     """Write split XPT files for domain variants (e.g., LB splits).
-    
+
     Args:
         merged_dataframe: Merged domain dataframe
         variant_frames: List of (variant_name, dataframe) tuples
         domain: SDTM domain metadata
         xpt_dir: Directory for XPT files
         console: Rich console for output
-        
+
     Returns:
         List of paths to generated split files
     """
-    from .xpt_module import write_xpt_file
-    
+    from ..xpt_module import write_xpt_file
+
     split_paths: list[Path] = []
     for variant_name, variant_df in variant_frames:
         # Clean variant name for filename
@@ -147,7 +147,7 @@ def print_study_summary(
     generate_sas: bool,
 ) -> None:
     """Print summary of study processing results.
-    
+
     Args:
         results: List of processing results
         errors: List of (domain, error) tuples
