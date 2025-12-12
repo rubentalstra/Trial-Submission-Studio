@@ -483,8 +483,8 @@ class StudyOrchestrationService:
         Returns:
             Dictionary with RELREC processing results
         """
-        from ..cli.commands.dataset_xml import write_dataset_xml
-        from ..cli.commands.xpt import build_domain_dataframe
+        from ..xml.dataset import write_dataset_xml
+        from ..xpt_module.builder import build_domain_dataframe
 
         domain = get_domain("RELREC")
 

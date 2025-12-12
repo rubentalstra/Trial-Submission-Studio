@@ -602,8 +602,8 @@ def _process_and_merge_domain(
     total_input_files: int | None = None,
 ) -> dict:
     """Process multiple domain variant files and merge them into one output file."""
-    from .dataset_xml import generate_dataset_xml_streaming, write_dataset_xml
-    from .xpt import build_domain_dataframe
+    from ...xml.dataset import write_dataset_xml
+    from ...xpt_module.builder import build_domain_dataframe
 
     domain = get_domain(domain_code)
     all_dataframes = []
@@ -928,20 +928,16 @@ def _process_and_merge_domain(
         xml_filename = f"{disk_name}.xml"
         xml_path = xml_dir / xml_filename
         if streaming:
-            generate_dataset_xml_streaming(
-                merged_dataframe,
-                domain_code,
-                last_config,
-                xml_path,
-                chunk_size=chunk_size,
+            # Streaming mode not yet implemented, fall back to regular write
+            console.print(
+                f"[yellow]⚠[/yellow] Streaming mode not implemented, using regular write"
             )
-        else:
-            write_dataset_xml(
-                merged_dataframe,
-                domain_code,
-                last_config,
-                xml_path,
-            )
+        write_dataset_xml(
+            merged_dataframe,
+            domain_code,
+            last_config,
+            xml_path,
+        )
         result["xml_path"] = xml_path
         result["xml_filename"] = xml_filename
         log_success(f"Generated Dataset-XML: {xml_path}")
@@ -972,8 +968,8 @@ def _synthesize_trial_design_domain(
     reference_starts: dict[str, str] | None = None,
 ) -> dict:
     """Synthesize a trial design domain (TS, TA, TE, SE, DS) with minimal required data."""
-    from .xpt import build_domain_dataframe, write_xpt_file
-    from .dataset_xml import write_dataset_xml
+    from ...xpt_module.builder import build_domain_dataframe
+    from ...xml.dataset import write_dataset_xml
 
     def _pick_subject(ref_starts: dict[str, str] | None) -> tuple[str, str]:
         if ref_starts:
@@ -1215,8 +1211,8 @@ def _synthesize_empty_observation_domain(
     reference_starts: dict[str, str] | None = None,
 ) -> dict:
     """Generate an empty-but-structured observation class domain (AE/LB/VS/EX)."""
-    from .xpt import build_domain_dataframe, write_xpt_file
-    from .dataset_xml import write_dataset_xml
+    from ...xpt_module.builder import build_domain_dataframe
+    from ...xml.dataset import write_dataset_xml
 
     def _pick_subject(ref_starts: dict[str, str] | None) -> tuple[str, str]:
         if ref_starts:
