@@ -32,10 +32,10 @@ class QSProcessor(BaseDomainProcessor):
         frame["QSCAT"] = "PGI"
         # Populate results from source values when available
         source_score = None
-        if "QSPGARS" in self.frame.columns:
-            source_score = self.frame["QSPGARS"]
-        elif "QSPGARSCD" in self.frame.columns:
-            source_score = self.frame["QSPGARSCD"]
+        if "QSPGARS" in frame.columns:
+            source_score = frame["QSPGARS"]
+        elif "QSPGARSCD" in frame.columns:
+            source_score = frame["QSPGARSCD"]
         if source_score is not None:
             frame["QSORRES"] = list(source_score)
         if "QSORRES" not in frame.columns:
@@ -81,7 +81,7 @@ class QSProcessor(BaseDomainProcessor):
                 self.reference_starts
             )
         if "QSDTC" in frame.columns:
-            DateTransformer.compute_study_day(frame, "QSDTC", "QSDY", "RFSTDTC")
+            DateTransformer.compute_study_day(frame, "QSDTC", "QSDY", ref="RFSTDTC")
         if "EPOCH" in frame.columns:
             frame["EPOCH"] = "TREATMENT"
         if "QSEVLINT" in frame.columns:
@@ -95,7 +95,7 @@ class QSProcessor(BaseDomainProcessor):
                 )
             elif "RFSTDTC" in frame.columns:
                 frame.loc[empty_qsdtc, "QSDTC"] = frame.loc[empty_qsdtc, "RFSTDTC"]
-            DateTransformer.compute_study_day(frame, "QSDTC", "QSDY", "RFSTDTC")
+            DateTransformer.compute_study_day(frame, "QSDTC", "QSDY", ref="RFSTDTC")
         # Remove QSTPTREF if timing variables absent to avoid SD1282
         if {"QSELTM", "QSTPTNUM", "QSTPT"}.isdisjoint(
             frame.columns

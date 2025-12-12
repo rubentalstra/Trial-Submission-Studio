@@ -38,8 +38,8 @@ class EXProcessor(BaseDomainProcessor):
             end_series.astype(str).str.strip() != "", frame["EXSTDTC"]
         )
         DateTransformer.ensure_date_pair_order(frame, "EXSTDTC", "EXENDTC")
-        DateTransformer.compute_study_day(frame, "EXSTDTC", "EXSTDY", "RFSTDTC")
-        DateTransformer.compute_study_day(frame, "EXENDTC", "EXENDY", "RFSTDTC")
+        DateTransformer.compute_study_day(frame, "EXSTDTC", "EXSTDY", ref="RFSTDTC")
+        DateTransformer.compute_study_day(frame, "EXENDTC", "EXENDY", ref="RFSTDTC")
         frame["EXDOSFRM"] = TextTransformer.replace_unknown(frame["EXDOSFRM"], "TABLET")
 
         # EXDOSU is required when EXDOSE/EXDOSTXT/EXDOSTOT is provided (SD0035)
@@ -140,8 +140,8 @@ class EXProcessor(BaseDomainProcessor):
         NumericTransformer.assign_sequence(frame, "EXSEQ", "USUBJID")
         # Recompute dates/study days for any appended defaults
         DateTransformer.ensure_date_pair_order(frame, "EXSTDTC", "EXENDTC")
-        DateTransformer.compute_study_day(frame, "EXSTDTC", "EXSTDY", "RFSTDTC")
-        DateTransformer.compute_study_day(frame, "EXENDTC", "EXENDY", "RFSTDTC")
+        DateTransformer.compute_study_day(frame, "EXSTDTC", "EXSTDY", ref="RFSTDTC")
+        DateTransformer.compute_study_day(frame, "EXENDTC", "EXENDY", ref="RFSTDTC")
         for dy in ("EXSTDY", "EXENDY"):
             if dy in frame.columns:
                 frame[dy] = NumericTransformer.force_numeric(frame[dy]).fillna(1)

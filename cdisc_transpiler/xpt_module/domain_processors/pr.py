@@ -6,6 +6,7 @@ import pandas as pd
 
 from .base import BaseDomainProcessor
 from ..transformers import TextTransformer, NumericTransformer, DateTransformer
+from ...terminology import get_controlled_terminology
 
 
 class PRProcessor(BaseDomainProcessor):
@@ -30,9 +31,9 @@ class PRProcessor(BaseDomainProcessor):
         frame["VISITNUM"] = (frame.groupby("USUBJID").cumcount() + 1).astype(int)
         frame["VISIT"] = frame["VISITNUM"].apply(lambda n: f"Visit {n}")
         if "PRSTDTC" in frame.columns:
-            DateTransformer.compute_study_day(frame, "PRSTDTC", "PRSTDY", "RFSTDTC")
+            DateTransformer.compute_study_day(frame, "PRSTDTC", "PRSTDY", ref="RFSTDTC")
         if "PRENDTC" in frame.columns:
-            DateTransformer.compute_study_day(frame, "PRENDTC", "PRENDY", "RFSTDTC")
+            DateTransformer.compute_study_day(frame, "PRENDTC", "PRENDY", ref="RFSTDTC")
         if "PRDUR" not in frame.columns:
             frame["PRDUR"] = "P1D"
         else:

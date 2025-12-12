@@ -6,6 +6,7 @@ import pandas as pd
 
 from .base import BaseDomainProcessor
 from ..transformers import TextTransformer, NumericTransformer, DateTransformer
+from ...terminology import get_controlled_terminology
 
 
 class VSProcessor(BaseDomainProcessor):
@@ -24,7 +25,7 @@ class VSProcessor(BaseDomainProcessor):
         self._drop_placeholder_rows(frame)
 
         TextTransformer.normalize_visit(frame)
-        DateTransformer.compute_study_day(frame, "VSDTC", "VSDY", "RFSTDTC")
+        DateTransformer.compute_study_day(frame, "VSDTC", "VSDY", ref="RFSTDTC")
         frame["VSDY"] = NumericTransformer.force_numeric(frame["VSDY"])
         frame["VSLOBXFL"] = ""
         if "VISITNUM" not in frame.columns:
@@ -54,12 +55,12 @@ class VSProcessor(BaseDomainProcessor):
             frame["VSTESTCD"] = "HR"
             frame["VSTEST"] = "Heart Rate"
             vsorres = pd.Series([""] * len(frame))
-            if "Pulserate" in self.frame.columns:
-                vsorres = self.frame["Pulserate"]
+            if "Pulserate" in frame.columns:
+                vsorres = frame["Pulserate"]
             frame["VSORRES"] = vsorres.astype("string").fillna("")
-            if "Pulse rate (unit)" in self.frame.columns:
+            if "Pulse rate (unit)" in frame.columns:
                 units = (
-                    self.frame["Pulse rate (unit)"]
+                    frame["Pulse rate (unit)"]
                     .astype("string")
                     .fillna("")
                     .str.strip()
@@ -67,8 +68,8 @@ class VSProcessor(BaseDomainProcessor):
                 frame["VSORRESU"] = units.replace("", "beats/min")
 
         for perf_col in ("Were vital signs collected? - Code", "VSPERFCD"):
-            if perf_col in self.frame.columns:
-                perf = self.frame[perf_col].astype("string").str.upper()
+            if perf_col in frame.columns:
+                perf = frame[perf_col].astype("string").str.upper()
                 not_done = perf == "N"
                 frame.loc[not_done, "VSSTAT"] = "NOT DONE"
                 frame.loc[not_done, ["VSORRES", "VSORRESU"]] = ""

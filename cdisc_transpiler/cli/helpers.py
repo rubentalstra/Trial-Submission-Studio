@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 from rich.console import Console
+from rich.table import Table
 
 if TYPE_CHECKING:
     from ..domains import SDTMDomain
@@ -146,7 +147,7 @@ def print_study_summary(
     generate_define: bool,
     generate_sas: bool,
 ) -> None:
-    """Print summary of study processing results.
+    """Print summary of study processing results with detailed table.
 
     Args:
         results: List of processing results
@@ -156,12 +157,113 @@ def print_study_summary(
         generate_define: Whether Define-XML was generated
         generate_sas: Whether SAS programs were generated
     """
-    # Calculate total records
-    total_records = sum(r.get("records", 0) for r in results)
-
-    # Final summary panel
     console.print()
 
+    # Create summary table
+    table = Table(
+        title="📊 Study Processing Summary",
+        show_header=True,
+        header_style="bold cyan",
+        border_style="bright_blue",
+        title_style="bold magenta",
+    )
+
+    table.add_column("Domain", style="cyan", no_wrap=True, width=15)
+    table.add_column("Records", justify="right", style="yellow", width=9)
+    table.add_column("XPT", justify="center", style="green", width=5)
+    table.add_column("Dataset-XML", justify="center", style="green", width=13)
+    table.add_column("SAS", justify="center", style="green", width=5)
+    table.add_column("Notes", style="dim", width=25)
+
+    # Track domains and their data
+    main_domains = {}
+    supp_domains = {}
+    total_records = 0
+
+    # Process all results
+    for result in results:
+        domain_code = result.get("domain_code", "").upper()
+        records = result.get("records", 0)
+
+        # Check if this is a supplemental domain
+        is_supp = domain_code.startswith("SUPP")
+
+        # Determine output indicators
+        has_xpt = "✓" if result.get("xpt_path") else "–"
+        has_xml = "✓" if result.get("xml_path") else "–"
+        has_sas = "✓" if result.get("sas_path") else "–"
+
+        # Build notes
+        notes = []
+        split_paths = result.get("split_xpt_paths", [])
+        if split_paths:
+            split_names = ", ".join(p.name for p in split_paths[:2])
+            if len(split_paths) > 2:
+                split_names += f", +{len(split_paths) - 2}"
+            notes.append(f"splits: {split_names}")
+
+        domain_data = {
+            "records": records,
+            "has_xpt": has_xpt,
+            "has_xml": has_xml,
+            "has_sas": has_sas,
+            "notes": " • ".join(notes) if notes else "",
+            "is_supp": is_supp,
+        }
+
+        if is_supp:
+            # Extract parent domain (e.g., SUPPDM -> DM)
+            parent_domain = domain_code[4:]  # Remove "SUPP" prefix
+            if parent_domain not in supp_domains:
+                supp_domains[parent_domain] = []
+            supp_domains[parent_domain].append((domain_code, domain_data))
+        else:
+            main_domains[domain_code] = domain_data
+
+        total_records += records
+
+    # Add rows to table in sorted order
+    for domain_code in sorted(main_domains.keys()):
+        data = main_domains[domain_code]
+
+        # Add main domain row
+        table.add_row(
+            f"[bold cyan]{domain_code}[/bold cyan]",
+            f"[yellow]{data['records']:,}[/yellow]",
+            data["has_xpt"],
+            data["has_xml"],
+            data["has_sas"],
+            data["notes"],
+        )
+
+        # Add supplemental domains for this parent
+        if domain_code in supp_domains:
+            for supp_code, supp_data in sorted(supp_domains[domain_code]):
+                table.add_row(
+                    f"[dim cyan] └─ {supp_code}[/dim cyan]",
+                    f"[dim yellow]{supp_data['records']:,}[/dim yellow]",
+                    f"[dim]{supp_data['has_xpt']}[/dim]",
+                    f"[dim]{supp_data['has_xml']}[/dim]",
+                    f"[dim]{supp_data['has_sas']}[/dim]",
+                    f"[dim]{supp_data['notes']}[/dim]",
+                )
+
+    # Add separator and total row
+    table.add_section()
+    table.add_row(
+        "[bold]Total[/bold]",
+        f"[bold yellow]{total_records:,}[/bold yellow]",
+        "",
+        "",
+        "",
+        "",
+    )
+
+    # Print the table
+    console.print(table)
+    console.print()
+
+    # Status summary
     success_count = len(results)
     error_count = len(errors)
 

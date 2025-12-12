@@ -38,7 +38,7 @@ class DSProcessor(BaseDomainProcessor):
 
         # Clean existing DSSTDTC values
         if "DSSTDTC" in frame.columns:
-            frame["DSSTDTC"] = frame["DSSTDTC"].apply(self._coerce_iso8601)
+            frame["DSSTDTC"] = frame["DSSTDTC"].apply(DateTransformer.coerce_iso8601)
             frame["DSSTDTC"] = frame["DSSTDTC"].replace(
                 {"": fallback_date, "1900-01-01": fallback_date}
             )
@@ -68,6 +68,10 @@ class DSProcessor(BaseDomainProcessor):
             return (dt + pd.Timedelta(days=days)).date().isoformat()
 
         defaults: list[dict] = []
+        study_id = "STUDY"
+        if len(frame) > 0 and "STUDYID" in frame.columns:
+            study_id = frame["STUDYID"].iloc[0]
+        
         for usubjid in sorted(subjects):
             start = (
                 DateTransformer.coerce_iso8601(
@@ -77,7 +81,7 @@ class DSProcessor(BaseDomainProcessor):
             )
             disposition_date = _add_days(start, 120)
             consent_row = {
-                "STUDYID": self.config.study_id or "STUDY",
+                "STUDYID": study_id,
                 "DOMAIN": "DS",
                 "USUBJID": usubjid,
                 "DSSEQ": pd.NA,
@@ -89,7 +93,7 @@ class DSProcessor(BaseDomainProcessor):
                 "EPOCH": "SCREENING",
             }
             disp_row = {
-                "STUDYID": self.config.study_id or "STUDY",
+                "STUDYID": study_id,
                 "DOMAIN": "DS",
                 "USUBJID": usubjid,
                 "DSSEQ": pd.NA,
@@ -130,7 +134,7 @@ class DSProcessor(BaseDomainProcessor):
         frame.loc[disposition_mask, "EPOCH"] = "TREATMENT"
 
         # Replace disposition dates that precede consent with a padded end date
-        frame["DSSTDTC"] = frame["DSSTDTC"].apply(self._coerce_iso8601)
+        frame["DSSTDTC"] = frame["DSSTDTC"].apply(DateTransformer.coerce_iso8601)
         for idx, row in frame.iterrows():
             subj = str(row.get("USUBJID", "") or "")
             base = DateTransformer.coerce_iso8601(
@@ -142,7 +146,7 @@ class DSProcessor(BaseDomainProcessor):
             elif not str(row["DSSTDTC"]).strip():
                 frame.loc[idx, "DSSTDTC"] = base
 
-        DateTransformer.compute_study_day(frame, "DSSTDTC", "DSSTDY", "RFSTDTC")
+        DateTransformer.compute_study_day(frame, "DSSTDTC", "DSSTDY", ref="RFSTDTC")
         frame["DSDTC"] = frame["DSSTDTC"]
         frame["DSDY"] = (
             NumericTransformer.force_numeric(frame.get("DSSTDY", pd.Series()))

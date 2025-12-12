@@ -69,7 +69,9 @@ def build_supp_value_lists(
         wc_defs.append(
             WhereClauseDefinition(
                 oid=wc_oid,
-                item_oid=f"IT.{code}.QNAM",
+                dataset_name=domain.dataset_name,
+                variable_name="QNAM",
+                variable_oid=f"IT.{code}.QNAM",
                 comparator="EQ",
                 check_values=(qnam,),
             )
@@ -145,7 +147,7 @@ def append_value_list_defs(
                 attrib={"WhereClauseOID": item.where_clause_oid},
             )
 
-            if item.method_oid:
+            if getattr(item, 'method_oid', None):
                 item_ref.set("MethodOID", item.method_oid)
 
 
@@ -174,10 +176,11 @@ def append_where_clause_defs(
             tag(ODM_NS, "RangeCheck"),
             attrib={
                 "Comparator": wc.comparator,
-                "SoftHard": wc.soft_hard,
+                "SoftHard": getattr(wc, 'soft_hard', 'Soft'),
             },
         )
-        range_check.set(attr(DEF_NS, "ItemOID"), wc.item_oid)
+        item_oid = getattr(wc, 'item_oid', None) or wc.variable_oid
+        range_check.set(attr(DEF_NS, "ItemOID"), item_oid)
 
         for value in wc.check_values:
             ET.SubElement(

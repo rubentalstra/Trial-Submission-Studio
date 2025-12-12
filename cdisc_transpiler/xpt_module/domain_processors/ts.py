@@ -6,6 +6,7 @@ import pandas as pd
 
 from .base import BaseDomainProcessor
 from ..transformers import TextTransformer, NumericTransformer, DateTransformer
+from ...terminology import get_controlled_terminology
 
 
 class TSProcessor(BaseDomainProcessor):
@@ -24,8 +25,8 @@ class TSProcessor(BaseDomainProcessor):
         self._drop_placeholder_rows(frame)
 
         base_study = frame.get(
-            "STUDYID", pd.Series([self.config.study_id or "STUDY"])
-        ).iloc[0]
+            "STUDYID", pd.Series(["STUDY"])
+        ).iloc[0] if len(frame) > 0 and "STUDYID" in frame.columns else "STUDY"
         ct_parmcd = get_controlled_terminology(variable="TSPARMCD")
         ct_parm = get_controlled_terminology(variable="TSPARM")
 

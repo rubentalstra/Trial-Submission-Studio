@@ -70,7 +70,7 @@ def write_study_define_file(
         context: Define-XML context - 'Submission' or 'Other'
     """
     # Import here to avoid circular dependency
-    from ..define_xml import build_study_define_tree
+    from .metadata_builder import build_study_define_tree
     
     datasets = list(datasets)
     if not datasets:

@@ -90,7 +90,7 @@ class MHProcessor(BaseDomainProcessor):
             frame.loc[empty_mhdtc, "MHDTC"] = frame.get("MHSTDTC", "")
         for col in ("MHSTDTC", "MHENDTC", "MHDTC"):
             if col in frame.columns:
-                frame[col] = frame[col].apply(self._coerce_iso8601)
+                frame[col] = frame[col].apply(DateTransformer.coerce_iso8601)
         # Fill missing end dates from reference end if available
         if "MHENDTC" in frame.columns:
             empty_end = frame["MHENDTC"].astype("string").fillna("").str.strip() == ""
@@ -104,10 +104,10 @@ class MHProcessor(BaseDomainProcessor):
             frame["MHENDTC"] = frame.get("MHSTDTC", "")
         # Compute study day for MHSTDTC into MHDY to keep numeric type
         if {"MHSTDTC", "MHDY"} <= set(frame.columns):
-            DateTransformer.compute_study_day(frame, "MHSTDTC", "MHDY", "RFSTDTC")
+            DateTransformer.compute_study_day(frame, "MHSTDTC", "MHDY", ref="RFSTDTC")
         elif "MHSTDTC" in frame.columns:
             frame["MHDY"] = pd.NA
-            DateTransformer.compute_study_day(frame, "MHSTDTC", "MHDY", "RFSTDTC")
+            DateTransformer.compute_study_day(frame, "MHSTDTC", "MHDY", ref="RFSTDTC")
         if "MHDY" in frame.columns:
             frame["MHDY"] = pd.to_numeric(frame["MHDY"], errors="coerce").astype(
                 "Int64"

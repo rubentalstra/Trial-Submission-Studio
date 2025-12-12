@@ -294,18 +294,16 @@ def study_command(
             if generate_define:
                 dataset_href = None
                 if output_format in ("xpt", "both") and result.get("xpt_path"):
-                    dataset_href = str(result["xpt_path"].relative_to(output_dir))
+                    dataset_href = result["xpt_path"].relative_to(output_dir)
                 elif output_format in ("xml", "both") and result.get("xml_path"):
-                    dataset_href = str(result["xml_path"].relative_to(output_dir))
+                    dataset_href = result["xml_path"].relative_to(output_dir)
 
                 study_datasets.append(
                     StudyDataset(
                         domain_code=domain_code,
-                        dataset=dataset,
+                        dataframe=dataset,
                         config=result.get("config"),
-                        dataset_href=dataset_href,
-                        is_reference_data=is_reference_data,
-                        has_no_data=has_no_data,
+                        archive_location=dataset_href,
                     )
                 )
 
@@ -323,17 +321,16 @@ def study_command(
                 )
                 supp_href = None
                 if output_format in ("xpt", "both") and supp.get("xpt_path"):
-                    supp_href = str(supp["xpt_path"].relative_to(output_dir))
+                    supp_href = supp["xpt_path"].relative_to(output_dir)
                 elif output_format in ("xml", "both") and supp.get("xml_path"):
-                    supp_href = str(supp["xml_path"].relative_to(output_dir))
+                    supp_href = supp["xml_path"].relative_to(output_dir)
                 if generate_define:
                     study_datasets.append(
                         StudyDataset(
                             domain_code=supp_code or "",
-                            dataset=supp_dataset,
+                            dataframe=supp_dataset,
                             config=supp.get("config"),
-                            dataset_href=supp_href,
-                            has_no_data=supp_has_no_data,
+                            archive_location=supp_href,
                         )
                     )
 
@@ -399,23 +396,23 @@ def study_command(
                         and output_format in ("xpt", "both")
                         and supp.get("xpt_path")
                     ):
-                        dataset_href = str(supp["xpt_path"].relative_to(output_dir))
+                        dataset_href = supp["xpt_path"].relative_to(output_dir)
                     elif (
                         xml_dir
                         and output_format in ("xml", "both")
                         and supp.get("xml_path")
                     ):
-                        dataset_href = str(supp["xml_path"].relative_to(output_dir))
+                        dataset_href = supp["xml_path"].relative_to(output_dir)
                     else:
                         base_name = get_domain(supp_domain_code).resolved_dataset_name()
-                        dataset_href = f"{base_name.lower()}.xpt"
+                        dataset_href = Path(f"{base_name.lower()}.xpt")
 
                     study_datasets.append(
                         StudyDataset(
                             domain_code=supp_domain_code,
-                            dataset=supp_df,
+                            dataframe=supp_df,
                             config=supp_config,
-                            dataset_href=dataset_href,
+                            archive_location=dataset_href,
                         )
                     )
 
@@ -456,17 +453,17 @@ def study_command(
                 disk_name = domain.resolved_dataset_name().lower()
                 if output_format in ("xpt", "both"):
                     dataset_path = xpt_dir / f"{disk_name}.xpt"
-                    dataset_href = str(dataset_path.relative_to(output_dir))
+                    dataset_href = dataset_path.relative_to(output_dir)
                 else:
                     dataset_path = xml_dir / f"{disk_name}.xml"
-                    dataset_href = str(dataset_path.relative_to(output_dir))
+                    dataset_href = dataset_path.relative_to(output_dir)
 
                 study_datasets.append(
                     StudyDataset(
                         domain_code=domain_code,
-                        dataset=result["domain_dataframe"],
+                        dataframe=result["domain_dataframe"],
                         config=result["config"],
-                        dataset_href=dataset_href,
+                        archive_location=dataset_href,
                     )
                 )
 
@@ -478,7 +475,10 @@ def study_command(
             errors.append((display_name, str(exc)))
             progress_tracker.increment()  # Count failed domains too
         except Exception as exc:
+            import traceback
             log_error(f"{display_name}: {exc}")
+            if verbose > 1:  # Only print traceback in very verbose mode
+                traceback.print_exc()
             errors.append((display_name, str(exc)))
             progress_tracker.increment()  # Count failed domains too
 
@@ -545,17 +545,17 @@ def study_command(
                 domain = get_domain("RELREC")
                 disk_name = domain.resolved_dataset_name().lower()
                 if output_format in ("xpt", "both") and result.get("xpt_path"):
-                    dataset_href = str(result["xpt_path"].relative_to(output_dir))
+                    dataset_href = result["xpt_path"].relative_to(output_dir)
                 elif output_format in ("xml", "both") and result.get("xml_path"):
-                    dataset_href = str(result["xml_path"].relative_to(output_dir))
+                    dataset_href = result["xml_path"].relative_to(output_dir)
                 else:
-                    dataset_href = f"{disk_name}.xpt"
+                    dataset_href = Path(f"{disk_name}.xpt")
                 study_datasets.append(
                     StudyDataset(
                         domain_code="RELREC",
-                        dataset=result["domain_dataframe"],
+                        dataframe=result["domain_dataframe"],
                         config=result["config"],
-                        dataset_href=dataset_href,
+                        archive_location=dataset_href,
                     )
                 )
             log_success("Generated RELREC")
@@ -577,7 +577,10 @@ def study_command(
             )
             log_success(f"Generated Define-XML 2.1 at {define_path}")
         except Exception as exc:
+            import traceback
             log_error(f"Define-XML generation failed: {exc}")
+            if verbose > 1:
+                traceback.print_exc()
             errors.append(("Define-XML", str(exc)))
 
     # Print summary

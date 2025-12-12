@@ -81,7 +81,7 @@ def build_study_define_tree(
         Root Element of the Define-XML document
     """
     # Import here to avoid circular dependencies
-    from ..domains import CT_VERSION, get_domain
+    from ...domains import CT_VERSION, get_domain
     from .codelist_builder import append_code_lists, collect_extended_codelist_values
     from .variable_builder import append_item_defs
     from .dataset_builder import (
@@ -173,10 +173,10 @@ def build_study_define_tree(
         ig_attrib[attr(DEF_NS, "Structure")] = (
             ds.structure or "One record per subject per domain-specific entity"
         )
-        ig_attrib[attr(DEF_NS, "Class")] = domain.dataset_class or "EVENTS"
+        ig_attrib[attr(DEF_NS, "Class")] = domain.class_name or "EVENTS"
 
         if ds.archive_location:
-            from .utils import safe_href
+            from ..utils import safe_href
 
             ig_attrib[attr(DEF_NS, "ArchiveLocationID")] = f"LF.{ds.domain_code}"
 
@@ -204,7 +204,7 @@ def build_study_define_tree(
 
         # Add leaf for dataset file
         if ds.archive_location:
-            from .utils import safe_href
+            from ..utils import safe_href
 
             leaf = ET.SubElement(
                 ig,

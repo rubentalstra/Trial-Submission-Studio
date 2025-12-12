@@ -134,9 +134,9 @@ class CMProcessor(BaseDomainProcessor):
             frame["CMDOSU"] = TextTransformer.replace_unknown(frame["CMDOSU"], "mg")
 
         if "CMSTDTC" in frame.columns:
-            DateTransformer.compute_study_day(frame, "CMSTDTC", "CMSTDY", "RFSTDTC")
+            DateTransformer.compute_study_day(frame, "CMSTDTC", "CMSTDY", ref="RFSTDTC")
         if "CMENDTC" in frame.columns:
-            DateTransformer.compute_study_day(frame, "CMENDTC", "CMENDY", "RFSTDTC")
+            DateTransformer.compute_study_day(frame, "CMENDTC", "CMENDY", ref="RFSTDTC")
         if "EPOCH" in frame.columns:
             frame["EPOCH"] = "TREATMENT"
         # Final pass to remove any exact duplicate rows and realign sequence
