@@ -25,11 +25,11 @@ from .builder import (
 )
 from .transformers import (
     DateTransformer,
+    CodelistTransformer,
 )
 
 # Future exports as more transformers are created:
 # from .transformers import (
-#     CodelistTransformer,
 #     NumericTransformer,
 #     TextTransformer,
 # )
@@ -43,8 +43,8 @@ __all__ = [
     "build_domain_dataframe",
     "DomainFrameBuilder",
     # Transformers
-    "DateTransformer",        # Step 3 ✓
-    # "CodelistTransformer",  # Step 4
-    # "NumericTransformer",   # Step 5
-    # "TextTransformer",      # Step 5
+    "DateTransformer",       # Step 3 ✓
+    "CodelistTransformer",   # Step 4 ✓
+    # "NumericTransformer",  # Step 5
+    # "TextTransformer",     # Step 5
 ]

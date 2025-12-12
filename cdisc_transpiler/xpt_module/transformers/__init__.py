@@ -13,15 +13,15 @@ that can be used independently or orchestrated by the DomainFrameBuilder.
 """
 
 from .date import DateTransformer
+from .codelist import CodelistTransformer
 
-# Additional transformers will be imported as they are created in Steps 4-5
-# from .codelist import CodelistTransformer
+# Additional transformers will be imported as they are created in Step 5
 # from .numeric import NumericTransformer
 # from .text import TextTransformer
 
 __all__ = [
-    "DateTransformer",      # Step 3 ✓
-    # "CodelistTransformer",  # Step 4
-    # "NumericTransformer",   # Step 5
-    # "TextTransformer",      # Step 5
+    "DateTransformer",       # Step 3 ✓
+    "CodelistTransformer",   # Step 4 ✓
+    # "NumericTransformer",  # Step 5
+    # "TextTransformer",     # Step 5
 ]
