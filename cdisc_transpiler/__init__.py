@@ -19,11 +19,11 @@ except PackageNotFoundError:  # pragma: no cover
     __version__ = "0.0.0"
 
 # Core exports
-from cdisc_transpiler.dataset_xml import (
+from cdisc_transpiler.xml.dataset import (
     build_dataset_xml_tree,
     write_dataset_xml,
 )
-from cdisc_transpiler.define_xml import (
+from cdisc_transpiler.xml.define import (
     build_define_tree,
     build_study_define_tree,
     write_define_file,
