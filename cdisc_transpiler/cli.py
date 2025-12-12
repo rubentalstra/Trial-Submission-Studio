@@ -340,11 +340,11 @@ def study_command(
             record_count = result.get("records")
             if record_count is None and isinstance(dataset, pd.DataFrame):
                 record_count = len(dataset)
-            console.print(
-                f"[green]✓[/green] Generated {domain_code} scaffold (records={record_count or 0})"
+            log_success(
+                f"Generated {domain_code} scaffold (records={record_count or 0})"
             )
         except Exception as exc:
-            console.print(f"[red]✗[/red] {domain_code}: {exc}")
+            log_error(f"{domain_code}: {exc}")
             errors.append((domain_code, str(exc)))
 
     ordered_domains = sorted(domain_files.keys(), key=lambda code: (code != "DM", code))
@@ -470,11 +470,11 @@ def study_command(
             progress_tracker.increment()
 
         except ParseError as exc:
-            console.print(f"[red]✗[/red] {display_name}: Parse error - {exc}")
+            log_error(f"{display_name}: Parse error - {exc}")
             errors.append((display_name, str(exc)))
             progress_tracker.increment()  # Count failed domains too
         except Exception as exc:
-            console.print(f"[red]✗[/red] {display_name}: {exc}")
+            log_error(f"{display_name}: {exc}")
             errors.append((display_name, str(exc)))
             progress_tracker.increment()  # Count failed domains too
 
@@ -551,9 +551,9 @@ def study_command(
                         dataset_href=dataset_href,
                     )
                 )
-            console.print(f"[green]✓[/green] Generated RELREC")
+            log_success("Generated RELREC")
         except Exception as exc:
-            console.print(f"[red]✗[/red] RELREC: {exc}")
+            log_error(f"RELREC: {exc}")
             errors.append(("RELREC", str(exc)))
 
     if generate_define and study_datasets:
@@ -568,11 +568,9 @@ def study_command(
                 sdtm_version=sdtm_version,
                 context=context,
             )
-            console.print(
-                f"\n[green]✓[/green] Generated Define-XML 2.1 at {define_path}"
-            )
+            log_success(f"Generated Define-XML 2.1 at {define_path}")
         except Exception as exc:
-            console.print(f"[red]✗[/red] Define-XML generation failed: {exc}")
+            log_error(f"Define-XML generation failed: {exc}")
             errors.append(("Define-XML", str(exc)))
 
     # Print summary
@@ -967,7 +965,7 @@ def _process_and_merge_domain(
         write_xpt_file(merged_dataframe, domain_code, xpt_path)
         result["xpt_path"] = xpt_path
         result["xpt_filename"] = xpt_filename
-        console.print(f"[green]✓[/green] Generated XPT: {xpt_path}")
+        log_success(f"Generated XPT: {xpt_path}")
         split_paths: list[Path] = []
         if domain_code.upper() == "LB" and len(variant_frames) > 1:
             split_paths = _write_variant_splits(
@@ -996,7 +994,7 @@ def _process_and_merge_domain(
             )
         result["xml_path"] = xml_path
         result["xml_filename"] = xml_filename
-        console.print(f"[green]✓[/green] Generated Dataset-XML: {xml_path}")
+        log_success(f"Generated Dataset-XML: {xml_path}")
 
     # Generate SAS program (use first input file as reference)
     if sas_dir and generate_sas:
@@ -1008,7 +1006,7 @@ def _process_and_merge_domain(
         )
         write_sas_file(sas_code, sas_path)
         result["sas_path"] = sas_path
-        console.print(f"[green]✓[/green] Generated SAS: {sas_path}")
+        log_success(f"Generated SAS: {sas_path}")
 
     return result
 
