@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 if TYPE_CHECKING:
-    from .terminology import ControlledTerminology
+    from ..terminology import ControlledTerminology
     from .validators import ValidationIssue, ValidationSeverity, ValidationCategory
 
 
@@ -203,9 +203,7 @@ class CTValidationEngine:
             if not nci_code:
                 continue
             # Find all submission values with the same NCI code
-            same_code_values = {
-                v for v, c in codelist.terms.items() if c == nci_code
-            }
+            same_code_values = {v for v, c in codelist.terms.items() if c == nci_code}
             for code_val in same_code_values:
                 if code_val not in code_to_decode:
                     code_to_decode[code_val] = set()

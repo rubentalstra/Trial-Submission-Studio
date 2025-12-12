@@ -23,8 +23,8 @@ from typing import TYPE_CHECKING, Any, Callable
 import pandas as pd
 
 if TYPE_CHECKING:
-    from .domains import SDTMDomain, SDTMVariable
-    from .terminology import ControlledTerminology
+    from ..domains import SDTMDomain, SDTMVariable
+    from ..terminology import ControlledTerminology
 
 # ISO 8601 patterns for date/time validation
 ISO8601_DATE_PATTERN = re.compile(
@@ -163,7 +163,9 @@ class RequiredVariableValidator(ValidationRule):
                 continue
 
             # Count null values
-            null_mask = df[var_name].isna() | (df[var_name].astype(str).str.strip() == "")
+            null_mask = df[var_name].isna() | (
+                df[var_name].astype(str).str.strip() == ""
+            )
             null_count = null_mask.sum()
 
             if null_count > 0:
@@ -281,7 +283,9 @@ class DomainConsistencyValidator(ValidationRule):
 
         for actual_domain in actual_domains:
             if actual_domain != expected_domain:
-                count = (df["DOMAIN"].astype(str).str.strip().str.upper() == actual_domain).sum()
+                count = (
+                    df["DOMAIN"].astype(str).str.strip().str.upper() == actual_domain
+                ).sum()
                 issues.append(
                     self.create_issue(
                         message=f"DOMAIN value '{actual_domain}' does not match expected '{expected_domain}' ({count} records)",
@@ -565,9 +569,7 @@ class ValidationEngine:
         return results
 
 
-def format_validation_report(
-    issues_by_domain: dict[str, list[ValidationIssue]]
-) -> str:
+def format_validation_report(issues_by_domain: dict[str, list[ValidationIssue]]) -> str:
     """Format validation issues into a readable report."""
     lines = ["=" * 80, "VALIDATION REPORT", "=" * 80, ""]
 

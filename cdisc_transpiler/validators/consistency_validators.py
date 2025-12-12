@@ -49,7 +49,11 @@ class DateTimeConsistencyValidator:
 
         # Special case: --DTC with --ENDTC
         for col in df.columns:
-            if col.endswith("DTC") and not col.endswith("STDTC") and not col.endswith("ENDTC"):
+            if (
+                col.endswith("DTC")
+                and not col.endswith("STDTC")
+                and not col.endswith("ENDTC")
+            ):
                 prefix = col[:-3]
                 endtc_col = f"{prefix}ENDTC"
                 if endtc_col in df.columns:
@@ -91,7 +95,11 @@ class DateTimeConsistencyValidator:
                     ValidationCategory,
                 )
 
-                rule_id = "SD0025" if std_col.endswith("DTC") and not std_col.endswith("STDTC") else "SD0013"
+                rule_id = (
+                    "SD0025"
+                    if std_col.endswith("DTC") and not std_col.endswith("STDTC")
+                    else "SD0013"
+                )
 
                 issues.append(
                     ValidationIssue(
@@ -152,7 +160,9 @@ class NonNegativeValueValidator:
         df = context.dataframe
 
         # Find --DOSE variables
-        dose_vars = [col for col in df.columns if col.endswith("DOSE") and col != "DOSE"]
+        dose_vars = [
+            col for col in df.columns if col.endswith("DOSE") and col != "DOSE"
+        ]
 
         # Find --DUR variables
         dur_vars = [col for col in df.columns if col.endswith("DUR")]

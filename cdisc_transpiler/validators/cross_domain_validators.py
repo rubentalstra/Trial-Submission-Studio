@@ -221,7 +221,14 @@ class ARMCDValidator:
         valid_armcds.update(exemptions)
 
         # Check ARMCD values in current domain
-        domain_armcds = context.dataframe["ARMCD"].dropna().astype(str).str.strip().str.upper().unique()
+        domain_armcds = (
+            context.dataframe["ARMCD"]
+            .dropna()
+            .astype(str)
+            .str.strip()
+            .str.upper()
+            .unique()
+        )
 
         invalid_armcds = [a for a in domain_armcds if a and a not in valid_armcds]
 
@@ -270,7 +277,14 @@ class RDOMAINValidator:
         valid_domains = {d.upper() for d in valid_domains}
 
         # Check RDOMAIN values
-        rdomain_values = context.dataframe["RDOMAIN"].dropna().astype(str).str.strip().str.upper().unique()
+        rdomain_values = (
+            context.dataframe["RDOMAIN"]
+            .dropna()
+            .astype(str)
+            .str.strip()
+            .str.upper()
+            .unique()
+        )
         rdomain_values = [r for r in rdomain_values if r]
 
         invalid_rdomains = [r for r in rdomain_values if r not in valid_domains]
@@ -418,7 +432,9 @@ class ReferencedRecordValidator:
             if idvar_col is None:
                 continue
 
-            idvarval_match = ref_domain_df[idvar_col].astype(str).str.strip() == idvarval
+            idvarval_match = (
+                ref_domain_df[idvar_col].astype(str).str.strip() == idvarval
+            )
 
             # Check if record exists
             if not (usubjid_match & idvarval_match).any():
