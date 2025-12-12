@@ -475,7 +475,10 @@ def study_command(
             errors.append((display_name, str(exc)))
             progress_tracker.increment()  # Count failed domains too
         except Exception as exc:
+            import traceback
             log_error(f"{display_name}: {exc}")
+            if verbose > 1:  # Only print traceback in very verbose mode
+                traceback.print_exc()
             errors.append((display_name, str(exc)))
             progress_tracker.increment()  # Count failed domains too
 
@@ -574,7 +577,10 @@ def study_command(
             )
             log_success(f"Generated Define-XML 2.1 at {define_path}")
         except Exception as exc:
+            import traceback
             log_error(f"Define-XML generation failed: {exc}")
+            if verbose > 1:
+                traceback.print_exc()
             errors.append(("Define-XML", str(exc)))
 
     # Print summary

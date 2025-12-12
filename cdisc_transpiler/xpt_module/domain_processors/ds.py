@@ -146,7 +146,7 @@ class DSProcessor(BaseDomainProcessor):
             elif not str(row["DSSTDTC"]).strip():
                 frame.loc[idx, "DSSTDTC"] = base
 
-        DateTransformer.compute_study_day(frame, "DSSTDTC", "DSSTDY", "RFSTDTC")
+        DateTransformer.compute_study_day(frame, "DSSTDTC", "DSSTDY", ref="RFSTDTC")
         frame["DSDTC"] = frame["DSSTDTC"]
         frame["DSDY"] = (
             NumericTransformer.force_numeric(frame.get("DSSTDY", pd.Series()))

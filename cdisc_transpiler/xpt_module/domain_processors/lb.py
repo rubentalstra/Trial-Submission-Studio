@@ -6,6 +6,7 @@ import pandas as pd
 
 from .base import BaseDomainProcessor
 from ..transformers import TextTransformer, NumericTransformer, DateTransformer
+from ...terminology import get_controlled_terminology
 
 
 class LBProcessor(BaseDomainProcessor):
@@ -63,9 +64,9 @@ class LBProcessor(BaseDomainProcessor):
             frame.loc[empty_endtc, "LBENDTC"] = frame.loc[empty_endtc, "LBDTC"]
         # Compute study days
         if "LBDTC" in frame.columns:
-            DateTransformer.compute_study_day(frame, "LBDTC", "LBDY", "RFSTDTC")
+            DateTransformer.compute_study_day(frame, "LBDTC", "LBDY", ref="RFSTDTC")
         if "LBENDTC" in frame.columns and "LBENDY" in frame.columns:
-            DateTransformer.compute_study_day(frame, "LBENDTC", "LBENDY", "RFSTDTC")
+            DateTransformer.compute_study_day(frame, "LBENDTC", "LBENDY", ref="RFSTDTC")
         if "LBDY" in frame.columns:
             frame["LBDY"] = NumericTransformer.force_numeric(frame["LBDY"])
         else:

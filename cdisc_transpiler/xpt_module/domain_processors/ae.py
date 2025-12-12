@@ -34,8 +34,8 @@ class AEProcessor(BaseDomainProcessor):
         if {"VISIT", "VISITNUM"} & set(frame.columns):
             TextTransformer.normalize_visit(frame)
         DateTransformer.ensure_date_pair_order(frame, "AESTDTC", "AEENDTC")
-        DateTransformer.compute_study_day(frame, "AESTDTC", "AESTDY", "RFSTDTC")
-        DateTransformer.compute_study_day(frame, "AEENDTC", "AEENDY", "RFSTDTC")
+        DateTransformer.compute_study_day(frame, "AESTDTC", "AESTDY", ref="RFSTDTC")
+        DateTransformer.compute_study_day(frame, "AEENDTC", "AEENDY", ref="RFSTDTC")
         # Keep TRTEMFL when present to satisfy treatment-emergent checks
         # Ensure expected MedDRA variables exist with default placeholders
         defaults = {
@@ -201,7 +201,6 @@ class AEProcessor(BaseDomainProcessor):
                 frame[code_var] = pd.Series(
                     [999999 for _ in frame.index], dtype="Int64"
                 )
-        self._populate_meddra_defaults(frame)
         NumericTransformer.assign_sequence(frame, "AESEQ", "USUBJID")
         if "AESEQ" in frame.columns:
             frame["AESEQ"] = frame["AESEQ"].astype("Int64")

@@ -81,7 +81,7 @@ class QSProcessor(BaseDomainProcessor):
                 self.reference_starts
             )
         if "QSDTC" in frame.columns:
-            DateTransformer.compute_study_day(frame, "QSDTC", "QSDY", "RFSTDTC")
+            DateTransformer.compute_study_day(frame, "QSDTC", "QSDY", ref="RFSTDTC")
         if "EPOCH" in frame.columns:
             frame["EPOCH"] = "TREATMENT"
         if "QSEVLINT" in frame.columns:
@@ -95,7 +95,7 @@ class QSProcessor(BaseDomainProcessor):
                 )
             elif "RFSTDTC" in frame.columns:
                 frame.loc[empty_qsdtc, "QSDTC"] = frame.loc[empty_qsdtc, "RFSTDTC"]
-            DateTransformer.compute_study_day(frame, "QSDTC", "QSDY", "RFSTDTC")
+            DateTransformer.compute_study_day(frame, "QSDTC", "QSDY", ref="RFSTDTC")
         # Remove QSTPTREF if timing variables absent to avoid SD1282
         if {"QSELTM", "QSTPTNUM", "QSTPT"}.isdisjoint(
             frame.columns

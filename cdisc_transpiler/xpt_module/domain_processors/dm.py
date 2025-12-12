@@ -257,7 +257,7 @@ class DMProcessor(BaseDomainProcessor):
         # DMDTC and DMDY should align with RFSTDTC
         frame["DMDTC"] = frame.get("RFSTDTC", frame.get("RFICDTC", "2023-01-01"))
         if "DMDY" in frame.columns:
-            DateTransformer.compute_study_day(frame, "DMDTC", "DMDY", "RFSTDTC")
+            DateTransformer.compute_study_day(frame, "DMDTC", "DMDY", ref="RFSTDTC")
         else:
             frame["DMDY"] = pd.to_numeric(
                 frame.apply(

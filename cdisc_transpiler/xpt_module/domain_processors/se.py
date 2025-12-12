@@ -72,8 +72,8 @@ class SEProcessor(BaseDomainProcessor):
         for col in new_frame.columns:
             frame[col] = new_frame[col].values
         DateTransformer.ensure_date_pair_order(frame, "SESTDTC", "SEENDTC")
-        DateTransformer.compute_study_day(frame, "SESTDTC", "SESTDY", "RFSTDTC")
-        DateTransformer.compute_study_day(frame, "SEENDTC", "SEENDY", "RFSTDTC")
+        DateTransformer.compute_study_day(frame, "SESTDTC", "SESTDY", ref="RFSTDTC")
+        DateTransformer.compute_study_day(frame, "SEENDTC", "SEENDY", ref="RFSTDTC")
         NumericTransformer.assign_sequence(frame, "SESEQ", "USUBJID")
         if "SEENDY" not in frame.columns:
             frame["SEENDY"] = ""

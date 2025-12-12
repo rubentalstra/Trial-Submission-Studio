@@ -127,7 +127,7 @@ class DAProcessor(BaseDomainProcessor):
             )
 
         if "DADTC" in frame.columns:
-            DateTransformer.compute_study_day(frame, "DADTC", "DADY", "RFSTDTC")
+            DateTransformer.compute_study_day(frame, "DADTC", "DADY", ref="RFSTDTC")
         if "EPOCH" in frame.columns:
             frame["EPOCH"] = TextTransformer.replace_unknown(
                 frame["EPOCH"], "TREATMENT"

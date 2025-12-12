@@ -144,7 +144,7 @@ class IEProcessor(BaseDomainProcessor):
             else:
                 frame["IEDTC"] = frame.get("RFSTDTC", "")
         if "IEDY" in frame.columns:
-            DateTransformer.compute_study_day(frame, "IEDTC", "IEDY", "RFSTDTC")
+            DateTransformer.compute_study_day(frame, "IEDTC", "IEDY", ref="RFSTDTC")
             frame["IEDY"] = NumericTransformer.force_numeric(frame["IEDY"]).fillna(1)
         else:
             frame["IEDY"] = 1
