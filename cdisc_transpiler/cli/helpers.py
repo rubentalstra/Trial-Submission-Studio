@@ -168,7 +168,7 @@ def print_study_summary(
         title_style="bold magenta",
     )
     
-    table.add_column("Domain", style="cyan", no_wrap=True, width=10)
+    table.add_column("Domain", style="cyan", no_wrap=True, width=15)
     table.add_column("Records", justify="right", style="yellow", width=9)
     table.add_column("XPT", justify="center", style="green", width=5)
     table.add_column("Dataset-XML", justify="center", style="green", width=13)
@@ -176,10 +176,11 @@ def print_study_summary(
     table.add_column("Notes", style="dim", width=25)
     
     # Track domains and their data
-    domain_data = {}
+    main_domains = {}
+    supp_domains = {}
     total_records = 0
     
-    # Process all results including supplementals
+    # Process all results
     for result in results:
         domain_code = result.get("domain_code", "").upper()
         records = result.get("records", 0)
@@ -201,8 +202,7 @@ def print_study_summary(
                 split_names += f", +{len(split_paths)-2}"
             notes.append(f"splits: {split_names}")
         
-        # Store domain data
-        domain_data[domain_code] = {
+        domain_data = {
             "records": records,
             "has_xpt": has_xpt,
             "has_xml": has_xml,
@@ -211,28 +211,42 @@ def print_study_summary(
             "is_supp": is_supp,
         }
         
+        if is_supp:
+            # Extract parent domain (e.g., SUPPDM -> DM)
+            parent_domain = domain_code[4:]  # Remove "SUPP" prefix
+            if parent_domain not in supp_domains:
+                supp_domains[parent_domain] = []
+            supp_domains[parent_domain].append((domain_code, domain_data))
+        else:
+            main_domains[domain_code] = domain_data
+        
         total_records += records
     
     # Add rows to table in sorted order
-    for domain_code in sorted(domain_data.keys()):
-        data = domain_data[domain_code]
+    for domain_code in sorted(main_domains.keys()):
+        data = main_domains[domain_code]
         
-        # Style based on whether it's a supplemental domain
-        if data["is_supp"]:
-            domain_style = "dim cyan"
-            record_style = "dim yellow"
-        else:
-            domain_style = "bold cyan"
-            record_style = "yellow"
-        
+        # Add main domain row
         table.add_row(
-            f"[{domain_style}]{domain_code}[/{domain_style}]",
-            f"[{record_style}]{data['records']:,}[/{record_style}]",
+            f"[bold cyan]{domain_code}[/bold cyan]",
+            f"[yellow]{data['records']:,}[/yellow]",
             data["has_xpt"],
             data["has_xml"],
             data["has_sas"],
             data["notes"],
         )
+        
+        # Add supplemental domains for this parent
+        if domain_code in supp_domains:
+            for supp_code, supp_data in sorted(supp_domains[domain_code]):
+                table.add_row(
+                    f"[dim cyan]  └─ {supp_code}[/dim cyan]",
+                    f"[dim yellow]{supp_data['records']:,}[/dim yellow]",
+                    f"[dim]{supp_data['has_xpt']}[/dim]",
+                    f"[dim]{supp_data['has_xml']}[/dim]",
+                    f"[dim]{supp_data['has_sas']}[/dim]",
+                    f"[dim]{supp_data['notes']}[/dim]",
+                )
     
     # Add separator and total row
     table.add_section()
