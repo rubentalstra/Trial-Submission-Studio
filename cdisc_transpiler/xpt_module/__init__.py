@@ -26,13 +26,9 @@ from .builder import (
 from .transformers import (
     DateTransformer,
     CodelistTransformer,
+    NumericTransformer,
+    TextTransformer,
 )
-
-# Future exports as more transformers are created:
-# from .transformers import (
-#     NumericTransformer,
-#     TextTransformer,
-# )
 
 __all__ = [
     # Exceptions
@@ -45,6 +41,6 @@ __all__ = [
     # Transformers
     "DateTransformer",       # Step 3 ✓
     "CodelistTransformer",   # Step 4 ✓
-    # "NumericTransformer",  # Step 5
-    # "TextTransformer",     # Step 5
+    "NumericTransformer",    # Step 5 ✓
+    "TextTransformer",       # Step 5 ✓
 ]
