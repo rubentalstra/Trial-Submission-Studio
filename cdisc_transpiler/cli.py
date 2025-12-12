@@ -2267,7 +2267,7 @@ def validate_command(
         cdisc-transpiler validate study/output/ --format json --output report.json
     """
     from .validators import ValidationEngine, ValidationContext, format_validation_report
-    from .ct_validator import CTValidationEngine
+    from .domains import get_domain
     
     # Derive study ID if not provided
     if study_id is None:
@@ -2308,10 +2308,14 @@ def validate_command(
                 import pyreadstat
                 df, meta = pyreadstat.read_xport(str(xpt_file))
                 
+                # Get domain metadata
+                domain = get_domain(domain_code)
+                
                 # Create validation context
                 context = ValidationContext(
                     study_id=study_id,
                     domain_code=domain_code,
+                    domain=domain,
                     dataframe=df,
                     all_domains={},  # TODO: Load all domains for cross-validation
                     controlled_terminology=None,  # TODO: Load CT
@@ -2334,6 +2338,12 @@ def validate_command(
     
     # Generate report
     console.print()
+    
+    # TODO: Implement JSON and HTML format support
+    # For now, always generate text format
+    if report_format != "text":
+        log_warning(f"Format '{report_format}' not yet implemented, using text format")
+    
     report = format_validation_report(all_issues)
     
     if output:
