@@ -191,13 +191,18 @@ class FileGenerationService:
         *,
         table_name: str | None = None,
     ) -> Path | None:
-        """Write a split XPT file (e.g., for LB splits).
+        """Write a split XPT file following SDTMIG v3.4 Section 4.1.7.
 
+        According to SDTMIG v3.4 Section 4.1.7 "Splitting Domains":
+        - Split datasets follow naming pattern: [DOMAIN][SPLIT]
+        - All splits maintain the same DOMAIN variable value
+        - Dataset names must be ≤ 8 characters
+        
         Args:
             dataframe: Split dataframe
-            domain_code: Domain code
-            split_name: Name for the split file
-            table_name: Optional table name
+            domain_code: Domain code (e.g., "LB", "VS", "EG")
+            split_name: Name for the split file (e.g., "lbhm", "lbcc")
+            table_name: Optional table name (defaults to split_name.upper())
 
         Returns:
             Path to generated file or None
@@ -208,12 +213,24 @@ class FileGenerationService:
         split_dir = self.xpt_dir / "split"
         split_dir.mkdir(parents=True, exist_ok=True)
 
-        split_path = split_dir / f"{split_name.lower()}.xpt"
+        # Validate and clean split name
+        clean_split = split_name.upper().replace("_", "").replace(" ", "")
+        
+        # Ensure split name starts with domain code
+        if not clean_split.startswith(domain_code.upper()):
+            clean_split = f"{domain_code.upper()}{clean_split}"
+        
+        # Ensure ≤ 8 characters per SDTMIG v3.4
+        if len(clean_split) > 8:
+            clean_split = clean_split[:8]
+        
+        split_path = split_dir / f"{clean_split.lower()}.xpt"
+        
         write_xpt_file(
             dataframe,
             domain_code,
             split_path,
-            table_name=table_name or split_name.upper(),
+            table_name=table_name or clean_split,
             file_label="",
         )
 

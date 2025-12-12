@@ -492,8 +492,9 @@ class DomainProcessingCoordinator:
             result["xpt_filename"] = xpt_path.name
             log_success(f"Generated XPT: {xpt_path}")
 
-            # Handle LB variant splits
-            if domain_code.upper() == "LB" and len(variant_frames) > 1:
+            # Handle domain variant splits (SDTMIG v3.4 Section 4.1.7)
+            # Any domain can be split when there are multiple variant files
+            if len(variant_frames) > 1:
                 split_paths = write_variant_splits(
                     merged_dataframe, variant_frames, domain, xpt_dir, console
                 )

@@ -162,12 +162,26 @@ def build_study_define_tree(
         domain = get_domain(ds.domain_code)
         active_vars = get_active_domain_variables(domain, ds.dataframe)
 
+        # Determine parent domain for split datasets (SDTMIG v3.4 Section 4.1.7)
+        # Split datasets should have Domain attribute set to parent domain code
+        parent_domain_code = ds.domain_code
+        if ds.is_split and len(ds.domain_code) > 2:
+            # Extract parent domain code (e.g., LBHM → LB, VSRESP → VS)
+            # Try 2-character prefix first (most common)
+            potential_parent = ds.domain_code[:2]
+            try:
+                get_domain(potential_parent)
+                parent_domain_code = potential_parent
+            except Exception:
+                # If 2-char doesn't work, the dataset code itself is the domain
+                parent_domain_code = ds.domain_code
+        
         # Build ItemGroupDef
         ig_attrib = {
             "OID": f"IG.{ds.domain_code}",
             "Name": ds.domain_code,
             "Repeating": "Yes",
-            "Domain": ds.domain_code,
+            "Domain": parent_domain_code,  # Use parent domain for split datasets
             "SASDatasetName": ds.domain_code[:8],
         }
         ig_attrib[attr(DEF_NS, "Structure")] = (
