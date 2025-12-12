@@ -29,19 +29,18 @@ from .services.file_generation_service import FileGenerationService
 from .services.trial_design_service import TrialDesignService
 from .cli_utils import ProgressTracker, log_success, log_warning, log_error
 
+# Phase 3 Step 4: Import helper functions for better code organization
+from .cli_helpers import (
+    unquote_safe,
+    log_verbose,
+    ensure_acrf_pdf,
+    write_variant_splits,
+    print_study_summary,
+)
+
 console = Console()
 
 
-def _unquote_safe(name: str | None) -> str:
-    if not name:
-        return ""
-    name = str(name)
-    if len(name) >= 3 and name.startswith('"') and name.endswith("n"):
-        inner = name[1:-1]
-        if inner.endswith('"'):
-            inner = inner[:-1]
-        return inner.replace('""', '"')
-    return name
 
 
 @click.group()
@@ -187,20 +186,20 @@ def study_command(
         else:
             study_id = folder_name
 
-    _log_verbose(verbose > 0, f"Processing study folder: {study_folder}")
-    _log_verbose(verbose > 0, f"Study ID: {study_id}")
-    _log_verbose(verbose > 0, f"Output format: {output_format}")
-    _log_verbose(verbose > 0, f"Supported domains: {', '.join(supported_domains)}")
+    log_verbose(verbose > 0, f"Processing study folder: {study_folder}")
+    log_verbose(verbose > 0, f"Study ID: {study_id}")
+    log_verbose(verbose > 0, f"Output format: {output_format}")
+    log_verbose(verbose > 0, f"Supported domains: {', '.join(supported_domains)}")
 
     # Load study metadata (Items.csv, CodeLists.csv)
     study_metadata = load_study_metadata(study_folder)
     if study_metadata.items:
-        _log_verbose(
+        log_verbose(
             verbose > 0,
             f"Loaded {len(study_metadata.items)} column definitions from Items.csv",
         )
     if study_metadata.codelists:
-        _log_verbose(
+        log_verbose(
             verbose > 0,
             f"Loaded {len(study_metadata.codelists)} codelists from CodeLists.csv",
         )
@@ -222,11 +221,11 @@ def study_command(
     if sas_dir:
         sas_dir.mkdir(parents=True, exist_ok=True)
     if generate_define:
-        _ensure_acrf_pdf(output_dir / ACRF_HREF)
+        ensure_acrf_pdf(output_dir / ACRF_HREF)
 
     # Find all CSV files in the study folder
     csv_files = list(study_folder.glob("*.csv"))
-    _log_verbose(verbose > 0, f"Found {len(csv_files)} CSV files")
+    log_verbose(verbose > 0, f"Found {len(csv_files)} CSV files")
 
     # Map files to domains
     domain_files = _discover_domain_files(csv_files, supported_domains, verbose > 0)
@@ -574,7 +573,7 @@ def study_command(
             errors.append(("Define-XML", str(exc)))
 
     # Print summary
-    _print_study_summary(
+    print_study_summary(
         results, errors, output_dir, output_format, generate_define, generate_sas
     )
 
@@ -594,7 +593,7 @@ def _discover_domain_files(
             skip in filename
             for skip in ["CODELISTS", "CODELIST", "ITEMS", "README", "METADATA"]
         ):
-            _log_verbose(verbose, f"Skipping metadata file: {csv_file.name}")
+            log_verbose(verbose, f"Skipping metadata file: {csv_file.name}")
             continue
 
         parts = filename.split("_")
@@ -625,12 +624,12 @@ def _discover_domain_files(
             domain_files[matched_domain].append(
                 (csv_file, variant_name or matched_domain)
             )
-            _log_verbose(
+            log_verbose(
                 verbose,
                 f"Matched {csv_file.name} -> {matched_domain} (variant: {variant_name})",
             )
         else:
-            _log_verbose(verbose, f"No domain match for: {csv_file.name}")
+            log_verbose(verbose, f"No domain match for: {csv_file.name}")
 
     return domain_files
 
@@ -674,7 +673,7 @@ def _process_and_merge_domain(
 
         # Load input data
         frame = load_input_dataset(input_file)
-        _log_verbose(verbose, f"  Loaded {len(frame)} rows from {input_file.name}")
+        log_verbose(verbose, f"  Loaded {len(frame)} rows from {input_file.name}")
 
         # Special handling for VS visit status (VSTAT) helper files:
         # convert to VS rows with VSTAT test.
@@ -684,7 +683,7 @@ def _process_and_merge_domain(
             and "VSTAT" in variant_name.upper()
         )
         if is_vstat:
-            _log_verbose(
+            log_verbose(
                 verbose,
                 f"  Skipping {input_file.name} (VSTAT helper not mapped to SDTM)",
             )
@@ -694,7 +693,7 @@ def _process_and_merge_domain(
         if domain_code.upper() == "VS":
             frame = _reshape_vs_to_long(frame, study_id)
             vs_long = True
-            _log_verbose(
+            log_verbose(
                 verbose,
                 f"  Normalized VS wide data to {len(frame)} long-form rows",
             )
@@ -710,7 +709,7 @@ def _process_and_merge_domain(
                 frame = reshaped
                 lb_long_current = True
                 lb_long = True
-                _log_verbose(
+                log_verbose(
                     verbose,
                     f"  Normalized LB wide data to {len(frame)} long-form rows",
                 )
@@ -720,7 +719,7 @@ def _process_and_merge_domain(
                     )
                     continue
             else:
-                _log_verbose(verbose, "  Skipping LB reshape (no recognizable tests)")
+                log_verbose(verbose, "  Skipping LB reshape (no recognizable tests)")
                 continue
 
         # Build config using metadata-aware mapper if available; for VSTAT,
@@ -767,7 +766,7 @@ def _process_and_merge_domain(
         )
         all_dataframes.append(domain_dataframe)
         variant_frames.append((variant_name or domain_code, domain_dataframe))
-        _log_verbose(
+        log_verbose(
             verbose, f"  Processed {len(domain_dataframe)} rows for {variant_name}"
         )
 
@@ -776,9 +775,9 @@ def _process_and_merge_domain(
             used_source_columns: set[str] = set()
             if config and config.mappings:
                 for m in config.mappings:
-                    used_source_columns.add(_unquote_safe(m.source_column))
+                    used_source_columns.add(unquote_safe(m.source_column))
                     if getattr(m, "use_code_column", None):
-                        used_source_columns.add(_unquote_safe(m.use_code_column))
+                        used_source_columns.add(unquote_safe(m.use_code_column))
             supp_df, used_cols = build_suppqual(
                 domain_code,
                 frame,
@@ -902,7 +901,7 @@ def _process_and_merge_domain(
             merged_dataframe[seq_col] = (
                 merged_dataframe.groupby("USUBJID").cumcount() + 1
             )
-        _log_verbose(
+        log_verbose(
             verbose,
             f"Merged {len(all_dataframes)} files into {len(merged_dataframe)} rows",
         )
@@ -968,7 +967,7 @@ def _process_and_merge_domain(
         log_success(f"Generated XPT: {xpt_path}")
         split_paths: list[Path] = []
         if domain_code.upper() == "LB" and len(variant_frames) > 1:
-            split_paths = _write_variant_splits(
+            split_paths = write_variant_splits(
                 merged_dataframe, variant_frames, domain, xpt_dir, console
             )
             result["split_xpt_paths"] = split_paths
@@ -1680,7 +1679,7 @@ def _build_relrec_records(domain_results: list[dict], study_id: str) -> pd.DataF
     return pd.DataFrame(records)
 
 
-def _write_variant_splits(
+def write_variant_splits(
     merged_dataframe: pd.DataFrame,
     variant_frames: list[tuple[str, pd.DataFrame]],
     domain: object,
@@ -2024,7 +2023,7 @@ def _reshape_lb_to_long(frame: pd.DataFrame, study_id: str) -> pd.DataFrame:
     return pd.DataFrame(records)
 
 
-def _print_study_summary(
+def print_study_summary(
     results: list[dict],
     errors: list[tuple[str, str]],
     output_dir: Path,
@@ -2155,58 +2154,6 @@ def _print_study_summary(
         console.print("[bold]📦 Generated:[/bold]")
         for output in outputs:
             console.print(output)
-
-
-def _log_verbose(enabled: bool, message: str) -> None:
-    if enabled:
-        console.print(f"[dim]{message}[/dim]")
-
-
-def _ensure_acrf_pdf(path: Path) -> None:
-    """Create a minimal, valid PDF at `path` if one is not already present."""
-    if path.exists():
-        return
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-
-    obj_bodies: dict[int, str] = {
-        1: "<< /Type /Catalog /Pages 2 0 R >>",
-        2: "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        3: (
-            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
-            "/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>"
-        ),
-    }
-    stream_text = "Annotated CRF placeholder"
-    stream_content = f"BT /F1 12 Tf 72 720 Td ({stream_text}) Tj ET".encode("latin-1")
-    obj_bodies[4] = (
-        f"<< /Length {len(stream_content)} >>\nstream\n"
-        + stream_content.decode("latin-1")
-        + "\nendstream"
-    )
-    obj_bodies[5] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"
-
-    parts: list[str] = ["%PDF-1.4\n"]
-    offsets: dict[int, int] = {}
-    for obj_num in sorted(obj_bodies):
-        offsets[obj_num] = sum(len(p.encode("latin-1")) for p in parts)
-        parts.append(f"{obj_num} 0 obj\n{obj_bodies[obj_num]}\nendobj\n")
-
-    xref_start = sum(len(p.encode("latin-1")) for p in parts)
-    size = max(obj_bodies) + 1
-    xref_lines = ["xref", f"0 {size}", "0000000000 65535 f "]
-    for i in range(1, size):
-        offset = offsets.get(i, 0)
-        xref_lines.append(f"{offset:010d} 00000 n ")
-    xref_section = "\n".join(xref_lines) + "\n"
-    trailer = (
-        f"trailer\n<< /Size {size} /Root 1 0 R >>\nstartxref\n{xref_start}\n%%EOF\n"
-    )
-    parts.append(xref_section)
-    parts.append(trailer)
-
-    pdf_bytes = "".join(parts).encode("latin-1")
-    path.write_bytes(pdf_bytes)
 
 
 @app.command(name="validate")
