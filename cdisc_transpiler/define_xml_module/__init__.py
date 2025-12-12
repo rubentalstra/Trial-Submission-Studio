@@ -39,11 +39,12 @@ from .standards import (
     get_default_standard_comments,
 )
 
-# Import main functions from the original module for backward compatibility
-# These will be migrated in subsequent steps
-from ..define_xml import (
+from .xml_writer import (
     write_define_file,
     write_study_define_file,
+)
+
+from .metadata_builder import (
     build_define_tree,
     build_study_define_tree,
 )
