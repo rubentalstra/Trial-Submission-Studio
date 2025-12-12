@@ -12,28 +12,38 @@ import pandas as pd
 
 from .base import BaseDomainProcessor, DefaultDomainProcessor
 
+# Import all domain processors
+from .dm import DMProcessor
+from .ae import AEProcessor
+from .cm import CMProcessor
+from .ds import DSProcessor
+from .ex import EXProcessor
+from .lb import LBProcessor
+from .vs import VSProcessor
+from .mh import MHProcessor
+from .pe import PEProcessor
+from .qs import QSProcessor
+from .da import DAProcessor
+from .ie import IEProcessor
+from .pr import PRProcessor
+from .se import SEProcessor
+from .ts import TSProcessor
+from .ta import TAProcessor
+from .te import TEProcessor
+
 if TYPE_CHECKING:
     from ...domains import SDTMDomain
 
 
 class DomainProcessorRegistry:
-    """Registry for domain-specific processors.
-    
-    This registry maintains a mapping of domain codes to processor classes,
-    allowing the system to apply domain-specific logic as needed.
-    """
+    """Registry for domain-specific processors."""
 
     def __init__(self):
         self._processors: dict[str, type[BaseDomainProcessor]] = {}
         self._default_processor = DefaultDomainProcessor
 
     def register(self, domain_code: str, processor_class: type[BaseDomainProcessor]):
-        """Register a processor for a specific domain.
-        
-        Args:
-            domain_code: SDTM domain code (e.g., "DM", "AE")
-            processor_class: Processor class to use for this domain
-        """
+        """Register a processor for a specific domain."""
         self._processors[domain_code.upper()] = processor_class
 
     def get_processor(
@@ -42,16 +52,7 @@ class DomainProcessorRegistry:
         reference_starts: dict[str, str] | None = None,
         metadata=None,
     ) -> BaseDomainProcessor:
-        """Get the appropriate processor for a domain.
-        
-        Args:
-            domain: SDTM domain definition
-            reference_starts: Mapping of USUBJID -> RFSTDTC
-            metadata: Study metadata (optional)
-            
-        Returns:
-            Processor instance for the domain
-        """
+        """Get the appropriate processor for a domain."""
         processor_class = self._processors.get(
             domain.code.upper(),
             self._default_processor
@@ -63,50 +64,35 @@ class DomainProcessorRegistry:
 _registry = DomainProcessorRegistry()
 
 
+# Register all domain processors
+_registry.register("DM", DMProcessor)
+_registry.register("AE", AEProcessor)
+_registry.register("CM", CMProcessor)
+_registry.register("DS", DSProcessor)
+_registry.register("EX", EXProcessor)
+_registry.register("LB", LBProcessor)
+_registry.register("VS", VSProcessor)
+_registry.register("MH", MHProcessor)
+_registry.register("PE", PEProcessor)
+_registry.register("QS", QSProcessor)
+_registry.register("DA", DAProcessor)
+_registry.register("IE", IEProcessor)
+_registry.register("PR", PRProcessor)
+_registry.register("SE", SEProcessor)
+_registry.register("TS", TSProcessor)
+_registry.register("TA", TAProcessor)
+_registry.register("TE", TEProcessor)
+
+
 def get_domain_processor(
     domain: "SDTMDomain",
     reference_starts: dict[str, str] | None = None,
     metadata=None,
 ) -> BaseDomainProcessor:
-    """Get a processor for the specified domain.
-    
-    This is the main entry point for domain-specific processing.
-    
-    Args:
-        domain: SDTM domain definition
-        reference_starts: Mapping of USUBJID -> RFSTDTC
-        metadata: Study metadata (optional)
-        
-    Returns:
-        Processor instance for the domain
-        
-    Example:
-        >>> processor = get_domain_processor(domain, reference_starts)
-        >>> processor.process(dataframe)
-    """
+    """Get a processor for the specified domain."""
     return _registry.get_processor(domain, reference_starts, metadata)
 
 
 def register_processor(domain_code: str, processor_class: type[BaseDomainProcessor]):
-    """Register a custom processor for a domain.
-    
-    Args:
-        domain_code: SDTM domain code (e.g., "DM", "AE")
-        processor_class: Processor class to use for this domain
-        
-    Example:
-        >>> class CustomDMProcessor(BaseDomainProcessor):
-        ...     def process(self, frame):
-        ...         # Custom DM processing
-        ...         pass
-        >>> register_processor("DM", CustomDMProcessor)
-    """
+    """Register a custom processor for a domain."""
     _registry.register(domain_code, processor_class)
-
-
-
-
-# Register the default processor for all domains
-# Domain-specific processors can be added later by creating processor classes
-# and registering them with register_processor()
-_registry._default_processor = DefaultDomainProcessor
