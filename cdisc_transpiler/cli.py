@@ -23,6 +23,12 @@ from .domains import SDTMVariable
 # Define-XML helpers
 from .define_xml import ACRF_HREF
 
+# Phase 3: Import new services for refactored implementation
+from .services.domain_service import DomainProcessingService
+from .services.file_generation_service import FileGenerationService  
+from .services.trial_design_service import TrialDesignService
+from .cli_utils import ProgressTracker, log_success, log_warning, log_error
+
 console = Console()
 
 
@@ -257,6 +263,9 @@ def study_command(
     if generate_sas:
         console.print("[bold]SAS programs:[/bold] Will be generated")
 
+    # Phase 3: Initialize progress tracker for better UX
+    progress_tracker = ProgressTracker(total_domains=len(domain_files))
+
     processed_domains = set(domain_files.keys())
     # Process each domain
     results: list[dict] = []
@@ -457,12 +466,17 @@ def study_command(
                     )
                 )
 
+            # Phase 3: Increment progress tracker after successful domain processing
+            progress_tracker.increment()
+
         except ParseError as exc:
             console.print(f"[red]✗[/red] {display_name}: Parse error - {exc}")
             errors.append((display_name, str(exc)))
+            progress_tracker.increment()  # Count failed domains too
         except Exception as exc:
             console.print(f"[red]✗[/red] {display_name}: {exc}")
             errors.append((display_name, str(exc)))
+            progress_tracker.increment()  # Count failed domains too
 
     # Synthesize core observation domains when the study provides no source data
     for missing_domain in [
@@ -2101,6 +2115,9 @@ def _print_study_summary(
 
     # Final summary panel
     console.print()
+
+    # Phase 3: Print progress tracker summary
+    progress_tracker.print_summary()
 
     success_count = len(results)
     error_count = len(errors)
