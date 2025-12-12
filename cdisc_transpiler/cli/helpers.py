@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 from rich.console import Console
+from rich.table import Table
 
 if TYPE_CHECKING:
     from ..domains import SDTMDomain
@@ -146,7 +147,7 @@ def print_study_summary(
     generate_define: bool,
     generate_sas: bool,
 ) -> None:
-    """Print summary of study processing results.
+    """Print summary of study processing results with detailed table.
 
     Args:
         results: List of processing results
@@ -156,22 +157,109 @@ def print_study_summary(
         generate_define: Whether Define-XML was generated
         generate_sas: Whether SAS programs were generated
     """
-    # Calculate total records
-    total_records = sum(r.get("records", 0) for r in results)
-
-    # Final summary panel
     console.print()
-
+    
+    # Create summary table
+    table = Table(
+        title="📊 Study Processing Summary",
+        show_header=True,
+        header_style="bold cyan",
+        border_style="bright_blue",
+        title_style="bold magenta",
+    )
+    
+    table.add_column("Domain", style="cyan", no_wrap=True, width=10)
+    table.add_column("Records", justify="right", style="yellow", width=9)
+    table.add_column("XPT", justify="center", style="green", width=5)
+    table.add_column("Dataset-XML", justify="center", style="green", width=13)
+    table.add_column("SAS", justify="center", style="green", width=5)
+    table.add_column("Notes", style="dim", width=25)
+    
+    # Track domains and their data
+    domain_data = {}
+    total_records = 0
+    
+    # Process all results including supplementals
+    for result in results:
+        domain_code = result.get("domain_code", "").upper()
+        records = result.get("records", 0)
+        
+        # Check if this is a supplemental domain
+        is_supp = domain_code.startswith("SUPP")
+        
+        # Determine output indicators
+        has_xpt = "✓" if result.get("xpt_path") else "–"
+        has_xml = "✓" if result.get("xml_path") else "–"
+        has_sas = "✓" if result.get("sas_path") else "–"
+        
+        # Build notes
+        notes = []
+        split_paths = result.get("split_xpt_paths", [])
+        if split_paths:
+            split_names = ", ".join(p.name for p in split_paths[:2])
+            if len(split_paths) > 2:
+                split_names += f", +{len(split_paths)-2}"
+            notes.append(f"splits: {split_names}")
+        
+        # Store domain data
+        domain_data[domain_code] = {
+            "records": records,
+            "has_xpt": has_xpt,
+            "has_xml": has_xml,
+            "has_sas": has_sas,
+            "notes": " • ".join(notes) if notes else "",
+            "is_supp": is_supp,
+        }
+        
+        total_records += records
+    
+    # Add rows to table in sorted order
+    for domain_code in sorted(domain_data.keys()):
+        data = domain_data[domain_code]
+        
+        # Style based on whether it's a supplemental domain
+        if data["is_supp"]:
+            domain_style = "dim cyan"
+            record_style = "dim yellow"
+        else:
+            domain_style = "bold cyan"
+            record_style = "yellow"
+        
+        table.add_row(
+            f"[{domain_style}]{domain_code}[/{domain_style}]",
+            f"[{record_style}]{data['records']:,}[/{record_style}]",
+            data["has_xpt"],
+            data["has_xml"],
+            data["has_sas"],
+            data["notes"],
+        )
+    
+    # Add separator and total row
+    table.add_section()
+    table.add_row(
+        "[bold]Total[/bold]",
+        f"[bold yellow]{total_records:,}[/bold yellow]",
+        "",
+        "",
+        "",
+        "",
+    )
+    
+    # Print the table
+    console.print(table)
+    console.print()
+    
+    # Status summary
     success_count = len(results)
     error_count = len(errors)
-
+    
     if error_count == 0:
         status_line = (
             f"[bold green]✓ {success_count} domains processed successfully[/bold green]"
         )
     else:
         status_line = f"[green]✓ {success_count} succeeded[/green]  [red]✗ {error_count} failed[/red]"
-
+    
     # Build output list
     outputs = []
     if output_format in ("xpt", "both"):
@@ -188,11 +276,11 @@ def print_study_summary(
         outputs.append(
             f"  [dim]└─[/dim] Define-XML: [cyan]{output_dir / 'define.xml'}[/cyan]"
         )
-
+    
     # Fix last item to use └─
     if outputs:
         outputs[-1] = outputs[-1].replace("├─", "└─")
-
+    
     console.print(status_line)
     console.print(f"[bold]📁 Output:[/bold] [cyan]{output_dir}[/cyan]")
     console.print(f"[bold]📈 Total records:[/bold] [yellow]{total_records:,}[/yellow]")
