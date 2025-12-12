@@ -12,8 +12,8 @@ from xml.etree import ElementTree as ET
 
 import pandas as pd
 
-from ..domains import SDTMVariable
-from ..terminology import (
+from ...domains import SDTMVariable
+from ...terminology import (
     get_nci_code as ct_get_nci_code,
     get_controlled_terminology,
 )
@@ -26,7 +26,7 @@ from .constants import (
     MEDDRA_HREF,
     MEDDRA_CODELIST_NAME,
 )
-from .utils import tag, attr
+from ..utils import tag, attr
 
 
 # MedDRA variables that reference external MedDRA dictionary
@@ -58,7 +58,7 @@ def append_code_lists(
     parent: ET.Element, domain_code: str, variables: Iterable[SDTMVariable]
 ) -> None:
     """Append CodeList elements per Define-XML 2.1 specification.
-    
+
     Args:
         parent: Parent XML element to append to
         domain_code: Domain code (e.g., "DM", "AE")
@@ -76,18 +76,18 @@ def build_code_list_element(
     extended_values: Iterable[str] | None = None,
 ) -> ET.Element:
     """Create a CodeList element with CT values and NCI aliases.
-    
+
     Args:
         variable: SDTM variable with codelist
         domain_code: Domain code
         oid_override: Optional OID override
         extended_values: Additional non-standard values to include
-        
+
     Returns:
         CodeList XML element
     """
     from .variable_builder import get_datatype
-    
+
     is_meddra = needs_meddra(variable.name)
     data_type = "text" if is_meddra else get_datatype(variable)
     attrib: dict[str, str] = {
@@ -195,11 +195,11 @@ def collect_extended_codelist_values(
     dataset: pd.DataFrame | None, variable: SDTMVariable
 ) -> set[str]:
     """Return dataset values that are not part of the standard CT list.
-    
+
     Args:
         dataset: DataFrame containing the data
         variable: SDTM variable to check
-        
+
     Returns:
         Set of extended (non-standard) values found in the data
     """
@@ -234,13 +234,13 @@ def collect_extended_codelist_values(
 
 def should_use_enumerated_item(variable_name: str) -> bool:
     """Determine if EnumeratedItem should be used instead of CodeListItem.
-    
+
     EnumeratedItem is used for extensible code lists where the
     submission value equals the decode value.
-    
+
     Args:
         variable_name: Name of the variable
-        
+
     Returns:
         True if EnumeratedItem should be used
     """
@@ -278,10 +278,10 @@ def should_use_enumerated_item(variable_name: str) -> bool:
 
 def needs_meddra(variable_name: str) -> bool:
     """Return True when the variable should point to MedDRA terminology.
-    
+
     Args:
         variable_name: Name of the variable
-        
+
     Returns:
         True if variable uses MedDRA dictionary
     """
@@ -290,14 +290,14 @@ def needs_meddra(variable_name: str) -> bool:
 
 def get_decode_value(variable_name: str, coded_value: str) -> str:
     """Return the decode value for a coded value.
-    
+
     For common SDTM controlled terminology, provides the proper decode.
     Falls back to the coded value if no specific decode is defined.
-    
+
     Args:
         variable_name: Name of the variable
         coded_value: Coded value to decode
-        
+
     Returns:
         Decoded value or original coded value
     """
@@ -339,15 +339,15 @@ def get_decode_value(variable_name: str, coded_value: str) -> str:
 
 def get_nci_code(variable_name: str, coded_value: str) -> str | None:
     """Return the NCI code for a controlled term if available.
-    
+
     NCI codes (C-codes) are used as external code identifiers in
     CDISC controlled terminology. This function uses the controlled
     terminology registry for accurate code lookup.
-    
+
     Args:
         variable_name: Name of the variable
         coded_value: Coded value to look up
-        
+
     Returns:
         NCI C-code or None if not found
     """
@@ -368,11 +368,11 @@ def get_nci_code(variable_name: str, coded_value: str) -> str | None:
 
 def get_code_list_oid(variable: SDTMVariable, domain_code: str) -> str:
     """Return the CodeList OID, consolidating MedDRA references.
-    
+
     Args:
         variable: SDTM variable
         domain_code: Domain code
-        
+
     Returns:
         CodeList OID string
     """

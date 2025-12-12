@@ -13,7 +13,7 @@ import pandas as pd
 
 from ..domains import SDTMDomain, SDTMVariable, get_domain
 from .constants import ODM_NS
-from .utils import tag
+from ..utils import tag
 from .variable_builder import get_item_oid
 
 
@@ -21,7 +21,7 @@ def append_item_refs(
     parent: ET.Element, variables: Iterable[SDTMVariable], domain_code: str
 ) -> None:
     """Append ItemRef elements with KeySequence support per Define-XML 2.1.
-    
+
     Args:
         parent: Parent XML element
         variables: SDTM variables to reference
@@ -50,10 +50,10 @@ def append_item_refs(
 
 def get_key_sequence(domain_code: str) -> dict[str, int]:
     """Return key sequence mapping for a domain.
-    
+
     Args:
         domain_code: Domain code
-        
+
     Returns:
         Dictionary mapping variable names to key sequence numbers
     """
@@ -101,12 +101,12 @@ def get_variable_role(
     variable_name: str, domain_code: str, role_hint: str | None = None
 ) -> str | None:
     """Return the Role attribute value for a variable if applicable.
-    
+
     Args:
         variable_name: Name of the variable
         domain_code: Domain code
         role_hint: Optional role hint from variable metadata
-        
+
     Returns:
         Role string or None
     """
@@ -131,11 +131,11 @@ def get_active_domain_variables(
     domain: SDTMDomain, dataset: pd.DataFrame | None
 ) -> tuple[SDTMVariable, ...]:
     """Return only required domain variables, those present in the dataset, plus extras.
-    
+
     Args:
         domain: SDTM domain definition
         dataset: Optional DataFrame with actual data
-        
+
     Returns:
         Tuple of active variables for the domain
     """
@@ -171,12 +171,12 @@ def get_active_domain_variables(
 
 def get_domain_description_alias(domain: SDTMDomain) -> str | None:
     """Return the DomainDescription alias text.
-    
+
     For SUPP-- domains, uses base domain label when available.
-    
+
     Args:
         domain: SDTM domain
-        
+
     Returns:
         Domain description or None
     """

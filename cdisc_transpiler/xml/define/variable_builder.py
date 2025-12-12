@@ -11,16 +11,16 @@ from xml.etree import ElementTree as ET
 
 import pandas as pd
 
-from ..domains import SDTMVariable
+from ...domains import SDTMVariable
 from .constants import ODM_NS, DEF_NS, XML_NS
-from .utils import tag, attr
+from ..utils import tag, attr
 
 
 def append_item_defs(
     parent: ET.Element, variables: Iterable[SDTMVariable], domain_code: str
 ) -> None:
     """Append ItemDef elements per Define-XML 2.1 specification.
-    
+
     Args:
         parent: Parent XML element
         variables: SDTM variables to define
@@ -56,6 +56,7 @@ def append_item_defs(
 
         if variable.codelist_code:
             from .codelist_builder import get_code_list_oid
+
             ET.SubElement(
                 item,
                 tag(ODM_NS, "CodeListRef"),

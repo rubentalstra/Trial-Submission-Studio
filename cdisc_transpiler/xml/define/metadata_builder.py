@@ -19,7 +19,7 @@ from .constants import (
     CONTEXT_SUBMISSION,
     ACRF_LEAF_ID,
 )
-from .utils import tag, attr
+from ..utils import tag, attr
 from .standards import get_default_standards
 
 
@@ -33,7 +33,7 @@ def build_define_tree(
     context: str = CONTEXT_SUBMISSION,
 ) -> ET.Element:
     """Return the Define-XML 2.1 document root for a single domain.
-    
+
     Args:
         _dataset: DataFrame containing the domain data
         domain_code: SDTM domain code
@@ -41,7 +41,7 @@ def build_define_tree(
         dataset_href: Optional dataset file reference
         sdtm_version: SDTM-IG version
         context: Define-XML context
-        
+
     Returns:
         Root Element of the Define-XML document
     """
@@ -67,16 +67,16 @@ def build_study_define_tree(
     context: str,
 ) -> ET.Element:
     """Build a study-level Define-XML 2.1 document tree with proper ordering.
-    
+
     This is the main orchestration function that coordinates all builders
     to create a complete Define-XML document.
-    
+
     Args:
         datasets: Iterable of StudyDataset objects
         study_id: Study identifier
         sdtm_version: SDTM-IG version
         context: Define-XML context ('Submission' or 'Other')
-        
+
     Returns:
         Root Element of the Define-XML document
     """
@@ -84,7 +84,11 @@ def build_study_define_tree(
     from ..domains import CT_VERSION, get_domain
     from .codelist_builder import append_code_lists, collect_extended_codelist_values
     from .variable_builder import append_item_defs
-    from .dataset_builder import append_item_refs, get_active_domain_variables, get_domain_description_alias
+    from .dataset_builder import (
+        append_item_refs,
+        get_active_domain_variables,
+        get_domain_description_alias,
+    )
     from .value_list_builder import (
         build_supp_value_lists,
         append_value_list_defs,
@@ -93,7 +97,7 @@ def build_study_define_tree(
         append_comment_defs,
     )
     from .standards import get_default_standard_comments
-    
+
     datasets = list(datasets)
     if not datasets:
         raise DefineGenerationError(
@@ -166,11 +170,14 @@ def build_study_define_tree(
             "Domain": ds.domain_code,
             "SASDatasetName": ds.domain_code[:8],
         }
-        ig_attrib[attr(DEF_NS, "Structure")] = ds.structure or "One record per subject per domain-specific entity"
+        ig_attrib[attr(DEF_NS, "Structure")] = (
+            ds.structure or "One record per subject per domain-specific entity"
+        )
         ig_attrib[attr(DEF_NS, "Class")] = domain.dataset_class or "EVENTS"
-        
+
         if ds.archive_location:
             from .utils import safe_href
+
             ig_attrib[attr(DEF_NS, "ArchiveLocationID")] = f"LF.{ds.domain_code}"
 
         ig = ET.Element(tag(ODM_NS, "ItemGroupDef"), attrib=ig_attrib)
@@ -198,12 +205,15 @@ def build_study_define_tree(
         # Add leaf for dataset file
         if ds.archive_location:
             from .utils import safe_href
+
             leaf = ET.SubElement(
                 ig,
                 tag(DEF_NS, "leaf"),
                 attrib={
                     "ID": f"LF.{ds.domain_code}",
-                    attr(DEF_NS.replace("def", "xlink"), "href"): safe_href(str(ds.archive_location)),
+                    attr(DEF_NS.replace("def", "xlink"), "href"): safe_href(
+                        str(ds.archive_location)
+                    ),
                 },
             )
             ET.SubElement(leaf, tag(DEF_NS, "title")).text = f"{ds.domain_code}.xpt"
@@ -222,7 +232,9 @@ def build_study_define_tree(
                     code_list_specs[cl_oid] = (var, ds.domain_code, extended)
 
         # Handle SUPP-- value lists
-        vl_defs, wc_defs, vl_items, vl_oid = build_supp_value_lists(ds.dataframe, domain)
+        vl_defs, wc_defs, vl_items, vl_oid = build_supp_value_lists(
+            ds.dataframe, domain
+        )
         value_list_defs.extend(vl_defs)
         where_clause_defs.extend(wc_defs)
         vl_item_def_specs.update(vl_items)
@@ -246,7 +258,10 @@ def build_study_define_tree(
     cl_parent = ET.Element("temp")
     for cl_oid, (var, domain_code, extended) in sorted(code_list_specs.items()):
         from .codelist_builder import build_code_list_element
-        cl_parent.append(build_code_list_element(var, domain_code, extended_values=extended))
+
+        cl_parent.append(
+            build_code_list_element(var, domain_code, extended_values=extended)
+        )
     for cl in cl_parent:
         metadata.append(cl)
 
@@ -268,15 +283,15 @@ def build_study_define_tree(
 
 def append_standards(parent: ET.Element, standards: list) -> None:
     """Append def:Standards element with Standard definitions.
-    
+
     Args:
         parent: Parent XML element (MetaDataVersion)
         standards: List of StandardDefinition objects
     """
     from .models import StandardDefinition
-    
+
     standards_elem = ET.SubElement(parent, tag(DEF_NS, "Standards"))
-    
+
     for std in standards:
         std_attrib = {
             "OID": std.oid,
@@ -287,12 +302,12 @@ def append_standards(parent: ET.Element, standards: list) -> None:
         }
         if std.publishing_set:
             std_attrib["PublishingSet"] = std.publishing_set
-        
+
         std_elem = ET.SubElement(
             standards_elem,
             tag(DEF_NS, "Standard"),
             attrib=std_attrib,
         )
-        
+
         if std.comment_oid:
             std_elem.set(attr(DEF_NS, "CommentOID"), std.comment_oid)

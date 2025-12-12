@@ -10,10 +10,10 @@ from xml.etree import ElementTree as ET
 
 import pandas as pd
 
-from ..domains import SDTMDomain, SDTMVariable
+from ...domains import SDTMDomain, SDTMVariable
 from .models import ValueListDefinition, ValueListItemDefinition, WhereClauseDefinition
 from .constants import ODM_NS, DEF_NS
-from .utils import tag, attr
+from ..utils import tag, attr
 
 
 def build_supp_value_lists(
@@ -25,11 +25,11 @@ def build_supp_value_lists(
     str | None,
 ]:
     """Build ValueListDef/WhereClauseDef for SUPP-- datasets based on QNAM values.
-    
+
     Args:
         dataset: DataFrame containing SUPP data
         domain: SDTM domain definition
-        
+
     Returns:
         Tuple of (value_lists, where_clauses, vl_item_defs, value_list_oid)
     """
@@ -87,10 +87,7 @@ def build_supp_value_lists(
 
         label = qlabels.get(qnam) or f"Supplemental value for {qnam}"
         qval_len = (
-            dataset.loc[dataset["QNAM"] == qnam, "QVAL"]
-            .astype(str)
-            .str.len()
-            .max()
+            dataset.loc[dataset["QNAM"] == qnam, "QVAL"].astype(str).str.len().max()
         )
         if pd.isna(qval_len):
             qval_len = 1
@@ -117,10 +114,10 @@ def append_value_list_defs(
     value_lists: list[ValueListDefinition],
 ) -> None:
     """Append ValueListDef elements for value-level metadata.
-    
+
     Per Define-XML 2.1, ValueListDef appears after ItemGroupDef elements
     and contains ItemRef elements with def:WhereClauseOID attributes.
-    
+
     Args:
         parent: Parent XML element
         value_lists: List of ValueListDefinition objects
@@ -157,10 +154,10 @@ def append_where_clause_defs(
     where_clauses: list[WhereClauseDefinition],
 ) -> None:
     """Append WhereClauseDef elements for value-level metadata conditions.
-    
+
     Per Define-XML 2.1, WhereClauseDef appears after ValueListDef elements
     and contains RangeCheck elements that specify conditions.
-    
+
     Args:
         parent: Parent XML element
         where_clauses: List of WhereClauseDefinition objects
@@ -195,25 +192,25 @@ def generate_vlm_for_findings_domain(
     result_variable: str = "ORRES",
 ) -> tuple[list[ValueListDefinition], list[WhereClauseDefinition]]:
     """Generate value-level metadata for a findings domain.
-    
+
     Findings domains (LB, VS, EG, etc.) typically have different metadata
     for each test code. This function generates the VLM structure for
     a given set of test codes.
-    
+
     Args:
         domain_code: The domain code (e.g., "LB", "VS")
         test_codes: List of test codes (e.g., ["GLUC", "HGB", "WBC"])
         result_variable: The result variable name (default: "ORRES")
-        
+
     Returns:
         Tuple of (value_lists, where_clauses)
     """
     value_lists: list[ValueListDefinition] = []
     where_clauses: list[WhereClauseDefinition] = []
-    
+
     # Implementation note: This is a template function that can be extended
     # when full VLM support for findings domains is needed
-    
+
     return (value_lists, where_clauses)
 
 
@@ -222,16 +219,16 @@ def append_method_defs(
     methods: list,
 ) -> None:
     """Append MethodDef elements for computation/derivation algorithms.
-    
+
     Per Define-XML 2.1, MethodDef provides documentation for
     how derived variables are computed.
-    
+
     Args:
         parent: Parent XML element
         methods: List of MethodDefinition objects
     """
     from .models import MethodDefinition
-    
+
     for method in methods:
         method_elem = ET.SubElement(
             parent,
@@ -263,16 +260,16 @@ def append_comment_defs(
     comments: list,
 ) -> None:
     """Append def:CommentDef elements.
-    
+
     Per Define-XML 2.1, CommentDef provides additional comments
     that can be referenced by other elements.
-    
+
     Args:
         parent: Parent XML element
         comments: List of CommentDefinition objects
     """
     from .models import CommentDefinition
-    
+
     for comment in comments:
         comment_elem = ET.SubElement(
             parent,
