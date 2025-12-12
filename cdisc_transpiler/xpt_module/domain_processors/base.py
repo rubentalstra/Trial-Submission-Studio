@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 class BaseDomainProcessor(ABC):
     """Base class for domain-specific processors.
-    
+
     Each SDTM domain may have unique processing requirements beyond the standard
     transformations. Domain processors encapsulate this domain-specific logic.
     """
@@ -29,7 +29,7 @@ class BaseDomainProcessor(ABC):
         metadata=None,
     ):
         """Initialize the domain processor.
-        
+
         Args:
             domain: SDTM domain definition
             reference_starts: Mapping of USUBJID -> RFSTDTC for study day calculations
@@ -42,10 +42,10 @@ class BaseDomainProcessor(ABC):
     @abstractmethod
     def process(self, frame: pd.DataFrame) -> None:
         """Process the domain DataFrame in-place.
-        
+
         This method performs domain-specific transformations, validations,
         and data quality improvements.
-        
+
         Args:
             frame: Domain DataFrame to process in-place
         """
@@ -53,7 +53,7 @@ class BaseDomainProcessor(ABC):
 
     def _drop_placeholder_rows(self, frame: pd.DataFrame) -> None:
         """Drop placeholder/header rows without subject identifiers.
-        
+
         Args:
             frame: DataFrame to clean in-place
         """
@@ -71,14 +71,17 @@ class DefaultDomainProcessor(BaseDomainProcessor):
 
     def process(self, frame: pd.DataFrame) -> None:
         """Apply common processing to any domain.
-        
+
         Args:
             frame: Domain DataFrame to process in-place
         """
         # Drop placeholder rows
         self._drop_placeholder_rows(frame)
-        
+
         # Set default EPOCH if present and empty
         if "EPOCH" in frame.columns:
             from ..transformers import TextTransformer
-            frame["EPOCH"] = TextTransformer.replace_unknown(frame["EPOCH"], "TREATMENT")
+
+            frame["EPOCH"] = TextTransformer.replace_unknown(
+                frame["EPOCH"], "TREATMENT"
+            )

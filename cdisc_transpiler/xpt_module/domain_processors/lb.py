@@ -10,19 +10,19 @@ from ..transformers import TextTransformer, NumericTransformer, DateTransformer
 
 class LBProcessor(BaseDomainProcessor):
     """Laboratory domain processor.
-    
+
     Handles domain-specific processing for the LB domain.
     """
 
     def process(self, frame: pd.DataFrame) -> None:
         """Process LB domain DataFrame.
-        
+
         Args:
             frame: Domain DataFrame to process in-place
         """
         # Drop placeholder rows
         self._drop_placeholder_rows(frame)
-        
+
         # Normalize VISITNUM/VISIT when provided
         if {"VISIT", "VISITNUM"} & set(frame.columns):
             TextTransformer.normalize_visit(frame)
@@ -83,9 +83,7 @@ class LBProcessor(BaseDomainProcessor):
                 .astype("string")
                 .replace({"<NA>": "", "nan": "", "None": ""})
             )
-            frame.loc[empty_stresc, "LBSTRESC"] = orres_str.where(
-                orres_str != "", "0"
-            )
+            frame.loc[empty_stresc, "LBSTRESC"] = orres_str.where(orres_str != "", "0")
         if "LBORRESU" not in frame.columns:
             frame["LBORRESU"] = ""
         else:
@@ -140,9 +138,7 @@ class LBProcessor(BaseDomainProcessor):
                 .astype("string")
                 .replace({"<NA>": "", "nan": "", "None": ""})
             )
-            frame.loc[empty_stresc, "LBSTRESC"] = orres_str.where(
-                orres_str != "", ""
-            )
+            frame.loc[empty_stresc, "LBSTRESC"] = orres_str.where(orres_str != "", "")
         # Also ensure LBSTRESC is populated when LBORRES exists (SD0036, SD1320)
         if "LBORRES" in frame.columns:
             if "LBSTRESC" not in frame.columns:
@@ -180,9 +176,7 @@ class LBProcessor(BaseDomainProcessor):
         for col in ("LBORNRLO", "LBORNRHI"):
             if col in frame.columns:
                 frame[col] = (
-                    frame[col]
-                    .astype(str)
-                    .replace({"nan": "", "0.0": "0", "0": "0"})
+                    frame[col].astype(str).replace({"nan": "", "0.0": "0", "0": "0"})
                 )
         for col in ("LBSTNRLO", "LBSTNRHI"):
             if col in frame.columns:
@@ -190,15 +184,11 @@ class LBProcessor(BaseDomainProcessor):
         # Provide default units for non-missing results using CT values
         if "LBORRES" in frame.columns and "LBORRESU" in frame.columns:
             orres_str = frame["LBORRES"].astype("string").fillna("").str.strip()
-            needs_unit = (
-                frame["LBORRESU"].astype("string").fillna("").str.strip() == ""
-            )
+            needs_unit = frame["LBORRESU"].astype("string").fillna("").str.strip() == ""
             frame.loc[needs_unit & (orres_str != ""), "LBORRESU"] = "U/L"
         if "LBSTRESC" in frame.columns and "LBSTRESU" in frame.columns:
             stresc_str = frame["LBSTRESC"].astype("string").fillna("").str.strip()
-            needs_unit = (
-                frame["LBSTRESU"].astype("string").fillna("").str.strip() == ""
-            )
+            needs_unit = frame["LBSTRESU"].astype("string").fillna("").str.strip() == ""
             frame.loc[needs_unit & (stresc_str != ""), "LBSTRESU"] = "U/L"
         ct_lb_units = get_controlled_terminology(variable="LBORRESU")
         if ct_lb_units:
@@ -311,9 +301,7 @@ class LBProcessor(BaseDomainProcessor):
             frame.reset_index(drop=True, inplace=True)
             frame["LBSEQ"] = frame.groupby("USUBJID").cumcount() + 1
         # Collapse to one record per subject/test/date to eliminate remaining duplicates
-        final_keys = [
-            k for k in ("USUBJID", "LBTESTCD", "LBDTC") if k in frame.columns
-        ]
+        final_keys = [k for k in ("USUBJID", "LBTESTCD", "LBDTC") if k in frame.columns]
         if final_keys:
             frame.drop_duplicates(subset=final_keys, keep="first", inplace=True)
             frame.reset_index(drop=True, inplace=True)
@@ -343,9 +331,7 @@ class LBProcessor(BaseDomainProcessor):
             if col in frame.columns:
                 if (
                     frame[col].isna().all()
-                    or (
-                        frame[col].astype("string").fillna("").str.strip() == ""
-                    ).all()
+                    or (frame[col].astype("string").fillna("").str.strip() == "").all()
                 ):
                     frame.drop(columns=[col], inplace=True)
         # Ensure LBSTRESN is populated when STRESC is numeric
@@ -364,9 +350,9 @@ class LBProcessor(BaseDomainProcessor):
             empty_stresc = (
                 frame["LBSTRESC"].astype("string").fillna("").str.strip() == ""
             )
-            frame.loc[empty_stresc, "LBSTRESC"] = lb_orres.loc[
-                empty_stresc
-            ].replace("", "0")
+            frame.loc[empty_stresc, "LBSTRESC"] = lb_orres.loc[empty_stresc].replace(
+                "", "0"
+            )
         # Normalize core lab fields for demo data
         frame["LBCAT"] = "LABORATORY"
         if "LBSTRESC" in frame.columns:
@@ -375,9 +361,7 @@ class LBProcessor(BaseDomainProcessor):
             )
         if "LBSTRESU" in frame.columns and "LBSTRESC" in frame.columns:
             stresc_str = frame["LBSTRESC"].astype("string").fillna("").str.strip()
-            needs_unit = (
-                frame["LBSTRESU"].astype("string").fillna("").str.strip() == ""
-            )
+            needs_unit = frame["LBSTRESU"].astype("string").fillna("").str.strip() == ""
             frame.loc[needs_unit & (stresc_str != ""), "LBSTRESU"] = "U/L"
         elif "LBSTRESC" in frame.columns:
             frame["LBSTRESU"] = (
@@ -396,9 +380,7 @@ class LBProcessor(BaseDomainProcessor):
         # Ensure study/visit day fields are numeric for metadata alignment
         for col in ("LBDY", "LBENDY", "VISITDY", "VISITNUM"):
             if col in frame.columns:
-                frame[col] = pd.to_numeric(frame[col], errors="coerce").astype(
-                    "Int64"
-                )
+                frame[col] = pd.to_numeric(frame[col], errors="coerce").astype("Int64")
         if {"VISITDY", "LBDY"} <= set(frame.columns):
             empty_visitdy = frame["VISITDY"].isna()
             frame.loc[empty_visitdy, "VISITDY"] = frame.loc[empty_visitdy, "LBDY"]
@@ -408,9 +390,7 @@ class LBProcessor(BaseDomainProcessor):
             last_idx = frame.groupby("USUBJID").tail(1).index
             frame.loc[last_idx, "LBLOBXFL"] = "Y"
         # Deduplicate on streamlined keys to remove SD1117 noise
-        dedup_keys = [
-            k for k in ("USUBJID", "LBTESTCD", "LBDTC") if k in frame.columns
-        ]
+        dedup_keys = [k for k in ("USUBJID", "LBTESTCD", "LBDTC") if k in frame.columns]
         if dedup_keys:
             collapsed = frame.copy()
             for key in dedup_keys:
@@ -429,4 +409,3 @@ class LBProcessor(BaseDomainProcessor):
             frame.drop(columns=list(frame.columns), inplace=True)
             for col in collapsed.columns:
                 frame[col] = collapsed[col].values
-

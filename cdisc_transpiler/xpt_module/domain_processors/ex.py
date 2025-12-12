@@ -10,19 +10,19 @@ from ..transformers import TextTransformer, NumericTransformer, DateTransformer
 
 class EXProcessor(BaseDomainProcessor):
     """Exposure domain processor.
-    
+
     Handles domain-specific processing for the EX domain.
     """
 
     def process(self, frame: pd.DataFrame) -> None:
         """Process EX domain DataFrame.
-        
+
         Args:
             frame: Domain DataFrame to process in-place
         """
         # Drop placeholder rows
         self._drop_placeholder_rows(frame)
-        
+
         frame["EXTRT"] = TextTransformer.replace_unknown(
             frame.get("EXTRT", pd.Series([""] * len(frame))), "TREATMENT"
         )
@@ -105,7 +105,9 @@ class EXProcessor(BaseDomainProcessor):
                 filler = []
                 for usubjid in missing:
                     start = (
-                        DateTransformer.coerce_iso8601(self.reference_starts.get(usubjid, ""))
+                        DateTransformer.coerce_iso8601(
+                            self.reference_starts.get(usubjid, "")
+                        )
                         or "2023-01-01"
                     )
                     filler.append(
@@ -156,14 +158,9 @@ class EXProcessor(BaseDomainProcessor):
             and "EXRFTDTC" in frame.columns
             and "USUBJID" in frame.columns
         ):
-            empty_ref = (
-                frame["EXRFTDTC"].astype("string").fillna("").str.strip() == ""
-            )
+            empty_ref = frame["EXRFTDTC"].astype("string").fillna("").str.strip() == ""
             frame.loc[empty_ref, "EXRFTDTC"] = frame.loc[empty_ref, "USUBJID"].map(
                 self.reference_starts
             )
         elif "EXRFTDTC" in frame.columns:
-            frame["EXRFTDTC"] = frame["EXRFTDTC"].replace(
-                "", frame.get("RFSTDTC", "")
-            )
-
+            frame["EXRFTDTC"] = frame["EXRFTDTC"].replace("", frame.get("RFSTDTC", ""))

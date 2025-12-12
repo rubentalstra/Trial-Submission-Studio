@@ -54,8 +54,7 @@ class DomainProcessorRegistry:
     ) -> BaseDomainProcessor:
         """Get the appropriate processor for a domain."""
         processor_class = self._processors.get(
-            domain.code.upper(),
-            self._default_processor
+            domain.code.upper(), self._default_processor
         )
         return processor_class(domain, reference_starts, metadata)
 

@@ -10,19 +10,19 @@ from ..transformers import TextTransformer, NumericTransformer, DateTransformer
 
 class DAProcessor(BaseDomainProcessor):
     """Drug Accountability domain processor.
-    
+
     Handles domain-specific processing for the DA domain.
     """
 
     def process(self, frame: pd.DataFrame) -> None:
         """Process DA domain DataFrame.
-        
+
         Args:
             frame: Domain DataFrame to process in-place
         """
         # Drop placeholder rows
         self._drop_placeholder_rows(frame)
-        
+
         # DATEST and DATESTCD are required; force to valid CT pair
         frame["DATEST"] = "Dispensed Amount"
         frame["DATESTCD"] = "DISPAMT"
@@ -118,9 +118,7 @@ class DAProcessor(BaseDomainProcessor):
                 ].apply(self._coerce_iso8601)
         # If still missing, use RFSTDTC as collection date
         if "RFSTDTC" in frame.columns:
-            empty_dadtc = (
-                frame["DADTC"].astype("string").fillna("").str.strip() == ""
-            )
+            empty_dadtc = frame["DADTC"].astype("string").fillna("").str.strip() == ""
             frame.loc[empty_dadtc, "DADTC"] = frame.loc[empty_dadtc, "RFSTDTC"]
         elif self.reference_starts and "USUBJID" in frame.columns:
             frame["DADTC"] = frame.apply(
@@ -131,14 +129,14 @@ class DAProcessor(BaseDomainProcessor):
         if "DADTC" in frame.columns:
             DateTransformer.compute_study_day(frame, "DADTC", "DADY", "RFSTDTC")
         if "EPOCH" in frame.columns:
-            frame["EPOCH"] = TextTransformer.replace_unknown(frame["EPOCH"], "TREATMENT")
+            frame["EPOCH"] = TextTransformer.replace_unknown(
+                frame["EPOCH"], "TREATMENT"
+            )
         else:
             frame["EPOCH"] = "TREATMENT"
         # Normalize VISITNUM to numeric per subject order to avoid type/key issues
         if "VISITNUM" in frame.columns:
-            frame["VISITNUM"] = (frame.groupby("USUBJID").cumcount() + 1).astype(
-                int
-            )
+            frame["VISITNUM"] = (frame.groupby("USUBJID").cumcount() + 1).astype(int)
             frame["VISIT"] = frame["VISITNUM"].apply(lambda n: f"Visit {n}")
         # Fill missing results to satisfy presence rules
         if "DAORRES" in frame.columns:
@@ -164,9 +162,5 @@ class DAProcessor(BaseDomainProcessor):
             )
         # Normalize VISITNUM to numeric per subject order to avoid type/key issues
         if "VISITNUM" in frame.columns:
-            frame["VISITNUM"] = (frame.groupby("USUBJID").cumcount() + 1).astype(
-                int
-            )
+            frame["VISITNUM"] = (frame.groupby("USUBJID").cumcount() + 1).astype(int)
             frame["VISIT"] = frame["VISITNUM"].apply(lambda n: f"Visit {n}")
-
-        # MH - Medical History

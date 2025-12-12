@@ -10,19 +10,19 @@ from ..transformers import TextTransformer, NumericTransformer, DateTransformer
 
 class AEProcessor(BaseDomainProcessor):
     """Adverse Events domain processor.
-    
+
     Handles domain-specific processing for the AE domain.
     """
 
     def process(self, frame: pd.DataFrame) -> None:
         """Process AE domain DataFrame.
-        
+
         Args:
             frame: Domain DataFrame to process in-place
         """
         # Drop placeholder rows
         self._drop_placeholder_rows(frame)
-        
+
         # Ensure AEDUR populated to avoid SD1078 missing permissibles
         if "AEDUR" in frame.columns:
             frame["AEDUR"] = (
@@ -181,7 +181,9 @@ class AEProcessor(BaseDomainProcessor):
             frame["AESEV"] = "MILD"
         # Ensure EPOCH is set for AE records
         if "EPOCH" in frame.columns:
-            frame["EPOCH"] = TextTransformer.replace_unknown(frame["EPOCH"], "TREATMENT")
+            frame["EPOCH"] = TextTransformer.replace_unknown(
+                frame["EPOCH"], "TREATMENT"
+            )
         else:
             frame["EPOCH"] = "TREATMENT"
         for code_var in (
@@ -207,4 +209,3 @@ class AEProcessor(BaseDomainProcessor):
         for extra in ("VISIT", "VISITNUM", "TRTEMFL"):
             if extra in frame.columns:
                 frame.drop(columns=[extra], inplace=True)
-

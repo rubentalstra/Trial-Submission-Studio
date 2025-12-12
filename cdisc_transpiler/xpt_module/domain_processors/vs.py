@@ -10,27 +10,25 @@ from ..transformers import TextTransformer, NumericTransformer, DateTransformer
 
 class VSProcessor(BaseDomainProcessor):
     """Vital Signs domain processor.
-    
+
     Handles domain-specific processing for the VS domain.
     """
 
     def process(self, frame: pd.DataFrame) -> None:
         """Process VS domain DataFrame.
-        
+
         Args:
             frame: Domain DataFrame to process in-place
         """
         # Drop placeholder rows
         self._drop_placeholder_rows(frame)
-        
+
         TextTransformer.normalize_visit(frame)
         DateTransformer.compute_study_day(frame, "VSDTC", "VSDY", "RFSTDTC")
         frame["VSDY"] = NumericTransformer.force_numeric(frame["VSDY"])
         frame["VSLOBXFL"] = ""
         if "VISITNUM" not in frame.columns:
-            frame["VISITNUM"] = (frame.groupby("USUBJID").cumcount() + 1).astype(
-                int
-            )
+            frame["VISITNUM"] = (frame.groupby("USUBJID").cumcount() + 1).astype(int)
             frame["VISIT"] = frame["VISITNUM"].apply(lambda n: f"Visit {n}")
 
         vstestcd_series = frame.get("VSTESTCD", pd.Series([""] * len(frame)))
@@ -88,9 +86,7 @@ class VSProcessor(BaseDomainProcessor):
             empty_stresu = (
                 frame["VSSTRESU"].astype("string").fillna("").str.strip() == ""
             )
-            frame.loc[empty_stresu, "VSSTRESU"] = frame.loc[
-                empty_stresu, "VSORRESU"
-            ]
+            frame.loc[empty_stresu, "VSSTRESU"] = frame.loc[empty_stresu, "VSORRESU"]
         if "VSSTRESU" in frame.columns and "VSTESTCD" in frame.columns:
             test_to_unit = {
                 "HR": "beats/min",
@@ -115,9 +111,7 @@ class VSProcessor(BaseDomainProcessor):
             frame.loc[still_empty, "VSSTRESU"] = mapped.loc[still_empty]
 
         if not has_any_test and "VSORRES" in frame.columns:
-            empty_res = (
-                frame["VSORRES"].astype("string").fillna("").str.strip() == ""
-            )
+            empty_res = frame["VSORRES"].astype("string").fillna("").str.strip() == ""
             frame.loc[empty_res, "VSORRES"] = "0"
             if "VSSTRESC" in frame.columns:
                 frame.loc[empty_res, "VSSTRESC"] = frame.loc[empty_res, "VSORRES"]
@@ -168,16 +162,11 @@ class VSProcessor(BaseDomainProcessor):
             if "VSTEST" in frame.columns:
                 frame["VSTEST"] = frame["VSTEST"].astype("string").fillna("")
                 empty_vstest = frame["VSTEST"].str.strip() == ""
-                frame.loc[empty_vstest, "VSTEST"] = frame.loc[
-                    empty_vstest, "VSTESTCD"
-                ]
+                frame.loc[empty_vstest, "VSTEST"] = frame.loc[empty_vstest, "VSTESTCD"]
         ct_vstest = get_controlled_terminology(variable="VSTEST")
         if ct_vstest and "VSTEST" in frame.columns:
             frame["VSTEST"] = (
-                frame["VSTEST"]
-                .astype("string")
-                .fillna("")
-                .apply(ct_vstest.normalize)
+                frame["VSTEST"].astype("string").fillna("").apply(ct_vstest.normalize)
             )
         # Clear non-ISO collection times that trigger format errors
         if "VSELTM" in frame.columns:
@@ -204,17 +193,13 @@ class VSProcessor(BaseDomainProcessor):
             and "USUBJID" in frame.columns
             and "VSRFTDTC" in frame.columns
         ):
-            empty_ref = (
-                frame["VSRFTDTC"].astype("string").fillna("").str.strip() == ""
-            )
+            empty_ref = frame["VSRFTDTC"].astype("string").fillna("").str.strip() == ""
             frame.loc[empty_ref, "VSRFTDTC"] = frame.loc[empty_ref, "USUBJID"].map(
                 self.reference_starts
             )
         # When results missing, clear units to avoid CT errors
         if {"VSORRES", "VSORRESU"} <= set(frame.columns):
-            empty_orres = (
-                frame["VSORRES"].astype("string").fillna("").str.strip() == ""
-            )
+            empty_orres = frame["VSORRES"].astype("string").fillna("").str.strip() == ""
             frame.loc[empty_orres, "VSORRESU"] = ""
         if {"VSSTRESC", "VSSTRESU"} <= set(frame.columns):
             empty_stresc = (
@@ -225,8 +210,8 @@ class VSProcessor(BaseDomainProcessor):
         frame.drop_duplicates(inplace=True)
         # Ensure EPOCH is set
         if "EPOCH" in frame.columns:
-            frame["EPOCH"] = TextTransformer.replace_unknown(frame["EPOCH"], "TREATMENT")
+            frame["EPOCH"] = TextTransformer.replace_unknown(
+                frame["EPOCH"], "TREATMENT"
+            )
         else:
             frame["EPOCH"] = "TREATMENT"
-
-        # DA - Drug Accountability

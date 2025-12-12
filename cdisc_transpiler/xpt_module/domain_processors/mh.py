@@ -10,25 +10,23 @@ from ..transformers import TextTransformer, NumericTransformer, DateTransformer
 
 class MHProcessor(BaseDomainProcessor):
     """Medical History domain processor.
-    
+
     Handles domain-specific processing for the MH domain.
     """
 
     def process(self, frame: pd.DataFrame) -> None:
         """Process MH domain DataFrame.
-        
+
         Args:
             frame: Domain DataFrame to process in-place
         """
         # Drop placeholder rows
         self._drop_placeholder_rows(frame)
-        
+
         # Ensure USUBJID is populated - derive from source if present
         if "USUBJID" in frame.columns:
             usub = frame["USUBJID"].astype("string").str.strip()
-            missing_usubjid = usub.str.lower().isin(
-                {"", "nan", "<na>", "none", "null"}
-            )
+            missing_usubjid = usub.str.lower().isin({"", "nan", "<na>", "none", "null"})
             if missing_usubjid.any():
                 frame = frame.loc[~missing_usubjid].copy()
         if "MHSEQ" not in frame.columns:
@@ -51,9 +49,7 @@ class MHProcessor(BaseDomainProcessor):
                 frame["MHTERM"] = "MEDICAL HISTORY"
         else:
             # Fill empty MHTERM values with MHDECOD or default
-            empty_mhterm = (
-                frame["MHTERM"].astype("string").fillna("").str.strip() == ""
-            )
+            empty_mhterm = frame["MHTERM"].astype("string").fillna("").str.strip() == ""
             if empty_mhterm.any():
                 if "MHDECOD" in frame.columns:
                     frame.loc[empty_mhterm, "MHTERM"] = frame.loc[
@@ -90,24 +86,20 @@ class MHProcessor(BaseDomainProcessor):
         if "MHDTC" not in frame.columns:
             frame["MHDTC"] = frame.get("MHSTDTC", "")
         else:
-            empty_mhdtc = (
-                frame["MHDTC"].astype("string").fillna("").str.strip() == ""
-            )
+            empty_mhdtc = frame["MHDTC"].astype("string").fillna("").str.strip() == ""
             frame.loc[empty_mhdtc, "MHDTC"] = frame.get("MHSTDTC", "")
         for col in ("MHSTDTC", "MHENDTC", "MHDTC"):
             if col in frame.columns:
                 frame[col] = frame[col].apply(self._coerce_iso8601)
         # Fill missing end dates from reference end if available
         if "MHENDTC" in frame.columns:
-            empty_end = (
-                frame["MHENDTC"].astype("string").fillna("").str.strip() == ""
-            )
+            empty_end = frame["MHENDTC"].astype("string").fillna("").str.strip() == ""
             if "RFENDTC" in frame.columns:
                 frame.loc[empty_end, "MHENDTC"] = frame.loc[empty_end, "RFENDTC"]
             elif self.reference_starts and "USUBJID" in frame.columns:
-                frame.loc[empty_end, "MHENDTC"] = frame.loc[
-                    empty_end, "USUBJID"
-                ].map(self.reference_starts)
+                frame.loc[empty_end, "MHENDTC"] = frame.loc[empty_end, "USUBJID"].map(
+                    self.reference_starts
+                )
         else:
             frame["MHENDTC"] = frame.get("MHSTDTC", "")
         # Compute study day for MHSTDTC into MHDY to keep numeric type
@@ -129,5 +121,3 @@ class MHProcessor(BaseDomainProcessor):
             frame.drop_duplicates(subset=["USUBJID"], keep="first", inplace=True)
             frame.reset_index(drop=True, inplace=True)
             frame["MHSEQ"] = frame.groupby("USUBJID").cumcount() + 1
-
-        # PE - Physical Examination

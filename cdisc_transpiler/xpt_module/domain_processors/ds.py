@@ -10,19 +10,19 @@ from ..transformers import TextTransformer, NumericTransformer, DateTransformer
 
 class DSProcessor(BaseDomainProcessor):
     """Disposition domain processor.
-    
+
     Handles domain-specific processing for the DS domain.
     """
 
     def process(self, frame: pd.DataFrame) -> None:
         """Process DS domain DataFrame.
-        
+
         Args:
             frame: Domain DataFrame to process in-place
         """
         # Drop placeholder rows
         self._drop_placeholder_rows(frame)
-        
+
         # Normalize core string fields; override obvious non-SDTM payloads
         for col in ("DSDECOD", "DSTERM", "DSCAT", "EPOCH"):
             if col in frame.columns:
@@ -58,7 +58,9 @@ class DSProcessor(BaseDomainProcessor):
 
         def _add_days(raw_date: str, days: int) -> str:
             try:
-                dt = pd.to_datetime(DateTransformer.coerce_iso8601(raw_date), errors="coerce")
+                dt = pd.to_datetime(
+                    DateTransformer.coerce_iso8601(raw_date), errors="coerce"
+                )
             except Exception:
                 dt = pd.NaT
             if pd.isna(dt):
@@ -67,9 +69,12 @@ class DSProcessor(BaseDomainProcessor):
 
         defaults: list[dict] = []
         for usubjid in sorted(subjects):
-            start = DateTransformer.coerce_iso8601(
-                (self.reference_starts or {}).get(usubjid)
-            ) or fallback_date
+            start = (
+                DateTransformer.coerce_iso8601(
+                    (self.reference_starts or {}).get(usubjid)
+                )
+                or fallback_date
+            )
             disposition_date = _add_days(start, 120)
             consent_row = {
                 "STUDYID": self.config.study_id or "STUDY",
@@ -128,7 +133,9 @@ class DSProcessor(BaseDomainProcessor):
         frame["DSSTDTC"] = frame["DSSTDTC"].apply(self._coerce_iso8601)
         for idx, row in frame.iterrows():
             subj = str(row.get("USUBJID", "") or "")
-            base = DateTransformer.coerce_iso8601((self.reference_starts or {}).get(subj))
+            base = DateTransformer.coerce_iso8601(
+                (self.reference_starts or {}).get(subj)
+            )
             base = base or fallback_date
             if disposition_mask.iloc[idx]:
                 frame.loc[idx, "DSSTDTC"] = _add_days(base, 120)
@@ -146,11 +153,12 @@ class DSProcessor(BaseDomainProcessor):
 
         # Always regenerate DSSEQ - source values may not be unique (SD0005)
         NumericTransformer.assign_sequence(frame, "DSSEQ", "USUBJID")
-        frame["DSSEQ"] = NumericTransformer.force_numeric(frame["DSSEQ"]).astype("Int64")
+        frame["DSSEQ"] = NumericTransformer.force_numeric(frame["DSSEQ"]).astype(
+            "Int64"
+        )
 
         # Remove duplicate disposition records per subject/date/term
         dedup_keys = ["USUBJID", "DSDECOD", "DSTERM", "DSCAT", "DSSTDTC"]
         existing_cols = [c for c in dedup_keys if c in frame.columns]
         if existing_cols:
             frame.drop_duplicates(subset=existing_cols, keep="first", inplace=True)
-

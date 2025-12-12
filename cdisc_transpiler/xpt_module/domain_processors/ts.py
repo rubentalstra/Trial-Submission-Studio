@@ -10,19 +10,19 @@ from ..transformers import TextTransformer, NumericTransformer, DateTransformer
 
 class TSProcessor(BaseDomainProcessor):
     """Trial Summary domain processor.
-    
+
     Handles domain-specific processing for the TS domain.
     """
 
     def process(self, frame: pd.DataFrame) -> None:
         """Process TS domain DataFrame.
-        
+
         Args:
             frame: Domain DataFrame to process in-place
         """
         # Drop placeholder rows
         self._drop_placeholder_rows(frame)
-        
+
         base_study = frame.get(
             "STUDYID", pd.Series([self.config.study_id or "STUDY"])
         ).iloc[0]
@@ -154,4 +154,3 @@ class TSProcessor(BaseDomainProcessor):
         frame.drop(columns=list(frame.columns), inplace=True)
         for col in params.columns:
             frame[col] = params[col].values
-

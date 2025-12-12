@@ -10,19 +10,19 @@ from ..transformers import TextTransformer, NumericTransformer, DateTransformer
 
 class QSProcessor(BaseDomainProcessor):
     """Questionnaires domain processor.
-    
+
     Handles domain-specific processing for the QS domain.
     """
 
     def process(self, frame: pd.DataFrame) -> None:
         """Process QS domain DataFrame.
-        
+
         Args:
             frame: Domain DataFrame to process in-place
         """
         # Drop placeholder rows
         self._drop_placeholder_rows(frame)
-        
+
         # Always regenerate QSSEQ - source values may not be unique (SD0005)
         frame["QSSEQ"] = frame.groupby("USUBJID").cumcount() + 1
         frame["QSSEQ"] = NumericTransformer.force_numeric(frame["QSSEQ"])
@@ -40,9 +40,7 @@ class QSProcessor(BaseDomainProcessor):
             frame["QSORRES"] = list(source_score)
         if "QSORRES" not in frame.columns:
             frame["QSORRES"] = ""
-        frame["QSORRES"] = (
-            frame["QSORRES"].astype("string").fillna("").replace("", "0")
-        )
+        frame["QSORRES"] = frame["QSORRES"].astype("string").fillna("").replace("", "0")
         frame["QSSTRESC"] = frame.get("QSORRES", "")
         if "QSSTRESC" in frame.columns:
             frame["QSSTRESC"] = (
@@ -79,9 +77,9 @@ class QSProcessor(BaseDomainProcessor):
             empty_qsrft = (
                 frame["QSRFTDTC"].astype("string").fillna("").str.strip() == ""
             )
-            frame.loc[empty_qsrft, "QSRFTDTC"] = frame.loc[
-                empty_qsrft, "USUBJID"
-            ].map(self.reference_starts)
+            frame.loc[empty_qsrft, "QSRFTDTC"] = frame.loc[empty_qsrft, "USUBJID"].map(
+                self.reference_starts
+            )
         if "QSDTC" in frame.columns:
             DateTransformer.compute_study_day(frame, "QSDTC", "QSDY", "RFSTDTC")
         if "EPOCH" in frame.columns:
@@ -90,13 +88,11 @@ class QSProcessor(BaseDomainProcessor):
             frame["QSEVLINT"] = ""
         # Derive QSDTC/QSDY from reference if missing
         if "QSDTC" in frame.columns:
-            empty_qsdtc = (
-                frame["QSDTC"].astype("string").fillna("").str.strip() == ""
-            )
+            empty_qsdtc = frame["QSDTC"].astype("string").fillna("").str.strip() == ""
             if self.reference_starts and "USUBJID" in frame.columns:
-                frame.loc[empty_qsdtc, "QSDTC"] = frame.loc[
-                    empty_qsdtc, "USUBJID"
-                ].map(self.reference_starts)
+                frame.loc[empty_qsdtc, "QSDTC"] = frame.loc[empty_qsdtc, "USUBJID"].map(
+                    self.reference_starts
+                )
             elif "RFSTDTC" in frame.columns:
                 frame.loc[empty_qsdtc, "QSDTC"] = frame.loc[empty_qsdtc, "RFSTDTC"]
             DateTransformer.compute_study_day(frame, "QSDTC", "QSDY", "RFSTDTC")
@@ -144,13 +140,9 @@ class QSProcessor(BaseDomainProcessor):
         frame["QSELTM"] = frame.get("QSELTM", "PT0H")
         # Ensure reference date present
         if "QSRFTDTC" in frame.columns:
-            frame["QSRFTDTC"] = frame["QSRFTDTC"].replace(
-                "", frame.get("RFSTDTC", "")
-            )
+            frame["QSRFTDTC"] = frame["QSRFTDTC"].replace("", frame.get("RFSTDTC", ""))
         # Final pass: keep single record per subject to avoid duplicate key warnings
         if "USUBJID" in frame.columns:
             frame.drop_duplicates(subset=["USUBJID"], keep="first", inplace=True)
             frame.reset_index(drop=True, inplace=True)
             frame["QSSEQ"] = frame.groupby("USUBJID").cumcount() + 1
-
-        # CM - Concomitant Medications

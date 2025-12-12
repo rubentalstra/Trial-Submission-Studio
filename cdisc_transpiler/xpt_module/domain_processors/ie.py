@@ -10,19 +10,19 @@ from ..transformers import TextTransformer, NumericTransformer, DateTransformer
 
 class IEProcessor(BaseDomainProcessor):
     """Inclusion/Exclusion domain processor.
-    
+
     Handles domain-specific processing for the IE domain.
     """
 
     def process(self, frame: pd.DataFrame) -> None:
         """Process IE domain DataFrame.
-        
+
         Args:
             frame: Domain DataFrame to process in-place
         """
         # Drop placeholder rows
         self._drop_placeholder_rows(frame)
-        
+
         # Always regenerate IESEQ - source values may not be unique (SD0005)
         frame["IESEQ"] = frame.groupby("USUBJID").cumcount() + 1
         frame["IESEQ"] = NumericTransformer.force_numeric(frame["IESEQ"])
@@ -70,9 +70,7 @@ class IEProcessor(BaseDomainProcessor):
                         frame.loc[needs_test, "IETESTCD"].astype(str).str.upper()
                     )
                 else:
-                    frame.loc[needs_test, "IETEST"] = (
-                        "INCLUSION/EXCLUSION CRITERION"
-                    )
+                    frame.loc[needs_test, "IETEST"] = "INCLUSION/EXCLUSION CRITERION"
 
         # IECAT is required - INCLUSION or EXCLUSION
         if "IECAT" not in frame.columns:
@@ -96,16 +94,12 @@ class IEProcessor(BaseDomainProcessor):
         if {"IEORRES", "IESTRESC"} <= set(frame.columns):
             frame["IEORRES"] = frame["IESTRESC"]
         # For inclusion rows, force IEORRES/IESTRESC to N
-        if "IECAT" in frame.columns and {"IEORRES", "IESTRESC"} <= set(
-            frame.columns
-        ):
+        if "IECAT" in frame.columns and {"IEORRES", "IESTRESC"} <= set(frame.columns):
             frame[["IEORRES", "IESTRESC"]] = "N"
 
         # Normalize VISITNUM to numeric and deduplicate records by key to reduce repeats
         if "VISITNUM" in frame.columns:
-            frame["VISITNUM"] = (frame.groupby("USUBJID").cumcount() + 1).astype(
-                int
-            )
+            frame["VISITNUM"] = (frame.groupby("USUBJID").cumcount() + 1).astype(int)
             frame["VISIT"] = frame["VISITNUM"].apply(lambda n: f"Visit {n}")
         # Reassign IESEQ after deduplication
         NumericTransformer.assign_sequence(frame, "IESEQ", "USUBJID")
@@ -161,5 +155,3 @@ class IEProcessor(BaseDomainProcessor):
             frame["IETEST"] = "INCLUSION/EXCLUSION CRITERION"
         # Reassign IESEQ after deduplication
         NumericTransformer.assign_sequence(frame, "IESEQ", "USUBJID")
-
-        # PR - Procedures

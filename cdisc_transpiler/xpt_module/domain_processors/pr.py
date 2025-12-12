@@ -10,19 +10,19 @@ from ..transformers import TextTransformer, NumericTransformer, DateTransformer
 
 class PRProcessor(BaseDomainProcessor):
     """Procedures domain processor.
-    
+
     Handles domain-specific processing for the PR domain.
     """
 
     def process(self, frame: pd.DataFrame) -> None:
         """Process PR domain DataFrame.
-        
+
         Args:
             frame: Domain DataFrame to process in-place
         """
         # Drop placeholder rows
         self._drop_placeholder_rows(frame)
-        
+
         # Always regenerate PRSEQ - source values may not be unique (SD0005)
         frame["PRSEQ"] = frame.groupby("USUBJID").cumcount() + 1
         frame["PRSEQ"] = NumericTransformer.force_numeric(frame["PRSEQ"])
@@ -52,9 +52,9 @@ class PRProcessor(BaseDomainProcessor):
             empty_prrft = (
                 frame["PRRFTDTC"].astype("string").fillna("").str.strip() == ""
             )
-            frame.loc[empty_prrft, "PRRFTDTC"] = frame.loc[
-                empty_prrft, "USUBJID"
-            ].map(self.reference_starts)
+            frame.loc[empty_prrft, "PRRFTDTC"] = frame.loc[empty_prrft, "USUBJID"].map(
+                self.reference_starts
+            )
         # Ensure timing reference present with supporting timing variables
         frame["PRTPTREF"] = "VISIT"
         frame["PRTPT"] = frame.get("PRTPT", "VISIT")
@@ -68,11 +68,7 @@ class PRProcessor(BaseDomainProcessor):
                 frame["PRDECOD"] = canonical_default
             else:
                 decod = (
-                    frame["PRDECOD"]
-                    .astype("string")
-                    .fillna("")
-                    .str.strip()
-                    .str.upper()
+                    frame["PRDECOD"].astype("string").fillna("").str.strip().str.upper()
                 )
                 decod = decod.apply(ct_prdecod.normalize)
                 decod = decod.where(
@@ -101,7 +97,8 @@ class PRProcessor(BaseDomainProcessor):
         # Ensure VISITNUM numeric
         if "VISITNUM" in frame.columns:
             frame["VISITNUM"] = (
-                NumericTransformer.force_numeric(frame["VISITNUM"]).fillna(1).astype(int)
+                NumericTransformer.force_numeric(frame["VISITNUM"])
+                .fillna(1)
+                .astype(int)
             )
             frame["VISIT"] = frame["VISITNUM"].apply(lambda n: f"Visit {n}")
-

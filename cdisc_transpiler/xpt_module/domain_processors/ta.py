@@ -10,19 +10,19 @@ from ..transformers import TextTransformer, NumericTransformer, DateTransformer
 
 class TAProcessor(BaseDomainProcessor):
     """Trial Arms domain processor.
-    
+
     Handles domain-specific processing for the TA domain.
     """
 
     def process(self, frame: pd.DataFrame) -> None:
         """Process TA domain DataFrame.
-        
+
         Args:
             frame: Domain DataFrame to process in-place
         """
         # Drop placeholder rows
         self._drop_placeholder_rows(frame)
-        
+
         # Ensure TA includes both SCREENING and TREATMENT epochs
         if len(frame) == 1:
             # If only one record, duplicate it for SCREENING epoch
@@ -45,4 +45,3 @@ class TAProcessor(BaseDomainProcessor):
         if "ETCD" in frame.columns:
             frame.loc[frame["EPOCH"] == "TREATMENT", "ETCD"] = "TRT"
             frame.loc[frame["EPOCH"] == "SCREENING", "ETCD"] = "SCRN"
-

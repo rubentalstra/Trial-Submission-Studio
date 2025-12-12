@@ -10,19 +10,19 @@ from ..transformers import TextTransformer, NumericTransformer, DateTransformer
 
 class CMProcessor(BaseDomainProcessor):
     """Concomitant Medications domain processor.
-    
+
     Handles domain-specific processing for the CM domain.
     """
 
     def process(self, frame: pd.DataFrame) -> None:
         """Process CM domain DataFrame.
-        
+
         Args:
             frame: Domain DataFrame to process in-place
         """
         # Drop placeholder rows
         self._drop_placeholder_rows(frame)
-        
+
         # CMDOSU should be controlled; default to MG and uppercase values
         if "CMDOSU" in frame.columns:
             frame["CMDOSU"] = (
@@ -43,9 +43,7 @@ class CMProcessor(BaseDomainProcessor):
             )
         # Remove duplicate records based on common key fields
         key_cols = [
-            c
-            for c in ("USUBJID", "CMTRT", "CMSTDTC", "CMENDTC")
-            if c in frame.columns
+            c for c in ("USUBJID", "CMTRT", "CMSTDTC", "CMENDTC") if c in frame.columns
         ]
         if key_cols:
             frame.drop_duplicates(subset=key_cols, keep="first", inplace=True)
@@ -144,5 +142,3 @@ class CMProcessor(BaseDomainProcessor):
         # Final pass to remove any exact duplicate rows and realign sequence
         frame.drop_duplicates(inplace=True)
         NumericTransformer.assign_sequence(frame, "CMSEQ", "USUBJID")
-
-        # IE - Inclusion/Exclusion Criteria

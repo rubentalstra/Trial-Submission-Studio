@@ -10,19 +10,19 @@ from ..transformers import TextTransformer, NumericTransformer, DateTransformer
 
 class SEProcessor(BaseDomainProcessor):
     """Subject Elements domain processor.
-    
+
     Handles domain-specific processing for the SE domain.
     """
 
     def process(self, frame: pd.DataFrame) -> None:
         """Process SE domain DataFrame.
-        
+
         Args:
             frame: Domain DataFrame to process in-place
         """
         # Drop placeholder rows
         self._drop_placeholder_rows(frame)
-        
+
         # Rebuild SE using reference starts to align ETCD/ELEMENT/EPOCH with TE/TA
         records = []
         subjects = (
@@ -82,4 +82,3 @@ class SEProcessor(BaseDomainProcessor):
             delta = (end - start).dt.days + 1
             frame["SESTDY"] = frame.get("SESTDY", pd.Series([1] * len(frame)))
             frame["SEENDY"] = delta.fillna(1)
-

@@ -10,19 +10,19 @@ from ..transformers import TextTransformer, NumericTransformer, DateTransformer
 
 class DMProcessor(BaseDomainProcessor):
     """Demographics domain processor.
-    
+
     Handles domain-specific processing for the DM domain.
     """
 
     def process(self, frame: pd.DataFrame) -> None:
         """Process DM domain DataFrame.
-        
+
         Args:
             frame: Domain DataFrame to process in-place
         """
         # Drop placeholder rows
         self._drop_placeholder_rows(frame)
-        
+
         frame["AGE"] = pd.to_numeric(frame["AGE"], errors="coerce")
         frame["AGE"] = frame["AGE"].fillna(30).replace(0, 30)
         # AGEU is required - normalize to CDISC CT value
@@ -55,9 +55,7 @@ class DMProcessor(BaseDomainProcessor):
         # Planned/actual arms: fill when missing, but keep supplied values
         def _fill_arm(col: str, default: str) -> pd.Series:
             series = (
-                frame.get(col, pd.Series([""] * len(frame)))
-                .astype("string")
-                .fillna("")
+                frame.get(col, pd.Series([""] * len(frame))).astype("string").fillna("")
             )
             empty = series.str.strip() == ""
             series.loc[empty] = default
@@ -168,9 +166,7 @@ class DMProcessor(BaseDomainProcessor):
         if "SUBJID" not in frame.columns:
             if "USUBJID" in frame.columns:
                 # Extract subject ID portion from USUBJID (typically last part after dash)
-                frame["SUBJID"] = (
-                    frame["USUBJID"].astype(str).str.split("-").str[-1]
-                )
+                frame["SUBJID"] = frame["USUBJID"].astype(str).str.split("-").str[-1]
             else:
                 frame["SUBJID"] = "01"
         elif "USUBJID" in frame.columns:
@@ -178,10 +174,7 @@ class DMProcessor(BaseDomainProcessor):
                 frame["SUBJID"].astype(str).str.strip().isin(["", "UNK", "nan"])
             )
             frame.loc[needs_subjid, "SUBJID"] = (
-                frame.loc[needs_subjid, "USUBJID"]
-                .astype(str)
-                .str.split("-")
-                .str[-1]
+                frame.loc[needs_subjid, "USUBJID"].astype(str).str.split("-").str[-1]
             )
         for col in ("RFPENDTC", "RFENDTC", "RFXENDTC"):
             if col in frame.columns:
@@ -218,9 +211,7 @@ class DMProcessor(BaseDomainProcessor):
             empty_rfic = consent_series.str.strip() == ""
             if empty_rfic.any():
                 frame.loc[empty_rfic, "RFICDTC"] = start_series.loc[empty_rfic]
-            still_empty = (
-                frame["RFICDTC"].astype("string").fillna("").str.strip() == ""
-            )
+            still_empty = frame["RFICDTC"].astype("string").fillna("").str.strip() == ""
             if still_empty.any():
                 frame.loc[still_empty, "RFICDTC"] = "2023-01-01"
 
@@ -289,9 +280,7 @@ class DMProcessor(BaseDomainProcessor):
             else pd.Series([""] * len(frame))
         )
         needs_reason = (armcd_clean == "") & (actarmcd_clean == "")
-        frame.loc[needs_reason & (armnrs.str.strip() == ""), "ARMNRS"] = (
-            "NOT ASSIGNED"
-        )
+        frame.loc[needs_reason & (armnrs.str.strip() == ""), "ARMNRS"] = "NOT ASSIGNED"
         # Keep ARMNRS empty when arm assignments exist
         frame.loc[~needs_reason, "ARMNRS"] = ""
         if needs_reason.any():

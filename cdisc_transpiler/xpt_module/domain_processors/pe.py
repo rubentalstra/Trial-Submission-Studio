@@ -10,19 +10,19 @@ from ..transformers import TextTransformer, NumericTransformer, DateTransformer
 
 class PEProcessor(BaseDomainProcessor):
     """Physical Examination domain processor.
-    
+
     Handles domain-specific processing for the PE domain.
     """
 
     def process(self, frame: pd.DataFrame) -> None:
         """Process PE domain DataFrame.
-        
+
         Args:
             frame: Domain DataFrame to process in-place
         """
         # Drop placeholder rows
         self._drop_placeholder_rows(frame)
-        
+
         # Always regenerate PESEQ - source values may not be unique (SD0005)
         frame["PESEQ"] = frame.groupby("USUBJID").cumcount() + 1
         frame["PESEQ"] = NumericTransformer.force_numeric(frame["PESEQ"])
@@ -82,14 +82,14 @@ class PEProcessor(BaseDomainProcessor):
             empty = frame["PESTRESC"].astype("string").fillna("").str.strip() == ""
             frame.loc[empty, "PESTRESC"] = "NORMAL"
         if "PEORRES" in frame.columns:
-            empty_orres = (
-                frame["PEORRES"].astype("string").fillna("").str.strip() == ""
-            )
+            empty_orres = frame["PEORRES"].astype("string").fillna("").str.strip() == ""
             frame.loc[empty_orres, "PEORRES"] = "NORMAL"
         if "PEDTC" in frame.columns:
             DateTransformer.compute_study_day(frame, "PEDTC", "PEDY", "RFSTDTC")
         if "EPOCH" in frame.columns:
-            frame["EPOCH"] = TextTransformer.replace_unknown(frame["EPOCH"], "TREATMENT")
+            frame["EPOCH"] = TextTransformer.replace_unknown(
+                frame["EPOCH"], "TREATMENT"
+            )
         else:
             frame["EPOCH"] = "TREATMENT"
         dedup_keys = [k for k in ("USUBJID", "VISITNUM") if k in frame.columns]
@@ -97,5 +97,3 @@ class PEProcessor(BaseDomainProcessor):
             frame.drop_duplicates(subset=dedup_keys, keep="first", inplace=True)
             frame.reset_index(drop=True, inplace=True)
             frame["PESEQ"] = frame.groupby("USUBJID").cumcount() + 1
-
-        # QS - Questionnaires
