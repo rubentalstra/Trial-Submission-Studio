@@ -109,7 +109,7 @@ def write_variant_splits(
     domain: SDTMDomain,
     xpt_dir: Path,
     console: Console,
-) -> list[Path]:
+) -> tuple[list[Path], list[tuple[str, pd.DataFrame, Path]]]:
     """Write split XPT files for domain variants following SDTMIG v3.4 Section 4.1.7.
 
     According to SDTMIG v3.4 Section 4.1.7 "Splitting Domains":
@@ -127,11 +127,12 @@ def write_variant_splits(
         console: Rich console for output
 
     Returns:
-        List of paths to generated split files
+        Tuple of (list of paths, list of (split_name, dataframe, path) tuples)
     """
     from ..xpt_module import write_xpt_file
 
     split_paths: list[Path] = []
+    split_datasets: list[tuple[str, pd.DataFrame, Path]] = []
     domain_code = domain.code.upper()
     
     for variant_name, variant_df in variant_frames:
@@ -175,12 +176,13 @@ def write_variant_splits(
         
         write_xpt_file(variant_df, domain.code, split_path, file_label=file_label, table_name=table)
         split_paths.append(split_path)
+        split_datasets.append((table, variant_df, split_path))
         console.print(
             f"[green]✓[/green] Split dataset: {split_path} "
             f"(DOMAIN={domain_code}, table={table})"
         )
     
-    return split_paths
+    return split_paths, split_datasets
 
 
 def print_study_summary(

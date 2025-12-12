@@ -83,36 +83,32 @@ class SDTMDomain:
 _DOMAIN_DEFINITIONS: dict[str, SDTMDomain] = {}
 
 # Path to SDTMIG v3.4 metadata (single source of truth)
-_SDTMIG_PATH = Path(__file__).resolve().parent.parent / "docs" / "SDTMIG_v3.4.csv"
-_SDTM_V2_PATH = Path(__file__).resolve().parent.parent / "docs" / "SDTM_v2.0.csv"
+_SDTMIG_PATH = Path(__file__).resolve().parent.parent / "docs" / "SDTMIG_v3.4" / "Variables.csv"
+_SDTM_V2_PATH = Path(__file__).resolve().parent.parent / "docs" / "SDTM_v2.0" / "Variables.csv"
 _SDTM_DATASETS_PATH = (
-    Path(__file__).resolve().parent.parent / "docs" / "SDTMIG_v3.4" / "Datasets.md"
+    Path(__file__).resolve().parent.parent / "docs" / "SDTMIG_v3.4" / "Datasets.csv"
 )
 
 
 def _load_dataset_attributes() -> dict[str, dict[str, str]]:
-    """Load dataset-level attributes (class/label/structure) from Datasets.md."""
+    """Load dataset-level attributes (class/label/structure) from Datasets.csv."""
     if not _SDTM_DATASETS_PATH.exists():
         return {}
     attributes: dict[str, dict[str, str]] = {}
-    with _SDTM_DATASETS_PATH.open(encoding="utf-8") as handle:
-        lines = handle.readlines()
-    if len(lines) < 3:
-        return {}
-    headers = [h.strip() for h in lines[0].strip().strip("|").split("|")]
-    # Expected headers: Version, Class, Dataset Name, Dataset Label, Structure
-    for line in lines[2:]:
-        if "|" not in line:
-            continue
-        cols = [col.strip() for col in line.strip().strip("|").split("|")]
-        if len(cols) < 5:
-            continue
-        dataset_name = cols[2].upper()
-        attributes[dataset_name] = {
-            "class": cols[1],
-            "label": cols[3],
-            "structure": cols[4],
-        }
+    
+    # Read CSV file
+    with _SDTM_DATASETS_PATH.open(newline="", encoding="utf-8") as handle:
+        reader = csv.DictReader(handle)
+        for row in reader:
+            # Expected columns: Version, Class, Dataset Name, Dataset Label, Structure
+            dataset_name = (row.get("Dataset Name") or "").strip().upper()
+            if not dataset_name:
+                continue
+            attributes[dataset_name] = {
+                "class": (row.get("Class") or "").strip(),
+                "label": (row.get("Dataset Label") or "").strip(),
+                "structure": (row.get("Structure") or "").strip(),
+            }
     return attributes
 
 

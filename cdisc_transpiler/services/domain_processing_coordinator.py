@@ -474,6 +474,7 @@ class DomainProcessingCoordinator:
             "xml_path": None,
             "sas_path": None,
             "split_xpt_paths": [],
+            "split_datasets": [],  # List of (name, dataframe, path) tuples for Define-XML
             "supplementals": [],
         }
 
@@ -495,10 +496,12 @@ class DomainProcessingCoordinator:
             # Handle domain variant splits (SDTMIG v3.4 Section 4.1.7)
             # Any domain can be split when there are multiple variant files
             if len(variant_frames) > 1:
-                split_paths = write_variant_splits(
+                split_paths, split_datasets = write_variant_splits(
                     merged_dataframe, variant_frames, domain, xpt_dir, console
                 )
                 result["split_xpt_paths"] = split_paths
+                result["split_datasets"] = split_datasets
+
 
         if xml_dir and output_format in ("xml", "both"):
             xml_path = xml_dir / f"{disk_name}.xml"

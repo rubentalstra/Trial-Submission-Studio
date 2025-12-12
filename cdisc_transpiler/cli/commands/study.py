@@ -334,6 +334,22 @@ def study_command(
                         )
                     )
 
+            # Handle split datasets (SDTMIG v3.4 Section 4.1.7)
+            # Split datasets must be documented separately in Define-XML
+            for split_name, split_df, split_path in result.get("split_datasets", []):
+                if generate_define and output_format in ("xpt", "both"):
+                    split_href = split_path.relative_to(output_dir)
+                    study_datasets.append(
+                        StudyDataset(
+                            domain_code=split_name,
+                            dataframe=split_df,
+                            config=result.get("config"),
+                            archive_location=split_href,
+                            is_split=True,
+                            split_suffix=split_name[len(domain_code):] if split_name.startswith(domain_code) else split_name,
+                        )
+                    )
+
             record_count = result.get("records")
             if record_count is None and isinstance(dataset, pd.DataFrame):
                 record_count = len(dataset)
@@ -466,6 +482,22 @@ def study_command(
                         archive_location=dataset_href,
                     )
                 )
+
+                # Handle split datasets (SDTMIG v3.4 Section 4.1.7)
+                # Split datasets must be documented separately in Define-XML
+                for split_name, split_df, split_path in result.get("split_datasets", []):
+                    if generate_define and output_format in ("xpt", "both"):
+                        split_href = split_path.relative_to(output_dir)
+                        study_datasets.append(
+                            StudyDataset(
+                                domain_code=split_name,
+                                dataframe=split_df,
+                                config=result.get("config"),
+                                archive_location=split_href,
+                                is_split=True,
+                                split_suffix=split_name[len(domain_code):] if split_name.startswith(domain_code) else split_name,
+                            )
+                        )
 
             # Phase 3: Increment progress tracker after successful domain processing
             progress_tracker.increment()
