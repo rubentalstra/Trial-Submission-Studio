@@ -17,7 +17,7 @@ if TYPE_CHECKING:
     import pandas as pd
     from ..mapping import MappingConfig
 
-from ..xpt import write_xpt_file
+from ..xpt_module import write_xpt_file
 from ..sas import generate_sas_program, write_sas_file
 from ..domains import get_domain
 
