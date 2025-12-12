@@ -115,7 +115,7 @@ class DAProcessor(BaseDomainProcessor):
             if needs_dadtc.any():
                 frame.loc[needs_dadtc, "DADTC"] = frame.loc[
                     needs_dadtc, "DATEST"
-                ].apply(self._coerce_iso8601)
+                ].apply(DateTransformer.coerce_iso8601)
         # If still missing, use RFSTDTC as collection date
         if "RFSTDTC" in frame.columns:
             empty_dadtc = frame["DADTC"].astype("string").fillna("").str.strip() == ""

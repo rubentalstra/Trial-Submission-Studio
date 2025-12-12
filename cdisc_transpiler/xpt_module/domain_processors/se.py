@@ -25,6 +25,10 @@ class SEProcessor(BaseDomainProcessor):
 
         # Rebuild SE using reference starts to align ETCD/ELEMENT/EPOCH with TE/TA
         records = []
+        study_id = "STUDY"
+        if len(frame) > 0 and "STUDYID" in frame.columns:
+            study_id = frame["STUDYID"].iloc[0]
+        
         subjects = (
             list(self.reference_starts.keys())
             if self.reference_starts
@@ -39,7 +43,7 @@ class SEProcessor(BaseDomainProcessor):
             # Screening element
             records.append(
                 {
-                    "STUDYID": self.config.study_id or "STUDY",
+                    "STUDYID": study_id,
                     "DOMAIN": "SE",
                     "USUBJID": usubjid,
                     "ETCD": "SCRN",
@@ -52,7 +56,7 @@ class SEProcessor(BaseDomainProcessor):
             # Treatment element
             records.append(
                 {
-                    "STUDYID": self.config.study_id or "STUDY",
+                    "STUDYID": study_id,
                     "DOMAIN": "SE",
                     "USUBJID": usubjid,
                     "ETCD": "TRT",

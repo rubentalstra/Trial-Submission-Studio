@@ -90,7 +90,7 @@ class MHProcessor(BaseDomainProcessor):
             frame.loc[empty_mhdtc, "MHDTC"] = frame.get("MHSTDTC", "")
         for col in ("MHSTDTC", "MHENDTC", "MHDTC"):
             if col in frame.columns:
-                frame[col] = frame[col].apply(self._coerce_iso8601)
+                frame[col] = frame[col].apply(DateTransformer.coerce_iso8601)
         # Fill missing end dates from reference end if available
         if "MHENDTC" in frame.columns:
             empty_end = frame["MHENDTC"].astype("string").fillna("").str.strip() == ""

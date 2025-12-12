@@ -24,7 +24,9 @@ class TEProcessor(BaseDomainProcessor):
         self._drop_placeholder_rows(frame)
 
         # Rebuild TE to align with SE/TA elements
-        study_id = self.config.study_id or "STUDY"
+        study_id = "STUDY"
+        if len(frame) > 0 and "STUDYID" in frame.columns:
+            study_id = frame["STUDYID"].iloc[0]
         elements = [
             {
                 "ETCD": "SCRN",
