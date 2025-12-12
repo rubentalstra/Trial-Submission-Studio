@@ -23,10 +23,12 @@ from .builder import (
     build_domain_dataframe,
     DomainFrameBuilder,
 )
+from .transformers import (
+    DateTransformer,
+)
 
-# Future exports as transformers are created:
+# Future exports as more transformers are created:
 # from .transformers import (
-#     DateTransformer,
 #     CodelistTransformer,
 #     NumericTransformer,
 #     TextTransformer,
@@ -40,9 +42,9 @@ __all__ = [
     # Building
     "build_domain_dataframe",
     "DomainFrameBuilder",
-    # Transformers (to be added)
-    # "DateTransformer",
-    # "CodelistTransformer",
-    # "NumericTransformer",
-    # "TextTransformer",
+    # Transformers
+    "DateTransformer",        # Step 3 ✓
+    # "CodelistTransformer",  # Step 4
+    # "NumericTransformer",   # Step 5
+    # "TextTransformer",      # Step 5
 ]
