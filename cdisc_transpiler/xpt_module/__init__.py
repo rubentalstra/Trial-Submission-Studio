@@ -29,6 +29,9 @@ from .transformers import (
     NumericTransformer,
     TextTransformer,
 )
+from .validators import (
+    XPTValidator,
+)
 
 __all__ = [
     # Exceptions
@@ -43,4 +46,6 @@ __all__ = [
     "CodelistTransformer",   # Step 4 ✓
     "NumericTransformer",    # Step 5 ✓
     "TextTransformer",       # Step 5 ✓
+    # Validators
+    "XPTValidator",          # Step 6 ✓
 ]
