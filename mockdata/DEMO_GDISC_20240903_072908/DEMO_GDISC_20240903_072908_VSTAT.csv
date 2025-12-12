@@ -1,0 +1,36 @@
+﻿Site sequence number,Site name,Site code,Subject sequence number,Subject Id,Event sequence number,Event Id,Event name,Event date,Activity Id,Activity name,Form sequence number,Subject form sequence number,Origin Subject form sequence number,Source Subject form sequence number,Design version,Type of Visit,Type of Visit - Code,Continuing to the Next Visit,Continuing to the Next Visit - Code
+SiteSeq,SiteName,SiteCode,SubjectSeq,SubjectId,EventSeq,EventId,EventName,EventDate,ActivityId,ActivityName,FormSeq,SubjectFormSeq,OriginSubjectFormSeq,SourceSubjectFormSeq,DesignVersion,VSTTYPE,VSTTYPECD,VSTATYN,VSTATYNCD
+1,KIEM site,KIEM,1,KIEM-01,1,V1,Visit 1,2023-08-01,V1_PART2,,1,2,2,,1.1,,,Yes,Y
+1,KIEM site,KIEM,1,KIEM-01,1,V1,Visit 1,2023-08-01,V1_VSTAT,,1,1,1,,1.1,In-Clinic,1,,
+1,KIEM site,KIEM,1,KIEM-01,1,V2,Visit 2,2023-08-04,V2_DA,,1,4,4,,1.1,,,Yes,Y
+1,KIEM site,KIEM,1,KIEM-01,1,V2,Visit 2,2023-08-04,V2_VSTAT,,1,3,3,,1.1,In-Clinic,1,,
+1,KIEM site,KIEM,1,KIEM-01,1,PC1,Phone Call,2023-08-07,PC1,,1,6,6,,1.1,,,Yes,Y
+1,KIEM site,KIEM,1,KIEM-01,1,PC1,Phone Call,2023-08-07,PC1_VSTAT,,1,5,5,,1.1,Phone,3,,
+1,KIEM site,KIEM,1,KIEM-01,1,PC2,Phone Call,2023-08-10,PC2,,1,8,8,,1.1,,,Yes,Y
+1,KIEM site,KIEM,1,KIEM-01,1,PC2,Phone Call,2023-08-10,PC2_VSTAT,,1,7,7,,1.1,Phone,3,,
+1,KIEM site,KIEM,1,KIEM-01,1,V3,Visit 3,2023-08-17,V3,,1,10,10,,1.1,,,Yes,Y
+1,KIEM site,KIEM,1,KIEM-01,1,V3,Visit 3,2023-08-17,V3_VSTAT,,1,9,9,,1.1,In-Clinic,1,,
+1,KIEM site,KIEM,1,KIEM-01,1,V4,Visit 4,2023-08-31,V4,,1,12,12,,1.1,,,Yes,Y
+1,KIEM site,KIEM,1,KIEM-01,1,V4,Visit 4,2023-08-31,V4_VSTAT,,1,11,11,,1.1,In-Clinic,1,,
+1,KIEM site,KIEM,1,KIEM-01,1,V5,Visit 5,2023-09-25,V5,,1,14,14,,1.1,,,Yes,Y
+1,KIEM site,KIEM,1,KIEM-01,1,V5,Visit 5,2023-09-25,V5_VSTAT,,1,13,13,,1.1,In-Clinic,1,,
+1,KIEM site,KIEM,1,KIEM-01,1,PC3,Safety Follow-Up Phone Call,2023-11-23,PC3_VSTAT,,1,15,15,,1.1,Phone,3,Yes,Y
+1,KIEM site,KIEM,1,KIEM-01,1,PC4,Safety Follow-Up Phone Call,2024-04-01,PC4_VSTAT,,1,16,16,,1.1,Phone,3,,
+1,KIEM site,KIEM,2,KIEM-02,1,V1,Visit 1,2023-10-02,V1_PART2,,1,2,2,,1.1,,,No,N
+1,KIEM site,KIEM,2,KIEM-02,1,V1,Visit 1,2023-10-02,V1_VSTAT,,1,1,1,,1.1,In-Clinic,1,,
+1,KIEM site,KIEM,3,KIEM-03,1,V1,Visit 1,2023-11-20,V1_PART2,,1,2,2,,1.1,,,Yes,Y
+1,KIEM site,KIEM,3,KIEM-03,1,V1,Visit 1,2023-11-20,V1_VSTAT,,1,1,1,,1.1,In-Clinic,1,,
+1,KIEM site,KIEM,3,KIEM-03,1,V2,Visit 2,2023-11-27,V2_DA,,1,4,4,,1.1,,,Yes,Y
+1,KIEM site,KIEM,3,KIEM-03,1,V2,Visit 2,2023-11-27,V2_VSTAT,,1,3,3,,1.1,Virtual,2,,
+1,KIEM site,KIEM,3,KIEM-03,1,PC1,Phone Call,2023-11-29,PC1,,1,6,6,,1.1,,,Yes,Y
+1,KIEM site,KIEM,3,KIEM-03,1,PC1,Phone Call,2023-11-29,PC1_VSTAT,,1,5,5,,1.1,Phone,3,,
+1,KIEM site,KIEM,3,KIEM-03,1,PC2,Phone Call,2023-12-04,PC2,,1,8,8,,1.1,,,Yes,Y
+1,KIEM site,KIEM,3,KIEM-03,1,PC2,Phone Call,2023-12-04,PC2_VSTAT,,1,7,7,,1.1,Phone,3,,
+1,KIEM site,KIEM,3,KIEM-03,1,V3,Visit 3,2023-12-11,V3,,1,10,10,,1.1,,,Yes,Y
+1,KIEM site,KIEM,3,KIEM-03,1,V3,Visit 3,2023-12-11,V3_VSTAT,,1,9,9,,1.1,In-Clinic,1,,
+1,KIEM site,KIEM,3,KIEM-03,1,V4,Visit 4,2023-12-22,V4,,1,12,12,,1.1,,,Yes,Y
+1,KIEM site,KIEM,3,KIEM-03,1,V4,Visit 4,2023-12-22,V4_VSTAT,,1,11,11,,1.1,In-Clinic,1,,
+1,KIEM site,KIEM,3,KIEM-03,1,V5,Visit 5,2024-01-22,V5,,1,14,14,,1.1,,,Yes,Y
+1,KIEM site,KIEM,3,KIEM-03,1,V5,Visit 5,2024-01-22,V5_VSTAT,,1,13,13,,1.1,In-Clinic,1,,
+1,KIEM site,KIEM,3,KIEM-03,1,PC3,Safety Follow-Up Phone Call,2024-03-19,PC3_VSTAT,,1,15,15,,1.1,Phone,3,Yes,Y
+1,KIEM site,KIEM,3,KIEM-03,1,PC4,Safety Follow-Up Phone Call,2024-07-15,PC4_VSTAT,,1,16,16,,1.1,Phone,3,,

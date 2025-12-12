@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Dataset-XML: Untyped Data Example  --> 
+<!-- Built from the SAS XPT files published with the SDTM-MSG (SDTM Metadata Submission Guidelines) V2.0 --> 
+<ODM
+  xmlns="http://www.cdisc.org/ns/odm/v1.3"
+  xmlns:xlink="http://www.w3.org/1999/xlink" 
+  xmlns:data="http://www.cdisc.org/ns/Dataset-XML/v1.0"
+  FileType="Snapshot"
+  ODMVersion="1.3.2"
+  data:DatasetXMLVersion="1.0.0"
+  FileOID="www.cdisc.org/StudyMSGv2/1/Define-XML_2.1.0(IG.SUPPEC).Data(SUPPEC)"
+  PriorFileOID="www.cdisc.org/StudyMSGv2/1/Define-XML_2.1.0"
+  CreationDateTime="2020-08-21T09:21:13"
+  Originator="CDISC MSG Team"
+  SourceSystem="M.Hungria-System"
+  SourceSystemVersion="2.1-A1"
+  >
+  <ClinicalData
+    StudyOID="cdisc.com/CDISCPILOT01"
+    MetaDataVersionOID="MDV.MSGv2.0.SDTMIG.3.3.SDTM.1.7">
+    <!-- Dataset (SUPPEC) -->
+    <ItemGroupData ItemGroupOID="IG.SUPPEC" data:ItemGroupDataSeq="1">
+      <ItemData ItemOID="IT.SUPPEC.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SUPPEC.RDOMAIN" Value="EC"/>
+      <ItemData ItemOID="IT.SUPPEC.USUBJID" Value="CDISC009"/>
+      <ItemData ItemOID="IT.SUPPEC.IDVAR" Value="ECSEQ"/>
+      <ItemData ItemOID="IT.SUPPEC.IDVARVAL" Value="122"/>
+      <ItemData ItemOID="IT.SUPPEC.QNAM" Value="ECREASOC"/>
+      <ItemData ItemOID="IT.SUPPEC.QLABEL" Value="Reason for Occur Value"/>
+      <ItemData ItemOID="IT.SUPPEC.QVAL" Value="INVESTIGATOR DECISION"/>
+      <ItemData ItemOID="IT.SUPPEC.QORIG" Value="COLLECTED"/>
+      <ItemData ItemOID="IT.SUPPEC.QEVAL" Value="INVESTIGATOR"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SUPPEC" data:ItemGroupDataSeq="2">
+      <ItemData ItemOID="IT.SUPPEC.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SUPPEC.RDOMAIN" Value="EC"/>
+      <ItemData ItemOID="IT.SUPPEC.USUBJID" Value="CDISC009"/>
+      <ItemData ItemOID="IT.SUPPEC.IDVAR" Value="ECSEQ"/>
+      <ItemData ItemOID="IT.SUPPEC.IDVARVAL" Value="123"/>
+      <ItemData ItemOID="IT.SUPPEC.QNAM" Value="ECREASOC"/>
+      <ItemData ItemOID="IT.SUPPEC.QLABEL" Value="Reason for Occur Value"/>
+      <ItemData ItemOID="IT.SUPPEC.QVAL" Value="INVESTIGATOR DECISION"/>
+      <ItemData ItemOID="IT.SUPPEC.QORIG" Value="COLLECTED"/>
+      <ItemData ItemOID="IT.SUPPEC.QEVAL" Value="INVESTIGATOR"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SUPPEC" data:ItemGroupDataSeq="3">
+      <ItemData ItemOID="IT.SUPPEC.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SUPPEC.RDOMAIN" Value="EC"/>
+      <ItemData ItemOID="IT.SUPPEC.USUBJID" Value="CDISC009"/>
+      <ItemData ItemOID="IT.SUPPEC.IDVAR" Value="ECSEQ"/>
+      <ItemData ItemOID="IT.SUPPEC.IDVARVAL" Value="124"/>
+      <ItemData ItemOID="IT.SUPPEC.QNAM" Value="ECREASOC"/>
+      <ItemData ItemOID="IT.SUPPEC.QLABEL" Value="Reason for Occur Value"/>
+      <ItemData ItemOID="IT.SUPPEC.QVAL" Value="INVESTIGATOR DECISION"/>
+      <ItemData ItemOID="IT.SUPPEC.QORIG" Value="COLLECTED"/>
+      <ItemData ItemOID="IT.SUPPEC.QEVAL" Value="INVESTIGATOR"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SUPPEC" data:ItemGroupDataSeq="4">
+      <ItemData ItemOID="IT.SUPPEC.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SUPPEC.RDOMAIN" Value="EC"/>
+      <ItemData ItemOID="IT.SUPPEC.USUBJID" Value="CDISC009"/>
+      <ItemData ItemOID="IT.SUPPEC.IDVAR" Value="ECSEQ"/>
+      <ItemData ItemOID="IT.SUPPEC.IDVARVAL" Value="125"/>
+      <ItemData ItemOID="IT.SUPPEC.QNAM" Value="ECREASOC"/>
+      <ItemData ItemOID="IT.SUPPEC.QLABEL" Value="Reason for Occur Value"/>
+      <ItemData ItemOID="IT.SUPPEC.QVAL" Value="INVESTIGATOR DECISION"/>
+      <ItemData ItemOID="IT.SUPPEC.QORIG" Value="COLLECTED"/>
+      <ItemData ItemOID="IT.SUPPEC.QEVAL" Value="INVESTIGATOR"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SUPPEC" data:ItemGroupDataSeq="5">
+      <ItemData ItemOID="IT.SUPPEC.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SUPPEC.RDOMAIN" Value="EC"/>
+      <ItemData ItemOID="IT.SUPPEC.USUBJID" Value="CDISC009"/>
+      <ItemData ItemOID="IT.SUPPEC.IDVAR" Value="ECSEQ"/>
+      <ItemData ItemOID="IT.SUPPEC.IDVARVAL" Value="126"/>
+      <ItemData ItemOID="IT.SUPPEC.QNAM" Value="ECREASOC"/>
+      <ItemData ItemOID="IT.SUPPEC.QLABEL" Value="Reason for Occur Value"/>
+      <ItemData ItemOID="IT.SUPPEC.QVAL" Value="INVESTIGATOR DECISION"/>
+      <ItemData ItemOID="IT.SUPPEC.QORIG" Value="COLLECTED"/>
+      <ItemData ItemOID="IT.SUPPEC.QEVAL" Value="INVESTIGATOR"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SUPPEC" data:ItemGroupDataSeq="6">
+      <ItemData ItemOID="IT.SUPPEC.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SUPPEC.RDOMAIN" Value="EC"/>
+      <ItemData ItemOID="IT.SUPPEC.USUBJID" Value="CDISC009"/>
+      <ItemData ItemOID="IT.SUPPEC.IDVAR" Value="ECSEQ"/>
+      <ItemData ItemOID="IT.SUPPEC.IDVARVAL" Value="127"/>
+      <ItemData ItemOID="IT.SUPPEC.QNAM" Value="ECREASOC"/>
+      <ItemData ItemOID="IT.SUPPEC.QLABEL" Value="Reason for Occur Value"/>
+      <ItemData ItemOID="IT.SUPPEC.QVAL" Value="INVESTIGATOR DECISION"/>
+      <ItemData ItemOID="IT.SUPPEC.QORIG" Value="COLLECTED"/>
+      <ItemData ItemOID="IT.SUPPEC.QEVAL" Value="INVESTIGATOR"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SUPPEC" data:ItemGroupDataSeq="7">
+      <ItemData ItemOID="IT.SUPPEC.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SUPPEC.RDOMAIN" Value="EC"/>
+      <ItemData ItemOID="IT.SUPPEC.USUBJID" Value="CDISC009"/>
+      <ItemData ItemOID="IT.SUPPEC.IDVAR" Value="ECSEQ"/>
+      <ItemData ItemOID="IT.SUPPEC.IDVARVAL" Value="128"/>
+      <ItemData ItemOID="IT.SUPPEC.QNAM" Value="ECREASOC"/>
+      <ItemData ItemOID="IT.SUPPEC.QLABEL" Value="Reason for Occur Value"/>
+      <ItemData ItemOID="IT.SUPPEC.QVAL" Value="INVESTIGATOR DECISION"/>
+      <ItemData ItemOID="IT.SUPPEC.QORIG" Value="COLLECTED"/>
+      <ItemData ItemOID="IT.SUPPEC.QEVAL" Value="INVESTIGATOR"/>
+    </ItemGroupData>
+  </ClinicalData>
+</ODM>

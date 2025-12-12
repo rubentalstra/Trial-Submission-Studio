@@ -1,0 +1,845 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema targetNamespace="http://www.cdisc.org/ns/def/v2.1"
+  xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:odm="http://www.cdisc.org/ns/odm/v1.3"
+  xmlns:def="http://www.cdisc.org/ns/def/v2.1" xmlns:xlink="http://www.w3.org/1999/xlink"
+  xmlns:nci="http://ncicb.nci.nih.gov/xml/odm/EVS/CDISC" elementFormDefault="qualified"
+  attributeFormDefault="unqualified" version="2.1.10">
+
+  <!--
+      Define-XML 2.1.10 define-enumerations schema
+      as developed by the CDISC XML Technologies Team
+  -->
+
+  <xs:annotation>
+    <xs:documentation>Define-XML 2.1.10 define-enumerations schema as developed by the CDISC Data
+      Exchange Standards Team based on CDISC/NCI DefineXML Controlled Terminology Package 60
+      (version 2025-09-26)</xs:documentation>
+  </xs:annotation>
+
+  <xs:import namespace="http://www.cdisc.org/ns/odm/v1.3"
+    schemaLocation="../cdisc-odm-1.3.2/ODM1-3-2-foundation.xsd"/>
+
+  <!--
+     +===========================================================================+
+     | Simple Types/Enumerations                                                 |
+     +===========================================================================+
+   -->
+
+  <xs:simpleType name="DefineVersion">
+    <xs:annotation>
+      <xs:documentation>Version of Define-XML that the file conforms to.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="odm:text">
+      <xs:pattern value="2.1.(0|([1-9][0-9]*))"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ExternalCodeListDictionary">
+    <xs:annotation>
+      <xs:documentation>Terminology relevant to the names given to a reference source that lists
+        words and gives their meaning.</xs:documentation>
+      <xs:appinfo>
+        <Alias Name="C66788" Context="nci:ExtCodeID"/>
+      </xs:appinfo>
+    </xs:annotation>
+    <xs:union>
+      <xs:simpleType>
+        <xs:restriction base="odm:text">
+          <xs:enumeration value="CDISC CT">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C163415" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="ClinicalTrials.gov">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C124233" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="COSTART">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C49471" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="CTCAE">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C49704" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="CTIS">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C221530" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="D-U-N-S NUMBER">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C134003" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="EudraCT">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C132782" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="EUDRAVIGILANCE">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C221532" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="GENC">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C221529" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="ICD">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C49474" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="ICD-O">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C37978" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="ISO 21090">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C81895" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="ISO 3166">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C209537" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="jRCT">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C221531" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="LOINC">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C49476" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="MED-RT">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C163416" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="MedDRA">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C43820" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="MeSH">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C82845" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="PubMed">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C42881" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="SNOMED">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C53489" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="UNII">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C163417" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="WHO ATC CLASSIFICATION SYSTEM">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C154331" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="WHOART">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C49468" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="WHODD">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C49475" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+        </xs:restriction>
+      </xs:simpleType>
+      <xs:simpleType>
+        <xs:restriction base="odm:text"/>
+      </xs:simpleType>
+    </xs:union>
+  </xs:simpleType>
+
+  <xs:simpleType name="ItemGroupClass">
+    <xs:annotation>
+      <xs:documentation>Terminology related to the classification of a CDISC
+        domain.</xs:documentation>
+      <xs:appinfo>
+        <Alias Name="C103329" Context="nci:ExtCodeID"/>
+      </xs:appinfo>
+    </xs:annotation>
+    <xs:restriction base="odm:text">
+      <xs:enumeration value="ADAM OTHER">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C103375" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="BASIC DATA STRUCTURE">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C103371" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="DEVICE LEVEL ANALYSIS DATASET">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C177921" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="EVENTS">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C103372" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="FINDINGS">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C103373" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="FINDINGS ABOUT">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C135396" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="INTERVENTIONS">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C103374" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="MEDICAL DEVICE BASIC DATA STRUCTURE">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C177922" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="MEDICAL DEVICE OCCURRENCE DATA STRUCTURE">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C177923" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="OCCURRENCE DATA STRUCTURE">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C123454" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="REFERENCE DATA STRUCTURE">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C204611" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="RELATIONSHIP">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C103376" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="SPECIAL PURPOSE">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C103377" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="STUDY REFERENCE">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C147271" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="SUBJECT LEVEL ANALYSIS DATASET">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C103378" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="TRIAL DESIGN">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C103379" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ItemGroupSubClass">
+    <xs:annotation>
+      <xs:documentation>Sub class of a general observation class.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="odm:text">
+      <xs:enumeration value="ADVERSE EVENT">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C176265" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="MEDICAL DEVICE TIME-TO-EVENT">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C177920" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="NON-COMPARTMENTAL ANALYSIS">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C172452" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="POPULATION PHARMACOKINETIC ANALYSIS">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C189348" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="TIME-TO-EVENT">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C165637" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="ItemGroupClassSubClass">
+    <xs:annotation>
+      <xs:documentation>Sub class of a general observation class. Union of ItemGroupClass and
+        ItemGroupSubClass</xs:documentation>
+    </xs:annotation>
+    <xs:union>
+      <xs:simpleType>
+        <xs:restriction base="def:ItemGroupClass"/>
+      </xs:simpleType>
+      <xs:simpleType>
+        <xs:restriction base="def:ItemGroupSubClass"/>
+      </xs:simpleType>
+    </xs:union>
+  </xs:simpleType>
+
+  <xs:simpleType name="ODMContext">
+    <xs:annotation>
+      <xs:documentation>Terminology relevant to the context in which the Define-XML document is
+        used.</xs:documentation>
+      <xs:appinfo>
+        <Alias Name="C170448" Context="nci:ExtCodeID"/>
+      </xs:appinfo>
+    </xs:annotation>
+    <xs:restriction base="odm:text">
+      <xs:enumeration value="Other">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C17649" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Submission">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C70885" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="OriginSource">
+    <xs:annotation>
+      <xs:documentation>Terminology relevant to the origin source for datasets in the Define-XML
+        document.</xs:documentation>
+      <xs:appinfo>
+        <Alias Name="C170450" Context="nci:ExtCodeID"/>
+      </xs:appinfo>
+    </xs:annotation>
+    <xs:restriction base="odm:text">
+      <xs:enumeration value="Investigator">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C25936" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Sponsor">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C70793" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Subject">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C41189" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Vendor">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C68608" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="OriginType">
+    <xs:annotation>
+      <xs:documentation>Terminology relevant to the origin type for datasets in the Define-XML
+        document.</xs:documentation>
+      <xs:appinfo>
+        <Alias Name="C170449" Context="nci:ExtCodeID"/>
+      </xs:appinfo>
+    </xs:annotation>
+    <xs:restriction base="odm:text">
+      <xs:enumeration value="Assigned">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C170547" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Collected">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C170548" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Derived">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C170549" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Not Available">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C126101" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Other">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C17649" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Predecessor">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C170550" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="Protocol">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C170551" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="PDFPageType">
+    <xs:annotation>
+      <xs:documentation>Type of PDF reference (Physical reference or named
+        destination).</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="odm:text">
+      <xs:enumeration value="NamedDestination"/>
+      <xs:enumeration value="PhysicalRef"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="StandardName">
+    <xs:annotation>
+      <xs:documentation>Terminology relevant to the name of the standard described in the Define-XML
+        document.</xs:documentation>
+      <xs:appinfo>
+        <Alias Name="C170452" Context="nci:ExtCodeID"/>
+      </xs:appinfo>
+    </xs:annotation>
+    <xs:restriction base="odm:text">
+      <xs:enumeration value="ADaM-OCCDSIG">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C214535" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="ADaMIG">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C170552" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="ADaMIG-MD">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C214532" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="ADaMIG-NCA">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C214533" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="ADaMIG-popPK">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C214534" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="BIMO">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C191213" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="CDISC/NCI">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C163415" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="SDTMIG">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C170455" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="SDTMIG-AP">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C170553" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="SDTMIG-MD">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C170554" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="SENDIG">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C170456" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="SENDIG-AR">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C181230" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="SENDIG-DART">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C170556" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="SENDIG-GENETOX">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C199687" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="StandardPublishingSet">
+    <xs:annotation>
+      <xs:documentation>Terminology relevant to the classification of the CDISC controlled
+        terminology standard described in the Define-XML document.</xs:documentation>
+      <xs:appinfo>
+        <Alias Name="C172331" Context="nci:ExtCodeID"/>
+      </xs:appinfo>
+    </xs:annotation>
+    <xs:restriction base="odm:text">
+      <xs:enumeration value="ADaM">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C180548" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="CDASH">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C180549" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="DEFINE-XML">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C180550" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="SDTM">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C180551" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="SEND">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C180552" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="StandardStatus">
+    <xs:annotation>
+      <xs:documentation>Terminology relevant to the development or publication status of the
+        standard.</xs:documentation>
+      <xs:appinfo>
+        <Alias Name="C172332" Context="nci:ExtCodeID"/>
+      </xs:appinfo>
+    </xs:annotation>
+    <xs:union>
+      <xs:simpleType>
+        <xs:restriction base="odm:text">
+          <xs:enumeration value="Draft">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C172453" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="Final">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C172455" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="Provisional">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C172454" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+        </xs:restriction>
+      </xs:simpleType>
+      <xs:simpleType>
+        <xs:restriction base="odm:text"/>
+      </xs:simpleType>
+    </xs:union>
+  </xs:simpleType>
+
+  <xs:simpleType name="StandardType">
+    <xs:annotation>
+      <xs:documentation>Terminology relevant to the classification of the standard described in the
+        Define-XML document.</xs:documentation>
+      <xs:appinfo>
+        <Alias Name="C170451" Context="nci:ExtCodeID"/>
+      </xs:appinfo>
+    </xs:annotation>
+    <xs:restriction base="odm:text">
+      <xs:enumeration value="CT">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C163415" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+      <xs:enumeration value="IG">
+        <xs:annotation>
+          <xs:appinfo>
+            <Alias Name="C170454" Context="nci:ExtCodeID"/>
+          </xs:appinfo>
+        </xs:annotation>
+      </xs:enumeration>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="YesOnly">
+    <xs:annotation>
+      <xs:documentation>Yes Response.</xs:documentation>
+    </xs:annotation>
+    <xs:restriction base="odm:text">
+      <xs:enumeration value="Yes"/>
+    </xs:restriction>
+  </xs:simpleType>
+
+  <xs:simpleType name="SdtmigVersionResponse">
+    <xs:annotation>
+      <xs:documentation>A terminology codelist relevant to the version of the CDISC Study Data
+        Tabulation Model implementation guide that is being used in the study
+        submission.</xs:documentation>
+      <xs:appinfo>
+        <Alias Name="C160924" Context="nci:ExtCodeID"/>
+      </xs:appinfo>
+    </xs:annotation>
+    <xs:union>
+      <xs:simpleType>
+        <xs:restriction base="odm:text">
+          <xs:enumeration value="3.1.1">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C161432" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="3.1.2">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C161433" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="3.1.3">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C161435" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="3.2">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C161436" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="3.3">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C161437" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="3.4">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C161438" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+          <xs:enumeration value="Version 3.1.2 Amendment 1">
+            <xs:annotation>
+              <xs:appinfo>
+                <Alias Name="C161434" Context="nci:ExtCodeID"/>
+              </xs:appinfo>
+            </xs:annotation>
+          </xs:enumeration>
+        </xs:restriction>
+      </xs:simpleType>
+      <xs:simpleType>
+        <xs:restriction base="odm:text"/>
+      </xs:simpleType>
+    </xs:union>
+  </xs:simpleType>
+
+</xs:schema>

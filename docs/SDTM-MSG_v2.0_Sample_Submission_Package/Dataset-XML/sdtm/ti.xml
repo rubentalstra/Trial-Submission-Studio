@@ -1,0 +1,519 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Dataset-XML: Untyped Data Example  --> 
+<!-- Built from the SAS XPT files published with the SDTM-MSG (SDTM Metadata Submission Guidelines) V2.0 --> 
+<ODM
+  xmlns="http://www.cdisc.org/ns/odm/v1.3"
+  xmlns:xlink="http://www.w3.org/1999/xlink" 
+  xmlns:data="http://www.cdisc.org/ns/Dataset-XML/v1.0"
+  FileType="Snapshot"
+  ODMVersion="1.3.2"
+  data:DatasetXMLVersion="1.0.0"
+  FileOID="www.cdisc.org/StudyMSGv2/1/Define-XML_2.1.0(IG.TI).Data(TI)"
+  PriorFileOID="www.cdisc.org/StudyMSGv2/1/Define-XML_2.1.0"
+  CreationDateTime="2020-08-21T09:21:13"
+  Originator="CDISC MSG Team"
+  SourceSystem="M.Hungria-System"
+  SourceSystemVersion="2.1-A1"
+  >
+  <ReferenceData
+    StudyOID="cdisc.com/CDISCPILOT01"
+    MetaDataVersionOID="MDV.MSGv2.0.SDTMIG.3.3.SDTM.1.7">
+    <!-- Dataset (TI) -->
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="1">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="INCL01"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Males and postmenopausal females at least 50 years of age."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="INCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="2">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="INCL02"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Diagnosis of probable AD as defined by NINCDS and the ADRDA guidelines."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="INCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="3">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="INCL03"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="MMSE score of 10 to 23."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="INCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="4">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="INCL04"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Modified Hachinski Ischemic Scale score of &lt;= 4."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="INCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="5">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="INCL05"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="CNS imaging (CT scan or MRI of brain) compatible with AD within past 1 year. (See Protocol for incompatible findings.)"/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="INCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="6">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="INCL06"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Investigator has obtained informed consent signed by the patient (and/or legal representative) and by the caregiver."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="INCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="7">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="INCL07"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Geographic proximity to investigator&apos;s site that allows adequate follow-up."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="INCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="8">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="INCL08"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Caregiver will monitor administration of prescribed medications, and will be responsible for the overall care of the patient at home."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="INCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="9">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL09"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Persons who have previously completed or withdrawn from this study or any other investigating xanomeline TTS or the oral formulation of Zanomaline."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="10">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL10"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Use of any investigational agent or approved Alzheimer&apos;s therapeutic medication within 30 days prior to enrollment into the study."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="11">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL11"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Serious illness which required hospitalization within 3 months of screening."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="12">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL12"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Diagnosis of serious neurological conditions (See Protocol)"/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="13">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL13"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Episode of depression meeting DSM-IV criteria within 3 months of screening."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="14">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL14"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="A history within the last 5 years of the following: a) Schizophrenia b) Bipolar Disease c) Ethanol or psychoactive drug abuse or dependence."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="15">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL15"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="A history of syncope within the last 5 years."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="16">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL16"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Evidence from ECG recording at screening of any of the following conditions: a) Left bundle branch block b) Bradycardia &lt;50 beats per minute c) Sinus pauses &gt;2 seconds (See Protocol for Remainder)"/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="17">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL17"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="A history within the last 5 years of a serious cardiovascular disorder, including a) Clinically significant arrhythmia (See Protocol for Remainder)"/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="18">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL18"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="A history within the last 5 years of a serious gastrointestinal disorder, including a) Chronic peptic/duodenal/gastric/esophageal ulcer that are untreated or refractory to treatment(See Protocol)"/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="19">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL19"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="A history within the last 5 years of a serious endocrine disorder, including a) Uncontrolled Insulin Dependent Diabetes Mellitus (IDDM) (See Protocol for other excluded disorders)"/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="20">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL20"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="A history within the last 5 years of a serious respiratory disorder, including a) Asthma with bronchospasm refractory to treatment b) Decompensated chronic obstructive pulmonary disease."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="21">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL21"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="A history within the last 5 years of a serious genitourinary disorder, including a) Renal failure b) Uncontrolled urinary retention"/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="22">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL22"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="A history within the last 5 years of a serious rheumatologic disorder, including a) Lupus b) Temporal arteritis c) Severe rheumatoid arthritis"/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="23">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL23"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="A known history of human immunodeficiency virus (HIV) within the last 5 years."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="24">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL24"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="A history within the last 5 years of a serious infectious disease including a) Neurosyphilis b) Meningitis c) Encephalitis"/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="25">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL25"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="A history within the last 5 years of a primary or recurrent malignant disease (See Exceptions in Protocol)."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="26">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL26"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Visual, hearing, or communication disabilities impairing the ability to participate in the study; (for example, inability to speak or understand English, illiteracy)."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="27">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL27"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Laboratory test values exceeding the Reference Range III for the patient&apos;s age in any of the following analytes: creatinine, total bilirubin, SGOT, SGPT, (See Protocol for Additional Analytes)"/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="28">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL28"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Central laboratory test values below reference range for folate, and vitamin B12, and outside reference range for thyroid function tests."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="29">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL29"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Positive syphilis screening with confirmatory testing."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="30">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL30"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Central laboratory test value above reference range for glycosylated hemoglobin (A1C) (insulin dependent diabetes mellitus patients only)."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="31">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL31"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Treatment with medications within 1 month prior to enrollment (See Protocol)"/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="ORIGINAL"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="32">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="INCL01"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Males and postmenopausal females at least 50 years of age."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="INCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="33">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="INCL02"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Diagnosis of probable AD as defined by NINCDS and the ADRDA guidelines."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="INCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="34">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="INCL03"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="MMSE score of 10 to 23."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="INCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="35">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="INCL04"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Modified Hachinski Ischemic Scale score of &lt;= 4."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="INCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="36">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="INCL05"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="CNS imaging (CT scan or MRI of brain) compatible with AD within past 1 year. (See Protocol for incompatible findings.)"/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="INCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="37">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="INCL06"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Investigator has obtained informed consent signed by the patient (and/or legal representative) and by the caregiver."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="INCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="38">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="INCL07"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Geographic proximity to investigator&apos;s site that allows adequate follow-up."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="INCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="39">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="INCL08"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Caregiver will monitor administration of prescribed medications, and will be responsible for the overall care of the patient at home."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="INCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="40">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL09"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Persons who have previously completed or withdrawn from this study or any other investigating xanomeline TTS or the oral formulation of Zanomaline."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="41">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL10"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Use of any investigational agent or approved Alzheimer&apos;s therapeutic medication within 30 days prior to enrollment into the study."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="42">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL11"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Serious illness which required hospitalization within 3 months of screening."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="43">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL12A"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Diagnosis of serious neurological conditions (See Amendment 1)"/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="44">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL13"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Episode of depression meeting DSM-IV criteria within 3 months of screening."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="45">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL14"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="A history within the last 5 years of the following: a) Schizophrenia b) Bipolar Disease c) Ethanol or psychoactive drug abuse or dependence."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="46">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL15"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="A history of syncope within the last 5 years."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="47">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL16"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Evidence from ECG recording at screening of any of the following conditions: a) Left bundle branch block b) Bradycardia &lt;50 beats per minute c) Sinus pauses &gt;2 seconds (See Protocol for Remainder)"/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="48">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL17"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="A history within the last 5 years of a serious cardiovascular disorder, including a) Clinically significant arrhythmia (See Protocol for Remainder)"/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="49">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL18"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="A history within the last 5 years of a serious gastrointestinal disorder, including a) Chronic peptic/duodenal/gastric/esophageal ulcer that are untreated or refractory to treatment(See Protocol)"/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="50">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL19"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="A history within the last 5 years of a serious endocrine disorder, including a) Uncontrolled Insulin Dependent Diabetes Mellitus (IDDM) (See Protocol for other excluded disorders)"/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="51">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL20"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="A history within the last 5 years of a serious respiratory disorder, including a) Asthma with bronchospasm refractory to treatment b) Decompensated chronic obstructive pulmonary disease."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="52">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL21"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="A history within the last 5 years of a serious genitourinary disorder, including a) Renal failure b) Uncontrolled urinary retention"/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="53">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL22"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="A history within the last 5 years of a serious rheumatologic disorder, including a) Lupus b) Temporal arteritis c) Severe rheumatoid arthritis"/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="54">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL23"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="A known history of human immunodeficiency virus (HIV) within the last 5 years."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="55">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL24"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="A history within the last 5 years of a serious infectious disease including a) Neurosyphilis b) Meningitis c) Encephalitis"/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="56">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL25"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="A history within the last 5 years of a primary or recurrent malignant disease (See Exceptions in Protocol)."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="57">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL26"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Visual, hearing, or communication disabilities impairing the ability to participate in the study; (for example, inability to speak or understand English, illiteracy)."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="58">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL27"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Laboratory test values exceeding the Reference Range III for the patient&apos;s age in any of the following analytes: creatinine, total bilirubin, SGOT, SGPT, (See Protocol for Additional Analytes)"/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="59">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL28"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Central laboratory test values below reference range for folate, and vitamin B12, and outside reference range for thyroid function tests."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="60">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL29"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Positive syphilis screening with confirmatory testing."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="61">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL30"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Central laboratory test value above reference range for glycosylated hemoglobin (A1C) (insulin dependent diabetes mellitus patients only)."/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TI" data:ItemGroupDataSeq="62">
+      <ItemData ItemOID="IT.TI.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TI.DOMAIN" Value="TI"/>
+      <ItemData ItemOID="IT.TI.IETESTCD" Value="EXCL31A"/>
+      <ItemData ItemOID="IT.TI.IETEST" Value="Treatment with medications within 1 month prior to enrollment a) Anticonvulsants b) Alpha receptor blockers c) Calcium channel blockers that are CNS active (See Amendment 1)"/>
+      <ItemData ItemOID="IT.TI.IECAT" Value="EXCLUSION"/>
+      <ItemData ItemOID="IT.TI.TIVERS" Value="AMENDMENT 1"/>
+    </ItemGroupData>
+  </ReferenceData>
+</ODM>

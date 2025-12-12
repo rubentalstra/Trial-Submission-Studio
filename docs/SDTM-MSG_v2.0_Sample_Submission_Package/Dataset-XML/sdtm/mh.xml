@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Dataset-XML: Untyped Data Example  --> 
+<!-- Built from the SAS XPT files published with the SDTM-MSG (SDTM Metadata Submission Guidelines) V2.0 --> 
+<ODM
+  xmlns="http://www.cdisc.org/ns/odm/v1.3"
+  xmlns:xlink="http://www.w3.org/1999/xlink" 
+  xmlns:data="http://www.cdisc.org/ns/Dataset-XML/v1.0"
+  FileType="Snapshot"
+  ODMVersion="1.3.2"
+  data:DatasetXMLVersion="1.0.0"
+  FileOID="www.cdisc.org/StudyMSGv2/1/Define-XML_2.1.0(IG.MH).Data(MH)"
+  PriorFileOID="www.cdisc.org/StudyMSGv2/1/Define-XML_2.1.0"
+  CreationDateTime="2020-08-21T09:21:13"
+  Originator="CDISC MSG Team"
+  SourceSystem="M.Hungria-System"
+  SourceSystemVersion="2.1-A1"
+  >
+  <ClinicalData
+    StudyOID="cdisc.com/CDISCPILOT01"
+    MetaDataVersionOID="MDV.MSGv2.0.SDTMIG.3.3.SDTM.1.7">
+    <!-- Dataset (MH) -->
+    <ItemGroupData ItemGroupOID="IG.MH" data:ItemGroupDataSeq="1">
+      <ItemData ItemOID="IT.MH.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.MH.DOMAIN" Value="MH"/>
+      <ItemData ItemOID="IT.MH.USUBJID" Value="CDISC001"/>
+      <ItemData ItemOID="IT.MH.MHSEQ" Value="1"/>
+      <ItemData ItemOID="IT.MH.MHTERM" Value="ALZHEIMER&apos;S DISEASE"/>
+      <ItemData ItemOID="IT.MH.MHEVDTYP" Value="SYMPTOM ONSET"/>
+      <ItemData ItemOID="IT.MH.MHSTDTC" Value="2004-05-28"/>
+      <ItemData ItemOID="IT.MH.MHSTDY" Value="-3108"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.MH" data:ItemGroupDataSeq="2">
+      <ItemData ItemOID="IT.MH.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.MH.DOMAIN" Value="MH"/>
+      <ItemData ItemOID="IT.MH.USUBJID" Value="CDISC002"/>
+      <ItemData ItemOID="IT.MH.MHSEQ" Value="1"/>
+      <ItemData ItemOID="IT.MH.MHTERM" Value="ALZHEIMER&apos;S DISEASE"/>
+      <ItemData ItemOID="IT.MH.MHEVDTYP" Value="SYMPTOM ONSET"/>
+      <ItemData ItemOID="IT.MH.MHSTDTC" Value="2010-03-19"/>
+      <ItemData ItemOID="IT.MH.MHSTDY" Value="-972"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.MH" data:ItemGroupDataSeq="3">
+      <ItemData ItemOID="IT.MH.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.MH.DOMAIN" Value="MH"/>
+      <ItemData ItemOID="IT.MH.USUBJID" Value="CDISC003"/>
+      <ItemData ItemOID="IT.MH.MHSEQ" Value="1"/>
+      <ItemData ItemOID="IT.MH.MHTERM" Value="ALZHEIMER&apos;S DISEASE"/>
+      <ItemData ItemOID="IT.MH.MHEVDTYP" Value="SYMPTOM ONSET"/>
+      <ItemData ItemOID="IT.MH.MHSTDTC" Value="2007-02-09"/>
+      <ItemData ItemOID="IT.MH.MHSTDY" Value="-2393"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.MH" data:ItemGroupDataSeq="4">
+      <ItemData ItemOID="IT.MH.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.MH.DOMAIN" Value="MH"/>
+      <ItemData ItemOID="IT.MH.USUBJID" Value="CDISC004"/>
+      <ItemData ItemOID="IT.MH.MHSEQ" Value="1"/>
+      <ItemData ItemOID="IT.MH.MHTERM" Value="ALZHEIMER&apos;S DISEASE"/>
+      <ItemData ItemOID="IT.MH.MHEVDTYP" Value="SYMPTOM ONSET"/>
+      <ItemData ItemOID="IT.MH.MHSTDTC" Value="2010-11-05"/>
+      <ItemData ItemOID="IT.MH.MHSTDY" Value="-1068"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.MH" data:ItemGroupDataSeq="5">
+      <ItemData ItemOID="IT.MH.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.MH.DOMAIN" Value="MH"/>
+      <ItemData ItemOID="IT.MH.USUBJID" Value="CDISC005"/>
+      <ItemData ItemOID="IT.MH.MHSEQ" Value="1"/>
+      <ItemData ItemOID="IT.MH.MHTERM" Value="ALZHEIMER&apos;S DISEASE"/>
+      <ItemData ItemOID="IT.MH.MHEVDTYP" Value="SYMPTOM ONSET"/>
+      <ItemData ItemOID="IT.MH.MHSTDTC" Value="2006-08-20"/>
+      <ItemData ItemOID="IT.MH.MHSTDY" Value="-2360"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.MH" data:ItemGroupDataSeq="6">
+      <ItemData ItemOID="IT.MH.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.MH.DOMAIN" Value="MH"/>
+      <ItemData ItemOID="IT.MH.USUBJID" Value="CDISC006"/>
+      <ItemData ItemOID="IT.MH.MHSEQ" Value="1"/>
+      <ItemData ItemOID="IT.MH.MHTERM" Value="ALZHEIMER&apos;S DISEASE"/>
+      <ItemData ItemOID="IT.MH.MHEVDTYP" Value="SYMPTOM ONSET"/>
+      <ItemData ItemOID="IT.MH.MHSTDTC" Value="2008-06-17"/>
+      <ItemData ItemOID="IT.MH.MHSTDY" Value="-1736"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.MH" data:ItemGroupDataSeq="7">
+      <ItemData ItemOID="IT.MH.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.MH.DOMAIN" Value="MH"/>
+      <ItemData ItemOID="IT.MH.USUBJID" Value="CDISC007"/>
+      <ItemData ItemOID="IT.MH.MHSEQ" Value="1"/>
+      <ItemData ItemOID="IT.MH.MHTERM" Value="ALZHEIMER&apos;S DISEASE"/>
+      <ItemData ItemOID="IT.MH.MHEVDTYP" Value="SYMPTOM ONSET"/>
+      <ItemData ItemOID="IT.MH.MHSTDTC" Value="2008-05-21"/>
+      <ItemData ItemOID="IT.MH.MHSTDY" Value="-1690"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.MH" data:ItemGroupDataSeq="8">
+      <ItemData ItemOID="IT.MH.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.MH.DOMAIN" Value="MH"/>
+      <ItemData ItemOID="IT.MH.USUBJID" Value="CDISC008"/>
+      <ItemData ItemOID="IT.MH.MHSEQ" Value="1"/>
+      <ItemData ItemOID="IT.MH.MHTERM" Value="ALZHEIMER&apos;S DISEASE"/>
+      <ItemData ItemOID="IT.MH.MHEVDTYP" Value="SYMPTOM ONSET"/>
+      <ItemData ItemOID="IT.MH.MHSTDTC" Value="2012-11-11"/>
+      <ItemData ItemOID="IT.MH.MHSTDY" Value="-546"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.MH" data:ItemGroupDataSeq="9">
+      <ItemData ItemOID="IT.MH.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.MH.DOMAIN" Value="MH"/>
+      <ItemData ItemOID="IT.MH.USUBJID" Value="CDISC009"/>
+      <ItemData ItemOID="IT.MH.MHSEQ" Value="1"/>
+      <ItemData ItemOID="IT.MH.MHTERM" Value="ALZHEIMER&apos;S DISEASE"/>
+      <ItemData ItemOID="IT.MH.MHEVDTYP" Value="SYMPTOM ONSET"/>
+      <ItemData ItemOID="IT.MH.MHSTDTC" Value="2008-09-02"/>
+      <ItemData ItemOID="IT.MH.MHSTDY" Value="-1511"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.MH" data:ItemGroupDataSeq="10">
+      <ItemData ItemOID="IT.MH.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.MH.DOMAIN" Value="MH"/>
+      <ItemData ItemOID="IT.MH.USUBJID" Value="CDISC010"/>
+      <ItemData ItemOID="IT.MH.MHSEQ" Value="1"/>
+      <ItemData ItemOID="IT.MH.MHTERM" Value="ALZHEIMER&apos;S DISEASE"/>
+      <ItemData ItemOID="IT.MH.MHEVDTYP" Value="SYMPTOM ONSET"/>
+      <ItemData ItemOID="IT.MH.MHSTDTC" Value="2012-09-08"/>
+      <ItemData ItemOID="IT.MH.MHSTDY" Value="-378"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.MH" data:ItemGroupDataSeq="11">
+      <ItemData ItemOID="IT.MH.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.MH.DOMAIN" Value="MH"/>
+      <ItemData ItemOID="IT.MH.USUBJID" Value="CDISC011"/>
+      <ItemData ItemOID="IT.MH.MHSEQ" Value="1"/>
+      <ItemData ItemOID="IT.MH.MHTERM" Value="ALZHEIMER&apos;S DISEASE"/>
+      <ItemData ItemOID="IT.MH.MHEVDTYP" Value="SYMPTOM ONSET"/>
+      <ItemData ItemOID="IT.MH.MHSTDTC" Value="2002-12-01"/>
+      <ItemData ItemOID="IT.MH.MHSTDY" Value="-3659"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.MH" data:ItemGroupDataSeq="12">
+      <ItemData ItemOID="IT.MH.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.MH.DOMAIN" Value="MH"/>
+      <ItemData ItemOID="IT.MH.USUBJID" Value="CDISC012"/>
+      <ItemData ItemOID="IT.MH.MHSEQ" Value="1"/>
+      <ItemData ItemOID="IT.MH.MHTERM" Value="ALZHEIMER&apos;S DISEASE"/>
+      <ItemData ItemOID="IT.MH.MHEVDTYP" Value="SYMPTOM ONSET"/>
+      <ItemData ItemOID="IT.MH.MHSTDTC" Value="2009-03-16"/>
+      <ItemData ItemOID="IT.MH.MHSTDY" Value="-1632"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.MH" data:ItemGroupDataSeq="13">
+      <ItemData ItemOID="IT.MH.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.MH.DOMAIN" Value="MH"/>
+      <ItemData ItemOID="IT.MH.USUBJID" Value="CDISC013"/>
+      <ItemData ItemOID="IT.MH.MHSEQ" Value="1"/>
+      <ItemData ItemOID="IT.MH.MHTERM" Value="ALZHEIMER&apos;S DISEASE"/>
+      <ItemData ItemOID="IT.MH.MHEVDTYP" Value="SYMPTOM ONSET"/>
+      <ItemData ItemOID="IT.MH.MHSTDTC" Value="2011-07-19"/>
+      <ItemData ItemOID="IT.MH.MHSTDY" Value="-734"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.MH" data:ItemGroupDataSeq="14">
+      <ItemData ItemOID="IT.MH.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.MH.DOMAIN" Value="MH"/>
+      <ItemData ItemOID="IT.MH.USUBJID" Value="CDISC014"/>
+      <ItemData ItemOID="IT.MH.MHSEQ" Value="1"/>
+      <ItemData ItemOID="IT.MH.MHTERM" Value="ALZHEIMER&apos;S DISEASE"/>
+      <ItemData ItemOID="IT.MH.MHEVDTYP" Value="SYMPTOM ONSET"/>
+      <ItemData ItemOID="IT.MH.MHSTDTC" Value="2011-07-25"/>
+      <ItemData ItemOID="IT.MH.MHSTDY" Value="-618"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.MH" data:ItemGroupDataSeq="15">
+      <ItemData ItemOID="IT.MH.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.MH.DOMAIN" Value="MH"/>
+      <ItemData ItemOID="IT.MH.USUBJID" Value="CDISC016"/>
+      <ItemData ItemOID="IT.MH.MHSEQ" Value="1"/>
+      <ItemData ItemOID="IT.MH.MHTERM" Value="ALZHEIMER&apos;S DISEASE"/>
+      <ItemData ItemOID="IT.MH.MHEVDTYP" Value="SYMPTOM ONSET"/>
+      <ItemData ItemOID="IT.MH.MHSTDTC" Value="2011-04-29"/>
+      <ItemData ItemOID="IT.MH.MHSTDY" Value="-705"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.MH" data:ItemGroupDataSeq="16">
+      <ItemData ItemOID="IT.MH.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.MH.DOMAIN" Value="MH"/>
+      <ItemData ItemOID="IT.MH.USUBJID" Value="CDISC017"/>
+      <ItemData ItemOID="IT.MH.MHSEQ" Value="1"/>
+      <ItemData ItemOID="IT.MH.MHTERM" Value="ALZHEIMER&apos;S DISEASE"/>
+      <ItemData ItemOID="IT.MH.MHEVDTYP" Value="SYMPTOM ONSET"/>
+      <ItemData ItemOID="IT.MH.MHSTDTC" Value="2008-08-20"/>
+      <ItemData ItemOID="IT.MH.MHSTDY" Value="-1858"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.MH" data:ItemGroupDataSeq="17">
+      <ItemData ItemOID="IT.MH.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.MH.DOMAIN" Value="MH"/>
+      <ItemData ItemOID="IT.MH.USUBJID" Value="CDISC018"/>
+      <ItemData ItemOID="IT.MH.MHSEQ" Value="1"/>
+      <ItemData ItemOID="IT.MH.MHTERM" Value="ALZHEIMER&apos;S DISEASE"/>
+      <ItemData ItemOID="IT.MH.MHEVDTYP" Value="SYMPTOM ONSET"/>
+      <ItemData ItemOID="IT.MH.MHSTDTC" Value="2010-05-03"/>
+      <ItemData ItemOID="IT.MH.MHSTDY" Value="-959"/>
+    </ItemGroupData>
+  </ClinicalData>
+</ODM>

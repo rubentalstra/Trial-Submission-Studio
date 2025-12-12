@@ -1,0 +1,454 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Dataset-XML: Untyped Data Example  --> 
+<!-- Built from the SAS XPT files published with the SDTM-MSG (SDTM Metadata Submission Guidelines) V2.0 --> 
+<ODM
+  xmlns="http://www.cdisc.org/ns/odm/v1.3"
+  xmlns:xlink="http://www.w3.org/1999/xlink" 
+  xmlns:data="http://www.cdisc.org/ns/Dataset-XML/v1.0"
+  FileType="Snapshot"
+  ODMVersion="1.3.2"
+  data:DatasetXMLVersion="1.0.0"
+  FileOID="www.cdisc.org/StudyMSGv2/1/Define-XML_2.1.0(IG.DM).Data(DM)"
+  PriorFileOID="www.cdisc.org/StudyMSGv2/1/Define-XML_2.1.0"
+  CreationDateTime="2020-08-21T09:21:13"
+  Originator="CDISC MSG Team"
+  SourceSystem="M.Hungria-System"
+  SourceSystemVersion="2.1-A1"
+  >
+  <ClinicalData
+    StudyOID="cdisc.com/CDISCPILOT01"
+    MetaDataVersionOID="MDV.MSGv2.0.SDTMIG.3.3.SDTM.1.7">
+    <!-- Dataset (DM) -->
+    <ItemGroupData ItemGroupOID="IG.DM" data:ItemGroupDataSeq="1">
+      <ItemData ItemOID="IT.DM.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DM.DOMAIN" Value="DM"/>
+      <ItemData ItemOID="IT.DM.USUBJID" Value="CDISC001"/>
+      <ItemData ItemOID="IT.DM.SUBJID" Value="1115"/>
+      <ItemData ItemOID="IT.DM.RFSTDTC" Value="2012-11-30"/>
+      <ItemData ItemOID="IT.DM.RFENDTC" Value="2013-01-23"/>
+      <ItemData ItemOID="IT.DM.RFXSTDTC" Value="2012-11-30"/>
+      <ItemData ItemOID="IT.DM.RFXENDTC" Value="2013-01-23"/>
+      <ItemData ItemOID="IT.DM.RFICDTC" Value="2012-11-23"/>
+      <ItemData ItemOID="IT.DM.RFPENDTC" Value="2013-05-20"/>
+      <ItemData ItemOID="IT.DM.SITEID" Value="701"/>
+      <ItemData ItemOID="IT.DM.BRTHDTC" Value="1928"/>
+      <ItemData ItemOID="IT.DM.AGE" Value="84"/>
+      <ItemData ItemOID="IT.DM.AGEU" Value="YEARS"/>
+      <ItemData ItemOID="IT.DM.SEX" Value="M"/>
+      <ItemData ItemOID="IT.DM.RACE" Value="WHITE"/>
+      <ItemData ItemOID="IT.DM.ETHNIC" Value="NOT HISPANIC OR LATINO"/>
+      <ItemData ItemOID="IT.DM.ARMCD" Value="ZAN_LOW"/>
+      <ItemData ItemOID="IT.DM.ARM" Value="Zanomaline Low Dose (54 mg)"/>
+      <ItemData ItemOID="IT.DM.ACTARMCD" Value="ZAN_LOW"/>
+      <ItemData ItemOID="IT.DM.ACTARM" Value="Zanomaline Low Dose (54 mg)"/>
+      <ItemData ItemOID="IT.DM.COUNTRY" Value="USA"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DM" data:ItemGroupDataSeq="2">
+      <ItemData ItemOID="IT.DM.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DM.DOMAIN" Value="DM"/>
+      <ItemData ItemOID="IT.DM.USUBJID" Value="CDISC002"/>
+      <ItemData ItemOID="IT.DM.SUBJID" Value="1211"/>
+      <ItemData ItemOID="IT.DM.RFSTDTC" Value="2012-11-15"/>
+      <ItemData ItemOID="IT.DM.RFENDTC" Value="2013-01-14"/>
+      <ItemData ItemOID="IT.DM.RFXSTDTC" Value="2012-11-15"/>
+      <ItemData ItemOID="IT.DM.RFXENDTC" Value="2013-01-12"/>
+      <ItemData ItemOID="IT.DM.RFICDTC" Value="2012-10-30"/>
+      <ItemData ItemOID="IT.DM.RFPENDTC" Value="2013-01-14"/>
+      <ItemData ItemOID="IT.DM.DTHDTC" Value="2013-01-14"/>
+      <ItemData ItemOID="IT.DM.DTHFL" Value="Y"/>
+      <ItemData ItemOID="IT.DM.SITEID" Value="701"/>
+      <ItemData ItemOID="IT.DM.BRTHDTC" Value="1936"/>
+      <ItemData ItemOID="IT.DM.AGE" Value="76"/>
+      <ItemData ItemOID="IT.DM.AGEU" Value="YEARS"/>
+      <ItemData ItemOID="IT.DM.SEX" Value="F"/>
+      <ItemData ItemOID="IT.DM.RACE" Value="WHITE"/>
+      <ItemData ItemOID="IT.DM.ETHNIC" Value="NOT HISPANIC OR LATINO"/>
+      <ItemData ItemOID="IT.DM.ARMCD" Value="ZAN_LOW"/>
+      <ItemData ItemOID="IT.DM.ARM" Value="Zanomaline Low Dose (54 mg)"/>
+      <ItemData ItemOID="IT.DM.ACTARMCD" Value="ZAN_LOW"/>
+      <ItemData ItemOID="IT.DM.ACTARM" Value="Zanomaline Low Dose (54 mg)"/>
+      <ItemData ItemOID="IT.DM.COUNTRY" Value="USA"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DM" data:ItemGroupDataSeq="3">
+      <ItemData ItemOID="IT.DM.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DM.DOMAIN" Value="DM"/>
+      <ItemData ItemOID="IT.DM.USUBJID" Value="CDISC003"/>
+      <ItemData ItemOID="IT.DM.SUBJID" Value="1302"/>
+      <ItemData ItemOID="IT.DM.RFSTDTC" Value="2013-08-29"/>
+      <ItemData ItemOID="IT.DM.RFENDTC" Value="2013-11-05"/>
+      <ItemData ItemOID="IT.DM.RFXSTDTC" Value="2013-08-29"/>
+      <ItemData ItemOID="IT.DM.RFXENDTC" Value="2013-11-05"/>
+      <ItemData ItemOID="IT.DM.RFICDTC" Value="2013-08-20"/>
+      <ItemData ItemOID="IT.DM.RFPENDTC" Value="2014-02-13"/>
+      <ItemData ItemOID="IT.DM.SITEID" Value="701"/>
+      <ItemData ItemOID="IT.DM.BRTHDTC" Value="1951"/>
+      <ItemData ItemOID="IT.DM.AGE" Value="61"/>
+      <ItemData ItemOID="IT.DM.AGEU" Value="YEARS"/>
+      <ItemData ItemOID="IT.DM.SEX" Value="M"/>
+      <ItemData ItemOID="IT.DM.RACE" Value="WHITE"/>
+      <ItemData ItemOID="IT.DM.ETHNIC" Value="NOT HISPANIC OR LATINO"/>
+      <ItemData ItemOID="IT.DM.ARMCD" Value="ZAN_HIGH"/>
+      <ItemData ItemOID="IT.DM.ARM" Value="Zanomaline High Dose (81 mg)"/>
+      <ItemData ItemOID="IT.DM.ACTARMCD" Value="ZAN_HIGH"/>
+      <ItemData ItemOID="IT.DM.ACTARM" Value="Zanomaline High Dose (81 mg)"/>
+      <ItemData ItemOID="IT.DM.COUNTRY" Value="USA"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DM" data:ItemGroupDataSeq="4">
+      <ItemData ItemOID="IT.DM.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DM.DOMAIN" Value="DM"/>
+      <ItemData ItemOID="IT.DM.USUBJID" Value="CDISC004"/>
+      <ItemData ItemOID="IT.DM.SUBJID" Value="1345"/>
+      <ItemData ItemOID="IT.DM.RFSTDTC" Value="2013-10-08"/>
+      <ItemData ItemOID="IT.DM.RFENDTC" Value="2014-03-18"/>
+      <ItemData ItemOID="IT.DM.RFXSTDTC" Value="2013-10-08"/>
+      <ItemData ItemOID="IT.DM.RFXENDTC" Value="2014-03-18"/>
+      <ItemData ItemOID="IT.DM.RFICDTC" Value="2013-10-01"/>
+      <ItemData ItemOID="IT.DM.RFPENDTC" Value="2014-03-18"/>
+      <ItemData ItemOID="IT.DM.SITEID" Value="701"/>
+      <ItemData ItemOID="IT.DM.BRTHDTC" Value="1950"/>
+      <ItemData ItemOID="IT.DM.AGE" Value="63"/>
+      <ItemData ItemOID="IT.DM.AGEU" Value="YEARS"/>
+      <ItemData ItemOID="IT.DM.SEX" Value="F"/>
+      <ItemData ItemOID="IT.DM.RACE" Value="WHITE"/>
+      <ItemData ItemOID="IT.DM.ETHNIC" Value="NOT HISPANIC OR LATINO"/>
+      <ItemData ItemOID="IT.DM.ARMCD" Value="PLACEBO"/>
+      <ItemData ItemOID="IT.DM.ARM" Value="Placebo"/>
+      <ItemData ItemOID="IT.DM.ACTARMCD" Value="PLACEBO"/>
+      <ItemData ItemOID="IT.DM.ACTARM" Value="Placebo"/>
+      <ItemData ItemOID="IT.DM.COUNTRY" Value="USA"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DM" data:ItemGroupDataSeq="5">
+      <ItemData ItemOID="IT.DM.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DM.DOMAIN" Value="DM"/>
+      <ItemData ItemOID="IT.DM.USUBJID" Value="CDISC005"/>
+      <ItemData ItemOID="IT.DM.SUBJID" Value="1383"/>
+      <ItemData ItemOID="IT.DM.RFSTDTC" Value="2013-02-04"/>
+      <ItemData ItemOID="IT.DM.RFENDTC" Value="2013-08-06"/>
+      <ItemData ItemOID="IT.DM.RFXSTDTC" Value="2013-02-04"/>
+      <ItemData ItemOID="IT.DM.RFXENDTC" Value="2013-08-06"/>
+      <ItemData ItemOID="IT.DM.RFICDTC" Value="2013-01-22"/>
+      <ItemData ItemOID="IT.DM.RFPENDTC" Value="2013-08-06"/>
+      <ItemData ItemOID="IT.DM.SITEID" Value="701"/>
+      <ItemData ItemOID="IT.DM.BRTHDTC" Value="1941"/>
+      <ItemData ItemOID="IT.DM.AGE" Value="72"/>
+      <ItemData ItemOID="IT.DM.AGEU" Value="YEARS"/>
+      <ItemData ItemOID="IT.DM.SEX" Value="F"/>
+      <ItemData ItemOID="IT.DM.RACE" Value="WHITE"/>
+      <ItemData ItemOID="IT.DM.ETHNIC" Value="NOT HISPANIC OR LATINO"/>
+      <ItemData ItemOID="IT.DM.ARMCD" Value="ZAN_HIGH"/>
+      <ItemData ItemOID="IT.DM.ARM" Value="Zanomaline High Dose (81 mg)"/>
+      <ItemData ItemOID="IT.DM.ACTARMCD" Value="ZAN_HIGH"/>
+      <ItemData ItemOID="IT.DM.ACTARM" Value="Zanomaline High Dose (81 mg)"/>
+      <ItemData ItemOID="IT.DM.COUNTRY" Value="USA"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DM" data:ItemGroupDataSeq="6">
+      <ItemData ItemOID="IT.DM.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DM.DOMAIN" Value="DM"/>
+      <ItemData ItemOID="IT.DM.USUBJID" Value="CDISC006"/>
+      <ItemData ItemOID="IT.DM.SUBJID" Value="1429"/>
+      <ItemData ItemOID="IT.DM.RFSTDTC" Value="2013-03-19"/>
+      <ItemData ItemOID="IT.DM.RFENDTC" Value="2013-04-30"/>
+      <ItemData ItemOID="IT.DM.RFXSTDTC" Value="2013-03-19"/>
+      <ItemData ItemOID="IT.DM.RFXENDTC" Value="2013-04-30"/>
+      <ItemData ItemOID="IT.DM.RFICDTC" Value="2013-02-25"/>
+      <ItemData ItemOID="IT.DM.RFPENDTC" Value="2013-04-30"/>
+      <ItemData ItemOID="IT.DM.SITEID" Value="701"/>
+      <ItemData ItemOID="IT.DM.BRTHDTC" Value="1929"/>
+      <ItemData ItemOID="IT.DM.AGE" Value="84"/>
+      <ItemData ItemOID="IT.DM.AGEU" Value="YEARS"/>
+      <ItemData ItemOID="IT.DM.SEX" Value="F"/>
+      <ItemData ItemOID="IT.DM.RACE" Value="WHITE"/>
+      <ItemData ItemOID="IT.DM.ETHNIC" Value="NOT HISPANIC OR LATINO"/>
+      <ItemData ItemOID="IT.DM.ARMCD" Value="ZAN_LOW"/>
+      <ItemData ItemOID="IT.DM.ARM" Value="Zanomaline Low Dose (54 mg)"/>
+      <ItemData ItemOID="IT.DM.ACTARMCD" Value="ZAN_LOW"/>
+      <ItemData ItemOID="IT.DM.ACTARM" Value="Zanomaline Low Dose (54 mg)"/>
+      <ItemData ItemOID="IT.DM.COUNTRY" Value="USA"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DM" data:ItemGroupDataSeq="7">
+      <ItemData ItemOID="IT.DM.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DM.DOMAIN" Value="DM"/>
+      <ItemData ItemOID="IT.DM.USUBJID" Value="CDISC007"/>
+      <ItemData ItemOID="IT.DM.SUBJID" Value="1444"/>
+      <ItemData ItemOID="IT.DM.RFSTDTC" Value="2013-01-05"/>
+      <ItemData ItemOID="IT.DM.RFENDTC" Value="2013-02-13"/>
+      <ItemData ItemOID="IT.DM.RFXSTDTC" Value="2013-01-05"/>
+      <ItemData ItemOID="IT.DM.RFXENDTC" Value="2013-02-12"/>
+      <ItemData ItemOID="IT.DM.RFICDTC" Value="2012-12-31"/>
+      <ItemData ItemOID="IT.DM.RFPENDTC" Value="2013-06-20"/>
+      <ItemData ItemOID="IT.DM.SITEID" Value="701"/>
+      <ItemData ItemOID="IT.DM.BRTHDTC" Value="1949"/>
+      <ItemData ItemOID="IT.DM.AGE" Value="63"/>
+      <ItemData ItemOID="IT.DM.AGEU" Value="YEARS"/>
+      <ItemData ItemOID="IT.DM.SEX" Value="M"/>
+      <ItemData ItemOID="IT.DM.RACE" Value="WHITE"/>
+      <ItemData ItemOID="IT.DM.ETHNIC" Value="HISPANIC OR LATINO"/>
+      <ItemData ItemOID="IT.DM.ARMCD" Value="ZAN_HIGH"/>
+      <ItemData ItemOID="IT.DM.ARM" Value="Zanomaline High Dose (81 mg)"/>
+      <ItemData ItemOID="IT.DM.ACTARMCD" Value="ZAN_HIGH"/>
+      <ItemData ItemOID="IT.DM.ACTARM" Value="Zanomaline High Dose (81 mg)"/>
+      <ItemData ItemOID="IT.DM.COUNTRY" Value="USA"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DM" data:ItemGroupDataSeq="8">
+      <ItemData ItemOID="IT.DM.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DM.DOMAIN" Value="DM"/>
+      <ItemData ItemOID="IT.DM.USUBJID" Value="CDISC008"/>
+      <ItemData ItemOID="IT.DM.SUBJID" Value="1445"/>
+      <ItemData ItemOID="IT.DM.RFSTDTC" Value="2014-05-11"/>
+      <ItemData ItemOID="IT.DM.RFENDTC" Value="2014-11-01"/>
+      <ItemData ItemOID="IT.DM.RFXSTDTC" Value="2014-05-11"/>
+      <ItemData ItemOID="IT.DM.RFXENDTC" Value="2014-11-01"/>
+      <ItemData ItemOID="IT.DM.RFICDTC" Value="2014-05-01"/>
+      <ItemData ItemOID="IT.DM.RFPENDTC" Value="2014-11-01"/>
+      <ItemData ItemOID="IT.DM.DTHDTC" Value="2014-11-01"/>
+      <ItemData ItemOID="IT.DM.DTHFL" Value="Y"/>
+      <ItemData ItemOID="IT.DM.SITEID" Value="704"/>
+      <ItemData ItemOID="IT.DM.BRTHDTC" Value="1939"/>
+      <ItemData ItemOID="IT.DM.AGE" Value="75"/>
+      <ItemData ItemOID="IT.DM.AGEU" Value="YEARS"/>
+      <ItemData ItemOID="IT.DM.SEX" Value="M"/>
+      <ItemData ItemOID="IT.DM.RACE" Value="MULTIPLE"/>
+      <ItemData ItemOID="IT.DM.ETHNIC" Value="NOT HISPANIC OR LATINO"/>
+      <ItemData ItemOID="IT.DM.ARMCD" Value="PLACEBO"/>
+      <ItemData ItemOID="IT.DM.ARM" Value="Placebo"/>
+      <ItemData ItemOID="IT.DM.ACTARMCD" Value="PLACEBO"/>
+      <ItemData ItemOID="IT.DM.ACTARM" Value="Placebo"/>
+      <ItemData ItemOID="IT.DM.COUNTRY" Value="USA"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DM" data:ItemGroupDataSeq="9">
+      <ItemData ItemOID="IT.DM.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DM.DOMAIN" Value="DM"/>
+      <ItemData ItemOID="IT.DM.USUBJID" Value="CDISC009"/>
+      <ItemData ItemOID="IT.DM.SUBJID" Value="1087"/>
+      <ItemData ItemOID="IT.DM.RFSTDTC" Value="2012-10-22"/>
+      <ItemData ItemOID="IT.DM.RFENDTC" Value="2013-04-28"/>
+      <ItemData ItemOID="IT.DM.RFXSTDTC" Value="2012-10-22"/>
+      <ItemData ItemOID="IT.DM.RFXENDTC" Value="2013-04-28"/>
+      <ItemData ItemOID="IT.DM.RFICDTC" Value="2012-10-06"/>
+      <ItemData ItemOID="IT.DM.RFPENDTC" Value="2013-04-28"/>
+      <ItemData ItemOID="IT.DM.SITEID" Value="708"/>
+      <ItemData ItemOID="IT.DM.BRTHDTC" Value="1938"/>
+      <ItemData ItemOID="IT.DM.AGE" Value="74"/>
+      <ItemData ItemOID="IT.DM.AGEU" Value="YEARS"/>
+      <ItemData ItemOID="IT.DM.SEX" Value="F"/>
+      <ItemData ItemOID="IT.DM.RACE" Value="WHITE"/>
+      <ItemData ItemOID="IT.DM.ETHNIC" Value="NOT HISPANIC OR LATINO"/>
+      <ItemData ItemOID="IT.DM.ARMCD" Value="PLACEBO"/>
+      <ItemData ItemOID="IT.DM.ARM" Value="Placebo"/>
+      <ItemData ItemOID="IT.DM.ACTARMCD" Value="PLACEBO"/>
+      <ItemData ItemOID="IT.DM.ACTARM" Value="Placebo"/>
+      <ItemData ItemOID="IT.DM.COUNTRY" Value="USA"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DM" data:ItemGroupDataSeq="10">
+      <ItemData ItemOID="IT.DM.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DM.DOMAIN" Value="DM"/>
+      <ItemData ItemOID="IT.DM.USUBJID" Value="CDISC010"/>
+      <ItemData ItemOID="IT.DM.SUBJID" Value="1236"/>
+      <ItemData ItemOID="IT.DM.RFSTDTC" Value="2013-09-21"/>
+      <ItemData ItemOID="IT.DM.RFENDTC" Value="2013-09-26"/>
+      <ItemData ItemOID="IT.DM.RFXSTDTC" Value="2013-09-21"/>
+      <ItemData ItemOID="IT.DM.RFXENDTC" Value="2013-09-21"/>
+      <ItemData ItemOID="IT.DM.RFICDTC" Value="2013-09-08"/>
+      <ItemData ItemOID="IT.DM.RFPENDTC" Value="2013-09-26"/>
+      <ItemData ItemOID="IT.DM.SITEID" Value="708"/>
+      <ItemData ItemOID="IT.DM.BRTHDTC" Value="1927"/>
+      <ItemData ItemOID="IT.DM.AGE" Value="86"/>
+      <ItemData ItemOID="IT.DM.AGEU" Value="YEARS"/>
+      <ItemData ItemOID="IT.DM.SEX" Value="F"/>
+      <ItemData ItemOID="IT.DM.RACE" Value="WHITE"/>
+      <ItemData ItemOID="IT.DM.ETHNIC" Value="NOT HISPANIC OR LATINO"/>
+      <ItemData ItemOID="IT.DM.ARMCD" Value="ZAN_HIGH"/>
+      <ItemData ItemOID="IT.DM.ARM" Value="Zanomaline High Dose (81 mg)"/>
+      <ItemData ItemOID="IT.DM.ACTARMCD" Value="ZAN_HIGH"/>
+      <ItemData ItemOID="IT.DM.ACTARM" Value="Zanomaline High Dose (81 mg)"/>
+      <ItemData ItemOID="IT.DM.COUNTRY" Value="USA"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DM" data:ItemGroupDataSeq="11">
+      <ItemData ItemOID="IT.DM.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DM.DOMAIN" Value="DM"/>
+      <ItemData ItemOID="IT.DM.USUBJID" Value="CDISC011"/>
+      <ItemData ItemOID="IT.DM.SUBJID" Value="1336"/>
+      <ItemData ItemOID="IT.DM.RFSTDTC" Value="2012-12-07"/>
+      <ItemData ItemOID="IT.DM.RFENDTC" Value="2013-06-05"/>
+      <ItemData ItemOID="IT.DM.RFXSTDTC" Value="2012-12-07"/>
+      <ItemData ItemOID="IT.DM.RFXENDTC" Value="2013-06-05"/>
+      <ItemData ItemOID="IT.DM.RFICDTC" Value="2012-11-21"/>
+      <ItemData ItemOID="IT.DM.RFPENDTC" Value="2013-07-05"/>
+      <ItemData ItemOID="IT.DM.SITEID" Value="708"/>
+      <ItemData ItemOID="IT.DM.BRTHDTC" Value="1939"/>
+      <ItemData ItemOID="IT.DM.AGE" Value="73"/>
+      <ItemData ItemOID="IT.DM.AGEU" Value="YEARS"/>
+      <ItemData ItemOID="IT.DM.SEX" Value="M"/>
+      <ItemData ItemOID="IT.DM.RACE" Value="WHITE"/>
+      <ItemData ItemOID="IT.DM.ETHNIC" Value="NOT HISPANIC OR LATINO"/>
+      <ItemData ItemOID="IT.DM.ARMCD" Value="ZAN_HIGH"/>
+      <ItemData ItemOID="IT.DM.ARM" Value="Zanomaline High Dose (81 mg)"/>
+      <ItemData ItemOID="IT.DM.ACTARMCD" Value="ZAN_HIGH"/>
+      <ItemData ItemOID="IT.DM.ACTARM" Value="Zanomaline High Dose (81 mg)"/>
+      <ItemData ItemOID="IT.DM.COUNTRY" Value="USA"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DM" data:ItemGroupDataSeq="12">
+      <ItemData ItemOID="IT.DM.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DM.DOMAIN" Value="DM"/>
+      <ItemData ItemOID="IT.DM.USUBJID" Value="CDISC012"/>
+      <ItemData ItemOID="IT.DM.SUBJID" Value="1378"/>
+      <ItemData ItemOID="IT.DM.RFSTDTC" Value="2013-09-03"/>
+      <ItemData ItemOID="IT.DM.RFENDTC" Value="2014-01-28"/>
+      <ItemData ItemOID="IT.DM.RFXSTDTC" Value="2013-09-03"/>
+      <ItemData ItemOID="IT.DM.RFXENDTC" Value="2014-01-28"/>
+      <ItemData ItemOID="IT.DM.RFICDTC" Value="2013-08-24"/>
+      <ItemData ItemOID="IT.DM.RFPENDTC" Value="2014-01-28"/>
+      <ItemData ItemOID="IT.DM.SITEID" Value="708"/>
+      <ItemData ItemOID="IT.DM.BRTHDTC" Value="1946"/>
+      <ItemData ItemOID="IT.DM.AGE" Value="67"/>
+      <ItemData ItemOID="IT.DM.AGEU" Value="YEARS"/>
+      <ItemData ItemOID="IT.DM.SEX" Value="M"/>
+      <ItemData ItemOID="IT.DM.RACE" Value="BLACK OR AFRICAN AMERICAN"/>
+      <ItemData ItemOID="IT.DM.ETHNIC" Value="NOT HISPANIC OR LATINO"/>
+      <ItemData ItemOID="IT.DM.ARMCD" Value="PLACEBO"/>
+      <ItemData ItemOID="IT.DM.ARM" Value="Placebo"/>
+      <ItemData ItemOID="IT.DM.ACTARMCD" Value="PLACEBO"/>
+      <ItemData ItemOID="IT.DM.ACTARM" Value="Placebo"/>
+      <ItemData ItemOID="IT.DM.COUNTRY" Value="USA"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DM" data:ItemGroupDataSeq="13">
+      <ItemData ItemOID="IT.DM.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DM.DOMAIN" Value="DM"/>
+      <ItemData ItemOID="IT.DM.USUBJID" Value="CDISC013"/>
+      <ItemData ItemOID="IT.DM.SUBJID" Value="1083"/>
+      <ItemData ItemOID="IT.DM.RFSTDTC" Value="2013-07-22"/>
+      <ItemData ItemOID="IT.DM.RFENDTC" Value="2013-08-03"/>
+      <ItemData ItemOID="IT.DM.RFXSTDTC" Value="2013-07-22"/>
+      <ItemData ItemOID="IT.DM.RFXENDTC" Value="2013-08-01"/>
+      <ItemData ItemOID="IT.DM.RFICDTC" Value="2013-07-09"/>
+      <ItemData ItemOID="IT.DM.RFPENDTC" Value="2013-08-03"/>
+      <ItemData ItemOID="IT.DM.DTHDTC" Value="2013-08-03"/>
+      <ItemData ItemOID="IT.DM.DTHFL" Value="Y"/>
+      <ItemData ItemOID="IT.DM.SITEID" Value="710"/>
+      <ItemData ItemOID="IT.DM.BRTHDTC" Value="1924"/>
+      <ItemData ItemOID="IT.DM.AGE" Value="89"/>
+      <ItemData ItemOID="IT.DM.AGEU" Value="YEARS"/>
+      <ItemData ItemOID="IT.DM.SEX" Value="F"/>
+      <ItemData ItemOID="IT.DM.RACE" Value="WHITE"/>
+      <ItemData ItemOID="IT.DM.ETHNIC" Value="NOT HISPANIC OR LATINO"/>
+      <ItemData ItemOID="IT.DM.ARMCD" Value="PLACEBO"/>
+      <ItemData ItemOID="IT.DM.ARM" Value="Placebo"/>
+      <ItemData ItemOID="IT.DM.ACTARMCD" Value="PLACEBO"/>
+      <ItemData ItemOID="IT.DM.ACTARM" Value="Placebo"/>
+      <ItemData ItemOID="IT.DM.COUNTRY" Value="USA"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DM" data:ItemGroupDataSeq="14">
+      <ItemData ItemOID="IT.DM.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DM.DOMAIN" Value="DM"/>
+      <ItemData ItemOID="IT.DM.USUBJID" Value="CDISC014"/>
+      <ItemData ItemOID="IT.DM.SUBJID" Value="1012"/>
+      <ItemData ItemOID="IT.DM.RFSTDTC" Value="2013-04-03"/>
+      <ItemData ItemOID="IT.DM.RFENDTC" Value="2013-05-02"/>
+      <ItemData ItemOID="IT.DM.RFXSTDTC" Value="2013-04-03"/>
+      <ItemData ItemOID="IT.DM.RFXENDTC" Value="2013-04-29"/>
+      <ItemData ItemOID="IT.DM.RFICDTC" Value="2013-03-20"/>
+      <ItemData ItemOID="IT.DM.RFPENDTC" Value="2013-09-18"/>
+      <ItemData ItemOID="IT.DM.SITEID" Value="711"/>
+      <ItemData ItemOID="IT.DM.BRTHDTC" Value="1945"/>
+      <ItemData ItemOID="IT.DM.AGE" Value="67"/>
+      <ItemData ItemOID="IT.DM.AGEU" Value="YEARS"/>
+      <ItemData ItemOID="IT.DM.SEX" Value="F"/>
+      <ItemData ItemOID="IT.DM.RACE" Value="WHITE"/>
+      <ItemData ItemOID="IT.DM.ETHNIC" Value="NOT HISPANIC OR LATINO"/>
+      <ItemData ItemOID="IT.DM.ARMCD" Value="ZAN_HIGH"/>
+      <ItemData ItemOID="IT.DM.ARM" Value="Zanomaline High Dose (81 mg)"/>
+      <ItemData ItemOID="IT.DM.ACTARMCD" Value="ZAN_HIGH"/>
+      <ItemData ItemOID="IT.DM.ACTARM" Value="Zanomaline High Dose (81 mg)"/>
+      <ItemData ItemOID="IT.DM.COUNTRY" Value="USA"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DM" data:ItemGroupDataSeq="15">
+      <ItemData ItemOID="IT.DM.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DM.DOMAIN" Value="DM"/>
+      <ItemData ItemOID="IT.DM.USUBJID" Value="CDISC015"/>
+      <ItemData ItemOID="IT.DM.SUBJID" Value="1022"/>
+      <ItemData ItemOID="IT.DM.RFICDTC" Value="2014-03-17"/>
+      <ItemData ItemOID="IT.DM.RFPENDTC" Value="2014-03-17"/>
+      <ItemData ItemOID="IT.DM.SITEID" Value="711"/>
+      <ItemData ItemOID="IT.DM.BRTHDTC" Value="1928"/>
+      <ItemData ItemOID="IT.DM.AGE" Value="86"/>
+      <ItemData ItemOID="IT.DM.AGEU" Value="YEARS"/>
+      <ItemData ItemOID="IT.DM.SEX" Value="F"/>
+      <ItemData ItemOID="IT.DM.RACE" Value="WHITE"/>
+      <ItemData ItemOID="IT.DM.ETHNIC" Value="NOT HISPANIC OR LATINO"/>
+      <ItemData ItemOID="IT.DM.ARMNRS" Value="SCREEN FAILURE"/>
+      <ItemData ItemOID="IT.DM.COUNTRY" Value="USA"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DM" data:ItemGroupDataSeq="16">
+      <ItemData ItemOID="IT.DM.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DM.DOMAIN" Value="DM"/>
+      <ItemData ItemOID="IT.DM.USUBJID" Value="CDISC016"/>
+      <ItemData ItemOID="IT.DM.SUBJID" Value="1143"/>
+      <ItemData ItemOID="IT.DM.RFSTDTC" Value="2013-04-03"/>
+      <ItemData ItemOID="IT.DM.RFENDTC" Value="2013-06-01"/>
+      <ItemData ItemOID="IT.DM.RFXSTDTC" Value="2013-04-03"/>
+      <ItemData ItemOID="IT.DM.RFXENDTC" Value="2013-05-30"/>
+      <ItemData ItemOID="IT.DM.RFICDTC" Value="2013-03-30"/>
+      <ItemData ItemOID="IT.DM.RFPENDTC" Value="2013-09-22"/>
+      <ItemData ItemOID="IT.DM.SITEID" Value="711"/>
+      <ItemData ItemOID="IT.DM.BRTHDTC" Value="1936"/>
+      <ItemData ItemOID="IT.DM.AGE" Value="76"/>
+      <ItemData ItemOID="IT.DM.AGEU" Value="YEARS"/>
+      <ItemData ItemOID="IT.DM.SEX" Value="F"/>
+      <ItemData ItemOID="IT.DM.RACE" Value="WHITE"/>
+      <ItemData ItemOID="IT.DM.ETHNIC" Value="NOT HISPANIC OR LATINO"/>
+      <ItemData ItemOID="IT.DM.ARMCD" Value="ZAN_LOW"/>
+      <ItemData ItemOID="IT.DM.ARM" Value="Zanomaline Low Dose (54 mg)"/>
+      <ItemData ItemOID="IT.DM.ACTARMCD" Value="ZAN_LOW"/>
+      <ItemData ItemOID="IT.DM.ACTARM" Value="Zanomaline Low Dose (54 mg)"/>
+      <ItemData ItemOID="IT.DM.COUNTRY" Value="USA"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DM" data:ItemGroupDataSeq="17">
+      <ItemData ItemOID="IT.DM.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DM.DOMAIN" Value="DM"/>
+      <ItemData ItemOID="IT.DM.USUBJID" Value="CDISC017"/>
+      <ItemData ItemOID="IT.DM.SUBJID" Value="1250"/>
+      <ItemData ItemOID="IT.DM.RFSTDTC" Value="2013-09-21"/>
+      <ItemData ItemOID="IT.DM.RFENDTC" Value="2014-02-08"/>
+      <ItemData ItemOID="IT.DM.RFXSTDTC" Value="2013-09-21"/>
+      <ItemData ItemOID="IT.DM.RFXENDTC" Value="2014-01-31"/>
+      <ItemData ItemOID="IT.DM.RFICDTC" Value="2013-08-21"/>
+      <ItemData ItemOID="IT.DM.RFPENDTC" Value="2014-03-08"/>
+      <ItemData ItemOID="IT.DM.SITEID" Value="718"/>
+      <ItemData ItemOID="IT.DM.BRTHDTC" Value="1931"/>
+      <ItemData ItemOID="IT.DM.AGE" Value="82"/>
+      <ItemData ItemOID="IT.DM.AGEU" Value="YEARS"/>
+      <ItemData ItemOID="IT.DM.SEX" Value="F"/>
+      <ItemData ItemOID="IT.DM.RACE" Value="WHITE"/>
+      <ItemData ItemOID="IT.DM.ETHNIC" Value="HISPANIC OR LATINO"/>
+      <ItemData ItemOID="IT.DM.ARMCD" Value="ZAN_LOW"/>
+      <ItemData ItemOID="IT.DM.ARM" Value="Zanomaline Low Dose (54 mg)"/>
+      <ItemData ItemOID="IT.DM.ACTARMCD" Value="ZAN_LOW"/>
+      <ItemData ItemOID="IT.DM.ACTARM" Value="Zanomaline Low Dose (54 mg)"/>
+      <ItemData ItemOID="IT.DM.COUNTRY" Value="USA"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DM" data:ItemGroupDataSeq="18">
+      <ItemData ItemOID="IT.DM.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DM.DOMAIN" Value="DM"/>
+      <ItemData ItemOID="IT.DM.USUBJID" Value="CDISC018"/>
+      <ItemData ItemOID="IT.DM.SUBJID" Value="1427"/>
+      <ItemData ItemOID="IT.DM.RFSTDTC" Value="2012-12-17"/>
+      <ItemData ItemOID="IT.DM.RFENDTC" Value="2013-02-18"/>
+      <ItemData ItemOID="IT.DM.RFXSTDTC" Value="2012-12-17"/>
+      <ItemData ItemOID="IT.DM.RFXENDTC" Value="2013-02-11"/>
+      <ItemData ItemOID="IT.DM.RFICDTC" Value="2012-12-13"/>
+      <ItemData ItemOID="IT.DM.RFPENDTC" Value="2013-06-03"/>
+      <ItemData ItemOID="IT.DM.SITEID" Value="718"/>
+      <ItemData ItemOID="IT.DM.BRTHDTC" Value="1938"/>
+      <ItemData ItemOID="IT.DM.AGE" Value="74"/>
+      <ItemData ItemOID="IT.DM.AGEU" Value="YEARS"/>
+      <ItemData ItemOID="IT.DM.SEX" Value="F"/>
+      <ItemData ItemOID="IT.DM.RACE" Value="BLACK OR AFRICAN AMERICAN"/>
+      <ItemData ItemOID="IT.DM.ETHNIC" Value="NOT HISPANIC OR LATINO"/>
+      <ItemData ItemOID="IT.DM.ARMCD" Value="ZAN_HIGH"/>
+      <ItemData ItemOID="IT.DM.ARM" Value="Zanomaline High Dose (81 mg)"/>
+      <ItemData ItemOID="IT.DM.ACTARMCD" Value="ZAN_HIGH"/>
+      <ItemData ItemOID="IT.DM.ACTARM" Value="Zanomaline High Dose (81 mg)"/>
+      <ItemData ItemOID="IT.DM.COUNTRY" Value="USA"/>
+    </ItemGroupData>
+  </ClinicalData>
+</ODM>

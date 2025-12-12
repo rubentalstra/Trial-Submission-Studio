@@ -1,0 +1,13 @@
+﻿Site sequence number,Site name,Site code,Subject sequence number,Subject Id,Event sequence number,Event Id,Event name,Event date,Activity Id,Activity name,Form sequence number,Subject form sequence number,Origin Subject form sequence number,Source Subject form sequence number,Design version,Was the Physician’s Global Assessment performed?,Was the Physician’s Global Assessment performed? - Code,Date ofassessment,Reason not done,Overall assessment of severity,Overall assessment of severity - Code
+SiteSeq,SiteName,SiteCode,SubjectSeq,SubjectId,EventSeq,EventId,EventName,EventDate,ActivityId,ActivityName,FormSeq,SubjectFormSeq,OriginSubjectFormSeq,SourceSubjectFormSeq,DesignVersion,PGAPERF,PGAPERFCD,QSPGADAT,QSPGAREASND,QSPGARS,QSPGARSCD
+1,KIEM site,KIEM,1,KIEM-01,1,V1,Visit 1,2023-08-01,V1_PART2,,1,1,1,,1.1,Yes,Y,2023-08-01,,Moderate,2
+1,KIEM site,KIEM,1,KIEM-01,1,V2,Visit 2,2023-08-04,V2,,1,2,2,,1.1,Yes,Y,2023-08-04,,Moderate,2
+1,KIEM site,KIEM,1,KIEM-01,1,V3,Visit 3,2023-08-17,V3,,1,3,3,,1.1,Yes,Y,2023-08-17,,Mild,1
+1,KIEM site,KIEM,1,KIEM-01,1,V4,Visit 4,2023-08-31,V4,,1,4,4,,1.1,Yes,Y,2023-08-31,,Mild,1
+1,KIEM site,KIEM,1,KIEM-01,1,V5,Visit 5,2023-09-25,V5,,1,5,5,,1.1,Yes,Y,2023-09-25,,Absent,0
+1,KIEM site,KIEM,2,KIEM-02,1,V1,Visit 1,2023-10-02,V1_PART2,,1,1,1,,1.1,Yes,Y,2023-10-02,,Moderate,2
+1,KIEM site,KIEM,3,KIEM-03,1,V1,Visit 1,2023-11-20,V1_PART2,,1,1,1,,1.1,Yes,Y,2023-11-20,,Severe,3
+1,KIEM site,KIEM,3,KIEM-03,1,V2,Visit 2,2023-11-27,V2,,1,2,2,,1.1,No,N,,Virtual visit,,
+1,KIEM site,KIEM,3,KIEM-03,1,V3,Visit 3,2023-12-11,V3,,1,3,3,,1.1,Yes,Y,2023-12-11,,Moderate,2
+1,KIEM site,KIEM,3,KIEM-03,1,V4,Visit 4,2023-12-22,V4,,1,4,4,,1.1,Yes,Y,2023-12-22,,Moderate,2
+1,KIEM site,KIEM,3,KIEM-03,1,V5,Visit 5,2024-01-22,V5,,1,5,5,,1.1,Yes,Y,2024-01-22,,Mild,1

@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xs:schema targetNamespace="http://www.cdisc.org/ns/odm/v1.3" xmlns="http://www.cdisc.org/ns/odm/v1.3" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:def="http://www.cdisc.org/ns/def/v2.1"
+  xmlns:odm="http://www.cdisc.org/ns/odm/v1.3" elementFormDefault="qualified" attributeFormDefault="unqualified" version="2.1">
+
+
+  <!--
+      Define-XML 2.1.0 define-extension schema draft
+      as developed by the CDISC XML Technologies Team
+  -->
+
+  <xs:import namespace="http://www.cdisc.org/ns/def/v2.1" schemaLocation="define-ns.xsd"/>
+  <xs:redefine schemaLocation="../cdisc-odm-1.3.2/ODM1-3-2-foundation.xsd">
+
+
+    <xs:annotation>
+      <xs:documentation>Define-XML 2.1.0 define-extension schema as developed by the CDISC XML Technologies Team</xs:documentation>
+    </xs:annotation>
+
+    <!--
+        ODM
+    -->
+    <xs:attributeGroup name="ODMAttributeExtension">
+      <xs:attributeGroup ref="ODMAttributeExtension"/>
+      <xs:attribute ref="def:Context" use="required"/>
+    </xs:attributeGroup>
+
+    <!--
+        MetaDataVersion
+    -->
+    <xs:attributeGroup name="MetaDataVersionAttributeExtension">
+      <xs:attributeGroup ref="MetaDataVersionAttributeExtension"/>
+      <xs:attribute ref="def:DefineVersion" use="required"/>
+      <!-- deprecated: replaced by def:Standards element -->
+      <!-- <xs:attribute ref="def:StandardName" use="required"/> -->
+      <!-- <xs:attribute ref="def:StandardVersion" use="required"/> -->
+      <xs:attribute ref="def:CommentOID" use="optional"/>
+    </xs:attributeGroup>
+
+    <xs:group name="MetaDataVersionPreIncludeElementExtension">
+      <xs:sequence>
+        <xs:group ref="MetaDataVersionPreIncludeElementExtension"/>
+        <xs:element ref="def:Standards" minOccurs="0" maxOccurs="1"/>
+        <xs:element ref="def:AnnotatedCRF" minOccurs="0" maxOccurs="1"/>
+        <xs:element ref="def:SupplementalDoc" minOccurs="0" maxOccurs="1"/>
+        <xs:element ref="def:ValueListDef" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element ref="def:WhereClauseDef" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:group>
+
+    <xs:group name="MetaDataVersionElementExtension">
+      <xs:sequence>
+        <xs:group ref="MetaDataVersionElementExtension"/>
+        <xs:element ref="def:CommentDef" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element ref="def:leaf" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:group>
+
+
+    <!--
+        ItemGroupDef
+    -->
+    <xs:attributeGroup name="ItemGroupDefAttributeExtension">
+      <xs:attributeGroup ref="ItemGroupDefAttributeExtension"/>
+      <xs:attribute ref="def:Structure" use="required"/>
+      <!-- deprecated: replaced by def:Class element -->
+      <!-- <xs:attribute ref="def:Class" use="optional"/> -->
+      <xs:attribute ref="def:ArchiveLocationID" use="optional"/>
+      <xs:attribute ref="def:StandardOID" use="optional"/>
+      <xs:attribute ref="def:IsNonStandard" use="optional"/>
+      <xs:attribute ref="def:HasNoData" use="optional"/>
+      <xs:attribute ref="def:CommentOID" use="optional"/>
+    </xs:attributeGroup>
+
+    <xs:group name="ItemGroupDefElementExtension">
+      <xs:sequence>
+        <xs:group ref="ItemGroupDefElementExtension"/>
+        <xs:element ref="def:Class" minOccurs="0" maxOccurs="1"/>
+        <xs:element ref="def:leaf" minOccurs="0" maxOccurs="1"/>
+      </xs:sequence>
+    </xs:group>
+
+
+    <!--
+        ItemRef
+    -->
+    <xs:attributeGroup name="ItemRefAttributeExtension">
+      <xs:attributeGroup ref="ItemRefAttributeExtension"/>
+      <xs:attribute ref="def:IsNonStandard" use="optional"/>
+      <xs:attribute ref="def:HasNoData" use="optional"/>
+    </xs:attributeGroup>
+
+    <xs:group name="ItemRefElementExtension">
+      <xs:sequence>
+        <xs:group ref="ItemRefElementExtension"/>
+        <xs:element ref="def:WhereClauseRef" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:group>
+
+
+    <!--
+        ItemDef
+    -->
+    <xs:attributeGroup name="ItemDefAttributeExtension">
+      <xs:attributeGroup ref="ItemDefAttributeExtension"/>
+      <xs:attribute ref="def:DisplayFormat" use="optional"/>
+      <xs:attribute ref="def:CommentOID" use="optional"/>
+    </xs:attributeGroup>
+
+    <xs:group name="ItemDefElementExtension">
+      <xs:sequence>
+        <xs:group ref="ItemDefElementExtension"/>
+        <xs:element ref="def:Origin" minOccurs="0" maxOccurs="unbounded"/>
+        <!-- spec says required but optional for bkwd compatibility -->
+        <xs:element ref="def:ValueListRef" minOccurs="0" maxOccurs="1"/>
+      </xs:sequence>
+    </xs:group>
+
+
+    <!--
+        RangeCheck
+    -->
+    <xs:attributeGroup name="RangeCheckAttributeExtension">
+      <xs:attributeGroup ref="RangeCheckAttributeExtension"/>
+      <xs:attribute ref="def:ItemOID" use="required"/>
+    </xs:attributeGroup>
+
+
+    <!--
+          CodeList
+      -->
+    <xs:attributeGroup name="CodeListAttributeExtension">
+      <xs:attributeGroup ref="CodeListAttributeExtension"/>
+      <xs:attribute ref="def:StandardOID" use="optional"/>
+      <xs:attribute ref="def:IsNonStandard" use="optional"/>
+      <xs:attribute ref="def:CommentOID" use="optional"/>
+    </xs:attributeGroup>
+
+    <!--
+          CodeListItem and EnumeratedItem
+      -->
+    <xs:attributeGroup name="CodeListItemAttributeExtension">
+      <xs:attributeGroup ref="CodeListItemAttributeExtension"/>
+      <xs:attribute ref="def:ExtendedValue" use="optional"/>
+    </xs:attributeGroup>
+
+    <xs:group name="CodeListItemElementExtension">
+      <xs:sequence>
+        <xs:group ref="CodeListItemElementExtension"/>
+        <xs:element ref="Description" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:group>
+
+    <xs:attributeGroup name="EnumeratedItemAttributeExtension">
+      <xs:attributeGroup ref="EnumeratedItemAttributeExtension"/>
+      <xs:attribute ref="def:ExtendedValue" use="optional"/>
+    </xs:attributeGroup>
+
+    <xs:group name="EnumeratedItemElementExtension">
+      <xs:sequence>
+        <xs:group ref="EnumeratedItemElementExtension"/>
+        <xs:element ref="Description" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:group>
+
+    <!--
+          Methoddef
+      -->
+
+    <xs:group name="MethodDefElementExtension">
+      <xs:sequence>
+        <xs:group ref="MethodDefElementExtension"/>
+        <xs:element ref="def:DocumentRef" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+    </xs:group>
+
+
+  </xs:redefine>
+
+</xs:schema>

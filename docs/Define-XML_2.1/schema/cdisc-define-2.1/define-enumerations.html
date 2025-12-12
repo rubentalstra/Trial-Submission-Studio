@@ -1,0 +1,391 @@
+﻿<!--DEF Schemadoc 0.1--><!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+  <head>
+    <META http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <style type="text/css">
+			#menu {
+			  position: fixed;
+			  left: 10px;
+			  top: 10px;
+			  width: 15%;
+			  height: 96%;
+			  bottom: 0px;
+			  overflow: auto;
+			  background-color: #FFFFFF;
+			  color: #000000;
+			  border: 0px none black;
+			  text-align: left;
+			  white-space: nowrap;
+			}
+			
+			#main {
+			  position: absolute;
+			  left: 17%;
+			  overflow: auto;
+			  color: #000000;
+			  background-color: #FFFFFF;
+			  float: none !important;
+			}
+			
+			table {
+			  border-collapse: collapse;
+			  border-spacing: 0;
+			}
+			
+			th {
+			  padding: 4px;
+			  text-align: left;
+			  font-weight: bold;
+			}
+			
+			td {
+			  padding: 4px;
+			  text-align: left;
+			  font-weight: normal;
+			}
+			
+			ol,
+			ul {
+			  list-style: none;
+			  padding: 5px;
+			  margin-left: 0;
+			}
+		  
+			body {
+			background-color: #FFFFFF;
+		  font-family: Verdana, Arial, Helvetica, sans-serif;
+			font-style:  normal;
+			font-weight: normal;
+			font-size: 62.5%;
+			padding: 10px;
+			}
+			
+			h1{
+			font-size: 1.6em;
+			margin-left: 0;
+			font-weight: bolder;
+			text-align: left;
+			color: #696969;
+		  }
+		  
+			h2 {
+			font-size: 1.5em;
+			margin-left: 0;
+			font-weight: bolder;
+			text-align: left;
+			color: #696969;
+		  }
+			
+			h3 {
+			font-size: 1.4em;
+			margin-left: 0;
+			font-weight: bolder;
+			text-align: left;
+			color: #696969;
+		  }
+			
+			h4 {
+			font-size: 1.3em;
+			margin-left: 0;
+			font-weight: bolder;
+			text-align: left;
+			color: #696969;
+		  }
+			
+			h5 {
+			font-size: 1.2em;
+			margin-left: 0;
+			font-weight: bolder;
+			text-align: left;
+			color: #696969;
+		  }
+			
+			.element-list ul {
+			list-style: disc;
+			margin-left: 5px;
+			}
+			
+			.element-list li {
+			padding-left: 5px;
+			font-size: 1.3em;
+			}
+			
+			.element, 
+			.types {
+			margin: 10px 20px 20px 20px;
+			}
+			
+			.element div {
+			margin: 10px 20px 10px 20px;
+			}
+			
+			.element table {
+			margin-top: 5px;
+			}
+			
+			table{
+			width: 95%;
+			border-spacing: 4px;
+			border: 1px solid #000000;
+		  background-color: #EEEEEE;
+		  margin-top: 5px;
+		  border-collapse: collapse;
+		  padding: 5px;
+		  empty-cells: show;
+		  }
+		  
+			table tr{
+			border: 1px solid #000000;
+		  }
+		  
+		  table tr.header{
+		  background-color: #6699CC;
+		  color: #FFFFFF;
+		  font-weight: bold;
+		  }
+		  
+		  tr.tablerowodd{
+		  background-color: #FFFFFF;
+		  }
+		  tr.tableroweven{
+		  background-color: #EEEEEE;
+		  }
+
+		  table th{
+			font-weight: bold;
+			vertical-align: top;
+			text-align: left;
+			padding: 5px;
+			border: 1px solid #000000;
+		  font-size: 1.3em;
+		  }
+		  
+		  table td{
+		  vertical-align: top;
+		  padding: 5px;
+		  border: 1px solid #000000;
+		  font-size: 1.2em;
+		  line-height: 150%;
+		  }
+		  
+		  .element td.name { width: 20%; }
+		  .element td.min, td.max, td.use { width: 15%; }
+		  .element td.type { width: 10%; }
+		  .element td.description { width: 50%; }
+			.element td.extensible {}
+			.element td.values {white-space: nowrap;}
+			
+			caption {
+			display: none;
+			}
+			
+			.use h5 {
+			display: inline;
+			}
+			
+			.heading {
+			font-weight: bold;
+			}
+			
+			.types td.name { width: 15%; }
+			.types td.description { width: 30%; }
+			.types td.type { width: 10%; }
+			.types td.definition { width: 45%; }
+		
+	  	
+	  	@media print{
+	  	
+	  	@page {
+	  	margin: 1.5cm;
+	  	}
+	  	
+	  	body,
+	  	h1,
+	  	table caption,
+	  	table caption.header{
+	  	color: #000;
+	  	background: #fff;
+	  	float: none !important;
+	  	}
+	  	
+	  	
+	  	table{
+	  	border-width: 2px;
+	  	}
+	  	
+	  	#menu{
+	  	display: none !important;
+	  	width: 0px;
+	  	}
+	  	#main{
+	  	left: 2cm;
+	  	float: none !important;
+	  	}
+	  	
+	  	row, ul, img {
+	  	page-break-inside: avoid;
+	  	}
+	  	
+	  	}
+	  </style>
+  </head>
+  <body>
+    <div id="menu">
+      <h2>Enumerations</h2>
+      <div class="section element-list">
+        <ul>
+          <li><a href="#attribute-def:DefineVersion">DefineVersion</a></li>
+          <li><a href="#attribute-def:ExternalCodeListDictionary">ExternalCodeListDictionary</a></li>
+          <li><a href="#attribute-def:ItemGroupClass">ItemGroupClass</a></li>
+          <li><a href="#attribute-def:ItemGroupSubClass">ItemGroupSubClass</a></li>
+          <li><a href="#attribute-def:ItemGroupClassSubClass">ItemGroupClassSubClass</a></li>
+          <li><a href="#attribute-def:ODMContext">ODMContext</a></li>
+          <li><a href="#attribute-def:OriginSource">OriginSource</a></li>
+          <li><a href="#attribute-def:OriginType">OriginType</a></li>
+          <li><a href="#attribute-def:PDFPageType">PDFPageType</a></li>
+          <li><a href="#attribute-def:StandardName">StandardName</a></li>
+          <li><a href="#attribute-def:StandardPublishingSet">StandardPublishingSet</a></li>
+          <li><a href="#attribute-def:StandardStatus">StandardStatus</a></li>
+          <li><a href="#attribute-def:StandardType">StandardType</a></li>
+          <li><a href="#attribute-def:YesOnly">YesOnly</a></li>
+          <li><a href="#attribute-def:SdtmigVersionResponse">SdtmigVersionResponse</a></li>
+        </ul>
+      </div>
+    </div>
+    <div id="main">
+      <h3>Define-XML 2.1.10 define-enumerations schema as developed by the CDISC Data
+      Exchange Standards Team based on CDISC/NCI DefineXML Controlled Terminology Package 60
+      (version 2025-09-26)</h3>
+      <h3>Schema version: 2.1.10</h3>
+      <div class="types">
+        <table>
+          <tr class="header">
+            <th>Name</th>
+            <th>Description [NCI Code]</th>
+            <th>Type</th>
+            <th>Extensible</th>
+            <th>Permitted Values [NCI Code]</th>
+          </tr>
+          <tr class="tablerowodd">
+            <td class="name"><a id="attribute-def:DefineVersion"></a><a id="type-def:DefineVersion">DefineVersion</a></td>
+            <td class="description">Version of Define-XML that the file conforms to.</td>
+            <td class="type">Pattern</td>
+            <td class="extensible">No (odm:text)</td>
+            <td class="definition"><span class="code">2.1.(0|([1-9][0-9]*))</span></td>
+          </tr>
+          <tr class="tableroweven">
+            <td class="name"><a id="attribute-def:ExternalCodeListDictionary"></a><a id="type-def:ExternalCodeListDictionary">ExternalCodeListDictionary</a></td>
+            <td class="description">Terminology relevant to the names given to a reference source that lists
+        words and gives their meaning. [<span class="nci">C66788</span>]</td>
+            <td class="type">Enumeration</td>
+            <td class="extensible">Yes (odm:text)</td>
+            <td class="values"><span class="code">'CDISC CT' [<span class="nci">C163415</span>]</span><br><span class="code">'ClinicalTrials.gov' [<span class="nci">C124233</span>]</span><br><span class="code">'COSTART' [<span class="nci">C49471</span>]</span><br><span class="code">'CTCAE' [<span class="nci">C49704</span>]</span><br><span class="code">'CTIS' [<span class="nci">C221530</span>]</span><br><span class="code">'D-U-N-S NUMBER' [<span class="nci">C134003</span>]</span><br><span class="code">'EudraCT' [<span class="nci">C132782</span>]</span><br><span class="code">'EUDRAVIGILANCE' [<span class="nci">C221532</span>]</span><br><span class="code">'GENC' [<span class="nci">C221529</span>]</span><br><span class="code">'ICD' [<span class="nci">C49474</span>]</span><br><span class="code">'ICD-O' [<span class="nci">C37978</span>]</span><br><span class="code">'ISO 21090' [<span class="nci">C81895</span>]</span><br><span class="code">'ISO 3166' [<span class="nci">C209537</span>]</span><br><span class="code">'jRCT' [<span class="nci">C221531</span>]</span><br><span class="code">'LOINC' [<span class="nci">C49476</span>]</span><br><span class="code">'MED-RT' [<span class="nci">C163416</span>]</span><br><span class="code">'MedDRA' [<span class="nci">C43820</span>]</span><br><span class="code">'MeSH' [<span class="nci">C82845</span>]</span><br><span class="code">'PubMed' [<span class="nci">C42881</span>]</span><br><span class="code">'SNOMED' [<span class="nci">C53489</span>]</span><br><span class="code">'UNII' [<span class="nci">C163417</span>]</span><br><span class="code">'WHO ATC CLASSIFICATION SYSTEM' [<span class="nci">C154331</span>]</span><br><span class="code">'WHOART' [<span class="nci">C49468</span>]</span><br><span class="code">'WHODD' [<span class="nci">C49475</span>]</span></td>
+          </tr>
+          <tr class="tablerowodd">
+            <td class="name"><a id="attribute-def:ItemGroupClass"></a><a id="type-def:ItemGroupClass">ItemGroupClass</a></td>
+            <td class="description">Terminology related to the classification of a CDISC
+        domain. [<span class="nci">C103329</span>]</td>
+            <td class="type">Enumeration</td>
+            <td class="extensible">No</td>
+            <td class="values"><span class="code">'ADAM OTHER' [<span class="nci">C103375</span>]</span><br><span class="code">'BASIC DATA STRUCTURE' [<span class="nci">C103371</span>]</span><br><span class="code">'DEVICE LEVEL ANALYSIS DATASET' [<span class="nci">C177921</span>]</span><br><span class="code">'EVENTS' [<span class="nci">C103372</span>]</span><br><span class="code">'FINDINGS' [<span class="nci">C103373</span>]</span><br><span class="code">'FINDINGS ABOUT' [<span class="nci">C135396</span>]</span><br><span class="code">'INTERVENTIONS' [<span class="nci">C103374</span>]</span><br><span class="code">'MEDICAL DEVICE BASIC DATA STRUCTURE' [<span class="nci">C177922</span>]</span><br><span class="code">'MEDICAL DEVICE OCCURRENCE DATA STRUCTURE' [<span class="nci">C177923</span>]</span><br><span class="code">'OCCURRENCE DATA STRUCTURE' [<span class="nci">C123454</span>]</span><br><span class="code">'REFERENCE DATA STRUCTURE' [<span class="nci">C204611</span>]</span><br><span class="code">'RELATIONSHIP' [<span class="nci">C103376</span>]</span><br><span class="code">'SPECIAL PURPOSE' [<span class="nci">C103377</span>]</span><br><span class="code">'STUDY REFERENCE' [<span class="nci">C147271</span>]</span><br><span class="code">'SUBJECT LEVEL ANALYSIS DATASET' [<span class="nci">C103378</span>]</span><br><span class="code">'TRIAL DESIGN' [<span class="nci">C103379</span>]</span></td>
+          </tr>
+          <tr class="tableroweven">
+            <td class="name"><a id="attribute-def:ItemGroupSubClass"></a><a id="type-def:ItemGroupSubClass">ItemGroupSubClass</a></td>
+            <td class="description">Sub class of a general observation class.</td>
+            <td class="type">Enumeration</td>
+            <td class="extensible">No</td>
+            <td class="values"><span class="code">'ADVERSE EVENT' [<span class="nci">C176265</span>]</span><br><span class="code">'MEDICAL DEVICE TIME-TO-EVENT' [<span class="nci">C177920</span>]</span><br><span class="code">'NON-COMPARTMENTAL ANALYSIS' [<span class="nci">C172452</span>]</span><br><span class="code">'POPULATION PHARMACOKINETIC ANALYSIS' [<span class="nci">C189348</span>]</span><br><span class="code">'TIME-TO-EVENT' [<span class="nci">C165637</span>]</span></td>
+          </tr>
+          <tr class="tablerowodd">
+            <td class="name"><a id="attribute-def:ItemGroupClassSubClass"></a><a id="type-def:ItemGroupClassSubClass">ItemGroupClassSubClass</a></td>
+            <td class="description">Sub class of a general observation class. Union of ItemGroupClass and
+        ItemGroupSubClass</td>
+            <td class="type">Enumeration</td>
+            <td class="extensible">No</td>
+            <td class="values"><span class="code">def:ItemGroupClass</span><br><span class="code">def:ItemGroupSubClass</span></td>
+          </tr>
+          <tr class="tableroweven">
+            <td class="name"><a id="attribute-def:ODMContext"></a><a id="type-def:ODMContext">ODMContext</a></td>
+            <td class="description">Terminology relevant to the context in which the Define-XML document is
+        used. [<span class="nci">C170448</span>]</td>
+            <td class="type">Enumeration</td>
+            <td class="extensible">No</td>
+            <td class="values"><span class="code">'Other' [<span class="nci">C17649</span>]</span><br><span class="code">'Submission' [<span class="nci">C70885</span>]</span></td>
+          </tr>
+          <tr class="tablerowodd">
+            <td class="name"><a id="attribute-def:OriginSource"></a><a id="type-def:OriginSource">OriginSource</a></td>
+            <td class="description">Terminology relevant to the origin source for datasets in the Define-XML
+        document. [<span class="nci">C170450</span>]</td>
+            <td class="type">Enumeration</td>
+            <td class="extensible">No</td>
+            <td class="values"><span class="code">'Investigator' [<span class="nci">C25936</span>]</span><br><span class="code">'Sponsor' [<span class="nci">C70793</span>]</span><br><span class="code">'Subject' [<span class="nci">C41189</span>]</span><br><span class="code">'Vendor' [<span class="nci">C68608</span>]</span></td>
+          </tr>
+          <tr class="tableroweven">
+            <td class="name"><a id="attribute-def:OriginType"></a><a id="type-def:OriginType">OriginType</a></td>
+            <td class="description">Terminology relevant to the origin type for datasets in the Define-XML
+        document. [<span class="nci">C170449</span>]</td>
+            <td class="type">Enumeration</td>
+            <td class="extensible">No</td>
+            <td class="values"><span class="code">'Assigned' [<span class="nci">C170547</span>]</span><br><span class="code">'Collected' [<span class="nci">C170548</span>]</span><br><span class="code">'Derived' [<span class="nci">C170549</span>]</span><br><span class="code">'Not Available' [<span class="nci">C126101</span>]</span><br><span class="code">'Other' [<span class="nci">C17649</span>]</span><br><span class="code">'Predecessor' [<span class="nci">C170550</span>]</span><br><span class="code">'Protocol' [<span class="nci">C170551</span>]</span></td>
+          </tr>
+          <tr class="tablerowodd">
+            <td class="name"><a id="attribute-def:PDFPageType"></a><a id="type-def:PDFPageType">PDFPageType</a></td>
+            <td class="description">Type of PDF reference (Physical reference or named
+        destination).</td>
+            <td class="type">Enumeration</td>
+            <td class="extensible">No</td>
+            <td class="values"><span class="code">'NamedDestination'</span><br><span class="code">'PhysicalRef'</span></td>
+          </tr>
+          <tr class="tableroweven">
+            <td class="name"><a id="attribute-def:StandardName"></a><a id="type-def:StandardName">StandardName</a></td>
+            <td class="description">Terminology relevant to the name of the standard described in the Define-XML
+        document. [<span class="nci">C170452</span>]</td>
+            <td class="type">Enumeration</td>
+            <td class="extensible">No</td>
+            <td class="values"><span class="code">'ADaM-OCCDSIG' [<span class="nci">C214535</span>]</span><br><span class="code">'ADaMIG' [<span class="nci">C170552</span>]</span><br><span class="code">'ADaMIG-MD' [<span class="nci">C214532</span>]</span><br><span class="code">'ADaMIG-NCA' [<span class="nci">C214533</span>]</span><br><span class="code">'ADaMIG-popPK' [<span class="nci">C214534</span>]</span><br><span class="code">'BIMO' [<span class="nci">C191213</span>]</span><br><span class="code">'CDISC/NCI' [<span class="nci">C163415</span>]</span><br><span class="code">'SDTMIG' [<span class="nci">C170455</span>]</span><br><span class="code">'SDTMIG-AP' [<span class="nci">C170553</span>]</span><br><span class="code">'SDTMIG-MD' [<span class="nci">C170554</span>]</span><br><span class="code">'SENDIG' [<span class="nci">C170456</span>]</span><br><span class="code">'SENDIG-AR' [<span class="nci">C181230</span>]</span><br><span class="code">'SENDIG-DART' [<span class="nci">C170556</span>]</span><br><span class="code">'SENDIG-GENETOX' [<span class="nci">C199687</span>]</span></td>
+          </tr>
+          <tr class="tablerowodd">
+            <td class="name"><a id="attribute-def:StandardPublishingSet"></a><a id="type-def:StandardPublishingSet">StandardPublishingSet</a></td>
+            <td class="description">Terminology relevant to the classification of the CDISC controlled
+        terminology standard described in the Define-XML document. [<span class="nci">C172331</span>]</td>
+            <td class="type">Enumeration</td>
+            <td class="extensible">No</td>
+            <td class="values"><span class="code">'ADaM' [<span class="nci">C180548</span>]</span><br><span class="code">'CDASH' [<span class="nci">C180549</span>]</span><br><span class="code">'DEFINE-XML' [<span class="nci">C180550</span>]</span><br><span class="code">'SDTM' [<span class="nci">C180551</span>]</span><br><span class="code">'SEND' [<span class="nci">C180552</span>]</span></td>
+          </tr>
+          <tr class="tableroweven">
+            <td class="name"><a id="attribute-def:StandardStatus"></a><a id="type-def:StandardStatus">StandardStatus</a></td>
+            <td class="description">Terminology relevant to the development or publication status of the
+        standard. [<span class="nci">C172332</span>]</td>
+            <td class="type">Enumeration</td>
+            <td class="extensible">Yes (odm:text)</td>
+            <td class="values"><span class="code">'Draft' [<span class="nci">C172453</span>]</span><br><span class="code">'Final' [<span class="nci">C172455</span>]</span><br><span class="code">'Provisional' [<span class="nci">C172454</span>]</span></td>
+          </tr>
+          <tr class="tablerowodd">
+            <td class="name"><a id="attribute-def:StandardType"></a><a id="type-def:StandardType">StandardType</a></td>
+            <td class="description">Terminology relevant to the classification of the standard described in the
+        Define-XML document. [<span class="nci">C170451</span>]</td>
+            <td class="type">Enumeration</td>
+            <td class="extensible">No</td>
+            <td class="values"><span class="code">'CT' [<span class="nci">C163415</span>]</span><br><span class="code">'IG' [<span class="nci">C170454</span>]</span></td>
+          </tr>
+          <tr class="tableroweven">
+            <td class="name"><a id="attribute-def:YesOnly"></a><a id="type-def:YesOnly">YesOnly</a></td>
+            <td class="description">Yes Response.</td>
+            <td class="type">Enumeration</td>
+            <td class="extensible">No</td>
+            <td class="values"><span class="code">'Yes'</span></td>
+          </tr>
+          <tr class="tablerowodd">
+            <td class="name"><a id="attribute-def:SdtmigVersionResponse"></a><a id="type-def:SdtmigVersionResponse">SdtmigVersionResponse</a></td>
+            <td class="description">A terminology codelist relevant to the version of the CDISC Study Data
+        Tabulation Model implementation guide that is being used in the study
+        submission. [<span class="nci">C160924</span>]</td>
+            <td class="type">Enumeration</td>
+            <td class="extensible">Yes (odm:text)</td>
+            <td class="values"><span class="code">'3.1.1' [<span class="nci">C161432</span>]</span><br><span class="code">'3.1.2' [<span class="nci">C161433</span>]</span><br><span class="code">'3.1.3' [<span class="nci">C161435</span>]</span><br><span class="code">'3.2' [<span class="nci">C161436</span>]</span><br><span class="code">'3.3' [<span class="nci">C161437</span>]</span><br><span class="code">'3.4' [<span class="nci">C161438</span>]</span><br><span class="code">'Version 3.1.2 Amendment 1' [<span class="nci">C161434</span>]</span></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </body>
+</html>

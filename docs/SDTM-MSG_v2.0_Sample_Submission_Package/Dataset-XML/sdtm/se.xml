@@ -1,0 +1,580 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Dataset-XML: Untyped Data Example  --> 
+<!-- Built from the SAS XPT files published with the SDTM-MSG (SDTM Metadata Submission Guidelines) V2.0 --> 
+<ODM
+  xmlns="http://www.cdisc.org/ns/odm/v1.3"
+  xmlns:xlink="http://www.w3.org/1999/xlink" 
+  xmlns:data="http://www.cdisc.org/ns/Dataset-XML/v1.0"
+  FileType="Snapshot"
+  ODMVersion="1.3.2"
+  data:DatasetXMLVersion="1.0.0"
+  FileOID="www.cdisc.org/StudyMSGv2/1/Define-XML_2.1.0(IG.SE).Data(SE)"
+  PriorFileOID="www.cdisc.org/StudyMSGv2/1/Define-XML_2.1.0"
+  CreationDateTime="2020-08-21T09:21:13"
+  Originator="CDISC MSG Team"
+  SourceSystem="M.Hungria-System"
+  SourceSystemVersion="2.1-A1"
+  >
+  <ClinicalData
+    StudyOID="cdisc.com/CDISCPILOT01"
+    MetaDataVersionOID="MDV.MSGv2.0.SDTMIG.3.3.SDTM.1.7">
+    <!-- Dataset (SE) -->
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="1">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC001"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="1"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="SCREEN"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Screening"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2012-11-23"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2012-11-30"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="-7"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="2">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC001"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="2"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="LOW"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Zanomaline 54 mg"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2012-11-30"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-05-20"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="1"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="172"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="3">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC002"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="1"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="SCREEN"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Screening"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2012-10-30"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2012-11-15"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="-16"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="4">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC002"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="2"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="LOW"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Zanomaline 54 mg"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2012-11-15"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-01-14"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="1"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="61"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="5">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC003"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="1"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="SCREEN"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Screening"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-08-20"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-08-29"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="-9"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="6">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC003"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="2"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="TITRATE"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Zanomaline 54 mg Titration"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-08-29"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-09-15"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="1"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="18"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="7">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC003"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="3"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="HIGH"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Zanomaline 81 mg"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-09-15"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2014-02-13"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="18"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="169"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="8">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC004"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="1"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="SCREEN"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Screening"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-10-01"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-10-08"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="-7"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="9">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC004"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="2"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="PLACEBO"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Placebo"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-10-08"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2014-03-18"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="1"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="162"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="10">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC005"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="1"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="SCREEN"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Screening"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-01-22"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-02-04"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="-13"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="11">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC005"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="2"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="TITRATE"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Zanomaline 54 mg Titration"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-02-04"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-02-19"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="1"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="16"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="12">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC005"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="3"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="HIGH"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Zanomaline 81 mg"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-02-19"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-07-30"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="16"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="177"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="13">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC005"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="4"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="TITRATE"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Zanomaline 54 mg Titration"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-07-30"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-08-06"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="177"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="184"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="14">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC006"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="1"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="SCREEN"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Screening"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-02-25"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-03-19"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="-22"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="15">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC006"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="2"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="LOW"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Zanomaline 54 mg"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-03-19"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-04-30"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="1"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="43"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="16">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC007"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="1"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="SCREEN"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Screening"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2012-12-31"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-01-05"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="-5"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="17">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC007"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="2"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="TITRATE"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Zanomaline 54 mg Titration"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-01-05"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-01-18"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="1"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="14"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="18">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC007"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="3"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="HIGH"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Zanomaline 81 mg"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-01-18"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-06-20"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="14"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="167"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="19">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC008"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="1"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="SCREEN"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Screening"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2014-05-01"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2014-05-11"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="-10"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="20">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC008"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="2"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="PLACEBO"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Placebo"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2014-05-11"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2014-10-30"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="1"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="173"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="21">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC009"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="1"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="SCREEN"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Screening"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2012-10-06"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2012-10-22"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="-16"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="22">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC009"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="2"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="PLACEBO"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Placebo"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2012-10-22"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-04-28"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="1"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="189"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="23">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC010"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="1"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="SCREEN"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Screening"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-09-08"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-09-21"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="-13"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="24">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC010"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="2"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="TITRATE"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Zanomaline 54 mg Titration"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-09-21"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-09-26"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="1"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="6"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="25">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC011"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="1"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="SCREEN"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Screening"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2012-11-21"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2012-12-07"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="-16"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="26">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC011"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="2"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="TITRATE"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Zanomaline 54 mg Titration"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2012-12-07"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2012-12-21"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="1"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="15"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="27">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC011"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="3"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="HIGH"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Zanomaline 81 mg"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2012-12-21"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-05-22"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="15"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="167"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="28">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC011"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="4"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="TITRATE"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Zanomaline 54 mg Titration"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-05-22"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-07-05"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="167"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="211"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="29">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC012"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="1"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="SCREEN"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Screening"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-08-24"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-09-03"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="-10"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="30">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC012"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="2"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="PLACEBO"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Placebo"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-09-03"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2014-01-28"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="1"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="148"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="31">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC013"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="1"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="SCREEN"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Screening"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-07-09"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-07-22"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="-13"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="32">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC013"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="2"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="PLACEBO"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Placebo"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-07-22"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-08-02"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="1"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="12"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="33">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC014"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="1"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="SCREEN"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Screening"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-03-20"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-04-03"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="-14"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="34">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC014"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="2"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="TITRATE"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Zanomaline 54 mg Titration"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-04-03"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-04-17"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="1"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="15"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="35">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC014"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="3"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="HIGH"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Zanomaline 81 mg"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-04-17"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-09-18"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="15"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="169"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="36">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC015"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="1"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="SCREEN"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Screening"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2014-03-17"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2014-03-17"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="37">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC016"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="1"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="SCREEN"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Screening"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-03-30"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-04-03"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="-4"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="38">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC016"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="2"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="LOW"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Zanomaline 54 mg"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-04-03"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-09-22"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="1"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="173"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="39">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC017"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="1"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="SCREEN"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Screening"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-08-21"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-09-21"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="-31"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="40">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC017"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="2"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="LOW"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Zanomaline 54 mg"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2013-09-21"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2014-03-08"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="1"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="169"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="41">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC018"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="1"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="SCREEN"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Screening"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2012-12-13"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2012-12-17"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="-4"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="42">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC018"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="2"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="TITRATE"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Zanomaline 54 mg Titration"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2012-12-17"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2012-12-31"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="1"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="15"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SE" data:ItemGroupDataSeq="43">
+      <ItemData ItemOID="IT.SE.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SE.DOMAIN" Value="SE"/>
+      <ItemData ItemOID="IT.SE.USUBJID" Value="CDISC018"/>
+      <ItemData ItemOID="IT.SE.SESEQ" Value="3"/>
+      <ItemData ItemOID="IT.SE.ETCD" Value="HIGH"/>
+      <ItemData ItemOID="IT.SE.ELEMENT" Value="Zanomaline 81 mg"/>
+      <ItemData ItemOID="IT.SE.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.SE.SESTDTC" Value="2012-12-31"/>
+      <ItemData ItemOID="IT.SE.SEENDTC" Value="2013-06-03"/>
+      <ItemData ItemOID="IT.SE.SESTDY" Value="15"/>
+      <ItemData ItemOID="IT.SE.SEENDY" Value="169"/>
+    </ItemGroupData>
+  </ClinicalData>
+</ODM>

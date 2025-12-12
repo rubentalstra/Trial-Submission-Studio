@@ -1,0 +1,1835 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Dataset-XML: Untyped Data Example  --> 
+<!-- Built from the SAS XPT files published with the SDTM-MSG (SDTM Metadata Submission Guidelines) V2.0 --> 
+<ODM
+  xmlns="http://www.cdisc.org/ns/odm/v1.3"
+  xmlns:xlink="http://www.w3.org/1999/xlink" 
+  xmlns:data="http://www.cdisc.org/ns/Dataset-XML/v1.0"
+  FileType="Snapshot"
+  ODMVersion="1.3.2"
+  data:DatasetXMLVersion="1.0.0"
+  FileOID="www.cdisc.org/StudyMSGv2/1/Define-XML_2.1.0(IG.SV).Data(SV)"
+  PriorFileOID="www.cdisc.org/StudyMSGv2/1/Define-XML_2.1.0"
+  CreationDateTime="2020-08-21T09:21:13"
+  Originator="CDISC MSG Team"
+  SourceSystem="M.Hungria-System"
+  SourceSystemVersion="2.1-A1"
+  >
+  <ClinicalData
+    StudyOID="cdisc.com/CDISCPILOT01"
+    MetaDataVersionOID="MDV.MSGv2.0.SDTMIG.3.3.SDTM.1.7">
+    <!-- Dataset (SV) -->
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="1">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC001"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="1"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 1"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-11-23"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-11-23"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-7"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-7"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="2">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC001"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="2"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-11-28"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-11-28"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-2"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-2"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="3">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC001"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="3"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="BASELINE"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-11-30"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-11-30"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="1"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="4">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC001"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="4"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-12-13"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-12-13"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="14"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="14"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="5">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC001"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="5"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 4"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-12-26"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-12-26"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="27"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="27"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="6">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC001"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="5.01"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 4: UNSCHEDULED 01"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-12-28"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-12-28"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="29"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="29"/>
+      <ItemData ItemOID="IT.SV.SVUPDES" Value="UNSCHEDULED LABS"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="7">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC001"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="7"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 6"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-01-10"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-01-10"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="42"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="42"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="8">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC001"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="8"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 8"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-01-23"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-01-23"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="55"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="55"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="9">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC001"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="101"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="EARLY DISCONTINUATION"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-02-14"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-02-14"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="77"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="77"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="10">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC001"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="201"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="EARLY DISCONTINUATION RETRIEVAL"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-05-20"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-05-20"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="172"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="172"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="11">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC002"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="1"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 1"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-10-30"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-10-30"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-16"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-16"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="12">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC002"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="2"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-11-14"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-11-14"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-1"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="13">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC002"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="3"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="BASELINE"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-11-15"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-11-15"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="1"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="14">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC002"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="4"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-11-28"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-11-28"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="14"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="14"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="15">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC002"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="5"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 4"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-12-11"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-12-11"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="27"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="27"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="16">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC002"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="7"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 6"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-12-25"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-12-25"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="41"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="41"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="17">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC002"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="8"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 8"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-01-08"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-01-08"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="55"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="55"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="18">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC002"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="9"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 12"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-01-14"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-01-14"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="61"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="61"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="19">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC003"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="1"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 1"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-08-20"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-08-20"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-9"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-9"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="20">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC003"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="2"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-08-27"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-08-27"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-2"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-2"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="21">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC003"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="3"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="BASELINE"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-08-29"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-08-29"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="1"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="22">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC003"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="4"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-09-15"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-09-15"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="18"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="18"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="23">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC003"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="5"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 4"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-09-24"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-09-24"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="27"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="27"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="24">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC003"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="7"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 6"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-10-08"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-10-08"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="41"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="41"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="25">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC003"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="8"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 8"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-10-22"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-10-22"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="55"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="55"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="26">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC003"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="9"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 12"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-11-05"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-11-05"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="69"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="69"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="27">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC003"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="101"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="EARLY DISCONTINUATION"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-12-16"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-12-16"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="110"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="110"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="28">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC003"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="201"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="EARLY DISCONTINUATION RETRIEVAL"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2014-02-13"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2014-02-13"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="169"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="169"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="29">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC004"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="1"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 1"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-10-01"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-10-01"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-7"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-7"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="30">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC004"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="2"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-10-06"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-10-06"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-2"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-2"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="31">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC004"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="3"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="BASELINE"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-10-08"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-10-08"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="1"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="32">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC004"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="4"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-10-24"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-10-24"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="17"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="17"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="33">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC004"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="5"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 4"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-11-08"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-11-08"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="32"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="32"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="34">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC004"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="7"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 6"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-11-19"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-11-19"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="43"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="43"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="35">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC004"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="8"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 8"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-12-03"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-12-18"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="57"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="72"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="36">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC004"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="9"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 12"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-12-31"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2014-01-14"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="85"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="99"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="37">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC004"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="10"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 16"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2014-01-27"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2014-02-11"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="112"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="127"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="38">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC004"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="11"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 20"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2014-02-25"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2014-03-11"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="141"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="155"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="39">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC004"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="12"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 24"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2014-03-18"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2014-03-18"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="162"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="162"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="40">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC005"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="1"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 1"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-01-22"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-01-22"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-13"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-13"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="41">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC005"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="2"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-02-02"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-02-02"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-2"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-2"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="42">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC005"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="3"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="BASELINE"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-02-04"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-02-04"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="1"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="43">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC005"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="4"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-02-19"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-02-19"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="16"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="16"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="44">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC005"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="5"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 4"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-03-12"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-03-12"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="37"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="37"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="45">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC005"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="7"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 6"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-03-19"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-03-19"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="44"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="44"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="46">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC005"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="8"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 8"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-04-02"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-04-02"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="58"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="58"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="47">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC005"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="9"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 12"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-04-30"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-04-30"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="86"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="86"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="48">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC005"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="10"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 16"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-05-30"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-05-30"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="116"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="116"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="49">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC005"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="11"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 20"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-06-25"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-06-25"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="142"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="142"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="50">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC005"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="12"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 24"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-07-30"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-07-30"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="177"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="177"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="51">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC005"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="13"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 26"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-08-06"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-08-06"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="184"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="184"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="52">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC006"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="1"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 1"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-02-25"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-02-25"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-22"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-22"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="53">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC006"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="2"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-03-17"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-03-17"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-2"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-2"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="54">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC006"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="3"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="BASELINE"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-03-19"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-03-19"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="1"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="55">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC006"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="4"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-04-02"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-04-02"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="15"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="15"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="56">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC006"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="5"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 4"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-04-16"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-04-16"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="29"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="29"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="57">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC006"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="7"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 6"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-04-30"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-04-30"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="43"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="43"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="58">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC007"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="1"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 1"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-12-31"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-12-31"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-5"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-5"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="59">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC007"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="2"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-01-03"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-01-03"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-2"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-2"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="60">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC007"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="3"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="BASELINE"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-01-05"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-01-05"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="1"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="61">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC007"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="4"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-01-18"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-01-18"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="14"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="14"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="62">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC007"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="5"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 4"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-01-31"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-01-31"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="27"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="27"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="63">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC007"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="7"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 6"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-02-13"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-02-13"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="40"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="40"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="64">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC007"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="101"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="EARLY DISCONTINUATION"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-06-20"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-06-20"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="167"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="167"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="65">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC007"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="201"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="EARLY DISCONTINUATION RETRIEVAL"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-06-20"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-06-20"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="167"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="167"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="66">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC008"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="1"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 1"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2014-05-01"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2014-05-01"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-10"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-10"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="67">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC008"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="1.01"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 1: UNSCHEDULED 01"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2014-05-03"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2014-05-03"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-8"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-8"/>
+      <ItemData ItemOID="IT.SV.SVUPDES" Value="UNSCHEDULED LABS"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="68">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC008"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="2"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2014-05-09"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2014-05-09"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-2"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-2"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="69">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC008"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="3"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="BASELINE"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2014-05-11"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2014-05-11"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="1"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="70">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC008"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="4"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2014-05-25"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2014-05-25"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="15"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="15"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="71">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC008"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="5"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 4"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2014-06-11"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2014-06-11"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="32"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="32"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="72">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC008"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="7"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 6"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2014-06-25"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2014-06-25"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="46"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="46"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="73">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC008"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="8"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 8"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2014-07-09"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2014-07-09"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="60"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="60"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="74">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC008"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="9"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 12"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2014-08-06"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2014-08-06"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="88"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="88"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="75">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC008"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="10"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 16"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2014-09-03"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2014-09-03"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="116"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="116"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="76">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC008"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="11"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 20"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2014-10-01"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2014-10-01"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="144"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="144"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="77">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC008"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="12"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 24"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2014-10-31"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2014-10-31"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="174"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="174"/>
+      <ItemData ItemOID="IT.SV.SVUPDES" Value="Updated as subject died"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="78">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC009"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="1"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 1"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-10-06"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-10-06"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-16"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-16"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="79">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC009"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="2"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-10-20"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-10-20"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-2"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-2"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="80">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC009"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="3"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="BASELINE"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-10-22"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-10-22"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="1"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="81">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC009"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="4"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-11-05"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-11-05"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="15"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="15"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="82">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC009"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="5"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 4"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-11-20"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-11-20"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="30"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="30"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="83">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC009"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="7"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 6"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-12-08"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-12-08"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="48"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="48"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="84">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC009"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="8"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 8"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-12-22"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-12-22"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="62"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="62"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="85">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC009"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="9"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 12"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-01-19"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-01-19"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="90"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="90"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="86">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC009"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="10"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 16"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-02-16"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-02-16"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="118"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="118"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="87">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC009"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="11"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 20"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-03-16"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-03-16"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="146"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="146"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="88">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC009"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="12"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 24"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-04-10"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-04-10"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="171"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="171"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="89">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC009"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="13"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 26"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-04-28"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-04-28"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="189"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="189"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="90">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC010"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="1"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 1"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-09-08"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-09-08"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-13"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-13"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="91">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC010"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="1.01"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 1: UNSCHEDULED 01"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-09-19"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-09-19"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-2"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-2"/>
+      <ItemData ItemOID="IT.SV.SVUPDES" Value="UNSCHEDULED LABS"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="92">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC010"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="2"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-09-19"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-09-19"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-2"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-2"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="93">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC010"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="3"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="BASELINE"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-09-21"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-09-21"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="1"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="94">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC010"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="4"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-09-26"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-09-26"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="6"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="6"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="95">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC011"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="1"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 1"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-11-21"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-11-21"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-16"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-16"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="96">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC011"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="2"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-12-05"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-12-05"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-2"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-2"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="97">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC011"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="3"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="BASELINE"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-12-07"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-12-07"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="1"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="98">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC011"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="4"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-12-21"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-12-21"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="15"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="15"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="99">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC011"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="5"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 4"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-01-01"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-01-01"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="26"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="26"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="100">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC011"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="7"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 6"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-01-15"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-01-15"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="40"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="40"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="101">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC011"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="8"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 8"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-01-29"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-01-29"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="54"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="54"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="102">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC011"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="9"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 12"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-02-27"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-02-27"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="83"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="83"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="103">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC011"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="10"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 16"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-03-27"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-03-27"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="111"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="111"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="104">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC011"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="11"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 20"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-04-23"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-04-23"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="138"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="138"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="105">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC011"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="12"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 24"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-05-22"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-05-22"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="167"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="167"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="106">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC011"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="13"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 26"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-06-05"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-06-05"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="181"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="181"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="107">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC011"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="101"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="EARLY DISCONTINUATION"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-07-05"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-07-05"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="211"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="211"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="108">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC012"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="1"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 1"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-08-24"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-08-24"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-10"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-10"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="109">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC012"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="2"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-09-01"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-09-01"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-2"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-2"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="110">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC012"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="3"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="BASELINE"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-09-03"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-09-03"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="1"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="111">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC012"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="4"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-09-21"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-09-21"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="19"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="19"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="112">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC012"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="5"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 4"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-10-05"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-10-05"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="33"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="33"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="113">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC012"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="7"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 6"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-10-19"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-10-19"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="47"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="47"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="114">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC012"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="8"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 8"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-11-05"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-11-05"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="64"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="64"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="115">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC012"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="9"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 12"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-12-02"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-12-02"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="91"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="91"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="116">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC012"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="10"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 16"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2014-01-12"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2014-01-12"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="132"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="132"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="117">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC012"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="11"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 20"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2014-01-28"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2014-01-28"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="148"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="148"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="118">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC013"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="1"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 1"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-07-09"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-07-09"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-13"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-13"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="119">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC013"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="2"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-07-20"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-07-20"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-2"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-2"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="120">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC013"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="3"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="BASELINE"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-07-22"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-07-22"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="1"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="121">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC013"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="4"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-08-02"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-08-02"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="12"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="12"/>
+      <ItemData ItemOID="IT.SV.SVUPDES" Value="Updated as subject died"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="122">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC014"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="1"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 1"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-03-20"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-03-20"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-14"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-14"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="123">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC014"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="1.01"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 1: UNSCHEDULED 01"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-03-23"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-03-23"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-11"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-11"/>
+      <ItemData ItemOID="IT.SV.SVUPDES" Value="UNSCHEDULED LABS"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="124">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC014"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="2"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-04-01"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-04-01"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-2"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-2"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="125">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC014"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="3"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="BASELINE"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-04-03"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-04-03"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="1"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="126">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC014"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="4"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-04-17"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-04-17"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="15"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="15"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="127">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC014"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="5"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 4"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-05-02"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-05-02"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="30"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="30"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="128">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC014"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="101"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="EARLY DISCONTINUATION"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-07-17"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-07-17"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="106"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="106"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="129">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC014"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="201"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="EARLY DISCONTINUATION RETRIEVAL"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-09-18"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-09-18"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="169"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="169"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="130">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC015"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="1"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 1"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2014-03-17"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2014-03-17"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="131">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC016"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="1"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 1"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-03-30"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-03-30"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-4"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-4"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="132">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC016"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="2"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-04-01"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-04-01"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-2"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-2"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="133">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC016"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="3"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="BASELINE"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-04-03"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-04-03"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="1"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="134">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC016"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="4"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-04-17"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-04-17"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="15"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="15"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="135">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC016"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="5"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 4"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-04-29"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-04-29"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="27"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="27"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="136">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC016"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="7"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 6"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-05-15"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-05-15"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="43"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="43"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="137">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC016"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="7.01"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 6: UNSCHEDULED 01"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-05-19"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-05-19"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="47"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="47"/>
+      <ItemData ItemOID="IT.SV.SVUPDES" Value="UNSCHEDULED LABS"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="138">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC016"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="8"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 8"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-05-28"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-05-28"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="56"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="56"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="139">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC016"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="9"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 12"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-06-01"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-06-01"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="60"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="60"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="140">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC016"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="9.01"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 12: UNSCHEDULED 01"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-06-22"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-06-22"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="81"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="81"/>
+      <ItemData ItemOID="IT.SV.SVUPDES" Value="UNSCHEDULED LABS"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="141">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC016"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="9.02"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 12: UNSCHEDULED 02"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-09-22"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-09-22"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="173"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="173"/>
+      <ItemData ItemOID="IT.SV.SVUPDES" Value="UNSCHEDULED LABS"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="142">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC016"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="101"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="EARLY DISCONTINUATION"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-06-22"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-06-22"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="81"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="81"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="143">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC016"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="201"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="EARLY DISCONTINUATION RETRIEVAL"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-09-22"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-09-22"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="173"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="173"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="144">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC017"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="1"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 1"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-08-21"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-08-21"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-31"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-31"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="145">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC017"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="2"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-09-19"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-09-19"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-2"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-2"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="146">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC017"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="3"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="BASELINE"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-09-21"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-09-21"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="1"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="147">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC017"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="4"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-10-03"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-10-03"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="13"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="13"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="148">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC017"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="5"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 4"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-10-17"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-10-17"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="27"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="27"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="149">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC017"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="7"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 6"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-11-02"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-11-02"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="43"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="43"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="150">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC017"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="8"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 8"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-11-16"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-11-16"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="57"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="57"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="151">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC017"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="9"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 12"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-12-14"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-12-14"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="85"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="85"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="152">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC017"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="10"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 16"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2014-01-11"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2014-01-11"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="113"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="113"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="153">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC017"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="11"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 20"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2014-02-08"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2014-02-08"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="141"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="141"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="154">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC017"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="101"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="EARLY DISCONTINUATION"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2014-03-08"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2014-03-08"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="169"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="169"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="155">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC017"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="201"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="EARLY DISCONTINUATION RETRIEVAL"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2014-03-08"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2014-03-08"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="169"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="169"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="156">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC018"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="1"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 1"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-12-13"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-12-13"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-4"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-4"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="157">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC018"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="2"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="SCREENING 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-12-15"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-12-15"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="-2"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="-2"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="158">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC018"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="3"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="BASELINE"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-12-17"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-12-17"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="1"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="159">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC018"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="4"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 2"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2012-12-31"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2012-12-31"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="15"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="15"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="160">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC018"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="5"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 4"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-01-17"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-01-17"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="32"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="32"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="161">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC018"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="7"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 6"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-01-28"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-01-28"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="43"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="43"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="162">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC018"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="8"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 8"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-02-18"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-02-18"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="64"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="64"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="163">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC018"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="8.01"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="WEEK 8: UNSCHEDULED 01"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-02-18"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-02-18"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="64"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="64"/>
+      <ItemData ItemOID="IT.SV.SVUPDES" Value="UNSCHEDULED LABS"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.SV" data:ItemGroupDataSeq="164">
+      <ItemData ItemOID="IT.SV.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.SV.DOMAIN" Value="SV"/>
+      <ItemData ItemOID="IT.SV.USUBJID" Value="CDISC018"/>
+      <ItemData ItemOID="IT.SV.VISITNUM" Value="201"/>
+      <ItemData ItemOID="IT.SV.VISIT" Value="EARLY DISCONTINUATION RETRIEVAL"/>
+      <ItemData ItemOID="IT.SV.SVSTDTC" Value="2013-06-03"/>
+      <ItemData ItemOID="IT.SV.SVENDTC" Value="2013-06-03"/>
+      <ItemData ItemOID="IT.SV.SVSTDY" Value="169"/>
+      <ItemData ItemOID="IT.SV.SVENDY" Value="169"/>
+    </ItemGroupData>
+  </ClinicalData>
+</ODM>
