@@ -16,15 +16,15 @@ Example:
 """
 
 from .writer import (
-    XportGenerationError,
     write_xpt_file,
 )
+from .builder import (
+    XportGenerationError,
+    build_domain_dataframe,
+    DomainFrameBuilder,
+)
 
-# Future exports as modules are created:
-# from .builder import (
-#     build_domain_dataframe,
-#     DomainFrameBuilder,
-# )
+# Future exports as transformers are created:
 # from .transformers import (
 #     DateTransformer,
 #     CodelistTransformer,
@@ -37,9 +37,9 @@ __all__ = [
     "XportGenerationError",
     # Writing
     "write_xpt_file",
-    # Building (to be added)
-    # "build_domain_dataframe",
-    # "DomainFrameBuilder",
+    # Building
+    "build_domain_dataframe",
+    "DomainFrameBuilder",
     # Transformers (to be added)
     # "DateTransformer",
     # "CodelistTransformer",
