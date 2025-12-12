@@ -3,30 +3,35 @@
 This module provides the core builder class that orchestrates the construction
 of SDTM-compliant DataFrames from source data and mapping configurations.
 
-Note: This is Phase 4 Step 2 - Initial builder extraction. Complex domain-specific
-processing is still delegated to the original xpt.py implementation and will be
-refactored in subsequent steps (Steps 3-6).
+Phase 4 Step 7: This module now uses the modular transformers and validators
+extracted in Steps 3-6, while maintaining backward compatibility.
 """
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 import pandas as pd
 
-from ..mapping import MappingConfig
+from ..mapping import ColumnMapping, MappingConfig
+from ..domains import SDTMVariable, get_domain
 
-# Import from original xpt module - this provides backward compatibility
-# while we gradually refactor functionality into the new modular structure
-from ..xpt import (
-    XportGenerationError,
-    _DomainFrameBuilder as _OriginalDomainFrameBuilder,
-    build_domain_dataframe as _original_build_domain_dataframe,
+# Import the modular components (Steps 3-6)
+from .transformers import (
+    DateTransformer,
+    CodelistTransformer,
+    NumericTransformer,
 )
+from .validators import XPTValidator
+
+# Import from original xpt module for backward compatibility
+from ..xpt import XportGenerationError
 
 if TYPE_CHECKING:
     from ..metadata import StudyMetadata
 
+_SAFE_NAME_RE = re.compile(r'^(?P<quoted>"(?:[^"]|"")*")n$', re.IGNORECASE)
 
 # Re-export the exception for API compatibility
 __all__ = ["XportGenerationError", "build_domain_dataframe", "DomainFrameBuilder"]
@@ -51,24 +56,18 @@ def build_domain_dataframe(
 
     Returns:
         A DataFrame with columns matching the SDTM domain layout.
-        
-    Note:
-        This currently delegates to the original implementation in xpt.py.
-        As Phase 4 progresses (Steps 3-6), functionality will be gradually
-        migrated to the new modular transformer and validator classes.
     """
-    # Delegate to original implementation for now
-    # This will be refactored in Steps 3-6 to use new modular components
-    return _original_build_domain_dataframe(
+    builder = DomainFrameBuilder(
         frame,
         config,
         reference_starts=reference_starts,
         lenient=lenient,
         metadata=metadata,
     )
+    return builder.build()
 
 
-class DomainFrameBuilder(_OriginalDomainFrameBuilder):
+class DomainFrameBuilder:
     """Builds SDTM-compliant DataFrames from source data.
     
     This class orchestrates the construction of domain DataFrames by:
@@ -78,16 +77,149 @@ class DomainFrameBuilder(_OriginalDomainFrameBuilder):
     4. Validating and enforcing SDTM requirements
     5. Reordering columns to match domain specification
     
-    Note:
-        This is Phase 4 Step 2 - Currently inherits from the original implementation
-        in xpt.py to maintain backward compatibility. In Steps 3-6, functionality will
-        be gradually refactored into modular transformer and validator classes:
-        - Step 3: Date transformers (transformers/date.py)
-        - Step 4: Codelist transformers (transformers/codelist.py)  
-        - Step 5: Numeric & text transformers (transformers/numeric.py, text.py)
-        - Step 6: Validators (validators.py)
+    Phase 4 Step 7: Now uses modular transformers and validators from Steps 3-6.
+    Domain-specific processing still delegates to original xpt.py for complex logic.
     """
-    
-    # Inherits all methods from _OriginalDomainFrameBuilder for now
-    # Future steps will override methods with modular implementations
-    pass
+
+    def __init__(
+        self,
+        frame: pd.DataFrame,
+        config: MappingConfig,
+        *,
+        reference_starts: dict[str, str] | None = None,
+        lenient: bool = False,
+        metadata: "StudyMetadata | None" = None,
+    ) -> None:
+        self.frame = frame.reset_index(drop=True)
+        self.config = config
+        self.domain = get_domain(config.domain)
+        self.variable_lookup = {var.name: var for var in self.domain.variables}
+        self.length = len(self.frame)
+        self.reference_starts = reference_starts or {}
+        self.lenient = lenient
+        self.metadata = metadata
+        
+        # Initialize transformers
+        self.codelist_transformer = CodelistTransformer(metadata)
+
+    def build(self) -> pd.DataFrame:
+        """Build the domain DataFrame using modular transformers and validators."""
+        # Create a blank DataFrame with all domain variables
+        result = pd.DataFrame(
+            {var.name: self._default_column(var) for var in self.domain.variables}
+        )
+
+        # Apply mappings
+        if self.config and self.config.mappings:
+            for mapping in self.config.mappings:
+                self._apply_mapping(result, mapping)
+        else:
+            # No mapping provided, assume frame is already structured correctly.
+            for col in self.frame.columns:
+                if col in result.columns:
+                    result[col] = self.frame[col]
+
+        # Fill in STUDYID and DOMAIN
+        if self.config and self.config.study_id:
+            result["STUDYID"] = self.config.study_id
+        if "DOMAIN" in result.columns:
+            result["DOMAIN"] = self.domain.code
+
+        # Perform transformations using modular components (Steps 3-5)
+        DateTransformer.normalize_dates(result, self.domain.variables)
+        DateTransformer.calculate_dy(result, self.domain.variables, self.reference_starts)
+        DateTransformer.normalize_durations(result, self.domain.variables)
+        CodelistTransformer.apply_codelist_validations(result, self.domain.variables)
+        NumericTransformer.populate_stresc_from_orres(result, self.domain.code)
+        
+        # Domain-specific processing - still uses original implementation
+        # This is the complex 2,500+ line method that handles all domain-specific logic
+        self._post_process_domain(result)
+        
+        # Validation and cleanup using modular components (Step 6)
+        XPTValidator.drop_empty_optional_columns(result, self.domain.variables)
+        XPTValidator.reorder_columns(result, self.domain.variables)
+        XPTValidator.enforce_required_values(result, self.domain.variables, self.lenient)
+        XPTValidator.enforce_lengths(result, self.domain.variables)
+
+        return result
+
+    def _apply_mapping(self, result: pd.DataFrame, mapping: ColumnMapping) -> None:
+        """Apply a single column mapping to the result DataFrame."""
+        if mapping.target_variable not in self.variable_lookup:
+            return
+
+        source_column = mapping.source_column
+        raw_source = self._unquote_column(source_column)
+
+        if mapping.transformation:
+            # TODO: Implement transformation logic
+            pass
+        else:
+            # Get the source data
+            if source_column in self.frame.columns:
+                source_data = self.frame[source_column].copy()
+            elif raw_source in self.frame.columns:
+                source_data = self.frame[raw_source].copy()
+            else:
+                return
+
+            # Apply codelist transformation if specified (using modular transformer)
+            if (
+                mapping.codelist_name
+                and self.metadata
+                and mapping.target_variable != "TSVCDREF"
+            ):
+                code_column = mapping.use_code_column
+                code_column = self._unquote_column(code_column) if code_column else None
+                source_data = self.codelist_transformer.apply_codelist_transformation(
+                    source_data,
+                    mapping.codelist_name,
+                    code_column,
+                    self.frame,
+                    self._unquote_column,
+                )
+
+            result[mapping.target_variable] = source_data
+
+    def _default_column(self, variable: SDTMVariable) -> pd.Series:
+        """Return a default column series for a given variable."""
+        dtype = variable.pandas_dtype()
+        return pd.Series([None] * self.length, dtype=dtype)
+
+    @staticmethod
+    def _unquote_column(name: str) -> str:
+        """Remove quotes from SAS-safe column names."""
+        match = _SAFE_NAME_RE.fullmatch(name)
+        if not match:
+            return name
+        quoted = match.group("quoted")
+        unescaped = quoted[1:-1].replace('""', '"')
+        return unescaped
+
+    def _post_process_domain(self, result: pd.DataFrame) -> None:
+        """Perform domain-specific post-processing.
+        
+        This method contains extensive domain-specific logic for all SDTM domains.
+        It delegates to the original xpt.py implementation for now.
+        
+        TODO: Refactor domain-specific logic into separate domain handler modules.
+        """
+        # Import here to avoid circular dependency
+        from ..xpt import _DomainFrameBuilder as OriginalBuilder
+        
+        # Create a temporary builder with the same state to use original method
+        temp_builder = OriginalBuilder(
+            self.frame,
+            self.config,
+            reference_starts=self.reference_starts,
+            lenient=self.lenient,
+            metadata=self.metadata,
+        )
+        
+        # Call the original _post_process_domain method
+        temp_builder._post_process_domain(result)
+
+
+# Backward compatibility alias
+_DomainFrameBuilder = DomainFrameBuilder
