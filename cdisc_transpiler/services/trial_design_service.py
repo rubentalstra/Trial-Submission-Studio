@@ -1,7 +1,24 @@
-"""Trial design synthesis service.
+"""Trial Design Domain Synthesis Service.
 
 This service generates trial design domains (TS, TA, TE, SE, DS, RELREC)
 when they are not present in the source data.
+
+SDTM Reference:
+    Trial Design domains are defined in SDTMIG v3.4 Section 5:
+    - TS (Trial Summary): Key study parameters and characteristics
+    - TA (Trial Arms): Planned arms and element sequences
+    - TE (Trial Elements): Study elements with start/end rules
+    - TV (Trial Visits): Planned visits for each arm
+    - TI (Trial Inclusion/Exclusion): Entry criteria
+    - TD (Trial Disease Assessments): Disease assessment schedule
+    - TM (Trial Disease Milestones): Disease milestone definitions
+    
+    Special-Purpose domains include:
+    - SE (Subject Elements): Elements actually experienced by subjects
+    - DS (Disposition): Subject disposition events
+    
+    Relationship domains:
+    - RELREC (Related Records): Links between related observations
 """
 
 from __future__ import annotations
@@ -18,7 +35,12 @@ from ..mapping_module import ColumnMapping, build_config
 
 
 class TrialDesignService:
-    """Service for synthesizing trial design domains."""
+    """Service for synthesizing SDTM trial design domains.
+    
+    This service creates scaffold trial design domains when source data
+    doesn't include them. These domains are required by validation tools
+    like Pinnacle 21 for regulatory submission packages.
+    """
 
     def __init__(
         self,

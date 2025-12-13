@@ -4,7 +4,17 @@ This service orchestrates the entire study processing workflow, including
 domain-specific transformations, trial design synthesis, and relationship
 record generation.
 
-Extracted from cli/commands/study.py as part of Phase 2 refactoring.
+SDTM Reference:
+    SDTMIG v3.4 Section 6 describes the Findings class domains including:
+    - VS (Vital Signs): Blood pressure, heart rate, temperature, etc.
+    - LB (Laboratory Test Results): Hematology, chemistry, urinalysis
+    
+    Findings domains use the normalized structure with --TESTCD, --TEST,
+    --ORRES, --ORRESU for each measurement. Source data often comes in
+    wide format and must be reshaped to the vertical SDTM structure.
+    
+    Section 6.4 describes RELREC (Related Records) for linking observations
+    across domains (e.g., linking AE records to DS disposition events).
 """
 
 from __future__ import annotations
@@ -20,15 +30,75 @@ from ..sas_module import generate_sas_program, write_sas_file
 from ..xpt_module import write_xpt_file
 
 
+# SDTM Controlled Terminology for common VS tests
+VS_TEST_LABELS = {
+    "HR": "Heart Rate",
+    "SYSBP": "Systolic Blood Pressure",
+    "DIABP": "Diastolic Blood Pressure",
+    "TEMP": "Temperature",
+    "WEIGHT": "Weight",
+    "HEIGHT": "Height",
+    "BMI": "Body Mass Index",
+}
+
+# Default units per CDISC Controlled Terminology
+VS_UNIT_DEFAULTS = {
+    "HR": "beats/min",
+    "SYSBP": "mmHg",
+    "DIABP": "mmHg",
+    "TEMP": "C",
+    "WEIGHT": "kg",
+    "HEIGHT": "cm",
+    "BMI": "kg/m2",
+}
+
+# Aliases mapping source test codes to standard CDISC CT
+VS_TEST_ALIASES = {
+    "PLS": "HR",  # Pulse -> Heart Rate
+    "HR": "HR",
+    "SYSBP": "SYSBP",
+    "DIABP": "DIABP",
+    "TEMP": "TEMP",
+    "WEIGHT": "WEIGHT",
+    "HEIGHT": "HEIGHT",
+    "BMI": "BMI",
+}
+
+# SDTM Controlled Terminology for common LB tests
+LB_TEST_LABELS = {
+    "CHOL": "Cholesterol",
+    "AST": "Aspartate Aminotransferase",
+    "ALT": "Alanine Aminotransferase",
+    "GLUC": "Glucose",
+    "HGB": "Hemoglobin",
+    "HCT": "Hematocrit",
+    "RBC": "Erythrocytes",
+    "WBC": "Leukocytes",
+    "PLAT": "Platelets",
+}
+
+
 class StudyOrchestrationService:
     """Service for orchestrating study processing workflows.
 
     This service contains domain-specific logic for data transformations,
     trial design synthesis, and relationship record generation.
+    
+    The service handles:
+    - Reshaping wide-format Findings data to SDTM vertical structure
+    - Building RELREC relationship records between domains
+    - Synthesizing RELREC domain from processed domain data
     """
 
     def reshape_vs_to_long(self, frame: pd.DataFrame, study_id: str) -> pd.DataFrame:
         """Convert source VS wide data to SDTM-compliant long rows using dynamic tests.
+
+        Transforms wide-format vital signs data (one column per test) to the
+        vertical SDTM structure (one row per test per subject per visit).
+
+        SDTM Reference:
+            SDTMIG v3.4 Section 6.3.7 defines the VS domain structure with
+            required variables VSTESTCD, VSTEST, VSORRES, VSORRESU.
 
         Args:
             frame: Input dataframe with wide-format vital signs data
@@ -38,6 +108,8 @@ class StudyOrchestrationService:
             Long-format dataframe with SDTM VS structure
         """
         df = frame.copy()
+        
+        # Common source column name variations
         rename_map = {
             "Subject Id": "USUBJID",
             "SubjectId": "USUBJID",
@@ -75,36 +147,6 @@ class StudyOrchestrationService:
         if not tests:
             return pd.DataFrame()
 
-        # Map aliases to standard CDISC CT
-        alias_map = {
-            "PLS": "HR",
-            "HR": "HR",
-            "SYSBP": "SYSBP",
-            "DIABP": "DIABP",
-            "TEMP": "TEMP",
-            "WEIGHT": "WEIGHT",
-            "HEIGHT": "HEIGHT",
-            "BMI": "BMI",
-        }
-        label_map = {
-            "HR": "Heart Rate",
-            "SYSBP": "Systolic Blood Pressure",
-            "DIABP": "Diastolic Blood Pressure",
-            "TEMP": "Temperature",
-            "WEIGHT": "Weight",
-            "HEIGHT": "Height",
-            "BMI": "Body Mass Index",
-        }
-        unit_defaults = {
-            "HR": "beats/min",
-            "SYSBP": "mmHg",
-            "DIABP": "mmHg",
-            "TEMP": "C",
-            "WEIGHT": "kg",
-            "HEIGHT": "cm",
-            "BMI": "kg/m2",
-        }
-
         records: list[dict] = []
         for _, row in df.iterrows():
             usubjid = str(row.get("USUBJID", "") or "").strip()
@@ -122,7 +164,7 @@ class StudyOrchestrationService:
             reason = str(row.get("VSREASND", "") or "").strip()
 
             for testcd_raw in tests:
-                std_testcd = alias_map.get(testcd_raw, None)
+                std_testcd = VS_TEST_ALIASES.get(testcd_raw, None)
                 if not std_testcd:
                     continue
                 value = row.get(f"ORRES_{testcd_raw}", pd.NA)
@@ -135,7 +177,7 @@ class StudyOrchestrationService:
                 if stat_val != "NOT DONE" and (
                     unit_val is None or str(unit_val).strip() == ""
                 ):
-                    unit_val = unit_defaults.get(std_testcd, "")
+                    unit_val = VS_UNIT_DEFAULTS.get(std_testcd, "")
                 records.append(
                     {
                         "STUDYID": study_id,
@@ -143,7 +185,7 @@ class StudyOrchestrationService:
                         "USUBJID": usubjid,
                         "VSTESTCD": std_testcd[:8],
                         "VSTEST": str(
-                            label_map.get(std_testcd, label_val or std_testcd)
+                            VS_TEST_LABELS.get(std_testcd, label_val or std_testcd)
                         ),
                         "VSORRES": "" if stat_val else value,
                         "VSORRESU": "" if stat_val else unit_val,
@@ -163,6 +205,14 @@ class StudyOrchestrationService:
     def reshape_lb_to_long(self, frame: pd.DataFrame, study_id: str) -> pd.DataFrame:
         """Convert wide LB source data to long-form SDTM rows.
 
+        Transforms wide-format laboratory data (one column per test) to the
+        vertical SDTM structure (one row per test per subject per timepoint).
+
+        SDTM Reference:
+            SDTMIG v3.4 Section 6.3.3 defines the LB domain structure with
+            required variables LBTESTCD, LBTEST, LBORRES, LBORRESU,
+            LBORNRLO, LBORNRHI for normal ranges.
+
         Args:
             frame: Input dataframe with wide-format laboratory data
             study_id: Study identifier
@@ -171,17 +221,8 @@ class StudyOrchestrationService:
             Long-format dataframe with SDTM LB structure
         """
         df = frame.copy()
-        allowed_tests = {
-            "CHOL": "Cholesterol",
-            "AST": "Aspartate Aminotransferase",
-            "ALT": "Alanine Aminotransferase",
-            "GLUC": "Glucose",
-            "HGB": "Hemoglobin",
-            "HCT": "Hematocrit",
-            "RBC": "Erythrocytes",
-            "WBC": "Leukocytes",
-            "PLAT": "Platelets",
-        }
+        
+        # Common source column name variations
         rename_map = {
             "Subject Id": "USUBJID",
             "SubjectId": "USUBJID",
@@ -192,7 +233,6 @@ class StudyOrchestrationService:
             "Date ofstool sample": "LBDTC",
             "Date ofurine sample": "LBDTC",
             "Date of pregnancy test": "LBDTC",
-            "EventDate": "LBDTC",
         }
         df = df.rename(columns=rename_map)
 
@@ -300,7 +340,7 @@ class StudyOrchestrationService:
                 norm_testcd = testcd.upper()
                 if norm_testcd == "GLUCU":
                     norm_testcd = "GLUC"
-                if norm_testcd not in allowed_tests:
+                if norm_testcd not in LB_TEST_LABELS:
                     continue
                 orres_col = cols.get("orres")
                 if not orres_col:
@@ -337,7 +377,7 @@ class StudyOrchestrationService:
                         "DOMAIN": "LB",
                         "USUBJID": usubjid,
                         "LBTESTCD": norm_testcd[:8],
-                        "LBTEST": allowed_tests.get(
+                        "LBTEST": LB_TEST_LABELS.get(
                             norm_testcd, label_val or norm_testcd
                         ),
                         "LBORRES": value_str,
