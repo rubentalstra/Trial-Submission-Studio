@@ -132,7 +132,7 @@ def _merge_ct(
 
     return ControlledTerminology(
         codelist_code=base.codelist_code or other.codelist_code,
-        codelist_name=codelist_name or base.codelist_name,
+        codelist_name=codelist_name,
         submission_values=merged_submission,
         codelist_extensible=merged_extensible,
         synonyms=merged_synonyms,
@@ -141,7 +141,9 @@ def _merge_ct(
         sources=sources,
         definitions=merged_definitions,
         preferred_terms=merged_pref,
-        variable=codelist_name or base.variable,
+        # Use base.variable if available, otherwise fall back to codelist_name
+        # since CT variable names often match the codelist name (e.g., SEX)
+        variable=base.variable or other.variable or codelist_name,
     )
 
 

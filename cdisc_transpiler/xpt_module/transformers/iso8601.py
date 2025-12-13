@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import re
 
+import pandas as pd
 from pandas import isna
 
 
@@ -37,18 +38,17 @@ def normalize_iso8601(raw_value) -> str:
     Returns:
         ISO 8601 formatted string or empty string if invalid
     """
-    import pandas as pd
-
     # Treat all missing-like values (None, NaN, pd.NA, empty string) as empty
     if isna(raw_value) or raw_value == "":
         return ""
 
     text = str(raw_value).strip()
+    text_upper = text.upper()
 
     # Handle partial dates with "NK" (Not Known) - convert to proper ISO 8601 partial date
     # E.g., "2023-10-NK" -> "2023-10" (unknown day is omitted)
     # E.g., "2023-NK-NK" -> "2023" (unknown month and day)
-    if "NK" in text.upper() or "UN" in text.upper() or "UNK" in text.upper():
+    if "NK" in text_upper or "UN" in text_upper or "UNK" in text_upper:
         # Replace NK/UN/UNK patterns with empty
         cleaned = re.sub(r"-?(NK|UN|UNK)", "", text, flags=re.IGNORECASE)
         cleaned = cleaned.rstrip("-")  # Remove trailing dashes
