@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ..domains import SDTMDomain, SDTMVariable
+    from ..domains_module import SDTMDomain, SDTMVariable
     from ..mapping_module import ColumnMapping, MappingConfig
 
 from ..normalizers import render_assignment

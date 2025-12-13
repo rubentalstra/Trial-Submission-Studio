@@ -28,7 +28,7 @@ from cdisc_transpiler.xml.define import (
     build_study_define_tree,
     write_define_file,
 )
-from cdisc_transpiler.domains import SDTMDomain, SDTMVariable, get_domain
+from cdisc_transpiler.domains_module import SDTMDomain, SDTMVariable, get_domain
 
 __all__ = [
     "__version__",

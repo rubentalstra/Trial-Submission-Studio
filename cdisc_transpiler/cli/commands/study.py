@@ -16,8 +16,8 @@ from ...io import build_column_hints, ParseError, load_input_dataset
 from ...mapping_module import ColumnMapping, build_config, create_mapper
 from ...submission import build_suppqual
 from ...metadata_module import load_study_metadata, StudyMetadata
-from ...domains import get_domain, list_domains
-from ...domains import SDTMVariable
+from ...domains_module import get_domain, list_domains
+from ...domains_module import SDTMVariable
 from ...xml.define.constants import ACRF_HREF
 from ...services import (
     DomainDiscoveryService,

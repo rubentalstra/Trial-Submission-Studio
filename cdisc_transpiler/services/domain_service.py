@@ -19,7 +19,7 @@ import pandas as pd
 if TYPE_CHECKING:
     from ..mapping_module import MappingConfig, ColumnMapping
     from ..metadata_module import StudyMetadata
-    from ..domains import SDTMDomain
+    from ..domains_module import SDTMDomain
 
 from ..io import load_input_dataset, build_column_hints
 from ..mapping_module import build_config, create_mapper

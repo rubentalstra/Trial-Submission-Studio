@@ -10,7 +10,7 @@ from pathlib import Path
 import pandas as pd
 import pyreadstat
 
-from ..domains import get_domain
+from ..domains_module import get_domain
 
 
 class XportGenerationError(RuntimeError):

@@ -14,7 +14,7 @@ from jinja2 import Environment, StrictUndefined
 if TYPE_CHECKING:
     from ..mapping_module import MappingConfig
 
-from ..domains import get_domain
+from ..domains_module import get_domain
 from .constants import DEFAULT_STUDY_ID, SAS_PROGRAM_TEMPLATE
 from .utils import (
     get_assignment_for_mapping,

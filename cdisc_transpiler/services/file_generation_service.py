@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 from ..xpt_module import write_xpt_file
 from ..sas_module import generate_sas_program, write_sas_file
-from ..domains import get_domain
+from ..domains_module import get_domain
 
 
 @dataclass

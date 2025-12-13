@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 from ..mapping_module import ColumnMapping, MappingConfig
-from ..domains import SDTMVariable, get_domain
+from ..domains_module import SDTMVariable, get_domain
 
 # Import the modular components (Steps 3-6)
 from .transformers import (

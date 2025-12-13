@@ -6,7 +6,7 @@ from pandas import isna
 
 from .mapping_module import ColumnMapping
 from .terminology import get_controlled_terminology
-from .domains import SDTMVariable
+from .domains_module import SDTMVariable
 
 
 def _synonyms(*values: str) -> set[str]:

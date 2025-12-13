@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from ..domains import SDTMVariable, get_domain
+from ..domains_module import SDTMVariable, get_domain
 from ..mapping_module import ColumnMapping, build_config
 from ..sas_module import generate_sas_program, write_sas_file
 from ..xpt_module import write_xpt_file

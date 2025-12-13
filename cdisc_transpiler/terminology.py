@@ -9,7 +9,7 @@ from typing import Dict, List
 
 import pandas as pd
 import math
-from .domains import CT_VERSION
+from .domains_module import CT_VERSION
 
 # Root directory for controlled terminology packages (contains SDTM, SEND, ADaM, etc.)
 _CT_BASE_DIR = Path(__file__).resolve().parent.parent / "docs" / "Controlled_Terminology"

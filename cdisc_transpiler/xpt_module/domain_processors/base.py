@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 if TYPE_CHECKING:
-    from ...domains import SDTMDomain
+    from ...domains_module import SDTMDomain
 
 
 class BaseDomainProcessor(ABC):

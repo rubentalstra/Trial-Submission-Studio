@@ -17,7 +17,7 @@ from rich.console import Console
 if TYPE_CHECKING:
     from ..metadata_module import StudyMetadata
 
-from ..domains import get_domain
+from ..domains_module import get_domain
 from ..io import build_column_hints, load_input_dataset
 from ..mapping_module import ColumnMapping, build_config, create_mapper
 from ..sas_module import generate_sas_program, write_sas_file
