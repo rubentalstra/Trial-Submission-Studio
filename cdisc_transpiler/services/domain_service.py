@@ -17,12 +17,12 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 if TYPE_CHECKING:
-    from ..mapping import MappingConfig, ColumnMapping
+    from ..mapping_module import MappingConfig, ColumnMapping
     from ..metadata import StudyMetadata
     from ..domains import SDTMDomain
 
 from ..io import load_input_dataset, build_column_hints
-from ..mapping import build_config, create_mapper
+from ..mapping_module import build_config, create_mapper
 from ..xpt_module import build_domain_dataframe
 from ..submission import build_suppqual
 
@@ -288,7 +288,7 @@ class DomainProcessingService:
 
         # Build config for SUPPQUAL
         supp_domain_code = f"SUPP{domain_code.upper()}"
-        from ..mapping import ColumnMapping
+        from ..mapping_module import ColumnMapping
 
         supp_mappings = [
             ColumnMapping(

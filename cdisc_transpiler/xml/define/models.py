@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from ...mapping import MappingConfig
+from ...mapping_module import MappingConfig
 
 
 class DefineGenerationError(RuntimeError):

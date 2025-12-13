@@ -11,7 +11,7 @@ from xml.etree import ElementTree as ET
 
 if TYPE_CHECKING:
     import pandas as pd
-    from ...mapping import MappingConfig
+    from ...mapping_module import MappingConfig
 
 from ...domains import get_domain
 from .builder import build_dataset_xml_tree
