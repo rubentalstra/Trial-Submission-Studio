@@ -164,8 +164,12 @@ def write_variant_splits(
             variant_df = variant_df.copy()
             variant_df["DOMAIN"] = domain_code
         
+        # Create split subdirectory for better organization
+        split_dir = xpt_dir / "split"
+        split_dir.mkdir(parents=True, exist_ok=True)
+        
         split_name = table.lower()
-        split_path = xpt_dir / f"{split_name}.xpt"
+        split_path = split_dir / f"{split_name}.xpt"
         
         # Extract split suffix for better labeling
         split_suffix = table[len(domain_code):]
