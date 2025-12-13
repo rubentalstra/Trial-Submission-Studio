@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pandas import isna
 
-from .mapping import ColumnMapping
+from .mapping_module import ColumnMapping
 from .terminology import get_controlled_terminology
 from .domains import SDTMVariable
 

@@ -13,7 +13,7 @@ from rich.console import Console
 from ...sas_module import generate_sas_program, write_sas_file
 from ...xpt_module import write_xpt_file
 from ...io import build_column_hints, ParseError, load_input_dataset
-from ...mapping import ColumnMapping, build_config, create_mapper
+from ...mapping_module import ColumnMapping, build_config, create_mapper
 from ...submission import build_suppqual
 from ...metadata import load_study_metadata, StudyMetadata
 from ...domains import get_domain, list_domains

@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from ..domains import SDTMDomain, SDTMVariable
 
 from ..domains import get_domain
-from ..mapping import ColumnMapping, build_config
+from ..mapping_module import ColumnMapping, build_config
 
 
 class TrialDesignService:

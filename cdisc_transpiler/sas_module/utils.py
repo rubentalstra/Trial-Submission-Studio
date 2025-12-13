@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from ..domains import SDTMDomain, SDTMVariable
-    from ..mapping import ColumnMapping, MappingConfig
+    from ..mapping_module import ColumnMapping, MappingConfig
 
 from ..normalizers import render_assignment
 

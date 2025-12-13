@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     import pandas as pd
-    from ..mapping import MappingConfig
+    from ..mapping_module import MappingConfig
 
 from ..xpt_module import write_xpt_file
 from ..sas_module import generate_sas_program, write_sas_file

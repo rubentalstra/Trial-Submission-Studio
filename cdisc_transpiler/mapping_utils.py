@@ -77,8 +77,8 @@ def get_inference_patterns() -> dict[str, dict[str, list[str]]]:
         return _pattern_cache
     
     # Build patterns once
-    from .mapping import _SDTM_INFERENCE_PATTERNS
-    _pattern_cache.update(_SDTM_INFERENCE_PATTERNS)
+    from .mapping_module.constants import SDTM_INFERENCE_PATTERNS
+    _pattern_cache.update(SDTM_INFERENCE_PATTERNS)
     return _pattern_cache
 
 
