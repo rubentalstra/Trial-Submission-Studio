@@ -23,7 +23,7 @@ from typing import TYPE_CHECKING, Any, Callable
 import pandas as pd
 
 if TYPE_CHECKING:
-    from ..domains import SDTMDomain, SDTMVariable
+    from ..domains_module import SDTMDomain, SDTMVariable
     from ..terminology import ControlledTerminology
 
 # ISO 8601 patterns for date/time validation

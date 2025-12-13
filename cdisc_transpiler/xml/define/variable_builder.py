@@ -11,7 +11,7 @@ from xml.etree import ElementTree as ET
 
 import pandas as pd
 
-from ...domains import SDTMVariable
+from ...domains_module import SDTMVariable
 from .constants import ODM_NS, DEF_NS, XML_NS
 from ..utils import tag, attr
 

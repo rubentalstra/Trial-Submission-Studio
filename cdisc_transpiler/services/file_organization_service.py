@@ -106,7 +106,7 @@ class FileOrganizationService:
             >>> service.get_dataset_filename("SUPPAE")
             'suppae'
         """
-        from ..domains import get_domain
+        from ..domains_module import get_domain
 
         domain = get_domain(domain_code)
         base_filename = domain.resolved_dataset_name()

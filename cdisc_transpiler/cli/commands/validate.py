@@ -13,7 +13,7 @@ from ...validators.validators import (
     ValidationContext,
     format_validation_report,
 )
-from ...domains import get_domain
+from ...domains_module import get_domain
 from ..utils import log_success, log_warning, log_error
 
 

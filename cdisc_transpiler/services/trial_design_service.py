@@ -11,9 +11,9 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 if TYPE_CHECKING:
-    from ..domains import SDTMDomain, SDTMVariable
+    from ..domains_module import SDTMDomain, SDTMVariable
 
-from ..domains import get_domain
+from ..domains_module import get_domain
 from ..mapping_module import ColumnMapping, build_config
 
 

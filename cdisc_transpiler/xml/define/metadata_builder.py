@@ -81,7 +81,7 @@ def build_study_define_tree(
         Root Element of the Define-XML document
     """
     # Import here to avoid circular dependencies
-    from ...domains import CT_VERSION, get_domain
+    from ...domains_module import CT_VERSION, get_domain
     from .codelist_builder import append_code_lists, collect_extended_codelist_values
     from .variable_builder import append_item_defs
     from .dataset_builder import (

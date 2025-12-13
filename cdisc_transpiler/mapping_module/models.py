@@ -11,7 +11,7 @@ from typing import Iterable
 
 from pydantic import BaseModel, Field
 
-from ..domains import get_domain
+from ..domains_module import get_domain
 
 
 # =============================================================================

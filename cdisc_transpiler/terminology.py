@@ -9,7 +9,7 @@ from typing import Dict, List
 
 import pandas as pd
 import math
-from .domains import CT_VERSION
+from .domains_module import CT_VERSION
 
 # Root directory for controlled terminology packages (contains SDTM, SEND, ADaM, etc.)
 _CT_BASE_DIR = Path(__file__).resolve().parent.parent / "docs" / "Controlled_Terminology"
@@ -248,7 +248,7 @@ _REGISTRY_BY_CODE, _REGISTRY_BY_NAME = _build_registry()
 @lru_cache(maxsize=None)
 def _variable_to_codelist() -> Dict[str, str]:
     """Map variable names to codelist codes using domain metadata."""
-    from .domains import get_domain, list_domains
+    from .domains_module import get_domain, list_domains
 
     mapping: Dict[str, str] = {}
     for domain_code in list_domains():

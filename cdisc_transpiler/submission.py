@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .domains import get_domain
+from .domains_module import get_domain
 
 _MISSING_MARKERS = {"", "NAN", "<NA>", "NONE", "NULL"}
 

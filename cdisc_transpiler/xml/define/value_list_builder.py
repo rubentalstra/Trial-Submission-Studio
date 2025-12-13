@@ -10,7 +10,7 @@ from xml.etree import ElementTree as ET
 
 import pandas as pd
 
-from ...domains import SDTMDomain, SDTMVariable
+from ...domains_module import SDTMDomain, SDTMVariable
 from .models import ValueListDefinition, ValueListItemDefinition, WhereClauseDefinition
 from .constants import ODM_NS, DEF_NS
 from ..utils import tag, attr

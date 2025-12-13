@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     import pandas as pd
     from ...mapping_module import MappingConfig
 
-from ...domains import SDTMDomain, get_domain
+from ...domains_module import SDTMDomain, get_domain
 from .constants import (
     ODM_NS,
     DATA_NS,

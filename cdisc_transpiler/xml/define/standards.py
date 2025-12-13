@@ -72,7 +72,7 @@ def get_default_standards(
     """
     if ct_version is None:
         # Import here to avoid circular dependency
-        from ...domains import CT_VERSION
+        from ...domains_module import CT_VERSION
         ct_version = CT_VERSION
         
     return [

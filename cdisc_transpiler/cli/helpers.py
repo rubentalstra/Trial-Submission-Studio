@@ -14,7 +14,7 @@ from rich.console import Console
 from rich.table import Table
 
 if TYPE_CHECKING:
-    from ..domains import SDTMDomain
+    from ..domains_module import SDTMDomain
 
 console = Console()
 

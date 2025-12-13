@@ -6,7 +6,7 @@ import click
 from rich.console import Console
 from rich.table import Table
 
-from ...domains import get_domain, list_domains as list_all_domains
+from ...domains_module import get_domain, list_domains as list_all_domains
 
 
 console = Console()
