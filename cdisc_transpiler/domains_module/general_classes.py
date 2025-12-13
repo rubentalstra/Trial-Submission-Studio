@@ -63,7 +63,22 @@ def build_general_class_variables(
 def should_propagate_general(
     implements: str, general_class: str, usage: dict[str, dict[str, set[str]]]
 ) -> bool:
-    """Decide whether to add a generalized variable to all domains in its class."""
+    """Decide whether to add a generalized variable to all domains in its class.
+    
+    Variables are propagated if they:
+    - Start with '--' (domain-specific placeholders like --SEQ)
+    - Are in ALWAYS_PROPAGATE_GENERAL (core variables like STUDYID)
+    - Are used in multiple domains within the same class
+    
+    Args:
+        implements: Generalized placeholder (e.g., '--SEQ', 'STUDYID')
+        general_class: General Observation Class (e.g., 'FINDINGS', 'EVENTS')
+        usage: Mapping of {class -> {implements -> set of domain codes}} tracking
+               which domains use each generalized variable
+    
+    Returns:
+        bool: True if the variable should be propagated to all domains in the class
+    """
     if implements.startswith("--"):
         return True
     if implements in ALWAYS_PROPAGATE_GENERAL:

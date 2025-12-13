@@ -24,7 +24,19 @@ def build_domain_from_rows(
     source: str,
     dataset_attributes: dict[str, dict[str, str]],
 ) -> SDTMDomain | None:
-    """Construct a domain definition from CSV rows."""
+    """Construct a domain definition from CSV rows.
+    
+    Args:
+        code: Domain code (e.g., 'DM', 'AE')
+        rows: Sequence of CSV row dictionaries containing variable metadata
+        source: Source identifier (e.g., 'SDTMIG v3.4', 'SDTM v2.0')
+        dataset_attributes: Mapping of {domain_code -> {attribute -> value}} where
+                          attributes include 'class', 'label', and 'structure'
+                          loaded from Datasets.csv
+    
+    Returns:
+        SDTMDomain: Constructed domain definition, or None if no rows provided
+    """
     if not rows:
         return None
 

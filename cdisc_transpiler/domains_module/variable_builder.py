@@ -75,6 +75,14 @@ def variable_from_row(
     This function extracts metadata from a CSV row and constructs a standardized
     SDTMVariable object. It handles various CSV field variations and applies
     SDTM conventions.
+    
+    Args:
+        row: Dictionary containing CSV metadata fields (Variable Name, Type, Label, etc.)
+        code: Domain code (e.g., 'DM', 'AE') used for the source dataset
+        class_name: SDTM class name (e.g., 'FINDINGS', 'EVENTS') for the domain
+    
+    Returns:
+        SDTMVariable: Fully constructed variable definition with metadata
     """
     name = extract_variable_name(row)
     label = extract_variable_label(row, name)
