@@ -24,7 +24,7 @@ import pandas as pd
 
 if TYPE_CHECKING:
     from ..domains_module import SDTMDomain, SDTMVariable
-    from ..terminology import ControlledTerminology
+    from ..terminology_module import ControlledTerminology
 
 # ISO 8601 patterns for date/time validation
 ISO8601_DATE_PATTERN = re.compile(

@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 if TYPE_CHECKING:
-    from ..terminology import ControlledTerminology
+    from ..terminology_module import ControlledTerminology
     from .validators import ValidationIssue, ValidationSeverity, ValidationCategory
 
 

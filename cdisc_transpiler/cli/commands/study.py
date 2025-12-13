@@ -12,9 +12,9 @@ from rich.console import Console
 
 from ...sas_module import generate_sas_program, write_sas_file
 from ...xpt_module import write_xpt_file
-from ...io import build_column_hints, ParseError, load_input_dataset
+from ...io_module import build_column_hints, ParseError, load_input_dataset
 from ...mapping_module import ColumnMapping, build_config, create_mapper
-from ...submission import build_suppqual
+from ...submission_module import build_suppqual
 from ...metadata_module import load_study_metadata, StudyMetadata
 from ...domains_module import get_domain, list_domains
 from ...domains_module import SDTMVariable

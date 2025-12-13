@@ -7,19 +7,24 @@ data transformations required for SDTM compliance:
 - codelist: Controlled terminology application and validation
 - numeric: Numeric transformations and STRESC population
 - text: Text normalization and standardization
+- iso8601: ISO 8601 date/time and duration normalization functions
 
 Each transformer provides static methods for specific transformation operations
 that can be used independently or orchestrated by the DomainFrameBuilder.
 """
 
-from .date import DateTransformer
 from .codelist import CodelistTransformer
+from .date import DateTransformer
+from .iso8601 import normalize_iso8601, normalize_iso8601_duration
 from .numeric import NumericTransformer
 from .text import TextTransformer
 
 __all__ = [
-    "DateTransformer",       # Step 3 ✓
-    "CodelistTransformer",   # Step 4 ✓
-    "NumericTransformer",    # Step 5 ✓
-    "TextTransformer",       # Step 5 ✓
+    "DateTransformer",
+    "CodelistTransformer",
+    "NumericTransformer",
+    "TextTransformer",
+    # ISO 8601 normalization functions
+    "normalize_iso8601",
+    "normalize_iso8601_duration",
 ]

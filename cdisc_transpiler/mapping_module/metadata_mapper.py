@@ -13,7 +13,7 @@ import pandas as pd
 from rapidfuzz import fuzz
 
 if TYPE_CHECKING:
-    from ..io import Hints
+    from ..io_module import Hints
     from ..metadata_module import StudyMetadata
 
 from ..domains_module import get_domain, SDTMDomain

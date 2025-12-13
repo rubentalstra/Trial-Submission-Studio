@@ -13,7 +13,7 @@ from xml.etree import ElementTree as ET
 import pandas as pd
 
 from ...domains_module import SDTMVariable
-from ...terminology import (
+from ...terminology_module import (
     get_nci_code as ct_get_nci_code,
     get_controlled_terminology,
 )

@@ -1,15 +1,13 @@
-"""Input/output utilities for dataset parsing and column analysis.
+"""File reading utilities for various data formats.
 
-This module provides functions for:
-- Loading datasets from various formats (CSV, Excel, SAS)
-- Extracting column hints for mapping heuristics
+This module provides functions for loading datasets from
+CSV, Excel, and SAS formats with intelligent header detection.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable, Dict
+from typing import Callable
 
 import pandas as pd
 
@@ -19,56 +17,11 @@ except ModuleNotFoundError:  # pragma: no cover
     pyreadstat = None
 
 
-# =============================================================================
-# Exceptions
-# =============================================================================
-
-
 class ParseError(RuntimeError):
     """Raised when an input file cannot be parsed."""
 
 
-# =============================================================================
-# Column Hints
-# =============================================================================
-
-
-@dataclass(frozen=True)
-class ColumnHint:
-    """Lightweight stats about a column used during mapping heuristics."""
-
-    is_numeric: bool
-    unique_ratio: float
-    null_ratio: float
-
-
-Hints = Dict[str, ColumnHint]
-
-
-def build_column_hints(frame: pd.DataFrame) -> Hints:
-    """Derive hints (numeric-ness, sparsity, uniqueness) for each column."""
-    hints: Hints = {}
-    row_count = len(frame)
-    for column in frame.columns:
-        series = frame[column]
-        is_numeric = pd.api.types.is_numeric_dtype(series)
-        non_null = int(series.notna().sum())
-        unique_non_null = series.nunique(dropna=True)
-        unique_ratio = float(unique_non_null / non_null) if non_null else 0.0
-        null_ratio = float(1 - (non_null / row_count)) if row_count else 0.0
-        hints[column] = ColumnHint(
-            is_numeric=bool(is_numeric),
-            unique_ratio=unique_ratio,
-            null_ratio=null_ratio,
-        )
-    return hints
-
-
-# =============================================================================
-# File Readers
-# =============================================================================
-
-
+# Type alias for reader functions
 Reader = Callable[[Path], pd.DataFrame]
 
 
@@ -77,6 +30,12 @@ def _read_csv(path: Path) -> pd.DataFrame:
 
     Many mock datasets include a human-readable header row followed by a code row.
     Detect this pattern and, when present, use the second row as the header.
+
+    Args:
+        path: Path to CSV file
+
+    Returns:
+        DataFrame with data from the CSV file
     """
     sample = pd.read_csv(path, nrows=2, header=None)
     header_row = 0
@@ -92,19 +51,37 @@ def _read_csv(path: Path) -> pd.DataFrame:
 
 
 def _read_excel(path: Path) -> pd.DataFrame:
-    """Read Excel file."""
+    """Read Excel file.
+
+    Args:
+        path: Path to Excel file (.xls or .xlsx)
+
+    Returns:
+        DataFrame with data from the Excel file
+    """
     return pd.read_excel(path)
 
 
 def _read_sas(path: Path) -> pd.DataFrame:
-    """Read SAS7BDAT file."""
+    """Read SAS7BDAT file.
+
+    Args:
+        path: Path to SAS file
+
+    Returns:
+        DataFrame with data from the SAS file
+
+    Raises:
+        ParseError: If pyreadstat is not installed
+    """
     if pyreadstat is None:
         raise ParseError("pyreadstat is required to read SAS files")
     frame, _ = pyreadstat.read_sas7bdat(str(path))
     return frame
 
 
-_READERS: dict[str, Reader] = {
+# Mapping of file extensions to reader functions
+READERS: dict[str, Reader] = {
     ".csv": _read_csv,
     ".txt": _read_csv,
     ".tsv": _read_csv,
@@ -117,14 +94,16 @@ _READERS: dict[str, Reader] = {
 def load_input_dataset(path: str | Path) -> pd.DataFrame:
     """Load a dataset from various file formats.
 
+    Supports CSV, TSV, TXT, Excel (xls/xlsx), and SAS7BDAT formats.
+
     Args:
-        path: Path to the input file (CSV, Excel, or SAS7BDAT).
+        path: Path to the input file
 
     Returns:
-        DataFrame containing the loaded data.
+        DataFrame containing the loaded data
 
     Raises:
-        ParseError: If the file cannot be read or has no columns.
+        ParseError: If the file cannot be read or has no columns
     """
     file_path = Path(path)
     if not file_path.exists():
@@ -133,9 +112,9 @@ def load_input_dataset(path: str | Path) -> pd.DataFrame:
         raise ParseError(f"Input path is not a file: {file_path}")
 
     ext = file_path.suffix.lower()
-    reader = _READERS.get(ext)
+    reader = READERS.get(ext)
     if reader is None:
-        supported = ", ".join(sorted(_READERS))
+        supported = ", ".join(sorted(READERS))
         raise ParseError(f"Unsupported format '{ext}'. Supported: {supported}")
 
     try:

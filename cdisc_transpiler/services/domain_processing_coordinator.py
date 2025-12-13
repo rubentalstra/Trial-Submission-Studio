@@ -18,10 +18,10 @@ if TYPE_CHECKING:
     from ..metadata_module import StudyMetadata
 
 from ..domains_module import get_domain
-from ..io import build_column_hints, load_input_dataset
+from ..io_module import build_column_hints, load_input_dataset
 from ..mapping_module import ColumnMapping, build_config, create_mapper
 from ..sas_module import generate_sas_program, write_sas_file
-from ..submission import build_suppqual
+from ..submission_module import build_suppqual
 from ..xpt_module import write_xpt_file
 from ..xml.dataset import write_dataset_xml
 from ..xpt_module.builder import build_domain_dataframe

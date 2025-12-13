@@ -1,16 +1,28 @@
-"""Helper utilities for supplemental domains (SUPPQUAL)."""
+"""SUPPQUAL (Supplemental Qualifiers) building utilities.
+
+This module provides functions for building SUPPQUAL DataFrames
+for non-model columns in parent SDTM domains.
+"""
 
 from __future__ import annotations
 
 import pandas as pd
 
-from .domains_module import get_domain
+from ..domains_module import get_domain
 
+# Markers that indicate missing/null values
 _MISSING_MARKERS = {"", "NAN", "<NA>", "NONE", "NULL"}
 
 
 def _drop_missing_usubjid(frame: pd.DataFrame) -> pd.DataFrame:
-    """Drop rows with missing/blank USUBJID to align with domain processing."""
+    """Drop rows with missing/blank USUBJID to align with domain processing.
+
+    Args:
+        frame: DataFrame to filter
+
+    Returns:
+        DataFrame with missing USUBJID rows removed
+    """
     if "USUBJID" not in frame.columns:
         return frame
     mask = (
@@ -21,6 +33,15 @@ def _drop_missing_usubjid(frame: pd.DataFrame) -> pd.DataFrame:
 
 
 def _clean_idvarval(values: pd.Series, is_seq: bool) -> pd.Series:
+    """Clean IDVARVAL values based on whether they are sequence numbers.
+
+    Args:
+        values: Series of IDVARVAL values
+        is_seq: True if values are sequence numbers
+
+    Returns:
+        Cleaned series
+    """
     if not is_seq:
         return values.astype("string")
     return (
@@ -37,7 +58,16 @@ def _is_operational_column(
     common_counts: dict[str, int] | None = None,
     total_files: int | None = None,
 ) -> bool:
-    """Heuristic: treat columns that appear in many input files as operational."""
+    """Heuristic: treat columns that appear in many input files as operational.
+
+    Args:
+        name: Column name
+        common_counts: Dictionary of column name counts across files
+        total_files: Total number of input files
+
+    Returns:
+        True if column appears to be operational (not domain-specific data)
+    """
     if not common_counts or not total_files:
         return False
     norm = name.strip().lower()
@@ -47,7 +77,19 @@ def _is_operational_column(
 
 
 def _sanitize_qnam(name: str) -> str:
-    """Convert a source column into a SAS-safe QNAM (<=8 chars, alnum/underscore)."""
+    """Convert a source column into a SAS-safe QNAM (<=8 chars, alnum/underscore).
+
+    Per SDTM, QNAM must be:
+    - Maximum 8 characters
+    - Alphanumeric or underscore only
+    - Cannot start with a number
+
+    Args:
+        name: Source column name
+
+    Returns:
+        SAS-safe QNAM string
+    """
     safe = "".join(ch if ch.isalnum() else "_" for ch in name.upper())
     while "__" in safe:
         safe = safe.replace("__", "_")
@@ -71,8 +113,23 @@ def build_suppqual(
 ) -> tuple[pd.DataFrame | None, set[str]]:
     """Build a SUPP-- DataFrame for non-model columns in a parent domain.
 
-    Returns (supp_df, used_columns). If no supplemental qualifiers can be
-    derived, returns (None, set()).
+    Creates a SUPPQUAL domain containing supplemental qualifier data for
+    columns that exist in the source data but are not part of the SDTM
+    domain model.
+
+    Args:
+        domain_code: Two-character domain code (e.g., "DM", "AE")
+        source_df: Source DataFrame with raw data
+        mapped_df: Mapped DataFrame with processed domain data
+        used_source_columns: Set of source columns already mapped
+        study_id: Study identifier for STUDYID column
+        common_column_counts: Count of column appearances across files
+        total_files: Total number of input files
+
+    Returns:
+        Tuple of (supp_df, used_columns):
+        - supp_df: SUPPQUAL DataFrame or None if no qualifiers found
+        - used_columns: Set of source columns included in SUPPQUAL
     """
     if source_df is None or source_df.empty:
         return None, set()
@@ -167,12 +224,14 @@ def build_suppqual(
         return None, set()
 
     supp_df = pd.DataFrame(records)
+    
     # Shrink QVAL width to actual max to avoid SD1082; keep reasonable cap
     if "QVAL" in supp_df.columns:
         supp_df["QVAL"] = supp_df["QVAL"].astype(str)
-        max_len = supp_df["QVAL"].str.len().max() if not supp_df.empty else 1
-        max_len = max(1, min(int(max_len or 1), 50))
-        supp_df["QVAL"] = supp_df["QVAL"].str.slice(0, max_len)
+        max_qval_len = supp_df["QVAL"].str.len().max() if not supp_df.empty else 1
+        max_qval_len = max(1, min(int(max_qval_len or 1), 50))
+        supp_df["QVAL"] = supp_df["QVAL"].str.slice(0, max_qval_len)
+    
     supp_domain_code = f"SUPP{domain}"
     try:
         ordering = list(get_domain(supp_domain_code).variable_names())
@@ -184,6 +243,7 @@ def build_suppqual(
         subset=["STUDYID", "USUBJID", "IDVAR", "IDVARVAL", "QNAM"], inplace=True
     )
     supp_df.sort_values(by=["USUBJID", "IDVARVAL"], inplace=True)
+    
     # Keep QVAL within metadata length for SUPPDM to avoid SD1082
     if domain.upper() == "DM" and "QVAL" in supp_df.columns:
         try:
