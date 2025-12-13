@@ -2,6 +2,11 @@
 
 This module contains utility functions extracted from the main CLI module
 to improve code organization and reusability.
+
+SDTM Reference:
+    These utilities support SDTM-compliant output generation as defined
+    in SDTMIG v3.4. The module handles verbose logging, PDF generation
+    for Define-XML, and split dataset management per Section 4.1.7.
 """
 
 from __future__ import annotations
@@ -13,17 +18,10 @@ import pandas as pd
 from rich.console import Console
 from rich.table import Table
 
-# Import from centralized utility module
-from ..mapping_module.utils import unquote_column_name
-
 if TYPE_CHECKING:
     from ..domains_module import SDTMDomain
 
 console = Console()
-
-
-# Alias for backward compatibility
-unquote_safe = unquote_column_name
 
 
 def log_verbose(enabled: bool, message: str) -> None:
