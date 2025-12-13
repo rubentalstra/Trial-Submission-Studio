@@ -3,36 +3,26 @@
 from __future__ import annotations
 
 from collections import defaultdict
-import re
 from pathlib import Path
 
 import click
 import pandas as pd
 from rich.console import Console
 
-from ...sas_module import generate_sas_program, write_sas_file
-from ...xpt_module import write_xpt_file
-from ...io_module import build_column_hints, ParseError, load_input_dataset
-from ...mapping_module import ColumnMapping, build_config, create_mapper
-from ...submission_module import build_suppqual
-from ...metadata_module import load_study_metadata, StudyMetadata
+from ...io_module import ParseError, load_input_dataset
+from ...metadata_module import load_study_metadata
 from ...domains_module import get_domain, list_domains
-from ...domains_module import SDTMVariable
 from ...xml.define.constants import ACRF_HREF
 from ...services import (
     DomainDiscoveryService,
     DomainProcessingCoordinator,
     DomainSynthesisCoordinator,
-    FileOrganizationService,
-    ProgressReportingService,
     StudyOrchestrationService,
 )
-from ..utils import ProgressTracker, log_success, log_warning, log_error
+from ..utils import ProgressTracker, log_success, log_error
 from ..helpers import (
-    unquote_safe,
     log_verbose,
     ensure_acrf_pdf,
-    write_variant_splits,
     print_study_summary,
 )
 
@@ -346,7 +336,9 @@ def study_command(
                             config=result.get("config"),
                             archive_location=split_href,
                             is_split=True,
-                            split_suffix=split_name[len(domain_code):] if split_name.startswith(domain_code) else split_name,
+                            split_suffix=split_name[len(domain_code) :]
+                            if split_name.startswith(domain_code)
+                            else split_name,
                         )
                     )
 
@@ -485,7 +477,9 @@ def study_command(
 
                 # Handle split datasets (SDTMIG v3.4 Section 4.1.7)
                 # Split datasets must be documented separately in Define-XML
-                for split_name, split_df, split_path in result.get("split_datasets", []):
+                for split_name, split_df, split_path in result.get(
+                    "split_datasets", []
+                ):
                     if generate_define and output_format in ("xpt", "both"):
                         split_href = split_path.relative_to(output_dir)
                         study_datasets.append(
@@ -495,7 +489,9 @@ def study_command(
                                 config=result.get("config"),
                                 archive_location=split_href,
                                 is_split=True,
-                                split_suffix=split_name[len(domain_code):] if split_name.startswith(domain_code) else split_name,
+                                split_suffix=split_name[len(domain_code) :]
+                                if split_name.startswith(domain_code)
+                                else split_name,
                             )
                         )
 
@@ -508,6 +504,7 @@ def study_command(
             progress_tracker.increment()  # Count failed domains too
         except Exception as exc:
             import traceback
+
             log_error(f"{display_name}: {exc}")
             if verbose > 1:  # Only print traceback in very verbose mode
                 traceback.print_exc()
@@ -610,6 +607,7 @@ def study_command(
             log_success(f"Generated Define-XML 2.1 at {define_path}")
         except Exception as exc:
             import traceback
+
             log_error(f"Define-XML generation failed: {exc}")
             if verbose > 1:
                 traceback.print_exc()
@@ -622,6 +620,3 @@ def study_command(
 
 
 # Helper functions
-
-
-
