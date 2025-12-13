@@ -96,7 +96,7 @@ SDTM_INFERENCE_PATTERNS: dict[str, dict[str, list[str]]] = {
         # Qualifier Variables - Grouping (SDTM v2.0 Section 3.2.4)
         "CAT": ["CAT", "CATEGORY"],
         "SCAT": ["SCAT", "SUBCATEGORY"],
-        "BODSYS": ["BODSYS", "BODYSYSTEM", "ORGANCLASS", "SYSTEMORANCLASS"],
+        "BODSYS": ["BODSYS", "BODYSYSTEM", "ORGANCLASS", "SYSTEMORGANCLASS"],
         # Qualifier Variables - Result (SDTM v2.0 Section 3.2.5)
         "ORRES": ["ORRES", "RESULT", "ORIGINALRESULT", "VALUE", "FINDINGORIGINAL"],
         "ORRESU": ["ORRESU", "UNIT", "UNITS", "ORIGINALUNIT", "ORIGINALUNITS"],

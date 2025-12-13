@@ -230,8 +230,8 @@ class StudyOrchestrationService:
             "Event Date": "LBDTC",
             "EventDate": "LBDTC",
             "Date of blood sample": "LBDTC",
-            "Date ofstool sample": "LBDTC",
-            "Date ofurine sample": "LBDTC",
+            "Date of stool sample": "LBDTC",
+            "Date of urine sample": "LBDTC",
             "Date of pregnancy test": "LBDTC",
         }
         df = df.rename(columns=rename_map)
