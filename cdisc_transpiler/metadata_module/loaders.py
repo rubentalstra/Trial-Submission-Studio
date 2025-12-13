@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 
@@ -57,14 +58,14 @@ _CODELISTS_COLUMN_MAPPINGS = {
 }
 
 
-def _parse_mandatory_field(value: any) -> bool:
+def _parse_mandatory_field(value: Any) -> bool:
     """Parse a mandatory field value to boolean."""
     if not value:
         return False
     return str(value).strip().lower() in ("true", "yes", "1", "y", "req")
 
 
-def _parse_format_name(value: any) -> str | None:
+def _parse_format_name(value: Any) -> str | None:
     """Parse a format name field value."""
     if pd.isna(value):
         return None
@@ -74,7 +75,7 @@ def _parse_format_name(value: any) -> str | None:
     return format_val
 
 
-def _parse_content_length(value: any) -> int | None:
+def _parse_content_length(value: Any) -> int | None:
     """Parse a content length field value."""
     if pd.isna(value):
         return None

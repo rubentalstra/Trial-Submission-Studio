@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -96,7 +97,7 @@ class StudyMetadata:
 
     items: dict[str, SourceColumn] = field(default_factory=dict)
     codelists: dict[str, CodeList] = field(default_factory=dict)
-    source_path: Any = None
+    source_path: Path | None = None
 
     def get_column(self, column_id: str) -> SourceColumn | None:
         """Get a source column by ID (case-insensitive)."""
