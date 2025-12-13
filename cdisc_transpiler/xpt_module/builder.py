@@ -3,21 +3,22 @@
 This module provides the core builder class that orchestrates the construction
 of SDTM-compliant DataFrames from source data and mapping configurations.
 
-Phase 4 Step 7: This module now uses the modular transformers and validators
-extracted in Steps 3-6, while maintaining backward compatibility.
+SDTM Reference:
+    SDTMIG v3.4 Section 4.1 defines the general structure of SDTM datasets.
+    Variables follow the General Observation Classes (Interventions, Events,
+    Findings) and include Identifier, Topic, Timing, and Qualifier roles.
 """
 
 from __future__ import annotations
 
-import re
 from typing import TYPE_CHECKING
 
 import pandas as pd
 
-from ..mapping_module import ColumnMapping, MappingConfig
+from ..mapping_module import ColumnMapping, MappingConfig, unquote_column_name
 from ..domains_module import SDTMVariable, get_domain
 
-# Import the modular components (Steps 3-6)
+# Import the modular components
 from .transformers import (
     DateTransformer,
     CodelistTransformer,
@@ -27,8 +28,6 @@ from .validators import XPTValidator
 
 if TYPE_CHECKING:
     from ..metadata_module import StudyMetadata
-
-_SAFE_NAME_RE = re.compile(r'^(?P<quoted>"(?:[^"]|"")*")n$', re.IGNORECASE)
 
 
 class XportGenerationError(RuntimeError):
@@ -151,7 +150,7 @@ class DomainFrameBuilder:
             return
 
         source_column = mapping.source_column
-        raw_source = self._unquote_column(source_column)
+        raw_source = unquote_column_name(source_column)
 
         if mapping.transformation:
             # TODO: Implement transformation logic
@@ -172,13 +171,13 @@ class DomainFrameBuilder:
                 and mapping.target_variable != "TSVCDREF"
             ):
                 code_column = mapping.use_code_column
-                code_column = self._unquote_column(code_column) if code_column else None
+                code_column = unquote_column_name(code_column) if code_column else None
                 source_data = self.codelist_transformer.apply_codelist_transformation(
                     source_data,
                     mapping.codelist_name,
                     code_column,
                     self.frame,
-                    self._unquote_column,
+                    unquote_column_name,
                 )
 
             result[mapping.target_variable] = source_data
@@ -187,16 +186,6 @@ class DomainFrameBuilder:
         """Return a default column series for a given variable."""
         dtype = variable.pandas_dtype()
         return pd.Series([None] * self.length, dtype=dtype)
-
-    @staticmethod
-    def _unquote_column(name: str) -> str:
-        """Remove quotes from SAS-safe column names."""
-        match = _SAFE_NAME_RE.fullmatch(name)
-        if not match:
-            return name
-        quoted = match.group("quoted")
-        unescaped = quoted[1:-1].replace('""', '"')
-        return unescaped
 
     def _post_process_domain(self, result: pd.DataFrame) -> None:
         """Perform domain-specific post-processing using the domain processor system.

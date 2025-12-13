@@ -53,6 +53,7 @@ from .metadata_mapper import (
 from .utils import (
     normalize_text,
     safe_column_name,
+    unquote_column_name,
 )
 
 # Factory function for creating appropriate mapper
@@ -123,4 +124,5 @@ __all__ = [
     # Utilities
     "normalize_text",
     "safe_column_name",
+    "unquote_column_name",
 ]

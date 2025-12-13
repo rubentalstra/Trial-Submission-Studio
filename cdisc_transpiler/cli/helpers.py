@@ -13,30 +13,17 @@ import pandas as pd
 from rich.console import Console
 from rich.table import Table
 
+# Import from centralized utility module
+from ..mapping_module.utils import unquote_column_name
+
 if TYPE_CHECKING:
     from ..domains_module import SDTMDomain
 
 console = Console()
 
 
-def unquote_safe(name: str | None) -> str:
-    """Remove quotes from a column name safely.
-
-    Args:
-        name: Column name that may be quoted
-
-    Returns:
-        Unquoted column name
-    """
-    if not name:
-        return ""
-    name = str(name)
-    if len(name) >= 3 and name.startswith('"') and name.endswith("n"):
-        inner = name[1:-1]
-        if inner.endswith('"'):
-            inner = inner[:-1]
-        return inner.replace('""', '"')
-    return name
+# Alias for backward compatibility
+unquote_safe = unquote_column_name
 
 
 def log_verbose(enabled: bool, message: str) -> None:
