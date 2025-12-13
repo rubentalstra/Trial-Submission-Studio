@@ -5,38 +5,41 @@ This module provides functionality to:
 - Parse and validate metadata structures
 - Provide automatic mapping suggestions from source data to SDTM variables
 - Apply codelist transformations to convert coded values to their text equivalents
-
-This module is now a compatibility wrapper around metadata_module.
-Import from metadata_module for new code.
 """
 
 from __future__ import annotations
 
-# Re-export everything from the new metadata_module for backward compatibility
-from .metadata_module import (
+from .models import (
     CodeList,
     CodeListValue,
-    MetadataLoadError,
     SourceColumn,
     StudyMetadata,
+)
+from .loaders import (
+    MetadataLoadError,
     discover_metadata_files,
-    get_value_transformer,
-    infer_sdtm_target,
     load_codelists_csv,
     load_items_csv,
     load_study_metadata,
 )
+from .mapping import (
+    get_value_transformer,
+    infer_sdtm_target,
+)
 
 __all__ = [
+    # Models
     "CodeList",
     "CodeListValue",
-    "MetadataLoadError",
     "SourceColumn",
     "StudyMetadata",
+    # Loaders
+    "MetadataLoadError",
     "discover_metadata_files",
-    "get_value_transformer",
-    "infer_sdtm_target",
     "load_codelists_csv",
     "load_items_csv",
     "load_study_metadata",
+    # Mapping
+    "get_value_transformer",
+    "infer_sdtm_target",
 ]
