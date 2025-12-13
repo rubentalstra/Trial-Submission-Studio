@@ -14,7 +14,7 @@ from rapidfuzz import fuzz
 
 if TYPE_CHECKING:
     from ..io import Hints
-    from ..metadata import StudyMetadata
+    from ..metadata_module import StudyMetadata
 
 from ..domains import get_domain, SDTMDomain
 from .constants import SDTM_INFERENCE_PATTERNS
@@ -34,7 +34,7 @@ class MetadataAwareMapper:
     3. Fuzzy matching with confidence threshold
 
     Example:
-        >>> from cdisc_transpiler.metadata import load_study_metadata
+        >>> from cdisc_transpiler.metadata_module import load_study_metadata
         >>> metadata = load_study_metadata("study_folder")
         >>> mapper = MetadataAwareMapper("DM", metadata, min_confidence=0.7)
         >>> suggestions = mapper.suggest(source_df)

@@ -15,7 +15,7 @@ import pandas as pd
 from rich.console import Console
 
 if TYPE_CHECKING:
-    from ..metadata import StudyMetadata
+    from ..metadata_module import StudyMetadata
 
 from ..domains import get_domain
 from ..io import build_column_hints, load_input_dataset

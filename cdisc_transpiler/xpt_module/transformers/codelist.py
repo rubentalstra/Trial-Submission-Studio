@@ -13,7 +13,7 @@ import pandas as pd
 from ...terminology import get_controlled_terminology
 
 if TYPE_CHECKING:
-    from ...metadata import StudyMetadata, Codelist
+    from ...metadata_module import StudyMetadata
 
 
 class CodelistTransformer:

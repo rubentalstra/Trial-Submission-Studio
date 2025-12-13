@@ -26,7 +26,7 @@ from .transformers import (
 from .validators import XPTValidator
 
 if TYPE_CHECKING:
-    from ..metadata import StudyMetadata
+    from ..metadata_module import StudyMetadata
 
 _SAFE_NAME_RE = re.compile(r'^(?P<quoted>"(?:[^"]|"")*")n$', re.IGNORECASE)
 

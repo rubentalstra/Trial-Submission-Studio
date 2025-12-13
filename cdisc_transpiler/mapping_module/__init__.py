@@ -83,7 +83,7 @@ def create_mapper(
         >>> mapper = create_mapper("DM")
         >>> 
         >>> # With metadata
-        >>> from cdisc_transpiler.metadata import load_study_metadata
+        >>> from cdisc_transpiler.metadata_module import load_study_metadata
         >>> metadata = load_study_metadata("study_folder")
         >>> mapper = create_mapper("DM", metadata=metadata)
     """
