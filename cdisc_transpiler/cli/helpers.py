@@ -2,6 +2,11 @@
 
 This module contains utility functions extracted from the main CLI module
 to improve code organization and reusability.
+
+SDTM Reference:
+    These utilities support SDTM-compliant output generation as defined
+    in SDTMIG v3.4. The module handles verbose logging, PDF generation
+    for Define-XML, and split dataset management per Section 4.1.7.
 """
 
 from __future__ import annotations
@@ -17,26 +22,6 @@ if TYPE_CHECKING:
     from ..domains_module import SDTMDomain
 
 console = Console()
-
-
-def unquote_safe(name: str | None) -> str:
-    """Remove quotes from a column name safely.
-
-    Args:
-        name: Column name that may be quoted
-
-    Returns:
-        Unquoted column name
-    """
-    if not name:
-        return ""
-    name = str(name)
-    if len(name) >= 3 and name.startswith('"') and name.endswith("n"):
-        inner = name[1:-1]
-        if inner.endswith('"'):
-            inner = inner[:-1]
-        return inner.replace('""', '"')
-    return name
 
 
 def log_verbose(enabled: bool, message: str) -> None:

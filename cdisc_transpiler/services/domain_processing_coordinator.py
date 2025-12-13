@@ -1,9 +1,12 @@
 """Domain Processing Coordinator - Coordinates domain file processing workflow.
 
-This service coordinates the processing of domain files including loading data,
-transformations, mapping, supplemental qualifiers, and file generation.
+This service coordinates the processing of SDTM domain files including loading data,
+transformations, mapping, supplemental qualifiers (SUPPQUAL), and file generation.
 
-Extracted from cli/commands/study.py for improved maintainability.
+SDTM Reference:
+    SDTMIG v3.4 Section 4.1.7 describes domain splitting for large datasets.
+    Supplemental qualifiers (SUPPQUAL) are defined in Section 8.4 for
+    sponsor-defined variables that don't fit in standard domain structure.
 """
 
 from __future__ import annotations
@@ -19,13 +22,13 @@ if TYPE_CHECKING:
 
 from ..domains_module import get_domain
 from ..io_module import build_column_hints, load_input_dataset
-from ..mapping_module import ColumnMapping, build_config, create_mapper
+from ..mapping_module import ColumnMapping, build_config, create_mapper, unquote_column_name
 from ..sas_module import generate_sas_program, write_sas_file
 from ..submission_module import build_suppqual
 from ..xpt_module import write_xpt_file
 from ..xml.dataset import write_dataset_xml
 from ..xpt_module.builder import build_domain_dataframe
-from ..cli.helpers import unquote_safe, write_variant_splits
+from ..cli.helpers import write_variant_splits
 from .study_orchestration_service import StudyOrchestrationService
 
 
@@ -344,9 +347,9 @@ class DomainProcessingCoordinator:
         used_source_columns: set[str] = set()
         if config and config.mappings:
             for m in config.mappings:
-                used_source_columns.add(unquote_safe(m.source_column))
+                used_source_columns.add(unquote_column_name(m.source_column))
                 if getattr(m, "use_code_column", None):
-                    used_source_columns.add(unquote_safe(m.use_code_column))
+                    used_source_columns.add(unquote_column_name(m.use_code_column))
 
         supp_df, _ = build_suppqual(
             domain_code,

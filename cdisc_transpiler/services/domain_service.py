@@ -1,11 +1,16 @@
 """Domain processing service.
 
-This service handles the core domain processing logic, including:
+This service handles the core SDTM domain processing logic, including:
 - Loading and transforming source data
-- Applying mappings
-- Generating domain DataFrames
-- Handling supplemental qualifiers
+- Applying variable mappings
+- Generating SDTM-compliant domain DataFrames
+- Handling supplemental qualifiers (SUPPQUAL)
 - Managing domain variants and merging
+
+SDTM Reference:
+    SDTMIG v3.4 defines the structure and content of SDTM datasets.
+    Each domain represents a collection of observations with a
+    topic-specific commonality.
 """
 
 from __future__ import annotations
@@ -22,7 +27,7 @@ if TYPE_CHECKING:
     from ..domains_module import SDTMDomain
 
 from ..io_module import load_input_dataset, build_column_hints
-from ..mapping_module import build_config, create_mapper
+from ..mapping_module import build_config, create_mapper, unquote_column_name
 from ..xpt_module import build_domain_dataframe
 from ..submission_module import build_suppqual
 
@@ -268,9 +273,9 @@ class DomainProcessingService:
         used_columns = set()
         if config and config.mappings:
             for mapping in config.mappings:
-                used_columns.add(self._unquote_safe(mapping.source_column))
+                used_columns.add(unquote_column_name(mapping.source_column))
                 if getattr(mapping, "use_code_column", None):
-                    used_columns.add(self._unquote_safe(mapping.use_code_column))
+                    used_columns.add(unquote_column_name(mapping.use_code_column))
 
         # Build SUPPQUAL
         supp_df, _ = build_suppqual(
@@ -308,16 +313,3 @@ class DomainProcessingService:
             config=supp_config,
             record_count=len(supp_df),
         )
-
-    @staticmethod
-    def _unquote_safe(name: str | None) -> str:
-        """Remove SAS name quoting."""
-        if not name:
-            return ""
-        name = str(name)
-        if len(name) >= 3 and name.startswith('"') and name.endswith("n"):
-            inner = name[1:-1]
-            if inner.endswith('"'):
-                inner = inner[:-1]
-            return inner.replace('""', '"')
-        return name
