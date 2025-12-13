@@ -94,7 +94,12 @@ class ValueListDefinition:
 
 @dataclass(frozen=True)
 class StudyDataset:
-    """Represents a single dataset with its metadata and data."""
+    """Represents a single dataset with its metadata and data.
+    
+    Supports split datasets per SDTMIG v3.4 Section 4.1.7:
+    - is_split: True if this dataset is a split of a parent domain
+    - split_suffix: The suffix added to parent domain (e.g., "HM" for LBHM)
+    """
 
     domain_code: str
     dataframe: pd.DataFrame

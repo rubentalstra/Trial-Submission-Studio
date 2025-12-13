@@ -109,8 +109,15 @@ def write_variant_splits(
     domain: SDTMDomain,
     xpt_dir: Path,
     console: Console,
-) -> list[Path]:
-    """Write split XPT files for domain variants (e.g., LB splits).
+) -> tuple[list[Path], list[tuple[str, pd.DataFrame, Path]]]:
+    """Write split XPT files for domain variants following SDTMIG v3.4 Section 4.1.7.
+
+    According to SDTMIG v3.4 Section 4.1.7 "Splitting Domains":
+    - Split datasets follow naming pattern: [DOMAIN][SPLIT] (e.g., LB → LBHM, LBCC)
+    - All splits maintain the same DOMAIN variable value
+    - Each split is documented as a separate dataset in Define-XML
+    - Dataset names must be ≤ 8 characters
+    - Split suffix should be meaningful (typically 2-4 characters)
 
     Args:
         merged_dataframe: Merged domain dataframe
@@ -120,23 +127,66 @@ def write_variant_splits(
         console: Rich console for output
 
     Returns:
-        List of paths to generated split files
+        Tuple of (list of paths, list of (split_name, dataframe, path) tuples)
     """
     from ..xpt_module import write_xpt_file
 
     split_paths: list[Path] = []
+    split_datasets: list[tuple[str, pd.DataFrame, Path]] = []
+    domain_code = domain.code.upper()
+    
     for variant_name, variant_df in variant_frames:
         # Clean variant name for filename
-        table = variant_name.replace(" ", "_").replace("(", "").replace(")", "")
-        if table == domain.code:
+        table = variant_name.replace(" ", "_").replace("(", "").replace(")", "").upper()
+        
+        # Skip if this is the base domain (not a split)
+        if table == domain_code:
             continue
+        
+        # Validate split dataset name follows SDTMIG v3.4 naming convention
+        # Split name must start with domain code and be ≤ 8 characters
+        if not table.startswith(domain_code):
+            console.print(
+                f"[yellow]⚠[/yellow] Warning: Split dataset '{table}' does not start "
+                f"with domain code '{domain_code}'. Skipping."
+            )
+            continue
+        
+        if len(table) > 8:
+            console.print(
+                f"[yellow]⚠[/yellow] Warning: Split dataset name '{table}' exceeds "
+                "8 characters. Truncating to comply with SDTMIG v3.4."
+            )
+            table = table[:8]
+        
+        # Ensure DOMAIN variable is set correctly (must match parent domain)
+        if "DOMAIN" in variant_df.columns:
+            variant_df = variant_df.copy()
+            variant_df["DOMAIN"] = domain_code
+        
+        # Create split subdirectory for better organization
+        split_dir = xpt_dir / "split"
+        split_dir.mkdir(parents=True, exist_ok=True)
+        
         split_name = table.lower()
-        split_path = xpt_dir / f"{split_name}.xpt"
-        file_label = f"{domain.description} - {variant_name}"
-        write_xpt_file(variant_df, domain.code, split_path, file_label=file_label)
+        split_path = split_dir / f"{split_name}.xpt"
+        
+        # Extract split suffix for better labeling
+        split_suffix = table[len(domain_code):]
+        file_label = (
+            f"{domain.description} - {split_suffix}" if split_suffix 
+            else domain.description
+        )
+        
+        write_xpt_file(variant_df, domain.code, split_path, file_label=file_label, table_name=table)
         split_paths.append(split_path)
-        console.print(f"[green]✓[/green] Split XPT: {split_path} (table={table})")
-    return split_paths
+        split_datasets.append((table, variant_df, split_path))
+        console.print(
+            f"[green]✓[/green] Split dataset: {split_path} "
+            f"(DOMAIN={domain_code}, table={table})"
+        )
+    
+    return split_paths, split_datasets
 
 
 def print_study_summary(

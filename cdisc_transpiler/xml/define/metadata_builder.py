@@ -159,15 +159,29 @@ def build_study_define_tree(
 
     # Process each dataset
     for ds in datasets:
-        domain = get_domain(ds.domain_code)
+        # For split datasets, use parent domain for metadata
+        if ds.is_split and len(ds.domain_code) > 2:
+            # Extract parent domain code (e.g., LBHM → LB, VSRESP → VS)
+            potential_parent = ds.domain_code[:2]
+            try:
+                domain = get_domain(potential_parent)
+                parent_domain_code = potential_parent
+            except Exception:
+                # If 2-char doesn't work, try the full code
+                domain = get_domain(ds.domain_code)
+                parent_domain_code = ds.domain_code
+        else:
+            domain = get_domain(ds.domain_code)
+            parent_domain_code = ds.domain_code
+            
         active_vars = get_active_domain_variables(domain, ds.dataframe)
-
+        
         # Build ItemGroupDef
         ig_attrib = {
             "OID": f"IG.{ds.domain_code}",
             "Name": ds.domain_code,
             "Repeating": "Yes",
-            "Domain": ds.domain_code,
+            "Domain": parent_domain_code,  # Use parent domain for split datasets
             "SASDatasetName": ds.domain_code[:8],
         }
         ig_attrib[attr(DEF_NS, "Structure")] = (
