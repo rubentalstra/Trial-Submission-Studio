@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 from ..domains import get_domain
 from ..io import build_column_hints, load_input_dataset
 from ..mapping import ColumnMapping, build_config, create_mapper
-from ..sas import generate_sas_program, write_sas_file
+from ..sas_module import generate_sas_program, write_sas_file
 from ..submission import build_suppqual
 from ..xpt_module import write_xpt_file
 from ..xml.dataset import write_dataset_xml

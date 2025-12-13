@@ -10,7 +10,7 @@ import click
 import pandas as pd
 from rich.console import Console
 
-from ...sas import generate_sas_program, write_sas_file
+from ...sas_module import generate_sas_program, write_sas_file
 from ...xpt_module import write_xpt_file
 from ...io import build_column_hints, ParseError, load_input_dataset
 from ...mapping import ColumnMapping, build_config, create_mapper
