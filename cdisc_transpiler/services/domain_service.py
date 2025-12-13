@@ -21,10 +21,10 @@ if TYPE_CHECKING:
     from ..metadata_module import StudyMetadata
     from ..domains_module import SDTMDomain
 
-from ..io import load_input_dataset, build_column_hints
+from ..io_module import load_input_dataset, build_column_hints
 from ..mapping_module import build_config, create_mapper
 from ..xpt_module import build_domain_dataframe
-from ..submission import build_suppqual
+from ..submission_module import build_suppqual
 
 
 @dataclass

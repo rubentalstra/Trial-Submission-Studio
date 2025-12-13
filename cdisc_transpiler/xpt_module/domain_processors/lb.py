@@ -6,7 +6,7 @@ import pandas as pd
 
 from .base import BaseDomainProcessor
 from ..transformers import TextTransformer, NumericTransformer, DateTransformer
-from ...terminology import get_controlled_terminology
+from ...terminology_module import get_controlled_terminology
 
 
 class LBProcessor(BaseDomainProcessor):

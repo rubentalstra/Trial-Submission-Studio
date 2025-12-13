@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import click
 
-from .commands import study, validate, domains
+from .commands import study, domains
 
 
 @click.group()
@@ -19,7 +19,6 @@ def app() -> None:
 
 # Register commands
 app.add_command(study.study_command, name="study")
-app.add_command(validate.validate_command, name="validate")
 app.add_command(domains.list_domains_command, name="domains")
 
 

@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from ..domains_module import SDTMDomain, SDTMVariable
     from ..mapping_module import ColumnMapping, MappingConfig
 
-from ..normalizers import render_assignment
+from .normalizers import render_assignment
 
 
 def get_default_assignments(domain: SDTMDomain, config: MappingConfig) -> list[str]:
