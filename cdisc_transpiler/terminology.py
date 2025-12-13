@@ -248,7 +248,7 @@ _REGISTRY_BY_CODE, _REGISTRY_BY_NAME = _build_registry()
 @lru_cache(maxsize=None)
 def _variable_to_codelist() -> Dict[str, str]:
     """Map variable names to codelist codes using domain metadata."""
-    from .domains import get_domain, list_domains
+    from .domains_module import get_domain, list_domains
 
     mapping: Dict[str, str] = {}
     for domain_code in list_domains():
