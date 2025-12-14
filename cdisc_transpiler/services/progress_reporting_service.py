@@ -13,12 +13,6 @@ from typing import Any
 from ..cli.helpers import log_verbose
 
 
-def _log_verbose(enabled: bool, message: str) -> None:
-    """Deferred import wrapper to avoid circular imports."""
-
-    log_verbose(enabled, message)
-
-
 class ProgressReportingService:
     """Service for reporting progress and status to the user.
 
@@ -52,9 +46,9 @@ class ProgressReportingService:
             supported_domains: List of supported domain codes
         """
 
-        _log_verbose(self.verbose > 0, f"Processing study folder: {study_folder}")
-        _log_verbose(self.verbose > 0, f"Study ID: {study_id}")
-        _log_verbose(self.verbose > 0, f"Output format: {output_format}")
+        log_verbose(self.verbose > 0, f"Processing study folder: {study_folder}")
+        log_verbose(self.verbose > 0, f"Study ID: {study_id}")
+        log_verbose(self.verbose > 0, f"Output format: {output_format}")
         log_verbose(
             self.verbose > 0,
             f"Supported domains: {', '.join(supported_domains)}",
@@ -88,7 +82,7 @@ class ProgressReportingService:
             csv_count: Number of CSV files found
         """
 
-        _log_verbose(self.verbose > 0, f"Found {csv_count} CSV files")
+        log_verbose(self.verbose > 0, f"Found {csv_count} CSV files")
 
     def report_study_summary(
         self,
