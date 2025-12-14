@@ -9,7 +9,8 @@ This module provides functionality to:
 
 from __future__ import annotations
 
-from .models import (
+# Import from new location and re-export for backward compatibility
+from ..domain.entities.study_metadata import (
     CodeList,
     CodeListValue,
     SourceColumn,

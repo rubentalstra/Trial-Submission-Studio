@@ -8,7 +8,7 @@ from typing import Any
 import pandas as pd
 
 from .csv_utils import detect_header_row, find_column, normalize_column_names
-from .models import CodeList, CodeListValue, SourceColumn, StudyMetadata
+from ..domain.entities.study_metadata import CodeList, CodeListValue, SourceColumn, StudyMetadata
 
 
 class MetadataLoadError(Exception):

@@ -9,7 +9,7 @@ from typing import Any, Iterable
 from .domain_builder import build_domain_from_rows, build_supp_domain
 from .general_classes import build_general_class_variables
 from .loaders import load_csv_rows, load_dataset_attributes
-from .models import SDTMDomain
+from ..domain.entities.sdtm_domain import SDTMDomain
 
 # Path to SDTMIG v3.4 metadata (single source of truth)
 _SDTMIG_PATH = Path(__file__).resolve().parent.parent.parent / "docs" / "SDTMIG_v3.4" / "Variables.csv"

@@ -5,7 +5,7 @@ columns to SDTM target variables with intelligent pattern recognition and
 metadata-aware suggestions.
 
 The package is organized into focused modules:
-- models: Data models for mappings and configurations
+- models: Data models for mappings and configurations - NOW IN domain.entities
 - config_io: Configuration file I/O operations
 - constants: SDTM inference patterns
 - engine: Basic mapping engine with fuzzy matching
@@ -30,8 +30,9 @@ Example:
 """
 
 from ..io_module.models import Hints
-from ..metadata_module.models import StudyMetadata
-from .models import (
+# Import from new location and re-export for backward compatibility
+from ..domain.entities.study_metadata import StudyMetadata
+from ..domain.entities.mapping import (
     ColumnMapping,
     MappingConfig,
     Suggestion,
