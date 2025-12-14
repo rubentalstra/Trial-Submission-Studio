@@ -69,13 +69,6 @@ class MetadataAwareMapper:
         """Build the alias dictionary from metadata and static patterns."""
         self._aliases: dict[str, str] = {}
 
-        # Start with global patterns
-        for target, sources in SDTM_INFERENCE_PATTERNS.get("_GLOBAL", {}).items():
-            for src in sources:
-                normalized = normalize_text(src)
-                if target in self.valid_targets:
-                    self._aliases[normalized] = target
-
         # Add domain-specific suffix patterns
         for suffix, sources in SDTM_INFERENCE_PATTERNS.get(
             "_DOMAIN_SUFFIXES", {}

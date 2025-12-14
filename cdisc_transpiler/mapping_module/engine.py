@@ -168,12 +168,6 @@ class MappingEngine:
         """
         normalized = normalize_text(column)
 
-        # Check global patterns
-        for target, sources in SDTM_INFERENCE_PATTERNS.get("_GLOBAL", {}).items():
-            if normalized in [normalize_text(s) for s in sources]:
-                if target in self.valid_targets:
-                    return target
-
         # Check domain-specific suffix patterns
         domain_code = self.domain.code.upper()
         for suffix, sources in SDTM_INFERENCE_PATTERNS.get("_DOMAIN_SUFFIXES", {}).items():

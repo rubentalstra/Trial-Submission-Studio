@@ -19,52 +19,6 @@ from __future__ import annotations
 # Patterns for inferring SDTM variable names from source column names
 # These patterns map normalized source column names to SDTM variables
 SDTM_INFERENCE_PATTERNS: dict[str, dict[str, list[str]]] = {
-    # Global patterns (apply to all domains)
-    # These are Identifier variables that don't follow the --VAR pattern
-    "_GLOBAL": {
-        # Subject/Study Identifiers (SDTM v2.0 Section 3.1)
-        "STUDYID": ["STUDYID", "STUDY", "STUDYIDENTIFIER", "PROTOCOL"],
-        "USUBJID": [
-            "SUBJECTID",
-            "SUBJECTIDENTIFIER",
-            "PATIENTID",
-            "SUBJECT",
-            "PATIENTIDENTIFIER",
-            "UNIQUESUBJECTID",
-        ],
-        "POOLID": ["POOLID", "POOLIDENTIFIER"],
-        "SPDEVID": ["SPDEVID", "DEVICEID", "DEVICEIDENTIFIER", "SPONSORDEVICEID"],
-        # Demographics variables (SDTMIG v3.4 DM domain)
-        "SEX": ["SEX", "GENDER"],
-        "AGE": ["AGE", "SUBJECTAGE"],
-        "AGEU": ["AGEU", "AGEUNIT", "AGEUNITS"],
-        "RACE": ["RACE"],
-        "ETHNIC": ["ETHNIC", "ETHNICITY"],
-        "ARMCD": ["ARMCD", "ARMCODE", "TREATMENTARMCODE"],
-        "ARM": ["ARM", "TREATMENTARM", "PLANNEDARM"],
-        "ACTARMCD": ["ACTARMCD", "ACTUALARMCODE"],
-        "ACTARM": ["ACTARM", "ACTUALARM"],
-        "COUNTRY": ["COUNTRY", "COUNTRYCD", "COUNTRYCODE"],
-        "SITEID": ["SITEID", "SITECODE", "SITE", "SITEIDENTIFIER"],
-        "INVID": ["INVID", "INVESTIGATORID", "INVESTIGATOR"],
-        "INVNAM": ["INVNAM", "INVESTIGATORNAME"],
-        # Reference dates (SDTM v2.0 Section 3.1.3)
-        "RFSTDTC": ["ICDAT", "INFORMEDCONSENTDATE", "RFSTDTC", "REFERENCESTART"],
-        "RFENDTC": ["RFENDTC", "REFERENCEEND"],
-        "RFXSTDTC": ["RFXSTDTC", "FIRSTEXPOSURE", "FIRSTDOSEDATE"],
-        "RFXENDTC": ["RFXENDTC", "LASTEXPOSURE", "LASTDOSEDATE"],
-        "RFICDTC": ["RFICDTC", "INFORMEDCONSENTDATETIME"],
-        "RFPENDTC": ["RFPENDTC", "PERMANENTDISCONTINUATION"],
-        "DTHDTC": ["DTHDTC", "DEATHDATE", "DEATHDATETIME"],
-        "DTHFL": ["DTHFL", "DEATHFLAG", "SUBJECTDIED"],
-        "BRTHDTC": ["BRTHDTC", "BIRTHDATE", "DOB", "DATEOFBIRTH"],
-        # Timing variables (SDTM v2.0 Section 3.3)
-        "EPOCH": ["EPOCH", "VISITEPOCH", "STUDYEPOCH"],
-        "TAETORD": ["TAETORD", "ELEMENTORDER", "PLANNEDORDER"],
-        "VISITNUM": ["VISITNUM", "VISITNUMBER", "VISITSEQUENCE"],
-        "VISIT": ["VISIT", "VISITNAME", "EVENTNAME", "VISITLABEL"],
-        "VISITDY": ["VISITDY", "PLANNEDSTUDYDAYOFVISIT", "PLANNEDVISITDAY"],
-    },
     # Domain-specific patterns (--VARIABLE becomes DOMAIN + VARIABLE)
     # Based on SDTM v2.0 General Observation Classes
     "_DOMAIN_SUFFIXES": {

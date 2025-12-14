@@ -52,12 +52,6 @@ def infer_sdtm_target(
         # Could be a valid SDTM variable already
         return source_column.upper()
 
-    # Check global patterns (non-domain-specific variables like USUBJID, SEX, etc.)
-    for sdtm_var, patterns in SDTM_INFERENCE_PATTERNS.get("_GLOBAL", {}).items():
-        for pattern in patterns:
-            if _normalize_column_name(pattern) == normalized:
-                return sdtm_var
-
     # Check domain suffix patterns (domain-specific variables like --TERM, --ORRES)
     for suffix, patterns in SDTM_INFERENCE_PATTERNS.get("_DOMAIN_SUFFIXES", {}).items():
         for pattern in patterns:
@@ -71,11 +65,6 @@ def infer_sdtm_target(
         if item:
             # If label contains SDTM variable name hints
             label_normalized = _normalize_column_name(item.label)
-            # Check global patterns in label
-            for sdtm_var, patterns in SDTM_INFERENCE_PATTERNS.get("_GLOBAL", {}).items():
-                for pattern in patterns:
-                    if _normalize_column_name(pattern) in label_normalized:
-                        return sdtm_var
             # Check domain suffix patterns in label
             for suffix, patterns in SDTM_INFERENCE_PATTERNS.get("_DOMAIN_SUFFIXES", {}).items():
                 for pattern in patterns:
