@@ -43,23 +43,6 @@ def log_verbose(enabled: bool, message: str) -> None:
         logger.verbose(message)
 
 
-def ensure_acrf_pdf(path: Path) -> None:
-    """Create a minimal, valid PDF at path if one is not already present.
-
-    This creates a placeholder Annotated CRF PDF file required by Define-XML.
-    
-    Note:
-        This function delegates to the canonical implementation in 
-        services.file_organization_service. It is kept here for backward
-        compatibility with existing imports.
-
-    Args:
-        path: Path where PDF should be created
-    """
-    from ..services.file_organization_service import ensure_acrf_pdf as _ensure_acrf_pdf
-    _ensure_acrf_pdf(path)
-
-
 def write_variant_splits(
     merged_dataframe: pd.DataFrame,
     variant_frames: list[tuple[str, pd.DataFrame]],

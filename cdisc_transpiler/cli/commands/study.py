@@ -22,10 +22,10 @@ from ...services import (
 from ..utils import ProgressTracker, log_success, log_error
 from ..helpers import (
     log_verbose,
-    ensure_acrf_pdf,
     print_study_summary,
 )
 from ..logging_config import create_logger, SDTMLogger
+from ...services.file_organization_service import ensure_acrf_pdf
 
 
 console = Console()
