@@ -27,22 +27,8 @@ class Logger(Protocol):
         ...
 
 
-# SDTM domain categories for informative logging
-DOMAIN_CATEGORIES = {
-    "Interventions": ["AG", "CM", "EC", "EX", "ML", "PR", "SU"],
-    "Events": ["AE", "BE", "CE", "DS", "DV", "HO", "MH"],
-    "Findings": ["BS", "CP", "CV", "DA", "DD", "EG", "FT", "GF", "IE", "IS",
-                 "LB", "MB", "MI", "MK", "MS", "NV", "OE", "PC", "PE", "PP",
-                 "QS", "RE", "RP", "RS", "SC", "SS", "TR", "TU", "UR", "VS"],
-    "Findings About": ["FA", "SR"],
-    "Special-Purpose": ["CO", "DM", "SE", "SM", "SV"],
-    "Trial Design": ["TA", "TD", "TE", "TI", "TM", "TS", "TV"],
-    "Relationship": ["RELREC", "RELSPEC", "RELSUB"],
-}
-
-
 def get_domain_category(domain_code: str) -> str:
-    """Get the SDTM category for a domain code.
+    """Get the SDTM category for a domain code dynamically from metadata.
     
     Args:
         domain_code: SDTM domain code (e.g., 'DM', 'AE')
@@ -50,11 +36,14 @@ def get_domain_category(domain_code: str) -> str:
     Returns:
         Category name or 'Unknown'
     """
+    from ..domains_module import get_domain
+    
     code = domain_code.upper()
-    for category, domains in DOMAIN_CATEGORIES.items():
-        if code in domains:
-            return category
-    return "Unknown"
+    try:
+        domain = get_domain(code)
+        return domain.class_name or "Unknown"
+    except KeyError:
+        return "Unknown"
 
 
 class DomainDiscoveryService:

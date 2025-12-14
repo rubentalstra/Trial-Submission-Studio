@@ -38,80 +38,27 @@ class LogLevel(IntEnum):
     DEBUG = 2
 
 
-# SDTM domain classes for contextual logging
-DOMAIN_CLASSES = {
-    # Interventions
-    "AG": "Interventions",
-    "CM": "Interventions",
-    "EC": "Interventions",
-    "EX": "Interventions",
-    "ML": "Interventions",
-    "PR": "Interventions",
-    "SU": "Interventions",
-    # Events
-    "AE": "Events",
-    "BE": "Events",
-    "CE": "Events",
-    "DS": "Events",
-    "DV": "Events",
-    "HO": "Events",
-    "MH": "Events",
-    # Findings
-    "BS": "Findings",
-    "CP": "Findings",
-    "CV": "Findings",
-    "DA": "Findings",
-    "DD": "Findings",
-    "EG": "Findings",
-    "FT": "Findings",
-    "GF": "Findings",
-    "IE": "Findings",
-    "IS": "Findings",
-    "LB": "Findings",
-    "MB": "Findings",
-    "MI": "Findings",
-    "MK": "Findings",
-    "MS": "Findings",
-    "NV": "Findings",
-    "OE": "Findings",
-    "PC": "Findings",
-    "PE": "Findings",
-    "PP": "Findings",
-    "QS": "Findings",
-    "RE": "Findings",
-    "RP": "Findings",
-    "RS": "Findings",
-    "SC": "Findings",
-    "SS": "Findings",
-    "TR": "Findings",
-    "TU": "Findings",
-    "UR": "Findings",
-    "VS": "Findings",
-    # Findings About
-    "FA": "Findings About",
-    "SR": "Findings About",
-    # Special-Purpose
-    "CO": "Special-Purpose",
-    "DM": "Special-Purpose",
-    "SE": "Special-Purpose",
-    "SM": "Special-Purpose",
-    "SV": "Special-Purpose",
-    # Trial Design
-    "TA": "Trial Design",
-    "TD": "Trial Design",
-    "TE": "Trial Design",
-    "TI": "Trial Design",
-    "TM": "Trial Design",
-    "TS": "Trial Design",
-    "TV": "Trial Design",
-    # Study Reference
-    "OI": "Study Reference",
-    # Relationship
-    "RELREC": "Relationship",
-    "RELSPEC": "Relationship",
-    "RELSUB": "Relationship",
-    "SUPPQUAL": "Relationship",
-}
+def get_domain_class(domain_code: str) -> str:
+    """Get the SDTM class for a domain dynamically from metadata.
+    
+    Args:
+        domain_code: SDTM domain code (e.g., 'DM', 'AE', 'LB')
+        
+    Returns:
+        SDTM class name (e.g., 'Events', 'Findings') or 'Unknown'
+    """
+    from ..domains_module import get_domain
+    
+    code = domain_code.upper()
+    # Handle SUPP domains
+    if code.startswith("SUPP"):
+        return "Supplemental Qualifiers"
+    
+    try:
+        domain = get_domain(code)
+        return domain.class_name or "Unknown"
+    except KeyError:
+        return "Unknown"
 
 
 @dataclass
@@ -169,21 +116,6 @@ class SDTMLogger:
     def clear_context(self) -> None:
         """Clear the current logging context."""
         self._context = None
-    
-    def get_domain_class(self, domain_code: str) -> str:
-        """Get the SDTM class for a domain.
-        
-        Args:
-            domain_code: SDTM domain code (e.g., 'DM', 'AE', 'LB')
-            
-        Returns:
-            SDTM class name (e.g., 'Events', 'Findings')
-        """
-        code = domain_code.upper()
-        # Handle SUPP domains
-        if code.startswith("SUPP"):
-            return "Supplemental Qualifiers"
-        return DOMAIN_CLASSES.get(code, "Unknown")
     
     # =========================================================================
     # Basic logging methods
@@ -275,7 +207,7 @@ class SDTMLogger:
             # Group domains by class for clearer output
             domain_groups: dict[str, list[str]] = {}
             for domain in supported_domains:
-                cls = self.get_domain_class(domain)
+                cls = get_domain_class(domain)
                 if cls not in domain_groups:
                     domain_groups[cls] = []
                 domain_groups[cls].append(domain)
@@ -361,7 +293,7 @@ class SDTMLogger:
         self.set_context(domain_code=domain_code)
         self._stats["domains_processed"] += 1
         
-        domain_class = self.get_domain_class(domain_code)
+        domain_class = get_domain_class(domain_code)
         variant_names = [v for _, v in files]
         
         # Build display name
@@ -556,7 +488,7 @@ class SDTMLogger:
             reason: Reason for synthesis
         """
         self.console.print()
-        domain_class = self.get_domain_class(domain_code)
+        domain_class = get_domain_class(domain_code)
         header = f"[bold]Synthesizing {domain_code}[/bold]: {reason}"
         if self.verbosity >= LogLevel.VERBOSE:
             header += f" [dim]({domain_class})[/dim]"

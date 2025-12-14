@@ -35,26 +35,21 @@ from .study_orchestration_service import StudyOrchestrationService
 console = Console()
 
 
-# SDTM domain class lookup for contextual logging
-DOMAIN_CLASSES = {
-    "AG": "Interventions", "CM": "Interventions", "EC": "Interventions",
-    "EX": "Interventions", "ML": "Interventions", "PR": "Interventions",
-    "SU": "Interventions", "AE": "Events", "BE": "Events", "CE": "Events",
-    "DS": "Events", "DV": "Events", "HO": "Events", "MH": "Events",
-    "BS": "Findings", "CP": "Findings", "CV": "Findings", "DA": "Findings",
-    "DD": "Findings", "EG": "Findings", "FT": "Findings", "GF": "Findings",
-    "IE": "Findings", "IS": "Findings", "LB": "Findings", "MB": "Findings",
-    "MI": "Findings", "MK": "Findings", "MS": "Findings", "NV": "Findings",
-    "OE": "Findings", "PC": "Findings", "PE": "Findings", "PP": "Findings",
-    "QS": "Findings", "RE": "Findings", "RP": "Findings", "RS": "Findings",
-    "SC": "Findings", "SS": "Findings", "TR": "Findings", "TU": "Findings",
-    "UR": "Findings", "VS": "Findings", "FA": "Findings About",
-    "SR": "Findings About", "CO": "Special-Purpose", "DM": "Special-Purpose",
-    "SE": "Special-Purpose", "SM": "Special-Purpose", "SV": "Special-Purpose",
-    "TA": "Trial Design", "TD": "Trial Design", "TE": "Trial Design",
-    "TI": "Trial Design", "TM": "Trial Design", "TS": "Trial Design",
-    "TV": "Trial Design", "RELREC": "Relationship",
-}
+def _get_domain_class(domain_code: str) -> str:
+    """Get the SDTM class for a domain dynamically from metadata.
+    
+    Args:
+        domain_code: SDTM domain code (e.g., 'DM', 'AE', 'LB')
+        
+    Returns:
+        SDTM class name or 'Unknown'
+    """
+    code = domain_code.upper()
+    try:
+        domain = get_domain(code)
+        return domain.class_name or "Unknown"
+    except KeyError:
+        return "Unknown"
 
 
 class DomainProcessingCoordinator:
@@ -219,8 +214,8 @@ class DomainProcessingCoordinator:
             else f"{domain_code} ({variant_name})"
         )
         
-        # Get domain class for context
-        domain_class = DOMAIN_CLASSES.get(domain_code.upper(), "Unknown")
+        # Get domain class for context (unused but kept for documentation)
+        domain_class = _get_domain_class(domain_code)
 
         # Load input data
         frame = load_input_dataset(input_file)
