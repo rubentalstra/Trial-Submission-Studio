@@ -8,7 +8,7 @@ proper SDTM v5 compliance.
 from pathlib import Path
 
 import pandas as pd
-import pyreadstat
+import pyreadstat  # type: ignore[import-untyped]
 
 from ..domains_module import get_domain
 

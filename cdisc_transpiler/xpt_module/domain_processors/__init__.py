@@ -31,6 +31,7 @@ from .te import TEProcessor
 
 if TYPE_CHECKING:
     from ...domains_module import SDTMDomain
+    from ...metadata_module import StudyMetadata
 
 
 class DomainProcessorRegistry:
@@ -48,7 +49,7 @@ class DomainProcessorRegistry:
         self,
         domain: "SDTMDomain",
         reference_starts: dict[str, str] | None = None,
-        metadata=None,
+        metadata: "StudyMetadata | None" = None,
     ) -> BaseDomainProcessor:
         """Get the appropriate processor for a domain."""
         processor_class = self._processors.get(
@@ -84,7 +85,7 @@ _registry.register("TE", TEProcessor)
 def get_domain_processor(
     domain: "SDTMDomain",
     reference_starts: dict[str, str] | None = None,
-    metadata=None,
+    metadata: "StudyMetadata | None" = None,
 ) -> BaseDomainProcessor:
     """Get a processor for the specified domain."""
     return _registry.get_processor(domain, reference_starts, metadata)

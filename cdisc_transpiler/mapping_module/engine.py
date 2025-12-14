@@ -15,7 +15,7 @@ from rapidfuzz import fuzz
 if TYPE_CHECKING:
     from ..io_module import Hints
 
-from ..domains_module import get_domain, SDTMDomain
+from ..domains_module import get_domain, SDTMDomain, SDTMVariable
 from .constants import SDTM_INFERENCE_PATTERNS
 from .models import ColumnMapping, MappingSuggestions, Suggestion
 from .utils import normalize_text, safe_column_name
@@ -191,7 +191,7 @@ class MappingEngine:
 
         return None
 
-    def _apply_hints(self, column: str, variable, score: float) -> float:
+    def _apply_hints(self, column: str, variable: SDTMVariable, score: float) -> float:
         """Apply column hint adjustments to matching score.
 
         Args:

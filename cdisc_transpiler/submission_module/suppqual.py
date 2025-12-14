@@ -6,6 +6,8 @@ for non-model columns in parent SDTM domains.
 
 from __future__ import annotations
 
+from typing import Any
+
 import pandas as pd
 
 from ..pandas_utils import ensure_numeric_series, ensure_series
@@ -133,7 +135,7 @@ def build_suppqual(
         - supp_df: SUPPQUAL DataFrame or None if no qualifiers found
         - used_columns: Set of source columns included in SUPPQUAL
     """
-    if source_df is None or source_df.empty:
+    if source_df.empty:
         return None, set()
 
     used_source_columns = used_source_columns or set()
@@ -178,12 +180,11 @@ def build_suppqual(
         return None, set()
 
     # Ensure lengths align; if not, align by index up to min length
-    max_len = min(len(aligned_source), len(mapped_df)) if mapped_df is not None else len(aligned_source)
+    max_len = min(len(aligned_source), len(mapped_df))
     aligned_source = aligned_source.iloc[:max_len]
-    if mapped_df is not None:
-        idvals = idvals.iloc[:max_len]
+    idvals = idvals.iloc[:max_len]
 
-    records: list[dict] = []
+    records: list[dict[str, Any]] = []
     for col in extra_cols:
         series = aligned_source[col].astype("string").fillna("").str.strip()
         if series.eq("").all():
@@ -191,7 +192,7 @@ def build_suppqual(
         for idx, val in series.items():
             if val == "":
                 continue
-            idval = idvals.iloc[idx] if mapped_df is not None else ""
+            idval = idvals.iloc[idx]
             idvar_val = (
                 str(_clean_idvarval(pd.Series([idval]), id_is_seq).iloc[0])
                 if idvar
@@ -202,7 +203,7 @@ def build_suppqual(
                 if "USUBJID" in aligned_source.columns
                 else ""
             )
-            if (not usubjid or usubjid.strip() == "") and mapped_df is not None and "USUBJID" in mapped_df.columns:
+            if (not usubjid or usubjid.strip() == "") and "USUBJID" in mapped_df.columns:
                 usubjid = str(mapped_df.iloc[idx]["USUBJID"])
             records.append(
                 {

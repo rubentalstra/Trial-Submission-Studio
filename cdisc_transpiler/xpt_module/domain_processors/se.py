@@ -30,8 +30,6 @@ class SEProcessor(BaseDomainProcessor):
             study_id = frame["STUDYID"].iloc[0]
 
         subjects_series = frame.get("USUBJID", pd.Series(dtype=str))
-        if subjects_series is None:
-            subjects_series = pd.Series(dtype=str)
         subjects = (
             list(self.reference_starts.keys())
             if self.reference_starts

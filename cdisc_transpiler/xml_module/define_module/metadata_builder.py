@@ -8,8 +8,13 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, TYPE_CHECKING
 from xml.etree import ElementTree as ET
+
+import pandas as pd
+
+if TYPE_CHECKING:
+    from ...mapping_module import MappingConfig
 
 from .models import DefineGenerationError, StudyDataset
 from .constants import (
@@ -41,9 +46,9 @@ from .standards import get_default_standard_comments
 
 
 def build_define_tree(
-    _dataset,
+    _dataset: pd.DataFrame,
     domain_code: str,
-    config,
+    config: "MappingConfig",
     *,
     dataset_href: str | Path | None = None,
     sdtm_version: str = DEFAULT_SDTM_VERSION,
@@ -244,7 +249,7 @@ def build_study_define_tree(
                     code_list_specs[cl_oid] = (var, ds.domain_code, extended)
 
         # Handle SUPP-- value lists
-        vl_defs, wc_defs, vl_items, vl_oid = build_supp_value_lists(
+        vl_defs, wc_defs, vl_items, _vl_oid = build_supp_value_lists(
             ds.dataframe, domain
         )
         value_list_defs.extend(vl_defs)

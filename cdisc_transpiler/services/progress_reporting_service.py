@@ -135,7 +135,7 @@ class ProgressReportingService:
             display_name = f"{domain_code} (merging {', '.join(variant_names)})"
 
         self.console.print(f"\n[bold]Processing {display_name}[/bold]")
-        for input_file, variant_name in files_for_domain:
+        for input_file, _variant_name in files_for_domain:
             self.console.print(f"  - {input_file.name}")
 
     def report_synthesis(self, domain_code: str, reason: str) -> None:

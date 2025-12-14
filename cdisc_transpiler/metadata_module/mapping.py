@@ -89,7 +89,7 @@ def get_value_transformer(
     source_column: str,
     metadata: StudyMetadata,
     target_variable: str,
-) -> Callable | None:
+) -> Callable[[Any], Any] | None:
     """Get a transformation function for a source column.
 
     Args:

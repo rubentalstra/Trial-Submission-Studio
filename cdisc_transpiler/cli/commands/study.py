@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 from pathlib import Path
+from typing import Any, Callable
 
 import traceback
 import click
@@ -256,7 +257,7 @@ def study_command(
 
     processed_domains = set(domain_files.keys())
     # Process each domain
-    results: list[dict] = []
+    results: list[dict[str, Any]] = []
     errors: list[tuple[str, str]] = []
     study_datasets: list[StudyDataset] = []  # For Define-XML generation
 
@@ -264,8 +265,7 @@ def study_command(
         *,
         domain_code: str,
         reason: str,
-        builder,
-        is_reference_data: bool = False,
+        builder: Callable[[], dict[str, Any]],
     ) -> None:
         logger.log_synthesis_start(domain_code, reason)
         try:
@@ -600,6 +600,3 @@ def study_command(
     print_study_summary(
         results, errors, output_dir, output_format, generate_define, generate_sas
     )
-
-
-# Helper functions

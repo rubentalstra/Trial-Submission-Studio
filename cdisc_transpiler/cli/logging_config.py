@@ -285,7 +285,7 @@ class SDTMLogger:
         self.console.print(header)
 
         # List input files
-        for input_file, variant_name in files:
+        for input_file, _variant_name in files:
             self.console.print(f"  - {input_file.name}")
 
     def log_file_loaded(

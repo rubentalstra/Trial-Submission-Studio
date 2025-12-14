@@ -208,7 +208,7 @@ def collect_extended_codelist_values(
         if not text:
             continue
         normalized = ct.normalize(raw_value)
-        canonical = normalized if normalized is not None else text
+        canonical = normalized or text
         if canonical in ct.submission_values:
             continue
         extras.add(canonical)

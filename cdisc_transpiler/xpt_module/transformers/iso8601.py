@@ -12,12 +12,13 @@ Per SDTM IG v3.4:
 from __future__ import annotations
 
 import re
+from typing import Any
 
 import pandas as pd
 from pandas import isna
 
 
-def normalize_iso8601(raw_value) -> str:
+def normalize_iso8601(raw_value: Any) -> str:
     """Normalize date/time-ish strings to ISO8601; return original if invalid.
 
     Uses :func:`pandas.isna` to safely handle ``pd.NA`` and other missing
@@ -68,7 +69,7 @@ def normalize_iso8601(raw_value) -> str:
         return str(raw_value)
 
 
-def normalize_iso8601_duration(raw_value) -> str:
+def normalize_iso8601_duration(raw_value: Any) -> str:
     """Normalize elapsed time/duration values to ISO 8601 duration format.
 
     ISO 8601 durations: PnYnMnDTnHnMnS

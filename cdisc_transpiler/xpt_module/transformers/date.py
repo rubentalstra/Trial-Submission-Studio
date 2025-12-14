@@ -6,7 +6,7 @@ durations, and study day calculations according to SDTM standards.
 
 from __future__ import annotations
 
-from typing import Sequence
+from typing import Sequence, Any
 
 import pandas as pd
 
@@ -164,7 +164,7 @@ class DateTransformer:
         baseline = baseline.bfill().ffill()
 
         # Compute day difference
-        deltas = (dates - baseline).dt.days
+        deltas = (dates - baseline).dt.days  # type: ignore[attr-defined]
 
         # Per SDTM: add 1 for dates on or after reference start, no adjustment for dates before
         # This ensures there is no Day 0
@@ -199,7 +199,7 @@ class DateTransformer:
             frame[end_var] = end.where(~needs_swap, start)
 
     @staticmethod
-    def coerce_iso8601(raw_value) -> str:
+    def coerce_iso8601(raw_value: Any) -> str:
         """Coerce a value to ISO 8601 date format, handling special cases.
 
         This method normalizes dates and handles special tokens like "NK" (unknown)
@@ -213,7 +213,7 @@ class DateTransformer:
         """
         normalized = normalize_iso8601(raw_value)
         fixed = normalized
-        if isinstance(normalized, str) and "NK" in normalized.upper():
+        if "NK" in normalized.upper():
             fixed = normalized.upper().replace("NK", "01")
         try:
             parsed = pd.to_datetime(fixed, errors="coerce", utc=False)

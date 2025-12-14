@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import math
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 from rich.console import Console
@@ -24,6 +24,7 @@ from ..cli.logging_config import get_logger
 
 if TYPE_CHECKING:
     from ..metadata_module import StudyMetadata
+    from ..domains_module import SDTMDomain
 
 from ..domains_module import SDTMDomain, get_domain, get_domain_class
 from ..io_module import build_column_hints, load_input_dataset
@@ -44,8 +45,8 @@ from .study_orchestration_service import StudyOrchestrationService
 
 def _write_variant_splits(
     merged_dataframe: pd.DataFrame,
-    variant_frames: list,
-    domain,
+    variant_frames: list[tuple[str, pd.DataFrame]],
+    domain: "SDTMDomain",
     xpt_dir: Path,
     console: Console,
 ):
@@ -136,7 +137,7 @@ class DomainProcessingCoordinator:
             if processed_data is None:
                 continue
 
-            frame, config, is_lb_long = processed_data
+            frame, config, _is_lb_long = processed_data
             all_dataframes.append(frame)
             variant_frames.append((variant_name or domain_code, frame))
             last_config = config
@@ -585,13 +586,13 @@ class DomainProcessingCoordinator:
         files_for_domain: list[tuple[Path, str]],
         domain: SDTMDomain,
         verbose: bool,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Generate output files and return processing results."""
 
         base_filename = domain.resolved_dataset_name()
         disk_name = base_filename.lower()
 
-        result = {
+        result: dict[str, Any] = {
             "domain_code": domain_code,
             "records": len(merged_dataframe),
             "domain_dataframe": merged_dataframe,
@@ -662,7 +663,7 @@ class DomainProcessingCoordinator:
         output_format: str,
         xpt_dir: Path | None,
         xml_dir: Path | None,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Generate supplemental qualifier files."""
         merged_supp = (
             supp_frames[0]
@@ -677,7 +678,7 @@ class DomainProcessingCoordinator:
         base_filename = get_domain(supp_domain_code).resolved_dataset_name()
         disk_name = base_filename.lower()
 
-        supp_result = {
+        supp_result: dict[str, Any] = {
             "domain_code": supp_domain_code,
             "records": len(merged_supp),
             "domain_dataframe": merged_supp,

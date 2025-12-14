@@ -12,7 +12,7 @@ SDTM Reference:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 from rich.console import Console
@@ -45,7 +45,6 @@ def log_verbose(enabled: bool, message: str) -> None:
 
 
 def write_variant_splits(
-    merged_dataframe: pd.DataFrame,
     variant_frames: list[tuple[str, pd.DataFrame]],
     domain: SDTMDomain,
     xpt_dir: Path,
@@ -133,7 +132,7 @@ def write_variant_splits(
 
 
 def print_study_summary(
-    results: list[dict],
+    results: list[dict[str, Any]],
     errors: list[tuple[str, str]],
     output_dir: Path,
     output_format: str,

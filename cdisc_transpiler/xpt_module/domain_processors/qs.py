@@ -6,7 +6,7 @@ import pandas as pd
 
 from .base import BaseDomainProcessor
 from ..transformers import NumericTransformer, DateTransformer
-from ...pandas_utils import ensure_numeric_series, ensure_series
+from ...pandas_utils import ensure_numeric_series
 
 
 class QSProcessor(BaseDomainProcessor):

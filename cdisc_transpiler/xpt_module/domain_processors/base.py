@@ -13,6 +13,7 @@ import pandas as pd
 
 if TYPE_CHECKING:
     from ...domains_module import SDTMDomain
+    from ...metadata_module import StudyMetadata
 
 from ..transformers import TextTransformer
 
@@ -28,7 +29,7 @@ class BaseDomainProcessor(ABC):
         self,
         domain: "SDTMDomain",
         reference_starts: dict[str, str] | None = None,
-        metadata=None,
+        metadata: "StudyMetadata | None" = None,
         ):
         """Initialize the domain processor.
 

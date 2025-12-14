@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pandas as pd
 
 from .base import BaseDomainProcessor
@@ -49,7 +51,7 @@ class TSProcessor(BaseDomainProcessor):
             valcd: str = "",
             tsvcdref_val: str = "",
             tsvcdver_val: str | None = None,
-        ) -> dict:
+        ) -> dict[str, Any]:
             # Only provide a version when a reference dictionary is specified
             ref = tsvcdref_val
             if ref:

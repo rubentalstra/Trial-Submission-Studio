@@ -6,8 +6,13 @@ This module handles XML serialization and file I/O for Define-XML documents.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Iterable
+from typing import Iterable, TYPE_CHECKING
 from xml.etree import ElementTree as ET
+
+import pandas as pd
+
+if TYPE_CHECKING:
+    from ...mapping_module import MappingConfig
 
 from .models import DefineGenerationError, StudyDataset
 from .constants import DEFAULT_SDTM_VERSION, CONTEXT_SUBMISSION
@@ -16,9 +21,9 @@ from .metadata_builder import build_define_tree, build_study_define_tree
 
 
 def write_define_file(
-    dataset,
+    dataset: pd.DataFrame,
     domain_code: str,
-    config,
+    config: "MappingConfig",
     path: str | Path,
     *,
     dataset_href: str | None = None,

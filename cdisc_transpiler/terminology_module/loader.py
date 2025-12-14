@@ -84,7 +84,7 @@ def _iter_ct_files(ct_dir: Path) -> List[Path]:
     return sorted(ct_dir.glob("*CT_*.csv"))
 
 
-def _load_ct_rows(ct_dir: Path) -> Dict[str, list[dict]]:
+def _load_ct_rows(ct_dir: Path) -> Dict[str, list[dict[str, Any]]]:
     """Load CT rows grouped by codelist code from all CT CSVs.
 
     Args:
@@ -93,7 +93,7 @@ def _load_ct_rows(ct_dir: Path) -> Dict[str, list[dict]]:
     Returns:
         Dictionary mapping codelist codes to lists of row dictionaries
     """
-    grouped: Dict[str, list[dict]] = {}
+    grouped: Dict[str, list[dict[str, Any]]] = {}
     for csv_path in _iter_ct_files(ct_dir):
         try:
             records = pd.read_csv(csv_path).to_dict(orient="records")

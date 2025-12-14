@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import pandas as pd
 
 from .base import BaseDomainProcessor
@@ -72,7 +74,7 @@ class DSProcessor(BaseDomainProcessor):
             assert isinstance(dt_candidate, pd.Timestamp)
             return dt_candidate.date().isoformat()
 
-        defaults: list[dict] = []
+        defaults: list[dict[str, Any]] = []
         study_id = "STUDY"
         if len(frame) > 0 and "STUDYID" in frame.columns:
             study_id = frame["STUDYID"].iloc[0]
