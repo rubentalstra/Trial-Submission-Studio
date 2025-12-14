@@ -27,6 +27,12 @@ import pandas as pd
 from ..domains_module import get_domain
 from ..mapping_module import ColumnMapping, build_config
 from ..sas_module import generate_sas_program, write_sas_file
+from ..terminology_module import (
+    normalize_testcd,
+    get_testcd_label,
+    get_domain_testcd_values,
+    get_domain_testcd_synonyms,
+)
 from ..xpt_module import write_xpt_file
 from ..xml_module.dataset_module import write_dataset_xml
 from ..xpt_module.builder import build_domain_dataframe
@@ -45,10 +51,12 @@ class StudyOrchestrationService:
     """
 
     def reshape_vs_to_long(self, frame: pd.DataFrame, study_id: str) -> pd.DataFrame:
-        """Convert source VS wide data to SDTM-compliant long rows using dynamic tests.
+        """Convert source VS wide data to SDTM-compliant long rows using CT.
 
         Transforms wide-format vital signs data (one column per test) to the
         vertical SDTM structure (one row per test per subject per visit).
+
+        All test codes and labels are loaded dynamically from CDISC CT.
 
         SDTM Reference:
             SDTMIG v3.4 Section 6.3.7 defines the VS domain structure with
@@ -101,6 +109,10 @@ class StudyOrchestrationService:
         if not tests:
             return pd.DataFrame()
 
+        # Get valid VS test codes from CT
+        valid_testcds = get_domain_testcd_values("VS")
+        vs_synonyms = get_domain_testcd_synonyms("VS")
+
         records: list[dict] = []
         for _, row in df.iterrows():
             usubjid = str(row.get("USUBJID", "") or "").strip()
@@ -116,9 +128,17 @@ class StudyOrchestrationService:
             reason = str(row.get("VSREASND", "") or "").strip()
 
             for testcd_raw in tests:
-                std_testcd = VS_TEST_ALIASES.get(testcd_raw, None)
+                # Normalize test code using CT synonyms
+                std_testcd = normalize_testcd("VS", testcd_raw)
                 if not std_testcd:
-                    continue
+                    # Try direct lookup in valid codes
+                    if testcd_raw.upper() in valid_testcds:
+                        std_testcd = testcd_raw.upper()
+                    elif testcd_raw.upper() in vs_synonyms:
+                        std_testcd = vs_synonyms[testcd_raw.upper()]
+                    else:
+                        continue
+                        
                 value = row.get(f"ORRES_{testcd_raw}", pd.NA)
                 if status_cd != "N" and pd.isna(value):
                     continue
@@ -126,21 +146,19 @@ class StudyOrchestrationService:
                 pos_val = row.get(f"POS_{testcd_raw}", "")
                 label_val = row.get(f"TEST_{testcd_raw}", "")
                 stat_val = "NOT DONE" if status_cd == "N" else ""
-                if stat_val != "NOT DONE" and (
-                    unit_val is None or str(unit_val).strip() == ""
-                ):
-                    unit_val = VS_UNIT_DEFAULTS.get(std_testcd, "")
+                
+                # Get label from CT
+                test_label = get_testcd_label("VS", std_testcd)
+                if test_label == std_testcd and label_val:
+                    test_label = label_val
+                    
                 records.append(
                     {
                         "STUDYID": study_id,
                         "DOMAIN": "VS",
                         "USUBJID": usubjid,
                         "VSTESTCD": std_testcd[:8],
-                        "VSTEST": str(
-                            _get_vs_test_labels().get(
-                                std_testcd, label_val or std_testcd
-                            )
-                        ),
+                        "VSTEST": test_label,
                         "VSORRES": "" if stat_val else value,
                         "VSORRESU": "" if stat_val else unit_val,
                         "VSSTAT": stat_val,
@@ -157,10 +175,12 @@ class StudyOrchestrationService:
         return pd.DataFrame(records)
 
     def reshape_lb_to_long(self, frame: pd.DataFrame, study_id: str) -> pd.DataFrame:
-        """Convert wide LB source data to long-form SDTM rows.
+        """Convert wide LB source data to long-form SDTM rows using CT.
 
         Transforms wide-format laboratory data (one column per test) to the
         vertical SDTM structure (one row per test per subject per timepoint).
+
+        All test codes and labels are loaded dynamically from CDISC CT.
 
         SDTM Reference:
             SDTMIG v3.4 Section 6.3.3 defines the LB domain structure with
@@ -272,6 +292,10 @@ class StudyOrchestrationService:
                 return None
             return val
 
+        # Get valid LB test codes from CT
+        valid_testcds = get_domain_testcd_values("LB")
+        lb_synonyms = get_domain_testcd_synonyms("LB")
+
         records: list[dict] = []
         for _, row in df.iterrows():
             usubjid = str(row.get(usubjid_col, "") or "").strip() if usubjid_col else ""
@@ -288,14 +312,21 @@ class StudyOrchestrationService:
                     break
 
             for testcd, cols in test_defs.items():
-                # Map/normalize test code; skip unsupported tests
-                norm_testcd = testcd.upper()
-                if norm_testcd == "GLUCU":
-                    norm_testcd = "GLUC"
-                # Use dynamic labels from CT instead of hardcoded list
-                lb_labels = _get_lb_test_labels()
-                if norm_testcd not in lb_labels:
-                    continue
+                # Normalize test code using CT
+                norm_testcd = normalize_testcd("LB", testcd)
+                if not norm_testcd:
+                    # Try direct lookup
+                    upper_testcd = testcd.upper()
+                    if upper_testcd == "GLUCU":
+                        upper_testcd = "GLUC"
+                    if upper_testcd in valid_testcds:
+                        norm_testcd = upper_testcd
+                    elif upper_testcd in lb_synonyms:
+                        norm_testcd = lb_synonyms[upper_testcd]
+                    else:
+                        # Accept any test code from source if it looks valid
+                        norm_testcd = upper_testcd
+                        
                 orres_col = cols.get("orres")
                 if not orres_col:
                     continue
@@ -325,13 +356,19 @@ class StudyOrchestrationService:
                     if cols.get("label")
                     else ""
                 )
+                
+                # Get label from CT
+                test_label = get_testcd_label("LB", norm_testcd)
+                if test_label == norm_testcd and label_val:
+                    test_label = label_val
+                    
                 records.append(
                     {
                         "STUDYID": study_id,
                         "DOMAIN": "LB",
                         "USUBJID": usubjid,
                         "LBTESTCD": norm_testcd[:8],
-                        "LBTEST": lb_labels.get(norm_testcd, label_val or norm_testcd),
+                        "LBTEST": test_label,
                         "LBORRES": value_str,
                         "LBORRESU": unit_val,
                         "LBORNRLO": nrlo_val,

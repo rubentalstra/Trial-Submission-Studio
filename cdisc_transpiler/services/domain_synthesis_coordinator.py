@@ -16,14 +16,13 @@ from ..domains_module import SDTMVariable, get_domain
 from ..mapping_module import ColumnMapping, build_config
 from ..sas_module import generate_sas_program, write_sas_file
 from ..xpt_module import write_xpt_file
-from ..cli.utils import log_success
 from ..xpt_module.builder import build_domain_dataframe
 from ..xml_module.dataset_module import write_dataset_xml
 
 
 def _log_success(message: str) -> None:
     """Log a success message. Deferred import to avoid circular dependency."""
-
+    from ..cli.utils import log_success
     log_success(message)
 
 
