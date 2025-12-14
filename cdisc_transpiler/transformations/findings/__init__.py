@@ -9,9 +9,11 @@ from .wide_to_long import (
     WideToLongTransformer,
 )
 from .vs_transformer import VSTransformer
+from .lb_transformer import LBTransformer
 
 __all__ = [
     "TestColumnPattern",
     "WideToLongTransformer",
     "VSTransformer",
+    "LBTransformer",
 ]
