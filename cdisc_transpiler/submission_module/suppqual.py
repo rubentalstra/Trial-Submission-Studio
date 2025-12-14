@@ -6,7 +6,6 @@ for non-model columns in parent SDTM domains.
 
 from __future__ import annotations
 
-import math
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd
@@ -287,50 +286,3 @@ def extract_used_columns(config: MappingConfig | None) -> set[str]:
             if getattr(mapping, "use_code_column", None):
                 used_columns.add(unquote_column_name(mapping.use_code_column))
     return used_columns
-
-
-def build_ae_treatment_emergent(
-    domain_frame: pd.DataFrame, study_id: str
-) -> pd.DataFrame:
-    """Build treatment emergent flag supplemental records for AE domain.
-
-    Per SDTM, AETRTEM (Treatment Emergent Flag) is a supplemental qualifier
-    that indicates whether an adverse event is treatment-emergent.
-
-    Args:
-        domain_frame: AE domain DataFrame with AESEQ and USUBJID columns
-        study_id: Study identifier
-
-    Returns:
-        DataFrame with SUPPAE records for AETRTEM flag
-    """
-    if "AESEQ" not in domain_frame.columns:
-        return pd.DataFrame()
-
-    records: list[dict[str, Any]] = []
-    for idx, (_, row) in enumerate(domain_frame.iterrows(), start=1):
-        seq_raw = row.get("AESEQ", idx)
-        seq_val = seq_raw if seq_raw not in (None, "") else idx
-        try:
-            seq_float = float(seq_val)
-            if math.isnan(seq_float):
-                raise ValueError
-        except Exception:
-            seq_float = float(idx)
-        seq_str = str(int(seq_float)) if seq_float.is_integer() else str(seq_float)
-        records.append(
-            {
-                "STUDYID": study_id,
-                "RDOMAIN": "AE",
-                "USUBJID": row.get("USUBJID", ""),
-                "IDVAR": "AESEQ",
-                "IDVARVAL": seq_str,
-                "QNAM": "AETRTEM",
-                "QLABEL": "Treatment Emergent Flag",
-                "QVAL": "Y",
-                "QORIG": "DERIVED",
-                "QEVAL": "",
-            }
-        )
-
-    return pd.DataFrame(records) if records else pd.DataFrame()

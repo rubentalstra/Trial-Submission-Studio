@@ -32,11 +32,7 @@ from ..mapping_module import (
     create_mapper,
 )
 from ..sas_module import generate_sas_program, write_sas_file
-from ..submission_module import (
-    build_suppqual,
-    extract_used_columns,
-    build_ae_treatment_emergent,
-)
+from ..submission_module import build_suppqual, extract_used_columns
 from ..xpt_module import write_xpt_file
 from ..xpt_module.builder import build_domain_dataframe
 from ..xml_module.dataset_module import write_dataset_xml
@@ -138,12 +134,6 @@ class DomainProcessingCoordinator:
                 )
                 if supp_df is not None and not supp_df.empty:
                     supp_frames.append(supp_df)
-
-                # Add AE treatment emergent flag using submission_module
-                if domain_code.upper() == "AE":
-                    trt_supp = build_ae_treatment_emergent(frame, study_id)
-                    if not trt_supp.empty:
-                        supp_frames.append(trt_supp)
 
         if not all_dataframes:
             raise ValueError(f"No data could be processed for {domain_code}")
