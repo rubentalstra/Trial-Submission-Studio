@@ -8,7 +8,7 @@
 
 ## Progress Summary
 
-- **Completed Tickets:** 4/60
+- **Completed Tickets:** 5/60
 - **Current Sprint:** Week 1 - Infrastructure Layer
 - **Estimated Completion:** 6 weeks
 
@@ -46,90 +46,67 @@
 ### INFRA-4: Create Configuration System ✅ COMPLETE
 **Status:** Complete  
 **Started:** 2025-12-14 21:35  
-**Completed:** 2025-12-14 21:45  
-**Depends on:** INFRA-1 ✅
+**Completed:** 2025-12-14 21:45
 
-**Tasks:**
-- [x] Create `cdisc_transpiler/config.py` (TranspilerConfig, ConfigLoader)
-- [x] Create `cdisc_transpiler/constants.py` (Defaults, Constraints, Patterns)
-- [x] Create `cdisc_transpiler.toml.example` (example config file)
-- [x] Write unit tests (15 tests, all passing)
-
-**Files Created:**
-- `cdisc_transpiler/config.py` - Configuration management (220 lines)
-  - `TranspilerConfig` - Immutable config dataclass with validation
-  - `ConfigLoader` - Load from TOML/env/defaults with precedence
-- `cdisc_transpiler/constants.py` - Centralized constants (130 lines)
-  - `Defaults` - Default values (date, subject, confidence, etc.)
-  - `Constraints` - SDTM/XPT format constraints
-  - `Patterns` - Regex patterns for validation
-  - `MetadataFiles` - Standard file names
-  - `SDTMVersions` - Version info
-  - `LogLevels` - Verbosity levels
-- `cdisc_transpiler.toml.example` - Example configuration file
-- `tests/unit/test_config.py` - Comprehensive tests (15 tests)
-
-**Test Results:**
-```
-15 passed in 1.61s
-- Test coverage: >95%
-- All validation and loading scenarios covered
-```
-
-**Features:**
-1. **Immutable configuration** - Frozen dataclass prevents accidental mutation
-2. **Multiple loading sources** - TOML file, environment variables, or defaults
-3. **Precedence system** - TOML > Env > Defaults
-4. **Validation** - Min/max checks for critical values
-5. **Optional TOML** - Gracefully falls back if tomllib not available
-6. **Centralized constants** - All magic values in one place with SDTM references
-
-**Replaced Scattered Values:**
-- Default date "2023-01-01" in 3 places → `Defaults.DATE`
-- Min confidence 0.5 in 3 places → `Defaults.MIN_CONFIDENCE`
-- XPT max label 200 → `Constraints.XPT_MAX_LABEL_LENGTH`
-- QNAM max length 8 → `Constraints.QNAM_MAX_LENGTH`
-- Hardcoded paths in loaders → `config.sdtm_spec_dir`, `config.ct_dir`
-
-**Usage Example:**
-```python
-from cdisc_transpiler.config import ConfigLoader, TranspilerConfig
-from cdisc_transpiler.constants import Defaults, Constraints
-
-# Load config (TOML > Env > Defaults)
-config = ConfigLoader.load()
-
-# Or create custom config
-config = TranspilerConfig(
-    min_confidence=0.7,
-    chunk_size=2000,
-)
-
-# Use constants
-if label_length > Constraints.XPT_MAX_LABEL_LENGTH:
-    raise ValueError("Label too long")
-    
-default_date = Defaults.DATE
-```
-
-**Test Coverage:**
-- ✅ Default config values
-- ✅ Custom config values
-- ✅ Immutability (frozen dataclass)
-- ✅ Validation (min_confidence, chunk_size)
-- ✅ Environment variable loading
-- ✅ TOML file loading
-- ✅ Partial TOML config (mix with defaults)
-- ✅ All constants classes
-- ✅ Regex pattern validation
+(details omitted for brevity - see commit 91d5c2b)
 
 ---
 
-### INFRA-5: Extract Constants ⏳ NEXT
+### INFRA-5: Extract Constants ✅ COMPLETE
+**Status:** Complete  
+**Started:** 2025-12-14 21:50  
+**Completed:** 2025-12-14 22:00  
+**Depends on:** INFRA-4 ✅
+
+**Tasks:**
+- [x] Constants already defined in `constants.py` (from INFRA-4)
+- [x] Update existing code to use constants
+- [x] Replace hardcoded "2023-01-01" with `Defaults.DATE`
+- [x] Replace hardcoded "SYNTH001" with `Defaults.SUBJECT_ID`
+- [x] Verify all tests still pass
+
+**Files Updated:**
+- `cdisc_transpiler/services/domain_synthesis_coordinator.py` - Use Defaults.DATE, Defaults.SUBJECT_ID
+- `cdisc_transpiler/services/trial_design_service.py` - Use Defaults.DATE, Defaults.SUBJECT_ID
+- `cdisc_transpiler/xpt_module/domain_processors/dm.py` - Use Defaults.DATE (6 occurrences)
+- `cdisc_transpiler/xpt_module/domain_processors/se.py` - Use Defaults.DATE (2 occurrences)
+- `cdisc_transpiler/xpt_module/domain_processors/ex.py` - Use Defaults.DATE (2 occurrences)
+
+**Test Results:**
+```
+40 passed in 1.57s
+- All existing tests pass ✓
+- No regressions ✓
+```
+
+**Replaced Magic Values:**
+```python
+# Before (scattered in 10+ places)
+if not ref_starts:
+    return "SYNTH001", "2023-01-01"
+
+frame["DMDTC"] = frame.get("RFSTDTC", "2023-01-01")
+
+# After (using constants)
+from ..constants import Defaults
+
+if not ref_starts:
+    return Defaults.SUBJECT_ID, Defaults.DATE
+
+frame["DMDTC"] = frame.get("RFSTDTC", Defaults.DATE)
+```
+
+**Benefits:**
+- Single source of truth for default values
+- Easy to change defaults in one place
+- Clear intent with descriptive names
+- Consistent behavior across codebase
+
+---
+
+### INFRA-6: Implement Logger Interface ⏳ IN PROGRESS
 **Status:** Starting next  
 **Depends on:** INFRA-1 ✅
-
-**Note:** This ticket was partially completed in INFRA-4. The constants.py file has been created with all the constants that were identified. INFRA-5 can focus on updating existing code to use these constants.
     config=config,
     output_dirs=OutputDirs(
         xpt_dir=Path("output/xpt"),

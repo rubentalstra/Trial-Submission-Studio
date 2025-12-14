@@ -31,6 +31,7 @@ import pandas as pd
 if TYPE_CHECKING:
     from ..domains_module import SDTMDomain
 
+from ..constants import Defaults
 from ..domains_module import get_domain
 from ..mapping_module import ColumnMapping, build_config
 
@@ -409,14 +410,14 @@ class TrialDesignService:
         """Get a reference date from reference starts or default."""
         if self.reference_starts:
             first_id = sorted(self.reference_starts.keys())[0]
-            return self.reference_starts.get(first_id, "2023-01-01")
-        return "2023-01-01"
+            return self.reference_starts.get(first_id, Defaults.DATE)
+        return Defaults.DATE
 
     def _get_reference_subject(self) -> str:
         """Get a reference subject ID or default."""
         if self.reference_starts:
             return sorted(self.reference_starts.keys())[0]
-        return "SYNTH001"
+        return Defaults.SUBJECT_ID
 
     @staticmethod
     def _stringify(val: object, fallback_index: int) -> str:
