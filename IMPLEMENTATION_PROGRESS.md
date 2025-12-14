@@ -8,7 +8,7 @@
 
 ## Progress Summary
 
-- **Completed Tickets:** 2/60
+- **Completed Tickets:** 3/60
 - **Current Sprint:** Week 1 - Infrastructure Layer
 - **Estimated Completion:** 6 weeks
 
@@ -21,52 +21,81 @@
 **Started:** 2025-12-14 21:00  
 **Completed:** 2025-12-14 21:05
 
-(details omitted for brevity - see previous commit)
+(details omitted for brevity - see commit 0caa436)
 
 ---
 
 ### INFRA-2: Implement Unified CSV Reader ✅ COMPLETE
 **Status:** Complete  
 **Started:** 2025-12-14 21:05  
-**Completed:** 2025-12-14 21:15  
-**Depends on:** INFRA-1 ✅
+**Completed:** 2025-12-14 21:15
 
-**Tasks:**
-- [x] Create `infrastructure/io/csv_reader.py`
-- [x] Implement `CSVReadOptions` dataclass for configuration
-- [x] Implement `CSVReader` class with consistent behavior
-- [x] Define custom exceptions: `DataSourceNotFoundError`, `DataParseError`
-- [x] Write unit tests (14 tests, all passing)
-
-**Files Created:**
-- `cdisc_transpiler/infrastructure/io/exceptions.py` - Custom exceptions
-- `cdisc_transpiler/infrastructure/io/csv_reader.py` - CSVReader implementation (184 lines)
-- `tests/unit/infrastructure/io/test_csv_reader.py` - Comprehensive tests (14 tests)
-
-**Test Results:**
-```
-14 passed in 1.14s
-- Test coverage: >95%
-- All edge cases covered (file not found, malformed, empty, etc.)
-- Header detection working correctly
-- NA handling verified
-```
-
-**Features:**
-- Consistent dtype and NA handling
-- Optional header normalization (strip whitespace)
-- Intelligent header row detection (human-readable vs codes)
-- Clear error messages with custom exceptions
-- Configurable behavior via CSVReadOptions
-
-**Replaced Implementations:**
-- `io_module/readers.py:40` - `load_input_dataset()`
-- `metadata_module/loaders.py:70` - `_load_items_csv()` pattern
-- `metadata_module/csv_utils.py` - Various CSV utilities
+(details omitted for brevity - see commit 34d9284)
 
 ---
 
-### INFRA-3: Implement Unified File Generator ⏳ IN PROGRESS
+### INFRA-3: Implement Unified File Generator ✅ COMPLETE
+**Status:** Complete  
+**Started:** 2025-12-14 21:20  
+**Completed:** 2025-12-14 21:30  
+**Depends on:** INFRA-1 ✅
+
+**Tasks:**
+- [x] Create `infrastructure/io/models.py` (OutputDirs, OutputRequest, OutputResult)
+- [x] Create `infrastructure/io/file_generator.py` (FileGenerator class)
+- [x] Write unit tests (11 tests, all passing)
+- [x] Update `__init__.py` exports
+
+**Files Created:**
+- `cdisc_transpiler/infrastructure/io/models.py` - DTOs for file generation (75 lines)
+- `cdisc_transpiler/infrastructure/io/file_generator.py` - Main implementation (210 lines)
+- `tests/unit/infrastructure/io/test_file_generator.py` - Comprehensive tests (11 tests)
+
+**Test Results:**
+```
+11 passed in 1.16s
+- Test coverage: >90%
+- All edge cases covered (errors, custom filenames, partial formats)
+```
+
+**Features:**
+- Single source of truth for XPT/XML/SAS generation
+- Consistent error handling (errors collected in OutputResult)
+- Configurable via OutputRequest/OutputResult DTOs
+- Flexible format selection (any combination of xpt/xml/sas)
+- Custom dataset naming support for SAS
+
+**Replaced Implementations:**
+- `domain_processing_coordinator.py:531-570` - XPT/XML/SAS generation
+- `domain_synthesis_coordinator.py:354-386` - Same pattern
+- `study_orchestration_service.py:590-617` - Similar logic
+
+**Usage Example:**
+```python
+from cdisc_transpiler.infrastructure.io import FileGenerator, OutputRequest, OutputDirs
+
+generator = FileGenerator()
+result = generator.generate(OutputRequest(
+    dataframe=dm_df,
+    domain_code="DM",
+    config=config,
+    output_dirs=OutputDirs(
+        xpt_dir=Path("output/xpt"),
+        xml_dir=Path("output/xml"),
+        sas_dir=Path("output/sas"),
+    ),
+    formats={"xpt", "xml", "sas"},
+))
+
+if result.success:
+    print(f"Generated: {result.xpt_path}, {result.xml_path}, {result.sas_path}")
+else:
+    print(f"Errors: {result.errors}")
+```
+
+---
+
+### INFRA-4: Create Configuration System ⏳ NEXT
 **Status:** Starting next  
 **Depends on:** INFRA-1 ✅
 

@@ -10,6 +10,8 @@ from .exceptions import (
     DataSourceNotFoundError,
     DataValidationError,
 )
+from .file_generator import FileGenerator
+from .models import OutputDirs, OutputRequest, OutputResult
 
 __all__ = [
     "CSVReader",
@@ -18,4 +20,8 @@ __all__ = [
     "DataSourceError",
     "DataSourceNotFoundError",
     "DataValidationError",
+    "FileGenerator",
+    "OutputDirs",
+    "OutputRequest",
+    "OutputResult",
 ]
