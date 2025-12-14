@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 from rich.console import Console
 
-from ..cli.helpers import log_verbose
+from ..cli.helpers import log_verbose, write_variant_splits
 from ..cli.utils import log_success
 from ..cli.logging_config import get_logger
 
@@ -41,21 +41,6 @@ from ..xpt_module import write_xpt_file
 from ..xpt_module.builder import build_domain_dataframe
 from ..xml_module.dataset_module import write_dataset_xml
 from .study_orchestration_service import StudyOrchestrationService
-
-
-def _write_variant_splits(
-    merged_dataframe: pd.DataFrame,
-    variant_frames: list[tuple[str, pd.DataFrame]],
-    domain: "SDTMDomain",
-    xpt_dir: Path,
-    console: Console,
-):
-    """Write variant splits with deferred import."""
-    from ..cli.helpers import write_variant_splits
-
-    return write_variant_splits(
-        merged_dataframe, variant_frames, domain, xpt_dir, console
-    )
 
 
 console = Console()
@@ -343,7 +328,9 @@ class DomainProcessingCoordinator:
             console.print(
                 f"[yellow]⚠[/yellow] {display_name}: No vital signs records after transformation"
             )
-            log_verbose(verbose, "    Note: Check source data for VSTESTCD/VSORRES columns")
+            log_verbose(
+                verbose, "    Note: Check source data for VSTESTCD/VSORRES columns"
+            )
             return None, True
 
         return frame, True
@@ -395,11 +382,17 @@ class DomainProcessingCoordinator:
 
             return reshaped, True
         else:
-            log_verbose(verbose, "  Skipping LB reshape (no recognizable test columns found)")
-            log_verbose(verbose, "    Expected columns like: WBC, RBC, HGB, or LBTESTCD")
+            log_verbose(
+                verbose, "  Skipping LB reshape (no recognizable test columns found)"
+            )
+            log_verbose(
+                verbose, "    Expected columns like: WBC, RBC, HGB, or LBTESTCD"
+            )
             return None, False
 
-    def _build_identity_config(self, domain_code: str, frame: pd.DataFrame) -> MappingConfig:
+    def _build_identity_config(
+        self, domain_code: str, frame: pd.DataFrame
+    ) -> MappingConfig:
         """Build identity mapping configuration."""
         mappings = [
             ColumnMapping(
@@ -624,8 +617,8 @@ class DomainProcessingCoordinator:
             # Handle domain variant splits (SDTMIG v3.4 Section 4.1.7)
             # Any domain can be split when there are multiple variant files
             if len(variant_frames) > 1:
-                split_paths, split_datasets = _write_variant_splits(
-                    merged_dataframe, variant_frames, domain, xpt_dir, console
+                split_paths, split_datasets = write_variant_splits(
+                    variant_frames, domain, xpt_dir, console
                 )
                 result["split_xpt_paths"] = split_paths
                 result["split_datasets"] = split_datasets
