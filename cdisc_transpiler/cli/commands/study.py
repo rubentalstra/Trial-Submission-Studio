@@ -534,7 +534,6 @@ def study_command(
                 generate_sas=generate_sas,
                 reference_starts=reference_starts,
             ),
-            # is_reference_data=td_domain in ["TS", "TA", "TE", "TI", "TV"],
         )
 
     # Generate RELREC if missing (populate from existing domain data)
