@@ -266,7 +266,6 @@ def study_command(
         domain_code: str,
         reason: str,
         builder: Callable[[], dict[str, Any]],
-        is_reference_data: bool = False,
     ) -> None:
         logger.log_synthesis_start(domain_code, reason)
         try:
@@ -601,6 +600,3 @@ def study_command(
     print_study_summary(
         results, errors, output_dir, output_format, generate_define, generate_sas
     )
-
-
-# Helper functions

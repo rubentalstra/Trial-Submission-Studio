@@ -45,7 +45,6 @@ def log_verbose(enabled: bool, message: str) -> None:
 
 
 def write_variant_splits(
-    merged_dataframe: pd.DataFrame,
     variant_frames: list[tuple[str, pd.DataFrame]],
     domain: SDTMDomain,
     xpt_dir: Path,
