@@ -6,7 +6,6 @@ CodeLists.csv metadata to provide more accurate mapping suggestions.
 
 from __future__ import annotations
 
-import re
 from typing import TYPE_CHECKING
 
 import pandas as pd

@@ -21,7 +21,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest==9.0.2"]
+dev = ["pytest==9.0.2", "pyflakes==3.4.0", "Pylint==4.0.4", "pyright==1.1.407"]
 
 [project.scripts]
 cdisc-transpiler = "cdisc_transpiler.cli:app"

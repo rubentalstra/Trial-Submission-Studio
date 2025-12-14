@@ -5,21 +5,7 @@ Provides clean progress reporting with Rich console.
 
 from __future__ import annotations
 
-from contextlib import contextmanager
-from typing import TYPE_CHECKING
-
 from rich.console import Console
-from rich.progress import (
-    Progress,
-    SpinnerColumn,
-    TextColumn,
-    BarColumn,
-    TaskProgressColumn,
-    TimeRemainingColumn,
-)
-
-if TYPE_CHECKING:
-    from pathlib import Path
 
 console = Console()
 
@@ -58,41 +44,13 @@ class ProgressTracker:
 
     def print_summary(self) -> None:
         """Print progress summary."""
-        console.print(f"\n[bold]Progress:[/bold]")
+        console.print("\n[bold]Progress:[/bold]")
         console.print(f"  Processed: {self.processed}/{self.total_domains}")
         console.print(f"  [green]Success: {self.success_count}[/green]")
         if self.errors:
             console.print(f"  [red]Errors: {self.errors}[/red]")
         if self.warnings:
             console.print(f"  [yellow]Warnings: {self.warnings}[/yellow]")
-
-
-@contextmanager
-def progress_bar(description: str, total: int | None = None):
-    """Create a progress bar context manager.
-
-    Args:
-        description: Task description
-        total: Total steps (None for indeterminate)
-
-    Yields:
-        Progress task
-    """
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        BarColumn(),
-        TaskProgressColumn(),
-        TimeRemainingColumn(),
-        console=console,
-    ) as progress:
-        task = progress.add_task(description, total=total)
-        yield progress, task
-
-
-def log_info(message: str) -> None:
-    """Log info message."""
-    console.print(f"[dim]{message}[/dim]")
 
 
 def log_success(message: str) -> None:
@@ -108,31 +66,3 @@ def log_warning(message: str) -> None:
 def log_error(message: str) -> None:
     """Log error message."""
     console.print(f"[red]✗[/red] {message}")
-
-
-def print_domain_header(domain_code: str, files: list[Path]) -> None:
-    """Print domain processing header.
-
-    Args:
-        domain_code: Domain code
-        files: List of input files
-    """
-    if len(files) == 1:
-        console.print(f"\n[bold]Processing {domain_code}[/bold]")
-    else:
-        console.print(
-            f"\n[bold]Processing {domain_code}[/bold] (merging {len(files)} files)"
-        )
-
-    for file_path in files:
-        console.print(f"  - {file_path.name}")
-
-
-def print_file_generated(file_type: str, path: Path) -> None:
-    """Print file generation success.
-
-    Args:
-        file_type: Type of file (XPT, XML, SAS)
-        path: Path to generated file
-    """
-    log_success(f"Generated {file_type}: {path}")

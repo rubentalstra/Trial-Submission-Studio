@@ -206,6 +206,7 @@ class DomainFrameBuilder:
             self.reference_starts,
             self.metadata,
         )
+        processor.config = self.config
 
         # Apply domain-specific processing
         processor.process(result)

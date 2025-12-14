@@ -216,8 +216,8 @@ class DomainProcessingCoordinator:
             else f"{domain_code} ({variant_name})"
         )
 
-        # Get domain class for context (unused but kept for documentation)
-        domain_class = get_domain_class(domain_code)
+        # Get domain class for context (side effect: validate domain code)
+        _ = get_domain_class(domain_code)
 
         # Load input data
         frame = load_input_dataset(input_file)
@@ -266,7 +266,7 @@ class DomainProcessingCoordinator:
         if vs_long or lb_long:
             config = self._build_identity_config(domain_code, frame)
 
-            log_verbose(verbose, f"    Using identity mapping (post-transformation)")
+            log_verbose(verbose, "    Using identity mapping (post-transformation)")
         else:
             config = self._build_mapped_config(
                 domain_code, frame, metadata, min_confidence, display_name
@@ -339,9 +339,7 @@ class DomainProcessingCoordinator:
             console.print(
                 f"[yellow]⚠[/yellow] {display_name}: No vital signs records after transformation"
             )
-            log_verbose(
-                verbose, f"    Note: Check source data for VSTESTCD/VSORRES columns"
-            )
+            log_verbose(verbose, "    Note: Check source data for VSTESTCD/VSORRES columns")
             return None, True
 
         return frame, True
@@ -388,19 +386,13 @@ class DomainProcessingCoordinator:
                 console.print(
                     f"[yellow]⚠[/yellow] {display_name}: No laboratory records after transformation"
                 )
-                log_verbose(
-                    verbose, f"    Note: Check source data for lab test columns"
-                )
+                log_verbose(verbose, "    Note: Check source data for lab test columns")
                 return None, True
 
             return reshaped, True
         else:
-            log_verbose(
-                verbose, "  Skipping LB reshape (no recognizable test columns found)"
-            )
-            log_verbose(
-                verbose, f"    Expected columns like: WBC, RBC, HGB, or LBTESTCD"
-            )
+            log_verbose(verbose, "  Skipping LB reshape (no recognizable test columns found)")
+            log_verbose(verbose, "    Expected columns like: WBC, RBC, HGB, or LBTESTCD")
             return None, False
 
     def _build_identity_config(self, domain_code: str, frame: pd.DataFrame) -> object:
@@ -641,7 +633,7 @@ class DomainProcessingCoordinator:
             xml_path = xml_dir / f"{disk_name}.xml"
             if streaming:
                 console.print(
-                    f"[yellow]⚠[/yellow] Streaming mode not implemented, using regular write"
+                    "[yellow]⚠[/yellow] Streaming mode not implemented, using regular write"
                 )
             write_dataset_xml(merged_dataframe, domain_code, config, xml_path)
             result["xml_path"] = xml_path

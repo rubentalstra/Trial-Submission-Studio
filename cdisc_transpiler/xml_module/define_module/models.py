@@ -82,6 +82,7 @@ class ValueListItemDefinition:
     where_clause_oid: str | None = None
     order_number: int | None = None
     mandatory: str | None = None  # Yes/No
+    method_oid: str | None = None
 
 
 @dataclass(frozen=True)

@@ -273,11 +273,6 @@ def study_command(
             results.append(result)
             processed_domains.add(domain_code)
             dataset = result.get("domain_dataframe")
-            has_no_data = bool(result.get("has_no_data"))
-            if isinstance(dataset, pd.DataFrame) and dataset.empty:
-                has_no_data = True
-            if dataset is None:
-                has_no_data = True
 
             if generate_define:
                 dataset_href = None
@@ -302,11 +297,6 @@ def study_command(
                 if supp_code:
                     processed_domains.add(supp_code)
                 supp_dataset = supp.get("domain_dataframe")
-                supp_has_no_data = (
-                    supp.get("has_no_data", False)
-                    or supp_dataset is None
-                    or (isinstance(supp_dataset, pd.DataFrame) and supp_dataset.empty)
-                )
                 supp_href = None
                 if output_format in ("xpt", "both") and supp.get("xpt_path"):
                     supp_href = supp["xpt_path"].relative_to(output_dir)

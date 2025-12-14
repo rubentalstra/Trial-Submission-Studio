@@ -73,7 +73,7 @@ def build_supp_value_lists(
         wc_defs.append(
             WhereClauseDefinition(
                 oid=wc_oid,
-                dataset_name=domain.dataset_name,
+                dataset_name=domain.dataset_name or domain.code,
                 variable_name="QNAM",
                 variable_oid=f"IT.{code}.QNAM",
                 comparator="EQ",
@@ -87,7 +87,7 @@ def build_supp_value_lists(
                 item_oid=item_oid,
                 where_clause_oid=wc_oid,
                 order_number=order,
-                mandatory=False,
+                mandatory="No",
             )
         )
 
@@ -141,18 +141,19 @@ def append_value_list_defs(
                 tag(ODM_NS, "ItemRef"),
                 attrib={
                     "ItemOID": item.item_oid,
-                    "OrderNumber": str(item.order_number),
-                    "Mandatory": "Yes" if item.mandatory else "No",
+                    "OrderNumber": str(item.order_number or ""),
+                    "Mandatory": item.mandatory or "No",
                 },
             )
             ET.SubElement(
                 item_ref,
                 tag(DEF_NS, "WhereClauseRef"),
-                attrib={"WhereClauseOID": item.where_clause_oid},
+                attrib={"WhereClauseOID": item.where_clause_oid or ""},
             )
 
-            if getattr(item, "method_oid", None):
-                item_ref.set("MethodOID", item.method_oid)
+            method_oid = getattr(item, "method_oid", None)
+            if method_oid:
+                item_ref.set("MethodOID", method_oid)
 
 
 def append_where_clause_defs(
@@ -191,34 +192,6 @@ def append_where_clause_defs(
                 range_check,
                 tag(ODM_NS, "CheckValue"),
             ).text = value
-
-
-def generate_vlm_for_findings_domain(
-    domain_code: str,
-    test_codes: list[str],
-    result_variable: str = "ORRES",
-) -> tuple[list[ValueListDefinition], list[WhereClauseDefinition]]:
-    """Generate value-level metadata for a findings domain.
-
-    Findings domains (LB, VS, EG, etc.) typically have different metadata
-    for each test code. This function generates the VLM structure for
-    a given set of test codes.
-
-    Args:
-        domain_code: The domain code (e.g., "LB", "VS")
-        test_codes: List of test codes (e.g., ["GLUC", "HGB", "WBC"])
-        result_variable: The result variable name (default: "ORRES")
-
-    Returns:
-        Tuple of (value_lists, where_clauses)
-    """
-    value_lists: list[ValueListDefinition] = []
-    where_clauses: list[WhereClauseDefinition] = []
-
-    # Implementation note: This is a template function that can be extended
-    # when full VLM support for findings domains is needed
-
-    return (value_lists, where_clauses)
 
 
 def append_method_defs(

@@ -112,7 +112,7 @@ class EXProcessor(BaseDomainProcessor):
                     )
                     filler.append(
                         {
-                            "STUDYID": self.config.study_id or "STUDY",
+                             "STUDYID": getattr(self.config, "study_id", None) or "STUDY",
                             "DOMAIN": "EX",
                             "USUBJID": usubjid,
                             "EXSEQ": float("nan"),

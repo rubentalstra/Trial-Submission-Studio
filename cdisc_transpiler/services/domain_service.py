@@ -29,6 +29,7 @@ from ..io_module import load_input_dataset, build_column_hints
 from ..mapping_module import build_config, create_mapper, unquote_column_name
 from ..xpt_module import build_domain_dataframe
 from ..submission_module import build_suppqual
+from .study_orchestration_service import StudyOrchestrationService
 
 
 @dataclass
@@ -65,6 +66,7 @@ class DomainProcessingService:
         self.metadata = metadata
         self.reference_starts = reference_starts or {}
         self.min_confidence = min_confidence
+        self._orchestrator = StudyOrchestrationService()
 
     def process_domain(
         self,
@@ -238,9 +240,9 @@ class DomainProcessingService:
         """
 
         if domain_code.upper() == "VS":
-            return _reshape_vs_to_long(source_df, self.study_id)
+            return self._orchestrator.reshape_vs_to_long(source_df, self.study_id)
         elif domain_code.upper() == "LB":
-            return _reshape_lb_to_long(source_df, self.study_id)
+            return self._orchestrator.reshape_lb_to_long(source_df, self.study_id)
         else:
             return source_df
 

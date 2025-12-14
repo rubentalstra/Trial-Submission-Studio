@@ -6,11 +6,12 @@ controlled terminology (codelist) values according to CDISC standards.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Sequence
 
 import pandas as pd
 
 from ...terminology_module import get_controlled_terminology
+from ...domains_module import SDTMVariable
 
 if TYPE_CHECKING:
     from ...metadata_module import StudyMetadata
@@ -96,7 +97,7 @@ class CodelistTransformer:
     @staticmethod
     def apply_codelist_validations(
         frame: pd.DataFrame,
-        domain_variables: list,
+        domain_variables: Sequence[SDTMVariable],
     ) -> None:
         """Apply codelist normalizations to the DataFrame.
 

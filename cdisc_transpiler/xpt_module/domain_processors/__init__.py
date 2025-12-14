@@ -88,8 +88,3 @@ def get_domain_processor(
 ) -> BaseDomainProcessor:
     """Get a processor for the specified domain."""
     return _registry.get_processor(domain, reference_starts, metadata)
-
-
-def register_processor(domain_code: str, processor_class: type[BaseDomainProcessor]):
-    """Register a custom processor for a domain."""
-    _registry.register(domain_code, processor_class)

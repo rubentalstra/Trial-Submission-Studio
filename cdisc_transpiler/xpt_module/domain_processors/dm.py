@@ -63,7 +63,7 @@ class DMProcessor(BaseDomainProcessor):
             return series
 
         armcd = _fill_arm("ARMCD", "ARM1")
-        arm = _fill_arm("ARM", "Treatment Arm")
+        _ = _fill_arm("ARM", "Treatment Arm")
         actarmcd = _fill_arm("ACTARMCD", "ARM1")
         actarm = _fill_arm("ACTARM", "Treatment Arm")
         # Populate ACTARMUD to avoid empty expected variables
