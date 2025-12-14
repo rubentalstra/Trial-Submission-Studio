@@ -12,7 +12,6 @@ from typing import Any, Callable
 import pandas as pd
 
 from .models import SourceColumn, StudyMetadata
-from ..mapping_module.constants import SDTM_INFERENCE_PATTERNS
 
 
 def _normalize_column_name(name: str) -> str:
@@ -66,7 +65,9 @@ def infer_sdtm_target(
             # If label contains SDTM variable name hints
             label_normalized = _normalize_column_name(item.label)
             # Check domain suffix patterns in label
-            for suffix, patterns in SDTM_INFERENCE_PATTERNS.get("_DOMAIN_SUFFIXES", {}).items():
+            for suffix, patterns in SDTM_INFERENCE_PATTERNS.get(
+                "_DOMAIN_SUFFIXES", {}
+            ).items():
                 for pattern in patterns:
                     if _normalize_column_name(pattern) in label_normalized:
                         return domain_prefix + suffix
