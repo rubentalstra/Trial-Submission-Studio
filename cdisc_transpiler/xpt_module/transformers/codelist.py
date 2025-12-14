@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 class CodelistTransformer:
     """Transforms and validates controlled terminology values for SDTM compliance.
-    
+
     This class provides methods for:
     - Applying codelist transformations to map codes to text values
     - Normalizing values to canonical CDISC Controlled Terminology forms
@@ -28,7 +28,7 @@ class CodelistTransformer:
 
     def __init__(self, metadata: "StudyMetadata | None" = None):
         """Initialize the codelist transformer.
-        
+
         Args:
             metadata: Optional study metadata containing codelist definitions
         """
@@ -68,7 +68,7 @@ class CodelistTransformer:
                 alt = unquote_func(code_col)
                 if alt in source_frame.columns:
                     code_col = alt
-            
+
             if code_col in source_frame.columns:
                 code_values = source_frame[code_col]
 
@@ -102,7 +102,7 @@ class CodelistTransformer:
 
         This normalizes raw values to their CDISC Controlled Terminology
         canonical forms using synonym mappings.
-        
+
         Args:
             frame: DataFrame to modify in-place
             domain_variables: List of SDTMVariable objects defining domain structure
@@ -141,7 +141,7 @@ class CodelistTransformer:
         domain_variables: list,
     ) -> None:
         """Validate controlled terminology values and replace invalid ones.
-        
+
         Args:
             frame: DataFrame to modify in-place
             domain_variables: List of SDTMVariable objects defining domain structure
@@ -163,10 +163,10 @@ class CodelistTransformer:
     @staticmethod
     def validate_paired_terms(frame: pd.DataFrame) -> None:
         """Ensure paired TEST/TESTCD-style variables are both populated when present.
-        
+
         Args:
             frame: DataFrame to validate
-            
+
         Raises:
             ValueError: If paired terms are inconsistently populated
         """
@@ -193,10 +193,10 @@ class CodelistTransformer:
     @staticmethod
     def populate_meddra_defaults(frame: pd.DataFrame) -> None:
         """Populate MedDRA defaults for adverse event data.
-        
+
         This method fills in default MedDRA hierarchy terms and codes when
         they are missing from the source data.
-        
+
         Args:
             frame: DataFrame to modify in-place (typically AE domain)
         """

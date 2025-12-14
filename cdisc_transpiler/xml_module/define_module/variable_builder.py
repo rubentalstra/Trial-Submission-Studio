@@ -26,6 +26,9 @@ def append_item_defs(
         variables: SDTM variables to define
         domain_code: Domain code
     """
+    # Local import to avoid circular dependency with codelist_builder
+    from .codelist_builder import get_code_list_oid
+
     for variable in variables:
         data_type = get_datatype(variable)
 
@@ -55,8 +58,6 @@ def append_item_defs(
         ).text = variable.label
 
         if variable.codelist_code:
-            from .codelist_builder import get_code_list_oid
-
             ET.SubElement(
                 item,
                 tag(ODM_NS, "CodeListRef"),

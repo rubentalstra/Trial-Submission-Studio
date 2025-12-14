@@ -8,11 +8,11 @@ from pathlib import Path
 
 def tag(namespace: str, name: str) -> str:
     """Create a namespaced XML tag string.
-    
+
     Args:
         namespace: The XML namespace URI
         name: The element name
-        
+
     Returns:
         Namespaced tag string in format {namespace}name
     """
@@ -21,11 +21,11 @@ def tag(namespace: str, name: str) -> str:
 
 def attr(namespace: str, name: str) -> str:
     """Create a namespaced XML attribute string.
-    
+
     Args:
         namespace: The XML namespace URI
         name: The attribute name
-        
+
     Returns:
         Namespaced attribute string in format {namespace}name
     """
@@ -34,12 +34,12 @@ def attr(namespace: str, name: str) -> str:
 
 def safe_href(href: str) -> str:
     """Sanitize dataset href to comply with SAS naming constraints.
-    
+
     Clamps dataset href to SAS 8-char dataset name plus extension and length cap.
-    
+
     Args:
         href: The original href string
-        
+
     Returns:
         Sanitized href string (max 64 chars, 8-char stem, lowercase)
     """

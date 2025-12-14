@@ -12,6 +12,8 @@ from xml.etree import ElementTree as ET
 from .models import DefineGenerationError, StudyDataset
 from .constants import DEFAULT_SDTM_VERSION, CONTEXT_SUBMISSION
 
+from .metadata_builder import build_define_tree, build_study_define_tree
+
 
 def write_define_file(
     dataset,
@@ -24,7 +26,7 @@ def write_define_file(
     context: str = CONTEXT_SUBMISSION,
 ) -> None:
     """Render and persist a Define-XML 2.1 document.
-    
+
     Args:
         dataset: DataFrame containing the domain data
         domain_code: SDTM domain code (e.g., 'DM', 'AE')
@@ -34,9 +36,7 @@ def write_define_file(
         sdtm_version: SDTM-IG version (default: 3.4)
         context: Define-XML context - 'Submission' or 'Other'
     """
-    # Import here to avoid circular dependency
-    from ..define_xml import build_define_tree
-    
+
     root = build_define_tree(
         dataset,
         domain_code,
@@ -62,16 +62,14 @@ def write_study_define_file(
     context: str,
 ) -> None:
     """Write a study-level Define-XML 2.1 document containing multiple datasets.
-    
+
     Args:
         datasets: Iterable of StudyDataset objects
         output: Output file path
         sdtm_version: SDTM-IG version
         context: Define-XML context - 'Submission' or 'Other'
     """
-    # Import here to avoid circular dependency
-    from .metadata_builder import build_study_define_tree
-    
+
     datasets = list(datasets)
     if not datasets:
         raise DefineGenerationError(

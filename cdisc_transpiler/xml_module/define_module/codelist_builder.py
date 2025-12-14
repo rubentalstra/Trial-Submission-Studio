@@ -13,6 +13,7 @@ from xml.etree import ElementTree as ET
 import pandas as pd
 
 from ...domains_module import SDTMVariable
+from .variable_builder import get_datatype
 from ...terminology_module import get_controlled_terminology
 from .constants import (
     ODM_NS,
@@ -83,7 +84,6 @@ def build_code_list_element(
     Returns:
         CodeList XML element
     """
-    from .variable_builder import get_datatype
 
     is_meddra = needs_meddra(variable.name)
     data_type = "text" if is_meddra else get_datatype(variable)
@@ -129,7 +129,7 @@ def build_code_list_element(
     for value, is_extended in all_values:
         # Look up NCI code from CT
         code = ct.lookup_code(value) if ct else None
-        
+
         if use_enumerated:
             enum_item = ET.SubElement(
                 code_list,

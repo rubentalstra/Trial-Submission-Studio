@@ -5,7 +5,7 @@ from __future__ import annotations
 import pandas as pd
 
 from .base import BaseDomainProcessor
-from ..transformers import TextTransformer, NumericTransformer, DateTransformer
+from ..transformers import NumericTransformer, DateTransformer
 
 
 class DSProcessor(BaseDomainProcessor):
@@ -71,7 +71,7 @@ class DSProcessor(BaseDomainProcessor):
         study_id = "STUDY"
         if len(frame) > 0 and "STUDYID" in frame.columns:
             study_id = frame["STUDYID"].iloc[0]
-        
+
         for usubjid in sorted(subjects):
             start = (
                 DateTransformer.coerce_iso8601(

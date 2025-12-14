@@ -182,7 +182,7 @@ def get_domain_description_alias(domain: SDTMDomain) -> str | None:
         Domain description or None
     """
     code = (domain.code or "").upper()
-    
+
     # Handle SUPP-- domains
     if code.startswith("SUPP") and len(code) == 6:
         base_code = code[4:]
@@ -192,7 +192,7 @@ def get_domain_description_alias(domain: SDTMDomain) -> str | None:
                 return base_domain.label
         except Exception:
             pass
-    
+
     # Handle split datasets (e.g., LBHM → LB, VSRESP → VS)
     # Per SDTMIG v3.4 Section 4.1.7, split datasets should reference parent domain
     if len(code) > 2:
@@ -205,5 +205,5 @@ def get_domain_description_alias(domain: SDTMDomain) -> str | None:
                 return parent_domain.label
         except Exception:
             pass
-    
+
     return domain.label or None

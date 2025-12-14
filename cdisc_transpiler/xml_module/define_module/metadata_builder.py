@@ -19,8 +19,24 @@ from .constants import (
     CONTEXT_SUBMISSION,
     ACRF_LEAF_ID,
 )
-from ..utils import tag, attr
+from ..utils import tag, attr, safe_href
 from .standards import get_default_standards
+from ...domains_module import CT_VERSION, get_domain
+from .codelist_builder import collect_extended_codelist_values, build_code_list_element
+from .variable_builder import append_item_defs
+from .dataset_builder import (
+    append_item_refs,
+    get_active_domain_variables,
+    get_domain_description_alias,
+)
+from .value_list_builder import (
+    build_supp_value_lists,
+    append_value_list_defs,
+    append_where_clause_defs,
+    append_method_defs,
+    append_comment_defs,
+)
+from .standards import get_default_standard_comments
 
 
 def build_define_tree(
@@ -80,23 +96,6 @@ def build_study_define_tree(
     Returns:
         Root Element of the Define-XML document
     """
-    # Import here to avoid circular dependencies
-    from ...domains_module import CT_VERSION, get_domain
-    from .codelist_builder import append_code_lists, collect_extended_codelist_values
-    from .variable_builder import append_item_defs
-    from .dataset_builder import (
-        append_item_refs,
-        get_active_domain_variables,
-        get_domain_description_alias,
-    )
-    from .value_list_builder import (
-        build_supp_value_lists,
-        append_value_list_defs,
-        append_where_clause_defs,
-        append_method_defs,
-        append_comment_defs,
-    )
-    from .standards import get_default_standard_comments
 
     datasets = list(datasets)
     if not datasets:
@@ -173,9 +172,9 @@ def build_study_define_tree(
         else:
             domain = get_domain(ds.domain_code)
             parent_domain_code = ds.domain_code
-            
+
         active_vars = get_active_domain_variables(domain, ds.dataframe)
-        
+
         # Build ItemGroupDef
         ig_attrib = {
             "OID": f"IG.{ds.domain_code}",
@@ -190,8 +189,6 @@ def build_study_define_tree(
         ig_attrib[attr(DEF_NS, "Class")] = domain.class_name or "EVENTS"
 
         if ds.archive_location:
-            from ..utils import safe_href
-
             ig_attrib[attr(DEF_NS, "ArchiveLocationID")] = f"LF.{ds.domain_code}"
 
         ig = ET.Element(tag(ODM_NS, "ItemGroupDef"), attrib=ig_attrib)
@@ -218,8 +215,6 @@ def build_study_define_tree(
 
         # Add leaf for dataset file
         if ds.archive_location:
-            from ..utils import safe_href
-
             leaf = ET.SubElement(
                 ig,
                 tag(DEF_NS, "leaf"),
@@ -271,8 +266,6 @@ def build_study_define_tree(
     # Append CodeLists
     cl_parent = ET.Element("temp")
     for cl_oid, (var, domain_code, extended) in sorted(code_list_specs.items()):
-        from .codelist_builder import build_code_list_element
-
         cl_parent.append(
             build_code_list_element(var, domain_code, extended_values=extended)
         )
@@ -302,8 +295,6 @@ def append_standards(parent: ET.Element, standards: list) -> None:
         parent: Parent XML element (MetaDataVersion)
         standards: List of StandardDefinition objects
     """
-    from .models import StandardDefinition
-
     standards_elem = ET.SubElement(parent, tag(DEF_NS, "Standards"))
 
     for std in standards:

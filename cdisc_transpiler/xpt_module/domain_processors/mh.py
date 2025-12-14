@@ -5,7 +5,7 @@ from __future__ import annotations
 import pandas as pd
 
 from .base import BaseDomainProcessor
-from ..transformers import TextTransformer, NumericTransformer, DateTransformer
+from ..transformers import NumericTransformer, DateTransformer
 
 
 class MHProcessor(BaseDomainProcessor):

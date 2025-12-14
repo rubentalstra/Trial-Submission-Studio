@@ -17,6 +17,7 @@ import pandas as pd
 
 from ..mapping_module import ColumnMapping, MappingConfig, unquote_column_name
 from ..domains_module import SDTMVariable, get_domain
+from .domain_processors import get_domain_processor
 
 # Import the modular components
 from .transformers import (
@@ -32,6 +33,7 @@ if TYPE_CHECKING:
 
 class XportGenerationError(RuntimeError):
     """Raised when XPT export cannot be completed."""
+
 
 # Re-export the exception for API compatibility
 __all__ = ["XportGenerationError", "build_domain_dataframe", "DomainFrameBuilder"]
@@ -69,14 +71,14 @@ def build_domain_dataframe(
 
 class DomainFrameBuilder:
     """Builds SDTM-compliant DataFrames from source data.
-    
+
     This class orchestrates the construction of domain DataFrames by:
     1. Creating a blank DataFrame with domain variables
     2. Applying column mappings from source to target
     3. Performing transformations (dates, codelists, numeric)
     4. Validating and enforcing SDTM requirements
     5. Reordering columns to match domain specification
-    
+
     Phase 4 Step 7: Now uses modular transformers and validators from Steps 3-6.
     Domain-specific processing still delegates to original xpt.py for complex logic.
     """
@@ -98,7 +100,7 @@ class DomainFrameBuilder:
         self.reference_starts = reference_starts or {}
         self.lenient = lenient
         self.metadata = metadata
-        
+
         # Initialize transformers
         self.codelist_transformer = CodelistTransformer(metadata)
 
@@ -127,19 +129,23 @@ class DomainFrameBuilder:
 
         # Perform transformations using modular components (Steps 3-5)
         DateTransformer.normalize_dates(result, self.domain.variables)
-        DateTransformer.calculate_dy(result, self.domain.variables, self.reference_starts)
+        DateTransformer.calculate_dy(
+            result, self.domain.variables, self.reference_starts
+        )
         DateTransformer.normalize_durations(result, self.domain.variables)
         CodelistTransformer.apply_codelist_validations(result, self.domain.variables)
         NumericTransformer.populate_stresc_from_orres(result, self.domain.code)
-        
+
         # Domain-specific processing - still uses original implementation
         # This is the complex 2,500+ line method that handles all domain-specific logic
         self._post_process_domain(result)
-        
+
         # Validation and cleanup using modular components (Step 6)
         XPTValidator.drop_empty_optional_columns(result, self.domain.variables)
         XPTValidator.reorder_columns(result, self.domain.variables)
-        XPTValidator.enforce_required_values(result, self.domain.variables, self.lenient)
+        XPTValidator.enforce_required_values(
+            result, self.domain.variables, self.lenient
+        )
         XPTValidator.enforce_lengths(result, self.domain.variables)
 
         return result
@@ -189,22 +195,17 @@ class DomainFrameBuilder:
 
     def _post_process_domain(self, result: pd.DataFrame) -> None:
         """Perform domain-specific post-processing using the domain processor system.
-        
+
         This method delegates to domain-specific processors that handle the unique
         requirements of each SDTM domain.
         """
-        from .domain_processors import get_domain_processor
-        
+
         # Get the appropriate processor for this domain
         processor = get_domain_processor(
             self.domain,
             self.reference_starts,
             self.metadata,
         )
-        
+
         # Apply domain-specific processing
         processor.process(result)
-
-
-# Backward compatibility alias
-_DomainFrameBuilder = DomainFrameBuilder

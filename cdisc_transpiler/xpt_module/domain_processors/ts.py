@@ -5,7 +5,6 @@ from __future__ import annotations
 import pandas as pd
 
 from .base import BaseDomainProcessor
-from ..transformers import TextTransformer, NumericTransformer, DateTransformer
 from ...terminology_module import get_controlled_terminology
 
 
@@ -24,9 +23,11 @@ class TSProcessor(BaseDomainProcessor):
         # Drop placeholder rows
         self._drop_placeholder_rows(frame)
 
-        base_study = frame.get(
-            "STUDYID", pd.Series(["STUDY"])
-        ).iloc[0] if len(frame) > 0 and "STUDYID" in frame.columns else "STUDY"
+        base_study = (
+            frame.get("STUDYID", pd.Series(["STUDY"])).iloc[0]
+            if len(frame) > 0 and "STUDYID" in frame.columns
+            else "STUDY"
+        )
         ct_parmcd = get_controlled_terminology(variable="TSPARMCD")
         ct_parm = get_controlled_terminology(variable="TSPARM")
 

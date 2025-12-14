@@ -42,10 +42,10 @@ __all__ = [
     "build_domain_dataframe",
     "DomainFrameBuilder",
     # Transformers
-    "DateTransformer",       # Step 3 ✓
-    "CodelistTransformer",   # Step 4 ✓
-    "NumericTransformer",    # Step 5 ✓
-    "TextTransformer",       # Step 5 ✓
+    "DateTransformer",  # Step 3 ✓
+    "CodelistTransformer",  # Step 4 ✓
+    "NumericTransformer",  # Step 5 ✓
+    "TextTransformer",  # Step 5 ✓
     # Validators
-    "XPTValidator",          # Step 6 ✓
+    "XPTValidator",  # Step 6 ✓
 ]

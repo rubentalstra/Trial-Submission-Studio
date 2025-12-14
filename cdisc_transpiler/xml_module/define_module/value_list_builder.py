@@ -11,7 +11,11 @@ from xml.etree import ElementTree as ET
 import pandas as pd
 
 from ...domains_module import SDTMDomain, SDTMVariable
-from .models import ValueListDefinition, ValueListItemDefinition, WhereClauseDefinition
+from .models import (
+    ValueListDefinition,
+    ValueListItemDefinition,
+    WhereClauseDefinition,
+)
 from .constants import ODM_NS, DEF_NS
 from ..utils import tag, attr
 
@@ -147,7 +151,7 @@ def append_value_list_defs(
                 attrib={"WhereClauseOID": item.where_clause_oid},
             )
 
-            if getattr(item, 'method_oid', None):
+            if getattr(item, "method_oid", None):
                 item_ref.set("MethodOID", item.method_oid)
 
 
@@ -176,10 +180,10 @@ def append_where_clause_defs(
             tag(ODM_NS, "RangeCheck"),
             attrib={
                 "Comparator": wc.comparator,
-                "SoftHard": getattr(wc, 'soft_hard', 'Soft'),
+                "SoftHard": getattr(wc, "soft_hard", "Soft"),
             },
         )
-        item_oid = getattr(wc, 'item_oid', None) or wc.variable_oid
+        item_oid = getattr(wc, "item_oid", None) or wc.variable_oid
         range_check.set(attr(DEF_NS, "ItemOID"), item_oid)
 
         for value in wc.check_values:
@@ -230,7 +234,6 @@ def append_method_defs(
         parent: Parent XML element
         methods: List of MethodDefinition objects
     """
-    from .models import MethodDefinition
 
     for method in methods:
         method_elem = ET.SubElement(
@@ -271,7 +274,6 @@ def append_comment_defs(
         parent: Parent XML element
         comments: List of CommentDefinition objects
     """
-    from .models import CommentDefinition
 
     for comment in comments:
         comment_elem = ET.SubElement(

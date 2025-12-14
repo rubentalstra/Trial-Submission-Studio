@@ -18,7 +18,8 @@ import pandas as pd
 from rich.console import Console
 from rich.table import Table
 
-from .logging_config import get_logger, SDTMLogger
+from .logging_config import get_logger
+from ..xpt_module import write_xpt_file
 
 if TYPE_CHECKING:
     from ..domains_module import SDTMDomain
@@ -32,7 +33,7 @@ def log_verbose(enabled: bool, message: str) -> None:
     Args:
         enabled: Whether verbose logging is enabled
         message: Message to log
-        
+
     Note:
         This function maintains backward compatibility.
         New code should use SDTMLogger directly via get_logger().
@@ -69,20 +70,19 @@ def write_variant_splits(
     Returns:
         Tuple of (list of paths, list of (split_name, dataframe, path) tuples)
     """
-    from ..xpt_module import write_xpt_file
 
     split_paths: list[Path] = []
     split_datasets: list[tuple[str, pd.DataFrame, Path]] = []
     domain_code = domain.code.upper()
-    
+
     for variant_name, variant_df in variant_frames:
         # Clean variant name for filename
         table = variant_name.replace(" ", "_").replace("(", "").replace(")", "").upper()
-        
+
         # Skip if this is the base domain (not a split)
         if table == domain_code:
             continue
-        
+
         # Validate split dataset name follows SDTMIG v3.4 naming convention
         # Split name must start with domain code and be ≤ 8 characters
         if not table.startswith(domain_code):
@@ -91,41 +91,44 @@ def write_variant_splits(
                 f"with domain code '{domain_code}'. Skipping."
             )
             continue
-        
+
         if len(table) > 8:
             console.print(
                 f"[yellow]⚠[/yellow] Warning: Split dataset name '{table}' exceeds "
                 "8 characters. Truncating to comply with SDTMIG v3.4."
             )
             table = table[:8]
-        
+
         # Ensure DOMAIN variable is set correctly (must match parent domain)
         if "DOMAIN" in variant_df.columns:
             variant_df = variant_df.copy()
             variant_df["DOMAIN"] = domain_code
-        
+
         # Create split subdirectory for better organization
         split_dir = xpt_dir / "split"
         split_dir.mkdir(parents=True, exist_ok=True)
-        
+
         split_name = table.lower()
         split_path = split_dir / f"{split_name}.xpt"
-        
+
         # Extract split suffix for better labeling
-        split_suffix = table[len(domain_code):]
+        split_suffix = table[len(domain_code) :]
         file_label = (
-            f"{domain.description} - {split_suffix}" if split_suffix 
+            f"{domain.description} - {split_suffix}"
+            if split_suffix
             else domain.description
         )
-        
-        write_xpt_file(variant_df, domain.code, split_path, file_label=file_label, table_name=table)
+
+        write_xpt_file(
+            variant_df, domain.code, split_path, file_label=file_label, table_name=table
+        )
         split_paths.append(split_path)
         split_datasets.append((table, variant_df, split_path))
         console.print(
             f"[green]✓[/green] Split dataset: {split_path} "
             f"(DOMAIN={domain_code}, table={table})"
         )
-    
+
     return split_paths, split_datasets
 
 

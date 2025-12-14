@@ -13,7 +13,7 @@ from .iso8601 import normalize_iso8601, normalize_iso8601_duration
 
 class DateTransformer:
     """Transforms date, time, and duration values for SDTM compliance.
-    
+
     This class provides static methods for:
     - ISO 8601 date/time normalization
     - ISO 8601 duration normalization
@@ -27,7 +27,7 @@ class DateTransformer:
         domain_variables: list,
     ) -> None:
         """Normalize all date/datetime columns to ISO 8601 strings.
-        
+
         Args:
             frame: DataFrame to modify in-place
             domain_variables: List of SDTMVariable objects defining domain structure
@@ -43,7 +43,7 @@ class DateTransformer:
         domain_variables: list,
     ) -> None:
         """Normalize all duration columns to ISO 8601 duration strings.
-        
+
         Args:
             frame: DataFrame to modify in-place
             domain_variables: List of SDTMVariable objects defining domain structure
@@ -51,9 +51,7 @@ class DateTransformer:
         for var in domain_variables:
             if var.type == "Char" and "DUR" in var.name:
                 if var.name in frame.columns:
-                    frame[var.name] = frame[var.name].apply(
-                        normalize_iso8601_duration
-                    )
+                    frame[var.name] = frame[var.name].apply(normalize_iso8601_duration)
 
     @staticmethod
     def calculate_dy(
@@ -62,7 +60,7 @@ class DateTransformer:
         reference_starts: dict[str, str],
     ) -> None:
         """Calculate --DY variables if --DTC and RFSTDTC are present.
-        
+
         Args:
             frame: DataFrame to modify in-place
             domain_variables: List of SDTMVariable objects defining domain structure
@@ -91,12 +89,12 @@ class DateTransformer:
         reference_starts: dict[str, str],
     ) -> int | None:
         """Compute the study day for a given date and subject.
-        
+
         Args:
             usubjid: Subject identifier
             dtc: Date/time string in ISO 8601 format
             reference_starts: Mapping of USUBJID -> RFSTDTC
-            
+
         Returns:
             Study day (integer) or None if cannot be computed
         """
@@ -127,7 +125,7 @@ class DateTransformer:
         - If event_date < RFSTDTC: study_day = (event_date - RFSTDTC).days
         - There is NO Day 0 in SDTM
         - Missing dates should result in missing study day
-        
+
         Args:
             frame: DataFrame to modify in-place
             dtc_var: Name of date/time column
@@ -175,7 +173,7 @@ class DateTransformer:
         end_var: str | None,
     ) -> None:
         """Ensure start date <= end date, swapping if needed.
-        
+
         Args:
             frame: DataFrame to modify in-place
             start_var: Name of start date column
@@ -193,13 +191,13 @@ class DateTransformer:
     @staticmethod
     def coerce_iso8601(raw_value) -> str:
         """Coerce a value to ISO 8601 date format, handling special cases.
-        
+
         This method normalizes dates and handles special tokens like "NK" (unknown)
         by replacing them with valid date components.
-        
+
         Args:
             raw_value: Value to coerce (string, datetime, etc.)
-            
+
         Returns:
             ISO 8601 date string (YYYY-MM-DD) or empty string if invalid
         """

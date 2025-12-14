@@ -10,10 +10,12 @@ from __future__ import annotations
 
 from typing import Any
 
+from ..cli.helpers import log_verbose
+
 
 def _log_verbose(enabled: bool, message: str) -> None:
     """Deferred import wrapper to avoid circular imports."""
-    from ..cli.helpers import log_verbose
+
     log_verbose(enabled, message)
 
 

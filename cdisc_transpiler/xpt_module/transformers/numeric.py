@@ -11,7 +11,7 @@ import pandas as pd
 
 class NumericTransformer:
     """Transforms numeric values for SDTM compliance.
-    
+
     This class provides static methods for:
     - Populating STRESC from ORRES
     - Forcing numeric type coercion
@@ -28,7 +28,7 @@ class NumericTransformer:
         Per SDTM standards, if ORRES has a value and STRESC is missing,
         STRESC should be populated with ORRES (or a standardized version).
         This applies to Findings domains (LB, VS, DA, IE, PE, QS, etc.)
-        
+
         Args:
             frame: DataFrame to modify in-place
             domain_code: SDTM domain code (e.g., "LB", "VS")
@@ -56,10 +56,10 @@ class NumericTransformer:
     @staticmethod
     def force_numeric(series: pd.Series) -> pd.Series:
         """Coerce a series to numeric type, replacing invalid values with NaN.
-        
+
         Args:
             series: Series to convert to numeric
-            
+
         Returns:
             Numeric series with invalid values as NaN
         """
@@ -72,10 +72,10 @@ class NumericTransformer:
         group_by: str,
     ) -> None:
         """Assign sequence numbers within groups.
-        
+
         This assigns sequential integers (1, 2, 3, ...) within each group,
         which is used for domain-specific sequence variables like AESEQ, CMSEQ.
-        
+
         Args:
             frame: DataFrame to modify in-place
             seq_var: Name of sequence variable to populate

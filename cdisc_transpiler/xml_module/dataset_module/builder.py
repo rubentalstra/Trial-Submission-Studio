@@ -34,14 +34,14 @@ def build_dataset_xml_tree(
     is_reference_data: bool = False,
 ) -> ET.Element:
     """Build a Dataset-XML 1.0 document tree for a single domain.
-    
+
     Args:
         data: The pandas DataFrame containing the domain data
         domain_code: The SDTM domain code (e.g., "DM", "AE")
         config: The mapping configuration containing study metadata
         metadata_version_oid: The MetaDataVersionOID to reference Define-XML
         is_reference_data: Whether this is reference data (trial design)
-        
+
     Returns:
         The root Element of the Dataset-XML 1.0 document
     """
@@ -96,7 +96,7 @@ def append_item_group_data(
     dataset_name: str,
 ) -> None:
     """Append ItemGroupData elements for each row in the DataFrame.
-    
+
     Args:
         parent: Parent XML element
         data: DataFrame with domain data
