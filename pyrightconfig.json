@@ -1,8 +1,10 @@
 {
-  "include": ["cdisc_transpiler"],
-  "pythonVersion": "3.12",
+  "include": [
+    "cdisc_transpiler"
+  ],
+  "pythonVersion": "3.14",
   "extraPaths": [
-    "/home/runner/.local/lib/python3.12/site-packages"
+    "/home/runner/.local/lib/python3.14/site-packages"
   ],
   "typeCheckingMode": "off",
   "reportMissingImports": "none"
