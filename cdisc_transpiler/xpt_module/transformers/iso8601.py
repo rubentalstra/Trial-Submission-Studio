@@ -68,7 +68,7 @@ def normalize_iso8601(raw_value) -> str:
         return str(raw_value)
 
 
-def normalize_iso8601_duration(raw_value) -> str:
+def normalize_iso8601_duration(raw_value: Any) -> str:
     """Normalize elapsed time/duration values to ISO 8601 duration format.
 
     ISO 8601 durations: PnYnMnDTnHnMnS

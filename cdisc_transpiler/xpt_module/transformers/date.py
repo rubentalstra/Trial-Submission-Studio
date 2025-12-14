@@ -6,7 +6,7 @@ durations, and study day calculations according to SDTM standards.
 
 from __future__ import annotations
 
-from typing import Sequence
+from typing import Sequence, Any
 
 import pandas as pd
 
@@ -199,7 +199,7 @@ class DateTransformer:
             frame[end_var] = end.where(~needs_swap, start)
 
     @staticmethod
-    def coerce_iso8601(raw_value) -> str:
+    def coerce_iso8601(raw_value: Any) -> str:
         """Coerce a value to ISO 8601 date format, handling special cases.
 
         This method normalizes dates and handles special tokens like "NK" (unknown)

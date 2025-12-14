@@ -6,7 +6,7 @@ controlled terminology (codelist) values according to CDISC standards.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence, Any
+from typing import TYPE_CHECKING, Sequence, Any, Callable
 
 import pandas as pd
 
@@ -42,7 +42,7 @@ class CodelistTransformer:
         codelist_name: str,
         code_column: str | None = None,
         source_frame: pd.DataFrame | None = None,
-        unquote_func=None,
+        unquote_func: Callable[[str], str] | None = None,
     ) -> pd.Series:
         """Transform coded values to their text equivalents using codelist.
 
@@ -74,7 +74,7 @@ class CodelistTransformer:
             if code_col in source_frame.columns:
                 code_values = ensure_series(source_frame[code_col], index=source_data.index if hasattr(source_data, "index") else None)
 
-                def transform(code_val):
+                def transform(code_val: Any) -> Any:
                     if pd.isna(code_val):
                         return None
                     text = codelist.get_text(code_val)
@@ -83,7 +83,7 @@ class CodelistTransformer:
                 return ensure_series(code_values.apply(transform), index=code_values.index)
 
         # Otherwise, try to transform the source data directly
-        def transform_value(val):
+        def transform_value(val: Any) -> Any:
             if pd.isna(val):
                 return val
             # First check if it's a code that needs transformation
