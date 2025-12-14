@@ -8,8 +8,10 @@ from .wide_to_long import (
     TestColumnPattern,
     WideToLongTransformer,
 )
+from .vs_transformer import VSTransformer
 
 __all__ = [
     "TestColumnPattern",
     "WideToLongTransformer",
+    "VSTransformer",
 ]
