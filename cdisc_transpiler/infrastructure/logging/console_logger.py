@@ -240,6 +240,8 @@ class ConsoleLogger(LoggerPort):
         variant: str | None,
         *,
         is_metadata: bool = False,
+        match_type: str | None = None,
+        category: str | None = None,
     ) -> None:
         """Log file matching result.
 
@@ -248,11 +250,19 @@ class ConsoleLogger(LoggerPort):
             domain: Matched domain code or None
             variant: Variant name or None
             is_metadata: Whether this is a metadata file being skipped
+            match_type: Type of match (exact, variant, etc.)
+            category: Domain category (EVENTS, FINDINGS, etc.)
         """
         if is_metadata:
             self.verbose(f"Skipping metadata file: {filename}")
         elif domain:
-            self.verbose(f"Matched {filename} → {domain} (variant: {variant})")
+            msg = f"Matched {filename} → {domain} (variant: {variant}"
+            if match_type:
+                msg += f", type: {match_type}"
+            if category:
+                msg += f", category: {category}"
+            msg += ")"
+            self.verbose(msg)
         else:
             self.verbose(f"No domain match for: {filename}")
 
@@ -304,29 +314,243 @@ class ConsoleLogger(LoggerPort):
             column_count: Number of columns (optional)
         """
         self._stats["files_processed"] += 1
-        msg = f"Loaded {filename}: {row_count:,} rows"
-        if column_count:
-            msg += f", {column_count} columns"
+
+        msg = f"  Loaded {row_count:,} rows from {filename}"
+        if column_count is not None and self.verbosity >= LogLevel.DEBUG:
+            msg += f" ({column_count} columns)"
+
         self.verbose(msg)
 
     def log_transformation(
         self,
-        transformation_type: str,
-        before_count: int,
-        after_count: int,
+        domain_code: str,
+        transform_type: str,
+        input_rows: int,
+        output_rows: int,
+        *,
+        details: str | None = None,
     ) -> None:
-        """Log data transformation results.
+        """Log a data transformation operation.
 
         Args:
-            transformation_type: Type of transformation (e.g., "Wide-to-long")
-            before_count: Row count before transformation
-            after_count: Row count after transformation
+            domain_code: Domain being transformed
+            transform_type: Type of transformation (e.g., 'reshape', 'normalize')
+            input_rows: Number of input rows
+            output_rows: Number of output rows
+            details: Additional transformation details
         """
-        ratio = after_count / before_count if before_count > 0 else 0
-        self.verbose(
-            f"{transformation_type}: {before_count:,} → {after_count:,} rows "
-            f"(×{ratio:.1f})"
+        msg = f"  {transform_type.capitalize()} {domain_code}: {input_rows:,} → {output_rows:,} rows"
+        if details:
+            msg += f" ({details})"
+
+        self.verbose(msg)
+
+        if self.verbosity >= LogLevel.DEBUG:
+            ratio = output_rows / input_rows if input_rows > 0 else 0
+            self.debug(f"    Expansion ratio: {ratio:.2f}x")
+
+    def log_rows_processed(
+        self,
+        domain_code: str,
+        row_count: int,
+        variant_name: str | None = None,
+    ) -> None:
+        """Log rows processed for a domain.
+
+        Args:
+            domain_code: Domain code
+            row_count: Number of rows processed
+            variant_name: Optional variant name
+        """
+        self._stats["records_processed"] += row_count
+
+        label = variant_name or domain_code
+        self.verbose(f"  Processed {row_count:,} rows for {label}")
+
+    def log_merge_result(
+        self,
+        file_count: int,
+        row_count: int,
+    ) -> None:
+        """Log merge operation result.
+
+        Args:
+            file_count: Number of files merged
+            row_count: Total rows after merge
+        """
+        if file_count > 1:
+            self.verbose(f"Merged {file_count} files into {row_count:,} rows")
+
+    def log_mapping_info(
+        self,
+        domain_code: str,
+        mappings_count: int,
+        confidence_threshold: float,
+        *,
+        low_confidence_mappings: list[tuple[str, str, float]] | None = None,
+    ) -> None:
+        """Log column mapping information.
+
+        Args:
+            domain_code: Domain code
+            mappings_count: Number of successful mappings
+            confidence_threshold: Minimum confidence threshold
+            low_confidence_mappings: List of (source, target, confidence) tuples
+        """
+        self.debug(f"  Column mappings for {domain_code}: {mappings_count} found")
+        self.debug(f"  Confidence threshold: {confidence_threshold:.1%}")
+
+        if low_confidence_mappings and self.verbosity >= LogLevel.DEBUG:
+            for source, target, conf in low_confidence_mappings:
+                self.debug(f"    Low confidence: {source} → {target} ({conf:.1%})")
+
+    def log_suppqual_generated(
+        self,
+        domain_code: str,
+        record_count: int,
+        variable_count: int,
+    ) -> None:
+        """Log supplemental qualifier generation.
+
+        Args:
+            domain_code: Parent domain code
+            record_count: Number of SUPPQUAL records
+            variable_count: Number of supplemental variables
+        """
+        if record_count > 0:
+            supp_code = f"SUPP{domain_code.upper()}"
+            msg = f"  Generated {supp_code}: {record_count:,} records ({variable_count} variables)"
+            self.verbose(msg)
+
+    def log_file_generated(
+        self,
+        file_type: str,
+        path: Path,
+        *,
+        record_count: int | None = None,
+    ) -> None:
+        """Log file generation success.
+
+        Args:
+            file_type: Type of file (XPT, Dataset-XML, SAS, Define-XML)
+            path: Path to generated file
+            record_count: Number of records in file (optional)
+        """
+        msg = f"Generated {file_type}: {path}"
+        if record_count is not None and self.verbosity >= LogLevel.VERBOSE:
+            msg += f" ({record_count:,} records)"
+
+        self.success(msg)
+
+    def log_split_dataset(
+        self,
+        path: Path,
+        domain_code: str,
+        table_name: str,
+        row_count: int,
+    ) -> None:
+        """Log split dataset generation per SDTMIG v3.4 Section 4.1.7.
+
+        Args:
+            path: Path to split file
+            domain_code: Parent domain code
+            table_name: Split table name
+            row_count: Number of rows in split
+        """
+        msg = f"Split dataset: {path} (DOMAIN={domain_code}, table={table_name}"
+        if self.verbosity >= LogLevel.VERBOSE:
+            msg += f", rows={row_count:,}"
+        msg += ")"
+        self.success(msg)
+
+    def log_synthesis_start(
+        self,
+        domain_code: str,
+        reason: str,
+    ) -> None:
+        """Log the start of domain synthesis.
+
+        Args:
+            domain_code: Domain being synthesized
+            reason: Reason for synthesis
+        """
+        self.console.print()
+        domain_class = get_domain_class(domain_code)
+        header = f"[bold]Synthesizing {domain_code}[/bold]: {reason}"
+        if self.verbosity >= LogLevel.VERBOSE:
+            header += f" [dim]({domain_class})[/dim]"
+        self.console.print(header)
+
+    def log_synthesis_complete(
+        self,
+        domain_code: str,
+        record_count: int,
+    ) -> None:
+        """Log synthesis completion.
+
+        Args:
+            domain_code: Domain that was synthesized
+            record_count: Number of records generated
+        """
+        self.success(f"Generated {domain_code} scaffold (records={record_count})")
+
+    # =========================================================================
+    # Summary and statistics methods
+    # =========================================================================
+
+    def log_processing_summary(
+        self,
+        study_id: str,
+        domain_count: int,
+        file_count: int,
+        output_format: str,
+        generate_define: bool,
+        generate_sas: bool,
+    ) -> None:
+        """Log study processing summary before starting.
+
+        Args:
+            study_id: Study identifier
+            domain_count: Number of domains to process
+            file_count: Number of files to process
+            output_format: Output format
+            generate_define: Whether Define-XML will be generated
+            generate_sas: Whether SAS will be generated
+        """
+        self.console.print()
+        self.console.print(f"[bold]Study: {study_id}[/bold]")
+        self.console.print(
+            f"[bold]Found {domain_count} domains ({file_count} files) to process[/bold]"
         )
+        self.console.print(f"[bold]Output format:[/bold] {output_format.upper()}")
+
+        if generate_define:
+            self.console.print("[bold]Define-XML:[/bold] Will be generated")
+        if generate_sas:
+            self.console.print("[bold]SAS programs:[/bold] Will be generated")
+
+    def log_final_stats(self) -> None:
+        """Log final processing statistics (verbose mode)."""
+        if self.verbosity >= LogLevel.VERBOSE:
+            self.console.print()
+            self.console.print("[dim]Processing Statistics:[/dim]")
+            self.console.print(
+                f"[dim]  Files processed: {self._stats['files_processed']}[/dim]"
+            )
+            self.console.print(
+                f"[dim]  Domains processed: {self._stats['domains_processed']}[/dim]"
+            )
+            self.console.print(
+                f"[dim]  Total records: {self._stats['records_processed']:,}[/dim]"
+            )
+            if self._stats["warnings"] > 0:
+                self.console.print(
+                    f"[dim yellow]  Warnings: {self._stats['warnings']}[/dim yellow]"
+                )
+            if self._stats["errors"] > 0:
+                self.console.print(
+                    f"[dim red]  Errors: {self._stats['errors']}[/dim red]"
+                )
 
     def log_domain_complete(
         self,
