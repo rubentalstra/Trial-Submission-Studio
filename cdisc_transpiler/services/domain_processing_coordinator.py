@@ -16,7 +16,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd
-from rich.console import Console
 
 from ..cli.helpers import write_variant_splits
 from ..cli.utils import ProgressTracker
@@ -41,9 +40,6 @@ from ..xpt_module import write_xpt_file
 from ..xpt_module.builder import build_domain_dataframe
 from ..xml_module.dataset_module import write_dataset_xml
 from .study_orchestration_service import StudyOrchestrationService
-
-
-console = Console()
 
 
 class DomainProcessingCoordinator:
@@ -323,9 +319,7 @@ class DomainProcessingCoordinator:
         )
 
         if frame.empty:
-            console.print(
-                f"[yellow]⚠[/yellow] {display_name}: No vital signs records after transformation"
-            )
+            logger.warning(f"{display_name}: No vital signs records after transformation")
             if verbose:
                 logger.verbose("    Note: Check source data for VSTESTCD/VSORRES columns")
             return None, True
@@ -371,9 +365,7 @@ class DomainProcessingCoordinator:
             )
 
             if reshaped.empty:
-                console.print(
-                    f"[yellow]⚠[/yellow] {display_name}: No laboratory records after transformation"
-                )
+                logger.warning(f"{display_name}: No laboratory records after transformation")
                 if verbose:
                     logger.verbose("    Note: Check source data for lab test columns")
                 return None, True
@@ -419,9 +411,8 @@ class DomainProcessingCoordinator:
         suggestions = engine.suggest(frame)
 
         if not suggestions.mappings:
-            console.print(
-                f"[yellow]⚠[/yellow] {display_name}: No mappings found, skipping"
-            )
+            logger = get_logger()
+            logger.warning(f"{display_name}: No mappings found, skipping")
             return None
 
         return build_config(domain_code, suggestions.mappings)
@@ -616,7 +607,7 @@ class DomainProcessingCoordinator:
             # Any domain can be split when there are multiple variant files
             if len(variant_frames) > 1:
                 split_paths, split_datasets = write_variant_splits(
-                    variant_frames, domain, xpt_dir, console
+                    variant_frames, domain, xpt_dir
                 )
                 result["split_xpt_paths"] = split_paths
                 result["split_datasets"] = split_datasets
@@ -624,9 +615,8 @@ class DomainProcessingCoordinator:
         if xml_dir and output_format in ("xml", "both"):
             xml_path = xml_dir / f"{disk_name}.xml"
             if streaming:
-                console.print(
-                    "[yellow]⚠[/yellow] Streaming mode not implemented, using regular write"
-                )
+                logger = get_logger()
+                logger.warning("Streaming mode not implemented, using regular write")
             write_dataset_xml(merged_dataframe, domain_code, config, xml_path)
             result["xml_path"] = xml_path
             result["xml_filename"] = xml_path.name

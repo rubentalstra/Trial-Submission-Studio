@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from rich.console import Console
+
 
 class ProgressReportingService:
     """Service for reporting progress and status to the user.
@@ -18,14 +20,13 @@ class ProgressReportingService:
     status messages, and summary reporting during study processing.
     """
 
-    def __init__(self, console: Any, verbose: int = 0):
+    def __init__(self, verbose: int = 0):
         """Initialize the progress reporting service.
 
         Args:
-            console: Rich console instance for output
             verbose: Verbosity level (0 = normal, 1+ = verbose)
         """
-        self.console = console
+        self.console = Console()
         self.verbose = verbose
 
     def report_study_info(

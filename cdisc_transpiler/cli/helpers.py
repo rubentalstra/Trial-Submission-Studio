@@ -30,7 +30,6 @@ def write_variant_splits(
     variant_frames: list[tuple[str, pd.DataFrame]],
     domain: SDTMDomain,
     xpt_dir: Path,
-    console: Console,
 ) -> tuple[list[Path], list[tuple[str, pd.DataFrame, Path]]]:
     """Write split XPT files for domain variants following SDTMIG v3.4 Section 4.1.7.
 
@@ -46,12 +45,13 @@ def write_variant_splits(
         variant_frames: List of (variant_name, dataframe) tuples
         domain: SDTM domain metadata
         xpt_dir: Directory for XPT files
-        console: Rich console for output
 
     Returns:
         Tuple of (list of paths, list of (split_name, dataframe, path) tuples)
     """
-
+    from .logging_config import get_logger
+    
+    logger = get_logger()
     split_paths: list[Path] = []
     split_datasets: list[tuple[str, pd.DataFrame, Path]] = []
     domain_code = domain.code.upper()
@@ -67,15 +67,15 @@ def write_variant_splits(
         # Validate split dataset name follows SDTMIG v3.4 naming convention
         # Split name must start with domain code and be ≤ 8 characters
         if not table.startswith(domain_code):
-            console.print(
-                f"[yellow]⚠[/yellow] Warning: Split dataset '{table}' does not start "
+            logger.warning(
+                f"Warning: Split dataset '{table}' does not start "
                 f"with domain code '{domain_code}'. Skipping."
             )
             continue
 
         if len(table) > 8:
-            console.print(
-                f"[yellow]⚠[/yellow] Warning: Split dataset name '{table}' exceeds "
+            logger.warning(
+                f"Warning: Split dataset name '{table}' exceeds "
                 "8 characters. Truncating to comply with SDTMIG v3.4."
             )
             table = table[:8]
@@ -105,8 +105,8 @@ def write_variant_splits(
         )
         split_paths.append(split_path)
         split_datasets.append((table, variant_df, split_path))
-        console.print(
-            f"[green]✓[/green] Split dataset: {split_path} "
+        logger.success(
+            f"Split dataset: {split_path} "
             f"(DOMAIN={domain_code}, table={table})"
         )
 
