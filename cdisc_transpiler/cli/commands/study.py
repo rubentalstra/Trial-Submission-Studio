@@ -265,7 +265,7 @@ def study_command(
         *,
         domain_code: str,
         reason: str,
-        builder,
+        builder: Callable[[], dict[str, Any]],
         is_reference_data: bool = False,
     ) -> None:
         logger.log_synthesis_start(domain_code, reason)

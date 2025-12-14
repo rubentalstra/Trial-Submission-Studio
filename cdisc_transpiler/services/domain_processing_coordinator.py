@@ -24,6 +24,7 @@ from ..cli.logging_config import get_logger
 
 if TYPE_CHECKING:
     from ..metadata_module import StudyMetadata
+    from ..domains_module import SDTMDomain
 
 from ..domains_module import SDTMDomain, get_domain, get_domain_class
 from ..io_module import build_column_hints, load_input_dataset
@@ -44,8 +45,8 @@ from .study_orchestration_service import StudyOrchestrationService
 
 def _write_variant_splits(
     merged_dataframe: pd.DataFrame,
-    variant_frames: list,
-    domain,
+    variant_frames: list[tuple[str, pd.DataFrame]],
+    domain: "SDTMDomain",
     xpt_dir: Path,
     console: Console,
 ):

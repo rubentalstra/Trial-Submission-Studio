@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from ..io_module import Hints
     from ..metadata_module import StudyMetadata
 
-from ..domains_module import get_domain, SDTMDomain
+from ..domains_module import get_domain, SDTMDomain, SDTMVariable
 from .constants import SDTM_INFERENCE_PATTERNS
 from .models import ColumnMapping, MappingSuggestions, Suggestion
 from .utils import normalize_text, safe_column_name
@@ -267,7 +267,7 @@ class MetadataAwareMapper:
 
         return best
 
-    def _apply_hints(self, column: str, variable, score: float) -> float:
+    def _apply_hints(self, column: str, variable: SDTMVariable, score: float) -> float:
         """Apply column hints to adjust the confidence score.
 
         Args:
