@@ -6,7 +6,7 @@ allowing each SDTM domain to have custom post-processing logic.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING
 
 from .base import BaseDomainProcessor, DefaultDomainProcessor
 

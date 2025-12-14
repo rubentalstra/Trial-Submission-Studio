@@ -182,7 +182,7 @@ def build_suppqual(
     aligned_source = aligned_source.iloc[:max_len]
     idvals = idvals.iloc[:max_len]
 
-    records: list[dict] = []
+    records: list[dict[str, Any]] = []
     for col in extra_cols:
         series = aligned_source[col].astype("string").fillna("").str.strip()
         if series.eq("").all():

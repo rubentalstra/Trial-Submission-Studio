@@ -141,7 +141,7 @@ class CodelistTransformer:
     @staticmethod
     def validate_controlled_terms(
         frame: pd.DataFrame,
-        domain_variables: list,
+        domain_variables: list[SDTMVariable],
     ) -> None:
         """Validate controlled terminology values and replace invalid ones.
 

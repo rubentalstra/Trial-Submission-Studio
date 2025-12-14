@@ -72,7 +72,7 @@ class DSProcessor(BaseDomainProcessor):
             assert isinstance(dt_candidate, pd.Timestamp)
             return dt_candidate.date().isoformat()
 
-        defaults: list[dict] = []
+        defaults: list[dict[str, Any]] = []
         study_id = "STUDY"
         if len(frame) > 0 and "STUDYID" in frame.columns:
             study_id = frame["STUDYID"].iloc[0]
