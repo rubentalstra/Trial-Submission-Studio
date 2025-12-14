@@ -6,6 +6,8 @@ for non-model columns in parent SDTM domains.
 
 from __future__ import annotations
 
+from typing import Any
+
 import pandas as pd
 
 from ..pandas_utils import ensure_numeric_series, ensure_series

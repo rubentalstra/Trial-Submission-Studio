@@ -164,7 +164,7 @@ class DateTransformer:
         baseline = baseline.bfill().ffill()
 
         # Compute day difference
-        deltas = (dates - baseline).dt.days
+        deltas = (dates - baseline).dt.days  # type: ignore[attr-defined]
 
         # Per SDTM: add 1 for dates on or after reference start, no adjustment for dates before
         # This ensures there is no Day 0
