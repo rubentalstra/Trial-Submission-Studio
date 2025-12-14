@@ -16,13 +16,14 @@ from ..domains_module import SDTMVariable, get_domain
 from ..mapping_module import ColumnMapping, build_config
 from ..sas_module import generate_sas_program, write_sas_file
 from ..xpt_module import write_xpt_file
+from ..cli.utils import log_success
 from ..xpt_module.builder import build_domain_dataframe
-from ..xml.dataset import write_dataset_xml
+from ..xml_module.dataset_module import write_dataset_xml
 
 
 def _log_success(message: str) -> None:
     """Log a success message. Deferred import to avoid circular dependency."""
-    from ..cli.utils import log_success
+
     log_success(message)
 
 
@@ -67,7 +68,10 @@ class DomainSynthesisCoordinator:
         if not rows:
             # Create empty dataframe
             frame = pd.DataFrame(
-                {var.name: pd.Series(dtype=var.pandas_dtype()) for var in domain.variables}
+                {
+                    var.name: pd.Series(dtype=var.pandas_dtype())
+                    for var in domain.variables
+                }
             )
         else:
             frame = pd.DataFrame(rows)
@@ -124,8 +128,15 @@ class DomainSynthesisCoordinator:
             domain_code, subject_id, base_date, domain, study_id
         )
 
-        frame = pd.DataFrame(rows) if rows else pd.DataFrame(
-            {var.name: pd.Series(dtype=var.pandas_dtype()) for var in domain.variables}
+        frame = (
+            pd.DataFrame(rows)
+            if rows
+            else pd.DataFrame(
+                {
+                    var.name: pd.Series(dtype=var.pandas_dtype())
+                    for var in domain.variables
+                }
+            )
         )
 
         # Build configuration and domain dataframe
@@ -146,9 +157,7 @@ class DomainSynthesisCoordinator:
             domain,
         )
 
-    def _pick_subject(
-        self, ref_starts: dict[str, str] | None
-    ) -> tuple[str, str]:
+    def _pick_subject(self, ref_starts: dict[str, str] | None) -> tuple[str, str]:
         """Pick a reference subject and date."""
         if ref_starts:
             first_id = sorted(ref_starts.keys())[0]
@@ -194,55 +203,68 @@ class DomainSynthesisCoordinator:
 
         if upper == "TS":
             row = _base_row()
-            row.update({
-                "TSPARMCD": "TITLE",
-                "TSPARM": "Study Title",
-                "TSVAL": "Synthetic Trial",
-                "TSVCDREF": "",
-                "TSVCDVER": "",
-            })
+            row.update(
+                {
+                    "TSPARMCD": "TITLE",
+                    "TSPARM": "Study Title",
+                    "TSVAL": "Synthetic Trial",
+                    "TSVCDREF": "",
+                    "TSVCDVER": "",
+                }
+            )
             rows.append(row)
         elif upper == "TA":
-            for etcd, element, order in [("SCRN", "SCREENING", 0), ("TRT", "TREATMENT", 1)]:
+            for etcd, element, order in [
+                ("SCRN", "SCREENING", 0),
+                ("TRT", "TREATMENT", 1),
+            ]:
                 row = _base_row()
-                row.update({
-                    "ARMCD": "ARM1",
-                    "ARM": "Treatment Arm",
-                    "ETCD": etcd,
-                    "ELEMENT": element,
-                    "TAETORD": order,
-                    "EPOCH": element,
-                })
+                row.update(
+                    {
+                        "ARMCD": "ARM1",
+                        "ARM": "Treatment Arm",
+                        "ETCD": etcd,
+                        "ELEMENT": element,
+                        "TAETORD": order,
+                        "EPOCH": element,
+                    }
+                )
                 rows.append(row)
         elif upper == "TE":
             for etcd, element in [("SCRN", "SCREENING"), ("TRT", "TREATMENT")]:
                 row = _base_row()
-                row.update({
-                    "ETCD": etcd,
-                    "ELEMENT": element,
-                    "TESTRL": base_date,
-                    "TEENRL": base_date,
-                    "TEDUR": "P1D",
-                })
+                row.update(
+                    {
+                        "ETCD": etcd,
+                        "ELEMENT": element,
+                        "TESTRL": base_date,
+                        "TEENRL": base_date,
+                        "TEDUR": "P1D",
+                    }
+                )
                 rows.append(row)
         elif upper == "SE":
             for etcd, element, epoch in [("SCRN", "SCREENING", "SCREENING")]:
                 row = _base_row()
-                row.update({
-                    "ETCD": etcd,
-                    "ELEMENT": element,
-                    "SESTDTC": base_date,
-                    "SEENDTC": base_date,
-                    "EPOCH": epoch,
-                })
+                row.update(
+                    {
+                        "ETCD": etcd,
+                        "ELEMENT": element,
+                        "SESTDTC": base_date,
+                        "SEENDTC": base_date,
+                        "EPOCH": epoch,
+                    }
+                )
                 rows.append(row)
         elif upper == "DS":
             row = _base_row()
-            row.update({
-                "DSTERM": "COMPLETED",
-                "DSDECOD": "COMPLETED",
-                "DSSTDTC": base_date,
-            })
+            row.update(
+                {
+                    "DSTERM": "COMPLETED",
+                    "DSDECOD": "COMPLETED",
+                    "DSSTDTC": base_date,
+                }
+            )
             rows.append(row)
 
         return rows

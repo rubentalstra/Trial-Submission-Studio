@@ -12,6 +12,7 @@ from typing import Dict
 
 from .loader import build_registry
 from .models import ControlledTerminology
+from ..domains_module import get_domain, list_domains
 
 
 def _resolve_ct_dir(ct_version: str) -> Path:
@@ -23,7 +24,11 @@ def _resolve_ct_dir(ct_version: str) -> Path:
     Returns:
         Path to the controlled terminology directory
     """
-    ct_base_dir = Path(__file__).resolve().parent.parent.parent / "docs" / "Controlled_Terminology"
+    ct_base_dir = (
+        Path(__file__).resolve().parent.parent.parent
+        / "docs"
+        / "Controlled_Terminology"
+    )
     target = ct_base_dir / ct_version
     if target.exists():
         return target
@@ -37,6 +42,7 @@ def _get_ct_version() -> str:
     """Get the CT version from domains_module."""
     try:
         from ..domains_module import CT_VERSION
+
         return CT_VERSION
     except ImportError:
         return "2025-09-26"  # Default fallback
@@ -54,7 +60,6 @@ def _variable_to_codelist() -> Dict[str, str]:
     Returns:
         Dictionary mapping uppercase variable names to codelist codes
     """
-    from ..domains_module import get_domain, list_domains
 
     mapping: Dict[str, str] = {}
     for domain_code in list_domains():
@@ -153,12 +158,12 @@ def get_test_labels(codelist_code: str) -> Dict[str, str]:
     avoiding the need for hardcoded test label dictionaries.
 
     Args:
-        codelist_code: The codelist code (e.g., "C66741" for VSTESTCD, 
+        codelist_code: The codelist code (e.g., "C66741" for VSTESTCD,
                       "C65047" for LBTESTCD)
 
     Returns:
         Dictionary mapping test codes to their full names/labels
-        
+
     Example:
         >>> labels = get_test_labels("C66741")  # VS Test Codes
         >>> labels.get("HR")
@@ -167,7 +172,7 @@ def get_test_labels(codelist_code: str) -> Dict[str, str]:
     ct = _REGISTRY_BY_CODE.get(codelist_code.upper())
     if ct is None:
         return {}
-    
+
     # Build mapping from submission values to their preferred terms/definitions
     labels: Dict[str, str] = {}
     for value in ct.submission_values:
@@ -179,39 +184,5 @@ def get_test_labels(codelist_code: str) -> Dict[str, str]:
         else:
             label = value
         labels[value] = label
-    
+
     return labels
-
-
-@lru_cache(maxsize=None)
-def get_vs_test_labels() -> Dict[str, str]:
-    """Return VS (Vital Signs) test code to label mapping from CT.
-    
-    Loads from CDISC Controlled Terminology codelist C66741 (VSTESTCD).
-    
-    Returns:
-        Dictionary mapping VSTESTCD values to their labels
-        
-    Example:
-        >>> labels = get_vs_test_labels()
-        >>> labels.get("HR")
-        'Heart Rate'
-    """
-    return get_test_labels("C66741")
-
-
-@lru_cache(maxsize=None)
-def get_lb_test_labels() -> Dict[str, str]:
-    """Return LB (Laboratory) test code to label mapping from CT.
-    
-    Loads from CDISC Controlled Terminology codelist C65047 (LBTESTCD).
-    
-    Returns:
-        Dictionary mapping LBTESTCD values to their labels
-        
-    Example:
-        >>> labels = get_lb_test_labels()
-        >>> labels.get("GLUC")
-        'Glucose'
-    """
-    return get_test_labels("C65047")

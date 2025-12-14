@@ -20,6 +20,7 @@ if TYPE_CHECKING:
 from ..xpt_module import write_xpt_file
 from ..sas_module import generate_sas_program, write_sas_file
 from ..domains_module import get_domain
+from ..xml_module.dataset_module import write_dataset_xml
 
 
 @dataclass
@@ -147,18 +148,7 @@ class FileGenerationService:
             config: Mapping configuration
             output_path: Output file path
         """
-        from ..xml.dataset import write_dataset_xml, generate_dataset_xml_streaming
-
-        if self.streaming:
-            generate_dataset_xml_streaming(
-                dataframe,
-                domain_code,
-                config,
-                output_path,
-                chunk_size=self.chunk_size,
-            )
-        else:
-            write_dataset_xml(dataframe, domain_code, config, output_path)
+        write_dataset_xml(dataframe, domain_code, config, output_path)
 
     def _generate_sas_program(
         self,
@@ -197,7 +187,7 @@ class FileGenerationService:
         - Split datasets follow naming pattern: [DOMAIN][SPLIT]
         - All splits maintain the same DOMAIN variable value
         - Dataset names must be ≤ 8 characters
-        
+
         Args:
             dataframe: Split dataframe
             domain_code: Domain code (e.g., "LB", "VS", "EG")
@@ -215,17 +205,17 @@ class FileGenerationService:
 
         # Validate and clean split name
         clean_split = split_name.upper().replace("_", "").replace(" ", "")
-        
+
         # Ensure split name starts with domain code
         if not clean_split.startswith(domain_code.upper()):
             clean_split = f"{domain_code.upper()}{clean_split}"
-        
+
         # Ensure ≤ 8 characters per SDTMIG v3.4
         if len(clean_split) > 8:
             clean_split = clean_split[:8]
-        
+
         split_path = split_dir / f"{clean_split.lower()}.xpt"
-        
+
         write_xpt_file(
             dataframe,
             domain_code,

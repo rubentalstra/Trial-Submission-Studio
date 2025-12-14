@@ -12,7 +12,7 @@ from rich.console import Console
 from ...io_module import ParseError, load_input_dataset
 from ...metadata_module import load_study_metadata
 from ...domains_module import get_domain, list_domains
-from ...xml.define.constants import ACRF_HREF
+from ...xml_module.define_module.constants import ACRF_HREF
 from ...services import (
     DomainDiscoveryService,
     DomainProcessingCoordinator,
@@ -150,18 +150,18 @@ def study_command(
         # Custom output directory and study ID
         cdisc-transpiler study data/ --output-dir submission/ --study-id STUDY123
     """
-    from ...xml.define import (
+    from ...xml_module.define_module import (
         StudyDataset,
         write_study_define_file,
     )
-    from ...xml.define.constants import (
+    from ...xml_module.define_module.constants import (
         CONTEXT_SUBMISSION,
         CONTEXT_OTHER,
     )
 
     # Initialize the structured logger with appropriate verbosity
     logger = create_logger(console, verbosity=verbose)
-    
+
     # Get list of supported domains
     supported_domains = list(list_domains())
 
@@ -181,7 +181,9 @@ def study_command(
     study_metadata = load_study_metadata(study_folder)
     logger.log_metadata_loaded(
         items_count=len(study_metadata.items) if study_metadata.items else None,
-        codelists_count=len(study_metadata.codelists) if study_metadata.codelists else None,
+        codelists_count=len(study_metadata.codelists)
+        if study_metadata.codelists
+        else None,
     )
 
     # Set output directory
@@ -600,7 +602,7 @@ def study_command(
 
     # Log final processing statistics in verbose mode
     logger.log_final_stats()
-    
+
     # Print summary
     print_study_summary(
         results, errors, output_dir, output_format, generate_define, generate_sas

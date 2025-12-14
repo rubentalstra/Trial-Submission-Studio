@@ -8,11 +8,11 @@ SDTM Reference:
     SDTMIG v3.4 Section 6 describes the Findings class domains including:
     - VS (Vital Signs): Blood pressure, heart rate, temperature, etc.
     - LB (Laboratory Test Results): Hematology, chemistry, urinalysis
-    
+
     Findings domains use the normalized structure with --TESTCD, --TEST,
     --ORRES, --ORRESU for each measurement. Source data often comes in
     wide format and must be reshaped to the vertical SDTM structure.
-    
+
     Section 6.4 describes RELREC (Related Records) for linking observations
     across domains (e.g., linking AE records to DS disposition events).
 """
@@ -20,101 +20,16 @@ SDTM Reference:
 from __future__ import annotations
 
 import re
-from functools import lru_cache
 from pathlib import Path
 
 import pandas as pd
 
-from ..domains_module import SDTMVariable, get_domain
+from ..domains_module import get_domain
 from ..mapping_module import ColumnMapping, build_config
 from ..sas_module import generate_sas_program, write_sas_file
-from ..terminology_module import get_vs_test_labels, get_lb_test_labels
 from ..xpt_module import write_xpt_file
-
-
-@lru_cache(maxsize=1)
-def _get_vs_test_labels() -> dict[str, str]:
-    """Get VS test labels from CT with fallback to common tests.
-    
-    Returns dynamic labels from CT, supplemented with common test codes
-    that may not be in the CT files.
-    """
-    # Load from CT - dict() creates a copy since we'll modify it below
-    # (get_vs_test_labels is cached, so we shouldn't mutate its result)
-    labels = dict(get_vs_test_labels())
-    
-    # Add common test labels if not already in CT
-    # These are fallback values for commonly-used tests
-    fallback_labels = {
-        "HR": "Heart Rate",
-        "SYSBP": "Systolic Blood Pressure",
-        "DIABP": "Diastolic Blood Pressure",
-        "TEMP": "Temperature",
-        "WEIGHT": "Weight",
-        "HEIGHT": "Height",
-        "BMI": "Body Mass Index",
-    }
-    for code, label in fallback_labels.items():
-        if code not in labels:
-            labels[code] = label
-    
-    return labels
-
-
-@lru_cache(maxsize=1)
-def _get_lb_test_labels() -> dict[str, str]:
-    """Get LB test labels from CT with fallback to common tests.
-    
-    Returns dynamic labels from CT, supplemented with common test codes
-    that may not be in the CT files.
-    """
-    # Load from CT - dict() creates a copy since we'll modify it below
-    # (get_lb_test_labels is cached, so we shouldn't mutate its result)
-    labels = dict(get_lb_test_labels())
-    
-    # Add common test labels if not already in CT
-    # These are fallback values for commonly-used tests
-    fallback_labels = {
-        "CHOL": "Cholesterol",
-        "AST": "Aspartate Aminotransferase",
-        "ALT": "Alanine Aminotransferase",
-        "GLUC": "Glucose",
-        "HGB": "Hemoglobin",
-        "HCT": "Hematocrit",
-        "RBC": "Erythrocytes",
-        "WBC": "Leukocytes",
-        "PLAT": "Platelets",
-    }
-    for code, label in fallback_labels.items():
-        if code not in labels:
-            labels[code] = label
-    
-    return labels
-
-
-# Default units per CDISC Controlled Terminology
-# These remain hardcoded as CT doesn't directly map units to test codes
-VS_UNIT_DEFAULTS = {
-    "HR": "beats/min",
-    "SYSBP": "mmHg",
-    "DIABP": "mmHg",
-    "TEMP": "C",
-    "WEIGHT": "kg",
-    "HEIGHT": "cm",
-    "BMI": "kg/m2",
-}
-
-# Aliases mapping source test codes to standard CDISC CT
-VS_TEST_ALIASES = {
-    "PLS": "HR",  # Pulse -> Heart Rate
-    "HR": "HR",
-    "SYSBP": "SYSBP",
-    "DIABP": "DIABP",
-    "TEMP": "TEMP",
-    "WEIGHT": "WEIGHT",
-    "HEIGHT": "HEIGHT",
-    "BMI": "BMI",
-}
+from ..xml_module.dataset_module import write_dataset_xml
+from ..xpt_module.builder import build_domain_dataframe
 
 
 class StudyOrchestrationService:
@@ -122,7 +37,7 @@ class StudyOrchestrationService:
 
     This service contains domain-specific logic for data transformations,
     trial design synthesis, and relationship record generation.
-    
+
     The service handles:
     - Reshaping wide-format Findings data to SDTM vertical structure
     - Building RELREC relationship records between domains
@@ -147,7 +62,7 @@ class StudyOrchestrationService:
             Long-format dataframe with SDTM VS structure
         """
         df = frame.copy()
-        
+
         # Common source column name variations
         rename_map = {
             "Subject Id": "USUBJID",
@@ -194,9 +109,7 @@ class StudyOrchestrationService:
             visitnum = row.get("VISITNUM", pd.NA)
             visit = str(row.get("VISIT", "") or "").strip()
             if not visit and pd.notna(visitnum):
-                visit = (
-                    f"Visit {int(visitnum)}" if float(visitnum).is_integer() else ""
-                )
+                visit = f"Visit {int(visitnum)}" if float(visitnum).is_integer() else ""
 
             vsdtc = row.get("VSDTC", "")
             status_cd = str(row.get("VSPERFCD", "") or "").strip().upper()
@@ -224,7 +137,9 @@ class StudyOrchestrationService:
                         "USUBJID": usubjid,
                         "VSTESTCD": std_testcd[:8],
                         "VSTEST": str(
-                            _get_vs_test_labels().get(std_testcd, label_val or std_testcd)
+                            _get_vs_test_labels().get(
+                                std_testcd, label_val or std_testcd
+                            )
                         ),
                         "VSORRES": "" if stat_val else value,
                         "VSORRESU": "" if stat_val else unit_val,
@@ -260,7 +175,7 @@ class StudyOrchestrationService:
             Long-format dataframe with SDTM LB structure
         """
         df = frame.copy()
-        
+
         # Common source column name variations
         rename_map = {
             "Subject Id": "USUBJID",
@@ -359,9 +274,7 @@ class StudyOrchestrationService:
 
         records: list[dict] = []
         for _, row in df.iterrows():
-            usubjid = (
-                str(row.get(usubjid_col, "") or "").strip() if usubjid_col else ""
-            )
+            usubjid = str(row.get(usubjid_col, "") or "").strip() if usubjid_col else ""
             if not usubjid or usubjid.lower() == "subjectid":
                 continue
             lbdtc = ""
@@ -418,9 +331,7 @@ class StudyOrchestrationService:
                         "DOMAIN": "LB",
                         "USUBJID": usubjid,
                         "LBTESTCD": norm_testcd[:8],
-                        "LBTEST": lb_labels.get(
-                            norm_testcd, label_val or norm_testcd
-                        ),
+                        "LBTEST": lb_labels.get(norm_testcd, label_val or norm_testcd),
                         "LBORRES": value_str,
                         "LBORRESU": unit_val,
                         "LBORNRLO": nrlo_val,
@@ -517,7 +428,9 @@ class StudyOrchestrationService:
                 _add_pair("AE", usubjid, "AESEQ", aeseq, relid, None)
                 ds_seq = ds_seq_map.get(usubjid)
                 if ds_seq is not None:
-                    _add_pair("DS", usubjid, "DSSEQ", _stringify(ds_seq, 1), relid, None)
+                    _add_pair(
+                        "DS", usubjid, "DSSEQ", _stringify(ds_seq, 1), relid, None
+                    )
 
         if ex_df is not None and ds_seq_map:
             for idx, row in ex_df.iterrows():
@@ -529,14 +442,18 @@ class StudyOrchestrationService:
                 _add_pair("EX", usubjid, "EXSEQ", exseq, relid, None)
                 ds_seq = ds_seq_map.get(usubjid)
                 if ds_seq is not None:
-                    _add_pair("DS", usubjid, "DSSEQ", _stringify(ds_seq, 1), relid, None)
+                    _add_pair(
+                        "DS", usubjid, "DSSEQ", _stringify(ds_seq, 1), relid, None
+                    )
 
         if not records and ds_df is not None:
             # Fallback: relate first two DS records per subject if nothing else available
             ds_seq_map = _seq_map(ds_df, "DSSEQ")
             for usubjid, ds_seq in ds_seq_map.items():
                 relid = f"DS_ONLY_{usubjid}"
-                _add_pair("DS", str(usubjid), "DSSEQ", _stringify(ds_seq, 1), relid, None)
+                _add_pair(
+                    "DS", str(usubjid), "DSSEQ", _stringify(ds_seq, 1), relid, None
+                )
 
         return pd.DataFrame(records)
 
@@ -564,8 +481,6 @@ class StudyOrchestrationService:
         Returns:
             Dictionary with RELREC processing results
         """
-        from ..xml.dataset import write_dataset_xml
-        from ..xpt_module.builder import build_domain_dataframe
 
         domain = get_domain("RELREC")
 

@@ -10,7 +10,7 @@ and common data models.
 """
 
 # Re-export from submodules for convenience
-from .define import (
+from .define_module import (
     build_define_tree,
     build_study_define_tree,
     write_define_file,
@@ -19,7 +19,7 @@ from .define import (
     StudyDataset as DefineStudyDataset,
 )
 
-from .dataset import (
+from .dataset_module import (
     build_dataset_xml_tree,
     write_dataset_xml,
     DatasetXMLError,

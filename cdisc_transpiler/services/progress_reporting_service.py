@@ -10,6 +10,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from ..cli.helpers import log_verbose
+
 
 class ProgressReportingService:
     """Service for reporting progress and status to the user.
@@ -43,7 +45,6 @@ class ProgressReportingService:
             output_format: Output format being used
             supported_domains: List of supported domain codes
         """
-        from ..cli.helpers import log_verbose
 
         log_verbose(self.verbose > 0, f"Processing study folder: {study_folder}")
         log_verbose(self.verbose > 0, f"Study ID: {study_id}")
@@ -62,7 +63,6 @@ class ProgressReportingService:
             items_count: Number of items loaded from Items.csv
             codelists_count: Number of codelists loaded from CodeLists.csv
         """
-        from ..cli.helpers import log_verbose
 
         if items_count:
             log_verbose(
@@ -81,7 +81,6 @@ class ProgressReportingService:
         Args:
             csv_count: Number of CSV files found
         """
-        from ..cli.helpers import log_verbose
 
         log_verbose(self.verbose > 0, f"Found {csv_count} CSV files")
 

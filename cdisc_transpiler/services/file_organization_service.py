@@ -11,6 +11,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from ..domains_module import get_domain
+
 
 def ensure_acrf_pdf(path: Path) -> None:
     """Create a minimal, valid PDF at path if one is not already present.
@@ -157,7 +159,6 @@ class FileOrganizationService:
             >>> service.get_dataset_filename("SUPPAE")
             'suppae'
         """
-        from ..domains_module import get_domain
 
         domain = get_domain(domain_code)
         base_filename = domain.resolved_dataset_name()
