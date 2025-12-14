@@ -1,4 +1,8 @@
-"""SDTM mapping utilities for inferring target variables and transformers."""
+"""SDTM mapping utilities for inferring target variables and transformers.
+
+This module uses the centralized SDTM_INFERENCE_PATTERNS from mapping_module.constants
+to avoid duplicate pattern definitions across the codebase.
+"""
 
 from __future__ import annotations
 
@@ -8,38 +12,7 @@ from typing import Any, Callable
 import pandas as pd
 
 from .models import SourceColumn, StudyMetadata
-
-
-# Known patterns for mapping source columns to SDTM variables
-# These are common patterns in EDC exports that map to SDTM
-_SDTM_COLUMN_PATTERNS: dict[str, list[str]] = {
-    # Demographics (DM)
-    "USUBJID": ["SUBJECTID", "SUBJECTIDENTIFIER", "PATIENTID", "SUBJECT"],
-    "SEX": ["SEX", "GENDER"],
-    "AGE": ["AGE"],
-    "AGEU": ["AGEU", "AGEUNIT", "AGEUNITS"],
-    "RACE": ["RACE"],
-    "ETHNIC": ["ETHNIC", "ETHNICITY"],
-    "RFSTDTC": ["ICDAT", "INFORMEDCONSENTDATE", "RFSTDTC"],
-    "BRTHDTC": ["BRTHDTC", "BIRTHDATE", "DOB"],
-    "COUNTRY": ["COUNTRY", "COUNTRYCD"],
-    "SITEID": ["SITEID", "SITECODE", "SITE"],
-    # Common timing variables
-    "EPOCH": ["EPOCH", "VISITEPOCH"],
-    "VISITNUM": ["VISITNUM", "VISITNUMBER"],
-    "VISIT": ["VISIT", "VISITNAME", "EVENTNAME"],
-    # Common result variables (findings)
-    "--ORRES": ["ORRES", "RESULT", "VALUE"],
-    "--ORRESU": ["ORRESU", "UNIT", "UNITS"],
-    "--STRESC": ["STRESC", "STANDARDRESULT"],
-    "--STRESN": ["STRESN", "NUMERICRESULT"],
-    "--STRESU": ["STRESU", "STANDARDUNIT"],
-    # Sequence
-    "--SEQ": ["SEQ", "EVENTSEQ", "EVENTSEQUENCENUMBER"],
-    # Start/end dates
-    "--STDTC": ["STDTC", "STDAT", "STARTDATE", "STARTDATETIME"],
-    "--ENDTC": ["ENDTC", "ENDAT", "ENDDATE", "ENDDATETIME"],
-}
+from ..mapping_module.constants import SDTM_INFERENCE_PATTERNS
 
 
 def _normalize_column_name(name: str) -> str:
@@ -61,6 +34,8 @@ def infer_sdtm_target(
 ) -> str | None:
     """Infer the SDTM target variable for a source column.
 
+    Uses centralized SDTM_INFERENCE_PATTERNS from mapping_module.constants.
+
     Args:
         source_column: The source column name
         domain_code: The target SDTM domain code
@@ -77,14 +52,18 @@ def infer_sdtm_target(
         # Could be a valid SDTM variable already
         return source_column.upper()
 
-    # Check common patterns
-    for sdtm_var, patterns in _SDTM_COLUMN_PATTERNS.items():
+    # Check global patterns (non-domain-specific variables like USUBJID, SEX, etc.)
+    for sdtm_var, patterns in SDTM_INFERENCE_PATTERNS.get("_GLOBAL", {}).items():
         for pattern in patterns:
             if _normalize_column_name(pattern) == normalized:
-                # Handle domain-specific variables
-                if sdtm_var.startswith("--"):
-                    return domain_prefix + sdtm_var[2:]
                 return sdtm_var
+
+    # Check domain suffix patterns (domain-specific variables like --TERM, --ORRES)
+    for suffix, patterns in SDTM_INFERENCE_PATTERNS.get("_DOMAIN_SUFFIXES", {}).items():
+        for pattern in patterns:
+            if _normalize_column_name(pattern) == normalized:
+                # Return domain-prefixed variable (e.g., AETERM, LBORRES)
+                return domain_prefix + suffix
 
     # Check if Items.csv provides hints
     if items:
@@ -92,12 +71,16 @@ def infer_sdtm_target(
         if item:
             # If label contains SDTM variable name hints
             label_normalized = _normalize_column_name(item.label)
-            for sdtm_var, patterns in _SDTM_COLUMN_PATTERNS.items():
+            # Check global patterns in label
+            for sdtm_var, patterns in SDTM_INFERENCE_PATTERNS.get("_GLOBAL", {}).items():
                 for pattern in patterns:
                     if _normalize_column_name(pattern) in label_normalized:
-                        if sdtm_var.startswith("--"):
-                            return domain_prefix + sdtm_var[2:]
                         return sdtm_var
+            # Check domain suffix patterns in label
+            for suffix, patterns in SDTM_INFERENCE_PATTERNS.get("_DOMAIN_SUFFIXES", {}).items():
+                for pattern in patterns:
+                    if _normalize_column_name(pattern) in label_normalized:
+                        return domain_prefix + suffix
 
     return None
 

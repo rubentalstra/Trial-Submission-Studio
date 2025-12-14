@@ -20,6 +20,7 @@ SDTM Reference:
 from __future__ import annotations
 
 import re
+from functools import lru_cache
 from pathlib import Path
 
 import pandas as pd
@@ -27,21 +28,70 @@ import pandas as pd
 from ..domains_module import SDTMVariable, get_domain
 from ..mapping_module import ColumnMapping, build_config
 from ..sas_module import generate_sas_program, write_sas_file
+from ..terminology_module import get_vs_test_labels, get_lb_test_labels
 from ..xpt_module import write_xpt_file
 
 
-# SDTM Controlled Terminology for common VS tests
-VS_TEST_LABELS = {
-    "HR": "Heart Rate",
-    "SYSBP": "Systolic Blood Pressure",
-    "DIABP": "Diastolic Blood Pressure",
-    "TEMP": "Temperature",
-    "WEIGHT": "Weight",
-    "HEIGHT": "Height",
-    "BMI": "Body Mass Index",
-}
+@lru_cache(maxsize=1)
+def _get_vs_test_labels() -> dict[str, str]:
+    """Get VS test labels from CT with fallback to common tests.
+    
+    Returns dynamic labels from CT, supplemented with common test codes
+    that may not be in the CT files.
+    """
+    # Load from CT
+    labels = dict(get_vs_test_labels())
+    
+    # Add common test labels if not already in CT
+    # These are fallback values for commonly-used tests
+    fallback_labels = {
+        "HR": "Heart Rate",
+        "SYSBP": "Systolic Blood Pressure",
+        "DIABP": "Diastolic Blood Pressure",
+        "TEMP": "Temperature",
+        "WEIGHT": "Weight",
+        "HEIGHT": "Height",
+        "BMI": "Body Mass Index",
+    }
+    for code, label in fallback_labels.items():
+        if code not in labels:
+            labels[code] = label
+    
+    return labels
+
+
+@lru_cache(maxsize=1)
+def _get_lb_test_labels() -> dict[str, str]:
+    """Get LB test labels from CT with fallback to common tests.
+    
+    Returns dynamic labels from CT, supplemented with common test codes
+    that may not be in the CT files.
+    """
+    # Load from CT
+    labels = dict(get_lb_test_labels())
+    
+    # Add common test labels if not already in CT
+    # These are fallback values for commonly-used tests
+    fallback_labels = {
+        "CHOL": "Cholesterol",
+        "AST": "Aspartate Aminotransferase",
+        "ALT": "Alanine Aminotransferase",
+        "GLUC": "Glucose",
+        "HGB": "Hemoglobin",
+        "HCT": "Hematocrit",
+        "RBC": "Erythrocytes",
+        "WBC": "Leukocytes",
+        "PLAT": "Platelets",
+    }
+    for code, label in fallback_labels.items():
+        if code not in labels:
+            labels[code] = label
+    
+    return labels
+
 
 # Default units per CDISC Controlled Terminology
+# These remain hardcoded as CT doesn't directly map units to test codes
 VS_UNIT_DEFAULTS = {
     "HR": "beats/min",
     "SYSBP": "mmHg",
@@ -62,19 +112,6 @@ VS_TEST_ALIASES = {
     "WEIGHT": "WEIGHT",
     "HEIGHT": "HEIGHT",
     "BMI": "BMI",
-}
-
-# SDTM Controlled Terminology for common LB tests
-LB_TEST_LABELS = {
-    "CHOL": "Cholesterol",
-    "AST": "Aspartate Aminotransferase",
-    "ALT": "Alanine Aminotransferase",
-    "GLUC": "Glucose",
-    "HGB": "Hemoglobin",
-    "HCT": "Hematocrit",
-    "RBC": "Erythrocytes",
-    "WBC": "Leukocytes",
-    "PLAT": "Platelets",
 }
 
 
@@ -185,7 +222,7 @@ class StudyOrchestrationService:
                         "USUBJID": usubjid,
                         "VSTESTCD": std_testcd[:8],
                         "VSTEST": str(
-                            VS_TEST_LABELS.get(std_testcd, label_val or std_testcd)
+                            _get_vs_test_labels().get(std_testcd, label_val or std_testcd)
                         ),
                         "VSORRES": "" if stat_val else value,
                         "VSORRESU": "" if stat_val else unit_val,
@@ -340,7 +377,9 @@ class StudyOrchestrationService:
                 norm_testcd = testcd.upper()
                 if norm_testcd == "GLUCU":
                     norm_testcd = "GLUC"
-                if norm_testcd not in LB_TEST_LABELS:
+                # Use dynamic labels from CT instead of hardcoded list
+                lb_labels = _get_lb_test_labels()
+                if norm_testcd not in lb_labels:
                     continue
                 orres_col = cols.get("orres")
                 if not orres_col:
@@ -377,7 +416,7 @@ class StudyOrchestrationService:
                         "DOMAIN": "LB",
                         "USUBJID": usubjid,
                         "LBTESTCD": norm_testcd[:8],
-                        "LBTEST": LB_TEST_LABELS.get(
+                        "LBTEST": lb_labels.get(
                             norm_testcd, label_val or norm_testcd
                         ),
                         "LBORRES": value_str,

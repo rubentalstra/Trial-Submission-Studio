@@ -14,6 +14,9 @@ Usage:
         list_controlled_variables,
         get_nci_code,
         get_codelist_code,
+        get_test_labels,
+        get_vs_test_labels,
+        get_lb_test_labels,
         ControlledTerminology,
     )
 """
@@ -26,6 +29,9 @@ from .registry import (
     get_controlled_terminology,
     get_nci_code,
     list_controlled_variables,
+    get_test_labels,
+    get_vs_test_labels,
+    get_lb_test_labels,
 )
 
 __all__ = [
@@ -36,4 +42,8 @@ __all__ = [
     "list_controlled_variables",
     "get_nci_code",
     "get_codelist_code",
+    # Dynamic test label loaders
+    "get_test_labels",
+    "get_vs_test_labels",
+    "get_lb_test_labels",
 ]

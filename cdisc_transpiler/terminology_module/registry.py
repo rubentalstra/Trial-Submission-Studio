@@ -143,3 +143,70 @@ def get_codelist_code(variable: str) -> str | None:
     if ct is None:
         return None
     return ct.codelist_code
+
+
+@lru_cache(maxsize=None)
+def get_test_labels(codelist_code: str) -> Dict[str, str]:
+    """Return a dictionary mapping test codes to test names/labels from CT.
+
+    This dynamically loads test labels from controlled terminology files,
+    avoiding the need for hardcoded test label dictionaries.
+
+    Args:
+        codelist_code: The codelist code (e.g., "C66741" for VSTESTCD, 
+                      "C65047" for LBTESTCD)
+
+    Returns:
+        Dictionary mapping test codes to their full names/labels
+        
+    Example:
+        >>> labels = get_test_labels("C66741")  # VS Test Codes
+        >>> labels.get("HR")
+        'Heart Rate'
+    """
+    ct = _REGISTRY_BY_CODE.get(codelist_code.upper())
+    if ct is None:
+        return {}
+    
+    # Build mapping from submission values to their preferred terms/definitions
+    labels: Dict[str, str] = {}
+    for value in ct.submission_values:
+        # Use preferred term if available, otherwise use the value itself
+        label = ct.preferred_terms.get(value) or ct.definitions.get(value, value)
+        labels[value] = label
+    
+    return labels
+
+
+@lru_cache(maxsize=None)
+def get_vs_test_labels() -> Dict[str, str]:
+    """Return VS (Vital Signs) test code to label mapping from CT.
+    
+    Loads from CDISC Controlled Terminology codelist C66741 (VSTESTCD).
+    
+    Returns:
+        Dictionary mapping VSTESTCD values to their labels
+        
+    Example:
+        >>> labels = get_vs_test_labels()
+        >>> labels.get("HR")
+        'Heart Rate'
+    """
+    return get_test_labels("C66741")
+
+
+@lru_cache(maxsize=None)
+def get_lb_test_labels() -> Dict[str, str]:
+    """Return LB (Laboratory) test code to label mapping from CT.
+    
+    Loads from CDISC Controlled Terminology codelist C65047 (LBTESTCD).
+    
+    Returns:
+        Dictionary mapping LBTESTCD values to their labels
+        
+    Example:
+        >>> labels = get_lb_test_labels()
+        >>> labels.get("GLUC")
+        'Glucose'
+    """
+    return get_test_labels("C65047")

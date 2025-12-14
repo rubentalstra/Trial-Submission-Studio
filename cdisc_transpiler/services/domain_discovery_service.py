@@ -18,7 +18,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol
 
-# Import get_domain_class from domains_module
+# Import get_domain_class from domains_module - used directly instead of wrapper
 from ..domains_module import get_domain_class
 
 
@@ -28,20 +28,6 @@ class Logger(Protocol):
     def log_verbose(self, message: str) -> None:
         """Log a verbose message."""
         ...
-
-
-def get_domain_category(domain_code: str) -> str:
-    """Get the SDTM category for a domain code.
-    
-    This is an alias for get_domain_class for backward compatibility.
-    
-    Args:
-        domain_code: SDTM domain code (e.g., 'DM', 'AE')
-        
-    Returns:
-        Category name or 'Unknown'
-    """
-    return get_domain_class(domain_code)
 
 
 class DomainDiscoveryService:
@@ -125,8 +111,8 @@ class DomainDiscoveryService:
                 )
                 self._match_stats["matched_files"] += 1
                 
-                # Enhanced logging with category info
-                category = get_domain_category(matched_domain)
+                # Enhanced logging with category info - use get_domain_class directly
+                category = get_domain_class(matched_domain)
                 match_type = "exact" if variant_name == matched_domain else "variant"
                 self._log(
                     f"Matched {csv_file.name} → {matched_domain} "
@@ -210,10 +196,10 @@ class DomainDiscoveryService:
         if not self.logger:
             return
         
-        # Summary by category
+        # Summary by category - use get_domain_class directly
         category_counts: dict[str, int] = {}
         for domain in domain_files.keys():
-            category = get_domain_category(domain)
+            category = get_domain_class(domain)
             category_counts[category] = category_counts.get(category, 0) + 1
         
         # Log detailed summary

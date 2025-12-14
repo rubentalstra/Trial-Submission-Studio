@@ -28,7 +28,6 @@ from ..submission_module import build_suppqual
 from ..xpt_module import write_xpt_file
 from ..xml.dataset import write_dataset_xml
 from ..xpt_module.builder import build_domain_dataframe
-from ..cli.helpers import write_variant_splits
 from .study_orchestration_service import StudyOrchestrationService
 
 
@@ -576,6 +575,8 @@ class DomainProcessingCoordinator:
             # Handle domain variant splits (SDTMIG v3.4 Section 4.1.7)
             # Any domain can be split when there are multiple variant files
             if len(variant_frames) > 1:
+                # Import here to avoid circular import
+                from ..cli.helpers import write_variant_splits
                 split_paths, split_datasets = write_variant_splits(
                     merged_dataframe, variant_frames, domain, xpt_dir, console
                 )
