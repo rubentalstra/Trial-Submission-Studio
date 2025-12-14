@@ -20,44 +20,44 @@ _SDTM_DATASETS_PATH = (
 
 # Global registries
 _DOMAIN_DEFINITIONS: dict[str, SDTMDomain] = {}
-_SDTMIG_CACHE: dict[str, list[dict]] | None = None
-_SDTM_V2_CACHE: dict[str, list[dict]] | None = None
-_DATASET_ATTRIBUTES: dict[str, dict[str, str]] = {}
-_GENERAL_CLASS_VARIABLES: dict[str, dict[str, Any]] = {}
-_GENERAL_CLASS_USAGE: dict[str, dict[str, set[str]]] = {}
+_sdtmig_cache: dict[str, list[dict]] | None = None
+_sdtm_v2_cache: dict[str, list[dict]] | None = None
+_dataset_attributes: dict[str, dict[str, str]] = {}
+_general_class_variables: dict[str, dict[str, Any]] = {}
+_general_class_usage: dict[str, dict[str, set[str]]] = {}
 
 
 def _load_sdtmig_cache() -> dict[str, list[dict]]:
     """Load SDTMIG v3.4 metadata from CSV."""
-    global _SDTMIG_CACHE
-    if _SDTMIG_CACHE is None:
-        _SDTMIG_CACHE = load_csv_rows(_SDTMIG_PATH)
-    return _SDTMIG_CACHE
+    global _sdtmig_cache
+    if _sdtmig_cache is None:
+        _sdtmig_cache = load_csv_rows(_SDTMIG_PATH)
+    return _sdtmig_cache
 
 
 def _load_sdtm_v2_cache() -> dict[str, list[dict]]:
     """Load SDTM v2.0 metadata from CSV (used as fallback/enrichment)."""
-    global _SDTM_V2_CACHE
-    if _SDTM_V2_CACHE is None:
-        _SDTM_V2_CACHE = load_csv_rows(_SDTM_V2_PATH)
-    return _SDTM_V2_CACHE
+    global _sdtm_v2_cache
+    if _sdtm_v2_cache is None:
+        _sdtm_v2_cache = load_csv_rows(_SDTM_V2_PATH)
+    return _sdtm_v2_cache
 
 
 def _load_dataset_attributes() -> dict[str, dict[str, str]]:
     """Load dataset attributes."""
-    global _DATASET_ATTRIBUTES
-    if not _DATASET_ATTRIBUTES:
-        _DATASET_ATTRIBUTES = load_dataset_attributes(_SDTM_DATASETS_PATH)
-    return _DATASET_ATTRIBUTES
+    global _dataset_attributes
+    if not _dataset_attributes:
+        _dataset_attributes = load_dataset_attributes(_SDTM_DATASETS_PATH)
+    return _dataset_attributes
 
 
 def _initialize_general_classes() -> None:
     """Initialize general class variables and usage."""
-    global _GENERAL_CLASS_VARIABLES, _GENERAL_CLASS_USAGE
-    if not _GENERAL_CLASS_VARIABLES:
+    global _general_class_variables, _general_class_usage
+    if not _general_class_variables:
         sdtmig = _load_sdtmig_cache()
         sdtm_v2 = _load_sdtm_v2_cache()
-        _GENERAL_CLASS_VARIABLES, _GENERAL_CLASS_USAGE = build_general_class_variables(
+        _general_class_variables, _general_class_usage = build_general_class_variables(
             sdtmig, sdtm_v2
         )
 

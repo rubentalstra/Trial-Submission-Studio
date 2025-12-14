@@ -136,7 +136,7 @@ class DomainProcessingCoordinator:
             if processed_data is None:
                 continue
 
-            frame, config, is_lb_long = processed_data
+            frame, config, _is_lb_long = processed_data
             all_dataframes.append(frame)
             variant_frames.append((variant_name or domain_code, frame))
             last_config = config

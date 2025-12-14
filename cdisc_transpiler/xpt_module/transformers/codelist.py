@@ -131,7 +131,7 @@ class CodelistTransformer:
 
                 def _normalize_ct_value(value: str) -> str:
                     normalized = normalizer(value)
-                    return normalized if normalized is not None else value
+                    return normalized or value
 
                 normalized = series.copy()
                 normalized.loc[mask] = trimmed.loc[mask].apply(_normalize_ct_value)

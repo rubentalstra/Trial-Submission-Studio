@@ -244,7 +244,7 @@ def build_study_define_tree(
                     code_list_specs[cl_oid] = (var, ds.domain_code, extended)
 
         # Handle SUPP-- value lists
-        vl_defs, wc_defs, vl_items, vl_oid = build_supp_value_lists(
+        vl_defs, wc_defs, vl_items, _vl_oid = build_supp_value_lists(
             ds.dataframe, domain
         )
         value_list_defs.extend(vl_defs)
