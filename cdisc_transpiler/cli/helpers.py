@@ -5,8 +5,8 @@ to improve code organization and reusability.
 
 SDTM Reference:
     These utilities support SDTM-compliant output generation as defined
-    in SDTMIG v3.4. The module handles verbose logging, PDF generation
-    for Define-XML, and split dataset management per Section 4.1.7.
+    in SDTMIG v3.4. The module handles PDF generation for Define-XML
+    and split dataset management per Section 4.1.7.
 """
 
 from __future__ import annotations
@@ -18,30 +18,12 @@ import pandas as pd
 from rich.console import Console
 from rich.table import Table
 
-from .logging_config import get_logger
 from ..xpt_module import write_xpt_file
 
 if TYPE_CHECKING:
     from ..domains_module import SDTMDomain
 
 console = Console()
-
-
-def log_verbose(enabled: bool, message: str) -> None:
-    """Log a verbose message if verbose mode is enabled.
-
-    Args:
-        enabled: Whether verbose logging is enabled
-        message: Message to log
-
-    Note:
-        This function maintains backward compatibility.
-        New code should use SDTMLogger directly via get_logger().
-    """
-    if enabled:
-        # Use new logger if available and enabled
-        logger = get_logger()
-        logger.verbose(message)
 
 
 def write_variant_splits(

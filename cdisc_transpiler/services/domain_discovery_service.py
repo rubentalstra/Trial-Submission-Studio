@@ -16,17 +16,8 @@ Extracted from cli/commands/study.py as part of Phase 2 refactoring.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Protocol
 
 from ..domains_module import get_domain_class
-
-
-class Logger(Protocol):
-    """Protocol for logging operations."""
-
-    def log_verbose(self, message: str) -> None:
-        """Log a verbose message."""
-        ...
 
 
 class DomainDiscoveryService:
@@ -41,13 +32,8 @@ class DomainDiscoveryService:
         3. Metadata files are automatically skipped (CodeLists, Items, etc.)
     """
 
-    def __init__(self, logger: Logger | None = None):
-        """Initialize the domain discovery service.
-
-        Args:
-            logger: Optional logger for verbose output
-        """
-        self.logger = logger
+    def __init__(self):
+        """Initialize the domain discovery service."""
         self._match_stats = {
             "total_files": 0,
             "matched_files": 0,
@@ -173,13 +159,15 @@ class DomainDiscoveryService:
         return None, None
 
     def _log(self, message: str) -> None:
-        """Log a message if logger is available.
+        """Log a verbose message using the global logger.
 
         Args:
             message: Message to log
         """
-        if self.logger:
-            self.logger.log_verbose(message)
+        from ..cli.logging_config import get_logger
+        
+        logger = get_logger()
+        logger.verbose(message)
 
     def _log_discovery_summary(
         self,
@@ -192,9 +180,6 @@ class DomainDiscoveryService:
             domain_files: Matched domain files
             unmatched: List of unmatched filenames
         """
-        if not self.logger:
-            return
-
         # Summary by category - use get_domain_class directly
         category_counts: dict[str, int] = {}
         for domain in domain_files.keys():

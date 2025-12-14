@@ -212,13 +212,7 @@ def study_command(
     logger.verbose(f"Found {len(csv_files)} CSV files in study folder")
 
     # Map files to domains using the discovery service
-    class VerboseLogger:
-        """Simple logger adapter for verbose output."""
-
-        def log_verbose(self, message: str) -> None:
-            logger.verbose(message)
-
-    discovery_service = DomainDiscoveryService(VerboseLogger() if verbose > 0 else None)
+    discovery_service = DomainDiscoveryService()
     domain_files = discovery_service.discover_domain_files(csv_files, supported_domains)
 
     if not domain_files:

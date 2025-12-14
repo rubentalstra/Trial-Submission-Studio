@@ -9,9 +9,9 @@ The module is organized into focused components:
 - standards: Standards configuration and management
 - utils: Helper functions
 
-For backward compatibility, the main entry points are re-exported:
-- write_define_file: Generate Define-XML from ElementTree
+Main entry points:
 - write_study_define_file: Generate Define-XML from study datasets
+- build_study_define_tree: Build ElementTree structure for Define-XML
 
 Example:
     >>> from cdisc_transpiler.define_xml_module import write_study_define_file
