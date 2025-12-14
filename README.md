@@ -15,3 +15,10 @@ cdisc-transpiler study mockdata/DEMO_CF1234_NL_20250120_104838/ -vv
 ```
 
 https://library.cdisc.org/browser/#/mdr/sdtmig/3-4/classes/Interventions/datasets/AG
+
+## Type checks (Pylance via pyright CLI)
+
+```bash
+pip install -e .[dev]
+pyright
+```
