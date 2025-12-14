@@ -7,6 +7,7 @@ documents by coordinating all the individual builders.
 from __future__ import annotations
 
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Iterable
 from xml.etree import ElementTree as ET
 
@@ -44,7 +45,7 @@ def build_define_tree(
     domain_code: str,
     config,
     *,
-    dataset_href: str | None = None,
+    dataset_href: str | Path | None = None,
     sdtm_version: str = DEFAULT_SDTM_VERSION,
     context: str = CONTEXT_SUBMISSION,
 ) -> ET.Element:
@@ -61,6 +62,8 @@ def build_define_tree(
     Returns:
         Root Element of the Define-XML document
     """
+    if isinstance(dataset_href, str):
+        dataset_href = Path(dataset_href)
     study_dataset = StudyDataset(
         domain_code=domain_code,
         dataframe=_dataset,

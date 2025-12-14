@@ -2,10 +2,13 @@
   "include": [
     "cdisc_transpiler"
   ],
-  "pythonVersion": "3.14",
-  "extraPaths": [
-    "/home/runner/.local/lib/python3.14/site-packages"
-  ],
+  "pythonVersion": "3.12",
   "typeCheckingMode": "off",
+  "extraPaths": [
+    "/home/runner/.local/lib/python3.12/site-packages",
+    "/usr/local/lib/python3.12/dist-packages",
+    "/usr/lib/python3/dist-packages"
+  ],
+  "useLibraryCodeForTypes": true,
   "reportMissingImports": "none"
 }

@@ -151,8 +151,9 @@ def append_value_list_defs(
                 attrib={"WhereClauseOID": item.where_clause_oid or ""},
             )
 
-            if getattr(item, "method_oid", None):
-                item_ref.set("MethodOID", item.method_oid)
+            method_oid = getattr(item, "method_oid", None)
+            if method_oid:
+                item_ref.set("MethodOID", method_oid)
 
 
 def append_where_clause_defs(
