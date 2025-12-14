@@ -3,3 +3,7 @@
 This module defines abstract interfaces (protocols) that external
 adapters must implement. This enables dependency injection and testing.
 """
+
+from .services import LoggerPort
+
+__all__ = ["LoggerPort"]
