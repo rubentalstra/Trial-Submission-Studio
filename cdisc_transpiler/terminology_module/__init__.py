@@ -3,11 +3,19 @@
 This module provides access to CDISC Controlled Terminology loaded from
 CSV files in the Controlled_Terminology directory.
 
-All submission values, labels, synonyms, and units are loaded dynamically
-from the CT files, ensuring the data stays up-to-date with CT releases.
+All codelist codes are loaded DYNAMICALLY from:
+- SDTMIG Variables.csv (via domains_module) for variable-to-codelist mappings
+- CT CSV files for submission values, synonyms, and labels
+
+There are NO hardcoded codelist codes - everything is loaded from source files.
 
 Usage:
     from cdisc_transpiler.terminology_module import (
+        # Dynamic codelist discovery
+        get_variable_codelist,
+        get_testcd_codelist,
+        get_unit_codelist,
+        
         # Core CT lookup
         get_controlled_terminology,
         get_submission_values,
@@ -24,10 +32,6 @@ Usage:
         normalize_testcd,
         normalize_to_submission_value,
         get_testcd_label,
-        
-        # Codelist lookups
-        TESTCD_CODELISTS,
-        UNIT_CODELISTS,
     )
 """
 
@@ -35,19 +39,16 @@ from __future__ import annotations
 
 from .models import ControlledTerminology
 from .registry import (
-    # Codelist mappings
-    TESTCD_CODELISTS,
-    UNIT_CODELISTS,
-    VARIABLE_CODELISTS,
+    # Dynamic codelist discovery from domain variables
+    get_variable_codelist,
+    get_testcd_codelist,
+    get_unit_codelist,
     # Core CT functions
     get_controlled_terminology,
     get_submission_values,
     get_preferred_terms,
     get_synonyms,
     get_definitions,
-    # Codelist lookups
-    get_testcd_codelist,
-    get_unit_codelist,
     # Domain-specific functions
     get_domain_testcd_values,
     get_domain_testcd_labels,
@@ -69,19 +70,16 @@ from .registry import (
 __all__ = [
     # Models
     "ControlledTerminology",
-    # Codelist mappings
-    "TESTCD_CODELISTS",
-    "UNIT_CODELISTS",
-    "VARIABLE_CODELISTS",
+    # Dynamic codelist discovery
+    "get_variable_codelist",
+    "get_testcd_codelist",
+    "get_unit_codelist",
     # Core CT functions
     "get_controlled_terminology",
     "get_submission_values",
     "get_preferred_terms",
     "get_synonyms",
     "get_definitions",
-    # Codelist lookups
-    "get_testcd_codelist",
-    "get_unit_codelist",
     # Domain-specific functions
     "get_domain_testcd_values",
     "get_domain_testcd_labels",

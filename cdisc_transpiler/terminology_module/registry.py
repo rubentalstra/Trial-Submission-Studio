@@ -3,9 +3,9 @@
 This module provides the main API for accessing controlled terminology
 data, including lookup by codelist code or variable name.
 
-All submission values, labels, synonyms, and units are loaded dynamically from
-the CDISC Controlled Terminology CSV files in docs/Controlled_Terminology/,
-ensuring the data stays up-to-date with CT releases.
+All codelist codes are loaded dynamically from the SDTMIG Variables.csv file
+via the domains_module, and terminology values are loaded from the CT CSV files.
+There are NO hardcoded codelist codes in this module.
 
 SDTM Reference:
     CDISC Controlled Terminology provides standardized values for SDTM variables.
@@ -25,54 +25,6 @@ from typing import Dict, Set
 from .loader import build_registry
 from .models import ControlledTerminology
 from ..domains_module import get_domain, list_domains
-
-
-# -----------------------------------------------------------------------------
-# SDTM Codelist Codes by Variable Type
-# These are the official CDISC NCI codelist codes from the CT files
-# -----------------------------------------------------------------------------
-
-# --TESTCD codelists by domain (for Findings class domains)
-TESTCD_CODELISTS: Dict[str, str] = {
-    "VS": "C66741",   # VSTESTCD - Vital Signs Test Code
-    "LB": "C65047",   # LBTESTCD - Laboratory Test Code
-    "EG": "C71153",   # EGTESTCD - ECG Test Code
-    "PE": "C74559",   # PETESTCD - Physical Examination Test Code
-    "QS": "C100129",  # QSTESTCD - Questionnaire Test Code
-    "DA": "C78735",   # DATESTCD - Drug Accountability Test Code
-    "IE": "C66786",   # IETESTCD - Inclusion/Exclusion Criterion
-    "SC": "C99078",   # SCTESTCD - Subject Characteristic Test Code
-    "FT": "C120526",  # FTTESTCD - Functional Test Test Code
-    "CV": "C102580",  # CVTESTCD - Cardiovascular Test Code
-    "RE": "C102581",  # RETESTCD - Respiratory Test Code
-    "DD": "C117743",  # DDTESTCD - Death Details Test Code
-    "FA": "C123973",  # FATESTCD - Findings About Test Code
-    "MI": "C117388",  # MITESTCD - Microscopic Findings Test Code
-    "MO": "C117389",  # MOTESTCD - Morphology Test Code
-    "TU": "C96785",   # TUTESTCD - Tumor Identification Test Code
-    "TR": "C96784",   # TRTESTCD - Tumor Results Test Code
-    "RS": "C96783",   # RSTESTCD - Response Test Code
-}
-
-# --ORRESU/--STRESU unit codelists by domain
-UNIT_CODELISTS: Dict[str, str] = {
-    "VS": "C66770",   # VSORRESU/VSSTRESU - Units for Vital Signs
-    "LB": "C66771",   # LBORRESU/LBSTRESU - Units for Laboratory
-    "EG": "C71150",   # EGORRESU/EGSTRESU - Units for ECG
-    "PC": "C128686",  # PCORRESU/PCSTRESU - Units for PK Concentrations
-    "PP": "C128686",  # PPORRESU/PPSTRESU - Units for PK Parameters
-}
-
-# Common variable codelists (not domain-specific)
-VARIABLE_CODELISTS: Dict[str, str] = {
-    "SEX": "C66731",      # Sex
-    "RACE": "C74457",     # Race
-    "ETHNIC": "C66790",   # Ethnicity
-    "COUNTRY": "C66732",  # Country
-    "EPOCH": "C99079",    # Epoch
-    "ARMCD": "C66767",    # Arm Code
-    "ACTARMCD": "C66767", # Actual Arm Code
-}
 
 
 def _resolve_ct_dir(ct_version: str) -> Path:
@@ -103,9 +55,96 @@ _CT_DIR = _resolve_ct_dir(_get_ct_version())
 _REGISTRY_BY_CODE, _REGISTRY_BY_NAME = build_registry(_CT_DIR)
 
 
+# -----------------------------------------------------------------------------
+# Dynamic Codelist Code Discovery from Domain Variables
+# All codelist codes are loaded from SDTMIG Variables.csv via domains_module
+# -----------------------------------------------------------------------------
+
+
+@lru_cache(maxsize=None)
+def _get_domain_variable_codelists(domain_code: str) -> Dict[str, str]:
+    """Get all codelist codes for variables in a domain.
+    
+    Loads from the domain's variable definitions (sourced from Variables.csv).
+    
+    Args:
+        domain_code: SDTM domain code (e.g., "VS", "LB")
+        
+    Returns:
+        Dictionary mapping variable names to codelist codes
+    """
+    try:
+        domain = get_domain(domain_code)
+    except (KeyError, ValueError):
+        return {}
+    
+    codelists: Dict[str, str] = {}
+    for var in domain.variables:
+        if var.codelist_code:
+            codelists[var.name.upper()] = var.codelist_code
+    return codelists
+
+
+@lru_cache(maxsize=None)
+def get_variable_codelist(domain_code: str, variable_name: str) -> str | None:
+    """Get the codelist code for a specific variable in a domain.
+    
+    Dynamically loads from the domain's variable definitions.
+    
+    Args:
+        domain_code: SDTM domain code (e.g., "VS", "LB")
+        variable_name: Variable name (e.g., "VSTESTCD", "LBORRESU")
+        
+    Returns:
+        Codelist code or None if not found
+    """
+    codelists = _get_domain_variable_codelists(domain_code)
+    return codelists.get(variable_name.upper())
+
+
+def get_testcd_codelist(domain_code: str) -> str | None:
+    """Get the --TESTCD codelist code for a domain.
+    
+    Dynamically loads from the domain's variable definitions.
+    
+    Args:
+        domain_code: SDTM domain code (e.g., "VS", "LB")
+
+    Returns:
+        Codelist code or None if not a Findings domain with TESTCD
+    """
+    testcd_var = f"{domain_code.upper()}TESTCD"
+    return get_variable_codelist(domain_code, testcd_var)
+
+
+def get_unit_codelist(domain_code: str) -> str | None:
+    """Get the --ORRESU or --STRESU codelist code for a domain.
+    
+    Dynamically loads from the domain's variable definitions.
+    
+    Args:
+        domain_code: SDTM domain code (e.g., "VS", "LB")
+
+    Returns:
+        Codelist code or None if not defined
+    """
+    # Try --ORRESU first, then --STRESU
+    orresu_var = f"{domain_code.upper()}ORRESU"
+    code = get_variable_codelist(domain_code, orresu_var)
+    if code:
+        return code
+    
+    stresu_var = f"{domain_code.upper()}STRESU"
+    return get_variable_codelist(domain_code, stresu_var)
+
+
 @lru_cache(maxsize=None)
 def _variable_to_codelist() -> Dict[str, str]:
-    """Map variable names to codelist codes using domain metadata."""
+    """Map variable names to codelist codes using domain metadata.
+
+    Returns:
+        Dictionary mapping uppercase variable names to codelist codes
+    """
     mapping: Dict[str, str] = {}
     for domain_code in list_domains():
         try:
@@ -242,31 +281,8 @@ def get_definitions(codelist_code: str) -> Dict[str, str]:
 
 # -----------------------------------------------------------------------------
 # Domain-Specific Convenience Functions
+# All these functions dynamically discover codelist codes from domain variables
 # -----------------------------------------------------------------------------
-
-
-def get_testcd_codelist(domain_code: str) -> str | None:
-    """Get the --TESTCD codelist code for a domain.
-
-    Args:
-        domain_code: SDTM domain code (e.g., "VS", "LB")
-
-    Returns:
-        Codelist code or None if not a Findings domain
-    """
-    return TESTCD_CODELISTS.get(domain_code.upper())
-
-
-def get_unit_codelist(domain_code: str) -> str | None:
-    """Get the unit codelist code for a domain.
-
-    Args:
-        domain_code: SDTM domain code (e.g., "VS", "LB")
-
-    Returns:
-        Codelist code or None if not defined
-    """
-    return UNIT_CODELISTS.get(domain_code.upper())
 
 
 @lru_cache(maxsize=None)
