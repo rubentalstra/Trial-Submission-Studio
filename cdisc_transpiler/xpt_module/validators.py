@@ -6,7 +6,11 @@ SDTM requirements, including required values, field lengths, and column manageme
 
 from __future__ import annotations
 
+from typing import Sequence
+
 import pandas as pd
+
+from ..domains_module import SDTMVariable
 
 
 class XPTValidator:
@@ -22,7 +26,7 @@ class XPTValidator:
     @staticmethod
     def enforce_required_values(
         frame: pd.DataFrame,
-        domain_variables: list,
+        domain_variables: Sequence[SDTMVariable],
         lenient: bool = False,
     ) -> None:
         """Enforce that required variables have non-missing values.
@@ -47,7 +51,7 @@ class XPTValidator:
     @staticmethod
     def enforce_lengths(
         frame: pd.DataFrame,
-        domain_variables: list,
+        domain_variables: Sequence[SDTMVariable],
     ) -> None:
         """Truncate character values to maximum length specified in domain.
 
@@ -70,7 +74,7 @@ class XPTValidator:
     @staticmethod
     def drop_empty_optional_columns(
         frame: pd.DataFrame,
-        domain_variables: list,
+        domain_variables: Sequence[SDTMVariable],
     ) -> None:
         """Remove permissible columns that contain no data.
 
@@ -116,7 +120,7 @@ class XPTValidator:
     @staticmethod
     def reorder_columns(
         frame: pd.DataFrame,
-        domain_variables: list,
+        domain_variables: Sequence[SDTMVariable],
     ) -> None:
         """Align columns to domain metadata order.
 
@@ -139,7 +143,7 @@ class XPTValidator:
     @staticmethod
     def validate_required_values(
         frame: pd.DataFrame,
-        domain_variables: list,
+        domain_variables: Sequence[SDTMVariable],
     ) -> list[str]:
         """Check for missing required values and return list of problematic variables.
 

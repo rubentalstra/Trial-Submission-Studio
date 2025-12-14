@@ -73,7 +73,7 @@ def build_supp_value_lists(
         wc_defs.append(
             WhereClauseDefinition(
                 oid=wc_oid,
-                dataset_name=domain.dataset_name,
+                dataset_name=domain.dataset_name or domain.code,
                 variable_name="QNAM",
                 variable_oid=f"IT.{code}.QNAM",
                 comparator="EQ",
@@ -87,7 +87,7 @@ def build_supp_value_lists(
                 item_oid=item_oid,
                 where_clause_oid=wc_oid,
                 order_number=order,
-                mandatory=False,
+                mandatory="No",
             )
         )
 
@@ -141,14 +141,14 @@ def append_value_list_defs(
                 tag(ODM_NS, "ItemRef"),
                 attrib={
                     "ItemOID": item.item_oid,
-                    "OrderNumber": str(item.order_number),
-                    "Mandatory": "Yes" if item.mandatory else "No",
+                    "OrderNumber": str(item.order_number or ""),
+                    "Mandatory": item.mandatory or "No",
                 },
             )
             ET.SubElement(
                 item_ref,
                 tag(DEF_NS, "WhereClauseRef"),
-                attrib={"WhereClauseOID": item.where_clause_oid},
+                attrib={"WhereClauseOID": item.where_clause_oid or ""},
             )
 
             if getattr(item, "method_oid", None):

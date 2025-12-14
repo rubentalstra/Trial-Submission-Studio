@@ -6,8 +6,11 @@ durations, and study day calculations according to SDTM standards.
 
 from __future__ import annotations
 
+from typing import Sequence
+
 import pandas as pd
 
+from ...domains_module import SDTMVariable
 from .iso8601 import normalize_iso8601, normalize_iso8601_duration
 
 
@@ -24,7 +27,7 @@ class DateTransformer:
     @staticmethod
     def normalize_dates(
         frame: pd.DataFrame,
-        domain_variables: list,
+        domain_variables: Sequence[SDTMVariable],
     ) -> None:
         """Normalize all date/datetime columns to ISO 8601 strings.
 
@@ -40,7 +43,7 @@ class DateTransformer:
     @staticmethod
     def normalize_durations(
         frame: pd.DataFrame,
-        domain_variables: list,
+        domain_variables: Sequence[SDTMVariable],
     ) -> None:
         """Normalize all duration columns to ISO 8601 duration strings.
 
@@ -56,7 +59,7 @@ class DateTransformer:
     @staticmethod
     def calculate_dy(
         frame: pd.DataFrame,
-        domain_variables: list,
+        domain_variables: Sequence[SDTMVariable],
         reference_starts: dict[str, str],
     ) -> None:
         """Calculate --DY variables if --DTC and RFSTDTC are present.

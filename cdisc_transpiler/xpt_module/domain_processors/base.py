@@ -7,7 +7,7 @@ post-processing logic unique to each SDTM domain.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
@@ -29,7 +29,7 @@ class BaseDomainProcessor(ABC):
         domain: "SDTMDomain",
         reference_starts: dict[str, str] | None = None,
         metadata=None,
-    ):
+        ):
         """Initialize the domain processor.
 
         Args:
@@ -40,6 +40,7 @@ class BaseDomainProcessor(ABC):
         self.domain = domain
         self.reference_starts = reference_starts or {}
         self.metadata = metadata
+        self.config: Any | None = None
 
     @abstractmethod
     def process(self, frame: pd.DataFrame) -> None:
