@@ -171,8 +171,13 @@ def get_test_labels(codelist_code: str) -> Dict[str, str]:
     # Build mapping from submission values to their preferred terms/definitions
     labels: Dict[str, str] = {}
     for value in ct.submission_values:
-        # Use preferred term if available, otherwise use the value itself
-        label = ct.preferred_terms.get(value) or ct.definitions.get(value, value)
+        # Use preferred term if available, then definition, then value itself
+        if value in ct.preferred_terms:
+            label = ct.preferred_terms[value]
+        elif value in ct.definitions:
+            label = ct.definitions[value]
+        else:
+            label = value
         labels[value] = label
     
     return labels

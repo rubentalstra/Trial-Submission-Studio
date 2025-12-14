@@ -39,7 +39,8 @@ def _get_vs_test_labels() -> dict[str, str]:
     Returns dynamic labels from CT, supplemented with common test codes
     that may not be in the CT files.
     """
-    # Load from CT
+    # Load from CT - dict() creates a copy since we'll modify it below
+    # (get_vs_test_labels is cached, so we shouldn't mutate its result)
     labels = dict(get_vs_test_labels())
     
     # Add common test labels if not already in CT
@@ -67,7 +68,8 @@ def _get_lb_test_labels() -> dict[str, str]:
     Returns dynamic labels from CT, supplemented with common test codes
     that may not be in the CT files.
     """
-    # Load from CT
+    # Load from CT - dict() creates a copy since we'll modify it below
+    # (get_lb_test_labels is cached, so we shouldn't mutate its result)
     labels = dict(get_lb_test_labels())
     
     # Add common test labels if not already in CT
