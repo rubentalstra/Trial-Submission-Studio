@@ -43,7 +43,7 @@ class TEProcessor(BaseDomainProcessor):
         te_df = pd.DataFrame(elements)
         te_df["STUDYID"] = study_id
         te_df["DOMAIN"] = "TE"
-        frame.drop(frame.index, inplace=True)
+        frame.drop(index=frame.index.tolist(), inplace=True)
         frame.drop(columns=list(frame.columns), inplace=True)
         for col in te_df.columns:
             frame[col] = te_df[col].values

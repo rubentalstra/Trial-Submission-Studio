@@ -6,6 +6,7 @@ import pandas as pd
 
 from .base import BaseDomainProcessor
 from ..transformers import TextTransformer, NumericTransformer, DateTransformer
+from ...pandas_utils import ensure_series
 
 
 class EXProcessor(BaseDomainProcessor):
@@ -97,7 +98,11 @@ class EXProcessor(BaseDomainProcessor):
             frame["EXTPTREF"] = (
                 frame["EXTPTREF"].astype("string").fillna("").replace("", "VISIT")
             )
-        existing = set(frame.get("USUBJID", pd.Series(dtype=str)).astype(str))
+        existing = set(
+            ensure_series(frame.get("USUBJID", pd.Series(dtype=str)), index=frame.index).astype(
+                str
+            )
+        )
         # Ensure every subject with a reference start has an EX record
         if self.reference_starts:
             missing = set(self.reference_starts.keys()) - existing
@@ -133,7 +138,7 @@ class EXProcessor(BaseDomainProcessor):
                     columns=frame.columns, fill_value=""
                 )
                 new_frame = pd.concat([frame, filler_df], ignore_index=True)
-                frame.drop(frame.index, inplace=True)
+                frame.drop(index=frame.index.tolist(), inplace=True)
                 frame.drop(columns=list(frame.columns), inplace=True)
                 for col in new_frame.columns:
                     frame[col] = new_frame[col].values

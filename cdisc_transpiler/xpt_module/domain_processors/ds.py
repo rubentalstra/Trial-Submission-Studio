@@ -6,6 +6,7 @@ import pandas as pd
 
 from .base import BaseDomainProcessor
 from ..transformers import NumericTransformer, DateTransformer
+from ...pandas_utils import ensure_series
 
 
 class DSProcessor(BaseDomainProcessor):
@@ -47,25 +48,25 @@ class DSProcessor(BaseDomainProcessor):
         DateTransformer.ensure_date_pair_order(frame, "DSSTDTC", None)
 
         # Build per-subject consent + disposition rows (always ensure both)
+        subject_series = ensure_series(
+            frame.get("USUBJID", pd.Series(dtype="string")), index=frame.index
+        )
         subjects = set(
-            frame.get("USUBJID", pd.Series(dtype="string"))
-            .astype("string")
-            .str.strip()
-            .replace({"nan": "", "<NA>": ""})
+            subject_series.astype("string").str.strip().replace({"nan": "", "<NA>": ""})
         )
         subjects |= {str(s) for s in (self.reference_starts or {}).keys()}
         subjects.discard("")
 
         def _add_days(raw_date: str, days: int) -> str:
             try:
-                dt = pd.to_datetime(
+                dt_candidate = pd.to_datetime(
                     DateTransformer.coerce_iso8601(raw_date), errors="coerce"
                 )
             except Exception:
-                dt = pd.NaT
-            if pd.isna(dt):
-                dt = pd.to_datetime(fallback_date)
-            return (dt + pd.Timedelta(days=days)).date().isoformat()
+                dt_candidate = pd.NaT
+            if not isinstance(dt_candidate, pd.Timestamp) or pd.isna(dt_candidate):
+                dt_candidate = pd.to_datetime(fallback_date)
+            return (dt_candidate + pd.Timedelta(days=days)).date().isoformat()
 
         defaults: list[dict] = []
         study_id = "STUDY"
@@ -111,7 +112,7 @@ class DSProcessor(BaseDomainProcessor):
         if not defaults_df.empty:
             expanded = pd.concat([frame, defaults_df], ignore_index=True)
             expanded.reset_index(drop=True, inplace=True)
-            frame.drop(frame.index, inplace=True)
+            frame.drop(index=frame.index.tolist(), inplace=True)
             for col in expanded.columns:
                 frame[col] = expanded[col]
 
@@ -119,9 +120,9 @@ class DSProcessor(BaseDomainProcessor):
         def _contains(series: pd.Series, token: str) -> pd.Series:
             return series.astype("string").str.upper().str.contains(token, na=False)
 
-        consent_mask = _contains(frame["DSDECOD"], "CONSENT") | _contains(
-            frame["DSCAT"], "PROTOCOL MILESTONE"
-        )
+        consent_mask = _contains(
+            ensure_series(frame["DSDECOD"]), "CONSENT"
+        ) | _contains(ensure_series(frame["DSCAT"]), "PROTOCOL MILESTONE")
         frame.loc[consent_mask, "DSDECOD"] = "INFORMED CONSENT OBTAINED"
         frame.loc[consent_mask, "DSTERM"] = "INFORMED CONSENT OBTAINED"
         frame.loc[consent_mask, "DSCAT"] = "PROTOCOL MILESTONE"

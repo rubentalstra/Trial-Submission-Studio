@@ -6,6 +6,7 @@ import pandas as pd
 
 from .base import BaseDomainProcessor
 from ...terminology_module import get_controlled_terminology
+from ...pandas_utils import ensure_series
 
 
 class TSProcessor(BaseDomainProcessor):
@@ -23,11 +24,10 @@ class TSProcessor(BaseDomainProcessor):
         # Drop placeholder rows
         self._drop_placeholder_rows(frame)
 
-        base_study = (
-            frame.get("STUDYID", pd.Series(["STUDY"])).iloc[0]
-            if len(frame) > 0 and "STUDYID" in frame.columns
-            else "STUDY"
+        study_series = ensure_series(
+            frame.get("STUDYID", pd.Series(["STUDY"])), index=frame.index
         )
+        base_study = str(study_series.iloc[0]) if len(study_series) > 0 else "STUDY"
         ct_parmcd = get_controlled_terminology(variable="TSPARMCD")
         ct_parm = get_controlled_terminology(variable="TSPARM")
 
@@ -152,7 +152,7 @@ class TSProcessor(BaseDomainProcessor):
             if not str(row.get("TSVCDREF", "")).strip() and ref:
                 params.loc[idx, "TSVCDREF"] = ref
         params["TSSEQ"] = range(1, len(params) + 1)
-        frame.drop(frame.index, inplace=True)
+        frame.drop(index=frame.index.tolist(), inplace=True)
         frame.drop(columns=list(frame.columns), inplace=True)
         for col in params.columns:
             frame[col] = params[col].values

@@ -6,6 +6,7 @@ import pandas as pd
 
 from .base import BaseDomainProcessor
 from ..transformers import TextTransformer, NumericTransformer, DateTransformer
+from ...pandas_utils import ensure_numeric_series, ensure_series
 
 
 class DAProcessor(BaseDomainProcessor):
@@ -75,13 +76,13 @@ class DAProcessor(BaseDomainProcessor):
             frame["DASTRESC"] = ""
 
         # Align DASTRESN with numeric interpretation of DASTRESC/DAORRES
-        numeric_stresc = pd.to_numeric(
-            frame.get("DASTRESC", pd.Series()), errors="coerce"
+        numeric_stresc = ensure_numeric_series(
+            frame.get("DASTRESC", pd.Series()), frame.index
         )
         if "DASTRESN" not in frame.columns:
             frame["DASTRESN"] = numeric_stresc
         else:
-            coerced = pd.to_numeric(frame["DASTRESN"], errors="coerce")
+            coerced = ensure_numeric_series(frame["DASTRESN"], frame.index)
             needs_numeric = coerced.isna() & numeric_stresc.notna()
             frame["DASTRESN"] = coerced
             frame.loc[needs_numeric, "DASTRESN"] = numeric_stresc.loc[needs_numeric]
@@ -153,12 +154,12 @@ class DAProcessor(BaseDomainProcessor):
         else:
             frame["DASTRESC"] = frame.get("DAORRES", "0")
         if "DASTRESN" in frame.columns:
-            frame["DASTRESN"] = pd.to_numeric(
-                frame["DASTRESN"], errors="coerce"
-            ).fillna(pd.to_numeric(frame["DAORRES"], errors="coerce"))
+            coerced = ensure_numeric_series(frame["DASTRESN"], frame.index)
+            fallback = ensure_numeric_series(frame["DAORRES"], frame.index)
+            frame["DASTRESN"] = coerced.fillna(fallback)
         else:
-            frame["DASTRESN"] = pd.to_numeric(
-                frame.get("DAORRES", "0"), errors="coerce"
+            frame["DASTRESN"] = ensure_numeric_series(
+                frame.get("DAORRES", "0"), frame.index
             )
         # Normalize VISITNUM to numeric per subject order to avoid type/key issues
         if "VISITNUM" in frame.columns:

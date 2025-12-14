@@ -24,10 +24,11 @@ from ..cli.logging_config import get_logger
 if TYPE_CHECKING:
     from ..metadata_module import StudyMetadata
 
-from ..domains_module import get_domain, get_domain_class
+from ..domains_module import SDTMDomain, get_domain, get_domain_class
 from ..io_module import build_column_hints, load_input_dataset
 from ..mapping_module import (
     ColumnMapping,
+    MappingConfig,
     build_config,
     create_mapper,
     unquote_column_name,
@@ -200,7 +201,7 @@ class DomainProcessingCoordinator:
         metadata: StudyMetadata | None,
         min_confidence: float,
         verbose: bool,
-    ) -> tuple[pd.DataFrame, object, bool] | None:
+    ) -> tuple[pd.DataFrame, MappingConfig, bool] | None:
         """Process a single input file.
 
         Returns:
@@ -439,7 +440,7 @@ class DomainProcessingCoordinator:
         domain_code: str,
         source_frame: pd.DataFrame,
         domain_frame: pd.DataFrame,
-        config: object,
+        config: MappingConfig | None,
         study_id: str,
         common_column_counts: dict[str, int] | None,
         total_files: int | None,
@@ -572,7 +573,7 @@ class DomainProcessingCoordinator:
         merged_dataframe: pd.DataFrame,
         domain_code: str,
         study_id: str,
-        config: object,
+        config: MappingConfig,
         output_format: str,
         xpt_dir: Path | None,
         xml_dir: Path | None,
@@ -583,7 +584,7 @@ class DomainProcessingCoordinator:
         supp_frames: list[pd.DataFrame],
         variant_frames: list[tuple[str, pd.DataFrame]],
         files_for_domain: list[tuple[Path, str]],
-        domain: object,
+        domain: SDTMDomain,
         verbose: bool,
     ) -> dict:
         """Generate output files and return processing results."""

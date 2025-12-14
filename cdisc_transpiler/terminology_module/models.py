@@ -78,7 +78,7 @@ class ControlledTerminology:
             return None
         return self.nci_codes.get(value) or self.nci_codes.get(value.upper())
 
-    def invalid_values(self, series: pd.Series) -> set[str]:
+    def invalid_values(self, series: object) -> set[str]:
         """Return invalid raw values given the canonical CT list.
 
         Args:
@@ -88,7 +88,11 @@ class ControlledTerminology:
             Set of invalid values not in the controlled terminology
         """
         invalid: set[str] = set()
-        for raw_value in series.dropna().unique():
+        from ..pandas_utils import ensure_series
+
+        series_values = ensure_series(series)
+
+        for raw_value in series_values.dropna().unique():
             normalized = self.normalize(raw_value)
             if not normalized:
                 continue

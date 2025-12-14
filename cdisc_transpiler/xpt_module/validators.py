@@ -11,6 +11,7 @@ from typing import Sequence
 import pandas as pd
 
 from ..domains_module import SDTMVariable
+from ..pandas_utils import ensure_series
 
 
 class XPTValidator:
@@ -45,8 +46,11 @@ class XPTValidator:
         for var in domain_variables:
             if (var.core or "").strip().lower() == "req" and var.name in frame.columns:
                 # Use pd.isna() for robust check across dtypes
-                if frame[var.name].isna().any():
-                    raise ValueError(f"Required variable {var.name} has missing values")
+                series = ensure_series(frame[var.name])
+                if series.isna().any():
+                    raise ValueError(
+                        f"Required variable {var.name} has missing values"
+                    )
 
     @staticmethod
     def enforce_lengths(
@@ -102,7 +106,7 @@ class XPTValidator:
             if any(token in var.name for token in ("DTC", "DY", "DUR")):
                 continue
 
-            series = frame[var.name]
+            series = ensure_series(frame[var.name])
             if series.dtype.kind in "biufc":
                 # Numeric columns - check for all NaN
                 if series.isna().all():
@@ -165,7 +169,7 @@ class XPTValidator:
             if variable.name not in frame.columns:
                 continue
 
-            series = frame[variable.name]
+            series = ensure_series(frame[variable.name])
             if series.dtype.kind in "biufc":
                 # Numeric types
                 is_empty = series.isna()

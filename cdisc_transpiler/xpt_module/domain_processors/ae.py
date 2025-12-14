@@ -6,6 +6,7 @@ import pandas as pd
 
 from .base import BaseDomainProcessor
 from ..transformers import TextTransformer, NumericTransformer, DateTransformer
+from ...pandas_utils import ensure_numeric_series
 
 
 class AEProcessor(BaseDomainProcessor):
@@ -195,7 +196,7 @@ class AEProcessor(BaseDomainProcessor):
             "AEBDSYCD",
         ):
             if code_var in frame.columns:
-                numeric = pd.to_numeric(frame[code_var], errors="coerce")
+                numeric = ensure_numeric_series(frame[code_var], frame.index)
                 frame[code_var] = numeric.fillna(999999).astype("Int64")
             else:
                 frame[code_var] = pd.Series(

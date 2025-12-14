@@ -29,10 +29,13 @@ class SEProcessor(BaseDomainProcessor):
         if len(frame) > 0 and "STUDYID" in frame.columns:
             study_id = frame["STUDYID"].iloc[0]
 
+        subjects_series = frame.get("USUBJID", pd.Series(dtype=str))
+        if subjects_series is None:
+            subjects_series = pd.Series(dtype=str)
         subjects = (
             list(self.reference_starts.keys())
             if self.reference_starts
-            else frame.get("USUBJID", pd.Series(dtype=str)).tolist()
+            else subjects_series.tolist()
         )
         for usubjid in subjects:
             start = (
@@ -67,7 +70,7 @@ class SEProcessor(BaseDomainProcessor):
                 }
             )
         new_frame = pd.DataFrame(records)
-        frame.drop(frame.index, inplace=True)
+        frame.drop(index=frame.index.tolist(), inplace=True)
         frame.drop(columns=list(frame.columns), inplace=True)
         for col in new_frame.columns:
             frame[col] = new_frame[col].values

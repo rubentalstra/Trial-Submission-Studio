@@ -6,7 +6,11 @@ including type coercion, sequence assignment, and STRESC population.
 
 from __future__ import annotations
 
+from typing import Any
+
 import pandas as pd
+
+from ...pandas_utils import ensure_numeric_series
 
 
 class NumericTransformer:
@@ -54,7 +58,7 @@ class NumericTransformer:
             frame.loc[mask, stresc_col] = orres_str.loc[mask]
 
     @staticmethod
-    def force_numeric(series: pd.Series) -> pd.Series:
+    def force_numeric(series: Any) -> pd.Series:
         """Coerce a series to numeric type, replacing invalid values with NaN.
 
         Args:
@@ -63,7 +67,7 @@ class NumericTransformer:
         Returns:
             Numeric series with invalid values as NaN
         """
-        return pd.to_numeric(series, errors="coerce")
+        return ensure_numeric_series(series)
 
     @staticmethod
     def assign_sequence(
