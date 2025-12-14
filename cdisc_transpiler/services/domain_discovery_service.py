@@ -18,6 +18,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Protocol
 
+# Import get_domain_class from domains_module
+from ..domains_module import get_domain_class
+
 
 class Logger(Protocol):
     """Protocol for logging operations."""
@@ -28,7 +31,9 @@ class Logger(Protocol):
 
 
 def get_domain_category(domain_code: str) -> str:
-    """Get the SDTM category for a domain code dynamically from metadata.
+    """Get the SDTM category for a domain code.
+    
+    This is an alias for get_domain_class for backward compatibility.
     
     Args:
         domain_code: SDTM domain code (e.g., 'DM', 'AE')
@@ -36,14 +41,7 @@ def get_domain_category(domain_code: str) -> str:
     Returns:
         Category name or 'Unknown'
     """
-    from ..domains_module import get_domain
-    
-    code = domain_code.upper()
-    try:
-        domain = get_domain(code)
-        return domain.class_name or "Unknown"
-    except KeyError:
-        return "Unknown"
+    return get_domain_class(domain_code)
 
 
 class DomainDiscoveryService:

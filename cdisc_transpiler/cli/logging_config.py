@@ -30,35 +30,15 @@ from rich.panel import Panel
 from rich.table import Table
 from rich.text import Text
 
+# Import get_domain_class from domains_module
+from ..domains_module import get_domain_class
+
 
 class LogLevel(IntEnum):
     """Logging verbosity levels."""
     NORMAL = 0
     VERBOSE = 1
     DEBUG = 2
-
-
-def get_domain_class(domain_code: str) -> str:
-    """Get the SDTM class for a domain dynamically from metadata.
-    
-    Args:
-        domain_code: SDTM domain code (e.g., 'DM', 'AE', 'LB')
-        
-    Returns:
-        SDTM class name (e.g., 'Events', 'Findings') or 'Unknown'
-    """
-    from ..domains_module import get_domain
-    
-    code = domain_code.upper()
-    # Handle SUPP domains
-    if code.startswith("SUPP"):
-        return "Supplemental Qualifiers"
-    
-    try:
-        domain = get_domain(code)
-        return domain.class_name or "Unknown"
-    except KeyError:
-        return "Unknown"
 
 
 @dataclass

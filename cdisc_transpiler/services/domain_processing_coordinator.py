@@ -20,7 +20,7 @@ from rich.console import Console
 if TYPE_CHECKING:
     from ..metadata_module import StudyMetadata
 
-from ..domains_module import get_domain
+from ..domains_module import get_domain, get_domain_class
 from ..io_module import build_column_hints, load_input_dataset
 from ..mapping_module import ColumnMapping, build_config, create_mapper, unquote_column_name
 from ..sas_module import generate_sas_program, write_sas_file
@@ -33,23 +33,6 @@ from .study_orchestration_service import StudyOrchestrationService
 
 
 console = Console()
-
-
-def _get_domain_class(domain_code: str) -> str:
-    """Get the SDTM class for a domain dynamically from metadata.
-    
-    Args:
-        domain_code: SDTM domain code (e.g., 'DM', 'AE', 'LB')
-        
-    Returns:
-        SDTM class name or 'Unknown'
-    """
-    code = domain_code.upper()
-    try:
-        domain = get_domain(code)
-        return domain.class_name or "Unknown"
-    except KeyError:
-        return "Unknown"
 
 
 class DomainProcessingCoordinator:
@@ -215,7 +198,7 @@ class DomainProcessingCoordinator:
         )
         
         # Get domain class for context (unused but kept for documentation)
-        domain_class = _get_domain_class(domain_code)
+        domain_class = get_domain_class(domain_code)
 
         # Load input data
         frame = load_input_dataset(input_file)

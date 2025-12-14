@@ -37,12 +37,14 @@ from __future__ import annotations
 from .constants import CT_VERSION
 from .models import SDTMDomain, SDTMVariable
 from .registry import generalized_identifiers, get_domain, list_domains
+from .utils import get_domain_class
 
 __all__ = [
     "CT_VERSION",
     "SDTMDomain",
     "SDTMVariable",
     "get_domain",
+    "get_domain_class",
     "list_domains",
     "generalized_identifiers",
 ]
