@@ -21,12 +21,6 @@ from ..xpt_module.builder import build_domain_dataframe
 from ..xml_module.dataset_module import write_dataset_xml
 
 
-def _log_success(message: str) -> None:
-    """Log a success message. Deferred import to avoid circular dependency."""
-    from ..cli.utils import log_success
-    log_success(message)
-
-
 class DomainSynthesisCoordinator:
     """Coordinates synthesis of domains with file generation."""
 
@@ -362,7 +356,9 @@ class DomainSynthesisCoordinator:
             write_xpt_file(domain_dataframe, domain_code, xpt_path)
             result["xpt_path"] = xpt_path
             result["xpt_filename"] = xpt_path.name
-            _log_success(f"Generated {domain_code} XPT: {xpt_path}")
+            from ..cli.logging_config import get_logger
+            logger = get_logger()
+            logger.success(f"Generated {domain_code} XPT: {xpt_path}")
 
         # Generate Dataset-XML file
         if xml_dir and output_format in ("xml", "both"):
@@ -370,7 +366,9 @@ class DomainSynthesisCoordinator:
             write_dataset_xml(domain_dataframe, domain_code, config, xml_path)
             result["xml_path"] = xml_path
             result["xml_filename"] = xml_path.name
-            _log_success(f"Generated {domain_code} Dataset-XML: {xml_path}")
+            from ..cli.logging_config import get_logger
+            logger = get_logger()
+            logger.success(f"Generated {domain_code} Dataset-XML: {xml_path}")
 
         # Generate SAS program
         if sas_dir and generate_sas:
@@ -383,6 +381,8 @@ class DomainSynthesisCoordinator:
             )
             write_sas_file(sas_code, sas_path)
             result["sas_path"] = sas_path
-            _log_success(f"Generated {domain_code} SAS: {sas_path}")
+            from ..cli.logging_config import get_logger
+            logger = get_logger()
+            logger.success(f"Generated {domain_code} SAS: {sas_path}")
 
         return result

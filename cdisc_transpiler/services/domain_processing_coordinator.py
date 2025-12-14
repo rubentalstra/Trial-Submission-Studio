@@ -19,7 +19,7 @@ import pandas as pd
 from rich.console import Console
 
 from ..cli.helpers import write_variant_splits
-from ..cli.utils import log_success
+from ..cli.utils import ProgressTracker
 from ..cli.logging_config import get_logger
 
 if TYPE_CHECKING:
@@ -609,7 +609,8 @@ class DomainProcessingCoordinator:
             result["xpt_path"] = xpt_path
             result["xpt_filename"] = xpt_path.name
 
-            log_success(f"Generated XPT: {xpt_path}")
+            logger = get_logger()
+            logger.success(f"Generated XPT: {xpt_path}")
 
             # Handle domain variant splits (SDTMIG v3.4 Section 4.1.7)
             # Any domain can be split when there are multiple variant files
@@ -630,7 +631,8 @@ class DomainProcessingCoordinator:
             result["xml_path"] = xml_path
             result["xml_filename"] = xml_path.name
 
-            log_success(f"Generated Dataset-XML: {xml_path}")
+            logger = get_logger()
+            logger.success(f"Generated Dataset-XML: {xml_path}")
 
         if sas_dir and generate_sas:
             sas_path = sas_dir / f"{disk_name}.sas"
@@ -641,7 +643,8 @@ class DomainProcessingCoordinator:
             write_sas_file(sas_code, sas_path)
             result["sas_path"] = sas_path
 
-            log_success(f"Generated SAS: {sas_path}")
+            logger = get_logger()
+            logger.success(f"Generated SAS: {sas_path}")
 
         return result
 
