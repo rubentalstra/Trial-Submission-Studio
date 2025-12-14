@@ -29,10 +29,9 @@ def _drop_missing_usubjid(frame: pd.DataFrame) -> pd.DataFrame:
     """
     if "USUBJID" not in frame.columns:
         return frame
-    mask = (
-        frame["USUBJID"].isna()
-        | frame["USUBJID"].astype("string").str.strip().str.upper().isin(_MISSING_MARKERS)
-    )
+    mask = frame["USUBJID"].isna() | frame["USUBJID"].astype(
+        "string"
+    ).str.strip().str.upper().isin(_MISSING_MARKERS)
     return frame.loc[~mask].reset_index(drop=True)
 
 
@@ -50,10 +49,7 @@ def _clean_idvarval(values: pd.Series, is_seq: bool) -> pd.Series:
     if not is_seq:
         return series.astype("string")
     numeric = ensure_numeric_series(series).astype("Int64")
-    return (
-        numeric.astype(str)
-        .str.slice(0, 8)
-    )
+    return numeric.astype(str).str.slice(0, 8)
 
 
 def _is_operational_column(
@@ -203,7 +199,9 @@ def build_suppqual(
                 if "USUBJID" in aligned_source.columns
                 else ""
             )
-            if (not usubjid or usubjid.strip() == "") and "USUBJID" in mapped_df.columns:
+            if (
+                not usubjid or usubjid.strip() == ""
+            ) and "USUBJID" in mapped_df.columns:
                 usubjid = str(mapped_df.iloc[idx]["USUBJID"])
             records.append(
                 {
@@ -229,14 +227,14 @@ def build_suppqual(
         return None, set()
 
     supp_df = pd.DataFrame(records)
-    
+
     # Shrink QVAL width to actual max to avoid SD1082; keep reasonable cap
     if "QVAL" in supp_df.columns:
         supp_df["QVAL"] = supp_df["QVAL"].astype(str)
         max_qval_len = supp_df["QVAL"].str.len().max() if not supp_df.empty else 1
         max_qval_len = max(1, min(int(max_qval_len or 1), 50))
         supp_df["QVAL"] = supp_df["QVAL"].str.slice(0, max_qval_len)
-    
+
     supp_domain_code = f"SUPP{domain}"
     try:
         ordering = list(get_domain(supp_domain_code).variable_names())
@@ -248,7 +246,7 @@ def build_suppqual(
         subset=["STUDYID", "USUBJID", "IDVAR", "IDVARVAL", "QNAM"], inplace=True
     )
     supp_df.sort_values(by=["USUBJID", "IDVARVAL"], inplace=True)
-    
+
     # Keep QVAL within metadata length for SUPPDM to avoid SD1082
     if domain.upper() == "DM" and "QVAL" in supp_df.columns:
         try:
@@ -259,8 +257,6 @@ def build_suppqual(
             )
         except Exception:
             qval_len = 200
-        supp_df["QVAL"] = (
-            supp_df["QVAL"].astype(str).str.slice(0, qval_len)
-        )
+        supp_df["QVAL"] = supp_df["QVAL"].astype(str).str.slice(0, qval_len)
 
     return supp_df, set(extra_cols)
