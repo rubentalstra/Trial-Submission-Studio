@@ -12,7 +12,6 @@ SDTM Reference:
     - Output file generation (XPT, Dataset-XML, Define-XML)
 
 Services:
-    - DomainProcessingService: Processes domains from source data
     - FileGenerationService: Generates output files (XPT, XML, SAS)
     - TrialDesignService: Synthesizes trial design domains (TS, TA, TE, etc.)
     - DomainDiscoveryService: Discovers and classifies domain files
@@ -23,7 +22,6 @@ Services:
     - DomainSynthesisCoordinator: Coordinates domain synthesis with file generation
 """
 
-from .domain_service import DomainProcessingService, DomainProcessingResult
 from .file_generation_service import FileGenerationService, FileGenerationResult
 from .trial_design_service import TrialDesignService
 from .domain_discovery_service import DomainDiscoveryService
@@ -34,8 +32,6 @@ from .domain_processing_coordinator import DomainProcessingCoordinator
 from .domain_synthesis_coordinator import DomainSynthesisCoordinator
 
 __all__ = [
-    "DomainProcessingService",
-    "DomainProcessingResult",
     "FileGenerationService",
     "FileGenerationResult",
     "TrialDesignService",
