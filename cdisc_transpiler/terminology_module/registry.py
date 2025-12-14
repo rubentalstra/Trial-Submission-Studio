@@ -426,34 +426,24 @@ def get_testcd_label(domain_code: str, testcd: str) -> str:
 
 
 # -----------------------------------------------------------------------------
-# Legacy/Convenience Functions
+# NCI Code Lookup
 # -----------------------------------------------------------------------------
 
 
-def list_controlled_variables() -> tuple[str, ...]:
-    """Return all variables with controlled terminology."""
-    vars_from_domains = tuple(sorted(_variable_to_codelist().keys()))
-    names = tuple(sorted(_REGISTRY_BY_NAME.keys()))
-    merged = sorted(set(vars_from_domains) | set(names))
-    return tuple(merged)
-
-
 def get_nci_code(variable: str, value: str) -> str | None:
-    """Return the NCI code for a variable/value combination."""
+    """Return the NCI code for a variable/value combination.
+    
+    This is used for Define-XML generation to include NCI C-codes
+    as external code identifiers.
+    
+    Args:
+        variable: Variable name (e.g., "SEX", "VSTESTCD")
+        value: The coded value to look up
+        
+    Returns:
+        NCI C-code or None if not found
+    """
     ct = get_controlled_terminology(variable=variable)
     if ct is None:
         return None
     return ct.get_nci_code(value)
-
-
-def get_codelist_code(variable: str) -> str | None:
-    """Return the codelist code for a variable."""
-    ct = get_controlled_terminology(variable=variable)
-    if ct is None:
-        return None
-    return ct.codelist_code
-
-
-# Backward compatibility aliases (deprecated - use new names)
-get_test_labels = get_preferred_terms
-get_test_synonyms = get_synonyms

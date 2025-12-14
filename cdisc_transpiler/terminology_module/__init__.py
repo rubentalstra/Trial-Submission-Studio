@@ -21,6 +21,8 @@ Usage:
         get_submission_values,
         get_preferred_terms,
         get_synonyms,
+        get_definitions,
+        get_nci_code,
         
         # Domain-specific lookups
         get_domain_testcd_values,
@@ -49,6 +51,7 @@ from .registry import (
     get_preferred_terms,
     get_synonyms,
     get_definitions,
+    get_nci_code,
     # Domain-specific functions
     get_domain_testcd_values,
     get_domain_testcd_labels,
@@ -58,13 +61,6 @@ from .registry import (
     normalize_to_submission_value,
     normalize_testcd,
     get_testcd_label,
-    # Legacy functions
-    list_controlled_variables,
-    get_nci_code,
-    get_codelist_code,
-    # Backward compatibility
-    get_test_labels,
-    get_test_synonyms,
 )
 
 __all__ = [
@@ -80,6 +76,7 @@ __all__ = [
     "get_preferred_terms",
     "get_synonyms",
     "get_definitions",
+    "get_nci_code",
     # Domain-specific functions
     "get_domain_testcd_values",
     "get_domain_testcd_labels",
@@ -89,11 +86,4 @@ __all__ = [
     "normalize_to_submission_value",
     "normalize_testcd",
     "get_testcd_label",
-    # Legacy functions
-    "list_controlled_variables",
-    "get_nci_code",
-    "get_codelist_code",
-    # Backward compatibility (deprecated)
-    "get_test_labels",
-    "get_test_synonyms",
 ]
