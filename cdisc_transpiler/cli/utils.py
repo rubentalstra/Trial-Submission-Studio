@@ -44,7 +44,7 @@ class ProgressTracker:
 
     def print_summary(self) -> None:
         """Print progress summary."""
-        console.print(f"\n[bold]Progress:[/bold]")
+        console.print("\n[bold]Progress:[/bold]")
         console.print(f"  Processed: {self.processed}/{self.total_domains}")
         console.print(f"  [green]Success: {self.success_count}[/green]")
         if self.errors:

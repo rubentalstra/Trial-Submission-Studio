@@ -26,9 +26,6 @@ from pathlib import Path
 from typing import Any
 
 from rich.console import Console
-from rich.panel import Panel
-from rich.table import Table
-from rich.text import Text
 
 # Import get_domain_class from domains_module
 from ..domains_module import get_domain_class
