@@ -9,8 +9,6 @@ from __future__ import annotations
 from typing import Iterable
 from xml.etree import ElementTree as ET
 
-import pandas as pd
-
 from ...domains_module import SDTMVariable
 from .constants import ODM_NS, DEF_NS, XML_NS
 from ..utils import tag, attr
@@ -126,18 +124,6 @@ def get_origin(
         return ("Collected", "Investigator")
 
     return ("Collected", "Investigator")
-
-
-def is_all_missing(series: pd.Series) -> bool:
-    """Return True when a series has no non-blank values."""
-    if series.isna().all():
-        return True
-    non_null = series.dropna()
-    if non_null.empty:
-        return True
-    if non_null.astype(str).str.strip().eq("").all():
-        return True
-    return False
 
 
 def get_item_oid(variable: SDTMVariable, domain_code: str | None) -> str:

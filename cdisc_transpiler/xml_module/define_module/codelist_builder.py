@@ -52,21 +52,6 @@ _YES_ONLY_VARS = {
 }
 
 
-def append_code_lists(
-    parent: ET.Element, domain_code: str, variables: Iterable[SDTMVariable]
-) -> None:
-    """Append CodeList elements per Define-XML 2.1 specification.
-
-    Args:
-        parent: Parent XML element to append to
-        domain_code: Domain code (e.g., "DM", "AE")
-        variables: Variables with codelist requirements
-    """
-    for variable in variables:
-        if variable.codelist_code or needs_meddra(variable.name):
-            parent.append(build_code_list_element(variable, domain_code))
-
-
 def build_code_list_element(
     variable: SDTMVariable,
     domain_code: str,

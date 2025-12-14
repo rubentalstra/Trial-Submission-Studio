@@ -192,32 +192,6 @@ def append_where_clause_defs(
                 tag(ODM_NS, "CheckValue"),
             ).text = value
 
-
-def generate_vlm_for_findings_domain(
-    domain_code: str,
-    test_codes: list[str],
-    result_variable: str = "ORRES",
-) -> tuple[list[ValueListDefinition], list[WhereClauseDefinition]]:
-    """Generate value-level metadata for a findings domain.
-
-    Findings domains (LB, VS, EG, etc.) typically have different metadata
-    for each test code. This function generates the VLM structure for
-    a given set of test codes.
-
-    Args:
-        domain_code: The domain code (e.g., "LB", "VS")
-        test_codes: List of test codes (e.g., ["GLUC", "HGB", "WBC"])
-        result_variable: The result variable name (default: "ORRES")
-
-    Returns:
-        Tuple of (value_lists, where_clauses)
-    """
-    value_lists: list[ValueListDefinition] = []
-    where_clauses: list[WhereClauseDefinition] = []
-
-    # Implementation note: This is a template function that can be extended
-    # when full VLM support for findings domains is needed
-
     return (value_lists, where_clauses)
 
 
