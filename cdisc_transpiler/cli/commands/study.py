@@ -25,6 +25,7 @@ from ..helpers import (
     ensure_acrf_pdf,
     print_study_summary,
 )
+from ..logging_config import create_logger, SDTMLogger
 
 
 console = Console()
@@ -158,6 +159,9 @@ def study_command(
         CONTEXT_OTHER,
     )
 
+    # Initialize the structured logger with appropriate verbosity
+    logger = create_logger(console, verbosity=verbose)
+    
     # Get list of supported domains
     supported_domains = list(list_domains())
 
@@ -170,23 +174,15 @@ def study_command(
         else:
             study_id = folder_name
 
-    log_verbose(verbose > 0, f"Processing study folder: {study_folder}")
-    log_verbose(verbose > 0, f"Study ID: {study_id}")
-    log_verbose(verbose > 0, f"Output format: {output_format}")
-    log_verbose(verbose > 0, f"Supported domains: {', '.join(supported_domains)}")
+    # Log study initialization with enhanced context
+    logger.log_study_start(study_id, study_folder, output_format, supported_domains)
 
     # Load study metadata (Items.csv, CodeLists.csv)
     study_metadata = load_study_metadata(study_folder)
-    if study_metadata.items:
-        log_verbose(
-            verbose > 0,
-            f"Loaded {len(study_metadata.items)} column definitions from Items.csv",
-        )
-    if study_metadata.codelists:
-        log_verbose(
-            verbose > 0,
-            f"Loaded {len(study_metadata.codelists)} codelists from CodeLists.csv",
-        )
+    logger.log_metadata_loaded(
+        items_count=len(study_metadata.items) if study_metadata.items else None,
+        codelists_count=len(study_metadata.codelists) if study_metadata.codelists else None,
+    )
 
     # Set output directory
     if output_dir is None:
@@ -209,14 +205,14 @@ def study_command(
 
     # Find all CSV files in the study folder
     csv_files = list(study_folder.glob("*.csv"))
-    log_verbose(verbose > 0, f"Found {len(csv_files)} CSV files")
+    logger.verbose(f"Found {len(csv_files)} CSV files in study folder")
 
     # Map files to domains using the discovery service
     class VerboseLogger:
         """Simple logger adapter for verbose output."""
 
         def log_verbose(self, message: str) -> None:
-            log_verbose(verbose > 0, message)
+            logger.verbose(message)
 
     discovery_service = DomainDiscoveryService(VerboseLogger() if verbose > 0 else None)
     domain_files = discovery_service.discover_domain_files(csv_files, supported_domains)
@@ -241,17 +237,16 @@ def study_command(
                 common_column_counts[str(col).strip().lower()] += 1
     total_input_files = sum(len(files) for files in domain_files.values())
 
-    # Count total files to process
+    # Count total files to process and log summary
     total_files = sum(len(files) for files in domain_files.values())
-    console.print(f"\n[bold]Study: {study_id}[/bold]")
-    console.print(
-        f"[bold]Found {len(domain_files)} domains ({total_files} files) to process[/bold]"
+    logger.log_processing_summary(
+        study_id=study_id,
+        domain_count=len(domain_files),
+        file_count=total_files,
+        output_format=output_format,
+        generate_define=generate_define,
+        generate_sas=generate_sas,
     )
-    console.print(f"[bold]Output format:[/bold] {output_format.upper()}")
-    if generate_define:
-        console.print("[bold]Define-XML:[/bold] Will be generated")
-    if generate_sas:
-        console.print("[bold]SAS programs:[/bold] Will be generated")
 
     # Phase 3: Initialize progress tracker for better UX
     progress_tracker = ProgressTracker(total_domains=len(domain_files))
@@ -269,7 +264,7 @@ def study_command(
         builder,
         is_reference_data: bool = False,
     ) -> None:
-        console.print(f"\n[bold]Synthesizing {domain_code}[/bold]: {reason}")
+        logger.log_synthesis_start(domain_code, reason)
         try:
             result = builder()
             results.append(result)
@@ -345,11 +340,9 @@ def study_command(
             record_count = result.get("records")
             if record_count is None and isinstance(dataset, pd.DataFrame):
                 record_count = len(dataset)
-            log_success(
-                f"Generated {domain_code} scaffold (records={record_count or 0})"
-            )
+            logger.log_synthesis_complete(domain_code, record_count or 0)
         except Exception as exc:
-            log_error(f"{domain_code}: {exc}")
+            logger.error(f"{domain_code}: {exc}")
             errors.append((domain_code, str(exc)))
 
     ordered_domains = sorted(domain_files.keys(), key=lambda code: (code != "DM", code))
@@ -358,16 +351,8 @@ def study_command(
     for domain_code in ordered_domains:
         files_for_domain = domain_files[domain_code]
 
-        # Merge all variants into one domain file (SDTM compliant)
-        variant_names = [v for _, v in files_for_domain]
-        if len(files_for_domain) == 1:
-            display_name = domain_code
-        else:
-            display_name = f"{domain_code} (merging {', '.join(variant_names)})"
-
-        console.print(f"\n[bold]Processing {display_name}[/bold]")
-        for input_file, variant_name in files_for_domain:
-            console.print(f"  - {input_file.name}")
+        # Log domain processing start with enhanced context
+        logger.log_domain_start(domain_code, files_for_domain)
 
         try:
             # Use DomainProcessingCoordinator to process the domain
@@ -499,16 +484,16 @@ def study_command(
             progress_tracker.increment()
 
         except ParseError as exc:
-            log_error(f"{display_name}: Parse error - {exc}")
-            errors.append((display_name, str(exc)))
+            logger.error(f"{domain_code}: Parse error - {exc}")
+            errors.append((domain_code, str(exc)))
             progress_tracker.increment()  # Count failed domains too
         except Exception as exc:
             import traceback
 
-            log_error(f"{display_name}: {exc}")
+            logger.error(f"{domain_code}: {exc}")
             if verbose > 1:  # Only print traceback in very verbose mode
                 traceback.print_exc()
-            errors.append((display_name, str(exc)))
+            errors.append((domain_code, str(exc)))
             progress_tracker.increment()  # Count failed domains too
 
     # Synthesize core observation domains when the study provides no source data
@@ -557,7 +542,7 @@ def study_command(
 
     # Generate RELREC if missing (populate from existing domain data)
     if "RELREC" not in processed_domains:
-        console.print(f"\n[bold]Synthesizing RELREC[/bold]: (relationship scaffold)")
+        logger.log_synthesis_start("RELREC", "Relationship scaffold")
         try:
             orchestration_service = StudyOrchestrationService()
             result = orchestration_service.synthesize_relrec(
@@ -587,9 +572,9 @@ def study_command(
                         archive_location=dataset_href,
                     )
                 )
-            log_success("Generated RELREC")
+            logger.success("Generated RELREC")
         except Exception as exc:
-            log_error(f"RELREC: {exc}")
+            logger.error(f"RELREC: {exc}")
             errors.append(("RELREC", str(exc)))
 
     if generate_define and study_datasets:
@@ -604,15 +589,18 @@ def study_command(
                 sdtm_version=sdtm_version,
                 context=context,
             )
-            log_success(f"Generated Define-XML 2.1 at {define_path}")
+            logger.success(f"Generated Define-XML 2.1 at {define_path}")
         except Exception as exc:
             import traceback
 
-            log_error(f"Define-XML generation failed: {exc}")
+            logger.error(f"Define-XML generation failed: {exc}")
             if verbose > 1:
                 traceback.print_exc()
             errors.append(("Define-XML", str(exc)))
 
+    # Log final processing statistics in verbose mode
+    logger.log_final_stats()
+    
     # Print summary
     print_study_summary(
         results, errors, output_dir, output_format, generate_define, generate_sas

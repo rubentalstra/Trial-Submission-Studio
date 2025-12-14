@@ -18,6 +18,8 @@ import pandas as pd
 from rich.console import Console
 from rich.table import Table
 
+from .logging_config import get_logger, SDTMLogger
+
 if TYPE_CHECKING:
     from ..domains_module import SDTMDomain
 
@@ -30,9 +32,15 @@ def log_verbose(enabled: bool, message: str) -> None:
     Args:
         enabled: Whether verbose logging is enabled
         message: Message to log
+        
+    Note:
+        This function maintains backward compatibility.
+        New code should use SDTMLogger directly via get_logger().
     """
     if enabled:
-        console.print(f"[dim]{message}[/dim]")
+        # Use new logger if available and enabled
+        logger = get_logger()
+        logger.verbose(message)
 
 
 def ensure_acrf_pdf(path: Path) -> None:
