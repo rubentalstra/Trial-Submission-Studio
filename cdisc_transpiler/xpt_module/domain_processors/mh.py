@@ -6,6 +6,7 @@ import pandas as pd
 
 from .base import BaseDomainProcessor
 from ..transformers import NumericTransformer, DateTransformer
+from ...pandas_utils import ensure_numeric_series
 
 
 class MHProcessor(BaseDomainProcessor):
@@ -109,7 +110,7 @@ class MHProcessor(BaseDomainProcessor):
             frame["MHDY"] = pd.NA
             DateTransformer.compute_study_day(frame, "MHSTDTC", "MHDY", ref="RFSTDTC")
         if "MHDY" in frame.columns:
-            frame["MHDY"] = pd.to_numeric(frame["MHDY"], errors="coerce").astype(
+            frame["MHDY"] = ensure_numeric_series(frame["MHDY"], frame.index).astype(
                 "Int64"
             )
         dedup_keys = [k for k in ("USUBJID", "MHTERM") if k in frame.columns]

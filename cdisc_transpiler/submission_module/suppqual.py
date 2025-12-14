@@ -8,6 +8,8 @@ from __future__ import annotations
 
 import pandas as pd
 
+from ..pandas_utils import ensure_numeric_series, ensure_series
+
 from ..domains_module import get_domain
 
 # Markers that indicate missing/null values
@@ -42,12 +44,12 @@ def _clean_idvarval(values: pd.Series, is_seq: bool) -> pd.Series:
     Returns:
         Cleaned series
     """
+    series: pd.Series = ensure_series(values)
     if not is_seq:
-        return values.astype("string")
+        return series.astype("string")
+    numeric = ensure_numeric_series(series).astype("Int64")
     return (
-        pd.to_numeric(values, errors="coerce")
-        .astype("Int64")
-        .astype(str)
+        numeric.astype(str)
         .str.slice(0, 8)
     )
 
@@ -159,7 +161,9 @@ def build_suppqual(
     if not extra_cols:
         return None, set()
 
-    mapped_cols = set(mapped_df.columns) if mapped_df is not None else set()
+    if mapped_df is None:
+        return None, set()
+    mapped_cols = set(mapped_df.columns)
     seq_var = f"{domain}SEQ"
     if seq_var in mapped_cols:
         idvar: str | None = seq_var

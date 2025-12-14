@@ -6,6 +6,7 @@ import pandas as pd
 
 from .base import BaseDomainProcessor
 from ..transformers import TextTransformer, NumericTransformer, DateTransformer
+from ...pandas_utils import ensure_numeric_series
 from ...terminology_module import get_controlled_terminology
 
 
@@ -91,7 +92,7 @@ class PRProcessor(BaseDomainProcessor):
             else:
                 series = frame[col].astype("string").fillna("")
                 if col == "PRTPTNUM":
-                    numeric = pd.to_numeric(series, errors="coerce").fillna(default)
+                    numeric = ensure_numeric_series(series, frame.index).fillna(default)
                     frame[col] = numeric.astype(int)
                 else:
                     frame[col] = series.replace("", default)

@@ -65,7 +65,7 @@ class BaseDomainProcessor(ABC):
                 "string"
             ).str.strip().str.upper().isin({"", "NAN", "<NA>", "NONE", "NULL"})
             if missing_ids.any():
-                frame.drop(index=frame.index[missing_ids], inplace=True)
+                frame.drop(index=frame.index[missing_ids].to_list(), inplace=True)
                 frame.reset_index(drop=True, inplace=True)
 
 

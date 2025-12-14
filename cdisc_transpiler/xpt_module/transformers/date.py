@@ -12,6 +12,7 @@ import pandas as pd
 
 from ...domains_module import SDTMVariable
 from .iso8601 import normalize_iso8601, normalize_iso8601_duration
+from ...pandas_utils import ensure_series
 
 
 class DateTransformer:
@@ -141,16 +142,22 @@ class DateTransformer:
 
         dates = pd.to_datetime(frame[dtc_var], errors="coerce")
 
-        baseline = None
+        baseline: pd.Series | None = None
         if reference_starts and "USUBJID" in frame.columns:
-            baseline = frame["USUBJID"].map(reference_starts)
+            baseline_series = ensure_series(frame["USUBJID"])
+            baseline = baseline_series.map(reference_starts.get)
             baseline = pd.to_datetime(baseline, errors="coerce")
 
-        if baseline is None or baseline.isna().all():
+        if baseline is None:
             if ref and ref in frame.columns:
                 baseline = pd.to_datetime(frame[ref], errors="coerce")
             else:
                 # If no reference date available, cannot compute study day
+                return
+        if baseline.isna().all():
+            if ref and ref in frame.columns:
+                baseline = pd.to_datetime(frame[ref], errors="coerce")
+            else:
                 return
 
         # Fill missing baselines from available values
@@ -212,6 +219,6 @@ class DateTransformer:
             parsed = pd.to_datetime(fixed, errors="coerce", utc=False)
         except (TypeError, ValueError, OverflowError):
             parsed = pd.NaT
-        if pd.isna(parsed):
+        if not isinstance(parsed, pd.Timestamp):
             return ""
         return parsed.date().isoformat()

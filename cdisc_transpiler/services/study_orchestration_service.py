@@ -20,6 +20,7 @@ SDTM Reference:
 from __future__ import annotations
 
 import re
+import math
 from pathlib import Path
 
 import pandas as pd
@@ -118,10 +119,24 @@ class StudyOrchestrationService:
             usubjid = str(row.get("USUBJID", "") or "").strip()
             if not usubjid:
                 continue
-            visitnum = row.get("VISITNUM", pd.NA)
+            visitnum_raw = row.get("VISITNUM", pd.NA)
+            if visitnum_raw in (None, ""):
+                visitnum_float = None
+            else:
+                try:
+                    visitnum_float = float(visitnum_raw)
+                    if math.isnan(visitnum_float):
+                        visitnum_float = None
+                except Exception:
+                    visitnum_float = None
+            visitnum_value = visitnum_float if visitnum_float is not None else pd.NA
             visit = str(row.get("VISIT", "") or "").strip()
-            if not visit and pd.notna(visitnum):
-                visit = f"Visit {int(visitnum)}" if float(visitnum).is_integer() else ""
+            if not visit and visitnum_float is not None:
+                visit = (
+                    f"Visit {int(visitnum_float)}"
+                    if visitnum_float.is_integer()
+                    else ""
+                )
 
             vsdtc = row.get("VSDTC", "")
             status_cd = str(row.get("VSPERFCD", "") or "").strip().upper()
@@ -140,7 +155,15 @@ class StudyOrchestrationService:
                         continue
                         
                 value = row.get(f"ORRES_{testcd_raw}", pd.NA)
-                if status_cd != "N" and pd.isna(value):
+                if isinstance(value, pd.Series):
+                    value = value.iloc[0] if not value.empty else pd.NA
+                elif isinstance(value, pd.Index):
+                    value = value[0] if len(value) else pd.NA
+                try:
+                    missing_value = bool(pd.isna(value))
+                except Exception:
+                    missing_value = False
+                if status_cd != "N" and missing_value:
                     continue
                 unit_val = row.get(f"ORRESU_{testcd_raw}", "")
                 pos_val = row.get(f"POS_{testcd_raw}", "")
@@ -163,7 +186,7 @@ class StudyOrchestrationService:
                         "VSORRESU": "" if stat_val else unit_val,
                         "VSSTAT": stat_val,
                         "VSREASND": reason if stat_val else "",
-                        "VISITNUM": visitnum,
+                        "VISITNUM": visitnum_value,
                         "VISIT": visit,
                         "VSDTC": vsdtc,
                         "VSPOS": pos_val,
@@ -423,15 +446,17 @@ class StudyOrchestrationService:
         ds_seq_map = _seq_map(ds_df, "DSSEQ") if ds_df is not None else {}
 
         def _stringify(val: object, fallback_index: int) -> str:
-            if pd.isna(val):
+            if isinstance(val, pd.Series):
+                val = val.iloc[0] if not val.empty else None
+            elif isinstance(val, pd.Index):
+                val = val[0] if len(val) else None
+            if val is None:
                 return str(fallback_index)
             try:
-                numeric = pd.to_numeric(val)
-                if pd.isna(numeric):
-                    return str(val)
-                if float(numeric).is_integer():
-                    return str(int(numeric))
-                return str(numeric)
+                num_f = float(str(val))
+                if math.isnan(num_f):
+                    return str(fallback_index)
+                return str(int(num_f)) if num_f.is_integer() else str(num_f)
             except Exception:
                 return str(val)
 
@@ -456,11 +481,11 @@ class StudyOrchestrationService:
             )
 
         if ae_df is not None and ds_seq_map:
-            for idx, row in ae_df.iterrows():
+            for idx, (_, row) in enumerate(ae_df.iterrows(), start=1):
                 usubjid = str(row.get("USUBJID", "") or "").strip()
                 if not usubjid:
                     continue
-                aeseq = _stringify(row.get("AESEQ"), idx + 1)
+                aeseq = _stringify(row.get("AESEQ"), idx)
                 relid = f"AE_DS_{usubjid}_{aeseq}"
                 _add_pair("AE", usubjid, "AESEQ", aeseq, relid, None)
                 ds_seq = ds_seq_map.get(usubjid)
@@ -470,11 +495,11 @@ class StudyOrchestrationService:
                     )
 
         if ex_df is not None and ds_seq_map:
-            for idx, row in ex_df.iterrows():
+            for idx, (_, row) in enumerate(ex_df.iterrows(), start=1):
                 usubjid = str(row.get("USUBJID", "") or "").strip()
                 if not usubjid:
                     continue
-                exseq = _stringify(row.get("EXSEQ"), idx + 1)
+                exseq = _stringify(row.get("EXSEQ"), idx)
                 relid = f"EX_DS_{usubjid}_{exseq}"
                 _add_pair("EX", usubjid, "EXSEQ", exseq, relid, None)
                 ds_seq = ds_seq_map.get(usubjid)

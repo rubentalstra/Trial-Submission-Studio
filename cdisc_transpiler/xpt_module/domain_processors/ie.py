@@ -140,7 +140,9 @@ class IEProcessor(BaseDomainProcessor):
                 )
         else:
             if self.reference_starts and "USUBJID" in frame.columns:
-                frame["IEDTC"] = frame["USUBJID"].map(self.reference_starts)
+                frame["IEDTC"] = frame["USUBJID"].map(
+                    lambda key: self.reference_starts.get(str(key), "")
+                )
             else:
                 frame["IEDTC"] = frame.get("RFSTDTC", "")
         if "IEDY" in frame.columns:

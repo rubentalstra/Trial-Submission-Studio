@@ -49,6 +49,11 @@ def _clean_value(raw: object) -> str:
     """
     if raw is None:
         return ""
+    if isinstance(raw, (pd.Series, pd.DataFrame)):
+        try:
+            raw = raw.iloc[0]  # type: ignore[index]
+        except Exception:
+            return ""
     try:
         if isinstance(raw, float) and math.isnan(raw):
             return ""
@@ -56,8 +61,12 @@ def _clean_value(raw: object) -> str:
         pass
     if isinstance(raw, str):
         return raw.strip()
-    if pd.isna(raw):
-        return ""
+    if not isinstance(raw, (pd.Series, pd.DataFrame)):
+        try:
+            if bool(pd.isna(raw)):
+                return ""
+        except Exception:
+            pass
     return str(raw).strip()
 
 

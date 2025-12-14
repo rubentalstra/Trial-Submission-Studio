@@ -437,18 +437,24 @@ def study_command(
             if generate_define and result.get("domain_dataframe") is not None:
                 domain = get_domain(domain_code)
                 disk_name = domain.resolved_dataset_name().lower()
-                if output_format in ("xpt", "both"):
+                if output_format in ("xpt", "both") and xpt_dir is not None:
                     dataset_path = xpt_dir / f"{disk_name}.xpt"
                     dataset_href = dataset_path.relative_to(output_dir)
-                else:
+                elif xml_dir is not None:
                     dataset_path = xml_dir / f"{disk_name}.xml"
                     dataset_href = dataset_path.relative_to(output_dir)
+                else:
+                    continue
+
+                config = result.get("config")
+                if config is None:
+                    continue
 
                 study_datasets.append(
                     StudyDataset(
                         domain_code=domain_code,
                         dataframe=result["domain_dataframe"],
-                        config=result["config"],
+                        config=config,
                         archive_location=dataset_href,
                     )
                 )
@@ -464,7 +470,7 @@ def study_command(
                             StudyDataset(
                                 domain_code=split_name,
                                 dataframe=split_df,
-                                config=result.get("config"),
+                                config=config,
                                 archive_location=split_href,
                                 is_split=True,
                                 split_suffix=split_name[len(domain_code) :]

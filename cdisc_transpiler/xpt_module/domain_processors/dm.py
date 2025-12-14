@@ -6,6 +6,7 @@ import pandas as pd
 
 from .base import BaseDomainProcessor
 from ..transformers import TextTransformer, DateTransformer
+from ...pandas_utils import ensure_series
 
 
 class DMProcessor(BaseDomainProcessor):
@@ -54,9 +55,9 @@ class DMProcessor(BaseDomainProcessor):
 
         # Planned/actual arms: fill when missing, but keep supplied values
         def _fill_arm(col: str, default: str) -> pd.Series:
-            series = (
-                frame.get(col, pd.Series([""] * len(frame))).astype("string").fillna("")
-            )
+            series = ensure_series(
+                frame.get(col, pd.Series([""] * len(frame))), index=frame.index
+            ).astype("string").fillna("")
             empty = series.str.strip() == ""
             series.loc[empty] = default
             frame[col] = series
@@ -68,7 +69,9 @@ class DMProcessor(BaseDomainProcessor):
         actarm = _fill_arm("ACTARM", "Treatment Arm")
         # Populate ACTARMUD to avoid empty expected variables
         frame["ACTARMUD"] = (
-            frame.get("ACTARMUD", pd.Series([""] * len(frame)))
+            ensure_series(
+                frame.get("ACTARMUD", pd.Series([""] * len(frame))), index=frame.index
+            )
             .astype("string")
             .fillna("")
         )
@@ -147,13 +150,9 @@ class DMProcessor(BaseDomainProcessor):
         else:
             frame["SEX"] = "U"
         # Death variables: expected in SDTM (Exp core)
-        rfendtc = (
-            frame.get("RFENDTC", pd.Series([""] * len(frame)))
-            .astype("string")
-            .fillna("")
-            .str.split("T")
-            .str[0]
-        )
+        rfendtc = ensure_series(
+            frame.get("RFENDTC", pd.Series([""] * len(frame))), index=frame.index
+        ).astype("string").fillna("").str.split("T").str[0]
         if "DTHDTC" not in frame.columns:
             frame["DTHDTC"] = rfendtc
         else:

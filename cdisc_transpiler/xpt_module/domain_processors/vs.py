@@ -7,6 +7,7 @@ import pandas as pd
 from .base import BaseDomainProcessor
 from ..transformers import TextTransformer, NumericTransformer, DateTransformer
 from ...terminology_module import get_controlled_terminology
+from ...pandas_utils import ensure_numeric_series, ensure_series
 
 
 class VSProcessor(BaseDomainProcessor):
@@ -32,16 +33,16 @@ class VSProcessor(BaseDomainProcessor):
             frame["VISITNUM"] = (frame.groupby("USUBJID").cumcount() + 1).astype(int)
             frame["VISIT"] = frame["VISITNUM"].apply(lambda n: f"Visit {n}")
 
-        vstestcd_series = frame.get("VSTESTCD", pd.Series([""] * len(frame)))
+        vstestcd_series = ensure_series(
+            frame.get("VSTESTCD", pd.Series([""] * len(frame))), index=frame.index
+        )
         vstestcd_upper = vstestcd_series.astype("string").str.upper().str.strip()
         has_any_test = vstestcd_upper.ne("").any()
 
         # Preserve VSSTAT from upstream mapping/derivation
-        frame["VSSTAT"] = (
-            frame.get("VSSTAT", pd.Series([""] * len(frame)))
-            .astype("string")
-            .fillna("")
-        )
+        frame["VSSTAT"] = ensure_series(
+            frame.get("VSSTAT", pd.Series([""] * len(frame))), index=frame.index
+        ).astype("string").fillna("")
 
         default_unit = "beats/min" if not has_any_test else ""
         frame["VSORRESU"] = TextTransformer.replace_unknown(
@@ -134,10 +135,10 @@ class VSProcessor(BaseDomainProcessor):
             frame["VSSTRESU"] = normalized_st
         if "VSSTRESN" in frame.columns:
             numeric = pd.to_numeric(frame["VSORRES"], errors="coerce")
-            frame["VSSTRESN"] = numeric
+            frame["VSSTRESN"] = ensure_numeric_series(numeric, frame.index)
         NumericTransformer.assign_sequence(frame, "VSSEQ", "USUBJID")
         if "VSLOBXFL" in frame.columns:
-            frame["VSLOBXFL"] = frame["VSLOBXFL"].astype("string").fillna("")
+            frame["VSLOBXFL"] = ensure_series(frame["VSLOBXFL"]).astype("string").fillna("")
             if {"USUBJID", "VSTESTCD", "VSPOS"} <= set(frame.columns):
                 group_cols = ["USUBJID", "VSTESTCD", "VSPOS"]
             else:
@@ -146,7 +147,9 @@ class VSProcessor(BaseDomainProcessor):
             last_idx = frame.groupby(group_cols).tail(1).index
             frame.loc[last_idx, "VSLOBXFL"] = "Y"
             not_done_mask = (
-                frame.get("VSSTAT", pd.Series([""] * len(frame)))
+                ensure_series(
+                    frame.get("VSSTAT", pd.Series([""] * len(frame))), index=frame.index
+                )
                 .astype("string")
                 .str.upper()
                 == "NOT DONE"
@@ -178,8 +181,8 @@ class VSProcessor(BaseDomainProcessor):
         frame["VSTPTREF"] = "VISIT"
         frame["VSTPT"] = "VISIT"
         if "VISITNUM" in frame.columns:
-            frame["VSTPTNUM"] = pd.to_numeric(
-                frame["VISITNUM"], errors="coerce"
+            frame["VSTPTNUM"] = ensure_numeric_series(
+                frame["VISITNUM"], frame.index
             ).fillna(1)
         else:
             frame["VSTPTNUM"] = 1

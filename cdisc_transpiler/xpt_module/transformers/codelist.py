@@ -6,12 +6,13 @@ controlled terminology (codelist) values according to CDISC standards.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING, Sequence, Any
 
 import pandas as pd
 
 from ...terminology_module import get_controlled_terminology
 from ...domains_module import SDTMVariable
+from ...pandas_utils import ensure_numeric_series, ensure_series
 
 if TYPE_CHECKING:
     from ...metadata_module import StudyMetadata
@@ -37,7 +38,7 @@ class CodelistTransformer:
 
     def apply_codelist_transformation(
         self,
-        source_data: pd.Series,
+        source_data: Any,
         codelist_name: str,
         code_column: str | None = None,
         source_frame: pd.DataFrame | None = None,
@@ -56,11 +57,11 @@ class CodelistTransformer:
             Transformed series with text values
         """
         if not self.metadata:
-            return source_data
+            return ensure_series(source_data)
 
         codelist = self.metadata.get_codelist(codelist_name)
         if not codelist:
-            return source_data
+            return ensure_series(source_data)
 
         # If we have a code column, use it for lookup
         if code_column and source_frame is not None:
@@ -71,7 +72,7 @@ class CodelistTransformer:
                     code_col = alt
 
             if code_col in source_frame.columns:
-                code_values = source_frame[code_col]
+                code_values = ensure_series(source_frame[code_col], index=source_data.index if hasattr(source_data, "index") else None)
 
                 def transform(code_val):
                     if pd.isna(code_val):
@@ -79,7 +80,7 @@ class CodelistTransformer:
                     text = codelist.get_text(code_val)
                     return text if text is not None else str(code_val)
 
-                return code_values.apply(transform)
+                return ensure_series(code_values.apply(transform), index=code_values.index)
 
         # Otherwise, try to transform the source data directly
         def transform_value(val):
@@ -92,7 +93,8 @@ class CodelistTransformer:
             # If not found in codelist, return as-is
             return val
 
-        return source_data.apply(transform_value)
+        series = ensure_series(source_data)
+        return ensure_series(series.apply(transform_value), index=series.index)
 
     @staticmethod
     def apply_codelist_validations(
@@ -156,9 +158,9 @@ class CodelistTransformer:
             invalid = ct.invalid_values(frame[variable.name])
             if invalid:
                 canonical_default = sorted(ct.submission_values)[0]
-                series = frame[variable.name].astype(str)
+                series = ensure_series(frame[variable.name]).astype(str)
                 frame[variable.name] = series.where(
-                    ~series.isin(invalid), canonical_default
+                    ~series.isin(list(invalid)), canonical_default
                 )
 
     @staticmethod
@@ -238,11 +240,8 @@ class CodelistTransformer:
             "AEBDSYCD",
         ):
             if code_var in frame.columns:
-                frame[code_var] = (
-                    pd.to_numeric(frame[code_var], errors="coerce")
-                    .fillna(999999)
-                    .astype("Int64")
-                )
+                code_series = ensure_numeric_series(frame[code_var], index=frame.index)
+                frame[code_var] = code_series.fillna(999999).astype("Int64")
             else:
                 frame[code_var] = pd.Series(
                     [999999 for _ in frame.index], dtype="Int64"

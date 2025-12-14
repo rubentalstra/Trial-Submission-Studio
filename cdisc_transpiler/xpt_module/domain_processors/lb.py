@@ -7,6 +7,7 @@ import pandas as pd
 from .base import BaseDomainProcessor
 from ..transformers import TextTransformer, NumericTransformer, DateTransformer
 from ...terminology_module import get_controlled_terminology
+from ...pandas_utils import ensure_numeric_series, ensure_series
 
 
 class LBProcessor(BaseDomainProcessor):
@@ -129,7 +130,7 @@ class LBProcessor(BaseDomainProcessor):
             )
 
         if "LBSTRESC" in frame.columns and "LBSTRESN" in frame.columns:
-            numeric = pd.to_numeric(frame["LBSTRESC"], errors="coerce")
+            numeric = ensure_numeric_series(frame["LBSTRESC"], frame.index)
             frame["LBSTRESN"] = numeric
             frame.loc[numeric.isna(), "LBSTRESN"] = pd.NA
         if "LBORRES" in frame.columns and "LBSTRESC" in frame.columns:
@@ -154,12 +155,12 @@ class LBProcessor(BaseDomainProcessor):
                     ]
 
         if "LBSTRESN" in frame.columns:
-            frame["LBSTRESN"] = pd.to_numeric(frame["LBSTRESN"], errors="coerce")
+            frame["LBSTRESN"] = ensure_numeric_series(frame["LBSTRESN"], frame.index)
             needs_stresn = frame["LBSTRESN"].isna() & (
                 frame["LBSTRESC"].astype("string").fillna("").str.strip() != ""
             )
-            numeric_fill = pd.to_numeric(
-                frame.loc[needs_stresn, "LBSTRESC"], errors="coerce"
+            numeric_fill = ensure_numeric_series(
+                frame.loc[needs_stresn, "LBSTRESC"], frame.index
             )
             frame.loc[needs_stresn, "LBSTRESN"] = numeric_fill
             frame.loc[
@@ -181,7 +182,7 @@ class LBProcessor(BaseDomainProcessor):
                 )
         for col in ("LBSTNRLO", "LBSTNRHI"):
             if col in frame.columns:
-                frame[col] = pd.to_numeric(frame[col], errors="coerce").fillna(0)
+                frame[col] = ensure_numeric_series(frame[col], frame.index).fillna(0)
         # Provide default units for non-missing results using CT values
         if "LBORRES" in frame.columns and "LBORRESU" in frame.columns:
             orres_str = frame["LBORRES"].astype("string").fillna("").str.strip()
@@ -230,7 +231,7 @@ class LBProcessor(BaseDomainProcessor):
             ] = "NOT DONE"
 
         if "LBORRES" in frame.columns:
-            numeric_orres = pd.to_numeric(frame["LBORRES"], errors="coerce")
+            numeric_orres = ensure_numeric_series(frame["LBORRES"], frame.index)
             range_cols = [
                 frame[col]
                 for col in ("LBORNRLO", "LBORNRHI", "LBSTNRLO", "LBSTNRHI")
@@ -292,13 +293,13 @@ class LBProcessor(BaseDomainProcessor):
                 frame[dup_keys].astype("string").fillna("").replace({"<NA>": ""})
             )
             keep_mask = ~frame.duplicated(subset=dup_keys, keep="first")
-            frame.drop(index=frame.index[~keep_mask], inplace=True)
+            frame.drop(index=frame.index[~keep_mask].to_list(), inplace=True)
             frame.reset_index(drop=True, inplace=True)
             frame["LBSEQ"] = frame.groupby("USUBJID").cumcount() + 1
         # Final deduplication pass using the same subset to eliminate residual duplicates
         if dup_keys:
             keep_mask = ~frame.duplicated(subset=dup_keys, keep="first")
-            frame.drop(index=frame.index[~keep_mask], inplace=True)
+            frame.drop(index=frame.index[~keep_mask].to_list(), inplace=True)
             frame.reset_index(drop=True, inplace=True)
             frame["LBSEQ"] = frame.groupby("USUBJID").cumcount() + 1
         # Collapse to one record per subject/test/date to eliminate remaining duplicates
@@ -330,15 +331,16 @@ class LBProcessor(BaseDomainProcessor):
         # Drop optional columns that are fully empty to avoid order/presence warnings
         for col in ("LBBDAGNT", "LBCLSIG", "LBREFID", "LBSCAT"):
             if col in frame.columns:
+                series = ensure_series(frame[col])
                 if (
-                    frame[col].isna().all()
-                    or (frame[col].astype("string").fillna("").str.strip() == "").all()
+                    series.isna().all()
+                    or (series.astype("string").fillna("").str.strip() == "").all()
                 ):
                     frame.drop(columns=[col], inplace=True)
         # Ensure LBSTRESN is populated when STRESC is numeric
         if {"LBSTRESC", "LBSTRESN"} <= set(frame.columns):
-            numeric = pd.to_numeric(frame["LBSTRESC"], errors="coerce")
-            needs_numeric = frame["LBSTRESN"].isna()
+            numeric = ensure_numeric_series(frame["LBSTRESC"], frame.index)
+            needs_numeric = ensure_series(frame["LBSTRESN"]).isna()
             frame.loc[needs_numeric, "LBSTRESN"] = numeric.loc[needs_numeric]
         # Final pass: ensure LBSTRESC is never empty when LBORRES exists
         if {"LBORRES", "LBSTRESC"} <= set(frame.columns):
@@ -373,15 +375,17 @@ class LBProcessor(BaseDomainProcessor):
             )
         # Ensure numeric STRESN whenever possible
         if "LBSTRESN" not in frame.columns and "LBSTRESC" in frame.columns:
-            frame["LBSTRESN"] = pd.to_numeric(frame["LBSTRESC"], errors="coerce")
+            frame["LBSTRESN"] = ensure_numeric_series(frame["LBSTRESC"], frame.index)
         elif {"LBSTRESN", "LBSTRESC"} <= set(frame.columns):
-            numeric = pd.to_numeric(frame["LBSTRESC"], errors="coerce")
-            needs = frame["LBSTRESN"].isna()
+            numeric = ensure_numeric_series(frame["LBSTRESC"], frame.index)
+            needs = ensure_series(frame["LBSTRESN"]).isna()
             frame.loc[needs, "LBSTRESN"] = numeric.loc[needs].astype(float)
         # Ensure study/visit day fields are numeric for metadata alignment
         for col in ("LBDY", "LBENDY", "VISITDY", "VISITNUM"):
             if col in frame.columns:
-                frame[col] = pd.to_numeric(frame[col], errors="coerce").astype("Int64")
+                frame[col] = (
+                    ensure_numeric_series(frame[col], frame.index).astype("Int64")
+                )
         if {"VISITDY", "LBDY"} <= set(frame.columns):
             empty_visitdy = frame["VISITDY"].isna()
             frame.loc[empty_visitdy, "VISITDY"] = frame.loc[empty_visitdy, "LBDY"]
@@ -406,7 +410,7 @@ class LBProcessor(BaseDomainProcessor):
                 collapsed["VISIT"] = collapsed["VISITNUM"].apply(
                     lambda n: f"Visit {int(n)}"
                 )
-            frame.drop(frame.index, inplace=True)
+            frame.drop(frame.index.tolist(), inplace=True)
             frame.drop(columns=list(frame.columns), inplace=True)
             for col in collapsed.columns:
                 frame[col] = collapsed[col].values
