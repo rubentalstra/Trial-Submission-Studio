@@ -51,18 +51,3 @@ class ProgressTracker:
             console.print(f"  [red]Errors: {self.errors}[/red]")
         if self.warnings:
             console.print(f"  [yellow]Warnings: {self.warnings}[/yellow]")
-
-
-def log_success(message: str) -> None:
-    """Log success message."""
-    console.print(f"[green]✓[/green] {message}")
-
-
-def log_warning(message: str) -> None:
-    """Log warning message."""
-    console.print(f"[yellow]⚠[/yellow] {message}")
-
-
-def log_error(message: str) -> None:
-    """Log error message."""
-    console.print(f"[red]✗[/red] {message}")
