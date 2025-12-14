@@ -256,7 +256,7 @@ def study_command(
 
     processed_domains = set(domain_files.keys())
     # Process each domain
-    results: list[dict] = []
+    results: list[dict[str, Any]] = []
     errors: list[tuple[str, str]] = []
     study_datasets: list[StudyDataset] = []  # For Define-XML generation
 

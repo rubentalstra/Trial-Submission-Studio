@@ -12,7 +12,7 @@ from typing import Callable
 import pandas as pd
 
 try:  # pragma: no cover - optional dependency at runtime
-    import pyreadstat
+    import pyreadstat  # type: ignore[import-untyped]
 except ModuleNotFoundError:  # pragma: no cover
     pyreadstat = None
 

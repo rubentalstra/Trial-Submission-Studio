@@ -20,14 +20,14 @@ _SDTM_DATASETS_PATH = (
 
 # Global registries
 _DOMAIN_DEFINITIONS: dict[str, SDTMDomain] = {}
-_sdtmig_cache: dict[str, list[dict]] | None = None
-_sdtm_v2_cache: dict[str, list[dict]] | None = None
+_sdtmig_cache: dict[str, list[dict[str, Any]]] | None = None
+_sdtm_v2_cache: dict[str, list[dict[str, Any]]] | None = None
 _dataset_attributes: dict[str, dict[str, str]] = {}
 _general_class_variables: dict[str, dict[str, Any]] = {}
 _general_class_usage: dict[str, dict[str, set[str]]] = {}
 
 
-def _load_sdtmig_cache() -> dict[str, list[dict]]:
+def _load_sdtmig_cache() -> dict[str, list[dict[str, Any]]]:
     """Load SDTMIG v3.4 metadata from CSV."""
     global _sdtmig_cache
     if _sdtmig_cache is None:
@@ -35,7 +35,7 @@ def _load_sdtmig_cache() -> dict[str, list[dict]]:
     return _sdtmig_cache
 
 
-def _load_sdtm_v2_cache() -> dict[str, list[dict]]:
+def _load_sdtm_v2_cache() -> dict[str, list[dict[str, Any]]]:
     """Load SDTM v2.0 metadata from CSV (used as fallback/enrichment)."""
     global _sdtm_v2_cache
     if _sdtm_v2_cache is None:

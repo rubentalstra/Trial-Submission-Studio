@@ -133,7 +133,7 @@ def write_variant_splits(
 
 
 def print_study_summary(
-    results: list[dict],
+    results: list[dict[str, Any]],
     errors: list[tuple[str, str]],
     output_dir: Path,
     output_format: str,

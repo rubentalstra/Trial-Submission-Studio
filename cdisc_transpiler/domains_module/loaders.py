@@ -4,15 +4,16 @@ from __future__ import annotations
 
 import csv
 from pathlib import Path
+from typing import Any
 
 
 def load_csv_rows(
     path: Path, dataset_field: str = "Dataset Name"
-) -> dict[str, list[dict]]:
+) -> dict[str, list[dict[str, Any]]]:
     """Load SDTM metadata rows keyed by dataset/domain code."""
     if not path.exists():
         return {}
-    data: dict[str, list[dict]] = {}
+    data: dict[str, list[dict[str, Any]]] = {}
     with path.open(newline="", encoding="utf-8") as handle:
         reader = csv.DictReader(handle)
         for row in reader:
