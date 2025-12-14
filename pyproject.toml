@@ -43,3 +43,4 @@ pythonVersion = "3.12"
 typeCheckingMode = "strict"
 useLibraryCodeForTypes = true
 reportMissingImports = "error"
+reportMissingTypeStubs = true

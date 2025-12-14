@@ -43,9 +43,6 @@ from .config_io import (
     load_config,
     save_config,
 )
-from .constants import (
-    SDTM_INFERENCE_PATTERNS,
-)
 from .engine import (
     MappingEngine,
 )
@@ -117,8 +114,6 @@ __all__ = [
     # Configuration I/O
     "load_config",
     "save_config",
-    # Constants
-    "SDTM_INFERENCE_PATTERNS",
     # Engines
     "MappingEngine",
     "MetadataAwareMapper",

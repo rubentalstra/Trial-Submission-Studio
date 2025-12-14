@@ -16,7 +16,6 @@ if TYPE_CHECKING:
     from ..metadata_module import StudyMetadata
 
 from ..domains_module import get_domain, SDTMDomain, SDTMVariable
-from .constants import SDTM_INFERENCE_PATTERNS
 from .models import ColumnMapping, MappingSuggestions, Suggestion
 from .utils import normalize_text, safe_column_name
 
