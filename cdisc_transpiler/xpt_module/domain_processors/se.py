@@ -6,6 +6,7 @@ import pandas as pd
 
 from .base import BaseDomainProcessor
 from ..transformers import NumericTransformer, DateTransformer
+from ...constants import Defaults
 
 
 class SEProcessor(BaseDomainProcessor):
@@ -50,7 +51,7 @@ class SEProcessor(BaseDomainProcessor):
                     "ETCD": "SCRN",
                     "ELEMENT": "SCREENING",
                     "EPOCH": "SCREENING",
-                    "SESTDTC": start or "2023-01-01",
+                    "SESTDTC": start or Defaults.DATE,
                     "SEENDTC": start or "2023-01-02",
                 }
             )
@@ -63,7 +64,7 @@ class SEProcessor(BaseDomainProcessor):
                     "ETCD": "TRT",
                     "ELEMENT": "TREATMENT",
                     "EPOCH": "TREATMENT",
-                    "SESTDTC": start or "2023-01-01",
+                    "SESTDTC": start or Defaults.DATE,
                     "SEENDTC": start or "2023-01-02",
                 }
             )

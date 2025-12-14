@@ -13,6 +13,7 @@ from typing import Any
 
 import pandas as pd
 
+from ..constants import Defaults
 from ..domains_module import SDTMVariable, SDTMDomain, get_domain
 from ..mapping_module import ColumnMapping, MappingConfig, build_config
 from ..sas_module import generate_sas_program, write_sas_file
@@ -155,8 +156,8 @@ class DomainSynthesisCoordinator:
         """Pick a reference subject and date."""
         if ref_starts:
             first_id = sorted(ref_starts.keys())[0]
-            return first_id, ref_starts.get(first_id) or "2023-01-01"
-        return "SYNTH001", "2023-01-01"
+            return first_id, ref_starts.get(first_id) or Defaults.DATE
+        return Defaults.SUBJECT_ID, Defaults.DATE
 
     def _generate_trial_design_rows(
         self,

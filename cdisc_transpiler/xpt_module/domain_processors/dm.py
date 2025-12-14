@@ -6,6 +6,7 @@ import pandas as pd
 
 from .base import BaseDomainProcessor
 from ..transformers import TextTransformer, DateTransformer
+from ...constants import Defaults
 from ...pandas_utils import ensure_series
 
 
@@ -190,13 +191,13 @@ class DMProcessor(BaseDomainProcessor):
             empty_dmdtc = frame["DMDTC"].astype(str).str.strip() == ""
             frame.loc[empty_dmdtc, "DMDTC"] = frame.loc[empty_dmdtc, "RFSTDTC"]
         else:
-            frame["DMDTC"] = frame.get("RFSTDTC", "2023-01-01")
+            frame["DMDTC"] = frame.get("RFSTDTC", Defaults.DATE)
         for col in ("RFCSTDTC", "RFCENDTC"):
             if col in frame.columns:
                 mask = frame[col].astype(str).str.strip() == ""
                 frame.loc[mask, col] = frame.loc[mask, "RFSTDTC"]
             else:
-                frame[col] = frame.get("RFSTDTC", "2023-01-01")
+                frame[col] = frame.get("RFSTDTC", Defaults.DATE)
         # Set RFICDTC first (informed consent date - earliest)
         start_series = (
             frame["RFSTDTC"]
@@ -212,7 +213,7 @@ class DMProcessor(BaseDomainProcessor):
                 frame.loc[empty_rfic, "RFICDTC"] = start_series.loc[empty_rfic]
             still_empty = frame["RFICDTC"].astype("string").fillna("").str.strip() == ""
             if still_empty.any():
-                frame.loc[still_empty, "RFICDTC"] = "2023-01-01"
+                frame.loc[still_empty, "RFICDTC"] = Defaults.DATE
 
         # Then set RFSTDTC (study start) - should be same or after RFICDTC
         if "RFSTDTC" in frame.columns:
@@ -221,7 +222,7 @@ class DMProcessor(BaseDomainProcessor):
             frame.loc[mask, "RFSTDTC"] = frame.loc[mask, "RFICDTC"]
             rfstdtc_fallback = frame["RFSTDTC"]
         else:
-            frame["RFSTDTC"] = frame.get("RFICDTC", "2023-01-01")
+            frame["RFSTDTC"] = frame.get("RFICDTC", Defaults.DATE)
             rfstdtc_fallback = frame["RFSTDTC"]
 
         # Prevent consent after first treatment start by aligning to RFSTDTC
@@ -254,7 +255,7 @@ class DMProcessor(BaseDomainProcessor):
                         ends_before_start, "RFSTDTC"
                     ]
         # DMDTC and DMDY should align with RFSTDTC
-        frame["DMDTC"] = frame.get("RFSTDTC", frame.get("RFICDTC", "2023-01-01"))
+        frame["DMDTC"] = frame.get("RFSTDTC", frame.get("RFICDTC", Defaults.DATE))
         if "DMDY" in frame.columns:
             DateTransformer.compute_study_day(frame, "DMDTC", "DMDY", ref="RFSTDTC")
         else:

@@ -6,6 +6,7 @@ import pandas as pd
 
 from .base import BaseDomainProcessor
 from ..transformers import TextTransformer, NumericTransformer, DateTransformer
+from ...constants import Defaults
 from ...pandas_utils import ensure_series
 
 
@@ -31,7 +32,7 @@ class EXProcessor(BaseDomainProcessor):
         frame["EXSEQ"] = frame.groupby("USUBJID").cumcount() + 1
         frame["EXSEQ"] = NumericTransformer.force_numeric(frame["EXSEQ"])
         frame["EXSTDTC"] = TextTransformer.replace_unknown(
-            frame.get("EXSTDTC", pd.Series([""] * len(frame))), "2023-01-01"
+            frame.get("EXSTDTC", pd.Series([""] * len(frame))), Defaults.DATE
         )
         end_series = frame.get("EXENDTC", pd.Series([""] * len(frame)))
         end_series = TextTransformer.replace_unknown(end_series, "2023-12-31")
@@ -113,7 +114,7 @@ class EXProcessor(BaseDomainProcessor):
                         DateTransformer.coerce_iso8601(
                             self.reference_starts.get(usubjid, "")
                         )
-                        or "2023-01-01"
+                        or Defaults.DATE
                     )
                     filler.append(
                         {
