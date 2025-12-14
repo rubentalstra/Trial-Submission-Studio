@@ -8,7 +8,7 @@ version = "0.0.1"
 description = "CLI tool that converts CDISC SDTM source data to SAS v5 code."
 readme = "README.md"
 authors = [{ name = "Ruben Talstra" }]
-requires-python = ">=3.10"
+requires-python = ">=3.12"
 dependencies = [
     "click==8.3.1",
     "rich==14.2.0",
@@ -28,3 +28,19 @@ cdisc-transpiler = "cdisc_transpiler.cli:app"
 
 [tool.setuptools.packages.find]
 include = ["cdisc_transpiler*"]
+
+[tool.pyright]
+include = ["cdisc_transpiler"]
+exclude = [
+    "**/__pycache__",
+    ".venv",
+    "build",
+    "dist",
+    "cdisc_transpiler.egg-info",
+]
+pythonVersion = "3.12"
+typeCheckingMode = "strict"
+useLibraryCodeForTypes = true
+venvPath = "."
+venv = ".venv"
+reportMissingImports = "error"
