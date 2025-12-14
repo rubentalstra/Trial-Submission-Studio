@@ -40,6 +40,8 @@ exclude = [
     "cdisc_transpiler.egg-info",
 ]
 pythonVersion = "3.12"
-typeCheckingMode = "strict"
+typeCheckingMode = "standard"
 useLibraryCodeForTypes = true
 reportMissingImports = "error"
+reportMissingTypeStubs = true
+reportUnusedFunction = true

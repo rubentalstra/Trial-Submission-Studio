@@ -16,8 +16,8 @@ if TYPE_CHECKING:
     from ..io_module import Hints
 
 from ..domains_module import get_domain, SDTMDomain, SDTMVariable
-from .constants import SDTM_INFERENCE_PATTERNS
 from .models import ColumnMapping, MappingSuggestions, Suggestion
+from .pattern_builder import build_variable_patterns
 from .utils import normalize_text, safe_column_name
 
 
@@ -52,6 +52,9 @@ class MappingEngine:
         self.min_confidence = min_confidence
         self.column_hints: Hints = column_hints or {}
         self.valid_targets: set[str] = set(self.domain.variable_names())
+        
+        # Build dynamic patterns from domain metadata
+        self._variable_patterns = build_variable_patterns(self.domain)
 
     def suggest(self, frame: pd.DataFrame) -> MappingSuggestions:
         """Suggest mappings for all columns in the DataFrame.
@@ -65,7 +68,7 @@ class MappingEngine:
         suggestions: list[ColumnMapping] = []
         unmapped: list[str] = []
         assigned_targets: set[str] = set()
-        
+
         # First pass: collect alias overrides
         column_details: list[tuple[str, str | None]] = [
             (column, self._alias_override(column)) for column in frame.columns
@@ -95,26 +98,26 @@ class MappingEngine:
             if column in alias_mappings:
                 suggestions.append(alias_mappings[column])
                 continue
-                
+
             # Skip if there was an alias collision
             if column in alias_collisions:
                 unmapped.append(column)
                 continue
-                
+
             # Try fuzzy matching
             match = self._best_match(column)
             if match is None or match.confidence < self.min_confidence:
                 unmapped.append(column)
                 continue
-                
+
             candidate = match.candidate
             confidence = match.confidence
-            
+
             # Skip if target already assigned
             if candidate in assigned_targets:
                 unmapped.append(column)
                 continue
-                
+
             assigned_targets.add(candidate)
             suggestions.append(
                 ColumnMapping(
@@ -124,7 +127,7 @@ class MappingEngine:
                     confidence_score=confidence,
                 )
             )
-            
+
         return MappingSuggestions(mappings=suggestions, unmapped_columns=unmapped)
 
     def _best_match(self, column: str) -> Suggestion | None:
@@ -138,27 +141,25 @@ class MappingEngine:
         """
         normalized = normalize_text(column)
         best: Suggestion | None = None
-        
+
         for variable in self.domain.variables:
             # Try both raw and normalized matching
             score_raw = fuzz.token_set_ratio(column.upper(), variable.name)
             score_norm = fuzz.ratio(normalized, variable.name)
             score = max(score_raw, score_norm) / 100
-            
+
             # Apply hint-based adjustments
             score = self._apply_hints(column, variable, score)
-            
+
             if not best or score > best.confidence:
                 best = Suggestion(
-                    column=column, 
-                    candidate=variable.name, 
-                    confidence=score
+                    column=column, candidate=variable.name, confidence=score
                 )
-                
+
         return best
 
     def _alias_override(self, column: str) -> str | None:
-        """Check if column matches a known pattern from SDTM_INFERENCE_PATTERNS.
+        """Check if column matches a known pattern from domain metadata.
 
         Args:
             column: Source column name
@@ -168,26 +169,14 @@ class MappingEngine:
         """
         normalized = normalize_text(column)
 
-        # Check global patterns
-        for target, sources in SDTM_INFERENCE_PATTERNS.get("_GLOBAL", {}).items():
-            if normalized in [normalize_text(s) for s in sources]:
-                if target in self.valid_targets:
-                    return target
-
-        # Check domain-specific suffix patterns
-        domain_code = self.domain.code.upper()
-        for suffix, sources in SDTM_INFERENCE_PATTERNS.get("_DOMAIN_SUFFIXES", {}).items():
-            target = domain_code + suffix
+        # Check against dynamic patterns for each variable
+        for target_var, patterns in self._variable_patterns.items():
+            if target_var not in self.valid_targets:
+                continue
             
-            # Check with domain prefix
-            if normalized in [normalize_text(domain_code + s) for s in sources]:
-                if target in self.valid_targets:
-                    return target
-                    
-            # Check suffix patterns directly
-            if normalized in [normalize_text(s) for s in sources]:
-                if target in self.valid_targets:
-                    return target
+            for pattern in patterns:
+                if normalized == pattern:
+                    return target_var
 
         return None
 
@@ -205,20 +194,20 @@ class MappingEngine:
         hint = self.column_hints.get(column)
         if not hint:
             return score
-            
+
         adjusted = score
         variable_is_numeric = variable.type.lower() == "num"
-        
+
         # Penalize type mismatches
         if variable_is_numeric != hint.is_numeric:
             adjusted *= 0.85
-            
+
         # SEQ variables should have high uniqueness
         if variable.name.endswith("SEQ") and hint.unique_ratio < 0.5:
             adjusted *= 0.9
-            
+
         # Required variables shouldn't have high null ratio
         if hint.null_ratio > 0.5 and (variable.core or "").strip().lower() == "req":
             adjusted *= 0.9
-            
+
         return adjusted

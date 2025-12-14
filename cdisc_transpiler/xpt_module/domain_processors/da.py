@@ -82,10 +82,25 @@ class DAProcessor(BaseDomainProcessor):
         if "DASTRESN" not in frame.columns:
             frame["DASTRESN"] = numeric_stresc
         else:
+            from ...cli.logging_config import get_logger
+            
+            logger = get_logger()
             coerced = ensure_numeric_series(frame["DASTRESN"], frame.index)
             needs_numeric = coerced.isna() & numeric_stresc.notna()
-            frame["DASTRESN"] = coerced
-            frame.loc[needs_numeric, "DASTRESN"] = numeric_stresc.loc[needs_numeric]
+            
+            # Ensure DASTRESN has the correct dtype before assignment to avoid FutureWarning
+            if "DASTRESN" not in frame.columns or frame["DASTRESN"].dtype != numeric_stresc.dtype:
+                try:
+                    frame["DASTRESN"] = coerced.astype(numeric_stresc.dtype)
+                except Exception as e:
+                    logger.warning(f"DA domain: Could not convert DASTRESN dtype: {e}")
+                    frame["DASTRESN"] = coerced
+            else:
+                frame["DASTRESN"] = coerced
+            
+            # Now safely assign the numeric values where needed
+            if needs_numeric.any():
+                frame.loc[needs_numeric, "DASTRESN"] = numeric_stresc.loc[needs_numeric]
 
         # DAORRESU is required when DAORRES is provided (SD0026)
         if "DAORRES" in frame.columns:

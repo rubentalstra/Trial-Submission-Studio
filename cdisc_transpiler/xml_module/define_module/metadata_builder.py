@@ -45,44 +45,6 @@ from .value_list_builder import (
 from .standards import get_default_standard_comments
 
 
-def build_define_tree(
-    _dataset: pd.DataFrame,
-    domain_code: str,
-    config: "MappingConfig",
-    *,
-    dataset_href: str | Path | None = None,
-    sdtm_version: str = DEFAULT_SDTM_VERSION,
-    context: str = CONTEXT_SUBMISSION,
-) -> ET.Element:
-    """Return the Define-XML 2.1 document root for a single domain.
-
-    Args:
-        _dataset: DataFrame containing the domain data
-        domain_code: SDTM domain code
-        config: Mapping configuration
-        dataset_href: Optional dataset file reference
-        sdtm_version: SDTM-IG version
-        context: Define-XML context
-
-    Returns:
-        Root Element of the Define-XML document
-    """
-    if isinstance(dataset_href, str):
-        dataset_href = Path(dataset_href)
-    study_dataset = StudyDataset(
-        domain_code=domain_code,
-        dataframe=_dataset,
-        config=config,
-        archive_location=dataset_href,
-    )
-    return build_study_define_tree(
-        [study_dataset],
-        study_id=config.study_id or "STUDY",
-        sdtm_version=sdtm_version,
-        context=context,
-    )
-
-
 def build_study_define_tree(
     datasets: Iterable[StudyDataset],
     *,

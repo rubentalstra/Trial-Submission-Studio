@@ -16,17 +16,8 @@ Extracted from cli/commands/study.py as part of Phase 2 refactoring.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Protocol
 
 from ..domains_module import get_domain_class
-
-
-class Logger(Protocol):
-    """Protocol for logging operations."""
-
-    def log_verbose(self, message: str) -> None:
-        """Log a verbose message."""
-        ...
 
 
 class DomainDiscoveryService:
@@ -41,13 +32,8 @@ class DomainDiscoveryService:
         3. Metadata files are automatically skipped (CodeLists, Items, etc.)
     """
 
-    def __init__(self, logger: Logger | None = None):
-        """Initialize the domain discovery service.
-
-        Args:
-            logger: Optional logger for verbose output
-        """
-        self.logger = logger
+    def __init__(self):
+        """Initialize the domain discovery service."""
         self._match_stats = {
             "total_files": 0,
             "matched_files": 0,
@@ -94,7 +80,9 @@ class DomainDiscoveryService:
             # Skip metadata files
             if self._is_metadata_file(filename):
                 self._match_stats["skipped_metadata"] += 1
-                self._log(f"Skipping metadata file: {csv_file.name}")
+                from ..cli.logging_config import get_logger
+                logger = get_logger()
+                logger.verbose(f"Skipping metadata file: {csv_file.name}")
                 continue
 
             # Try to match the file to a domain
@@ -111,19 +99,52 @@ class DomainDiscoveryService:
                 self._match_stats["matched_files"] += 1
 
                 # Enhanced logging with category info - use get_domain_class directly
+                from ..cli.logging_config import get_logger
+                logger = get_logger()
                 category = get_domain_class(matched_domain)
                 match_type = "exact" if variant_name == matched_domain else "variant"
-                self._log(
+                logger.verbose(
                     f"Matched {csv_file.name} → {matched_domain} "
                     f"(variant: {variant_name}, type: {match_type}, category: {category})"
                 )
             else:
                 self._match_stats["unmatched_files"] += 1
                 unmatched.append(csv_file.name)
-                self._log(f"No domain match for: {csv_file.name}")
+                from ..cli.logging_config import get_logger
+                logger = get_logger()
+                logger.verbose(f"No domain match for: {csv_file.name}")
 
         # Log summary statistics
-        self._log_discovery_summary(domain_files, unmatched)
+        from ..cli.logging_config import get_logger
+        logger = get_logger()
+        
+        # Summary by category - use get_domain_class directly
+        category_counts: dict[str, int] = {}
+        for domain in domain_files.keys():
+            category = get_domain_class(domain)
+            category_counts[category] = category_counts.get(category, 0) + 1
+
+        # Log detailed summary
+        stats = self._match_stats
+        logger.verbose(
+            f"File discovery complete: {stats['matched_files']}/{stats['total_files']} "
+            f"files matched to {len(domain_files)} domains"
+        )
+
+        if stats["skipped_metadata"] > 0:
+            logger.verbose(f"  Metadata files skipped: {stats['skipped_metadata']}")
+
+        if category_counts:
+            summary = ", ".join(
+                f"{cat}: {count}" for cat, count in sorted(category_counts.items())
+            )
+            logger.verbose(f"  Domains by category: {summary}")
+
+        if unmatched:
+            logger.verbose(
+                f"  Unmatched files ({len(unmatched)}): {', '.join(unmatched[:5])}"
+                + ("..." if len(unmatched) > 5 else "")
+            )
 
         return domain_files
 
@@ -171,54 +192,3 @@ class DomainDiscoveryService:
                     return domain_code, part
 
         return None, None
-
-    def _log(self, message: str) -> None:
-        """Log a message if logger is available.
-
-        Args:
-            message: Message to log
-        """
-        if self.logger:
-            self.logger.log_verbose(message)
-
-    def _log_discovery_summary(
-        self,
-        domain_files: dict[str, list[tuple[Path, str]]],
-        unmatched: list[str],
-    ) -> None:
-        """Log summary of file discovery results.
-
-        Args:
-            domain_files: Matched domain files
-            unmatched: List of unmatched filenames
-        """
-        if not self.logger:
-            return
-
-        # Summary by category - use get_domain_class directly
-        category_counts: dict[str, int] = {}
-        for domain in domain_files.keys():
-            category = get_domain_class(domain)
-            category_counts[category] = category_counts.get(category, 0) + 1
-
-        # Log detailed summary
-        stats = self._match_stats
-        self._log(
-            f"File discovery complete: {stats['matched_files']}/{stats['total_files']} "
-            f"files matched to {len(domain_files)} domains"
-        )
-
-        if stats["skipped_metadata"] > 0:
-            self._log(f"  Metadata files skipped: {stats['skipped_metadata']}")
-
-        if category_counts:
-            summary = ", ".join(
-                f"{cat}: {count}" for cat, count in sorted(category_counts.items())
-            )
-            self._log(f"  Domains by category: {summary}")
-
-        if unmatched:
-            self._log(
-                f"  Unmatched files ({len(unmatched)}): {', '.join(unmatched[:5])}"
-                + ("..." if len(unmatched) > 5 else "")
-            )

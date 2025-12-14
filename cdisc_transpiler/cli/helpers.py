@@ -5,8 +5,8 @@ to improve code organization and reusability.
 
 SDTM Reference:
     These utilities support SDTM-compliant output generation as defined
-    in SDTMIG v3.4. The module handles verbose logging, PDF generation
-    for Define-XML, and split dataset management per Section 4.1.7.
+    in SDTMIG v3.4. The module handles PDF generation for Define-XML
+    and split dataset management per Section 4.1.7.
 """
 
 from __future__ import annotations
@@ -18,7 +18,6 @@ import pandas as pd
 from rich.console import Console
 from rich.table import Table
 
-from .logging_config import get_logger
 from ..xpt_module import write_xpt_file
 
 if TYPE_CHECKING:
@@ -27,28 +26,10 @@ if TYPE_CHECKING:
 console = Console()
 
 
-def log_verbose(enabled: bool, message: str) -> None:
-    """Log a verbose message if verbose mode is enabled.
-
-    Args:
-        enabled: Whether verbose logging is enabled
-        message: Message to log
-
-    Note:
-        This function maintains backward compatibility.
-        New code should use SDTMLogger directly via get_logger().
-    """
-    if enabled:
-        # Use new logger if available and enabled
-        logger = get_logger()
-        logger.verbose(message)
-
-
 def write_variant_splits(
     variant_frames: list[tuple[str, pd.DataFrame]],
     domain: SDTMDomain,
     xpt_dir: Path,
-    console: Console,
 ) -> tuple[list[Path], list[tuple[str, pd.DataFrame, Path]]]:
     """Write split XPT files for domain variants following SDTMIG v3.4 Section 4.1.7.
 
@@ -64,12 +45,13 @@ def write_variant_splits(
         variant_frames: List of (variant_name, dataframe) tuples
         domain: SDTM domain metadata
         xpt_dir: Directory for XPT files
-        console: Rich console for output
 
     Returns:
         Tuple of (list of paths, list of (split_name, dataframe, path) tuples)
     """
-
+    from .logging_config import get_logger
+    
+    logger = get_logger()
     split_paths: list[Path] = []
     split_datasets: list[tuple[str, pd.DataFrame, Path]] = []
     domain_code = domain.code.upper()
@@ -85,15 +67,15 @@ def write_variant_splits(
         # Validate split dataset name follows SDTMIG v3.4 naming convention
         # Split name must start with domain code and be ≤ 8 characters
         if not table.startswith(domain_code):
-            console.print(
-                f"[yellow]⚠[/yellow] Warning: Split dataset '{table}' does not start "
+            logger.warning(
+                f"Warning: Split dataset '{table}' does not start "
                 f"with domain code '{domain_code}'. Skipping."
             )
             continue
 
         if len(table) > 8:
-            console.print(
-                f"[yellow]⚠[/yellow] Warning: Split dataset name '{table}' exceeds "
+            logger.warning(
+                f"Warning: Split dataset name '{table}' exceeds "
                 "8 characters. Truncating to comply with SDTMIG v3.4."
             )
             table = table[:8]
@@ -123,8 +105,8 @@ def write_variant_splits(
         )
         split_paths.append(split_path)
         split_datasets.append((table, variant_df, split_path))
-        console.print(
-            f"[green]✓[/green] Split dataset: {split_path} "
+        logger.success(
+            f"Split dataset: {split_path} "
             f"(DOMAIN={domain_code}, table={table})"
         )
 

@@ -10,13 +10,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from ..cli.helpers import log_verbose
-
-
-def _log_verbose(enabled: bool, message: str) -> None:
-    """Deferred import wrapper to avoid circular imports."""
-
-    log_verbose(enabled, message)
+from rich.console import Console
 
 
 class ProgressReportingService:
@@ -26,14 +20,13 @@ class ProgressReportingService:
     status messages, and summary reporting during study processing.
     """
 
-    def __init__(self, console: Any, verbose: int = 0):
+    def __init__(self, verbose: int = 0):
         """Initialize the progress reporting service.
 
         Args:
-            console: Rich console instance for output
             verbose: Verbosity level (0 = normal, 1+ = verbose)
         """
-        self.console = console
+        self.console = Console()
         self.verbose = verbose
 
     def report_study_info(
@@ -51,14 +44,14 @@ class ProgressReportingService:
             output_format: Output format being used
             supported_domains: List of supported domain codes
         """
-
-        _log_verbose(self.verbose > 0, f"Processing study folder: {study_folder}")
-        _log_verbose(self.verbose > 0, f"Study ID: {study_id}")
-        _log_verbose(self.verbose > 0, f"Output format: {output_format}")
-        log_verbose(
-            self.verbose > 0,
-            f"Supported domains: {', '.join(supported_domains)}",
-        )
+        if self.verbose > 0:
+            from ..cli.logging_config import get_logger
+            
+            logger = get_logger()
+            logger.verbose(f"Processing study folder: {study_folder}")
+            logger.verbose(f"Study ID: {study_id}")
+            logger.verbose(f"Output format: {output_format}")
+            logger.verbose(f"Supported domains: {', '.join(supported_domains)}")
 
     def report_metadata_loaded(
         self, items_count: int | None, codelists_count: int | None
@@ -69,17 +62,14 @@ class ProgressReportingService:
             items_count: Number of items loaded from Items.csv
             codelists_count: Number of codelists loaded from CodeLists.csv
         """
-
-        if items_count:
-            log_verbose(
-                self.verbose > 0,
-                f"Loaded {items_count} column definitions from Items.csv",
-            )
-        if codelists_count:
-            log_verbose(
-                self.verbose > 0,
-                f"Loaded {codelists_count} codelists from CodeLists.csv",
-            )
+        if self.verbose > 0:
+            from ..cli.logging_config import get_logger
+            
+            logger = get_logger()
+            if items_count:
+                logger.verbose(f"Loaded {items_count} column definitions from Items.csv")
+            if codelists_count:
+                logger.verbose(f"Loaded {codelists_count} codelists from CodeLists.csv")
 
     def report_files_found(self, csv_count: int) -> None:
         """Report number of CSV files found.
@@ -87,8 +77,11 @@ class ProgressReportingService:
         Args:
             csv_count: Number of CSV files found
         """
-
-        _log_verbose(self.verbose > 0, f"Found {csv_count} CSV files")
+        if self.verbose > 0:
+            from ..cli.logging_config import get_logger
+            
+            logger = get_logger()
+            logger.verbose(f"Found {csv_count} CSV files")
 
     def report_study_summary(
         self,
