@@ -37,7 +37,7 @@ Usage:
     
     # For NCI code lookup, use get_controlled_terminology directly:
     ct = get_controlled_terminology(variable="SEX")
-    nci_code = ct.get_nci_code("M") if ct else None
+    nci_code = ct.lookup_code("M") if ct else None
 """
 
 from __future__ import annotations

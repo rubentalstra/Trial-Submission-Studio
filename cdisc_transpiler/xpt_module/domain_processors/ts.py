@@ -33,7 +33,7 @@ class TSProcessor(BaseDomainProcessor):
         def _parm_name(code: str) -> str:
             if not ct_parmcd or not ct_parm:
                 return code
-            nci = ct_parmcd.get_nci_code(code)
+            nci = ct_parmcd.lookup_code(code)
             if not nci:
                 return code
             for name, name_nci in ct_parm.nci_codes.items():

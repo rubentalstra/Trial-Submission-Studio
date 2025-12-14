@@ -21,7 +21,7 @@ class ControlledTerminology:
         submission_values: Set of valid submission values
         codelist_extensible: Whether the codelist allows extended values
         synonyms: Mapping of uppercase synonyms to canonical values
-        nci_codes: Mapping of values to NCI codes
+        nci_codes: Mapping of values to NCI codes (C-codes)
         standards: Set of standard names (e.g., "SDTM_CT_2025-09-26")
         sources: Set of source CSV filenames
         definitions: Mapping of values to CDISC definitions
@@ -62,20 +62,21 @@ class ControlledTerminology:
                 return canonical
         return text
 
-    def get_nci_code(self, canonical_value: str) -> str | None:
-        """Return the NCI code for a canonical value.
+    def lookup_code(self, value: str) -> str | None:
+        """Look up the NCI C-code for a submission value.
+
+        NCI codes are external identifiers used in CDISC controlled terminology
+        (e.g., C49488 for "Y", C20197 for "M").
 
         Args:
-            canonical_value: The canonical submission value
+            value: The submission value to look up
 
         Returns:
-            NCI code or None if not found
+            NCI C-code or None if not found
         """
-        if not canonical_value:
+        if not value:
             return None
-        return self.nci_codes.get(canonical_value) or self.nci_codes.get(
-            canonical_value.upper()
-        )
+        return self.nci_codes.get(value) or self.nci_codes.get(value.upper())
 
     def invalid_values(self, series: pd.Series) -> set[str]:
         """Return invalid raw values given the canonical CT list.
