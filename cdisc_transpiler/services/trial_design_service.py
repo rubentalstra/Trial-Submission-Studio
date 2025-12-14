@@ -23,6 +23,7 @@ SDTM Reference:
 
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING
 
 import pandas as pd
@@ -287,11 +288,11 @@ class TrialDesignService:
 
         # Link AE to DS
         if ae_df is not None and ds_seq_map:
-            for idx, row in ae_df.iterrows():
+            for idx, (_, row) in enumerate(ae_df.iterrows(), start=1):
                 usubjid = str(row.get("USUBJID", "")).strip()
                 if not usubjid:
                     continue
-                aeseq = self._stringify(row.get("AESEQ"), idx + 1)
+                aeseq = self._stringify(row.get("AESEQ"), idx)
                 relid = f"AE_DS_{usubjid}_{aeseq}"
 
                 records.append(
@@ -322,11 +323,11 @@ class TrialDesignService:
 
         # Link EX to DS
         if ex_df is not None and ds_seq_map:
-            for idx, row in ex_df.iterrows():
+            for idx, (_, row) in enumerate(ex_df.iterrows(), start=1):
                 usubjid = str(row.get("USUBJID", "")).strip()
                 if not usubjid:
                     continue
-                exseq = self._stringify(row.get("EXSEQ"), idx + 1)
+                exseq = self._stringify(row.get("EXSEQ"), idx)
                 relid = f"EX_DS_{usubjid}_{exseq}"
 
                 records.append(
@@ -420,14 +421,23 @@ class TrialDesignService:
     @staticmethod
     def _stringify(val: object, fallback_index: int) -> str:
         """Convert value to string, handling NaN and numeric formatting."""
-        if pd.isna(val):
+        # Normalize collection-like inputs to a scalar
+        if isinstance(val, pd.Series):
+            val = val.iloc[0] if not val.empty else None
+        elif isinstance(val, pd.Index):
+            val = val[0] if len(val) else None
+        elif isinstance(val, (list, tuple)):
+            val = val[0] if len(val) else None
+
+        if val is None:
             return str(fallback_index)
+
         try:
-            numeric = pd.to_numeric(val)
-            if pd.isna(numeric):
-                return str(val)
-            if float(numeric).is_integer():
-                return str(int(numeric))
-            return str(numeric)
+            num_f = float(str(val))
+            if math.isnan(num_f):
+                return str(fallback_index)
+            if num_f.is_integer():
+                return str(int(num_f))
+            return str(num_f)
         except Exception:
             return str(val)

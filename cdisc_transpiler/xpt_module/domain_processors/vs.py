@@ -137,24 +137,24 @@ class VSProcessor(BaseDomainProcessor):
             numeric = pd.to_numeric(frame["VSORRES"], errors="coerce")
             frame["VSSTRESN"] = ensure_numeric_series(numeric, frame.index)
         NumericTransformer.assign_sequence(frame, "VSSEQ", "USUBJID")
-            if "VSLOBXFL" in frame.columns:
-                frame["VSLOBXFL"] = ensure_series(frame["VSLOBXFL"]).astype("string").fillna("")
-                if {"USUBJID", "VSTESTCD", "VSPOS"} <= set(frame.columns):
-                    group_cols = ["USUBJID", "VSTESTCD", "VSPOS"]
-                else:
-                    group_cols = ["USUBJID", "VSTESTCD"]
-                frame.loc[:, "VSLOBXFL"] = ""
-                last_idx = frame.groupby(group_cols).tail(1).index
-                frame.loc[last_idx, "VSLOBXFL"] = "Y"
-                not_done_mask = (
-                    ensure_series(
-                        frame.get("VSSTAT", pd.Series([""] * len(frame))), index=frame.index
-                    )
-                    .astype("string")
-                    .str.upper()
-                    == "NOT DONE"
+        if "VSLOBXFL" in frame.columns:
+            frame["VSLOBXFL"] = ensure_series(frame["VSLOBXFL"]).astype("string").fillna("")
+            if {"USUBJID", "VSTESTCD", "VSPOS"} <= set(frame.columns):
+                group_cols = ["USUBJID", "VSTESTCD", "VSPOS"]
+            else:
+                group_cols = ["USUBJID", "VSTESTCD"]
+            frame.loc[:, "VSLOBXFL"] = ""
+            last_idx = frame.groupby(group_cols).tail(1).index
+            frame.loc[last_idx, "VSLOBXFL"] = "Y"
+            not_done_mask = (
+                ensure_series(
+                    frame.get("VSSTAT", pd.Series([""] * len(frame))), index=frame.index
                 )
-                frame.loc[not_done_mask, "VSLOBXFL"] = ""
+                .astype("string")
+                .str.upper()
+                == "NOT DONE"
+            )
+            frame.loc[not_done_mask, "VSLOBXFL"] = ""
         # Normalize test codes to valid CT; fall back to Heart Rate
         ct_vstestcd = get_controlled_terminology(variable="VSTESTCD")
         if ct_vstestcd and "VSTESTCD" in frame.columns:

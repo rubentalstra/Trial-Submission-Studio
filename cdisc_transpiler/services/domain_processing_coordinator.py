@@ -11,6 +11,7 @@ SDTM Reference:
 
 from __future__ import annotations
 
+import math
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -265,15 +266,16 @@ class DomainProcessingCoordinator:
 
         # Build configuration
         if vs_long or lb_long:
-            config = self._build_identity_config(domain_code, frame)
+            config: MappingConfig = self._build_identity_config(domain_code, frame)
 
             log_verbose(verbose, "    Using identity mapping (post-transformation)")
         else:
-            config = self._build_mapped_config(
+            mapped_config = self._build_mapped_config(
                 domain_code, frame, metadata, min_confidence, display_name
             )
-            if config is None:
+            if mapped_config is None:
                 return None
+            config = mapped_config
 
             # Log mapping summary - safely get mapping count
             mapping_count = len(getattr(config, "mappings", []))
@@ -396,7 +398,7 @@ class DomainProcessingCoordinator:
             log_verbose(verbose, "    Expected columns like: WBC, RBC, HGB, or LBTESTCD")
             return None, False
 
-    def _build_identity_config(self, domain_code: str, frame: pd.DataFrame) -> object:
+    def _build_identity_config(self, domain_code: str, frame: pd.DataFrame) -> MappingConfig:
         """Build identity mapping configuration."""
         mappings = [
             ColumnMapping(
@@ -416,7 +418,7 @@ class DomainProcessingCoordinator:
         metadata: StudyMetadata | None,
         min_confidence: float,
         display_name: str,
-    ) -> object | None:
+    ) -> MappingConfig | None:
         """Build mapped configuration using fuzzy matching."""
         column_hints = build_column_hints(frame)
         engine = create_mapper(
@@ -469,18 +471,16 @@ class DomainProcessingCoordinator:
     ) -> list[dict]:
         """Build treatment emergent flag supplemental records for AE domain."""
         trt_records = []
-        for _, r in domain_frame.iterrows():
-            seq_val = r.get("AESEQ", "")
+        for idx, (_, r) in enumerate(domain_frame.iterrows(), start=1):
+            seq_raw = r.get("AESEQ", idx)
+            seq_val = seq_raw if seq_raw not in (None, "") else idx
             try:
-                seq_str = (
-                    str(int(seq_val))
-                    if pd.notna(seq_val)
-                    and str(seq_val).strip() != ""
-                    and float(seq_val).is_integer()
-                    else str(seq_val)
-                )
+                seq_float = float(seq_val)
+                if math.isnan(seq_float):
+                    raise ValueError
             except Exception:
-                seq_str = str(seq_val)
+                seq_float = float(idx)
+            seq_str = str(int(seq_float)) if seq_float.is_integer() else str(seq_float)
             trt_records.append(
                 {
                     "STUDYID": study_id,
@@ -537,8 +537,7 @@ class DomainProcessingCoordinator:
             # Log individual file contributions
             for i, rows in enumerate(input_rows_list):
                 pct = (rows / merged_rows * 100) if merged_rows > 0 else 0
-
-            log_verbose(verbose, f"    File {i + 1}: {rows:,} rows ({pct:.1f}%)")
+                log_verbose(verbose, f"    File {i + 1}: {rows:,} rows ({pct:.1f}%)")
 
         return merged_dataframe
 

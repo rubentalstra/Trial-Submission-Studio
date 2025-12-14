@@ -12,8 +12,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from ..domains_module import SDTMVariable, get_domain
-from ..mapping_module import ColumnMapping, build_config
+from ..domains_module import SDTMVariable, SDTMDomain, get_domain
+from ..mapping_module import ColumnMapping, MappingConfig, build_config
 from ..sas_module import generate_sas_program, write_sas_file
 from ..xpt_module import write_xpt_file
 from ..xpt_module.builder import build_domain_dataframe
@@ -168,7 +168,7 @@ class DomainSynthesisCoordinator:
         domain_code: str,
         subject_id: str,
         base_date: str,
-        domain: object,
+        domain: SDTMDomain,
         study_id: str,
     ) -> list[dict]:
         """Generate rows for trial design domains."""
@@ -273,7 +273,7 @@ class DomainSynthesisCoordinator:
         domain_code: str,
         subject_id: str,
         base_date: str,
-        domain: object,
+        domain: SDTMDomain,
         study_id: str,
     ) -> list[dict]:
         """Generate minimal rows for observation domains."""
@@ -313,7 +313,7 @@ class DomainSynthesisCoordinator:
 
     def _build_identity_config(
         self, domain_code: str, frame: pd.DataFrame, study_id: str
-    ) -> object:
+    ) -> MappingConfig:
         """Build identity mapping configuration."""
         mappings = [
             ColumnMapping(
@@ -333,13 +333,13 @@ class DomainSynthesisCoordinator:
         domain_dataframe: pd.DataFrame,
         domain_code: str,
         study_id: str,
-        config: object,
+        config: MappingConfig,
         output_format: str,
         xpt_dir: Path | None,
         xml_dir: Path | None,
         sas_dir: Path | None,
         generate_sas: bool,
-        domain: object,
+        domain: SDTMDomain,
     ) -> dict:
         """Generate output files for a synthesized domain."""
         base_filename = domain.resolved_dataset_name()

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
-from typing import Iterable
+from typing import Any, Iterable
 
 from .domain_builder import build_domain_from_rows, build_supp_domain
 from .general_classes import build_general_class_variables
@@ -23,7 +23,7 @@ _DOMAIN_DEFINITIONS: dict[str, SDTMDomain] = {}
 _SDTMIG_CACHE: dict[str, list[dict]] | None = None
 _SDTM_V2_CACHE: dict[str, list[dict]] | None = None
 _DATASET_ATTRIBUTES: dict[str, dict[str, str]] = {}
-_GENERAL_CLASS_VARIABLES: dict[str, dict[str, any]] = {}
+_GENERAL_CLASS_VARIABLES: dict[str, dict[str, Any]] = {}
 _GENERAL_CLASS_USAGE: dict[str, dict[str, set[str]]] = {}
 
 

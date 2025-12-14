@@ -59,8 +59,16 @@ def format_value(value: object, column_name: str) -> str:
         Formatted string value
     """
 
-    if pd.isna(value):
-        return ""
+    if isinstance(value, (pd.Series, pd.DataFrame)):
+        try:
+            value = value.iloc[0]  # type: ignore[index]
+        except Exception:
+            return ""
+    try:
+        if bool(pd.isna(value)):
+            return ""
+    except Exception:
+        pass
 
     # Convert to string
     if isinstance(value, (int, float)):

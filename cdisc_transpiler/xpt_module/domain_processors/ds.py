@@ -64,9 +64,13 @@ class DSProcessor(BaseDomainProcessor):
                 )
             except Exception:
                 dt_candidate = pd.NaT
+            fallback_ts = pd.to_datetime(fallback_date)
             if not isinstance(dt_candidate, pd.Timestamp) or pd.isna(dt_candidate):
-                dt_candidate = pd.to_datetime(fallback_date)
-            return (dt_candidate + pd.Timedelta(days=days)).date().isoformat()
+                dt_candidate = fallback_ts
+            if pd.isna(dt_candidate):
+                return ""
+            assert isinstance(dt_candidate, pd.Timestamp)
+            return dt_candidate.date().isoformat()
 
         defaults: list[dict] = []
         study_id = "STUDY"
