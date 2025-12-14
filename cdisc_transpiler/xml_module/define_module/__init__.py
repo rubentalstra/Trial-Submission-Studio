@@ -46,12 +46,10 @@ from .standards import (
 )
 
 from .xml_writer import (
-    write_define_file,
     write_study_define_file,
 )
 
 from .metadata_builder import (
-    build_define_tree,
     build_study_define_tree,
 )
 
@@ -74,9 +72,7 @@ __all__ = [
     # Standards
     "get_default_standards",
     "get_default_standard_comments",
-    # Main API (backward compatibility)
-    "write_define_file",
+    # Main API
     "write_study_define_file",
-    "build_define_tree",
     "build_study_define_tree",
 ]

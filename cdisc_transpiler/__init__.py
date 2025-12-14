@@ -24,18 +24,14 @@ from cdisc_transpiler.xml_module.dataset_module import (
     write_dataset_xml,
 )
 from cdisc_transpiler.xml_module.define_module import (
-    build_define_tree,
     build_study_define_tree,
-    write_define_file,
 )
 from cdisc_transpiler.domains_module import SDTMDomain, SDTMVariable, get_domain
 
 __all__ = [
     "__version__",
     # Define-XML
-    "build_define_tree",
     "build_study_define_tree",
-    "write_define_file",
     # Dataset-XML
     "build_dataset_xml_tree",
     "write_dataset_xml",
