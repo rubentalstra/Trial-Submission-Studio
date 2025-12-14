@@ -1,246 +1,236 @@
-"""Unit tests for logger implementations."""
+"""Unit tests for logger implementations.
 
-from __future__ import annotations
+Tests verify that:
+1. LoggerPort protocol is properly implemented
+2. ConsoleLogger (moved from cli/logging_config.py) implements LoggerPort
+3. NullLogger provides silent testing capability
+4. Backward compatibility is maintained
+"""
 
+import unittest
 from io import StringIO
-from unittest.mock import MagicMock
+from pathlib import Path
 
-import pytest
 from rich.console import Console
 
-from cdisc_transpiler.application.ports import LoggerPort
-from cdisc_transpiler.infrastructure.logging import ConsoleLogger, NullLogger
+from cdisc_transpiler.application.ports.services import LoggerPort
+from cdisc_transpiler.infrastructure.logging import (
+    ConsoleLogger,
+    LogContext,
+    LogLevel,
+    NullLogger,
+    SDTMLogger,
+)
 
 
-class TestLoggerPort:
-    """Test suite for LoggerPort protocol compliance."""
-    
-    def test_console_logger_implements_protocol(self):
-        """Test that ConsoleLogger implements LoggerPort protocol."""
+class TestLoggerPort(unittest.TestCase):
+    """Test that logger implementations comply with LoggerPort protocol."""
+
+    def test_console_logger_implements_loggerport(self):
+        """ConsoleLogger should implement LoggerPort protocol."""
         logger = ConsoleLogger()
-        assert isinstance(logger, LoggerPort)
-    
-    def test_null_logger_implements_protocol(self):
-        """Test that NullLogger implements LoggerPort protocol."""
+        self.assertIsInstance(logger, LoggerPort)
+
+    def test_null_logger_implements_loggerport(self):
+        """NullLogger should implement LoggerPort protocol."""
         logger = NullLogger()
-        assert isinstance(logger, LoggerPort)
-    
-    def test_protocol_has_required_methods(self):
-        """Test that LoggerPort protocol defines required methods."""
-        required_methods = ["info", "success", "warning", "error", "debug"]
-        
-        for method in required_methods:
-            assert hasattr(LoggerPort, method), f"LoggerPort should define {method}"
+        self.assertIsInstance(logger, LoggerPort)
+
+    def test_loggerport_has_required_methods(self):
+        """LoggerPort protocol should define all required methods."""
+        required_methods = {"info", "success", "warning", "error", "debug"}
+        protocol_methods = {
+            name for name in dir(LoggerPort) if not name.startswith("_")
+        }
+        self.assertTrue(required_methods.issubset(protocol_methods))
 
 
-class TestConsoleLogger:
-    """Test suite for ConsoleLogger class."""
-    
-    @pytest.fixture
-    def string_console(self):
-        """Create a console that writes to a string buffer."""
-        buffer = StringIO()
-        console = Console(file=buffer, force_terminal=True, width=120)
-        return console, buffer
-    
-    def test_info_logs_message(self, string_console):
-        """Test that info() logs messages."""
-        console, buffer = string_console
-        logger = ConsoleLogger(console=console, verbosity=0)
-        
-        logger.info("Test info message")
-        
-        output = buffer.getvalue()
-        assert "Test info message" in output
-    
-    def test_success_logs_message(self, string_console):
-        """Test that success() logs messages with checkmark."""
-        console, buffer = string_console
-        logger = ConsoleLogger(console=console, verbosity=0)
-        
-        logger.success("Test success message")
-        
-        output = buffer.getvalue()
-        assert "Test success message" in output
-        assert "✓" in output or "success" in output.lower()
-    
-    def test_warning_logs_message(self, string_console):
-        """Test that warning() logs messages with warning symbol."""
-        console, buffer = string_console
-        logger = ConsoleLogger(console=console, verbosity=0)
-        
-        logger.warning("Test warning message")
-        
-        output = buffer.getvalue()
-        assert "Test warning message" in output
-        assert "⚠" in output or "warning" in output.lower()
-    
-    def test_error_logs_message(self, string_console):
-        """Test that error() logs messages with error symbol."""
-        console, buffer = string_console
-        logger = ConsoleLogger(console=console, verbosity=0)
-        
-        logger.error("Test error message")
-        
-        output = buffer.getvalue()
-        assert "Test error message" in output
-        assert "✗" in output or "error" in output.lower()
-    
-    def test_debug_logs_message(self, string_console):
-        """Test that debug() logs messages when verbosity is high enough."""
-        console, buffer = string_console
-        logger = ConsoleLogger(console=console, verbosity=2)  # Debug level
-        
-        logger.debug("Test debug message")
-        
-        output = buffer.getvalue()
-        assert "Test debug message" in output
-    
-    def test_debug_suppressed_at_low_verbosity(self, string_console):
-        """Test that debug() is suppressed at low verbosity."""
-        console, buffer = string_console
-        logger = ConsoleLogger(console=console, verbosity=0)  # Normal level
-        
-        logger.debug("Test debug message")
-        
-        output = buffer.getvalue()
-        assert "Test debug message" not in output
-    
-    def test_sdtm_logger_access(self, string_console):
-        """Test that underlying SDTMLogger is accessible."""
-        console, buffer = string_console
-        logger = ConsoleLogger(console=console, verbosity=0)
-        
-        # Access SDTMLogger for advanced features
-        sdtm_logger = logger.sdtm_logger
-        assert sdtm_logger is not None
-        assert hasattr(sdtm_logger, "set_context")
-        assert hasattr(sdtm_logger, "log_study_start")
-    
-    def test_different_verbosity_levels(self):
-        """Test that logger respects different verbosity levels."""
-        # Normal verbosity
-        logger_normal = ConsoleLogger(verbosity=0)
-        assert logger_normal._logger.verbosity == 0
-        
-        # Verbose
-        logger_verbose = ConsoleLogger(verbosity=1)
-        assert logger_verbose._logger.verbosity == 1
-        
-        # Debug
-        logger_debug = ConsoleLogger(verbosity=2)
-        assert logger_debug._logger.verbosity == 2
+class TestConsoleLogger(unittest.TestCase):
+    """Test ConsoleLogger implementation (moved from cli/logging_config.py)."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        self.buffer = StringIO()
+        self.console = Console(file=self.buffer, force_terminal=True, width=80)
+        self.logger = ConsoleLogger(console=self.console, verbosity=LogLevel.DEBUG)
+
+    def test_initialization(self):
+        """Logger should initialize with proper defaults."""
+        logger = ConsoleLogger()
+        self.assertEqual(logger.verbosity, 0)
+        self.assertIsNone(logger._context)
+        self.assertEqual(logger._stats["files_processed"], 0)
+
+    def test_info_logging(self):
+        """info() should output message to console."""
+        self.logger.info("Test message")
+        output = self.buffer.getvalue()
+        self.assertIn("Test message", output)
+
+    def test_success_logging(self):
+        """success() should output message with success indicator."""
+        self.logger.success("Operation complete")
+        output = self.buffer.getvalue()
+        self.assertIn("Operation complete", output)
+
+    def test_warning_logging(self):
+        """warning() should output message and increment warning count."""
+        initial_warnings = self.logger._stats["warnings"]
+        self.logger.warning("Warning message")
+        output = self.buffer.getvalue()
+        self.assertIn("Warning message", output)
+        self.assertEqual(self.logger._stats["warnings"], initial_warnings + 1)
+
+    def test_error_logging(self):
+        """error() should output message and increment error count."""
+        initial_errors = self.logger._stats["errors"]
+        self.logger.error("Error message")
+        output = self.buffer.getvalue()
+        self.assertIn("Error message", output)
+        self.assertEqual(self.logger._stats["errors"], initial_errors + 1)
+
+    def test_debug_logging_with_verbosity(self):
+        """debug() should only output when verbosity >= DEBUG."""
+        # Debug logger (verbosity=2)
+        self.logger.debug("Debug message")
+        output = self.buffer.getvalue()
+        self.assertIn("Debug message", output)
+
+        # Normal logger (verbosity=0) - should not output
+        self.buffer.truncate(0)
+        self.buffer.seek(0)
+        normal_logger = ConsoleLogger(console=self.console, verbosity=LogLevel.NORMAL)
+        normal_logger.debug("Should not appear")
+        output = self.buffer.getvalue()
+        self.assertEqual(output.strip(), "")
+
+    def test_context_management(self):
+        """Logger should manage logging context."""
+        self.logger.set_context(study_id="STUDY01", domain_code="DM")
+        self.assertIsNotNone(self.logger._context)
+        self.assertEqual(self.logger._context.study_id, "STUDY01")
+        self.assertEqual(self.logger._context.domain_code, "DM")
+
+        self.logger.clear_context()
+        self.assertIsNone(self.logger._context)
+
+    def test_stats_tracking(self):
+        """Logger should track processing statistics."""
+        initial_stats = self.logger.get_stats()
+        self.assertEqual(initial_stats["files_processed"], 0)
+
+        self.logger.log_file_loaded("test.csv", 100, 10)
+        stats = self.logger.get_stats()
+        self.assertEqual(stats["files_processed"], 1)
+
+        self.logger.reset_stats()
+        stats = self.logger.get_stats()
+        self.assertEqual(stats["files_processed"], 0)
+
+    def test_log_study_start(self):
+        """log_study_start() should output study information."""
+        self.logger.log_study_start(
+            study_id="STUDY01",
+            study_folder=Path("/data/study01"),
+            output_format="xpt",
+            supported_domains=["DM", "EX"],
+        )
+        output = self.buffer.getvalue()
+        self.assertIn("STUDY01", output)
+
+    def test_log_domain_start(self):
+        """log_domain_start() should output domain processing header."""
+        self.logger.log_domain_start(
+            domain_code="DM",
+            files=[(Path("dm.csv"), "standard")],
+        )
+        output = self.buffer.getvalue()
+        self.assertIn("DM", output)
+        self.assertIn("dm.csv", output)
 
 
-class TestNullLogger:
-    """Test suite for NullLogger class."""
-    
-    def test_info_produces_no_output(self):
-        """Test that info() produces no output."""
+class TestNullLogger(unittest.TestCase):
+    """Test NullLogger for silent testing."""
+
+    def test_null_logger_produces_no_output(self):
+        """NullLogger should not produce any output."""
         logger = NullLogger()
-        
-        # Should not raise any exception and produce no output
-        logger.info("Test message")
-    
-    def test_success_produces_no_output(self):
-        """Test that success() produces no output."""
+
+        # Call all logging methods - should not raise errors
+        logger.info("Info message")
+        logger.success("Success message")
+        logger.warning("Warning message")
+        logger.error("Error message")
+        logger.debug("Debug message")
+
+        # NullLogger should complete without errors (no assertions needed for output)
+
+    def test_null_logger_has_all_methods(self):
+        """NullLogger should have all LoggerPort methods."""
         logger = NullLogger()
-        
-        logger.success("Test message")
-    
-    def test_warning_produces_no_output(self):
-        """Test that warning() produces no output."""
-        logger = NullLogger()
-        
-        logger.warning("Test message")
-    
-    def test_error_produces_no_output(self):
-        """Test that error() produces no output."""
-        logger = NullLogger()
-        
-        logger.error("Test message")
-    
-    def test_debug_produces_no_output(self):
-        """Test that debug() produces no output."""
-        logger = NullLogger()
-        
-        logger.debug("Test message")
-    
-    def test_all_methods_callable(self):
-        """Test that all protocol methods are callable without errors."""
-        logger = NullLogger()
-        
-        # Call all methods - should not raise exceptions
-        logger.info("info")
-        logger.success("success")
-        logger.warning("warning")
-        logger.error("error")
-        logger.debug("debug")
-    
-    def test_null_logger_for_testing(self):
-        """Test using NullLogger in a simulated service."""
-        def process_data(logger: LoggerPort):
-            """Simulated service that uses a logger."""
-            logger.info("Processing started")
-            logger.success("Processing complete")
-            return "result"
-        
-        # Use NullLogger for silent testing
-        logger = NullLogger()
-        result = process_data(logger)
-        
-        assert result == "result"
+        self.assertTrue(hasattr(logger, "info"))
+        self.assertTrue(hasattr(logger, "success"))
+        self.assertTrue(hasattr(logger, "warning"))
+        self.assertTrue(hasattr(logger, "error"))
+        self.assertTrue(hasattr(logger, "debug"))
 
 
-class TestLoggerDependencyInjection:
-    """Test suite for logger dependency injection pattern."""
-    
-    def test_service_accepts_logger_port(self):
-        """Test that services can accept any LoggerPort implementation."""
-        def process_with_logging(logger: LoggerPort, data: str) -> str:
-            """Example service that uses injected logger."""
-            logger.info(f"Processing: {data}")
-            result = data.upper()
-            logger.success(f"Result: {result}")
-            return result
-        
-        # Test with ConsoleLogger
-        console_logger = ConsoleLogger()
-        result1 = process_with_logging(console_logger, "test")
-        assert result1 == "TEST"
-        
-        # Test with NullLogger
-        null_logger = NullLogger()
-        result2 = process_with_logging(null_logger, "test")
-        assert result2 == "TEST"
-    
-    def test_mock_logger_for_testing(self):
-        """Test that logger can be mocked for testing."""
-        mock_logger = MagicMock(spec=LoggerPort)
-        
-        def process_with_logging(logger: LoggerPort):
-            logger.info("Starting")
-            logger.success("Done")
-        
-        process_with_logging(mock_logger)
-        
-        # Verify logger was called
-        mock_logger.info.assert_called_once_with("Starting")
-        mock_logger.success.assert_called_once_with("Done")
-    
-    def test_logger_swapping(self):
-        """Test that logger implementations can be swapped easily."""
-        def create_processor(logger: LoggerPort):
-            """Factory that creates a processor with injected logger."""
-            def process(data: str) -> str:
-                logger.info(f"Processing {data}")
-                return data.lower()
-            return process
-        
-        # Create with ConsoleLogger
-        console_processor = create_processor(ConsoleLogger())
-        assert console_processor("TEST") == "test"
-        
-        # Create with NullLogger
-        silent_processor = create_processor(NullLogger())
-        assert silent_processor("TEST") == "test"
+class TestBackwardCompatibility(unittest.TestCase):
+    """Test backward compatibility with old SDTMLogger name."""
+
+    def test_sdtmlogger_alias_exists(self):
+        """SDTMLogger should be an alias for ConsoleLogger."""
+        self.assertIs(SDTMLogger, ConsoleLogger)
+
+    def test_can_import_from_old_location(self):
+        """Should be able to import from cli.logging_config for backward compatibility."""
+        from cdisc_transpiler.cli.logging_config import (
+            LogContext as OldLogContext,
+            LogLevel as OldLogLevel,
+            SDTMLogger as OldSDTMLogger,
+            create_logger,
+            get_logger,
+            set_logger,
+        )
+
+        # Verify classes are the same
+        self.assertIs(OldSDTMLogger, ConsoleLogger)
+        self.assertIs(OldLogContext, LogContext)
+        self.assertIs(OldLogLevel, LogLevel)
+
+        # Verify functions work
+        logger = create_logger(verbosity=1)
+        self.assertIsInstance(logger, ConsoleLogger)
+        self.assertEqual(logger.verbosity, 1)
+
+        retrieved_logger = get_logger()
+        self.assertIs(retrieved_logger, logger)
+
+        new_logger = ConsoleLogger(verbosity=2)
+        set_logger(new_logger)
+        retrieved_logger = get_logger()
+        self.assertIs(retrieved_logger, new_logger)
+
+
+class TestLogContext(unittest.TestCase):
+    """Test LogContext dataclass."""
+
+    def test_log_context_creation(self):
+        """LogContext should initialize with defaults."""
+        context = LogContext()
+        self.assertEqual(context.study_id, "")
+        self.assertEqual(context.domain_code, "")
+        self.assertIsNotNone(context.start_time)
+
+    def test_log_context_elapsed_time(self):
+        """LogContext should calculate elapsed time."""
+        import time
+
+        context = LogContext()
+        time.sleep(0.01)  # Sleep for 10ms
+        elapsed = context.elapsed_ms()
+        self.assertGreater(elapsed, 5)  # Should be at least 5ms
+
+
+if __name__ == "__main__":
+    unittest.main()
