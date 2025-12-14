@@ -10,10 +10,12 @@ from .base import (
     TransformationResult,
     is_transformer,
 )
+from .pipeline import TransformationPipeline
 
 __all__ = [
     "TransformerPort",
     "TransformationContext",
     "TransformationResult",
     "is_transformer",
+    "TransformationPipeline",
 ]

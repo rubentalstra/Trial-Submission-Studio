@@ -116,12 +116,12 @@ class TransformationResult:
     @property
     def success(self) -> bool:
         """Whether transformation completed without errors."""
-        return self.applied and len(self.errors) == 0
+        return self.applied and (self.errors is None or len(self.errors) == 0)
     
     @property
     def has_warnings(self) -> bool:
         """Whether transformation generated any warnings."""
-        return len(self.warnings) > 0
+        return self.warnings is not None and len(self.warnings) > 0
     
     def add_warning(self, warning: str) -> None:
         """Add a warning message.
