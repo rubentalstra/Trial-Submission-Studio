@@ -237,7 +237,8 @@ class DomainProcessingCoordinator:
                 col_names += f" ... (+{len(frame.columns) - 10} more)"
             log_verbose(verbose, f"    Columns: {col_names}")
 
-        # Skip VSTAT helper files
+        # Skip VSTAT helper files - these are operational vital signs files 
+        # used for data preparation but not part of SDTM submission
         is_vstat = (
             domain_code.upper() == "VS"
             and variant_name
@@ -246,7 +247,7 @@ class DomainProcessingCoordinator:
         if is_vstat:
             log_verbose(
                 verbose,
-                f"  Skipping {input_file.name} (VSTAT helper file - not a standard SDTM domain)",
+                f"  Skipping {input_file.name} (VSTAT is an operational helper file, not an SDTM domain)",
             )
             return None
 
@@ -274,8 +275,8 @@ class DomainProcessingCoordinator:
             if config is None:
                 return None
             
-            # Log mapping summary
-            mapping_count = len(config.mappings) if hasattr(config, 'mappings') else 0
+            # Log mapping summary - safely get mapping count
+            mapping_count = len(getattr(config, 'mappings', []))
             log_verbose(verbose, f"    Column mappings: {mapping_count} variables mapped")
 
         config.study_id = study_id

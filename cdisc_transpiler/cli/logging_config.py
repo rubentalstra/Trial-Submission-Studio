@@ -6,7 +6,7 @@ rich formatting, and SDTM-specific context information.
 Verbosity Levels:
     0 = Normal: Essential progress messages only
     1 = Verbose (-v): Detailed processing information
-    2 = Debug (-vv): Full debug output with technical details
+    2 = Debug (-vv): Full debug output with domain context prefixes
 
 SDTM Reference:
     Logging output is designed to help users understand SDTM domain
@@ -217,9 +217,8 @@ class SDTMLogger:
             message: Message to log
         """
         if self.verbosity >= LogLevel.DEBUG:
-            timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
             prefix = self._get_prefix()
-            self.console.print(f"[dim cyan][{timestamp}] {prefix}{message}[/dim cyan]")
+            self.console.print(f"[dim cyan]{prefix}{message}[/dim cyan]")
     
     def success(self, message: str) -> None:
         """Log a success message (always shown).

@@ -38,12 +38,9 @@ def log_verbose(enabled: bool, message: str) -> None:
         New code should use SDTMLogger directly via get_logger().
     """
     if enabled:
-        # Use new logger if available, otherwise fall back to console
+        # Use new logger if available and enabled
         logger = get_logger()
-        if logger.verbosity >= 1:
-            logger.verbose(message)
-        else:
-            console.print(f"[dim]{message}[/dim]")
+        logger.verbose(message)
 
 
 def ensure_acrf_pdf(path: Path) -> None:
