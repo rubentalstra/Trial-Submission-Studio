@@ -75,7 +75,8 @@ def infer_sdtm_target(
                         if pattern in label_normalized:
                             return target_var
     except KeyError:
-        # Domain not found
+        # Domain not found in registry - this is expected for invalid domain codes
+        # or domains not yet loaded in the CSV metadata
         pass
 
     return None

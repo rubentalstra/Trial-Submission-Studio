@@ -12,6 +12,18 @@ from functools import lru_cache
 from ..domains_module import SDTMDomain
 
 
+def _deduplicate_preserving_order(items: list[str]) -> list[str]:
+    """Remove duplicates while preserving first occurrence order.
+    
+    Args:
+        items: List that may contain duplicates
+        
+    Returns:
+        List with duplicates removed, first occurrence preserved
+    """
+    return list(dict.fromkeys(items))
+
+
 def _normalize_text(text: str) -> str:
     """Normalize text for pattern matching (uppercase, alphanumeric only)."""
     return re.sub(r"[^A-Z0-9]", "", text.upper())
@@ -34,6 +46,8 @@ def _extract_label_terms(label: str) -> list[str]:
     }
     
     # Split on common delimiters and extract words
+    # Regex splits CamelCase/PascalCase (e.g., "StartDate" -> ["Start", "Date"])
+    # Pattern: [A-Z][a-z]+ matches capitalized words, [A-Z]+(?=[A-Z][a-z]|\b) matches acronyms
     words = re.findall(r"[A-Z][a-z]+|[A-Z]+(?=[A-Z][a-z]|\b)", label)
     terms: list[str] = []
     
@@ -88,8 +102,8 @@ def build_variable_patterns(domain: SDTMDomain) -> dict[str, list[str]]:
             label_terms = _extract_label_terms(variable.label)
             var_patterns.extend(label_terms)
         
-        # Store unique patterns
-        patterns[var_name] = list(dict.fromkeys(var_patterns))
+        # Store unique patterns (deduplicated while preserving order)
+        patterns[var_name] = _deduplicate_preserving_order(var_patterns)
     
     return patterns
 
@@ -129,6 +143,6 @@ def get_domain_suffix_patterns(domain: SDTMDomain) -> dict[str, list[str]]:
                 label_terms = _extract_label_terms(variable.label)
                 patterns.extend(label_terms)
             
-            suffix_patterns[suffix] = list(dict.fromkeys(patterns))
+            suffix_patterns[suffix] = _deduplicate_preserving_order(patterns)
     
     return suffix_patterns
