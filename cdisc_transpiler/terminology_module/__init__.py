@@ -22,7 +22,6 @@ Usage:
         get_preferred_terms,
         get_synonyms,
         get_definitions,
-        get_nci_code,
         
         # Domain-specific lookups
         get_domain_testcd_values,
@@ -35,6 +34,10 @@ Usage:
         normalize_to_submission_value,
         get_testcd_label,
     )
+    
+    # For NCI code lookup, use get_controlled_terminology directly:
+    ct = get_controlled_terminology(variable="SEX")
+    nci_code = ct.get_nci_code("M") if ct else None
 """
 
 from __future__ import annotations
@@ -51,7 +54,6 @@ from .registry import (
     get_preferred_terms,
     get_synonyms,
     get_definitions,
-    get_nci_code,
     # Domain-specific functions
     get_domain_testcd_values,
     get_domain_testcd_labels,
@@ -76,7 +78,6 @@ __all__ = [
     "get_preferred_terms",
     "get_synonyms",
     "get_definitions",
-    "get_nci_code",
     # Domain-specific functions
     "get_domain_testcd_values",
     "get_domain_testcd_labels",

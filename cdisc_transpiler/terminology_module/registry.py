@@ -423,27 +423,3 @@ def get_testcd_label(domain_code: str, testcd: str) -> str:
     """
     labels = get_domain_testcd_labels(domain_code)
     return labels.get(testcd.upper(), testcd)
-
-
-# -----------------------------------------------------------------------------
-# NCI Code Lookup
-# -----------------------------------------------------------------------------
-
-
-def get_nci_code(variable: str, value: str) -> str | None:
-    """Return the NCI code for a variable/value combination.
-    
-    This is used for Define-XML generation to include NCI C-codes
-    as external code identifiers.
-    
-    Args:
-        variable: Variable name (e.g., "SEX", "VSTESTCD")
-        value: The coded value to look up
-        
-    Returns:
-        NCI C-code or None if not found
-    """
-    ct = get_controlled_terminology(variable=variable)
-    if ct is None:
-        return None
-    return ct.get_nci_code(value)

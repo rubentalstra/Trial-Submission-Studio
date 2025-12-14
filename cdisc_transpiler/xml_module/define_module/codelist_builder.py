@@ -13,10 +13,7 @@ from xml.etree import ElementTree as ET
 import pandas as pd
 
 from ...domains_module import SDTMVariable
-from ...terminology_module import (
-    get_nci_code as ct_get_nci_code,
-    get_controlled_terminology,
-)
+from ...terminology_module import get_controlled_terminology
 from .constants import (
     ODM_NS,
     DEF_NS,
@@ -351,10 +348,12 @@ def get_nci_code(variable_name: str, coded_value: str) -> str | None:
     Returns:
         NCI C-code or None if not found
     """
-    # First try the controlled terminology registry
-    nci_code = ct_get_nci_code(variable_name, coded_value)
-    if nci_code:
-        return nci_code
+    # Get controlled terminology for the variable and lookup NCI code
+    ct = get_controlled_terminology(variable=variable_name)
+    if ct:
+        nci_code = ct.get_nci_code(coded_value)
+        if nci_code:
+            return nci_code
 
     # Fallback for common codes not in the registry
     fallback_codes = {
