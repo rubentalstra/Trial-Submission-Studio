@@ -192,8 +192,6 @@ def append_where_clause_defs(
                 tag(ODM_NS, "CheckValue"),
             ).text = value
 
-    return (value_lists, where_clauses)
-
 
 def append_method_defs(
     parent: ET.Element,
