@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 from ..domains_module import get_domain, SDTMDomain, SDTMVariable
 from .models import ColumnMapping, MappingSuggestions, Suggestion
+from .pattern_builder import build_variable_patterns
 from .utils import normalize_text, safe_column_name
 
 
@@ -51,6 +52,9 @@ class MappingEngine:
         self.min_confidence = min_confidence
         self.column_hints: Hints = column_hints or {}
         self.valid_targets: set[str] = set(self.domain.variable_names())
+        
+        # Build dynamic patterns from domain metadata
+        self._variable_patterns = build_variable_patterns(self.domain)
 
     def suggest(self, frame: pd.DataFrame) -> MappingSuggestions:
         """Suggest mappings for all columns in the DataFrame.
@@ -155,7 +159,7 @@ class MappingEngine:
         return best
 
     def _alias_override(self, column: str) -> str | None:
-        """Check if column matches a known pattern from SDTM_INFERENCE_PATTERNS.
+        """Check if column matches a known pattern from domain metadata.
 
         Args:
             column: Source column name
@@ -165,22 +169,14 @@ class MappingEngine:
         """
         normalized = normalize_text(column)
 
-        # Check domain-specific suffix patterns
-        domain_code = self.domain.code.upper()
-        for suffix, sources in SDTM_INFERENCE_PATTERNS.get(
-            "_DOMAIN_SUFFIXES", {}
-        ).items():
-            target = domain_code + suffix
-
-            # Check with domain prefix
-            if normalized in [normalize_text(domain_code + s) for s in sources]:
-                if target in self.valid_targets:
-                    return target
-
-            # Check suffix patterns directly
-            if normalized in [normalize_text(s) for s in sources]:
-                if target in self.valid_targets:
-                    return target
+        # Check against dynamic patterns for each variable
+        for target_var, patterns in self._variable_patterns.items():
+            if target_var not in self.valid_targets:
+                continue
+            
+            for pattern in patterns:
+                if normalized == pattern:
+                    return target_var
 
         return None
 

@@ -17,6 +17,7 @@ if TYPE_CHECKING:
 
 from ..domains_module import get_domain, SDTMDomain, SDTMVariable
 from .models import ColumnMapping, MappingSuggestions, Suggestion
+from .pattern_builder import build_variable_patterns
 from .utils import normalize_text, safe_column_name
 
 
@@ -61,26 +62,26 @@ class MetadataAwareMapper:
         self.column_hints: Hints = column_hints or {}
         self.valid_targets: set[str] = set(self.domain.variable_names())
 
+        # Build dynamic patterns from domain metadata
+        self._variable_patterns = build_variable_patterns(self.domain)
+        
         # Build combined alias dictionary for this domain
         self._build_alias_dictionary()
 
     def _build_alias_dictionary(self) -> None:
-        """Build the alias dictionary from metadata and static patterns."""
+        """Build the alias dictionary from metadata and dynamic patterns."""
         self._aliases: dict[str, str] = {}
 
-        # Add domain-specific suffix patterns
-        for suffix, sources in SDTM_INFERENCE_PATTERNS.get(
-            "_DOMAIN_SUFFIXES", {}
-        ).items():
-            target = self.domain_code + suffix
-            if target in self.valid_targets:
-                for src in sources:
-                    # Add with domain prefix
-                    self._aliases[normalize_text(self.domain_code + src)] = target
-                    # Add suffix-only pattern for common cases
-                    self._aliases[normalize_text(src)] = target
+        # Add dynamic patterns from domain variables
+        for target_var, patterns in self._variable_patterns.items():
+            if target_var not in self.valid_targets:
+                continue
+            for pattern in patterns:
+                # Only add if not already mapped (first match wins)
+                if pattern not in self._aliases:
+                    self._aliases[pattern] = target_var
 
-        # Add metadata-driven mappings (highest priority)
+        # Add metadata-driven mappings (highest priority - overwrite if needed)
         if self.metadata and self.metadata.items:
             self._add_metadata_aliases()
 
@@ -99,13 +100,13 @@ class MetadataAwareMapper:
                     self._aliases[normalized] = col_id
                     continue
 
-            # Check if it's a known suffix pattern
-            for suffix in SDTM_INFERENCE_PATTERNS.get("_DOMAIN_SUFFIXES", {}).keys():
-                if col_id.endswith(suffix):
-                    target = self.domain_code + suffix
-                    if target in self.valid_targets:
-                        self._aliases[normalized] = target
-                        break
+            # Check if it matches any variable pattern
+            for target_var, patterns in self._variable_patterns.items():
+                if target_var not in self.valid_targets:
+                    continue
+                if normalized in patterns:
+                    self._aliases[normalized] = target_var
+                    break
 
             # Try to infer from label
             if item.label:
