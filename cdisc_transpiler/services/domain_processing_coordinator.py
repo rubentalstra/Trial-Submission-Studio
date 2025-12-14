@@ -11,14 +11,12 @@ SDTM Reference:
 
 from __future__ import annotations
 
-import math
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
 from ..cli.helpers import write_variant_splits
-from ..cli.utils import ProgressTracker
 from ..cli.logging_config import get_logger
 
 if TYPE_CHECKING:
@@ -32,10 +30,9 @@ from ..mapping_module import (
     MappingConfig,
     build_config,
     create_mapper,
-    unquote_column_name,
 )
 from ..sas_module import generate_sas_program, write_sas_file
-from ..submission_module import build_suppqual
+from ..submission_module import build_suppqual, extract_used_columns
 from ..xpt_module import write_xpt_file
 from ..xpt_module.builder import build_domain_dataframe
 from ..xml_module.dataset_module import write_dataset_xml
@@ -123,25 +120,20 @@ class DomainProcessingCoordinator:
             variant_frames.append((variant_name or domain_code, frame))
             last_config = config
 
-            # Build supplemental qualifiers
+            # Build supplemental qualifiers using submission_module
             if domain_code.upper() != "LB":
-                supp_df = self._build_supplemental_qualifiers(
+                used_columns = extract_used_columns(config)
+                supp_df, _ = build_suppqual(
                     domain_code,
                     load_input_dataset(input_file),
                     frame,
-                    config,
-                    study_id,
-                    common_column_counts,
-                    total_input_files,
+                    used_columns,
+                    study_id=study_id,
+                    common_column_counts=common_column_counts,
+                    total_files=total_input_files,
                 )
                 if supp_df is not None and not supp_df.empty:
                     supp_frames.append(supp_df)
-
-                # Add AE treatment emergent flag
-                if domain_code.upper() == "AE" and "AESEQ" in frame.columns:
-                    trt_supp = self._build_ae_treatment_emergent(frame, study_id)
-                    if trt_supp:
-                        supp_frames.append(pd.DataFrame(trt_supp))
 
         if not all_dataframes:
             raise ValueError(f"No data could be processed for {domain_code}")
@@ -416,66 +408,6 @@ class DomainProcessingCoordinator:
             return None
 
         return build_config(domain_code, suggestions.mappings)
-
-    def _build_supplemental_qualifiers(
-        self,
-        domain_code: str,
-        source_frame: pd.DataFrame,
-        domain_frame: pd.DataFrame,
-        config: MappingConfig | None,
-        study_id: str,
-        common_column_counts: dict[str, int] | None,
-        total_files: int | None,
-    ) -> pd.DataFrame | None:
-        """Build supplemental qualifiers for unmapped columns."""
-        used_source_columns: set[str] = set()
-        if config and config.mappings:
-            for m in config.mappings:
-                used_source_columns.add(unquote_column_name(m.source_column))
-                if getattr(m, "use_code_column", None):
-                    used_source_columns.add(unquote_column_name(m.use_code_column))
-
-        supp_df, _ = build_suppqual(
-            domain_code,
-            source_frame,
-            domain_frame,
-            used_source_columns,
-            study_id=study_id,
-            common_column_counts=common_column_counts,
-            total_files=total_files,
-        )
-        return supp_df
-
-    def _build_ae_treatment_emergent(
-        self, domain_frame: pd.DataFrame, study_id: str
-    ) -> list[dict]:
-        """Build treatment emergent flag supplemental records for AE domain."""
-        trt_records = []
-        for idx, (_, r) in enumerate(domain_frame.iterrows(), start=1):
-            seq_raw = r.get("AESEQ", idx)
-            seq_val = seq_raw if seq_raw not in (None, "") else idx
-            try:
-                seq_float = float(seq_val)
-                if math.isnan(seq_float):
-                    raise ValueError
-            except Exception:
-                seq_float = float(idx)
-            seq_str = str(int(seq_float)) if seq_float.is_integer() else str(seq_float)
-            trt_records.append(
-                {
-                    "STUDYID": study_id,
-                    "RDOMAIN": "AE",
-                    "USUBJID": r.get("USUBJID", ""),
-                    "IDVAR": "AESEQ",
-                    "IDVARVAL": seq_str,
-                    "QNAM": "AETRTEM",
-                    "QLABEL": "Treatment Emergent Flag",
-                    "QVAL": "Y",
-                    "QORIG": "DERIVED",
-                    "QEVAL": "",
-                }
-            )
-        return trt_records
 
     def _merge_dataframes(
         self, all_dataframes: list[pd.DataFrame], domain_code: str, verbose: bool

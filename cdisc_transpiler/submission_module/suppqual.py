@@ -6,13 +6,17 @@ for non-model columns in parent SDTM domains.
 
 from __future__ import annotations
 
-from typing import Any
+from pathlib import Path
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
 from ..pandas_utils import ensure_numeric_series, ensure_series
 
 from ..domains_module import get_domain
+
+if TYPE_CHECKING:
+    from ..mapping_module import MappingConfig
 
 # Markers that indicate missing/null values
 _MISSING_MARKERS = {"", "NAN", "<NA>", "NONE", "NULL"}
@@ -260,3 +264,107 @@ def build_suppqual(
         supp_df["QVAL"] = supp_df["QVAL"].astype(str).str.slice(0, qval_len)
 
     return supp_df, set(extra_cols)
+
+
+def extract_used_columns(config: MappingConfig | None) -> set[str]:
+    """Extract the set of source columns used in a mapping configuration.
+
+    This helper extracts column names from mapping configurations to identify
+    which source columns have already been mapped to SDTM variables.
+
+    Args:
+        config: Mapping configuration with column mappings
+
+    Returns:
+        Set of source column names that are used in the configuration
+    """
+    from ..mapping_module import unquote_column_name
+
+    used_columns: set[str] = set()
+    if config and config.mappings:
+        for mapping in config.mappings:
+            used_columns.add(unquote_column_name(mapping.source_column))
+            if getattr(mapping, "use_code_column", None):
+                used_columns.add(unquote_column_name(mapping.use_code_column))
+    return used_columns
+
+
+def write_suppqual_files(
+    supp_frames: list[pd.DataFrame],
+    domain_code: str,
+    study_id: str,
+    output_format: str,
+    xpt_dir: Path | None,
+    xml_dir: Path | None,
+) -> dict[str, Any]:
+    """Generate supplemental qualifier files (XPT and/or XML).
+
+    This function merges multiple SUPPQUAL dataframes, creates an identity
+    mapping configuration, and writes the output files.
+
+    Args:
+        supp_frames: List of SUPPQUAL DataFrames to merge
+        domain_code: Parent domain code (e.g., "AE", "DM")
+        study_id: Study identifier
+        output_format: Output format ("xpt", "xml", or "both")
+        xpt_dir: Directory for XPT files (optional)
+        xml_dir: Directory for XML files (optional)
+
+    Returns:
+        Dictionary with supplemental file metadata including paths and record counts
+    """
+    from ..mapping_module import ColumnMapping, build_config
+    from ..xpt_module import write_xpt_file
+    from ..xml_module.dataset_module import write_dataset_xml
+
+    # Merge SUPP dataframes
+    merged_supp = (
+        supp_frames[0]
+        if len(supp_frames) == 1
+        else pd.concat(supp_frames, ignore_index=True)
+    )
+
+    supp_domain_code = f"SUPP{domain_code.upper()}"
+
+    # Build identity mapping config
+    mappings = [
+        ColumnMapping(
+            source_column=col,
+            target_variable=col,
+            transformation=None,
+            confidence_score=1.0,
+        )
+        for col in merged_supp.columns
+    ]
+    supp_config = build_config(supp_domain_code, mappings)
+    supp_config.study_id = study_id
+
+    base_filename = get_domain(supp_domain_code).resolved_dataset_name()
+    disk_name = base_filename.lower()
+
+    supp_result: dict[str, Any] = {
+        "domain_code": supp_domain_code,
+        "records": len(merged_supp),
+        "domain_dataframe": merged_supp,
+        "config": supp_config,
+        "xpt_path": None,
+        "xml_path": None,
+        "sas_path": None,
+    }
+
+    if xpt_dir and output_format in ("xpt", "both"):
+        xpt_path = xpt_dir / f"{disk_name}.xpt"
+        file_label = f"Supplemental Qualifiers for {domain_code.upper()}"
+        write_xpt_file(
+            merged_supp, supp_domain_code, xpt_path, file_label=file_label
+        )
+        supp_result["xpt_path"] = xpt_path
+        supp_result["xpt_filename"] = xpt_path.name
+
+    if xml_dir and output_format in ("xml", "both"):
+        xml_path = xml_dir / f"{disk_name}.xml"
+        write_dataset_xml(merged_supp, supp_domain_code, supp_config, xml_path)
+        supp_result["xml_path"] = xml_path
+        supp_result["xml_filename"] = xml_path.name
+
+    return supp_result
