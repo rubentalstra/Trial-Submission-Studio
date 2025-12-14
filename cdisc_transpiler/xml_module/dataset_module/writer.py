@@ -27,7 +27,7 @@ def write_dataset_xml(
     is_reference_data: bool | None = None,
 ) -> None:
     """Write a Dataset-XML 1.0 file for a single domain.
-    
+
     Args:
         data: The pandas DataFrame containing the domain data
         domain_code: The SDTM domain code (e.g., "DM", "AE")

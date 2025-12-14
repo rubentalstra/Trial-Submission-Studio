@@ -14,6 +14,8 @@ import pandas as pd
 if TYPE_CHECKING:
     from ...domains_module import SDTMDomain
 
+from ..transformers import TextTransformer
+
 
 class BaseDomainProcessor(ABC):
     """Base class for domain-specific processors.
@@ -80,8 +82,6 @@ class DefaultDomainProcessor(BaseDomainProcessor):
 
         # Set default EPOCH if present and empty
         if "EPOCH" in frame.columns:
-            from ..transformers import TextTransformer
-
             frame["EPOCH"] = TextTransformer.replace_unknown(
                 frame["EPOCH"], "TREATMENT"
             )

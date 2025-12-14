@@ -6,6 +6,7 @@ used in Define-XML documents.
 
 from __future__ import annotations
 
+from ...domains_module import CT_VERSION
 from .models import StandardDefinition, CommentDefinition
 from .constants import (
     DEFAULT_SDTM_VERSION,
@@ -21,7 +22,7 @@ from .constants import (
 
 def get_default_standard_comments() -> list[CommentDefinition]:
     """Return default comments used by the MSG sample package standards.
-    
+
     Returns:
         List of CommentDefinition objects for standard comments
     """
@@ -61,20 +62,18 @@ def get_default_standards(
     md_version: str = DEFAULT_SDTM_MD_VERSION,
 ) -> list[StandardDefinition]:
     """Return the default standard definitions for SDTM submissions.
-    
+
     Args:
         sdtm_version: SDTMIG version (e.g., "3.4")
         ct_version: Controlled Terminology version (e.g., "2024-03-29")
         md_version: SDTM-MD (Medical Devices) version (default: "1.1")
-        
+
     Returns:
         List of StandardDefinition objects for the study
     """
     if ct_version is None:
-        # Import here to avoid circular dependency
-        from ...domains_module import CT_VERSION
         ct_version = CT_VERSION
-        
+
     return [
         StandardDefinition(
             oid=IG_STANDARD_OID,

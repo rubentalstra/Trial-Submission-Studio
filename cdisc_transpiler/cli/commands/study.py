@@ -5,27 +5,36 @@ from __future__ import annotations
 from collections import defaultdict
 from pathlib import Path
 
+import traceback
 import click
 import pandas as pd
 from rich.console import Console
 
+from ...cli.utils import ProgressTracker
+
 from ...io_module import ParseError, load_input_dataset
 from ...metadata_module import load_study_metadata
 from ...domains_module import get_domain, list_domains
-from ...xml.define.constants import ACRF_HREF
 from ...services import (
     DomainDiscoveryService,
     DomainProcessingCoordinator,
     DomainSynthesisCoordinator,
     StudyOrchestrationService,
 )
-from ..utils import ProgressTracker, log_success, log_error
+from ...xml_module.define_module import (
+    StudyDataset,
+    write_study_define_file,
+)
+from ...xml_module.define_module.constants import (
+    CONTEXT_SUBMISSION,
+    CONTEXT_OTHER,
+    ACRF_HREF,
+)
 from ..helpers import (
-    log_verbose,
-    ensure_acrf_pdf,
     print_study_summary,
 )
-from ..logging_config import create_logger, SDTMLogger
+from ..logging_config import create_logger
+from ...services.file_organization_service import ensure_acrf_pdf
 
 
 console = Console()
@@ -150,18 +159,10 @@ def study_command(
         # Custom output directory and study ID
         cdisc-transpiler study data/ --output-dir submission/ --study-id STUDY123
     """
-    from ...xml.define import (
-        StudyDataset,
-        write_study_define_file,
-    )
-    from ...xml.define.constants import (
-        CONTEXT_SUBMISSION,
-        CONTEXT_OTHER,
-    )
 
     # Initialize the structured logger with appropriate verbosity
     logger = create_logger(console, verbosity=verbose)
-    
+
     # Get list of supported domains
     supported_domains = list(list_domains())
 
@@ -181,7 +182,9 @@ def study_command(
     study_metadata = load_study_metadata(study_folder)
     logger.log_metadata_loaded(
         items_count=len(study_metadata.items) if study_metadata.items else None,
-        codelists_count=len(study_metadata.codelists) if study_metadata.codelists else None,
+        codelists_count=len(study_metadata.codelists)
+        if study_metadata.codelists
+        else None,
     )
 
     # Set output directory
@@ -488,8 +491,6 @@ def study_command(
             errors.append((domain_code, str(exc)))
             progress_tracker.increment()  # Count failed domains too
         except Exception as exc:
-            import traceback
-
             logger.error(f"{domain_code}: {exc}")
             if verbose > 1:  # Only print traceback in very verbose mode
                 traceback.print_exc()
@@ -591,8 +592,6 @@ def study_command(
             )
             logger.success(f"Generated Define-XML 2.1 at {define_path}")
         except Exception as exc:
-            import traceback
-
             logger.error(f"Define-XML generation failed: {exc}")
             if verbose > 1:
                 traceback.print_exc()
@@ -600,7 +599,7 @@ def study_command(
 
     # Log final processing statistics in verbose mode
     logger.log_final_stats()
-    
+
     # Print summary
     print_study_summary(
         results, errors, output_dir, output_format, generate_define, generate_sas

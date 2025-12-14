@@ -24,7 +24,6 @@ import pandas as pd
 if TYPE_CHECKING:
     from ..mapping_module import MappingConfig, ColumnMapping
     from ..metadata_module import StudyMetadata
-    from ..domains_module import SDTMDomain
 
 from ..io_module import load_input_dataset, build_column_hints
 from ..mapping_module import build_config, create_mapper, unquote_column_name
@@ -237,8 +236,6 @@ class DomainProcessingService:
         Returns:
             Transformed dataframe in long format
         """
-        # Import here to avoid circular dependency
-        from ..cli import _reshape_vs_to_long, _reshape_lb_to_long
 
         if domain_code.upper() == "VS":
             return _reshape_vs_to_long(source_df, self.study_id)
@@ -293,7 +290,6 @@ class DomainProcessingService:
 
         # Build config for SUPPQUAL
         supp_domain_code = f"SUPP{domain_code.upper()}"
-        from ..mapping_module import ColumnMapping
 
         supp_mappings = [
             ColumnMapping(

@@ -12,6 +12,8 @@ if TYPE_CHECKING:
     from ..domains_module import SDTMVariable
     from ..mapping_module import ColumnMapping
 
+from ..terminology_module import get_controlled_terminology
+
 
 def _synonyms(*values: str) -> set[str]:
     """Return uppercased synonyms for canonical value matching.
@@ -201,7 +203,6 @@ def _get_ct_value_map(variable_name: str) -> dict[str, set[str]] | None:
     Returns:
         Value map or None if not found in CT
     """
-    from ..terminology_module import get_controlled_terminology
 
     ct = get_controlled_terminology(variable=variable_name)
     if ct is None:
@@ -308,7 +309,6 @@ def _should_upcase(variable: "SDTMVariable | None", target_name: str) -> bool:
     Returns:
         True if values should be uppercased
     """
-    from ..terminology_module import get_controlled_terminology
 
     if variable and variable.codelist_code:
         return True

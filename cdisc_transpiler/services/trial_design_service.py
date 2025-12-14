@@ -12,11 +12,11 @@ SDTM Reference:
     - TI (Trial Inclusion/Exclusion): Entry criteria
     - TD (Trial Disease Assessments): Disease assessment schedule
     - TM (Trial Disease Milestones): Disease milestone definitions
-    
+
     Special-Purpose domains include:
     - SE (Subject Elements): Elements actually experienced by subjects
     - DS (Disposition): Subject disposition events
-    
+
     Relationship domains:
     - RELREC (Related Records): Links between related observations
 """
@@ -28,7 +28,7 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 if TYPE_CHECKING:
-    from ..domains_module import SDTMDomain, SDTMVariable
+    from ..domains_module import SDTMDomain
 
 from ..domains_module import get_domain
 from ..mapping_module import ColumnMapping, build_config
@@ -36,7 +36,7 @@ from ..mapping_module import ColumnMapping, build_config
 
 class TrialDesignService:
     """Service for synthesizing SDTM trial design domains.
-    
+
     This service creates scaffold trial design domains when source data
     doesn't include them. These domains are required by validation tools
     like Pinnacle 21 for regulatory submission packages.
@@ -64,13 +64,15 @@ class TrialDesignService:
         """
         domain = get_domain("TS")
         row = self._base_row(domain)
-        row.update({
-            "TSPARMCD": "TITLE",
-            "TSPARM": "Study Title",
-            "TSVAL": "Synthetic Trial",
-            "TSVCDREF": "",
-            "TSVCDVER": "",
-        })
+        row.update(
+            {
+                "TSPARMCD": "TITLE",
+                "TSPARM": "Study Title",
+                "TSVAL": "Synthetic Trial",
+                "TSVCDREF": "",
+                "TSVCDVER": "",
+            }
+        )
 
         df = pd.DataFrame([row])
         config = self._build_config("TS", df)
@@ -91,14 +93,16 @@ class TrialDesignService:
         rows = []
         for etcd, element, order in elements:
             row = self._base_row(domain)
-            row.update({
-                "ARMCD": "ARM1",
-                "ARM": "Treatment Arm",
-                "ETCD": etcd,
-                "ELEMENT": element,
-                "TAETORD": order,
-                "EPOCH": element,
-            })
+            row.update(
+                {
+                    "ARMCD": "ARM1",
+                    "ARM": "Treatment Arm",
+                    "ETCD": etcd,
+                    "ELEMENT": element,
+                    "TAETORD": order,
+                    "EPOCH": element,
+                }
+            )
             rows.append(row)
 
         df = pd.DataFrame(rows)
@@ -122,13 +126,15 @@ class TrialDesignService:
         rows = []
         for etcd, element, start, end in elements:
             row = self._base_row(domain)
-            row.update({
-                "ETCD": etcd,
-                "ELEMENT": element,
-                "TESTRL": start,
-                "TEENRL": end,
-                "TEDUR": "P1D",
-            })
+            row.update(
+                {
+                    "ETCD": etcd,
+                    "ELEMENT": element,
+                    "TESTRL": start,
+                    "TEENRL": end,
+                    "TEDUR": "P1D",
+                }
+            )
             rows.append(row)
 
         df = pd.DataFrame(rows)
@@ -142,7 +148,9 @@ class TrialDesignService:
             Tuple of (dataframe, config)
         """
         domain = get_domain("SE")
-        subjects = self.reference_starts.keys() if self.reference_starts else ["SYNTH001"]
+        subjects = (
+            self.reference_starts.keys() if self.reference_starts else ["SYNTH001"]
+        )
         base_date = self._get_reference_date()
 
         elements = [
@@ -155,16 +163,18 @@ class TrialDesignService:
             start_date = self.reference_starts.get(usubjid, base_date)
             for etcd, element, epoch in elements:
                 row = self._base_row(domain)
-                row.update({
-                    "USUBJID": usubjid,
-                    "ETCD": etcd,
-                    "ELEMENT": element,
-                    "EPOCH": epoch,
-                    "SESTDTC": start_date,
-                    "SEENDTC": start_date,
-                    "SESTDY": 1,
-                    "SEENDY": 1,
-                })
+                row.update(
+                    {
+                        "USUBJID": usubjid,
+                        "ETCD": etcd,
+                        "ELEMENT": element,
+                        "EPOCH": epoch,
+                        "SESTDTC": start_date,
+                        "SEENDTC": start_date,
+                        "SESTDY": 1,
+                        "SEENDY": 1,
+                    }
+                )
                 rows.append(row)
 
         df = pd.DataFrame(rows)
@@ -178,7 +188,9 @@ class TrialDesignService:
             Tuple of (dataframe, config)
         """
         domain = get_domain("DS")
-        subjects = self.reference_starts.keys() if self.reference_starts else ["SYNTH001"]
+        subjects = (
+            self.reference_starts.keys() if self.reference_starts else ["SYNTH001"]
+        )
         base_date = self._get_reference_date()
 
         rows = []
@@ -187,39 +199,45 @@ class TrialDesignService:
 
             # Informed consent
             row = self._base_row(domain)
-            row.update({
-                "USUBJID": usubjid,
-                "DSDECOD": "INFORMED CONSENT OBTAINED",
-                "DSTERM": "INFORMED CONSENT OBTAINED",
-                "DSCAT": "PROTOCOL MILESTONE",
-                "DSSTDTC": start_date,
-                "DSSEQ": None,
-                "EPOCH": "SCREENING",
-                "DSSTDY": 1,
-                "DSDY": 1,
-            })
+            row.update(
+                {
+                    "USUBJID": usubjid,
+                    "DSDECOD": "INFORMED CONSENT OBTAINED",
+                    "DSTERM": "INFORMED CONSENT OBTAINED",
+                    "DSCAT": "PROTOCOL MILESTONE",
+                    "DSSTDTC": start_date,
+                    "DSSEQ": None,
+                    "EPOCH": "SCREENING",
+                    "DSSTDY": 1,
+                    "DSDY": 1,
+                }
+            )
             rows.append(row)
 
             # Disposition event
             row = self._base_row(domain)
-            row.update({
-                "USUBJID": usubjid,
-                "DSDECOD": "COMPLETED",
-                "DSTERM": "COMPLETED",
-                "DSCAT": "DISPOSITION EVENT",
-                "DSSTDTC": start_date,
-                "DSSEQ": None,
-                "EPOCH": "TREATMENT",
-                "DSSTDY": 1,
-                "DSDY": 1,
-            })
+            row.update(
+                {
+                    "USUBJID": usubjid,
+                    "DSDECOD": "COMPLETED",
+                    "DSTERM": "COMPLETED",
+                    "DSCAT": "DISPOSITION EVENT",
+                    "DSSTDTC": start_date,
+                    "DSSEQ": None,
+                    "EPOCH": "TREATMENT",
+                    "DSSTDY": 1,
+                    "DSDY": 1,
+                }
+            )
             rows.append(row)
 
         df = pd.DataFrame(rows)
         config = self._build_config("DS", df)
         return df, config
 
-    def synthesize_relrec(self, domain_results: dict[str, pd.DataFrame]) -> tuple[pd.DataFrame, object]:
+    def synthesize_relrec(
+        self, domain_results: dict[str, pd.DataFrame]
+    ) -> tuple[pd.DataFrame, object]:
         """Synthesize Relationship Records (RELREC) domain.
 
         Args:
@@ -233,17 +251,21 @@ class TrialDesignService:
         if records.empty:
             # Return empty but structured dataframe
             domain = get_domain("RELREC")
-            df = pd.DataFrame({
-                var.name: pd.Series(dtype=var.pandas_dtype())
-                for var in domain.variables
-            })
+            df = pd.DataFrame(
+                {
+                    var.name: pd.Series(dtype=var.pandas_dtype())
+                    for var in domain.variables
+                }
+            )
         else:
             df = records
 
         config = self._build_config("RELREC", df)
         return df, config
 
-    def _build_relrec_records(self, domain_results: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    def _build_relrec_records(
+        self, domain_results: dict[str, pd.DataFrame]
+    ) -> pd.DataFrame:
         """Build RELREC records from domain data."""
         ae_df = domain_results.get("AE")
         ds_df = domain_results.get("DS")
@@ -272,27 +294,31 @@ class TrialDesignService:
                 aeseq = self._stringify(row.get("AESEQ"), idx + 1)
                 relid = f"AE_DS_{usubjid}_{aeseq}"
 
-                records.append({
-                    "STUDYID": self.study_id,
-                    "RDOMAIN": "AE",
-                    "USUBJID": usubjid,
-                    "IDVAR": "AESEQ",
-                    "IDVARVAL": aeseq,
-                    "RELTYPE": "",
-                    "RELID": relid,
-                })
+                records.append(
+                    {
+                        "STUDYID": self.study_id,
+                        "RDOMAIN": "AE",
+                        "USUBJID": usubjid,
+                        "IDVAR": "AESEQ",
+                        "IDVARVAL": aeseq,
+                        "RELTYPE": "",
+                        "RELID": relid,
+                    }
+                )
 
                 ds_seq = ds_seq_map.get(usubjid)
                 if ds_seq is not None:
-                    records.append({
-                        "STUDYID": self.study_id,
-                        "RDOMAIN": "DS",
-                        "USUBJID": usubjid,
-                        "IDVAR": "DSSEQ",
-                        "IDVARVAL": self._stringify(ds_seq, 1),
-                        "RELTYPE": "",
-                        "RELID": relid,
-                    })
+                    records.append(
+                        {
+                            "STUDYID": self.study_id,
+                            "RDOMAIN": "DS",
+                            "USUBJID": usubjid,
+                            "IDVAR": "DSSEQ",
+                            "IDVARVAL": self._stringify(ds_seq, 1),
+                            "RELTYPE": "",
+                            "RELID": relid,
+                        }
+                    )
 
         # Link EX to DS
         if ex_df is not None and ds_seq_map:
@@ -303,27 +329,31 @@ class TrialDesignService:
                 exseq = self._stringify(row.get("EXSEQ"), idx + 1)
                 relid = f"EX_DS_{usubjid}_{exseq}"
 
-                records.append({
-                    "STUDYID": self.study_id,
-                    "RDOMAIN": "EX",
-                    "USUBJID": usubjid,
-                    "IDVAR": "EXSEQ",
-                    "IDVARVAL": exseq,
-                    "RELTYPE": "",
-                    "RELID": relid,
-                })
+                records.append(
+                    {
+                        "STUDYID": self.study_id,
+                        "RDOMAIN": "EX",
+                        "USUBJID": usubjid,
+                        "IDVAR": "EXSEQ",
+                        "IDVARVAL": exseq,
+                        "RELTYPE": "",
+                        "RELID": relid,
+                    }
+                )
 
                 ds_seq = ds_seq_map.get(usubjid)
                 if ds_seq is not None:
-                    records.append({
-                        "STUDYID": self.study_id,
-                        "RDOMAIN": "DS",
-                        "USUBJID": usubjid,
-                        "IDVAR": "DSSEQ",
-                        "IDVARVAL": self._stringify(ds_seq, 1),
-                        "RELTYPE": "",
-                        "RELID": relid,
-                    })
+                    records.append(
+                        {
+                            "STUDYID": self.study_id,
+                            "RDOMAIN": "DS",
+                            "USUBJID": usubjid,
+                            "IDVAR": "DSSEQ",
+                            "IDVARVAL": self._stringify(ds_seq, 1),
+                            "RELTYPE": "",
+                            "RELID": relid,
+                        }
+                    )
 
         return pd.DataFrame(records)
 
@@ -345,7 +375,9 @@ class TrialDesignService:
                 row[var.name] = 1
             elif name.endswith("DY"):
                 row[var.name] = 1
-            elif name.endswith("DTC") or name.endswith("STDTC") or name.endswith("ENDTC"):
+            elif (
+                name.endswith("DTC") or name.endswith("STDTC") or name.endswith("ENDTC")
+            ):
                 row[var.name] = base_date
             elif var.type == "Num":
                 row[var.name] = 0

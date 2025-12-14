@@ -13,10 +13,8 @@ from xml.etree import ElementTree as ET
 import pandas as pd
 
 from ...domains_module import SDTMVariable
-from ...terminology_module import (
-    get_nci_code as ct_get_nci_code,
-    get_controlled_terminology,
-)
+from .variable_builder import get_datatype
+from ...terminology_module import get_controlled_terminology
 from .constants import (
     ODM_NS,
     DEF_NS,
@@ -86,7 +84,6 @@ def build_code_list_element(
     Returns:
         CodeList XML element
     """
-    from .variable_builder import get_datatype
 
     is_meddra = needs_meddra(variable.name)
     data_type = "text" if is_meddra else get_datatype(variable)
@@ -130,6 +127,9 @@ def build_code_list_element(
         seen.add(value)
 
     for value, is_extended in all_values:
+        # Look up NCI code from CT
+        code = ct.lookup_code(value) if ct else None
+
         if use_enumerated:
             enum_item = ET.SubElement(
                 code_list,
@@ -138,12 +138,11 @@ def build_code_list_element(
             )
             if is_extended:
                 enum_item.set(attr(DEF_NS, "ExtendedValue"), "Yes")
-            nci_code = get_nci_code(variable.name, value)
-            if nci_code:
+            if code:
                 ET.SubElement(
                     enum_item,
                     tag(ODM_NS, "Alias"),
-                    attrib={"Context": "nci:ExtCodeID", "Name": nci_code},
+                    attrib={"Context": "nci:ExtCodeID", "Name": code},
                 )
         else:
             cli_attrib = {"CodedValue": value}
@@ -161,12 +160,11 @@ def build_code_list_element(
                 attrib={attr(XML_NS, "lang"): "en"},
             ).text = get_decode_value(variable.name, value)
 
-            nci_code = get_nci_code(variable.name, value)
-            if nci_code:
+            if code:
                 ET.SubElement(
                     cli,
                     tag(ODM_NS, "Alias"),
-                    attrib={"Context": "nci:ExtCodeID", "Name": nci_code},
+                    attrib={"Context": "nci:ExtCodeID", "Name": code},
                 )
 
     if is_meddra:
@@ -335,35 +333,6 @@ def get_decode_value(variable_name: str, coded_value: str) -> str:
         return outcome_decodes.get(value_upper, coded_value)
 
     return coded_value
-
-
-def get_nci_code(variable_name: str, coded_value: str) -> str | None:
-    """Return the NCI code for a controlled term if available.
-
-    NCI codes (C-codes) are used as external code identifiers in
-    CDISC controlled terminology. This function uses the controlled
-    terminology registry for accurate code lookup.
-
-    Args:
-        variable_name: Name of the variable
-        coded_value: Coded value to look up
-
-    Returns:
-        NCI C-code or None if not found
-    """
-    # First try the controlled terminology registry
-    nci_code = ct_get_nci_code(variable_name, coded_value)
-    if nci_code:
-        return nci_code
-
-    # Fallback for common codes not in the registry
-    fallback_codes = {
-        ("NY", "Y"): "C49488",
-        ("NY", "N"): "C49487",
-    }
-
-    key = (variable_name.upper(), coded_value.upper())
-    return fallback_codes.get(key)
 
 
 def get_code_list_oid(variable: SDTMVariable, domain_code: str) -> str:

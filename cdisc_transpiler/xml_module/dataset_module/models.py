@@ -13,12 +13,12 @@ class DatasetXMLError(Exception):
 @dataclass
 class DatasetXMLConfig:
     """Configuration for Dataset-XML generation.
-    
+
     Attributes:
         study_oid: Study OID identifier
         metadata_version_oid: MetaDataVersion OID reference
         originator: Organization that created the document
-        source_system: System that created the document  
+        source_system: System that created the document
         source_system_version: Version of source system
         file_type: ODM FileType (Snapshot, Transactional)
         granularity: Data granularity level

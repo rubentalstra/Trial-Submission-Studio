@@ -18,7 +18,8 @@ import pandas as pd
 from rich.console import Console
 from rich.table import Table
 
-from .logging_config import get_logger, SDTMLogger
+from .logging_config import get_logger
+from ..xpt_module import write_xpt_file
 
 if TYPE_CHECKING:
     from ..domains_module import SDTMDomain
@@ -32,7 +33,7 @@ def log_verbose(enabled: bool, message: str) -> None:
     Args:
         enabled: Whether verbose logging is enabled
         message: Message to log
-        
+
     Note:
         This function maintains backward compatibility.
         New code should use SDTMLogger directly via get_logger().
@@ -41,59 +42,6 @@ def log_verbose(enabled: bool, message: str) -> None:
         # Use new logger if available and enabled
         logger = get_logger()
         logger.verbose(message)
-
-
-def ensure_acrf_pdf(path: Path) -> None:
-    """Create a minimal, valid PDF at path if one is not already present.
-
-    This creates a placeholder Annotated CRF PDF file required by Define-XML.
-
-    Args:
-        path: Path where PDF should be created
-    """
-    if path.exists():
-        return
-
-    path.parent.mkdir(parents=True, exist_ok=True)
-
-    obj_bodies: dict[int, str] = {
-        1: "<< /Type /Catalog /Pages 2 0 R >>",
-        2: "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        3: (
-            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
-            "/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>"
-        ),
-    }
-    stream_text = "Annotated CRF placeholder"
-    stream_content = f"BT /F1 12 Tf 72 720 Td ({stream_text}) Tj ET".encode("latin-1")
-    obj_bodies[4] = (
-        f"<< /Length {len(stream_content)} >>\nstream\n"
-        + stream_content.decode("latin-1")
-        + "\nendstream"
-    )
-    obj_bodies[5] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"
-
-    parts: list[str] = ["%PDF-1.4\n"]
-    offsets: dict[int, int] = {}
-    for obj_num in sorted(obj_bodies):
-        offsets[obj_num] = sum(len(p.encode("latin-1")) for p in parts)
-        parts.append(f"{obj_num} 0 obj\n{obj_bodies[obj_num]}\nendobj\n")
-
-    xref_start = sum(len(p.encode("latin-1")) for p in parts)
-    size = max(obj_bodies) + 1
-    xref_lines = ["xref", f"0 {size}", "0000000000 65535 f "]
-    for i in range(1, size):
-        offset = offsets.get(i, 0)
-        xref_lines.append(f"{offset:010d} 00000 n ")
-    xref_section = "\n".join(xref_lines) + "\n"
-    trailer = (
-        f"trailer\n<< /Size {size} /Root 1 0 R >>\nstartxref\n{xref_start}\n%%EOF\n"
-    )
-    parts.append(xref_section)
-    parts.append(trailer)
-
-    pdf_bytes = "".join(parts).encode("latin-1")
-    path.write_bytes(pdf_bytes)
 
 
 def write_variant_splits(
@@ -122,20 +70,19 @@ def write_variant_splits(
     Returns:
         Tuple of (list of paths, list of (split_name, dataframe, path) tuples)
     """
-    from ..xpt_module import write_xpt_file
 
     split_paths: list[Path] = []
     split_datasets: list[tuple[str, pd.DataFrame, Path]] = []
     domain_code = domain.code.upper()
-    
+
     for variant_name, variant_df in variant_frames:
         # Clean variant name for filename
         table = variant_name.replace(" ", "_").replace("(", "").replace(")", "").upper()
-        
+
         # Skip if this is the base domain (not a split)
         if table == domain_code:
             continue
-        
+
         # Validate split dataset name follows SDTMIG v3.4 naming convention
         # Split name must start with domain code and be ≤ 8 characters
         if not table.startswith(domain_code):
@@ -144,41 +91,44 @@ def write_variant_splits(
                 f"with domain code '{domain_code}'. Skipping."
             )
             continue
-        
+
         if len(table) > 8:
             console.print(
                 f"[yellow]⚠[/yellow] Warning: Split dataset name '{table}' exceeds "
                 "8 characters. Truncating to comply with SDTMIG v3.4."
             )
             table = table[:8]
-        
+
         # Ensure DOMAIN variable is set correctly (must match parent domain)
         if "DOMAIN" in variant_df.columns:
             variant_df = variant_df.copy()
             variant_df["DOMAIN"] = domain_code
-        
+
         # Create split subdirectory for better organization
         split_dir = xpt_dir / "split"
         split_dir.mkdir(parents=True, exist_ok=True)
-        
+
         split_name = table.lower()
         split_path = split_dir / f"{split_name}.xpt"
-        
+
         # Extract split suffix for better labeling
-        split_suffix = table[len(domain_code):]
+        split_suffix = table[len(domain_code) :]
         file_label = (
-            f"{domain.description} - {split_suffix}" if split_suffix 
+            f"{domain.description} - {split_suffix}"
+            if split_suffix
             else domain.description
         )
-        
-        write_xpt_file(variant_df, domain.code, split_path, file_label=file_label, table_name=table)
+
+        write_xpt_file(
+            variant_df, domain.code, split_path, file_label=file_label, table_name=table
+        )
         split_paths.append(split_path)
         split_datasets.append((table, variant_df, split_path))
         console.print(
             f"[green]✓[/green] Split dataset: {split_path} "
             f"(DOMAIN={domain_code}, table={table})"
         )
-    
+
     return split_paths, split_datasets
 
 

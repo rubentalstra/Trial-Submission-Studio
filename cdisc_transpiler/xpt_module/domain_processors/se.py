@@ -5,7 +5,7 @@ from __future__ import annotations
 import pandas as pd
 
 from .base import BaseDomainProcessor
-from ..transformers import TextTransformer, NumericTransformer, DateTransformer
+from ..transformers import NumericTransformer, DateTransformer
 
 
 class SEProcessor(BaseDomainProcessor):
@@ -28,7 +28,7 @@ class SEProcessor(BaseDomainProcessor):
         study_id = "STUDY"
         if len(frame) > 0 and "STUDYID" in frame.columns:
             study_id = frame["STUDYID"].iloc[0]
-        
+
         subjects = (
             list(self.reference_starts.keys())
             if self.reference_starts

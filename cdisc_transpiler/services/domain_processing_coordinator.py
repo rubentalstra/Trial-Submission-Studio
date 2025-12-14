@@ -17,19 +17,42 @@ from typing import TYPE_CHECKING
 import pandas as pd
 from rich.console import Console
 
+from ..cli.helpers import log_verbose
+from ..cli.utils import log_success
+from ..cli.logging_config import get_logger
+
 if TYPE_CHECKING:
     from ..metadata_module import StudyMetadata
 
 from ..domains_module import get_domain, get_domain_class
 from ..io_module import build_column_hints, load_input_dataset
-from ..mapping_module import ColumnMapping, build_config, create_mapper, unquote_column_name
+from ..mapping_module import (
+    ColumnMapping,
+    build_config,
+    create_mapper,
+    unquote_column_name,
+)
 from ..sas_module import generate_sas_program, write_sas_file
 from ..submission_module import build_suppqual
 from ..xpt_module import write_xpt_file
-from ..xml.dataset import write_dataset_xml
 from ..xpt_module.builder import build_domain_dataframe
-from ..cli.helpers import write_variant_splits
+from ..xml_module.dataset_module import write_dataset_xml
 from .study_orchestration_service import StudyOrchestrationService
+
+
+def _write_variant_splits(
+    merged_dataframe: pd.DataFrame,
+    variant_frames: list,
+    domain,
+    xpt_dir: Path,
+    console: Console,
+):
+    """Write variant splits with deferred import."""
+    from ..cli.helpers import write_variant_splits
+
+    return write_variant_splits(
+        merged_dataframe, variant_frames, domain, xpt_dir, console
+    )
 
 
 console = Console()
@@ -44,7 +67,9 @@ class DomainProcessingCoordinator:
         Args:
             orchestration_service: Optional orchestration service for domain transformations
         """
-        self.orchestration_service = orchestration_service or StudyOrchestrationService()
+        self.orchestration_service = (
+            orchestration_service or StudyOrchestrationService()
+        )
 
     def process_and_merge_domain(
         self,
@@ -93,7 +118,6 @@ class DomainProcessingCoordinator:
         variant_frames: list[tuple[str, pd.DataFrame]] = []
         last_config = None
         supp_frames: list[pd.DataFrame] = []
-        lb_long = False
 
         # Process each input file
         for input_file, variant_name in files_for_domain:
@@ -114,9 +138,6 @@ class DomainProcessingCoordinator:
             all_dataframes.append(frame)
             variant_frames.append((variant_name or domain_code, frame))
             last_config = config
-
-            if is_lb_long:
-                lb_long = True
 
             # Build supplemental qualifiers
             if domain_code.upper() != "LB":
@@ -185,8 +206,6 @@ class DomainProcessingCoordinator:
         Returns:
             Tuple of (dataframe, config, is_lb_long) or None if file should be skipped
         """
-        from ..cli.helpers import log_verbose
-        from ..cli.logging_config import get_logger
 
         # Get global logger for stats tracking
         logger = get_logger()
@@ -196,7 +215,7 @@ class DomainProcessingCoordinator:
             if variant_name == domain_code
             else f"{domain_code} ({variant_name})"
         )
-        
+
         # Get domain class for context (unused but kept for documentation)
         domain_class = get_domain_class(domain_code)
 
@@ -204,18 +223,19 @@ class DomainProcessingCoordinator:
         frame = load_input_dataset(input_file)
         row_count = len(frame)
         col_count = len(frame.columns)
-        
+
         # Log file loading and update stats
         logger.log_file_loaded(input_file.name, row_count, col_count)
-        
+
         # Log column names at verbose level
         if verbose and row_count > 0:
             col_names = ", ".join(frame.columns[:10].tolist())
             if len(frame.columns) > 10:
                 col_names += f" ... (+{len(frame.columns) - 10} more)"
+
             log_verbose(verbose, f"    Columns: {col_names}")
 
-        # Skip VSTAT helper files - these are operational vital signs files 
+        # Skip VSTAT helper files - these are operational vital signs files
         # used for data preparation but not part of SDTM submission
         is_vstat = (
             domain_code.upper() == "VS"
@@ -245,6 +265,7 @@ class DomainProcessingCoordinator:
         # Build configuration
         if vs_long or lb_long:
             config = self._build_identity_config(domain_code, frame)
+
             log_verbose(verbose, f"    Using identity mapping (post-transformation)")
         else:
             config = self._build_mapped_config(
@@ -252,15 +273,16 @@ class DomainProcessingCoordinator:
             )
             if config is None:
                 return None
-            
+
             # Log mapping summary - safely get mapping count
-            mapping_count = len(getattr(config, 'mappings', []))
-            log_verbose(verbose, f"    Column mappings: {mapping_count} variables mapped")
+            mapping_count = len(getattr(config, "mappings", []))
+            log_verbose(
+                verbose, f"    Column mappings: {mapping_count} variables mapped"
+            )
 
         config.study_id = study_id
 
         # Build domain dataframe
-        from ..xpt_module.builder import build_domain_dataframe
 
         domain_dataframe = build_domain_dataframe(
             frame,
@@ -269,28 +291,36 @@ class DomainProcessingCoordinator:
             metadata=metadata,
             reference_starts=None,
         )
-        
+
         output_rows = len(domain_dataframe)
         logger.log_rows_processed(domain_code, output_rows, variant_name)
-        
+
         # Log transformation summary if rows changed
         if output_rows != row_count:
-            change_pct = ((output_rows - row_count) / row_count * 100) if row_count > 0 else 0
+            change_pct = (
+                ((output_rows - row_count) / row_count * 100) if row_count > 0 else 0
+            )
             direction = "+" if change_pct > 0 else ""
-            log_verbose(verbose, f"    Row count changed: {row_count:,} → {output_rows:,} ({direction}{change_pct:.1f}%)")
+            log_verbose(
+                verbose,
+                f"    Row count changed: {row_count:,} → {output_rows:,} ({direction}{change_pct:.1f}%)",
+            )
 
         return domain_dataframe, config, lb_long
 
     def _apply_vs_transformation(
-        self, frame: pd.DataFrame, domain_code: str, study_id: str, display_name: str, verbose: bool
+        self,
+        frame: pd.DataFrame,
+        domain_code: str,
+        study_id: str,
+        display_name: str,
+        verbose: bool,
     ) -> tuple[pd.DataFrame | None, bool]:
         """Apply VS domain transformation if needed.
-        
+
         This handles wide-to-long transformation for Vital Signs data per SDTMIG v3.4.
         VS domain requires one record per vital sign measurement per time point.
         """
-        from ..cli.helpers import log_verbose
-        from ..cli.logging_config import get_logger
 
         if domain_code.upper() != "VS":
             return frame, False
@@ -299,29 +329,36 @@ class DomainProcessingCoordinator:
         input_rows = len(frame)
         frame = self.orchestration_service.reshape_vs_to_long(frame, study_id)
         output_rows = len(frame)
-        
+
         # Enhanced logging for VS transformation
-        logger.log_transformation(domain_code, "reshape", input_rows, output_rows, details="wide-to-long")
+        logger.log_transformation(
+            domain_code, "reshape", input_rows, output_rows, details="wide-to-long"
+        )
 
         if frame.empty:
             console.print(
                 f"[yellow]⚠[/yellow] {display_name}: No vital signs records after transformation"
             )
-            log_verbose(verbose, f"    Note: Check source data for VSTESTCD/VSORRES columns")
+            log_verbose(
+                verbose, f"    Note: Check source data for VSTESTCD/VSORRES columns"
+            )
             return None, True
 
         return frame, True
 
     def _apply_lb_transformation(
-        self, frame: pd.DataFrame, domain_code: str, study_id: str, display_name: str, verbose: bool
+        self,
+        frame: pd.DataFrame,
+        domain_code: str,
+        study_id: str,
+        display_name: str,
+        verbose: bool,
     ) -> tuple[pd.DataFrame | None, bool]:
         """Apply LB domain transformation if needed.
-        
+
         This handles wide-to-long transformation for Laboratory data per SDTMIG v3.4.
         LB domain requires one record per lab test per time point per visit per subject.
         """
-        from ..cli.helpers import log_verbose
-        from ..cli.logging_config import get_logger
 
         if domain_code.upper() != "LB":
             return frame, False
@@ -329,30 +366,41 @@ class DomainProcessingCoordinator:
         logger = get_logger()
         input_rows = len(frame)
         reshaped = self.orchestration_service.reshape_lb_to_long(frame, study_id)
-        
+
         if "LBTESTCD" in reshaped.columns:
             output_rows = len(reshaped)
-            
+
             # Count unique tests for context
-            unique_tests = reshaped["LBTESTCD"].nunique() if "LBTESTCD" in reshaped.columns else 0
-            
+            unique_tests = (
+                reshaped["LBTESTCD"].nunique() if "LBTESTCD" in reshaped.columns else 0
+            )
+
             # Enhanced logging for LB transformation using logger
             logger.log_transformation(
-                domain_code, "reshape", input_rows, output_rows,
-                details=f"wide-to-long, {unique_tests} test codes"
+                domain_code,
+                "reshape",
+                input_rows,
+                output_rows,
+                details=f"wide-to-long, {unique_tests} test codes",
             )
 
             if reshaped.empty:
                 console.print(
                     f"[yellow]⚠[/yellow] {display_name}: No laboratory records after transformation"
                 )
-                log_verbose(verbose, f"    Note: Check source data for lab test columns")
+                log_verbose(
+                    verbose, f"    Note: Check source data for lab test columns"
+                )
                 return None, True
 
             return reshaped, True
         else:
-            log_verbose(verbose, "  Skipping LB reshape (no recognizable test columns found)")
-            log_verbose(verbose, f"    Expected columns like: WBC, RBC, HGB, or LBTESTCD")
+            log_verbose(
+                verbose, "  Skipping LB reshape (no recognizable test columns found)"
+            )
+            log_verbose(
+                verbose, f"    Expected columns like: WBC, RBC, HGB, or LBTESTCD"
+            )
             return None, False
 
     def _build_identity_config(self, domain_code: str, frame: pd.DataFrame) -> object:
@@ -460,11 +508,10 @@ class DomainProcessingCoordinator:
         self, all_dataframes: list[pd.DataFrame], domain_code: str, verbose: bool
     ) -> pd.DataFrame:
         """Merge multiple dataframes and re-sequence.
-        
+
         When multiple variant files are merged (e.g., LBCC + LBHM), sequence
         numbers are reassigned to maintain uniqueness per SDTMIG v3.4 requirements.
         """
-        from ..cli.helpers import log_verbose
 
         if len(all_dataframes) == 1:
             return all_dataframes[0]
@@ -472,16 +519,20 @@ class DomainProcessingCoordinator:
         # Calculate totals for logging
         input_rows_list = [len(df) for df in all_dataframes]
         total_input = sum(input_rows_list)
-        
+
         merged_dataframe = pd.concat(all_dataframes, ignore_index=True)
         merged_rows = len(merged_dataframe)
 
         # Re-assign sequence numbers per subject after merge
         seq_col = f"{domain_code}SEQ"
-        if seq_col in merged_dataframe.columns and "USUBJID" in merged_dataframe.columns:
+        if (
+            seq_col in merged_dataframe.columns
+            and "USUBJID" in merged_dataframe.columns
+        ):
             merged_dataframe[seq_col] = (
                 merged_dataframe.groupby("USUBJID").cumcount() + 1
             )
+
             log_verbose(verbose, f"    Reassigned {seq_col} values after merge")
 
         # Enhanced merge logging
@@ -493,7 +544,8 @@ class DomainProcessingCoordinator:
             # Log individual file contributions
             for i, rows in enumerate(input_rows_list):
                 pct = (rows / merged_rows * 100) if merged_rows > 0 else 0
-                log_verbose(verbose, f"    File {i+1}: {rows:,} rows ({pct:.1f}%)")
+
+            log_verbose(verbose, f"    File {i + 1}: {rows:,} rows ({pct:.1f}%)")
 
         return merged_dataframe
 
@@ -514,7 +566,10 @@ class DomainProcessingCoordinator:
                 .reset_index(drop=True)
             )
             seq_col = f"{domain_code}SEQ"
-            if seq_col in merged_dataframe.columns and "USUBJID" in merged_dataframe.columns:
+            if (
+                seq_col in merged_dataframe.columns
+                and "USUBJID" in merged_dataframe.columns
+            ):
                 merged_dataframe[seq_col] = (
                     merged_dataframe.groupby("USUBJID").cumcount() + 1
                 )
@@ -540,7 +595,6 @@ class DomainProcessingCoordinator:
         verbose: bool,
     ) -> dict:
         """Generate output files and return processing results."""
-        from ..cli.utils import log_success
 
         base_filename = domain.resolved_dataset_name()
         disk_name = base_filename.lower()
@@ -571,17 +625,17 @@ class DomainProcessingCoordinator:
             write_xpt_file(merged_dataframe, domain_code, xpt_path)
             result["xpt_path"] = xpt_path
             result["xpt_filename"] = xpt_path.name
+
             log_success(f"Generated XPT: {xpt_path}")
 
             # Handle domain variant splits (SDTMIG v3.4 Section 4.1.7)
             # Any domain can be split when there are multiple variant files
             if len(variant_frames) > 1:
-                split_paths, split_datasets = write_variant_splits(
+                split_paths, split_datasets = _write_variant_splits(
                     merged_dataframe, variant_frames, domain, xpt_dir, console
                 )
                 result["split_xpt_paths"] = split_paths
                 result["split_datasets"] = split_datasets
-
 
         if xml_dir and output_format in ("xml", "both"):
             xml_path = xml_dir / f"{disk_name}.xml"
@@ -592,6 +646,7 @@ class DomainProcessingCoordinator:
             write_dataset_xml(merged_dataframe, domain_code, config, xml_path)
             result["xml_path"] = xml_path
             result["xml_filename"] = xml_path.name
+
             log_success(f"Generated Dataset-XML: {xml_path}")
 
         if sas_dir and generate_sas:
@@ -602,6 +657,7 @@ class DomainProcessingCoordinator:
             )
             write_sas_file(sas_code, sas_path)
             result["sas_path"] = sas_path
+
             log_success(f"Generated SAS: {sas_path}")
 
         return result
@@ -642,7 +698,9 @@ class DomainProcessingCoordinator:
         if xpt_dir and output_format in ("xpt", "both"):
             xpt_path = xpt_dir / f"{disk_name}.xpt"
             file_label = f"Supplemental Qualifiers for {domain_code.upper()}"
-            write_xpt_file(merged_supp, supp_domain_code, xpt_path, file_label=file_label)
+            write_xpt_file(
+                merged_supp, supp_domain_code, xpt_path, file_label=file_label
+            )
             supp_result["xpt_path"] = xpt_path
             supp_result["xpt_filename"] = xpt_path.name
 

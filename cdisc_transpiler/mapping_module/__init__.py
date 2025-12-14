@@ -17,18 +17,20 @@ Example:
     >>> from cdisc_transpiler.mapping_module import MappingEngine
     >>> engine = MappingEngine("DM", min_confidence=0.7)
     >>> suggestions = engine.suggest(source_df)
-    
+
     Using the factory function:
     >>> from cdisc_transpiler.mapping_module import create_mapper
     >>> mapper = create_mapper("DM", metadata=study_metadata)
     >>> suggestions = mapper.suggest(source_df)
-    
+
     Configuration management:
     >>> from cdisc_transpiler.mapping_module import load_config, save_config
     >>> config = load_config("mappings/dm.json")
     >>> save_config(config, "mappings/dm_updated.json")
 """
 
+from ..io_module.models import Hints
+from ..metadata_module.models import StudyMetadata
 from .models import (
     ColumnMapping,
     MappingConfig,
@@ -56,13 +58,14 @@ from .utils import (
     unquote_column_name,
 )
 
+
 # Factory function for creating appropriate mapper
 def create_mapper(
     domain_code: str,
-    metadata: "StudyMetadata | None" = None,
+    metadata: StudyMetadata | None = None,
     *,
     min_confidence: float = 0.5,
-    column_hints: "Hints | None" = None,
+    column_hints: Hints | None = None,
 ) -> MetadataAwareMapper | MappingEngine:
     """Factory function to create the appropriate mapper.
 
@@ -82,7 +85,7 @@ def create_mapper(
     Example:
         >>> # Without metadata
         >>> mapper = create_mapper("DM")
-        >>> 
+        >>>
         >>> # With metadata
         >>> from cdisc_transpiler.metadata_module import load_study_metadata
         >>> metadata = load_study_metadata("study_folder")
