@@ -1322,6 +1322,14 @@ CHANGELOG.md
 | 6. Cleanup & Release | 5 | 15 | 2 |
 | **Total** | **60** | **149** | **~6 weeks** |
 
+**Assumptions:**
+- Single developer working 5-6 hours/day on this project
+- Minimal context switching and interruptions
+- No major architectural pivots during implementation
+- Code review feedback incorporated into estimates
+
+**Buffer:** Consider adding 20-30% buffer for real-world factors (meetings, code review cycles, unexpected complexity, bug fixes in adjacent code).
+
 ### Priority Breakdown
 - **P0 (Blockers):** 8 tickets
 - **P1 (High):** 30 tickets

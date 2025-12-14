@@ -30,6 +30,16 @@ This document proposes a comprehensive refactoring of the CDISC Transpiler codeb
 
 ### 1.1 Architectural Layers
 
+**Why Ports & Adapters (Hexagonal Architecture)?**
+
+We chose this pattern over alternatives (layered, clean architecture) because:
+- **Testability**: Business logic isolated from infrastructure (no mocks for core domain)
+- **Flexibility**: Easy to swap implementations (console logger → file logger)
+- **Clear boundaries**: Explicit interfaces prevent accidental coupling
+- **Domain focus**: Core logic doesn't depend on frameworks or CLI
+- **Better than layered**: Avoids database-centric design (we're file-based)
+- **Better than clean architecture**: Less ceremony, clearer for small team
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    CLI Layer (Adapters)                      │
@@ -686,11 +696,13 @@ Since this is a greenfield refactor in a feature branch:
 ### Code Quality Metrics
 | Metric | Current | Target | Measurement |
 |--------|---------|--------|-------------|
-| Avg function length | ~150 lines | <50 lines | CodeClimate |
-| Cyclomatic complexity | Max 40 | Max 10 | Radon |
-| Test coverage | 0% | >80% | pytest-cov |
-| Duplicate code | ~30% | <5% | pylint |
-| Import coupling | High | Low | Dependency graph analysis |
+| Avg function length | ~150 lines* | <50 lines | CodeClimate |
+| Cyclomatic complexity | Max 40* | Max 10 | Radon |
+| Test coverage | 0%* | >80% | pytest-cov |
+| Duplicate code | ~30%* | <5% | pylint |
+| Import coupling | High* | Low | Dependency graph analysis |
+
+*Note: Current values are estimates from manual code review. Before implementation, run baseline measurements using the tools listed to establish precise starting points.
 
 ### Performance Metrics
 | Metric | Baseline | Target | Test Case |

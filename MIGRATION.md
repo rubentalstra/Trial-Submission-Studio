@@ -549,7 +549,7 @@ Include:
 - **Discussions**: Ask questions and share use cases
 
 ### Support Timeline
-- **v0.x**: Security fixes only (until 2026-01-01)
+- **v0.x**: Security fixes only (12 months after v1.0 release)
 - **v1.x**: Active development and support
 
 ---
