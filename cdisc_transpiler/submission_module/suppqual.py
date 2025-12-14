@@ -6,13 +6,17 @@ for non-model columns in parent SDTM domains.
 
 from __future__ import annotations
 
-from typing import Any
+import math
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
 from ..pandas_utils import ensure_numeric_series, ensure_series
 
 from ..domains_module import get_domain
+
+if TYPE_CHECKING:
+    from ..mapping_module import MappingConfig
 
 # Markers that indicate missing/null values
 _MISSING_MARKERS = {"", "NAN", "<NA>", "NONE", "NULL"}
@@ -260,3 +264,73 @@ def build_suppqual(
         supp_df["QVAL"] = supp_df["QVAL"].astype(str).str.slice(0, qval_len)
 
     return supp_df, set(extra_cols)
+
+
+def extract_used_columns(config: MappingConfig | None) -> set[str]:
+    """Extract the set of source columns used in a mapping configuration.
+
+    This helper extracts column names from mapping configurations to identify
+    which source columns have already been mapped to SDTM variables.
+
+    Args:
+        config: Mapping configuration with column mappings
+
+    Returns:
+        Set of source column names that are used in the configuration
+    """
+    from ..mapping_module import unquote_column_name
+
+    used_columns: set[str] = set()
+    if config and config.mappings:
+        for mapping in config.mappings:
+            used_columns.add(unquote_column_name(mapping.source_column))
+            if getattr(mapping, "use_code_column", None):
+                used_columns.add(unquote_column_name(mapping.use_code_column))
+    return used_columns
+
+
+def build_ae_treatment_emergent(
+    domain_frame: pd.DataFrame, study_id: str
+) -> pd.DataFrame:
+    """Build treatment emergent flag supplemental records for AE domain.
+
+    Per SDTM, AETRTEM (Treatment Emergent Flag) is a supplemental qualifier
+    that indicates whether an adverse event is treatment-emergent.
+
+    Args:
+        domain_frame: AE domain DataFrame with AESEQ and USUBJID columns
+        study_id: Study identifier
+
+    Returns:
+        DataFrame with SUPPAE records for AETRTEM flag
+    """
+    if "AESEQ" not in domain_frame.columns:
+        return pd.DataFrame()
+
+    records: list[dict[str, Any]] = []
+    for idx, (_, row) in enumerate(domain_frame.iterrows(), start=1):
+        seq_raw = row.get("AESEQ", idx)
+        seq_val = seq_raw if seq_raw not in (None, "") else idx
+        try:
+            seq_float = float(seq_val)
+            if math.isnan(seq_float):
+                raise ValueError
+        except Exception:
+            seq_float = float(idx)
+        seq_str = str(int(seq_float)) if seq_float.is_integer() else str(seq_float)
+        records.append(
+            {
+                "STUDYID": study_id,
+                "RDOMAIN": "AE",
+                "USUBJID": row.get("USUBJID", ""),
+                "IDVAR": "AESEQ",
+                "IDVARVAL": seq_str,
+                "QNAM": "AETRTEM",
+                "QLABEL": "Treatment Emergent Flag",
+                "QVAL": "Y",
+                "QORIG": "DERIVED",
+                "QEVAL": "",
+            }
+        )
+
+    return pd.DataFrame(records) if records else pd.DataFrame()

@@ -8,12 +8,16 @@ The module is organized into:
 
 Usage:
     from cdisc_transpiler.submission_module import build_suppqual
+    from cdisc_transpiler.submission_module import extract_used_columns
+    from cdisc_transpiler.submission_module import build_ae_treatment_emergent
 """
 
 from __future__ import annotations
 
-from .suppqual import build_suppqual
+from .suppqual import build_suppqual, extract_used_columns, build_ae_treatment_emergent
 
 __all__ = [
     "build_suppqual",
+    "extract_used_columns",
+    "build_ae_treatment_emergent",
 ]
