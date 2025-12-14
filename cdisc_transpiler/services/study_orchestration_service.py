@@ -22,6 +22,7 @@ from __future__ import annotations
 import re
 import math
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 
@@ -528,7 +529,7 @@ class StudyOrchestrationService:
         sas_dir: Path | None,
         generate_sas: bool,
         domain_results: list[dict],
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Create a populated RELREC dataset based on existing domain data.
 
         Args:
@@ -571,7 +572,7 @@ class StudyOrchestrationService:
 
         domain_dataframe = build_domain_dataframe(frame, config, lenient=True)
 
-        result = {
+        result: dict[str, Any] = {
             "domain_code": "RELREC",
             "records": len(domain_dataframe),
             "domain_dataframe": domain_dataframe,

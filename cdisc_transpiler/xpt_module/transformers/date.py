@@ -213,7 +213,7 @@ class DateTransformer:
         """
         normalized = normalize_iso8601(raw_value)
         fixed = normalized
-        if isinstance(normalized, str) and "NK" in normalized.upper():
+        if "NK" in normalized.upper():
             fixed = normalized.upper().replace("NK", "01")
         try:
             parsed = pd.to_datetime(fixed, errors="coerce", utc=False)

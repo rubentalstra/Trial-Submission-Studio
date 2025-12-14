@@ -9,6 +9,7 @@ Extracted from cli/commands/study.py for improved maintainability.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 
@@ -340,12 +341,12 @@ class DomainSynthesisCoordinator:
         sas_dir: Path | None,
         generate_sas: bool,
         domain: SDTMDomain,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Generate output files for a synthesized domain."""
         base_filename = domain.resolved_dataset_name()
         disk_name = base_filename.lower()
 
-        result = {
+        result: dict[str, Any] = {
             "domain_code": domain_code,
             "records": len(domain_dataframe),
             "domain_dataframe": domain_dataframe,

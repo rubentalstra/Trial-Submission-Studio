@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import math
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 from rich.console import Console
@@ -585,13 +585,13 @@ class DomainProcessingCoordinator:
         files_for_domain: list[tuple[Path, str]],
         domain: SDTMDomain,
         verbose: bool,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Generate output files and return processing results."""
 
         base_filename = domain.resolved_dataset_name()
         disk_name = base_filename.lower()
 
-        result = {
+        result: dict[str, Any] = {
             "domain_code": domain_code,
             "records": len(merged_dataframe),
             "domain_dataframe": merged_dataframe,
@@ -662,7 +662,7 @@ class DomainProcessingCoordinator:
         output_format: str,
         xpt_dir: Path | None,
         xml_dir: Path | None,
-    ) -> dict:
+    ) -> dict[str, Any]:
         """Generate supplemental qualifier files."""
         merged_supp = (
             supp_frames[0]
@@ -677,7 +677,7 @@ class DomainProcessingCoordinator:
         base_filename = get_domain(supp_domain_code).resolved_dataset_name()
         disk_name = base_filename.lower()
 
-        supp_result = {
+        supp_result: dict[str, Any] = {
             "domain_code": supp_domain_code,
             "records": len(merged_supp),
             "domain_dataframe": merged_supp,
