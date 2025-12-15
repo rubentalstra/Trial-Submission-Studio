@@ -46,9 +46,9 @@ def load_input_dataset(path: str | Path) -> pd.DataFrame:
     # Lazy import to avoid circular import issues
     from ..infrastructure.io.exceptions import DataParseError, DataSourceNotFoundError
     from ..infrastructure.repositories.study_data_repository import StudyDataRepository
-    
+
     repo = StudyDataRepository()
-    
+
     try:
         return repo.read_dataset(path)
     except DataSourceNotFoundError as exc:

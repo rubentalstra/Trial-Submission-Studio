@@ -30,6 +30,7 @@ Your mission: make the codebase consistently maintainable by enforcing Ports & A
 - Prefer small, reversible refactors (PR-sized). Avoid big rewrites.
 - Do not introduce new internal call sites to `cdisc_transpiler/legacy/*` or compatibility wrappers.
 - Do not “fix” circular imports with new lazy imports; fix dependency direction instead.
+- Do not re-export imports (no “barrel” exports via `__init__.py`); import from the defining module instead.
 - Performance matters: avoid unnecessary copies/slow loops; run benchmarks when touching hot paths.
 
 ## Boundary rules (hard)

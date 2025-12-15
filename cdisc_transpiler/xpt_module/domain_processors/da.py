@@ -84,9 +84,12 @@ class DAProcessor(BaseDomainProcessor):
         else:
             coerced = ensure_numeric_series(frame["DASTRESN"], frame.index)
             needs_numeric = coerced.isna() & numeric_stresc.notna()
-            
+
             # Ensure DASTRESN has the correct dtype before assignment to avoid FutureWarning
-            if "DASTRESN" not in frame.columns or frame["DASTRESN"].dtype != numeric_stresc.dtype:
+            if (
+                "DASTRESN" not in frame.columns
+                or frame["DASTRESN"].dtype != numeric_stresc.dtype
+            ):
                 try:
                     frame["DASTRESN"] = coerced.astype(numeric_stresc.dtype)
                 except (TypeError, ValueError):
@@ -95,7 +98,7 @@ class DAProcessor(BaseDomainProcessor):
                     frame["DASTRESN"] = coerced
             else:
                 frame["DASTRESN"] = coerced
-            
+
             # Now safely assign the numeric values where needed
             if needs_numeric.any():
                 frame.loc[needs_numeric, "DASTRESN"] = numeric_stresc.loc[needs_numeric]

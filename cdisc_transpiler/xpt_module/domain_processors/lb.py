@@ -341,7 +341,7 @@ class LBProcessor(BaseDomainProcessor):
         if {"LBSTRESC", "LBSTRESN"} <= set(frame.columns):
             numeric = ensure_numeric_series(frame["LBSTRESC"], frame.index)
             needs_numeric = ensure_series(frame["LBSTRESN"]).isna()
-            
+
             # Ensure LBSTRESN has the correct dtype before assignment to avoid FutureWarning
             if frame["LBSTRESN"].dtype != numeric.dtype:
                 try:
@@ -350,7 +350,7 @@ class LBProcessor(BaseDomainProcessor):
                     # Silently handle dtype conversion failures - keep original dtype
                     # This is acceptable since numeric assignment below will still work
                     pass
-            
+
             # Now safely assign the numeric values where needed
             if needs_numeric.any():
                 frame.loc[needs_numeric, "LBSTRESN"] = numeric.loc[needs_numeric]
@@ -395,8 +395,8 @@ class LBProcessor(BaseDomainProcessor):
         # Ensure study/visit day fields are numeric for metadata alignment
         for col in ("LBDY", "LBENDY", "VISITDY", "VISITNUM"):
             if col in frame.columns:
-                frame[col] = (
-                    ensure_numeric_series(frame[col], frame.index).astype("Int64")
+                frame[col] = ensure_numeric_series(frame[col], frame.index).astype(
+                    "Int64"
                 )
         if {"VISITDY", "LBDY"} <= set(frame.columns):
             empty_visitdy = frame["VISITDY"].isna()

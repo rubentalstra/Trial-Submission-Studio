@@ -25,7 +25,7 @@ def build_domain_from_rows(
     dataset_attributes: dict[str, dict[str, str]],
 ) -> SDTMDomain | None:
     """Construct a domain definition from CSV rows.
-    
+
     Args:
         code: Domain code (e.g., 'DM', 'AE')
         rows: Sequence of CSV row dictionaries containing variable metadata
@@ -33,7 +33,7 @@ def build_domain_from_rows(
         dataset_attributes: Mapping of {domain_code -> {attribute -> value}} where
                           attributes include 'class', 'label', and 'structure'
                           loaded from Datasets.csv
-    
+
     Returns:
         SDTMDomain: Constructed domain definition, or None if no rows provided
     """
@@ -49,7 +49,7 @@ def build_domain_from_rows(
             key=lambda x: x[0],
         )
     ]
-    
+
     dataset_meta = dataset_attributes.get(code, {})
     dataset_label = dataset_meta.get("label")
     dataset_structure = dataset_meta.get("structure", "")
@@ -73,9 +73,7 @@ def build_domain_from_rows(
     )
 
 
-def build_supp_domain(
-    code: str, suppqual_base: SDTMDomain | None
-) -> SDTMDomain:
+def build_supp_domain(code: str, suppqual_base: SDTMDomain | None) -> SDTMDomain:
     """Create a SUPP-- domain definition based on SUPPQUAL metadata."""
     dataset_name = code.upper()
     if suppqual_base is None:

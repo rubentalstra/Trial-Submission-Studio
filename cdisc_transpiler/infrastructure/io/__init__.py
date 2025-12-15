@@ -1,6 +1,9 @@
 """I/O adapters for file operations.
 
 This module provides unified interfaces for reading and writing files.
+
+NOTE: OutputDirs, OutputRequest, OutputResult are application-layer DTOs.
+Import them from cdisc_transpiler.application.models instead.
 """
 
 from .csv_reader import CSVReader, CSVReadOptions
@@ -13,7 +16,6 @@ from .exceptions import (
     DataValidationError,
 )
 from .file_generator import FileGenerator
-from .models import OutputDirs, OutputRequest, OutputResult
 from .sas_writer import SASWriter
 from .xpt_writer import XPTWriter
 
@@ -25,9 +27,6 @@ __all__ = [
     "DataSourceNotFoundError",
     "DataValidationError",
     "FileGenerator",
-    "OutputDirs",
-    "OutputRequest",
-    "OutputResult",
     "XPTWriter",
     "DatasetXMLWriter",
     "SASWriter",

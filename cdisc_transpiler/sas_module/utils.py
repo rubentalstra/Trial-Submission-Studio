@@ -30,7 +30,10 @@ def get_default_assignments(domain: SDTMDomain, config: MappingConfig) -> list[s
 
     for variable in domain.variables:
         # Skip if variable is already mapped and required
-        if variable.name in mapped_variables and (variable.core or "").strip().lower() == "req":
+        if (
+            variable.name in mapped_variables
+            and (variable.core or "").strip().lower() == "req"
+        ):
             continue
 
         # Skip if variable is not required

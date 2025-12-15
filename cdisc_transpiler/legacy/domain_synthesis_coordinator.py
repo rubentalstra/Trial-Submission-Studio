@@ -358,6 +358,7 @@ class DomainSynthesisCoordinator:
             result["xpt_path"] = xpt_path
             result["xpt_filename"] = xpt_path.name
             from ..cli.logging_config import get_logger
+
             logger = get_logger()
             logger.success(f"Generated {domain_code} XPT: {xpt_path}")
 
@@ -368,6 +369,7 @@ class DomainSynthesisCoordinator:
             result["xml_path"] = xml_path
             result["xml_filename"] = xml_path.name
             from ..cli.logging_config import get_logger
+
             logger = get_logger()
             logger.success(f"Generated {domain_code} Dataset-XML: {xml_path}")
 
@@ -383,6 +385,7 @@ class DomainSynthesisCoordinator:
             write_sas_file(sas_code, sas_path)
             result["sas_path"] = sas_path
             from ..cli.logging_config import get_logger
+
             logger = get_logger()
             logger.success(f"Generated {domain_code} SAS: {sas_path}")
 

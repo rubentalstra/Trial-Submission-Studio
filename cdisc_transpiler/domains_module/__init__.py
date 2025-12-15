@@ -6,15 +6,15 @@ from SDTMIG v3.4 and SDTM v2.0 CSV metadata files.
 SDTM Reference:
     Study Data Tabulation Model (SDTM) defines a standard structure for
     organizing clinical trial data. Key concepts include:
-    
+
     - Domains: Collections of observations with topic-specific commonality
       (e.g., DM=Demographics, AE=Adverse Events, LB=Laboratory Results)
-    
+
     - General Observation Classes: Three base classes for observation data
       * Interventions: Treatments administered (EX, CM, EC, SU, PR, AG)
       * Events: Occurrences/incidents (AE, DS, MH, DV, CE, HO)
       * Findings: Measurements/assessments (LB, VS, EG, PE, QS, SC, FA)
-    
+
     - Variable Roles: Each variable has a role defining its purpose
       * Identifier: Subject/record identification (STUDYID, USUBJID, --SEQ)
       * Topic: What the observation is about (--TRT, --TERM, --TESTCD)
@@ -35,6 +35,7 @@ The module is organized into focused components:
 from __future__ import annotations
 
 from .constants import CT_VERSION
+
 # Import from new location and re-export for backward compatibility
 from ..domain.entities.sdtm_domain import SDTMDomain, SDTMVariable
 from .registry import generalized_identifiers, get_domain, list_domains

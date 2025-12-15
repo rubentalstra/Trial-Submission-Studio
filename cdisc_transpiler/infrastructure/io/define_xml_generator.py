@@ -17,17 +17,17 @@ if TYPE_CHECKING:
 
 class DefineXmlGenerator:
     """Adapter for generating Define-XML 2.1 files.
-    
+
     This class implements the DefineXmlGeneratorPort protocol by wrapping
     the existing xml_module.define_module.write_study_define_file function.
     It provides a clean interface that can be injected into other components.
-    
+
     Example:
         >>> generator = DefineXmlGenerator()
         >>> datasets = [StudyDataset(...), StudyDataset(...)]
         >>> generator.generate(datasets, Path("define.xml"), sdtm_version="3.4", context="Submission")
     """
-    
+
     def generate(
         self,
         datasets: Iterable[StudyDataset],
@@ -37,16 +37,16 @@ class DefineXmlGenerator:
         context: str,
     ) -> None:
         """Generate a Define-XML 2.1 file for the given study datasets.
-        
+
         Args:
             datasets: Iterable of StudyDataset objects containing domain metadata
             output_path: Path where Define-XML file should be written
             sdtm_version: SDTM-IG version (e.g., "3.4")
             context: Define-XML context - 'Submission' or 'Other'
-            
+
         Raises:
             Exception: If generation or writing fails (propagated from xml_module)
-            
+
         Example:
             >>> generator = DefineXmlGenerator()
             >>> datasets = [StudyDataset(...)]
@@ -54,7 +54,7 @@ class DefineXmlGenerator:
         """
         # Import at runtime to avoid circular import
         from .define_xml.xml_writer import write_study_define_file
-        
+
         write_study_define_file(
             datasets,
             output_path,

@@ -38,10 +38,10 @@ def load_mapping_config(path: str | Path) -> MappingConfig:
         >>> config = load_mapping_config("mappings/dm.json")
     """
     file_path = Path(path)
-    
+
     if not file_path.exists():
         raise DataSourceNotFoundError(f"Mapping config not found: {file_path}")
-    
+
     try:
         with file_path.open("r", encoding="utf-8") as handle:
             data = json.load(handle)
@@ -70,7 +70,7 @@ def save_mapping_config(config: MappingConfig, path: str | Path) -> None:
         >>> save_mapping_config(config, "mappings/dm.json")
     """
     file_path = Path(path)
-    
+
     try:
         file_path.parent.mkdir(parents=True, exist_ok=True)
         payload = config.model_dump()

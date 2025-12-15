@@ -298,7 +298,7 @@ class DomainProcessingCoordinator:
 
         This handles wide-to-long transformation for Vital Signs data per SDTMIG v3.4.
         VS domain requires one record per vital sign measurement per time point.
-        
+
         Uses the new VSTransformer for consistent, testable transformation logic.
         """
 
@@ -307,22 +307,23 @@ class DomainProcessingCoordinator:
 
         logger = get_logger()
         input_rows = len(frame)
-        
+
         # Use new VSTransformer instead of orchestration_service
         transformer = VSTransformer(
-            test_code_normalizer=normalize_testcd,
-            test_label_getter=get_testcd_label
+            test_code_normalizer=normalize_testcd, test_label_getter=get_testcd_label
         )
         context = TransformationContext(domain="VS", study_id=study_id)
         result = transformer.transform(frame, context)
-        
+
         if not result.success:
-            logger.warning(f"{display_name}: VS transformation failed: {result.message}")
+            logger.warning(
+                f"{display_name}: VS transformation failed: {result.message}"
+            )
             if result.errors:
                 for error in result.errors:
                     logger.error(f"  - {error}")
             return None, True
-        
+
         frame = result.data
         output_rows = len(frame)
 
@@ -332,9 +333,13 @@ class DomainProcessingCoordinator:
         )
 
         if frame.empty:
-            logger.warning(f"{display_name}: No vital signs records after transformation")
+            logger.warning(
+                f"{display_name}: No vital signs records after transformation"
+            )
             if verbose:
-                logger.verbose("    Note: Check source data for VSTESTCD/VSORRES columns")
+                logger.verbose(
+                    "    Note: Check source data for VSTESTCD/VSORRES columns"
+                )
             return None, True
 
         return frame, True
@@ -351,7 +356,7 @@ class DomainProcessingCoordinator:
 
         This handles wide-to-long transformation for Laboratory data per SDTMIG v3.4.
         LB domain requires one record per lab test per time point per visit per subject.
-        
+
         Uses the new LBTransformer for consistent, testable transformation logic.
         """
 
@@ -360,22 +365,23 @@ class DomainProcessingCoordinator:
 
         logger = get_logger()
         input_rows = len(frame)
-        
+
         # Use new LBTransformer instead of orchestration_service
         transformer = LBTransformer(
-            test_code_normalizer=normalize_testcd,
-            test_label_getter=get_testcd_label
+            test_code_normalizer=normalize_testcd, test_label_getter=get_testcd_label
         )
         context = TransformationContext(domain="LB", study_id=study_id)
         result = transformer.transform(frame, context)
-        
+
         if not result.success:
-            logger.warning(f"{display_name}: LB transformation failed: {result.message}")
+            logger.warning(
+                f"{display_name}: LB transformation failed: {result.message}"
+            )
             if result.errors:
                 for error in result.errors:
                     logger.error(f"  - {error}")
             return None, True
-        
+
         reshaped = result.data
 
         if "LBTESTCD" in reshaped.columns:
@@ -396,7 +402,9 @@ class DomainProcessingCoordinator:
             )
 
             if reshaped.empty:
-                logger.warning(f"{display_name}: No laboratory records after transformation")
+                logger.warning(
+                    f"{display_name}: No laboratory records after transformation"
+                )
                 if verbose:
                     logger.verbose("    Note: Check source data for lab test columns")
                 return None, True
@@ -404,7 +412,9 @@ class DomainProcessingCoordinator:
             return reshaped, True
         else:
             if verbose:
-                logger.verbose("  Skipping LB reshape (no recognizable test columns found)")
+                logger.verbose(
+                    "  Skipping LB reshape (no recognizable test columns found)"
+                )
                 logger.verbose("    Expected columns like: WBC, RBC, HGB, or LBTESTCD")
             return None, False
 

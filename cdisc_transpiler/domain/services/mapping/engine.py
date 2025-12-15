@@ -52,7 +52,7 @@ class MappingEngine:
         self.min_confidence = min_confidence
         self.column_hints: Hints = column_hints or {}
         self.valid_targets: set[str] = set(self.domain.variable_names())
-        
+
         # Build dynamic patterns from domain metadata
         self._variable_patterns = build_variable_patterns(self.domain)
 
@@ -173,7 +173,7 @@ class MappingEngine:
         for target_var, patterns in self._variable_patterns.items():
             if target_var not in self.valid_targets:
                 continue
-            
+
             for pattern in patterns:
                 if normalized == pattern:
                     return target_var

@@ -14,28 +14,28 @@ from ..domain.entities.sdtm_domain import SDTMDomain
 
 def _get_spec_paths() -> tuple[Path, Path, Path]:
     """Get SDTM spec file paths from config or default locations.
-    
+
     Returns:
         Tuple of (sdtmig_path, sdtm_v2_path, datasets_path)
     """
     # Lazy import to avoid circular imports
     from ..config import TranspilerConfig
-    
+
     config = TranspilerConfig()
     spec_dir = config.sdtm_spec_dir
-    
+
     # Make path absolute if relative
     if not spec_dir.is_absolute():
         package_root = Path(__file__).resolve().parent.parent.parent
         spec_dir = package_root / spec_dir
-    
+
     # SDTMIG v3.4 paths
     sdtmig_path = spec_dir / "Variables.csv"
     datasets_path = spec_dir / "Datasets.csv"
-    
+
     # SDTM v2.0 fallback (relative to SDTMIG location)
     sdtm_v2_path = spec_dir.parent / "SDTM_v2.0" / "Variables.csv"
-    
+
     return sdtmig_path, sdtm_v2_path, datasets_path
 
 
@@ -109,7 +109,7 @@ def _build_domain_from_cache(code: str) -> SDTMDomain | None:
 def _register_all_domains() -> None:
     """Register all domains defined in the CSV metadata (v3.4 overriding v2.0)."""
     attrs = _load_dataset_attributes()
-    
+
     # Register SDTM v2.0 first
     cache_v2 = _load_sdtm_v2_cache()
     for code, rows in sorted(cache_v2.items()):
@@ -138,14 +138,16 @@ def _ensure_initialized() -> None:
 def get_domain(code: str) -> SDTMDomain:
     """Get domain definition by code."""
     _ensure_initialized()
-    
+
     key = code.upper()
     if key in _DOMAIN_DEFINITIONS:
         return _DOMAIN_DEFINITIONS[key]
 
     # Supplemental qualifiers: build SUPP-- domains from SUPPQUAL metadata
     if key.startswith("SUPP") and len(key) == 6:
-        suppqual_base = _DOMAIN_DEFINITIONS.get("SUPPQUAL") or _build_domain_from_cache("SUPPQUAL")
+        suppqual_base = _DOMAIN_DEFINITIONS.get("SUPPQUAL") or _build_domain_from_cache(
+            "SUPPQUAL"
+        )
         supp = build_supp_domain(key, suppqual_base)
         _register(supp)
         return supp

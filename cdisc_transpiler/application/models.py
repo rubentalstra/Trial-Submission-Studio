@@ -2,24 +2,135 @@
 
 This module contains request and response DTOs (Data Transfer Objects) used
 by application layer use cases to maintain clear boundaries and enable testing.
+
+Includes:
+- Study/Domain processing request/response DTOs
+- Output generation DTOs (OutputDirs, OutputRequest, OutputResult)
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
+
+if TYPE_CHECKING:
+    from ..mapping_module import MappingConfig
+
+
+# ============================================================================
+# Output Generation DTOs
+# ============================================================================
+
+
+@dataclass
+class OutputDirs:
+    """Output directory configuration.
+
+    This DTO specifies which output directories should be used for each
+    output format. Setting a directory to None skips generation for that format.
+
+    Attributes:
+        xpt_dir: Directory for XPT files (None to skip)
+        xml_dir: Directory for Dataset-XML files (None to skip)
+        sas_dir: Directory for SAS programs (None to skip)
+
+    Example:
+        >>> dirs = OutputDirs(
+        ...     xpt_dir=Path("output/xpt"),
+        ...     xml_dir=Path("output/dataset-xml"),
+        ... )
+    """
+
+    xpt_dir: Path | None = None
+    xml_dir: Path | None = None
+    sas_dir: Path | None = None
+
+
+@dataclass
+class OutputRequest:
+    """Request for file generation.
+
+    This DTO encapsulates all inputs needed for output file generation,
+    providing a clean interface between use cases and file generators.
+
+    Attributes:
+        dataframe: DataFrame to write
+        domain_code: SDTM domain code (e.g., "DM", "AE")
+        config: Mapping configuration for the domain
+        output_dirs: Directory configuration
+        formats: Set of formats to generate ({"xpt", "xml", "sas"})
+        base_filename: Base filename (defaults to lowercase domain code)
+        input_dataset: Input dataset name for SAS (e.g., "work.dm")
+        output_dataset: Output dataset name for SAS (e.g., "sdtm.dm")
+
+    Example:
+        >>> request = OutputRequest(
+        ...     dataframe=df,
+        ...     domain_code="DM",
+        ...     config=config,
+        ...     output_dirs=OutputDirs(xpt_dir=Path("output/xpt")),
+        ...     formats={"xpt", "xml"},
+        ... )
+    """
+
+    dataframe: pd.DataFrame
+    domain_code: str
+    config: "MappingConfig"
+    output_dirs: OutputDirs
+    formats: set[str]
+    base_filename: str | None = None
+    input_dataset: str | None = None
+    output_dataset: str | None = None
+
+
+@dataclass
+class OutputResult:
+    """Result of file generation.
+
+    This DTO captures the outputs from file generation, including paths
+    to generated files and any errors encountered.
+
+    Attributes:
+        xpt_path: Path to generated XPT file (None if not generated)
+        xml_path: Path to generated Dataset-XML file (None if not generated)
+        sas_path: Path to generated SAS program (None if not generated)
+        errors: List of error messages encountered
+
+    Example:
+        >>> result = OutputResult(
+        ...     xpt_path=Path("output/xpt/dm.xpt"),
+        ...     xml_path=Path("output/dataset-xml/dm.xml"),
+        ... )
+        >>> if result.success:
+        ...     print("Generation successful")
+    """
+
+    xpt_path: Path | None = None
+    xml_path: Path | None = None
+    sas_path: Path | None = None
+    errors: list[str] = field(default_factory=list)
+
+    @property
+    def success(self) -> bool:
+        """Check if generation was successful (no errors)."""
+        return len(self.errors) == 0
+
+
+# ============================================================================
+# Study and Domain Processing DTOs
+# ============================================================================
 
 
 @dataclass
 class ProcessStudyRequest:
     """Request to process a study folder.
-    
+
     This DTO encapsulates all inputs needed for study processing, providing
     a clean interface between the CLI layer and the application layer.
-    
+
     Attributes:
         study_folder: Path to the study folder containing CSV files
         study_id: Study identifier (derived from folder if not provided)
@@ -33,7 +144,7 @@ class ProcessStudyRequest:
         chunk_size: Chunk size for streaming mode
         min_confidence: Minimum confidence for fuzzy matches (0.0-1.0)
         verbose: Verbosity level (0, 1, 2, ...)
-        
+
     Example:
         >>> request = ProcessStudyRequest(
         ...     study_folder=Path("study001"),
@@ -44,7 +155,7 @@ class ProcessStudyRequest:
         ...     generate_sas=True,
         ... )
     """
-    
+
     study_folder: Path
     study_id: str
     output_dir: Path
@@ -62,10 +173,10 @@ class ProcessStudyRequest:
 @dataclass
 class DomainProcessingResult:
     """Result of processing a single domain.
-    
+
     This DTO captures the output of domain processing for a single domain,
     including the generated dataframe, files, and any supplemental domains.
-    
+
     Attributes:
         domain_code: SDTM domain code (e.g., "DM", "AE")
         success: Whether processing succeeded
@@ -80,7 +191,7 @@ class DomainProcessingResult:
         error: Error message if processing failed
         synthesized: Whether this domain was synthesized (not from source data)
         synthesis_reason: Reason for synthesis (if synthesized)
-        
+
     Example:
         >>> result = DomainProcessingResult(
         ...     domain_code="DM",
@@ -90,7 +201,7 @@ class DomainProcessingResult:
         ...     xpt_path=Path("output/xpt/dm.xpt"),
         ... )
     """
-    
+
     domain_code: str
     success: bool = True
     records: int = 0
@@ -109,10 +220,10 @@ class DomainProcessingResult:
 @dataclass
 class ProcessStudyResponse:
     """Response from study processing.
-    
+
     This DTO encapsulates all outputs from study processing, providing
     a clean interface for the CLI layer to format and display results.
-    
+
     Attributes:
         success: Whether overall processing succeeded
         study_id: Study identifier
@@ -123,7 +234,7 @@ class ProcessStudyResponse:
         define_xml_error: Error message if Define-XML generation failed
         output_dir: Output directory where files were generated
         total_records: Total number of records across all domains
-        
+
     Example:
         >>> response = ProcessStudyResponse(
         ...     success=True,
@@ -133,7 +244,7 @@ class ProcessStudyResponse:
         ...     define_xml_path=Path("output/define.xml"),
         ... )
     """
-    
+
     success: bool = True
     study_id: str = ""
     processed_domains: set[str] = field(default_factory=set)
@@ -143,17 +254,17 @@ class ProcessStudyResponse:
     define_xml_error: str | None = None
     output_dir: Path | None = None
     total_records: int = 0
-    
+
     @property
     def has_errors(self) -> bool:
         """Check if any errors occurred during processing."""
         return len(self.errors) > 0 or self.define_xml_error is not None
-    
+
     @property
     def successful_domains(self) -> list[str]:
         """Get list of successfully processed domain codes."""
         return [r.domain_code for r in self.domain_results if r.success]
-    
+
     @property
     def failed_domains(self) -> list[str]:
         """Get list of failed domain codes."""
@@ -163,10 +274,10 @@ class ProcessStudyResponse:
 @dataclass
 class ProcessDomainRequest:
     """Request to process a single SDTM domain.
-    
+
     This DTO encapsulates all inputs needed for domain processing, providing
     a clean interface for domain-level operations.
-    
+
     Attributes:
         files_for_domain: List of (file_path, variant_name) tuples to process
         domain_code: SDTM domain code (e.g., "DM", "AE", "LB")
@@ -182,7 +293,7 @@ class ProcessDomainRequest:
         reference_starts: Reference start dates by subject ID
         common_column_counts: Common column frequency counts for heuristics
         total_input_files: Total number of input files (for heuristics)
-        
+
     Example:
         >>> request = ProcessDomainRequest(
         ...     files_for_domain=[(Path("DM.csv"), "DM")],
@@ -192,7 +303,7 @@ class ProcessDomainRequest:
         ...     output_dirs={"xpt": Path("output/xpt")},
         ... )
     """
-    
+
     files_for_domain: list[tuple[Path, str]]
     domain_code: str
     study_id: str
@@ -212,10 +323,10 @@ class ProcessDomainRequest:
 @dataclass
 class ProcessDomainResponse:
     """Response from domain processing.
-    
+
     This DTO encapsulates all outputs from domain processing, providing
     a clean interface for returning results.
-    
+
     Attributes:
         success: Whether processing succeeded
         domain_code: SDTM domain code
@@ -229,7 +340,7 @@ class ProcessDomainResponse:
         split_datasets: List of (name, dataframe, path) for split datasets
         error: Error message if processing failed
         warnings: List of warning messages
-        
+
     Example:
         >>> response = ProcessDomainResponse(
         ...     success=True,
@@ -239,7 +350,7 @@ class ProcessDomainResponse:
         ...     xpt_path=Path("output/xpt/dm.xpt"),
         ... )
     """
-    
+
     success: bool = True
     domain_code: str = ""
     records: int = 0
@@ -252,10 +363,10 @@ class ProcessDomainResponse:
     split_datasets: list[tuple[str, pd.DataFrame, Path]] = field(default_factory=list)
     error: str | None = None
     warnings: list[str] = field(default_factory=list)
-    
+
     def to_dict(self) -> dict:
         """Convert to dictionary format for compatibility with existing code.
-        
+
         Returns:
             Dictionary with keys expected by legacy code
         """

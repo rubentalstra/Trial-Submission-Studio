@@ -65,8 +65,7 @@ class SASProgramGenerator:
 
         # Generate assignments for mapped columns
         assignments = [
-            get_assignment_for_mapping(mapping, domain)
-            for mapping in config.mappings
+            get_assignment_for_mapping(mapping, domain) for mapping in config.mappings
         ]
 
         # Generate default assignments for required unmapped variables

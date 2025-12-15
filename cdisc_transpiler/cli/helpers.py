@@ -50,7 +50,7 @@ def write_variant_splits(
         Tuple of (list of paths, list of (split_name, dataframe, path) tuples)
     """
     from .logging_config import get_logger
-    
+
     logger = get_logger()
     split_paths: list[Path] = []
     split_datasets: list[tuple[str, pd.DataFrame, Path]] = []
@@ -106,8 +106,7 @@ def write_variant_splits(
         split_paths.append(split_path)
         split_datasets.append((table, variant_df, split_path))
         logger.success(
-            f"Split dataset: {split_path} "
-            f"(DOMAIN={domain_code}, table={table})"
+            f"Split dataset: {split_path} (DOMAIN={domain_code}, table={table})"
         )
 
     return split_paths, split_datasets

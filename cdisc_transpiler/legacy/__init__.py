@@ -33,27 +33,30 @@ def __getattr__(name: str) -> Any:
     if name == "DomainProcessingCoordinator":
         _deprecated_import_warning(
             "cdisc_transpiler.legacy.DomainProcessingCoordinator",
-            "cdisc_transpiler.application.domain_processing_use_case.DomainProcessingUseCase"
+            "cdisc_transpiler.application.domain_processing_use_case.DomainProcessingUseCase",
         )
         from .domain_processing_coordinator import DomainProcessingCoordinator
+
         return DomainProcessingCoordinator
-    
+
     elif name == "DomainSynthesisCoordinator":
         _deprecated_import_warning(
             "cdisc_transpiler.legacy.DomainSynthesisCoordinator",
-            "cdisc_transpiler.application.study_processing_use_case.StudyProcessingUseCase"
+            "cdisc_transpiler.application.study_processing_use_case.StudyProcessingUseCase",
         )
         from .domain_synthesis_coordinator import DomainSynthesisCoordinator
+
         return DomainSynthesisCoordinator
-    
+
     elif name == "StudyOrchestrationService":
         _deprecated_import_warning(
             "cdisc_transpiler.legacy.StudyOrchestrationService",
-            "cdisc_transpiler.application.study_processing_use_case.StudyProcessingUseCase"
+            "cdisc_transpiler.application.study_processing_use_case.StudyProcessingUseCase",
         )
         from .study_orchestration_service import StudyOrchestrationService
+
         return StudyOrchestrationService
-    
+
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 

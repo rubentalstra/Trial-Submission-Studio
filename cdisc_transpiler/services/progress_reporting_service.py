@@ -36,7 +36,7 @@ class ProgressReportingService:
 
     def _log_verbose(self, message: str) -> None:
         """Log a verbose message if logger is available and verbosity is enabled.
-        
+
         Args:
             message: Message to log
         """
@@ -75,9 +75,13 @@ class ProgressReportingService:
         """
         if self.verbose > 0:
             if items_count:
-                self._log_verbose(f"Loaded {items_count} column definitions from Items.csv")
+                self._log_verbose(
+                    f"Loaded {items_count} column definitions from Items.csv"
+                )
             if codelists_count:
-                self._log_verbose(f"Loaded {codelists_count} codelists from CodeLists.csv")
+                self._log_verbose(
+                    f"Loaded {codelists_count} codelists from CodeLists.csv"
+                )
 
     def report_files_found(self, csv_count: int) -> None:
         """Report number of CSV files found.

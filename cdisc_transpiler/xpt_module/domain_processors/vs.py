@@ -40,9 +40,13 @@ class VSProcessor(BaseDomainProcessor):
         has_any_test = vstestcd_upper.ne("").any()
 
         # Preserve VSSTAT from upstream mapping/derivation
-        frame["VSSTAT"] = ensure_series(
-            frame.get("VSSTAT", pd.Series([""] * len(frame))), index=frame.index
-        ).astype("string").fillna("")
+        frame["VSSTAT"] = (
+            ensure_series(
+                frame.get("VSSTAT", pd.Series([""] * len(frame))), index=frame.index
+            )
+            .astype("string")
+            .fillna("")
+        )
 
         default_unit = "beats/min" if not has_any_test else ""
         frame["VSORRESU"] = TextTransformer.replace_unknown(
@@ -61,10 +65,7 @@ class VSProcessor(BaseDomainProcessor):
             frame["VSORRES"] = vsorres.astype("string").fillna("")
             if "Pulse rate (unit)" in frame.columns:
                 units = (
-                    frame["Pulse rate (unit)"]
-                    .astype("string")
-                    .fillna("")
-                    .str.strip()
+                    frame["Pulse rate (unit)"].astype("string").fillna("").str.strip()
                 )
                 frame["VSORRESU"] = units.replace("", "beats/min")
 
@@ -138,7 +139,9 @@ class VSProcessor(BaseDomainProcessor):
             frame["VSSTRESN"] = ensure_numeric_series(numeric, frame.index)
         NumericTransformer.assign_sequence(frame, "VSSEQ", "USUBJID")
         if "VSLOBXFL" in frame.columns:
-            frame["VSLOBXFL"] = ensure_series(frame["VSLOBXFL"]).astype("string").fillna("")
+            frame["VSLOBXFL"] = (
+                ensure_series(frame["VSLOBXFL"]).astype("string").fillna("")
+            )
             if {"USUBJID", "VSTESTCD", "VSPOS"} <= set(frame.columns):
                 group_cols = ["USUBJID", "VSTESTCD", "VSPOS"]
             else:

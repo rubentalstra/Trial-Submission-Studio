@@ -223,4 +223,3 @@ def study_command(
     # Exit with error code if there were errors
     if not response.success or response.has_errors:
         raise click.ClickException("Study processing completed with errors")
-

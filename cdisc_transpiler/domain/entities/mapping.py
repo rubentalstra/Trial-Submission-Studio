@@ -11,6 +11,7 @@ from typing import Iterable
 
 from pydantic import BaseModel, Field
 
+
 def _get_domain(domain_code: str):
     """Lazy getter to avoid circular import with domains_module."""
     from ...domains_module import get_domain

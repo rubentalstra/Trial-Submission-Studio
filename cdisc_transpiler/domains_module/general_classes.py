@@ -28,7 +28,8 @@ def is_preferred_variable(
 
 
 def build_general_class_variables(
-    sdtmig_cache: dict[str, list[dict[str, Any]]], sdtm_v2_cache: dict[str, list[dict[str, Any]]]
+    sdtmig_cache: dict[str, list[dict[str, Any]]],
+    sdtm_v2_cache: dict[str, list[dict[str, Any]]],
 ) -> tuple[dict[str, dict[str, SDTMVariable]], dict[str, dict[str, set[str]]]]:
     """Collect Identifier/Timing templates grouped by General Observation Class."""
     registry: dict[str, dict[str, SDTMVariable]] = {}

@@ -20,17 +20,17 @@ from .dataset_xml.writer import write_dataset_xml
 
 class DatasetXMLWriter:
     """Adapter for writing Dataset-XML files.
-    
+
     This class implements the DatasetXMLWriterPort protocol by wrapping
     the existing xml_module.dataset_module.write_dataset_xml function.
     It provides a clean interface that can be injected into other components.
-    
+
     Example:
         >>> writer = DatasetXMLWriter()
         >>> df = pd.DataFrame({"STUDYID": ["001"], "USUBJID": ["001-001"]})
         >>> writer.write(df, "DM", config, Path("output/dm.xml"))
     """
-    
+
     def write(
         self,
         dataframe: pd.DataFrame,
@@ -39,16 +39,16 @@ class DatasetXMLWriter:
         output_path: Path,
     ) -> None:
         """Write a DataFrame to a Dataset-XML file.
-        
+
         Args:
             dataframe: Data to write
             domain_code: SDTM domain code (e.g., "DM", "AE")
             config: Mapping configuration with column metadata
             output_path: Path where XML file should be written
-            
+
         Raises:
             Exception: If writing fails (propagated from xml_module)
-            
+
         Example:
             >>> writer = DatasetXMLWriter()
             >>> df = pd.DataFrame({"STUDYID": ["001"]})

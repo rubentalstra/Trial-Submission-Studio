@@ -154,7 +154,7 @@ class StudyOrchestrationService:
                         std_testcd = vs_synonyms[testcd_raw.upper()]
                     else:
                         continue
-                        
+
                 value = row.get(f"ORRES_{testcd_raw}", pd.NA)
                 if isinstance(value, pd.Series):
                     value = value.iloc[0] if not value.empty else pd.NA
@@ -170,12 +170,12 @@ class StudyOrchestrationService:
                 pos_val = row.get(f"POS_{testcd_raw}", "")
                 label_val = row.get(f"TEST_{testcd_raw}", "")
                 stat_val = "NOT DONE" if status_cd == "N" else ""
-                
+
                 # Get label from CT
                 test_label = get_testcd_label("VS", std_testcd)
                 if test_label == std_testcd and label_val:
                     test_label = label_val
-                    
+
                 records.append(
                     {
                         "STUDYID": study_id,
@@ -350,7 +350,7 @@ class StudyOrchestrationService:
                     else:
                         # Accept any test code from source if it looks valid
                         norm_testcd = upper_testcd
-                        
+
                 orres_col = cols.get("orres")
                 if not orres_col:
                     continue
@@ -380,12 +380,12 @@ class StudyOrchestrationService:
                     if cols.get("label")
                     else ""
                 )
-                
+
                 # Get label from CT
                 test_label = get_testcd_label("LB", norm_testcd)
                 if test_label == norm_testcd and label_val:
                     test_label = label_val
-                    
+
                 records.append(
                     {
                         "STUDYID": study_id,

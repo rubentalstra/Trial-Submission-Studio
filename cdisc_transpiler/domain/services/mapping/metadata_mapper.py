@@ -64,7 +64,7 @@ class MetadataAwareMapper:
 
         # Build dynamic patterns from domain metadata
         self._variable_patterns = build_variable_patterns(self.domain)
-        
+
         # Build combined alias dictionary for this domain
         self._build_alias_dictionary()
 

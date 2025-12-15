@@ -156,9 +156,9 @@ def _merge_ct(
     )
 
 
-def build_registry(ct_dir: Path) -> tuple[
-    Dict[str, ControlledTerminology], Dict[str, ControlledTerminology]
-]:
+def build_registry(
+    ct_dir: Path,
+) -> tuple[Dict[str, ControlledTerminology], Dict[str, ControlledTerminology]]:
     """Build registries keyed by codelist code and by codelist name.
 
     Args:

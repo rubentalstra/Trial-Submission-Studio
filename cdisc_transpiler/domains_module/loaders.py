@@ -30,7 +30,7 @@ def load_dataset_attributes(path: Path) -> dict[str, dict[str, str]]:
     if not path.exists():
         return {}
     attributes: dict[str, dict[str, str]] = {}
-    
+
     with path.open(newline="", encoding="utf-8") as handle:
         reader = csv.DictReader(handle)
         for row in reader:

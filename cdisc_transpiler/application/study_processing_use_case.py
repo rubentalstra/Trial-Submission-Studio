@@ -39,24 +39,25 @@ from .ports import (
 if TYPE_CHECKING:
     from .domain_processing_use_case import DomainProcessingUseCase
     from ..services import DomainDiscoveryService
+    from ..xml_module.define_module import StudyDataset
 
 
 class StudyProcessingUseCase:
     """Use case for processing a complete study.
-    
+
     This class orchestrates the entire study processing workflow using injected
     dependencies. It follows the Ports & Adapters architecture pattern.
-    
+
     The use case orchestrates:
     1. Discovers domain files in the study folder
     2. Processes each domain (via DomainProcessingUseCase)
     3. Synthesizes missing required domains
     4. Generates Define-XML metadata
     5. Collects and aggregates results
-    
+
     All dependencies are injected via the constructor, enabling testability
     and allowing different implementations to be swapped.
-    
+
     Example:
         >>> use_case = StudyProcessingUseCase(
         ...     logger=logger,
@@ -74,7 +75,7 @@ class StudyProcessingUseCase:
         >>> if response.success:
         ...     print(f"Processed {len(response.domain_results)} domains")
     """
-    
+
     def __init__(
         self,
         logger: LoggerPort,
@@ -85,7 +86,7 @@ class StudyProcessingUseCase:
         define_xml_generator: DefineXmlGeneratorPort | None = None,
     ):
         """Initialize the use case with injected dependencies.
-        
+
         Args:
             logger: Logger for progress and error reporting
             study_data_repo: Repository for loading study data and metadata
@@ -100,16 +101,16 @@ class StudyProcessingUseCase:
         self._discovery_service = discovery_service
         self._file_generator = file_generator
         self._define_xml_generator = define_xml_generator
-    
+
     def execute(self, request: ProcessStudyRequest) -> ProcessStudyResponse:
         """Execute the study processing workflow.
-        
+
         Args:
             request: Study processing request with all parameters
-            
+
         Returns:
             Study processing response with results and any errors
-            
+
         Example:
             >>> response = use_case.execute(request)
             >>> print(f"Success: {response.success}")
@@ -120,11 +121,11 @@ class StudyProcessingUseCase:
             study_id=request.study_id,
             output_dir=request.output_dir,
         )
-        
+
         try:
             # Get supported domains list (via lazy import)
             supported_domains = list(self._list_domains())
-            
+
             # Log study initialization
             self.logger.log_study_start(
                 request.study_id,
@@ -132,37 +133,39 @@ class StudyProcessingUseCase:
                 "/".join(request.output_formats),
                 supported_domains,
             )
-            
+
             # Load study metadata via repository
             study_metadata = self._load_study_metadata(request.study_folder)
             self.logger.log_metadata_loaded(
                 items_count=len(study_metadata.items) if study_metadata.items else None,
-                codelists_count=len(study_metadata.codelists) if study_metadata.codelists else None,
+                codelists_count=len(study_metadata.codelists)
+                if study_metadata.codelists
+                else None,
             )
-            
+
             # Set up output directories
             self._setup_output_directories(request)
-            
+
             # Discover domain files
             csv_files = list(request.study_folder.glob("*.csv"))
             self.logger.verbose(f"Found {len(csv_files)} CSV files in study folder")
-            
+
             discovery_service = self._get_discovery_service()
             domain_files = discovery_service.discover_domain_files(
                 csv_files, supported_domains
             )
-            
+
             if not domain_files:
                 response.success = False
                 response.errors.append(
                     ("DISCOVERY", f"No domain files found in {request.study_folder}")
                 )
                 return response
-            
+
             # Build common column counts for heuristic analysis
             common_column_counts = self._build_column_counts(domain_files)
             total_input_files = sum(len(files) for files in domain_files.values())
-            
+
             self.logger.log_processing_summary(
                 study_id=request.study_id,
                 domain_count=len(domain_files),
@@ -171,24 +174,29 @@ class StudyProcessingUseCase:
                 generate_define=request.generate_define_xml,
                 generate_sas=request.generate_sas,
             )
-            
-            # Process domains using Define-XML support types
-            from ..xml_module.define_module import StudyDataset
-            
+
+            # Create empty list for study datasets (type hint uses TYPE_CHECKING import)
+            # StudyDataset instances are created in _add_to_study_datasets
             study_datasets: list[StudyDataset] = []
             reference_starts: dict[str, str] = {}
             processed_domains = set(domain_files.keys())
-            
+
             # Determine output directories
-            xpt_dir = request.output_dir / "xpt" if "xpt" in request.output_formats else None
-            xml_dir = request.output_dir / "dataset-xml" if "xml" in request.output_formats else None
+            xpt_dir = (
+                request.output_dir / "xpt" if "xpt" in request.output_formats else None
+            )
+            xml_dir = (
+                request.output_dir / "dataset-xml"
+                if "xml" in request.output_formats
+                else None
+            )
             sas_dir = request.output_dir / "sas" if request.generate_sas else None
-            
+
             # Process each domain in order (DM first)
             ordered_domains = sorted(
                 domain_files.keys(), key=lambda code: (code != "DM", code)
             )
-            
+
             for domain_code in ordered_domains:
                 result = self._process_domain(
                     domain_code=domain_code,
@@ -202,27 +210,35 @@ class StudyProcessingUseCase:
                     xml_dir=xml_dir,
                     sas_dir=sas_dir,
                 )
-                
+
                 response.domain_results.append(result)
-                
+
                 if result.success:
                     response.processed_domains.add(domain_code)
                     response.total_records += result.records
-                    
+
                     # Update reference starts from DM
                     if domain_code == "DM" and result.domain_dataframe is not None:
                         reference_starts.update(
                             self._extract_reference_starts(result.domain_dataframe)
                         )
-                    
+
                     # Collect for Define-XML
-                    if request.generate_define_xml and result.domain_dataframe is not None:
+                    if (
+                        request.generate_define_xml
+                        and result.domain_dataframe is not None
+                    ):
                         self._add_to_study_datasets(
-                            result, study_datasets, request.output_dir, request.output_formats
+                            result,
+                            study_datasets,
+                            request.output_dir,
+                            request.output_formats,
                         )
                 else:
-                    response.errors.append((domain_code, result.error or "Unknown error"))
-            
+                    response.errors.append(
+                        (domain_code, result.error or "Unknown error")
+                    )
+
             # Synthesize missing required domains
             self._synthesize_missing_domains(
                 response=response,
@@ -234,7 +250,7 @@ class StudyProcessingUseCase:
                 xml_dir=xml_dir,
                 sas_dir=sas_dir,
             )
-            
+
             # Generate Define-XML
             if request.generate_define_xml and study_datasets:
                 self._generate_define_xml(
@@ -242,45 +258,45 @@ class StudyProcessingUseCase:
                     response=response,
                     request=request,
                 )
-            
+
             # Log final statistics
             self.logger.log_final_stats()
-            
+
             # Overall success if no critical errors
             response.success = len(response.errors) == 0
-            
+
         except Exception as exc:
             response.success = False
             response.errors.append(("GENERAL", str(exc)))
             self.logger.error(f"Study processing failed: {exc}")
-        
+
         return response
-    
+
     def _setup_output_directories(self, request: ProcessStudyRequest) -> None:
         """Set up output directory structure."""
         from ..services import ensure_acrf_pdf
         from ..xml_module.define_module.constants import ACRF_HREF
-        
+
         request.output_dir.mkdir(parents=True, exist_ok=True)
-        
+
         if "xpt" in request.output_formats:
             (request.output_dir / "xpt").mkdir(parents=True, exist_ok=True)
-        
+
         if "xml" in request.output_formats:
             (request.output_dir / "dataset-xml").mkdir(parents=True, exist_ok=True)
-        
+
         if request.generate_sas:
             (request.output_dir / "sas").mkdir(parents=True, exist_ok=True)
-        
+
         if request.generate_define_xml:
             ensure_acrf_pdf(request.output_dir / ACRF_HREF)
-    
+
     def _build_column_counts(
         self, domain_files: dict[str, list[tuple[Path, str]]]
     ) -> dict[str, int]:
         """Build common column counts for heuristic analysis."""
         common_column_counts: dict[str, int] = defaultdict(int)
-        
+
         for files in domain_files.values():
             for file_path, _ in files:
                 try:
@@ -289,9 +305,9 @@ class StudyProcessingUseCase:
                     continue
                 for col in headers.columns:
                     common_column_counts[str(col).strip().lower()] += 1
-        
+
         return common_column_counts
-    
+
     def _process_domain(
         self,
         domain_code: str,
@@ -307,11 +323,11 @@ class StudyProcessingUseCase:
     ) -> DomainProcessingResult:
         """Process a single domain using DomainProcessingUseCase."""
         self.logger.log_domain_start(domain_code, files_for_domain)
-        
+
         try:
             # Get the domain processing use case
             domain_use_case = self._get_domain_processing_use_case()
-            
+
             # Build request for domain processing
             domain_request = ProcessDomainRequest(
                 files_for_domain=files_for_domain,
@@ -333,10 +349,10 @@ class StudyProcessingUseCase:
                 common_column_counts=common_column_counts or None,
                 total_input_files=total_input_files,
             )
-            
+
             # Execute domain processing
             domain_response = domain_use_case.execute(domain_request)
-            
+
             # Convert ProcessDomainResponse to DomainProcessingResult
             result = DomainProcessingResult(
                 domain_code=domain_code,
@@ -350,7 +366,7 @@ class StudyProcessingUseCase:
                 split_datasets=domain_response.split_datasets,
                 error=domain_response.error,
             )
-            
+
             # Handle supplemental domains
             for supp_response in domain_response.supplementals:
                 supp_result = DomainProcessingResult(
@@ -364,9 +380,9 @@ class StudyProcessingUseCase:
                     sas_path=supp_response.sas_path,
                 )
                 result.supplementals.append(supp_result)
-            
+
             return result
-            
+
         except Exception as exc:
             self.logger.error(f"{domain_code}: {exc}")
             return DomainProcessingResult(
@@ -374,14 +390,12 @@ class StudyProcessingUseCase:
                 success=False,
                 error=str(exc),
             )
-    
-    def _extract_reference_starts(
-        self, dm_frame: pd.DataFrame
-    ) -> dict[str, str]:
+
+    def _extract_reference_starts(self, dm_frame: pd.DataFrame) -> dict[str, str]:
         """Extract RFSTDTC reference starts from DM domain."""
         reference_starts: dict[str, str] = {}
         baseline_default = "2023-01-01"
-        
+
         # Ensure RFSTDTC exists and is populated
         if "RFSTDTC" not in dm_frame.columns:
             dm_frame["RFSTDTC"] = baseline_default
@@ -394,21 +408,19 @@ class StudyProcessingUseCase:
                 .str.strip()
             )
             dm_frame.loc[rfstdtc_series == "", "RFSTDTC"] = baseline_default
-        
+
         if {"USUBJID", "RFSTDTC"}.issubset(dm_frame.columns):
             cleaned = dm_frame[["USUBJID", "RFSTDTC"]].copy()
             cleaned["RFSTDTC"] = pd.to_datetime(
                 cleaned["RFSTDTC"], errors="coerce"
             ).fillna(pd.to_datetime(baseline_default))
             baseline_map = (
-                cleaned.set_index("USUBJID")["RFSTDTC"]
-                .dt.date.astype(str)
-                .to_dict()
+                cleaned.set_index("USUBJID")["RFSTDTC"].dt.date.astype(str).to_dict()
             )
             reference_starts.update(baseline_map)
-        
+
         return reference_starts
-    
+
     def _add_to_study_datasets(
         self,
         result: DomainProcessingResult,
@@ -418,10 +430,10 @@ class StudyProcessingUseCase:
     ) -> None:
         """Add domain result to study datasets for Define-XML."""
         from ..xml_module.define_module import StudyDataset
-        
+
         domain = self._get_domain(result.domain_code)
         disk_name = domain.resolved_dataset_name().lower()
-        
+
         # Determine dataset href
         if "xpt" in output_formats and result.xpt_path:
             dataset_href = result.xpt_path.relative_to(output_dir)
@@ -429,7 +441,7 @@ class StudyProcessingUseCase:
             dataset_href = result.xml_path.relative_to(output_dir)
         else:
             dataset_href = Path(f"{disk_name}.xpt")
-        
+
         if result.config and result.domain_dataframe is not None:
             study_datasets.append(
                 StudyDataset(
@@ -439,7 +451,7 @@ class StudyProcessingUseCase:
                     archive_location=dataset_href,
                 )
             )
-            
+
             # Add split datasets
             for split_name, split_df, split_path in result.split_datasets:
                 split_href = split_path.relative_to(output_dir)
@@ -455,13 +467,15 @@ class StudyProcessingUseCase:
                         else split_name,
                     )
                 )
-            
+
             # Add supplemental domains
             for supp in result.supplementals:
                 if supp.domain_dataframe is not None:
                     supp_href = (
-                        supp.xpt_path.relative_to(output_dir) if supp.xpt_path
-                        else supp.xml_path.relative_to(output_dir) if supp.xml_path
+                        supp.xpt_path.relative_to(output_dir)
+                        if supp.xpt_path
+                        else supp.xml_path.relative_to(output_dir)
+                        if supp.xml_path
                         else Path(f"{supp.domain_code.lower()}.xpt")
                     )
                     study_datasets.append(
@@ -472,7 +486,7 @@ class StudyProcessingUseCase:
                             archive_location=supp_href,
                         )
                     )
-    
+
     def _synthesize_missing_domains(
         self,
         response: ProcessStudyResponse,
@@ -499,7 +513,7 @@ class StudyProcessingUseCase:
                     xml_dir=xml_dir,
                     sas_dir=sas_dir,
                 )
-        
+
         # Synthesize trial design domains
         for td_domain in ["TS", "TA", "TE", "SE", "DS"]:
             if td_domain not in processed_domains:
@@ -514,7 +528,7 @@ class StudyProcessingUseCase:
                     xml_dir=xml_dir,
                     sas_dir=sas_dir,
                 )
-        
+
         # Synthesize RELREC
         if "RELREC" not in processed_domains:
             self._synthesize_relrec(
@@ -525,7 +539,7 @@ class StudyProcessingUseCase:
                 xml_dir=xml_dir,
                 sas_dir=sas_dir,
             )
-    
+
     def _synthesize_domain(
         self,
         domain_code: str,
@@ -539,56 +553,62 @@ class StudyProcessingUseCase:
         sas_dir: Path | None,
     ) -> None:
         """Synthesize a missing observation domain.
-        
-        CLEAN2-D3: Now uses the new SynthesisService from domain/services
-        instead of the legacy DomainSynthesisCoordinator.
+
+        The domain synthesis service returns pure domain data, and
+        file generation is handled here in the application layer.
         """
         self.logger.log_synthesis_start(domain_code, reason)
-        
+
         try:
             synthesis_service = self._get_synthesis_service()
             synthesis_result = synthesis_service.synthesize_observation(
                 domain_code=domain_code,
                 study_id=request.study_id,
-                output_formats=request.output_formats,
+                reference_starts=reference_starts,
+            )
+
+            if not synthesis_result.success:
+                raise RuntimeError(synthesis_result.error or "Synthesis failed")
+
+            # Generate output files using FileGeneratorPort (application layer)
+            xpt_path, xml_path, sas_path = self._generate_synthesis_files(
+                domain_dataframe=synthesis_result.domain_dataframe,
+                domain_code=domain_code,
+                config=synthesis_result.config,
+                request=request,
                 xpt_dir=xpt_dir,
                 xml_dir=xml_dir,
                 sas_dir=sas_dir,
-                generate_sas=request.generate_sas,
-                reference_starts=reference_starts,
             )
-            
-            if not synthesis_result.success:
-                raise RuntimeError(synthesis_result.error or "Synthesis failed")
-            
+
             result = DomainProcessingResult(
                 domain_code=domain_code,
                 success=True,
                 records=synthesis_result.records,
                 domain_dataframe=synthesis_result.domain_dataframe,
                 config=synthesis_result.config,
-                xpt_path=synthesis_result.xpt_path,
-                xml_path=synthesis_result.xml_path,
-                sas_path=synthesis_result.sas_path,
+                xpt_path=xpt_path,
+                xml_path=xml_path,
+                sas_path=sas_path,
                 synthesized=True,
                 synthesis_reason=reason,
             )
-            
+
             response.domain_results.append(result)
             response.processed_domains.add(domain_code)
             response.total_records += result.records
-            
+
             if request.generate_define_xml and result.domain_dataframe is not None:
                 self._add_to_study_datasets(
                     result, study_datasets, request.output_dir, request.output_formats
                 )
-            
+
             self.logger.log_synthesis_complete(domain_code, result.records)
-            
+
         except Exception as exc:
             self.logger.error(f"{domain_code}: {exc}")
             response.errors.append((domain_code, str(exc)))
-    
+
     def _synthesize_trial_design_domain(
         self,
         domain_code: str,
@@ -602,56 +622,62 @@ class StudyProcessingUseCase:
         sas_dir: Path | None,
     ) -> None:
         """Synthesize a missing trial design domain.
-        
-        CLEAN2-D3: Now uses the new SynthesisService from domain/services
-        instead of the legacy DomainSynthesisCoordinator.
+
+        The domain synthesis service returns pure domain data, and
+        file generation is handled here in the application layer.
         """
         self.logger.log_synthesis_start(domain_code, reason)
-        
+
         try:
             synthesis_service = self._get_synthesis_service()
             synthesis_result = synthesis_service.synthesize_trial_design(
                 domain_code=domain_code,
                 study_id=request.study_id,
-                output_formats=request.output_formats,
+                reference_starts=reference_starts,
+            )
+
+            if not synthesis_result.success:
+                raise RuntimeError(synthesis_result.error or "Synthesis failed")
+
+            # Generate output files using FileGeneratorPort (application layer)
+            xpt_path, xml_path, sas_path = self._generate_synthesis_files(
+                domain_dataframe=synthesis_result.domain_dataframe,
+                domain_code=domain_code,
+                config=synthesis_result.config,
+                request=request,
                 xpt_dir=xpt_dir,
                 xml_dir=xml_dir,
                 sas_dir=sas_dir,
-                generate_sas=request.generate_sas,
-                reference_starts=reference_starts,
             )
-            
-            if not synthesis_result.success:
-                raise RuntimeError(synthesis_result.error or "Synthesis failed")
-            
+
             result = DomainProcessingResult(
                 domain_code=domain_code,
                 success=True,
                 records=synthesis_result.records,
                 domain_dataframe=synthesis_result.domain_dataframe,
                 config=synthesis_result.config,
-                xpt_path=synthesis_result.xpt_path,
-                xml_path=synthesis_result.xml_path,
-                sas_path=synthesis_result.sas_path,
+                xpt_path=xpt_path,
+                xml_path=xml_path,
+                sas_path=sas_path,
                 synthesized=True,
                 synthesis_reason=reason,
             )
-            
+
             response.domain_results.append(result)
             response.processed_domains.add(domain_code)
             response.total_records += result.records
-            
+
             if request.generate_define_xml and result.domain_dataframe is not None:
                 self._add_to_study_datasets(
                     result, study_datasets, request.output_dir, request.output_formats
                 )
-            
+
             self.logger.log_synthesis_complete(domain_code, result.records)
-            
+
         except Exception as exc:
             self.logger.error(f"{domain_code}: {exc}")
             response.errors.append((domain_code, str(exc)))
-    
+
     def _synthesize_relrec(
         self,
         response: ProcessStudyResponse,
@@ -662,31 +688,35 @@ class StudyProcessingUseCase:
         sas_dir: Path | None,
     ) -> None:
         """Synthesize RELREC domain.
-        
+
         CLEAN2-D4: Now uses the new RelrecService from domain/services
         instead of the legacy StudyOrchestrationService.
         """
         self.logger.log_synthesis_start("RELREC", "Relationship scaffold")
-        
+
         try:
             # Build dictionary of domain dataframes for RELREC service
             domain_dataframes = {}
             for result in response.domain_results:
-                if result.domain_dataframe is not None and not result.domain_dataframe.empty:
+                if (
+                    result.domain_dataframe is not None
+                    and not result.domain_dataframe.empty
+                ):
                     domain_dataframes[result.domain_code] = result.domain_dataframe
-            
+
             # Generate RELREC using the domain service
             from ..domain.services import RelrecService
+
             relrec_service = RelrecService()
             relrec_df, relrec_config = relrec_service.build_relrec(
                 domain_dataframes=domain_dataframes,
                 study_id=request.study_id,
             )
-            
+
             # Build domain dataframe with SDTM structure
             from ..domains_module import get_domain
             from ..domain.services import build_domain_dataframe
-            
+
             relrec_domain = get_domain("RELREC")
             domain_dataframe = build_domain_dataframe(
                 relrec_df,
@@ -694,15 +724,16 @@ class StudyProcessingUseCase:
                 relrec_domain,
                 lenient=True,
             )
-            
+
             # Generate output files
-            from ..infrastructure.io.models import OutputDirs, OutputRequest
+            from .models import OutputDirs, OutputRequest
+
             output_dirs = OutputDirs(
                 xpt_dir=xpt_dir,
                 xml_dir=xml_dir,
                 sas_dir=sas_dir,
             )
-            
+
             output_formats = set()
             if "xpt" in request.output_formats:
                 output_formats.add("xpt")
@@ -710,7 +741,7 @@ class StudyProcessingUseCase:
                 output_formats.add("xml")
             if request.generate_sas:
                 output_formats.add("sas")
-            
+
             output_request = OutputRequest(
                 dataframe=domain_dataframe,
                 domain_code="RELREC",
@@ -718,9 +749,9 @@ class StudyProcessingUseCase:
                 output_dirs=output_dirs,
                 formats=output_formats,
             )
-            
+
             output_result = self._file_generator.generate(output_request)
-            
+
             result = DomainProcessingResult(
                 domain_code="RELREC",
                 success=True,
@@ -733,22 +764,22 @@ class StudyProcessingUseCase:
                 synthesized=True,
                 synthesis_reason="Relationship scaffold",
             )
-            
+
             response.domain_results.append(result)
             response.processed_domains.add("RELREC")
             response.total_records += result.records
-            
+
             if request.generate_define_xml and result.domain_dataframe is not None:
                 self._add_to_study_datasets(
                     result, study_datasets, request.output_dir, request.output_formats
                 )
-            
+
             self.logger.success("Generated RELREC")
-            
+
         except Exception as exc:
             self.logger.error(f"RELREC: {exc}")
             response.errors.append(("RELREC", str(exc)))
-    
+
     def _generate_define_xml(
         self,
         study_datasets: list,  # list[StudyDataset]
@@ -761,11 +792,14 @@ class StudyProcessingUseCase:
             self.logger.error("Define-XML generator not injected")
             response.errors.append(("Define-XML", "Generator not available"))
             return
-        
-        from ..xml_module.define_module.constants import CONTEXT_SUBMISSION, CONTEXT_OTHER
-        
+
+        from ..xml_module.define_module.constants import (
+            CONTEXT_SUBMISSION,
+            CONTEXT_OTHER,
+        )
+
         define_path = request.output_dir / "define.xml"
-        
+
         try:
             context = (
                 CONTEXT_SUBMISSION
@@ -780,72 +814,151 @@ class StudyProcessingUseCase:
             )
             response.define_xml_path = define_path
             self.logger.success(f"Generated Define-XML 2.1 at {define_path}")
-            
+
         except Exception as exc:
             response.define_xml_error = str(exc)
             self.logger.error(f"Define-XML generation failed: {exc}")
             response.errors.append(("Define-XML", str(exc)))
-    
+
     # ========== Helper Methods for Lazy Dependencies ==========
-    
+
     def _list_domains(self) -> list[str]:
         """Get list of supported domains via lazy import."""
         from ..domains_module import list_domains
+
         return list(list_domains())
-    
+
     def _get_domain(self, domain_code: str):
         """Get domain definition via lazy import."""
         from ..domains_module import get_domain
+
         return get_domain(domain_code)
-    
+
     def _load_study_metadata(self, study_folder: Path):
         """Load study metadata via repository or fallback."""
         if self._study_data_repo is not None:
             return self._study_data_repo.load_study_metadata(study_folder)
-        
+
         # Fallback to direct import
         from ..metadata_module import load_study_metadata
+
         return load_study_metadata(study_folder)
-    
+
     def _load_dataset(self, file_path: Path) -> pd.DataFrame:
         """Load a dataset via repository or fallback."""
         if self._study_data_repo is not None:
             return self._study_data_repo.read_dataset(file_path)
-        
+
         # Fallback to direct import
         from ..io_module import load_input_dataset
+
         return load_input_dataset(file_path)
-    
+
     def _get_discovery_service(self):
         """Get or create domain discovery service."""
         if self._discovery_service is not None:
             return self._discovery_service
-        
+
         # Create default instance with logger injection
         from ..services import DomainDiscoveryService
+
         return DomainDiscoveryService(logger=self.logger)
-    
+
     def _get_domain_processing_use_case(self):
         """Get or create domain processing use case."""
         if self._domain_processing_use_case is not None:
             return self._domain_processing_use_case
-        
+
         # Create default instance with available dependencies
         from .domain_processing_use_case import DomainProcessingUseCase
+
         return DomainProcessingUseCase(
             logger=self.logger,
             study_data_repo=self._study_data_repo,
             file_generator=self._file_generator,
         )
-    
+
     def _get_synthesis_service(self):
         """Get or create domain synthesis service.
-        
-        CLEAN2-D3: Now uses the new SynthesisService from domain/services
-        instead of the legacy DomainSynthesisCoordinator.
+
+        The SynthesisService is a pure domain service that returns only
+        domain data (DataFrames + configs). File generation is handled
+        by the application layer using FileGeneratorPort.
         """
         from ..domain.services import SynthesisService
-        return SynthesisService(
-            file_generator=self._file_generator,
-            logger=self.logger,
+
+        return SynthesisService()
+
+    def _generate_synthesis_files(
+        self,
+        domain_dataframe: pd.DataFrame | None,
+        domain_code: str,
+        config: Any,
+        request: ProcessStudyRequest,
+        xpt_dir: Path | None,
+        xml_dir: Path | None,
+        sas_dir: Path | None,
+    ) -> tuple[Path | None, Path | None, Path | None]:
+        """Generate output files for synthesized domain data.
+
+        This method handles file generation in the application layer,
+        using the FileGeneratorPort to write output files.
+
+        Args:
+            domain_dataframe: Synthesized domain DataFrame
+            domain_code: SDTM domain code
+            config: Mapping configuration
+            request: Study processing request
+            xpt_dir: XPT output directory
+            xml_dir: XML output directory
+            sas_dir: SAS output directory
+
+        Returns:
+            Tuple of (xpt_path, xml_path, sas_path) - paths to generated files
+        """
+        if domain_dataframe is None or self._file_generator is None:
+            return None, None, None
+
+        from .models import OutputDirs, OutputRequest
+
+        # Determine output formats
+        formats: set[str] = set()
+        if xpt_dir and "xpt" in request.output_formats:
+            formats.add("xpt")
+        if xml_dir and "xml" in request.output_formats:
+            formats.add("xml")
+        if sas_dir and request.generate_sas:
+            formats.add("sas")
+
+        if not formats:
+            return None, None, None
+
+        output_request = OutputRequest(
+            dataframe=domain_dataframe,
+            domain_code=domain_code,
+            config=config,
+            output_dirs=OutputDirs(
+                xpt_dir=xpt_dir,
+                xml_dir=xml_dir,
+                sas_dir=sas_dir,
+            ),
+            formats=formats,
         )
+
+        output_result = self._file_generator.generate(output_request)
+
+        # Log success
+        if output_result.xpt_path:
+            self.logger.success(
+                f"Generated {domain_code} XPT: {output_result.xpt_path}"
+            )
+        if output_result.xml_path:
+            self.logger.success(
+                f"Generated {domain_code} Dataset-XML: {output_result.xml_path}"
+            )
+        if output_result.sas_path:
+            self.logger.success(
+                f"Generated {domain_code} SAS: {output_result.sas_path}"
+            )
+
+        return output_result.xpt_path, output_result.xml_path, output_result.sas_path

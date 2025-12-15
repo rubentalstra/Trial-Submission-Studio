@@ -55,12 +55,24 @@ class MockSDTMSpecRepository:
     def __init__(self):
         self._variables = {
             "DM": [
-                {"Variable Name": "STUDYID", "Label": "Study Identifier", "Role": "Identifier"},
-                {"Variable Name": "USUBJID", "Label": "Unique Subject Identifier", "Role": "Identifier"},
+                {
+                    "Variable Name": "STUDYID",
+                    "Label": "Study Identifier",
+                    "Role": "Identifier",
+                },
+                {
+                    "Variable Name": "USUBJID",
+                    "Label": "Unique Subject Identifier",
+                    "Role": "Identifier",
+                },
             ],
         }
         self._attributes = {
-            "DM": {"class": "SPECIAL PURPOSE", "label": "Demographics", "structure": "One record per subject"},
+            "DM": {
+                "class": "SPECIAL PURPOSE",
+                "label": "Demographics",
+                "structure": "One record per subject",
+            },
         }
 
     def get_domain_variables(self, domain_code: str) -> list[dict[str, str]]:

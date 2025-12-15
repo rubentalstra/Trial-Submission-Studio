@@ -29,33 +29,32 @@ from ..domains_module import get_domain, list_domains
 
 def _get_ct_dir() -> Path:
     """Get CT directory from config, with version resolution.
-    
+
     Returns:
         Path to the CT directory (with version subdirectory resolved)
     """
     # Lazy import to avoid circular imports
     from ..config import TranspilerConfig
-    
+
     config = TranspilerConfig()
     ct_base = config.ct_dir
-    
+
     # Make path absolute if relative
     if not ct_base.is_absolute():
         package_root = Path(__file__).resolve().parent.parent.parent
         ct_base = package_root / ct_base
-    
+
     if not ct_base.exists():
         return ct_base
-    
+
     # Try to find the latest version folder
-    candidates = sorted([
-        d for d in ct_base.iterdir() 
-        if d.is_dir() and not d.name.startswith(".")
-    ])
-    
+    candidates = sorted(
+        [d for d in ct_base.iterdir() if d.is_dir() and not d.name.startswith(".")]
+    )
+
     if candidates:
         return candidates[-1]  # Latest by name (ISO date naming)
-    
+
     return ct_base
 
 
@@ -64,18 +63,20 @@ _REGISTRY_BY_CODE: dict[str, ControlledTerminology] | None = None
 _REGISTRY_BY_NAME: dict[str, ControlledTerminology] | None = None
 
 
-def _ensure_registry_initialized() -> tuple[dict[str, ControlledTerminology], dict[str, ControlledTerminology]]:
+def _ensure_registry_initialized() -> tuple[
+    dict[str, ControlledTerminology], dict[str, ControlledTerminology]
+]:
     """Ensure CT registries are initialized (lazy initialization).
-    
+
     Returns:
         Tuple of (registry_by_code, registry_by_name)
     """
     global _REGISTRY_BY_CODE, _REGISTRY_BY_NAME
-    
+
     if _REGISTRY_BY_CODE is None or _REGISTRY_BY_NAME is None:
         ct_dir = _get_ct_dir()
         _REGISTRY_BY_CODE, _REGISTRY_BY_NAME = build_registry(ct_dir)
-    
+
     return _REGISTRY_BY_CODE, _REGISTRY_BY_NAME
 
 
@@ -88,12 +89,12 @@ def _ensure_registry_initialized() -> tuple[dict[str, ControlledTerminology], di
 @lru_cache(maxsize=None)
 def _get_domain_variable_codelists(domain_code: str) -> Dict[str, str]:
     """Get all codelist codes for variables in a domain.
-    
+
     Loads from the domain's variable definitions (sourced from Variables.csv).
-    
+
     Args:
         domain_code: SDTM domain code (e.g., "VS", "LB")
-        
+
     Returns:
         Dictionary mapping variable names to codelist codes
     """
@@ -101,7 +102,7 @@ def _get_domain_variable_codelists(domain_code: str) -> Dict[str, str]:
         domain = get_domain(domain_code)
     except (KeyError, ValueError):
         return {}
-    
+
     codelists: Dict[str, str] = {}
     for var in domain.variables:
         if var.codelist_code:
@@ -112,13 +113,13 @@ def _get_domain_variable_codelists(domain_code: str) -> Dict[str, str]:
 @lru_cache(maxsize=None)
 def get_variable_codelist(domain_code: str, variable_name: str) -> str | None:
     """Get the codelist code for a specific variable in a domain.
-    
+
     Dynamically loads from the domain's variable definitions.
-    
+
     Args:
         domain_code: SDTM domain code (e.g., "VS", "LB")
         variable_name: Variable name (e.g., "VSTESTCD", "LBORRESU")
-        
+
     Returns:
         Codelist code or None if not found
     """
@@ -128,9 +129,9 @@ def get_variable_codelist(domain_code: str, variable_name: str) -> str | None:
 
 def get_testcd_codelist(domain_code: str) -> str | None:
     """Get the --TESTCD codelist code for a domain.
-    
+
     Dynamically loads from the domain's variable definitions.
-    
+
     Args:
         domain_code: SDTM domain code (e.g., "VS", "LB")
 
@@ -143,9 +144,9 @@ def get_testcd_codelist(domain_code: str) -> str | None:
 
 def get_unit_codelist(domain_code: str) -> str | None:
     """Get the --ORRESU or --STRESU codelist code for a domain.
-    
+
     Dynamically loads from the domain's variable definitions.
-    
+
     Args:
         domain_code: SDTM domain code (e.g., "VS", "LB")
 
@@ -157,7 +158,7 @@ def get_unit_codelist(domain_code: str) -> str | None:
     code = get_variable_codelist(domain_code, orresu_var)
     if code:
         return code
-    
+
     stresu_var = f"{domain_code.upper()}STRESU"
     return get_variable_codelist(domain_code, stresu_var)
 

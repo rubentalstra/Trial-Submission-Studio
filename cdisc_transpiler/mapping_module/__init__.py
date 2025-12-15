@@ -30,6 +30,7 @@ Example:
 """
 
 from ..io_module.models import Hints
+
 # Import from new location and re-export for backward compatibility
 from ..domain.entities.study_metadata import StudyMetadata
 from ..domain.entities.mapping import (

@@ -57,13 +57,13 @@ def infer_sdtm_target(
     try:
         domain = get_domain(domain_code)
         variable_patterns = build_variable_patterns(domain)
-        
+
         # Check patterns for each variable
         for target_var, patterns in variable_patterns.items():
             for pattern in patterns:
                 if normalized == pattern:
                     return target_var
-        
+
         # Check if Items.csv provides hints
         if items:
             item = items.get(normalized)

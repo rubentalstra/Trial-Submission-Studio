@@ -23,7 +23,7 @@ Deprecated Services (moved to legacy package):
     - StudyOrchestrationService → use application.study_processing_use_case.StudyProcessingUseCase
     - DomainProcessingCoordinator → use application.domain_processing_use_case.DomainProcessingUseCase
     - DomainSynthesisCoordinator → use application.study_processing_use_case.StudyProcessingUseCase
-    
+
     These are re-exported from the legacy package for backward compatibility.
     See docs/ARCHITECTURE.md for migration guidance.
 """
