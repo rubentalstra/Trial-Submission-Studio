@@ -64,7 +64,7 @@ class TestSDTMCompliance:
         df, meta = pyreadstat.read_xport(str(xpt_files[0]))
         
         # Get domain definition
-        domain = get_domain("DM", "3.2")
+        domain = get_domain("DM")
         required_vars = [v.name for v in domain.variables if v.core == "Req"]
         
         # Check required variables are present
@@ -81,7 +81,7 @@ class TestSDTMCompliance:
         df, meta = pyreadstat.read_xport(str(xpt_files[0]))
         
         # Get domain definition
-        domain = get_domain("AE", "3.2")
+        domain = get_domain("AE")
         required_vars = [v.name for v in domain.variables if v.core == "Req"]
         
         # Check required variables are present
@@ -98,7 +98,7 @@ class TestSDTMCompliance:
         df, meta = pyreadstat.read_xport(str(xpt_files[0]))
         
         # Get domain definition
-        domain = get_domain("DM", "3.2")
+        domain = get_domain("DM")
         
         # Check some key numeric variables
         numeric_vars = [v.name for v in domain.variables if v.type == "Num" and v.name in df.columns]
@@ -121,7 +121,7 @@ class TestSDTMCompliance:
         df, meta = pyreadstat.read_xport(str(xpt_files[0]))
         
         # Get domain definition
-        domain = get_domain("DM", "3.2")
+        domain = get_domain("DM")
         
         # Check character variable lengths
         for var in domain.variables:
