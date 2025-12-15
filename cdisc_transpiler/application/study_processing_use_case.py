@@ -28,6 +28,7 @@ from ..services import (
     DomainSynthesisCoordinator,
     StudyOrchestrationService,
 )
+from ..services import ensure_acrf_pdf
 from ..xml_module.define_module import (
     StudyDataset,
     write_study_define_file,
@@ -35,9 +36,8 @@ from ..xml_module.define_module import (
 from ..xml_module.define_module.constants import (
     CONTEXT_SUBMISSION,
     CONTEXT_OTHER,
+    ACRF_HREF,
 )
-from ..services.file_organization_service import ensure_acrf_pdf
-from ..xml_module.define_module.constants import ACRF_HREF
 
 
 class StudyProcessingUseCase:

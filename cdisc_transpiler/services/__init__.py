@@ -31,7 +31,7 @@ Deprecated Services (moved to legacy package):
 from .file_generation_service import FileGenerationService, FileGenerationResult
 from .trial_design_service import TrialDesignService
 from .domain_discovery_service import DomainDiscoveryService
-from .file_organization_service import FileOrganizationService
+from .file_organization_service import FileOrganizationService, ensure_acrf_pdf
 from .progress_reporting_service import ProgressReportingService
 
 # Import deprecated services from legacy package (with deprecation warnings)
@@ -47,6 +47,7 @@ __all__ = [
     "TrialDesignService",
     "DomainDiscoveryService",
     "FileOrganizationService",
+    "ensure_acrf_pdf",
     "ProgressReportingService",
     # Deprecated - kept for backward compatibility
     "StudyOrchestrationService",
