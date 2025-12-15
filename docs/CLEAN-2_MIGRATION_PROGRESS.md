@@ -77,7 +77,7 @@ tickets should be implemented in order:
 25. ~~**CLEAN2-E3** (P2) - Convert output modules to wrappers~~ ✅ Complete
     (Partial - main goals achieved)
 26. ~~**CLEAN2-E4** (P2) - Retire FileGenerationService~~ ✅ Complete
-27. **CLEAN2-E5-E7** (P1) - Output adapters (optional) ⏳
+27. **CLEAN2-E5-E7** (P1) - Output adapters implementation move 🚫 Blocked by circular imports
 28. **CLEAN2-F1-F2** (P1/P2) - Cleanup ⏳
 
 All P0, P1, and P2 tickets in Epic E are complete! Remaining Epic E tickets
@@ -441,23 +441,33 @@ All P0, P1, and P2 tickets in Epic E are complete! Remaining Epic E tickets
 ### CLEAN2-E5 — Move Dataset-XML/Define-XML to infrastructure
 
 - **Priority:** P1
-- **Status:** ⏳ Not Started
+- **Status:** 🚫 Blocked
 - **Completion Date:** -
 - **PR:** -
+- **Blocker:** Pre-existing circular import between `domains_module` ↔ `domain.entities.mapping`
+- **Notes:** Attempted implementation reveals circular dependency:
+  - `cdisc_transpiler/__init__.py` imports from `xml_module`
+  - Moving xml implementation to `infrastructure/io` triggers import chain
+  - Import chain hits circular dependency: `domains_module` → `domain.entities` → `domains_module`
+  - This circular dependency exists in current codebase but is exposed by new import path
+  - **Resolution needed:** Fix circular dependency in domains_module before proceeding
+  - Alternative: Keep xml_module as-is with adapters (current working solution from E1/E2)
 
 ### CLEAN2-E6 — Move XPT implementation to infrastructure
 
 - **Priority:** P1
-- **Status:** ⏳ Not Started
+- **Status:** 🚫 Blocked
 - **Completion Date:** -
 - **PR:** -
+- **Blocked By:** CLEAN2-E5 (same circular dependency issue)
 
 ### CLEAN2-E7 — Move SAS implementation to infrastructure
 
 - **Priority:** P1
-- **Status:** ⏳ Not Started
+- **Status:** 🚫 Blocked
 - **Completion Date:** -
 - **PR:** -
+- **Blocked By:** CLEAN2-E5 (same circular dependency issue)
 
 ---
 
