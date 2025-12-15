@@ -1,0 +1,514 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Dataset-XML: Untyped Data Example  --> 
+<!-- Built from the SAS XPT files published with the SDTM-MSG (SDTM Metadata Submission Guidelines) V2.0 --> 
+<ODM
+  xmlns="http://www.cdisc.org/ns/odm/v1.3"
+  xmlns:xlink="http://www.w3.org/1999/xlink" 
+  xmlns:data="http://www.cdisc.org/ns/Dataset-XML/v1.0"
+  FileType="Snapshot"
+  ODMVersion="1.3.2"
+  data:DatasetXMLVersion="1.0.0"
+  FileOID="www.cdisc.org/StudyMSGv2/1/Define-XML_2.1.0(IG.TS).Data(TS)"
+  PriorFileOID="www.cdisc.org/StudyMSGv2/1/Define-XML_2.1.0"
+  CreationDateTime="2020-08-21T09:21:13"
+  Originator="CDISC MSG Team"
+  SourceSystem="M.Hungria-System"
+  SourceSystemVersion="2.1-A1"
+  >
+  <ReferenceData
+    StudyOID="cdisc.com/CDISCPILOT01"
+    MetaDataVersionOID="MDV.MSGv2.0.SDTMIG.3.3.SDTM.1.7">
+    <!-- Dataset (TS) -->
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="1">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="ACTSUB"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Actual Number of Subjects"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="18"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="2">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="ADAPT"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Adaptive Design"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="N"/>
+      <ItemData ItemOID="IT.TS.TSVALCD" Value="C49487"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="CDISC"/>
+      <ItemData ItemOID="IT.TS.TSVCDVER" Value="2020-03-27"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="3">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="ADDON"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Added on to Existing Treatments"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="N"/>
+      <ItemData ItemOID="IT.TS.TSVALCD" Value="C49487"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="CDISC"/>
+      <ItemData ItemOID="IT.TS.TSVCDVER" Value="2020-03-27"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="4">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="AGEMAX"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Planned Maximum Age of Subjects"/>
+      <ItemData ItemOID="IT.TS.TSVALNF" Value="PINF"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="5">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="AGEMIN"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Planned Minimum Age of Subjects"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="P50Y"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="ISO 8601"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="6">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSGRPID" Value="CUTOFF"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="DCUTDESC"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Data Cutoff Description"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="DATABASE LOCK"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="7">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSGRPID" Value="CUTOFF"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="DCUTDTC"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Data Cutoff Date"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="2015-03-31"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="ISO 8601"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="8">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSGRPID" Value="PLACEBO"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="DOSE"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Dose per Administration"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="0"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="9">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="2"/>
+      <ItemData ItemOID="IT.TS.TSGRPID" Value="LOW-DOSE"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="DOSE"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Dose per Administration"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="54"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="10">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="3"/>
+      <ItemData ItemOID="IT.TS.TSGRPID" Value="HIGH-DOSE"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="DOSE"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Dose per Administration"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="54"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="11">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="4"/>
+      <ItemData ItemOID="IT.TS.TSGRPID" Value="HIGH-DOSE"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="DOSE"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Dose per Administration"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="81"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="12">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="DOSFRM"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Dose Form"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="INJECTION"/>
+      <ItemData ItemOID="IT.TS.TSVALCD" Value="C42946"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="CDISC"/>
+      <ItemData ItemOID="IT.TS.TSVCDVER" Value="2020-03-27"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="13">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="DOSFRQ"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Dosing Frequency"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="QD"/>
+      <ItemData ItemOID="IT.TS.TSVALCD" Value="C25473"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="CDISC"/>
+      <ItemData ItemOID="IT.TS.TSVCDVER" Value="2020-03-27"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="14">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="DOSU"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Dose Units"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="mg"/>
+      <ItemData ItemOID="IT.TS.TSVALCD" Value="C28253"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="CDISC"/>
+      <ItemData ItemOID="IT.TS.TSVCDVER" Value="2020-03-27"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="15">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="FCNTRY"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Planned Country of Investigational Sites"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="USA"/>
+      <ItemData ItemOID="IT.TS.TSVALCD" Value="USA"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="ISO 3166-1 alpha-3"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="16">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="HLTSUBJI"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Healthy Subject Indicator"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="N"/>
+      <ItemData ItemOID="IT.TS.TSVALCD" Value="C49487"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="CDISC"/>
+      <ItemData ItemOID="IT.TS.TSVCDVER" Value="2020-03-27"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="17">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="INDIC"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Trial Disease/Condition Indication"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="Alzheimer&apos;s Disease (Disorder)"/>
+      <ItemData ItemOID="IT.TS.TSVALCD" Value="26929004"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="SNOMED"/>
+      <ItemData ItemOID="IT.TS.TSVCDVER" Value="2019-03-01"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="18">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="INTMODEL"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Intervention Model"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="PARALLEL"/>
+      <ItemData ItemOID="IT.TS.TSVALCD" Value="C82639"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="CDISC"/>
+      <ItemData ItemOID="IT.TS.TSVCDVER" Value="2020-03-27"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="19">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="INTTYPE"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Intervention Type"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="DRUG"/>
+      <ItemData ItemOID="IT.TS.TSVALCD" Value="C1909"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="CDISC"/>
+      <ItemData ItemOID="IT.TS.TSVCDVER" Value="2020-03-27"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="20">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="LENGTH"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Trial Length"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="P28W"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="ISO 8601"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="21">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="NARMS"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Planned Number of Arms"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="3"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="22">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSGRPID" Value="EFFICACY"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="OBJPRIM"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Trial Primary Objective"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="To document the efficacy profile of Zanomaline."/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="23">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="2"/>
+      <ItemData ItemOID="IT.TS.TSGRPID" Value="SAFETY"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="OBJPRIM"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Trial Primary Objective"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="To document the safety profile of Zanomaline."/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="24">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSGRPID" Value="EFFICACY"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="OUTMSPRI"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Primary Outcome Measure"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="To assess the dose-dependent improvement in subject depression. Improved scores on the Patient Health Questionnaire(PHQ-9) and the Hamilton Depression Rating Scale(HAMD 17) will indicate improvements."/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="25">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="2"/>
+      <ItemData ItemOID="IT.TS.TSGRPID" Value="EFFICACY"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="OUTMSPRI"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Primary Outcome Measure"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="To assess the dose-dependent improvements in satisfaction with subjects&apos; lives as a whole. Improved scores on the Satisfaction With Life Survery (SWLS) will indicate improvements."/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="26">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="3"/>
+      <ItemData ItemOID="IT.TS.TSGRPID" Value="EFFICACY"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="OUTMSPRI"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Primary Outcome Measure"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="To assess the dose-dependent improvements in subject memory and learning. Improved scores on the Auditory Verbal Learning Test (AVLT-REY) will indicate improvements."/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="27">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="4"/>
+      <ItemData ItemOID="IT.TS.TSGRPID" Value="SAFETY"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="OUTMSPRI"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Primary Outcome Measure"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="Type, frequency, and severity of laboratory abnormalities"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="28">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="5"/>
+      <ItemData ItemOID="IT.TS.TSGRPID" Value="SAFETY"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="OUTMSPRI"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Primary Outcome Measure"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="Type, frequency, and severity of adverse events (AEs)"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="29">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="PCLAS"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Pharmacologic Class"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="Acetylcholine Release Inhibitor"/>
+      <ItemData ItemOID="IT.TS.TSVALCD" Value="N0000175771"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="MED-RT"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="30">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="PLANSUB"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Planned Number of Subjects"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="20"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="31">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="RANDOM"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Trial is Randomized"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="Y"/>
+      <ItemData ItemOID="IT.TS.TSVALCD" Value="C49488"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="CDISC"/>
+      <ItemData ItemOID="IT.TS.TSVCDVER" Value="2020-03-27"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="32">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="RANDQT"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Randomization Quotient"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="0.67"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="33">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="REGID"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Registry Identifier"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="NCT00000000"/>
+      <ItemData ItemOID="IT.TS.TSVALCD" Value="NCT00000000"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="clinicaltrials.gov"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="34">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="ROUTE"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Route of Administration"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="SUBCUTANEOUS"/>
+      <ItemData ItemOID="IT.TS.TSVALCD" Value="C38299"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="CDISC"/>
+      <ItemData ItemOID="IT.TS.TSVCDVER" Value="2020-03-27"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="35">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="SDTIGVER"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="SDTM IG Version"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="3.3"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="36">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="SDTMVER"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="SDTM Version"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="1.7"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="37">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="SENDTC"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Study End Date"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="2014-11-01"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="ISO 8601"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="38">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="SEXPOP"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Sex of Participants"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="BOTH"/>
+      <ItemData ItemOID="IT.TS.TSVALCD" Value="C49636"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="CDISC"/>
+      <ItemData ItemOID="IT.TS.TSVCDVER" Value="2020-03-27"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="39">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="SPONSOR"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Clinical Study Sponsor"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="SDTM Metadata Submission Guidelines Team"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="40">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="SSTDTC"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Study Start Date"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="2012-10-06"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="ISO 8601"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="41">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="STOPRULE"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Study Stop Rules"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="NONE"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="42">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="STYPE"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Study Type"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="INTERVENTIONAL"/>
+      <ItemData ItemOID="IT.TS.TSVALCD" Value="C98388"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="CDISC"/>
+      <ItemData ItemOID="IT.TS.TSVCDVER" Value="2020-03-27"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="43">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="TBLIND"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Trial Blinding Schema"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="DOUBLE BLIND"/>
+      <ItemData ItemOID="IT.TS.TSVALCD" Value="C15228"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="CDISC"/>
+      <ItemData ItemOID="IT.TS.TSVCDVER" Value="2020-03-27"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="44">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="TCNTRL"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Control Type"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="PLACEBO"/>
+      <ItemData ItemOID="IT.TS.TSVALCD" Value="C49648"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="CDISC"/>
+      <ItemData ItemOID="IT.TS.TSVCDVER" Value="2020-03-27"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="45">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="TDIGRP"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Diagnosis Group"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="Patients with Probable Mild to Moderate Alzheimers Disease"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="46">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="TINDTP"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Trial Intent Type"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.TS.TSVALCD" Value="C49656"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="CDISC"/>
+      <ItemData ItemOID="IT.TS.TSVCDVER" Value="2020-03-27"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="47">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="TITLE"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Trial Title"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="Safety and Efficacy of Zanomaline in Patients with Mild to Moderate Alzheimers Disease."/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="48">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="TPHASE"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Trial Phase Classification"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="PHASE II TRIAL"/>
+      <ItemData ItemOID="IT.TS.TSVALCD" Value="C15601"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="CDISC"/>
+      <ItemData ItemOID="IT.TS.TSVCDVER" Value="2020-03-27"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="49">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="TRT"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Investigational Therapy or Treatment"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="Zanomaline"/>
+      <ItemData ItemOID="IT.TS.TSVALCD" Value="0XXX0X00XX"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="UNII"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="50">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="TTYPE"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Trial Type"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="SAFETY"/>
+      <ItemData ItemOID="IT.TS.TSVALCD" Value="C49667"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="CDISC"/>
+      <ItemData ItemOID="IT.TS.TSVCDVER" Value="2020-03-27"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.TS" data:ItemGroupDataSeq="51">
+      <ItemData ItemOID="IT.TS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.TS.DOMAIN" Value="TS"/>
+      <ItemData ItemOID="IT.TS.TSSEQ" Value="2"/>
+      <ItemData ItemOID="IT.TS.TSPARMCD" Value="TTYPE"/>
+      <ItemData ItemOID="IT.TS.TSPARM" Value="Trial Type"/>
+      <ItemData ItemOID="IT.TS.TSVAL" Value="EFFICACY"/>
+      <ItemData ItemOID="IT.TS.TSVALCD" Value="C49666"/>
+      <ItemData ItemOID="IT.TS.TSVCDREF" Value="CDISC"/>
+      <ItemData ItemOID="IT.TS.TSVCDVER" Value="2020-03-27"/>
+    </ItemGroupData>
+  </ReferenceData>
+</ODM>

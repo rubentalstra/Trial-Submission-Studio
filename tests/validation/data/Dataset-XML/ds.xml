@@ -1,0 +1,710 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Dataset-XML: Untyped Data Example  --> 
+<!-- Built from the SAS XPT files published with the SDTM-MSG (SDTM Metadata Submission Guidelines) V2.0 --> 
+<ODM
+  xmlns="http://www.cdisc.org/ns/odm/v1.3"
+  xmlns:xlink="http://www.w3.org/1999/xlink" 
+  xmlns:data="http://www.cdisc.org/ns/Dataset-XML/v1.0"
+  FileType="Snapshot"
+  ODMVersion="1.3.2"
+  data:DatasetXMLVersion="1.0.0"
+  FileOID="www.cdisc.org/StudyMSGv2/1/Define-XML_2.1.0(IG.DS).Data(DS)"
+  PriorFileOID="www.cdisc.org/StudyMSGv2/1/Define-XML_2.1.0"
+  CreationDateTime="2020-08-21T09:21:13"
+  Originator="CDISC MSG Team"
+  SourceSystem="M.Hungria-System"
+  SourceSystemVersion="2.1-A1"
+  >
+  <ClinicalData
+    StudyOID="cdisc.com/CDISCPILOT01"
+    MetaDataVersionOID="MDV.MSGv2.0.SDTMIG.3.3.SDTM.1.7">
+    <!-- Dataset (DS) -->
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="1">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC001"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="PROTOCOL MILESTONE"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2012-11-23"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="-7"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="2">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC001"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="2"/>
+      <ItemData ItemOID="IT.DS.DSLNKID" Value="1"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="INJECTION SITE REACTION"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="ADVERSE EVENT"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY PARTICIPATION"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-01-23"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="55"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="3">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC001"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="3"/>
+      <ItemData ItemOID="IT.DS.DSLNKID" Value="1"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="INJECTION SITE REACTION"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="ADVERSE EVENT"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY TREATMENT"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-01-23"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="55"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="4">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC002"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="PROTOCOL MILESTONE"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2012-10-30"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="-16"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="5">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC002"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="2"/>
+      <ItemData ItemOID="IT.DS.DSLNKID" Value="8"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="DYSPNOEA"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="ADVERSE EVENT"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY TREATMENT"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-01-12"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="59"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="6">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC002"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="3"/>
+      <ItemData ItemOID="IT.DS.DSLNKID" Value="9"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="SUDDEN DEATH"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="DEATH"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY PARTICIPATION"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-01-14"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="61"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="7">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC003"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="PROTOCOL MILESTONE"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-08-20"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="-9"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="8">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC003"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="3"/>
+      <ItemData ItemOID="IT.DS.DSLNKID" Value="20"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="LISTLESS"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="ADVERSE EVENT"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY PARTICIPATION"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-11-05"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="69"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="9">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC003"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="2"/>
+      <ItemData ItemOID="IT.DS.DSLNKID" Value="20"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="LISTLESS"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="ADVERSE EVENT"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY TREATMENT"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-11-05"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="69"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="10">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC004"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="PROTOCOL MILESTONE"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-10-01"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="-7"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="11">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC004"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="2"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="PHYSICIAN DECISION"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="PHYSICIAN DECISION"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY PARTICIPATION"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2014-03-18"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="162"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="12">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC004"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="3"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="PHYSICIAN DECISION"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="PHYSICIAN DECISION"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY TREATMENT"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2014-03-18"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="162"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="13">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC005"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="PROTOCOL MILESTONE"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-01-22"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="-13"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="14">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC005"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="2"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="COMPLETED"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="COMPLETED"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY PARTICIPATION"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-08-06"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="184"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="15">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC005"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="3"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="COMPLETED"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="COMPLETED"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY TREATMENT"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-08-06"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="184"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="16">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC006"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="PROTOCOL MILESTONE"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-02-25"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="-22"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="17">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC006"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="2"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="WITHDRAWAL BY SUBJECT"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="WITHDRAWAL BY SUBJECT"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY PARTICIPATION"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-04-30"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="43"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="18">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC006"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="3"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="WITHDRAWAL BY SUBJECT"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="WITHDRAWAL BY SUBJECT"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY TREATMENT"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-04-30"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="43"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="19">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC007"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="PROTOCOL MILESTONE"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2012-12-31"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="-5"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="20">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC007"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="2"/>
+      <ItemData ItemOID="IT.DS.DSLNKID" Value="1"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="INJECTION SITE REACTION"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="ADVERSE EVENT"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY TREATMENT"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-02-12"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="39"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="21">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC007"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="3"/>
+      <ItemData ItemOID="IT.DS.DSLNKID" Value="1"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="INJECTION SITE REACTION"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="ADVERSE EVENT"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY PARTICIPATION"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-02-13"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="40"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="22">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC008"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="PROTOCOL MILESTONE"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2014-05-01"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="-10"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="23">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC008"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="3"/>
+      <ItemData ItemOID="IT.DS.DSLNKID" Value="1"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="COMPLETED SUICIDE"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="DEATH"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY PARTICIPATION"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2014-11-01"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="175"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="24">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC008"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="2"/>
+      <ItemData ItemOID="IT.DS.DSLNKID" Value="1"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="COMPLETED SUICIDE"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="DEATH"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY TREATMENT"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2014-11-01"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="175"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="25">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC009"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="PROTOCOL MILESTONE"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2012-10-06"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="-16"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="26">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC009"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="2"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="COMPLETED"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="COMPLETED"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY PARTICIPATION"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-04-28"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="189"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="27">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC009"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="3"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="COMPLETED"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="COMPLETED"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY TREATMENT"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-04-28"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="189"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="28">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC010"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="PROTOCOL MILESTONE"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-09-08"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="-13"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="29">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC010"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="2"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="WITHDRAWAL BY SUBJECT"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="WITHDRAWAL BY SUBJECT"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY TREATMENT"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-09-21"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="1"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="30">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC010"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="3"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="WITHDRAWAL BY SUBJECT"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="WITHDRAWAL BY SUBJECT"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY PARTICIPATION"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-09-26"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="6"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="31">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC011"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="PROTOCOL MILESTONE"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2012-11-21"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="-16"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="32">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC011"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="2"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="COMPLETED"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="COMPLETED"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY PARTICIPATION"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-06-05"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="181"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="33">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC011"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="3"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="COMPLETED"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="COMPLETED"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY TREATMENT"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-06-05"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="181"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="34">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC012"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="PROTOCOL MILESTONE"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-08-24"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="-10"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="35">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC012"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="2"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="PHYSICIAN DECISION"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="PHYSICIAN DECISION"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY PARTICIPATION"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2014-01-28"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="148"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="36">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC012"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="3"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="PHYSICIAN DECISION"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="PHYSICIAN DECISION"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY TREATMENT"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2014-01-28"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="148"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="37">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC013"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="PROTOCOL MILESTONE"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-07-09"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="-13"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="38">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC013"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="2"/>
+      <ItemData ItemOID="IT.DS.DSLNKID" Value="1"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="MYOCARDIAL INFARCTION"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="DEATH"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY TREATMENT"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-08-03"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="13"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="39">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC013"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="3"/>
+      <ItemData ItemOID="IT.DS.DSLNKID" Value="1"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="MYOCARDIAL INFARCTION"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="DEATH"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY PARTICIPATION"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-08-03"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="13"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="40">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC014"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="PROTOCOL MILESTONE"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-03-20"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="-14"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="41">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC014"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="2"/>
+      <ItemData ItemOID="IT.DS.DSLNKID" Value="2"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="NASOPHARYNGITIS"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="ADVERSE EVENT"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY TREATMENT"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-04-29"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="27"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="42">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC014"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="3"/>
+      <ItemData ItemOID="IT.DS.DSLNKID" Value="2"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="NASOPHARYNGITIS"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="ADVERSE EVENT"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY PARTICIPATION"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-05-02"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="30"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="43">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC015"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="SCREEN FAILURE"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="SCREEN FAILURE"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY PARTICIPATION"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2014-03-17"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="44">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC015"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="2"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="PROTOCOL MILESTONE"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2014-03-17"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="45">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC016"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="PROTOCOL MILESTONE"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-03-30"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="-4"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="46">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC016"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="2"/>
+      <ItemData ItemOID="IT.DS.DSLNKID" Value="6"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="CONJUNCTIVAL HAEMORRHAGE"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="ADVERSE EVENT"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY TREATMENT"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-05-30"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="58"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="47">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC016"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="3"/>
+      <ItemData ItemOID="IT.DS.DSLNKID" Value="6"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="CONJUNCTIVAL HAEMORRHAGE"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="ADVERSE EVENT"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY PARTICIPATION"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-06-01"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="60"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="48">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC017"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="PROTOCOL MILESTONE"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-08-21"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="-31"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="49">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC017"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="2"/>
+      <ItemData ItemOID="IT.DS.DSLNKID" Value="5"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="INJECTION SITE REACTION"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="ADVERSE EVENT"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY TREATMENT"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2014-01-31"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="133"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="50">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC017"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="3"/>
+      <ItemData ItemOID="IT.DS.DSLNKID" Value="5"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="INJECTION SITE REACTION"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="ADVERSE EVENT"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY PARTICIPATION"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2014-02-08"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="141"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="51">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC018"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="1"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="INFORMED CONSENT OBTAINED"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="PROTOCOL MILESTONE"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="SCREENING"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2012-12-13"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="-4"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="52">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC018"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="2"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="LACK OF EFFICACY"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="LACK OF EFFICACY"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY TREATMENT"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-02-11"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="57"/>
+    </ItemGroupData>
+    <ItemGroupData ItemGroupOID="IG.DS" data:ItemGroupDataSeq="53">
+      <ItemData ItemOID="IT.DS.STUDYID" Value="CDISCPILOT01"/>
+      <ItemData ItemOID="IT.DS.DOMAIN" Value="DS"/>
+      <ItemData ItemOID="IT.DS.USUBJID" Value="CDISC018"/>
+      <ItemData ItemOID="IT.DS.DSSEQ" Value="3"/>
+      <ItemData ItemOID="IT.DS.DSTERM" Value="LACK OF EFFICACY"/>
+      <ItemData ItemOID="IT.DS.DSDECOD" Value="LACK OF EFFICACY"/>
+      <ItemData ItemOID="IT.DS.DSCAT" Value="DISPOSITION EVENT"/>
+      <ItemData ItemOID="IT.DS.DSSCAT" Value="STUDY PARTICIPATION"/>
+      <ItemData ItemOID="IT.DS.EPOCH" Value="TREATMENT"/>
+      <ItemData ItemOID="IT.DS.DSSTDTC" Value="2013-02-18"/>
+      <ItemData ItemOID="IT.DS.DSSTDY" Value="64"/>
+    </ItemGroupData>
+  </ClinicalData>
+</ODM>
