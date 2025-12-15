@@ -175,9 +175,8 @@ class StudyProcessingUseCase:
                 generate_sas=request.generate_sas,
             )
 
-            # Process domains using Define-XML support types
-            from ..xml_module.define_module import StudyDataset
-
+            # Create empty list for study datasets (type hint uses TYPE_CHECKING import)
+            # StudyDataset instances are created in _add_to_study_datasets
             study_datasets: list[StudyDataset] = []
             reference_starts: dict[str, str] = {}
             processed_domains = set(domain_files.keys())
@@ -950,12 +949,16 @@ class StudyProcessingUseCase:
 
         # Log success
         if output_result.xpt_path:
-            self.logger.success(f"Generated {domain_code} XPT: {output_result.xpt_path}")
+            self.logger.success(
+                f"Generated {domain_code} XPT: {output_result.xpt_path}"
+            )
         if output_result.xml_path:
             self.logger.success(
                 f"Generated {domain_code} Dataset-XML: {output_result.xml_path}"
             )
         if output_result.sas_path:
-            self.logger.success(f"Generated {domain_code} SAS: {output_result.sas_path}")
+            self.logger.success(
+                f"Generated {domain_code} SAS: {output_result.sas_path}"
+            )
 
         return output_result.xpt_path, output_result.xml_path, output_result.sas_path
