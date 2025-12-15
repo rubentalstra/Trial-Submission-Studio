@@ -23,9 +23,10 @@ from typing import Any
 
 from rich.console import Console
 
-from ..application.ports import FileGeneratorPort, LoggerPort
+from ..application.ports import FileGeneratorPort, LoggerPort, StudyDataRepositoryPort
 from .io import CSVReader, FileGenerator
 from .logging import ConsoleLogger, NullLogger
+from .repositories import StudyDataRepository
 
 
 class DependencyContainer:
@@ -40,6 +41,7 @@ class DependencyContainer:
         console: Rich console for output (optional)
         _logger_instance: Cached logger instance (singleton)
         _file_generator_instance: Cached file generator instance (singleton)
+        _study_data_repo_instance: Cached study data repository instance (singleton)
         
     Example:
         >>> # Create container with configuration
@@ -48,6 +50,7 @@ class DependencyContainer:
         >>> # Get singleton instances
         >>> logger = container.create_logger()
         >>> file_gen = container.create_file_generator()
+        >>> study_repo = container.create_study_data_repository()
         >>> 
         >>> # Create use cases (transient)
         >>> use_case = container.create_study_processing_use_case()
@@ -74,6 +77,7 @@ class DependencyContainer:
         self._logger_instance: LoggerPort | None = None
         self._file_generator_instance: FileGeneratorPort | None = None
         self._csv_reader_instance: CSVReader | None = None
+        self._study_data_repo_instance: StudyDataRepositoryPort | None = None
     
     # Infrastructure Components
     
@@ -125,6 +129,21 @@ class DependencyContainer:
             self._file_generator_instance = FileGenerator()
         return self._file_generator_instance
     
+    def create_study_data_repository(self) -> StudyDataRepositoryPort:
+        """Create or return cached study data repository instance (singleton).
+        
+        Returns:
+            StudyDataRepositoryPort implementation (StudyDataRepository)
+            
+        Example:
+            >>> repo = container.create_study_data_repository()
+            >>> df = repo.read_dataset(Path("data.csv"))
+        """
+        if self._study_data_repo_instance is None:
+            csv_reader = self.create_csv_reader()
+            self._study_data_repo_instance = StudyDataRepository(csv_reader=csv_reader)
+        return self._study_data_repo_instance
+    
     # Application Use Cases
     
     def create_study_processing_use_case(self):
@@ -149,8 +168,7 @@ class DependencyContainer:
     def create_domain_processing_use_case(self):
         """Create a new domain processing use case instance (transient).
         
-        Note: Currently imports at runtime due to circular import issues.
-        Returns a new instance each time (transient pattern).
+        Returns a new instance each time with all dependencies wired.
         
         Returns:
             DomainProcessingUseCase instance with injected dependencies
@@ -163,7 +181,14 @@ class DependencyContainer:
         from ..application.domain_processing_use_case import DomainProcessingUseCase
         
         logger = self.create_logger()
-        return DomainProcessingUseCase(logger=logger)
+        study_data_repo = self.create_study_data_repository()
+        file_generator = self.create_file_generator()
+        
+        return DomainProcessingUseCase(
+            logger=logger,
+            study_data_repo=study_data_repo,
+            file_generator=file_generator,
+        )
     
     # Helper Methods
     
@@ -179,6 +204,7 @@ class DependencyContainer:
         self._logger_instance = None
         self._file_generator_instance = None
         self._csv_reader_instance = None
+        self._study_data_repo_instance = None
     
     def override_logger(self, logger: LoggerPort) -> None:
         """Override the logger instance (for testing).
@@ -203,6 +229,18 @@ class DependencyContainer:
             >>> container.override_file_generator(mock_generator)
         """
         self._file_generator_instance = file_generator
+    
+    def override_study_data_repository(self, repo: StudyDataRepositoryPort) -> None:
+        """Override the study data repository instance (for testing).
+        
+        Args:
+            repo: Custom study data repository implementation
+            
+        Example:
+            >>> mock_repo = MockStudyDataRepository()
+            >>> container.override_study_data_repository(mock_repo)
+        """
+        self._study_data_repo_instance = repo
 
 
 # Convenience function for creating a pre-configured container
