@@ -50,15 +50,11 @@ Epic A, B are complete. Epic C P1 tickets are complete. The following tickets sh
 15. ~~**CLEAN2-C6** (P2) - Move mapping config I/O to infrastructure~~ ✅ Complete
 16. ~~**CLEAN2-C7** (P2) - Move mapping engines to domain services~~ ✅ Complete
 17. ~~**CLEAN2-C8** (P1) - Move domain dataframe builder to domain services~~ ✅ Complete
+18. ~~**CLEAN2-C9** (P2) - Move domain processors to domain services~~ ✅ Complete
 
 ### Remaining P0 Tickets
-18. **CLEAN2-D1** (P0) - Make `DomainProcessingUseCase` real ⏳
-19. **CLEAN2-D2** (P0) - Make `StudyProcessingUseCase` real ⏳
-
-### Remaining P2 Tickets (Epic C)
-18. ~~**CLEAN2-C6** (P2) - Move mapping config I/O to infrastructure~~ ✅ Complete
-19. ~~**CLEAN2-C7** (P2) - Move mapping engines to domain services~~ ✅ Complete
-20. **CLEAN2-C9** (P2) - Move domain processors to domain services ⏳
+19. **CLEAN2-D1** (P0) - Make `DomainProcessingUseCase` real ⏳
+20. **CLEAN2-D2** (P0) - Make `StudyProcessingUseCase` real ⏳
 
 ### Remaining P2 Tickets (Epic D-F)
 21. **CLEAN2-D3-D4** (P2) - Remaining use case tickets ⏳
@@ -75,11 +71,11 @@ After all P0 tickets are complete, proceed to P2 tickets.
 |------|---------------|----------|-------------|-------------|
 | A - Boundary Cleanup | 5 | 5 | 0 | 0 |
 | B - Repositories & Configuration | 4 | 4 | 0 | 0 |
-| C - Refactor Old Modules | 9 | 8 | 0 | 1 |
+| C - Refactor Old Modules | 9 | 9 | 0 | 0 |
 | D - Implement Real Use Cases | 4 | 0 | 0 | 4 |
 | E - Output Adapters | 7 | 0 | 0 | 7 |
 | F - Cleanup | 2 | 0 | 0 | 2 |
-| **Total** | **31** | **17** | **0** | **14** |
+| **Total** | **31** | **18** | **0** | **13** |
 
 ---
 
@@ -213,10 +209,10 @@ After all P0 tickets are complete, proceed to P2 tickets.
 
 ### CLEAN2-C9 — Move domain processors to domain services
 - **Priority:** P2
-- **Status:** ⏳ Not Started
-- **Completion Date:** -
-- **PR:** -
-- **Notes:** Create `domain/services/domain_processors/`
+- **Status:** ✅ Complete
+- **Completion Date:** 2025-12-15
+- **PR:** Current PR
+- **Notes:** Created `domain/services/domain_processors/` with all 17 processors (base, dm, ae, cm, da, ds, ex, ie, lb, mh, pe, pr, qs, se, ta, te, ts, vs). Converted `xpt_module/domain_processors/__init__.py` to re-export wrapper.
 
 ---
 
@@ -412,3 +408,6 @@ From `CLEAN-2_MIGRATION_TICKETS.md`:
 | 2025-12-15 | CLEAN2-C5 | Complete | Current PR | Deprecated io_module - now delegates to StudyDataRepository |
 | 2025-12-15 | CLEAN2-C4 | Complete | Current PR | Moved metadata loading to infrastructure/repositories/study_metadata_loader.py |
 | 2025-12-15 | CLEAN2-C8 | Complete | Current PR | Moved domain frame builder to domain/services/domain_frame_builder.py |
+| 2025-12-15 | CLEAN2-C6 | Complete | Current PR | Moved mapping config I/O to infrastructure/repositories/mapping_config_repository.py |
+| 2025-12-15 | CLEAN2-C7 | Complete | Current PR | Moved mapping engines to domain/services/mapping/ |
+| 2025-12-15 | CLEAN2-C9 | Complete | Current PR | Moved domain processors to domain/services/domain_processors/ (17 processors) |
