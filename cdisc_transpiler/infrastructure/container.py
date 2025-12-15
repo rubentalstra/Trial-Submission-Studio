@@ -149,8 +149,7 @@ class DependencyContainer:
     def create_study_processing_use_case(self):
         """Create a new study processing use case instance (transient).
         
-        Note: Currently imports at runtime due to circular import issues.
-        Returns a new instance each time (transient pattern).
+        Returns a new instance each time with all dependencies wired.
         
         Returns:
             StudyProcessingUseCase instance with injected dependencies
@@ -161,9 +160,21 @@ class DependencyContainer:
         """
         # Import here to avoid circular import at module level
         from ..application.study_processing_use_case import StudyProcessingUseCase
+        from ..services import DomainDiscoveryService
         
         logger = self.create_logger()
-        return StudyProcessingUseCase(logger=logger)
+        study_data_repo = self.create_study_data_repository()
+        file_generator = self.create_file_generator()
+        domain_processing_use_case = self.create_domain_processing_use_case()
+        discovery_service = DomainDiscoveryService(logger=logger)
+        
+        return StudyProcessingUseCase(
+            logger=logger,
+            study_data_repo=study_data_repo,
+            domain_processing_use_case=domain_processing_use_case,
+            discovery_service=discovery_service,
+            file_generator=file_generator,
+        )
     
     def create_domain_processing_use_case(self):
         """Create a new domain processing use case instance (transient).
