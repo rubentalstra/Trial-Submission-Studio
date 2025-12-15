@@ -17,13 +17,15 @@ from cdisc_transpiler.application.models import (
     ProcessDomainRequest,
     ProcessDomainResponse,
 )
-from cdisc_transpiler.application.domain_processing_use_case import DomainProcessingUseCase
+from cdisc_transpiler.application.domain_processing_use_case import (
+    DomainProcessingUseCase,
+)
 from cdisc_transpiler.infrastructure.logging import NullLogger
 
 
 class TestDomainProcessingUseCase:
     """Tests for DomainProcessingUseCase."""
-    
+
     def _create_mock_domain(self, domain_code: str = "DM"):
         """Create a mock SDTMDomain."""
         mock_domain = Mock()
@@ -33,7 +35,7 @@ class TestDomainProcessingUseCase:
         mock_domain.variables = []
         mock_domain.variable_names.return_value = []
         return mock_domain
-    
+
     def _create_use_case(self):
         """Create use case with mocked dependencies."""
         logger = NullLogger()
@@ -44,85 +46,90 @@ class TestDomainProcessingUseCase:
             study_data_repo=mock_repo,
             file_generator=mock_generator,
         )
-    
+
     def test_execute_returns_failed_response_on_no_data(self):
         """Test that processing returns failed response when no data can be processed."""
         use_case = self._create_use_case()
-        
+
         request = ProcessDomainRequest(
             files_for_domain=[],  # No files provided
             domain_code="DM",
             study_id="TEST001",
         )
-        
+
         response = use_case.execute(request)
-        
+
         assert response.success is False
         assert response.domain_code == "DM"
         assert "No data could be processed" in response.error
-    
+
     def test_execute_error_handling(self):
         """Test domain processing error handling."""
         use_case = self._create_use_case()
-        
+
         # Make _get_domain raise an exception
-        with patch.object(use_case, '_get_domain', side_effect=ValueError("Domain not found")):
+        with patch.object(
+            use_case, "_get_domain", side_effect=ValueError("Domain not found")
+        ):
             request = ProcessDomainRequest(
                 files_for_domain=[(Path("/data/DM.csv"), "DM")],
                 domain_code="INVALID",
                 study_id="TEST001",
             )
-            
+
             response = use_case.execute(request)
-        
+
         assert response.success is False
         assert "Domain not found" in response.error
-    
+
     def test_use_case_can_be_imported_at_runtime(self):
         """Test that use case can be imported dynamically."""
-        from cdisc_transpiler.application.domain_processing_use_case import DomainProcessingUseCase
+        from cdisc_transpiler.application.domain_processing_use_case import (
+            DomainProcessingUseCase,
+        )
+
         assert DomainProcessingUseCase is not None
-        assert hasattr(DomainProcessingUseCase, 'execute')
-    
+        assert hasattr(DomainProcessingUseCase, "execute")
+
     def test_use_case_no_longer_imports_legacy(self):
         """Test that the use case no longer imports from legacy module.
-        
+
         This validates CLEAN2-D1 acceptance criteria: no legacy imports.
         """
         from cdisc_transpiler.application import domain_processing_use_case as module
-        
+
         source = inspect.getsource(module)
-        
+
         # Check that there are no imports from legacy (excluding comments/docstrings)
         assert "from ..legacy" not in source
         assert "from cdisc_transpiler.legacy" not in source
         # Check that there's no actual usage (import statement)
         assert "import DomainProcessingCoordinator" not in source
         assert "from ..services import DomainProcessingCoordinator" not in source
-    
+
     def test_use_case_accepts_injected_dependencies(self):
         """Test that use case accepts injected dependencies."""
         logger = NullLogger()
         mock_repo = Mock()
         mock_generator = Mock()
-        
+
         use_case = DomainProcessingUseCase(
             logger=logger,
             study_data_repo=mock_repo,
             file_generator=mock_generator,
         )
-        
+
         assert use_case.logger is logger
         assert use_case._study_data_repo is mock_repo
         assert use_case._file_generator is mock_generator
-    
+
     def test_container_creates_use_case_with_dependencies(self):
         """Test that DependencyContainer properly wires dependencies."""
         from cdisc_transpiler.infrastructure.container import DependencyContainer
-        
+
         container = DependencyContainer(use_null_logger=True)
         use_case = container.create_domain_processing_use_case()
-        
+
         assert use_case is not None
         assert use_case.logger is not None
         assert use_case._study_data_repo is not None
@@ -131,7 +138,7 @@ class TestDomainProcessingUseCase:
 
 class TestProcessDomainRequest:
     """Tests for ProcessDomainRequest DTO."""
-    
+
     def test_create_with_defaults(self):
         """Test creating request with default values."""
         request = ProcessDomainRequest(
@@ -139,7 +146,7 @@ class TestProcessDomainRequest:
             domain_code="DM",
             study_id="TEST001",
         )
-        
+
         assert request.files_for_domain == [(Path("/data/DM.csv"), "DM")]
         assert request.domain_code == "DM"
         assert request.study_id == "TEST001"
@@ -149,7 +156,7 @@ class TestProcessDomainRequest:
         assert request.chunk_size == 1000
         assert request.generate_sas is True
         assert request.verbose == 0
-    
+
     def test_create_with_custom_values(self):
         """Test creating request with custom values."""
         request = ProcessDomainRequest(
@@ -164,7 +171,7 @@ class TestProcessDomainRequest:
             generate_sas=False,
             verbose=2,
         )
-        
+
         assert request.output_formats == {"xpt"}
         assert request.output_dirs == {"xpt": Path("/output/xpt")}
         assert request.min_confidence == 0.7
@@ -172,7 +179,7 @@ class TestProcessDomainRequest:
         assert request.chunk_size == 500
         assert request.generate_sas is False
         assert request.verbose == 2
-    
+
     def test_create_with_multiple_files(self):
         """Test creating request with multiple input files (variants)."""
         files = [
@@ -180,16 +187,16 @@ class TestProcessDomainRequest:
             (Path("/data/LBCC.csv"), "LBCC"),
             (Path("/data/LBHM.csv"), "LBHM"),
         ]
-        
+
         request = ProcessDomainRequest(
             files_for_domain=files,
             domain_code="LB",
             study_id="TEST001",
         )
-        
+
         assert len(request.files_for_domain) == 3
         assert request.domain_code == "LB"
-    
+
     def test_create_with_metadata(self):
         """Test creating request with study metadata."""
         request = ProcessDomainRequest(
@@ -201,7 +208,7 @@ class TestProcessDomainRequest:
             common_column_counts={"studyid": 5, "usubjid": 5},
             total_input_files=10,
         )
-        
+
         assert request.metadata is not None
         assert request.reference_starts == {"SUBJ001": "2023-01-01"}
         assert request.common_column_counts is not None
@@ -210,15 +217,17 @@ class TestProcessDomainRequest:
 
 class TestProcessDomainResponse:
     """Tests for ProcessDomainResponse DTO."""
-    
+
     def test_create_successful_response(self):
         """Test creating a successful domain processing response."""
-        df = pd.DataFrame({
-            "STUDYID": ["TEST001", "TEST001"],
-            "DOMAIN": ["DM", "DM"],
-            "USUBJID": ["TEST001-001", "TEST001-002"],
-        })
-        
+        df = pd.DataFrame(
+            {
+                "STUDYID": ["TEST001", "TEST001"],
+                "DOMAIN": ["DM", "DM"],
+                "USUBJID": ["TEST001-001", "TEST001-002"],
+            }
+        )
+
         response = ProcessDomainResponse(
             success=True,
             domain_code="DM",
@@ -227,7 +236,7 @@ class TestProcessDomainResponse:
             xpt_path=Path("/output/xpt/dm.xpt"),
             xml_path=Path("/output/xml/dm.xml"),
         )
-        
+
         assert response.success is True
         assert response.domain_code == "DM"
         assert response.records == 2
@@ -236,7 +245,7 @@ class TestProcessDomainResponse:
         assert response.xpt_path == Path("/output/xpt/dm.xpt")
         assert response.xml_path == Path("/output/xml/dm.xml")
         assert response.error is None
-    
+
     def test_create_failed_response(self):
         """Test creating a failed domain processing response."""
         response = ProcessDomainResponse(
@@ -244,18 +253,18 @@ class TestProcessDomainResponse:
             domain_code="AE",
             error="File not found: AE.csv",
         )
-        
+
         assert response.success is False
         assert response.domain_code == "AE"
         assert response.error == "File not found: AE.csv"
         assert response.domain_dataframe is None
         assert response.records == 0
-    
+
     def test_create_with_supplementals(self):
         """Test creating response with supplemental domains."""
         main_df = pd.DataFrame({"STUDYID": ["TEST001"], "DOMAIN": ["AE"]})
         supp_df = pd.DataFrame({"STUDYID": ["TEST001"], "RDOMAIN": ["AE"]})
-        
+
         supp_response = ProcessDomainResponse(
             success=True,
             domain_code="SUPPAE",
@@ -263,7 +272,7 @@ class TestProcessDomainResponse:
             domain_dataframe=supp_df,
             xpt_path=Path("/output/xpt/suppae.xpt"),
         )
-        
+
         response = ProcessDomainResponse(
             success=True,
             domain_code="AE",
@@ -271,17 +280,17 @@ class TestProcessDomainResponse:
             domain_dataframe=main_df,
             supplementals=[supp_response],
         )
-        
+
         assert len(response.supplementals) == 1
         assert response.supplementals[0].domain_code == "SUPPAE"
         assert response.supplementals[0].records == 1
-    
+
     def test_create_with_split_datasets(self):
         """Test creating response with split datasets."""
         main_df = pd.DataFrame({"STUDYID": ["TEST001"] * 100})
         split1_df = pd.DataFrame({"STUDYID": ["TEST001"] * 50})
         split2_df = pd.DataFrame({"STUDYID": ["TEST001"] * 50})
-        
+
         response = ProcessDomainResponse(
             success=True,
             domain_code="LB",
@@ -292,15 +301,15 @@ class TestProcessDomainResponse:
                 ("LB02", split2_df, Path("/output/xpt/lb02.xpt")),
             ],
         )
-        
+
         assert len(response.split_datasets) == 2
         assert response.split_datasets[0][0] == "LB01"
         assert len(response.split_datasets[0][1]) == 50
-    
+
     def test_create_with_warnings(self):
         """Test creating response with warnings."""
         df = pd.DataFrame({"STUDYID": ["TEST001"]})
-        
+
         response = ProcessDomainResponse(
             success=True,
             domain_code="VS",
@@ -308,23 +317,23 @@ class TestProcessDomainResponse:
             domain_dataframe=df,
             warnings=["Low confidence match for VSTESTCD", "Missing VSORRESU"],
         )
-        
+
         assert response.success is True
         assert len(response.warnings) == 2
         assert "Low confidence match" in response.warnings[0]
-    
+
     def test_to_dict_conversion(self):
         """Test conversion to dictionary for legacy compatibility."""
         df = pd.DataFrame({"STUDYID": ["TEST001"]})
         supp_df = pd.DataFrame({"STUDYID": ["TEST001"]})
-        
+
         supp_response = ProcessDomainResponse(
             success=True,
             domain_code="SUPPAE",
             records=1,
             domain_dataframe=supp_df,
         )
-        
+
         response = ProcessDomainResponse(
             success=True,
             domain_code="AE",
@@ -334,28 +343,28 @@ class TestProcessDomainResponse:
             supplementals=[supp_response],
             split_datasets=[("AE01", df, Path("/output/xpt/ae01.xpt"))],
         )
-        
+
         result_dict = response.to_dict()
-        
+
         assert result_dict["domain_code"] == "AE"
         assert result_dict["records"] == 1
         assert result_dict["xpt_path"] == Path("/output/xpt/ae.xpt")
         assert len(result_dict["supplementals"]) == 1
         assert result_dict["supplementals"][0]["domain_code"] == "SUPPAE"
         assert len(result_dict["split_datasets"]) == 1
-    
+
     def test_to_dict_with_empty_collections(self):
         """Test to_dict with empty supplementals and splits."""
         df = pd.DataFrame({"STUDYID": ["TEST001"]})
-        
+
         response = ProcessDomainResponse(
             success=True,
             domain_code="DM",
             records=1,
             domain_dataframe=df,
         )
-        
+
         result_dict = response.to_dict()
-        
+
         assert result_dict["supplementals"] == []
         assert result_dict["split_datasets"] == []

@@ -72,7 +72,10 @@ class CodelistTransformer:
                     code_col = alt
 
             if code_col in source_frame.columns:
-                code_values = ensure_series(source_frame[code_col], index=source_data.index if hasattr(source_data, "index") else None)
+                code_values = ensure_series(
+                    source_frame[code_col],
+                    index=source_data.index if hasattr(source_data, "index") else None,
+                )
 
                 def transform(code_val: Any) -> Any:
                     if pd.isna(code_val):
@@ -80,7 +83,9 @@ class CodelistTransformer:
                     text = codelist.get_text(code_val)
                     return text if text is not None else str(code_val)
 
-                return ensure_series(code_values.apply(transform), index=code_values.index)
+                return ensure_series(
+                    code_values.apply(transform), index=code_values.index
+                )
 
         # Otherwise, try to transform the source data directly
         def transform_value(val: Any) -> Any:

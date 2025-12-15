@@ -68,23 +68,23 @@ _CODELISTS_COLUMN_MAPPINGS = {
 
 def detect_header_row(df: pd.DataFrame) -> int:
     """Detect the header row in a CSV DataFrame.
-    
+
     Args:
         df: DataFrame read without header
-        
+
     Returns:
         Row index to use as header (0 or 1)
     """
     if len(df) < 2:
         return 0
-    
+
     first_row = df.iloc[0].astype(str)
     second_row = df.iloc[1].astype(str)
-    
+
     # If first row has spaces and second row looks like codes, use second
     first_has_spaces = first_row.str.contains(r"\s").mean() > 0.5
     second_is_codes = second_row.str.match(r"^[A-Za-z][A-Za-z0-9_]*$").mean() > 0.3
-    
+
     if first_has_spaces and second_is_codes:
         return 1
     return 0
@@ -92,10 +92,10 @@ def detect_header_row(df: pd.DataFrame) -> int:
 
 def normalize_column_names(df: pd.DataFrame) -> pd.DataFrame:
     """Normalize column names by stripping whitespace and converting to consistent case.
-    
+
     Args:
         df: DataFrame to normalize
-        
+
     Returns:
         DataFrame with normalized column names
     """
@@ -105,11 +105,11 @@ def normalize_column_names(df: pd.DataFrame) -> pd.DataFrame:
 
 def find_column(df: pd.DataFrame, candidates: list[str]) -> str | None:
     """Find a column in the DataFrame from a list of candidate names.
-    
+
     Args:
         df: DataFrame to search
         candidates: List of possible column names
-        
+
     Returns:
         Matching column name or None
     """
@@ -192,11 +192,11 @@ def load_items_csv(path: Path) -> dict[str, SourceColumn]:
                 continue
 
             label = str(row.get(label_col, col_id)) if label_col else col_id
-            data_type = (
-                str(row.get(dtype_col, "text")).lower() if dtype_col else "text"
-            )
+            data_type = str(row.get(dtype_col, "text")).lower() if dtype_col else "text"
             mandatory = (
-                _parse_mandatory_field(row.get(mandatory_col)) if mandatory_col else False
+                _parse_mandatory_field(row.get(mandatory_col))
+                if mandatory_col
+                else False
             )
             format_name = (
                 _parse_format_name(row.get(format_col)) if format_col else None
@@ -269,9 +269,7 @@ def load_codelists_csv(path: Path) -> dict[str, CodeList]:
 
             code_value = str(row.get(value_col, "")).strip()
             code_text = str(row.get(text_col, "")).strip()
-            data_type = (
-                str(row.get(dtype_col, "text")).lower() if dtype_col else "text"
-            )
+            data_type = str(row.get(dtype_col, "text")).lower() if dtype_col else "text"
 
             if not code_value or not code_text:
                 continue

@@ -192,9 +192,7 @@ def build_study_define_tree(
                 tag(DEF_NS, "leaf"),
                 attrib={
                     "ID": f"LF.{ds.domain_code}",
-                    attr(XLINK_NS, "href"): safe_href(
-                        str(ds.archive_location)
-                    ),
+                    attr(XLINK_NS, "href"): safe_href(str(ds.archive_location)),
                 },
             )
             ET.SubElement(leaf, tag(DEF_NS, "title")).text = f"{ds.domain_code}.xpt"

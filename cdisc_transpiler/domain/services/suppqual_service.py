@@ -101,7 +101,7 @@ def sanitize_qnam(name: str) -> str:
 
     Returns:
         SAS-safe QNAM string
-        
+
     Example:
         >>> sanitize_qnam("PatientAge")
         'PATIENTA'
@@ -263,17 +263,17 @@ def finalize_suppqual(
     parent_domain_code: str = "DM",
 ) -> pd.DataFrame:
     """Finalize a SUPPQUAL DataFrame with proper ordering and deduplication.
-    
+
     Args:
         supp_df: SUPPQUAL DataFrame to finalize
         supp_domain_def: SDTMDomain definition for the SUPP domain (optional)
         parent_domain_code: Parent domain code for QVAL length handling
-        
+
     Returns:
         Finalized SUPPQUAL DataFrame
     """
     result = supp_df.copy()
-    
+
     # Reorder columns based on domain definition if available
     if supp_domain_def is not None:
         try:
@@ -281,13 +281,13 @@ def finalize_suppqual(
             result = result.reindex(columns=ordering)
         except Exception:
             pass
-    
+
     # Deduplicate
     result.drop_duplicates(
         subset=["STUDYID", "USUBJID", "IDVAR", "IDVARVAL", "QNAM"], inplace=True
     )
     result.sort_values(by=["USUBJID", "IDVARVAL"], inplace=True)
-    
+
     # Keep QVAL within metadata length for SUPPDM to avoid SD1082
     if parent_domain_code.upper() == "DM" and "QVAL" in result.columns:
         if supp_domain_def is not None:
@@ -302,7 +302,7 @@ def finalize_suppqual(
         else:
             qval_len = 200
         result["QVAL"] = result["QVAL"].astype(str).str.slice(0, qval_len)
-    
+
     return result
 
 

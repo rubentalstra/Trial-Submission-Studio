@@ -20,12 +20,14 @@ from cdisc_transpiler.mapping_module import ColumnMapping, MappingConfig
 @pytest.fixture
 def sample_dataframe():
     """Create a sample DataFrame for testing."""
-    return pd.DataFrame({
-        "STUDYID": ["STUDY001", "STUDY001"],
-        "DOMAIN": ["DM", "DM"],
-        "USUBJID": ["001", "002"],
-        "AGE": [25, 30],
-    })
+    return pd.DataFrame(
+        {
+            "STUDYID": ["STUDY001", "STUDY001"],
+            "DOMAIN": ["DM", "DM"],
+            "USUBJID": ["001", "002"],
+            "AGE": [25, 30],
+        }
+    )
 
 
 @pytest.fixture
@@ -96,7 +98,7 @@ def file_generator(mock_xpt_writer, mock_xml_writer, mock_sas_writer):
 
 class TestOutputDirs:
     """Test suite for OutputDirs model."""
-    
+
     def test_create_output_dirs(self, tmp_path: Path):
         """Test creating OutputDirs with all directories."""
         dirs = OutputDirs(
@@ -104,15 +106,15 @@ class TestOutputDirs:
             xml_dir=tmp_path / "xml",
             sas_dir=tmp_path / "sas",
         )
-        
+
         assert dirs.xpt_dir == tmp_path / "xpt"
         assert dirs.xml_dir == tmp_path / "xml"
         assert dirs.sas_dir == tmp_path / "sas"
-    
+
     def test_create_output_dirs_partial(self, tmp_path: Path):
         """Test creating OutputDirs with only some directories."""
         dirs = OutputDirs(xpt_dir=tmp_path / "xpt")
-        
+
         assert dirs.xpt_dir == tmp_path / "xpt"
         assert dirs.xml_dir is None
         assert dirs.sas_dir is None
@@ -120,7 +122,7 @@ class TestOutputDirs:
 
 class TestOutputRequest:
     """Test suite for OutputRequest model."""
-    
+
     def test_create_request(self, sample_dataframe, sample_config, tmp_path: Path):
         """Test creating an output request."""
         dirs = OutputDirs(xpt_dir=tmp_path / "xpt")
@@ -131,7 +133,7 @@ class TestOutputRequest:
             output_dirs=dirs,
             formats={"xpt"},
         )
-        
+
         assert len(request.dataframe) == 2
         assert request.domain_code == "DM"
         assert request.config.domain == "DM"
@@ -140,31 +142,31 @@ class TestOutputRequest:
 
 class TestOutputResult:
     """Test suite for OutputResult model."""
-    
+
     def test_result_success(self, tmp_path: Path):
         """Test result with no errors is successful."""
         result = OutputResult(
             xpt_path=tmp_path / "dm.xpt",
             errors=[],
         )
-        
+
         assert result.success is True
         assert result.xpt_path == tmp_path / "dm.xpt"
-    
+
     def test_result_failure(self, tmp_path: Path):
         """Test result with errors is not successful."""
         result = OutputResult(
             xpt_path=tmp_path / "dm.xpt",
             errors=["XPT generation failed"],
         )
-        
+
         assert result.success is False
         assert len(result.errors) == 1
 
 
 class TestFileGenerator:
     """Test suite for FileGenerator class."""
-    
+
     def test_generate_xpt_only(
         self,
         file_generator,
@@ -177,7 +179,7 @@ class TestFileGenerator:
         # Setup
         xpt_dir = tmp_path / "xpt"
         xpt_dir.mkdir()
-        
+
         dirs = OutputDirs(xpt_dir=xpt_dir)
         request = OutputRequest(
             dataframe=sample_dataframe,
@@ -187,10 +189,10 @@ class TestFileGenerator:
             formats={"xpt"},
             base_filename="dm",  # Provide base_filename to avoid domain lookup
         )
-        
+
         # Execute
         result = file_generator.generate(request)
-        
+
         # Verify
         assert result.success
         assert result.xpt_path == xpt_dir / "dm.xpt"
@@ -199,7 +201,7 @@ class TestFileGenerator:
         mock_xpt_writer.write.assert_called_once_with(
             sample_dataframe, "DM", xpt_dir / "dm.xpt"
         )
-    
+
     def test_generate_all_formats(
         self,
         file_generator,
@@ -218,7 +220,7 @@ class TestFileGenerator:
         xpt_dir.mkdir()
         xml_dir.mkdir()
         sas_dir.mkdir()
-        
+
         dirs = OutputDirs(xpt_dir=xpt_dir, xml_dir=xml_dir, sas_dir=sas_dir)
         request = OutputRequest(
             dataframe=sample_dataframe,
@@ -228,10 +230,10 @@ class TestFileGenerator:
             formats={"xpt", "xml", "sas"},
             base_filename="dm",  # Provide base_filename to avoid domain lookup
         )
-        
+
         # Execute
         result = file_generator.generate(request)
-        
+
         # Verify
         assert result.success
         assert result.xpt_path == xpt_dir / "dm.xpt"
@@ -244,11 +246,13 @@ class TestFileGenerator:
             sample_dataframe, "DM", sample_config, xml_dir / "dm.xml"
         )
         mock_sas_writer.write.assert_called_once_with(
-            "DM", sample_config, sas_dir / "dm.sas",
+            "DM",
+            sample_config,
+            sas_dir / "dm.sas",
             input_dataset="work.dm",
             output_dataset="sdtm.dm",
         )
-    
+
     def test_generate_with_error(
         self,
         file_generator,
@@ -261,9 +265,9 @@ class TestFileGenerator:
         # Setup
         xpt_dir = tmp_path / "xpt"
         xpt_dir.mkdir()
-        
+
         mock_xpt_writer.write.side_effect = Exception("Write failed")
-        
+
         dirs = OutputDirs(xpt_dir=xpt_dir)
         request = OutputRequest(
             dataframe=sample_dataframe,
@@ -273,15 +277,15 @@ class TestFileGenerator:
             formats={"xpt"},
             base_filename="dm",
         )
-        
+
         # Execute
         result = file_generator.generate(request)
-        
+
         # Verify
         assert not result.success
         assert len(result.errors) == 1
         assert "XPT generation failed" in result.errors[0]
-    
+
     def test_generate_with_custom_base_filename(
         self,
         file_generator,
@@ -294,7 +298,7 @@ class TestFileGenerator:
         # Setup
         xpt_dir = tmp_path / "xpt"
         xpt_dir.mkdir()
-        
+
         dirs = OutputDirs(xpt_dir=xpt_dir)
         request = OutputRequest(
             dataframe=sample_dataframe,
@@ -304,17 +308,17 @@ class TestFileGenerator:
             formats={"xpt"},
             base_filename="CUSTOM",
         )
-        
+
         # Execute
         result = file_generator.generate(request)
-        
+
         # Verify
         assert result.success
         assert result.xpt_path == xpt_dir / "custom.xpt"  # lowercase
         mock_xpt_writer.write.assert_called_once_with(
             sample_dataframe, "DM", xpt_dir / "custom.xpt"
         )
-    
+
     def test_generate_sas_with_custom_datasets(
         self,
         file_generator,
@@ -327,7 +331,7 @@ class TestFileGenerator:
         # Setup
         sas_dir = tmp_path / "sas"
         sas_dir.mkdir()
-        
+
         dirs = OutputDirs(sas_dir=sas_dir)
         request = OutputRequest(
             dataframe=sample_dataframe,
@@ -339,14 +343,14 @@ class TestFileGenerator:
             input_dataset="raw.demographics",
             output_dataset="final.dm",
         )
-        
+
         # Execute
         result = file_generator.generate(request)
-        
+
         # Verify
         assert result.success
         assert result.sas_path == sas_dir / "dm.sas"
-        
+
         # Check that custom dataset names were passed
         mock_sas_writer.write.assert_called_once_with(
             "DM",
@@ -355,7 +359,7 @@ class TestFileGenerator:
             input_dataset="raw.demographics",
             output_dataset="final.dm",
         )
-    
+
     def test_generate_no_formats(
         self,
         file_generator,
@@ -373,10 +377,10 @@ class TestFileGenerator:
             output_dirs=dirs,
             formats=set(),  # Empty set
         )
-        
+
         # Execute
         result = file_generator.generate(request)
-        
+
         # Verify
         assert result.success
         assert result.xpt_path is None

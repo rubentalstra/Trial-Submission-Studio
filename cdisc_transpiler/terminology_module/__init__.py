@@ -15,26 +15,26 @@ Usage:
         get_variable_codelist,
         get_testcd_codelist,
         get_unit_codelist,
-        
+
         # Core CT lookup
         get_controlled_terminology,
         get_submission_values,
         get_preferred_terms,
         get_synonyms,
         get_definitions,
-        
+
         # Domain-specific lookups
         get_domain_testcd_values,
         get_domain_testcd_labels,
         get_domain_testcd_synonyms,
         get_domain_valid_units,
-        
+
         # Normalization
         normalize_testcd,
         normalize_to_submission_value,
         get_testcd_label,
     )
-    
+
     # For NCI code lookup, use get_controlled_terminology directly:
     ct = get_controlled_terminology(variable="SEX")
     nci_code = ct.lookup_code("M") if ct else None

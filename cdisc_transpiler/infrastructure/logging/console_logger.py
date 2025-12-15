@@ -609,11 +609,11 @@ class ConsoleLogger(LoggerPort):
         self.console.print("[bold green]Study Processing Complete[/bold green]")
         self.console.print(f"  Domains processed: {self._stats['domains_processed']}")
         self.console.print(f"  Files processed: {self._stats['files_processed']}")
-        self.console.print(
-            f"  Records processed: {self._stats['records_processed']:,}"
-        )
+        self.console.print(f"  Records processed: {self._stats['records_processed']:,}")
         if self._stats["warnings"] > 0:
-            self.console.print(f"  [yellow]Warnings: {self._stats['warnings']}[/yellow]")
+            self.console.print(
+                f"  [yellow]Warnings: {self._stats['warnings']}[/yellow]"
+            )
         if self._stats["errors"] > 0:
             self.console.print(f"  [red]Errors: {self._stats['errors']}[/red]")
 

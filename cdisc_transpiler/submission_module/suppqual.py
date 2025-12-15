@@ -64,7 +64,7 @@ def build_suppqual(
     # Get domain definition
     domain = domain_code.upper()
     domain_def = get_domain(domain)
-    
+
     # Call domain service
     supp_df, used_cols = _build_suppqual_service(
         domain_code=domain_code,
@@ -76,20 +76,20 @@ def build_suppqual(
         common_column_counts=common_column_counts,
         total_files=total_files,
     )
-    
+
     if supp_df is None:
         return None, used_cols
-    
+
     # Get SUPP domain definition for finalization
     supp_domain_code = f"SUPP{domain}"
     try:
         supp_domain_def = get_domain(supp_domain_code)
     except KeyError:
         supp_domain_def = None
-    
+
     # Finalize with ordering and deduplication
     supp_df = finalize_suppqual(supp_df, supp_domain_def, domain_code)
-    
+
     return supp_df, used_cols
 
 
@@ -159,9 +159,7 @@ def write_suppqual_files(
     if xpt_dir and output_format in ("xpt", "both"):
         xpt_path = xpt_dir / f"{disk_name}.xpt"
         file_label = f"Supplemental Qualifiers for {domain_code.upper()}"
-        write_xpt_file(
-            merged_supp, supp_domain_code, xpt_path, file_label=file_label
-        )
+        write_xpt_file(merged_supp, supp_domain_code, xpt_path, file_label=file_label)
         supp_result["xpt_path"] = xpt_path
         supp_result["xpt_filename"] = xpt_path.name
 

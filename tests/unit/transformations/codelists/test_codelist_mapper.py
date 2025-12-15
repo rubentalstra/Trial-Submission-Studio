@@ -32,7 +32,9 @@ def race_codelist():
         format_name="RACE",
         values=[
             CodeListValue(code_value="1", code_text="White", data_type="text"),
-            CodeListValue(code_value="2", code_text="Black or African American", data_type="text"),
+            CodeListValue(
+                code_value="2", code_text="Black or African American", data_type="text"
+            ),
             CodeListValue(code_value="3", code_text="Asian", data_type="text"),
         ],
     )
@@ -41,10 +43,7 @@ def race_codelist():
 @pytest.fixture
 def metadata_with_codelists(sex_codelist, race_codelist):
     """Create metadata with multiple codelists."""
-    return StudyMetadata(codelists={
-        "SEX": sex_codelist,
-        "RACE": race_codelist
-    })
+    return StudyMetadata(codelists={"SEX": sex_codelist, "RACE": race_codelist})
 
 
 class TestCodelistMapperTransformer:
@@ -72,7 +71,9 @@ class TestCodelistMapperTransformer:
         df = pd.DataFrame({"AETERM": ["Headache", "Nausea"]})
         assert transformer.can_transform(df, "AE") is True
 
-    def test_can_transform_with_metadata_and_decod_column(self, metadata_with_codelists):
+    def test_can_transform_with_metadata_and_decod_column(
+        self, metadata_with_codelists
+    ):
         """Test can_transform returns True when metadata exists and DF has *DECOD column."""
         transformer = CodelistMapperTransformer(metadata=metadata_with_codelists)
         df = pd.DataFrame({"AEDECOD": ["Headache", "Nausea"]})
@@ -102,9 +103,9 @@ class TestCodelistMapperTransformer:
         transformer = CodelistMapperTransformer()
         df = pd.DataFrame({"SEXCD": ["M", "F"]})
         context = TransformationContext(domain="DM", study_id="STUDY001")
-        
+
         result = transformer.transform(df, context)
-        
+
         assert result.applied is False
         assert "No metadata" in result.message
         pd.testing.assert_frame_equal(result.data, df)
@@ -114,9 +115,9 @@ class TestCodelistMapperTransformer:
         transformer = CodelistMapperTransformer(metadata=metadata_with_codelists)
         df = pd.DataFrame({"SEXCD": ["M", "F"]})
         context = TransformationContext(domain="DM", study_id="STUDY001")
-        
+
         result = transformer.transform(df, context)
-        
+
         assert result.applied is False
         assert "No codelist mappings specified" in result.message
         pd.testing.assert_frame_equal(result.data, df)
@@ -128,11 +129,11 @@ class TestCodelistMapperTransformer:
         context = TransformationContext(
             domain="DM",
             study_id="STUDY001",
-            metadata={"codelist_mappings": {"SEXCD": "SEX"}}
+            metadata={"codelist_mappings": {"SEXCD": "SEX"}},
         )
-        
+
         result = transformer.transform(df, context)
-        
+
         assert result.applied is True
         assert "Applied 1 codelist mapping" in result.message
         assert result.data["SEXCD"].tolist() == ["Male", "Female", "Unknown"]
@@ -143,23 +144,15 @@ class TestCodelistMapperTransformer:
     def test_transform_multiple_columns(self, metadata_with_codelists):
         """Test mapping multiple columns."""
         transformer = CodelistMapperTransformer(metadata=metadata_with_codelists)
-        df = pd.DataFrame({
-            "SEXCD": ["M", "F"],
-            "RACECD": ["1", "2"]
-        })
+        df = pd.DataFrame({"SEXCD": ["M", "F"], "RACECD": ["1", "2"]})
         context = TransformationContext(
             domain="DM",
             study_id="STUDY001",
-            metadata={
-                "codelist_mappings": {
-                    "SEXCD": "SEX",
-                    "RACECD": "RACE"
-                }
-            }
+            metadata={"codelist_mappings": {"SEXCD": "SEX", "RACECD": "RACE"}},
         )
-        
+
         result = transformer.transform(df, context)
-        
+
         assert result.applied is True
         assert "Applied 2 codelist mapping" in result.message
         assert result.data["SEXCD"].tolist() == ["Male", "Female"]
@@ -173,11 +166,11 @@ class TestCodelistMapperTransformer:
         context = TransformationContext(
             domain="DM",
             study_id="STUDY001",
-            metadata={"codelist_mappings": {"COUNTRY": "COUNTRY_CODES"}}
+            metadata={"codelist_mappings": {"COUNTRY": "COUNTRY_CODES"}},
         )
-        
+
         result = transformer.transform(df, context)
-        
+
         assert result.applied is False
         assert "No codelist mappings applied" in result.message
         assert len(result.warnings) == 1
@@ -192,11 +185,11 @@ class TestCodelistMapperTransformer:
         context = TransformationContext(
             domain="DM",
             study_id="STUDY001",
-            metadata={"codelist_mappings": {"SEXCD": "SEX"}}
+            metadata={"codelist_mappings": {"SEXCD": "SEX"}},
         )
-        
+
         result = transformer.transform(df, context)
-        
+
         assert result.applied is False
         assert "SEXCD (column not found)" in result.metadata["skipped_mappings"]
 
@@ -207,11 +200,11 @@ class TestCodelistMapperTransformer:
         context = TransformationContext(
             domain="DM",
             study_id="STUDY001",
-            metadata={"codelist_mappings": {"SEXCD": "SEX"}}
+            metadata={"codelist_mappings": {"SEXCD": "SEX"}},
         )
-        
+
         result = transformer.transform(df, context)
-        
+
         assert result.applied is True
         # Unmapped values should be preserved as-is
         assert result.data["SEXCD"].tolist() == ["Male", "X", "Female"]
@@ -223,11 +216,11 @@ class TestCodelistMapperTransformer:
         context = TransformationContext(
             domain="DM",
             study_id="STUDY001",
-            metadata={"codelist_mappings": {"SEXCD": "SEX"}}
+            metadata={"codelist_mappings": {"SEXCD": "SEX"}},
         )
-        
+
         result = transformer.transform(df, context)
-        
+
         assert result.applied is True
         assert result.data["SEXCD"].tolist()[0] == "Male"
         assert pd.isna(result.data["SEXCD"].tolist()[1])
@@ -241,32 +234,34 @@ class TestCodelistMapperTransformer:
         context = TransformationContext(
             domain="DM",
             study_id="STUDY001",
-            metadata={"codelist_mappings": {"SEXCD": "SEX"}}
+            metadata={"codelist_mappings": {"SEXCD": "SEX"}},
         )
-        
+
         result = transformer.transform(df, context)
-        
+
         assert result.applied is True
         assert result.data["SEXCD"].tolist() == ["Male", "Female", "Unknown"]
 
     def test_transform_with_code_column(self, metadata_with_codelists):
         """Test mapping using separate code column."""
         transformer = CodelistMapperTransformer(metadata=metadata_with_codelists)
-        df = pd.DataFrame({
-            "SEXCD": ["M", "F"],
-            "SEX": ["", ""]  # Empty target column
-        })
+        df = pd.DataFrame(
+            {
+                "SEXCD": ["M", "F"],
+                "SEX": ["", ""],  # Empty target column
+            }
+        )
         context = TransformationContext(
             domain="DM",
             study_id="STUDY001",
             metadata={
                 "codelist_mappings": {"SEX": "SEX"},
-                "code_columns": {"SEX": "SEXCD"}
-            }
+                "code_columns": {"SEX": "SEXCD"},
+            },
         )
-        
+
         result = transformer.transform(df, context)
-        
+
         assert result.applied is True
         # SEX column should be populated from SEXCD codes
         assert result.data["SEX"].tolist() == ["Male", "Female"]
@@ -282,30 +277,28 @@ class TestCodelistMapperTransformer:
         context = TransformationContext(
             domain="DM",
             study_id="STUDY001",
-            metadata={"codelist_mappings": {"SEXCD": "SEX"}}
+            metadata={"codelist_mappings": {"SEXCD": "SEX"}},
         )
-        
+
         result = transformer.transform(df, context)
-        
+
         assert result.applied is True
         assert result.data["SEXCD"].tolist() == ["Male", "Female", "Unknown"]
 
     def test_transform_preserves_other_columns(self, metadata_with_codelists):
         """Test that transform doesn't affect unmapped columns."""
         transformer = CodelistMapperTransformer(metadata=metadata_with_codelists)
-        df = pd.DataFrame({
-            "USUBJID": ["001", "002"],
-            "SEXCD": ["M", "F"],
-            "AGE": [25, 30]
-        })
+        df = pd.DataFrame(
+            {"USUBJID": ["001", "002"], "SEXCD": ["M", "F"], "AGE": [25, 30]}
+        )
         context = TransformationContext(
             domain="DM",
             study_id="STUDY001",
-            metadata={"codelist_mappings": {"SEXCD": "SEX"}}
+            metadata={"codelist_mappings": {"SEXCD": "SEX"}},
         )
-        
+
         result = transformer.transform(df, context)
-        
+
         assert result.applied is True
         # Other columns should remain unchanged
         assert result.data["USUBJID"].tolist() == ["001", "002"]
@@ -318,11 +311,11 @@ class TestCodelistMapperTransformer:
         context = TransformationContext(
             domain="DM",
             study_id="STUDY001",
-            metadata={"codelist_mappings": {"SEXCD": "SEX"}}
+            metadata={"codelist_mappings": {"SEXCD": "SEX"}},
         )
-        
+
         result = transformer.transform(df, context)
-        
+
         assert result.applied is True
         assert len(result.data) == 0
         assert result.metadata["input_rows"] == 0
@@ -332,10 +325,10 @@ class TestCodelistMapperTransformer:
         """Test the internal _map_column method."""
         metadata = StudyMetadata(codelists={"SEX": sex_codelist})
         transformer = CodelistMapperTransformer(metadata=metadata)
-        
+
         series = pd.Series(["M", "F", "U", "X", None])
         result = transformer._map_column(series, sex_codelist)
-        
+
         assert result.tolist()[0] == "Male"
         assert result.tolist()[1] == "Female"
         assert result.tolist()[2] == "Unknown"
@@ -346,10 +339,10 @@ class TestCodelistMapperTransformer:
         """Test the internal _map_column_with_code_source method."""
         metadata = StudyMetadata(codelists={"SEX": sex_codelist})
         transformer = CodelistMapperTransformer(metadata=metadata)
-        
+
         code_series = pd.Series(["M", "F", None, "X"])
         result = transformer._map_column_with_code_source(code_series, sex_codelist)
-        
+
         assert result.tolist()[0] == "Male"
         assert result.tolist()[1] == "Female"
         assert result.tolist()[2] is None

@@ -13,19 +13,19 @@ from dataclasses import dataclass
 @dataclass(frozen=True)
 class SDTMVariable:
     """SDTM variable definition.
-    
+
     Represents a single variable (column) within an SDTM domain, including
     its name, type, and metadata as defined in SDTMIG v3.4.
-    
+
     SDTM Reference:
         Variables follow naming conventions where domain-specific variables
         use a 2-character domain prefix (e.g., AESTDTC = AE + STDTC).
-        
+
         Core Status:
         - Req (Required): Must be included and populated
         - Exp (Expected): Must be included when applicable
         - Perm (Permissible): May be included when needed
-    
+
     Attributes:
         name: Variable name (8 characters max, uppercase)
         label: Descriptive label (40 characters max)
@@ -59,7 +59,7 @@ class SDTMVariable:
 
     def pandas_dtype(self) -> str:
         """Return the pandas dtype for the variable.
-        
+
         Returns:
             'float64' for numeric variables, 'string' for character variables
         """
@@ -71,21 +71,21 @@ class SDTMVariable:
 @dataclass(frozen=True)
 class SDTMDomain:
     """SDTM domain definition.
-    
+
     Represents an SDTM dataset (domain) containing a collection of
     observations with topic-specific commonality.
-    
+
     SDTM Reference:
         SDTMIG v3.4 Section 4 defines domain structures. Each domain
         belongs to a General Observation Class:
-        
+
         - Special-Purpose: DM, CO, SE, SV, SM
         - Interventions: EX, CM, EC, SU, PR, AG
         - Events: AE, DS, MH, DV, CE, HO
         - Findings: LB, VS, EG, PE, QS, SC, FA
         - Trial Design: TA, TE, TV, TI, TS
         - Relationship: RELREC, SUPPQUAL
-    
+
     Attributes:
         code: 2-character domain abbreviation (e.g., 'DM', 'AE')
         description: Full domain description
@@ -110,7 +110,7 @@ class SDTMDomain:
 
     def implements_mapping(self) -> dict[str, str]:
         """Return mapping of variable name to generalized placeholder.
-        
+
         For General Observation Class variables, returns the placeholder
         format (e.g., AESTDTC implements --STDTC).
         """
@@ -118,7 +118,7 @@ class SDTMDomain:
 
     def resolved_dataset_name(self) -> str:
         """Return the 8-character dataset name for file generation.
-        
+
         SDTM dataset names must be 8 characters or fewer for SAS
         Transport (XPT) compatibility.
         """

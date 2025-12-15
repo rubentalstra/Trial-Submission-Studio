@@ -7,18 +7,18 @@ from .constants import GENERAL_CLASS_ALIASES, GENERAL_OBSERVATION_CLASSES
 
 def get_domain_class(domain_code: str) -> str:
     """Get the SDTM class for a domain dynamically from metadata.
-    
+
     This function retrieves the General Observation Class (e.g., 'EVENTS',
     'FINDINGS', 'INTERVENTIONS') for a given domain code by looking up
     the domain definition from the SDTMIG metadata.
-    
+
     Args:
         domain_code: SDTM domain code (e.g., 'DM', 'AE', 'LB')
-        
+
     Returns:
         SDTM class name (e.g., 'EVENTS', 'FINDINGS') or 'Unknown' if not found.
         For SUPP domains, returns 'Supplemental Qualifiers'.
-    
+
     Example:
         >>> get_domain_class('AE')
         'EVENTS'
@@ -29,12 +29,12 @@ def get_domain_class(domain_code: str) -> str:
     """
     # Import here to avoid circular imports
     from .registry import get_domain
-    
+
     code = domain_code.upper()
     # Handle SUPP domains specially
     if code.startswith("SUPP"):
         return "Supplemental Qualifiers"
-    
+
     try:
         domain = get_domain(code)
         return domain.class_name or "Unknown"

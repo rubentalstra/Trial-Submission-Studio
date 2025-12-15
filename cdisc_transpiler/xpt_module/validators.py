@@ -48,9 +48,7 @@ class XPTValidator:
                 # Use pd.isna() for robust check across dtypes
                 series = ensure_series(frame[var.name])
                 if series.isna().any():
-                    raise ValueError(
-                        f"Required variable {var.name} has missing values"
-                    )
+                    raise ValueError(f"Required variable {var.name} has missing values")
 
     @staticmethod
     def enforce_lengths(

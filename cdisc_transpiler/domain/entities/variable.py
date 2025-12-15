@@ -42,7 +42,7 @@ def infer_implements(
     # Import here to avoid circular dependency
     from ...domains_module.constants import GENERAL_OBSERVATION_CLASSES
     from ...domains_module.utils import normalize_general_class
-    
+
     general_class = normalize_general_class(class_name)
     if general_class not in GENERAL_OBSERVATION_CLASSES:
         return None
@@ -85,9 +85,7 @@ def extract_codelist_code(row: Mapping[str, str]) -> str | None:
 def extract_described_value_domain(row: Mapping[str, str]) -> str | None:
     """Extract described value domain from CSV row."""
     value = (
-        row.get("Described Value Domain(s)")
-        or row.get("Described Value Domain")
-        or ""
+        row.get("Described Value Domain(s)") or row.get("Described Value Domain") or ""
     ).strip()
     return value or None
 
@@ -119,16 +117,16 @@ def variable_from_row(
     row: Mapping[str, str], code: str, class_name: str
 ) -> SDTMVariable:
     """Create an SDTMVariable from a CSV row.
-    
+
     This function extracts metadata from a CSV row and constructs a standardized
     SDTMVariable object. It handles various CSV field variations and applies
     SDTM conventions.
-    
+
     Args:
         row: Dictionary containing CSV metadata fields (Variable Name, Type, Label, etc.)
         code: Domain code (e.g., 'DM', 'AE') used for the source dataset
         class_name: SDTM class name (e.g., 'FINDINGS', 'EVENTS') for the domain
-    
+
     Returns:
         SDTMVariable: Fully constructed variable definition with metadata
     """

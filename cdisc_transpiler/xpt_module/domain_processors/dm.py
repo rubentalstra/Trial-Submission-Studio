@@ -56,9 +56,13 @@ class DMProcessor(BaseDomainProcessor):
 
         # Planned/actual arms: fill when missing, but keep supplied values
         def _fill_arm(col: str, default: str) -> pd.Series:
-            series = ensure_series(
-                frame.get(col, pd.Series([""] * len(frame))), index=frame.index
-            ).astype("string").fillna("")
+            series = (
+                ensure_series(
+                    frame.get(col, pd.Series([""] * len(frame))), index=frame.index
+                )
+                .astype("string")
+                .fillna("")
+            )
             empty = series.str.strip() == ""
             series.loc[empty] = default
             frame[col] = series
@@ -151,9 +155,15 @@ class DMProcessor(BaseDomainProcessor):
         else:
             frame["SEX"] = "U"
         # Death variables: expected in SDTM (Exp core)
-        rfendtc = ensure_series(
-            frame.get("RFENDTC", pd.Series([""] * len(frame))), index=frame.index
-        ).astype("string").fillna("").str.split("T").str[0]
+        rfendtc = (
+            ensure_series(
+                frame.get("RFENDTC", pd.Series([""] * len(frame))), index=frame.index
+            )
+            .astype("string")
+            .fillna("")
+            .str.split("T")
+            .str[0]
+        )
         if "DTHDTC" not in frame.columns:
             frame["DTHDTC"] = rfendtc
         else:

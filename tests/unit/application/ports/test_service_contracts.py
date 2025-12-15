@@ -11,7 +11,7 @@ import pandas as pd
 import pytest
 
 from cdisc_transpiler.application.ports import FileGeneratorPort, LoggerPort
-from cdisc_transpiler.infrastructure.io.models import (
+from cdisc_transpiler.application.models import (
     OutputDirs,
     OutputRequest,
     OutputResult,
@@ -39,7 +39,7 @@ class MockLogger:
 
     def debug(self, message: str) -> None:
         self.messages.append(("debug", message))
-    
+
     def verbose(self, message: str) -> None:
         self.messages.append(("verbose", message))
 
@@ -50,16 +50,22 @@ class MockFileGenerator:
     def generate(self, request: OutputRequest) -> OutputResult:
         """Mock implementation that returns success result."""
         result = OutputResult()
-        
+
         if "xpt" in request.formats and request.output_dirs.xpt_dir:
-            result.xpt_path = request.output_dirs.xpt_dir / f"{request.domain_code.lower()}.xpt"
-        
+            result.xpt_path = (
+                request.output_dirs.xpt_dir / f"{request.domain_code.lower()}.xpt"
+            )
+
         if "xml" in request.formats and request.output_dirs.xml_dir:
-            result.xml_path = request.output_dirs.xml_dir / f"{request.domain_code.lower()}.xml"
-        
+            result.xml_path = (
+                request.output_dirs.xml_dir / f"{request.domain_code.lower()}.xml"
+            )
+
         if "sas" in request.formats and request.output_dirs.sas_dir:
-            result.sas_path = request.output_dirs.sas_dir / f"{request.domain_code.lower()}.sas"
-        
+            result.sas_path = (
+                request.output_dirs.sas_dir / f"{request.domain_code.lower()}.sas"
+            )
+
         return result
 
 
@@ -132,7 +138,7 @@ class TestLoggerPortContract:
         logger.warning("Warning message")
         logger.error("Error message")
         logger.debug("Debug message")
-        
+
         # Verify all messages were captured (implementation-specific)
         if hasattr(logger, "messages"):
             assert len(logger.messages) == 5
@@ -149,11 +155,13 @@ class TestFileGeneratorPortContract:
     @pytest.fixture
     def sample_dataframe(self):
         """Provide a sample DataFrame for testing."""
-        return pd.DataFrame({
-            "STUDYID": ["TEST001"],
-            "DOMAIN": ["DM"],
-            "USUBJID": ["TEST001-001"],
-        })
+        return pd.DataFrame(
+            {
+                "STUDYID": ["TEST001"],
+                "DOMAIN": ["DM"],
+                "USUBJID": ["TEST001-001"],
+            }
+        )
 
     @pytest.fixture
     def sample_config(self):
@@ -193,7 +201,9 @@ class TestFileGeneratorPortContract:
         result = file_generator.generate(sample_request)
         assert isinstance(result, OutputResult)
 
-    def test_generate_result_has_expected_attributes(self, file_generator, sample_request):
+    def test_generate_result_has_expected_attributes(
+        self, file_generator, sample_request
+    ):
         """Test that OutputResult has expected attributes."""
         result = file_generator.generate(sample_request)
         assert hasattr(result, "xpt_path")
@@ -202,7 +212,9 @@ class TestFileGeneratorPortContract:
         assert hasattr(result, "errors")
         assert hasattr(result, "success")
 
-    def test_generate_result_paths_are_path_or_none(self, file_generator, sample_request):
+    def test_generate_result_paths_are_path_or_none(
+        self, file_generator, sample_request
+    ):
         """Test that result paths are Path objects or None."""
         result = file_generator.generate(sample_request)
         assert result.xpt_path is None or isinstance(result.xpt_path, Path)

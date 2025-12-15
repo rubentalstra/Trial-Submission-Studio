@@ -123,9 +123,7 @@ class TestSummaryPresenter:
     def test_build_notes_with_many_splits(self, presenter):
         """Test that notes handle many split datasets with truncation."""
         result = {
-            "split_xpt_paths": [
-                Path(f"/output/xpt/split/lb{i}.xpt") for i in range(5)
-            ]
+            "split_xpt_paths": [Path(f"/output/xpt/split/lb{i}.xpt") for i in range(5)]
         }
 
         notes = presenter._build_notes(result)
@@ -143,7 +141,8 @@ class TestSummaryPresenter:
         output = console.file.getvalue()
         # Remove ANSI codes for testing
         import re
-        output_clean = re.sub(r'\x1b\[[0-9;]*m', '', output)
+
+        output_clean = re.sub(r"\x1b\[[0-9;]*m", "", output)
         assert "5 domains processed successfully" in output_clean
         assert "✓" in output_clean
 
@@ -153,7 +152,8 @@ class TestSummaryPresenter:
         output = console.file.getvalue()
         # Remove ANSI codes for testing
         import re
-        output_clean = re.sub(r'\x1b\[[0-9;]*m', '', output)
+
+        output_clean = re.sub(r"\x1b\[[0-9;]*m", "", output)
         assert "3 succeeded" in output_clean
         assert "2 failed" in output_clean
 
@@ -328,6 +328,7 @@ class TestSummaryPresenterIntegration:
         output = console.file.getvalue()
         # Remove ANSI codes for testing
         import re
-        output_clean = re.sub(r'\x1b\[[0-9;]*m', '', output)
+
+        output_clean = re.sub(r"\x1b\[[0-9;]*m", "", output)
         assert "Study Processing Summary" in output_clean
         assert "0 domains processed successfully" in output_clean

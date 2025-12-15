@@ -20,8 +20,14 @@ from ..infrastructure.repositories.study_metadata_loader import (
     normalize_column_names,
     find_column,
 )
+
 # Keep these for backwards compatibility with existing imports
-from ..domain.entities.study_metadata import CodeList, CodeListValue, SourceColumn, StudyMetadata
+from ..domain.entities.study_metadata import (
+    CodeList,
+    CodeListValue,
+    SourceColumn,
+    StudyMetadata,
+)
 
 __all__ = [
     "MetadataLoadError",
@@ -31,7 +37,7 @@ __all__ = [
     "load_study_metadata",
     # Helper functions
     "detect_header_row",
-    "normalize_column_names", 
+    "normalize_column_names",
     "find_column",
     # Re-export domain entities for convenience
     "CodeList",

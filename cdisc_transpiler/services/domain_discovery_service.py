@@ -38,7 +38,7 @@ class DomainDiscoveryService:
 
     def __init__(self, logger: LoggerPort | None = None):
         """Initialize the domain discovery service.
-        
+
         Args:
             logger: Optional logger for verbose output. If None, logging is silently skipped.
         """
@@ -150,7 +150,7 @@ class DomainDiscoveryService:
 
     def _log_verbose(self, message: str) -> None:
         """Log a verbose message if logger is available.
-        
+
         Args:
             message: Message to log
         """

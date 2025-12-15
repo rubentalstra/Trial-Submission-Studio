@@ -100,9 +100,9 @@ class EXProcessor(BaseDomainProcessor):
                 frame["EXTPTREF"].astype("string").fillna("").replace("", "VISIT")
             )
         existing = set(
-            ensure_series(frame.get("USUBJID", pd.Series(dtype=str)), index=frame.index).astype(
-                str
-            )
+            ensure_series(
+                frame.get("USUBJID", pd.Series(dtype=str)), index=frame.index
+            ).astype(str)
         )
         # Ensure every subject with a reference start has an EX record
         if self.reference_starts:
@@ -118,7 +118,8 @@ class EXProcessor(BaseDomainProcessor):
                     )
                     filler.append(
                         {
-                             "STUDYID": getattr(self.config, "study_id", None) or "STUDY",
+                            "STUDYID": getattr(self.config, "study_id", None)
+                            or "STUDY",
                             "DOMAIN": "EX",
                             "USUBJID": usubjid,
                             "EXSEQ": float("nan"),

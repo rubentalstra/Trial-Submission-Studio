@@ -30,7 +30,7 @@ class BaseDomainProcessor(ABC):
         domain: "SDTMDomain",
         reference_starts: dict[str, str] | None = None,
         metadata: "StudyMetadata | None" = None,
-        ):
+    ):
         """Initialize the domain processor.
 
         Args:
