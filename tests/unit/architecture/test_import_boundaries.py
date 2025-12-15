@@ -216,7 +216,9 @@ class TestLegacyImportBoundary:
                 violations.append(f"{rel_path}: {forbidden}")
         
         # Note: This test is informational while migration is in progress
-        # Once CLEAN2-D1 and CLEAN2-D2 are complete, uncomment the assertion
+        # TODO(CLEAN2-D1, CLEAN2-D2): Uncomment the assertion below once
+        # DomainProcessingUseCase and StudyProcessingUseCase no longer
+        # delegate to legacy coordinators.
         # assert not violations, (
         #     f"Application layer imports legacy modules:\n" + "\n".join(violations)
         # )

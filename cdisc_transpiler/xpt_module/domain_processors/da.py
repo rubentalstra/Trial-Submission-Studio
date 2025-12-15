@@ -90,7 +90,8 @@ class DAProcessor(BaseDomainProcessor):
                 try:
                     frame["DASTRESN"] = coerced.astype(numeric_stresc.dtype)
                 except (TypeError, ValueError):
-                    # Silently handle dtype conversion failures - use original coerced values
+                    # Silently handle dtype conversion failures - keep original coerced values
+                    # This is acceptable since numeric assignment below will still work
                     frame["DASTRESN"] = coerced
             else:
                 frame["DASTRESN"] = coerced

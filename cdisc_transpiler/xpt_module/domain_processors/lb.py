@@ -337,7 +337,7 @@ class LBProcessor(BaseDomainProcessor):
                     or (series.astype("string").fillna("").str.strip() == "").all()
                 ):
                     frame.drop(columns=[col], inplace=True)
-        # Ensure LBSTRESN is populated when STRESC is numeric
+        # Ensure LBSTRESN has the correct dtype before assignment to avoid FutureWarning
         if {"LBSTRESC", "LBSTRESN"} <= set(frame.columns):
             numeric = ensure_numeric_series(frame["LBSTRESC"], frame.index)
             needs_numeric = ensure_series(frame["LBSTRESN"]).isna()
@@ -347,7 +347,8 @@ class LBProcessor(BaseDomainProcessor):
                 try:
                     frame["LBSTRESN"] = frame["LBSTRESN"].astype(numeric.dtype)
                 except (TypeError, ValueError):
-                    # Silently handle dtype conversion failures
+                    # Silently handle dtype conversion failures - keep original dtype
+                    # This is acceptable since numeric assignment below will still work
                     pass
             
             # Now safely assign the numeric values where needed
