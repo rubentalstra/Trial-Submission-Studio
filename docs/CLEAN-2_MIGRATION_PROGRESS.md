@@ -357,24 +357,29 @@ All P0, P1, and P2 tickets in Epic E are complete! Remaining Epic E tickets (E5-
 
 ### CLEAN2-E5 — Move Dataset-XML/Define-XML to infrastructure
 - **Priority:** P3
-- **Status:** ⏳ Not Started
+- **Status:** 📝 Deferred (Out of Scope)
 - **Completion Date:** -
 - **PR:** -
-- **Notes:** Optional but recommended
+- **Notes:** Optional but recommended. This ticket involves moving 2000+ lines of implementation code from `xml_module` to `infrastructure/io`. While this would further clean the architecture, it's a substantial refactoring that:
+  - Requires moving dataset_module (~10 files) and define_module (~8 files)
+  - Needs comprehensive testing of XML generation
+  - Should be its own focused PR to manage risk
+  - All required functionality is already working through adapters created in CLEAN2-E1/E2
+  - **Recommendation:** Complete as separate follow-up PR if desired
 
 ### CLEAN2-E6 — Move XPT implementation to infrastructure
 - **Priority:** P3
-- **Status:** ⏳ Not Started
+- **Status:** 📝 Deferred (Out of Scope)
 - **Completion Date:** -
 - **PR:** -
-- **Notes:** Optional but recommended
+- **Notes:** Optional but recommended. Similar to E5, this involves substantial code movement and should be a separate focused PR if pursued.
 
 ### CLEAN2-E7 — Move SAS implementation to infrastructure
 - **Priority:** P3
-- **Status:** ⏳ Not Started
+- **Status:** 📝 Deferred (Out of Scope)
 - **Completion Date:** -
 - **PR:** -
-- **Notes:** Optional but recommended
+- **Notes:** Optional but recommended. Similar to E5/E6, this involves substantial code movement and should be a separate focused PR if pursued.
 
 ---
 
