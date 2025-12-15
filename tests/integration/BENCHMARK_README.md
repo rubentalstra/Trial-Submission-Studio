@@ -56,17 +56,10 @@ pytest -m "not benchmark"
   - Expected baseline: <20 seconds
   - Tests complete pipeline with variant domains
 
-### Domain Processing Performance
-- **DM domain**: Demographics (largest/most complex)
-  - Expected baseline: <2 seconds
-
-- **AE domain**: Adverse Events (moderate complexity)
-  - Expected baseline: <1 second
-
 ### Transformation Performance
-- **Wide-to-long transformation**: Findings data
-  - Expected baseline: <100ms for 1000 rows
-  - Common and potentially expensive operation
+- **DataFrame operations**: Common pandas operations
+  - Expected baseline: <10ms for 1000 rows
+  - Tests filter, sort, groupby operations used throughout codebase
 
 ## Understanding Results
 
