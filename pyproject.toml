@@ -45,3 +45,12 @@ useLibraryCodeForTypes = true
 reportMissingImports = "error"
 reportMissingTypeStubs = true
 reportUnusedFunction = true
+
+[tool.pytest.ini_options]
+markers = [
+    "integration: marks tests as integration tests (use real file system)",
+]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
