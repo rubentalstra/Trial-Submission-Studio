@@ -208,6 +208,7 @@ __marimo__/
 
 
 # ignore output mockdata
+mockdata/*/output/*
 mockdata/*/output/*coverage.json
 *.pyc
 __pycache__/
