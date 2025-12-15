@@ -18,6 +18,9 @@ class Defaults:
     DATE = "2023-01-01"  # ISO 8601 format
     SUBJECT_ID = "SYNTH001"
     
+    # Trial design defaults for synthesis
+    ELEMENT_DURATION = "P1D"  # ISO 8601 duration for trial elements (1 day)
+    
     # Processing defaults
     MIN_CONFIDENCE = 0.5  # Minimum confidence for fuzzy matching
     CHUNK_SIZE = 1000  # Chunk size for streaming processing

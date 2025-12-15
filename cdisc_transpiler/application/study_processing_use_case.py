@@ -7,6 +7,9 @@ generation.
 CLEAN2-D2: This use case is now fully implemented with injected dependencies,
 removing the delegation to legacy coordinators and old module imports.
 
+CLEAN2-D3: Synthesis now uses the new SynthesisService from domain/services
+instead of the legacy DomainSynthesisCoordinator.
+
 The use case orchestrates:
 - Discovery → per-domain processing → synthesis → Define-XML generation
 using injected ports/use cases.
@@ -527,15 +530,19 @@ class StudyProcessingUseCase:
         xml_dir: Path | None,
         sas_dir: Path | None,
     ) -> None:
-        """Synthesize a missing observation domain."""
+        """Synthesize a missing observation domain.
+        
+        CLEAN2-D3: Now uses the new SynthesisService from domain/services
+        instead of the legacy DomainSynthesisCoordinator.
+        """
         self.logger.log_synthesis_start(domain_code, reason)
         
         try:
-            synthesis_coordinator = self._get_synthesis_coordinator()
-            result_dict = synthesis_coordinator.synthesize_empty_observation_domain(
+            synthesis_service = self._get_synthesis_service()
+            synthesis_result = synthesis_service.synthesize_observation(
                 domain_code=domain_code,
                 study_id=request.study_id,
-                output_format="/".join(request.output_formats),
+                output_formats=request.output_formats,
                 xpt_dir=xpt_dir,
                 xml_dir=xml_dir,
                 sas_dir=sas_dir,
@@ -543,15 +550,18 @@ class StudyProcessingUseCase:
                 reference_starts=reference_starts,
             )
             
+            if not synthesis_result.success:
+                raise RuntimeError(synthesis_result.error or "Synthesis failed")
+            
             result = DomainProcessingResult(
                 domain_code=domain_code,
                 success=True,
-                records=result_dict.get("records", 0),
-                domain_dataframe=result_dict.get("domain_dataframe"),
-                config=result_dict.get("config"),
-                xpt_path=result_dict.get("xpt_path"),
-                xml_path=result_dict.get("xml_path"),
-                sas_path=result_dict.get("sas_path"),
+                records=synthesis_result.records,
+                domain_dataframe=synthesis_result.domain_dataframe,
+                config=synthesis_result.config,
+                xpt_path=synthesis_result.xpt_path,
+                xml_path=synthesis_result.xml_path,
+                sas_path=synthesis_result.sas_path,
                 synthesized=True,
                 synthesis_reason=reason,
             )
@@ -583,15 +593,19 @@ class StudyProcessingUseCase:
         xml_dir: Path | None,
         sas_dir: Path | None,
     ) -> None:
-        """Synthesize a missing trial design domain."""
+        """Synthesize a missing trial design domain.
+        
+        CLEAN2-D3: Now uses the new SynthesisService from domain/services
+        instead of the legacy DomainSynthesisCoordinator.
+        """
         self.logger.log_synthesis_start(domain_code, reason)
         
         try:
-            synthesis_coordinator = self._get_synthesis_coordinator()
-            result_dict = synthesis_coordinator.synthesize_trial_design_domain(
+            synthesis_service = self._get_synthesis_service()
+            synthesis_result = synthesis_service.synthesize_trial_design(
                 domain_code=domain_code,
                 study_id=request.study_id,
-                output_format="/".join(request.output_formats),
+                output_formats=request.output_formats,
                 xpt_dir=xpt_dir,
                 xml_dir=xml_dir,
                 sas_dir=sas_dir,
@@ -599,15 +613,18 @@ class StudyProcessingUseCase:
                 reference_starts=reference_starts,
             )
             
+            if not synthesis_result.success:
+                raise RuntimeError(synthesis_result.error or "Synthesis failed")
+            
             result = DomainProcessingResult(
                 domain_code=domain_code,
                 success=True,
-                records=result_dict.get("records", 0),
-                domain_dataframe=result_dict.get("domain_dataframe"),
-                config=result_dict.get("config"),
-                xpt_path=result_dict.get("xpt_path"),
-                xml_path=result_dict.get("xml_path"),
-                sas_path=result_dict.get("sas_path"),
+                records=synthesis_result.records,
+                domain_dataframe=synthesis_result.domain_dataframe,
+                config=synthesis_result.config,
+                xpt_path=synthesis_result.xpt_path,
+                xml_path=synthesis_result.xml_path,
+                sas_path=synthesis_result.sas_path,
                 synthesized=True,
                 synthesis_reason=reason,
             )
@@ -776,12 +793,17 @@ class StudyProcessingUseCase:
             file_generator=self._file_generator,
         )
     
-    def _get_synthesis_coordinator(self):
-        """Get or create domain synthesis coordinator (legacy, to be replaced)."""
-        # Note: This uses the legacy coordinator. In future tickets (CLEAN2-D3),
-        # this will be replaced with a proper synthesis service.
-        from ..legacy import DomainSynthesisCoordinator
-        return DomainSynthesisCoordinator()
+    def _get_synthesis_service(self):
+        """Get or create domain synthesis service.
+        
+        CLEAN2-D3: Now uses the new SynthesisService from domain/services
+        instead of the legacy DomainSynthesisCoordinator.
+        """
+        from ..domain.services import SynthesisService
+        return SynthesisService(
+            file_generator=self._file_generator,
+            logger=self.logger,
+        )
     
     def _get_orchestration_service(self):
         """Get or create study orchestration service (legacy, to be replaced)."""

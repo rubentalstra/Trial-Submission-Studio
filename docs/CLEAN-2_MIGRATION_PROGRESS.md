@@ -28,9 +28,9 @@ This file tracks the completion status of each ticket in `CLEAN-2_MIGRATION_TICK
 
 ## 📋 Next Actions (For LLM Agents)
 
-**Current Focus: Epic D - Implement Real Use Cases (P1/P2 tickets)**
+**Current Focus: Epic D - Implement Real Use Cases (P2 tickets)**
 
-Epic A, B, C are complete. CLEAN2-D1 and CLEAN2-D2 are complete. The following tickets should be implemented in order:
+Epic A, B, C are complete. CLEAN2-D1, D2, and D3 are complete. The following tickets should be implemented in order:
 
 ### Completed
 1. ~~**CLEAN2-A1** (P0) - Remove `cli.helpers` from core~~ ✅ Complete
@@ -53,14 +53,14 @@ Epic A, B, C are complete. CLEAN2-D1 and CLEAN2-D2 are complete. The following t
 18. ~~**CLEAN2-C9** (P2) - Move domain processors to domain services~~ ✅ Complete
 19. ~~**CLEAN2-D1** (P0) - Make `DomainProcessingUseCase` real~~ ✅ Complete
 20. ~~**CLEAN2-D2** (P0) - Make `StudyProcessingUseCase` real~~ ✅ Complete
+21. ~~**CLEAN2-D3** (P1) - Implement synthesis service~~ ✅ Complete
 
-### Remaining P1/P2 Tickets (Epic D-F)
-21. **CLEAN2-D3** (P1) - Implement synthesis service ⏳
+### Remaining P2 Tickets (Epic D-F)
 22. **CLEAN2-D4** (P2) - Implement RELREC service ⏳
 23. **CLEAN2-E1-E7** (P1/P2) - Output adapters ⏳
 24. **CLEAN2-F1-F2** (P1/P2) - Cleanup ⏳
 
-All P0 tickets are now complete! Proceed to P1/P2 tickets.
+All P0 and P1 tickets in Epic D are now complete! Proceed to P2 tickets.
 
 ---
 
@@ -71,10 +71,10 @@ All P0 tickets are now complete! Proceed to P1/P2 tickets.
 | A - Boundary Cleanup | 5 | 5 | 0 | 0 |
 | B - Repositories & Configuration | 4 | 4 | 0 | 0 |
 | C - Refactor Old Modules | 9 | 9 | 0 | 0 |
-| D - Implement Real Use Cases | 4 | 2 | 0 | 2 |
+| D - Implement Real Use Cases | 4 | 3 | 0 | 1 |
 | E - Output Adapters | 7 | 0 | 0 | 7 |
 | F - Cleanup | 2 | 0 | 0 | 2 |
-| **Total** | **31** | **20** | **0** | **11** |
+| **Total** | **31** | **21** | **0** | **10** |
 
 ---
 
@@ -252,10 +252,19 @@ All P0 tickets are now complete! Proceed to P1/P2 tickets.
 
 ### CLEAN2-D3 — Implement synthesis service
 - **Priority:** P1
-- **Status:** ⏳ Not Started
-- **Completion Date:** -
-- **PR:** -
-- **Notes:** Create `domain/services/synthesis_service.py`
+- **Status:** ✅ Complete
+- **Completion Date:** 2025-12-15
+- **PR:** Current PR
+- **Notes:** Created `domain/services/synthesis_service.py` with:
+  - `SynthesisService` class with `FileGeneratorPort` and `LoggerPort` injection
+  - `synthesize_trial_design()` method for TS, TA, TE, SE, DS domains
+  - `synthesize_observation()` method for AE, LB, VS, EX domains
+  - `SynthesisResult` dataclass for results
+  - Updated `StudyProcessingUseCase` to use `SynthesisService` instead of `DomainSynthesisCoordinator`
+- **Verification:**
+  - `grep -n "from .*legacy import DomainSynthesisCoordinator" cdisc_transpiler/application/` returns no matches
+  - 23 unit tests for synthesis service pass
+  - All 492 unit tests pass
 
 ### CLEAN2-D4 — Implement RELREC service
 - **Priority:** P2
