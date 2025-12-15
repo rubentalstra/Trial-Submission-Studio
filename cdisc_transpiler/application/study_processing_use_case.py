@@ -555,8 +555,8 @@ class StudyProcessingUseCase:
     ) -> None:
         """Synthesize a missing observation domain.
 
-        CLEAN2-D3: Now uses the new SynthesisService from domain/services
-        instead of the legacy DomainSynthesisCoordinator.
+        The domain synthesis service returns pure domain data, and
+        file generation is handled here in the application layer.
         """
         self.logger.log_synthesis_start(domain_code, reason)
 
@@ -565,16 +565,22 @@ class StudyProcessingUseCase:
             synthesis_result = synthesis_service.synthesize_observation(
                 domain_code=domain_code,
                 study_id=request.study_id,
-                output_formats=request.output_formats,
-                xpt_dir=xpt_dir,
-                xml_dir=xml_dir,
-                sas_dir=sas_dir,
-                generate_sas=request.generate_sas,
                 reference_starts=reference_starts,
             )
 
             if not synthesis_result.success:
                 raise RuntimeError(synthesis_result.error or "Synthesis failed")
+
+            # Generate output files using FileGeneratorPort (application layer)
+            xpt_path, xml_path, sas_path = self._generate_synthesis_files(
+                domain_dataframe=synthesis_result.domain_dataframe,
+                domain_code=domain_code,
+                config=synthesis_result.config,
+                request=request,
+                xpt_dir=xpt_dir,
+                xml_dir=xml_dir,
+                sas_dir=sas_dir,
+            )
 
             result = DomainProcessingResult(
                 domain_code=domain_code,
@@ -582,9 +588,9 @@ class StudyProcessingUseCase:
                 records=synthesis_result.records,
                 domain_dataframe=synthesis_result.domain_dataframe,
                 config=synthesis_result.config,
-                xpt_path=synthesis_result.xpt_path,
-                xml_path=synthesis_result.xml_path,
-                sas_path=synthesis_result.sas_path,
+                xpt_path=xpt_path,
+                xml_path=xml_path,
+                sas_path=sas_path,
                 synthesized=True,
                 synthesis_reason=reason,
             )
@@ -618,8 +624,8 @@ class StudyProcessingUseCase:
     ) -> None:
         """Synthesize a missing trial design domain.
 
-        CLEAN2-D3: Now uses the new SynthesisService from domain/services
-        instead of the legacy DomainSynthesisCoordinator.
+        The domain synthesis service returns pure domain data, and
+        file generation is handled here in the application layer.
         """
         self.logger.log_synthesis_start(domain_code, reason)
 
@@ -628,16 +634,22 @@ class StudyProcessingUseCase:
             synthesis_result = synthesis_service.synthesize_trial_design(
                 domain_code=domain_code,
                 study_id=request.study_id,
-                output_formats=request.output_formats,
-                xpt_dir=xpt_dir,
-                xml_dir=xml_dir,
-                sas_dir=sas_dir,
-                generate_sas=request.generate_sas,
                 reference_starts=reference_starts,
             )
 
             if not synthesis_result.success:
                 raise RuntimeError(synthesis_result.error or "Synthesis failed")
+
+            # Generate output files using FileGeneratorPort (application layer)
+            xpt_path, xml_path, sas_path = self._generate_synthesis_files(
+                domain_dataframe=synthesis_result.domain_dataframe,
+                domain_code=domain_code,
+                config=synthesis_result.config,
+                request=request,
+                xpt_dir=xpt_dir,
+                xml_dir=xml_dir,
+                sas_dir=sas_dir,
+            )
 
             result = DomainProcessingResult(
                 domain_code=domain_code,
@@ -645,9 +657,9 @@ class StudyProcessingUseCase:
                 records=synthesis_result.records,
                 domain_dataframe=synthesis_result.domain_dataframe,
                 config=synthesis_result.config,
-                xpt_path=synthesis_result.xpt_path,
-                xml_path=synthesis_result.xml_path,
-                sas_path=synthesis_result.sas_path,
+                xpt_path=xpt_path,
+                xml_path=xml_path,
+                sas_path=sas_path,
                 synthesized=True,
                 synthesis_reason=reason,
             )
@@ -870,12 +882,80 @@ class StudyProcessingUseCase:
     def _get_synthesis_service(self):
         """Get or create domain synthesis service.
 
-        CLEAN2-D3: Now uses the new SynthesisService from domain/services
-        instead of the legacy DomainSynthesisCoordinator.
+        The SynthesisService is a pure domain service that returns only
+        domain data (DataFrames + configs). File generation is handled
+        by the application layer using FileGeneratorPort.
         """
         from ..domain.services import SynthesisService
 
-        return SynthesisService(
-            file_generator=self._file_generator,
-            logger=self.logger,
+        return SynthesisService()
+
+    def _generate_synthesis_files(
+        self,
+        domain_dataframe: pd.DataFrame | None,
+        domain_code: str,
+        config: Any,
+        request: ProcessStudyRequest,
+        xpt_dir: Path | None,
+        xml_dir: Path | None,
+        sas_dir: Path | None,
+    ) -> tuple[Path | None, Path | None, Path | None]:
+        """Generate output files for synthesized domain data.
+
+        This method handles file generation in the application layer,
+        using the FileGeneratorPort to write output files.
+
+        Args:
+            domain_dataframe: Synthesized domain DataFrame
+            domain_code: SDTM domain code
+            config: Mapping configuration
+            request: Study processing request
+            xpt_dir: XPT output directory
+            xml_dir: XML output directory
+            sas_dir: SAS output directory
+
+        Returns:
+            Tuple of (xpt_path, xml_path, sas_path) - paths to generated files
+        """
+        if domain_dataframe is None or self._file_generator is None:
+            return None, None, None
+
+        from .models import OutputDirs, OutputRequest
+
+        # Determine output formats
+        formats: set[str] = set()
+        if xpt_dir and "xpt" in request.output_formats:
+            formats.add("xpt")
+        if xml_dir and "xml" in request.output_formats:
+            formats.add("xml")
+        if sas_dir and request.generate_sas:
+            formats.add("sas")
+
+        if not formats:
+            return None, None, None
+
+        output_request = OutputRequest(
+            dataframe=domain_dataframe,
+            domain_code=domain_code,
+            config=config,
+            output_dirs=OutputDirs(
+                xpt_dir=xpt_dir,
+                xml_dir=xml_dir,
+                sas_dir=sas_dir,
+            ),
+            formats=formats,
         )
+
+        output_result = self._file_generator.generate(output_request)
+
+        # Log success
+        if output_result.xpt_path:
+            self.logger.success(f"Generated {domain_code} XPT: {output_result.xpt_path}")
+        if output_result.xml_path:
+            self.logger.success(
+                f"Generated {domain_code} Dataset-XML: {output_result.xml_path}"
+            )
+        if output_result.sas_path:
+            self.logger.success(f"Generated {domain_code} SAS: {output_result.sas_path}")
+
+        return output_result.xpt_path, output_result.xml_path, output_result.sas_path

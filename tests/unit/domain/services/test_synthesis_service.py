@@ -2,11 +2,13 @@
 
 These tests verify the synthesis service creates proper SDTM domain structures
 for both trial design and observation domains.
+
+The SynthesisService is a pure domain service that returns only domain data
+(DataFrames + configs). File generation is handled in the application layer.
 """
 
 import pytest
 import pandas as pd
-from pathlib import Path
 
 from cdisc_transpiler.domain.services import SynthesisService, SynthesisResult
 
@@ -24,31 +26,16 @@ class TestSynthesisService:
         service = SynthesisService()
         assert service is not None
 
-    def test_service_instantiation_with_dependencies(self):
-        """Test that service can be instantiated with dependencies."""
-
-        # Use mock objects for dependencies
-        class MockFileGenerator:
-            def generate(self, request):
-                from cdisc_transpiler.application.models import OutputResult
-
-                return OutputResult()
-
-        class MockLogger:
-            def success(self, msg):
-                pass
-
-            def info(self, msg):
-                pass
-
-            def error(self, msg):
-                pass
-
-        service = SynthesisService(
-            file_generator=MockFileGenerator(),
-            logger=MockLogger(),
-        )
+    def test_service_is_pure_domain_service(self):
+        """Test that service has no infrastructure dependencies."""
+        # SynthesisService should be instantiable with no arguments
+        # This verifies it's a pure domain service
+        service = SynthesisService()
         assert service is not None
+
+        # Verify it doesn't have file_generator or logger attributes
+        assert not hasattr(service, "_file_generator")
+        assert not hasattr(service, "_logger")
 
 
 class TestSynthesizeTrialDesign:
@@ -294,15 +281,12 @@ class TestSynthesisResult:
         result = SynthesisResult(
             domain_code="TS",
             records=1,
-            xpt_path=Path("/output/ts.xpt"),
         )
 
         result_dict = result.to_dict()
 
         assert result_dict["domain_code"] == "TS"
         assert result_dict["records"] == 1
-        assert result_dict["xpt_path"] == Path("/output/ts.xpt")
-        assert result_dict["xpt_filename"] == "ts.xpt"
 
     def test_result_with_error(self):
         """Test SynthesisResult with error."""
@@ -315,79 +299,14 @@ class TestSynthesisResult:
         assert result.success is False
         assert result.error == "Domain not found"
 
+    def test_result_is_pure_domain_object(self):
+        """Test SynthesisResult has no file path attributes.
 
-class TestFileGeneration:
-    """Tests for file generation during synthesis."""
+        File paths are application/infrastructure concerns, not domain concerns.
+        """
+        result = SynthesisResult(domain_code="TS")
 
-    def test_synthesis_with_xpt_output(self, tmp_path):
-        """Test synthesis generates XPT file when directory provided."""
-        service = SynthesisService()
-        xpt_dir = tmp_path / "xpt"
-        xpt_dir.mkdir()
-
-        result = service.synthesize_trial_design(
-            domain_code="TS",
-            study_id="TEST001",
-            output_formats={"xpt"},
-            xpt_dir=xpt_dir,
-        )
-
-        assert result.success
-        assert result.xpt_path is not None
-        assert result.xpt_path.exists()
-        assert result.xpt_path.suffix == ".xpt"
-
-    def test_synthesis_with_xml_output(self, tmp_path):
-        """Test synthesis generates Dataset-XML file when directory provided."""
-        service = SynthesisService()
-        xml_dir = tmp_path / "xml"
-        xml_dir.mkdir()
-
-        result = service.synthesize_trial_design(
-            domain_code="TS",
-            study_id="TEST001",
-            output_formats={"xml"},
-            xml_dir=xml_dir,
-        )
-
-        assert result.success
-        assert result.xml_path is not None
-        assert result.xml_path.exists()
-        assert result.xml_path.suffix == ".xml"
-
-    def test_synthesis_with_both_outputs(self, tmp_path):
-        """Test synthesis generates both XPT and XML files."""
-        service = SynthesisService()
-        xpt_dir = tmp_path / "xpt"
-        xml_dir = tmp_path / "xml"
-        xpt_dir.mkdir()
-        xml_dir.mkdir()
-
-        result = service.synthesize_trial_design(
-            domain_code="TS",
-            study_id="TEST001",
-            output_formats={"xpt", "xml"},
-            xpt_dir=xpt_dir,
-            xml_dir=xml_dir,
-        )
-
-        assert result.success
-        assert result.xpt_path is not None
-        assert result.xml_path is not None
-        assert result.xpt_path.exists()
-        assert result.xml_path.exists()
-
-    def test_synthesis_without_file_output(self):
-        """Test synthesis returns dataframe without file generation."""
-        service = SynthesisService()
-
-        result = service.synthesize_trial_design(
-            domain_code="TS",
-            study_id="TEST001",
-            # No output directories provided
-        )
-
-        assert result.success
-        assert result.domain_dataframe is not None
-        assert result.xpt_path is None
-        assert result.xml_path is None
+        # SynthesisResult should not have file path attributes
+        assert not hasattr(result, "xpt_path")
+        assert not hasattr(result, "xml_path")
+        assert not hasattr(result, "sas_path")
