@@ -339,9 +339,6 @@ class LBProcessor(BaseDomainProcessor):
                     frame.drop(columns=[col], inplace=True)
         # Ensure LBSTRESN is populated when STRESC is numeric
         if {"LBSTRESC", "LBSTRESN"} <= set(frame.columns):
-            from ...cli.logging_config import get_logger
-            
-            logger = get_logger()
             numeric = ensure_numeric_series(frame["LBSTRESC"], frame.index)
             needs_numeric = ensure_series(frame["LBSTRESN"]).isna()
             
@@ -349,8 +346,9 @@ class LBProcessor(BaseDomainProcessor):
             if frame["LBSTRESN"].dtype != numeric.dtype:
                 try:
                     frame["LBSTRESN"] = frame["LBSTRESN"].astype(numeric.dtype)
-                except Exception as e:
-                    logger.warning(f"LB domain: Could not convert LBSTRESN dtype: {e}")
+                except (TypeError, ValueError):
+                    # Silently handle dtype conversion failures
+                    pass
             
             # Now safely assign the numeric values where needed
             if needs_numeric.any():

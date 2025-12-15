@@ -73,7 +73,7 @@ class StudyProcessingUseCase:
             logger: Logger for progress and error reporting
         """
         self.logger = logger
-        self.discovery_service = DomainDiscoveryService()
+        self.discovery_service = DomainDiscoveryService(logger=logger)
         self.domain_processor = DomainProcessingCoordinator()
         self.synthesis_coordinator = DomainSynthesisCoordinator()
         self.orchestration_service = StudyOrchestrationService()

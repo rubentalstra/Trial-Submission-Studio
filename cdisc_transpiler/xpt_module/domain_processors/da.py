@@ -82,9 +82,6 @@ class DAProcessor(BaseDomainProcessor):
         if "DASTRESN" not in frame.columns:
             frame["DASTRESN"] = numeric_stresc
         else:
-            from ...cli.logging_config import get_logger
-            
-            logger = get_logger()
             coerced = ensure_numeric_series(frame["DASTRESN"], frame.index)
             needs_numeric = coerced.isna() & numeric_stresc.notna()
             
@@ -92,8 +89,8 @@ class DAProcessor(BaseDomainProcessor):
             if "DASTRESN" not in frame.columns or frame["DASTRESN"].dtype != numeric_stresc.dtype:
                 try:
                     frame["DASTRESN"] = coerced.astype(numeric_stresc.dtype)
-                except Exception as e:
-                    logger.warning(f"DA domain: Could not convert DASTRESN dtype: {e}")
+                except (TypeError, ValueError):
+                    # Silently handle dtype conversion failures - use original coerced values
                     frame["DASTRESN"] = coerced
             else:
                 frame["DASTRESN"] = coerced

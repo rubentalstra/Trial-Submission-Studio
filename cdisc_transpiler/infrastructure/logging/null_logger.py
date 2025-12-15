@@ -60,3 +60,11 @@ class NullLogger(LoggerPort):
             message: The message to log (ignored)
         """
         pass
+    
+    def verbose(self, message: str) -> None:
+        """Log a verbose message (discarded).
+        
+        Args:
+            message: The message to log (ignored)
+        """
+        pass

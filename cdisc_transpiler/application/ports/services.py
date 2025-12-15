@@ -65,6 +65,14 @@ class LoggerPort(Protocol):
             message: The message to log
         """
         ...
+    
+    def verbose(self, message: str) -> None:
+        """Log a verbose message.
+        
+        Args:
+            message: The message to log
+        """
+        ...
 
 
 @runtime_checkable
