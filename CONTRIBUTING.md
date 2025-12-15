@@ -626,7 +626,7 @@ def process_domain(
 When adding features, update relevant docs:
 
 - **README.md**: Usage examples, new features
-- **MIGRATION.md**: Breaking changes, upgrade guides
+- **docs/ARCHITECTURE.md**: Architecture, boundaries, migration guidance
 - **Test Reports**: Update coverage reports if significant changes
 - **Architecture Docs**: New patterns or components
 
