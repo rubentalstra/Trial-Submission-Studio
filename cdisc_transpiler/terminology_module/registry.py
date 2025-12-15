@@ -27,32 +27,56 @@ from .models import ControlledTerminology
 from ..domains_module import get_domain, list_domains
 
 
-def _resolve_ct_dir(ct_version: str) -> Path:
-    """Select the CT folder for the configured CT_VERSION, fallback to newest."""
-    ct_base_dir = (
-        Path(__file__).resolve().parent.parent.parent
-        / "docs"
-        / "Controlled_Terminology"
-    )
-    target = ct_base_dir / ct_version
-    if target.exists():
-        return target
-    candidates = sorted(ct_base_dir.glob("*"))
-    return candidates[-1] if candidates else target
+def _get_ct_dir() -> Path:
+    """Get CT directory from config, with version resolution.
+    
+    Returns:
+        Path to the CT directory (with version subdirectory resolved)
+    """
+    # Lazy import to avoid circular imports
+    from ..config import TranspilerConfig
+    
+    config = TranspilerConfig()
+    ct_base = config.ct_dir
+    
+    # Make path absolute if relative
+    if not ct_base.is_absolute():
+        package_root = Path(__file__).resolve().parent.parent.parent
+        ct_base = package_root / ct_base
+    
+    if not ct_base.exists():
+        return ct_base
+    
+    # Try to find the latest version folder
+    candidates = sorted([
+        d for d in ct_base.iterdir() 
+        if d.is_dir() and not d.name.startswith(".")
+    ])
+    
+    if candidates:
+        return candidates[-1]  # Latest by name (ISO date naming)
+    
+    return ct_base
 
 
-def _get_ct_version() -> str:
-    """Get the CT version from domains_module."""
-    try:
-        from ..domains_module import CT_VERSION
-        return CT_VERSION
-    except ImportError:
-        return "2025-09-26"
+# Global registries (lazily initialized)
+_REGISTRY_BY_CODE: dict[str, ControlledTerminology] | None = None
+_REGISTRY_BY_NAME: dict[str, ControlledTerminology] | None = None
 
 
-# Initialize the CT directory and registries
-_CT_DIR = _resolve_ct_dir(_get_ct_version())
-_REGISTRY_BY_CODE, _REGISTRY_BY_NAME = build_registry(_CT_DIR)
+def _ensure_registry_initialized() -> tuple[dict[str, ControlledTerminology], dict[str, ControlledTerminology]]:
+    """Ensure CT registries are initialized (lazy initialization).
+    
+    Returns:
+        Tuple of (registry_by_code, registry_by_name)
+    """
+    global _REGISTRY_BY_CODE, _REGISTRY_BY_NAME
+    
+    if _REGISTRY_BY_CODE is None or _REGISTRY_BY_NAME is None:
+        ct_dir = _get_ct_dir()
+        _REGISTRY_BY_CODE, _REGISTRY_BY_NAME = build_registry(ct_dir)
+    
+    return _REGISTRY_BY_CODE, _REGISTRY_BY_NAME
 
 
 # -----------------------------------------------------------------------------
@@ -177,8 +201,10 @@ def get_controlled_terminology(
     if not codelist_code and not variable:
         return None
 
+    registry_by_code, registry_by_name = _ensure_registry_initialized()
+
     if codelist_code:
-        ct = _REGISTRY_BY_CODE.get(codelist_code.strip().upper())
+        ct = registry_by_code.get(codelist_code.strip().upper())
         if ct:
             return ct
 
@@ -186,10 +212,10 @@ def get_controlled_terminology(
         var_key = variable.upper()
         code = _variable_to_codelist().get(var_key)
         if code:
-            ct = _REGISTRY_BY_CODE.get(code)
+            ct = registry_by_code.get(code)
             if ct:
                 return ct
-        return _REGISTRY_BY_NAME.get(var_key)
+        return registry_by_name.get(var_key)
 
     return None
 
@@ -204,7 +230,8 @@ def get_submission_values(codelist_code: str) -> Set[str]:
     Returns:
         Set of valid submission values
     """
-    ct = _REGISTRY_BY_CODE.get(codelist_code.upper())
+    registry_by_code, _ = _ensure_registry_initialized()
+    ct = registry_by_code.get(codelist_code.upper())
     if ct is None:
         return set()
     return ct.submission_values
@@ -225,7 +252,8 @@ def get_preferred_terms(codelist_code: str) -> Dict[str, str]:
         >>> terms.get("HR")
         'Heart Rate'
     """
-    ct = _REGISTRY_BY_CODE.get(codelist_code.upper())
+    registry_by_code, _ = _ensure_registry_initialized()
+    ct = registry_by_code.get(codelist_code.upper())
     if ct is None:
         return {}
 
@@ -257,7 +285,8 @@ def get_synonyms(codelist_code: str) -> Dict[str, str]:
         >>> synonyms = get_synonyms("C66741")  # VSTESTCD
         >>> synonyms.get("PULSE")  # Maps to "HR"
     """
-    ct = _REGISTRY_BY_CODE.get(codelist_code.upper())
+    registry_by_code, _ = _ensure_registry_initialized()
+    ct = registry_by_code.get(codelist_code.upper())
     if ct is None:
         return {}
     return ct.synonyms or {}
@@ -273,7 +302,8 @@ def get_definitions(codelist_code: str) -> Dict[str, str]:
     Returns:
         Dictionary mapping submission values to definitions
     """
-    ct = _REGISTRY_BY_CODE.get(codelist_code.upper())
+    registry_by_code, _ = _ensure_registry_initialized()
+    ct = registry_by_code.get(codelist_code.upper())
     if ct is None:
         return {}
     return ct.definitions or {}

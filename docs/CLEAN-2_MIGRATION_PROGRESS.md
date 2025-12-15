@@ -28,10 +28,11 @@ This file tracks the completion status of each ticket in `CLEAN-2_MIGRATION_TICK
 
 ## 📋 Next Actions (For LLM Agents)
 
-**Current Focus: Epic C/D - Refactor Old Modules & Implement Real Use Cases (P0 tickets)**
+**Current Focus: Epic C/D - Refactor Old Modules & Implement Real Use Cases**
 
-Epic A and Epic B are now complete! The following tickets should be implemented in order. Pick the first incomplete P0 ticket:
+Epic A and Epic B are now complete! Epic C is in progress. The following tickets should be implemented in order:
 
+### Completed
 1. ~~**CLEAN2-A1** (P0) - Remove `cli.helpers` from core~~ ✅ Complete
 2. ~~**CLEAN2-A2** (P0) - Remove `cli.logging_config` usage outside CLI~~ ✅ Complete
 3. ~~**CLEAN2-A3** (P1) - Add architecture boundary tests~~ ✅ Complete
@@ -41,10 +42,25 @@ Epic A and Epic B are now complete! The following tickets should be implemented 
 7. ~~**CLEAN2-B2** (P0) - Implement `CTRepositoryPort`~~ ✅ Complete
 8. ~~**CLEAN2-B3** (P0) - Implement `StudyDataRepositoryPort`~~ ✅ Complete
 9. ~~**CLEAN2-B4** (P1) - Add infrastructure caching primitives~~ ✅ Complete
-10. **CLEAN2-D1** (P0) - Make `DomainProcessingUseCase` real ⏳
-11. **CLEAN2-D2** (P0) - Make `StudyProcessingUseCase` real ⏳
-12. **CLEAN2-C1** (P1) - Refactor `domains_module` ⏳
-13. **CLEAN2-C2** (P1) - Refactor `terminology_module` ⏳
+10. ~~**CLEAN2-C1** (P1) - Refactor `domains_module`~~ ✅ Complete
+11. ~~**CLEAN2-C2** (P1) - Refactor `terminology_module`~~ ✅ Complete
+12. ~~**CLEAN2-C3** (P1) - Move SUPPQUAL to domain services~~ ✅ Complete
+13. ~~**CLEAN2-C5** (P1) - Deprecate `io_module`~~ ✅ Complete
+
+### Remaining P0 Tickets
+14. **CLEAN2-D1** (P0) - Make `DomainProcessingUseCase` real ⏳
+15. **CLEAN2-D2** (P0) - Make `StudyProcessingUseCase` real ⏳
+
+### Remaining P1 Tickets  
+16. **CLEAN2-C4** (P1) - Migrate `metadata_module` to infrastructure ⏳
+17. **CLEAN2-C8** (P1) - Move domain dataframe builder to domain services ⏳
+
+### Remaining P2 Tickets
+18. **CLEAN2-C6** (P2) - Move mapping config I/O to infrastructure ⏳
+19. **CLEAN2-C7** (P2) - Move mapping engines to domain services ⏳
+20. **CLEAN2-C9** (P2) - Move domain processors to domain services ⏳
+21. **CLEAN2-E1-E7** (P2) - Output adapters ⏳
+22. **CLEAN2-F1-F2** (P2) - Cleanup ⏳
 
 After all P0 tickets are complete, proceed to P1 tickets.
 
@@ -56,11 +72,11 @@ After all P0 tickets are complete, proceed to P1 tickets.
 |------|---------------|----------|-------------|-------------|
 | A - Boundary Cleanup | 5 | 5 | 0 | 0 |
 | B - Repositories & Configuration | 4 | 4 | 0 | 0 |
-| C - Refactor Old Modules | 9 | 0 | 0 | 9 |
+| C - Refactor Old Modules | 9 | 4 | 0 | 5 |
 | D - Implement Real Use Cases | 4 | 0 | 0 | 4 |
 | E - Output Adapters | 7 | 0 | 0 | 7 |
 | F - Cleanup | 2 | 0 | 0 | 2 |
-| **Total** | **31** | **9** | **0** | **22** |
+| **Total** | **31** | **13** | **0** | **18** |
 
 ---
 
@@ -138,24 +154,24 @@ After all P0 tickets are complete, proceed to P1 tickets.
 
 ### CLEAN2-C1 — Refactor `domains_module`
 - **Priority:** P1
-- **Status:** ⏳ Not Started
-- **Completion Date:** -
-- **PR:** -
-- **Blocked By:** CLEAN2-B1
+- **Status:** ✅ Complete
+- **Completion Date:** 2025-12-15
+- **PR:** Current PR
+- **Notes:** Removed hardcoded paths, uses TranspilerConfig, lazy initialization via `_ensure_initialized()`
 
 ### CLEAN2-C2 — Refactor `terminology_module`
 - **Priority:** P1
-- **Status:** ⏳ Not Started
-- **Completion Date:** -
-- **PR:** -
-- **Blocked By:** CLEAN2-B2
+- **Status:** ✅ Complete
+- **Completion Date:** 2025-12-15
+- **PR:** Current PR
+- **Notes:** Removed hardcoded paths, uses TranspilerConfig, lazy initialization via `_ensure_registry_initialized()`
 
 ### CLEAN2-C3 — Move SUPPQUAL to domain services
 - **Priority:** P1
-- **Status:** ⏳ Not Started
-- **Completion Date:** -
-- **PR:** -
-- **Notes:** Create `domain/services/suppqual_service.py`
+- **Status:** ✅ Complete
+- **Completion Date:** 2025-12-15
+- **PR:** Current PR
+- **Notes:** Created `domain/services/suppqual_service.py`, converted `submission_module/suppqual.py` to wrapper
 
 ### CLEAN2-C4 — Migrate `metadata_module` to infrastructure
 - **Priority:** P1
@@ -166,10 +182,10 @@ After all P0 tickets are complete, proceed to P1 tickets.
 
 ### CLEAN2-C5 — Deprecate `io_module`
 - **Priority:** P1
-- **Status:** ⏳ Not Started
-- **Completion Date:** -
-- **PR:** -
-- **Blocked By:** CLEAN2-B3
+- **Status:** ✅ Complete
+- **Completion Date:** 2025-12-15
+- **PR:** Current PR
+- **Notes:** `io_module/readers.py` now delegates to `StudyDataRepository` via lazy imports
 
 ### CLEAN2-C6 — Move mapping config I/O to infrastructure
 - **Priority:** P2
@@ -387,3 +403,7 @@ From `CLEAN-2_MIGRATION_TICKETS.md`:
 | 2025-12-15 | CLEAN2-B2 | Complete | Current PR | Implemented CTRepository with version resolution |
 | 2025-12-15 | CLEAN2-B3 | Complete | Current PR | Implemented StudyDataRepository for CSV/Excel/SAS |
 | 2025-12-15 | CLEAN2-B4 | Complete | Current PR | Added MemoryCache with TTL support |
+| 2025-12-15 | CLEAN2-C1 | Complete | Current PR | Refactored domains_module - lazy init, configurable paths |
+| 2025-12-15 | CLEAN2-C2 | Complete | Current PR | Refactored terminology_module - lazy init, configurable paths |
+| 2025-12-15 | CLEAN2-C3 | Complete | Current PR | Moved SUPPQUAL logic to domain/services/suppqual_service.py |
+| 2025-12-15 | CLEAN2-C5 | Complete | Current PR | Deprecated io_module - now delegates to StudyDataRepository |
