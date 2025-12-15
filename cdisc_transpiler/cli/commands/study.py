@@ -17,7 +17,7 @@ from rich.console import Console
 
 from ...application.models import ProcessStudyRequest
 from ...infrastructure.container import DependencyContainer
-from ..helpers import print_study_summary
+from ..presenters import SummaryPresenter
 
 
 console = Console()
@@ -182,7 +182,7 @@ def study_command(
     # Execute the use case
     response = use_case.execute(request)
 
-    # Convert response to format expected by print_study_summary
+    # Convert response to format expected by SummaryPresenter
     # Extract domain results as list of dicts for backward compatibility
     results = []
     for result in response.domain_results:
@@ -209,8 +209,9 @@ def study_command(
         }
         results.append(result_dict)
 
-    # Print summary using existing helper
-    print_study_summary(
+    # Display summary using presenter
+    presenter = SummaryPresenter(console)
+    presenter.present(
         results,
         response.errors,
         output_dir,
