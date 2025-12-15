@@ -113,6 +113,80 @@ tracker.increment()
 
 ---
 
+## Deprecated Services (Moved to Legacy)
+
+⚠️ **IMPORTANT**: The following service classes have been moved to the `legacy` package and are deprecated. They will be removed in the next major version.
+
+### Deprecated Services
+
+The following coordinators have been replaced by the new architecture:
+
+| Deprecated Service | Replacement | Status |
+|-------------------|-------------|---------|
+| `DomainProcessingCoordinator` | `application.domain_processing_use_case.DomainProcessingUseCase` | ⚠️ Deprecated |
+| `DomainSynthesisCoordinator` | `application.study_processing_use_case.StudyProcessingUseCase` | ⚠️ Deprecated |
+| `StudyOrchestrationService` | `application.study_processing_use_case.StudyProcessingUseCase` | ⚠️ Deprecated |
+
+### What You Should Do
+
+**If you're using these services:**
+
+1. **Short term (current release)**: Your code continues to work unchanged, but you'll see deprecation warnings:
+   ```python
+   from cdisc_transpiler.services import DomainProcessingCoordinator  # ⚠️ Shows deprecation warning
+   
+   coordinator = DomainProcessingCoordinator()
+   # ... your code works as before
+   ```
+
+2. **Long term (before next major version)**: Migrate to the new use case architecture:
+   ```python
+   # NEW: Use the application layer use cases
+   from cdisc_transpiler.application import StudyProcessingUseCase, DomainProcessingUseCase
+   from cdisc_transpiler.application.models import ProcessStudyRequest, ProcessDomainRequest
+   from cdisc_transpiler.infrastructure.container import DependencyContainer
+   
+   # Create dependencies
+   container = DependencyContainer()
+   logger = container.create_logger()
+   
+   # Use study processing use case
+   use_case = StudyProcessingUseCase(logger=logger)
+   request = ProcessStudyRequest(study_folder=Path("path/to/study"))
+   response = use_case.execute(request)
+   ```
+
+### Why Were They Deprecated?
+
+These services mixed multiple concerns and had tight coupling, making them difficult to test and maintain. The new use case architecture provides:
+
+- ✅ Clear separation of concerns
+- ✅ Dependency injection for testability
+- ✅ Better error handling and reporting
+- ✅ Cleaner API with explicit request/response DTOs
+- ✅ Easier to extend and modify
+
+### Migration Timeline
+
+- **Current Release (v0.0.1)**: Services moved to `legacy/`, deprecation warnings added
+- **Next Release (v1.0.0)**: Legacy services will be permanently removed
+
+### Suppressing Deprecation Warnings (Not Recommended)
+
+If you need to suppress warnings temporarily during migration:
+
+```python
+import warnings
+warnings.filterwarnings('ignore', category=DeprecationWarning)
+
+from cdisc_transpiler.services import DomainProcessingCoordinator
+# No warnings shown (but still deprecated!)
+```
+
+**Note**: We recommend fixing the deprecation warnings rather than suppressing them.
+
+---
+
 ## Testing Infrastructure (NEW)
 
 This release adds comprehensive testing infrastructure with **485+ tests**:
