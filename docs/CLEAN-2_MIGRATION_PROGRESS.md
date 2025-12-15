@@ -32,8 +32,8 @@ This file tracks the completion status of each ticket in `CLEAN-2_MIGRATION_TICK
 
 The following tickets should be implemented in order. Pick the first incomplete P0 ticket:
 
-1. **CLEAN2-A1** (P0) - Remove `cli.helpers` from core ⏳
-2. **CLEAN2-A2** (P0) - Remove `cli.logging_config` usage outside CLI ⏳
+1. ~~**CLEAN2-A1** (P0) - Remove `cli.helpers` from core~~ ✅ Complete
+2. ~~**CLEAN2-A2** (P0) - Remove `cli.logging_config` usage outside CLI~~ ✅ Complete
 3. **CLEAN2-A4** (P0) - Refactor `DomainDiscoveryService` ⏳
 4. **CLEAN2-B1** (P0) - Implement `SDTMSpecRepositoryPort` ⏳
 5. **CLEAN2-B2** (P0) - Implement `CTRepositoryPort` ⏳
@@ -49,13 +49,13 @@ After all P0 tickets are complete, proceed to P1 tickets.
 
 | Epic | Total Tickets | Complete | In Progress | Not Started |
 |------|---------------|----------|-------------|-------------|
-| A - Boundary Cleanup | 5 | 0 | 0 | 5 |
+| A - Boundary Cleanup | 5 | 2 | 0 | 3 |
 | B - Repositories & Configuration | 4 | 0 | 0 | 4 |
 | C - Refactor Old Modules | 9 | 0 | 0 | 9 |
 | D - Implement Real Use Cases | 4 | 0 | 0 | 4 |
 | E - Output Adapters | 7 | 0 | 0 | 7 |
 | F - Cleanup | 2 | 0 | 0 | 2 |
-| **Total** | **31** | **0** | **0** | **31** |
+| **Total** | **31** | **2** | **0** | **29** |
 
 ---
 
