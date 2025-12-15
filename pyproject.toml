@@ -49,6 +49,7 @@ reportUnusedFunction = true
 [tool.pytest.ini_options]
 markers = [
     "integration: marks tests as integration tests (use real file system)",
+    "slow: marks tests as slow (process larger datasets)",
 ]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
