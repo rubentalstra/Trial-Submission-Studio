@@ -104,7 +104,7 @@ def sanitize_qnam(name: str) -> str:
         
     Example:
         >>> sanitize_qnam("PatientAge")
-        'PATIENTE'
+        'PATIENTA'
         >>> sanitize_qnam("123Value")
         'Q123VALU'
     """
