@@ -18,7 +18,7 @@ removing the delegation to legacy DomainProcessingCoordinator.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 import pandas as pd
 
@@ -28,6 +28,18 @@ from .ports import FileGeneratorPort, LoggerPort, StudyDataRepositoryPort
 if TYPE_CHECKING:
     from ..domain.entities.sdtm_domain import SDTMDomain
     from ..mapping_module import MappingConfig
+    from ..transformations.base import TransformationContext
+
+
+def _get_transformation_helpers() -> tuple[type, Callable[[str], str], Callable[[str], str]]:
+    """Lazy import of transformation dependencies to avoid circular imports.
+    
+    Returns:
+        Tuple of (TransformationContext class, normalize_testcd function, get_testcd_label function)
+    """
+    from ..transformations.base import TransformationContext
+    from ..terminology_module import normalize_testcd, get_testcd_label
+    return TransformationContext, normalize_testcd, get_testcd_label
 
 
 class DomainProcessingUseCase:
@@ -146,7 +158,8 @@ class DomainProcessingUseCase:
             if not all_dataframes:
                 raise ValueError(f"No data could be processed for {request.domain_code}")
             
-            assert last_config is not None, "Config should be set if we have dataframes"
+            if last_config is None:
+                raise RuntimeError("Config should be set if we have dataframes")
             
             # Merge dataframes if multiple files
             merged_df = self._merge_dataframes(
@@ -324,9 +337,9 @@ class DomainProcessingUseCase:
         if domain_code.upper() != "VS":
             return frame, False
         
-        from ..transformations.base import TransformationContext
         from ..transformations.findings import VSTransformer
-        from ..terminology_module import normalize_testcd, get_testcd_label
+        
+        TransformationContext, normalize_testcd, get_testcd_label = _get_transformation_helpers()
         
         input_rows = len(frame)
         
@@ -371,9 +384,9 @@ class DomainProcessingUseCase:
         if domain_code.upper() != "LB":
             return frame, False
         
-        from ..transformations.base import TransformationContext
         from ..transformations.findings import LBTransformer
-        from ..terminology_module import normalize_testcd, get_testcd_label
+        
+        TransformationContext, normalize_testcd, get_testcd_label = _get_transformation_helpers()
         
         input_rows = len(frame)
         
