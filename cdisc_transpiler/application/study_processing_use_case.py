@@ -24,6 +24,7 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 
 from .models import (
+    DefineDatasetDTO,
     DomainProcessingResult,
     ProcessDomainRequest,
     ProcessStudyRequest,
@@ -39,7 +40,6 @@ from .ports import (
 if TYPE_CHECKING:
     from .domain_processing_use_case import DomainProcessingUseCase
     from ..services import DomainDiscoveryService
-    from ..xml_module.define_module import StudyDataset
 
 
 class StudyProcessingUseCase:
@@ -175,9 +175,9 @@ class StudyProcessingUseCase:
                 generate_sas=request.generate_sas,
             )
 
-            # Create empty list for study datasets (type hint uses TYPE_CHECKING import)
-            # StudyDataset instances are created in _add_to_study_datasets
-            study_datasets: list[StudyDataset] = []
+            # Create empty list for study datasets (application-layer DTOs)
+            # DefineDatasetDTO instances are created in _add_to_study_datasets
+            study_datasets: list[DefineDatasetDTO] = []
             reference_starts: dict[str, str] = {}
             processed_domains = set(domain_files.keys())
 
@@ -275,7 +275,6 @@ class StudyProcessingUseCase:
     def _setup_output_directories(self, request: ProcessStudyRequest) -> None:
         """Set up output directory structure."""
         from ..services import ensure_acrf_pdf
-        from ..xml_module.define_module.constants import ACRF_HREF
 
         request.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -289,7 +288,8 @@ class StudyProcessingUseCase:
             (request.output_dir / "sas").mkdir(parents=True, exist_ok=True)
 
         if request.generate_define_xml:
-            ensure_acrf_pdf(request.output_dir / ACRF_HREF)
+            # ACRF_HREF is a standard Define-XML reference filename
+            ensure_acrf_pdf(request.output_dir / "acrf.pdf")
 
     def _build_column_counts(
         self, domain_files: dict[str, list[tuple[Path, str]]]
@@ -424,13 +424,16 @@ class StudyProcessingUseCase:
     def _add_to_study_datasets(
         self,
         result: DomainProcessingResult,
-        study_datasets: list,  # list[StudyDataset]
+        study_datasets: list[DefineDatasetDTO],
         output_dir: Path,
         output_formats: set[str],
     ) -> None:
-        """Add domain result to study datasets for Define-XML."""
-        from ..xml_module.define_module import StudyDataset
+        """Add domain result to study datasets for Define-XML.
 
+        Creates application-layer DefineDatasetDTO instances from domain
+        processing results. These DTOs are later passed to the
+        DefineXmlGeneratorPort which converts them to infrastructure models.
+        """
         domain = self._get_domain(result.domain_code)
         disk_name = domain.resolved_dataset_name().lower()
 
@@ -444,7 +447,7 @@ class StudyProcessingUseCase:
 
         if result.config and result.domain_dataframe is not None:
             study_datasets.append(
-                StudyDataset(
+                DefineDatasetDTO(
                     domain_code=result.domain_code,
                     dataframe=result.domain_dataframe,
                     config=result.config,
@@ -456,7 +459,7 @@ class StudyProcessingUseCase:
             for split_name, split_df, split_path in result.split_datasets:
                 split_href = split_path.relative_to(output_dir)
                 study_datasets.append(
-                    StudyDataset(
+                    DefineDatasetDTO(
                         domain_code=split_name,
                         dataframe=split_df,
                         config=result.config,
@@ -479,7 +482,7 @@ class StudyProcessingUseCase:
                         else Path(f"{supp.domain_code.lower()}.xpt")
                     )
                     study_datasets.append(
-                        StudyDataset(
+                        DefineDatasetDTO(
                             domain_code=supp.domain_code,
                             dataframe=supp.domain_dataframe,
                             config=supp.config,
@@ -493,7 +496,7 @@ class StudyProcessingUseCase:
         processed_domains: set[str],
         request: ProcessStudyRequest,
         reference_starts: dict[str, str],
-        study_datasets: list[StudyDataset],
+        study_datasets: list[DefineDatasetDTO],
         xpt_dir: Path | None,
         xml_dir: Path | None,
         sas_dir: Path | None,
@@ -547,7 +550,7 @@ class StudyProcessingUseCase:
         response: ProcessStudyResponse,
         request: ProcessStudyRequest,
         reference_starts: dict[str, str],
-        study_datasets: list,  # list[StudyDataset]
+        study_datasets: list[DefineDatasetDTO],
         xpt_dir: Path | None,
         xml_dir: Path | None,
         sas_dir: Path | None,
@@ -616,7 +619,7 @@ class StudyProcessingUseCase:
         response: ProcessStudyResponse,
         request: ProcessStudyRequest,
         reference_starts: dict[str, str],
-        study_datasets: list,  # list[StudyDataset]
+        study_datasets: list[DefineDatasetDTO],
         xpt_dir: Path | None,
         xml_dir: Path | None,
         sas_dir: Path | None,
@@ -682,7 +685,7 @@ class StudyProcessingUseCase:
         self,
         response: ProcessStudyResponse,
         request: ProcessStudyRequest,
-        study_datasets: list,  # list[StudyDataset]
+        study_datasets: list[DefineDatasetDTO],
         xpt_dir: Path | None,
         xml_dir: Path | None,
         sas_dir: Path | None,
@@ -782,29 +785,27 @@ class StudyProcessingUseCase:
 
     def _generate_define_xml(
         self,
-        study_datasets: list,  # list[StudyDataset]
+        study_datasets: list[DefineDatasetDTO],
         response: ProcessStudyResponse,
         request: ProcessStudyRequest,
     ) -> None:
-        """Generate Define-XML file using the injected generator."""
+        """Generate Define-XML file using the injected generator.
+
+        The generator accepts application-layer DefineDatasetDTO instances
+        and converts them to infrastructure-specific models internally.
+        """
         if self._define_xml_generator is None:
             response.define_xml_error = "Define-XML generator not available"
             self.logger.error("Define-XML generator not injected")
             response.errors.append(("Define-XML", "Generator not available"))
             return
 
-        from ..xml_module.define_module.constants import (
-            CONTEXT_SUBMISSION,
-            CONTEXT_OTHER,
-        )
-
         define_path = request.output_dir / "define.xml"
 
         try:
+            # Context values per Define-XML 2.1 spec
             context = (
-                CONTEXT_SUBMISSION
-                if request.define_context == "Submission"
-                else CONTEXT_OTHER
+                "Submission" if request.define_context == "Submission" else "Other"
             )
             self._define_xml_generator.generate(
                 study_datasets,

@@ -12,9 +12,8 @@ from typing import TYPE_CHECKING, Iterable, Protocol, runtime_checkable
 import pandas as pd
 
 if TYPE_CHECKING:
-    from ..models import OutputRequest, OutputResult
+    from ..models import DefineDatasetDTO, OutputRequest, OutputResult
     from ...mapping_module import MappingConfig
-    from ...xml_module.define_module import StudyDataset
 
 
 @runtime_checkable
@@ -241,6 +240,9 @@ class DefineXmlGeneratorPort(Protocol):
     This interface abstracts Define-XML 2.1 generation, allowing different
     implementations without coupling the application to specific generation logic.
 
+    The port accepts application-layer DTOs (DefineDatasetDTO) which the
+    infrastructure adapter converts to infrastructure-specific models.
+
     Example:
         >>> generator = DefineXmlGenerator()
         >>> generator.generate(datasets, Path("define.xml"), sdtm_version="3.4", context="Submission")
@@ -248,7 +250,7 @@ class DefineXmlGeneratorPort(Protocol):
 
     def generate(
         self,
-        datasets: Iterable[StudyDataset],
+        datasets: Iterable[DefineDatasetDTO],
         output_path: Path,
         *,
         sdtm_version: str,
@@ -257,7 +259,7 @@ class DefineXmlGeneratorPort(Protocol):
         """Generate a Define-XML 2.1 file for the given study datasets.
 
         Args:
-            datasets: Iterable of StudyDataset objects containing domain metadata
+            datasets: Iterable of DefineDatasetDTO objects containing domain metadata
             output_path: Path where Define-XML file should be written
             sdtm_version: SDTM-IG version (e.g., "3.4")
             context: Define-XML context - 'Submission' or 'Other'
@@ -266,7 +268,7 @@ class DefineXmlGeneratorPort(Protocol):
             Exception: If generation or writing fails
 
         Example:
-            >>> datasets = [StudyDataset(...), StudyDataset(...)]
+            >>> datasets = [DefineDatasetDTO(...), DefineDatasetDTO(...)]
             >>> generator.generate(datasets, Path("define.xml"), sdtm_version="3.4", context="Submission")
         """
         ...

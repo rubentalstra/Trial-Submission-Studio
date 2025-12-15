@@ -131,8 +131,9 @@ These are not “bad” per se, but should be reduced/removed once internal call
 3) **Use cases importing infrastructure DTOs**
 - `cdisc_transpiler/application/domain_processing_use_case.py` and `cdisc_transpiler/application/study_processing_use_case.py` import `OutputRequest`/`OutputDirs` from `cdisc_transpiler.infrastructure.io.models` → application depends on infrastructure.
 
-4) **Use cases importing concrete XML models**
-- `cdisc_transpiler/application/study_processing_use_case.py` imports `StudyDataset` from `cdisc_transpiler/xml_module.define_module` to drive Define-XML generation → application is coupled to a concrete Define-XML representation.
+4) ~~**Use cases importing concrete XML models**~~ ✅ RESOLVED
+- ~~`cdisc_transpiler/application/study_processing_use_case.py` imports `StudyDataset` from `cdisc_transpiler/xml_module.define_module` to drive Define-XML generation → application is coupled to a concrete Define-XML representation.~~
+- **Resolution:** Created `DefineDatasetDTO` in application layer. The adapter converts DTOs to infrastructure `StudyDataset`.
 
 5) **“Service” package is layer-ambiguous**
 - `cdisc_transpiler/services/*` contains a mix of:
@@ -288,9 +289,16 @@ Each step is intended to be PR-sized and reversible.
   - `pytest -m validation`
   - `pytest -m benchmark --benchmark-only`
 
-### Step 3 — Define-XML boundary cleanup (Risk: Medium)
+### Step 3 — Define-XML boundary cleanup (Risk: Medium) ✅ DONE
 - **Goal:** Application produces a Define-XML-neutral DTO; infrastructure adapter turns it into `StudyDataset` / XML.
 - **Affects:** `cdisc_transpiler/application/study_processing_use_case.py`, `cdisc_transpiler/infrastructure/io/define_xml_generator.py`
+- **Status:** Completed
+- **Changes made:**
+  - Created `DefineDatasetDTO` in `cdisc_transpiler/application/models.py` as application-layer DTO
+  - Updated `DefineXmlGeneratorPort` in `cdisc_transpiler/application/ports/services.py` to accept `DefineDatasetDTO`
+  - Updated `StudyProcessingUseCase` to use `DefineDatasetDTO` instead of infrastructure `StudyDataset`
+  - Updated `DefineXmlGenerator` adapter in infrastructure to convert from `DefineDatasetDTO` to `StudyDataset`
+  - Removed imports of `xml_module.define_module.StudyDataset` and constants from application layer
 - **Verify:** `pytest -m validation`
 
 ### Step 4 — Remove duplication: trial design synthesis (Risk: Medium)

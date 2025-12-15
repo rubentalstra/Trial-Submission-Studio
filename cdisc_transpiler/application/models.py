@@ -120,6 +120,51 @@ class OutputResult:
 
 
 # ============================================================================
+# Define-XML DTOs
+# ============================================================================
+
+
+@dataclass
+class DefineDatasetDTO:
+    """Application-layer DTO for Define-XML dataset metadata.
+
+    This DTO represents dataset metadata needed for Define-XML generation,
+    providing a clean boundary between the application layer and the
+    infrastructure layer that generates the actual Define-XML files.
+
+    The infrastructure adapter converts these DTOs into infrastructure-specific
+    models (e.g., StudyDataset in the xml_module).
+
+    Attributes:
+        domain_code: SDTM domain code (e.g., "DM", "AE", "LB")
+        dataframe: The dataset DataFrame
+        config: Mapping configuration with column metadata
+        label: Dataset label (optional)
+        structure: Dataset structure description
+        is_split: Whether this is a split dataset (e.g., LBHM, LBUR)
+        split_suffix: Suffix for split datasets (e.g., "HM" for LBHM)
+        archive_location: Relative path to the dataset file in the archive
+
+    Example:
+        >>> dto = DefineDatasetDTO(
+        ...     domain_code="DM",
+        ...     dataframe=dm_df,
+        ...     config=dm_config,
+        ...     archive_location=Path("xpt/dm.xpt"),
+        ... )
+    """
+
+    domain_code: str
+    dataframe: pd.DataFrame
+    config: "MappingConfig"
+    label: str | None = None
+    structure: str = "One record per subject per domain-specific entity"
+    is_split: bool = False
+    split_suffix: str | None = None
+    archive_location: Path | None = None
+
+
+# ============================================================================
 # Study and Domain Processing DTOs
 # ============================================================================
 
