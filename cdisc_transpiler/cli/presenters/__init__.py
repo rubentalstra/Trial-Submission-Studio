@@ -5,6 +5,7 @@ to the user via the CLI. Presenters are responsible for formatting data
 structures into human-readable output.
 """
 
+from .progress import ProgressPresenter
 from .summary import SummaryPresenter
 
-__all__ = ["SummaryPresenter"]
+__all__ = ["ProgressPresenter", "SummaryPresenter"]
