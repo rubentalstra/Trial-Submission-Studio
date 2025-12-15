@@ -2,63 +2,131 @@
 
 These tests verify the domain processing orchestration logic using mocked
 dependencies, ensuring testability without filesystem access.
+
+CLEAN2-D1: These tests are now enabled since the circular import issue
+has been resolved by implementing the real DomainProcessingUseCase.
 """
 
+import inspect
 import pytest
 from pathlib import Path
+from unittest.mock import Mock, patch
 import pandas as pd
 
 from cdisc_transpiler.application.models import (
     ProcessDomainRequest,
     ProcessDomainResponse,
 )
-
-
-# Note: Due to circular import issues in the current codebase (services -> cli -> services),
-# we cannot import DomainProcessingUseCase at the module level.
-# These tests focus on DTOs which can be imported without issues.
+from cdisc_transpiler.application.domain_processing_use_case import DomainProcessingUseCase
+from cdisc_transpiler.infrastructure.logging import NullLogger
 
 
 class TestDomainProcessingUseCase:
     """Tests for DomainProcessingUseCase."""
     
-    @pytest.mark.skip(reason="Circular import issue: services -> cli -> services")
-    def test_execute_happy_path(self):
-        """Test successful domain processing."""
-        # This would test the main success path
-        # from cdisc_transpiler.application.domain_processing_use_case import DomainProcessingUseCase
-        pass
+    def _create_mock_domain(self, domain_code: str = "DM"):
+        """Create a mock SDTMDomain."""
+        mock_domain = Mock()
+        mock_domain.code = domain_code
+        mock_domain.description = f"{domain_code} Domain"
+        mock_domain.resolved_dataset_name.return_value = domain_code.lower()
+        mock_domain.variables = []
+        mock_domain.variable_names.return_value = []
+        return mock_domain
     
-    @pytest.mark.skip(reason="Circular import issue: services -> cli -> services")
-    def test_execute_with_transformations(self):
-        """Test domain processing with VS/LB transformations."""
-        # This would test transformation pipeline
-        pass
+    def _create_use_case(self):
+        """Create use case with mocked dependencies."""
+        logger = NullLogger()
+        mock_repo = Mock()
+        mock_generator = Mock()
+        return DomainProcessingUseCase(
+            logger=logger,
+            study_data_repo=mock_repo,
+            file_generator=mock_generator,
+        )
     
-    @pytest.mark.skip(reason="Circular import issue: services -> cli -> services")
-    def test_execute_with_suppqual(self):
-        """Test domain processing with SUPPQUAL generation."""
-        # This would test supplemental qualifier generation
-        pass
+    def test_execute_returns_failed_response_on_no_data(self):
+        """Test that processing returns failed response when no data can be processed."""
+        use_case = self._create_use_case()
+        
+        request = ProcessDomainRequest(
+            files_for_domain=[],  # No files provided
+            domain_code="DM",
+            study_id="TEST001",
+        )
+        
+        response = use_case.execute(request)
+        
+        assert response.success is False
+        assert response.domain_code == "DM"
+        assert "No data could be processed" in response.error
     
-    @pytest.mark.skip(reason="Circular import issue: services -> cli -> services")
-    def test_execute_with_multiple_files(self):
-        """Test domain processing with multiple variant files."""
-        # This would test multi-file merge
-        pass
-    
-    @pytest.mark.skip(reason="Circular import issue: services -> cli -> services")
-    def test_execute_with_error(self):
+    def test_execute_error_handling(self):
         """Test domain processing error handling."""
-        # This would test error handling
-        pass
+        use_case = self._create_use_case()
+        
+        # Make _get_domain raise an exception
+        with patch.object(use_case, '_get_domain', side_effect=ValueError("Domain not found")):
+            request = ProcessDomainRequest(
+                files_for_domain=[(Path("/data/DM.csv"), "DM")],
+                domain_code="INVALID",
+                study_id="TEST001",
+            )
+            
+            response = use_case.execute(request)
+        
+        assert response.success is False
+        assert "Domain not found" in response.error
     
     def test_use_case_can_be_imported_at_runtime(self):
         """Test that use case can be imported dynamically."""
-        # This test verifies the use case module exists and can be imported
         from cdisc_transpiler.application.domain_processing_use_case import DomainProcessingUseCase
         assert DomainProcessingUseCase is not None
         assert hasattr(DomainProcessingUseCase, 'execute')
+    
+    def test_use_case_no_longer_imports_legacy(self):
+        """Test that the use case no longer imports from legacy module.
+        
+        This validates CLEAN2-D1 acceptance criteria: no legacy imports.
+        """
+        from cdisc_transpiler.application import domain_processing_use_case as module
+        
+        source = inspect.getsource(module)
+        
+        # Check that there are no imports from legacy (excluding comments/docstrings)
+        assert "from ..legacy" not in source
+        assert "from cdisc_transpiler.legacy" not in source
+        # Check that there's no actual usage (import statement)
+        assert "import DomainProcessingCoordinator" not in source
+        assert "from ..services import DomainProcessingCoordinator" not in source
+    
+    def test_use_case_accepts_injected_dependencies(self):
+        """Test that use case accepts injected dependencies."""
+        logger = NullLogger()
+        mock_repo = Mock()
+        mock_generator = Mock()
+        
+        use_case = DomainProcessingUseCase(
+            logger=logger,
+            study_data_repo=mock_repo,
+            file_generator=mock_generator,
+        )
+        
+        assert use_case.logger is logger
+        assert use_case._study_data_repo is mock_repo
+        assert use_case._file_generator is mock_generator
+    
+    def test_container_creates_use_case_with_dependencies(self):
+        """Test that DependencyContainer properly wires dependencies."""
+        from cdisc_transpiler.infrastructure.container import DependencyContainer
+        
+        container = DependencyContainer(use_null_logger=True)
+        use_case = container.create_domain_processing_use_case()
+        
+        assert use_case is not None
+        assert use_case.logger is not None
+        assert use_case._study_data_repo is not None
+        assert use_case._file_generator is not None
 
 
 class TestProcessDomainRequest:
