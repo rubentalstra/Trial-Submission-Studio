@@ -60,10 +60,11 @@ Epic A, B, C are complete. CLEAN2-D1, D2, and D3 are complete. The following tic
 23. ~~**CLEAN2-E1** (P1) - Convert FileGenerator to port adapter~~ ✅ Complete
 24. ~~**CLEAN2-E2** (P1) - Define-XML generation as infrastructure adapter~~ ✅ Complete
 25. ~~**CLEAN2-E3** (P2) - Convert output modules to wrappers~~ ✅ Complete (Partial - main goals achieved)
-26. **CLEAN2-E4-E7** (P2/P3) - Output adapters ⏳
-27. **CLEAN2-F1-F2** (P1/P2) - Cleanup ⏳
+26. ~~**CLEAN2-E4** (P2) - Retire FileGenerationService~~ ✅ Complete
+27. **CLEAN2-E5-E7** (P3) - Output adapters (optional) ⏳
+28. **CLEAN2-F1-F2** (P1/P2) - Cleanup ⏳
 
-All P0 and P1 tickets in Epic D and Epic E are complete! CLEAN2-E3 (P2) is substantially complete with internal code using adapters.
+All P0, P1, and P2 tickets in Epic E are complete! Remaining Epic E tickets (E5-E7) are P3 (optional).
 
 ---
 
@@ -75,9 +76,9 @@ All P0 and P1 tickets in Epic D and Epic E are complete! CLEAN2-E3 (P2) is subst
 | B - Repositories & Configuration | 4 | 4 | 0 | 0 |
 | C - Refactor Old Modules | 9 | 9 | 0 | 0 |
 | D - Implement Real Use Cases | 4 | 4 | 0 | 0 |
-| E - Output Adapters | 7 | 3 | 0 | 4 |
+| E - Output Adapters | 7 | 4 | 0 | 3 |
 | F - Cleanup | 2 | 0 | 0 | 2 |
-| **Total** | **31** | **25** | **0** | **6** |
+| **Total** | **31** | **26** | **0** | **5** |
 
 ---
 
@@ -340,10 +341,19 @@ All P0 and P1 tickets in Epic D and Epic E are complete! CLEAN2-E3 (P2) is subst
 
 ### CLEAN2-E4 — Retire `FileGenerationService`
 - **Priority:** P2
-- **Status:** ⏳ Not Started
-- **Completion Date:** -
-- **PR:** -
-- **Blocked By:** CLEAN2-E1
+- **Status:** ✅ Complete
+- **Completion Date:** 2025-12-15
+- **PR:** Current PR
+- **Notes:** Removed legacy FileGenerationService:
+  - Deleted `services/file_generation_service.py` (228 lines)
+  - Removed FileGenerationService and FileGenerationResult exports from `services/__init__.py`
+  - No external usage found in codebase or tests
+  - All code now uses FileGeneratorPort through dependency injection
+  - Single, consistent file generation path eliminates drift risk
+- **Verification:**
+  - No FileGenerationService imports or usage in codebase ✅
+  - FileGeneratorPort is the only file generation mechanism ✅
+  - All tests pass (11 FileGenerator tests) ✅
 
 ### CLEAN2-E5 — Move Dataset-XML/Define-XML to infrastructure
 - **Priority:** P3
@@ -483,3 +493,4 @@ From `CLEAN-2_MIGRATION_TICKETS.md`:
 | 2025-12-15 | CLEAN2-E1 | Complete | Current PR | Converted FileGenerator to port adapter with injected writers (XPTWriter, DatasetXMLWriter, SASWriter) |
 | 2025-12-15 | CLEAN2-E2 | Complete | Current PR | Implemented DefineXmlGenerator adapter, removed write_study_define_file import from application layer |
 | 2025-12-15 | CLEAN2-E3 | Complete (Partial) | Current PR | Refactored DomainProcessingUseCase to use FileGeneratorPort, removed most direct imports from application layer |
+| 2025-12-15 | CLEAN2-E4 | Complete | Current PR | Retired FileGenerationService, established FileGeneratorPort as single file generation path (deleted 228 lines) |
