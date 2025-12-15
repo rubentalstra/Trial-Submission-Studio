@@ -25,7 +25,7 @@ Deprecated Services (moved to legacy package):
     - DomainSynthesisCoordinator → use application.study_processing_use_case.StudyProcessingUseCase
     
     These are re-exported from the legacy package for backward compatibility.
-    See MIGRATION.md for migration guidance.
+    See docs/ARCHITECTURE.md for migration guidance.
 """
 
 from .trial_design_service import TrialDesignService

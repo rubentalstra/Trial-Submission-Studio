@@ -1,6 +1,6 @@
 # CDISC Transpiler
 
-[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://img.shields.io/badge/tests-485%20passing-brightgreen.svg)](tests/)
 [![Coverage](https://img.shields.io/badge/coverage-76%25-green.svg)](tests/)
@@ -20,23 +20,28 @@ A modern Python tool for transpiling clinical trial data to CDISC SDTM format wi
 
 ## 🏗️ Architecture
 
-This project follows **Ports & Adapters (Hexagonal Architecture)** for clean separation of concerns:
+This project follows **Ports & Adapters (Hexagonal Architecture)** for clean separation of concerns.
+
+For the current boundaries, known violations, and the migration plan, see `docs/ARCHITECTURE.md`.
 
 ```
 cdisc_transpiler/
-├── cli/                    # CLI Layer (Adapters)
-│   ├── commands/          # Thin CLI commands (argument parsing only)
-│   └── presenters/        # Output formatting (SummaryPresenter, ProgressPresenter)
-├── application/           # Application Layer (Use Cases)
-│   ├── use_cases/        # Business workflows (StudyProcessingUseCase)
-│   └── ports/            # Interfaces/abstractions
-├── domain/               # Domain Layer (Business Logic)
-│   ├── entities/         # Domain models (Study, Domain, Variable)
-│   └── services/         # Domain services (DomainProcessor, Synthesizer)
-└── infrastructure/       # Infrastructure Layer (I/O, External Systems)
-    ├── repositories/     # Data access
-    ├── file_generators/  # XPT, XML, SAS generation
-    └── transformers/     # Data transformation pipeline
+├── cli/                      # Driver adapter (Click)
+│   ├── commands/             # Thin CLI commands (args → request DTO → use case)
+│   └── presenters/           # Output formatting (Rich)
+├── application/              # Use cases + ports + DTOs
+│   ├── ports/                # Protocols (interfaces)
+│   ├── models.py             # Request/response DTOs
+│   ├── study_processing_use_case.py
+│   └── domain_processing_use_case.py
+├── domain/                   # Entities + domain services (pure, no I/O)
+│   ├── entities/
+│   └── services/
+└── infrastructure/           # Adapters + DI wiring
+    ├── container.py          # Composition root
+    ├── io/                   # Writers/generators (XPT/XML/Define-XML/SAS)
+    ├── repositories/         # CSV/Excel/SAS + metadata/CT/spec access
+    └── logging/
 ```
 
 **Benefits:**
@@ -49,7 +54,7 @@ cdisc_transpiler/
 
 ### Prerequisites
 
-- Python 3.10 or higher
+- Python 3.12 or higher
 - pip package manager
 
 ### Standard Installation
@@ -266,34 +271,26 @@ cdisc-transpiler/
 │   │   │   ├── summary.py     # SummaryPresenter (table formatting)
 │   │   │   └── progress.py    # ProgressPresenter (progress tracking)
 │   │   └── helpers.py         # CLI utilities
-│   ├── application/           # Application layer (Use Cases)
-│   │   ├── use_cases/        # Business workflows
-│   │   │   ├── study_processing_use_case.py
-│   │   │   └── domain_processing_use_case.py
-│   │   ├── ports/            # Interfaces
-│   │   └── models/           # DTOs (ProcessStudyRequest/Response)
-│   ├── domain/               # Domain layer (Business Logic)
-│   │   ├── entities/         # Domain models
-│   │   │   ├── study.py
-│   │   │   ├── domain.py
-│   │   │   └── variable.py
-│   │   └── services/         # Domain services
-│   │       ├── domain_processor.py
-│   │       ├── synthesizer.py
-│   │       └── discovery_service.py
-│   ├── infrastructure/       # Infrastructure layer (I/O)
-│   │   ├── dependency_container.py  # DI container
-│   │   ├── csv_reader.py
-│   │   ├── file_generators/  # Output generation
-│   │   │   ├── xpt_generator.py
-│   │   │   ├── xml_generator.py
-│   │   │   ├── define_xml_generator.py
-│   │   │   └── sas_generator.py
-│   │   └── transformers/     # Data transformation pipeline
-│   │       ├── base_transformer.py
-│   │       ├── date_formatter.py
-│   │       └── codelist_mapper.py
-│   └── metadata_module/      # CDISC metadata and standards
+│   ├── application/           # Application layer (Use Cases + Ports)
+│   │   ├── ports/             # Interfaces (Protocols)
+│   │   ├── models.py          # DTOs (ProcessStudyRequest/Response, etc.)
+│   │   ├── study_processing_use_case.py
+│   │   └── domain_processing_use_case.py
+│   ├── domain/                # Domain layer (Business Logic)
+│   │   ├── entities/
+│   │   └── services/
+│   ├── infrastructure/        # Infrastructure layer (Adapters + DI wiring)
+│   │   ├── container.py       # DI container / composition root
+│   │   ├── io/                # XPT/XML/Define-XML/SAS generators/writers
+│   │   ├── logging/
+│   │   └── repositories/      # CSV/Excel/SAS + metadata/CT/spec access
+│   ├── domains_module/        # SDTM domain metadata registry (compat layer)
+│   ├── terminology_module/    # Controlled terminology helpers (mid-migration)
+│   ├── transformations/       # Transformation pipeline (VS/LB wide-to-long)
+│   ├── mapping_module/        # Mapping engine (fuzzy + metadata-aware)
+│   ├── metadata_module/       # Metadata loading (compat layer)
+│   ├── legacy/                # Deprecated legacy coordinators (compat)
+│   └── services/              # Layer-ambiguous services (mid-migration)
 ├── tests/                    # Test suites
 ├── mockdata/                 # Test data (DEMO studies)
 ├── pyproject.toml           # Project configuration
