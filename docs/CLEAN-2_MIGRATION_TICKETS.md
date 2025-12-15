@@ -979,6 +979,10 @@ internal file generation mechanism.
 ### CLEAN2-E5 — Move Dataset-XML + Define-XML implementation into infrastructure
 
 **Priority:** P1\
+**Status:** ⏳ Not Started (blocker resolved) — the prior circular import between
+`cdisc_transpiler.domains_module` and `cdisc_transpiler.domain.entities.mapping`
+has been addressed via lazy domain lookup in `MappingConfig`. Ticket is ready to
+proceed with implementation in a follow-up PR.
 **Problem:** Even after adding adapters, the real implementation still lives in
 `xml_module/*`, which is the “old layout”.
 
@@ -1010,6 +1014,8 @@ and keep `xml_module` as a thin compatibility surface.
 ### CLEAN2-E6 — Move XPT implementation into infrastructure
 
 **Priority:** P1\
+**Status:** ⏳ Not Started — dependency on CLEAN2-E5 circular import has been
+resolved; work remains to move the implementation.
 **Problem:** XPT writing and validation still live in `xpt_module/*` even after
 adding adapters.
 
@@ -1041,6 +1047,8 @@ and keep `xpt_module` as a wrapper.
 ### CLEAN2-E7 — Move SAS implementation into infrastructure
 
 **Priority:** P1\
+**Status:** ⏳ Not Started — dependency on CLEAN2-E5 circular import has been
+resolved; work remains to move the implementation.
 **Problem:** SAS program generation still lives in `sas_module/*`.
 
 **Goal:** Move SAS generation/writing to
