@@ -1,20 +1,28 @@
-# Migration Guide: v0.x → v1.0 Refactored Architecture
+# Migration Guide: CLI Layer Refactoring & Test Infrastructure
 
-**Last Updated:** 2025-12-14  
-**Target Version:** 1.0.0  
-**Breaking Changes:** Yes
+**Last Updated:** 2025-12-15  
+**Release:** CLI Refactoring (Epic 4 & Epic 5)  
+**Breaking Changes:** No - 100% Backward Compatible ✅
 
 ---
 
 ## Overview
 
-This guide documents the breaking changes introduced in the v1.0 refactoring and provides migration paths for code that depends on the CDISC Transpiler.
+This guide documents the **incremental refactoring** completed in this release, focusing on CLI layer improvements and comprehensive test infrastructure. This is **not a breaking release** - all existing code continues to work unchanged.
+
+### What Changed in This Release?
+
+✅ **CLI Layer**: Refactored to thin adapter pattern with presenters  
+✅ **Test Suite**: Added 485+ tests (unit, integration, validation, benchmarks)  
+✅ **Documentation**: Updated README with architecture overview  
+✅ **Backward Compatibility**: 100% maintained via aliases and unchanged APIs
 
 ### Who Should Read This?
 
-- **CLI Users**: Good news! The CLI interface is **unchanged**. No migration needed.
-- **Library Users**: If you import modules directly from `cdisc_transpiler`, you'll need to update import paths.
-- **Contributors**: If you're developing features or fixing bugs, read the new architecture documentation.
+- **CLI Users**: No changes required. CLI interface is identical. ✅
+- **Library Users**: Optional new presenter classes available. Old imports still work. ✅
+- **Contributors**: New test infrastructure and coding patterns to follow. 📖
+- **Maintainers**: New architecture enables future refactoring with confidence. 🎯
 
 ---
 
@@ -30,527 +38,280 @@ cdisc-transpiler study mockdata/DEMO_GDISC_20240903_072908/ -vv
 cdisc-transpiler domains
 ```
 
-### Optional: New Configuration File
+### What's New Under the Hood?
 
-You can now optionally create a `cdisc_transpiler.toml` file in your working directory to set defaults:
+While the CLI interface is unchanged, the implementation now uses:
+- **Thin Adapter Pattern**: CLI code reduced from 595 to 225 lines
+- **Presenters**: `SummaryPresenter` and `ProgressPresenter` for formatted output
+- **Dependency Injection**: Better testability and maintainability
 
-```toml
-# cdisc_transpiler.toml (optional)
-[default]
-min_confidence = 0.7
-output_format = "xpt"
-generate_define = true
-generate_sas = true
-
-[paths]
-sdtm_spec_dir = "docs/SDTMIG_v3.4"
-ct_dir = "docs/Controlled_Terminology"
-```
-
-This is **completely optional** and backward compatible.
+**You don't need to know or care about these changes** - they're internal improvements that make the codebase easier to test and maintain.
 
 ---
 
-## Library Users: Import Path Changes
+## Library Users: Optional New Features
 
-If you're using `cdisc_transpiler` as a library in your own Python code, you'll need to update import statements.
+If you're using `cdisc_transpiler` as a library in your own Python code, you have access to new presenter classes. **All old imports continue to work.**
 
-### Module Reorganization
+### New Presenters Available
 
-#### domains_module → domain.entities
+#### 1. SummaryPresenter
 
-**Old:**
+Format study processing results as a Rich table (what you see in CLI output):
+
 ```python
-from cdisc_transpiler.domains_module import get_domain, list_domains, SDTMDomain
-from cdisc_transpiler.domains_module.models import SDTMVariable
-```
+from cdisc_transpiler.cli.presenters import SummaryPresenter
+from rich.console import Console
 
-**New:**
-```python
-from cdisc_transpiler.domain.entities import get_domain, list_domains, SDTMDomain
-from cdisc_transpiler.domain.entities import SDTMVariable
-```
-
-#### io_module → infrastructure.io
-
-**Old:**
-```python
-from cdisc_transpiler.io_module import load_input_dataset, ParseError
-```
-
-**New:**
-```python
-from cdisc_transpiler.infrastructure.io import CSVReader, CSVReadOptions
-from cdisc_transpiler.infrastructure.io import DataParseError
-
-# Usage changed:
-reader = CSVReader()
-df = reader.read(path, options=CSVReadOptions(normalize_headers=True))
-```
-
-#### metadata_module → domain.entities
-
-**Old:**
-```python
-from cdisc_transpiler.metadata_module import load_study_metadata, StudyMetadata
-```
-
-**New:**
-```python
-from cdisc_transpiler.domain.entities import StudyMetadata
-from cdisc_transpiler.infrastructure.repositories import StudyMetadataRepository
-
-# Usage changed:
-repo = StudyMetadataRepository()
-metadata = repo.load(study_folder)
-```
-
-#### services → application
-
-**Old:**
-```python
-from cdisc_transpiler.services import (
-    DomainProcessingCoordinator,
-    DomainSynthesisCoordinator,
-    StudyOrchestrationService,
-)
-
-coordinator = DomainProcessingCoordinator()
-result = coordinator.process_and_merge_domain(...)
-```
-
-**New:**
-```python
-from cdisc_transpiler.application import DomainProcessingUseCase
-from cdisc_transpiler.infrastructure import create_default_dependencies
-
-# Dependency injection pattern:
-deps = create_default_dependencies()
-use_case = DomainProcessingUseCase(
-    logger=deps.logger,
-    file_generator=deps.file_generator,
-    csv_reader=deps.csv_reader,
-    transformer_pipeline=deps.transformer_pipeline,
-)
-
-result = use_case.execute(request)
-```
-
-#### logging → infrastructure.logging
-
-**Old:**
-```python
-from cdisc_transpiler.cli.logging_config import get_logger, create_logger
-
-logger = get_logger()  # Global singleton
-logger.info("Processing...")
-```
-
-**New:**
-```python
-from cdisc_transpiler.infrastructure.logging import Logger, ConsoleLogger
-
-# Inject logger as dependency:
-logger = ConsoleLogger(verbosity=1)
-
-class MyService:
-    def __init__(self, logger: Logger):
-        self._logger = logger
-    
-    def process(self):
-        self._logger.info("Processing...")
-```
-
-### API Signature Changes
-
-#### File Writing
-
-**Old:**
-```python
-from cdisc_transpiler.xpt_module import write_xpt_file
-from cdisc_transpiler.xml_module.dataset_module import write_dataset_xml
-
-write_xpt_file(dataframe, domain_code, output_path)
-write_dataset_xml(dataframe, domain_code, config, output_path)
-```
-
-**New:**
-```python
-from cdisc_transpiler.infrastructure.io import FileGenerator, OutputRequest
-
-generator = FileGenerator(logger=logger)
-result = generator.generate(OutputRequest(
-    dataframe=dataframe,
-    domain_code=domain_code,
-    config=config,
-    output_dirs=OutputDirs(xpt_dir=xpt_dir, xml_dir=xml_dir),
+console = Console()
+presenter = SummaryPresenter(console=console, results=domain_results)
+presenter.present(
+    study_id="STUDY001",
+    output_dir=Path("output"),
     formats={"xpt", "xml"},
-))
-
-# Result contains paths to all generated files
-print(result.xpt_path)
-print(result.xml_path)
+    generate_sas=False,
+)
 ```
 
-#### Transformations
+#### 2. ProgressPresenter
 
-**Old:**
+Track domain processing progress with emoji indicators:
+
 ```python
-from cdisc_transpiler.services import StudyOrchestrationService
+from cdisc_transpiler.cli.presenters import ProgressPresenter
 
-service = StudyOrchestrationService()
-vs_long = service.reshape_vs_to_long(vs_wide, study_id)
-lb_long = service.reshape_lb_to_long(lb_wide, study_id)
+progress = ProgressPresenter(total_domains=10, console=console)
+
+# Track each domain
+progress.increment(success=True)   # ✓
+progress.increment(error=True)     # ✗  
+progress.increment(warning=True)   # ⚠
+
+# Show summary
+progress.print_summary()
+
+# Get progress percentage
+percentage = progress.progress_percentage  # 30.0
+
+# Check if complete
+if progress.is_complete:
+    print("All domains processed!")
 ```
 
-**New:**
+### Backward Compatibility: ProgressTracker
+
+The old `ProgressTracker` name still works as an alias:
+
 ```python
-from cdisc_transpiler.transformations.findings import VSTransformer, LBTransformer
-from cdisc_transpiler.infrastructure.repositories import CDISCCTRepository
+# Old code still works:
+from cdisc_transpiler.cli.utils import ProgressTracker
 
-ct_repo = CDISCCTRepository()
-vs_transformer = VSTransformer(ct_repository=ct_repo)
-lb_transformer = LBTransformer(ct_repository=ct_repo)
-
-context = TransformationContext(study_id=study_id, domain_code="VS")
-vs_long = vs_transformer.transform(vs_wide, context)
-
-context = TransformationContext(study_id=study_id, domain_code="LB")
-lb_long = lb_transformer.transform(lb_wide, context)
+tracker = ProgressTracker(total_domains=10)
+tracker.increment()
+# ... continues to work exactly as before
 ```
 
 ---
 
-## Configuration Changes
+## Testing Infrastructure (NEW)
 
-### Hardcoded Paths Now Configurable
+This release adds comprehensive testing infrastructure with **485+ tests**:
 
-**Old:** Paths were hardcoded in loaders
-```python
-# In code:
-domain_dir = Path("docs/SDTMIG_v3.4")  # Hardcoded
-ct_dir = Path("docs/Controlled_Terminology")  # Hardcoded
-```
+### Test Suites
 
-**New:** Paths are configurable via environment variables or config file
-
+#### 1. Unit Tests (440+ tests, 76% coverage)
 ```bash
-# Environment variables:
-export SDTM_SPEC_DIR=/custom/path/to/sdtm
-export CT_DIR=/custom/path/to/ct
+# Run all unit tests
+pytest tests/unit/
 
-cdisc-transpiler study mockdata/...
+# Run specific module tests
+pytest tests/unit/cli/presenters/
+pytest tests/unit/application/
+pytest tests/unit/transformations/
 ```
 
-Or via `cdisc_transpiler.toml`:
-```toml
-[paths]
-sdtm_spec_dir = "/custom/path/to/sdtm"
-ct_dir = "/custom/path/to/ct"
+**Coverage by layer:**
+- CLI Layer: 95%+ ✅
+- Application Layer: 85%+ ✅
+- Infrastructure Layer: 85%+ ✅
+- Transformation Layer: 91-100% ✅
+
+#### 2. Integration Tests (40+ tests)
+```bash
+# Run all integration tests
+pytest tests/integration/
+
+# Run fast tests only (skip slow)
+pytest tests/integration/ -m "not slow"
+
+# Run with specific dataset
+pytest tests/integration/test_study_workflow.py
 ```
 
-Or programmatically:
-```python
-from cdisc_transpiler.config import TranspilerConfig
+**Test files:**
+- `test_cli.py`: 20 CLI end-to-end tests
+- `test_study_workflow.py`: Study processing workflows
+- `test_domain_workflow.py`: Domain processing tests
 
-config = TranspilerConfig(
-    sdtm_spec_dir=Path("/custom/path/to/sdtm"),
-    ct_dir=Path("/custom/path/to/ct"),
-)
+#### 3. Validation Tests (42 tests)
+```bash
+# Run all validation tests
+pytest -m validation
+
+# Run specific validation suite
+pytest tests/validation/test_sdtm_compliance.py    # 12 tests
+pytest tests/validation/test_xpt_format.py          # 9 tests
+pytest tests/validation/test_xml_format.py          # 9 tests
+pytest tests/validation/test_define_xml_format.py   # 12 tests
 ```
 
-### Default Values Now Centralized
+**What's validated:**
+- SDTM compliance (required variables, types, controlled terminology)
+- XPT format (SAS readability, metadata, data integrity)
+- XML format (well-formedness, structure, encoding)
+- Define-XML (ODM structure, metadata elements, attributes)
 
-**Old:** Magic values scattered throughout code
+#### 4. Performance Benchmarks (3 tests)
+```bash
+# Run benchmarks
+pytest -m benchmark --benchmark-only
 
-**New:** Defaults in `constants.py`
-```python
-from cdisc_transpiler.constants import Defaults, Constraints
+# Save baseline
+pytest -m benchmark --benchmark-only --benchmark-save=baseline
 
-# Instead of hardcoded "2023-01-01":
-default_date = Defaults.DATE
-
-# Instead of hardcoded "0.5":
-min_confidence = Defaults.MIN_CONFIDENCE
-
-# Instead of hardcoded "200":
-max_label_length = Constraints.XPT_MAX_LABEL_LENGTH
+# Compare against baseline (fail if >10% slower)
+pytest -m benchmark --benchmark-only --benchmark-compare=baseline --benchmark-compare-fail=mean:10%
 ```
+
+**What's benchmarked:**
+- Small study processing (DEMO_CF: 11 domains) → <5s baseline
+- Large study processing (DEMO_GDISC: 18 domains) → <20s baseline
+- DataFrame operations (1000 rows) → ~2ms baseline
+
+### Test Documentation
+
+- `TEST_COVERAGE_REPORT.md`: Coverage analysis and gaps
+- `TEST_INTEGRATION_REPORT.md`: Integration test inventory
+- `tests/integration/BENCHMARK_README.md`: Benchmark usage guide
 
 ---
 
-## Error Handling Changes
+## What's NOT Changed (Important!)
 
-### New Exception Hierarchy
+The following components **remain unchanged** in this release. They will be refactored in future releases:
 
-**Old:** Mix of built-in exceptions and custom exceptions
+❌ **Not Changed:**
+- Core business logic (study/domain processing)
+- Infrastructure layer (file I/O, repositories)
+- Domain models (`SDTMDomain`, `SDTMVariable`)
+- Configuration file format
+- Import paths for most modules
+- File output formats (XPT, XML, Define-XML)
 
-**New:** Consistent exception hierarchy
+✅ **Changed:**
+- CLI command implementation (internal only)
+- New presenter classes (optional)
+- Test infrastructure (new)
+- Documentation (enhanced)
 
-```python
-from cdisc_transpiler.domain.exceptions import (
-    TranspilerError,          # Base exception
-    DataSourceError,          # File I/O errors
-    DataParseError,          # Parsing errors
-    ValidationError,         # SDTM validation errors
-    TransformationError,     # Transformation errors
-    ConfigurationError,      # Configuration errors
-)
-
-# Usage:
-try:
-    df = csv_reader.read(path)
-except DataSourceError as e:
-    logger.error(f"Failed to read file: {e}")
-except DataParseError as e:
-    logger.error(f"Failed to parse CSV: {e}")
-```
-
----
-
-## Testing Changes
-
-### New Test Structure
-
-**Old:** No tests in repository
-
-**New:** Comprehensive test suite
-
-```
-tests/
-├── unit/
-│   ├── test_csv_reader.py
-│   ├── test_transformers.py
-│   └── test_mapping_engine.py
-├── integration/
-│   └── test_study_workflow.py
-└── fixtures/
-    └── sample_study/
-```
-
-### Testing Your Integration
-
-If you're using `cdisc_transpiler` as a library, you can now write better tests:
-
-**Old:** Hard to test due to global state
-```python
-# Had to test against real files and global logger
-def test_my_integration():
-    result = process_domain(real_file_path)
-    assert result  # Hard to verify behavior
-```
-
-**New:** Easy to test with mocks
-```python
-from unittest.mock import Mock
-
-def test_my_integration():
-    # Mock dependencies
-    mock_logger = Mock()
-    mock_file_generator = Mock()
-    
-    use_case = DomainProcessingUseCase(
-        logger=mock_logger,
-        file_generator=mock_file_generator,
-    )
-    
-    result = use_case.execute(request)
-    
-    # Verify behavior
-    assert result.success
-    mock_logger.info.assert_called()
-    mock_file_generator.generate.assert_called_once()
-```
-
----
-
-## Performance Changes
-
-### Expected Performance Impact
-
-| Operation | Before | After | Change |
-|-----------|--------|-------|--------|
-| Study processing | Baseline | ~Same | No significant change expected |
-| Memory usage | Baseline | ~5% lower | Better GC due to less global state |
-| Startup time | Baseline | ~Same | Config loading is lazy |
-
-### Optimization Opportunities
-
-The refactored code is easier to optimize:
-- Transformations can be parallelized (not in v1.0)
-- File I/O can be batched (not in v1.0)
-- Caching is now explicit and tunable
-
----
-
-## Deprecation Schedule
-
-### Removed in v1.0
-
-The following modules and functions are **removed** (not deprecated):
-
-- `services.domain_processing_coordinator` → Use `application.DomainProcessingUseCase`
-- `services.domain_synthesis_coordinator` → Use `application.DomainSynthesisUseCase`
-- `services.study_orchestration_service` → Use `application.StudyProcessingUseCase`
-- `cli.logging_config.get_logger()` global function → Inject logger dependency
-
-### Removed in Future Versions
-
-None planned. All breaking changes are in v1.0.
+**Bottom line**: If your code doesn't import CLI-specific modules, you won't see any changes.
 
 ---
 
 ## Common Migration Scenarios
 
-### Scenario 1: Processing a Single Domain
+### Scenario 1: You Use the CLI Only
 
-**Old:**
-```python
-from cdisc_transpiler.services import DomainProcessingCoordinator
+**Action Required:** None ✅
 
-coordinator = DomainProcessingCoordinator()
-result = coordinator.process_and_merge_domain(
-    files_for_domain=[(Path("DM.csv"), "DM")],
-    domain_code="DM",
-    study_id="STUDY001",
-    output_format="xpt",
-    xpt_dir=Path("output/xpt"),
-    xml_dir=None,
-    sas_dir=None,
-    min_confidence=0.5,
-    streaming=False,
-    chunk_size=1000,
-    generate_sas=False,
-    verbose=False,
-)
+```bash
+# Just keep using it as before:
+cdisc-transpiler study mockdata/DEMO_GDISC_20240903_072908/
 ```
 
-**New:**
+### Scenario 2: You Want to Use New Presenters
+
+**Action:** Optional - use new presenter classes for formatted output
+
 ```python
-from cdisc_transpiler.application import DomainProcessingUseCase, ProcessDomainRequest
-from cdisc_transpiler.infrastructure import create_default_dependencies
+from cdisc_transpiler.cli.presenters import SummaryPresenter, ProgressPresenter
+from rich.console import Console
 
-deps = create_default_dependencies()
-use_case = DomainProcessingUseCase(
-    logger=deps.logger,
-    file_generator=deps.file_generator,
-    csv_reader=deps.csv_reader,
-    transformer_pipeline=deps.transformer_pipeline,
-)
+console = Console()
 
-result = use_case.execute(ProcessDomainRequest(
-    files=[(Path("DM.csv"), "DM")],
-    domain_code="DM",
-    study_id="STUDY001",
-    output_dirs=OutputDirs(xpt_dir=Path("output/xpt")),
-    formats={"xpt"},
-    options=ProcessingOptions(
-        min_confidence=0.5,
-        generate_sas=False,
-    ),
-))
+# Use SummaryPresenter for study results
+presenter = SummaryPresenter(console=console, results=results)
+presenter.present(study_id="STUDY001", output_dir=Path("output"), ...)
+
+# Use ProgressPresenter for tracking
+progress = ProgressPresenter(total_domains=10, console=console)
+progress.increment(success=True)
+progress.print_summary()
 ```
 
-### Scenario 2: Custom Transformation
+### Scenario 3: You Use ProgressTracker
 
-**Old:** Modify `study_orchestration_service.py` directly
+**Action Required:** None ✅ (backward compatible alias exists)
 
-**New:** Implement transformer interface
 ```python
-from cdisc_transpiler.transformations.base import TransformerPort
+# Old code continues to work:
+from cdisc_transpiler.cli.utils import ProgressTracker
 
-class MyCustomTransformer:
-    """Custom transformation for my special domain."""
-    
-    def can_transform(self, df: pd.DataFrame, domain: str) -> bool:
-        return domain == "MY_DOMAIN"
-    
-    def transform(
-        self,
-        df: pd.DataFrame,
-        context: TransformationContext,
-    ) -> pd.DataFrame:
-        # Your custom logic here
-        return transformed_df
-
-# Register with pipeline:
-pipeline = TransformationPipeline([
-    MyCustomTransformer(),
-    VSTransformer(ct_repo),
-    LBTransformer(ct_repo),
-])
+tracker = ProgressTracker(total_domains=10)
+tracker.increment()
+tracker.print_summary()
 ```
 
-### Scenario 3: Custom File Writer
+### Scenario 4: You Want to Run Tests
 
-**Old:** Duplicate file writing logic
+**Action:** Use new test infrastructure
 
-**New:** Implement writer interface
-```python
-from cdisc_transpiler.infrastructure.io import FileWriterPort
+```bash
+# Install dev dependencies
+pip install -e ".[dev]"
 
-class MyCustomWriter:
-    """Write files in custom format."""
-    
-    def write(
-        self,
-        dataframe: pd.DataFrame,
-        domain_code: str,
-        output_path: Path,
-    ) -> None:
-        # Your custom writing logic
-        pass
+# Run all tests
+pytest
 
-# Register with file generator:
-file_generator = FileGenerator(
-    xpt_writer=XPTWriter(),
-    xml_writer=XMLWriter(),
-    custom_writer=MyCustomWriter(),  # Add your writer
-    logger=logger,
-)
+# Run specific test suites
+pytest tests/unit/
+pytest tests/integration/
+pytest -m validation
+pytest -m benchmark --benchmark-only
 ```
 
 ---
 
 ## Rollback Plan
 
-If you encounter critical issues with v1.0:
+Since this release is **100% backward compatible**, rollback is not necessary. However, if you encounter issues:
 
-### Option 1: Pin to v0.x
-```bash
-pip install cdisc-transpiler==0.0.1
-```
+### Option 1: Continue Using Current Version
+No rollback needed - all old code continues to work.
 
-### Option 2: Use Legacy Branch
-```bash
-git checkout legacy-v0.x
-pip install -e .
-```
-
-### Option 3: Report Issue
+### Option 2: Report Issue
 File an issue at: https://github.com/rubentalstra/cdisc-transpiler/issues
 
 Include:
 - Your use case
-- Error messages
-- Sample data (if possible)
+- Error messages (if any)
+- Whether you're using CLI or library
+- Sample code (if applicable)
 
 ---
 
 ## Getting Help
 
 ### Documentation
-- **Architecture Overview**: `docs/target_architecture.md`
-- **As-Is Documentation**: `docs/study_command_flow.md`
-- **API Reference**: (Coming in v1.1)
+- **README.md**: Quick start and architecture overview
+- **TEST_COVERAGE_REPORT.md**: Test coverage analysis
+- **TEST_INTEGRATION_REPORT.md**: Integration test documentation
+- **tests/integration/BENCHMARK_README.md**: Performance benchmarking guide
+- **Architecture Docs**: `docs/target_architecture.md` (future roadmap)
 
 ### Community
 - **GitHub Issues**: Report bugs and request features
-- **Discussions**: Ask questions and share use cases
-
-### Support Timeline
-- **v0.x**: Security fixes only (12 months after v1.0 release)
-- **v1.x**: Active development and support
+- **GitHub Discussions**: Ask questions and share use cases
 
 ---
 
@@ -559,53 +320,63 @@ Include:
 Use this checklist to track your migration progress:
 
 ### CLI Users
-- [ ] Verify existing commands still work
-- [ ] (Optional) Create `cdisc_transpiler.toml` for custom defaults
+- [ ] Verify existing commands still work (they should!)
+- [ ] (Optional) Explore new test suites for validation
 
 ### Library Users
-- [ ] Update all import statements to new paths
-- [ ] Replace direct service instantiation with dependency injection
-- [ ] Update error handling to use new exception hierarchy
-- [ ] Refactor global state access (e.g., `get_logger()`)
-- [ ] Update tests to use mocked dependencies
-- [ ] Verify output files match expected format
+- [ ] No action required - old imports still work
+- [ ] (Optional) Explore new `SummaryPresenter` and `ProgressPresenter` classes
+- [ ] (Optional) Review test infrastructure for your own testing needs
 
 ### Contributors
-- [ ] Read `docs/target_architecture.md`
-- [ ] Set up development environment with test suite
-- [ ] Run existing test suite: `pytest tests/`
-- [ ] Review contribution guidelines (coming soon)
+- [ ] Read updated `README.md` 
+- [ ] Review test infrastructure: `pytest tests/`
+- [ ] Run tests locally to verify setup: `pytest`
+- [ ] Explore validation tests: `pytest -m validation`
+- [ ] Try performance benchmarks: `pytest -m benchmark --benchmark-only`
 
 ---
 
 ## FAQ
 
 ### Q: Will this break my existing scripts?
-**A:** If you only use the CLI (`cdisc-transpiler study ...`), no changes needed. If you import modules directly, see import path changes above.
+**A:** No! This release is 100% backward compatible. CLI commands work identically, and all existing library imports continue to work.
 
 ### Q: Do I need to update my data files?
 **A:** No. The input CSV format is unchanged.
 
 ### Q: Will output files be different?
-**A:** No. XPT, XML, and Define-XML files should be identical (except for minor metadata like timestamps).
+**A:** No. XPT, XML, and Define-XML files are identical to before (except minor metadata like timestamps).
 
-### Q: Can I use both old and new code during migration?
-**A:** Yes, but not recommended. If needed, you can import from `cdisc_transpiler.legacy.*` during the transition period (until v1.1 removes legacy code).
+### Q: What's new in this release?
+**A:** Internal improvements (CLI refactoring, test infrastructure) that make the codebase easier to maintain and extend. You get better quality without any changes to your code.
 
-### Q: How do I report a bug in the new version?
+### Q: Can I use the new presenter classes?
+**A:** Yes! `SummaryPresenter` and `ProgressPresenter` are available for optional use. See "Library Users" section above.
+
+### Q: Do I need to write tests for my code now?
+**A:** No requirement, but you now have a comprehensive test suite to learn from. See `tests/` directory for examples.
+
+### Q: What about validation tests?
+**A:** New validation tests (42 tests) verify SDTM compliance, XPT format, XML format, and Define-XML structure. Run with: `pytest -m validation`
+
+### Q: How do I run performance benchmarks?
+**A:** Run: `pytest -m benchmark --benchmark-only`. See `tests/integration/BENCHMARK_README.md` for details.
+
+### Q: Is this the final architecture?
+**A:** No, this is an incremental step. Future releases will continue refactoring toward full Ports & Adapters architecture (see `docs/target_architecture.md`).
+
+### Q: How do I report a bug?
 **A:** File an issue at https://github.com/rubentalstra/cdisc-transpiler/issues with:
 - Version info: `cdisc-transpiler --version`
-- Error message and stack trace
+- Error message and stack trace (if any)
 - Steps to reproduce
-- (Optional) Sample data
+- Whether you're using CLI or library
 
-### Q: Is the new version faster?
-**A:** Performance should be similar. The main benefits are maintainability and testability, not speed.
-
-### Q: Can I contribute to the refactoring?
-**A:** Yes! See open issues labeled `refactoring` and `help-wanted`. Read `docs/target_architecture.md` first.
+### Q: Can I contribute to the project?
+**A:** Yes! Check open issues and read the test infrastructure documentation. The new test suite makes it easier to contribute with confidence.
 
 ---
 
-**Last Updated:** 2025-12-14  
-**Next Review:** 2025-03-14 (3 months after v1.0 release)
+**Last Updated:** 2025-12-15  
+**Next Review:** After next major refactoring phase

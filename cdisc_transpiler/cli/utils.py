@@ -1,53 +1,16 @@
 """Progress tracking utilities for CLI.
 
-Provides clean progress reporting with Rich console.
+This module maintains backward compatibility by re-exporting ProgressPresenter
+as ProgressTracker. New code should import directly from presenters.progress.
 """
 
 from __future__ import annotations
 
 from rich.console import Console
 
+from .presenters.progress import ProgressPresenter
+
 console = Console()
 
-
-class ProgressTracker:
-    """Track progress of domain processing."""
-
-    def __init__(self, total_domains: int):
-        """Initialize progress tracker.
-
-        Args:
-            total_domains: Total number of domains to process
-        """
-        self.total_domains = total_domains
-        self.processed = 0
-        self.errors = 0
-        self.warnings = 0
-
-    def increment(self, *, error: bool = False, warning: bool = False) -> None:
-        """Increment progress counters.
-
-        Args:
-            error: Whether this domain had errors
-            warning: Whether this domain had warnings
-        """
-        self.processed += 1
-        if error:
-            self.errors += 1
-        if warning:
-            self.warnings += 1
-
-    @property
-    def success_count(self) -> int:
-        """Number of successful domains."""
-        return self.processed - self.errors
-
-    def print_summary(self) -> None:
-        """Print progress summary."""
-        console.print("\n[bold]Progress:[/bold]")
-        console.print(f"  Processed: {self.processed}/{self.total_domains}")
-        console.print(f"  [green]Success: {self.success_count}[/green]")
-        if self.errors:
-            console.print(f"  [red]Errors: {self.errors}[/red]")
-        if self.warnings:
-            console.print(f"  [yellow]Warnings: {self.warnings}[/yellow]")
+# Backward compatibility: ProgressTracker is now an alias for ProgressPresenter
+ProgressTracker = ProgressPresenter
