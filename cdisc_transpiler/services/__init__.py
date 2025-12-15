@@ -28,17 +28,22 @@ Deprecated Services (moved to legacy package):
     See docs/ARCHITECTURE.md for migration guidance.
 """
 
-from .trial_design_service import TrialDesignService
+from __future__ import annotations
+
+import warnings
+from typing import TYPE_CHECKING
+
 from .domain_discovery_service import DomainDiscoveryService
 from .file_organization_service import FileOrganizationService, ensure_acrf_pdf
 from .progress_reporting_service import ProgressReportingService
+from .trial_design_service import TrialDesignService
 
-# Import deprecated services from legacy package (with deprecation warnings)
-from ..legacy import (
-    StudyOrchestrationService,
-    DomainProcessingCoordinator,
-    DomainSynthesisCoordinator,
-)
+if TYPE_CHECKING:
+    from ..legacy import (
+        DomainProcessingCoordinator,
+        DomainSynthesisCoordinator,
+        StudyOrchestrationService,
+    )
 
 __all__ = [
     "TrialDesignService",
@@ -51,3 +56,27 @@ __all__ = [
     "DomainProcessingCoordinator",
     "DomainSynthesisCoordinator",
 ]
+
+
+_DEPRECATED_LEGACY_EXPORTS = {
+    "StudyOrchestrationService",
+    "DomainProcessingCoordinator",
+    "DomainSynthesisCoordinator",
+}
+
+
+def __getattr__(name: str):
+    if name not in _DEPRECATED_LEGACY_EXPORTS:
+        raise AttributeError(name)
+
+    warnings.warn(
+        f"cdisc_transpiler.services.{name} is deprecated and will be removed in the next major version. "
+        "Please import it from cdisc_transpiler.legacy, or migrate to the corresponding application use case. "
+        "See docs/ARCHITECTURE.md for details.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
+
+    from .. import legacy as _legacy
+
+    return getattr(_legacy, name)

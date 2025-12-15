@@ -12,6 +12,7 @@ from __future__ import annotations
 import ast
 import re
 from pathlib import Path
+import sys
 
 import pytest
 
@@ -283,3 +284,30 @@ class TestRegressionPrevention:
         assert not violations, (
             f"cli.helpers imported outside CLI/legacy:\n" + "\n".join(violations)
         )
+
+    def test_services_init_does_not_import_legacy(self):
+        """Importing cdisc_transpiler.services must not import legacy.
+
+        This prevents import-time side effects (warnings, extra work) in the
+        new architecture entrypoints.
+        """
+        import warnings
+
+        sys.modules.pop("cdisc_transpiler.services", None)
+        sys.modules.pop("cdisc_transpiler.legacy", None)
+
+        with warnings.catch_warnings():
+            warnings.simplefilter("error", DeprecationWarning)
+            __import__("cdisc_transpiler.services")
+
+        assert "cdisc_transpiler.legacy" not in sys.modules
+
+    def test_domain_processing_use_case_does_not_import_wrappers(self):
+        """Application code should not import compatibility wrapper modules."""
+        file_path = PACKAGE_ROOT / "application" / "domain_processing_use_case.py"
+        imports = extract_imports_from_file(file_path)
+
+        forbidden = has_forbidden_import(
+            imports, r"(^|\.)((domains_module)|(xpt_module))(\.|$)"
+        )
+        assert not forbidden, f"Found wrapper-module imports: {forbidden}"

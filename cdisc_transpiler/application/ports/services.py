@@ -17,6 +17,34 @@ if TYPE_CHECKING:
 
 
 @runtime_checkable
+class OutputPreparationPort(Protocol):
+    """Protocol for preparing output directories and required placeholder files.
+
+    The application layer must not perform direct filesystem I/O. This port
+    abstracts creation of output folders (xpt/dataset-xml/sas) and optional
+    Define-XML prerequisites such as an ACRF placeholder PDF.
+    """
+
+    def prepare(
+        self,
+        *,
+        output_dir: Path,
+        output_formats: set[str],
+        generate_sas: bool,
+        generate_define_xml: bool,
+    ) -> None:
+        """Prepare the output directory structure.
+
+        Implementations may create directories and files as needed.
+        """
+        ...
+
+    def ensure_dir(self, path: Path) -> None:
+        """Ensure a directory exists at path."""
+        ...
+
+
+@runtime_checkable
 class LoggerPort(Protocol):
     """Protocol for logging services.
 
@@ -139,7 +167,13 @@ class XPTWriterPort(Protocol):
     """
 
     def write(
-        self, dataframe: pd.DataFrame, domain_code: str, output_path: Path
+        self,
+        dataframe: pd.DataFrame,
+        domain_code: str,
+        output_path: Path,
+        *,
+        file_label: str | None = None,
+        table_name: str | None = None,
     ) -> None:
         """Write a DataFrame to an XPT file.
 

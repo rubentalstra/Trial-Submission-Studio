@@ -41,10 +41,17 @@ class TestDomainProcessingUseCase:
         logger = NullLogger()
         mock_repo = Mock()
         mock_generator = Mock()
+        mock_output_preparer = Mock()
+        mock_domain_definitions = Mock()
+        mock_domain_definitions.get_domain.return_value = self._create_mock_domain()
+        mock_xpt_writer = Mock()
         return DomainProcessingUseCase(
             logger=logger,
             study_data_repo=mock_repo,
             file_generator=mock_generator,
+            output_preparer=mock_output_preparer,
+            domain_definitions=mock_domain_definitions,
+            xpt_writer=mock_xpt_writer,
         )
 
     def test_execute_returns_failed_response_on_no_data(self):
@@ -67,9 +74,11 @@ class TestDomainProcessingUseCase:
         """Test domain processing error handling."""
         use_case = self._create_use_case()
 
-        # Make _get_domain raise an exception
+        # Make domain lookup raise an exception
         with patch.object(
-            use_case, "_get_domain", side_effect=ValueError("Domain not found")
+            use_case._domain_definitions,  # type: ignore[union-attr]
+            "get_domain",
+            side_effect=ValueError("Domain not found"),
         ):
             request = ProcessDomainRequest(
                 files_for_domain=[(Path("/data/DM.csv"), "DM")],
@@ -112,11 +121,17 @@ class TestDomainProcessingUseCase:
         logger = NullLogger()
         mock_repo = Mock()
         mock_generator = Mock()
+        mock_output_preparer = Mock()
+        mock_domain_definitions = Mock()
+        mock_xpt_writer = Mock()
 
         use_case = DomainProcessingUseCase(
             logger=logger,
             study_data_repo=mock_repo,
             file_generator=mock_generator,
+            output_preparer=mock_output_preparer,
+            domain_definitions=mock_domain_definitions,
+            xpt_writer=mock_xpt_writer,
         )
 
         assert use_case.logger is logger

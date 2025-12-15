@@ -35,6 +35,7 @@ from .ports import (
     FileGeneratorPort,
     LoggerPort,
     StudyDataRepositoryPort,
+    OutputPreparationPort,
 )
 
 if TYPE_CHECKING:
@@ -84,6 +85,7 @@ class StudyProcessingUseCase:
         discovery_service: DomainDiscoveryService | None = None,
         file_generator: FileGeneratorPort | None = None,
         define_xml_generator: DefineXmlGeneratorPort | None = None,
+        output_preparer: OutputPreparationPort | None = None,
     ):
         """Initialize the use case with injected dependencies.
 
@@ -101,6 +103,7 @@ class StudyProcessingUseCase:
         self._discovery_service = discovery_service
         self._file_generator = file_generator
         self._define_xml_generator = define_xml_generator
+        self._output_preparer = output_preparer
 
     def execute(self, request: ProcessStudyRequest) -> ProcessStudyResponse:
         """Execute the study processing workflow.
@@ -274,22 +277,18 @@ class StudyProcessingUseCase:
 
     def _setup_output_directories(self, request: ProcessStudyRequest) -> None:
         """Set up output directory structure."""
-        from ..services import ensure_acrf_pdf
+        if self._output_preparer is None:
+            raise RuntimeError(
+                "OutputPreparationPort is not configured. "
+                "Wire an infrastructure adapter in the composition root."
+            )
 
-        request.output_dir.mkdir(parents=True, exist_ok=True)
-
-        if "xpt" in request.output_formats:
-            (request.output_dir / "xpt").mkdir(parents=True, exist_ok=True)
-
-        if "xml" in request.output_formats:
-            (request.output_dir / "dataset-xml").mkdir(parents=True, exist_ok=True)
-
-        if request.generate_sas:
-            (request.output_dir / "sas").mkdir(parents=True, exist_ok=True)
-
-        if request.generate_define_xml:
-            # ACRF_HREF is a standard Define-XML reference filename
-            ensure_acrf_pdf(request.output_dir / "acrf.pdf")
+        self._output_preparer.prepare(
+            output_dir=request.output_dir,
+            output_formats=request.output_formats,
+            generate_sas=request.generate_sas,
+            generate_define_xml=request.generate_define_xml,
+        )
 
     def _build_column_counts(
         self, domain_files: dict[str, list[tuple[Path, str]]]

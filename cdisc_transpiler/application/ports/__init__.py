@@ -6,6 +6,7 @@ adapters must implement. This enables dependency injection and testing.
 
 from .repositories import (
     CTRepositoryPort,
+    DomainDefinitionPort,
     SDTMSpecRepositoryPort,
     StudyDataRepositoryPort,
 )
@@ -14,6 +15,7 @@ from .services import (
     DefineXmlGeneratorPort,
     FileGeneratorPort,
     LoggerPort,
+    OutputPreparationPort,
     SASWriterPort,
     XPTWriterPort,
 )
@@ -21,11 +23,13 @@ from .services import (
 __all__ = [
     # Repository Ports
     "CTRepositoryPort",
+    "DomainDefinitionPort",
     "SDTMSpecRepositoryPort",
     "StudyDataRepositoryPort",
     # Service Ports
     "LoggerPort",
     "FileGeneratorPort",
+    "OutputPreparationPort",
     # Writer Ports
     "XPTWriterPort",
     "DatasetXMLWriterPort",

@@ -29,7 +29,13 @@ class XPTWriter:
     """
 
     def write(
-        self, dataframe: pd.DataFrame, domain_code: str, output_path: Path
+        self,
+        dataframe: pd.DataFrame,
+        domain_code: str,
+        output_path: Path,
+        *,
+        file_label: str | None = None,
+        table_name: str | None = None,
     ) -> None:
         """Write a DataFrame to an XPT file.
 
@@ -46,4 +52,10 @@ class XPTWriter:
             >>> df = pd.DataFrame({"STUDYID": ["001"]})
             >>> writer.write(df, "DM", Path("dm.xpt"))
         """
-        write_xpt_file(dataframe, domain_code, output_path)
+        write_xpt_file(
+            dataframe,
+            domain_code,
+            output_path,
+            file_label=file_label,
+            table_name=table_name,
+        )

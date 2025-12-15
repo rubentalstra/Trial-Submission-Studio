@@ -23,7 +23,14 @@ from typing import TYPE_CHECKING, Any, Callable
 import pandas as pd
 
 from .models import ProcessDomainRequest, ProcessDomainResponse
-from .ports import FileGeneratorPort, LoggerPort, StudyDataRepositoryPort
+from .ports import (
+    DomainDefinitionPort,
+    FileGeneratorPort,
+    LoggerPort,
+    OutputPreparationPort,
+    StudyDataRepositoryPort,
+    XPTWriterPort,
+)
 
 if TYPE_CHECKING:
     from ..domain.entities.sdtm_domain import SDTMDomain
@@ -81,6 +88,9 @@ class DomainProcessingUseCase:
         logger: LoggerPort,
         study_data_repo: StudyDataRepositoryPort | None = None,
         file_generator: FileGeneratorPort | None = None,
+        output_preparer: OutputPreparationPort | None = None,
+        domain_definitions: DomainDefinitionPort | None = None,
+        xpt_writer: XPTWriterPort | None = None,
     ):
         """Initialize the use case with injected dependencies.
 
@@ -92,6 +102,9 @@ class DomainProcessingUseCase:
         self.logger = logger
         self._study_data_repo = study_data_repo
         self._file_generator = file_generator
+        self._output_preparer = output_preparer
+        self._domain_definitions = domain_definitions
+        self._xpt_writer = xpt_writer
 
     def execute(self, request: ProcessDomainRequest) -> ProcessDomainResponse:
         """Execute the domain processing workflow.
@@ -658,6 +671,7 @@ class DomainProcessingUseCase:
 
                     # Handle domain variant splits (SDTMIG v3.4 Section 4.1.7)
                     if len(variant_frames) > 1:
+                        assert xpt_dir is not None
                         split_paths, split_datasets = self._write_variant_splits(
                             variant_frames, domain, xpt_dir
                         )
@@ -770,8 +784,6 @@ class DomainProcessingUseCase:
 
         Per SDTMIG v3.4 Section 4.1.7 "Splitting Domains".
         """
-        from ..xpt_module import write_xpt_file
-
         split_paths: list[Path] = []
         split_datasets: list[tuple[str, pd.DataFrame, Path]] = []
         domain_code = domain.code.upper()
@@ -803,7 +815,12 @@ class DomainProcessingUseCase:
                 variant_df["DOMAIN"] = domain_code
 
             split_dir = xpt_dir / "split"
-            split_dir.mkdir(parents=True, exist_ok=True)
+            if self._output_preparer is None:
+                raise RuntimeError(
+                    "OutputPreparationPort is not configured. "
+                    "Wire an infrastructure adapter in the composition root."
+                )
+            self._output_preparer.ensure_dir(split_dir)
 
             split_name = table.lower()
             split_path = split_dir / f"{split_name}.xpt"
@@ -815,7 +832,13 @@ class DomainProcessingUseCase:
                 else domain.description
             )
 
-            write_xpt_file(
+            if self._xpt_writer is None:
+                raise RuntimeError(
+                    "XPTWriterPort is not configured. "
+                    "Wire an infrastructure adapter in the composition root."
+                )
+
+            self._xpt_writer.write(
                 variant_df,
                 domain.code,
                 split_path,
@@ -834,9 +857,12 @@ class DomainProcessingUseCase:
 
     def _get_domain(self, domain_code: str) -> SDTMDomain:
         """Get SDTM domain definition."""
-        from ..domains_module import get_domain
-
-        return get_domain(domain_code)
+        if self._domain_definitions is None:
+            raise RuntimeError(
+                "DomainDefinitionPort is not configured. "
+                "Wire an infrastructure adapter in the composition root."
+            )
+        return self._domain_definitions.get_domain(domain_code)
 
     def _merge_dataframes(
         self, all_dataframes: list[pd.DataFrame], domain_code: str, verbose: bool

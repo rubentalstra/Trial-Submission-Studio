@@ -12,12 +12,15 @@ need to explicitly inherit from these interfaces.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 import pandas as pd
 
 from ...terminology_module.models import ControlledTerminology
 from ...domain.entities.study_metadata import StudyMetadata
+
+if TYPE_CHECKING:
+    from ...domain.entities.sdtm_domain import SDTMDomain
 
 
 @runtime_checkable
@@ -123,6 +126,15 @@ class SDTMSpecRepositoryPort(Protocol):
             ...     if var["Role"] == "Identifier":
             ...         print(f"Key variable: {var['Variable Name']}")
         """
+        ...
+
+
+@runtime_checkable
+class DomainDefinitionPort(Protocol):
+    """Protocol to retrieve SDTM domain definitions as domain entities."""
+
+    def get_domain(self, code: str) -> "SDTMDomain":
+        """Return the SDTM domain definition for a domain code."""
         ...
 
     def get_dataset_attributes(self, domain_code: str) -> dict[str, str] | None:

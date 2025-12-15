@@ -18,15 +18,14 @@ Example:
 
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any
-
 from rich.console import Console
 
 from ..application.ports import (
     DefineXmlGeneratorPort,
     FileGeneratorPort,
     LoggerPort,
+    OutputPreparationPort,
+    DomainDefinitionPort,
     StudyDataRepositoryPort,
 )
 from .io import (
@@ -34,11 +33,12 @@ from .io import (
     DatasetXMLWriter,
     DefineXmlGenerator,
     FileGenerator,
+    OutputPreparer,
     SASWriter,
     XPTWriter,
 )
 from .logging import ConsoleLogger, NullLogger
-from .repositories import StudyDataRepository
+from .repositories import DomainDefinitionRepository, StudyDataRepository
 
 
 class DependencyContainer:
@@ -91,6 +91,9 @@ class DependencyContainer:
         self._csv_reader_instance: CSVReader | None = None
         self._study_data_repo_instance: StudyDataRepositoryPort | None = None
         self._define_xml_generator_instance: DefineXmlGeneratorPort | None = None
+        self._output_preparer_instance: OutputPreparationPort | None = None
+        self._xpt_writer_instance: XPTWriter | None = None
+        self._domain_definition_repo_instance: DomainDefinitionPort | None = None
 
     # Infrastructure Components
 
@@ -143,7 +146,7 @@ class DependencyContainer:
         """
         if self._file_generator_instance is None:
             # Create writer adapters
-            xpt_writer = XPTWriter()
+            xpt_writer = self.create_xpt_writer()
             xml_writer = DatasetXMLWriter()
             sas_writer = SASWriter()
 
@@ -154,6 +157,18 @@ class DependencyContainer:
                 sas_writer=sas_writer,
             )
         return self._file_generator_instance
+
+    def create_xpt_writer(self) -> XPTWriter:
+        """Create or return cached XPT writer instance (singleton)."""
+        if self._xpt_writer_instance is None:
+            self._xpt_writer_instance = XPTWriter()
+        return self._xpt_writer_instance
+
+    def create_domain_definition_repository(self) -> DomainDefinitionPort:
+        """Create or return cached SDTM domain definition repository (singleton)."""
+        if self._domain_definition_repo_instance is None:
+            self._domain_definition_repo_instance = DomainDefinitionRepository()
+        return self._domain_definition_repo_instance
 
     def create_study_data_repository(self) -> StudyDataRepositoryPort:
         """Create or return cached study data repository instance (singleton).
@@ -184,6 +199,12 @@ class DependencyContainer:
             self._define_xml_generator_instance = DefineXmlGenerator()
         return self._define_xml_generator_instance
 
+    def create_output_preparer(self) -> OutputPreparationPort:
+        """Create or return cached output preparer instance (singleton)."""
+        if self._output_preparer_instance is None:
+            self._output_preparer_instance = OutputPreparer()
+        return self._output_preparer_instance
+
     # Application Use Cases
 
     def create_study_processing_use_case(self):
@@ -208,6 +229,7 @@ class DependencyContainer:
         domain_processing_use_case = self.create_domain_processing_use_case()
         discovery_service = DomainDiscoveryService(logger=logger)
         define_xml_generator = self.create_define_xml_generator()
+        output_preparer = self.create_output_preparer()
 
         return StudyProcessingUseCase(
             logger=logger,
@@ -216,6 +238,7 @@ class DependencyContainer:
             discovery_service=discovery_service,
             file_generator=file_generator,
             define_xml_generator=define_xml_generator,
+            output_preparer=output_preparer,
         )
 
     def create_domain_processing_use_case(self):
@@ -236,11 +259,17 @@ class DependencyContainer:
         logger = self.create_logger()
         study_data_repo = self.create_study_data_repository()
         file_generator = self.create_file_generator()
+        output_preparer = self.create_output_preparer()
+        domain_definition_repo = self.create_domain_definition_repository()
+        xpt_writer = self.create_xpt_writer()
 
         return DomainProcessingUseCase(
             logger=logger,
             study_data_repo=study_data_repo,
             file_generator=file_generator,
+            output_preparer=output_preparer,
+            domain_definitions=domain_definition_repo,
+            xpt_writer=xpt_writer,
         )
 
     # Helper Methods
@@ -258,6 +287,9 @@ class DependencyContainer:
         self._file_generator_instance = None
         self._csv_reader_instance = None
         self._study_data_repo_instance = None
+        self._output_preparer_instance = None
+        self._xpt_writer_instance = None
+        self._domain_definition_repo_instance = None
         self._define_xml_generator_instance = None
 
     def override_logger(self, logger: LoggerPort) -> None:

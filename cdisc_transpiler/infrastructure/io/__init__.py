@@ -16,6 +16,7 @@ from .exceptions import (
     DataValidationError,
 )
 from .file_generator import FileGenerator
+from .output_preparer import OutputPreparer
 from .sas_writer import SASWriter
 from .xpt_writer import XPTWriter
 
@@ -27,6 +28,7 @@ __all__ = [
     "DataSourceNotFoundError",
     "DataValidationError",
     "FileGenerator",
+    "OutputPreparer",
     "XPTWriter",
     "DatasetXMLWriter",
     "SASWriter",
