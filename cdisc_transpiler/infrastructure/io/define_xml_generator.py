@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from typing import Iterable
-    from ...xml_module.define_module import StudyDataset
+    from .define_xml.models import StudyDataset
 
 
 class DefineXmlGenerator:
@@ -53,7 +53,7 @@ class DefineXmlGenerator:
             >>> generator.generate(datasets, Path("define.xml"), sdtm_version="3.4", context="Submission")
         """
         # Import at runtime to avoid circular import
-        from ...xml_module.define_module import write_study_define_file
+        from .define_xml.xml_writer import write_study_define_file
         
         write_study_define_file(
             datasets,

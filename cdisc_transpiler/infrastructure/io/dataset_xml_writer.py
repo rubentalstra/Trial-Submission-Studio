@@ -13,10 +13,9 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 if TYPE_CHECKING:
-    from ...mapping_module import MappingConfig
+    from cdisc_transpiler.mapping_module import MappingConfig
 
-# Import the existing Dataset-XML writing function
-from ...xml_module.dataset_module import write_dataset_xml
+from .dataset_xml.writer import write_dataset_xml
 
 
 class DatasetXMLWriter:
