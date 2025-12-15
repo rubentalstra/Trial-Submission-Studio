@@ -28,20 +28,23 @@ This file tracks the completion status of each ticket in `CLEAN-2_MIGRATION_TICK
 
 ## 📋 Next Actions (For LLM Agents)
 
-**Current Focus: Epic B - Repositories & Configuration (P0 tickets)**
+**Current Focus: Epic C/D - Refactor Old Modules & Implement Real Use Cases (P0 tickets)**
 
-All Epic A tickets are now complete! The following tickets should be implemented in order. Pick the first incomplete P0 ticket:
+Epic A and Epic B are now complete! The following tickets should be implemented in order. Pick the first incomplete P0 ticket:
 
 1. ~~**CLEAN2-A1** (P0) - Remove `cli.helpers` from core~~ ✅ Complete
 2. ~~**CLEAN2-A2** (P0) - Remove `cli.logging_config` usage outside CLI~~ ✅ Complete
 3. ~~**CLEAN2-A3** (P1) - Add architecture boundary tests~~ ✅ Complete
 4. ~~**CLEAN2-A4** (P0) - Refactor `DomainDiscoveryService`~~ ✅ Complete
 5. ~~**CLEAN2-A5** (P1) - Refactor `ProgressReportingService`~~ ✅ Complete
-6. **CLEAN2-B1** (P0) - Implement `SDTMSpecRepositoryPort` ⏳
-7. **CLEAN2-B2** (P0) - Implement `CTRepositoryPort` ⏳
-8. **CLEAN2-B3** (P0) - Implement `StudyDataRepositoryPort` ⏳
-9. **CLEAN2-D1** (P0) - Make `DomainProcessingUseCase` real ⏳
-10. **CLEAN2-D2** (P0) - Make `StudyProcessingUseCase` real ⏳
+6. ~~**CLEAN2-B1** (P0) - Implement `SDTMSpecRepositoryPort`~~ ✅ Complete
+7. ~~**CLEAN2-B2** (P0) - Implement `CTRepositoryPort`~~ ✅ Complete
+8. ~~**CLEAN2-B3** (P0) - Implement `StudyDataRepositoryPort`~~ ✅ Complete
+9. ~~**CLEAN2-B4** (P1) - Add infrastructure caching primitives~~ ✅ Complete
+10. **CLEAN2-D1** (P0) - Make `DomainProcessingUseCase` real ⏳
+11. **CLEAN2-D2** (P0) - Make `StudyProcessingUseCase` real ⏳
+12. **CLEAN2-C1** (P1) - Refactor `domains_module` ⏳
+13. **CLEAN2-C2** (P1) - Refactor `terminology_module` ⏳
 
 After all P0 tickets are complete, proceed to P1 tickets.
 
@@ -52,12 +55,12 @@ After all P0 tickets are complete, proceed to P1 tickets.
 | Epic | Total Tickets | Complete | In Progress | Not Started |
 |------|---------------|----------|-------------|-------------|
 | A - Boundary Cleanup | 5 | 5 | 0 | 0 |
-| B - Repositories & Configuration | 4 | 0 | 0 | 4 |
+| B - Repositories & Configuration | 4 | 4 | 0 | 0 |
 | C - Refactor Old Modules | 9 | 0 | 0 | 9 |
 | D - Implement Real Use Cases | 4 | 0 | 0 | 4 |
 | E - Output Adapters | 7 | 0 | 0 | 7 |
 | F - Cleanup | 2 | 0 | 0 | 2 |
-| **Total** | **31** | **5** | **0** | **26** |
+| **Total** | **31** | **9** | **0** | **22** |
 
 ---
 
@@ -103,31 +106,31 @@ After all P0 tickets are complete, proceed to P1 tickets.
 
 ### CLEAN2-B1 — Implement `SDTMSpecRepositoryPort`
 - **Priority:** P0
-- **Status:** ⏳ Not Started
-- **Completion Date:** -
-- **PR:** -
-- **Notes:** Create `infrastructure/repositories/sdtm_spec_repository.py`
+- **Status:** ✅ Complete
+- **Completion Date:** 2025-12-15
+- **PR:** Current PR
+- **Notes:** Created `infrastructure/repositories/sdtm_spec_repository.py` with caching and configurable paths
 
 ### CLEAN2-B2 — Implement `CTRepositoryPort`
 - **Priority:** P0
-- **Status:** ⏳ Not Started
-- **Completion Date:** -
-- **PR:** -
-- **Notes:** Create `infrastructure/repositories/ct_repository.py`
+- **Status:** ✅ Complete
+- **Completion Date:** 2025-12-15
+- **PR:** Current PR
+- **Notes:** Created `infrastructure/repositories/ct_repository.py` with version resolution and caching
 
 ### CLEAN2-B3 — Implement `StudyDataRepositoryPort`
 - **Priority:** P0
-- **Status:** ⏳ Not Started
-- **Completion Date:** -
-- **PR:** -
-- **Notes:** Create `infrastructure/repositories/study_data_repository.py`
+- **Status:** ✅ Complete
+- **Completion Date:** 2025-12-15
+- **PR:** Current PR
+- **Notes:** Created `infrastructure/repositories/study_data_repository.py` supporting CSV, Excel, SAS
 
 ### CLEAN2-B4 — Add infrastructure caching primitives
 - **Priority:** P1
-- **Status:** ⏳ Not Started
-- **Completion Date:** -
-- **PR:** -
-- **Notes:** Create `infrastructure/caching/memory_cache.py`
+- **Status:** ✅ Complete
+- **Completion Date:** 2025-12-15
+- **PR:** Current PR
+- **Notes:** Created `infrastructure/caching/memory_cache.py` with TTL support
 
 ---
 
@@ -364,7 +367,7 @@ From `CLEAN-2_MIGRATION_TICKETS.md`:
 
 1. ✅ No imports of `cdisc_transpiler.cli.*` outside `cdisc_transpiler/cli/` (verified - excluding legacy)
 2. ⏳ `cdisc_transpiler/application/*` no longer imports or delegates to `cdisc_transpiler/legacy/*`
-3. ⏳ Repository ports in `application/ports/repositories.py` have concrete infrastructure implementations
+3. ✅ Repository ports in `application/ports/repositories.py` have concrete infrastructure implementations
 4. ⏳ `StudyProcessingUseCase` and `DomainProcessingUseCase` run end-to-end using injected dependencies
 5. ✅ Full test suite passes: `pytest` (assumed - verify before each PR)
 
@@ -380,3 +383,7 @@ From `CLEAN-2_MIGRATION_TICKETS.md`:
 | 2025-12-15 | CLEAN2-A3 | Complete | Current PR | Added tests/unit/architecture/ with 8 boundary tests |
 | 2025-12-15 | CLEAN2-A4 | Complete | Current PR | Refactored DomainDiscoveryService to accept LoggerPort |
 | 2025-12-15 | CLEAN2-A5 | Complete | Current PR | Refactored ProgressReportingService to accept LoggerPort |
+| 2025-12-15 | CLEAN2-B1 | Complete | Current PR | Implemented SDTMSpecRepository with caching |
+| 2025-12-15 | CLEAN2-B2 | Complete | Current PR | Implemented CTRepository with version resolution |
+| 2025-12-15 | CLEAN2-B3 | Complete | Current PR | Implemented StudyDataRepository for CSV/Excel/SAS |
+| 2025-12-15 | CLEAN2-B4 | Complete | Current PR | Added MemoryCache with TTL support |
