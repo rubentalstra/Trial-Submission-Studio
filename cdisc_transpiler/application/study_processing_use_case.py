@@ -676,10 +676,14 @@ class StudyProcessingUseCase:
             )
             
             # Build domain dataframe with SDTM structure
+            from ..domains_module import get_domain
             from ..domain.services import build_domain_dataframe
+            
+            relrec_domain = get_domain("RELREC")
             domain_dataframe = build_domain_dataframe(
                 relrec_df,
                 relrec_config,
+                relrec_domain,
                 lenient=True,
             )
             
