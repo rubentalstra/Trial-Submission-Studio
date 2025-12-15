@@ -158,3 +158,127 @@ class ProcessStudyResponse:
     def failed_domains(self) -> list[str]:
         """Get list of failed domain codes."""
         return [code for code, _ in self.errors]
+
+
+@dataclass
+class ProcessDomainRequest:
+    """Request to process a single SDTM domain.
+    
+    This DTO encapsulates all inputs needed for domain processing, providing
+    a clean interface for domain-level operations.
+    
+    Attributes:
+        files_for_domain: List of (file_path, variant_name) tuples to process
+        domain_code: SDTM domain code (e.g., "DM", "AE", "LB")
+        study_id: Study identifier
+        output_formats: Set of formats to generate ({"xpt", "xml"})
+        output_dirs: Dictionary with "xpt", "xml", "sas" directory paths
+        min_confidence: Minimum confidence for fuzzy matches (0.0-1.0)
+        streaming: Use streaming mode for large datasets
+        chunk_size: Chunk size for streaming mode
+        generate_sas: Whether to generate SAS programs
+        verbose: Verbosity level (0, 1, 2, ...)
+        metadata: Study metadata (Items.csv, CodeLists.csv)
+        reference_starts: Reference start dates by subject ID
+        common_column_counts: Common column frequency counts for heuristics
+        total_input_files: Total number of input files (for heuristics)
+        
+    Example:
+        >>> request = ProcessDomainRequest(
+        ...     files_for_domain=[(Path("DM.csv"), "DM")],
+        ...     domain_code="DM",
+        ...     study_id="STUDY001",
+        ...     output_formats={"xpt", "xml"},
+        ...     output_dirs={"xpt": Path("output/xpt")},
+        ... )
+    """
+    
+    files_for_domain: list[tuple[Path, str]]
+    domain_code: str
+    study_id: str
+    output_formats: set[str] = field(default_factory=lambda: {"xpt", "xml"})
+    output_dirs: dict[str, Path | None] = field(default_factory=dict)
+    min_confidence: float = 0.5
+    streaming: bool = False
+    chunk_size: int = 1000
+    generate_sas: bool = True
+    verbose: int = 0
+    metadata: Any = None  # StudyMetadata, avoiding circular import
+    reference_starts: dict[str, str] | None = None
+    common_column_counts: dict[str, int] | None = None
+    total_input_files: int | None = None
+
+
+@dataclass
+class ProcessDomainResponse:
+    """Response from domain processing.
+    
+    This DTO encapsulates all outputs from domain processing, providing
+    a clean interface for returning results.
+    
+    Attributes:
+        success: Whether processing succeeded
+        domain_code: SDTM domain code
+        records: Number of records in processed domain
+        domain_dataframe: The processed domain DataFrame
+        config: Mapping configuration used
+        xpt_path: Path to generated XPT file (if any)
+        xml_path: Path to generated Dataset-XML file (if any)
+        sas_path: Path to generated SAS program (if any)
+        supplementals: List of supplemental domain responses (e.g., SUPPAE)
+        split_datasets: List of (name, dataframe, path) for split datasets
+        error: Error message if processing failed
+        warnings: List of warning messages
+        
+    Example:
+        >>> response = ProcessDomainResponse(
+        ...     success=True,
+        ...     domain_code="DM",
+        ...     records=100,
+        ...     domain_dataframe=dm_df,
+        ...     xpt_path=Path("output/xpt/dm.xpt"),
+        ... )
+    """
+    
+    success: bool = True
+    domain_code: str = ""
+    records: int = 0
+    domain_dataframe: pd.DataFrame | None = None
+    config: Any = None  # MappingConfig, avoiding circular import
+    xpt_path: Path | None = None
+    xml_path: Path | None = None
+    sas_path: Path | None = None
+    supplementals: list[ProcessDomainResponse] = field(default_factory=list)
+    split_datasets: list[tuple[str, pd.DataFrame, Path]] = field(default_factory=list)
+    error: str | None = None
+    warnings: list[str] = field(default_factory=list)
+    
+    def to_dict(self) -> dict:
+        """Convert to dictionary format for compatibility with existing code.
+        
+        Returns:
+            Dictionary with keys expected by legacy code
+        """
+        result = {
+            "domain_code": self.domain_code,
+            "records": self.records,
+            "domain_dataframe": self.domain_dataframe,
+            "config": self.config,
+            "xpt_path": self.xpt_path,
+            "xml_path": self.xml_path,
+            "sas_path": self.sas_path,
+            "supplementals": [
+                {
+                    "domain_code": supp.domain_code,
+                    "records": supp.records,
+                    "domain_dataframe": supp.domain_dataframe,
+                    "config": supp.config,
+                    "xpt_path": supp.xpt_path,
+                    "xml_path": supp.xml_path,
+                    "sas_path": supp.sas_path,
+                }
+                for supp in self.supplementals
+            ],
+            "split_datasets": self.split_datasets,
+        }
+        return result

@@ -6,6 +6,8 @@ It defines ports (interfaces) for external dependencies.
 
 from .models import (
     DomainProcessingResult,
+    ProcessDomainRequest,
+    ProcessDomainResponse,
     ProcessStudyRequest,
     ProcessStudyResponse,
 )
@@ -16,6 +18,8 @@ from .models import (
 
 __all__ = [
     "DomainProcessingResult",
+    "ProcessDomainRequest",
+    "ProcessDomainResponse",
     "ProcessStudyRequest",
     "ProcessStudyResponse",
 ]
