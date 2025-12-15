@@ -47,15 +47,17 @@ Epic A, B are complete. Epic C P1 tickets are complete. The following tickets sh
 12. ~~**CLEAN2-C3** (P1) - Move SUPPQUAL to domain services~~ ✅ Complete
 13. ~~**CLEAN2-C4** (P1) - Migrate `metadata_module` to infrastructure~~ ✅ Complete
 14. ~~**CLEAN2-C5** (P1) - Deprecate `io_module`~~ ✅ Complete
-15. ~~**CLEAN2-C8** (P1) - Move domain dataframe builder to domain services~~ ✅ Complete
+15. ~~**CLEAN2-C6** (P2) - Move mapping config I/O to infrastructure~~ ✅ Complete
+16. ~~**CLEAN2-C7** (P2) - Move mapping engines to domain services~~ ✅ Complete
+17. ~~**CLEAN2-C8** (P1) - Move domain dataframe builder to domain services~~ ✅ Complete
 
 ### Remaining P0 Tickets
-16. **CLEAN2-D1** (P0) - Make `DomainProcessingUseCase` real ⏳
-17. **CLEAN2-D2** (P0) - Make `StudyProcessingUseCase` real ⏳
+18. **CLEAN2-D1** (P0) - Make `DomainProcessingUseCase` real ⏳
+19. **CLEAN2-D2** (P0) - Make `StudyProcessingUseCase` real ⏳
 
 ### Remaining P2 Tickets (Epic C)
-18. **CLEAN2-C6** (P2) - Move mapping config I/O to infrastructure ⏳
-19. **CLEAN2-C7** (P2) - Move mapping engines to domain services ⏳
+18. ~~**CLEAN2-C6** (P2) - Move mapping config I/O to infrastructure~~ ✅ Complete
+19. ~~**CLEAN2-C7** (P2) - Move mapping engines to domain services~~ ✅ Complete
 20. **CLEAN2-C9** (P2) - Move domain processors to domain services ⏳
 
 ### Remaining P2 Tickets (Epic D-F)
@@ -73,11 +75,11 @@ After all P0 tickets are complete, proceed to P2 tickets.
 |------|---------------|----------|-------------|-------------|
 | A - Boundary Cleanup | 5 | 5 | 0 | 0 |
 | B - Repositories & Configuration | 4 | 4 | 0 | 0 |
-| C - Refactor Old Modules | 9 | 6 | 0 | 3 |
+| C - Refactor Old Modules | 9 | 8 | 0 | 1 |
 | D - Implement Real Use Cases | 4 | 0 | 0 | 4 |
 | E - Output Adapters | 7 | 0 | 0 | 7 |
 | F - Cleanup | 2 | 0 | 0 | 2 |
-| **Total** | **31** | **15** | **0** | **16** |
+| **Total** | **31** | **17** | **0** | **14** |
 
 ---
 
@@ -190,17 +192,17 @@ After all P0 tickets are complete, proceed to P2 tickets.
 
 ### CLEAN2-C6 — Move mapping config I/O to infrastructure
 - **Priority:** P2
-- **Status:** ⏳ Not Started
-- **Completion Date:** -
-- **PR:** -
-- **Notes:** Create `infrastructure/repositories/mapping_config_repository.py`
+- **Status:** ✅ Complete
+- **Completion Date:** 2025-12-15
+- **PR:** Current PR
+- **Notes:** Created `infrastructure/repositories/mapping_config_repository.py`, converted `mapping_module/config_io.py` to wrapper
 
 ### CLEAN2-C7 — Move mapping engines to domain services
 - **Priority:** P2
-- **Status:** ⏳ Not Started
-- **Completion Date:** -
-- **PR:** -
-- **Notes:** Create `domain/services/mapping/`
+- **Status:** ✅ Complete
+- **Completion Date:** 2025-12-15
+- **PR:** Current PR
+- **Notes:** Created `domain/services/mapping/` with engine.py, metadata_mapper.py, pattern_builder.py, utils.py
 
 ### CLEAN2-C8 — Move domain dataframe builder to domain services
 - **Priority:** P1
