@@ -12,7 +12,6 @@ SDTM Reference:
     - Output file generation (XPT, Dataset-XML, Define-XML)
 
 Active Services:
-    - FileGenerationService: Generates output files (XPT, XML, SAS)
     - TrialDesignService: Synthesizes trial design domains (TS, TA, TE, etc.)
     - DomainDiscoveryService: Discovers and classifies domain files
     - FileOrganizationService: Manages output directory structure
@@ -20,6 +19,7 @@ Active Services:
 
 Deprecated Services (moved to legacy package):
     ⚠️ The following services are deprecated and will be removed in the next major version:
+    - FileGenerationService → use infrastructure.io.FileGenerator with FileGeneratorPort
     - StudyOrchestrationService → use application.study_processing_use_case.StudyProcessingUseCase
     - DomainProcessingCoordinator → use application.domain_processing_use_case.DomainProcessingUseCase
     - DomainSynthesisCoordinator → use application.study_processing_use_case.StudyProcessingUseCase
@@ -28,7 +28,6 @@ Deprecated Services (moved to legacy package):
     See MIGRATION.md for migration guidance.
 """
 
-from .file_generation_service import FileGenerationService, FileGenerationResult
 from .trial_design_service import TrialDesignService
 from .domain_discovery_service import DomainDiscoveryService
 from .file_organization_service import FileOrganizationService, ensure_acrf_pdf
@@ -42,8 +41,6 @@ from ..legacy import (
 )
 
 __all__ = [
-    "FileGenerationService",
-    "FileGenerationResult",
     "TrialDesignService",
     "DomainDiscoveryService",
     "FileOrganizationService",
