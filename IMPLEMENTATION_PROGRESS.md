@@ -1,16 +1,53 @@
 # Implementation Progress Tracker
 
 **Started:** 2025-12-14  
-**Current Epic:** Epic 1 - Infrastructure Layer COMPLETE!
-**Status:** ✅ Epic 1 Complete (6/60 tickets)
+**Current Epic:** Epic 6 - Cleanup & Release (CLEAN-1 COMPLETE!)
+**Status:** ✅ Epic 1 Complete (6/60 tickets) + ✅ CLEAN-1 Complete
 
 ---
 
 ## Progress Summary
 
-- **Completed Tickets:** 6/60 (10%)
-- **Current Sprint:** Week 1 - Infrastructure Layer ✅
+- **Completed Tickets:** 7/60 (12%)
+- **Sprint 1 (Week 1):** Infrastructure Layer ✅
+- **Sprint 6 (Week 6):** CLEAN-1 - Remove Old Code from Legacy Folder ✅
 - **Estimated Completion:** 6 weeks (149 hours)
+
+---
+
+## Epic 6: Cleanup & Release (Week 6) - IN PROGRESS
+
+### CLEAN-1: Remove Old Code from Legacy Folder ✅
+**Completed:** 2025-12-15 (commit 7a642bb)
+
+**Summary:**
+Moved deprecated service coordinators to `legacy/` folder with full backward compatibility and deprecation warnings.
+
+**Files Moved:**
+- `services/domain_processing_coordinator.py` → `legacy/domain_processing_coordinator.py`
+- `services/domain_synthesis_coordinator.py` → `legacy/domain_synthesis_coordinator.py`
+- `services/study_orchestration_service.py` → `legacy/study_orchestration_service.py`
+
+**Key Features:**
+- ✅ 100% backward compatibility maintained
+- ✅ Deprecation warnings added for all legacy imports
+- ✅ Updated MIGRATION.md with migration guidance
+- ✅ All 485 tests pass
+- ✅ No breaking changes
+
+**Testing:**
+```bash
+# All tests pass
+pytest tests/ -v  # 485 passed, 14 skipped
+
+# Backward compatibility verified
+from cdisc_transpiler.services import DomainProcessingCoordinator  # Works with warning
+```
+
+**Deprecation Strategy:**
+- Current release: Services in `legacy/` with deprecation warnings
+- Next release: Permanent removal planned
+- Migration path: Use `application.domain_processing_use_case` and `application.study_processing_use_case`
 
 ---
 
