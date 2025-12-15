@@ -11,27 +11,50 @@ from .general_classes import build_general_class_variables
 from .loaders import load_csv_rows, load_dataset_attributes
 from ..domain.entities.sdtm_domain import SDTMDomain
 
-# Path to SDTMIG v3.4 metadata (single source of truth)
-_SDTMIG_PATH = Path(__file__).resolve().parent.parent.parent / "docs" / "SDTMIG_v3.4" / "Variables.csv"
-_SDTM_V2_PATH = Path(__file__).resolve().parent.parent.parent / "docs" / "SDTM_v2.0" / "Variables.csv"
-_SDTM_DATASETS_PATH = (
-    Path(__file__).resolve().parent.parent.parent / "docs" / "SDTMIG_v3.4" / "Datasets.csv"
-)
 
-# Global registries
+def _get_spec_paths() -> tuple[Path, Path, Path]:
+    """Get SDTM spec file paths from config or default locations.
+    
+    Returns:
+        Tuple of (sdtmig_path, sdtm_v2_path, datasets_path)
+    """
+    # Lazy import to avoid circular imports
+    from ..config import TranspilerConfig
+    
+    config = TranspilerConfig()
+    spec_dir = config.sdtm_spec_dir
+    
+    # Make path absolute if relative
+    if not spec_dir.is_absolute():
+        package_root = Path(__file__).resolve().parent.parent.parent
+        spec_dir = package_root / spec_dir
+    
+    # SDTMIG v3.4 paths
+    sdtmig_path = spec_dir / "Variables.csv"
+    datasets_path = spec_dir / "Datasets.csv"
+    
+    # SDTM v2.0 fallback (relative to SDTMIG location)
+    sdtm_v2_path = spec_dir.parent / "SDTM_v2.0" / "Variables.csv"
+    
+    return sdtmig_path, sdtm_v2_path, datasets_path
+
+
+# Global registries (lazily initialized)
 _DOMAIN_DEFINITIONS: dict[str, SDTMDomain] = {}
 _sdtmig_cache: dict[str, list[dict[str, Any]]] | None = None
 _sdtm_v2_cache: dict[str, list[dict[str, Any]]] | None = None
 _dataset_attributes: dict[str, dict[str, str]] = {}
 _general_class_variables: dict[str, dict[str, Any]] = {}
 _general_class_usage: dict[str, dict[str, set[str]]] = {}
+_initialized: bool = False
 
 
 def _load_sdtmig_cache() -> dict[str, list[dict[str, Any]]]:
     """Load SDTMIG v3.4 metadata from CSV."""
     global _sdtmig_cache
     if _sdtmig_cache is None:
-        _sdtmig_cache = load_csv_rows(_SDTMIG_PATH)
+        sdtmig_path, _, _ = _get_spec_paths()
+        _sdtmig_cache = load_csv_rows(sdtmig_path)
     return _sdtmig_cache
 
 
@@ -39,7 +62,8 @@ def _load_sdtm_v2_cache() -> dict[str, list[dict[str, Any]]]:
     """Load SDTM v2.0 metadata from CSV (used as fallback/enrichment)."""
     global _sdtm_v2_cache
     if _sdtm_v2_cache is None:
-        _sdtm_v2_cache = load_csv_rows(_SDTM_V2_PATH)
+        _, sdtm_v2_path, _ = _get_spec_paths()
+        _sdtm_v2_cache = load_csv_rows(sdtm_v2_path)
     return _sdtm_v2_cache
 
 
@@ -47,7 +71,8 @@ def _load_dataset_attributes() -> dict[str, dict[str, str]]:
     """Load dataset attributes."""
     global _dataset_attributes
     if not _dataset_attributes:
-        _dataset_attributes = load_dataset_attributes(_SDTM_DATASETS_PATH)
+        _, _, datasets_path = _get_spec_paths()
+        _dataset_attributes = load_dataset_attributes(datasets_path)
     return _dataset_attributes
 
 
@@ -100,9 +125,20 @@ def _register_all_domains() -> None:
             _register(domain)
 
 
+def _ensure_initialized() -> None:
+    """Ensure the domain registry is initialized (lazy initialization)."""
+    global _initialized
+    if not _initialized:
+        _initialize_general_classes()
+        _register_all_domains()
+        _initialized = True
+
+
 @lru_cache(maxsize=None)
 def get_domain(code: str) -> SDTMDomain:
     """Get domain definition by code."""
+    _ensure_initialized()
+    
     key = code.upper()
     if key in _DOMAIN_DEFINITIONS:
         return _DOMAIN_DEFINITIONS[key]
@@ -125,6 +161,7 @@ def get_domain(code: str) -> SDTMDomain:
 
 def list_domains() -> Iterable[str]:
     """List all registered domain codes."""
+    _ensure_initialized()
     return _DOMAIN_DEFINITIONS.keys()
 
 
@@ -134,6 +171,4 @@ def generalized_identifiers(domain_code: str) -> dict[str, str]:
     return domain.implements_mapping()
 
 
-# Initialize CSV-driven domains at import time
-_initialize_general_classes()
-_register_all_domains()
+# NOTE: Initialization is now lazy - domains are loaded on first access to get_domain() or list_domains()

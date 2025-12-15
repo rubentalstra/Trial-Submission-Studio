@@ -8,9 +8,12 @@ Extracted from cli/commands/study.py as part of Phase 2 refactoring.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from rich.console import Console
+
+if TYPE_CHECKING:
+    from ..application.ports.services import LoggerPort
 
 
 class ProgressReportingService:
@@ -20,14 +23,25 @@ class ProgressReportingService:
     status messages, and summary reporting during study processing.
     """
 
-    def __init__(self, verbose: int = 0):
+    def __init__(self, verbose: int = 0, logger: LoggerPort | None = None):
         """Initialize the progress reporting service.
 
         Args:
             verbose: Verbosity level (0 = normal, 1+ = verbose)
+            logger: Optional logger for verbose output. If None, logging is silently skipped.
         """
         self.console = Console()
         self.verbose = verbose
+        self._logger = logger
+
+    def _log_verbose(self, message: str) -> None:
+        """Log a verbose message if logger is available and verbosity is enabled.
+        
+        Args:
+            message: Message to log
+        """
+        if self.verbose > 0 and self._logger is not None:
+            self._logger.verbose(message)
 
     def report_study_info(
         self,
@@ -45,13 +59,10 @@ class ProgressReportingService:
             supported_domains: List of supported domain codes
         """
         if self.verbose > 0:
-            from ..cli.logging_config import get_logger
-            
-            logger = get_logger()
-            logger.verbose(f"Processing study folder: {study_folder}")
-            logger.verbose(f"Study ID: {study_id}")
-            logger.verbose(f"Output format: {output_format}")
-            logger.verbose(f"Supported domains: {', '.join(supported_domains)}")
+            self._log_verbose(f"Processing study folder: {study_folder}")
+            self._log_verbose(f"Study ID: {study_id}")
+            self._log_verbose(f"Output format: {output_format}")
+            self._log_verbose(f"Supported domains: {', '.join(supported_domains)}")
 
     def report_metadata_loaded(
         self, items_count: int | None, codelists_count: int | None
@@ -63,13 +74,10 @@ class ProgressReportingService:
             codelists_count: Number of codelists loaded from CodeLists.csv
         """
         if self.verbose > 0:
-            from ..cli.logging_config import get_logger
-            
-            logger = get_logger()
             if items_count:
-                logger.verbose(f"Loaded {items_count} column definitions from Items.csv")
+                self._log_verbose(f"Loaded {items_count} column definitions from Items.csv")
             if codelists_count:
-                logger.verbose(f"Loaded {codelists_count} codelists from CodeLists.csv")
+                self._log_verbose(f"Loaded {codelists_count} codelists from CodeLists.csv")
 
     def report_files_found(self, csv_count: int) -> None:
         """Report number of CSV files found.
@@ -78,10 +86,7 @@ class ProgressReportingService:
             csv_count: Number of CSV files found
         """
         if self.verbose > 0:
-            from ..cli.logging_config import get_logger
-            
-            logger = get_logger()
-            logger.verbose(f"Found {csv_count} CSV files")
+            self._log_verbose(f"Found {csv_count} CSV files")
 
     def report_study_summary(
         self,

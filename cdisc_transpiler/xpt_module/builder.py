@@ -3,6 +3,9 @@
 This module provides the core builder class that orchestrates the construction
 of SDTM-compliant DataFrames from source data and mapping configurations.
 
+NOTE: This module is a compatibility wrapper. The actual implementation
+has been moved to `cdisc_transpiler.domain.services.domain_frame_builder`.
+
 SDTM Reference:
     SDTMIG v3.4 Section 4.1 defines the general structure of SDTM datasets.
     Variables follow the General Observation Classes (Interventions, Events,
@@ -15,11 +18,15 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 
-from ..mapping_module import ColumnMapping, MappingConfig, unquote_column_name
-from ..domains_module import SDTMVariable, get_domain
+from ..mapping_module import MappingConfig
+from ..domains_module import get_domain
+from ..domain.services.domain_frame_builder import (
+    DomainFrameBuilder as _DomainFrameBuilder,
+    DomainFrameBuildError,
+)
 from .domain_processors import get_domain_processor
 
-# Import the modular components
+# Import the modular components for injection
 from .transformers import (
     DateTransformer,
     CodelistTransformer,
@@ -35,7 +42,7 @@ class XportGenerationError(RuntimeError):
     """Raised when XPT export cannot be completed."""
 
 
-# Re-export the exception for API compatibility
+# Re-export for API compatibility
 __all__ = ["XportGenerationError", "build_domain_dataframe", "DomainFrameBuilder"]
 
 
@@ -48,6 +55,9 @@ def build_domain_dataframe(
     metadata: "StudyMetadata | None" = None,
 ) -> pd.DataFrame:
     """Return a pandas DataFrame that matches the SDTM domain layout.
+
+    NOTE: This function is a compatibility wrapper. New code should use
+    `cdisc_transpiler.domain.services.build_domain_dataframe()` directly.
 
     Args:
         frame: The source DataFrame.
@@ -72,15 +82,15 @@ def build_domain_dataframe(
 class DomainFrameBuilder:
     """Builds SDTM-compliant DataFrames from source data.
 
+    NOTE: This class is a compatibility wrapper. New code should use
+    `cdisc_transpiler.domain.services.DomainFrameBuilder` directly.
+
     This class orchestrates the construction of domain DataFrames by:
     1. Creating a blank DataFrame with domain variables
     2. Applying column mappings from source to target
     3. Performing transformations (dates, codelists, numeric)
     4. Validating and enforcing SDTM requirements
     5. Reordering columns to match domain specification
-
-    Phase 4 Step 7: Now uses modular transformers and validators from Steps 3-6.
-    Domain-specific processing still delegates to original xpt.py for complex logic.
     """
 
     def __init__(
@@ -92,121 +102,32 @@ class DomainFrameBuilder:
         lenient: bool = False,
         metadata: "StudyMetadata | None" = None,
     ) -> None:
-        self.frame = frame.reset_index(drop=True)
-        self.config = config
-        self.domain = get_domain(config.domain)
-        self.variable_lookup = {var.name: var for var in self.domain.variables}
-        self.length = len(self.frame)
-        self.reference_starts = reference_starts or {}
-        self.lenient = lenient
-        self.metadata = metadata
+        # Get domain from config (lookup here for backwards compatibility)
+        domain = get_domain(config.domain)
 
-        # Initialize transformers
-        self.codelist_transformer = CodelistTransformer(metadata)
+        # Create transformers and validators dict for injection
+        transformers = {
+            "date": DateTransformer,
+            "codelist": CodelistTransformer,
+            "numeric": NumericTransformer,
+        }
+        validators = {
+            "xpt": XPTValidator,
+        }
+
+        # Delegate to domain service
+        self._builder = _DomainFrameBuilder(
+            frame,
+            config,
+            domain,
+            reference_starts=reference_starts,
+            lenient=lenient,
+            metadata=metadata,
+            domain_processor_factory=get_domain_processor,
+            transformers=transformers,
+            validators=validators,
+        )
 
     def build(self) -> pd.DataFrame:
         """Build the domain DataFrame using modular transformers and validators."""
-        # Create a blank DataFrame with all domain variables
-        result = pd.DataFrame(
-            {var.name: self._default_column(var) for var in self.domain.variables}
-        )
-
-        # Apply mappings
-        if self.config and self.config.mappings:
-            for mapping in self.config.mappings:
-                self._apply_mapping(result, mapping)
-        else:
-            # No mapping provided, assume frame is already structured correctly.
-            for col in self.frame.columns:
-                if col in result.columns:
-                    result[col] = self.frame[col]
-
-        # Fill in STUDYID and DOMAIN
-        if self.config and self.config.study_id:
-            result["STUDYID"] = self.config.study_id
-        if "DOMAIN" in result.columns:
-            result["DOMAIN"] = self.domain.code
-
-        # Perform transformations using modular components (Steps 3-5)
-        DateTransformer.normalize_dates(result, self.domain.variables)
-        DateTransformer.calculate_dy(
-            result, self.domain.variables, self.reference_starts
-        )
-        DateTransformer.normalize_durations(result, self.domain.variables)
-        CodelistTransformer.apply_codelist_validations(result, self.domain.variables)
-        NumericTransformer.populate_stresc_from_orres(result, self.domain.code)
-
-        # Domain-specific processing - still uses original implementation
-        # This is the complex 2,500+ line method that handles all domain-specific logic
-        self._post_process_domain(result)
-
-        # Validation and cleanup using modular components (Step 6)
-        XPTValidator.drop_empty_optional_columns(result, self.domain.variables)
-        XPTValidator.reorder_columns(result, self.domain.variables)
-        XPTValidator.enforce_required_values(
-            result, self.domain.variables, self.lenient
-        )
-        XPTValidator.enforce_lengths(result, self.domain.variables)
-
-        return result
-
-    def _apply_mapping(self, result: pd.DataFrame, mapping: ColumnMapping) -> None:
-        """Apply a single column mapping to the result DataFrame."""
-        if mapping.target_variable not in self.variable_lookup:
-            return
-
-        source_column = mapping.source_column
-        raw_source = unquote_column_name(source_column)
-
-        if mapping.transformation:
-            # TODO: Implement transformation logic
-            pass
-        else:
-            # Get the source data
-            if source_column in self.frame.columns:
-                source_data = self.frame[source_column].copy()
-            elif raw_source in self.frame.columns:
-                source_data = self.frame[raw_source].copy()
-            else:
-                return
-
-            # Apply codelist transformation if specified (using modular transformer)
-            if (
-                mapping.codelist_name
-                and self.metadata
-                and mapping.target_variable != "TSVCDREF"
-            ):
-                code_column = mapping.use_code_column
-                code_column = unquote_column_name(code_column) if code_column else None
-                source_data = self.codelist_transformer.apply_codelist_transformation(
-                    source_data,
-                    mapping.codelist_name,
-                    code_column,
-                    self.frame,
-                    unquote_column_name,
-                )
-
-            result[mapping.target_variable] = source_data
-
-    def _default_column(self, variable: SDTMVariable) -> pd.Series:
-        """Return a default column series for a given variable."""
-        dtype = variable.pandas_dtype()
-        return pd.Series([None] * self.length, dtype=dtype)
-
-    def _post_process_domain(self, result: pd.DataFrame) -> None:
-        """Perform domain-specific post-processing using the domain processor system.
-
-        This method delegates to domain-specific processors that handle the unique
-        requirements of each SDTM domain.
-        """
-
-        # Get the appropriate processor for this domain
-        processor = get_domain_processor(
-            self.domain,
-            self.reference_starts,
-            self.metadata,
-        )
-        processor.config = self.config
-
-        # Apply domain-specific processing
-        processor.process(result)
+        return self._builder.build()

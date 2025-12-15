@@ -2,19 +2,20 @@
 
 This module provides functions for loading datasets from
 CSV, Excel, and SAS formats with intelligent header detection.
+
+NOTE: This module is a compatibility wrapper. The actual implementation
+has been moved to `cdisc_transpiler.infrastructure.repositories.study_data_repository`.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Callable
+from typing import TYPE_CHECKING, Callable
 
 import pandas as pd
 
-try:  # pragma: no cover - optional dependency at runtime
-    import pyreadstat  # type: ignore[import-untyped]
-except ModuleNotFoundError:  # pragma: no cover
-    pyreadstat = None
+if TYPE_CHECKING:
+    from ..infrastructure.repositories.study_data_repository import StudyDataRepository
 
 
 class ParseError(RuntimeError):
@@ -25,6 +26,39 @@ class ParseError(RuntimeError):
 Reader = Callable[[Path], pd.DataFrame]
 
 
+def load_input_dataset(path: str | Path) -> pd.DataFrame:
+    """Load a dataset from various file formats.
+
+    Supports CSV, TSV, TXT, Excel (xls/xlsx), and SAS7BDAT formats.
+
+    NOTE: This function is a compatibility wrapper. New code should use
+    `StudyDataRepository.read_dataset()` directly.
+
+    Args:
+        path: Path to the input file
+
+    Returns:
+        DataFrame containing the loaded data
+
+    Raises:
+        ParseError: If the file cannot be read or has no columns
+    """
+    # Lazy import to avoid circular import issues
+    from ..infrastructure.io.exceptions import DataParseError, DataSourceNotFoundError
+    from ..infrastructure.repositories.study_data_repository import StudyDataRepository
+    
+    repo = StudyDataRepository()
+    
+    try:
+        return repo.read_dataset(path)
+    except DataSourceNotFoundError as exc:
+        raise ParseError(str(exc)) from exc
+    except DataParseError as exc:
+        raise ParseError(str(exc)) from exc
+
+
+# Keep these for backwards compatibility with internal code
+# that may import them directly
 def _read_csv(path: Path) -> pd.DataFrame:
     """Read CSV file with intelligent header detection.
 
@@ -74,13 +108,15 @@ def _read_sas(path: Path) -> pd.DataFrame:
     Raises:
         ParseError: If pyreadstat is not installed
     """
-    if pyreadstat is None:
+    try:
+        import pyreadstat  # type: ignore[import-untyped]
+    except ModuleNotFoundError:
         raise ParseError("pyreadstat is required to read SAS files")
     frame, _ = pyreadstat.read_sas7bdat(str(path))
     return frame
 
 
-# Mapping of file extensions to reader functions
+# Mapping of file extensions to reader functions (for backwards compatibility)
 READERS: dict[str, Reader] = {
     ".csv": _read_csv,
     ".txt": _read_csv,
@@ -89,40 +125,3 @@ READERS: dict[str, Reader] = {
     ".xlsx": _read_excel,
     ".sas7bdat": _read_sas,
 }
-
-
-def load_input_dataset(path: str | Path) -> pd.DataFrame:
-    """Load a dataset from various file formats.
-
-    Supports CSV, TSV, TXT, Excel (xls/xlsx), and SAS7BDAT formats.
-
-    Args:
-        path: Path to the input file
-
-    Returns:
-        DataFrame containing the loaded data
-
-    Raises:
-        ParseError: If the file cannot be read or has no columns
-    """
-    file_path = Path(path)
-    if not file_path.exists():
-        raise ParseError(f"Input file not found: {file_path}")
-    if not file_path.is_file():
-        raise ParseError(f"Input path is not a file: {file_path}")
-
-    ext = file_path.suffix.lower()
-    reader = READERS.get(ext)
-    if reader is None:
-        supported = ", ".join(sorted(READERS))
-        raise ParseError(f"Unsupported format '{ext}'. Supported: {supported}")
-
-    try:
-        frame = reader(file_path)
-    except Exception as exc:  # pragma: no cover - pass through real errors
-        raise ParseError(f"Failed to parse {file_path}: {exc}") from exc
-
-    if frame.shape[1] == 0:
-        raise ParseError("Input data contains no columns")
-
-    return frame

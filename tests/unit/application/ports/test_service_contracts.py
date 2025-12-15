@@ -39,6 +39,9 @@ class MockLogger:
 
     def debug(self, message: str) -> None:
         self.messages.append(("debug", message))
+    
+    def verbose(self, message: str) -> None:
+        self.messages.append(("verbose", message))
 
 
 class MockFileGenerator:
