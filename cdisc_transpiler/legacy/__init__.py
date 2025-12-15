@@ -10,7 +10,7 @@ in the next major version. They have been replaced by the new architecture:
 These modules are kept for one release cycle to ensure backward compatibility
 during the migration period. Please update your code to use the new architecture.
 
-For migration guidance, see MIGRATION.md in the project root.
+For migration guidance, see docs/ARCHITECTURE.md.
 """
 
 import warnings
@@ -21,7 +21,7 @@ def _deprecated_import_warning(old_module: str, new_module: str) -> None:
     """Issue a deprecation warning for legacy imports."""
     warnings.warn(
         f"{old_module} is deprecated and will be removed in the next major version. "
-        f"Please migrate to {new_module}. See MIGRATION.md for details.",
+        f"Please migrate to {new_module}. See docs/ARCHITECTURE.md for details.",
         DeprecationWarning,
         stacklevel=3,
     )

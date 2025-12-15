@@ -11,7 +11,11 @@ from typing import Iterable
 
 from pydantic import BaseModel, Field
 
-from ...domains_module import get_domain
+def _get_domain(domain_code: str):
+    """Lazy getter to avoid circular import with domains_module."""
+    from ...domains_module import get_domain
+
+    return get_domain(domain_code)
 
 
 # =============================================================================
@@ -48,10 +52,10 @@ class MappingConfig(BaseModel):
         return {m.target_variable for m in self.mappings}
 
     def enforce_domain(self) -> None:
-        get_domain(self.domain)  # raises if invalid
+        _get_domain(self.domain)  # raises if invalid
 
     def missing_required(self) -> set[str]:
-        domain = get_domain(self.domain)
+        domain = _get_domain(self.domain)
         required = {
             var.name
             for var in domain.variables

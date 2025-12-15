@@ -11,12 +11,9 @@ The module is organized into focused components:
 - writer: XML serialization and file I/O
 """
 
-from cdisc_transpiler.infrastructure.io.dataset_xml import (
-    DatasetXMLError,
-    DatasetXMLConfig,
-    build_dataset_xml_tree,
-    write_dataset_xml,
-)
+from .models import DatasetXMLError, DatasetXMLConfig
+from .builder import build_dataset_xml_tree
+from .writer import write_dataset_xml
 
 __all__ = [
     "DatasetXMLError",
