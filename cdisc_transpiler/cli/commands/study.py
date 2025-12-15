@@ -142,7 +142,7 @@ def study_command(
         # Custom output directory and study ID
         cdisc-transpiler study data/ --output-dir submission/ --study-id STUDY123
     """
-    
+
     # Derive study ID from folder name if not provided
     if study_id is None:
         folder_name = study_folder.name
@@ -151,14 +151,14 @@ def study_command(
             study_id = "_".join(parts[:2])
         else:
             study_id = folder_name
-    
+
     # Set output directory
     if output_dir is None:
         output_dir = study_folder / "output"
-    
+
     # Convert output format to set
     output_formats = {"xpt", "xml"} if output_format == "both" else {output_format}
-    
+
     # Create request object
     request = ProcessStudyRequest(
         study_folder=study_folder,
@@ -174,14 +174,14 @@ def study_command(
         min_confidence=min_confidence,
         verbose=verbose,
     )
-    
+
     # Create dependency container and use case
     container = DependencyContainer(verbose=verbose, console=console)
     use_case = container.create_study_processing_use_case()
-    
+
     # Execute the use case
     response = use_case.execute(request)
-    
+
     # Convert response to format expected by print_study_summary
     # Extract domain results as list of dicts for backward compatibility
     results = []
@@ -208,7 +208,7 @@ def study_command(
             ],
         }
         results.append(result_dict)
-    
+
     # Print summary using existing helper
     print_study_summary(
         results,
@@ -218,7 +218,7 @@ def study_command(
         generate_define,
         generate_sas,
     )
-    
+
     # Exit with error code if there were errors
     if not response.success or response.has_errors:
         raise click.ClickException("Study processing completed with errors")
