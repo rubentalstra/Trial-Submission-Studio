@@ -56,11 +56,11 @@ Epic A, B, C are complete. CLEAN2-D1, D2, and D3 are complete. The following tic
 21. ~~**CLEAN2-D3** (P1) - Implement synthesis service~~ ✅ Complete
 
 ### Remaining P2 Tickets (Epic D-F)
-22. **CLEAN2-D4** (P2) - Implement RELREC service ⏳
+22. ~~**CLEAN2-D4** (P2) - Implement RELREC service~~ ✅ Complete
 23. **CLEAN2-E1-E7** (P1/P2) - Output adapters ⏳
 24. **CLEAN2-F1-F2** (P1/P2) - Cleanup ⏳
 
-All P0 and P1 tickets in Epic D are now complete! Proceed to P2 tickets.
+All P0 and P1 tickets in Epic D are now complete! CLEAN2-D4 (P2) is also complete.
 
 ---
 
@@ -71,10 +71,10 @@ All P0 and P1 tickets in Epic D are now complete! Proceed to P2 tickets.
 | A - Boundary Cleanup | 5 | 5 | 0 | 0 |
 | B - Repositories & Configuration | 4 | 4 | 0 | 0 |
 | C - Refactor Old Modules | 9 | 9 | 0 | 0 |
-| D - Implement Real Use Cases | 4 | 3 | 0 | 1 |
+| D - Implement Real Use Cases | 4 | 4 | 0 | 0 |
 | E - Output Adapters | 7 | 0 | 0 | 7 |
 | F - Cleanup | 2 | 0 | 0 | 2 |
-| **Total** | **31** | **21** | **0** | **10** |
+| **Total** | **31** | **22** | **0** | **9** |
 
 ---
 
@@ -268,10 +268,17 @@ All P0 and P1 tickets in Epic D are now complete! Proceed to P2 tickets.
 
 ### CLEAN2-D4 — Implement RELREC service
 - **Priority:** P2
-- **Status:** ⏳ Not Started
-- **Completion Date:** -
-- **PR:** -
-- **Notes:** Create `domain/services/relrec_service.py`
+- **Status:** ✅ Complete
+- **Completion Date:** 2025-12-15
+- **PR:** Current PR
+- **Notes:** Created `domain/services/relrec_service.py` with:
+  - `RelrecService` class with pure domain logic
+  - `build_relrec()` method that accepts domain dataframes and returns RELREC dataframe + config
+  - Linking rules for AE→DS, EX→DS relationships
+  - Fallback DS-only relationship generation
+  - Updated `StudyProcessingUseCase._synthesize_relrec()` to use new service instead of legacy `StudyOrchestrationService`
+  - Removed `_get_orchestration_service()` method
+  - 21 unit tests in `tests/unit/domain/services/test_relrec_service.py`
 
 ---
 
@@ -438,3 +445,5 @@ From `CLEAN-2_MIGRATION_TICKETS.md`:
 | 2025-12-15 | CLEAN2-C9 | Complete | Current PR | Moved domain processors to domain/services/domain_processors/ (17 processors) |
 | 2025-12-15 | CLEAN2-D1 | Complete | Current PR | Implemented real DomainProcessingUseCase with 6 pipeline stages, removed legacy delegation |
 | 2025-12-15 | CLEAN2-D2 | Complete | Current PR | Implemented real StudyProcessingUseCase with injected dependencies, uses DomainProcessingUseCase |
+| 2025-12-15 | CLEAN2-D3 | Complete | Current PR | Implemented SynthesisService for trial design and observation domains |
+| 2025-12-15 | CLEAN2-D4 | Complete | Current PR | Implemented RelrecService for RELREC generation without StudyOrchestrationService |

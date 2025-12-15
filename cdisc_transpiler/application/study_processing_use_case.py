@@ -653,43 +653,71 @@ class StudyProcessingUseCase:
         xml_dir: Path | None,
         sas_dir: Path | None,
     ) -> None:
-        """Synthesize RELREC domain."""
+        """Synthesize RELREC domain.
+        
+        CLEAN2-D4: Now uses the new RelrecService from domain/services
+        instead of the legacy StudyOrchestrationService.
+        """
         self.logger.log_synthesis_start("RELREC", "Relationship scaffold")
         
         try:
-            # Convert domain results to dict format for orchestration service
-            domain_results_dicts = []
+            # Build dictionary of domain dataframes for RELREC service
+            domain_dataframes = {}
             for result in response.domain_results:
-                if result.domain_dataframe is not None:
-                    domain_results_dicts.append({
-                        "domain_code": result.domain_code,
-                        "domain_dataframe": result.domain_dataframe,
-                        "config": result.config,
-                        "xpt_path": result.xpt_path,
-                        "xml_path": result.xml_path,
-                        "sas_path": result.sas_path,
-                    })
+                if result.domain_dataframe is not None and not result.domain_dataframe.empty:
+                    domain_dataframes[result.domain_code] = result.domain_dataframe
             
-            orchestration_service = self._get_orchestration_service()
-            result_dict = orchestration_service.synthesize_relrec(
+            # Generate RELREC using the domain service
+            from ..domain.services import RelrecService
+            relrec_service = RelrecService()
+            relrec_df, relrec_config = relrec_service.build_relrec(
+                domain_dataframes=domain_dataframes,
                 study_id=request.study_id,
-                output_format="/".join(request.output_formats),
+            )
+            
+            # Build domain dataframe with SDTM structure
+            from ..domain.services import build_domain_dataframe
+            domain_dataframe = build_domain_dataframe(
+                relrec_df,
+                relrec_config,
+                lenient=True,
+            )
+            
+            # Generate output files
+            from ..infrastructure.io.models import OutputDirs, OutputRequest
+            output_dirs = OutputDirs(
                 xpt_dir=xpt_dir,
                 xml_dir=xml_dir,
                 sas_dir=sas_dir,
-                generate_sas=request.generate_sas,
-                domain_results=domain_results_dicts,
             )
+            
+            output_formats = set()
+            if "xpt" in request.output_formats:
+                output_formats.add("xpt")
+            if "xml" in request.output_formats:
+                output_formats.add("xml")
+            if request.generate_sas:
+                output_formats.add("sas")
+            
+            output_request = OutputRequest(
+                dataframe=domain_dataframe,
+                domain_code="RELREC",
+                config=relrec_config,
+                output_dirs=output_dirs,
+                formats=output_formats,
+            )
+            
+            output_result = self._file_generator.generate(output_request)
             
             result = DomainProcessingResult(
                 domain_code="RELREC",
                 success=True,
-                records=result_dict.get("records", 0),
-                domain_dataframe=result_dict.get("domain_dataframe"),
-                config=result_dict.get("config"),
-                xpt_path=result_dict.get("xpt_path"),
-                xml_path=result_dict.get("xml_path"),
-                sas_path=result_dict.get("sas_path"),
+                records=len(domain_dataframe),
+                domain_dataframe=domain_dataframe,
+                config=relrec_config,
+                xpt_path=output_result.xpt_path,
+                xml_path=output_result.xml_path,
+                sas_path=output_result.sas_path,
                 synthesized=True,
                 synthesis_reason="Relationship scaffold",
             )
@@ -804,10 +832,3 @@ class StudyProcessingUseCase:
             file_generator=self._file_generator,
             logger=self.logger,
         )
-    
-    def _get_orchestration_service(self):
-        """Get or create study orchestration service (legacy, to be replaced)."""
-        # Note: This uses the legacy service for RELREC synthesis.
-        # In future tickets (CLEAN2-D4), this will be replaced with a proper RELREC service.
-        from ..legacy import StudyOrchestrationService
-        return StudyOrchestrationService()
