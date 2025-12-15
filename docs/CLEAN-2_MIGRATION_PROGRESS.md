@@ -57,10 +57,11 @@ Epic A, B, C are complete. CLEAN2-D1, D2, and D3 are complete. The following tic
 
 ### Remaining P2 Tickets (Epic D-F)
 22. ~~**CLEAN2-D4** (P2) - Implement RELREC service~~ ✅ Complete
-23. **CLEAN2-E1-E7** (P1/P2) - Output adapters ⏳
-24. **CLEAN2-F1-F2** (P1/P2) - Cleanup ⏳
+23. ~~**CLEAN2-E1** (P1) - Convert FileGenerator to port adapter~~ ✅ Complete
+24. **CLEAN2-E2-E7** (P1/P2) - Output adapters ⏳
+25. **CLEAN2-F1-F2** (P1/P2) - Cleanup ⏳
 
-All P0 and P1 tickets in Epic D are now complete! CLEAN2-D4 (P2) is also complete.
+All P0 and P1 tickets in Epic D are now complete! CLEAN2-D4 (P2) and CLEAN2-E1 (P1) are also complete.
 
 ---
 
@@ -72,9 +73,9 @@ All P0 and P1 tickets in Epic D are now complete! CLEAN2-D4 (P2) is also complet
 | B - Repositories & Configuration | 4 | 4 | 0 | 0 |
 | C - Refactor Old Modules | 9 | 9 | 0 | 0 |
 | D - Implement Real Use Cases | 4 | 4 | 0 | 0 |
-| E - Output Adapters | 7 | 0 | 0 | 7 |
+| E - Output Adapters | 7 | 1 | 0 | 6 |
 | F - Cleanup | 2 | 0 | 0 | 2 |
-| **Total** | **31** | **22** | **0** | **9** |
+| **Total** | **31** | **23** | **0** | **8** |
 
 ---
 
@@ -286,10 +287,21 @@ All P0 and P1 tickets in Epic D are now complete! CLEAN2-D4 (P2) is also complet
 
 ### CLEAN2-E1 — Convert `FileGenerator` to port adapter
 - **Priority:** P1
-- **Status:** ⏳ Not Started
-- **Completion Date:** -
-- **PR:** -
-- **Notes:** Create writer adapters in `infrastructure/io/`
+- **Status:** ✅ Complete
+- **Completion Date:** 2025-12-15
+- **PR:** Current PR
+- **Notes:** Created writer adapters in `infrastructure/io/`:
+  - `XPTWriter` wrapping `xpt_module.write_xpt_file`
+  - `DatasetXMLWriter` wrapping `xml_module.dataset_module.write_dataset_xml`
+  - `SASWriter` wrapping `sas_module.generate_sas_program` and `write_sas_file`
+  - Added port protocols: `XPTWriterPort`, `DatasetXMLWriterPort`, `SASWriterPort`
+  - Updated `FileGenerator` to accept writers via constructor injection
+  - Updated `DependencyContainer` to wire writer adapters
+  - All 11 unit tests pass
+- **Verification:**
+  - `infrastructure/io/file_generator.py` has **no** imports from `xpt_module`, `xml_module`, `sas_module` ✅
+  - `FileGenerator.__init__` accepts `xpt_writer`, `xml_writer`, `sas_writer` parameters ✅
+  - All tests pass (11 FileGenerator tests, 112 infrastructure tests, 81 application tests) ✅
 
 ### CLEAN2-E2 — Define-XML generation as infrastructure adapter
 - **Priority:** P1
@@ -447,3 +459,4 @@ From `CLEAN-2_MIGRATION_TICKETS.md`:
 | 2025-12-15 | CLEAN2-D2 | Complete | Current PR | Implemented real StudyProcessingUseCase with injected dependencies, uses DomainProcessingUseCase |
 | 2025-12-15 | CLEAN2-D3 | Complete | Current PR | Implemented SynthesisService for trial design and observation domains |
 | 2025-12-15 | CLEAN2-D4 | Complete | Current PR | Implemented RelrecService for RELREC generation without StudyOrchestrationService |
+| 2025-12-15 | CLEAN2-E1 | Complete | Current PR | Converted FileGenerator to port adapter with injected writers (XPTWriter, DatasetXMLWriter, SASWriter) |
