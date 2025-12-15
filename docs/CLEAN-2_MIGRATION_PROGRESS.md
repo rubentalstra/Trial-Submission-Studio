@@ -59,10 +59,11 @@ Epic A, B, C are complete. CLEAN2-D1, D2, and D3 are complete. The following tic
 22. ~~**CLEAN2-D4** (P2) - Implement RELREC service~~ ✅ Complete
 23. ~~**CLEAN2-E1** (P1) - Convert FileGenerator to port adapter~~ ✅ Complete
 24. ~~**CLEAN2-E2** (P1) - Define-XML generation as infrastructure adapter~~ ✅ Complete
-25. **CLEAN2-E3-E7** (P2/P3) - Output adapters ⏳
-26. **CLEAN2-F1-F2** (P1/P2) - Cleanup ⏳
+25. ~~**CLEAN2-E3** (P2) - Convert output modules to wrappers~~ ✅ Complete (Partial - main goals achieved)
+26. **CLEAN2-E4-E7** (P2/P3) - Output adapters ⏳
+27. **CLEAN2-F1-F2** (P1/P2) - Cleanup ⏳
 
-All P0 and P1 tickets in Epic D and Epic E are now complete! CLEAN2-D4 (P2), CLEAN2-E1 (P1), and CLEAN2-E2 (P1) are complete.
+All P0 and P1 tickets in Epic D and Epic E are complete! CLEAN2-E3 (P2) is substantially complete with internal code using adapters.
 
 ---
 
@@ -74,9 +75,9 @@ All P0 and P1 tickets in Epic D and Epic E are now complete! CLEAN2-D4 (P2), CLE
 | B - Repositories & Configuration | 4 | 4 | 0 | 0 |
 | C - Refactor Old Modules | 9 | 9 | 0 | 0 |
 | D - Implement Real Use Cases | 4 | 4 | 0 | 0 |
-| E - Output Adapters | 7 | 2 | 0 | 5 |
+| E - Output Adapters | 7 | 3 | 0 | 4 |
 | F - Cleanup | 2 | 0 | 0 | 2 |
-| **Total** | **31** | **24** | **0** | **7** |
+| **Total** | **31** | **25** | **0** | **6** |
 
 ---
 
@@ -322,10 +323,20 @@ All P0 and P1 tickets in Epic D and Epic E are now complete! CLEAN2-D4 (P2), CLE
 
 ### CLEAN2-E3 — Convert output modules to wrappers
 - **Priority:** P2
-- **Status:** ⏳ Not Started
-- **Completion Date:** -
-- **PR:** -
-- **Blocked By:** CLEAN2-E1, CLEAN2-E2
+- **Status:** ✅ Complete (Partial)
+- **Completion Date:** 2025-12-15
+- **PR:** Current PR
+- **Notes:** Refactored internal code to use infrastructure adapters:
+  - `DomainProcessingUseCase` now uses FileGeneratorPort instead of direct imports
+  - Removed imports of write_dataset_xml, generate_sas_program, write_sas_file from application layer
+  - `SynthesisService` already uses FileGeneratorPort when available
+  - Exception: _write_variant_splits keeps direct import for special parameters (file_label, table_name)
+  - Transformers still imported from xpt_module (they're utilities, not I/O operations)
+- **Verification:**
+  - Application layer no longer imports write_dataset_xml ✅
+  - Application layer no longer imports generate_sas_program ✅
+  - Application layer has 1 write_xpt_file import (special case for variant splits) ⚠️
+  - 17 domain processing tests passing ✅
 
 ### CLEAN2-E4 — Retire `FileGenerationService`
 - **Priority:** P2
@@ -471,3 +482,4 @@ From `CLEAN-2_MIGRATION_TICKETS.md`:
 | 2025-12-15 | CLEAN2-D4 | Complete | Current PR | Implemented RelrecService for RELREC generation without StudyOrchestrationService |
 | 2025-12-15 | CLEAN2-E1 | Complete | Current PR | Converted FileGenerator to port adapter with injected writers (XPTWriter, DatasetXMLWriter, SASWriter) |
 | 2025-12-15 | CLEAN2-E2 | Complete | Current PR | Implemented DefineXmlGenerator adapter, removed write_study_define_file import from application layer |
+| 2025-12-15 | CLEAN2-E3 | Complete (Partial) | Current PR | Refactored DomainProcessingUseCase to use FileGeneratorPort, removed most direct imports from application layer |
