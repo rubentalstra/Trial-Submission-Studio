@@ -24,7 +24,13 @@ from typing import Any
 from rich.console import Console
 
 from ..application.ports import FileGeneratorPort, LoggerPort, StudyDataRepositoryPort
-from .io import CSVReader, FileGenerator
+from .io import (
+    CSVReader,
+    DatasetXMLWriter,
+    FileGenerator,
+    SASWriter,
+    XPTWriter,
+)
 from .logging import ConsoleLogger, NullLogger
 from .repositories import StudyDataRepository
 
@@ -118,6 +124,9 @@ class DependencyContainer:
     def create_file_generator(self) -> FileGeneratorPort:
         """Create or return cached file generator instance (singleton).
         
+        The file generator is configured with writer adapters for XPT,
+        Dataset-XML, and SAS output formats.
+        
         Returns:
             FileGeneratorPort implementation (FileGenerator)
             
@@ -126,7 +135,17 @@ class DependencyContainer:
             >>> result = generator.generate(request)
         """
         if self._file_generator_instance is None:
-            self._file_generator_instance = FileGenerator()
+            # Create writer adapters
+            xpt_writer = XPTWriter()
+            xml_writer = DatasetXMLWriter()
+            sas_writer = SASWriter()
+            
+            # Create file generator with injected writers
+            self._file_generator_instance = FileGenerator(
+                xpt_writer=xpt_writer,
+                xml_writer=xml_writer,
+                sas_writer=sas_writer,
+            )
         return self._file_generator_instance
     
     def create_study_data_repository(self) -> StudyDataRepositoryPort:

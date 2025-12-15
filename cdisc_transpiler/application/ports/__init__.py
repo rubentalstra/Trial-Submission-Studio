@@ -9,7 +9,13 @@ from .repositories import (
     SDTMSpecRepositoryPort,
     StudyDataRepositoryPort,
 )
-from .services import FileGeneratorPort, LoggerPort
+from .services import (
+    DatasetXMLWriterPort,
+    FileGeneratorPort,
+    LoggerPort,
+    SASWriterPort,
+    XPTWriterPort,
+)
 
 __all__ = [
     # Repository Ports
@@ -19,4 +25,8 @@ __all__ = [
     # Service Ports
     "LoggerPort",
     "FileGeneratorPort",
+    # Writer Ports
+    "XPTWriterPort",
+    "DatasetXMLWriterPort",
+    "SASWriterPort",
 ]

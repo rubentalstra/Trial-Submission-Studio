@@ -6,10 +6,14 @@ following the Ports & Adapters (Hexagonal) architecture pattern.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
+
+import pandas as pd
 
 if TYPE_CHECKING:
     from ...infrastructure.io.models import OutputRequest, OutputResult
+    from ...mapping_module import MappingConfig
 
 
 @runtime_checkable
@@ -118,5 +122,110 @@ class FileGeneratorPort(Protocol):
             ...     print(f"XML: {result.xml_path}")
             ... else:
             ...     print(f"Errors: {result.errors}")
+        """
+        ...
+
+
+@runtime_checkable
+class XPTWriterPort(Protocol):
+    """Protocol for XPT (SAS Transport) file writing.
+    
+    This interface abstracts XPT file generation, allowing different
+    implementations without coupling the application to specific writing logic.
+    
+    Example:
+        >>> writer = XPTWriter()
+        >>> writer.write(dataframe, "DM", Path("output/dm.xpt"))
+    """
+    
+    def write(self, dataframe: pd.DataFrame, domain_code: str, output_path: Path) -> None:
+        """Write a DataFrame to an XPT file.
+        
+        Args:
+            dataframe: Data to write
+            domain_code: SDTM domain code (e.g., "DM", "AE")
+            output_path: Path where XPT file should be written
+            
+        Raises:
+            Exception: If writing fails
+            
+        Example:
+            >>> df = pd.DataFrame({"STUDYID": ["001"], "USUBJID": ["001-001"]})
+            >>> writer.write(df, "DM", Path("dm.xpt"))
+        """
+        ...
+
+
+@runtime_checkable
+class DatasetXMLWriterPort(Protocol):
+    """Protocol for Dataset-XML file writing.
+    
+    This interface abstracts Dataset-XML generation, allowing different
+    implementations without coupling the application to specific writing logic.
+    
+    Example:
+        >>> writer = DatasetXMLWriter()
+        >>> writer.write(dataframe, "DM", config, Path("output/dm.xml"))
+    """
+    
+    def write(
+        self,
+        dataframe: pd.DataFrame,
+        domain_code: str,
+        config: MappingConfig,
+        output_path: Path,
+    ) -> None:
+        """Write a DataFrame to a Dataset-XML file.
+        
+        Args:
+            dataframe: Data to write
+            domain_code: SDTM domain code (e.g., "DM", "AE")
+            config: Mapping configuration with column metadata
+            output_path: Path where XML file should be written
+            
+        Raises:
+            Exception: If writing fails
+            
+        Example:
+            >>> df = pd.DataFrame({"STUDYID": ["001"], "USUBJID": ["001-001"]})
+            >>> writer.write(df, "DM", config, Path("dm.xml"))
+        """
+        ...
+
+
+@runtime_checkable
+class SASWriterPort(Protocol):
+    """Protocol for SAS program generation and writing.
+    
+    This interface abstracts SAS program generation, allowing different
+    implementations without coupling the application to specific writing logic.
+    
+    Example:
+        >>> writer = SASWriter()
+        >>> writer.write("DM", config, Path("output/dm.sas"), "work.dm", "sdtm.dm")
+    """
+    
+    def write(
+        self,
+        domain_code: str,
+        config: MappingConfig,
+        output_path: Path,
+        input_dataset: str | None = None,
+        output_dataset: str | None = None,
+    ) -> None:
+        """Generate and write a SAS program.
+        
+        Args:
+            domain_code: SDTM domain code (e.g., "DM", "AE")
+            config: Mapping configuration with column metadata
+            output_path: Path where SAS file should be written
+            input_dataset: Input dataset name (e.g., "work.dm"), optional
+            output_dataset: Output dataset name (e.g., "sdtm.dm"), optional
+            
+        Raises:
+            Exception: If generation or writing fails
+            
+        Example:
+            >>> writer.write("DM", config, Path("dm.sas"), "raw.demo", "final.dm")
         """
         ...

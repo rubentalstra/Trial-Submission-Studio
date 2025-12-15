@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, Mock
 
 import pandas as pd
 import pytest
@@ -64,6 +64,34 @@ def sample_config():
         unmapped_columns=[],
     )
     return config
+
+
+@pytest.fixture
+def mock_xpt_writer():
+    """Create a mock XPT writer."""
+    return Mock()
+
+
+@pytest.fixture
+def mock_xml_writer():
+    """Create a mock Dataset-XML writer."""
+    return Mock()
+
+
+@pytest.fixture
+def mock_sas_writer():
+    """Create a mock SAS writer."""
+    return Mock()
+
+
+@pytest.fixture
+def file_generator(mock_xpt_writer, mock_xml_writer, mock_sas_writer):
+    """Create a FileGenerator with mock writers."""
+    return FileGenerator(
+        xpt_writer=mock_xpt_writer,
+        xml_writer=mock_xml_writer,
+        sas_writer=mock_sas_writer,
+    )
 
 
 class TestOutputDirs:
@@ -137,12 +165,10 @@ class TestOutputResult:
 class TestFileGenerator:
     """Test suite for FileGenerator class."""
     
-    @patch("cdisc_transpiler.infrastructure.io.file_generator.write_xpt_file")
-    @patch("cdisc_transpiler.infrastructure.io.file_generator.get_domain")
     def test_generate_xpt_only(
         self,
-        mock_get_domain,
-        mock_write_xpt,
+        file_generator,
+        mock_xpt_writer,
         sample_dataframe,
         sample_config,
         tmp_path: Path,
@@ -152,10 +178,6 @@ class TestFileGenerator:
         xpt_dir = tmp_path / "xpt"
         xpt_dir.mkdir()
         
-        mock_domain = MagicMock()
-        mock_domain.resolved_dataset_name.return_value = "dm"
-        mock_get_domain.return_value = mock_domain
-        
         dirs = OutputDirs(xpt_dir=xpt_dir)
         request = OutputRequest(
             dataframe=sample_dataframe,
@@ -163,31 +185,27 @@ class TestFileGenerator:
             config=sample_config,
             output_dirs=dirs,
             formats={"xpt"},
+            base_filename="dm",  # Provide base_filename to avoid domain lookup
         )
         
         # Execute
-        generator = FileGenerator()
-        result = generator.generate(request)
+        result = file_generator.generate(request)
         
         # Verify
         assert result.success
         assert result.xpt_path == xpt_dir / "dm.xpt"
         assert result.xml_path is None
         assert result.sas_path is None
-        mock_write_xpt.assert_called_once()
+        mock_xpt_writer.write.assert_called_once_with(
+            sample_dataframe, "DM", xpt_dir / "dm.xpt"
+        )
     
-    @patch("cdisc_transpiler.infrastructure.io.file_generator.write_sas_file")
-    @patch("cdisc_transpiler.infrastructure.io.file_generator.generate_sas_program")
-    @patch("cdisc_transpiler.infrastructure.io.file_generator.write_dataset_xml")
-    @patch("cdisc_transpiler.infrastructure.io.file_generator.write_xpt_file")
-    @patch("cdisc_transpiler.infrastructure.io.file_generator.get_domain")
     def test_generate_all_formats(
         self,
-        mock_get_domain,
-        mock_write_xpt,
-        mock_write_xml,
-        mock_gen_sas,
-        mock_write_sas,
+        file_generator,
+        mock_xpt_writer,
+        mock_xml_writer,
+        mock_sas_writer,
         sample_dataframe,
         sample_config,
         tmp_path: Path,
@@ -201,11 +219,6 @@ class TestFileGenerator:
         xml_dir.mkdir()
         sas_dir.mkdir()
         
-        mock_domain = MagicMock()
-        mock_domain.resolved_dataset_name.return_value = "dm"
-        mock_get_domain.return_value = mock_domain
-        mock_gen_sas.return_value = "/* SAS code */"
-        
         dirs = OutputDirs(xpt_dir=xpt_dir, xml_dir=xml_dir, sas_dir=sas_dir)
         request = OutputRequest(
             dataframe=sample_dataframe,
@@ -213,28 +226,33 @@ class TestFileGenerator:
             config=sample_config,
             output_dirs=dirs,
             formats={"xpt", "xml", "sas"},
+            base_filename="dm",  # Provide base_filename to avoid domain lookup
         )
         
         # Execute
-        generator = FileGenerator()
-        result = generator.generate(request)
+        result = file_generator.generate(request)
         
         # Verify
         assert result.success
         assert result.xpt_path == xpt_dir / "dm.xpt"
         assert result.xml_path == xml_dir / "dm.xml"
         assert result.sas_path == sas_dir / "dm.sas"
-        mock_write_xpt.assert_called_once()
-        mock_write_xml.assert_called_once()
-        mock_gen_sas.assert_called_once()
-        mock_write_sas.assert_called_once()
+        mock_xpt_writer.write.assert_called_once_with(
+            sample_dataframe, "DM", xpt_dir / "dm.xpt"
+        )
+        mock_xml_writer.write.assert_called_once_with(
+            sample_dataframe, "DM", sample_config, xml_dir / "dm.xml"
+        )
+        mock_sas_writer.write.assert_called_once_with(
+            "DM", sample_config, sas_dir / "dm.sas",
+            input_dataset="work.dm",
+            output_dataset="sdtm.dm",
+        )
     
-    @patch("cdisc_transpiler.infrastructure.io.file_generator.write_xpt_file")
-    @patch("cdisc_transpiler.infrastructure.io.file_generator.get_domain")
     def test_generate_with_error(
         self,
-        mock_get_domain,
-        mock_write_xpt,
+        file_generator,
+        mock_xpt_writer,
         sample_dataframe,
         sample_config,
         tmp_path: Path,
@@ -244,10 +262,7 @@ class TestFileGenerator:
         xpt_dir = tmp_path / "xpt"
         xpt_dir.mkdir()
         
-        mock_domain = MagicMock()
-        mock_domain.resolved_dataset_name.return_value = "dm"
-        mock_get_domain.return_value = mock_domain
-        mock_write_xpt.side_effect = Exception("Write failed")
+        mock_xpt_writer.write.side_effect = Exception("Write failed")
         
         dirs = OutputDirs(xpt_dir=xpt_dir)
         request = OutputRequest(
@@ -256,23 +271,21 @@ class TestFileGenerator:
             config=sample_config,
             output_dirs=dirs,
             formats={"xpt"},
+            base_filename="dm",
         )
         
         # Execute
-        generator = FileGenerator()
-        result = generator.generate(request)
+        result = file_generator.generate(request)
         
         # Verify
         assert not result.success
         assert len(result.errors) == 1
         assert "XPT generation failed" in result.errors[0]
     
-    @patch("cdisc_transpiler.infrastructure.io.file_generator.write_xpt_file")
-    @patch("cdisc_transpiler.infrastructure.io.file_generator.get_domain")
     def test_generate_with_custom_base_filename(
         self,
-        mock_get_domain,
-        mock_write_xpt,
+        file_generator,
+        mock_xpt_writer,
         sample_dataframe,
         sample_config,
         tmp_path: Path,
@@ -293,24 +306,19 @@ class TestFileGenerator:
         )
         
         # Execute
-        generator = FileGenerator()
-        result = generator.generate(request)
+        result = file_generator.generate(request)
         
         # Verify
         assert result.success
         assert result.xpt_path == xpt_dir / "custom.xpt"  # lowercase
-        mock_write_xpt.assert_called_once()
-        # Should NOT call get_domain since base_filename is provided
-        mock_get_domain.assert_not_called()
+        mock_xpt_writer.write.assert_called_once_with(
+            sample_dataframe, "DM", xpt_dir / "custom.xpt"
+        )
     
-    @patch("cdisc_transpiler.infrastructure.io.file_generator.write_sas_file")
-    @patch("cdisc_transpiler.infrastructure.io.file_generator.generate_sas_program")
-    @patch("cdisc_transpiler.infrastructure.io.file_generator.get_domain")
     def test_generate_sas_with_custom_datasets(
         self,
-        mock_get_domain,
-        mock_gen_sas,
-        mock_write_sas,
+        file_generator,
+        mock_sas_writer,
         sample_dataframe,
         sample_config,
         tmp_path: Path,
@@ -320,11 +328,6 @@ class TestFileGenerator:
         sas_dir = tmp_path / "sas"
         sas_dir.mkdir()
         
-        mock_domain = MagicMock()
-        mock_domain.resolved_dataset_name.return_value = "dm"
-        mock_get_domain.return_value = mock_domain
-        mock_gen_sas.return_value = "/* SAS code */"
-        
         dirs = OutputDirs(sas_dir=sas_dir)
         request = OutputRequest(
             dataframe=sample_dataframe,
@@ -332,25 +335,30 @@ class TestFileGenerator:
             config=sample_config,
             output_dirs=dirs,
             formats={"sas"},
+            base_filename="dm",
             input_dataset="raw.demographics",
             output_dataset="final.dm",
         )
         
         # Execute
-        generator = FileGenerator()
-        result = generator.generate(request)
+        result = file_generator.generate(request)
         
         # Verify
         assert result.success
         assert result.sas_path == sas_dir / "dm.sas"
         
         # Check that custom dataset names were passed
-        call_args = mock_gen_sas.call_args
-        assert call_args[1]["input_dataset"] == "raw.demographics"
-        assert call_args[1]["output_dataset"] == "final.dm"
+        mock_sas_writer.write.assert_called_once_with(
+            "DM",
+            sample_config,
+            sas_dir / "dm.sas",
+            input_dataset="raw.demographics",
+            output_dataset="final.dm",
+        )
     
     def test_generate_no_formats(
         self,
+        file_generator,
         sample_dataframe,
         sample_config,
         tmp_path: Path,
@@ -367,8 +375,7 @@ class TestFileGenerator:
         )
         
         # Execute
-        generator = FileGenerator()
-        result = generator.generate(request)
+        result = file_generator.generate(request)
         
         # Verify
         assert result.success

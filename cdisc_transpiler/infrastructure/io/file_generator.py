@@ -9,6 +9,7 @@ Key Features:
 - Consistent error handling and logging
 - Configurable output via OutputRequest/OutputResult DTOs
 - No duplicate code
+- Dependency injection of writer adapters
 """
 
 from __future__ import annotations
@@ -21,12 +22,14 @@ import pandas as pd
 from .models import OutputDirs, OutputRequest, OutputResult
 
 if TYPE_CHECKING:
+    from ...application.ports import (
+        DatasetXMLWriterPort,
+        SASWriterPort,
+        XPTWriterPort,
+    )
     from ...mapping_module import MappingConfig
 
-# Import file writers
-from ...xpt_module import write_xpt_file
-from ...xml_module.dataset_module import write_dataset_xml
-from ...sas_module import generate_sas_program, write_sas_file
+# Import domain helper (still needed for resolving dataset names)
 from ...domains_module import get_domain
 
 
@@ -38,10 +41,21 @@ class FileGenerator:
     - domain_synthesis_coordinator.py (3 copies)
     - study_orchestration_service.py (2 copies)
     
+    The FileGenerator now accepts writer adapters via dependency injection,
+    following the Ports & Adapters architecture pattern. This allows for
+    flexible writer implementations and better testability.
+    
     Example:
-        >>> from cdisc_transpiler.infrastructure.io import FileGenerator, OutputRequest, OutputDirs
+        >>> from cdisc_transpiler.infrastructure.io import (
+        ...     FileGenerator, OutputRequest, OutputDirs,
+        ...     XPTWriter, DatasetXMLWriter, SASWriter
+        ... )
         >>> 
-        >>> generator = FileGenerator()
+        >>> generator = FileGenerator(
+        ...     xpt_writer=XPTWriter(),
+        ...     xml_writer=DatasetXMLWriter(),
+        ...     sas_writer=SASWriter(),
+        ... )
         >>> request = OutputRequest(
         ...     dataframe=dm_df,
         ...     domain_code="DM",
@@ -53,6 +67,33 @@ class FileGenerator:
         >>> if result.success:
         ...     print(f"Generated: {result.xpt_path}")
     """
+    
+    def __init__(
+        self,
+        xpt_writer: XPTWriterPort,
+        xml_writer: DatasetXMLWriterPort,
+        sas_writer: SASWriterPort,
+    ):
+        """Initialize the FileGenerator with writer adapters.
+        
+        Args:
+            xpt_writer: Adapter for writing XPT files
+            xml_writer: Adapter for writing Dataset-XML files
+            sas_writer: Adapter for writing SAS programs
+            
+        Example:
+            >>> from cdisc_transpiler.infrastructure.io import (
+            ...     FileGenerator, XPTWriter, DatasetXMLWriter, SASWriter
+            ... )
+            >>> generator = FileGenerator(
+            ...     xpt_writer=XPTWriter(),
+            ...     xml_writer=DatasetXMLWriter(),
+            ...     sas_writer=SASWriter(),
+            ... )
+        """
+        self._xpt_writer = xpt_writer
+        self._xml_writer = xml_writer
+        self._sas_writer = sas_writer
     
     def generate(self, request: OutputRequest) -> OutputResult:
         """Generate all requested output files.
@@ -121,7 +162,7 @@ class FileGenerator:
         xpt_dir: Path,
         disk_name: str,
     ) -> Path:
-        """Generate XPT file.
+        """Generate XPT file using the injected XPT writer.
         
         Args:
             dataframe: Data to write
@@ -133,7 +174,7 @@ class FileGenerator:
             Path to generated XPT file
         """
         xpt_path = xpt_dir / f"{disk_name}.xpt"
-        write_xpt_file(dataframe, domain_code, xpt_path)
+        self._xpt_writer.write(dataframe, domain_code, xpt_path)
         return xpt_path
     
     def _generate_xml(
@@ -144,7 +185,7 @@ class FileGenerator:
         xml_dir: Path,
         disk_name: str,
     ) -> Path:
-        """Generate Dataset-XML file.
+        """Generate Dataset-XML file using the injected XML writer.
         
         Args:
             dataframe: Data to write
@@ -157,7 +198,7 @@ class FileGenerator:
             Path to generated XML file
         """
         xml_path = xml_dir / f"{disk_name}.xml"
-        write_dataset_xml(dataframe, domain_code, config, xml_path)
+        self._xml_writer.write(dataframe, domain_code, config, xml_path)
         return xml_path
     
     def _generate_sas(
@@ -170,7 +211,7 @@ class FileGenerator:
         input_dataset: str | None,
         output_dataset: str | None,
     ) -> Path:
-        """Generate SAS program.
+        """Generate SAS program using the injected SAS writer.
         
         Args:
             domain_code: Domain code
@@ -192,13 +233,13 @@ class FileGenerator:
         if output_dataset is None:
             output_dataset = f"sdtm.{base_filename}"
         
-        # Generate SAS code
-        sas_code = generate_sas_program(
+        # Use the injected SAS writer
+        self._sas_writer.write(
             domain_code,
             config,
+            sas_path,
             input_dataset=input_dataset,
             output_dataset=output_dataset,
         )
         
-        write_sas_file(sas_code, sas_path)
         return sas_path

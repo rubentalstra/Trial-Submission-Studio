@@ -4,6 +4,7 @@ This module provides unified interfaces for reading and writing files.
 """
 
 from .csv_reader import CSVReader, CSVReadOptions
+from .dataset_xml_writer import DatasetXMLWriter
 from .exceptions import (
     DataParseError,
     DataSourceError,
@@ -12,6 +13,8 @@ from .exceptions import (
 )
 from .file_generator import FileGenerator
 from .models import OutputDirs, OutputRequest, OutputResult
+from .sas_writer import SASWriter
+from .xpt_writer import XPTWriter
 
 __all__ = [
     "CSVReader",
@@ -24,4 +27,7 @@ __all__ = [
     "OutputDirs",
     "OutputRequest",
     "OutputResult",
+    "XPTWriter",
+    "DatasetXMLWriter",
+    "SASWriter",
 ]
