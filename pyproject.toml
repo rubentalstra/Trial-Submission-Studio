@@ -28,6 +28,7 @@ dev = [
     "Pylint==4.0.4",
     "pyright==1.1.407",
     "pytest-benchmark==5.2.3",
+    "ruff==0.14.9",
 ]
 
 [project.scripts]
