@@ -58,10 +58,11 @@ Epic A, B, C are complete. CLEAN2-D1, D2, and D3 are complete. The following tic
 ### Remaining P2 Tickets (Epic D-F)
 22. ~~**CLEAN2-D4** (P2) - Implement RELREC service~~ ✅ Complete
 23. ~~**CLEAN2-E1** (P1) - Convert FileGenerator to port adapter~~ ✅ Complete
-24. **CLEAN2-E2-E7** (P1/P2) - Output adapters ⏳
-25. **CLEAN2-F1-F2** (P1/P2) - Cleanup ⏳
+24. ~~**CLEAN2-E2** (P1) - Define-XML generation as infrastructure adapter~~ ✅ Complete
+25. **CLEAN2-E3-E7** (P2/P3) - Output adapters ⏳
+26. **CLEAN2-F1-F2** (P1/P2) - Cleanup ⏳
 
-All P0 and P1 tickets in Epic D are now complete! CLEAN2-D4 (P2) and CLEAN2-E1 (P1) are also complete.
+All P0 and P1 tickets in Epic D and Epic E are now complete! CLEAN2-D4 (P2), CLEAN2-E1 (P1), and CLEAN2-E2 (P1) are complete.
 
 ---
 
@@ -73,9 +74,9 @@ All P0 and P1 tickets in Epic D are now complete! CLEAN2-D4 (P2) and CLEAN2-E1 (
 | B - Repositories & Configuration | 4 | 4 | 0 | 0 |
 | C - Refactor Old Modules | 9 | 9 | 0 | 0 |
 | D - Implement Real Use Cases | 4 | 4 | 0 | 0 |
-| E - Output Adapters | 7 | 1 | 0 | 6 |
+| E - Output Adapters | 7 | 2 | 0 | 5 |
 | F - Cleanup | 2 | 0 | 0 | 2 |
-| **Total** | **31** | **23** | **0** | **8** |
+| **Total** | **31** | **24** | **0** | **7** |
 
 ---
 
@@ -305,10 +306,19 @@ All P0 and P1 tickets in Epic D are now complete! CLEAN2-D4 (P2) and CLEAN2-E1 (
 
 ### CLEAN2-E2 — Define-XML generation as infrastructure adapter
 - **Priority:** P1
-- **Status:** ⏳ Not Started
-- **Completion Date:** -
-- **PR:** -
-- **Notes:** Create `infrastructure/io/define_xml_generator.py`
+- **Status:** ✅ Complete
+- **Completion Date:** 2025-12-15
+- **PR:** Current PR
+- **Notes:** Created Define-XML generator adapter in `infrastructure/io/`:
+  - `DefineXmlGenerator` wrapping `xml_module.define_module.write_study_define_file`
+  - Added port protocol: `DefineXmlGeneratorPort`
+  - Updated `StudyProcessingUseCase` to accept generator via constructor injection
+  - Updated `DependencyContainer` to wire DefineXmlGenerator
+  - All 14 study processing use case tests pass, 20 container tests pass
+- **Verification:**
+  - Application layer no longer imports `write_study_define_file` ✅
+  - `StudyProcessingUseCase.__init__` accepts `define_xml_generator` parameter ✅
+  - `_generate_define_xml()` uses injected generator instead of direct import ✅
 
 ### CLEAN2-E3 — Convert output modules to wrappers
 - **Priority:** P2
@@ -460,3 +470,4 @@ From `CLEAN-2_MIGRATION_TICKETS.md`:
 | 2025-12-15 | CLEAN2-D3 | Complete | Current PR | Implemented SynthesisService for trial design and observation domains |
 | 2025-12-15 | CLEAN2-D4 | Complete | Current PR | Implemented RelrecService for RELREC generation without StudyOrchestrationService |
 | 2025-12-15 | CLEAN2-E1 | Complete | Current PR | Converted FileGenerator to port adapter with injected writers (XPTWriter, DatasetXMLWriter, SASWriter) |
+| 2025-12-15 | CLEAN2-E2 | Complete | Current PR | Implemented DefineXmlGenerator adapter, removed write_study_define_file import from application layer |
