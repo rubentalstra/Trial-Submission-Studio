@@ -126,8 +126,12 @@ class MemoryCache:
     def size(self) -> int:
         """Get the number of entries in the cache.
         
+        Note: This returns the raw count of all entries, including entries
+        that may be expired but have not been cleaned up through access.
+        Expired entries are lazily removed when accessed via get() or has().
+        
         Returns:
-            Number of entries (may include expired entries)
+            Number of entries (may include not-yet-cleaned expired entries)
         """
         return len(self._store)
     

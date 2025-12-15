@@ -153,7 +153,7 @@ class StudyDataRepository:
             import pyreadstat  # type: ignore[import-untyped]
         except ModuleNotFoundError as e:
             raise DataParseError(
-                "pyreadstat is required to read SAS files. "
+                "pyreadstat is required to read SAS files (optional dependency). "
                 "Install with: pip install pyreadstat"
             ) from e
         
