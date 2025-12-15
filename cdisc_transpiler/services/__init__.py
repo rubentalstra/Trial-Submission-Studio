@@ -11,15 +11,21 @@ SDTM Reference:
     - Controlled terminology application
     - Output file generation (XPT, Dataset-XML, Define-XML)
 
-Services:
+Active Services:
     - FileGenerationService: Generates output files (XPT, XML, SAS)
     - TrialDesignService: Synthesizes trial design domains (TS, TA, TE, etc.)
     - DomainDiscoveryService: Discovers and classifies domain files
     - FileOrganizationService: Manages output directory structure
     - ProgressReportingService: Reports progress and status to users
-    - StudyOrchestrationService: Orchestrates study processing workflows
-    - DomainProcessingCoordinator: Coordinates domain file processing workflow
-    - DomainSynthesisCoordinator: Coordinates domain synthesis with file generation
+
+Deprecated Services (moved to legacy package):
+    ⚠️ The following services are deprecated and will be removed in the next major version:
+    - StudyOrchestrationService → use application.study_processing_use_case.StudyProcessingUseCase
+    - DomainProcessingCoordinator → use application.domain_processing_use_case.DomainProcessingUseCase
+    - DomainSynthesisCoordinator → use application.study_processing_use_case.StudyProcessingUseCase
+    
+    These are re-exported from the legacy package for backward compatibility.
+    See MIGRATION.md for migration guidance.
 """
 
 from .file_generation_service import FileGenerationService, FileGenerationResult
@@ -27,9 +33,13 @@ from .trial_design_service import TrialDesignService
 from .domain_discovery_service import DomainDiscoveryService
 from .file_organization_service import FileOrganizationService
 from .progress_reporting_service import ProgressReportingService
-from .study_orchestration_service import StudyOrchestrationService
-from .domain_processing_coordinator import DomainProcessingCoordinator
-from .domain_synthesis_coordinator import DomainSynthesisCoordinator
+
+# Import deprecated services from legacy package (with deprecation warnings)
+from ..legacy import (
+    StudyOrchestrationService,
+    DomainProcessingCoordinator,
+    DomainSynthesisCoordinator,
+)
 
 __all__ = [
     "FileGenerationService",
@@ -38,6 +48,7 @@ __all__ = [
     "DomainDiscoveryService",
     "FileOrganizationService",
     "ProgressReportingService",
+    # Deprecated - kept for backward compatibility
     "StudyOrchestrationService",
     "DomainProcessingCoordinator",
     "DomainSynthesisCoordinator",
