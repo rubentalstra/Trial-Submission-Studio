@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from typing import Mapping, Sequence
 
-from .models import SDTMDomain, SDTMVariable
+from ..domain.entities.sdtm_domain import SDTMDomain, SDTMVariable
 from .utils import normalize_class
-from .variable_builder import variable_from_row
+from ..domain.entities.variable import variable_from_row
 
 
 def compute_row_order(row: Mapping[str, str], idx: int) -> tuple[int, int]:

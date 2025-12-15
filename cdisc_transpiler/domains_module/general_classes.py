@@ -5,9 +5,9 @@ from __future__ import annotations
 from typing import Any
 
 from .constants import GENERAL_OBSERVATION_CLASSES
-from .models import SDTMVariable
+from ..domain.entities.sdtm_domain import SDTMVariable
 from .utils import core_priority, normalize_class, normalize_general_class
-from .variable_builder import variable_from_row
+from ..domain.entities.variable import variable_from_row
 
 
 def is_preferred_variable(

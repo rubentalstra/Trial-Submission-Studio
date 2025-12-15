@@ -33,6 +33,9 @@ from ..mapping_module import (
 )
 from ..sas_module import generate_sas_program, write_sas_file
 from ..submission_module import build_suppqual, extract_used_columns
+from ..transformations.base import TransformationContext
+from ..transformations.findings import VSTransformer, LBTransformer
+from ..terminology_module import normalize_testcd, get_testcd_label
 from ..xpt_module import write_xpt_file
 from ..xpt_module.builder import build_domain_dataframe
 from ..xml_module.dataset_module import write_dataset_xml
@@ -295,6 +298,8 @@ class DomainProcessingCoordinator:
 
         This handles wide-to-long transformation for Vital Signs data per SDTMIG v3.4.
         VS domain requires one record per vital sign measurement per time point.
+        
+        Uses the new VSTransformer for consistent, testable transformation logic.
         """
 
         if domain_code.upper() != "VS":
@@ -302,7 +307,23 @@ class DomainProcessingCoordinator:
 
         logger = get_logger()
         input_rows = len(frame)
-        frame = self.orchestration_service.reshape_vs_to_long(frame, study_id)
+        
+        # Use new VSTransformer instead of orchestration_service
+        transformer = VSTransformer(
+            test_code_normalizer=normalize_testcd,
+            test_label_getter=get_testcd_label
+        )
+        context = TransformationContext(domain="VS", study_id=study_id)
+        result = transformer.transform(frame, context)
+        
+        if not result.success:
+            logger.warning(f"{display_name}: VS transformation failed: {result.message}")
+            if result.errors:
+                for error in result.errors:
+                    logger.error(f"  - {error}")
+            return None, True
+        
+        frame = result.data
         output_rows = len(frame)
 
         # Enhanced logging for VS transformation
@@ -330,6 +351,8 @@ class DomainProcessingCoordinator:
 
         This handles wide-to-long transformation for Laboratory data per SDTMIG v3.4.
         LB domain requires one record per lab test per time point per visit per subject.
+        
+        Uses the new LBTransformer for consistent, testable transformation logic.
         """
 
         if domain_code.upper() != "LB":
@@ -337,7 +360,23 @@ class DomainProcessingCoordinator:
 
         logger = get_logger()
         input_rows = len(frame)
-        reshaped = self.orchestration_service.reshape_lb_to_long(frame, study_id)
+        
+        # Use new LBTransformer instead of orchestration_service
+        transformer = LBTransformer(
+            test_code_normalizer=normalize_testcd,
+            test_label_getter=get_testcd_label
+        )
+        context = TransformationContext(domain="LB", study_id=study_id)
+        result = transformer.transform(frame, context)
+        
+        if not result.success:
+            logger.warning(f"{display_name}: LB transformation failed: {result.message}")
+            if result.errors:
+                for error in result.errors:
+                    logger.error(f"  - {error}")
+            return None, True
+        
+        reshaped = result.data
 
         if "LBTESTCD" in reshaped.columns:
             output_rows = len(reshaped)

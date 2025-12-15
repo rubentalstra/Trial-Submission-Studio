@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from .models import MappingConfig
+from ..domain.entities.mapping import MappingConfig
 
 
 def load_config(path: str | Path) -> MappingConfig:

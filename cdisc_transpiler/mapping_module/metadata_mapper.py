@@ -13,10 +13,10 @@ from rapidfuzz import fuzz
 
 if TYPE_CHECKING:
     from ..io_module import Hints
-    from ..metadata_module import StudyMetadata
+    from ..domain.entities.study_metadata import StudyMetadata
 
 from ..domains_module import get_domain, SDTMDomain, SDTMVariable
-from .models import ColumnMapping, MappingSuggestions, Suggestion
+from ..domain.entities.mapping import ColumnMapping, MappingSuggestions, Suggestion
 from .pattern_builder import build_variable_patterns
 from .utils import normalize_text, safe_column_name
 

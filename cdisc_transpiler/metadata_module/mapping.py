@@ -11,7 +11,7 @@ from typing import Any, Callable
 
 import pandas as pd
 
-from .models import SourceColumn, StudyMetadata
+from ..domain.entities.study_metadata import SourceColumn, StudyMetadata
 from ..domains_module import get_domain
 from ..mapping_module.pattern_builder import build_variable_patterns
 

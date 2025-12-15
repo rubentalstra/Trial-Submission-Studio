@@ -23,10 +23,10 @@ SDTM Reference:
 
 The module is organized into focused components:
 - constants: SDTM configuration values (CT_VERSION, domain classes)
-- models: Data classes (SDTMDomain, SDTMVariable)
+- models: Data classes (SDTMDomain, SDTMVariable) - NOW IN domain.entities
 - utils: Normalization and helper functions
 - loaders: CSV file loading for SDTMIG metadata
-- variable_builder: Variable construction from CSV
+- variable_builder: Variable construction from CSV - NOW IN domain.entities
 - domain_builder: Domain construction from CSV
 - general_classes: General Observation Class logic
 - registry: Domain registration and lookup
@@ -35,7 +35,8 @@ The module is organized into focused components:
 from __future__ import annotations
 
 from .constants import CT_VERSION
-from .models import SDTMDomain, SDTMVariable
+# Import from new location and re-export for backward compatibility
+from ..domain.entities.sdtm_domain import SDTMDomain, SDTMVariable
 from .registry import generalized_identifiers, get_domain, list_domains
 from .utils import get_domain_class
 
