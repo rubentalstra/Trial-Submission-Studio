@@ -52,7 +52,7 @@ class TestXMLFormatWellFormedness:
     
     def test_xml_files_exist(self, processed_study):
         """Test that XML files were created."""
-        xml_dir = processed_study / "xml"
+        xml_dir = processed_study / "dataset-xml"
         if not xml_dir.exists():
             pytest.skip("XML output format not generated")
         
@@ -61,7 +61,7 @@ class TestXMLFormatWellFormedness:
     
     def test_xml_files_well_formed(self, processed_study):
         """Test that all XML files are well-formed and parseable."""
-        xml_dir = processed_study / "xml"
+        xml_dir = processed_study / "dataset-xml"
         if not xml_dir.exists():
             pytest.skip("XML directory not found")
         
@@ -79,7 +79,7 @@ class TestXMLFormatWellFormedness:
     
     def test_xml_has_root_element(self, processed_study):
         """Test that XML files have a root element."""
-        xml_dir = processed_study / "xml"
+        xml_dir = processed_study / "dataset-xml"
         if not xml_dir.exists():
             pytest.skip("XML directory not found")
         
@@ -130,7 +130,7 @@ class TestXMLStructure:
     
     def test_xml_has_namespace(self, processed_study):
         """Test that XML files use appropriate namespace."""
-        xml_dir = processed_study / "xml"
+        xml_dir = processed_study / "dataset-xml"
         if not xml_dir.exists():
             pytest.skip("XML directory not found")
         
@@ -150,7 +150,7 @@ class TestXMLStructure:
     
     def test_xml_file_sizes_reasonable(self, processed_study):
         """Test that XML files have reasonable sizes."""
-        xml_dir = processed_study / "xml"
+        xml_dir = processed_study / "dataset-xml"
         if not xml_dir.exists():
             pytest.skip("XML directory not found")
         
@@ -171,7 +171,7 @@ class TestXMLStructure:
     
     def test_xml_no_empty_files(self, processed_study):
         """Test that XML files are not empty."""
-        xml_dir = processed_study / "xml"
+        xml_dir = processed_study / "dataset-xml"
         if not xml_dir.exists():
             pytest.skip("XML directory not found")
         
@@ -218,7 +218,7 @@ class TestXMLEncoding:
     
     def test_xml_encoding_declaration(self, processed_study):
         """Test that XML files have encoding declaration."""
-        xml_dir = processed_study / "xml"
+        xml_dir = processed_study / "dataset-xml"
         if not xml_dir.exists():
             pytest.skip("XML directory not found")
         
@@ -238,7 +238,7 @@ class TestXMLEncoding:
     
     def test_xml_special_characters_escaped(self, processed_study):
         """Test that XML special characters are properly escaped."""
-        xml_dir = processed_study / "xml"
+        xml_dir = processed_study / "dataset-xml"
         if not xml_dir.exists():
             pytest.skip("XML directory not found")
         
@@ -262,7 +262,7 @@ class TestXMLEncoding:
     
     def test_xml_readable_with_different_parsers(self, processed_study):
         """Test that XML can be read with different parsing methods."""
-        xml_dir = processed_study / "xml"
+        xml_dir = processed_study / "dataset-xml"
         if not xml_dir.exists():
             pytest.skip("XML directory not found")
         
