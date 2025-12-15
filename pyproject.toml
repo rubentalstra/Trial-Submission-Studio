@@ -57,6 +57,7 @@ markers = [
     "integration: marks tests as integration tests (use real file system)",
     "slow: marks tests as slow (process larger datasets)",
     "benchmark: marks tests as performance benchmarks (use pytest-benchmark)",
+    "validation: marks tests as validation tests (SDTM compliance and format validation)",
 ]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
