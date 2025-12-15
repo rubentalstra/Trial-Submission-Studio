@@ -8,12 +8,12 @@ from unittest.mock import MagicMock, Mock
 import pandas as pd
 import pytest
 
-from cdisc_transpiler.infrastructure.io import (
-    FileGenerator,
+from cdisc_transpiler.application.models import (
     OutputDirs,
     OutputRequest,
     OutputResult,
 )
+from cdisc_transpiler.infrastructure.io import FileGenerator
 from cdisc_transpiler.mapping_module import ColumnMapping, MappingConfig
 
 
