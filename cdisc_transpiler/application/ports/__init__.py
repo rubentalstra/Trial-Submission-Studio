@@ -11,6 +11,7 @@ from .repositories import (
 )
 from .services import (
     DatasetXMLWriterPort,
+    DefineXmlGeneratorPort,
     FileGeneratorPort,
     LoggerPort,
     SASWriterPort,
@@ -29,4 +30,6 @@ __all__ = [
     "XPTWriterPort",
     "DatasetXMLWriterPort",
     "SASWriterPort",
+    # Generator Ports
+    "DefineXmlGeneratorPort",
 ]

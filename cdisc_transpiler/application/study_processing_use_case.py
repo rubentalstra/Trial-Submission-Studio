@@ -29,7 +29,12 @@ from .models import (
     ProcessStudyRequest,
     ProcessStudyResponse,
 )
-from .ports import FileGeneratorPort, LoggerPort, StudyDataRepositoryPort
+from .ports import (
+    DefineXmlGeneratorPort,
+    FileGeneratorPort,
+    LoggerPort,
+    StudyDataRepositoryPort,
+)
 
 if TYPE_CHECKING:
     from .domain_processing_use_case import DomainProcessingUseCase
@@ -77,6 +82,7 @@ class StudyProcessingUseCase:
         domain_processing_use_case: DomainProcessingUseCase | None = None,
         discovery_service: DomainDiscoveryService | None = None,
         file_generator: FileGeneratorPort | None = None,
+        define_xml_generator: DefineXmlGeneratorPort | None = None,
     ):
         """Initialize the use case with injected dependencies.
         
@@ -86,12 +92,14 @@ class StudyProcessingUseCase:
             domain_processing_use_case: Use case for processing individual domains
             discovery_service: Service for discovering domain files
             file_generator: Generator for output files
+            define_xml_generator: Generator for Define-XML files
         """
         self.logger = logger
         self._study_data_repo = study_data_repo
         self._domain_processing_use_case = domain_processing_use_case
         self._discovery_service = discovery_service
         self._file_generator = file_generator
+        self._define_xml_generator = define_xml_generator
     
     def execute(self, request: ProcessStudyRequest) -> ProcessStudyResponse:
         """Execute the study processing workflow.
@@ -747,8 +755,13 @@ class StudyProcessingUseCase:
         response: ProcessStudyResponse,
         request: ProcessStudyRequest,
     ) -> None:
-        """Generate Define-XML file."""
-        from ..xml_module.define_module import write_study_define_file
+        """Generate Define-XML file using the injected generator."""
+        if self._define_xml_generator is None:
+            response.define_xml_error = "Define-XML generator not available"
+            self.logger.error("Define-XML generator not injected")
+            response.errors.append(("Define-XML", "Generator not available"))
+            return
+        
         from ..xml_module.define_module.constants import CONTEXT_SUBMISSION, CONTEXT_OTHER
         
         define_path = request.output_dir / "define.xml"
@@ -759,7 +772,7 @@ class StudyProcessingUseCase:
                 if request.define_context == "Submission"
                 else CONTEXT_OTHER
             )
-            write_study_define_file(
+            self._define_xml_generator.generate(
                 study_datasets,
                 define_path,
                 sdtm_version=request.sdtm_version,

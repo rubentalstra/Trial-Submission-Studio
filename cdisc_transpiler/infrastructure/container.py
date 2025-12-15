@@ -23,10 +23,16 @@ from typing import Any
 
 from rich.console import Console
 
-from ..application.ports import FileGeneratorPort, LoggerPort, StudyDataRepositoryPort
+from ..application.ports import (
+    DefineXmlGeneratorPort,
+    FileGeneratorPort,
+    LoggerPort,
+    StudyDataRepositoryPort,
+)
 from .io import (
     CSVReader,
     DatasetXMLWriter,
+    DefineXmlGenerator,
     FileGenerator,
     SASWriter,
     XPTWriter,
@@ -84,6 +90,7 @@ class DependencyContainer:
         self._file_generator_instance: FileGeneratorPort | None = None
         self._csv_reader_instance: CSVReader | None = None
         self._study_data_repo_instance: StudyDataRepositoryPort | None = None
+        self._define_xml_generator_instance: DefineXmlGeneratorPort | None = None
     
     # Infrastructure Components
     
@@ -163,6 +170,20 @@ class DependencyContainer:
             self._study_data_repo_instance = StudyDataRepository(csv_reader=csv_reader)
         return self._study_data_repo_instance
     
+    def create_define_xml_generator(self) -> DefineXmlGeneratorPort:
+        """Create or return cached Define-XML generator instance (singleton).
+        
+        Returns:
+            DefineXmlGeneratorPort implementation (DefineXmlGenerator)
+            
+        Example:
+            >>> generator = container.create_define_xml_generator()
+            >>> generator.generate(datasets, Path("define.xml"), sdtm_version="3.4", context="Submission")
+        """
+        if self._define_xml_generator_instance is None:
+            self._define_xml_generator_instance = DefineXmlGenerator()
+        return self._define_xml_generator_instance
+    
     # Application Use Cases
     
     def create_study_processing_use_case(self):
@@ -186,6 +207,7 @@ class DependencyContainer:
         file_generator = self.create_file_generator()
         domain_processing_use_case = self.create_domain_processing_use_case()
         discovery_service = DomainDiscoveryService(logger=logger)
+        define_xml_generator = self.create_define_xml_generator()
         
         return StudyProcessingUseCase(
             logger=logger,
@@ -193,6 +215,7 @@ class DependencyContainer:
             domain_processing_use_case=domain_processing_use_case,
             discovery_service=discovery_service,
             file_generator=file_generator,
+            define_xml_generator=define_xml_generator,
         )
     
     def create_domain_processing_use_case(self):
@@ -235,6 +258,7 @@ class DependencyContainer:
         self._file_generator_instance = None
         self._csv_reader_instance = None
         self._study_data_repo_instance = None
+        self._define_xml_generator_instance = None
     
     def override_logger(self, logger: LoggerPort) -> None:
         """Override the logger instance (for testing).
@@ -271,6 +295,18 @@ class DependencyContainer:
             >>> container.override_study_data_repository(mock_repo)
         """
         self._study_data_repo_instance = repo
+    
+    def override_define_xml_generator(self, generator: DefineXmlGeneratorPort) -> None:
+        """Override the Define-XML generator instance (for testing).
+        
+        Args:
+            generator: Custom Define-XML generator implementation
+            
+        Example:
+            >>> mock_generator = MockDefineXmlGenerator()
+            >>> container.override_define_xml_generator(mock_generator)
+        """
+        self._define_xml_generator_instance = generator
 
 
 # Convenience function for creating a pre-configured container

@@ -7,13 +7,14 @@ following the Ports & Adapters (Hexagonal) architecture pattern.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Iterable, Protocol, runtime_checkable
 
 import pandas as pd
 
 if TYPE_CHECKING:
     from ...infrastructure.io.models import OutputRequest, OutputResult
     from ...mapping_module import MappingConfig
+    from ...xml_module.define_module import StudyDataset
 
 
 @runtime_checkable
@@ -227,5 +228,43 @@ class SASWriterPort(Protocol):
             
         Example:
             >>> writer.write("DM", config, Path("dm.sas"), "raw.demo", "final.dm")
+        """
+        ...
+
+
+@runtime_checkable
+class DefineXmlGeneratorPort(Protocol):
+    """Protocol for Define-XML generation services.
+    
+    This interface abstracts Define-XML 2.1 generation, allowing different
+    implementations without coupling the application to specific generation logic.
+    
+    Example:
+        >>> generator = DefineXmlGenerator()
+        >>> generator.generate(datasets, Path("define.xml"), sdtm_version="3.4", context="Submission")
+    """
+    
+    def generate(
+        self,
+        datasets: Iterable[StudyDataset],
+        output_path: Path,
+        *,
+        sdtm_version: str,
+        context: str,
+    ) -> None:
+        """Generate a Define-XML 2.1 file for the given study datasets.
+        
+        Args:
+            datasets: Iterable of StudyDataset objects containing domain metadata
+            output_path: Path where Define-XML file should be written
+            sdtm_version: SDTM-IG version (e.g., "3.4")
+            context: Define-XML context - 'Submission' or 'Other'
+            
+        Raises:
+            Exception: If generation or writing fails
+            
+        Example:
+            >>> datasets = [StudyDataset(...), StudyDataset(...)]
+            >>> generator.generate(datasets, Path("define.xml"), sdtm_version="3.4", context="Submission")
         """
         ...

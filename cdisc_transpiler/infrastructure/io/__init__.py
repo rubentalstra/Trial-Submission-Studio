@@ -5,6 +5,7 @@ This module provides unified interfaces for reading and writing files.
 
 from .csv_reader import CSVReader, CSVReadOptions
 from .dataset_xml_writer import DatasetXMLWriter
+from .define_xml_generator import DefineXmlGenerator
 from .exceptions import (
     DataParseError,
     DataSourceError,
@@ -30,4 +31,5 @@ __all__ = [
     "XPTWriter",
     "DatasetXMLWriter",
     "SASWriter",
+    "DefineXmlGenerator",
 ]
