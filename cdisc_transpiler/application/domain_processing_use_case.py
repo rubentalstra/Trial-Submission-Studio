@@ -540,10 +540,8 @@ class DomainProcessingUseCase:
         supp_frames: list[pd.DataFrame],
         variant_frames: list[tuple[str, pd.DataFrame]],
     ) -> dict[str, Any]:
-        """Stage 6: Generate output files (XPT, XML, SAS)."""
-        from ..xpt_module import write_xpt_file
-        from ..xml_module.dataset_module import write_dataset_xml
-        from ..sas_module import generate_sas_program, write_sas_file
+        """Stage 6: Generate output files (XPT, XML, SAS) using FileGeneratorPort."""
+        from ..infrastructure.io.models import OutputDirs, OutputRequest
         
         base_filename = domain.resolved_dataset_name()
         disk_name = base_filename.lower()
@@ -569,47 +567,71 @@ class DomainProcessingUseCase:
             )
             result["supplementals"].append(supp_result)
         
-        xpt_dir = request.output_dirs.get("xpt")
-        xml_dir = request.output_dirs.get("xml")
-        sas_dir = request.output_dirs.get("sas")
-        output_format = "/".join(request.output_formats)
-        
-        # Generate XPT file
-        if xpt_dir and output_format in ("xpt", "xpt/xml", "xml/xpt", "both"):
-            xpt_path = xpt_dir / f"{disk_name}.xpt"
-            write_xpt_file(merged_df, request.domain_code, xpt_path)
-            result["xpt_path"] = xpt_path
-            result["xpt_filename"] = xpt_path.name
-            self.logger.success(f"Generated XPT: {xpt_path}")
+        # Use FileGeneratorPort if available
+        if self._file_generator is not None:
+            # Determine output formats
+            formats = set()
+            xpt_dir = request.output_dirs.get("xpt")
+            xml_dir = request.output_dirs.get("xml")
+            sas_dir = request.output_dirs.get("sas")
             
-            # Handle domain variant splits (SDTMIG v3.4 Section 4.1.7)
-            if len(variant_frames) > 1:
-                split_paths, split_datasets = self._write_variant_splits(
-                    variant_frames, domain, xpt_dir
+            if xpt_dir and "xpt" in request.output_formats:
+                formats.add("xpt")
+            if xml_dir and "xml" in request.output_formats:
+                formats.add("xml")
+            if sas_dir and request.generate_sas:
+                formats.add("sas")
+            
+            if formats:
+                # Determine SAS dataset names
+                first_input_file = request.files_for_domain[0][0] if request.files_for_domain else None
+                input_dataset = first_input_file.stem if first_input_file else None
+                
+                # Create output request
+                output_request = OutputRequest(
+                    dataframe=merged_df,
+                    domain_code=request.domain_code,
+                    config=config,
+                    output_dirs=OutputDirs(
+                        xpt_dir=xpt_dir,
+                        xml_dir=xml_dir,
+                        sas_dir=sas_dir,
+                    ),
+                    formats=formats,
+                    base_filename=base_filename,
+                    input_dataset=input_dataset,
+                    output_dataset=base_filename,
                 )
-                result["split_xpt_paths"] = split_paths
-                result["split_datasets"] = split_datasets
-        
-        # Generate Dataset-XML file
-        if xml_dir and output_format in ("xml", "xpt/xml", "xml/xpt", "both"):
-            xml_path = xml_dir / f"{disk_name}.xml"
-            if request.streaming:
-                self.logger.warning("Streaming mode not implemented, using regular write")
-            write_dataset_xml(merged_df, request.domain_code, config, xml_path)
-            result["xml_path"] = xml_path
-            result["xml_filename"] = xml_path.name
-            self.logger.success(f"Generated Dataset-XML: {xml_path}")
-        
-        # Generate SAS program
-        if sas_dir and request.generate_sas:
-            sas_path = sas_dir / f"{disk_name}.sas"
-            first_input_file = request.files_for_domain[0][0]
-            sas_code = generate_sas_program(
-                request.domain_code, config, first_input_file.stem, base_filename
-            )
-            write_sas_file(sas_code, sas_path)
-            result["sas_path"] = sas_path
-            self.logger.success(f"Generated SAS: {sas_path}")
+                
+                # Generate outputs
+                output_result = self._file_generator.generate(output_request)
+                
+                # Update result
+                if output_result.xpt_path:
+                    result["xpt_path"] = output_result.xpt_path
+                    result["xpt_filename"] = output_result.xpt_path.name
+                    self.logger.success(f"Generated XPT: {output_result.xpt_path}")
+                    
+                    # Handle domain variant splits (SDTMIG v3.4 Section 4.1.7)
+                    if len(variant_frames) > 1:
+                        split_paths, split_datasets = self._write_variant_splits(
+                            variant_frames, domain, xpt_dir
+                        )
+                        result["split_xpt_paths"] = split_paths
+                        result["split_datasets"] = split_datasets
+                
+                if output_result.xml_path:
+                    result["xml_path"] = output_result.xml_path
+                    result["xml_filename"] = output_result.xml_path.name
+                    self.logger.success(f"Generated Dataset-XML: {output_result.xml_path}")
+                
+                if output_result.sas_path:
+                    result["sas_path"] = output_result.sas_path
+                    self.logger.success(f"Generated SAS: {output_result.sas_path}")
+                
+                # Log any errors
+                for error in output_result.errors:
+                    self.logger.error(f"Output generation error: {error}")
         
         return result
     
@@ -621,9 +643,8 @@ class DomainProcessingUseCase:
         output_formats: set[str],
         output_dirs: dict[str, Path | None],
     ) -> dict[str, Any]:
-        """Generate supplemental qualifier files."""
-        from ..xpt_module import write_xpt_file
-        from ..xml_module.dataset_module import write_dataset_xml
+        """Generate supplemental qualifier files using FileGeneratorPort."""
+        from ..infrastructure.io.models import OutputDirs, OutputRequest
         from ..mapping_module import ColumnMapping, build_config
         
         merged_supp = (
@@ -649,7 +670,6 @@ class DomainProcessingUseCase:
         
         supp_domain = self._get_domain(supp_domain_code)
         base_filename = supp_domain.resolved_dataset_name()
-        disk_name = base_filename.lower()
         
         supp_result: dict[str, Any] = {
             "domain_code": supp_domain_code,
@@ -661,22 +681,36 @@ class DomainProcessingUseCase:
             "sas_path": None,
         }
         
-        xpt_dir = output_dirs.get("xpt")
-        xml_dir = output_dirs.get("xml")
-        output_format = "/".join(output_formats)
-        
-        if xpt_dir and output_format in ("xpt", "xpt/xml", "xml/xpt", "both"):
-            xpt_path = xpt_dir / f"{disk_name}.xpt"
-            file_label = f"Supplemental Qualifiers for {domain_code.upper()}"
-            write_xpt_file(merged_supp, supp_domain_code, xpt_path, file_label=file_label)
-            supp_result["xpt_path"] = xpt_path
-            supp_result["xpt_filename"] = xpt_path.name
-        
-        if xml_dir and output_format in ("xml", "xpt/xml", "xml/xpt", "both"):
-            xml_path = xml_dir / f"{disk_name}.xml"
-            write_dataset_xml(merged_supp, supp_domain_code, supp_config, xml_path)
-            supp_result["xml_path"] = xml_path
-            supp_result["xml_filename"] = xml_path.name
+        # Use FileGeneratorPort if available
+        if self._file_generator is not None:
+            formats = set()
+            xpt_dir = output_dirs.get("xpt")
+            xml_dir = output_dirs.get("xml")
+            
+            if xpt_dir and "xpt" in output_formats:
+                formats.add("xpt")
+            if xml_dir and "xml" in output_formats:
+                formats.add("xml")
+            
+            if formats:
+                output_request = OutputRequest(
+                    dataframe=merged_supp,
+                    domain_code=supp_domain_code,
+                    config=supp_config,
+                    output_dirs=OutputDirs(xpt_dir=xpt_dir, xml_dir=xml_dir),
+                    formats=formats,
+                    base_filename=base_filename,
+                )
+                
+                output_result = self._file_generator.generate(output_request)
+                
+                if output_result.xpt_path:
+                    supp_result["xpt_path"] = output_result.xpt_path
+                    supp_result["xpt_filename"] = output_result.xpt_path.name
+                
+                if output_result.xml_path:
+                    supp_result["xml_path"] = output_result.xml_path
+                    supp_result["xml_path"] = output_result.xml_path.name
         
         return supp_result
     
