@@ -28,9 +28,9 @@ This file tracks the completion status of each ticket in `CLEAN-2_MIGRATION_TICK
 
 ## 📋 Next Actions (For LLM Agents)
 
-**Current Focus: Epic C/D - Refactor Old Modules & Implement Real Use Cases**
+**Current Focus: Epic D - Implement Real Use Cases (P0 tickets)**
 
-Epic A and Epic B are now complete! Epic C is in progress. The following tickets should be implemented in order:
+Epic A, B are complete. Epic C P1 tickets are complete. The following tickets should be implemented in order:
 
 ### Completed
 1. ~~**CLEAN2-A1** (P0) - Remove `cli.helpers` from core~~ ✅ Complete
@@ -45,24 +45,25 @@ Epic A and Epic B are now complete! Epic C is in progress. The following tickets
 10. ~~**CLEAN2-C1** (P1) - Refactor `domains_module`~~ ✅ Complete
 11. ~~**CLEAN2-C2** (P1) - Refactor `terminology_module`~~ ✅ Complete
 12. ~~**CLEAN2-C3** (P1) - Move SUPPQUAL to domain services~~ ✅ Complete
-13. ~~**CLEAN2-C5** (P1) - Deprecate `io_module`~~ ✅ Complete
+13. ~~**CLEAN2-C4** (P1) - Migrate `metadata_module` to infrastructure~~ ✅ Complete
+14. ~~**CLEAN2-C5** (P1) - Deprecate `io_module`~~ ✅ Complete
+15. ~~**CLEAN2-C8** (P1) - Move domain dataframe builder to domain services~~ ✅ Complete
 
 ### Remaining P0 Tickets
-14. **CLEAN2-D1** (P0) - Make `DomainProcessingUseCase` real ⏳
-15. **CLEAN2-D2** (P0) - Make `StudyProcessingUseCase` real ⏳
+16. **CLEAN2-D1** (P0) - Make `DomainProcessingUseCase` real ⏳
+17. **CLEAN2-D2** (P0) - Make `StudyProcessingUseCase` real ⏳
 
-### Remaining P1 Tickets  
-16. **CLEAN2-C4** (P1) - Migrate `metadata_module` to infrastructure ⏳
-17. **CLEAN2-C8** (P1) - Move domain dataframe builder to domain services ⏳
-
-### Remaining P2 Tickets
+### Remaining P2 Tickets (Epic C)
 18. **CLEAN2-C6** (P2) - Move mapping config I/O to infrastructure ⏳
 19. **CLEAN2-C7** (P2) - Move mapping engines to domain services ⏳
 20. **CLEAN2-C9** (P2) - Move domain processors to domain services ⏳
-21. **CLEAN2-E1-E7** (P2) - Output adapters ⏳
-22. **CLEAN2-F1-F2** (P2) - Cleanup ⏳
 
-After all P0 tickets are complete, proceed to P1 tickets.
+### Remaining P2 Tickets (Epic D-F)
+21. **CLEAN2-D3-D4** (P2) - Remaining use case tickets ⏳
+22. **CLEAN2-E1-E7** (P2) - Output adapters ⏳
+23. **CLEAN2-F1-F2** (P2) - Cleanup ⏳
+
+After all P0 tickets are complete, proceed to P2 tickets.
 
 ---
 
@@ -72,11 +73,11 @@ After all P0 tickets are complete, proceed to P1 tickets.
 |------|---------------|----------|-------------|-------------|
 | A - Boundary Cleanup | 5 | 5 | 0 | 0 |
 | B - Repositories & Configuration | 4 | 4 | 0 | 0 |
-| C - Refactor Old Modules | 9 | 4 | 0 | 5 |
+| C - Refactor Old Modules | 9 | 6 | 0 | 3 |
 | D - Implement Real Use Cases | 4 | 0 | 0 | 4 |
 | E - Output Adapters | 7 | 0 | 0 | 7 |
 | F - Cleanup | 2 | 0 | 0 | 2 |
-| **Total** | **31** | **13** | **0** | **18** |
+| **Total** | **31** | **15** | **0** | **16** |
 
 ---
 
@@ -175,10 +176,10 @@ After all P0 tickets are complete, proceed to P1 tickets.
 
 ### CLEAN2-C4 — Migrate `metadata_module` to infrastructure
 - **Priority:** P1
-- **Status:** ⏳ Not Started
-- **Completion Date:** -
-- **PR:** -
-- **Blocked By:** CLEAN2-B3
+- **Status:** ✅ Complete
+- **Completion Date:** 2025-12-15
+- **PR:** Current PR
+- **Notes:** Created `infrastructure/repositories/study_metadata_loader.py`, converted `metadata_module/loaders.py` to wrapper
 
 ### CLEAN2-C5 — Deprecate `io_module`
 - **Priority:** P1
@@ -203,10 +204,10 @@ After all P0 tickets are complete, proceed to P1 tickets.
 
 ### CLEAN2-C8 — Move domain dataframe builder to domain services
 - **Priority:** P1
-- **Status:** ⏳ Not Started
-- **Completion Date:** -
-- **PR:** -
-- **Notes:** Create `domain/services/domain_frame_builder.py`
+- **Status:** ✅ Complete
+- **Completion Date:** 2025-12-15
+- **PR:** Current PR
+- **Notes:** Created `domain/services/domain_frame_builder.py`, converted `xpt_module/builder.py` to wrapper
 
 ### CLEAN2-C9 — Move domain processors to domain services
 - **Priority:** P2
@@ -407,3 +408,5 @@ From `CLEAN-2_MIGRATION_TICKETS.md`:
 | 2025-12-15 | CLEAN2-C2 | Complete | Current PR | Refactored terminology_module - lazy init, configurable paths |
 | 2025-12-15 | CLEAN2-C3 | Complete | Current PR | Moved SUPPQUAL logic to domain/services/suppqual_service.py |
 | 2025-12-15 | CLEAN2-C5 | Complete | Current PR | Deprecated io_module - now delegates to StudyDataRepository |
+| 2025-12-15 | CLEAN2-C4 | Complete | Current PR | Moved metadata loading to infrastructure/repositories/study_metadata_loader.py |
+| 2025-12-15 | CLEAN2-C8 | Complete | Current PR | Moved domain frame builder to domain/services/domain_frame_builder.py |

@@ -12,7 +12,7 @@ import pandas as pd
 
 from ...application.ports.repositories import StudyDataRepositoryPort
 from ...domain.entities.study_metadata import StudyMetadata
-from ...metadata_module.loaders import load_study_metadata as _load_metadata
+from .study_metadata_loader import load_study_metadata as _load_metadata
 from ..io.csv_reader import CSVReader, CSVReadOptions
 from ..io.exceptions import DataParseError, DataSourceNotFoundError
 

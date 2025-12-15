@@ -3,6 +3,11 @@
 Business logic services that operate on domain entities.
 """
 
+from .domain_frame_builder import (
+    DomainFrameBuildError,
+    DomainFrameBuilder,
+    build_domain_dataframe,
+)
 from .suppqual_service import (
     build_suppqual,
     extract_used_columns,
@@ -11,6 +16,11 @@ from .suppqual_service import (
 )
 
 __all__ = [
+    # Domain frame builder
+    "DomainFrameBuildError",
+    "DomainFrameBuilder",
+    "build_domain_dataframe",
+    # SUPPQUAL service
     "build_suppqual",
     "extract_used_columns",
     "finalize_suppqual",
