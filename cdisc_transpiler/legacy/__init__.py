@@ -14,7 +14,12 @@ For migration guidance, see docs/ARCHITECTURE.md.
 """
 
 import warnings
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .domain_processing_coordinator import DomainProcessingCoordinator
+    from .domain_synthesis_coordinator import DomainSynthesisCoordinator
+    from .study_orchestration_service import StudyOrchestrationService
 
 
 def _deprecated_import_warning(old_module: str, new_module: str) -> None:
