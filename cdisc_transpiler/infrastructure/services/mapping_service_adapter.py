@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from ...application.ports.repositories import DomainDefinitionPort
+from ...application.ports.repositories import DomainDefinitionRepositoryPort
 from ...application.ports.services import MappingPort
 from ...domain.entities.column_hints import Hints
 from ...domain.entities.mapping import MappingSuggestions
@@ -18,8 +18,8 @@ from ...domain.services.mapping import create_mapper
 
 
 class MappingServiceAdapter(MappingPort):
-    def __init__(self, *, domain_definitions: DomainDefinitionPort):
-        self._domain_definitions = domain_definitions
+    def __init__(self, *, domain_definition_repository: DomainDefinitionRepositoryPort):
+        self._domain_definition_repository = domain_definition_repository
 
     def suggest(
         self,
@@ -30,7 +30,7 @@ class MappingServiceAdapter(MappingPort):
         min_confidence: float = 0.5,
         column_hints: Hints | None = None,
     ) -> MappingSuggestions:
-        domain = self._domain_definitions.get_domain(domain_code)
+        domain = self._domain_definition_repository.get_domain(domain_code)
         engine = create_mapper(
             domain,
             metadata=metadata,

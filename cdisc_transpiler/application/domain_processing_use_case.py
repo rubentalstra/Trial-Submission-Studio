@@ -24,7 +24,7 @@ import pandas as pd
 
 from .models import ProcessDomainRequest, ProcessDomainResponse
 from .ports import (
-    DomainDefinitionPort,
+    DomainDefinitionRepositoryPort,
     DomainFrameBuilderPort,
     FileGeneratorPort,
     LoggerPort,
@@ -111,7 +111,7 @@ class DomainProcessingUseCase:
         domain_frame_builder: DomainFrameBuilderPort | None = None,
         suppqual_service: SuppqualPort | None = None,
         terminology_service: TerminologyPort | None = None,
-        domain_definitions: DomainDefinitionPort | None = None,
+        domain_definition_repository: DomainDefinitionRepositoryPort | None = None,
         xpt_writer: XPTWriterPort | None = None,
     ):
         """Initialize the use case with injected dependencies.
@@ -149,7 +149,7 @@ class DomainProcessingUseCase:
                 "Wire an infrastructure adapter in the composition root."
             )
         self._terminology_service = terminology_service
-        self._domain_definitions = domain_definitions
+        self._domain_definition_repository = domain_definition_repository
         self._xpt_writer = xpt_writer
 
     def execute(self, request: ProcessDomainRequest) -> ProcessDomainResponse:
@@ -902,12 +902,12 @@ class DomainProcessingUseCase:
 
     def _get_domain(self, domain_code: str) -> SDTMDomain:
         """Get SDTM domain definition."""
-        if self._domain_definitions is None:
+        if self._domain_definition_repository is None:
             raise RuntimeError(
-                "DomainDefinitionPort is not configured. "
+                "DomainDefinitionRepositoryPort is not configured. "
                 "Wire an infrastructure adapter in the composition root."
             )
-        return self._domain_definitions.get_domain(domain_code)
+        return self._domain_definition_repository.get_domain(domain_code)
 
     def _merge_dataframes(
         self, all_dataframes: list[pd.DataFrame], domain_code: str, verbose: bool

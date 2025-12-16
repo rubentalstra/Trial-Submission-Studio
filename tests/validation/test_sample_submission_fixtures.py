@@ -23,7 +23,6 @@ from cdisc_transpiler.domain.entities.mapping import MappingConfig
 from cdisc_transpiler.infrastructure.io.dataset_xml.constants import (
     DATASET_XML_VERSION,
     DATA_NS,
-    XLINK_NS,
     ODM_NS,
 )
 from cdisc_transpiler.infrastructure.io.dataset_xml.writer import write_dataset_xml

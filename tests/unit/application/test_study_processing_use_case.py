@@ -49,7 +49,7 @@ class TestStudyProcessingUseCase:
         mock_relrec_service = Mock()
         mock_file_gen = Mock()
         mock_output_preparer = Mock()
-        mock_domain_definitions = Mock()
+        mock_domain_definition_repository = Mock()
 
         # This should work without errors
         use_case = StudyProcessingUseCase(
@@ -62,7 +62,7 @@ class TestStudyProcessingUseCase:
             relrec_service=mock_relrec_service,
             file_generator=mock_file_gen,
             output_preparer=mock_output_preparer,
-            domain_definitions=mock_domain_definitions,
+            domain_definition_repository=mock_domain_definition_repository,
         )
 
         assert use_case is not None
@@ -75,7 +75,9 @@ class TestStudyProcessingUseCase:
         assert use_case._relrec_service == mock_relrec_service
         assert use_case._file_generator == mock_file_gen
         assert use_case._output_preparer == mock_output_preparer
-        assert use_case._domain_definitions == mock_domain_definitions
+        assert (
+            use_case._domain_definition_repository == mock_domain_definition_repository
+        )
 
     def test_no_legacy_imports(self):
         """Test that use case does not import legacy modules at module level."""
@@ -120,7 +122,7 @@ class TestStudyProcessingUseCase:
         assert use_case._domain_frame_builder is not None
         assert use_case._file_generator is not None
         assert use_case._output_preparer is not None
-        assert use_case._domain_definitions is not None
+        assert use_case._domain_definition_repository is not None
 
 
 class TestProcessStudyRequest:

@@ -31,7 +31,7 @@ from ..application.ports import (
     OutputPreparationPort,
     SuppqualPort,
     TerminologyPort,
-    DomainDefinitionPort,
+    DomainDefinitionRepositoryPort,
     StudyDataRepositoryPort,
 )
 from .io import (
@@ -103,7 +103,9 @@ class DependencyContainer:
         self._define_xml_generator_instance: DefineXmlGeneratorPort | None = None
         self._output_preparer_instance: OutputPreparationPort | None = None
         self._xpt_writer_instance: XPTWriter | None = None
-        self._domain_definition_repo_instance: DomainDefinitionPort | None = None
+        self._domain_definition_repo_instance: DomainDefinitionRepositoryPort | None = (
+            None
+        )
         self._mapping_service_instance: MappingPort | None = None
         self._domain_frame_builder_instance: DomainFrameBuilderPort | None = None
         self._suppqual_service_instance: SuppqualPort | None = None
@@ -180,7 +182,7 @@ class DependencyContainer:
             self._xpt_writer_instance = XPTWriter()
         return self._xpt_writer_instance
 
-    def create_domain_definition_repository(self) -> DomainDefinitionPort:
+    def create_domain_definition_repository(self) -> DomainDefinitionRepositoryPort:
         """Create or return cached SDTM domain definition repository (singleton)."""
         if self._domain_definition_repo_instance is None:
             self._domain_definition_repo_instance = DomainDefinitionRepository()
@@ -228,7 +230,7 @@ class DependencyContainer:
         """Create or return cached mapping service instance (singleton)."""
         if self._mapping_service_instance is None:
             self._mapping_service_instance = MappingServiceAdapter(
-                domain_definitions=self.create_domain_definition_repository()
+                domain_definition_repository=self.create_domain_definition_repository()
             )
         return self._mapping_service_instance
 
@@ -317,7 +319,7 @@ class DependencyContainer:
             file_generator=file_generator,
             define_xml_generator=define_xml_generator,
             output_preparer=output_preparer,
-            domain_definitions=domain_definition_repo,
+            domain_definition_repository=domain_definition_repo,
         )
 
     def create_domain_processing_use_case(self):
@@ -355,7 +357,7 @@ class DependencyContainer:
             domain_frame_builder=domain_frame_builder,
             suppqual_service=suppqual_service,
             terminology_service=terminology_service,
-            domain_definitions=domain_definition_repo,
+            domain_definition_repository=domain_definition_repo,
             xpt_writer=xpt_writer,
         )
 

@@ -38,7 +38,7 @@ from .ports import (
     DomainFrameBuilderPort,
     FileGeneratorPort,
     LoggerPort,
-    DomainDefinitionPort,
+    DomainDefinitionRepositoryPort,
     StudyDataRepositoryPort,
     OutputPreparationPort,
 )
@@ -94,7 +94,7 @@ class StudyProcessingUseCase:
         file_generator: FileGeneratorPort | None = None,
         define_xml_generator: DefineXmlGeneratorPort | None = None,
         output_preparer: OutputPreparationPort | None = None,
-        domain_definitions: DomainDefinitionPort | None = None,
+        domain_definition_repository: DomainDefinitionRepositoryPort | None = None,
     ):
         """Initialize the use case with injected dependencies.
 
@@ -136,7 +136,7 @@ class StudyProcessingUseCase:
         self._file_generator = file_generator
         self._define_xml_generator = define_xml_generator
         self._output_preparer = output_preparer
-        self._domain_definitions = domain_definitions
+        self._domain_definition_repository = domain_definition_repository
 
     def execute(self, request: ProcessStudyRequest) -> ProcessStudyResponse:
         """Execute the study processing workflow.
@@ -858,22 +858,22 @@ class StudyProcessingUseCase:
     # ========== Helper Methods for Lazy Dependencies ==========
 
     def _list_domains(self) -> list[str]:
-        """Get list of supported domains via DomainDefinitionPort."""
-        if self._domain_definitions is None:
+        """Get list of supported domains via DomainDefinitionRepositoryPort."""
+        if self._domain_definition_repository is None:
             raise RuntimeError(
-                "DomainDefinitionPort is not configured. "
+                "DomainDefinitionRepositoryPort is not configured. "
                 "Wire an infrastructure adapter in the composition root."
             )
-        return list(self._domain_definitions.list_domains())
+        return list(self._domain_definition_repository.list_domains())
 
     def _get_domain(self, domain_code: str):
-        """Get domain definition via DomainDefinitionPort."""
-        if self._domain_definitions is None:
+        """Get domain definition via DomainDefinitionRepositoryPort."""
+        if self._domain_definition_repository is None:
             raise RuntimeError(
-                "DomainDefinitionPort is not configured. "
+                "DomainDefinitionRepositoryPort is not configured. "
                 "Wire an infrastructure adapter in the composition root."
             )
-        return self._domain_definitions.get_domain(domain_code)
+        return self._domain_definition_repository.get_domain(domain_code)
 
     def _load_study_metadata(self, study_folder: Path):
         """Load study metadata via repository or fallback."""

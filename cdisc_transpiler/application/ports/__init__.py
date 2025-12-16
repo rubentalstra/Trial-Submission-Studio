@@ -6,7 +6,7 @@ adapters must implement. This enables dependency injection and testing.
 
 from .repositories import (
     CTRepositoryPort,
-    DomainDefinitionPort,
+    DomainDefinitionRepositoryPort,
     SDTMSpecRepositoryPort,
     StudyDataRepositoryPort,
 )
@@ -28,7 +28,7 @@ from .services import (
 __all__ = [
     # Repository Ports
     "CTRepositoryPort",
-    "DomainDefinitionPort",
+    "DomainDefinitionRepositoryPort",
     "SDTMSpecRepositoryPort",
     "StudyDataRepositoryPort",
     # Service Ports

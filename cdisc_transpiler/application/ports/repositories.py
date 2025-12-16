@@ -161,14 +161,14 @@ class SDTMSpecRepositoryPort(Protocol):
 
 
 @runtime_checkable
-class DomainDefinitionPort(Protocol):
+class DomainDefinitionRepositoryPort(Protocol):
     """Protocol to retrieve SDTM domain definitions as domain entities."""
 
     def list_domains(self) -> list[str]:
         """List all supported SDTM domain codes."""
         raise NotImplementedError
 
-    def get_domain(self, code: str) -> "SDTMDomain":
+    def get_domain(self, domain_code: str) -> "SDTMDomain":
         """Return the SDTM domain definition for a domain code."""
         raise NotImplementedError
 

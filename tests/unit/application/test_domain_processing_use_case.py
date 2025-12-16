@@ -47,8 +47,10 @@ class TestDomainProcessingUseCase:
         mock_domain_frame_builder = Mock()
         mock_suppqual_service = Mock()
         mock_terminology_service = Mock()
-        mock_domain_definitions = Mock()
-        mock_domain_definitions.get_domain.return_value = self._create_mock_domain()
+        mock_domain_definition_repository = Mock()
+        mock_domain_definition_repository.get_domain.return_value = (
+            self._create_mock_domain()
+        )
         mock_xpt_writer = Mock()
         return DomainProcessingUseCase(
             logger=logger,
@@ -59,7 +61,7 @@ class TestDomainProcessingUseCase:
             domain_frame_builder=mock_domain_frame_builder,
             suppqual_service=mock_suppqual_service,
             terminology_service=mock_terminology_service,
-            domain_definitions=mock_domain_definitions,
+            domain_definition_repository=mock_domain_definition_repository,
             xpt_writer=mock_xpt_writer,
         )
 
@@ -85,7 +87,7 @@ class TestDomainProcessingUseCase:
 
         # Make domain lookup raise an exception
         with patch.object(
-            use_case._domain_definitions,  # type: ignore[union-attr]
+            use_case._domain_definition_repository,  # type: ignore[union-attr]
             "get_domain",
             side_effect=ValueError("Domain not found"),
         ):
@@ -131,7 +133,7 @@ class TestDomainProcessingUseCase:
         mock_domain_frame_builder = Mock()
         mock_suppqual_service = Mock()
         mock_terminology_service = Mock()
-        mock_domain_definitions = Mock()
+        mock_domain_definition_repository = Mock()
         mock_xpt_writer = Mock()
 
         use_case = DomainProcessingUseCase(
@@ -143,7 +145,7 @@ class TestDomainProcessingUseCase:
             domain_frame_builder=mock_domain_frame_builder,
             suppqual_service=mock_suppqual_service,
             terminology_service=mock_terminology_service,
-            domain_definitions=mock_domain_definitions,
+            domain_definition_repository=mock_domain_definition_repository,
             xpt_writer=mock_xpt_writer,
         )
 
