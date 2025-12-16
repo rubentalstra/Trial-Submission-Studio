@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from ...domain.entities.mapping import MappingSuggestions
     from ...domain.entities.study_metadata import StudyMetadata
     from ...domain.entities.column_hints import Hints
+    from ...domain.entities.sdtm_domain import SDTMDomain
 
 
 @runtime_checkable
@@ -204,6 +205,94 @@ class FileGeneratorPort(Protocol):
             ... else:
             ...     print(f"Errors: {result.errors}")
         """
+        raise NotImplementedError
+
+
+@runtime_checkable
+class DomainDiscoveryPort(Protocol):
+    """Protocol for discovering domain files within a study folder.
+
+    The application layer should not depend on concrete discovery services.
+    Implementations may apply study-specific filename heuristics.
+    """
+
+    def discover_domain_files(
+        self,
+        csv_files: list[Path],
+        supported_domains: list[str],
+    ) -> dict[str, list[tuple[Path, str]]]:
+        """Classify CSV files by SDTM domain.
+
+        Returns a mapping of domain code to a list of (file_path, variant_name)
+        tuples.
+        """
+        raise NotImplementedError
+
+
+@runtime_checkable
+class DomainFrameBuilderPort(Protocol):
+    """Protocol for building SDTM-compliant domain DataFrames.
+
+    The domain contains the actual builder implementation; this port exists to
+    keep the application use cases wired from the composition root.
+    """
+
+    def build_domain_dataframe(
+        self,
+        frame: pd.DataFrame,
+        config: "MappingConfig",
+        domain: "SDTMDomain",
+        *,
+        reference_starts: dict[str, str] | None = None,
+        lenient: bool = False,
+        metadata: "StudyMetadata | None" = None,
+    ) -> pd.DataFrame:
+        raise NotImplementedError
+
+
+@runtime_checkable
+class SuppqualPort(Protocol):
+    """Protocol for SUPPQUAL (supplemental qualifiers) operations."""
+
+    def extract_used_columns(self, config: "MappingConfig | None") -> set[str]:
+        raise NotImplementedError
+
+    def build_suppqual(
+        self,
+        domain_code: str,
+        source_df: pd.DataFrame,
+        mapped_df: pd.DataFrame | None,
+        domain_def: "SDTMDomain",
+        used_source_columns: set[str] | None = None,
+        *,
+        study_id: str | None = None,
+        common_column_counts: dict[str, int] | None = None,
+        total_files: int | None = None,
+    ) -> tuple[pd.DataFrame | None, set[str]]:
+        raise NotImplementedError
+
+    def finalize_suppqual(
+        self,
+        supp_df: pd.DataFrame,
+        *,
+        supp_domain_def: "SDTMDomain | None" = None,
+        parent_domain_code: str = "DM",
+    ) -> pd.DataFrame:
+        raise NotImplementedError
+
+
+@runtime_checkable
+class TerminologyPort(Protocol):
+    """Protocol for terminology helpers used by transformations.
+
+    This keeps the application layer decoupled from legacy/shim terminology
+    modules.
+    """
+
+    def normalize_testcd(self, domain_code: str, source_code: str) -> str | None:
+        raise NotImplementedError
+
+    def get_testcd_label(self, domain_code: str, testcd: str) -> str:
         raise NotImplementedError
 
 

@@ -18,18 +18,21 @@ removing the delegation to legacy DomainProcessingCoordinator.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
 from .models import ProcessDomainRequest, ProcessDomainResponse
 from .ports import (
     DomainDefinitionPort,
+    DomainFrameBuilderPort,
     FileGeneratorPort,
     LoggerPort,
     MappingPort,
     OutputPreparationPort,
+    SuppqualPort,
     StudyDataRepositoryPort,
+    TerminologyPort,
     XPTWriterPort,
 )
 
@@ -59,20 +62,11 @@ def _build_column_hints(frame: pd.DataFrame) -> Hints:
     return hints
 
 
-def _get_transformation_helpers() -> tuple[
-    type,
-    Callable[[str, str], str | None],
-    Callable[[str, str], str],
-]:
-    """Lazy import of transformation dependencies to avoid circular imports.
-
-    Returns:
-        Tuple of (TransformationContext class, normalize_testcd function, get_testcd_label function)
-    """
+def _get_transformation_context_type() -> type:
+    """Lazy import of TransformationContext to avoid circular imports."""
     from ..transformations.base import TransformationContext
-    from ..terminology_module import normalize_testcd, get_testcd_label
 
-    return TransformationContext, normalize_testcd, get_testcd_label
+    return TransformationContext
 
 
 class DomainProcessingUseCase:
@@ -114,6 +108,9 @@ class DomainProcessingUseCase:
         file_generator: FileGeneratorPort | None = None,
         mapping_service: MappingPort | None = None,
         output_preparer: OutputPreparationPort | None = None,
+        domain_frame_builder: DomainFrameBuilderPort | None = None,
+        suppqual_service: SuppqualPort | None = None,
+        terminology_service: TerminologyPort | None = None,
         domain_definitions: DomainDefinitionPort | None = None,
         xpt_writer: XPTWriterPort | None = None,
     ):
@@ -134,6 +131,24 @@ class DomainProcessingUseCase:
             )
         self._mapping_service = mapping_service
         self._output_preparer = output_preparer
+        if domain_frame_builder is None:
+            raise RuntimeError(
+                "DomainFrameBuilderPort is not configured. "
+                "Wire an infrastructure adapter in the composition root."
+            )
+        self._domain_frame_builder = domain_frame_builder
+        if suppqual_service is None:
+            raise RuntimeError(
+                "SuppqualPort is not configured. "
+                "Wire an infrastructure adapter in the composition root."
+            )
+        self._suppqual_service = suppqual_service
+        if terminology_service is None:
+            raise RuntimeError(
+                "TerminologyPort is not configured. "
+                "Wire an infrastructure adapter in the composition root."
+            )
+        self._terminology_service = terminology_service
         self._domain_definitions = domain_definitions
         self._xpt_writer = xpt_writer
 
@@ -402,15 +417,13 @@ class DomainProcessingUseCase:
 
         from ..transformations.findings import VSTransformer
 
-        TransformationContext, normalize_testcd, get_testcd_label = (
-            _get_transformation_helpers()
-        )
+        TransformationContext = _get_transformation_context_type()
 
         input_rows = len(frame)
 
         transformer = VSTransformer(
-            test_code_normalizer=normalize_testcd,
-            test_label_getter=get_testcd_label,
+            test_code_normalizer=self._terminology_service.normalize_testcd,
+            test_label_getter=self._terminology_service.get_testcd_label,
         )
         context = TransformationContext(domain="VS", study_id=study_id)
         result = transformer.transform(frame, context)
@@ -457,15 +470,13 @@ class DomainProcessingUseCase:
 
         from ..transformations.findings import LBTransformer
 
-        TransformationContext, normalize_testcd, get_testcd_label = (
-            _get_transformation_helpers()
-        )
+        TransformationContext = _get_transformation_context_type()
 
         input_rows = len(frame)
 
         transformer = LBTransformer(
-            test_code_normalizer=normalize_testcd,
-            test_label_getter=get_testcd_label,
+            test_code_normalizer=self._terminology_service.normalize_testcd,
+            test_label_getter=self._terminology_service.get_testcd_label,
         )
         context = TransformationContext(domain="LB", study_id=study_id)
         result = transformer.transform(frame, context)
@@ -575,9 +586,7 @@ class DomainProcessingUseCase:
         reference_starts: dict[str, str] | None,
     ) -> pd.DataFrame:
         """Stage 4: Build SDTM domain dataframe."""
-        from ..domain.services import build_domain_dataframe
-
-        return build_domain_dataframe(
+        return self._domain_frame_builder.build_domain_dataframe(
             frame,
             config,
             domain,
@@ -595,10 +604,8 @@ class DomainProcessingUseCase:
         request: ProcessDomainRequest,
     ) -> pd.DataFrame | None:
         """Stage 5: Generate supplemental qualifiers."""
-        from ..domain.services import build_suppqual, extract_used_columns
-
-        used_columns = extract_used_columns(config)
-        supp_df, _ = build_suppqual(
+        used_columns = self._suppqual_service.extract_used_columns(config)
+        supp_df, _ = self._suppqual_service.build_suppqual(
             request.domain_code,
             source_df,
             domain_df,
@@ -730,7 +737,6 @@ class DomainProcessingUseCase:
         output_dirs: dict[str, Path | None],
     ) -> dict[str, Any]:
         """Generate supplemental qualifier files using FileGeneratorPort."""
-        from ..domain.services import finalize_suppqual
         from .models import OutputDirs, OutputRequest
         from ..domain.entities.mapping import ColumnMapping, build_config
 
@@ -745,10 +751,10 @@ class DomainProcessingUseCase:
         # Finalize (ordering + dedup) after merge to avoid duplicates across files.
         try:
             supp_domain_def = self._get_domain(supp_domain_code)
-        except Exception:
+        except Exception:  # noqa: BLE001
             supp_domain_def = None
         if not merged_supp.empty:
-            merged_supp = finalize_suppqual(
+            merged_supp = self._suppqual_service.finalize_suppqual(
                 merged_supp,
                 supp_domain_def=supp_domain_def,
                 parent_domain_code=domain_code,

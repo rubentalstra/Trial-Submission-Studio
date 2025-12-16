@@ -18,14 +18,19 @@ Example:
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from rich.console import Console
 
 from ..application.ports import (
+    DomainFrameBuilderPort,
     DefineXmlGeneratorPort,
     FileGeneratorPort,
     LoggerPort,
     MappingPort,
     OutputPreparationPort,
+    SuppqualPort,
+    TerminologyPort,
     DomainDefinitionPort,
     StudyDataRepositoryPort,
 )
@@ -41,6 +46,9 @@ from .io import (
 from .logging import ConsoleLogger, NullLogger
 from .repositories import DomainDefinitionRepository, StudyDataRepository
 from .services.mapping_service_adapter import MappingServiceAdapter
+
+if TYPE_CHECKING:
+    from ..domain.services import RelrecService, SynthesisService
 
 
 class DependencyContainer:
@@ -97,6 +105,11 @@ class DependencyContainer:
         self._xpt_writer_instance: XPTWriter | None = None
         self._domain_definition_repo_instance: DomainDefinitionPort | None = None
         self._mapping_service_instance: MappingPort | None = None
+        self._domain_frame_builder_instance: DomainFrameBuilderPort | None = None
+        self._suppqual_service_instance: SuppqualPort | None = None
+        self._terminology_service_instance: TerminologyPort | None = None
+        self._synthesis_service_instance: "SynthesisService | None" = None
+        self._relrec_service_instance: "RelrecService | None" = None
 
     # Infrastructure Components
 
@@ -214,6 +227,46 @@ class DependencyContainer:
             self._mapping_service_instance = MappingServiceAdapter()
         return self._mapping_service_instance
 
+    def create_domain_frame_builder(self) -> DomainFrameBuilderPort:
+        """Create or return cached domain frame builder adapter (singleton)."""
+        if self._domain_frame_builder_instance is None:
+            from .services.domain_frame_builder_adapter import DomainFrameBuilderAdapter
+
+            self._domain_frame_builder_instance = DomainFrameBuilderAdapter()
+        return self._domain_frame_builder_instance
+
+    def create_suppqual_service(self) -> SuppqualPort:
+        """Create or return cached SUPPQUAL adapter (singleton)."""
+        if self._suppqual_service_instance is None:
+            from .services.suppqual_service_adapter import SuppqualServiceAdapter
+
+            self._suppqual_service_instance = SuppqualServiceAdapter()
+        return self._suppqual_service_instance
+
+    def create_terminology_service(self) -> TerminologyPort:
+        """Create or return cached terminology service adapter (singleton)."""
+        if self._terminology_service_instance is None:
+            from .services.terminology_service_adapter import TerminologyServiceAdapter
+
+            self._terminology_service_instance = TerminologyServiceAdapter()
+        return self._terminology_service_instance
+
+    def create_synthesis_service(self) -> "SynthesisService":
+        """Create or return cached synthesis service instance (singleton)."""
+        if self._synthesis_service_instance is None:
+            from ..domain.services import SynthesisService
+
+            self._synthesis_service_instance = SynthesisService()
+        return self._synthesis_service_instance
+
+    def create_relrec_service(self) -> "RelrecService":
+        """Create or return cached RELREC service instance (singleton)."""
+        if self._relrec_service_instance is None:
+            from ..domain.services import RelrecService
+
+            self._relrec_service_instance = RelrecService()
+        return self._relrec_service_instance
+
     # Application Use Cases
 
     def create_study_processing_use_case(self):
@@ -230,14 +283,19 @@ class DependencyContainer:
         """
         # Import here to avoid circular import at module level
         from ..application.study_processing_use_case import StudyProcessingUseCase
-        from ..services import DomainDiscoveryService
+        from .services.domain_discovery_service_adapter import (
+            DomainDiscoveryServiceAdapter,
+        )
 
         logger = self.create_logger()
         study_data_repo = self.create_study_data_repository()
         file_generator = self.create_file_generator()
         domain_processing_use_case = self.create_domain_processing_use_case()
         domain_definition_repo = self.create_domain_definition_repository()
-        discovery_service = DomainDiscoveryService(logger=logger)
+        discovery_service = DomainDiscoveryServiceAdapter(logger=logger)
+        domain_frame_builder = self.create_domain_frame_builder()
+        synthesis_service = self.create_synthesis_service()
+        relrec_service = self.create_relrec_service()
         define_xml_generator = self.create_define_xml_generator()
         output_preparer = self.create_output_preparer()
 
@@ -246,6 +304,9 @@ class DependencyContainer:
             study_data_repo=study_data_repo,
             domain_processing_use_case=domain_processing_use_case,
             discovery_service=discovery_service,
+            domain_frame_builder=domain_frame_builder,
+            synthesis_service=synthesis_service,
+            relrec_service=relrec_service,
             file_generator=file_generator,
             define_xml_generator=define_xml_generator,
             output_preparer=output_preparer,
@@ -273,6 +334,9 @@ class DependencyContainer:
         output_preparer = self.create_output_preparer()
         mapping_service = self.create_mapping_service()
         domain_definition_repo = self.create_domain_definition_repository()
+        domain_frame_builder = self.create_domain_frame_builder()
+        suppqual_service = self.create_suppqual_service()
+        terminology_service = self.create_terminology_service()
         xpt_writer = self.create_xpt_writer()
 
         return DomainProcessingUseCase(
@@ -281,6 +345,9 @@ class DependencyContainer:
             file_generator=file_generator,
             mapping_service=mapping_service,
             output_preparer=output_preparer,
+            domain_frame_builder=domain_frame_builder,
+            suppqual_service=suppqual_service,
+            terminology_service=terminology_service,
             domain_definitions=domain_definition_repo,
             xpt_writer=xpt_writer,
         )
@@ -305,6 +372,11 @@ class DependencyContainer:
         self._domain_definition_repo_instance = None
         self._define_xml_generator_instance = None
         self._mapping_service_instance = None
+        self._domain_frame_builder_instance = None
+        self._suppqual_service_instance = None
+        self._terminology_service_instance = None
+        self._synthesis_service_instance = None
+        self._relrec_service_instance = None
 
     def override_logger(self, logger: LoggerPort) -> None:
         """Override the logger instance (for testing).

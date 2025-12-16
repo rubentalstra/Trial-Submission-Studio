@@ -12,12 +12,16 @@ from .repositories import (
 )
 from .services import (
     DatasetXMLWriterPort,
+    DomainFrameBuilderPort,
+    DomainDiscoveryPort,
     DefineXmlGeneratorPort,
     FileGeneratorPort,
     LoggerPort,
     MappingPort,
     OutputPreparationPort,
+    SuppqualPort,
     SASWriterPort,
+    TerminologyPort,
     XPTWriterPort,
 )
 
@@ -30,8 +34,12 @@ __all__ = [
     # Service Ports
     "LoggerPort",
     "FileGeneratorPort",
+    "DomainDiscoveryPort",
+    "DomainFrameBuilderPort",
     "MappingPort",
     "OutputPreparationPort",
+    "SuppqualPort",
+    "TerminologyPort",
     # Writer Ports
     "XPTWriterPort",
     "DatasetXMLWriterPort",

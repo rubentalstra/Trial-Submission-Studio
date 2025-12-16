@@ -7,6 +7,8 @@ CLEAN2-D2: Tests are now enabled since StudyProcessingUseCase accepts
 injected dependencies and no longer imports from legacy modules.
 """
 
+# pyright: reportPrivateUsage=false
+
 from pathlib import Path
 from unittest.mock import Mock
 import pandas as pd
@@ -42,6 +44,9 @@ class TestStudyProcessingUseCase:
         mock_repo = Mock()
         mock_domain_use_case = Mock()
         mock_discovery = Mock()
+        mock_domain_frame_builder = Mock()
+        mock_synthesis_service = Mock()
+        mock_relrec_service = Mock()
         mock_file_gen = Mock()
         mock_output_preparer = Mock()
         mock_domain_definitions = Mock()
@@ -52,6 +57,9 @@ class TestStudyProcessingUseCase:
             study_data_repo=mock_repo,
             domain_processing_use_case=mock_domain_use_case,
             discovery_service=mock_discovery,
+            domain_frame_builder=mock_domain_frame_builder,
+            synthesis_service=mock_synthesis_service,
+            relrec_service=mock_relrec_service,
             file_generator=mock_file_gen,
             output_preparer=mock_output_preparer,
             domain_definitions=mock_domain_definitions,
@@ -62,21 +70,22 @@ class TestStudyProcessingUseCase:
         assert use_case._study_data_repo == mock_repo
         assert use_case._domain_processing_use_case == mock_domain_use_case
         assert use_case._discovery_service == mock_discovery
+        assert use_case._domain_frame_builder == mock_domain_frame_builder
+        assert use_case._synthesis_service == mock_synthesis_service
+        assert use_case._relrec_service == mock_relrec_service
         assert use_case._file_generator == mock_file_gen
         assert use_case._output_preparer == mock_output_preparer
         assert use_case._domain_definitions == mock_domain_definitions
 
     def test_no_legacy_imports(self):
         """Test that use case does not import legacy modules at module level."""
-        from pathlib import Path
-
         use_case_path = (
             Path(__file__).parent.parent.parent.parent
             / "cdisc_transpiler"
             / "application"
             / "study_processing_use_case.py"
         )
-        with open(use_case_path, "r") as f:
+        with open(use_case_path, "r", encoding="utf-8") as f:
             source = f.read()
 
         # Check for module-level imports (outside of functions/methods)
@@ -108,6 +117,7 @@ class TestStudyProcessingUseCase:
         assert use_case._study_data_repo is not None
         assert use_case._domain_processing_use_case is not None
         assert use_case._discovery_service is not None
+        assert use_case._domain_frame_builder is not None
         assert use_case._file_generator is not None
         assert use_case._output_preparer is not None
         assert use_case._domain_definitions is not None

@@ -7,6 +7,8 @@ CLEAN2-D1: These tests are now enabled since the circular import issue
 has been resolved by implementing the real DomainProcessingUseCase.
 """
 
+# pyright: reportPrivateUsage=false
+
 import inspect
 from pathlib import Path
 from unittest.mock import Mock, patch
@@ -42,6 +44,9 @@ class TestDomainProcessingUseCase:
         mock_generator = Mock()
         mock_mapping = Mock()
         mock_output_preparer = Mock()
+        mock_domain_frame_builder = Mock()
+        mock_suppqual_service = Mock()
+        mock_terminology_service = Mock()
         mock_domain_definitions = Mock()
         mock_domain_definitions.get_domain.return_value = self._create_mock_domain()
         mock_xpt_writer = Mock()
@@ -51,6 +56,9 @@ class TestDomainProcessingUseCase:
             file_generator=mock_generator,
             mapping_service=mock_mapping,
             output_preparer=mock_output_preparer,
+            domain_frame_builder=mock_domain_frame_builder,
+            suppqual_service=mock_suppqual_service,
+            terminology_service=mock_terminology_service,
             domain_definitions=mock_domain_definitions,
             xpt_writer=mock_xpt_writer,
         )
@@ -94,10 +102,6 @@ class TestDomainProcessingUseCase:
 
     def test_use_case_can_be_imported_at_runtime(self):
         """Test that use case can be imported dynamically."""
-        from cdisc_transpiler.application.domain_processing_use_case import (
-            DomainProcessingUseCase,
-        )
-
         assert DomainProcessingUseCase is not None
         assert hasattr(DomainProcessingUseCase, "execute")
 
@@ -124,6 +128,9 @@ class TestDomainProcessingUseCase:
         mock_generator = Mock()
         mock_mapping = Mock()
         mock_output_preparer = Mock()
+        mock_domain_frame_builder = Mock()
+        mock_suppqual_service = Mock()
+        mock_terminology_service = Mock()
         mock_domain_definitions = Mock()
         mock_xpt_writer = Mock()
 
@@ -133,6 +140,9 @@ class TestDomainProcessingUseCase:
             file_generator=mock_generator,
             mapping_service=mock_mapping,
             output_preparer=mock_output_preparer,
+            domain_frame_builder=mock_domain_frame_builder,
+            suppqual_service=mock_suppqual_service,
+            terminology_service=mock_terminology_service,
             domain_definitions=mock_domain_definitions,
             xpt_writer=mock_xpt_writer,
         )
@@ -140,6 +150,7 @@ class TestDomainProcessingUseCase:
         assert use_case.logger is logger
         assert use_case._study_data_repo is mock_repo
         assert use_case._file_generator is mock_generator
+        assert use_case._terminology_service is mock_terminology_service
 
     def test_container_creates_use_case_with_dependencies(self):
         """Test that DependencyContainer properly wires dependencies."""

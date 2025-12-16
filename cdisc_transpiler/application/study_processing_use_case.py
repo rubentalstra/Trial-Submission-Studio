@@ -32,6 +32,8 @@ from .models import (
 )
 from .ports import (
     DefineXmlGeneratorPort,
+    DomainDiscoveryPort,
+    DomainFrameBuilderPort,
     FileGeneratorPort,
     LoggerPort,
     DomainDefinitionPort,
@@ -41,7 +43,7 @@ from .ports import (
 
 if TYPE_CHECKING:
     from .domain_processing_use_case import DomainProcessingUseCase
-    from ..services import DomainDiscoveryService
+    from ..domain.services import RelrecService, SynthesisService
 
 
 class StudyProcessingUseCase:
@@ -83,7 +85,10 @@ class StudyProcessingUseCase:
         logger: LoggerPort,
         study_data_repo: StudyDataRepositoryPort | None = None,
         domain_processing_use_case: DomainProcessingUseCase | None = None,
-        discovery_service: DomainDiscoveryService | None = None,
+        discovery_service: DomainDiscoveryPort | None = None,
+        domain_frame_builder: DomainFrameBuilderPort | None = None,
+        synthesis_service: "SynthesisService | None" = None,
+        relrec_service: "RelrecService | None" = None,
         file_generator: FileGeneratorPort | None = None,
         define_xml_generator: DefineXmlGeneratorPort | None = None,
         output_preparer: OutputPreparationPort | None = None,
@@ -99,10 +104,33 @@ class StudyProcessingUseCase:
             file_generator: Generator for output files
             define_xml_generator: Generator for Define-XML files
         """
+        if discovery_service is None:
+            raise ValueError(
+                "StudyProcessingUseCase requires discovery_service to be injected "
+                "(use the DI container)."
+            )
+        if synthesis_service is None:
+            raise ValueError(
+                "StudyProcessingUseCase requires synthesis_service to be injected "
+                "(use the DI container)."
+            )
+        if relrec_service is None:
+            raise ValueError(
+                "StudyProcessingUseCase requires relrec_service to be injected "
+                "(use the DI container)."
+            )
+        if domain_frame_builder is None:
+            raise ValueError(
+                "StudyProcessingUseCase requires domain_frame_builder to be injected "
+                "(use the DI container)."
+            )
         self.logger = logger
         self._study_data_repo = study_data_repo
         self._domain_processing_use_case = domain_processing_use_case
         self._discovery_service = discovery_service
+        self._domain_frame_builder = domain_frame_builder
+        self._synthesis_service = synthesis_service
+        self._relrec_service = relrec_service
         self._file_generator = file_generator
         self._define_xml_generator = define_xml_generator
         self._output_preparer = output_preparer
@@ -710,21 +738,15 @@ class StudyProcessingUseCase:
                 ):
                     domain_dataframes[result.domain_code] = result.domain_dataframe
 
-            # Generate RELREC using the domain service
-            from ..domain.services import RelrecService
-
-            relrec_service = RelrecService()
+            relrec_service = self._get_relrec_service()
             relrec_df, relrec_config = relrec_service.build_relrec(
                 domain_dataframes=domain_dataframes,
                 study_id=request.study_id,
             )
 
             # Build domain dataframe with SDTM structure
-            from ..domains_module import get_domain
-            from ..domain.services import build_domain_dataframe
-
-            relrec_domain = get_domain("RELREC")
-            domain_dataframe = build_domain_dataframe(
+            relrec_domain = self._get_domain("RELREC")
+            domain_dataframe = self._domain_frame_builder.build_domain_dataframe(
                 relrec_df,
                 relrec_config,
                 relrec_domain,
@@ -871,13 +893,12 @@ class StudyProcessingUseCase:
 
     def _get_discovery_service(self):
         """Get or create domain discovery service."""
-        if self._discovery_service is not None:
-            return self._discovery_service
-
-        # Create default instance with logger injection
-        from ..services import DomainDiscoveryService
-
-        return DomainDiscoveryService(logger=self.logger)
+        if self._discovery_service is None:
+            raise RuntimeError(
+                "DomainDiscoveryPort is not configured. "
+                "Wire it in the composition root (DependencyContainer)."
+            )
+        return self._discovery_service
 
     def _get_domain_processing_use_case(self):
         """Get or create domain processing use case."""
@@ -890,15 +911,22 @@ class StudyProcessingUseCase:
         )
 
     def _get_synthesis_service(self):
-        """Get or create domain synthesis service.
+        """Get injected domain synthesis service."""
+        if self._synthesis_service is None:
+            raise RuntimeError(
+                "SynthesisService is not configured. "
+                "Wire it in the composition root (DependencyContainer)."
+            )
+        return self._synthesis_service
 
-        The SynthesisService is a pure domain service that returns only
-        domain data (DataFrames + configs). File generation is handled
-        by the application layer using FileGeneratorPort.
-        """
-        from ..domain.services import SynthesisService
-
-        return SynthesisService()
+    def _get_relrec_service(self):
+        """Get injected RELREC service."""
+        if self._relrec_service is None:
+            raise RuntimeError(
+                "RelrecService is not configured. "
+                "Wire it in the composition root (DependencyContainer)."
+            )
+        return self._relrec_service
 
     def _generate_synthesis_files(
         self,
