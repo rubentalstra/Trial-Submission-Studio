@@ -114,6 +114,45 @@ class MockLogger:
             )
         )
 
+    def log_domain_complete(
+        self,
+        domain_code: str,
+        final_row_count: int,
+        final_column_count: int,
+        *,
+        skipped: bool = False,
+        reason: str | None = None,
+    ) -> None:
+        self.messages.append(
+            (
+                "log_domain_complete",
+                {
+                    "domain_code": domain_code,
+                    "final_row_count": final_row_count,
+                    "final_column_count": final_column_count,
+                    "skipped": skipped,
+                    "reason": reason,
+                },
+            )
+        )
+
+    def log_file_loaded(
+        self,
+        filename: str,
+        row_count: int,
+        column_count: int | None = None,
+    ) -> None:
+        self.messages.append(
+            (
+                "log_file_loaded",
+                {
+                    "filename": filename,
+                    "row_count": row_count,
+                    "column_count": column_count,
+                },
+            )
+        )
+
     def log_synthesis_start(self, domain_code: str, reason: str) -> None:
         self.messages.append(
             ("log_synthesis_start", {"domain_code": domain_code, "reason": reason})

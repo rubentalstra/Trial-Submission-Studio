@@ -205,6 +205,52 @@ class DomainFrameBuilder:
                 }
             )
 
+        # Derive USUBJID when mappings missed it but the raw source has
+        # a subject identifier column (common in EDC exports).
+        if "USUBJID" in result.columns:
+            usubjid = result["USUBJID"].astype("string").fillna("").str.strip()
+            needs_usubjid = usubjid.str.upper().isin(
+                {"", "NAN", "<NA>", "NONE", "NULL"}
+            )
+
+            if needs_usubjid.any():
+                subject_source = None
+                for candidate in (
+                    "SubjectId",
+                    "Subject ID",
+                    "SUBJECTID",
+                    "SUBJECT ID",
+                    "SUBJID",
+                ):
+                    if candidate in self.frame.columns:
+                        subject_source = self.frame[candidate]
+                        break
+
+                if subject_source is not None:
+                    subj = subject_source.astype("string").fillna("").str.strip()
+                    # Avoid placeholder/header rows (e.g., "SubjectId").
+                    subj = subj.where(
+                        ~subj.str.upper().isin({"SUBJECTID", "SUBJECT ID", "SUBJID"}),
+                        "",
+                    )
+
+                    study_id = (
+                        ""
+                        if not (self.config and self.config.study_id)
+                        else str(self.config.study_id)
+                    )
+                    if study_id:
+                        prefixed = (study_id + "-" + subj).where(subj != "", "")
+                        already_prefixed = subj.str.upper().str.startswith(
+                            (study_id + "-").upper()
+                        )
+                        derived = subj.where(already_prefixed, prefixed)
+                    else:
+                        derived = subj
+
+                    usubjid = usubjid.where(~needs_usubjid, derived)
+                    result.loc[:, "USUBJID"] = usubjid
+
         # Populate sequence columns when missing entirely
         if "USUBJID" not in result.columns:
             return
@@ -234,8 +280,15 @@ class DomainFrameBuilder:
         raw_source = unquote_column_name(source_column)
 
         if mapping.transformation:
-            # TODO: Implement transformation logic
-            pass
+            # Minimal support: treat transformation as an alternate source column
+            # reference (not a full expression language).
+            expr = mapping.transformation
+            raw_expr = unquote_column_name(expr)
+            if expr in self.frame.columns:
+                result[mapping.target_variable] = self.frame[expr].copy()
+            elif raw_expr in self.frame.columns:
+                result[mapping.target_variable] = self.frame[raw_expr].copy()
+            return
         else:
             # Get the source data
             if source_column in self.frame.columns:

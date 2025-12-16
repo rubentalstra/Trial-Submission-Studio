@@ -369,6 +369,23 @@ class StudyProcessingUseCase:
 
                 response.domain_results.append(result)
 
+                if result.domain_dataframe is not None:
+                    self.logger.log_domain_complete(
+                        domain_code,
+                        final_row_count=len(result.domain_dataframe),
+                        final_column_count=len(result.domain_dataframe.columns),
+                        skipped=not result.success,
+                        reason=result.error,
+                    )
+                else:
+                    self.logger.log_domain_complete(
+                        domain_code,
+                        final_row_count=0,
+                        final_column_count=0,
+                        skipped=not result.success,
+                        reason=result.error,
+                    )
+
                 if result.success:
                     response.processed_domains.add(domain_code)
                     response.total_records += result.records
@@ -1008,7 +1025,7 @@ class StudyProcessingUseCase:
                     result, study_datasets, request.output_dir, request.output_formats
                 )
 
-            self.logger.success("Generated RELREC")
+            self.logger.log_synthesis_complete("RELREC", result.records)
 
         except Exception as exc:
             self.logger.error(f"RELREC: {exc}")
@@ -1115,7 +1132,7 @@ class StudyProcessingUseCase:
                     result, study_datasets, request.output_dir, request.output_formats
                 )
 
-            self.logger.success("Generated RELSUB")
+            self.logger.log_synthesis_complete("RELSUB", result.records)
 
         except Exception as exc:
             self.logger.error(f"RELSUB: {exc}")
@@ -1230,7 +1247,7 @@ class StudyProcessingUseCase:
                     result, study_datasets, request.output_dir, request.output_formats
                 )
 
-            self.logger.success("Generated RELSPEC")
+            self.logger.log_synthesis_complete("RELSPEC", result.records)
 
         except Exception as exc:
             self.logger.error(f"RELSPEC: {exc}")

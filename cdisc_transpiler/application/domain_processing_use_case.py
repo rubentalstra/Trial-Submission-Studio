@@ -372,7 +372,14 @@ class DomainProcessingUseCase:
         row_count = len(frame)
         col_count = len(frame.columns)
 
-        # Log file loading
+        # Log file loading (and update processing stats)
+        self.logger.log_file_loaded(
+            input_file.name,
+            row_count=row_count,
+            column_count=col_count,
+        )
+
+        # Keep the existing verbose context line for continuity in output.
         self.logger.info(
             f"Loaded {input_file.name}: {row_count:,} rows, {col_count} columns"
         )
@@ -881,10 +888,21 @@ class DomainProcessingUseCase:
         if len(all_dataframes) == 1:
             return all_dataframes[0]
 
+        # Avoid pandas FutureWarning around dtype inference when concatenating
+        # empty/all-NA frames, while still preserving the union of columns.
+        union_columns: list[str] = sorted(
+            {col for df in all_dataframes for col in df.columns.astype(str)}
+        )
+        non_empty = [df for df in all_dataframes if not df.empty]
+        if not non_empty:
+            return pd.DataFrame(columns=union_columns)
+
         input_rows_list = [len(df) for df in all_dataframes]
         total_input = sum(input_rows_list)
 
-        merged_df = pd.concat(all_dataframes, ignore_index=True)
+        merged_df = pd.concat(non_empty, ignore_index=True)
+        if union_columns:
+            merged_df = merged_df.reindex(columns=union_columns)
         merged_rows = len(merged_df)
 
         # Re-assign sequence numbers per subject after merge

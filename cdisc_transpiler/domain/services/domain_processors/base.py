@@ -76,10 +76,54 @@ class BaseDomainProcessor(ABC):
         Args:
             frame: DataFrame to clean in-place
         """
+        # Some source extracts/mappings omit USUBJID but provide SUBJID and STUDYID,
+        # which is sufficient to derive USUBJID. Do this before dropping rows so
+        # we don't delete valid subject records.
         if "USUBJID" in frame.columns:
-            missing_ids = frame["USUBJID"].isna() | frame["USUBJID"].astype(
-                "string"
-            ).str.strip().str.upper().isin({"", "NAN", "<NA>", "NONE", "NULL"})
+            usubjid = frame["USUBJID"].astype("string").fillna("").str.strip()
+            missing_ids = usubjid.str.upper().isin({"", "NAN", "<NA>", "NONE", "NULL"})
+
+            if missing_ids.any():
+                studyid = (
+                    frame["STUDYID"].astype("string").fillna("").str.strip()
+                    if "STUDYID" in frame.columns
+                    else pd.Series([""] * len(frame), index=frame.index, dtype="string")
+                )
+                # Prefer SUBJID when present; fall back to common raw identifiers.
+                if "SUBJID" in frame.columns:
+                    subjid = frame["SUBJID"].astype("string").fillna("").str.strip()
+                elif "SubjectId" in frame.columns:
+                    subjid = frame["SubjectId"].astype("string").fillna("").str.strip()
+                elif "SUBJECTID" in frame.columns:
+                    subjid = frame["SUBJECTID"].astype("string").fillna("").str.strip()
+                else:
+                    subjid = pd.Series(
+                        [""] * len(frame), index=frame.index, dtype="string"
+                    )
+
+                # Avoid turning header-placeholder rows into "valid" USUBJIDs.
+                placeholder_subjid = subjid.str.upper().isin(
+                    {"SUBJID", "SUBJECTID", "SUBJECT ID", "SUBJECTID", "SUBJECTID"}
+                )
+                can_fill = missing_ids & ~placeholder_subjid & (subjid != "")
+
+                derived = studyid.where(studyid != "", "")
+                derived = (derived + "-" + subjid).where(
+                    derived != "-" + subjid, subjid
+                )
+                usubjid = usubjid.where(~can_fill, derived)
+                frame.loc[:, "USUBJID"] = usubjid
+
+                # Recompute missing after attempted fill.
+                missing_ids = (
+                    frame["USUBJID"]
+                    .astype("string")
+                    .fillna("")
+                    .str.strip()
+                    .str.upper()
+                    .isin({"", "NAN", "<NA>", "NONE", "NULL"})
+                )
+
             if missing_ids.any():
                 frame.drop(index=frame.index[missing_ids].to_list(), inplace=True)
                 frame.reset_index(drop=True, inplace=True)

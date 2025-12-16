@@ -153,6 +153,27 @@ class LoggerPort(Protocol):
         """Log the start of processing a specific domain."""
         raise NotImplementedError
 
+    def log_domain_complete(
+        self,
+        domain_code: str,
+        final_row_count: int,
+        final_column_count: int,
+        *,
+        skipped: bool = False,
+        reason: str | None = None,
+    ) -> None:
+        """Log completion of processing a specific domain and update stats."""
+        raise NotImplementedError
+
+    def log_file_loaded(
+        self,
+        filename: str,
+        row_count: int,
+        column_count: int | None = None,
+    ) -> None:
+        """Log a file load event and update stats."""
+        raise NotImplementedError
+
     def log_synthesis_start(self, domain_code: str, reason: str) -> None:
         """Log the start of synthesis for a domain."""
         raise NotImplementedError

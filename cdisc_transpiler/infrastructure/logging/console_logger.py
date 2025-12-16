@@ -498,6 +498,9 @@ class ConsoleLogger(LoggerPort):
             domain_code: Domain that was synthesized
             record_count: Number of records generated
         """
+        # Synthesis should count towards overall stats.
+        self._stats["domains_processed"] += 1
+        self._stats["records_processed"] += int(records or 0)
         self.success(f"Generated {domain_code} scaffold (records={records})")
 
     # =========================================================================

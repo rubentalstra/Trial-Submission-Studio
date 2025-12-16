@@ -55,14 +55,21 @@ class DateTransformer:
             if var.name.endswith("DY") and var.name[:-2] + "DTC" in frame.columns:
                 dtc_col = var.name[:-2] + "DTC"
                 if "USUBJID" in frame.columns:
-                    frame.loc[:, var.name] = frame.apply(
-                        lambda row: DateTransformer._compute_dy_for_row(
-                            row["USUBJID"],
-                            row.get(dtc_col),
-                            reference_starts,
-                        ),
-                        axis=1,
-                    )
+                    usubjids = ensure_series(frame["USUBJID"], index=frame.index)
+                    dtcs = ensure_series(frame[dtc_col], index=frame.index)
+                    dy_values: list[int | None] = []
+                    for usubjid, dtc in zip(usubjids, dtcs):
+                        dy_values.append(
+                            DateTransformer._compute_dy_for_row(
+                                str(usubjid) if pd.notna(usubjid) else "",
+                                str(dtc) if pd.notna(dtc) else None,
+                                reference_starts,
+                            )
+                        )
+                    # Use a plain numeric series (float with NaN for missing) to avoid
+                    # dtype-churn warnings *and* keep downstream writers (e.g., XPT)
+                    # compatible with the produced dtypes.
+                    frame.loc[:, var.name] = pd.to_numeric(dy_values, errors="coerce")
 
     @staticmethod
     def _compute_dy_for_row(

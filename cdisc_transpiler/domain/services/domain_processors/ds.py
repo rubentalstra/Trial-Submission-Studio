@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any, cast
+from typing import Any
 
 import pandas as pd
 
@@ -51,7 +51,8 @@ class DSProcessor(BaseDomainProcessor):
             frame.loc[:, "DSSTDTC"] = fallback_date
         DateTransformer.ensure_date_pair_order(frame, "DSSTDTC", None)
 
-        # Build per-subject consent + disposition rows (always ensure both)
+        # Build per-subject disposition rows (DSDECOD is required and uses
+        # completion/non-completion controlled terminology).
         subject_series = ensure_series(
             frame.get("USUBJID", pd.Series(dtype="string")), index=frame.index
         )
@@ -62,19 +63,16 @@ class DSProcessor(BaseDomainProcessor):
         subjects.discard("")
 
         def _add_days(raw_date: str, days: int) -> str:
-            try:
-                dt_candidate = pd.to_datetime(
-                    DateTransformer.coerce_iso8601(raw_date), errors="coerce"
-                )
-            except Exception:
-                dt_candidate = pd.NaT
+            dt_candidate = pd.to_datetime(
+                DateTransformer.coerce_iso8601(raw_date), errors="coerce"
+            )
             fallback_ts = pd.to_datetime(fallback_date)
             if not isinstance(dt_candidate, pd.Timestamp) or pd.isna(dt_candidate):
                 dt_candidate = fallback_ts
             if pd.isna(dt_candidate):
                 return ""
             assert isinstance(dt_candidate, pd.Timestamp)
-            return dt_candidate.date().isoformat()
+            return (dt_candidate + pd.Timedelta(days=days)).date().isoformat()
 
         defaults: list[dict[str, Any]] = []
         study_id = "STUDY"
@@ -89,18 +87,6 @@ class DSProcessor(BaseDomainProcessor):
                 or fallback_date
             )
             disposition_date = _add_days(start, 120)
-            consent_row = {
-                "STUDYID": study_id,
-                "DOMAIN": "DS",
-                "USUBJID": usubjid,
-                "DSSEQ": pd.NA,
-                "DSDECOD": "INFORMED CONSENT OBTAINED",
-                "DSTERM": "INFORMED CONSENT OBTAINED",
-                "DSCAT": "PROTOCOL MILESTONE",
-                "DSSTDTC": start,
-                "DSSTDY": pd.NA,
-                "EPOCH": "SCREENING",
-            }
             disp_row = {
                 "STUDYID": study_id,
                 "DOMAIN": "DS",
@@ -113,63 +99,49 @@ class DSProcessor(BaseDomainProcessor):
                 "DSSTDY": pd.NA,
                 "EPOCH": "TREATMENT",
             }
-            defaults.extend([consent_row, disp_row])
+            defaults.append(disp_row)
 
-        defaults_df = pd.DataFrame(defaults)
-        defaults_df = defaults_df.reindex(columns=frame.columns, fill_value="")
-        if not defaults_df.empty:
-            expanded = pd.concat([frame, defaults_df], ignore_index=True)
-            expanded.reset_index(drop=True, inplace=True)
-            frame.drop(index=frame.index.tolist(), inplace=True)
-            for col in expanded.columns:
-                frame.loc[:, col] = expanded[col]
+        if defaults:
+            # Ensure the required DS columns exist so appended rows keep the SDTM shape.
+            for col in ("STUDYID", "DOMAIN", "USUBJID", "DSSEQ"):
+                if col not in frame.columns:
+                    frame.loc[:, col] = ""
 
-        # Harmonize consent/disposition text and epochs (even for source rows)
-        def _contains(series: pd.Series, token: str) -> pd.Series:
-            return series.astype("string").str.upper().str.contains(token, na=False)
+            needed_cols: set[str] = set().union(*(row.keys() for row in defaults))
+            for col in needed_cols:
+                if col not in frame.columns:
+                    frame.loc[:, col] = ""
 
-        consent_mask = _contains(
-            ensure_series(frame["DSDECOD"]), "CONSENT"
-        ) | _contains(ensure_series(frame["DSCAT"]), "PROTOCOL MILESTONE")
-        frame.loc[consent_mask, "DSDECOD"] = "INFORMED CONSENT OBTAINED"
-        frame.loc[consent_mask, "DSTERM"] = "INFORMED CONSENT OBTAINED"
-        frame.loc[consent_mask, "DSCAT"] = "PROTOCOL MILESTONE"
-        frame.loc[consent_mask, "EPOCH"] = "SCREENING"
+            # Append defaults in-place (preserves external references).
+            for row in defaults:
+                idx = len(frame)
+                # Only assign explicit values; leave other columns as NA.
+                # This avoids pandas dtype warnings (e.g., assigning "" into float columns).
+                for col, value in row.items():
+                    if col in frame.columns:
+                        frame.at[idx, col] = value
 
-        disposition_mask = ~consent_mask
-        frame.loc[disposition_mask, "DSDECOD"] = "COMPLETED"
-        frame.loc[disposition_mask, "DSTERM"] = "COMPLETED"
-        frame.loc[disposition_mask, "DSCAT"] = "DISPOSITION EVENT"
-        frame.loc[disposition_mask, "EPOCH"] = "TREATMENT"
+        # Normalize DS as disposition-only.
+        frame.loc[:, "DSDECOD"] = "COMPLETED"
+        frame.loc[:, "DSTERM"] = "COMPLETED"
+        frame.loc[:, "DSCAT"] = "DISPOSITION EVENT"
+        frame.loc[:, "EPOCH"] = "TREATMENT"
 
-        # Replace disposition dates that precede consent with a padded end date
+        # Ensure DSSTDTC is ISO8601 after any default-row additions.
         frame.loc[:, "DSSTDTC"] = frame["DSSTDTC"].apply(DateTransformer.coerce_iso8601)
-        dsstdtc_loc = cast(int, frame.columns.get_loc("DSSTDTC"))
-        for pos in range(len(frame)):
-            row = frame.iloc[pos]
-            subj = str(row.get("USUBJID", "") or "")
-            base = DateTransformer.coerce_iso8601(
-                (self.reference_starts or {}).get(subj)
-            )
-            base = base or fallback_date
-            if disposition_mask.iloc[pos]:
-                frame.iat[pos, dsstdtc_loc] = _add_days(base, 120)
-            elif not str(row["DSSTDTC"]).strip():
-                frame.iat[pos, dsstdtc_loc] = base
 
         DateTransformer.compute_study_day(frame, "DSSTDTC", "DSSTDY", ref="RFSTDTC")
         frame.loc[:, "DSDTC"] = frame["DSSTDTC"]
-        frame.loc[:, "DSDY"] = (
-            NumericTransformer.force_numeric(frame.get("DSSTDY", pd.Series()))
-            .fillna(1)
-            .astype("Int64")
-        )
+        dsdy_source = NumericTransformer.force_numeric(
+            frame.get("DSSTDY", pd.Series(index=frame.index))
+        ).fillna(1)
+        frame.loc[:, "DSDY"] = pd.to_numeric(dsdy_source, errors="coerce")
         frame.loc[:, "DSSTDY"] = frame["DSDY"]
 
         # Always regenerate DSSEQ - source values may not be unique (SD0005)
         NumericTransformer.assign_sequence(frame, "DSSEQ", "USUBJID")
-        frame.loc[:, "DSSEQ"] = NumericTransformer.force_numeric(frame["DSSEQ"]).astype(
-            "Int64"
+        frame.loc[:, "DSSEQ"] = pd.to_numeric(
+            NumericTransformer.force_numeric(frame["DSSEQ"]), errors="coerce"
         )
 
         # Remove duplicate disposition records per subject/date/term

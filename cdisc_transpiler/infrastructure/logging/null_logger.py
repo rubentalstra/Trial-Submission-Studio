@@ -29,7 +29,7 @@ class NullLogger(LoggerPort):
         Args:
             message: The message to log (ignored)
         """
-        pass
+        return None
 
     def success(self, message: str) -> None:
         """Log a success message (discarded).
@@ -37,7 +37,7 @@ class NullLogger(LoggerPort):
         Args:
             message: The message to log (ignored)
         """
-        pass
+        return None
 
     def warning(self, message: str) -> None:
         """Log a warning message (discarded).
@@ -45,7 +45,7 @@ class NullLogger(LoggerPort):
         Args:
             message: The message to log (ignored)
         """
-        pass
+        return None
 
     def error(self, message: str) -> None:
         """Log an error message (discarded).
@@ -53,7 +53,7 @@ class NullLogger(LoggerPort):
         Args:
             message: The message to log (ignored)
         """
-        pass
+        return None
 
     def debug(self, message: str) -> None:
         """Log a debug message (discarded).
@@ -61,7 +61,7 @@ class NullLogger(LoggerPort):
         Args:
             message: The message to log (ignored)
         """
-        pass
+        return None
 
     def verbose(self, message: str) -> None:
         """Log a verbose message (discarded).
@@ -69,7 +69,7 @@ class NullLogger(LoggerPort):
         Args:
             message: The message to log (ignored)
         """
-        pass
+        return None
 
     def log_study_start(
         self,
@@ -78,7 +78,7 @@ class NullLogger(LoggerPort):
         output_format: str,
         supported_domains: list[str],
     ) -> None:
-        pass
+        return None
 
     def log_metadata_loaded(
         self,
@@ -86,7 +86,7 @@ class NullLogger(LoggerPort):
         items_count: int | None,
         codelists_count: int | None,
     ) -> None:
-        pass
+        return None
 
     def log_processing_summary(
         self,
@@ -98,18 +98,37 @@ class NullLogger(LoggerPort):
         generate_define: bool,
         generate_sas: bool,
     ) -> None:
-        pass
+        return None
 
     def log_final_stats(self) -> None:
-        pass
+        return None
 
     def log_domain_start(
         self, domain_code: str, files_for_domain: list[tuple[Path, str]]
     ) -> None:
-        pass
+        return None
+
+    def log_domain_complete(
+        self,
+        domain_code: str,
+        final_row_count: int,
+        final_column_count: int,
+        *,
+        skipped: bool = False,
+        reason: str | None = None,
+    ) -> None:
+        return None
+
+    def log_file_loaded(
+        self,
+        filename: str,
+        row_count: int,
+        column_count: int | None = None,
+    ) -> None:
+        return None
 
     def log_synthesis_start(self, domain_code: str, reason: str) -> None:
-        pass
+        return None
 
     def log_synthesis_complete(self, domain_code: str, records: int) -> None:
-        pass
+        return None
