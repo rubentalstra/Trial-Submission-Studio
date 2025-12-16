@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import pandas as pd
 
+from cdisc_transpiler.constants import Defaults
+
 from .base import BaseDomainProcessor
 from ..transformers import DateTransformer, NumericTransformer, TextTransformer
-from ....constants import Defaults
-from ....pandas_utils import ensure_series
 
 
 class EXProcessor(BaseDomainProcessor):
@@ -101,48 +101,6 @@ class EXProcessor(BaseDomainProcessor):
             frame.loc[:, "EXTPTREF"] = (
                 frame["EXTPTREF"].astype("string").fillna("").replace("", "VISIT")
             )
-        existing = set(
-            ensure_series(
-                frame.get("USUBJID", pd.Series(dtype=str)), index=frame.index
-            ).astype(str)
-        )
-        # Ensure every subject with a reference start has an EX record
-        if self.reference_starts:
-            missing = set(self.reference_starts.keys()) - existing
-            if missing:
-                filler = []
-                for usubjid in missing:
-                    start = (
-                        DateTransformer.coerce_iso8601(
-                            self.reference_starts.get(usubjid, "")
-                        )
-                        or Defaults.DATE
-                    )
-                    filler.append(
-                        {
-                            "STUDYID": getattr(self.config, "study_id", None)
-                            or "STUDY",
-                            "DOMAIN": "EX",
-                            "USUBJID": usubjid,
-                            "EXSEQ": float("nan"),
-                            "EXTRT": "TREATMENT",
-                            "EXDOSE": float("nan"),
-                            "EXDOSU": "mg",
-                            "EXDOSFRM": "TABLET",
-                            "EXDOSFRQ": "",
-                            "EXSTDTC": start,
-                            "EXENDTC": start,
-                            "EXDUR": "P1D",
-                            "EXSTDY": float("nan"),
-                            "EXENDY": float("nan"),
-                            "EPOCH": "TREATMENT",
-                        }
-                    )
-                filler_df = pd.DataFrame(filler).reindex(
-                    columns=frame.columns, fill_value=""
-                )
-                new_frame = pd.concat([frame, filler_df], ignore_index=True)
-                self._replace_frame_preserving_schema(frame, new_frame)
         NumericTransformer.assign_sequence(frame, "EXSEQ", "USUBJID")
         # Recompute dates/study days for any appended defaults
         DateTransformer.ensure_date_pair_order(frame, "EXSTDTC", "EXENDTC")

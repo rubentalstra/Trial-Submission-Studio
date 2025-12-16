@@ -30,14 +30,16 @@ class TAProcessor(BaseDomainProcessor):
                 {
                     "EPOCH": "TREATMENT",
                     "ETCD": "TRT",
-                    "TAETORD": 1,
+                    # Use 1-based ordering to avoid downstream XPT readers
+                    # misinterpreting numeric 0 as a tiny float.
+                    "TAETORD": 2,
                     "ARMCD": "ARM1",
                     "ARM": "Treatment Arm",
                 }
             )
             frame.loc[0] = base
             screening = base.copy()
-            screening.update({"EPOCH": "SCREENING", "ETCD": "SCRN", "TAETORD": 0})
+            screening.update({"EPOCH": "SCREENING", "ETCD": "SCRN", "TAETORD": 1})
             frame.loc[1] = screening
             frame.reset_index(drop=True, inplace=True)
 
@@ -48,12 +50,8 @@ class TAProcessor(BaseDomainProcessor):
             screening_row = first_row.copy()
             screening_row["EPOCH"] = "SCREENING"
             screening_row["ETCD"] = "SCRN"
-            screening_row["TAETORD"] = 0
+            screening_row["TAETORD"] = 1
             frame.loc[len(frame)] = screening_row
-
-        if "TAETORD" in frame.columns:
-            frame.loc[frame["EPOCH"] == "TREATMENT", "TAETORD"] = 1
-            frame.loc[frame["EPOCH"] == "SCREENING", "TAETORD"] = 0
         if "EPOCH" in frame.columns:
             frame.loc[:, "EPOCH"] = (
                 frame["EPOCH"].astype("string").fillna("").replace("", "TREATMENT")
@@ -78,6 +76,11 @@ class TAProcessor(BaseDomainProcessor):
                 frame.loc[missing_etcd & (frame["EPOCH"] == "SCREENING"), "ETCD"] = (
                     "SCRN"
                 )
+
+        # Ensure ordering is deterministic and avoids numeric zero.
+        if "TAETORD" in frame.columns and "EPOCH" in frame.columns:
+            frame.loc[frame["EPOCH"] == "TREATMENT", "TAETORD"] = 2
+            frame.loc[frame["EPOCH"] == "SCREENING", "TAETORD"] = 1
 
         if "TAETORD" in frame.columns:
             frame.loc[:, "TAETORD"] = pd.to_numeric(

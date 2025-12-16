@@ -33,6 +33,93 @@ class TSProcessor(BaseDomainProcessor):
         ct_parmcd = self._get_controlled_terminology(variable="TSPARMCD")
         ct_parm = self._get_controlled_terminology(variable="TSPARM")
         ct_dict = self._get_controlled_terminology(variable="TSVCDREF")
+        ct_ny = self._get_controlled_terminology(codelist_code="C66742", variable="NY")
+
+        def _resolve_dictionary_name(raw_ref: str) -> str:
+            """Resolve TSVCDREF to a CT-valid Dictionary Name (C66788).
+
+            Goal: avoid hardcoding specific CT file contents. Prefer resolving
+            against the active CT registry (submission values + synonyms +
+            preferred terms). If we can't resolve a non-empty value to a valid
+            CT submission value, return blank to avoid CT_INVALID.
+            """
+
+            if not raw_ref:
+                return ""
+
+            ref = raw_ref.strip()
+            if not ref:
+                return ""
+
+            if ct_dict is None:
+                return ref
+
+            # First try direct CT normalization (case + CT synonyms).
+            normalized = ct_dict.normalize(ref)
+            if normalized in ct_dict.submission_values:
+                return normalized
+
+            # Next try CT-driven suggestions (preferred term / synonym / fuzzy).
+            suggestions = ct_dict.suggest_submission_values(ref, limit=1)
+            if suggestions:
+                return suggestions[0]
+
+            # Unresolvable non-empty value: blank it out to avoid CT_INVALID.
+            return ""
+
+        def _pick_dict(*candidates: str) -> str:
+            for candidate in candidates:
+                resolved = _resolve_dictionary_name(candidate)
+                if resolved:
+                    return resolved
+            return ""
+
+        iso_datetime_dict = _pick_dict("ISO 21090")
+        iso_country_dict = _pick_dict("ISO 3166")
+        cdisc_ct_dict = _pick_dict("CDISC CT")
+
+        def _infer_dictionary_name_from_value(value: str) -> str:
+            """Infer TSVCDREF based on TSVAL when it is a coded/dictionary-like value."""
+            if not value:
+                return ""
+
+            import re
+
+            text = value.strip()
+            # ISO 8601-like date
+            if re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
+                return iso_datetime_dict
+            # ISO 8601-like duration (e.g., P18Y, P24M, P3W, P28D)
+            if re.fullmatch(r"P\d+[YMWD]", text.upper()):
+                return iso_datetime_dict
+            return ""
+
+        def _infer_dictionary_name_from_code(code: str) -> str:
+            if not code:
+                return ""
+            upper = code.strip().upper()
+            if upper.endswith("CNTRY"):
+                return iso_country_dict
+            return ""
+
+        def _infer_value_code(code: str, value: str) -> tuple[str, str]:
+            """Infer (TSVALCD, TSVCDREF) for common TS patterns when not provided."""
+
+            v = value.strip()
+            if not v:
+                return ("", "")
+
+            # Many TS parameters are simple Yes/No with a standard codelist.
+            if ct_ny is not None and v.upper() in {"Y", "N"}:
+                nci = ct_ny.lookup_code(v.upper())
+                if nci:
+                    return (nci, cdisc_ct_dict)
+
+            # SPONSOR example commonly uses D-U-N-S NUMBER as dictionary when a code is present.
+            if code.upper() == "SPONSOR":
+                return ("", _pick_dict("D-U-N-S NUMBER"))
+
+            return ("", "")
 
         def _parm_name(code: str) -> str:
             if not code:
@@ -63,8 +150,20 @@ class TSProcessor(BaseDomainProcessor):
             tsvcdref_val: str = "",
             tsvcdver_val: str | None = None,
         ) -> dict[str, Any]:
-            # If TSVALCD is present and no dictionary was provided, assume CDISC CT.
-            ref = tsvcdref_val or ("CDISC CT" if valcd else "")
+            inferred_valcd, inferred_ref = _infer_value_code(code, val)
+
+            final_valcd = valcd or inferred_valcd
+            inferred_from_value = _infer_dictionary_name_from_value(val)
+            inferred_from_code = _infer_dictionary_name_from_code(code)
+
+            raw_ref = (
+                tsvcdref_val
+                or inferred_ref
+                or inferred_from_code
+                or inferred_from_value
+                or (cdisc_ct_dict if final_valcd else "")
+            )
+            ref = _resolve_dictionary_name(raw_ref)
 
             # TSVCDVER is not always applicable. Provide it only for CDISC CT by default.
             ver = ""
@@ -85,7 +184,7 @@ class TSProcessor(BaseDomainProcessor):
                 "TSPARMCD": code,
                 "TSPARM": _parm_name(code),
                 "TSVAL": val,
-                "TSVALCD": valcd,
+                "TSVALCD": final_valcd,
                 "TSVCDREF": ref,
                 "TSVCDVER": ver,
                 "TSGRPID": "",
@@ -96,8 +195,8 @@ class TSProcessor(BaseDomainProcessor):
 
         params = pd.DataFrame(
             [
-                _row("SSTDTC", "2023-08-01", tsvcdref_val="ISO 8601"),
-                _row("SENDTC", "2024-12-31", tsvcdref_val="ISO 8601"),
+                _row("SSTDTC", "2023-08-01"),
+                _row("SENDTC", "2024-12-31"),
                 _row("STYPE", "INTERVENTIONAL", valcd="C98388"),
                 _row("TPHASE", "PHASE II TRIAL", valcd="C15601"),
                 _row("TBLIND", "DOUBLE BLIND", valcd="C15228"),
@@ -116,7 +215,7 @@ class TSProcessor(BaseDomainProcessor):
                 _row("NCOHORT", "1"),
                 _row("ADDON", "N", valcd="C49487"),
                 _row("ADAPT", "N", valcd="C49487"),
-                _row("DCUTDTC", "2024-12-31", tsvcdref_val="ISO 8601"),
+                _row("DCUTDTC", "2024-12-31"),
                 _row("DCUTDESC", "FINAL ANALYSIS"),
                 _row("PDPSTIND", "N", valcd="C49487"),
                 _row("PDSTIND", "N", valcd="C49487"),
@@ -133,9 +232,9 @@ class TSProcessor(BaseDomainProcessor):
                 _row("OBJPRIM", "ASSESS SAFETY"),
                 _row("OBJSEC", "NONE"),
                 _row("OUTMSPRI", "EFFICACY"),
-                _row("HLTSUBJI", "0"),
+                _row("HLTSUBJI", "N"),
                 _row("EXTTIND", "N", valcd="C49487"),
-                _row("LENGTH", "P24M", tsvcdref_val="ISO 8601"),
+                _row("LENGTH", "P24M"),
                 _row(
                     "TRT",
                     "IBUPROFEN",
@@ -152,7 +251,7 @@ class TSProcessor(BaseDomainProcessor):
                     "FCNTRY",
                     "USA",
                     valcd="",
-                    tsvcdref_val="ISO 3166-1 Alpha-3",
+                    tsvcdref_val="",
                 ),
             ]
         )

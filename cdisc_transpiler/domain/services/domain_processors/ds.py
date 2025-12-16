@@ -51,15 +51,14 @@ class DSProcessor(BaseDomainProcessor):
             frame.loc[:, "DSSTDTC"] = fallback_date
         DateTransformer.ensure_date_pair_order(frame, "DSSTDTC", None)
 
-        # Build per-subject disposition rows (DSDECOD is required and uses
-        # completion/non-completion controlled terminology).
+        # Build per-subject disposition rows only when DS is missing entirely.
+        # If DS has source data, do not fabricate additional records.
         subject_series = ensure_series(
             frame.get("USUBJID", pd.Series(dtype="string")), index=frame.index
         )
         subjects = set(
             subject_series.astype("string").str.strip().replace({"nan": "", "<NA>": ""})
         )
-        subjects |= {str(s) for s in (self.reference_starts or {}).keys()}
         subjects.discard("")
 
         def _add_days(raw_date: str, days: int) -> str:
@@ -75,31 +74,34 @@ class DSProcessor(BaseDomainProcessor):
             return (dt_candidate + pd.Timedelta(days=days)).date().isoformat()
 
         defaults: list[dict[str, Any]] = []
-        study_id = "STUDY"
-        if len(frame) > 0 and "STUDYID" in frame.columns:
-            study_id = frame["STUDYID"].iloc[0]
+        if frame.empty and self.reference_starts:
+            study_id = "STUDY"
+            if "STUDYID" in frame.columns and len(frame) > 0:
+                study_id = frame["STUDYID"].iloc[0]
+            else:
+                study_id = getattr(self.config, "study_id", None) or "STUDY"
 
-        for usubjid in sorted(subjects):
-            start = (
-                DateTransformer.coerce_iso8601(
-                    (self.reference_starts or {}).get(usubjid)
+            for usubjid in sorted({str(s) for s in self.reference_starts.keys()}):
+                start = (
+                    DateTransformer.coerce_iso8601(
+                        (self.reference_starts or {}).get(usubjid)
+                    )
+                    or fallback_date
                 )
-                or fallback_date
-            )
-            disposition_date = _add_days(start, 120)
-            disp_row = {
-                "STUDYID": study_id,
-                "DOMAIN": "DS",
-                "USUBJID": usubjid,
-                "DSSEQ": pd.NA,
-                "DSDECOD": "COMPLETED",
-                "DSTERM": "COMPLETED",
-                "DSCAT": "DISPOSITION EVENT",
-                "DSSTDTC": disposition_date,
-                "DSSTDY": pd.NA,
-                "EPOCH": "TREATMENT",
-            }
-            defaults.append(disp_row)
+                disposition_date = _add_days(start, 120)
+                disp_row = {
+                    "STUDYID": study_id,
+                    "DOMAIN": "DS",
+                    "USUBJID": usubjid,
+                    "DSSEQ": pd.NA,
+                    "DSDECOD": "COMPLETED",
+                    "DSTERM": "COMPLETED",
+                    "DSCAT": "DISPOSITION EVENT",
+                    "DSSTDTC": disposition_date,
+                    "DSSTDY": pd.NA,
+                    "EPOCH": "TREATMENT",
+                }
+                defaults.append(disp_row)
 
         if defaults:
             # Ensure the required DS columns exist so appended rows keep the SDTM shape.
