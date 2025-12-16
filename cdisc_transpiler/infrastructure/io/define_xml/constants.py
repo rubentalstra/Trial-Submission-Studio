@@ -4,6 +4,8 @@ This module contains all namespace declarations, OID constants, and default
 values used in Define-XML 2.1.0 specification compliance.
 """
 
+from cdisc_transpiler.constants import Constraints, SDTMVersions
+
 from xml.etree import ElementTree as ET
 
 # Define-XML 2.1 namespace declarations per specification
@@ -18,10 +20,10 @@ ET.register_namespace("def", DEF_NS)
 ET.register_namespace("xlink", XLINK_NS)
 
 # Define-XML 2.1 version identifier
-DEFINE_VERSION = "2.1.0"
+DEFINE_VERSION = Constraints.DEFINE_XML_VERSION
 
 # Default SDTM standards aligned to SDTM-MSG v2.0 sample package
-DEFAULT_SDTM_VERSION = "3.4"
+DEFAULT_SDTM_VERSION = SDTMVersions.DEFAULT_VERSION
 DEFAULT_SDTM_MD_VERSION = "1.1"
 DEFAULT_CT_PUBLISHING_SET = "SDTM"
 DEFAULT_CT_DEFINE_PUBLISHING_SET = "DEFINE-XML"
@@ -45,5 +47,5 @@ MEDDRA_HREF = "https://www.meddra.org/"
 MEDDRA_CODELIST_NAME = "MedDRA Dictionary"
 
 # Context values per Define-XML 2.1 spec
-CONTEXT_SUBMISSION = "Submission"
-CONTEXT_OTHER = "Other"
+CONTEXT_SUBMISSION = SDTMVersions.DEFINE_CONTEXT_SUBMISSION
+CONTEXT_OTHER = SDTMVersions.DEFINE_CONTEXT_OTHER
