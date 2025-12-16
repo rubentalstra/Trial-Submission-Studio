@@ -8,22 +8,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from ..domains_module import SDTMVariable
-    from ..mapping_module import ColumnMapping
+from cdisc_transpiler.terminology_module import get_controlled_terminology
 
-from ..terminology_module import get_controlled_terminology
+if TYPE_CHECKING:
+    from cdisc_transpiler.domains_module import SDTMVariable
+    from cdisc_transpiler.mapping_module import ColumnMapping
 
 
 def _synonyms(*values: str) -> set[str]:
-    """Return uppercased synonyms for canonical value matching.
-
-    Args:
-        values: String values to convert to synonyms
-
-    Returns:
-        Set of uppercase synonyms
-    """
+    """Return uppercased synonyms for canonical value matching."""
     return {value.strip().upper() for value in values if value}
 
 
@@ -145,11 +138,8 @@ _YES_NO_TARGETS = {
 
 
 def _build_value_normalizers() -> dict[str, dict[str, set[str]]]:
-    """Build value normalizers for variables not in standard CDISC CT.
+    """Build value normalizers for variables not in standard CDISC CT."""
 
-    Returns:
-        Dictionary mapping variable names to value maps
-    """
     normalizers: dict[str, dict[str, set[str]]] = {
         # Domain-specific normalizers
         "AGEU": _AGEU,
@@ -195,14 +185,7 @@ _UPCASE_VARIABLES = {
 
 
 def _get_ct_value_map(variable_name: str) -> dict[str, set[str]] | None:
-    """Get value map from controlled terminology registry.
-
-    Args:
-        variable_name: Name of the variable
-
-    Returns:
-        Value map or None if not found in CT
-    """
+    """Get value map from controlled terminology registry."""
 
     ct = get_controlled_terminology(variable=variable_name)
     if ct is None:
@@ -221,16 +204,28 @@ def _get_ct_value_map(variable_name: str) -> dict[str, set[str]] | None:
     return value_map
 
 
+def _render_value_map(mapping: "ColumnMapping", value_map: dict[str, set[str]]) -> str:
+    """Render a SAS select/when map for value normalization."""
+    source = mapping.source_column
+    target = mapping.target_variable
+
+    lines = [
+        f"{target} = strip(coalescec({source}, ''));",
+        f"{target} = upcase({target});",
+        f"select ({target});",
+    ]
+
+    for canonical, synonyms in value_map.items():
+        formatted = ", ".join(f"'{s}'" for s in sorted(synonyms))
+        lines.append(f"    when ({formatted}) {target} = '{canonical}';")
+
+    lines.append("    otherwise; /* keep as-is */")
+    lines.append("end;")
+    return "\n".join(lines)
+
+
 def render_assignment(mapping: "ColumnMapping", variable: "SDTMVariable | None") -> str:
-    """Return SAS statements that assign a target variable with normalization.
-
-    Args:
-        mapping: Column mapping configuration
-        variable: Target SDTM variable definition (optional)
-
-    Returns:
-        SAS assignment statement(s)
-    """
+    """Return SAS statements that assign a target variable with normalization."""
     target_name = mapping.target_variable.upper()
 
     if mapping.transformation:
@@ -258,61 +253,6 @@ def render_assignment(mapping: "ColumnMapping", variable: "SDTMVariable | None")
     if is_character:
         expr = f"coalescec({expr}, '')"
         expr = f"strip({expr})"
-        if _should_upcase(variable, target_name):
-            expr = f"upcase({expr})"
+        expr = f"upcase({expr})" if target_name in _UPCASE_VARIABLES else expr
+
     return f"{mapping.target_variable} = {expr};"
-
-
-def _render_value_map(mapping: "ColumnMapping", value_map: dict[str, set[str]]) -> str:
-    """Render SAS SELECT statement for value normalization.
-
-    Args:
-        mapping: Column mapping configuration
-        value_map: Dictionary of canonical values to synonym sets
-
-    Returns:
-        SAS SELECT statement
-    """
-    normalized_expr = f"strip(upcase(coalescec({mapping.source_column}, '')))"
-    lines: list[str] = [f"select ({normalized_expr});"]
-    for canonical, synonyms in value_map.items():
-        values = sorted({canonical.upper(), *(value.upper() for value in synonyms)})
-        quoted = ", ".join(_quote(value) for value in values)
-        lines.append(
-            f"    when ({quoted}) {mapping.target_variable} = {_quote(canonical)};"
-        )
-    lines.append(f"    otherwise {mapping.target_variable} = {normalized_expr};")
-    lines.append("end;")
-    return "\n".join(lines)
-
-
-def _quote(value: str) -> str:
-    """Quote a string for SAS.
-
-    Args:
-        value: String to quote
-
-    Returns:
-        SAS-quoted string
-    """
-    escaped = value.replace("'", "''")
-    return f"'{escaped}'"
-
-
-def _should_upcase(variable: "SDTMVariable | None", target_name: str) -> bool:
-    """Determine if a variable value should be uppercased.
-
-    Args:
-        variable: SDTM variable definition
-        target_name: Target variable name
-
-    Returns:
-        True if values should be uppercased
-    """
-
-    if variable and variable.codelist_code:
-        return True
-    # Check if variable has CT defined
-    if get_controlled_terminology(variable=target_name):
-        return True
-    return target_name in _UPCASE_VARIABLES

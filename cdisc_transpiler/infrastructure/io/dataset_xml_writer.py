@@ -1,8 +1,7 @@
 """Dataset-XML writer adapter.
 
 This module provides an adapter implementation for writing Dataset-XML files.
-It wraps the existing xml_module.dataset_module functionality while conforming
-to the DatasetXMLWriterPort protocol.
+It conforms to the DatasetXMLWriterPort protocol.
 """
 
 from __future__ import annotations
@@ -21,9 +20,8 @@ from .dataset_xml.writer import write_dataset_xml
 class DatasetXMLWriter:
     """Adapter for writing Dataset-XML files.
 
-    This class implements the DatasetXMLWriterPort protocol by wrapping
-    the existing xml_module.dataset_module.write_dataset_xml function.
-    It provides a clean interface that can be injected into other components.
+    This class implements the DatasetXMLWriterPort protocol and delegates to
+    the concrete infrastructure writer in `infrastructure.io.dataset_xml`.
 
     Example:
         >>> writer = DatasetXMLWriter()
@@ -47,7 +45,7 @@ class DatasetXMLWriter:
             output_path: Path where XML file should be written
 
         Raises:
-            Exception: If writing fails (propagated from xml_module)
+            Exception: If writing fails
 
         Example:
             >>> writer = DatasetXMLWriter()

@@ -1,8 +1,7 @@
 """XPT writer adapter.
 
 This module provides an adapter implementation for writing XPT (SAS Transport)
-files. It wraps the existing xpt_module functionality while conforming to
-the XPTWriterPort protocol.
+files while conforming to the XPTWriterPort protocol.
 """
 
 from __future__ import annotations
@@ -11,16 +10,14 @@ from pathlib import Path
 
 import pandas as pd
 
-# Import the existing XPT writing function
-from ...xpt_module import write_xpt_file
+from .xpt_write import write_xpt_file
 
 
 class XPTWriter:
     """Adapter for writing XPT (SAS Transport) files.
 
-    This class implements the XPTWriterPort protocol by wrapping the
-    existing xpt_module.write_xpt_file function. It provides a clean
-    interface that can be injected into other components.
+    This class implements the XPTWriterPort protocol and delegates to the
+    concrete infrastructure writer in `infrastructure.io.xpt_write`.
 
     Example:
         >>> writer = XPTWriter()
@@ -45,7 +42,7 @@ class XPTWriter:
             output_path: Path where XPT file should be written
 
         Raises:
-            Exception: If writing fails (propagated from xpt_module)
+            Exception: If writing fails
 
         Example:
             >>> writer = XPTWriter()

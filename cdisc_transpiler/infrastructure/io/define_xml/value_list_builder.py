@@ -17,7 +17,7 @@ from .models import (
     WhereClauseDefinition,
 )
 from .constants import ODM_NS, DEF_NS, XML_NS
-from cdisc_transpiler.xml_module.utils import tag, attr
+from ..xml_utils import tag, attr
 
 
 def build_supp_value_lists(

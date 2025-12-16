@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 from rich.console import Console
 
-from ..xpt_module import write_xpt_file
+from ..infrastructure.io.xpt_write import write_xpt_file
 
 if TYPE_CHECKING:
     from ..domains_module import SDTMDomain

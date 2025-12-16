@@ -8,7 +8,7 @@ from typing import Any, cast
 
 import pandas as pd
 
-from cdisc_transpiler.xml_module.utils import attr, tag
+from ..xml_utils import attr, tag
 from .constants import SHARED_VARIABLE_OIDS
 
 

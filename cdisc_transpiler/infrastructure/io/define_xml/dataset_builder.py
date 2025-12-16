@@ -13,7 +13,7 @@ import pandas as pd
 
 from cdisc_transpiler.domains_module import SDTMDomain, SDTMVariable, get_domain
 from .constants import ODM_NS
-from cdisc_transpiler.xml_module.utils import tag
+from ..xml_utils import tag
 from .variable_builder import get_item_oid
 
 

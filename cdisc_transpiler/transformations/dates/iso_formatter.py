@@ -14,7 +14,7 @@ from __future__ import annotations
 import pandas as pd
 
 from ..base import TransformationContext, TransformationResult
-from ...xpt_module.transformers.iso8601 import (
+from ...domain.services.transformers import (
     normalize_iso8601,
     normalize_iso8601_duration,
 )
@@ -47,7 +47,6 @@ class ISODateFormatter:
 
     def __init__(self):
         """Initialize the ISO date formatter transformer."""
-        pass
 
     def can_transform(self, df: pd.DataFrame, domain: str) -> bool:
         """Check if transformer applies to this data.
@@ -61,6 +60,7 @@ class ISODateFormatter:
         Returns:
             True if there are date/time or duration columns to normalize
         """
+        _ = domain
         return any("DTC" in col or "DUR" in col for col in df.columns)
 
     def transform(
@@ -75,6 +75,7 @@ class ISODateFormatter:
         Returns:
             TransformationResult with normalized dates
         """
+        _ = context
         transformed_df = df.copy()
 
         dtc_columns = []

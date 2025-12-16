@@ -161,22 +161,10 @@ class TestCLIImportBoundary:
             "Infrastructure layer imports CLI modules:\n" + "\n".join(violations)
         )
 
-    def test_xpt_module_does_not_import_cli(self):
-        """XPT module must not import from CLI (domain processors, etc.)."""
-        xpt_dir = PACKAGE_ROOT / "xpt_module"
-        if not xpt_dir.exists():
-            pytest.skip("xpt_module directory not found")
-
-        violations = []
-        for py_file in get_python_files(xpt_dir):
-            imports = extract_imports_from_file(py_file)
-            forbidden = has_forbidden_import(imports, r"(^|\.)cli(\.|$)")
-            if forbidden:
-                rel_path = py_file.relative_to(PACKAGE_ROOT.parent)
-                violations.append(f"{rel_path}: {forbidden}")
-
-        assert not violations, "XPT module imports CLI modules:\n" + "\n".join(
-            violations
+    def test_xpt_module_package_is_removed(self):
+        """The historical XPT compatibility package must not exist anymore."""
+        assert not (PACKAGE_ROOT / "xpt_module").exists(), (
+            "cdisc_transpiler/xpt_module still exists"
         )
 
 

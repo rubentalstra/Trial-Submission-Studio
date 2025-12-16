@@ -1,8 +1,7 @@
 """Define-XML generator adapter.
 
 This module provides an adapter implementation for generating Define-XML files.
-It wraps the existing xml_module.define_module functionality while conforming
-to the DefineXmlGeneratorPort protocol.
+It conforms to the DefineXmlGeneratorPort protocol.
 
 The adapter accepts application-layer DTOs (DefineDatasetDTO) and converts
 them to infrastructure-specific models (StudyDataset) before generating
@@ -24,7 +23,7 @@ class DefineXmlGenerator:
 
     This class implements the DefineXmlGeneratorPort protocol by accepting
     application-layer DTOs and converting them to infrastructure models
-    before delegating to the xml_module.define_module for XML generation.
+    before delegating to the infrastructure Define-XML writer.
 
     The adapter provides a clean boundary between the application layer
     (which knows nothing about infrastructure models) and the infrastructure
@@ -56,7 +55,7 @@ class DefineXmlGenerator:
             context: Define-XML context - 'Submission' or 'Other'
 
         Raises:
-            Exception: If generation or writing fails (propagated from xml_module)
+            Exception: If generation or writing fails
 
         Example:
             >>> generator = DefineXmlGenerator()

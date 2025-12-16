@@ -5,11 +5,7 @@ from __future__ import annotations
 import pandas as pd
 
 from .base import BaseDomainProcessor
-from ....xpt_module.transformers import (
-    TextTransformer,
-    NumericTransformer,
-    DateTransformer,
-)
+from ..transformers import DateTransformer, NumericTransformer, TextTransformer
 from ....pandas_utils import ensure_numeric_series
 from ....terminology_module import get_controlled_terminology
 

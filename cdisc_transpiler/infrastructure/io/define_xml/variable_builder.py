@@ -11,7 +11,7 @@ from xml.etree import ElementTree as ET
 
 from cdisc_transpiler.domains_module import SDTMVariable
 from .constants import ODM_NS, DEF_NS, XML_NS
-from cdisc_transpiler.xml_module.utils import tag, attr
+from ..xml_utils import tag, attr
 
 
 def append_item_defs(

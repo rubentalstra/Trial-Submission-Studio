@@ -24,7 +24,7 @@ from .constants import (
     MEDDRA_HREF,
     MEDDRA_CODELIST_NAME,
 )
-from cdisc_transpiler.xml_module.utils import tag, attr
+from ..xml_utils import tag, attr
 
 
 # MedDRA variables that reference external MedDRA dictionary

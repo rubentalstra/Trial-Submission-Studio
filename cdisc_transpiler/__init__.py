@@ -19,11 +19,11 @@ except PackageNotFoundError:  # pragma: no cover
     __version__ = "0.0.0"
 
 # Core exports
-from cdisc_transpiler.xml_module.dataset_module import (
+from cdisc_transpiler.infrastructure.io.dataset_xml.builder import (
     build_dataset_xml_tree,
-    write_dataset_xml,
 )
-from cdisc_transpiler.xml_module.define_module import (
+from cdisc_transpiler.infrastructure.io.dataset_xml.writer import write_dataset_xml
+from cdisc_transpiler.infrastructure.io.define_xml.metadata_builder import (
     build_study_define_tree,
 )
 from cdisc_transpiler.domains_module import SDTMDomain, SDTMVariable, get_domain

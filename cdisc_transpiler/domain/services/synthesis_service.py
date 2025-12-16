@@ -393,6 +393,7 @@ class SynthesisService:
         self, frame: pd.DataFrame, config: MappingConfig
     ) -> pd.DataFrame:
         """Build domain dataframe via lazy import."""
-        from ...xpt_module.builder import build_domain_dataframe
+        from .domain_frame_builder import build_domain_dataframe
 
-        return build_domain_dataframe(frame, config, lenient=True)
+        domain = self._get_domain(config.domain)
+        return build_domain_dataframe(frame, config, domain, lenient=True)

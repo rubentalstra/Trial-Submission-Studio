@@ -136,9 +136,8 @@ proper layer, or be reduced to thin compatibility shims.
   domain-specific transformers (VS/LB wide-to-long).
 - `cdisc_transpiler/mapping_module/`: fuzzy/metadata-aware mapping engine;
   contains compatibility wrappers (`config_io.py` delegates to infrastructure).
-- `cdisc_transpiler/xml_module/`, `cdisc_transpiler/xpt_module/`,
-  `cdisc_transpiler/sas_module/`: output-generation implementation modules (some
-  are wrappers around newer domain/infrastructure code).
+- Output generation implementations live under `cdisc_transpiler/infrastructure/io/`
+  (XPT, Dataset-XML, Define-XML, SAS).
 - `cdisc_transpiler/io_module/`, `cdisc_transpiler/submission_module/`:
   compatibility wrappers over the newer repository/domain-service
   implementations.
@@ -180,8 +179,6 @@ sites stop using them:
   `infrastructure.repositories.study_metadata_loader`)
 - `cdisc_transpiler/submission_module/suppqual.py` (delegates to
   `domain.services.suppqual_service`)
-- `cdisc_transpiler/xpt_module/builder.py` (delegates to
-  `domain.services.domain_frame_builder`)
 - `cdisc_transpiler/cli/logging_config.py` (global logger; bypasses
   `LoggerPort`)
 
@@ -204,9 +201,8 @@ sites stop using them:
 4. ~~**Use cases importing concrete XML models**~~ ✅ RESOLVED
 
 - ~~`cdisc_transpiler/application/study_processing_use_case.py` imports
-  `StudyDataset` from `cdisc_transpiler/xml_module.define_module` to drive
-  Define-XML generation → application is coupled to a concrete Define-XML
-  representation.~~
+  a concrete Define-XML dataset model to drive generation → application is
+  coupled to an infrastructure representation.~~
 - **Resolution:** Created `DefineDatasetDTO` in application layer. The adapter
   converts DTOs to infrastructure `StudyDataset`.
 
@@ -241,10 +237,9 @@ sites stop using them:
 
 9. **Domain imports compatibility/output modules (`*_module`)**
 
-- Domain processors import transformers from
-  `cdisc_transpiler/xpt_module/transformers/*` (e.g.
-  `cdisc_transpiler/domain/services/domain_processors/*.py`). This makes
-  “domain” depend on an output-focused compatibility layer.
+- Domain processors previously imported transformers from an output-focused
+  compatibility layer. These transformers now live in
+  `cdisc_transpiler/domain/services/transformers/`.
 - Domain mapping/synthesis imports from `cdisc_transpiler/domains_module/*`,
   `cdisc_transpiler/mapping_module/*`, and `cdisc_transpiler/io_module/*` (e.g.
   `cdisc_transpiler/domain/services/mapping/*`,
@@ -265,10 +260,8 @@ sites stop using them:
 
 12. **Duplicated Dataset-XML implementation exists in two places**
 
-- Both `cdisc_transpiler/xml_module/dataset_module/*` and
-  `cdisc_transpiler/infrastructure/io/dataset_xml/*` contain similar Dataset-XML
-  glue. Only one should be the “real implementation”; the other should be a shim
-  (or removed after deprecation).
+- Dataset-XML glue historically existed in two places. The concrete
+  implementation now lives under `cdisc_transpiler/infrastructure/io/dataset_xml/*`.
 
 ### Why these are harmful here
 
@@ -336,8 +329,8 @@ Keep the current top-level layout, but enforce strict boundaries:
 - `domain` → (no internal dependencies outside domain; external libs allowed but
   no I/O)
 
-Compatibility wrappers (e.g. `xpt_module`, `xml_module`, `io_module`,
-`terminology_module`, `submission_module`) are not part of the clean
+Compatibility wrappers (e.g. `io_module`, `terminology_module`,
+`submission_module`) are not part of the clean
 architecture. They may exist for public API stability, but internal call sites
 should migrate to `domain`/`application`/`infrastructure` so wrappers become
 thin shims.
@@ -370,7 +363,7 @@ Use these when you’re about to finish a refactor chunk:
 
 - Domain/application must not import compatibility wrapper modules (internal
   call sites):
-  - `rg -n "\\b(xpt_module|xml_module|io_module|terminology_module|domains_module|metadata_module|mapping_module|sas_module|submission_module)\\b" -S cdisc_transpiler/domain cdisc_transpiler/application`
+  - `rg -n "\\b(io_module|terminology_module|domains_module|metadata_module|mapping_module|submission_module)\\b" -S cdisc_transpiler/domain cdisc_transpiler/application`
 
 - “Services” package must not pull in legacy as a side effect:
   - `rg -n "from \\.\\.legacy" -S cdisc_transpiler/services`
@@ -395,7 +388,7 @@ Code is considered **rewrapping** if it:
   elsewhere.
 
 Examples today: `cdisc_transpiler/io_module/readers.py`,
-`cdisc_transpiler/xpt_module/builder.py`.
+`cdisc_transpiler/mapping_module/config_io.py`.
 
 ### Allowed wrappers (only if they add real value)
 
@@ -415,8 +408,7 @@ Use this as the default “where should I move this?” reference.
 - Output request/response DTOs: ✅ now live in
   `cdisc_transpiler/application/models.py`
 - Define-XML dataset model used by the use case:
-  `cdisc_transpiler/xml_module/define_module/models.py:StudyDataset` →
-  application DTO (infra converts)
+  infrastructure `StudyDataset` → application DTO (infra converts)
 - Output directory creation + ACRF PDF placeholder:
   `cdisc_transpiler/services/file_organization_service.py` → infrastructure
   adapter
@@ -432,14 +424,11 @@ Use this as the default “where should I move this?” reference.
 
 Additional high-impact migrations (current reality):
 
-- Domain transformers: `cdisc_transpiler/xpt_module/transformers/*` → domain (or
-  application) transformers, keep `xpt_module` as shim.
+- Domain transformers: `cdisc_transpiler/domain/services/transformers/*`
 - Mapping engine: `cdisc_transpiler/domain/services/mapping/*` currently imports
   `io_module` and `domains_module` → move the needed types into
   domain/application and replace I/O with ports.
-- Dataset-XML: `cdisc_transpiler/xml_module/dataset_module/*` ↔
-  `cdisc_transpiler/infrastructure/io/dataset_xml/*` → single implementation +
-  shim.
+- Dataset-XML: `cdisc_transpiler/infrastructure/io/dataset_xml/*`
 
 ## 6) Naming & Structure Improvement Plan (Required)
 
@@ -504,8 +493,8 @@ Each step is intended to be PR-sized and reversible.
     infrastructure `StudyDataset`
   - Updated `DefineXmlGenerator` adapter in infrastructure to convert from
     `DefineDatasetDTO` to `StudyDataset`
-  - Removed imports of `xml_module.define_module.StudyDataset` and constants
-    from application layer
+  - Removed imports of the concrete `StudyDataset` model and constants from the
+    application layer
 - **Verify:** `pytest -m validation`
 
 ### Step 3 — Remove legacy import side effects from `services/__init__.py` (Risk: Low)
@@ -547,19 +536,17 @@ Each step is intended to be PR-sized and reversible.
 ### Step 7 — Make domain synthesis pure (Risk: Medium/High)
 
 - **Goal:** `domain/services/synthesis_service.py` returns only domain data; it
-  must not import from `xpt_module`, `io_module`, or other wrappers.
+  must not import from `io_module` or other wrappers.
 - **Affects:** `cdisc_transpiler/domain/services/synthesis_service.py`,
   `cdisc_transpiler/application/study_processing_use_case.py`
 - **Verify:** `pytest -m validation`, `pytest -m benchmark --benchmark-only`
 
-### Step 8 — Move domain processors off `xpt_module/transformers` (Risk: Medium)
+### Step 8 — Move domain processors off output-focused transformers (Risk: Medium)
 
 - **Goal:** Domain processors must not import output-focused transformer
   modules.
-- **Affects:** `cdisc_transpiler/domain/services/domain_processors/*`,
-  `cdisc_transpiler/xpt_module/transformers/*`
-- **Mechanics:** move/duplicate transformers into a domain-owned module and keep
-  `xpt_module` as a shim re-export.
+- **Affects:** `cdisc_transpiler/domain/services/domain_processors/*`
+- **Mechanics:** move/duplicate transformers into a domain-owned module.
 - **Verify:** `pytest -q tests/unit/domain`
 
 ### Step 9 — Controlled terminology access via ports (Risk: Medium)
@@ -586,15 +573,14 @@ Each step is intended to be PR-sized and reversible.
 
 - **Goal:** Choose one concrete implementation (recommend infrastructure) and
   make the other a shim.
-- **Affects:** `cdisc_transpiler/xml_module/dataset_module/*`,
-  `cdisc_transpiler/infrastructure/io/dataset_xml/*`
+- **Affects:** `cdisc_transpiler/infrastructure/io/dataset_xml/*`
 - **Verify:** `pytest -m validation`
 
 ### Step 12 — Reduce compatibility shims (Risk: Low/Medium)
 
 - **Goal:** Stop importing wrappers from internal code; keep shims only for
   external API stability until next major version.
-- **Affects:** `cdisc_transpiler/io_module/*`, `cdisc_transpiler/xpt_module/*`,
+- **Affects:** `cdisc_transpiler/io_module/*`,
   `cdisc_transpiler/submission_module/*`, `cdisc_transpiler/metadata_module/*`
 - **Verify:** `pyright`, `pytest`
 

@@ -7,7 +7,7 @@ from typing import Any, cast
 import pandas as pd
 
 from .base import BaseDomainProcessor
-from ....xpt_module.transformers import NumericTransformer, DateTransformer
+from ..transformers import DateTransformer, NumericTransformer
 from ....pandas_utils import ensure_series
 
 

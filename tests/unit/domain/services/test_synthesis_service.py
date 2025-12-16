@@ -102,7 +102,7 @@ class TestSynthesizeTrialDesign:
         df = result.domain_dataframe
         assert "ETCD" in df.columns
         assert "ELEMENT" in df.columns
-        # Note: TEDUR may be dropped by xpt_module builder when all values are empty/optional
+        # Note: TEDUR may be dropped when all values are empty/optional
 
     def test_synthesize_se_domain(self, service):
         """Test SE (Subject Elements) domain synthesis."""

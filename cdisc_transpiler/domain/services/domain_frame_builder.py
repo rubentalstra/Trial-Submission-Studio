@@ -2,7 +2,7 @@
 
 This module provides the core business logic for constructing SDTM-compliant
 DataFrames from source data and mapping configurations. This is domain logic
-that belongs in the domain layer, not in the output-focused xpt_module.
+that belongs in the domain layer, not in output-generation infrastructure.
 
 SDTM Reference:
     SDTMIG v3.4 Section 4.1 defines the general structure of SDTM datasets.

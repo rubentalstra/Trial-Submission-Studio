@@ -1,39 +1,23 @@
-"""Codelist and controlled terminology transformation utilities for SDTM domains.
-
-This module provides specialized transformation logic for applying and validating
-controlled terminology (codelist) values according to CDISC standards.
-"""
+"""Codelist and controlled terminology transformation utilities."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence, Any, Callable
+from typing import TYPE_CHECKING, Any, Callable, Sequence
 
 import pandas as pd
 
-from ...terminology_module import get_controlled_terminology
-from ...domains_module import SDTMVariable
-from ...pandas_utils import ensure_numeric_series, ensure_series
+from ....domains_module import SDTMVariable
+from ....pandas_utils import ensure_numeric_series, ensure_series
+from ....terminology_module import get_controlled_terminology
 
 if TYPE_CHECKING:
-    from ...metadata_module import StudyMetadata
+    from ....metadata_module import StudyMetadata
 
 
 class CodelistTransformer:
-    """Transforms and validates controlled terminology values for SDTM compliance.
-
-    This class provides methods for:
-    - Applying codelist transformations to map codes to text values
-    - Normalizing values to canonical CDISC Controlled Terminology forms
-    - Validating paired terminology (e.g., TEST/TESTCD)
-    - Populating MedDRA defaults for adverse events
-    """
+    """Transforms and validates controlled terminology values for SDTM compliance."""
 
     def __init__(self, metadata: "StudyMetadata | None" = None):
-        """Initialize the codelist transformer.
-
-        Args:
-            metadata: Optional study metadata containing codelist definitions
-        """
         self.metadata = metadata
 
     def apply_codelist_transformation(
@@ -44,18 +28,6 @@ class CodelistTransformer:
         source_frame: pd.DataFrame | None = None,
         unquote_func: Callable[[str], str] | None = None,
     ) -> pd.Series:
-        """Transform coded values to their text equivalents using codelist.
-
-        Args:
-            source_data: The source data series
-            codelist_name: Name of the codelist to apply
-            code_column: Optional column containing code values (for text columns)
-            source_frame: Optional source DataFrame for code column lookup
-            unquote_func: Optional function to unquote column names
-
-        Returns:
-            Transformed series with text values
-        """
         if not self.metadata:
             return ensure_series(source_data)
 
@@ -63,7 +35,6 @@ class CodelistTransformer:
         if not codelist:
             return ensure_series(source_data)
 
-        # If we have a code column, use it for lookup
         if code_column and source_frame is not None:
             code_col = code_column
             if code_col not in source_frame.columns and unquote_func:
@@ -87,15 +58,12 @@ class CodelistTransformer:
                     code_values.apply(transform), index=code_values.index
                 )
 
-        # Otherwise, try to transform the source data directly
         def transform_value(val: Any) -> Any:
             if pd.isna(val):
                 return val
-            # First check if it's a code that needs transformation
             text = codelist.get_text(val)
             if text is not None:
                 return text
-            # If not found in codelist, return as-is
             return val
 
         series = ensure_series(source_data)
@@ -103,22 +71,10 @@ class CodelistTransformer:
 
     @staticmethod
     def apply_codelist_validations(
-        frame: pd.DataFrame,
-        domain_variables: Sequence[SDTMVariable],
+        frame: pd.DataFrame, domain_variables: Sequence[SDTMVariable]
     ) -> None:
-        """Apply codelist normalizations to the DataFrame.
-
-        This normalizes raw values to their CDISC Controlled Terminology
-        canonical forms using synonym mappings.
-
-        Args:
-            frame: DataFrame to modify in-place
-            domain_variables: List of SDTMVariable objects defining domain structure
-        """
         for var in domain_variables:
             if var.codelist_code and var.name in frame.columns:
-                # Keep provided dictionary names (e.g., TSVCDREF) as-is to avoid
-                # normalizer collapsing specific variants like ISO 3166-1 alpha-3.
                 if var.name == "TSVCDREF":
                     continue
                 ct_lookup = get_controlled_terminology(
@@ -128,9 +84,7 @@ class CodelistTransformer:
                     continue
                 normalizer = ct_lookup.normalize
 
-                # Work in string dtype to avoid dtype-mismatch warnings
                 series = frame[var.name].astype("string")
-                # Identify values that are present (non-missing) after trimming
                 trimmed = series.str.strip()
                 mask = trimmed.notna() & (trimmed != "")
 
@@ -140,20 +94,12 @@ class CodelistTransformer:
 
                 normalized = series.copy()
                 normalized.loc[mask] = trimmed.loc[mask].apply(_normalize_ct_value)
-                # Write back as string to keep dtype consistent across assignments
                 frame[var.name] = normalized.astype("string")
 
     @staticmethod
     def validate_controlled_terms(
-        frame: pd.DataFrame,
-        domain_variables: list[SDTMVariable],
+        frame: pd.DataFrame, domain_variables: list[SDTMVariable]
     ) -> None:
-        """Validate controlled terminology values and replace invalid ones.
-
-        Args:
-            frame: DataFrame to modify in-place
-            domain_variables: List of SDTMVariable objects defining domain structure
-        """
         for variable in domain_variables:
             if not variable.codelist_code:
                 continue
@@ -170,14 +116,6 @@ class CodelistTransformer:
 
     @staticmethod
     def validate_paired_terms(frame: pd.DataFrame) -> None:
-        """Ensure paired TEST/TESTCD-style variables are both populated when present.
-
-        Args:
-            frame: DataFrame to validate
-
-        Raises:
-            ValueError: If paired terms are inconsistently populated
-        """
         pairs = [
             ("AETEST", "AETESTCD"),
             ("LBTEST", "LBTESTCD"),
@@ -200,15 +138,6 @@ class CodelistTransformer:
 
     @staticmethod
     def populate_meddra_defaults(frame: pd.DataFrame) -> None:
-        """Populate MedDRA defaults for adverse event data.
-
-        This method fills in default MedDRA hierarchy terms and codes when
-        they are missing from the source data.
-
-        Args:
-            frame: DataFrame to modify in-place (typically AE domain)
-        """
-        # Derive MedDRA text from AETERM when missing
         aetext = frame.get("AETERM", pd.Series(["" for _ in frame.index]))
         if "AEDECOD" in frame.columns:
             decod = frame["AEDECOD"].astype("string")
@@ -216,7 +145,6 @@ class CodelistTransformer:
         else:
             frame["AEDECOD"] = aetext
 
-        # Fill SOC/group terms with a generic MedDRA bucket when absent
         for soc_var, term in {
             "AEBODSYS": "GENERAL DISORDERS",
             "AESOC": "GENERAL DISORDERS",
@@ -235,7 +163,6 @@ class CodelistTransformer:
             else:
                 frame[soc_var] = term
 
-        # Fill code columns with numeric defaults when missing/empty
         for code_var in (
             "AEPTCD",
             "AEHLGTCD",

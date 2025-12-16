@@ -133,7 +133,7 @@ class DefineDatasetDTO:
     infrastructure layer that generates the actual Define-XML files.
 
     The infrastructure adapter converts these DTOs into infrastructure-specific
-    models (e.g., StudyDataset in the xml_module).
+    models (e.g., `StudyDataset` in the infrastructure Define-XML package).
 
     Attributes:
         domain_code: SDTM domain code (e.g., "DM", "AE", "LB")

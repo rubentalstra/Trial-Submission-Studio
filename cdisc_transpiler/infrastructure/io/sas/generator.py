@@ -11,16 +11,17 @@ from typing import TYPE_CHECKING
 
 from jinja2 import Environment, StrictUndefined
 
-if TYPE_CHECKING:
-    from ..mapping_module import MappingConfig
+from cdisc_transpiler.domains_module import get_domain
 
-from ..domains_module import get_domain
 from .constants import DEFAULT_STUDY_ID, SAS_PROGRAM_TEMPLATE
 from .utils import (
     get_assignment_for_mapping,
     get_default_assignments,
     get_keep_clause,
 )
+
+if TYPE_CHECKING:
+    from cdisc_transpiler.mapping_module import MappingConfig
 
 
 class SASProgramGenerator:

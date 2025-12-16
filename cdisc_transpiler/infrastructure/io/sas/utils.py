@@ -8,11 +8,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-if TYPE_CHECKING:
-    from ..domains_module import SDTMDomain, SDTMVariable
-    from ..mapping_module import ColumnMapping, MappingConfig
-
 from .normalizers import render_assignment
+
+if TYPE_CHECKING:
+    from cdisc_transpiler.domains_module import SDTMDomain, SDTMVariable
+    from cdisc_transpiler.mapping_module import ColumnMapping, MappingConfig
 
 
 def get_default_assignments(domain: SDTMDomain, config: MappingConfig) -> list[str]:
@@ -52,7 +52,7 @@ def get_default_value_assignment(variable: SDTMVariable) -> str:
         variable: The SDTM variable to generate default for
 
     Returns:
-        SAS assignment statement (e.g., "USUBJID = '';")
+        SAS assignment statement (e.g., "USUBJID = ''; ")
     """
     if variable.type.lower() == "num":
         return f"{variable.name} = .;"

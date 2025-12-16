@@ -122,8 +122,8 @@ def write_suppqual_files(
         Dictionary with supplemental file metadata including paths and record counts
     """
     from ..mapping_module import ColumnMapping, build_config
-    from ..xpt_module import write_xpt_file
-    from ..xml_module.dataset_module import write_dataset_xml
+    from ..infrastructure.io.xpt_write import write_xpt_file
+    from ..infrastructure.io.dataset_xml.writer import write_dataset_xml
 
     # Merge SUPP dataframes
     merged_supp = (

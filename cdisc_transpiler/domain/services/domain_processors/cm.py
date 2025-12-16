@@ -5,11 +5,7 @@ from __future__ import annotations
 import pandas as pd
 
 from .base import BaseDomainProcessor
-from ....xpt_module.transformers import (
-    TextTransformer,
-    NumericTransformer,
-    DateTransformer,
-)
+from ..transformers import DateTransformer, NumericTransformer, TextTransformer
 
 
 class CMProcessor(BaseDomainProcessor):

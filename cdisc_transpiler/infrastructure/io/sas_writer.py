@@ -1,8 +1,7 @@
 """SAS writer adapter.
 
 This module provides an adapter implementation for generating and writing
-SAS programs. It wraps the existing sas_module functionality while conforming
-to the SASWriterPort protocol.
+SAS programs while conforming to the SASWriterPort protocol.
 """
 
 from __future__ import annotations
@@ -13,17 +12,15 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from ...mapping_module import MappingConfig
 
-# Import the existing SAS generation and writing functions
-from ...sas_module import generate_sas_program, write_sas_file
+from .sas.generator import generate_sas_program
+from .sas.writer import write_sas_file
 
 
 class SASWriter:
     """Adapter for generating and writing SAS programs.
 
-    This class implements the SASWriterPort protocol by wrapping the
-    existing sas_module.generate_sas_program and sas_module.write_sas_file
-    functions. It provides a clean interface that can be injected into
-    other components.
+    This class implements the SASWriterPort protocol and delegates to the
+    concrete infrastructure implementation in `infrastructure.io.sas`.
 
     Example:
         >>> writer = SASWriter()
@@ -48,7 +45,7 @@ class SASWriter:
             output_dataset: Output dataset name (e.g., "sdtm.dm"), optional
 
         Raises:
-            Exception: If generation or writing fails (propagated from sas_module)
+            Exception: If generation or writing fails
 
         Example:
             >>> writer = SASWriter()
