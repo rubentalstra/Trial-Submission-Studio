@@ -22,12 +22,37 @@ class TAProcessor(BaseDomainProcessor):
         # Drop placeholder rows
         self._drop_placeholder_rows(frame)
 
+        # TA has no USUBJID, so base placeholder-row logic may not remove
+        # blank template rows. Drop rows where all key identifiers are empty.
+        key_cols = [c for c in ("EPOCH", "ARMCD", "ARM", "ETCD") if c in frame.columns]
+        if key_cols and len(frame) > 0:
+            is_blank = pd.Series(True, index=frame.index)
+            for col in key_cols:
+                is_blank &= frame[col].astype("string").fillna("").str.strip().eq("")
+            if bool(is_blank.any()):
+                frame.drop(index=frame.index[is_blank].to_list(), inplace=True)
+                frame.reset_index(drop=True, inplace=True)
+
+        # TA requires STUDYID/DOMAIN to be populated for XPT/Define-XML.
+        study_id_default = getattr(self.config, "study_id", None) or "STUDY"
+        if "DOMAIN" in frame.columns:
+            frame.loc[:, "DOMAIN"] = (
+                frame["DOMAIN"].astype("string").fillna("").replace("", "TA")
+            )
+        if "STUDYID" in frame.columns:
+            current = frame["STUDYID"].astype("string").fillna("").str.strip()
+            first_non_blank = next((v for v in current.tolist() if v), "")
+            fill_value = first_non_blank or study_id_default
+            frame.loc[current.eq(""), "STUDYID"] = fill_value
+
         # TA is required for many exports; ensure we always have at least the
         # minimal screening + treatment structure when the synthesized source is empty.
         if frame.empty:
-            base: dict[str, object] = {col: "" for col in frame.columns}
+            base: dict[str, str | int] = {col: "" for col in frame.columns}
             base.update(
                 {
+                    "STUDYID": study_id_default,
+                    "DOMAIN": "TA",
                     "EPOCH": "TREATMENT",
                     "ETCD": "TRT",
                     # Use 1-based ordering to avoid downstream XPT readers
@@ -37,10 +62,12 @@ class TAProcessor(BaseDomainProcessor):
                     "ARM": "Treatment Arm",
                 }
             )
-            frame.loc[0] = base
             screening = base.copy()
             screening.update({"EPOCH": "SCREENING", "ETCD": "SCRN", "TAETORD": 1})
-            frame.loc[1] = screening
+
+            cols = list(frame.columns)
+            frame.loc[0, cols] = [base.get(c, "") for c in cols]
+            frame.loc[1, cols] = [screening.get(c, "") for c in cols]
             frame.reset_index(drop=True, inplace=True)
 
         # Ensure TA includes both SCREENING and TREATMENT epochs
@@ -86,3 +113,8 @@ class TAProcessor(BaseDomainProcessor):
             frame.loc[:, "TAETORD"] = pd.to_numeric(
                 frame["TAETORD"], errors="coerce"
             ).fillna(1)
+
+        # Keep a stable, predictable row order.
+        if "TAETORD" in frame.columns:
+            frame.sort_values(by=["TAETORD"], kind="stable", inplace=True)
+            frame.reset_index(drop=True, inplace=True)

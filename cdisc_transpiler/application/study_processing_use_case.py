@@ -898,11 +898,21 @@ class StudyProcessingUseCase:
             lenient = ("xpt" not in request.output_formats) and (
                 not request.generate_sas
             )
+
+            synthesis_config = synthesis_result.config
+            if synthesis_config is None:
+                from cdisc_transpiler.domain.entities.mapping import MappingConfig
+
+                synthesis_config = MappingConfig(
+                    domain=domain_code,
+                    study_id=request.study_id,
+                    mappings=[],
+                )
             domain_dataframe = self._domain_frame_builder.build_domain_dataframe(
                 synthesis_result.domain_dataframe
                 if synthesis_result.domain_dataframe is not None
                 else pd.DataFrame(),
-                synthesis_result.config,
+                synthesis_config,
                 domain_def,
                 reference_starts=reference_starts,
                 lenient=lenient,

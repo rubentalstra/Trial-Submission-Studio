@@ -47,6 +47,7 @@ class DomainDiscoveryService:
             "total_files": 0,
             "matched_files": 0,
             "skipped_metadata": 0,
+            "skipped_helpers": 0,
             "unmatched_files": 0,
         }
 
@@ -79,17 +80,27 @@ class DomainDiscoveryService:
             "total_files": len(csv_files),
             "matched_files": 0,
             "skipped_metadata": 0,
+            "skipped_helpers": 0,
             "unmatched_files": 0,
         }
         unmatched: list[str] = []
 
         for csv_file in csv_files:
             filename = csv_file.stem.upper()
+            parts = filename.split("_")
 
             # Skip metadata files
             if self._is_metadata_file(filename):
                 self._match_stats["skipped_metadata"] += 1
                 self._log_verbose(f"Skipping metadata file: {csv_file.name}")
+                continue
+
+            # Skip operational/helper files that are not SDTM domains
+            if self._is_helper_file(parts):
+                self._match_stats["skipped_helpers"] += 1
+                self._log_verbose(
+                    f"Skipping helper file: {csv_file.name} (not an SDTM domain)"
+                )
                 continue
 
             # Try to match the file to a domain
@@ -134,6 +145,9 @@ class DomainDiscoveryService:
         if stats["skipped_metadata"] > 0:
             self._log_verbose(f"  Metadata files skipped: {stats['skipped_metadata']}")
 
+        if stats.get("skipped_helpers", 0) > 0:
+            self._log_verbose(f"  Helper files skipped: {stats['skipped_helpers']}")
+
         if category_counts:
             summary = ", ".join(
                 f"{cat}: {count}" for cat, count in sorted(category_counts.items())
@@ -168,6 +182,17 @@ class DomainDiscoveryService:
         """
         skip_patterns = ["CODELISTS", "CODELIST", "ITEMS", "README", "METADATA"]
         return any(skip in filename for skip in skip_patterns)
+
+    def _is_helper_file(self, filename_parts: list[str]) -> bool:
+        """Check if a file should be skipped as an operational/helper input.
+
+        These files may exist in study folders but are not SDTM datasets.
+        """
+        if not filename_parts:
+            return False
+
+        # Example: DEMO_GDISC_..._LC.csv
+        return filename_parts[-1] in {"LC"}
 
     def _match_domain(
         self, filename: str, supported_domains: list[str]

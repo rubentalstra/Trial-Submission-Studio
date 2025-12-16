@@ -90,5 +90,15 @@ class SEProcessor(BaseDomainProcessor):
             start = pd.to_datetime(frame["SESTDTC"], errors="coerce")
             end = pd.to_datetime(frame["SEENDTC"], errors="coerce")
             delta = (end - start).dt.days + 1
-            frame["SESTDY"] = frame.get("SESTDY", pd.Series([1] * len(frame)))
-            frame["SEENDY"] = delta.fillna(1)
+            if "SESTDY" not in frame.columns:
+                frame.loc[:, "SESTDY"] = 1
+            else:
+                frame.loc[:, "SESTDY"] = (
+                    pd.to_numeric(frame["SESTDY"], errors="coerce")
+                    .fillna(1)
+                    .astype(int)
+                )
+
+            frame.loc[:, "SEENDY"] = (
+                pd.to_numeric(delta, errors="coerce").fillna(1).astype(int)
+            )

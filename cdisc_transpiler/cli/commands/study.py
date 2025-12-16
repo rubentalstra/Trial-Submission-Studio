@@ -204,12 +204,18 @@ def study_command(
         code = (domain_code or "").upper()
         if not code:
             return ""
+
+        # SDTMIG metadata uses a placeholder label for SUPPQUAL
+        # ("Supplemental Qualifiers for [domain name]"). For concrete SUPP--
+        # datasets we always prefer a resolved label.
+        if code == "SUPPQUAL":
+            return "Supplemental Qualifiers"
+        if code.startswith("SUPP") and len(code) > 4:
+            return f"Supplemental Qualifiers for {code[4:]}"
         try:
             domain = domain_definition_repository.get_domain(code)
             return str(getattr(domain, "description", "") or "")
         except Exception:
-            if code.startswith("SUPP") and len(code) > 4:
-                return f"Supplemental Qualifiers for {code[4:]}"
             return ""
 
     # Execute the use case
@@ -231,11 +237,9 @@ def study_command(
         conformance_report = _report_to_dict(
             getattr(result, "conformance_report", None)
         )
-        result_records = (
-            len(result.domain_dataframe)
-            if getattr(result, "domain_dataframe", None) is not None
-            else result.records
-        )
+
+        result_df = getattr(result, "domain_dataframe", None)
+        result_records = len(result_df) if result_df is not None else result.records
 
         result_dict = {
             "domain_code": result.domain_code,
@@ -252,8 +256,9 @@ def study_command(
                     "domain_code": supp.domain_code,
                     "description": _describe_domain(supp.domain_code),
                     "records": (
-                        len(supp.domain_dataframe)
-                        if getattr(supp, "domain_dataframe", None) is not None
+                        len(supp_df)
+                        if (supp_df := getattr(supp, "domain_dataframe", None))
+                        is not None
                         else supp.records
                     ),
                     "domain_dataframe": supp.domain_dataframe,
