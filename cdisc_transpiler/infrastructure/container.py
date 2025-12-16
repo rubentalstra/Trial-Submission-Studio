@@ -252,7 +252,9 @@ class DependencyContainer:
         if self._domain_frame_builder_instance is None:
             from .services.domain_frame_builder_adapter import DomainFrameBuilderAdapter
 
-            self._domain_frame_builder_instance = DomainFrameBuilderAdapter()
+            self._domain_frame_builder_instance = DomainFrameBuilderAdapter(
+                ct_repository=self.create_ct_repository()
+            )
         return self._domain_frame_builder_instance
 
     def create_suppqual_service(self) -> SuppqualPort:

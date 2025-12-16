@@ -32,17 +32,28 @@ class TSProcessor(BaseDomainProcessor):
         base_study = str(study_series.iloc[0]) if len(study_series) > 0 else "STUDY"
         ct_parmcd = self._get_controlled_terminology(variable="TSPARMCD")
         ct_parm = self._get_controlled_terminology(variable="TSPARM")
+        ct_dict = self._get_controlled_terminology(variable="TSVCDREF")
 
         def _parm_name(code: str) -> str:
+            if not code:
+                return ""
             if not ct_parmcd or not ct_parm:
                 return code
+
+            # Map TSPARMCD -> TSPARM using shared NCI codes:
+            # - In CT, test code and test name entries commonly share the same
+            #   NCI Code. We use that as the stable join key.
             nci = ct_parmcd.lookup_code(code)
             if not nci:
                 return code
-            for name, name_nci in ct_parm.nci_codes.items():
-                if name_nci == nci:
-                    return name
-            return code
+
+            nci_to_name: dict[str, str] = {}
+            for submission in ct_parm.submission_values:
+                snci = ct_parm.lookup_code(submission)
+                if snci and snci not in nci_to_name:
+                    nci_to_name[snci] = submission
+
+            return nci_to_name.get(nci, code)
 
         def _row(
             code: str,
@@ -52,12 +63,24 @@ class TSProcessor(BaseDomainProcessor):
             tsvcdref_val: str = "",
             tsvcdver_val: str | None = None,
         ) -> dict[str, Any]:
-            # Only provide a version when a reference dictionary is specified
-            ref = tsvcdref_val
-            if ref:
-                ver = "2025-09-26" if tsvcdver_val is None else tsvcdver_val
-            else:
-                ver = ""
+            # If TSVALCD is present and no dictionary was provided, assume CDISC CT.
+            ref = tsvcdref_val or ("CDISC CT" if valcd else "")
+
+            # TSVCDVER is not always applicable. Provide it only for CDISC CT by default.
+            ver = ""
+            if tsvcdver_val is not None:
+                ver = tsvcdver_val
+            elif ref.strip().upper() == "CDISC CT":
+                # Use the CT registry's standard(s) to infer the current CT date
+                # without doing filesystem access from the domain layer.
+                standards = sorted(list(getattr(ct_dict, "standards", set()) or set()))
+                if standards:
+                    import re
+
+                    match = re.search(r"(\d{4}-\d{2}-\d{2})", standards[0])
+                    if match:
+                        ver = match.group(1)
+
             return {
                 "TSPARMCD": code,
                 "TSPARM": _parm_name(code),
@@ -73,9 +96,9 @@ class TSProcessor(BaseDomainProcessor):
 
         params = pd.DataFrame(
             [
-                _row("SSTDTC", "2023-08-01"),
-                _row("SENDTC", "2024-12-31"),
-                _row("STYPE", "INTERVENTIONAL"),
+                _row("SSTDTC", "2023-08-01", tsvcdref_val="ISO 8601"),
+                _row("SENDTC", "2024-12-31", tsvcdref_val="ISO 8601"),
+                _row("STYPE", "INTERVENTIONAL", valcd="C98388"),
                 _row("TPHASE", "PHASE II TRIAL", valcd="C15601"),
                 _row("TBLIND", "DOUBLE BLIND", valcd="C15228"),
                 _row("RANDOM", "Y", valcd="C49488"),
@@ -93,7 +116,7 @@ class TSProcessor(BaseDomainProcessor):
                 _row("NCOHORT", "1"),
                 _row("ADDON", "N", valcd="C49487"),
                 _row("ADAPT", "N", valcd="C49487"),
-                _row("DCUTDTC", "2024-12-31"),
+                _row("DCUTDTC", "2024-12-31", tsvcdref_val="ISO 8601"),
                 _row("DCUTDESC", "FINAL ANALYSIS"),
                 _row("PDPSTIND", "N", valcd="C49487"),
                 _row("PDSTIND", "N", valcd="C49487"),
@@ -112,27 +135,24 @@ class TSProcessor(BaseDomainProcessor):
                 _row("OUTMSPRI", "EFFICACY"),
                 _row("HLTSUBJI", "0"),
                 _row("EXTTIND", "N", valcd="C49487"),
-                _row("LENGTH", "P24M"),
+                _row("LENGTH", "P24M", tsvcdref_val="ISO 8601"),
                 _row(
                     "TRT",
                     "IBUPROFEN",
                     valcd="WK2XYI10QM",
                     tsvcdref_val="UNII",
-                    tsvcdver_val="2025-09-26",
                 ),
                 _row(
                     "PCLAS",
                     "Nonsteroidal Anti-inflammatory Drug",
                     valcd="N0000175722",
                     tsvcdref_val="MED-RT",
-                    tsvcdver_val="2025-09-26",
                 ),
                 _row(
                     "FCNTRY",
                     "USA",
                     valcd="",
-                    tsvcdref_val="",
-                    tsvcdver_val="",
+                    tsvcdref_val="ISO 3166-1 Alpha-3",
                 ),
             ]
         )
@@ -159,8 +179,10 @@ class TSProcessor(BaseDomainProcessor):
                 params.iat[pos, tsvalcd_loc] = code
                 if not str(row.get("TSVCDREF", "")).strip() and ref:
                     params.iat[pos, tsvcdref_loc] = ref
-        params["TSSEQ"] = range(1, len(params) + 1)
-        frame.drop(index=frame.index.tolist(), inplace=True)
-        frame.drop(columns=list(frame.columns), inplace=True)
-        for col in params.columns:
-            frame[col] = params[col].values
+        params.loc[:, "TSSEQ"] = range(1, len(params) + 1)
+        # Ensure expected variables exist even when values are blank so strict
+        # conformance checks don't flag missing columns.
+        for expected in ("TSVAL", "TSVALCD", "TSVCDREF", "TSVCDVER"):
+            if expected not in params.columns:
+                params.loc[:, expected] = ""
+        self._replace_frame_preserving_schema(frame, params)

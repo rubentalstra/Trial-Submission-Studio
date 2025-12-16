@@ -56,7 +56,19 @@ class BaseDomainProcessor(ABC):
     ) -> "ControlledTerminology | None":
         if self._ct_resolver is None:
             return None
-        return self._ct_resolver(codelist_code, variable)
+
+        # When only a variable name is provided, prefer the SDTM spec's codelist
+        # code for that variable. Our CT registries are keyed by codelist code
+        # or codelist name (not SDTM variable name).
+        resolved_code = codelist_code
+        if not resolved_code and variable:
+            var_upper = variable.strip().upper()
+            for var_def in getattr(self.domain, "variables", []) or []:
+                if getattr(var_def, "name", "").strip().upper() == var_upper:
+                    resolved_code = getattr(var_def, "codelist_code", None)
+                    break
+
+        return self._ct_resolver(resolved_code, variable)
 
     @abstractmethod
     def process(self, frame: pd.DataFrame) -> None:
@@ -127,6 +139,45 @@ class BaseDomainProcessor(ABC):
             if missing_ids.any():
                 frame.drop(index=frame.index[missing_ids].to_list(), inplace=True)
                 frame.reset_index(drop=True, inplace=True)
+
+    def _replace_frame_preserving_schema(
+        self, frame: pd.DataFrame, replacement: pd.DataFrame
+    ) -> None:
+        """Replace the rows of `frame` while preserving its existing schema.
+
+        Domain processors sometimes "rebuild" a dataset (e.g., TS/SE/TE) from
+        scratch. When they do, they must not accidentally drop required/expected
+        variables that were created upstream by the domain frame builder.
+
+        This helper keeps the original column order and attempts to preserve
+        the original dtypes.
+        """
+
+        original_columns = list(frame.columns)
+        original_dtypes = {col: frame[col].dtype for col in original_columns}
+
+        normalized = replacement.copy()
+        for col in original_columns:
+            if col not in normalized.columns:
+                normalized[col] = pd.NA
+
+        normalized = normalized.reindex(columns=original_columns)
+
+        for col, dtype in original_dtypes.items():
+            series = normalized[col]
+            if pd.api.types.is_string_dtype(dtype):
+                normalized.loc[:, col] = series.astype("string")
+            elif pd.api.types.is_numeric_dtype(dtype):
+                normalized.loc[:, col] = pd.to_numeric(series, errors="coerce").astype(
+                    "float64"
+                )
+            else:
+                normalized.loc[:, col] = series
+
+        frame.drop(index=frame.index.tolist(), inplace=True)
+        frame.drop(columns=list(frame.columns), inplace=True)
+        for col in original_columns:
+            frame[col] = normalized[col].values
 
 
 class DefaultDomainProcessor(BaseDomainProcessor):

@@ -43,7 +43,4 @@ class TEProcessor(BaseDomainProcessor):
         te_df = pd.DataFrame(elements)
         te_df["STUDYID"] = study_id
         te_df["DOMAIN"] = "TE"
-        frame.drop(index=frame.index.tolist(), inplace=True)
-        frame.drop(columns=list(frame.columns), inplace=True)
-        for col in te_df.columns:
-            frame[col] = te_df[col].values
+        self._replace_frame_preserving_schema(frame, te_df)

@@ -76,10 +76,7 @@ class SEProcessor(BaseDomainProcessor):
                 }
             )
         new_frame = pd.DataFrame(records)
-        frame.drop(index=frame.index.tolist(), inplace=True)
-        frame.drop(columns=list(frame.columns), inplace=True)
-        for col in new_frame.columns:
-            frame[col] = new_frame[col].values
+        self._replace_frame_preserving_schema(frame, new_frame)
         DateTransformer.ensure_date_pair_order(frame, "SESTDTC", "SEENDTC")
         DateTransformer.compute_study_day(frame, "SESTDTC", "SESTDY", ref="RFSTDTC")
         DateTransformer.compute_study_day(frame, "SEENDTC", "SEENDY", ref="RFSTDTC")

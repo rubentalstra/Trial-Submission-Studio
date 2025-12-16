@@ -5,6 +5,7 @@ from __future__ import annotations
 import pandas as pd
 
 from ...application.ports import DomainFrameBuilderPort
+from ...application.ports.repositories import CTRepositoryPort
 from ...domain.entities.mapping import MappingConfig
 from ...domain.entities.sdtm_domain import SDTMDomain
 from ...domain.entities.study_metadata import StudyMetadata
@@ -20,6 +21,9 @@ from .xpt_validator import XPTValidator
 
 
 class DomainFrameBuilderAdapter(DomainFrameBuilderPort):
+    def __init__(self, *, ct_repository: CTRepositoryPort | None = None) -> None:
+        self._ct_repository = ct_repository
+
     def build_domain_dataframe(
         self,
         frame: pd.DataFrame,
@@ -42,7 +46,18 @@ class DomainFrameBuilderAdapter(DomainFrameBuilderPort):
             ref_starts: dict[str, str] | None,
             meta: StudyMetadata | None,
         ):
-            return get_domain_processor(dom, ref_starts, meta)
+            ct_repository = self._ct_repository
+
+            def ct_resolver(codelist_code: str | None, variable: str | None):
+                if ct_repository is None:
+                    return None
+                if codelist_code:
+                    return ct_repository.get_by_code(codelist_code)
+                if variable:
+                    return ct_repository.get_by_name(variable)
+                return None
+
+            return get_domain_processor(dom, ref_starts, meta, ct_resolver=ct_resolver)
 
         return build_domain_dataframe(
             frame,

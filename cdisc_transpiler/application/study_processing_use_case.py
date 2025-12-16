@@ -891,9 +891,43 @@ class StudyProcessingUseCase:
             if not synthesis_result.success:
                 raise RuntimeError(synthesis_result.error or "Synthesis failed")
 
+            # Run synthesized Trial Design domains through the normal domain
+            # frame builder so domain processors (TS/TA/TE/SE) can populate
+            # required values and CT-backed names.
+            domain_def = self._get_domain(domain_code)
+            lenient = ("xpt" not in request.output_formats) and (
+                not request.generate_sas
+            )
+            domain_dataframe = self._domain_frame_builder.build_domain_dataframe(
+                synthesis_result.domain_dataframe
+                if synthesis_result.domain_dataframe is not None
+                else pd.DataFrame(),
+                synthesis_result.config,
+                domain_def,
+                reference_starts=reference_starts,
+                lenient=lenient,
+            )
+
+            strict = ("xpt" in request.output_formats) or request.generate_sas
+            report = self._log_conformance_report(
+                frame=domain_dataframe,
+                domain=domain_def,
+                strict=strict,
+            )
+
+            if (
+                strict
+                and request.fail_on_conformance_errors
+                and report is not None
+                and getattr(report, "has_errors", lambda: False)()
+            ):
+                raise ValueError(
+                    f"{domain_code}: conformance errors present; strict output generation aborted"
+                )
+
             # Generate output files using FileGeneratorPort (application layer)
             xpt_path, xml_path, sas_path = self._generate_synthesis_files(
-                domain_dataframe=synthesis_result.domain_dataframe,
+                domain_dataframe=domain_dataframe,
                 domain_code=domain_code,
                 config=synthesis_result.config,
                 request=request,
@@ -905,14 +939,15 @@ class StudyProcessingUseCase:
             result = DomainProcessingResult(
                 domain_code=domain_code,
                 success=True,
-                records=synthesis_result.records,
-                domain_dataframe=synthesis_result.domain_dataframe,
+                records=len(domain_dataframe),
+                domain_dataframe=domain_dataframe,
                 config=synthesis_result.config,
                 xpt_path=xpt_path,
                 xml_path=xml_path,
                 sas_path=sas_path,
                 synthesized=True,
                 synthesis_reason=reason,
+                conformance_report=report,
             )
 
             response.domain_results.append(result)

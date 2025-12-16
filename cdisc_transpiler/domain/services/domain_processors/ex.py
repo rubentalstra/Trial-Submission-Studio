@@ -142,10 +142,7 @@ class EXProcessor(BaseDomainProcessor):
                     columns=frame.columns, fill_value=""
                 )
                 new_frame = pd.concat([frame, filler_df], ignore_index=True)
-                frame.drop(index=frame.index.tolist(), inplace=True)
-                frame.drop(columns=list(frame.columns), inplace=True)
-                for col in new_frame.columns:
-                    frame.loc[:, col] = new_frame[col].values
+                self._replace_frame_preserving_schema(frame, new_frame)
         NumericTransformer.assign_sequence(frame, "EXSEQ", "USUBJID")
         # Recompute dates/study days for any appended defaults
         DateTransformer.ensure_date_pair_order(frame, "EXSTDTC", "EXENDTC")

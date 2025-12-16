@@ -504,7 +504,4 @@ class LBProcessor(BaseDomainProcessor):
                     .apply(lambda n: f"Visit {int(n)}")
                     .astype("string")
                 )
-            frame.drop(frame.index.tolist(), inplace=True)
-            frame.drop(columns=list(frame.columns), inplace=True)
-            for col in collapsed.columns:
-                frame.loc[:, col] = collapsed[col].values
+            self._replace_frame_preserving_schema(frame, collapsed)
