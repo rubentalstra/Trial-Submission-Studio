@@ -2,7 +2,8 @@
 
 These tests ensure that the clean architecture boundaries are maintained:
 - Core modules (application, domain, services) must not import from CLI
-- Application layer must not import from legacy
+
+The legacy package has been removed; no code should import it.
 
 CLEAN2-A3 Implementation.
 """
@@ -85,9 +86,7 @@ class TestCLIImportBoundary:
     The CLI layer should be the outermost layer - it can import from
     anything, but nothing should import from it except CLI code itself.
 
-    Note: Legacy modules are excluded from this check because they are
-    deprecated and will be removed in a future release. The focus is on
-    ensuring the NEW architecture layers don't import from CLI.
+    The focus is on ensuring the NEW architecture layers don't import from CLI.
     """
 
     def test_services_do_not_import_cli(self):
@@ -181,65 +180,37 @@ class TestCLIImportBoundary:
         )
 
 
-class TestLegacyImportBoundary:
-    """Tests ensuring application layer does not import from legacy.
+class TestNoLegacyPackage:
+    def test_legacy_package_is_removed(self):
+        assert not (PACKAGE_ROOT / "legacy").exists(), (
+            "cdisc_transpiler/legacy still exists"
+        )
 
-    The application layer should use ports and adapters, not legacy
-    implementations directly.
-    """
-
-    def test_application_does_not_import_legacy(self):
-        """Application layer must not import from legacy.
-
-        Note: TYPE_CHECKING imports are temporarily allowed for
-        gradual migration, but regular imports are not.
-        """
-        application_dir = PACKAGE_ROOT / "application"
-        if not application_dir.exists():
-            pytest.skip("application directory not found")
-
+    def test_no_imports_from_legacy(self):
         violations = []
-        for py_file in get_python_files(application_dir):
-            # Check for direct (non-TYPE_CHECKING) legacy imports
-            # This is a simple heuristic - a more robust solution would
-            # use AST analysis to detect imports outside TYPE_CHECKING blocks
+        for py_file in get_python_files(PACKAGE_ROOT):
             imports = extract_imports_from_file(py_file)
             forbidden = has_forbidden_import(imports, r"(^|\.)legacy(\.|$)")
-
-            # For now, just track but don't fail - legacy migration is in progress
             if forbidden:
                 rel_path = py_file.relative_to(PACKAGE_ROOT.parent)
-                # This is informational until CLEAN2-D1/D2 are complete
                 violations.append(f"{rel_path}: {forbidden}")
 
-        # Note: This test is informational while migration is in progress
-        # TODO(CLEAN2-D1, CLEAN2-D2): Uncomment the assertion below once
-        # DomainProcessingUseCase and StudyProcessingUseCase no longer
-        # delegate to legacy coordinators.
-        # assert not violations, (
-        #     f"Application layer imports legacy modules:\n" + "\n".join(violations)
-        # )
-        if violations:
-            pytest.skip(
-                "Application layer still has legacy imports (migration in progress):\n"
-                + "\n".join(violations)
-            )
+        assert not violations, "Found imports from legacy:\n" + "\n".join(violations)
 
 
 class TestRegressionPrevention:
     """Tests that can be used to detect regressions after cleanup.
 
-    Note: Legacy modules are excluded because they are deprecated and
-    will be cleaned up in CLEAN2-F2. The focus is on the new architecture.
+    These tests help prevent accidental boundary regressions.
     """
 
-    def test_no_cli_logging_config_outside_cli_and_legacy(self):
-        """Ensure cli.logging_config is not imported outside CLI (excluding legacy).
+    def test_no_cli_logging_config_outside_cli(self):
+        """Ensure cli.logging_config is not imported outside CLI.
 
         This is the acceptance criteria for CLEAN2-A1 and CLEAN2-A2.
         Legacy modules are excluded as they have their own cleanup ticket (CLEAN2-F2).
         """
-        excluded_dirs = {PACKAGE_ROOT / "cli", PACKAGE_ROOT / "legacy"}
+        excluded_dirs = {PACKAGE_ROOT / "cli"}
 
         violations = []
         for py_file in get_python_files(PACKAGE_ROOT):
@@ -253,17 +224,17 @@ class TestRegressionPrevention:
                 rel_path = py_file.relative_to(PACKAGE_ROOT.parent)
                 violations.append(f"{rel_path}: {forbidden}")
 
-        assert not violations, (
-            "cli.logging_config imported outside CLI/legacy:\n" + "\n".join(violations)
+        assert not violations, "cli.logging_config imported outside CLI:\n" + "\n".join(
+            violations
         )
 
-    def test_no_cli_helpers_outside_cli_and_legacy(self):
-        """Ensure cli.helpers is not imported outside CLI (excluding legacy).
+    def test_no_cli_helpers_outside_cli(self):
+        """Ensure cli.helpers is not imported outside CLI.
 
         This is the acceptance criteria for CLEAN2-A1.
         Legacy modules are excluded as they have their own cleanup ticket (CLEAN2-F2).
         """
-        excluded_dirs = {PACKAGE_ROOT / "cli", PACKAGE_ROOT / "legacy"}
+        excluded_dirs = {PACKAGE_ROOT / "cli"}
 
         violations = []
         for py_file in get_python_files(PACKAGE_ROOT):
@@ -277,7 +248,7 @@ class TestRegressionPrevention:
                 rel_path = py_file.relative_to(PACKAGE_ROOT.parent)
                 violations.append(f"{rel_path}: {forbidden}")
 
-        assert not violations, "cli.helpers imported outside CLI/legacy:\n" + "\n".join(
+        assert not violations, "cli.helpers imported outside CLI:\n" + "\n".join(
             violations
         )
 
@@ -297,6 +268,9 @@ class TestRegressionPrevention:
             __import__("cdisc_transpiler.services")
 
         assert "cdisc_transpiler.legacy" not in sys.modules
+
+        with pytest.raises(ModuleNotFoundError):
+            __import__("cdisc_transpiler.legacy")
 
     def test_domain_processing_use_case_does_not_import_wrappers(self):
         """Application code should not import compatibility wrapper modules."""
