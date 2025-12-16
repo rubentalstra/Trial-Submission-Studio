@@ -188,11 +188,7 @@ class DomainFrameBuilder:
         # DM.SEX controlled terminology normalization
         if self.domain.code.upper() == "DM" and "SEX" in result.columns:
             normalized = (
-                result["SEX"]
-                .astype("string")
-                .fillna("")
-                .str.strip()
-                .str.upper()
+                result["SEX"].astype("string").fillna("").str.strip().str.upper()
             )
             result["SEX"] = normalized.replace(
                 {
