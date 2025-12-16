@@ -23,8 +23,8 @@ import pandas as pd
 from ...constants import Defaults
 
 if TYPE_CHECKING:
-    from ...domains_module import SDTMDomain, SDTMVariable
-    from ...mapping_module import MappingConfig
+    from ..entities.sdtm_domain import SDTMDomain, SDTMVariable
+    from ..entities.mapping import MappingConfig
 
 
 @dataclass
@@ -368,7 +368,7 @@ class SynthesisService:
         self, domain_code: str, frame: pd.DataFrame, study_id: str
     ) -> MappingConfig:
         """Build identity mapping configuration."""
-        from ...mapping_module import ColumnMapping, build_config
+        from ..entities.mapping import ColumnMapping, build_config
 
         mappings = [
             ColumnMapping(

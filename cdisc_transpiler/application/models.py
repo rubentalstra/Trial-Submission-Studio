@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 
 if TYPE_CHECKING:
-    from ..mapping_module import MappingConfig
+    from ..domain.entities.mapping import MappingConfig
 
 
 # ============================================================================

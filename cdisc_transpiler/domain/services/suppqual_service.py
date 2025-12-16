@@ -23,7 +23,7 @@ from ...pandas_utils import ensure_numeric_series, ensure_series
 
 if TYPE_CHECKING:
     from ...domain.entities.sdtm_domain import SDTMDomain
-    from ...mapping_module import MappingConfig
+    from ..entities.mapping import MappingConfig
 
 # Markers that indicate missing/null values
 _MISSING_MARKERS = {"", "NAN", "<NA>", "NONE", "NULL"}
@@ -317,7 +317,7 @@ def extract_used_columns(config: MappingConfig | None) -> set[str]:
     Returns:
         Set of source column names that are used in the configuration
     """
-    from ...mapping_module import unquote_column_name
+    from .mapping.utils import unquote_column_name
 
     used_columns: set[str] = set()
     if config and config.mappings:

@@ -6,6 +6,7 @@ metadata-aware mapping.
 """
 
 from .engine import MappingEngine
+from .factory import create_mapper
 from .metadata_mapper import MetadataAwareMapper
 from .pattern_builder import build_variable_patterns, get_domain_suffix_patterns
 from .utils import normalize_text, safe_column_name, unquote_column_name
@@ -14,6 +15,7 @@ __all__ = [
     # Engines
     "MappingEngine",
     "MetadataAwareMapper",
+    "create_mapper",
     # Pattern building
     "build_variable_patterns",
     "get_domain_suffix_patterns",

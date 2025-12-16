@@ -17,7 +17,6 @@ removing the delegation to legacy DomainProcessingCoordinator.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
@@ -35,19 +34,14 @@ from .ports import (
 
 if TYPE_CHECKING:
     from ..domain.entities.sdtm_domain import SDTMDomain
-    from ..mapping_module import MappingConfig
+    from ..domain.entities.mapping import MappingConfig
+
+from ..domain.entities.column_hints import ColumnHint, Hints
 
 
-@dataclass(frozen=True)
-class _ColumnHint:
-    is_numeric: bool
-    unique_ratio: float
-    null_ratio: float
-
-
-def _build_column_hints(frame: pd.DataFrame) -> dict[str, _ColumnHint]:
+def _build_column_hints(frame: pd.DataFrame) -> Hints:
     """Derive lightweight per-column hints used by mapping heuristics."""
-    hints: dict[str, _ColumnHint] = {}
+    hints: dict[str, ColumnHint] = {}
     row_count = len(frame)
     for column in frame.columns:
         series = frame[column]
@@ -56,7 +50,7 @@ def _build_column_hints(frame: pd.DataFrame) -> dict[str, _ColumnHint]:
         unique_non_null = series.nunique(dropna=True)
         unique_ratio = float(unique_non_null / non_null) if non_null else 0.0
         null_ratio = float(1 - (non_null / row_count)) if row_count else 0.0
-        hints[str(column)] = _ColumnHint(
+        hints[str(column)] = ColumnHint(
             is_numeric=bool(is_numeric),
             unique_ratio=unique_ratio,
             null_ratio=null_ratio,
@@ -520,11 +514,8 @@ class DomainProcessingUseCase:
         verbose: bool,
     ) -> MappingConfig | None:
         """Stage 3: Build mapping configuration."""
-        from ..mapping_module import (
-            ColumnMapping,
-            build_config,
-            create_mapper,
-        )
+        from ..domain.entities.mapping import ColumnMapping, build_config
+        from ..domain.services.mapping import create_mapper
 
         if is_findings_long:
             # Use identity mapping for post-transformation data
@@ -544,11 +535,8 @@ class DomainProcessingUseCase:
 
             return config
 
-        # Build mapped configuration using fuzzy matching
-        # Mapping heuristics use a small, structural "ColumnHint" object.
-        # We intentionally keep this application-owned to avoid importing
-        # compatibility wrapper types into the application layer.
-        column_hints: Any = _build_column_hints(frame)
+        # Build mapped configuration using fuzzy matching.
+        column_hints = _build_column_hints(frame)
         engine = create_mapper(
             domain_code,
             metadata=metadata,
@@ -737,7 +725,7 @@ class DomainProcessingUseCase:
         """Generate supplemental qualifier files using FileGeneratorPort."""
         from ..domain.services import finalize_suppqual
         from .models import OutputDirs, OutputRequest
-        from ..mapping_module import ColumnMapping, build_config
+        from ..domain.entities.mapping import ColumnMapping, build_config
 
         merged_supp = (
             supp_frames[0]

@@ -44,6 +44,7 @@ from ..domain.entities.mapping import (
     build_config,
     merge_mappings,
 )
+from ..domain.services.mapping.factory import create_mapper
 from .config_io import (
     load_config,
     save_config,
@@ -61,58 +62,15 @@ from .utils import (
 )
 
 
-# Factory function for creating appropriate mapper
-def create_mapper(
-    domain_code: str,
-    metadata: StudyMetadata | None = None,
-    *,
-    min_confidence: float = 0.5,
-    column_hints: Hints | None = None,
-) -> MetadataAwareMapper | MappingEngine:
-    """Factory function to create the appropriate mapper.
-
-    If metadata is provided, returns a MetadataAwareMapper that uses
-    Items.csv and CodeLists.csv for intelligent mapping.
-    Otherwise, returns the standard MappingEngine.
-
-    Args:
-        domain_code: Target SDTM domain code
-        metadata: Optional StudyMetadata
-        min_confidence: Minimum confidence threshold
-        column_hints: Optional column hints
-
-    Returns:
-        Appropriate mapper instance
-
-    Example:
-        >>> # Without metadata
-        >>> mapper = create_mapper("DM")
-        >>>
-        >>> # With metadata
-        >>> from cdisc_transpiler.metadata_module import load_study_metadata
-        >>> metadata = load_study_metadata("study_folder")
-        >>> mapper = create_mapper("DM", metadata=metadata)
-    """
-    if metadata is not None and (metadata.items or metadata.codelists):
-        return MetadataAwareMapper(
-            domain_code,
-            metadata,
-            min_confidence=min_confidence,
-            column_hints=column_hints,
-        )
-    return MappingEngine(
-        domain_code,
-        min_confidence=min_confidence,
-        column_hints=column_hints,
-    )
-
-
 __all__ = [
     # Models
     "ColumnMapping",
     "MappingConfig",
     "Suggestion",
     "MappingSuggestions",
+    # Compatibility types
+    "Hints",
+    "StudyMetadata",
     # Model utilities
     "build_config",
     "merge_mappings",

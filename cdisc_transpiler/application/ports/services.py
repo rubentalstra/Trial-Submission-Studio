@@ -13,7 +13,7 @@ import pandas as pd
 
 if TYPE_CHECKING:
     from ..models import DefineDatasetDTO, OutputRequest, OutputResult
-    from ...mapping_module import MappingConfig
+    from ...domain.entities.mapping import MappingConfig
 
 
 @runtime_checkable

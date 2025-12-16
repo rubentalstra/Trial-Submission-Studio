@@ -19,8 +19,8 @@ import pandas as pd
 from ..entities.sdtm_domain import SDTMDomain, SDTMVariable
 
 if TYPE_CHECKING:
-    from ...mapping_module import ColumnMapping, MappingConfig
-    from ...metadata_module import StudyMetadata
+    from ..entities.mapping import ColumnMapping, MappingConfig
+    from ..entities.study_metadata import StudyMetadata
 
 
 class DomainFrameBuildError(RuntimeError):
@@ -228,7 +228,7 @@ class DomainFrameBuilder:
             return
 
         # Lazy import to avoid circular dependencies
-        from ...mapping_module import unquote_column_name
+        from .mapping.utils import unquote_column_name
 
         source_column = mapping.source_column
         raw_source = unquote_column_name(source_column)
