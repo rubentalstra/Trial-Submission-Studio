@@ -8,7 +8,7 @@ Import them from cdisc_transpiler.application.models instead.
 
 from .csv_reader import CSVReader, CSVReadOptions
 from .dataset_xml_writer import DatasetXMLWriter
-from .define_xml_generator import DefineXmlGenerator
+from .define_xml_generator import DefineXMLGenerator
 from .exceptions import (
     DataParseError,
     DataSourceError,
@@ -32,5 +32,5 @@ __all__ = [
     "XPTWriter",
     "DatasetXMLWriter",
     "SASWriter",
-    "DefineXmlGenerator",
+    "DefineXMLGenerator",
 ]

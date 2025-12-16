@@ -3,14 +3,14 @@
 This adapter performs filesystem I/O needed to create the output layout for a
 study run (directories and a placeholder ACRF PDF used by Define-XML).
 
-It implements the application port OutputPreparationPort.
+It implements the application port OutputPreparerPort.
 """
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from ...application.ports import OutputPreparationPort
+from ...application.ports import OutputPreparerPort
 
 
 def _ensure_acrf_pdf(path: Path) -> None:
@@ -60,7 +60,7 @@ def _ensure_acrf_pdf(path: Path) -> None:
     path.write_bytes(pdf_bytes)
 
 
-class OutputPreparer(OutputPreparationPort):
+class OutputPreparer(OutputPreparerPort):
     """Filesystem-based output preparation."""
 
     def prepare(

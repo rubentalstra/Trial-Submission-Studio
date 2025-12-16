@@ -24,11 +24,11 @@ from rich.console import Console
 
 from ..application.ports import (
     DomainFrameBuilderPort,
-    DefineXmlGeneratorPort,
+    DefineXMLGeneratorPort,
     FileGeneratorPort,
     LoggerPort,
     MappingPort,
-    OutputPreparationPort,
+    OutputPreparerPort,
     SuppqualPort,
     TerminologyPort,
     DomainDefinitionRepositoryPort,
@@ -37,7 +37,7 @@ from ..application.ports import (
 from .io import (
     CSVReader,
     DatasetXMLWriter,
-    DefineXmlGenerator,
+    DefineXMLGenerator,
     FileGenerator,
     OutputPreparer,
     SASWriter,
@@ -63,7 +63,7 @@ class DependencyContainer:
         console: Rich console for output (optional)
         _logger_instance: Cached logger instance (singleton)
         _file_generator_instance: Cached file generator instance (singleton)
-        _study_data_repo_instance: Cached study data repository instance (singleton)
+        _study_data_repository_instance: Cached study data repository instance (singleton)
 
     Example:
         >>> # Create container with configuration
@@ -99,9 +99,9 @@ class DependencyContainer:
         self._logger_instance: LoggerPort | None = None
         self._file_generator_instance: FileGeneratorPort | None = None
         self._csv_reader_instance: CSVReader | None = None
-        self._study_data_repo_instance: StudyDataRepositoryPort | None = None
-        self._define_xml_generator_instance: DefineXmlGeneratorPort | None = None
-        self._output_preparer_instance: OutputPreparationPort | None = None
+        self._study_data_repository_instance: StudyDataRepositoryPort | None = None
+        self._define_xml_generator_instance: DefineXMLGeneratorPort | None = None
+        self._output_preparer_instance: OutputPreparerPort | None = None
         self._xpt_writer_instance: XPTWriter | None = None
         self._domain_definition_repo_instance: DomainDefinitionRepositoryPort | None = (
             None
@@ -198,16 +198,18 @@ class DependencyContainer:
             >>> repo = container.create_study_data_repository()
             >>> df = repo.read_dataset(Path("data.csv"))
         """
-        if self._study_data_repo_instance is None:
+        if self._study_data_repository_instance is None:
             csv_reader = self.create_csv_reader()
-            self._study_data_repo_instance = StudyDataRepository(csv_reader=csv_reader)
-        return self._study_data_repo_instance
+            self._study_data_repository_instance = StudyDataRepository(
+                csv_reader=csv_reader
+            )
+        return self._study_data_repository_instance
 
-    def create_define_xml_generator(self) -> DefineXmlGeneratorPort:
+    def create_define_xml_generator(self) -> DefineXMLGeneratorPort:
         """Create or return cached Define-XML generator instance (singleton).
 
         Returns:
-            DefineXmlGeneratorPort implementation (DefineXmlGenerator)
+            DefineXMLGeneratorPort implementation (DefineXMLGenerator)
 
         Example:
             >>> generator = container.create_define_xml_generator()
@@ -217,10 +219,10 @@ class DependencyContainer:
             >>> generator.generate(datasets, Path("define.xml"), sdtm_version="3.4", context="Submission")
         """
         if self._define_xml_generator_instance is None:
-            self._define_xml_generator_instance = DefineXmlGenerator()
+            self._define_xml_generator_instance = DefineXMLGenerator()
         return self._define_xml_generator_instance
 
-    def create_output_preparer(self) -> OutputPreparationPort:
+    def create_output_preparer(self) -> OutputPreparerPort:
         """Create or return cached output preparer instance (singleton)."""
         if self._output_preparer_instance is None:
             self._output_preparer_instance = OutputPreparer()
@@ -297,11 +299,11 @@ class DependencyContainer:
         )
 
         logger = self.create_logger()
-        study_data_repo = self.create_study_data_repository()
+        study_data_repository = self.create_study_data_repository()
         file_generator = self.create_file_generator()
         domain_processing_use_case = self.create_domain_processing_use_case()
         domain_definition_repo = self.create_domain_definition_repository()
-        discovery_service = DomainDiscoveryServiceAdapter(logger=logger)
+        domain_discovery_service = DomainDiscoveryServiceAdapter(logger=logger)
         domain_frame_builder = self.create_domain_frame_builder()
         synthesis_service = self.create_synthesis_service()
         relrec_service = self.create_relrec_service()
@@ -310,9 +312,9 @@ class DependencyContainer:
 
         return StudyProcessingUseCase(
             logger=logger,
-            study_data_repo=study_data_repo,
+            study_data_repository=study_data_repository,
             domain_processing_use_case=domain_processing_use_case,
-            discovery_service=discovery_service,
+            domain_discovery_service=domain_discovery_service,
             domain_frame_builder=domain_frame_builder,
             synthesis_service=synthesis_service,
             relrec_service=relrec_service,
@@ -338,7 +340,7 @@ class DependencyContainer:
         from ..application.domain_processing_use_case import DomainProcessingUseCase
 
         logger = self.create_logger()
-        study_data_repo = self.create_study_data_repository()
+        study_data_repository = self.create_study_data_repository()
         file_generator = self.create_file_generator()
         output_preparer = self.create_output_preparer()
         mapping_service = self.create_mapping_service()
@@ -350,7 +352,7 @@ class DependencyContainer:
 
         return DomainProcessingUseCase(
             logger=logger,
-            study_data_repo=study_data_repo,
+            study_data_repository=study_data_repository,
             file_generator=file_generator,
             mapping_service=mapping_service,
             output_preparer=output_preparer,
@@ -375,7 +377,7 @@ class DependencyContainer:
         self._logger_instance = None
         self._file_generator_instance = None
         self._csv_reader_instance = None
-        self._study_data_repo_instance = None
+        self._study_data_repository_instance = None
         self._output_preparer_instance = None
         self._xpt_writer_instance = None
         self._domain_definition_repo_instance = None
@@ -411,7 +413,9 @@ class DependencyContainer:
         """
         self._file_generator_instance = file_generator
 
-    def override_study_data_repository(self, repo: StudyDataRepositoryPort) -> None:
+    def override_study_data_repository(
+        self, study_data_repository: StudyDataRepositoryPort
+    ) -> None:
         """Override the study data repository instance (for testing).
 
         Args:
@@ -421,16 +425,16 @@ class DependencyContainer:
             >>> mock_repo = MockStudyDataRepository()
             >>> container.override_study_data_repository(mock_repo)
         """
-        self._study_data_repo_instance = repo
+        self._study_data_repository_instance = study_data_repository
 
-    def override_define_xml_generator(self, generator: DefineXmlGeneratorPort) -> None:
+    def override_define_xml_generator(self, generator: DefineXMLGeneratorPort) -> None:
         """Override the Define-XML generator instance (for testing).
 
         Args:
             generator: Custom Define-XML generator implementation
 
         Example:
-            >>> mock_generator = MockDefineXmlGenerator()
+            >>> mock_generator = MockDefineXMLGenerator()
             >>> container.override_define_xml_generator(mock_generator)
         """
         self._define_xml_generator_instance = generator

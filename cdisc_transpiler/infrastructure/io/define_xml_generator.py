@@ -1,7 +1,7 @@
 """Define-XML generator adapter.
 
 This module provides an adapter implementation for generating Define-XML files.
-It conforms to the DefineXmlGeneratorPort protocol.
+It conforms to the DefineXMLGeneratorPort protocol.
 
 The adapter accepts application-layer DTOs (DefineDatasetDTO) and converts
 them to infrastructure-specific models (StudyDataset) before generating
@@ -13,15 +13,17 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from ...application.ports import DefineXMLGeneratorPort
+
 if TYPE_CHECKING:
     from typing import Iterable
     from cdisc_transpiler.application.models import DefineDatasetDTO
 
 
-class DefineXmlGenerator:
+class DefineXMLGenerator(DefineXMLGeneratorPort):
     """Adapter for generating Define-XML 2.1 files.
 
-    This class implements the DefineXmlGeneratorPort protocol by accepting
+    This class implements the DefineXMLGeneratorPort protocol by accepting
     application-layer DTOs and converting them to infrastructure models
     before delegating to the infrastructure Define-XML writer.
 
@@ -30,7 +32,7 @@ class DefineXmlGenerator:
     layer (which handles the actual XML generation).
 
     Example:
-        >>> generator = DefineXmlGenerator()
+        >>> generator = DefineXMLGenerator()
         >>> datasets = [DefineDatasetDTO(...), DefineDatasetDTO(...)]
         >>> # Prefer canonical defaults:
         >>> # sdtm_version=SDTMVersions.DEFAULT_VERSION
@@ -61,7 +63,7 @@ class DefineXmlGenerator:
             Exception: If generation or writing fails
 
         Example:
-            >>> generator = DefineXmlGenerator()
+            >>> generator = DefineXMLGenerator()
             >>> datasets = [DefineDatasetDTO(...)]
             >>> generator.generate(datasets, Path("define.xml"), sdtm_version="3.4", context="Submission")
         """

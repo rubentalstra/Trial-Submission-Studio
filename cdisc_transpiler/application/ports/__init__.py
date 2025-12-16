@@ -14,11 +14,11 @@ from .services import (
     DatasetXMLWriterPort,
     DomainFrameBuilderPort,
     DomainDiscoveryPort,
-    DefineXmlGeneratorPort,
+    DefineXMLGeneratorPort,
     FileGeneratorPort,
     LoggerPort,
     MappingPort,
-    OutputPreparationPort,
+    OutputPreparerPort,
     SuppqualPort,
     SASWriterPort,
     TerminologyPort,
@@ -37,7 +37,7 @@ __all__ = [
     "DomainDiscoveryPort",
     "DomainFrameBuilderPort",
     "MappingPort",
-    "OutputPreparationPort",
+    "OutputPreparerPort",
     "SuppqualPort",
     "TerminologyPort",
     # Writer Ports
@@ -45,5 +45,5 @@ __all__ = [
     "DatasetXMLWriterPort",
     "SASWriterPort",
     # Generator Ports
-    "DefineXmlGeneratorPort",
+    "DefineXMLGeneratorPort",
 ]

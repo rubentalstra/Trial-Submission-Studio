@@ -29,7 +29,7 @@ from .ports import (
     FileGeneratorPort,
     LoggerPort,
     MappingPort,
-    OutputPreparationPort,
+    OutputPreparerPort,
     SuppqualPort,
     StudyDataRepositoryPort,
     TerminologyPort,
@@ -86,7 +86,7 @@ class DomainProcessingUseCase:
     Example:
         >>> use_case = DomainProcessingUseCase(
         ...     logger=my_logger,
-        ...     study_data_repo=repo,
+        ...     study_data_repository=repo,
         ...     file_generator=generator,
         ... )
         >>> request = ProcessDomainRequest(
@@ -104,10 +104,10 @@ class DomainProcessingUseCase:
     def __init__(
         self,
         logger: LoggerPort,
-        study_data_repo: StudyDataRepositoryPort | None = None,
+        study_data_repository: StudyDataRepositoryPort | None = None,
         file_generator: FileGeneratorPort | None = None,
         mapping_service: MappingPort | None = None,
-        output_preparer: OutputPreparationPort | None = None,
+        output_preparer: OutputPreparerPort | None = None,
         domain_frame_builder: DomainFrameBuilderPort | None = None,
         suppqual_service: SuppqualPort | None = None,
         terminology_service: TerminologyPort | None = None,
@@ -118,11 +118,11 @@ class DomainProcessingUseCase:
 
         Args:
             logger: Logger for progress and error reporting
-            study_data_repo: Repository for loading study data files
+            study_data_repository: Repository for loading study data files
             file_generator: Generator for output files (XPT, XML, SAS)
         """
         self.logger = logger
-        self._study_data_repo = study_data_repo
+        self._study_data_repository = study_data_repository
         self._file_generator = file_generator
         if mapping_service is None:
             raise RuntimeError(
@@ -379,8 +379,8 @@ class DomainProcessingUseCase:
 
     def _load_file(self, file_path: Path) -> pd.DataFrame:
         """Stage 1: Load and validate input file."""
-        if self._study_data_repo is not None:
-            return self._study_data_repo.read_dataset(file_path)
+        if self._study_data_repository is not None:
+            return self._study_data_repository.read_dataset(file_path)
 
         raise RuntimeError(
             "StudyDataRepositoryPort is not configured. "
@@ -862,7 +862,7 @@ class DomainProcessingUseCase:
             split_dir = xpt_dir / "split"
             if self._output_preparer is None:
                 raise RuntimeError(
-                    "OutputPreparationPort is not configured. "
+                    "OutputPreparerPort is not configured. "
                     "Wire an infrastructure adapter in the composition root."
                 )
             self._output_preparer.ensure_dir(split_dir)

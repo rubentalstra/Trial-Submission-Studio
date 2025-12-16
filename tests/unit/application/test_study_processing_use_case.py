@@ -54,9 +54,9 @@ class TestStudyProcessingUseCase:
         # This should work without errors
         use_case = StudyProcessingUseCase(
             logger=mock_logger,
-            study_data_repo=mock_repo,
+            study_data_repository=mock_repo,
             domain_processing_use_case=mock_domain_use_case,
-            discovery_service=mock_discovery,
+            domain_discovery_service=mock_discovery,
             domain_frame_builder=mock_domain_frame_builder,
             synthesis_service=mock_synthesis_service,
             relrec_service=mock_relrec_service,
@@ -67,9 +67,9 @@ class TestStudyProcessingUseCase:
 
         assert use_case is not None
         assert use_case.logger == mock_logger
-        assert use_case._study_data_repo == mock_repo
+        assert use_case._study_data_repository == mock_repo
         assert use_case._domain_processing_use_case == mock_domain_use_case
-        assert use_case._discovery_service == mock_discovery
+        assert use_case._domain_discovery_service == mock_discovery
         assert use_case._domain_frame_builder == mock_domain_frame_builder
         assert use_case._synthesis_service == mock_synthesis_service
         assert use_case._relrec_service == mock_relrec_service
@@ -116,9 +116,9 @@ class TestStudyProcessingUseCase:
         use_case = container.create_study_processing_use_case()
 
         # Verify all dependencies are wired
-        assert use_case._study_data_repo is not None
+        assert use_case._study_data_repository is not None
         assert use_case._domain_processing_use_case is not None
-        assert use_case._discovery_service is not None
+        assert use_case._domain_discovery_service is not None
         assert use_case._domain_frame_builder is not None
         assert use_case._file_generator is not None
         assert use_case._output_preparer is not None

@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 
 @runtime_checkable
-class OutputPreparationPort(Protocol):
+class OutputPreparerPort(Protocol):
     """Protocol for preparing output directories and required placeholder files.
 
     The application layer must not perform direct filesystem I/O. This port
@@ -431,7 +431,7 @@ class SASWriterPort(Protocol):
 
 
 @runtime_checkable
-class DefineXmlGeneratorPort(Protocol):
+class DefineXMLGeneratorPort(Protocol):
     """Protocol for Define-XML generation services.
 
     This interface abstracts Define-XML 2.1 generation, allowing different
@@ -441,7 +441,7 @@ class DefineXmlGeneratorPort(Protocol):
     infrastructure adapter converts to infrastructure-specific models.
 
     Example:
-        >>> generator = DefineXmlGenerator()
+        >>> generator = DefineXMLGenerator()
         >>> # Prefer canonical defaults:
         >>> # sdtm_version=SDTMVersions.DEFAULT_VERSION
         >>> # context=SDTMVersions.DEFINE_CONTEXT_SUBMISSION

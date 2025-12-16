@@ -54,7 +54,7 @@ class TestDomainProcessingUseCase:
         mock_xpt_writer = Mock()
         return DomainProcessingUseCase(
             logger=logger,
-            study_data_repo=mock_repo,
+            study_data_repository=mock_repo,
             file_generator=mock_generator,
             mapping_service=mock_mapping,
             output_preparer=mock_output_preparer,
@@ -138,7 +138,7 @@ class TestDomainProcessingUseCase:
 
         use_case = DomainProcessingUseCase(
             logger=logger,
-            study_data_repo=mock_repo,
+            study_data_repository=mock_repo,
             file_generator=mock_generator,
             mapping_service=mock_mapping,
             output_preparer=mock_output_preparer,
@@ -150,7 +150,7 @@ class TestDomainProcessingUseCase:
         )
 
         assert use_case.logger is logger
-        assert use_case._study_data_repo is mock_repo
+        assert use_case._study_data_repository is mock_repo
         assert use_case._file_generator is mock_generator
         assert use_case._terminology_service is mock_terminology_service
 
@@ -163,7 +163,7 @@ class TestDomainProcessingUseCase:
 
         assert use_case is not None
         assert use_case.logger is not None
-        assert use_case._study_data_repo is not None
+        assert use_case._study_data_repository is not None
         assert use_case._file_generator is not None
 
 

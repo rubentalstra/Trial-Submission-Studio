@@ -33,14 +33,14 @@ from .models import (
     ProcessStudyResponse,
 )
 from .ports import (
-    DefineXmlGeneratorPort,
+    DefineXMLGeneratorPort,
     DomainDiscoveryPort,
     DomainFrameBuilderPort,
     FileGeneratorPort,
     LoggerPort,
     DomainDefinitionRepositoryPort,
     StudyDataRepositoryPort,
-    OutputPreparationPort,
+    OutputPreparerPort,
 )
 
 if TYPE_CHECKING:
@@ -67,9 +67,9 @@ class StudyProcessingUseCase:
     Example:
         >>> use_case = StudyProcessingUseCase(
         ...     logger=logger,
-        ...     study_data_repo=repo,
+        ...     study_data_repository=repo,
         ...     domain_processing_use_case=domain_use_case,
-        ...     discovery_service=discovery_service,
+        ...     domain_discovery_service=domain_discovery_service,
         ...     file_generator=file_gen,
         ... )
         >>> request = ProcessStudyRequest(
@@ -85,30 +85,30 @@ class StudyProcessingUseCase:
     def __init__(
         self,
         logger: LoggerPort,
-        study_data_repo: StudyDataRepositoryPort | None = None,
+        study_data_repository: StudyDataRepositoryPort | None = None,
         domain_processing_use_case: DomainProcessingUseCase | None = None,
-        discovery_service: DomainDiscoveryPort | None = None,
+        domain_discovery_service: DomainDiscoveryPort | None = None,
         domain_frame_builder: DomainFrameBuilderPort | None = None,
         synthesis_service: "SynthesisService | None" = None,
         relrec_service: "RelrecService | None" = None,
         file_generator: FileGeneratorPort | None = None,
-        define_xml_generator: DefineXmlGeneratorPort | None = None,
-        output_preparer: OutputPreparationPort | None = None,
+        define_xml_generator: DefineXMLGeneratorPort | None = None,
+        output_preparer: OutputPreparerPort | None = None,
         domain_definition_repository: DomainDefinitionRepositoryPort | None = None,
     ):
         """Initialize the use case with injected dependencies.
 
         Args:
             logger: Logger for progress and error reporting
-            study_data_repo: Repository for loading study data and metadata
+            study_data_repository: Repository for loading study data and metadata
             domain_processing_use_case: Use case for processing individual domains
-            discovery_service: Service for discovering domain files
+            domain_discovery_service: Service for discovering domain files
             file_generator: Generator for output files
             define_xml_generator: Generator for Define-XML files
         """
-        if discovery_service is None:
+        if domain_discovery_service is None:
             raise ValueError(
-                "StudyProcessingUseCase requires discovery_service to be injected "
+                "StudyProcessingUseCase requires domain_discovery_service to be injected "
                 "(use the DI container)."
             )
         if synthesis_service is None:
@@ -127,9 +127,9 @@ class StudyProcessingUseCase:
                 "(use the DI container)."
             )
         self.logger = logger
-        self._study_data_repo = study_data_repo
+        self._study_data_repository = study_data_repository
         self._domain_processing_use_case = domain_processing_use_case
-        self._discovery_service = discovery_service
+        self._domain_discovery_service = domain_discovery_service
         self._domain_frame_builder = domain_frame_builder
         self._synthesis_service = synthesis_service
         self._relrec_service = relrec_service
@@ -185,8 +185,8 @@ class StudyProcessingUseCase:
             csv_files = list(request.study_folder.glob("*.csv"))
             self.logger.verbose(f"Found {len(csv_files)} CSV files in study folder")
 
-            discovery_service = self._get_discovery_service()
-            domain_files = discovery_service.discover_domain_files(
+            domain_discovery_service = self._get_discovery_service()
+            domain_files = domain_discovery_service.discover_domain_files(
                 csv_files, supported_domains
             )
 
@@ -311,7 +311,7 @@ class StudyProcessingUseCase:
         """Set up output directory structure."""
         if self._output_preparer is None:
             raise RuntimeError(
-                "OutputPreparationPort is not configured. "
+                "OutputPreparerPort is not configured. "
                 "Wire an infrastructure adapter in the composition root."
             )
 
@@ -465,7 +465,7 @@ class StudyProcessingUseCase:
 
         Creates application-layer DefineDatasetDTO instances from domain
         processing results. These DTOs are later passed to the
-        DefineXmlGeneratorPort which converts them to infrastructure models.
+        DefineXMLGeneratorPort which converts them to infrastructure models.
         """
         domain = self._get_domain(result.domain_code)
         disk_name = domain.resolved_dataset_name().lower()
@@ -877,8 +877,8 @@ class StudyProcessingUseCase:
 
     def _load_study_metadata(self, study_folder: Path):
         """Load study metadata via repository or fallback."""
-        if self._study_data_repo is not None:
-            return self._study_data_repo.load_study_metadata(study_folder)
+        if self._study_data_repository is not None:
+            return self._study_data_repository.load_study_metadata(study_folder)
 
         raise RuntimeError(
             "StudyDataRepositoryPort is not configured. "
@@ -887,8 +887,8 @@ class StudyProcessingUseCase:
 
     def _load_dataset(self, file_path: Path) -> pd.DataFrame:
         """Load a dataset via repository or fallback."""
-        if self._study_data_repo is not None:
-            return self._study_data_repo.read_dataset(file_path)
+        if self._study_data_repository is not None:
+            return self._study_data_repository.read_dataset(file_path)
 
         raise RuntimeError(
             "StudyDataRepositoryPort is not configured. "
@@ -897,12 +897,12 @@ class StudyProcessingUseCase:
 
     def _get_discovery_service(self):
         """Get or create domain discovery service."""
-        if self._discovery_service is None:
+        if self._domain_discovery_service is None:
             raise RuntimeError(
                 "DomainDiscoveryPort is not configured. "
                 "Wire it in the composition root (DependencyContainer)."
             )
-        return self._discovery_service
+        return self._domain_discovery_service
 
     def _get_domain_processing_use_case(self):
         """Get or create domain processing use case."""
