@@ -22,7 +22,7 @@ except PackageNotFoundError:  # pragma: no cover
 from cdisc_transpiler.infrastructure.io.dataset_xml_writer import (
     write_dataset_xml,
 )
-from cdisc_transpiler.infrastructure.io.define_xml.metadata_builder import (
+from cdisc_transpiler.infrastructure.io.define_xml.xml_writer import (
     build_study_define_tree,
 )
 from cdisc_transpiler.domain.entities.sdtm_domain import SDTMDomain, SDTMVariable
