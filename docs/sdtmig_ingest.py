@@ -3,7 +3,6 @@ from typing import List, Tuple
 
 from llama_index.core import (
     VectorStoreIndex,
-    StorageContext,
     Settings,
     Document,
 )

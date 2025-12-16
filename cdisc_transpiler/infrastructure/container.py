@@ -23,6 +23,8 @@ from typing import TYPE_CHECKING
 from rich.console import Console
 
 from ..application.ports import (
+    CTRepositoryPort,
+    ConformanceReportWriterPort,
     DomainFrameBuilderPort,
     DefineXMLGeneratorPort,
     FileGeneratorPort,
@@ -113,10 +115,14 @@ class DependencyContainer:
         self._domain_frame_builder_instance: DomainFrameBuilderPort | None = None
         self._suppqual_service_instance: SuppqualPort | None = None
         self._terminology_service_instance: TerminologyPort | None = None
+        self._ct_repository_instance: CTRepositoryPort | None = None
         self._synthesis_service_instance: "SynthesisService | None" = None
         self._relrec_service_instance: "RelrecService | None" = None
         self._relsub_service_instance: "RelsubService | None" = None
         self._relspec_service_instance: "RelspecService | None" = None
+        self._conformance_report_writer_instance: ConformanceReportWriterPort | None = (
+            None
+        )
 
     # Infrastructure Components
 
@@ -265,6 +271,24 @@ class DependencyContainer:
             self._terminology_service_instance = TerminologyServiceAdapter()
         return self._terminology_service_instance
 
+    def create_ct_repository(self) -> CTRepositoryPort:
+        """Create or return cached Controlled Terminology repository (singleton)."""
+        if self._ct_repository_instance is None:
+            from .repositories.ct_repository import get_default_ct_repository
+
+            self._ct_repository_instance = get_default_ct_repository()
+        return self._ct_repository_instance
+
+    def create_conformance_report_writer(self) -> ConformanceReportWriterPort:
+        """Create or return cached conformance report writer (singleton)."""
+        if self._conformance_report_writer_instance is None:
+            from .services.conformance_report_writer_adapter import (
+                ConformanceReportWriterAdapter,
+            )
+
+            self._conformance_report_writer_instance = ConformanceReportWriterAdapter()
+        return self._conformance_report_writer_instance
+
     def create_synthesis_service(self) -> "SynthesisService":
         """Create or return cached synthesis service instance (singleton)."""
         if self._synthesis_service_instance is None:
@@ -332,6 +356,8 @@ class DependencyContainer:
         relspec_service = self.create_relspec_service()
         define_xml_generator = self.create_define_xml_generator()
         output_preparer = self.create_output_preparer()
+        ct_repository = self.create_ct_repository()
+        conformance_report_writer = self.create_conformance_report_writer()
 
         return StudyProcessingUseCase(
             logger=logger,
@@ -347,6 +373,8 @@ class DependencyContainer:
             define_xml_generator=define_xml_generator,
             output_preparer=output_preparer,
             domain_definition_repository=domain_definition_repository,
+            ct_repository=ct_repository,
+            conformance_report_writer=conformance_report_writer,
         )
 
     def create_domain_processing_use_case(self):
@@ -373,6 +401,7 @@ class DependencyContainer:
         domain_frame_builder = self.create_domain_frame_builder()
         suppqual_service = self.create_suppqual_service()
         terminology_service = self.create_terminology_service()
+        ct_repository = self.create_ct_repository()
         xpt_writer = self.create_xpt_writer()
 
         return DomainProcessingUseCase(
@@ -386,6 +415,7 @@ class DependencyContainer:
             terminology_service=terminology_service,
             domain_definition_repository=domain_definition_repository,
             xpt_writer=xpt_writer,
+            ct_repository=ct_repository,
         )
 
     # Helper Methods
@@ -411,10 +441,12 @@ class DependencyContainer:
         self._domain_frame_builder_instance = None
         self._suppqual_service_instance = None
         self._terminology_service_instance = None
+        self._ct_repository_instance = None
         self._synthesis_service_instance = None
         self._relrec_service_instance = None
         self._relsub_service_instance = None
         self._relspec_service_instance = None
+        self._conformance_report_writer_instance = None
 
     def override_logger(self, logger: LoggerPort) -> None:
         """Override the logger instance (for testing).

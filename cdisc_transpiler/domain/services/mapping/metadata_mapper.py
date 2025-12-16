@@ -242,6 +242,33 @@ class MetadataAwareMapper:
             Best matching suggestion or None if no good match found
         """
         normalized = normalize_text(column)
+
+        # Use Items.csv metadata (when available) to avoid pathological matches.
+        source_type = ""
+        source_label = ""
+        if self.metadata:
+            col_def = self.metadata.get_column(column)
+            if col_def:
+                source_type = (col_def.data_type or "").strip().lower()
+                source_label = (col_def.label or "").strip().lower()
+
+        column_lower = column.strip().lower()
+        source_is_date_like = source_type in {
+            "date",
+            "datetime",
+            "time",
+            "timestamp",
+        } or ("date" in column_lower or "date" in source_label)
+        source_is_numeric_like = source_type in {
+            "int",
+            "integer",
+            "double",
+            "float",
+            "number",
+            "numeric",
+            "num",
+            "decimal",
+        }
         best: Suggestion | None = None
 
         for variable in self.domain.variables:
@@ -249,6 +276,31 @@ class MetadataAwareMapper:
             score_raw = fuzz.token_set_ratio(column.upper(), variable.name)
             score_norm = fuzz.ratio(normalized, variable.name)
             score = max(score_raw, score_norm) / 100
+
+            var_name = variable.name.upper()
+            variable_is_numeric = variable.type.lower() == "num"
+            variable_is_date_like = var_name.endswith("DTC") or var_name.endswith("DT")
+            variable_is_test_like = var_name.endswith(("TEST", "TESTCD"))
+            if var_name.startswith(self.domain_code):
+                remainder = var_name[len(self.domain_code) :]
+                if remainder.startswith("TEST"):
+                    variable_is_test_like = True
+
+            # If the source looks like a date/time column, strongly prefer --DTC/--DT
+            # and prevent mapping to categorical/status/test variables.
+            if source_is_date_like:
+                if variable_is_test_like or var_name.endswith(("CAT", "SCAT", "STAT")):
+                    score *= 0.05
+                elif variable_is_date_like:
+                    score = min(1.0, score * 1.20)
+                else:
+                    score *= 0.35
+
+            # If the source metadata says it's numeric, prefer Num variables.
+            if source_is_numeric_like and not variable_is_numeric:
+                score *= 0.70
+            if (not source_is_numeric_like) and variable_is_numeric and source_type:
+                score *= 0.85
 
             # Apply hints if available
             score = self._apply_hints(column, variable, score)

@@ -10,6 +10,8 @@ from ...domain.entities.sdtm_domain import SDTMDomain
 from ...domain.entities.study_metadata import StudyMetadata
 from ...domain.services.domain_frame_builder import build_domain_dataframe
 
+from .xpt_validator import XPTValidator
+
 
 class DomainFrameBuilderAdapter(DomainFrameBuilderPort):
     def build_domain_dataframe(
@@ -22,6 +24,7 @@ class DomainFrameBuilderAdapter(DomainFrameBuilderPort):
         lenient: bool = False,
         metadata: StudyMetadata | None = None,
     ) -> pd.DataFrame:
+        validators = {"xpt": XPTValidator()} if not lenient else None
         return build_domain_dataframe(
             frame,
             config,
@@ -29,4 +32,5 @@ class DomainFrameBuilderAdapter(DomainFrameBuilderPort):
             reference_starts=reference_starts,
             lenient=lenient,
             metadata=metadata,
+            validators=validators,
         )

@@ -190,7 +190,7 @@ class DomainFrameBuilder:
             normalized = (
                 result["SEX"].astype("string").fillna("").str.strip().str.upper()
             )
-            result["SEX"] = normalized.replace(
+            result.loc[:, "SEX"] = normalized.replace(
                 {
                     "F": "F",
                     "FEMALE": "F",
@@ -220,7 +220,7 @@ class DomainFrameBuilder:
             # We treat "all missing" and "constant/near-constant" as absent.
             numeric = pd.to_numeric(series, errors="coerce")
             if numeric.isna().all() or numeric.nunique(dropna=True) <= 1:
-                result[col] = result.groupby(usubjid).cumcount() + 1
+                result.loc[:, col] = result.groupby(usubjid).cumcount() + 1
 
     def _apply_mapping(self, result: pd.DataFrame, mapping: "ColumnMapping") -> None:
         """Apply a single column mapping to the result DataFrame."""

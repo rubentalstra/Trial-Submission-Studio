@@ -128,11 +128,14 @@ class VSTransformer(WideToLongTransformer):
 
         # Normalize visit identifiers
         if "VISITNUM" in df.columns:
-            df["VISITNUM"] = pd.to_numeric(df["VISITNUM"], errors="coerce")
+            visitnum = pd.to_numeric(df["VISITNUM"], errors="coerce")
+            df = df.assign(VISITNUM=visitnum)
 
         if "VISIT" not in df.columns and "VISITNUM" in df.columns:
-            df["VISIT"] = df["VISITNUM"].apply(
-                lambda n: f"Visit {int(n)}" if pd.notna(n) else ""
+            df = df.assign(
+                VISIT=df["VISITNUM"].apply(
+                    lambda n: f"Visit {int(n)}" if pd.notna(n) else ""
+                )
             )
 
         return df

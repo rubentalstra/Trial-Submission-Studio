@@ -5,6 +5,16 @@ from __future__ import annotations
 from ...application.ports import TerminologyPort
 
 
+def _looks_like_code_value(text: str) -> bool:
+    if not text:
+        return False
+    if " " in text:
+        return False
+    if len(text) > 16:
+        return False
+    return text.replace("_", "").replace("-", "").replace("/", "").isalnum()
+
+
 def _get_variable_codelist_code(domain_code: str, variable_name: str) -> str | None:
     """Resolve a variable's CT codelist code using SDTM domain metadata."""
     from ..sdtm_spec.registry import get_domain
@@ -32,6 +42,36 @@ def _normalize_to_submission_value(ct, source_value: str) -> str | None:
         return source_upper
     if ct.synonyms and source_upper in ct.synonyms:
         return ct.synonyms[source_upper]
+
+    # Preferred Term exact match (case-insensitive)
+    # CT stores preferred_terms as canonical -> preferred term.
+    for canonical, preferred in (ct.preferred_terms or {}).items():
+        if preferred and preferred.strip().upper() == source_upper:
+            return canonical
+
+    # Very conservative typo-tolerance for code-like values (e.g., DISAMT vs DISPAMT).
+    # Only allow a single edit and only if the best match is unique.
+    if _looks_like_code_value(source_upper):
+        try:
+            from rapidfuzz.distance import Levenshtein
+
+            best: str | None = None
+            best_dist: int | None = None
+            tied = False
+            for submission in ct.submission_values:
+                dist = Levenshtein.distance(source_upper, submission)
+                if best_dist is None or dist < best_dist:
+                    best = submission
+                    best_dist = dist
+                    tied = False
+                elif best_dist is not None and dist == best_dist:
+                    tied = True
+
+            if best is not None and best_dist == 1 and not tied:
+                return best
+        except Exception:  # noqa: BLE001
+            # Fall back to strict behavior if rapidfuzz distance isn't available.
+            return None
     return None
 
 

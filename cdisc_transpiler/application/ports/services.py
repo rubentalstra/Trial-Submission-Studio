@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from ...domain.entities.study_metadata import StudyMetadata
     from ...domain.entities.column_hints import Hints
     from ...domain.entities.sdtm_domain import SDTMDomain
+    from ...domain.services.sdtm_conformance_checker import ConformanceReport
 
 
 @runtime_checkable
@@ -426,6 +427,31 @@ class SASWriterPort(Protocol):
 
         Example:
             >>> writer.write("DM", config, Path("dm.sas"), "raw.demo", "final.dm")
+        """
+        raise NotImplementedError
+
+
+@runtime_checkable
+class ConformanceReportWriterPort(Protocol):
+    """Protocol for persisting conformance reports.
+
+    The application layer produces conformance reports as pure data. This port
+    abstracts persistence (e.g., JSON to disk) so the use cases remain free of
+    filesystem I/O.
+    """
+
+    def write_json(
+        self,
+        *,
+        output_dir: Path,
+        study_id: str,
+        reports: Iterable["ConformanceReport"],
+        filename: str = "conformance_report.json",
+    ) -> Path:
+        """Write a machine-readable conformance report as JSON.
+
+        Returns:
+            Path to the written JSON file.
         """
         raise NotImplementedError
 

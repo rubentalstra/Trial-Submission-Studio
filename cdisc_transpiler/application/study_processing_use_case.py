@@ -18,6 +18,7 @@ using injected ports/use cases.
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -43,6 +44,8 @@ from .ports import (
     DomainDefinitionRepositoryPort,
     StudyDataRepositoryPort,
     OutputPreparerPort,
+    CTRepositoryPort,
+    ConformanceReportWriterPort,
 )
 
 if TYPE_CHECKING:
@@ -104,6 +107,8 @@ class StudyProcessingUseCase:
         define_xml_generator: DefineXMLGeneratorPort | None = None,
         output_preparer: OutputPreparerPort | None = None,
         domain_definition_repository: DomainDefinitionRepositoryPort | None = None,
+        ct_repository: CTRepositoryPort | None = None,
+        conformance_report_writer: ConformanceReportWriterPort | None = None,
     ):
         """Initialize the use case with injected dependencies.
 
@@ -158,22 +163,112 @@ class StudyProcessingUseCase:
         self._define_xml_generator = define_xml_generator
         self._output_preparer = output_preparer
         self._domain_definition_repository = domain_definition_repository
+        self._ct_repository = ct_repository
+        self._conformance_report_writer = conformance_report_writer
+
+    def _log_conformance_report(
+        self,
+        *,
+        frame: pd.DataFrame,
+        domain: Any,
+        strict: bool,
+    ) -> Any | None:
+        if not strict:
+            return None
+
+        from ..domain.services.sdtm_conformance_checker import check_domain_dataframe
+
+        ct_repo = self._ct_repository
+
+        def _ct_resolver(variable: Any):
+            if ct_repo is None:
+                return None
+            if getattr(variable, "codelist_code", None):
+                return ct_repo.get_by_code(variable.codelist_code)
+            return ct_repo.get_by_name(getattr(variable, "name", ""))
+
+        report = check_domain_dataframe(frame, domain, ct_resolver=_ct_resolver)
+        if not report.issues:
+            return report
+
+        header = (
+            f"{domain.code}: conformance issues (errors={report.error_count()}, "
+            f"warnings={report.warning_count()})"
+        )
+        if report.has_errors():
+            self.logger.error(header)
+        else:
+            self.logger.warning(header)
+
+        max_lines = 20
+        for issue in report.issues[:max_lines]:
+            line = f"{issue.code}: {issue.message}"
+            if issue.severity == "error":
+                self.logger.error(line)
+            else:
+                self.logger.warning(line)
+
+        if len(report.issues) > max_lines:
+            remaining = len(report.issues) - max_lines
+            self.logger.warning(f"{domain.code}: {remaining} more issue(s) not shown")
+
+        return report
 
     def execute(self, request: ProcessStudyRequest) -> ProcessStudyResponse:
-        """Execute the study processing workflow.
+        """Execute the study processing workflow."""
 
-        Args:
-            request: Study processing request with all parameters
+        strict_outputs_requested = (
+            "xpt" in request.output_formats
+        ) or request.generate_sas
 
-        Returns:
-            Study processing response with results and any errors
+        if strict_outputs_requested and request.fail_on_conformance_errors:
+            # Preflight pass: process all domains, run strict conformance checks,
+            # but do not write submission artifacts.
+            preflight_request = replace(
+                request,
+                generate_define_xml=False,
+                fail_on_conformance_errors=False,
+            )
+            preflight = self._execute_impl(preflight_request, write_outputs=False)
 
-        Example:
-            >>> response = use_case.execute(request)
-            >>> print(f"Success: {response.success}")
-            >>> print(f"Domains: {response.processed_domains}")
-            >>> print(f"Errors: {response.errors}")
-        """
+            conformance_error_domains = self._collect_conformance_error_domains(
+                preflight
+            )
+            if conformance_error_domains:
+                for code in sorted(set(conformance_error_domains)):
+                    preflight.errors.append(
+                        (code, "Conformance errors present; outputs not generated")
+                    )
+                preflight.success = False
+                return preflight
+
+            if preflight.errors or preflight.define_xml_error:
+                preflight.success = False
+                return preflight
+
+        # Clean run (or non-strict): write outputs normally.
+        return self._execute_impl(request, write_outputs=True)
+
+    def _collect_conformance_error_domains(
+        self, response: ProcessStudyResponse
+    ) -> list[str]:
+        domains: list[str] = []
+        for domain_result in response.domain_results:
+            report = getattr(domain_result, "conformance_report", None)
+            if report is not None and getattr(report, "has_errors", lambda: False)():
+                domains.append(domain_result.domain_code)
+            for supp in getattr(domain_result, "supplementals", []) or []:
+                supp_report = getattr(supp, "conformance_report", None)
+                if (
+                    supp_report is not None
+                    and getattr(supp_report, "has_errors", lambda: False)()
+                ):
+                    domains.append(supp.domain_code)
+        return domains
+
+    def _execute_impl(
+        self, request: ProcessStudyRequest, *, write_outputs: bool
+    ) -> ProcessStudyResponse:
         response = ProcessStudyResponse(
             study_id=request.study_id,
             output_dir=request.output_dir,
@@ -199,8 +294,10 @@ class StudyProcessingUseCase:
                 else None,
             )
 
-            # Set up output directories
-            self._setup_output_directories(request)
+            if write_outputs:
+                self._setup_output_directories(request)
+            else:
+                request.output_dir.mkdir(parents=True, exist_ok=True)
 
             # Discover domain files
             csv_files = list(request.study_folder.glob("*.csv"))
@@ -231,24 +328,27 @@ class StudyProcessingUseCase:
                 generate_sas=request.generate_sas,
             )
 
-            # Create empty list for study datasets (application-layer DTOs)
-            # DefineDatasetDTO instances are created in _add_to_study_datasets
             study_datasets: list[DefineDatasetDTO] = []
             reference_starts: dict[str, str] = {}
             processed_domains = set(domain_files.keys())
 
-            # Determine output directories
-            xpt_dir = (
-                request.output_dir / "xpt" if "xpt" in request.output_formats else None
-            )
-            xml_dir = (
-                request.output_dir / "dataset-xml"
-                if "xml" in request.output_formats
-                else None
-            )
-            sas_dir = request.output_dir / "sas" if request.generate_sas else None
+            if write_outputs:
+                xpt_dir = (
+                    request.output_dir / "xpt"
+                    if "xpt" in request.output_formats
+                    else None
+                )
+                xml_dir = (
+                    request.output_dir / "dataset-xml"
+                    if "xml" in request.output_formats
+                    else None
+                )
+                sas_dir = request.output_dir / "sas" if request.generate_sas else None
+            else:
+                xpt_dir = None
+                xml_dir = None
+                sas_dir = None
 
-            # Process each domain in order (DM first)
             ordered_domains = sorted(
                 domain_files.keys(), key=lambda code: (code != "DM", code)
             )
@@ -273,15 +373,14 @@ class StudyProcessingUseCase:
                     response.processed_domains.add(domain_code)
                     response.total_records += result.records
 
-                    # Update reference starts from DM
                     if domain_code == "DM" and result.domain_dataframe is not None:
                         reference_starts.update(
                             self._extract_reference_starts(result.domain_dataframe)
                         )
 
-                    # Collect for Define-XML
                     if (
-                        request.generate_define_xml
+                        write_outputs
+                        and request.generate_define_xml
                         and result.domain_dataframe is not None
                     ):
                         self._add_to_study_datasets(
@@ -295,7 +394,6 @@ class StudyProcessingUseCase:
                         (domain_code, result.error or "Unknown error")
                     )
 
-            # Synthesize missing required domains
             self._synthesize_missing_domains(
                 response=response,
                 processed_domains=processed_domains,
@@ -307,26 +405,62 @@ class StudyProcessingUseCase:
                 sas_dir=sas_dir,
             )
 
-            # Generate Define-XML
-            if request.generate_define_xml and study_datasets:
+            self._write_conformance_report_json(request=request, response=response)
+
+            if write_outputs and request.generate_define_xml and study_datasets:
                 self._generate_define_xml(
                     study_datasets=study_datasets,
                     response=response,
                     request=request,
                 )
 
-            # Log final statistics
             self.logger.log_final_stats()
-
-            # Overall success if no critical errors
             response.success = len(response.errors) == 0
 
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             response.success = False
             response.errors.append(("GENERAL", str(exc)))
             self.logger.error(f"Study processing failed: {exc}")
 
         return response
+
+    def _write_conformance_report_json(
+        self, *, request: ProcessStudyRequest, response: ProcessStudyResponse
+    ) -> None:
+        if not request.write_conformance_report_json:
+            return
+
+        writer = self._conformance_report_writer
+        if writer is None:
+            response.conformance_report_error = (
+                "ConformanceReportWriterPort is not configured. "
+                "Wire an infrastructure adapter in the composition root."
+            )
+            return
+
+        from ..domain.services.sdtm_conformance_checker import ConformanceReport
+
+        reports: list[ConformanceReport] = []
+        for domain_result in response.domain_results:
+            report = domain_result.conformance_report
+            if isinstance(report, ConformanceReport):
+                reports.append(report)
+            for supp in domain_result.supplementals:
+                supp_report = getattr(supp, "conformance_report", None)
+                if isinstance(supp_report, ConformanceReport):
+                    reports.append(supp_report)
+
+        if not reports:
+            return
+
+        try:
+            response.conformance_report_path = writer.write_json(
+                output_dir=request.output_dir,
+                study_id=request.study_id,
+                reports=reports,
+            )
+        except Exception as exc:  # noqa: BLE001
+            response.conformance_report_error = str(exc)
 
     def _setup_output_directories(self, request: ProcessStudyRequest) -> None:
         """Set up output directory structure."""
@@ -400,6 +534,7 @@ class StudyProcessingUseCase:
                 reference_starts=reference_starts or None,
                 common_column_counts=common_column_counts or None,
                 total_input_files=total_input_files,
+                fail_on_conformance_errors=request.fail_on_conformance_errors,
             )
 
             # Execute domain processing
@@ -417,6 +552,7 @@ class StudyProcessingUseCase:
                 sas_path=domain_response.sas_path,
                 split_datasets=domain_response.split_datasets,
                 error=domain_response.error,
+                conformance_report=domain_response.conformance_report,
             )
 
             # Handle supplemental domains
@@ -430,6 +566,7 @@ class StudyProcessingUseCase:
                     xpt_path=supp_response.xpt_path,
                     xml_path=supp_response.xml_path,
                     sas_path=supp_response.sas_path,
+                    conformance_report=supp_response.conformance_report,
                 )
                 result.supplementals.append(supp_result)
 
@@ -457,10 +594,14 @@ class StudyProcessingUseCase:
 
         if {"USUBJID", "RFSTDTC"}.issubset(dm_frame.columns):
             cleaned = dm_frame[["USUBJID", "RFSTDTC"]].copy()
-            cleaned["RFSTDTC"] = pd.to_datetime(
-                cleaned["RFSTDTC"], errors="coerce"
-            ).fillna(pd.to_datetime(baseline_default))
-            rfstdtc_by_subj = cleaned.set_index("USUBJID")["RFSTDTC"]
+            rfstdtc = pd.to_datetime(cleaned["RFSTDTC"], errors="coerce").fillna(
+                pd.to_datetime(baseline_default)
+            )
+            rfstdtc_by_subj = pd.Series(
+                rfstdtc.values,
+                index=cleaned["USUBJID"].astype("string"),
+                name="RFSTDTC",
+            )
             baseline_map: dict[str, str] = {
                 str(usubjid): str(timestamp.date().isoformat())
                 for usubjid, timestamp in rfstdtc_by_subj.items()
@@ -785,12 +926,32 @@ class StudyProcessingUseCase:
 
             # Build domain dataframe with SDTM structure
             relrec_domain = self._get_domain("RELREC")
+            lenient = ("xpt" not in request.output_formats) and (
+                not request.generate_sas
+            )
             domain_dataframe = self._domain_frame_builder.build_domain_dataframe(
                 relrec_df,
                 relrec_config,
                 relrec_domain,
-                lenient=True,
+                lenient=lenient,
             )
+
+            strict = ("xpt" in request.output_formats) or request.generate_sas
+            report = self._log_conformance_report(
+                frame=domain_dataframe,
+                domain=relrec_domain,
+                strict=strict,
+            )
+
+            if (
+                strict
+                and request.fail_on_conformance_errors
+                and report is not None
+                and getattr(report, "has_errors", lambda: False)()
+            ):
+                raise ValueError(
+                    "RELREC: conformance errors present; strict output generation aborted"
+                )
 
             # Generate output files
             from .models import OutputDirs, OutputRequest
@@ -835,6 +996,7 @@ class StudyProcessingUseCase:
                 sas_path=output_result.sas_path if output_result else None,
                 synthesized=True,
                 synthesis_reason="Relationship scaffold",
+                conformance_report=report,
             )
 
             response.domain_results.append(result)
@@ -872,12 +1034,32 @@ class StudyProcessingUseCase:
             )
 
             relsub_domain = self._get_domain("RELSUB")
+            lenient = ("xpt" not in request.output_formats) and (
+                not request.generate_sas
+            )
             domain_dataframe = self._domain_frame_builder.build_domain_dataframe(
                 relsub_df,
                 relsub_config,
                 relsub_domain,
-                lenient=True,
+                lenient=lenient,
             )
+
+            strict = ("xpt" in request.output_formats) or request.generate_sas
+            report = self._log_conformance_report(
+                frame=domain_dataframe,
+                domain=relsub_domain,
+                strict=strict,
+            )
+
+            if (
+                strict
+                and request.fail_on_conformance_errors
+                and report is not None
+                and getattr(report, "has_errors", lambda: False)()
+            ):
+                raise ValueError(
+                    "RELSUB: conformance errors present; strict output generation aborted"
+                )
 
             from .models import OutputDirs, OutputRequest
 
@@ -921,6 +1103,7 @@ class StudyProcessingUseCase:
                 sas_path=output_result.sas_path if output_result else None,
                 synthesized=True,
                 synthesis_reason="Relationship scaffold",
+                conformance_report=report,
             )
 
             response.domain_results.append(result)
@@ -966,12 +1149,32 @@ class StudyProcessingUseCase:
             )
 
             relspec_domain = self._get_domain("RELSPEC")
+            lenient = ("xpt" not in request.output_formats) and (
+                not request.generate_sas
+            )
             domain_dataframe = self._domain_frame_builder.build_domain_dataframe(
                 relspec_df,
                 relspec_config,
                 relspec_domain,
-                lenient=True,
+                lenient=lenient,
             )
+
+            strict = ("xpt" in request.output_formats) or request.generate_sas
+            report = self._log_conformance_report(
+                frame=domain_dataframe,
+                domain=relspec_domain,
+                strict=strict,
+            )
+
+            if (
+                strict
+                and request.fail_on_conformance_errors
+                and report is not None
+                and getattr(report, "has_errors", lambda: False)()
+            ):
+                raise ValueError(
+                    "RELSPEC: conformance errors present; strict output generation aborted"
+                )
 
             from .models import OutputDirs, OutputRequest
 
@@ -1015,6 +1218,7 @@ class StudyProcessingUseCase:
                 sas_path=output_result.sas_path if output_result else None,
                 synthesized=True,
                 synthesis_reason="Relationship scaffold",
+                conformance_report=report,
             )
 
             response.domain_results.append(result)

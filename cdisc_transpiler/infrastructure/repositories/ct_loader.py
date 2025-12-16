@@ -95,6 +95,18 @@ def _merge_ct(
     merged_nci = {**other.nci_codes, **base.nci_codes}
     merged_definitions = {**other.definitions, **base.definitions}
     merged_pref = {**other.preferred_terms, **base.preferred_terms}
+
+    merged_synonyms_by_submission: dict[str, tuple[str, ...]] = {}
+    if base.submission_value_synonyms or other.submission_value_synonyms:
+        all_keys = set(base.submission_value_synonyms.keys()) | set(
+            other.submission_value_synonyms.keys()
+        )
+        for key in all_keys:
+            merged = set(base.submission_value_synonyms.get(key, ())) | set(
+                other.submission_value_synonyms.get(key, ())
+            )
+            if merged:
+                merged_synonyms_by_submission[key] = tuple(sorted(list(merged)))
     merged_extensible = base.codelist_extensible or other.codelist_extensible
     standards = set(base.standards) | set(other.standards)
     sources = set(base.sources) | set(other.sources)
@@ -106,6 +118,7 @@ def _merge_ct(
         submission_values=merged_submission,
         codelist_extensible=merged_extensible,
         synonyms=merged_synonyms,
+        submission_value_synonyms=merged_synonyms_by_submission,
         nci_codes=merged_nci,
         standards=standards,
         sources=sources,
@@ -130,6 +143,7 @@ def build_registry(
 
         submission_values: set[str] = set()
         synonyms: dict[str, str] = {}
+        synonyms_by_submission: dict[str, set[str]] = {}
         nci_codes: dict[str, str] = {}
         definitions: dict[str, str] = {}
         preferred_terms: dict[str, str] = {}
@@ -137,7 +151,8 @@ def build_registry(
         extensible = (
             _clean_value(rows[0].get("Codelist Extensible (Yes/No)")).lower() == "yes"
         )
-        name = _clean_value(rows[0].get("Codelist Name") or code).upper()
+        name_raw = _clean_value(rows[0].get("Codelist Name") or code)
+        name_key = name_raw.upper()
         standard = _clean_value(rows[0].get("Standard and Date"))
         source_file = _clean_value(rows[0].get("_source_file"))
 
@@ -147,6 +162,8 @@ def build_registry(
                 continue
             canonical_value = submission
             submission_values.add(canonical_value)
+
+            synonyms_by_submission.setdefault(canonical_value, set())
 
             nci = _clean_value(row.get("Code"))
             if nci:
@@ -164,29 +181,38 @@ def build_registry(
             synonyms[canonical_value.upper()] = canonical_value
             for syn in _split_synonyms(_clean_value(row.get("CDISC Synonym(s)"))):
                 synonyms[syn.upper()] = canonical_value
+                if syn.strip().upper() != canonical_value.strip().upper():
+                    synonyms_by_submission.setdefault(canonical_value, set()).add(syn)
+
+        submission_value_synonyms = {
+            canonical: tuple(sorted(list(values)))
+            for canonical, values in synonyms_by_submission.items()
+            if values
+        }
 
         ct = ControlledTerminology(
-            codelist_name=name,
+            codelist_name=name_raw,
             codelist_code=code,
             submission_values=submission_values,
             codelist_extensible=extensible,
             synonyms=synonyms,
+            submission_value_synonyms=submission_value_synonyms,
             nci_codes=nci_codes,
             standards={standard} if standard else set(),
             sources={source_file} if source_file else set(),
             definitions=definitions,
             preferred_terms=preferred_terms,
-            variable=name,
+            variable=name_key,
         )
 
         if code in registry_by_code:
             ct = _merge_ct(registry_by_code[code], ct)
         registry_by_code[code] = ct
 
-        existing = registry_by_name.get(name)
+        existing = registry_by_name.get(name_key)
         if existing:
-            registry_by_name[name] = _merge_ct(existing, ct)
+            registry_by_name[name_key] = _merge_ct(existing, ct)
         else:
-            registry_by_name[name] = ct
+            registry_by_name[name_key] = ct
 
     return registry_by_code, registry_by_name

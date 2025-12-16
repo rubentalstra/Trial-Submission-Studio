@@ -216,6 +216,10 @@ class ProcessStudyRequest:
     min_confidence: float = Defaults.MIN_CONFIDENCE
     verbose: int = 0
 
+    # Conformance behavior
+    write_conformance_report_json: bool = True
+    fail_on_conformance_errors: bool = False
+
 
 @dataclass
 class DomainProcessingResult:
@@ -263,6 +267,9 @@ class DomainProcessingResult:
     synthesized: bool = False
     synthesis_reason: str | None = None
 
+    # Optional machine-readable conformance report (domain-layer type), when strict checks ran
+    conformance_report: Any | None = None
+
 
 @dataclass
 class ProcessStudyResponse:
@@ -301,6 +308,10 @@ class ProcessStudyResponse:
     define_xml_error: str | None = None
     output_dir: Path | None = None
     total_records: int = 0
+
+    # Optional machine-readable conformance report artifact
+    conformance_report_path: Path | None = None
+    conformance_report_error: str | None = None
 
     @property
     def has_errors(self) -> bool:
@@ -366,6 +377,9 @@ class ProcessDomainRequest:
     common_column_counts: dict[str, int] | None = None
     total_input_files: int | None = None
 
+    # Conformance behavior
+    fail_on_conformance_errors: bool = False
+
 
 @dataclass
 class ProcessDomainResponse:
@@ -411,6 +425,9 @@ class ProcessDomainResponse:
     error: str | None = None
     warnings: list[str] = field(default_factory=list)
 
+    # Optional machine-readable conformance report (domain-layer type)
+    conformance_report: Any | None = None
+
     def to_dict(self) -> dict:
         """Convert to a plain dictionary representation.
 
@@ -438,5 +455,6 @@ class ProcessDomainResponse:
                 for supp in self.supplementals
             ],
             "split_datasets": self.split_datasets,
+            "conformance_report": self.conformance_report,
         }
         return result

@@ -90,6 +90,20 @@ console = Console()
     help="Minimum confidence required for fuzzy matches",
 )
 @click.option(
+    "--conformance-json/--no-conformance-json",
+    "write_conformance_report_json",
+    default=True,
+    show_default=True,
+    help="Write a machine-readable conformance report JSON to the output directory",
+)
+@click.option(
+    "--fail-on-conformance-errors/--no-fail-on-conformance-errors",
+    "fail_on_conformance_errors",
+    default=False,
+    show_default=True,
+    help="Fail the run (strict outputs only) when conformance errors are detected",
+)
+@click.option(
     "-v", "--verbose", count=True, help="Increase verbosity level (e.g., -v, -vv)"
 )
 def study_command(
@@ -104,6 +118,8 @@ def study_command(
     streaming: bool,
     chunk_size: int,
     min_confidence: float,
+    write_conformance_report_json: bool,
+    fail_on_conformance_errors: bool,
     verbose: int,
 ) -> None:
     """Process an entire study folder and generate SDTM submission files.
@@ -173,6 +189,8 @@ def study_command(
         chunk_size=chunk_size,
         min_confidence=min_confidence,
         verbose=verbose,
+        write_conformance_report_json=write_conformance_report_json,
+        fail_on_conformance_errors=fail_on_conformance_errors,
     )
 
     # Create dependency container and use case
@@ -183,8 +201,21 @@ def study_command(
     response = use_case.execute(request)
 
     # Convert response to the format expected by SummaryPresenter
+    def _report_to_dict(report: object | None) -> dict[str, object] | None:
+        if report is None:
+            return None
+        to_dict = getattr(report, "to_dict", None)
+        if callable(to_dict):
+            payload = to_dict()
+            if isinstance(payload, dict):
+                return payload
+        return None
+
     results = []
     for result in response.domain_results:
+        conformance_report = _report_to_dict(
+            getattr(result, "conformance_report", None)
+        )
         result_dict = {
             "domain_code": result.domain_code,
             "records": result.records,
@@ -193,6 +224,7 @@ def study_command(
             "xpt_path": result.xpt_path,
             "xml_path": result.xml_path,
             "sas_path": result.sas_path,
+            "conformance_report": conformance_report,
             "supplementals": [
                 {
                     "domain_code": supp.domain_code,
@@ -202,6 +234,9 @@ def study_command(
                     "xpt_path": supp.xpt_path,
                     "xml_path": supp.xml_path,
                     "sas_path": supp.sas_path,
+                    "conformance_report": _report_to_dict(
+                        getattr(supp, "conformance_report", None)
+                    ),
                 }
                 for supp in result.supplementals
             ],
@@ -217,7 +252,14 @@ def study_command(
         output_format,
         generate_define,
         generate_sas,
+        conformance_report_path=response.conformance_report_path,
+        conformance_report_error=response.conformance_report_error,
     )
+
+    if fail_on_conformance_errors and not response.success:
+        raise click.ClickException(
+            "Run failed due to errors (conformance gating may have been enabled)."
+        )
 
     # Exit with error code if there were errors
     if not response.success or response.has_errors:

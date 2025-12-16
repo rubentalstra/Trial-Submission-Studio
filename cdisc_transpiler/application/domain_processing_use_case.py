@@ -24,6 +24,7 @@ import pandas as pd
 
 from .models import ProcessDomainRequest, ProcessDomainResponse
 from .ports import (
+    CTRepositoryPort,
     DomainDefinitionRepositoryPort,
     DomainFrameBuilderPort,
     FileGeneratorPort,
@@ -113,6 +114,7 @@ class DomainProcessingUseCase:
         terminology_service: TerminologyPort | None = None,
         domain_definition_repository: DomainDefinitionRepositoryPort | None = None,
         xpt_writer: XPTWriterPort | None = None,
+        ct_repository: CTRepositoryPort | None = None,
     ):
         """Initialize the use case with injected dependencies.
 
@@ -151,6 +153,56 @@ class DomainProcessingUseCase:
         self._terminology_service = terminology_service
         self._domain_definition_repository = domain_definition_repository
         self._xpt_writer = xpt_writer
+        self._ct_repository = ct_repository
+
+    def _log_conformance_report(
+        self,
+        *,
+        frame: pd.DataFrame,
+        domain: SDTMDomain,
+        strict: bool,
+    ) -> Any | None:
+        if not strict:
+            return None
+
+        from ..domain.services.sdtm_conformance_checker import check_domain_dataframe
+
+        ct_repo = self._ct_repository
+
+        def _ct_resolver(variable: Any):
+            if ct_repo is None:
+                return None
+            if getattr(variable, "codelist_code", None):
+                return ct_repo.get_by_code(variable.codelist_code)
+            return ct_repo.get_by_name(getattr(variable, "name", ""))
+
+        report = check_domain_dataframe(frame, domain, ct_resolver=_ct_resolver)
+        if not report.issues:
+            return report
+
+        header = (
+            f"{domain.code}: conformance issues (errors={report.error_count()}, "
+            f"warnings={report.warning_count()})"
+        )
+        # Prefer surfacing conformance problems loudly in strict mode.
+        if report.has_errors():
+            self.logger.error(header)
+        else:
+            self.logger.warning(header)
+
+        max_lines = 20
+        for issue in report.issues[:max_lines]:
+            line = f"{issue.code}: {issue.message}"
+            if issue.severity == "error":
+                self.logger.error(line)
+            else:
+                self.logger.warning(line)
+
+        if len(report.issues) > max_lines:
+            remaining = len(report.issues) - max_lines
+            self.logger.warning(f"{domain.code}: {remaining} more issue(s) not shown")
+
+        return report
 
     def execute(self, request: ProcessDomainRequest) -> ProcessDomainResponse:
         """Execute the domain processing workflow.
@@ -232,6 +284,34 @@ class DomainProcessingUseCase:
             # Deduplicate LB data
             if request.domain_code.upper() == "LB":
                 merged_df = self._deduplicate_lb_data(merged_df, request.domain_code)
+
+            # Conformance checks (deterministic, strict-output only)
+            # Note: strictness is based on requested strict outputs (XPT/SAS),
+            # not on whether we currently have output directories wired.
+            strict = ("xpt" in request.output_formats) or request.generate_sas
+
+            report = self._log_conformance_report(
+                frame=merged_df,
+                domain=domain,
+                strict=strict,
+            )
+            response.conformance_report = report
+
+            if (
+                strict
+                and request.fail_on_conformance_errors
+                and report is not None
+                and getattr(report, "has_errors", lambda: False)()
+            ):
+                response.success = False
+                response.records = len(merged_df)
+                response.domain_dataframe = merged_df
+                response.config = last_config
+                response.error = (
+                    f"{request.domain_code}: conformance errors present; "
+                    "strict output generation aborted"
+                )
+                return response
 
             # Generate output files
             output_result = self._generate_outputs_stage(
@@ -337,7 +417,17 @@ class DomainProcessingUseCase:
         if frame is None:
             return None
 
-        is_findings_long = vs_long or lb_long
+        frame, da_long = self._apply_da_transformation(
+            frame,
+            request.domain_code,
+            request.study_id,
+            display_name,
+            request.verbose > 0,
+        )
+        if frame is None:
+            return None
+
+        is_findings_long = vs_long or lb_long or da_long
 
         # Stage 3: Map columns
         config = self._build_config(
@@ -355,12 +445,17 @@ class DomainProcessingUseCase:
         config.study_id = request.study_id
 
         # Stage 4: Build domain dataframe
+        # Dataset-XML can be generated in a more permissive mode (lenient)
+        # to support streaming/partial metadata scenarios; XPT/SAS should
+        # be strict because they are typically validated by downstream tools.
+        lenient = ("xpt" not in request.output_formats) and (not request.generate_sas)
         domain_df = self._build_domain_dataframe(
             frame=frame,
             config=config,
             domain=domain,
             metadata=request.metadata,
             reference_starts=request.reference_starts,
+            lenient=lenient,
         )
 
         output_rows = len(domain_df)
@@ -522,6 +617,55 @@ class DomainProcessingUseCase:
                 )
             return None, False
 
+    def _apply_da_transformation(
+        self,
+        frame: pd.DataFrame,
+        domain_code: str,
+        study_id: str,
+        display_name: str,
+        verbose: bool,
+    ) -> tuple[pd.DataFrame | None, bool]:
+        """Stage 2c: Apply DA domain transformation if needed."""
+        if domain_code.upper() != "DA":
+            return frame, False
+
+        from ..transformations.findings import DATransformer
+
+        TransformationContext = _get_transformation_context_type()
+
+        input_rows = len(frame)
+
+        transformer = DATransformer(
+            test_code_normalizer=self._terminology_service.normalize_testcd,
+            test_label_getter=self._terminology_service.get_testcd_label,
+        )
+        context = TransformationContext(domain="DA", study_id=study_id)
+        result = transformer.transform(frame, context)
+
+        if not result.success:
+            self.logger.warning(
+                f"{display_name}: DA transformation failed: {result.message}"
+            )
+            if result.errors:
+                for error in result.errors:
+                    self.logger.error(f"  - {error}")
+            return None, True
+
+        reshaped = result.data
+        output_rows = len(reshaped)
+
+        self.logger.info(
+            f"{domain_code}: reshape transformation {input_rows:,} → {output_rows:,} rows (wide-to-long)"
+        )
+
+        if reshaped.empty:
+            self.logger.warning(
+                f"{display_name}: No drug accountability records after transformation"
+            )
+            return None, True
+
+        return reshaped, True
+
     def _build_config(
         self,
         frame: pd.DataFrame,
@@ -584,13 +728,15 @@ class DomainProcessingUseCase:
         domain: SDTMDomain,
         metadata: Any,
         reference_starts: dict[str, str] | None,
+        *,
+        lenient: bool,
     ) -> pd.DataFrame:
         """Stage 4: Build SDTM domain dataframe."""
         return self._domain_frame_builder.build_domain_dataframe(
             frame,
             config,
             domain,
-            lenient=True,
+            lenient=lenient,
             metadata=metadata,
             reference_starts=reference_starts,
         )
@@ -925,7 +1071,7 @@ class DomainProcessingUseCase:
         # Re-assign sequence numbers per subject after merge
         seq_col = f"{domain_code}SEQ"
         if seq_col in merged_df.columns and "USUBJID" in merged_df.columns:
-            merged_df[seq_col] = merged_df.groupby("USUBJID").cumcount() + 1
+            merged_df.loc[:, seq_col] = merged_df.groupby("USUBJID").cumcount() + 1
 
             if verbose:
                 self.logger.verbose(f"    Reassigned {seq_col} values after merge")
@@ -956,5 +1102,5 @@ class DomainProcessingUseCase:
             )
             seq_col = f"{domain_code}SEQ"
             if seq_col in merged_df.columns and "USUBJID" in merged_df.columns:
-                merged_df[seq_col] = merged_df.groupby("USUBJID").cumcount() + 1
+                merged_df.loc[:, seq_col] = merged_df.groupby("USUBJID").cumcount() + 1
         return merged_df

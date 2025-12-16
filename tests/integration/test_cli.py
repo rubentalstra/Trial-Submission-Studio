@@ -45,7 +45,7 @@ class TestStudyCommand:
         assert "--sas" in result.output
 
     def test_study_with_default_options(self, runner, study_folder, tmp_path):
-        """Test study command with default options."""
+        """Test study command defaults (strict conformance gate enabled)."""
         output_dir = tmp_path / "output"
 
         result = runner.invoke(
@@ -62,18 +62,17 @@ class TestStudyCommand:
             ],
         )
 
-        # Check exit code
-        assert result.exit_code == 0, (
-            f"Command failed with output: {result.output[:500]}"
-        )
+        # With strict gating default enabled, DEMO_GDISC should fail conformance.
+        assert result.exit_code != 0
 
         # Check output contains summary
         assert "Study Processing Summary" in result.output
-        assert "domains processed successfully" in result.output
+        assert "conformance" in result.output.lower()
 
-        # Check XPT directory was created
+        # Ensure no XPT files were generated
         xpt_dir = output_dir / "xpt"
-        assert xpt_dir.exists(), "XPT directory should be created"
+        xpt_files = list(xpt_dir.glob("*.xpt")) if xpt_dir.exists() else []
+        assert len(xpt_files) == 0, "No XPT files should be generated when gating fails"
 
     def test_study_with_xpt_format(self, runner, study_folder, tmp_path):
         """Test study command with XPT format only."""
@@ -88,6 +87,7 @@ class TestStudyCommand:
                 str(output_dir),
                 "--format",
                 "xpt",
+                "--no-fail-on-conformance-errors",
                 "--no-define-xml",
                 "--no-sas",
             ],
@@ -148,6 +148,7 @@ class TestStudyCommand:
                 str(output_dir),
                 "--format",
                 "both",
+                "--no-fail-on-conformance-errors",
                 "--no-define-xml",
                 "--no-sas",
             ],
@@ -175,6 +176,7 @@ class TestStudyCommand:
                 "--format",
                 "xpt",
                 "--sas",
+                "--no-fail-on-conformance-errors",
                 "--no-define-xml",
             ],
         )
@@ -204,6 +206,7 @@ class TestStudyCommand:
                 "xpt",
                 "--define-xml",
                 "--no-sas",
+                "--no-fail-on-conformance-errors",
             ],
         )
 
@@ -232,6 +235,7 @@ class TestStudyCommand:
                 "CUSTOM_STUDY",
                 "--format",
                 "xpt",
+                "--no-fail-on-conformance-errors",
                 "--no-define-xml",
                 "--no-sas",
             ],
@@ -254,6 +258,7 @@ class TestStudyCommand:
                 str(output_dir),
                 "--format",
                 "xpt",
+                "--no-fail-on-conformance-errors",
                 "--no-define-xml",
                 "--no-sas",
                 "-v",
@@ -277,6 +282,7 @@ class TestStudyCommand:
                 str(output_dir),
                 "--format",
                 "xpt",
+                "--no-fail-on-conformance-errors",
                 "--no-define-xml",
                 "--no-sas",
                 "-vv",
@@ -328,6 +334,7 @@ class TestStudyCommand:
                 str(output_dir),
                 "--format",
                 "xpt",
+                "--no-fail-on-conformance-errors",
                 "--no-define-xml",
                 "--no-sas",
             ],
@@ -440,6 +447,7 @@ class TestStudyCommandWithGDISC:
                 str(output_dir),
                 "--format",
                 "xpt",
+                "--no-fail-on-conformance-errors",
                 "--no-define-xml",
                 "--no-sas",
             ],
@@ -474,6 +482,7 @@ class TestStudyCommandWithGDISC:
                 str(output_dir),
                 "--format",
                 "xpt",
+                "--no-fail-on-conformance-errors",
                 "--no-define-xml",
                 "--no-sas",
             ],

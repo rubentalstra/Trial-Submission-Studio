@@ -61,10 +61,10 @@ class RelspecService:
         else:
             for col in ("STUDYID", "USUBJID", "REFID", "SPEC", "PARENT"):
                 if col in df.columns:
-                    df[col] = df[col].astype("string")
+                    df.loc[:, col] = df[col].astype("string")
             if "LEVEL" in df.columns:
                 # LEVEL is numeric per spec but allow stringy inputs; DomainFrameBuilder will coerce.
-                df["LEVEL"] = pd.to_numeric(df["LEVEL"], errors="coerce")
+                df.loc[:, "LEVEL"] = pd.to_numeric(df["LEVEL"], errors="coerce")
 
             df = df.reindex(columns=list(self._REL_SPEC_COLUMNS))
 
@@ -110,11 +110,11 @@ class RelspecService:
 
                 work = df[subset_cols].copy()
 
-                work["USUBJID"] = work["USUBJID"].astype("string")
-                work[refid_col] = work[refid_col].astype("string")
+                work.loc[:, "USUBJID"] = work["USUBJID"].astype("string")
+                work.loc[:, refid_col] = work[refid_col].astype("string")
 
-                work["USUBJID"] = work["USUBJID"].fillna("").str.strip()
-                work[refid_col] = work[refid_col].fillna("").str.strip()
+                work.loc[:, "USUBJID"] = work["USUBJID"].fillna("").str.strip()
+                work.loc[:, refid_col] = work[refid_col].fillna("").str.strip()
 
                 work = work[(work["USUBJID"] != "") & (work[refid_col] != "")]
                 if work.empty:

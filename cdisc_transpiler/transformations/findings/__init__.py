@@ -10,10 +10,12 @@ from .wide_to_long import (
 )
 from .vs_transformer import VSTransformer
 from .lb_transformer import LBTransformer
+from .da_transformer import DATransformer
 
 __all__ = [
     "TestColumnPattern",
     "WideToLongTransformer",
     "VSTransformer",
     "LBTransformer",
+    "DATransformer",
 ]

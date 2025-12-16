@@ -12,6 +12,41 @@ DEFAULT_CHAR_LENGTH = 200
 DEFAULT_NUM_LENGTH = 8
 
 
+def _parse_int(value: str | None) -> int | None:
+    if value is None:
+        return None
+    text = str(value).strip().strip('"')
+    if not text:
+        return None
+    try:
+        parsed = int(float(text))
+    except (TypeError, ValueError):
+        return None
+    return parsed if parsed > 0 else None
+
+
+def extract_variable_length(row: Mapping[str, str]) -> int | None:
+    """Extract variable length from CSV metadata when available.
+
+    SDTMIG v3.4 Variables.csv (as shipped in this repo) does not include a
+    dedicated Length column. However, other structured sources (or future
+    versions) may include one. This extractor is defensive and returns None
+    when no length can be found.
+    """
+    for key in (
+        "Length",
+        "Variable Length",
+        "Variable Length (Char)",
+        "Max Length",
+        "Maximum Length",
+    ):
+        if key in row:
+            value = _parse_int(row.get(key))
+            if value is not None:
+                return value
+    return None
+
+
 def clean_codelist(raw: str | None) -> str | None:
     """Normalize codelist strings from CSV to a single CDISC CT code."""
     if not raw:
@@ -131,7 +166,7 @@ def variable_from_row(
     label = extract_variable_label(row, name)
     vtype = normalize_type(row.get("Type"))
     core = extract_core_value(row)
-    length = determine_length(name, vtype)
+    length = extract_variable_length(row) or determine_length(name, vtype)
     codelist = extract_codelist_code(row)
     variable_order = extract_variable_order(row)
     source_version = extract_source_version(row)

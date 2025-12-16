@@ -23,6 +23,7 @@ from .services import (
     SASWriterPort,
     TerminologyPort,
     XPTWriterPort,
+    ConformanceReportWriterPort,
 )
 
 __all__ = [
@@ -46,4 +47,6 @@ __all__ = [
     "SASWriterPort",
     # Generator Ports
     "DefineXMLGeneratorPort",
+    # Conformance Ports
+    "ConformanceReportWriterPort",
 ]

@@ -300,11 +300,11 @@ def finalize_suppqual(
             max_len = lengths.get(str(col).upper())
             if not max_len:
                 continue
-            result[col] = result[col].astype("string").str.slice(0, max_len)
+            result.loc[:, col] = result[col].astype("string").str.slice(0, max_len)
 
     # As a safety net, ensure QLABEL does not exceed the XPT label constraint.
     if "QLABEL" in result.columns:
-        result["QLABEL"] = (
+        result.loc[:, "QLABEL"] = (
             result["QLABEL"]
             .astype("string")
             .str.slice(0, Constraints.XPT_MAX_LABEL_LENGTH)

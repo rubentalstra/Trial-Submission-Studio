@@ -52,7 +52,7 @@ class RelsubService:
         df = pd.DataFrame(
             {col: pd.Series(dtype="string") for col in self._REL_SUB_COLUMNS}
         )
-        df["STUDYID"] = df["STUDYID"].astype("string")
+        df.loc[:, "STUDYID"] = df["STUDYID"].astype("string")
 
         mappings = [
             ColumnMapping(

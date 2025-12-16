@@ -45,6 +45,9 @@ class SummaryPresenter:
         output_format: str,
         generate_define: bool,
         generate_sas: bool,
+        *,
+        conformance_report_path: Path | None = None,
+        conformance_report_error: str | None = None,
     ) -> None:
         """Present study processing results in a formatted table.
 
@@ -77,8 +80,18 @@ class SummaryPresenter:
         total_records = sum(r.get("records", 0) for r in results)
         self._print_status_summary(len(results), len(errors))
         self._print_output_information(
-            output_dir, output_format, generate_define, generate_sas, total_records
+            output_dir,
+            output_format,
+            generate_define,
+            generate_sas,
+            total_records,
+            conformance_report_path=conformance_report_path,
+            conformance_report_error=conformance_report_error,
+            results=results,
         )
+
+        # Print a readable list of all errors (processing + conformance)
+        self._print_error_details(errors=errors, results=results)
 
     def _build_summary_table(self, results: list[dict[str, Any]]) -> Table:
         """Build the Rich table with domain processing results.
@@ -257,6 +270,10 @@ class SummaryPresenter:
         generate_define: bool,
         generate_sas: bool,
         total_records: int,
+        *,
+        conformance_report_path: Path | None = None,
+        conformance_report_error: str | None = None,
+        results: list[dict[str, Any]] | None = None,
     ) -> None:
         """Print output directory and file information.
 
@@ -267,33 +284,189 @@ class SummaryPresenter:
             generate_sas: Whether SAS programs were generated
             total_records: Total number of records processed
         """
-        self.console.print(f"[bold]📁 Output:[/bold] [cyan]{output_dir}[/cyan]")
+        # Avoid Rich's path highlighter splitting strings (keeps tests simple).
+        self.console.print(
+            f"[bold]📁 Output:[/bold] [cyan]{output_dir}[/cyan]", highlight=False
+        )
         self.console.print(
             f"[bold]📈 Total records:[/bold] [yellow]{total_records:,}[/yellow]"
         )
 
-        # Build output list
-        outputs = []
-        if output_format in ("xpt", "both"):
+        # If `results` are present, only show artifacts that were actually written.
+        # If `results` is omitted (e.g., unit tests calling this method directly),
+        # fall back to showing the *requested* outputs.
+        if results is None:
+            generated_xpt = output_format in ("xpt", "both")
+            generated_xml = output_format in ("xml", "both")
+            generated_sas = generate_sas
+            generated_define = generate_define
+        else:
+            generated_xpt = any(
+                (r.get("xpt_path") is not None) for r in (results or [])
+            )
+            generated_xml = any(
+                (r.get("xml_path") is not None) for r in (results or [])
+            )
+            generated_sas = any(
+                (r.get("sas_path") is not None) for r in (results or [])
+            )
+            define_path = output_dir / "define.xml"
+            generated_define = generate_define and define_path.exists()
+
+        outputs: list[str] = []
+        if output_format in ("xpt", "both") and generated_xpt:
             outputs.append(
                 f"  [dim]├─[/dim] XPT files: [cyan]{output_dir / 'xpt'}[/cyan]"
             )
-        if output_format in ("xml", "both"):
+        if output_format in ("xml", "both") and generated_xml:
             outputs.append(
                 f"  [dim]├─[/dim] Dataset-XML: [cyan]{output_dir / 'dataset-xml'}[/cyan]"
             )
-        if generate_sas:
+        if generate_sas and generated_sas:
             outputs.append(
                 f"  [dim]├─[/dim] SAS programs: [cyan]{output_dir / 'sas'}[/cyan]"
             )
-        if generate_define:
+        if generated_define:
             outputs.append(
                 f"  [dim]└─[/dim] Define-XML: [cyan]{output_dir / 'define.xml'}[/cyan]"
             )
 
-        # Fix last item to use └─
         if outputs:
             outputs[-1] = outputs[-1].replace("├─", "└─")
             self.console.print("[bold]📦 Generated:[/bold]")
             for output in outputs:
-                self.console.print(output)
+                self.console.print(output, highlight=False)
+
+        if conformance_report_path is not None:
+            self.console.print(
+                f"[bold]🧾 Conformance report JSON:[/bold] [cyan]{conformance_report_path}[/cyan]",
+                highlight=False,
+            )
+        elif conformance_report_error is not None:
+            self.console.print(
+                f"[bold]🧾 Conformance report JSON:[/bold] [red]{conformance_report_error}[/red]"
+            )
+
+    def _print_error_details(
+        self, *, errors: list[tuple[str, str]], results: list[dict[str, Any]]
+    ) -> None:
+        rows: list[dict[str, Any]] = []
+
+        for domain, message in errors:
+            rows.append(
+                {
+                    "domain": (domain or "(UNKNOWN)").upper(),
+                    "kind": "Processing",
+                    "code": "",
+                    "variable": "",
+                    "count": "",
+                    "message": message,
+                    "examples": "",
+                    "codelist": "",
+                }
+            )
+
+        for result in self._iter_all_results(results):
+            report = result.get("conformance_report")
+            if not isinstance(report, dict):
+                continue
+
+            issues = report.get("issues")
+            if not isinstance(issues, list):
+                continue
+
+            for issue in issues:
+                if not isinstance(issue, dict):
+                    continue
+                if issue.get("severity") != "error":
+                    continue
+
+                domain = str(
+                    issue.get("domain") or report.get("domain") or "(UNKNOWN)"
+                ).upper()
+
+                raw_message = str(issue.get("message") or "")
+                message = raw_message
+                examples = ""
+                codelist = str(issue.get("codelist_code") or "")
+
+                # Many messages follow: "...; examples: a, b, c".
+                # Split examples into a separate column for readability.
+                lower = raw_message.lower()
+                marker = "; examples:"
+                idx = lower.find(marker)
+                if idx == -1:
+                    marker = " examples:"
+                    idx = lower.find(marker)
+                if idx != -1:
+                    message = raw_message[:idx].rstrip(" ;")
+                    examples = raw_message[idx + len(marker) :].strip()
+
+                rows.append(
+                    {
+                        "domain": domain,
+                        "kind": "Conformance",
+                        "code": str(issue.get("code") or ""),
+                        "variable": str(issue.get("variable") or ""),
+                        "count": ""
+                        if issue.get("count") is None
+                        else str(issue.get("count")),
+                        "message": message,
+                        "examples": examples,
+                        "codelist": codelist,
+                    }
+                )
+
+        if not rows:
+            return
+
+        self.console.print()
+        self.console.print("[bold]Error details[/bold]")
+
+        table = Table(
+            show_header=True,
+            header_style="bold red",
+            border_style="red",
+            show_lines=False,
+        )
+        table.add_column("Domain", style="cyan", no_wrap=True, width=10)
+        table.add_column("Type", style="red", no_wrap=True, width=11)
+        table.add_column("Code", style="dim", no_wrap=True, width=16)
+        table.add_column("Var", style="yellow", no_wrap=True, width=12)
+        table.add_column("Codelist", style="magenta", no_wrap=True, width=10)
+        table.add_column("Count", justify="right", style="yellow", width=7)
+        table.add_column("Message", style="white")
+        table.add_column("Examples", style="dim")
+
+        rows_sorted = sorted(
+            rows,
+            key=lambda r: (
+                r.get("domain") or "",
+                0 if r.get("kind") == "Processing" else 1,
+                r.get("code") or "",
+                r.get("variable") or "",
+                r.get("codelist") or "",
+            ),
+        )
+
+        for r in rows_sorted:
+            domain = str(r.get("domain") or "(UNKNOWN)")
+            table.add_row(
+                domain,
+                str(r.get("kind") or ""),
+                str(r.get("code") or ""),
+                str(r.get("variable") or ""),
+                str(r.get("codelist") or ""),
+                str(r.get("count") or ""),
+                str(r.get("message") or ""),
+                str(r.get("examples") or ""),
+            )
+
+        self.console.print(table)
+
+    def _iter_all_results(self, results: list[dict[str, Any]]):
+        for result in results:
+            yield result
+            for supp in result.get("supplementals", []) or []:
+                if isinstance(supp, dict):
+                    yield supp
