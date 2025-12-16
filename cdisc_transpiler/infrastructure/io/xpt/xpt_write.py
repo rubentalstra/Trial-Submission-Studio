@@ -10,7 +10,7 @@ from pathlib import Path
 import pandas as pd
 import pyreadstat  # type: ignore[import-untyped]
 
-from ..sdtm_spec.registry import get_domain
+from cdisc_transpiler.infrastructure.sdtm_spec.registry import get_domain
 
 
 class XportGenerationError(RuntimeError):

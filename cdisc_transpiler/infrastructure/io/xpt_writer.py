@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from .xpt_write import write_xpt_file
+from cdisc_transpiler.infrastructure.io.xpt.xpt_write import write_xpt_file
 
 
 class XPTWriter:
