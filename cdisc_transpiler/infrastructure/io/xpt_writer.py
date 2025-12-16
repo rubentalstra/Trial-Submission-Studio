@@ -17,7 +17,7 @@ class XPTWriter:
     """Adapter for writing XPT (SAS Transport) files.
 
     This class implements the XPTWriterPort protocol and delegates to the
-    concrete infrastructure writer in `infrastructure.io.xpt_write`.
+    concrete infrastructure writer in `infrastructure.io.xpt.xpt_write`.
 
     Example:
         >>> writer = XPTWriter()

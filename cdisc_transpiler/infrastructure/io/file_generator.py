@@ -20,6 +20,9 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 from ...application.models import OutputRequest, OutputResult
+from .dataset_xml.models import DatasetXMLError
+from .sas_writer import SASWriterError
+from .xpt.xpt_write import XportGenerationError
 
 if TYPE_CHECKING:
     from ...application.ports import (
@@ -46,10 +49,11 @@ class FileGenerator:
     flexible writer implementations and better testability.
 
     Example:
-        >>> from cdisc_transpiler.infrastructure.io import (
-        ...     FileGenerator, OutputRequest, OutputDirs,
-        ...     XPTWriter, DatasetXMLWriter, SASWriter
-        ... )
+        >>> from cdisc_transpiler.application.models import OutputDirs, OutputRequest
+        >>> from cdisc_transpiler.infrastructure.io.file_generator import FileGenerator
+        >>> from cdisc_transpiler.infrastructure.io.xpt_writer import XPTWriter
+        >>> from cdisc_transpiler.infrastructure.io.dataset_xml_writer import DatasetXMLWriter
+        >>> from cdisc_transpiler.infrastructure.io.sas_writer import SASWriter
         >>>
         >>> generator = FileGenerator(
         ...     xpt_writer=XPTWriter(),
@@ -82,14 +86,11 @@ class FileGenerator:
             sas_writer: Adapter for writing SAS programs
 
         Example:
-            >>> from cdisc_transpiler.infrastructure.io import (
-            ...     FileGenerator, XPTWriter, DatasetXMLWriter, SASWriter
-            ... )
-            >>> generator = FileGenerator(
-            ...     xpt_writer=XPTWriter(),
-            ...     xml_writer=DatasetXMLWriter(),
-            ...     sas_writer=SASWriter(),
-            ... )
+            >>> from cdisc_transpiler.infrastructure.io.file_generator import FileGenerator
+            >>> from cdisc_transpiler.infrastructure.io.xpt_writer import XPTWriter
+            >>> from cdisc_transpiler.infrastructure.io.dataset_xml_writer import DatasetXMLWriter
+            >>> from cdisc_transpiler.infrastructure.io.sas_writer import SASWriter
+            >>> generator = FileGenerator(xpt_writer=XPTWriter(), xml_writer=DatasetXMLWriter(), sas_writer=SASWriter())
         """
         self._xpt_writer = xpt_writer
         self._xml_writer = xml_writer
@@ -122,8 +123,8 @@ class FileGenerator:
                     request.output_dirs.xpt_dir,
                     disk_name,
                 )
-            except Exception as e:
-                result.errors.append(f"XPT generation failed: {e}")
+            except (OSError, ValueError, XportGenerationError) as exc:
+                result.errors.append(f"XPT generation failed: {exc}")
 
         # Generate Dataset-XML file
         if "xml" in request.formats and request.output_dirs.xml_dir:
@@ -135,8 +136,8 @@ class FileGenerator:
                     request.output_dirs.xml_dir,
                     disk_name,
                 )
-            except Exception as e:
-                result.errors.append(f"XML generation failed: {e}")
+            except (OSError, TypeError, ValueError, DatasetXMLError) as exc:
+                result.errors.append(f"XML generation failed: {exc}")
 
         # Generate SAS program
         if "sas" in request.formats and request.output_dirs.sas_dir:
@@ -150,8 +151,8 @@ class FileGenerator:
                     request.input_dataset,
                     request.output_dataset,
                 )
-            except Exception as e:
-                result.errors.append(f"SAS generation failed: {e}")
+            except (OSError, TypeError, ValueError, KeyError, SASWriterError) as exc:
+                result.errors.append(f"SAS generation failed: {exc}")
 
         return result
 

@@ -8,8 +8,6 @@ from typing import Any, cast
 
 import pandas as pd
 
-from ..xml_utils import attr, tag
-
 
 def generate_item_oid(variable_name: str, dataset_name: str) -> str:
     """Generate ItemOID following CDISC standard conventions.
@@ -47,7 +45,7 @@ def is_null(value: object) -> bool:
     return False
 
 
-def format_value(value: object, column_name: str) -> str:
+def format_value(value: object, _column_name: str) -> str:
     """Format a value for Dataset-XML output.
 
     Args:
@@ -61,12 +59,12 @@ def format_value(value: object, column_name: str) -> str:
     if isinstance(value, (pd.Series, pd.DataFrame)):
         try:
             value = value.iloc[0]  # type: ignore[index]
-        except Exception:
+        except (AttributeError, IndexError, KeyError, TypeError):
             return ""
     try:
         if bool(pd.isna(cast(Any, value))):
             return ""
-    except Exception:
+    except (TypeError, ValueError):
         pass
 
     # Convert to string
@@ -100,8 +98,6 @@ def escape_xml(value: str) -> str:
 
 
 __all__ = [
-    "tag",
-    "attr",
     "generate_item_oid",
     "is_null",
     "format_value",

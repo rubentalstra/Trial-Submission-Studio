@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 from cdisc_transpiler.infrastructure.sdtm_spec.registry import get_domain
 from .builder import build_dataset_xml_tree
+from .models import DatasetXMLError
 
 
 def write_dataset_xml(
@@ -39,22 +40,25 @@ def write_dataset_xml(
         metadata_version_oid: The MetaDataVersionOID to reference Define-XML
         is_reference_data: Override for reference data detection
     """
-    domain = get_domain(domain_code)
+    try:
+        domain = get_domain(domain_code)
 
-    # Auto-detect reference data if not specified
-    class_name = (domain.class_name or "").replace("-", " ").strip().upper()
-    if is_reference_data is None:
-        is_reference_data = class_name in ("TRIAL DESIGN", "STUDY REFERENCE")
+        # Auto-detect reference data if not specified
+        class_name = (domain.class_name or "").replace("-", " ").strip().upper()
+        if is_reference_data is None:
+            is_reference_data = class_name in ("TRIAL DESIGN", "STUDY REFERENCE")
 
-    root = build_dataset_xml_tree(
-        data,
-        domain_code,
-        config,
-        dataset_name=dataset_name,
-        metadata_version_oid=metadata_version_oid,
-        is_reference_data=is_reference_data,
-    )
+        root = build_dataset_xml_tree(
+            data,
+            domain_code,
+            config,
+            dataset_name=dataset_name,
+            metadata_version_oid=metadata_version_oid,
+            is_reference_data=is_reference_data,
+        )
 
-    tree = ET.ElementTree(root)
-    output.parent.mkdir(parents=True, exist_ok=True)
-    tree.write(output, xml_declaration=True, encoding="utf-8")
+        tree = ET.ElementTree(root)
+        output.parent.mkdir(parents=True, exist_ok=True)
+        tree.write(output, xml_declaration=True, encoding="utf-8")
+    except (OSError, TypeError, ValueError) as exc:
+        raise DatasetXMLError(f"Failed to write Dataset-XML: {exc}") from exc

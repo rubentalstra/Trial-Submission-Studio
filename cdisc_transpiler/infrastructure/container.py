@@ -34,15 +34,13 @@ from ..application.ports import (
     DomainDefinitionRepositoryPort,
     StudyDataRepositoryPort,
 )
-from .io import (
-    CSVReader,
-    DatasetXMLWriter,
-    DefineXMLGenerator,
-    FileGenerator,
-    OutputPreparer,
-    SASWriter,
-    XPTWriter,
-)
+from .io.csv_reader import CSVReader
+from .io.dataset_xml_writer import DatasetXMLWriter
+from .io.define_xml_generator import DefineXMLGenerator
+from .io.file_generator import FileGenerator
+from .io.output_preparer import OutputPreparer
+from .io.sas_writer import SASWriter
+from .io.xpt_writer import XPTWriter
 from .logging import ConsoleLogger, NullLogger
 from .repositories import DomainDefinitionRepository, StudyDataRepository
 from .services.mapping_service_adapter import MappingServiceAdapter

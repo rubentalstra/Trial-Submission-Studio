@@ -23,7 +23,8 @@ from .constants import (
     DEFINE_XML_VERSION,
     DEFAULT_SDTM_VERSION,
 )
-from .utils import tag, attr, generate_item_oid, is_null, format_value
+from ..xml_utils import attr, tag
+from .utils import format_value, generate_item_oid, is_null
 
 
 def build_dataset_xml_tree(
@@ -98,7 +99,7 @@ def build_dataset_xml_tree(
 def append_item_group_data(
     parent: ET.Element,
     data: pd.DataFrame,
-    domain: SDTMDomain,
+    _domain: SDTMDomain,
     dataset_name: str,
 ) -> None:
     """Append ItemGroupData elements for each row in the DataFrame.

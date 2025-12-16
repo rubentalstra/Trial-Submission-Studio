@@ -16,6 +16,10 @@ from .sas.generator import generate_sas_program
 from .sas.writer import write_sas_file
 
 
+class SASWriterError(RuntimeError):
+    """Raised when SAS program generation or writing fails."""
+
+
 class SASWriter:
     """Adapter for generating and writing SAS programs.
 
@@ -54,13 +58,15 @@ class SASWriter:
         effective_input_dataset = input_dataset or f"work.{domain_code.lower()}"
         effective_output_dataset = output_dataset or f"sdtm.{domain_code.lower()}"
 
-        # Generate SAS code
-        sas_code = generate_sas_program(
-            domain_code,
-            config,
-            input_dataset=effective_input_dataset,
-            output_dataset=effective_output_dataset,
-        )
-
-        # Write to file
-        write_sas_file(sas_code, output_path)
+        try:
+            sas_code = generate_sas_program(
+                domain_code,
+                config,
+                input_dataset=effective_input_dataset,
+                output_dataset=effective_output_dataset,
+            )
+            write_sas_file(sas_code, output_path)
+        except (OSError, TypeError, ValueError, KeyError) as exc:
+            raise SASWriterError(
+                f"Failed to generate/write SAS program: {exc}"
+            ) from exc
