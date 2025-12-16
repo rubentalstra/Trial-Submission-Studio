@@ -227,6 +227,7 @@ class DependencyContainer:
         study_data_repo = self.create_study_data_repository()
         file_generator = self.create_file_generator()
         domain_processing_use_case = self.create_domain_processing_use_case()
+        domain_definition_repo = self.create_domain_definition_repository()
         discovery_service = DomainDiscoveryService(logger=logger)
         define_xml_generator = self.create_define_xml_generator()
         output_preparer = self.create_output_preparer()
@@ -239,6 +240,7 @@ class DependencyContainer:
             file_generator=file_generator,
             define_xml_generator=define_xml_generator,
             output_preparer=output_preparer,
+            domain_definitions=domain_definition_repo,
         )
 
     def create_domain_processing_use_case(self):

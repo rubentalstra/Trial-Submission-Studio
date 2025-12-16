@@ -17,6 +17,7 @@ removing the delegation to legacy DomainProcessingCoordinator.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable
 
@@ -35,6 +36,32 @@ from .ports import (
 if TYPE_CHECKING:
     from ..domain.entities.sdtm_domain import SDTMDomain
     from ..mapping_module import MappingConfig
+
+
+@dataclass(frozen=True)
+class _ColumnHint:
+    is_numeric: bool
+    unique_ratio: float
+    null_ratio: float
+
+
+def _build_column_hints(frame: pd.DataFrame) -> dict[str, _ColumnHint]:
+    """Derive lightweight per-column hints used by mapping heuristics."""
+    hints: dict[str, _ColumnHint] = {}
+    row_count = len(frame)
+    for column in frame.columns:
+        series = frame[column]
+        is_numeric = pd.api.types.is_numeric_dtype(series)
+        non_null = int(series.notna().sum())
+        unique_non_null = series.nunique(dropna=True)
+        unique_ratio = float(unique_non_null / non_null) if non_null else 0.0
+        null_ratio = float(1 - (non_null / row_count)) if row_count else 0.0
+        hints[str(column)] = _ColumnHint(
+            is_numeric=bool(is_numeric),
+            unique_ratio=unique_ratio,
+            null_ratio=null_ratio,
+        )
+    return hints
 
 
 def _get_transformation_helpers() -> tuple[
@@ -338,10 +365,10 @@ class DomainProcessingUseCase:
         if self._study_data_repo is not None:
             return self._study_data_repo.read_dataset(file_path)
 
-        # Fallback to io_module if repository not injected
-        from ..io_module import load_input_dataset
-
-        return load_input_dataset(file_path)
+        raise RuntimeError(
+            "StudyDataRepositoryPort is not configured. "
+            "Wire an infrastructure adapter in the composition root."
+        )
 
     def _should_skip_vstat(
         self, domain_code: str, variant_name: str | None, verbose: bool
@@ -498,7 +525,6 @@ class DomainProcessingUseCase:
             build_config,
             create_mapper,
         )
-        from ..io_module import build_column_hints
 
         if is_findings_long:
             # Use identity mapping for post-transformation data
@@ -519,7 +545,10 @@ class DomainProcessingUseCase:
             return config
 
         # Build mapped configuration using fuzzy matching
-        column_hints = build_column_hints(frame)
+        # Mapping heuristics use a small, structural "ColumnHint" object.
+        # We intentionally keep this application-owned to avoid importing
+        # compatibility wrapper types into the application layer.
+        column_hints: Any = _build_column_hints(frame)
         engine = create_mapper(
             domain_code,
             metadata=metadata,

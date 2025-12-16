@@ -29,7 +29,10 @@ Example:
     >>> save_config(config, "mappings/dm_updated.json")
 """
 
-from ..io_module.models import Hints
+from __future__ import annotations
+
+# Import from new location and re-export for backward compatibility
+from ..domain.entities.column_hints import Hints
 
 # Import from new location and re-export for backward compatibility
 from ..domain.entities.study_metadata import StudyMetadata

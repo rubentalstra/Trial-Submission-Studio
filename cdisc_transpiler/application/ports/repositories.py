@@ -16,8 +16,8 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 import pandas as pd
 
+from ...domain.entities.controlled_terminology import ControlledTerminology
 from ...domain.entities.study_metadata import StudyMetadata
-from ...terminology_module.models import ControlledTerminology
 
 if TYPE_CHECKING:
     from ...domain.entities.sdtm_domain import SDTMDomain
@@ -163,6 +163,10 @@ class SDTMSpecRepositoryPort(Protocol):
 @runtime_checkable
 class DomainDefinitionPort(Protocol):
     """Protocol to retrieve SDTM domain definitions as domain entities."""
+
+    def list_domains(self) -> list[str]:
+        """List all supported SDTM domain codes."""
+        raise NotImplementedError
 
     def get_domain(self, code: str) -> "SDTMDomain":
         """Return the SDTM domain definition for a domain code."""

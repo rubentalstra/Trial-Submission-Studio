@@ -42,7 +42,6 @@ Usage:
 
 from __future__ import annotations
 
-from .models import ControlledTerminology
 from .registry import (
     # Dynamic codelist discovery from domain variables
     get_variable_codelist,
@@ -66,8 +65,6 @@ from .registry import (
 )
 
 __all__ = [
-    # Models
-    "ControlledTerminology",
     # Dynamic codelist discovery
     "get_variable_codelist",
     "get_testcd_codelist",

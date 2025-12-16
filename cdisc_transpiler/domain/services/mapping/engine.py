@@ -13,7 +13,7 @@ import pandas as pd
 from rapidfuzz import fuzz
 
 if TYPE_CHECKING:
-    from ....io_module import Hints
+    from ...entities.column_hints import Hints
 
 from ....domains_module import get_domain, SDTMDomain, SDTMVariable
 from ....domain.entities.mapping import ColumnMapping, MappingSuggestions, Suggestion

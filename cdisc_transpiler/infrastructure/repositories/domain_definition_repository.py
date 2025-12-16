@@ -7,11 +7,14 @@ spec-loading mechanics (wrapper modules) in the infrastructure layer.
 from __future__ import annotations
 
 from ...application.ports.repositories import DomainDefinitionPort
-from ...domains_module import get_domain
+from ...domains_module import get_domain, list_domains
 
 
 class DomainDefinitionRepository(DomainDefinitionPort):
     """Infrastructure adapter for looking up SDTM domain definitions."""
+
+    def list_domains(self) -> list[str]:
+        return list(list_domains())
 
     def get_domain(self, code: str):
         return get_domain(code)
