@@ -27,6 +27,7 @@ from .ports import (
     DomainDefinitionPort,
     FileGeneratorPort,
     LoggerPort,
+    MappingPort,
     OutputPreparationPort,
     StudyDataRepositoryPort,
     XPTWriterPort,
@@ -111,6 +112,7 @@ class DomainProcessingUseCase:
         logger: LoggerPort,
         study_data_repo: StudyDataRepositoryPort | None = None,
         file_generator: FileGeneratorPort | None = None,
+        mapping_service: MappingPort | None = None,
         output_preparer: OutputPreparationPort | None = None,
         domain_definitions: DomainDefinitionPort | None = None,
         xpt_writer: XPTWriterPort | None = None,
@@ -125,6 +127,12 @@ class DomainProcessingUseCase:
         self.logger = logger
         self._study_data_repo = study_data_repo
         self._file_generator = file_generator
+        if mapping_service is None:
+            raise RuntimeError(
+                "MappingPort is not configured. "
+                "Wire an infrastructure adapter in the composition root."
+            )
+        self._mapping_service = mapping_service
         self._output_preparer = output_preparer
         self._domain_definitions = domain_definitions
         self._xpt_writer = xpt_writer
@@ -515,7 +523,6 @@ class DomainProcessingUseCase:
     ) -> MappingConfig | None:
         """Stage 3: Build mapping configuration."""
         from ..domain.entities.mapping import ColumnMapping, build_config
-        from ..domain.services.mapping import create_mapper
 
         if is_findings_long:
             # Use identity mapping for post-transformation data
@@ -537,13 +544,13 @@ class DomainProcessingUseCase:
 
         # Build mapped configuration using fuzzy matching.
         column_hints = _build_column_hints(frame)
-        engine = create_mapper(
-            domain_code,
+        suggestions = self._mapping_service.suggest(
+            domain_code=domain_code,
+            frame=frame,
             metadata=metadata,
             min_confidence=min_confidence,
             column_hints=column_hints,
         )
-        suggestions = engine.suggest(frame)
 
         if not suggestions.mappings:
             self.logger.warning(f"{display_name}: No mappings found, skipping")

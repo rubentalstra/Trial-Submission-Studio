@@ -15,6 +15,7 @@ from .services import (
     DefineXmlGeneratorPort,
     FileGeneratorPort,
     LoggerPort,
+    MappingPort,
     OutputPreparationPort,
     SASWriterPort,
     XPTWriterPort,
@@ -29,6 +30,7 @@ __all__ = [
     # Service Ports
     "LoggerPort",
     "FileGeneratorPort",
+    "MappingPort",
     "OutputPreparationPort",
     # Writer Ports
     "XPTWriterPort",

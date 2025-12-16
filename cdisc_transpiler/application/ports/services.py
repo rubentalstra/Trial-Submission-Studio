@@ -14,6 +14,9 @@ import pandas as pd
 if TYPE_CHECKING:
     from ..models import DefineDatasetDTO, OutputRequest, OutputResult
     from ...domain.entities.mapping import MappingConfig
+    from ...domain.entities.mapping import MappingSuggestions
+    from ...domain.entities.study_metadata import StudyMetadata
+    from ...domain.entities.column_hints import Hints
 
 
 @runtime_checkable
@@ -201,6 +204,27 @@ class FileGeneratorPort(Protocol):
             ... else:
             ...     print(f"Errors: {result.errors}")
         """
+        raise NotImplementedError
+
+
+@runtime_checkable
+class MappingPort(Protocol):
+    """Protocol for mapping (column → SDTM variable) suggestions.
+
+    The application layer orchestrates mapping but should not be coupled to a
+    specific mapping engine implementation.
+    """
+
+    def suggest(
+        self,
+        *,
+        domain_code: str,
+        frame: pd.DataFrame,
+        metadata: "StudyMetadata | None" = None,
+        min_confidence: float = 0.5,
+        column_hints: "Hints | None" = None,
+    ) -> "MappingSuggestions":
+        """Suggest mappings for the given source dataframe."""
         raise NotImplementedError
 
 

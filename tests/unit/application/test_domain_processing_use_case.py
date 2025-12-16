@@ -40,6 +40,7 @@ class TestDomainProcessingUseCase:
         logger = NullLogger()
         mock_repo = Mock()
         mock_generator = Mock()
+        mock_mapping = Mock()
         mock_output_preparer = Mock()
         mock_domain_definitions = Mock()
         mock_domain_definitions.get_domain.return_value = self._create_mock_domain()
@@ -48,6 +49,7 @@ class TestDomainProcessingUseCase:
             logger=logger,
             study_data_repo=mock_repo,
             file_generator=mock_generator,
+            mapping_service=mock_mapping,
             output_preparer=mock_output_preparer,
             domain_definitions=mock_domain_definitions,
             xpt_writer=mock_xpt_writer,
@@ -120,6 +122,7 @@ class TestDomainProcessingUseCase:
         logger = NullLogger()
         mock_repo = Mock()
         mock_generator = Mock()
+        mock_mapping = Mock()
         mock_output_preparer = Mock()
         mock_domain_definitions = Mock()
         mock_xpt_writer = Mock()
@@ -128,6 +131,7 @@ class TestDomainProcessingUseCase:
             logger=logger,
             study_data_repo=mock_repo,
             file_generator=mock_generator,
+            mapping_service=mock_mapping,
             output_preparer=mock_output_preparer,
             domain_definitions=mock_domain_definitions,
             xpt_writer=mock_xpt_writer,

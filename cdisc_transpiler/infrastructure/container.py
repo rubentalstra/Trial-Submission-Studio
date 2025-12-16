@@ -24,6 +24,7 @@ from ..application.ports import (
     DefineXmlGeneratorPort,
     FileGeneratorPort,
     LoggerPort,
+    MappingPort,
     OutputPreparationPort,
     DomainDefinitionPort,
     StudyDataRepositoryPort,
@@ -39,6 +40,7 @@ from .io import (
 )
 from .logging import ConsoleLogger, NullLogger
 from .repositories import DomainDefinitionRepository, StudyDataRepository
+from .services.mapping_service_adapter import MappingServiceAdapter
 
 
 class DependencyContainer:
@@ -94,6 +96,7 @@ class DependencyContainer:
         self._output_preparer_instance: OutputPreparationPort | None = None
         self._xpt_writer_instance: XPTWriter | None = None
         self._domain_definition_repo_instance: DomainDefinitionPort | None = None
+        self._mapping_service_instance: MappingPort | None = None
 
     # Infrastructure Components
 
@@ -205,6 +208,12 @@ class DependencyContainer:
             self._output_preparer_instance = OutputPreparer()
         return self._output_preparer_instance
 
+    def create_mapping_service(self) -> MappingPort:
+        """Create or return cached mapping service instance (singleton)."""
+        if self._mapping_service_instance is None:
+            self._mapping_service_instance = MappingServiceAdapter()
+        return self._mapping_service_instance
+
     # Application Use Cases
 
     def create_study_processing_use_case(self):
@@ -262,6 +271,7 @@ class DependencyContainer:
         study_data_repo = self.create_study_data_repository()
         file_generator = self.create_file_generator()
         output_preparer = self.create_output_preparer()
+        mapping_service = self.create_mapping_service()
         domain_definition_repo = self.create_domain_definition_repository()
         xpt_writer = self.create_xpt_writer()
 
@@ -269,6 +279,7 @@ class DependencyContainer:
             logger=logger,
             study_data_repo=study_data_repo,
             file_generator=file_generator,
+            mapping_service=mapping_service,
             output_preparer=output_preparer,
             domain_definitions=domain_definition_repo,
             xpt_writer=xpt_writer,
@@ -293,6 +304,7 @@ class DependencyContainer:
         self._xpt_writer_instance = None
         self._domain_definition_repo_instance = None
         self._define_xml_generator_instance = None
+        self._mapping_service_instance = None
 
     def override_logger(self, logger: LoggerPort) -> None:
         """Override the logger instance (for testing).

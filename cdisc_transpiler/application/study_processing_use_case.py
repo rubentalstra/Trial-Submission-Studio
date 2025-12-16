@@ -884,13 +884,9 @@ class StudyProcessingUseCase:
         if self._domain_processing_use_case is not None:
             return self._domain_processing_use_case
 
-        # Create default instance with available dependencies
-        from .domain_processing_use_case import DomainProcessingUseCase
-
-        return DomainProcessingUseCase(
-            logger=self.logger,
-            study_data_repo=self._study_data_repo,
-            file_generator=self._file_generator,
+        raise RuntimeError(
+            "DomainProcessingUseCase is not configured. "
+            "Wire it in the composition root (DependencyContainer)."
         )
 
     def _get_synthesis_service(self):
