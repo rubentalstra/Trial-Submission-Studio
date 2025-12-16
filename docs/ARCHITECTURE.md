@@ -136,8 +136,8 @@ proper layer, or be reduced to thin compatibility shims.
   domain-specific transformers (VS/LB wide-to-long).
 - `cdisc_transpiler/mapping_module/`: fuzzy/metadata-aware mapping engine;
   contains compatibility wrappers (`config_io.py` delegates to infrastructure).
-- Output generation implementations live under `cdisc_transpiler/infrastructure/io/`
-  (XPT, Dataset-XML, Define-XML, SAS).
+- Output generation implementations live under
+  `cdisc_transpiler/infrastructure/io/` (XPT, Dataset-XML, Define-XML, SAS).
 - `cdisc_transpiler/io_module/`, `cdisc_transpiler/submission_module/`:
   compatibility wrappers over the newer repository/domain-service
   implementations.
@@ -200,9 +200,9 @@ sites stop using them:
 
 4. ~~**Use cases importing concrete XML models**~~ ✅ RESOLVED
 
-- ~~`cdisc_transpiler/application/study_processing_use_case.py` imports
-  a concrete Define-XML dataset model to drive generation → application is
-  coupled to an infrastructure representation.~~
+- ~~`cdisc_transpiler/application/study_processing_use_case.py` imports a
+  concrete Define-XML dataset model to drive generation → application is coupled
+  to an infrastructure representation.~~
 - **Resolution:** Created `DefineDatasetDTO` in application layer. The adapter
   converts DTOs to infrastructure `StudyDataset`.
 
@@ -261,7 +261,8 @@ sites stop using them:
 12. **Duplicated Dataset-XML implementation exists in two places**
 
 - Dataset-XML glue historically existed in two places. The concrete
-  implementation now lives under `cdisc_transpiler/infrastructure/io/dataset_xml/*`.
+  implementation now lives under
+  `cdisc_transpiler/infrastructure/io/dataset_xml/*`.
 
 ### Why these are harmful here
 
@@ -330,10 +331,9 @@ Keep the current top-level layout, but enforce strict boundaries:
   no I/O)
 
 Compatibility wrappers (e.g. `io_module`, `terminology_module`,
-`submission_module`) are not part of the clean
-architecture. They may exist for public API stability, but internal call sites
-should migrate to `domain`/`application`/`infrastructure` so wrappers become
-thin shims.
+`submission_module`) are not part of the clean architecture. They may exist for
+public API stability, but internal call sites should migrate to
+`domain`/`application`/`infrastructure` so wrappers become thin shims.
 
 ### Policy clarifications (make the boundaries real)
 
@@ -407,8 +407,8 @@ Use this as the default “where should I move this?” reference.
 
 - Output request/response DTOs: ✅ now live in
   `cdisc_transpiler/application/models.py`
-- Define-XML dataset model used by the use case:
-  infrastructure `StudyDataset` → application DTO (infra converts)
+- Define-XML dataset model used by the use case: infrastructure `StudyDataset` →
+  application DTO (infra converts)
 - Output directory creation + ACRF PDF placeholder:
   `cdisc_transpiler/services/file_organization_service.py` → infrastructure
   adapter
