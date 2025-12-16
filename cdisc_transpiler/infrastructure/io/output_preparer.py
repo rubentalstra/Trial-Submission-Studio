@@ -63,6 +63,14 @@ def _ensure_acrf_pdf(path: Path) -> None:
 class OutputPreparer(OutputPreparerPort):
     """Filesystem-based output preparation."""
 
+    @staticmethod
+    def _remove_matching_files(directory: Path, pattern: str) -> None:
+        if not directory.exists() or not directory.is_dir():
+            return
+        for path in directory.glob(pattern):
+            if path.is_file():
+                path.unlink()
+
     def prepare(
         self,
         *,
@@ -72,6 +80,16 @@ class OutputPreparer(OutputPreparerPort):
         generate_define_xml: bool,
     ) -> None:
         output_dir.mkdir(parents=True, exist_ok=True)
+
+        # Make output deterministic across repeated runs into the same folder.
+        # This prevents stale artifacts (e.g., RELSUB outputs from a previous run)
+        # from lingering when they are not produced in the current run.
+        self._remove_matching_files(output_dir / "xpt", "*.xpt")
+        self._remove_matching_files(output_dir / "dataset-xml", "*.xml")
+        self._remove_matching_files(output_dir / "sas", "*.sas")
+        define_path = output_dir / "define.xml"
+        if define_path.exists() and define_path.is_file():
+            define_path.unlink()
 
         if "xpt" in output_formats:
             (output_dir / "xpt").mkdir(parents=True, exist_ok=True)

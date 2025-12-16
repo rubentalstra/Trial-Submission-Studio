@@ -424,6 +424,10 @@ class ConsoleLogger(LoggerPort):
             variable_count: Number of supplemental variables
         """
         if record_count > 0:
+            # Supplemental records should count towards the overall record total.
+            # We intentionally do not increment `domains_processed` here because
+            # the summary reports "domains" as top-level SDTM datasets.
+            self._stats["records_processed"] += int(record_count or 0)
             supp_code = f"SUPP{domain_code.upper()}"
             msg = f"  Generated {supp_code}: {record_count:,} records ({variable_count} variables)"
             self.verbose(msg)

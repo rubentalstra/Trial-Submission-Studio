@@ -197,6 +197,21 @@ def study_command(
     container = DependencyContainer(verbose=verbose, console=console)
     use_case = container.create_study_processing_use_case()
 
+    # Domain descriptions (used in the Study Processing Summary table)
+    domain_definition_repository = container.create_domain_definition_repository()
+
+    def _describe_domain(domain_code: str) -> str:
+        code = (domain_code or "").upper()
+        if not code:
+            return ""
+        try:
+            domain = domain_definition_repository.get_domain(code)
+            return str(getattr(domain, "description", "") or "")
+        except Exception:
+            if code.startswith("SUPP") and len(code) > 4:
+                return f"Supplemental Qualifiers for {code[4:]}"
+            return ""
+
     # Execute the use case
     response = use_case.execute(request)
 
@@ -216,9 +231,16 @@ def study_command(
         conformance_report = _report_to_dict(
             getattr(result, "conformance_report", None)
         )
+        result_records = (
+            len(result.domain_dataframe)
+            if getattr(result, "domain_dataframe", None) is not None
+            else result.records
+        )
+
         result_dict = {
             "domain_code": result.domain_code,
-            "records": result.records,
+            "description": _describe_domain(result.domain_code),
+            "records": result_records,
             "domain_dataframe": result.domain_dataframe,
             "config": result.config,
             "xpt_path": result.xpt_path,
@@ -228,7 +250,12 @@ def study_command(
             "supplementals": [
                 {
                     "domain_code": supp.domain_code,
-                    "records": supp.records,
+                    "description": _describe_domain(supp.domain_code),
+                    "records": (
+                        len(supp.domain_dataframe)
+                        if getattr(supp, "domain_dataframe", None) is not None
+                        else supp.records
+                    ),
                     "domain_dataframe": supp.domain_dataframe,
                     "config": supp.config,
                     "xpt_path": supp.xpt_path,

@@ -386,6 +386,27 @@ class StudyProcessingUseCase:
                         reason=result.error,
                     )
 
+                # Supplemental datasets are not treated as top-level "domains" in the
+                # CLI, but their rows should contribute to record totals.
+                for supp in result.supplementals:
+                    supp_frame = supp.domain_dataframe
+                    if supp_frame is None:
+                        self.logger.log_domain_complete(
+                            supp.domain_code,
+                            final_row_count=0,
+                            final_column_count=0,
+                            skipped=not supp.success,
+                            reason=supp.error,
+                        )
+                    else:
+                        self.logger.log_domain_complete(
+                            supp.domain_code,
+                            final_row_count=len(supp_frame),
+                            final_column_count=len(supp_frame.columns),
+                            skipped=not supp.success,
+                            reason=supp.error,
+                        )
+
                 if result.success:
                     response.processed_domains.add(domain_code)
                     response.total_records += result.records
@@ -1041,14 +1062,21 @@ class StudyProcessingUseCase:
         sas_dir: Path | None,
     ) -> None:
         """Synthesize RELSUB domain (Related Subjects)."""
-        self.logger.log_synthesis_start("RELSUB", "Relationship scaffold")
-
         try:
             relsub_service = self._get_relsub_service()
             relsub_df, relsub_config = relsub_service.build_relsub(
                 domain_dataframes=None,
                 study_id=request.study_id,
             )
+
+            # RELSUB relationships are often not inferable; if we have no rows,
+            # do not generate empty output files and do not include the domain
+            # in Define-XML inputs.
+            if relsub_df is None or relsub_df.empty:
+                self.logger.verbose("RELSUB: no relationships detected; skipping")
+                return
+
+            self.logger.log_synthesis_start("RELSUB", "Relationship scaffold")
 
             relsub_domain = self._get_domain("RELSUB")
             lenient = ("xpt" not in request.output_formats) and (
@@ -1060,6 +1088,10 @@ class StudyProcessingUseCase:
                 relsub_domain,
                 lenient=lenient,
             )
+
+            if domain_dataframe is None or domain_dataframe.empty:
+                self.logger.verbose("RELSUB: synthesized dataset is empty; skipping")
+                return
 
             strict = ("xpt" in request.output_formats) or request.generate_sas
             report = self._log_conformance_report(

@@ -27,6 +27,7 @@ class TestSummaryPresenter:
         return [
             {
                 "domain_code": "DM",
+                "description": "Demographics",
                 "records": 100,
                 "xpt_path": Path("/output/xpt/dm.xpt"),
                 "xml_path": None,
@@ -34,6 +35,7 @@ class TestSummaryPresenter:
             },
             {
                 "domain_code": "AE",
+                "description": "Adverse Events",
                 "records": 250,
                 "xpt_path": Path("/output/xpt/ae.xpt"),
                 "xml_path": Path("/output/xml/ae.xml"),
@@ -41,6 +43,7 @@ class TestSummaryPresenter:
             },
             {
                 "domain_code": "SUPPDM",
+                "description": "Supplemental Qualifiers for DM",
                 "records": 10,
                 "xpt_path": Path("/output/xpt/suppdm.xpt"),
                 "xml_path": None,
@@ -68,6 +71,8 @@ class TestSummaryPresenter:
         assert "Study Processing Summary" in output
         assert "DM" in output
         assert "AE" in output
+        assert "Demographics" in output
+        assert "Adverse Events" in output
 
     def test_organize_results_separates_main_and_supp(self, presenter, sample_results):
         """Test that results are organized into main and supplemental domains."""
@@ -197,8 +202,8 @@ class TestSummaryPresenter:
         # Verify table title
         assert table.title == "📊 Study Processing Summary"
 
-        # Verify columns exist (6 columns)
-        assert len(table.columns) == 6
+        # Verify columns exist (7 columns)
+        assert len(table.columns) == 7
 
     def test_present_with_errors(self, presenter, sample_results, console):
         """Test present method with errors."""
@@ -259,6 +264,7 @@ class TestSummaryPresenterIntegration:
         results = [
             {
                 "domain_code": "DM",
+                "description": "Demographics",
                 "records": 50,
                 "xpt_path": Path("/output/xpt/dm.xpt"),
                 "xml_path": Path("/output/xml/dm.xml"),
@@ -266,20 +272,25 @@ class TestSummaryPresenterIntegration:
             },
             {
                 "domain_code": "AE",
+                "description": "Adverse Events",
                 "records": 120,
                 "xpt_path": Path("/output/xpt/ae.xpt"),
                 "xml_path": None,
                 "sas_path": Path("/output/sas/ae.sas"),
-            },
-            {
-                "domain_code": "SUPPAE",
-                "records": 15,
-                "xpt_path": Path("/output/xpt/suppae.xpt"),
-                "xml_path": None,
-                "sas_path": None,
+                "supplementals": [
+                    {
+                        "domain_code": "SUPPAE",
+                        "description": "Supplemental Qualifiers for AE",
+                        "records": 15,
+                        "xpt_path": Path("/output/xpt/suppae.xpt"),
+                        "xml_path": None,
+                        "sas_path": None,
+                    }
+                ],
             },
             {
                 "domain_code": "LB",
+                "description": "Laboratory Test Results",
                 "records": 500,
                 "xpt_path": Path("/output/xpt/lb.xpt"),
                 "split_xpt_paths": [
@@ -307,6 +318,7 @@ class TestSummaryPresenterIntegration:
 
         # Verify supplemental is shown under parent
         assert "SUPPAE" in output
+        assert "Supplemental Qualifiers for AE" in output
 
         # Verify split datasets are mentioned
         assert "splits:" in output

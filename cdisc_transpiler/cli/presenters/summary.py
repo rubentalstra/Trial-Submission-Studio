@@ -77,7 +77,9 @@ class SummaryPresenter:
         self.console.print()
 
         # Display status and output information
-        total_records = sum(r.get("records", 0) for r in results)
+        total_records = sum(
+            r.get("records", 0) for r in self._iter_all_results(results)
+        )
         self._print_status_summary(len(results), len(errors))
         self._print_output_information(
             output_dir,
@@ -112,6 +114,7 @@ class SummaryPresenter:
 
         # Define columns
         table.add_column("Domain", style="cyan", no_wrap=True, width=15)
+        table.add_column("Description", style="white", no_wrap=False, width=35)
         table.add_column("Records", justify="right", style="yellow", width=9)
         table.add_column("XPT", justify="center", style="green", width=5)
         table.add_column("Dataset-XML", justify="center", style="green", width=13)
@@ -128,6 +131,7 @@ class SummaryPresenter:
         table.add_section()
         table.add_row(
             "[bold]Total[/bold]",
+            "",
             f"[bold yellow]{total_records:,}[/bold yellow]",
             "",
             "",
@@ -155,6 +159,7 @@ class SummaryPresenter:
         for result in results:
             domain_code = result.get("domain_code", "").upper()
             records = result.get("records", 0)
+            description = str(result.get("description") or "")
 
             # Check if this is a supplemental domain
             is_supp = domain_code.startswith("SUPP")
@@ -169,6 +174,7 @@ class SummaryPresenter:
 
             domain_data = {
                 "records": records,
+                "description": description,
                 "has_xpt": has_xpt,
                 "has_xml": has_xml,
                 "has_sas": has_sas,
@@ -184,6 +190,40 @@ class SummaryPresenter:
                 supp_domains[parent_domain].append((domain_code, domain_data))
             else:
                 main_domains[domain_code] = domain_data
+
+                # Handle nested supplemental domains (newer result shape)
+                for supp in result.get("supplementals", []) or []:
+                    if not isinstance(supp, dict):
+                        continue
+
+                    supp_code = str(supp.get("domain_code") or "").upper()
+                    if not supp_code.startswith("SUPP"):
+                        continue
+
+                    supp_records = int(supp.get("records") or 0)
+                    supp_description = str(supp.get("description") or "")
+
+                    supp_domain_data = {
+                        "records": supp_records,
+                        "description": supp_description,
+                        "has_xpt": "✓" if supp.get("xpt_path") else "–",
+                        "has_xml": "✓" if supp.get("xml_path") else "–",
+                        "has_sas": "✓" if supp.get("sas_path") else "–",
+                        "notes": self._build_notes(supp),
+                        "is_supp": True,
+                    }
+
+                    # Prefer nesting under current main domain; fall back to suffix parent.
+                    suffix_parent = supp_code[4:]
+                    parent_domain = (
+                        domain_code if suffix_parent == domain_code else suffix_parent
+                    )
+
+                    if parent_domain not in supp_domains:
+                        supp_domains[parent_domain] = []
+                    supp_domains[parent_domain].append((supp_code, supp_domain_data))
+
+                    total_records += supp_records
 
             total_records += records
 
@@ -227,6 +267,7 @@ class SummaryPresenter:
             # Add main domain row
             table.add_row(
                 f"[bold cyan]{domain_code}[/bold cyan]",
+                str(data.get("description") or ""),
                 f"[yellow]{data['records']:,}[/yellow]",
                 data["has_xpt"],
                 data["has_xml"],
@@ -239,6 +280,7 @@ class SummaryPresenter:
                 for supp_code, supp_data in sorted(supp_domains[domain_code]):
                     table.add_row(
                         f"[dim cyan] └─ {supp_code}[/dim cyan]",
+                        f"[dim]{supp_data.get('description') or ''}[/dim]",
                         f"[dim yellow]{supp_data['records']:,}[/dim yellow]",
                         f"[dim]{supp_data['has_xpt']}[/dim]",
                         f"[dim]{supp_data['has_xml']}[/dim]",
