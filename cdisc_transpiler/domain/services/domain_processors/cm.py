@@ -94,6 +94,7 @@ class CMProcessor(BaseDomainProcessor):
                 "PRN": "PRN",
                 "DAILY": "QD",
                 "TWICE DAILY": "BID",
+                "TWICE PER DAY": "BID",
                 "THREE TIMES DAILY": "TID",
                 "ONCE DAILY": "QD",
                 "AS NEEDED": "PRN",
@@ -136,9 +137,21 @@ class CMProcessor(BaseDomainProcessor):
             )
 
         if "CMSTDTC" in frame.columns:
-            DateTransformer.compute_study_day(frame, "CMSTDTC", "CMSTDY", ref="RFSTDTC")
+            DateTransformer.compute_study_day(
+                frame,
+                "CMSTDTC",
+                "CMSTDY",
+                reference_starts=self.reference_starts,
+                ref="RFSTDTC",
+            )
         if "CMENDTC" in frame.columns:
-            DateTransformer.compute_study_day(frame, "CMENDTC", "CMENDY", ref="RFSTDTC")
+            DateTransformer.compute_study_day(
+                frame,
+                "CMENDTC",
+                "CMENDY",
+                reference_starts=self.reference_starts,
+                ref="RFSTDTC",
+            )
         if "EPOCH" in frame.columns:
             frame.loc[:, "EPOCH"] = "TREATMENT"
         else:

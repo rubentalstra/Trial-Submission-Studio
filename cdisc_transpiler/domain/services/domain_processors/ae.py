@@ -35,8 +35,20 @@ class AEProcessor(BaseDomainProcessor):
         if {"VISIT", "VISITNUM"} & set(frame.columns):
             TextTransformer.normalize_visit(frame)
         DateTransformer.ensure_date_pair_order(frame, "AESTDTC", "AEENDTC")
-        DateTransformer.compute_study_day(frame, "AESTDTC", "AESTDY", ref="RFSTDTC")
-        DateTransformer.compute_study_day(frame, "AEENDTC", "AEENDY", ref="RFSTDTC")
+        DateTransformer.compute_study_day(
+            frame,
+            "AESTDTC",
+            "AESTDY",
+            reference_starts=self.reference_starts,
+            ref="RFSTDTC",
+        )
+        DateTransformer.compute_study_day(
+            frame,
+            "AEENDTC",
+            "AEENDY",
+            reference_starts=self.reference_starts,
+            ref="RFSTDTC",
+        )
         # Keep TRTEMFL when present to satisfy treatment-emergent checks
         # Ensure expected MedDRA variables exist with default placeholders
         defaults = {
@@ -49,6 +61,14 @@ class AEProcessor(BaseDomainProcessor):
         for col, val in defaults.items():
             if col not in frame.columns:
                 frame.loc[:, col] = val
+                continue
+
+            # If the variable exists but is empty/missing, populate with the
+            # placeholder to satisfy presence checks.
+            current = frame[col].astype("string").fillna("").str.strip()
+            empty = current.eq("") | current.str.upper().isin({"NAN", "<NA>"})
+            if bool(empty.any()):
+                frame.loc[empty, col] = val
         # AEACN - normalize to valid CDISC CT values
         if "AEACN" in frame.columns:
             frame.loc[:, "AEACN"] = (

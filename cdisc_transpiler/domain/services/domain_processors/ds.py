@@ -132,7 +132,13 @@ class DSProcessor(BaseDomainProcessor):
         # Ensure DSSTDTC is ISO8601 after any default-row additions.
         frame.loc[:, "DSSTDTC"] = frame["DSSTDTC"].apply(DateTransformer.coerce_iso8601)
 
-        DateTransformer.compute_study_day(frame, "DSSTDTC", "DSSTDY", ref="RFSTDTC")
+        DateTransformer.compute_study_day(
+            frame,
+            "DSSTDTC",
+            "DSSTDY",
+            reference_starts=self.reference_starts,
+            ref="RFSTDTC",
+        )
         frame.loc[:, "DSDTC"] = frame["DSSTDTC"]
         dsdy_source = NumericTransformer.force_numeric(
             frame.get("DSSTDY", pd.Series(index=frame.index))

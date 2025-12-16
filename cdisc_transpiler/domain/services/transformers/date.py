@@ -97,8 +97,13 @@ class DateTransformer:
         reference_starts: dict[str, str] | None = None,
         ref: str | None = None,
     ) -> None:
-        if dtc_var not in frame.columns or dy_var not in frame.columns:
+        if dtc_var not in frame.columns:
             return
+
+        # Some metadata extracts omit DY variables (e.g., AESTDY/CMSTDY).
+        # Pinnacle 21 expects them when the corresponding DTC is present.
+        if dy_var not in frame.columns:
+            frame.loc[:, dy_var] = pd.NA
 
         dates = pd.to_datetime(frame[dtc_var], errors="coerce")
 

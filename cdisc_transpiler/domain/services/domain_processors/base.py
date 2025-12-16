@@ -140,6 +140,24 @@ class BaseDomainProcessor(ABC):
                 frame.drop(index=frame.index[missing_ids].to_list(), inplace=True)
                 frame.reset_index(drop=True, inplace=True)
 
+            # If we have a study identifier, ensure USUBJID is consistently
+            # formatted as "<STUDYID>-<SUBJID>" across all domains.
+            study_id = ""
+            if "STUDYID" in frame.columns:
+                study_series = frame["STUDYID"].astype("string").fillna("").str.strip()
+                study_id = next((v for v in study_series.tolist() if v), "")
+            if not study_id and self.config is not None:
+                study_id = str(getattr(self.config, "study_id", "") or "").strip()
+
+            if study_id:
+                prefix = f"{study_id}-"
+                current = frame["USUBJID"].astype("string").fillna("").str.strip()
+                needs_prefix = (current != "") & ~current.str.startswith(prefix)
+                if bool(needs_prefix.any()):
+                    frame.loc[needs_prefix, "USUBJID"] = (
+                        prefix + current.loc[needs_prefix]
+                    )
+
     def _replace_frame_preserving_schema(
         self, frame: pd.DataFrame, replacement: pd.DataFrame
     ) -> None:

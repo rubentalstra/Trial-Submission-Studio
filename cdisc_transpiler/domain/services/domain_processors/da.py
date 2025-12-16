@@ -123,6 +123,19 @@ class DAProcessor(BaseDomainProcessor):
         # Backfill collection date from DATEST if provided
         if "DADTC" not in frame.columns:
             frame.loc[:, "DADTC"] = ""
+
+        # Prefer an actual event/collection date from the source when present.
+        for raw_date_col in ("EventDate", "EVENTDATE", "DADATE", "DATE"):
+            if raw_date_col in frame.columns:
+                needs_dadtc = (
+                    frame["DADTC"].astype("string").fillna("").str.strip() == ""
+                )
+                if bool(needs_dadtc.any()):
+                    frame.loc[needs_dadtc, "DADTC"] = frame.loc[
+                        needs_dadtc, raw_date_col
+                    ].apply(DateTransformer.coerce_iso8601)
+                break
+
         if "DATEST" in frame.columns:
             needs_dadtc = (
                 frame["DADTC"]
@@ -146,7 +159,13 @@ class DAProcessor(BaseDomainProcessor):
             )
 
         if "DADTC" in frame.columns:
-            DateTransformer.compute_study_day(frame, "DADTC", "DADY", ref="RFSTDTC")
+            DateTransformer.compute_study_day(
+                frame,
+                "DADTC",
+                "DADY",
+                reference_starts=self.reference_starts,
+                ref="RFSTDTC",
+            )
         if "EPOCH" in frame.columns:
             frame.loc[:, "EPOCH"] = TextTransformer.replace_unknown(
                 frame["EPOCH"], "TREATMENT"
@@ -183,6 +202,14 @@ class DAProcessor(BaseDomainProcessor):
             frame.loc[:, "DASTRESN"] = ensure_numeric_series(
                 frame.get("DAORRES", "0"), frame.index
             )
+
+        # If the standardized result is non-numeric (e.g., Yes/No), DASTRESN must be blank.
+        if {"DASTRESC", "DASTRESN"} <= set(frame.columns):
+            stresc = frame["DASTRESC"].astype("string").fillna("").str.strip()
+            as_num = pd.to_numeric(stresc, errors="coerce")
+            non_numeric = (stresc != "") & as_num.isna()
+            if bool(non_numeric.any()):
+                frame.loc[non_numeric, "DASTRESN"] = pd.NA
         # Normalize VISITNUM to numeric per subject order to avoid type/key issues
         if "VISITNUM" in frame.columns:
             frame.loc[:, "VISITNUM"] = (frame.groupby("USUBJID").cumcount() + 1).astype(
