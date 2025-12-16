@@ -65,20 +65,44 @@ class PRProcessor(BaseDomainProcessor):
         frame.loc[:, "PRTPT"] = frame.get("PRTPT", "VISIT")
         frame.loc[:, "PRTPTNUM"] = frame.get("PRTPTNUM", 1)
         frame.loc[:, "PRELTM"] = frame.get("PRELTM", "PT0H")
-        # PRDECOD should use CT value; default to first submission value if invalid/missing
+        # PRDECOD should use CT value. If we can't map confidently, leave it blank
+        # rather than inventing a (potentially wrong) CT default.
+        if "PRDECOD" in frame.columns:
+            prdecod = frame["PRDECOD"].astype("string").fillna("").str.strip()
+            prdecod_upper = prdecod.str.upper()
+            for site_col in ("SiteCode", "Site code"):
+                if site_col in frame.columns:
+                    site = (
+                        frame[site_col]
+                        .astype("string")
+                        .fillna("")
+                        .str.strip()
+                        .str.upper()
+                    )
+                    prdecod_upper = prdecod_upper.where(prdecod_upper != site, "")
+            # Also treat USUBJID prefix (e.g., KIEM-01) as contamination.
+            if "USUBJID" in frame.columns:
+                prefix = (
+                    frame["USUBJID"]
+                    .astype("string")
+                    .fillna("")
+                    .str.split("-", n=1)
+                    .str[0]
+                    .str.upper()
+                    .str.strip()
+                )
+                prdecod_upper = prdecod_upper.where(prdecod_upper != prefix, "")
+            frame.loc[:, "PRDECOD"] = prdecod_upper
         ct_prdecod = self._get_controlled_terminology(variable="PRDECOD")
         if ct_prdecod:
-            canonical_default = sorted(ct_prdecod.submission_values)[0]
             if "PRDECOD" not in frame.columns:
-                frame.loc[:, "PRDECOD"] = canonical_default
+                frame.loc[:, "PRDECOD"] = ""
             else:
                 decod = (
                     frame["PRDECOD"].astype("string").fillna("").str.strip().str.upper()
                 )
                 decod = decod.apply(ct_prdecod.normalize)
-                decod = decod.where(
-                    decod.isin(ct_prdecod.submission_values), canonical_default
-                )
+                decod = decod.where(decod.isin(ct_prdecod.submission_values), "")
                 frame.loc[:, "PRDECOD"] = decod
         if "EPOCH" in frame.columns:
             frame.loc[:, "EPOCH"] = "TREATMENT"

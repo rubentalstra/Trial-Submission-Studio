@@ -94,6 +94,7 @@ class VSProcessor(BaseDomainProcessor):
         if "VSSTRESU" in frame.columns and "VSTESTCD" in frame.columns:
             test_to_unit = {
                 "HR": "beats/min",
+                "PULSE": "beats/min",
                 "SYSBP": "mmHg",
                 "DIABP": "mmHg",
                 "TEMP": "C",

@@ -389,13 +389,40 @@ class DomainProcessingUseCase:
         ):
             return None
 
+        # Stage 2: Apply domain-specific wide-to-long transformations when applicable.
+        # This prevents fuzzy-mapping wide EDC extracts into topic variables like *TESTCD.
+        is_findings_long = False
+        if request.domain_code.upper() in {"VS", "LB"}:
+            from ..domain.services.wide_to_long import (
+                transform_lb_wide_to_long,
+                transform_vs_wide_to_long,
+            )
+
+            if request.domain_code.upper() == "VS":
+                transformed = transform_vs_wide_to_long(
+                    frame, study_id=request.study_id
+                )
+            else:
+                transformed = transform_lb_wide_to_long(
+                    frame, study_id=request.study_id
+                )
+
+            if transformed.is_long:
+                frame = transformed.frame
+                is_findings_long = True
+
+                if request.verbose > 0:
+                    self.logger.verbose(
+                        f"    Applied wide-to-long transformation ({request.domain_code}: {len(frame):,} rows)"
+                    )
+
         # Stage 3: Map columns
         config = self._build_config(
             frame=frame,
             domain_code=request.domain_code,
             metadata=request.metadata,
             min_confidence=request.min_confidence,
-            is_findings_long=False,
+            is_findings_long=is_findings_long,
             display_name=display_name,
             verbose=request.verbose > 0,
         )
@@ -430,7 +457,7 @@ class DomainProcessingUseCase:
                 f"    Row count changed: {row_count:,} → {output_rows:,} ({direction}{change_pct:.1f}%)"
             )
 
-        return domain_df, config, False
+        return domain_df, config, is_findings_long
 
     def _load_file(self, file_path: Path) -> pd.DataFrame:
         """Stage 1: Load and validate input file."""

@@ -27,6 +27,18 @@ class LBProcessor(BaseDomainProcessor):
         # Normalize VISITNUM/VISIT when provided
         if {"VISIT", "VISITNUM"} & set(frame.columns):
             TextTransformer.normalize_visit(frame)
+
+        # Clean up literal string placeholders that commonly appear after mapping.
+        # Keep this conservative: only known placeholder tokens.
+        for col in ("LBORRESU", "LBSTRESU"):
+            if col in frame.columns:
+                frame.loc[:, col] = (
+                    frame[col]
+                    .astype("string")
+                    .replace({"<NA>": "", "nan": "", "None": ""})
+                    .fillna("")
+                )
+
         # Force LBTEST names to CT-friendly labels based on LBTESTCD
         if "LBTESTCD" in frame.columns:
             lb_label_map = {
@@ -39,18 +51,68 @@ class LBProcessor(BaseDomainProcessor):
                 "RBC": "Erythrocytes",
                 "WBC": "Leukocytes",
                 "PLAT": "Platelets",
+                "PH": "pH",
+                "PROT": "Protein",
+                "OCCBLD": "Occult Blood",
             }
-            testcd = frame["LBTESTCD"].astype("string").str.upper().str.strip()
+
+            testcd = (
+                frame["LBTESTCD"].astype("string").fillna("").str.upper().str.strip()
+            )
+            # Common source artifact: site code leaks into LBTESTCD.
+            for site_col in ("SiteCode", "Site code"):
+                if site_col in frame.columns:
+                    site = (
+                        frame[site_col]
+                        .astype("string")
+                        .fillna("")
+                        .str.upper()
+                        .str.strip()
+                    )
+                    testcd = testcd.where(testcd != site, "")
+            # Standardize urine glucose token if present.
+            testcd = testcd.replace({"GLUCU": "GLUC"})
+
+            # If LBTESTCD equals the USUBJID prefix (e.g., KIEM-01), it's almost
+            # certainly a site/subject artifact rather than a lab test code.
+            if "USUBJID" in frame.columns:
+                prefix = (
+                    frame["USUBJID"]
+                    .astype("string")
+                    .fillna("")
+                    .str.split("-", n=1)
+                    .str[0]
+                    .str.upper()
+                    .str.strip()
+                )
+                testcd = testcd.where(testcd != prefix, "")
+
+            # If CT is available, normalize and blank invalid values.
+            ct_lbtestcd = self._get_controlled_terminology(variable="LBTESTCD")
+            if ct_lbtestcd:
+                canonical = testcd.apply(ct_lbtestcd.normalize)
+                valid = canonical.isin(ct_lbtestcd.submission_values)
+                testcd = canonical.where(valid, "")
+
             mapped_lbtest = testcd.map(lb_label_map).astype("string")
             existing_lbtest = (
                 frame["LBTEST"].astype("string")
                 if "LBTEST" in frame.columns
                 else pd.Series([""] * len(frame), index=frame.index, dtype="string")
             )
-            frame.loc[:, "LBTEST"] = (
-                mapped_lbtest.fillna(existing_lbtest).astype("string").fillna("")
-            )
+            resolved = mapped_lbtest.fillna(existing_lbtest).astype("string").fillna("")
+            # Required: LBTEST must not be blank when LBTESTCD is present.
+            resolved = resolved.where(resolved.str.strip() != "", testcd)
+            frame.loc[:, "LBTEST"] = resolved
             frame.loc[:, "LBTESTCD"] = testcd
+
+            # Drop rows that do not have a valid LBTESTCD after cleanup.
+            # This prevents operational/helper files from polluting LB outputs.
+            empty_testcd = (
+                frame["LBTESTCD"].astype("string").fillna("").str.strip() == ""
+            )
+            if empty_testcd.any():
+                frame.drop(index=frame.index[empty_testcd], inplace=True)
         # Derive LBDTC from LBENDTC before computing study days
         if "LBENDTC" in frame.columns:
             has_endtc = frame["LBENDTC"].astype(str).str.strip() != ""
@@ -91,11 +153,21 @@ class LBProcessor(BaseDomainProcessor):
         if "LBORRESU" not in frame.columns:
             frame.loc[:, "LBORRESU"] = ""
         else:
-            frame.loc[:, "LBORRESU"] = frame["LBORRESU"].astype("string").fillna("")
+            frame.loc[:, "LBORRESU"] = (
+                frame["LBORRESU"]
+                .astype("string")
+                .replace({"<NA>": "", "nan": "", "None": ""})
+                .fillna("")
+            )
         if "LBSTRESU" not in frame.columns:
             frame.loc[:, "LBSTRESU"] = ""
         else:
-            frame.loc[:, "LBSTRESU"] = frame["LBSTRESU"].astype("string").fillna("")
+            frame.loc[:, "LBSTRESU"] = (
+                frame["LBSTRESU"]
+                .astype("string")
+                .replace({"<NA>": "", "nan": "", "None": ""})
+                .fillna("")
+            )
         if "LBNRIND" in frame.columns:
             frame.loc[:, "LBNRIND"] = TextTransformer.replace_unknown(
                 frame["LBNRIND"], "NORMAL"

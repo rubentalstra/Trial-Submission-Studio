@@ -205,6 +205,26 @@ class AEProcessor(BaseDomainProcessor):
         NumericTransformer.assign_sequence(frame, "AESEQ", "USUBJID")
         if "AESEQ" in frame.columns:
             frame.loc[:, "AESEQ"] = frame["AESEQ"].astype("Int64")
+
+        # AESINTV is a Yes/No Response field (C66742). When mapped from non-YN
+        # source columns (e.g., design version numbers), blank it rather than
+        # emitting CT-invalid values.
+        if "AESINTV" in frame.columns:
+            yn_map = {
+                "Y": "Y",
+                "YES": "Y",
+                "1": "Y",
+                "TRUE": "Y",
+                "N": "N",
+                "NO": "N",
+                "0": "N",
+                "FALSE": "N",
+                "": "",
+                "NAN": "",
+                "<NA>": "",
+            }
+            raw = frame["AESINTV"].astype("string").fillna("").str.strip().str.upper()
+            frame.loc[:, "AESINTV"] = raw.map(yn_map).fillna("")
         # Remove non-standard extras to keep AE aligned to SDTM metadata
         for extra in ("VISIT", "VISITNUM", "TRTEMFL"):
             if extra in frame.columns:

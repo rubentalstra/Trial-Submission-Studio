@@ -116,6 +116,11 @@ def check_domain_dataframe(
 
     issues: list[ConformanceIssue] = []
 
+    def _is_numeric_like_text(value: pd.Series) -> pd.Series:
+        text = value.astype("string").fillna("").str.strip()
+        # Accept plain numbers and simple comparators like '<35', '>= 1.2'.
+        return text.str.match(r"^(?:[<>]=?\s*)?\d+(?:\.\d+)?$")
+
     for var in domain.variables:
         if var.name not in frame.columns:
             if _is_required(var.core):
@@ -159,7 +164,15 @@ def check_domain_dataframe(
             if ct is None:
                 continue
 
-            invalid = ct.invalid_values(frame[var.name])
+            series_for_ct = frame[var.name]
+            # LBSTRESC is a character result field that can legitimately contain
+            # numeric values. Avoid false positives by only CT-validating
+            # non-numeric tokens.
+            if domain.code.upper() == "LB" and var.name == "LBSTRESC":
+                mask_numeric = _is_numeric_like_text(series_for_ct)
+                series_for_ct = series_for_ct.loc[~mask_numeric]
+
+            invalid = ct.invalid_values(series_for_ct)
             if invalid:
                 example_items: list[str] = []
                 for raw in sorted(list(invalid))[:5]:

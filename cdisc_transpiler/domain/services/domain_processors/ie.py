@@ -80,22 +80,13 @@ class IEProcessor(BaseDomainProcessor):
                 frame.loc[:, "IECAT"] = frame["IETESTCD"]
             else:
                 frame.loc[:, "IECAT"] = "INCLUSION"
-        frame.loc[:, "IECAT"] = (
-            frame["IECAT"].astype(str).str.upper().replace({"2.0": "INCLUSION"})
-        )
-        needs_cat = frame["IECAT"].astype(str).str.strip() == ""
-        if needs_cat.any():
-            frame.loc[needs_cat, "IECAT"] = "INCLUSION"
-
-        # Ensure Inclusion criteria have IESTRESC='N' per SD1046
-        if {"IECAT", "IESTRESC"} <= set(frame.columns):
-            frame.loc[:, "IESTRESC"] = "N"
-        # Keep IEORRES aligned with IESTRESC to avoid mismatches
-        if {"IEORRES", "IESTRESC"} <= set(frame.columns):
-            frame.loc[:, "IEORRES"] = frame["IESTRESC"]
-        # For inclusion rows, force IEORRES/IESTRESC to N
-        if "IECAT" in frame.columns and {"IEORRES", "IESTRESC"} <= set(frame.columns):
-            frame.loc[:, ["IEORRES", "IESTRESC"]] = "N"
+        # Normalize IECAT to valid CT tokens (C66797): INCLUSION / EXCLUSION / BOTH.
+        # If the incoming value is non-CT (e.g., NONE), default to INCLUSION.
+        cat_raw = frame["IECAT"].astype("string").fillna("").str.strip().str.upper()
+        cat_norm = cat_raw.replace({"NONE": ""})
+        cat_norm = cat_norm.replace({"1": "INCLUSION", "2": "EXCLUSION", "3": "BOTH"})
+        cat_norm = cat_norm.where(cat_norm.isin({"INCLUSION", "EXCLUSION", "BOTH"}), "")
+        frame.loc[:, "IECAT"] = cat_norm.replace("", "INCLUSION")
 
         # Normalize VISITNUM to numeric and deduplicate records by key to reduce repeats
         if "VISITNUM" in frame.columns:
