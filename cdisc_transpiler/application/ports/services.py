@@ -37,11 +37,11 @@ class OutputPreparationPort(Protocol):
 
         Implementations may create directories and files as needed.
         """
-        ...
+        raise NotImplementedError
 
     def ensure_dir(self, path: Path) -> None:
         """Ensure a directory exists at path."""
-        ...
+        raise NotImplementedError
 
 
 @runtime_checkable
@@ -64,7 +64,7 @@ class LoggerPort(Protocol):
         Args:
             message: The message to log
         """
-        ...
+        raise NotImplementedError
 
     def success(self, message: str) -> None:
         """Log a success message.
@@ -72,7 +72,7 @@ class LoggerPort(Protocol):
         Args:
             message: The message to log
         """
-        ...
+        raise NotImplementedError
 
     def warning(self, message: str) -> None:
         """Log a warning message.
@@ -80,7 +80,7 @@ class LoggerPort(Protocol):
         Args:
             message: The message to log
         """
-        ...
+        raise NotImplementedError
 
     def error(self, message: str) -> None:
         """Log an error message.
@@ -88,7 +88,7 @@ class LoggerPort(Protocol):
         Args:
             message: The message to log
         """
-        ...
+        raise NotImplementedError
 
     def debug(self, message: str) -> None:
         """Log a debug message.
@@ -96,7 +96,7 @@ class LoggerPort(Protocol):
         Args:
             message: The message to log
         """
-        ...
+        raise NotImplementedError
 
     def verbose(self, message: str) -> None:
         """Log a verbose message.
@@ -104,7 +104,57 @@ class LoggerPort(Protocol):
         Args:
             message: The message to log
         """
-        ...
+        raise NotImplementedError
+
+    def log_study_start(
+        self,
+        study_id: str,
+        study_folder: Path,
+        output_format: str,
+        supported_domains: list[str],
+    ) -> None:
+        """Log the start of study processing."""
+        raise NotImplementedError
+
+    def log_metadata_loaded(
+        self,
+        *,
+        items_count: int | None,
+        codelists_count: int | None,
+    ) -> None:
+        """Log study metadata loading results."""
+        raise NotImplementedError
+
+    def log_processing_summary(
+        self,
+        *,
+        study_id: str,
+        domain_count: int,
+        file_count: int,
+        output_format: str,
+        generate_define: bool,
+        generate_sas: bool,
+    ) -> None:
+        """Log a summary of processing configuration and inputs."""
+        raise NotImplementedError
+
+    def log_final_stats(self) -> None:
+        """Log final overall processing statistics."""
+        raise NotImplementedError
+
+    def log_domain_start(
+        self, domain_code: str, files_for_domain: list[tuple[Path, str]]
+    ) -> None:
+        """Log the start of processing a specific domain."""
+        raise NotImplementedError
+
+    def log_synthesis_start(self, domain_code: str, reason: str) -> None:
+        """Log the start of synthesis for a domain."""
+        raise NotImplementedError
+
+    def log_synthesis_complete(self, domain_code: str, records: int) -> None:
+        """Log successful completion of synthesis for a domain."""
+        raise NotImplementedError
 
 
 @runtime_checkable
@@ -151,7 +201,7 @@ class FileGeneratorPort(Protocol):
             ... else:
             ...     print(f"Errors: {result.errors}")
         """
-        ...
+        raise NotImplementedError
 
 
 @runtime_checkable
@@ -189,7 +239,7 @@ class XPTWriterPort(Protocol):
             >>> df = pd.DataFrame({"STUDYID": ["001"], "USUBJID": ["001-001"]})
             >>> writer.write(df, "DM", Path("dm.xpt"))
         """
-        ...
+        raise NotImplementedError
 
 
 @runtime_checkable
@@ -226,7 +276,7 @@ class DatasetXMLWriterPort(Protocol):
             >>> df = pd.DataFrame({"STUDYID": ["001"], "USUBJID": ["001-001"]})
             >>> writer.write(df, "DM", config, Path("dm.xml"))
         """
-        ...
+        raise NotImplementedError
 
 
 @runtime_checkable
@@ -264,7 +314,7 @@ class SASWriterPort(Protocol):
         Example:
             >>> writer.write("DM", config, Path("dm.sas"), "raw.demo", "final.dm")
         """
-        ...
+        raise NotImplementedError
 
 
 @runtime_checkable
@@ -305,4 +355,4 @@ class DefineXmlGeneratorPort(Protocol):
             >>> datasets = [DefineDatasetDTO(...), DefineDatasetDTO(...)]
             >>> generator.generate(datasets, Path("define.xml"), sdtm_version="3.4", context="Submission")
         """
-        ...
+        raise NotImplementedError

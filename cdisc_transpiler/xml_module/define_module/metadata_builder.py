@@ -7,22 +7,18 @@ documents by coordinating all the individual builders.
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Iterable, TYPE_CHECKING
 from xml.etree import ElementTree as ET
 
-import pandas as pd
 
 if TYPE_CHECKING:
-    from ...mapping_module import MappingConfig
+    pass
 
 from .models import DefineGenerationError, StudyDataset
 from .constants import (
     ODM_NS,
     DEF_NS,
     DEFINE_VERSION,
-    DEFAULT_SDTM_VERSION,
-    CONTEXT_SUBMISSION,
     ACRF_LEAF_ID,
 )
 from ..utils import tag, attr, safe_href

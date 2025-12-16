@@ -7,7 +7,6 @@ This module provides access to SDTM Implementation Guide specifications
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 
 import pandas as pd
 

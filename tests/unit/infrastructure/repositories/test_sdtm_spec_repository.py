@@ -1,9 +1,6 @@
 """Tests for SDTMSpecRepository."""
 
 import pytest
-from pathlib import Path
-import tempfile
-import os
 
 from cdisc_transpiler.infrastructure.repositories import SDTMSpecRepository
 from cdisc_transpiler.infrastructure.caching import MemoryCache

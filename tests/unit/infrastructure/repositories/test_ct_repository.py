@@ -1,7 +1,6 @@
 """Tests for CTRepository."""
 
 import pytest
-from pathlib import Path
 
 from cdisc_transpiler.infrastructure.repositories import CTRepository
 from cdisc_transpiler.infrastructure.caching import MemoryCache

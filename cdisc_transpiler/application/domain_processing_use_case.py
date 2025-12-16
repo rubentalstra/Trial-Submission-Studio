@@ -38,7 +38,9 @@ if TYPE_CHECKING:
 
 
 def _get_transformation_helpers() -> tuple[
-    type, Callable[[str], str], Callable[[str], str]
+    type,
+    Callable[[str, str], str | None],
+    Callable[[str, str], str],
 ]:
     """Lazy import of transformation dependencies to avoid circular imports.
 
@@ -153,7 +155,7 @@ class DomainProcessingUseCase:
                 if result is None:
                     continue
 
-                frame, config, is_findings_long = result
+                frame, config, _is_findings_long = result
                 all_dataframes.append(frame)
                 variant_frames.append((variant_name or request.domain_code, frame))
                 last_config = config
@@ -221,7 +223,7 @@ class DomainProcessingUseCase:
                 )
                 response.supplementals.append(supp_response)
 
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             response.success = False
             response.error = str(exc)
             self.logger.error(f"{request.domain_code}: {exc}")
@@ -704,6 +706,7 @@ class DomainProcessingUseCase:
         output_dirs: dict[str, Path | None],
     ) -> dict[str, Any]:
         """Generate supplemental qualifier files using FileGeneratorPort."""
+        from ..domain.services import finalize_suppqual
         from .models import OutputDirs, OutputRequest
         from ..mapping_module import ColumnMapping, build_config
 
@@ -714,6 +717,18 @@ class DomainProcessingUseCase:
         )
 
         supp_domain_code = f"SUPP{domain_code.upper()}"
+
+        # Finalize (ordering + dedup) after merge to avoid duplicates across files.
+        try:
+            supp_domain_def = self._get_domain(supp_domain_code)
+        except Exception:
+            supp_domain_def = None
+        if not merged_supp.empty:
+            merged_supp = finalize_suppqual(
+                merged_supp,
+                supp_domain_def=supp_domain_def,
+                parent_domain_code=domain_code,
+            )
 
         # Build identity config for SUPPQUAL
         mappings = [
@@ -728,7 +743,7 @@ class DomainProcessingUseCase:
         supp_config = build_config(supp_domain_code, mappings)
         supp_config.study_id = study_id
 
-        supp_domain = self._get_domain(supp_domain_code)
+        supp_domain = supp_domain_def or self._get_domain(supp_domain_code)
         base_filename = supp_domain.resolved_dataset_name()
 
         supp_result: dict[str, Any] = {

@@ -4,7 +4,6 @@ These tests verify the RELREC service creates proper relationship records
 linking observations across SDTM domains.
 """
 
-import pytest
 import pandas as pd
 
 from cdisc_transpiler.domain.services import RelrecService, build_relrec

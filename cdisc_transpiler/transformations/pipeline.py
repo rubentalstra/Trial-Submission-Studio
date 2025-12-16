@@ -210,8 +210,8 @@ class TransformationPipeline:
             data=current_data,
             applied=len(applied_transformers) > 0,
             message=message,
-            warnings=all_warnings if all_warnings else None,
-            errors=all_errors if all_errors else None,
+            warnings=all_warnings,
+            errors=all_errors,
             metadata={
                 "input_rows": input_rows,
                 "output_rows": output_rows,

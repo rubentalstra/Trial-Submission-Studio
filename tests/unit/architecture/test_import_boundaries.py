@@ -104,7 +104,7 @@ class TestCLIImportBoundary:
                 rel_path = py_file.relative_to(PACKAGE_ROOT.parent)
                 violations.append(f"{rel_path}: {forbidden}")
 
-        assert not violations, f"Services layer imports CLI modules:\n" + "\n".join(
+        assert not violations, "Services layer imports CLI modules:\n" + "\n".join(
             violations
         )
 
@@ -122,7 +122,7 @@ class TestCLIImportBoundary:
                 rel_path = py_file.relative_to(PACKAGE_ROOT.parent)
                 violations.append(f"{rel_path}: {forbidden}")
 
-        assert not violations, f"Application layer imports CLI modules:\n" + "\n".join(
+        assert not violations, "Application layer imports CLI modules:\n" + "\n".join(
             violations
         )
 
@@ -140,7 +140,7 @@ class TestCLIImportBoundary:
                 rel_path = py_file.relative_to(PACKAGE_ROOT.parent)
                 violations.append(f"{rel_path}: {forbidden}")
 
-        assert not violations, f"Domain layer imports CLI modules:\n" + "\n".join(
+        assert not violations, "Domain layer imports CLI modules:\n" + "\n".join(
             violations
         )
 
@@ -159,7 +159,7 @@ class TestCLIImportBoundary:
                 violations.append(f"{rel_path}: {forbidden}")
 
         assert not violations, (
-            f"Infrastructure layer imports CLI modules:\n" + "\n".join(violations)
+            "Infrastructure layer imports CLI modules:\n" + "\n".join(violations)
         )
 
     def test_xpt_module_does_not_import_cli(self):
@@ -176,7 +176,7 @@ class TestCLIImportBoundary:
                 rel_path = py_file.relative_to(PACKAGE_ROOT.parent)
                 violations.append(f"{rel_path}: {forbidden}")
 
-        assert not violations, f"XPT module imports CLI modules:\n" + "\n".join(
+        assert not violations, "XPT module imports CLI modules:\n" + "\n".join(
             violations
         )
 
@@ -200,10 +200,6 @@ class TestLegacyImportBoundary:
 
         violations = []
         for py_file in get_python_files(application_dir):
-            # Skip checking for TYPE_CHECKING imports (temporary allowance)
-            with open(py_file, "r", encoding="utf-8") as f:
-                content = f.read()
-
             # Check for direct (non-TYPE_CHECKING) legacy imports
             # This is a simple heuristic - a more robust solution would
             # use AST analysis to detect imports outside TYPE_CHECKING blocks
@@ -225,7 +221,7 @@ class TestLegacyImportBoundary:
         # )
         if violations:
             pytest.skip(
-                f"Application layer still has legacy imports (migration in progress):\n"
+                "Application layer still has legacy imports (migration in progress):\n"
                 + "\n".join(violations)
             )
 
@@ -258,7 +254,7 @@ class TestRegressionPrevention:
                 violations.append(f"{rel_path}: {forbidden}")
 
         assert not violations, (
-            f"cli.logging_config imported outside CLI/legacy:\n" + "\n".join(violations)
+            "cli.logging_config imported outside CLI/legacy:\n" + "\n".join(violations)
         )
 
     def test_no_cli_helpers_outside_cli_and_legacy(self):
@@ -281,8 +277,8 @@ class TestRegressionPrevention:
                 rel_path = py_file.relative_to(PACKAGE_ROOT.parent)
                 violations.append(f"{rel_path}: {forbidden}")
 
-        assert not violations, (
-            f"cli.helpers imported outside CLI/legacy:\n" + "\n".join(violations)
+        assert not violations, "cli.helpers imported outside CLI/legacy:\n" + "\n".join(
+            violations
         )
 
     def test_services_init_does_not_import_legacy(self):

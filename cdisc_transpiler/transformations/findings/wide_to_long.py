@@ -26,7 +26,7 @@ from typing import Any, Callable
 
 import pandas as pd
 
-from ..base import TransformationContext, TransformationResult, TransformerPort
+from ..base import TransformationContext, TransformationResult
 
 
 @dataclass

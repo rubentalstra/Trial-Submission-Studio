@@ -7,14 +7,12 @@ documents by coordinating all the individual builders.
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Iterable, TYPE_CHECKING
 from xml.etree import ElementTree as ET
 
-import pandas as pd
 
 if TYPE_CHECKING:
-    from cdisc_transpiler.mapping_module import MappingConfig
+    pass
 
 from .models import DefineGenerationError, StudyDataset
 from .constants import (
@@ -23,8 +21,6 @@ from .constants import (
     XML_NS,
     XLINK_NS,
     DEFINE_VERSION,
-    DEFAULT_SDTM_VERSION,
-    CONTEXT_SUBMISSION,
     ACRF_LEAF_ID,
 )
 from cdisc_transpiler.xml_module.utils import tag, attr, safe_href

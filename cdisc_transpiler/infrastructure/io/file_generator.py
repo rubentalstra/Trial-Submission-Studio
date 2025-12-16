@@ -19,7 +19,7 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 
-from ...application.models import OutputDirs, OutputRequest, OutputResult
+from ...application.models import OutputRequest, OutputResult
 
 if TYPE_CHECKING:
     from ...application.ports import (

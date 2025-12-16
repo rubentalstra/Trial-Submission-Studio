@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import math
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List, cast
 
 import pandas as pd
 
@@ -63,7 +63,7 @@ def _clean_value(raw: object) -> str:
         return raw.strip()
     if not isinstance(raw, (pd.Series, pd.DataFrame)):
         try:
-            if bool(pd.isna(raw)):
+            if bool(pd.isna(cast(Any, raw))):
                 return ""
         except Exception:
             pass
@@ -100,7 +100,8 @@ def _load_ct_rows(ct_dir: Path) -> Dict[str, list[dict[str, Any]]]:
         except Exception:
             continue  # Skip unreadable files rather than failing the entire registry
         standard_hint = csv_path.stem  # e.g., SDTM_CT_2025-09-26
-        for row in records:
+        for raw_row in records:
+            row: dict[str, Any] = {str(k): v for k, v in raw_row.items()}
             code = str(row.get("Codelist Code") or "").strip().upper()
             if not code:
                 continue

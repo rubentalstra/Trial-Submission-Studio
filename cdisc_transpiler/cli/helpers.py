@@ -16,7 +16,6 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 from rich.console import Console
-from rich.table import Table
 
 from ..xpt_module import write_xpt_file
 

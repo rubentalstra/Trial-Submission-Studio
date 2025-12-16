@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 
@@ -145,14 +145,20 @@ class TSProcessor(BaseDomainProcessor):
             if val and code:
                 value_code_map.setdefault(val, (code, ref))
         missing_code = params["TSVALCD"].astype("string").str.strip() == ""
-        for idx, row in params[missing_code].iterrows():
-            val = str(row.get("TSVAL", "")).strip()
-            if not val or val not in value_code_map:
-                continue
-            code, ref = value_code_map[val]
-            params.loc[idx, "TSVALCD"] = code
-            if not str(row.get("TSVCDREF", "")).strip() and ref:
-                params.loc[idx, "TSVCDREF"] = ref
+        if missing_code.any():
+            tsvalcd_loc = cast(int, params.columns.get_loc("TSVALCD"))
+            tsvcdref_loc = cast(int, params.columns.get_loc("TSVCDREF"))
+            for pos in range(len(params)):
+                if not bool(missing_code.iloc[pos]):
+                    continue
+                row = params.iloc[pos]
+                val = str(row.get("TSVAL", "")).strip()
+                if not val or val not in value_code_map:
+                    continue
+                code, ref = value_code_map[val]
+                params.iat[pos, tsvalcd_loc] = code
+                if not str(row.get("TSVCDREF", "")).strip() and ref:
+                    params.iat[pos, tsvcdref_loc] = ref
         params["TSSEQ"] = range(1, len(params) + 1)
         frame.drop(index=frame.index.tolist(), inplace=True)
         frame.drop(columns=list(frame.columns), inplace=True)

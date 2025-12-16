@@ -54,12 +54,15 @@ class SASWriter:
             >>> writer = SASWriter()
             >>> writer.write("DM", config, Path("dm.sas"), "raw.demo", "final.dm")
         """
+        effective_input_dataset = input_dataset or f"work.{domain_code.lower()}"
+        effective_output_dataset = output_dataset or f"sdtm.{domain_code.lower()}"
+
         # Generate SAS code
         sas_code = generate_sas_program(
             domain_code,
             config,
-            input_dataset=input_dataset,
-            output_dataset=output_dataset,
+            input_dataset=effective_input_dataset,
+            output_dataset=effective_output_dataset,
         )
 
         # Write to file

@@ -4,8 +4,11 @@ This module re-exports shared utilities from the parent xml module and
 provides Dataset-XML specific helper functions.
 """
 
+from typing import Any, cast
+
 import pandas as pd
-from cdisc_transpiler.xml_module.utils import tag, attr
+
+from cdisc_transpiler.xml_module.utils import attr, tag
 from .constants import SHARED_VARIABLE_OIDS
 
 
@@ -65,7 +68,7 @@ def format_value(value: object, column_name: str) -> str:
         except Exception:
             return ""
     try:
-        if bool(pd.isna(value)):
+        if bool(pd.isna(cast(Any, value))):
             return ""
     except Exception:
         pass

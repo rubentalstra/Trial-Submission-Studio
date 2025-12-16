@@ -4,7 +4,6 @@ Tests for TransformationPipeline class.
 """
 
 import pandas as pd
-import pytest
 
 from cdisc_transpiler.transformations import (
     TransformationPipeline,

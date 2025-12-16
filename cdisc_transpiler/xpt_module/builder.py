@@ -22,7 +22,6 @@ from ..mapping_module import MappingConfig
 from ..domains_module import get_domain
 from ..domain.services.domain_frame_builder import (
     DomainFrameBuilder as _DomainFrameBuilder,
-    DomainFrameBuildError,
 )
 from .domain_processors import get_domain_processor
 

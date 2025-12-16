@@ -36,6 +36,13 @@ class SEProcessor(BaseDomainProcessor):
             if self.reference_starts
             else subjects_series.tolist()
         )
+        subjects = [
+            str(s).strip()
+            for s in subjects
+            if str(s).strip().upper() not in {"", "NAN", "<NA>", "NONE", "NULL"}
+        ]
+        if not subjects:
+            subjects = [Defaults.SUBJECT_ID]
         for usubjid in subjects:
             start = (
                 DateTransformer.coerce_iso8601(self.reference_starts.get(usubjid, ""))

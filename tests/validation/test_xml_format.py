@@ -247,18 +247,14 @@ class TestXMLEncoding:
             pytest.skip("No XML files found")
 
         for xml_file in xml_files:
-            with open(xml_file, "r", encoding="utf-8") as f:
-                content = f.read()
+            # These should not appear unescaped in element content
+            # (they're OK in CDATA sections or attributes)
+            # This is a basic check - XML parser already validates this
+            ET.parse(xml_file)
 
-                # These should not appear unescaped in element content
-                # (they're OK in CDATA sections or attributes)
-                # This is a basic check - XML parser already validates this
-                tree = ET.parse(xml_file)
-                root = tree.getroot()
-
-                # If we got here, XML is valid and characters are escaped
-                # (ET.parse would fail on unescaped special chars)
-                assert True
+            # If we got here, XML is valid and characters are escaped
+            # (ET.parse would fail on unescaped special chars)
+            assert True
 
     def test_xml_readable_with_different_parsers(self, processed_study):
         """Test that XML can be read with different parsing methods."""

@@ -7,9 +7,8 @@ CLEAN2-D2: Tests are now enabled since StudyProcessingUseCase accepts
 injected dependencies and no longer imports from legacy modules.
 """
 
-import pytest
 from pathlib import Path
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock
 import pandas as pd
 
 from cdisc_transpiler.application.models import (

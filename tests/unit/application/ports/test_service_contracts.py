@@ -43,6 +43,87 @@ class MockLogger:
     def verbose(self, message: str) -> None:
         self.messages.append(("verbose", message))
 
+    def log_study_start(
+        self,
+        study_id: str,
+        study_folder: Path,
+        output_format: str,
+        supported_domains: list[str],
+    ) -> None:
+        self.messages.append(
+            (
+                "log_study_start",
+                {
+                    "study_id": study_id,
+                    "study_folder": study_folder,
+                    "output_format": output_format,
+                    "supported_domains": supported_domains,
+                },
+            )
+        )
+
+    def log_metadata_loaded(
+        self,
+        *,
+        items_count: int | None,
+        codelists_count: int | None,
+    ) -> None:
+        self.messages.append(
+            (
+                "log_metadata_loaded",
+                {"items_count": items_count, "codelists_count": codelists_count},
+            )
+        )
+
+    def log_processing_summary(
+        self,
+        *,
+        study_id: str,
+        domain_count: int,
+        file_count: int,
+        output_format: str,
+        generate_define: bool,
+        generate_sas: bool,
+    ) -> None:
+        self.messages.append(
+            (
+                "log_processing_summary",
+                {
+                    "study_id": study_id,
+                    "domain_count": domain_count,
+                    "file_count": file_count,
+                    "output_format": output_format,
+                    "generate_define": generate_define,
+                    "generate_sas": generate_sas,
+                },
+            )
+        )
+
+    def log_final_stats(self) -> None:
+        self.messages.append(("log_final_stats", None))
+
+    def log_domain_start(
+        self,
+        domain_code: str,
+        files_for_domain: list[tuple[Path, str]],
+    ) -> None:
+        self.messages.append(
+            (
+                "log_domain_start",
+                {"domain_code": domain_code, "files_for_domain": files_for_domain},
+            )
+        )
+
+    def log_synthesis_start(self, domain_code: str, reason: str) -> None:
+        self.messages.append(
+            ("log_synthesis_start", {"domain_code": domain_code, "reason": reason})
+        )
+
+    def log_synthesis_complete(self, domain_code: str, records: int) -> None:
+        self.messages.append(
+            ("log_synthesis_complete", {"domain_code": domain_code, "records": records})
+        )
+
 
 class MockFileGenerator:
     """Mock file generator for testing protocol compliance."""

@@ -36,7 +36,9 @@ class CSVReadOptions:
 
     normalize_headers: bool = True
     strict_na_handling: bool = True
-    dtype: str | dict[str, Any] | None = str
+    # pandas accepts dtype as either a scalar dtype, a dtype type (e.g. `str`),
+    # or a per-column mapping. The pandas typing stubs are restrictive here.
+    dtype: Any = str
     encoding: str = "utf-8"
     detect_header_row: bool = True
 

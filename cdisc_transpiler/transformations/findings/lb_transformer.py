@@ -15,7 +15,6 @@ from typing import Any
 
 import pandas as pd
 
-from ..base import TransformationContext, TransformationResult
 from .wide_to_long import TestColumnPattern, WideToLongTransformer
 
 

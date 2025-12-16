@@ -1,6 +1,5 @@
 """Tests for MemoryCache."""
 
-import pytest
 from datetime import timedelta
 import time
 

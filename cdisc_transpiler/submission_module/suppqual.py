@@ -16,19 +16,23 @@ import pandas as pd
 
 # Re-export from domain service for backwards compatibility
 from ..domain.services.suppqual_service import (
-    extract_used_columns,
     sanitize_qnam as _sanitize_qnam,
     build_suppqual as _build_suppqual_service,
+    extract_used_columns as _extract_used_columns,
     finalize_suppqual,
 )
 from ..domains_module import get_domain
 
 if TYPE_CHECKING:
-    from ..mapping_module import MappingConfig
+    pass
 
 
 # Re-export sanitize function
 _sanitize_qnam = _sanitize_qnam
+
+
+def extract_used_columns(config: Any) -> set[str]:
+    return _extract_used_columns(config)
 
 
 def build_suppqual(

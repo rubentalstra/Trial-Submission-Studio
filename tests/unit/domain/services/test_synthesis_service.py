@@ -8,7 +8,6 @@ The SynthesisService is a pure domain service that returns only domain data
 """
 
 import pytest
-import pandas as pd
 
 from cdisc_transpiler.domain.services import SynthesisService, SynthesisResult
 

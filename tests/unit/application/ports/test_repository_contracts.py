@@ -16,7 +16,6 @@ from cdisc_transpiler.application.ports import (
     StudyDataRepositoryPort,
 )
 from cdisc_transpiler.domain.entities.study_metadata import (
-    CodeList,
     SourceColumn,
     StudyMetadata,
 )

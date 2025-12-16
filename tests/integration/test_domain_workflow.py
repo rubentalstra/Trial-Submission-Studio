@@ -8,7 +8,6 @@ import pytest
 from pathlib import Path
 import pandas as pd
 
-from cdisc_transpiler.infrastructure import create_default_container
 from cdisc_transpiler.application.models import ProcessDomainRequest
 
 

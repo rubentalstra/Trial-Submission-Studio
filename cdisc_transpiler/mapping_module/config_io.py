@@ -6,7 +6,6 @@ has been moved to `cdisc_transpiler.infrastructure.repositories.mapping_config_r
 
 from __future__ import annotations
 
-from pathlib import Path
 
 # Re-export from infrastructure for backwards compatibility
 from ..infrastructure.repositories.mapping_config_repository import (

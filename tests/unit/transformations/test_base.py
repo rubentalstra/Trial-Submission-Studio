@@ -4,12 +4,10 @@ Tests for TransformationContext, TransformationResult, and TransformerPort proto
 """
 
 import pandas as pd
-import pytest
 
 from cdisc_transpiler.transformations.base import (
     TransformationContext,
     TransformationResult,
-    TransformerPort,
     is_transformer,
 )
 

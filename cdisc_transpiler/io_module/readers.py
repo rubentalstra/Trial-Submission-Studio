@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING, Callable
 import pandas as pd
 
 if TYPE_CHECKING:
-    from ..infrastructure.repositories.study_data_repository import StudyDataRepository
+    pass
 
 
 class ParseError(RuntimeError):

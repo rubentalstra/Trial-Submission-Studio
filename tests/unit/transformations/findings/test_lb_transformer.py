@@ -4,7 +4,6 @@ Tests for LBTransformer class covering LB-specific patterns and logic.
 """
 
 import pandas as pd
-import pytest
 
 from cdisc_transpiler.transformations.findings import LBTransformer
 from cdisc_transpiler.transformations.base import TransformationContext

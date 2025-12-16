@@ -5,6 +5,8 @@ provides Dataset-XML specific helper functions.
 """
 
 import pandas as pd
+from typing import Any, cast
+
 from ..utils import tag, attr
 from .constants import SHARED_VARIABLE_OIDS
 
@@ -65,7 +67,7 @@ def format_value(value: object, column_name: str) -> str:
         except Exception:
             return ""
     try:
-        if bool(pd.isna(value)):
+        if bool(pd.isna(cast(Any, value))):
             return ""
     except Exception:
         pass

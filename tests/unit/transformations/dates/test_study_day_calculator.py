@@ -4,7 +4,6 @@ Tests for StudyDayCalculator class.
 """
 
 import pandas as pd
-import pytest
 
 from cdisc_transpiler.transformations.dates import StudyDayCalculator
 from cdisc_transpiler.transformations import TransformationContext

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 
@@ -142,16 +142,18 @@ class DSProcessor(BaseDomainProcessor):
 
         # Replace disposition dates that precede consent with a padded end date
         frame["DSSTDTC"] = frame["DSSTDTC"].apply(DateTransformer.coerce_iso8601)
-        for idx, row in frame.iterrows():
+        dsstdtc_loc = cast(int, frame.columns.get_loc("DSSTDTC"))
+        for pos in range(len(frame)):
+            row = frame.iloc[pos]
             subj = str(row.get("USUBJID", "") or "")
             base = DateTransformer.coerce_iso8601(
                 (self.reference_starts or {}).get(subj)
             )
             base = base or fallback_date
-            if disposition_mask.iloc[idx]:
-                frame.loc[idx, "DSSTDTC"] = _add_days(base, 120)
+            if disposition_mask.iloc[pos]:
+                frame.iat[pos, dsstdtc_loc] = _add_days(base, 120)
             elif not str(row["DSSTDTC"]).strip():
-                frame.loc[idx, "DSSTDTC"] = base
+                frame.iat[pos, dsstdtc_loc] = base
 
         DateTransformer.compute_study_day(frame, "DSSTDTC", "DSSTDY", ref="RFSTDTC")
         frame["DSDTC"] = frame["DSSTDTC"]

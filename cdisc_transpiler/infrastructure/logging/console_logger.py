@@ -200,6 +200,7 @@ class ConsoleLogger(LoggerPort):
 
     def log_metadata_loaded(
         self,
+        *,
         items_count: int | None,
         codelists_count: int | None,
     ) -> None:
@@ -269,7 +270,9 @@ class ConsoleLogger(LoggerPort):
     def log_domain_start(
         self,
         domain_code: str,
-        files: list[tuple[Path, str]],
+        files_for_domain: list[tuple[Path, str]] | None = None,
+        *,
+        files: list[tuple[Path, str]] | None = None,
     ) -> None:
         """Log the start of domain processing.
 
@@ -277,14 +280,17 @@ class ConsoleLogger(LoggerPort):
             domain_code: SDTM domain code
             files: List of (file_path, variant_name) tuples
         """
+        if files_for_domain is None:
+            files_for_domain = files or []
+
         self.set_context(domain_code=domain_code)
         self._stats["domains_processed"] += 1
 
         domain_class = get_domain_class(domain_code)
-        variant_names = [v for _, v in files]
+        variant_names = [v for _, v in files_for_domain]
 
         # Build display name
-        if len(files) == 1:
+        if len(files_for_domain) == 1:
             display_name = domain_code
         else:
             display_name = f"{domain_code} (merging {', '.join(variant_names)})"
@@ -297,7 +303,7 @@ class ConsoleLogger(LoggerPort):
         self.console.print(header)
 
         # List input files
-        for input_file, _variant_name in files:
+        for input_file, _variant_name in files_for_domain:
             self.console.print(f"  - {input_file.name}")
 
     def log_file_loaded(
@@ -484,7 +490,7 @@ class ConsoleLogger(LoggerPort):
     def log_synthesis_complete(
         self,
         domain_code: str,
-        record_count: int,
+        records: int,
     ) -> None:
         """Log synthesis completion.
 
@@ -492,7 +498,7 @@ class ConsoleLogger(LoggerPort):
             domain_code: Domain that was synthesized
             record_count: Number of records generated
         """
-        self.success(f"Generated {domain_code} scaffold (records={record_count})")
+        self.success(f"Generated {domain_code} scaffold (records={records})")
 
     # =========================================================================
     # Summary and statistics methods
@@ -500,6 +506,7 @@ class ConsoleLogger(LoggerPort):
 
     def log_processing_summary(
         self,
+        *,
         study_id: str,
         domain_count: int,
         file_count: int,

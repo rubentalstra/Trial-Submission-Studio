@@ -5,7 +5,6 @@ TestDefinition is tested as an internal implementation detail.
 """
 
 import pandas as pd
-import pytest
 
 from cdisc_transpiler.transformations.findings.wide_to_long import (
     TestColumnPattern,

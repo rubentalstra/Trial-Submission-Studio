@@ -4,7 +4,6 @@ Tests for VSTransformer class covering VS-specific patterns and logic.
 """
 
 import pandas as pd
-import pytest
 
 from cdisc_transpiler.transformations.findings import VSTransformer
 from cdisc_transpiler.transformations.base import TransformationContext

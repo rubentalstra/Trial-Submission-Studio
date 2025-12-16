@@ -164,6 +164,11 @@ class DomainFrameBuilder:
         # Apply transformations
         self._apply_transformations(result)
 
+        # Apply lightweight, domain-agnostic normalizations that are required
+        # for downstream processing (e.g., SUPPQUAL joins) even when no
+        # domain-specific processor factory is provided.
+        self._apply_common_normalizations(result)
+
         # Domain-specific processing
         self._post_process_domain(result)
 
@@ -171,6 +176,55 @@ class DomainFrameBuilder:
         self._validate_and_cleanup(result)
 
         return result
+
+    def _apply_common_normalizations(self, result: pd.DataFrame) -> None:
+        """Apply minimal normalizations needed for SDTM compliance.
+
+        This intentionally stays small and non-invasive:
+        - Normalizes DM.SEX to common SDTM CT tokens (M/F/U/UNDIFFERENTIATED)
+        - Populates *SEQ variables when the entire column is missing
+          (common when mappings don't provide sequence values)
+        """
+        # DM.SEX controlled terminology normalization
+        if self.domain.code.upper() == "DM" and "SEX" in result.columns:
+            normalized = (
+                result["SEX"]
+                .astype("string")
+                .fillna("")
+                .str.strip()
+                .str.upper()
+            )
+            result["SEX"] = normalized.replace(
+                {
+                    "F": "F",
+                    "FEMALE": "F",
+                    "M": "M",
+                    "MALE": "M",
+                    "U": "U",
+                    "UNKNOWN": "U",
+                    "UNK": "U",
+                    "": "",
+                    "INTERSEX": "UNDIFFERENTIATED",
+                    "UNDIFFERENTIATED": "UNDIFFERENTIATED",
+                }
+            )
+
+        # Populate sequence columns when missing entirely
+        if "USUBJID" not in result.columns:
+            return
+
+        usubjid = result["USUBJID"].astype("string").fillna("").str.strip()
+        for col in result.columns:
+            if not col.upper().endswith("SEQ"):
+                continue
+
+            series = result[col]
+
+            # Only populate when sequences are effectively absent.
+            # We treat "all missing" and "constant/near-constant" as absent.
+            numeric = pd.to_numeric(series, errors="coerce")
+            if numeric.isna().all() or numeric.nunique(dropna=True) <= 1:
+                result[col] = result.groupby(usubjid).cumcount() + 1
 
     def _apply_mapping(self, result: pd.DataFrame, mapping: "ColumnMapping") -> None:
         """Apply a single column mapping to the result DataFrame."""

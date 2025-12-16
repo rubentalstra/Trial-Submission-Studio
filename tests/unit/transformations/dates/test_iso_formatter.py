@@ -4,7 +4,6 @@ Tests for ISODateFormatter class.
 """
 
 import pandas as pd
-import pytest
 
 from cdisc_transpiler.transformations.dates import ISODateFormatter
 from cdisc_transpiler.transformations import TransformationContext

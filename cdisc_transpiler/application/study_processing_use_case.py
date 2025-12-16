@@ -413,9 +413,11 @@ class StudyProcessingUseCase:
             cleaned["RFSTDTC"] = pd.to_datetime(
                 cleaned["RFSTDTC"], errors="coerce"
             ).fillna(pd.to_datetime(baseline_default))
-            baseline_map = (
-                cleaned.set_index("USUBJID")["RFSTDTC"].dt.date.astype(str).to_dict()
-            )
+            rfstdtc_by_subj = cleaned.set_index("USUBJID")["RFSTDTC"]
+            baseline_map: dict[str, str] = {
+                str(usubjid): str(timestamp.date().isoformat())
+                for usubjid, timestamp in rfstdtc_by_subj.items()
+            }
             reference_starts.update(baseline_map)
 
         return reference_starts
@@ -752,7 +754,12 @@ class StudyProcessingUseCase:
                 formats=output_formats,
             )
 
-            output_result = self._file_generator.generate(output_request)
+            file_generator = self._file_generator
+            output_result = (
+                file_generator.generate(output_request)
+                if file_generator is not None
+                else None
+            )
 
             result = DomainProcessingResult(
                 domain_code="RELREC",
@@ -760,9 +767,9 @@ class StudyProcessingUseCase:
                 records=len(domain_dataframe),
                 domain_dataframe=domain_dataframe,
                 config=relrec_config,
-                xpt_path=output_result.xpt_path,
-                xml_path=output_result.xml_path,
-                sas_path=output_result.sas_path,
+                xpt_path=output_result.xpt_path if output_result else None,
+                xml_path=output_result.xml_path if output_result else None,
+                sas_path=output_result.sas_path if output_result else None,
                 synthesized=True,
                 synthesis_reason="Relationship scaffold",
             )
@@ -916,7 +923,8 @@ class StudyProcessingUseCase:
         Returns:
             Tuple of (xpt_path, xml_path, sas_path) - paths to generated files
         """
-        if domain_dataframe is None or self._file_generator is None:
+        file_generator = self._file_generator
+        if domain_dataframe is None or file_generator is None:
             return None, None, None
 
         from .models import OutputDirs, OutputRequest
@@ -945,7 +953,7 @@ class StudyProcessingUseCase:
             formats=formats,
         )
 
-        output_result = self._file_generator.generate(output_request)
+        output_result = file_generator.generate(output_request)
 
         # Log success
         if output_result.xpt_path:

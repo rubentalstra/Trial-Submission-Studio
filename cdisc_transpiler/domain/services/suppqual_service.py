@@ -15,7 +15,6 @@ SDTM Reference:
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd
@@ -204,30 +203,30 @@ def build_suppqual(
         series = aligned_source[col].astype("string").fillna("").str.strip()
         if series.eq("").all():
             continue
-        for idx, val in series.items():
+        for pos, val in enumerate(series.to_list()):
             if val == "":
                 continue
-            idval = idvals.iloc[idx]
+            idval = idvals.iloc[pos]
             idvar_val = (
                 str(_clean_idvarval(pd.Series([idval]), id_is_seq).iloc[0])
                 if idvar
                 else ""
             )
             usubjid = (
-                str(aligned_source.loc[idx, "USUBJID"])
+                str(aligned_source.iloc[pos]["USUBJID"])
                 if "USUBJID" in aligned_source.columns
                 else ""
             )
             if (
                 not usubjid or usubjid.strip() == ""
             ) and "USUBJID" in mapped_df.columns:
-                usubjid = str(mapped_df.iloc[idx]["USUBJID"])
+                usubjid = str(mapped_df.iloc[pos]["USUBJID"])
             records.append(
                 {
                     "STUDYID": (
-                        str(aligned_source.loc[idx, "STUDYID"])
+                        str(aligned_source.iloc[pos]["STUDYID"])
                         if "STUDYID" in aligned_source.columns
-                        and str(aligned_source.loc[idx, "STUDYID"]).strip() != ""
+                        and str(aligned_source.iloc[pos]["STUDYID"]).strip() != ""
                         else (study_id or "")
                     ),
                     "RDOMAIN": domain,

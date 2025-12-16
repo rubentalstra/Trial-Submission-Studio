@@ -6,6 +6,8 @@ all log messages. Useful for testing without console output.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from ...application.ports.services import LoggerPort
 
 
@@ -67,4 +69,47 @@ class NullLogger(LoggerPort):
         Args:
             message: The message to log (ignored)
         """
+        pass
+
+    def log_study_start(
+        self,
+        study_id: str,
+        study_folder: Path,
+        output_format: str,
+        supported_domains: list[str],
+    ) -> None:
+        pass
+
+    def log_metadata_loaded(
+        self,
+        *,
+        items_count: int | None,
+        codelists_count: int | None,
+    ) -> None:
+        pass
+
+    def log_processing_summary(
+        self,
+        *,
+        study_id: str,
+        domain_count: int,
+        file_count: int,
+        output_format: str,
+        generate_define: bool,
+        generate_sas: bool,
+    ) -> None:
+        pass
+
+    def log_final_stats(self) -> None:
+        pass
+
+    def log_domain_start(
+        self, domain_code: str, files_for_domain: list[tuple[Path, str]]
+    ) -> None:
+        pass
+
+    def log_synthesis_start(self, domain_code: str, reason: str) -> None:
+        pass
+
+    def log_synthesis_complete(self, domain_code: str, records: int) -> None:
         pass
