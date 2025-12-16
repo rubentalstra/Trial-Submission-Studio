@@ -21,12 +21,11 @@ from collections.abc import Callable
 
 import pandas as pd
 
-from ...constants import Defaults
+from ..entities.sdtm_domain import SDTMDomain
 
-from ..entities.sdtm_domain import SDTMDomain, SDTMVariable
+from .domain_frame_builder import build_domain_dataframe
 
 if TYPE_CHECKING:
-    from ..entities.sdtm_domain import SDTMVariable
     from ..entities.mapping import MappingConfig
 
 
@@ -76,7 +75,7 @@ class SynthesisService:
     application layer using the FileGeneratorPort.
 
     Example:
-        >>> service = SynthesisService()
+        >>> service = SynthesisService(domain_resolver=my_domain_resolver)
         >>> result = service.synthesize_trial_design(
         ...     domain_code="TS",
         ...     study_id="STUDY001",
@@ -86,22 +85,8 @@ class SynthesisService:
         ...     # Application layer handles file generation
     """
 
-    def __init__(self, *, domain_resolver: Callable[[str], SDTMDomain] | None = None):
+    def __init__(self, *, domain_resolver: Callable[[str], SDTMDomain]):
         self._domain_resolver = domain_resolver
-
-    _FALLBACK_DOMAIN_VARIABLES: dict[str, tuple[str, ...]] = {
-        # Trial Design
-        "TS": ("STUDYID", "DOMAIN", "TSPARMCD", "TSPARM", "TSVAL"),
-        "TA": ("STUDYID", "DOMAIN", "ARMCD", "ARM", "ETCD", "ELEMENT", "EPOCH"),
-        "TE": ("STUDYID", "DOMAIN", "ETCD", "ELEMENT", "TEDUR"),
-        "SE": ("STUDYID", "DOMAIN", "USUBJID", "ETCD", "ELEMENT", "EPOCH"),
-        "DS": ("STUDYID", "DOMAIN", "USUBJID", "DSTERM", "DSDECOD"),
-        # Observation
-        "AE": ("STUDYID", "DOMAIN", "USUBJID", "AETERM", "AEDECOD"),
-        "LB": ("STUDYID", "DOMAIN", "USUBJID", "LBTESTCD", "LBTEST", "LBORRES"),
-        "VS": ("STUDYID", "DOMAIN", "USUBJID", "VSTESTCD", "VSTEST", "VSORRES"),
-        "EX": ("STUDYID", "DOMAIN", "USUBJID", "EXTRT", "EXDOSE"),
-    }
 
     def synthesize_trial_design(
         self,
@@ -123,33 +108,24 @@ class SynthesisService:
             SynthesisResult with generated DataFrame and config
         """
         try:
-            # Get domain definition
-            domain = self._get_domain(domain_code)
+            # Resolve the domain dynamically (no hardcoded fallbacks).
+            domain = self._domain_resolver(domain_code)
 
-            # Pick reference subject and date
-            subject_id, base_date = self._pick_subject(reference_starts)
+            # Build a minimal scaffold frame based on the resolved domain
+            # variable definitions. Values are intentionally left empty;
+            # the SDTM schema comes from `SDTMDomain`.
+            frame = self._build_scaffold_frame(domain)
 
-            # Generate rows based on domain type
-            rows = self._generate_trial_design_rows(
-                domain_code, subject_id, base_date, domain, study_id
-            )
-
-            # Create dataframe
-            if not rows:
-                frame = pd.DataFrame(
-                    {
-                        var.name: pd.Series(dtype=var.pandas_dtype())
-                        for var in domain.variables
-                    }
-                )
-            else:
-                frame = pd.DataFrame(rows)
-
-            # Build configuration
             config = self._build_identity_config(domain_code, frame, study_id)
 
-            # Build domain dataframe through builder
-            domain_dataframe = self._build_domain_dataframe(frame, config)
+            # Build SDTM-compliant DataFrame (lenient: allow empty required values)
+            domain_dataframe = build_domain_dataframe(
+                frame,
+                config,
+                domain,
+                reference_starts=reference_starts,
+                lenient=True,
+            )
 
             return SynthesisResult(
                 domain_code=domain_code,
@@ -186,33 +162,16 @@ class SynthesisService:
             SynthesisResult with generated DataFrame and config
         """
         try:
-            # Get domain definition
-            domain = self._get_domain(domain_code)
-
-            # Pick reference subject and date
-            subject_id, base_date = self._pick_subject(reference_starts)
-
-            # Generate rows
-            rows = self._generate_observation_rows(
-                domain_code, subject_id, base_date, domain, study_id
-            )
-
-            # Create dataframe
-            if not rows:
-                frame = pd.DataFrame(
-                    {
-                        var.name: pd.Series(dtype=var.pandas_dtype())
-                        for var in domain.variables
-                    }
-                )
-            else:
-                frame = pd.DataFrame(rows)
-
-            # Build configuration
+            domain = self._domain_resolver(domain_code)
+            frame = self._build_scaffold_frame(domain)
             config = self._build_identity_config(domain_code, frame, study_id)
-
-            # Build domain dataframe through builder
-            domain_dataframe = self._build_domain_dataframe(frame, config)
+            domain_dataframe = build_domain_dataframe(
+                frame,
+                config,
+                domain,
+                reference_starts=reference_starts,
+                lenient=True,
+            )
 
             return SynthesisResult(
                 domain_code=domain_code,
@@ -229,160 +188,20 @@ class SynthesisService:
                 error=str(exc),
             )
 
-    def _pick_subject(self, ref_starts: dict[str, str] | None) -> tuple[str, str]:
-        """Pick a reference subject and date."""
-        if ref_starts:
-            first_id = sorted(ref_starts.keys())[0]
-            return first_id, ref_starts.get(first_id) or Defaults.DATE
-        return Defaults.SUBJECT_ID, Defaults.DATE
+    def _build_scaffold_frame(
+        self, domain: SDTMDomain, *, rows: int = 1
+    ) -> pd.DataFrame:
+        """Return a minimal scaffold DataFrame for a resolved domain.
 
-    def _generate_trial_design_rows(
-        self,
-        domain_code: str,
-        subject_id: str,
-        base_date: str,
-        domain: SDTMDomain,
-        study_id: str,
-    ) -> list[dict]:
-        """Generate rows for trial design domains."""
-        upper = domain_code.upper()
-
-        def _default_value(var: SDTMVariable) -> object:
-            name = var.name.upper()
-            if name in {"STUDYID", "DOMAIN"}:
-                return None
-            if name == "USUBJID":
-                return subject_id
-            if name.endswith("SEQ"):
-                return 1
-            if name == "TAETORD":
-                return 1
-            if name.endswith("DY"):
-                return 1
-            if name.endswith("DTC") or name.endswith("STDTC") or name.endswith("ENDTC"):
-                return base_date
-            if var.type == "Num":
-                return 0
-            return ""
-
-        def _base_row() -> dict[str, object]:
-            row = {var.name: _default_value(var) for var in domain.variables}
-            row["STUDYID"] = study_id if "STUDYID" in row else None
-            row["DOMAIN"] = domain_code
-            return row
-
-        rows: list[dict[str, object]] = []
-
-        if upper == "TS":
-            row = _base_row()
-            row.update(
-                {
-                    "TSPARMCD": "TITLE",
-                    "TSPARM": "Study Title",
-                    "TSVAL": "Synthetic Trial",
-                    "TSVCDREF": "",
-                    "TSVCDVER": "",
-                }
-            )
-            rows.append(row)
-        elif upper == "TA":
-            for etcd, element, order in [
-                ("SCRN", "SCREENING", 0),
-                ("TRT", "TREATMENT", 1),
-            ]:
-                row = _base_row()
-                row.update(
-                    {
-                        "ARMCD": "ARM1",
-                        "ARM": "Treatment Arm",
-                        "ETCD": etcd,
-                        "ELEMENT": element,
-                        "TAETORD": order,
-                        "EPOCH": element,
-                    }
-                )
-                rows.append(row)
-        elif upper == "TE":
-            for etcd, element in [("SCRN", "SCREENING"), ("TRT", "TREATMENT")]:
-                row = _base_row()
-                row.update(
-                    {
-                        "ETCD": etcd,
-                        "ELEMENT": element,
-                        "TESTRL": base_date,
-                        "TEENRL": base_date,
-                        "TEDUR": Defaults.ELEMENT_DURATION,
-                    }
-                )
-                rows.append(row)
-        elif upper == "SE":
-            for etcd, element, epoch in [("SCRN", "SCREENING", "SCREENING")]:
-                row = _base_row()
-                row.update(
-                    {
-                        "ETCD": etcd,
-                        "ELEMENT": element,
-                        "SESTDTC": base_date,
-                        "SEENDTC": base_date,
-                        "EPOCH": epoch,
-                    }
-                )
-                rows.append(row)
-        elif upper == "DS":
-            row = _base_row()
-            row.update(
-                {
-                    "DSTERM": "COMPLETED",
-                    "DSDECOD": "COMPLETED",
-                    "DSSTDTC": base_date,
-                }
-            )
-            rows.append(row)
-
-        return rows
-
-    def _generate_observation_rows(
-        self,
-        domain_code: str,
-        subject_id: str,
-        base_date: str,
-        domain: SDTMDomain,
-        study_id: str,
-    ) -> list[dict]:
-        """Generate minimal rows for observation domains."""
-        upper = domain_code.upper()
-
-        def _default_value(var: SDTMVariable) -> object:
-            name = var.name.upper()
-            if name in {"STUDYID", "DOMAIN"}:
-                return None
-            if name == "USUBJID":
-                return subject_id
-            if name.endswith("SEQ"):
-                return 1
-            if name.endswith("DY"):
-                return 1
-            if name.endswith("DTC"):
-                return base_date
-            if var.type == "Num":
-                return None
-            return ""
-
-        row = {var.name: _default_value(var) for var in domain.variables}
-        row["STUDYID"] = study_id
-        row["DOMAIN"] = domain_code
-
-        # Domain-specific defaults
-        if upper == "AE":
-            row.update({"AETERM": "NO ADVERSE EVENTS", "AEDECOD": "NO ADVERSE EVENTS"})
-        elif upper == "LB":
-            row.update({"LBTESTCD": "GLUC", "LBTEST": "Glucose", "LBORRES": ""})
-        elif upper == "VS":
-            row.update({"VSTESTCD": "HR", "VSTEST": "Heart Rate", "VSORRES": ""})
-        elif upper == "EX":
-            row.update({"EXTRT": "PLACEBO", "EXDOSE": 0})
-
-        return [row]
+        The schema comes from the SDTM spec (the resolved `SDTMDomain`). Values
+        are intentionally left empty to avoid hardcoded synthesis content.
+        """
+        return pd.DataFrame(
+            {
+                var.name: pd.Series([None] * rows, dtype=var.pandas_dtype())
+                for var in domain.variables
+            }
+        )
 
     def _build_identity_config(
         self, domain_code: str, frame: pd.DataFrame, study_id: str
@@ -402,55 +221,3 @@ class SynthesisService:
         config = build_config(domain_code, mappings)
         config.study_id = study_id
         return config
-
-    def _get_domain(self, domain_code: str) -> SDTMDomain:
-        if self._domain_resolver is not None:
-            return self._domain_resolver(domain_code)
-
-        # Pure-domain fallback: for synthesis we only need a minimal set of
-        # variables to build a valid scaffold dataset.
-        key = domain_code.upper()
-        variable_names = self._FALLBACK_DOMAIN_VARIABLES.get(key)
-        if not variable_names:
-            raise RuntimeError(
-                f"SynthesisService requires a domain_resolver to synthesize '{domain_code}'."
-            )
-
-        def _infer_variable_type(name: str) -> tuple[str, int]:
-            upper = name.upper()
-            if upper in {"EXDOSE"} or upper.endswith("SEQ"):
-                return "Num", 8
-            return "Char", 200
-
-        variables: list[SDTMVariable] = []
-        for idx, name in enumerate(variable_names, start=1):
-            var_type, length = _infer_variable_type(name)
-            variables.append(
-                SDTMVariable(
-                    name=name,
-                    label=name,
-                    type=var_type,
-                    length=length,
-                    core="Req",
-                    variable_order=idx,
-                )
-            )
-
-        return SDTMDomain(
-            code=key,
-            description=f"Synthetic {key} domain",
-            class_name="Synthetic",
-            structure="One record per synthetic row",
-            label=key,
-            variables=tuple(variables),
-            dataset_name=key,
-        )
-
-    def _build_domain_dataframe(
-        self, frame: pd.DataFrame, config: MappingConfig
-    ) -> pd.DataFrame:
-        """Build domain dataframe via lazy import."""
-        from .domain_frame_builder import build_domain_dataframe
-
-        domain = self._get_domain(config.domain)
-        return build_domain_dataframe(frame, config, domain, lenient=True)

@@ -10,6 +10,62 @@ The SynthesisService is a pure domain service that returns only domain data
 import pytest
 
 from cdisc_transpiler.domain.services import SynthesisService, SynthesisResult
+from cdisc_transpiler.domain.entities.sdtm_domain import SDTMDomain, SDTMVariable
+
+
+def _make_domain(code: str, variable_names: list[str]) -> SDTMDomain:
+    variables: list[SDTMVariable] = []
+    for idx, name in enumerate(variable_names, start=1):
+        variables.append(
+            SDTMVariable(
+                name=name,
+                label=name,
+                type="Num" if name.upper().endswith("DOSE") else "Char",
+                length=200,
+                core="Req",
+                variable_order=idx,
+            )
+        )
+
+    upper = code.upper()
+    return SDTMDomain(
+        code=upper,
+        description=f"{upper} domain",
+        class_name="Synthetic",
+        structure="",
+        label=upper,
+        variables=tuple(variables),
+        dataset_name=upper,
+    )
+
+
+@pytest.fixture
+def domain_resolver():
+    domains = {
+        "TS": _make_domain("TS", ["STUDYID", "DOMAIN", "TSPARMCD", "TSPARM", "TSVAL"]),
+        "TA": _make_domain(
+            "TA", ["STUDYID", "DOMAIN", "ARMCD", "ARM", "ETCD", "ELEMENT", "EPOCH"]
+        ),
+        "TE": _make_domain("TE", ["STUDYID", "DOMAIN", "ETCD", "ELEMENT", "TEDUR"]),
+        "SE": _make_domain(
+            "SE",
+            ["STUDYID", "DOMAIN", "USUBJID", "ETCD", "ELEMENT", "EPOCH"],
+        ),
+        "DS": _make_domain("DS", ["STUDYID", "DOMAIN", "USUBJID", "DSTERM", "DSDECOD"]),
+        "AE": _make_domain("AE", ["STUDYID", "DOMAIN", "USUBJID", "AETERM", "AEDECOD"]),
+        "LB": _make_domain(
+            "LB", ["STUDYID", "DOMAIN", "USUBJID", "LBTESTCD", "LBTEST", "LBORRES"]
+        ),
+        "VS": _make_domain(
+            "VS", ["STUDYID", "DOMAIN", "USUBJID", "VSTESTCD", "VSTEST", "VSORRES"]
+        ),
+        "EX": _make_domain("EX", ["STUDYID", "DOMAIN", "USUBJID", "EXTRT", "EXDOSE"]),
+    }
+
+    def _resolve(domain_code: str) -> SDTMDomain:
+        return domains[domain_code.upper()]
+
+    return _resolve
 
 
 class TestSynthesisService:
@@ -21,16 +77,13 @@ class TestSynthesisService:
         assert SynthesisResult is not None
 
     def test_service_instantiation(self):
-        """Test that service can be instantiated without dependencies."""
-        service = SynthesisService()
-        assert service is not None
+        """Test that service requires a domain resolver."""
+        with pytest.raises(TypeError):
+            SynthesisService()  # type: ignore[call-arg]
 
-    def test_service_is_pure_domain_service(self):
+    def test_service_is_pure_domain_service(self, domain_resolver):
         """Test that service has no infrastructure dependencies."""
-        # SynthesisService should be instantiable with no arguments
-        # This verifies it's a pure domain service
-        service = SynthesisService()
-        assert service is not None
+        service = SynthesisService(domain_resolver=domain_resolver)
 
         # Verify it doesn't have file_generator or logger attributes
         assert not hasattr(service, "_file_generator")
@@ -41,9 +94,9 @@ class TestSynthesizeTrialDesign:
     """Tests for trial design domain synthesis."""
 
     @pytest.fixture
-    def service(self):
+    def service(self, domain_resolver):
         """Create synthesis service instance."""
-        return SynthesisService()
+        return SynthesisService(domain_resolver=domain_resolver)
 
     def test_synthesize_ts_domain(self, service):
         """Test TS (Trial Summary) domain synthesis."""
@@ -55,10 +108,11 @@ class TestSynthesizeTrialDesign:
         assert result.success
         assert result.domain_code == "TS"
         assert result.domain_dataframe is not None
-        assert len(result.domain_dataframe) >= 1
+
+        df = result.domain_dataframe
+        assert len(df) == 1
 
         # Check required columns
-        df = result.domain_dataframe
         assert "STUDYID" in df.columns
         assert "DOMAIN" in df.columns
         assert "TSPARMCD" in df.columns
@@ -68,7 +122,7 @@ class TestSynthesizeTrialDesign:
         # Check values
         assert df["STUDYID"].iloc[0] == "TEST001"
         assert df["DOMAIN"].iloc[0] == "TS"
-        # TSPARMCD values are populated by the domain builder's default SDTM population
+        # Values for other columns are intentionally left empty in this scaffold.
 
     def test_synthesize_ta_domain(self, service):
         """Test TA (Trial Arms) domain synthesis."""
@@ -80,7 +134,7 @@ class TestSynthesizeTrialDesign:
         assert result.success
         assert result.domain_code == "TA"
         assert result.domain_dataframe is not None
-        assert len(result.domain_dataframe) >= 2  # SCREENING + TREATMENT
+        assert len(result.domain_dataframe) == 1
 
         df = result.domain_dataframe
         assert "ARMCD" in df.columns
@@ -163,9 +217,9 @@ class TestSynthesizeObservation:
     """Tests for observation domain synthesis."""
 
     @pytest.fixture
-    def service(self):
+    def service(self, domain_resolver):
         """Create synthesis service instance."""
-        return SynthesisService()
+        return SynthesisService(domain_resolver=domain_resolver)
 
     def test_synthesize_ae_domain(self, service):
         """Test AE (Adverse Events) domain synthesis."""
@@ -177,16 +231,17 @@ class TestSynthesizeObservation:
         assert result.success
         assert result.domain_code == "AE"
         assert result.domain_dataframe is not None
-        assert len(result.domain_dataframe) >= 1
 
         df = result.domain_dataframe
+        assert len(df) == 1
+
         assert "STUDYID" in df.columns
         assert "DOMAIN" in df.columns
         assert "USUBJID" in df.columns
         assert "AETERM" in df.columns
         assert "AEDECOD" in df.columns
 
-        # Check default values
+        # Check values populated by the domain builder
         assert df["STUDYID"].iloc[0] == "TEST001"
         assert df["DOMAIN"].iloc[0] == "AE"
 
@@ -246,9 +301,8 @@ class TestSynthesizeObservation:
         assert result.success
         assert result.domain_dataframe is not None
 
-        # Should use the first subject from reference_starts
-        df = result.domain_dataframe
-        assert df["USUBJID"].iloc[0] == "SUBJ001"
+        # Reference starts are accepted for downstream date transformations;
+        # scaffold values remain intentionally empty.
 
     def test_config_is_returned(self, service):
         """Test that mapping config is returned with synthesis."""
