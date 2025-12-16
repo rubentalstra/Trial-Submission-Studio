@@ -62,17 +62,17 @@ class TestStudyCommand:
             ],
         )
 
-        # With strict gating default enabled, DEMO_GDISC should fail conformance.
-        assert result.exit_code != 0
+        # With strict gating default enabled, DEMO_GDISC should pass conformance.
+        assert result.exit_code == 0
 
         # Check output contains summary
         assert "Study Processing Summary" in result.output
         assert "conformance" in result.output.lower()
 
-        # Ensure no XPT files were generated
+        # Ensure XPT files were generated
         xpt_dir = output_dir / "xpt"
         xpt_files = list(xpt_dir.glob("*.xpt")) if xpt_dir.exists() else []
-        assert len(xpt_files) == 0, "No XPT files should be generated when gating fails"
+        assert len(xpt_files) > 0, "XPT files should be generated when gating passes"
 
     def test_study_with_xpt_format(self, runner, study_folder, tmp_path):
         """Test study command with XPT format only."""

@@ -26,11 +26,11 @@ class AEProcessor(BaseDomainProcessor):
 
         # Ensure AEDUR populated to avoid SD1078 missing permissibles
         if "AEDUR" in frame.columns:
-            frame["AEDUR"] = (
+            frame.loc[:, "AEDUR"] = (
                 frame["AEDUR"].astype("string").fillna("").replace("", "P1D")
             )
         else:
-            frame["AEDUR"] = "P1D"
+            frame.loc[:, "AEDUR"] = "P1D"
         # Standardize visit info only when present in source
         if {"VISIT", "VISITNUM"} & set(frame.columns):
             TextTransformer.normalize_visit(frame)
@@ -48,10 +48,10 @@ class AEProcessor(BaseDomainProcessor):
         }
         for col, val in defaults.items():
             if col not in frame.columns:
-                frame[col] = val
+                frame.loc[:, col] = val
         # AEACN - normalize to valid CDISC CT values
         if "AEACN" in frame.columns:
-            frame["AEACN"] = (
+            frame.loc[:, "AEACN"] = (
                 frame["AEACN"]
                 .astype(str)
                 .str.upper()
@@ -70,10 +70,10 @@ class AEProcessor(BaseDomainProcessor):
                 )
             )
         else:
-            frame["AEACN"] = "DOSE NOT CHANGED"
+            frame.loc[:, "AEACN"] = "DOSE NOT CHANGED"
         # AESER - normalize to valid CDISC CT values (Y/N only)
         if "AESER" in frame.columns:
-            frame["AESER"] = (
+            frame.loc[:, "AESER"] = (
                 frame["AESER"]
                 .astype(str)
                 .str.upper()
@@ -96,10 +96,10 @@ class AEProcessor(BaseDomainProcessor):
                 )
             )
         else:
-            frame["AESER"] = "N"
+            frame.loc[:, "AESER"] = "N"
         # AEREL - normalize to valid CDISC CT values
         if "AEREL" in frame.columns:
-            frame["AEREL"] = (
+            frame.loc[:, "AEREL"] = (
                 frame["AEREL"]
                 .astype(str)
                 .str.upper()
@@ -124,10 +124,10 @@ class AEProcessor(BaseDomainProcessor):
                 )
             )
         else:
-            frame["AEREL"] = "NOT RELATED"
+            frame.loc[:, "AEREL"] = "NOT RELATED"
         # AEOUT - normalize to valid CDISC CT values
         if "AEOUT" in frame.columns:
-            frame["AEOUT"] = (
+            frame.loc[:, "AEOUT"] = (
                 frame["AEOUT"]
                 .astype(str)
                 .str.upper()
@@ -156,10 +156,10 @@ class AEProcessor(BaseDomainProcessor):
                 )
             )
         else:
-            frame["AEOUT"] = "RECOVERED/RESOLVED"
+            frame.loc[:, "AEOUT"] = "RECOVERED/RESOLVED"
         # AESEV - normalize to valid CDISC CT values
         if "AESEV" in frame.columns:
-            frame["AESEV"] = (
+            frame.loc[:, "AESEV"] = (
                 frame["AESEV"]
                 .astype(str)
                 .str.upper()
@@ -179,14 +179,14 @@ class AEProcessor(BaseDomainProcessor):
                 )
             )
         else:
-            frame["AESEV"] = "MILD"
+            frame.loc[:, "AESEV"] = "MILD"
         # Ensure EPOCH is set for AE records
         if "EPOCH" in frame.columns:
-            frame["EPOCH"] = TextTransformer.replace_unknown(
+            frame.loc[:, "EPOCH"] = TextTransformer.replace_unknown(
                 frame["EPOCH"], "TREATMENT"
             )
         else:
-            frame["EPOCH"] = "TREATMENT"
+            frame.loc[:, "EPOCH"] = "TREATMENT"
         for code_var in (
             "AEPTCD",
             "AEHLGTCD",
@@ -197,14 +197,14 @@ class AEProcessor(BaseDomainProcessor):
         ):
             if code_var in frame.columns:
                 numeric = ensure_numeric_series(frame[code_var], frame.index)
-                frame[code_var] = numeric.fillna(999999).astype("Int64")
+                frame.loc[:, code_var] = numeric.fillna(999999).astype("Int64")
             else:
-                frame[code_var] = pd.Series(
+                frame.loc[:, code_var] = pd.Series(
                     [999999 for _ in frame.index], dtype="Int64"
                 )
         NumericTransformer.assign_sequence(frame, "AESEQ", "USUBJID")
         if "AESEQ" in frame.columns:
-            frame["AESEQ"] = frame["AESEQ"].astype("Int64")
+            frame.loc[:, "AESEQ"] = frame["AESEQ"].astype("Int64")
         # Remove non-standard extras to keep AE aligned to SDTM metadata
         for extra in ("VISIT", "VISITNUM", "TRTEMFL"):
             if extra in frame.columns:

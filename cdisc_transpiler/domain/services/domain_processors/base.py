@@ -99,6 +99,6 @@ class DefaultDomainProcessor(BaseDomainProcessor):
 
         # Set default EPOCH if present and empty
         if "EPOCH" in frame.columns:
-            frame["EPOCH"] = TextTransformer.replace_unknown(
+            frame.loc[:, "EPOCH"] = TextTransformer.replace_unknown(
                 frame["EPOCH"], "TREATMENT"
             )

@@ -25,28 +25,30 @@ class EXProcessor(BaseDomainProcessor):
         # Drop placeholder rows
         self._drop_placeholder_rows(frame)
 
-        frame["EXTRT"] = TextTransformer.replace_unknown(
+        frame.loc[:, "EXTRT"] = TextTransformer.replace_unknown(
             frame.get("EXTRT", pd.Series([""] * len(frame))), "TREATMENT"
-        )
+        ).astype("string")
         # Always regenerate EXSEQ - source values may not be unique (SD0005)
-        frame["EXSEQ"] = frame.groupby("USUBJID").cumcount() + 1
-        frame["EXSEQ"] = NumericTransformer.force_numeric(frame["EXSEQ"])
-        frame["EXSTDTC"] = TextTransformer.replace_unknown(
+        frame.loc[:, "EXSEQ"] = frame.groupby("USUBJID").cumcount() + 1
+        frame.loc[:, "EXSEQ"] = NumericTransformer.force_numeric(frame["EXSEQ"])
+        frame.loc[:, "EXSTDTC"] = TextTransformer.replace_unknown(
             frame.get("EXSTDTC", pd.Series([""] * len(frame))), Defaults.DATE
         )
         end_series = frame.get("EXENDTC", pd.Series([""] * len(frame)))
         end_series = TextTransformer.replace_unknown(end_series, "2023-12-31")
-        frame["EXENDTC"] = end_series.where(
+        frame.loc[:, "EXENDTC"] = end_series.where(
             end_series.astype(str).str.strip() != "", frame["EXSTDTC"]
         )
         DateTransformer.ensure_date_pair_order(frame, "EXSTDTC", "EXENDTC")
         DateTransformer.compute_study_day(frame, "EXSTDTC", "EXSTDY", ref="RFSTDTC")
         DateTransformer.compute_study_day(frame, "EXENDTC", "EXENDY", ref="RFSTDTC")
-        frame["EXDOSFRM"] = TextTransformer.replace_unknown(frame["EXDOSFRM"], "TABLET")
+        frame.loc[:, "EXDOSFRM"] = TextTransformer.replace_unknown(
+            frame["EXDOSFRM"], "TABLET"
+        ).astype("string")
 
         # EXDOSU is required when EXDOSE/EXDOSTXT/EXDOSTOT is provided (SD0035)
         if "EXDOSU" not in frame.columns:
-            frame["EXDOSU"] = "mg"
+            frame.loc[:, "EXDOSU"] = "mg"
         else:
             needs_unit = frame["EXDOSU"].isna() | (
                 frame["EXDOSU"].astype(str).str.strip() == ""
@@ -63,21 +65,21 @@ class EXProcessor(BaseDomainProcessor):
                 )
                 frame.loc[needs_unit & has_dose, "EXDOSU"] = "mg"
 
-        frame["EXDOSFRQ"] = TextTransformer.replace_unknown(
+        frame.loc[:, "EXDOSFRQ"] = TextTransformer.replace_unknown(
             frame.get("EXDOSFRQ", pd.Series(["" for _ in frame.index])), "QD"
-        )
+        ).astype("string")
         # EXDUR permissibility - provide basic duration
-        frame["EXDUR"] = TextTransformer.replace_unknown(
+        frame.loc[:, "EXDUR"] = TextTransformer.replace_unknown(
             frame.get("EXDUR", pd.Series([""] * len(frame))), "P1D"
-        )
+        ).astype("string")
         # Align EXSCAT/EXCAT to a controlled value with sane length
-        frame["EXSCAT"] = ""
-        frame["EXCAT"] = "INVESTIGATIONAL PRODUCT"
+        frame.loc[:, "EXSCAT"] = ""
+        frame.loc[:, "EXCAT"] = "INVESTIGATIONAL PRODUCT"
 
         # EXCAT is required when EXSCAT is provided (SD1098)
         if "EXSCAT" in frame.columns:
             if "EXCAT" not in frame.columns:
-                frame["EXCAT"] = "INVESTIGATIONAL PRODUCT"
+                frame.loc[:, "EXCAT"] = "INVESTIGATIONAL PRODUCT"
             else:
                 needs_cat = frame["EXCAT"].isna() | (
                     frame["EXCAT"].astype(str).str.strip() == ""
@@ -87,16 +89,16 @@ class EXProcessor(BaseDomainProcessor):
 
         # EPOCH is required when EXSTDTC is provided (SD1339)
         if "EPOCH" in frame.columns:
-            frame["EPOCH"] = "TREATMENT"
+            frame.loc[:, "EPOCH"] = "TREATMENT"
         elif "EXSTDTC" in frame.columns:
-            frame["EPOCH"] = "TREATMENT"
+            frame.loc[:, "EPOCH"] = "TREATMENT"
         # Clear non-ISO EXELTM values and ensure EXTPTREF exists
         if "EXELTM" in frame.columns:
-            frame["EXELTM"] = "PT0H"
+            frame.loc[:, "EXELTM"] = "PT0H"
         if "EXTPTREF" not in frame.columns:
-            frame["EXTPTREF"] = "VISIT"
+            frame.loc[:, "EXTPTREF"] = "VISIT"
         else:
-            frame["EXTPTREF"] = (
+            frame.loc[:, "EXTPTREF"] = (
                 frame["EXTPTREF"].astype("string").fillna("").replace("", "VISIT")
             )
         existing = set(
@@ -143,7 +145,7 @@ class EXProcessor(BaseDomainProcessor):
                 frame.drop(index=frame.index.tolist(), inplace=True)
                 frame.drop(columns=list(frame.columns), inplace=True)
                 for col in new_frame.columns:
-                    frame[col] = new_frame[col].values
+                    frame.loc[:, col] = new_frame[col].values
         NumericTransformer.assign_sequence(frame, "EXSEQ", "USUBJID")
         # Recompute dates/study days for any appended defaults
         DateTransformer.ensure_date_pair_order(frame, "EXSTDTC", "EXENDTC")
@@ -151,15 +153,17 @@ class EXProcessor(BaseDomainProcessor):
         DateTransformer.compute_study_day(frame, "EXENDTC", "EXENDY", ref="RFSTDTC")
         for dy in ("EXSTDY", "EXENDY"):
             if dy in frame.columns:
-                frame[dy] = NumericTransformer.force_numeric(frame[dy]).fillna(1)
+                frame.loc[:, dy] = NumericTransformer.force_numeric(frame[dy]).fillna(1)
         # Ensure timing reference present when EXRFTDTC populated
         if "EXTPTREF" in frame.columns:
-            frame["EXTPTREF"] = (
+            frame.loc[:, "EXTPTREF"] = (
                 frame["EXTPTREF"].astype("string").fillna("").replace("", "VISIT")
             )
         # Reference start date on EX records
         if "EXRFTDTC" not in frame.columns:
-            frame["EXRFTDTC"] = frame.get("RFSTDTC", pd.Series([""] * len(frame)))
+            frame.loc[:, "EXRFTDTC"] = frame.get(
+                "RFSTDTC", pd.Series([""] * len(frame))
+            )
         if (
             self.reference_starts
             and "EXRFTDTC" in frame.columns
@@ -170,4 +174,6 @@ class EXProcessor(BaseDomainProcessor):
                 self.reference_starts
             )
         elif "EXRFTDTC" in frame.columns:
-            frame["EXRFTDTC"] = frame["EXRFTDTC"].replace("", frame.get("RFSTDTC", ""))
+            frame.loc[:, "EXRFTDTC"] = frame["EXRFTDTC"].replace(
+                "", frame.get("RFSTDTC", "")
+            )

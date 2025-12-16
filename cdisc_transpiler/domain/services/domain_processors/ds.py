@@ -29,9 +29,9 @@ class DSProcessor(BaseDomainProcessor):
         # Normalize core string fields; override obvious non-SDTM payloads
         for col in ("DSDECOD", "DSTERM", "DSCAT", "EPOCH"):
             if col in frame.columns:
-                frame[col] = frame[col].astype("string").fillna("").str.strip()
+                frame.loc[:, col] = frame[col].astype("string").fillna("").str.strip()
             else:
-                frame[col] = ""
+                frame.loc[:, col] = ""
 
         # Baseline/fallback dates
         baseline_default = None
@@ -41,12 +41,14 @@ class DSProcessor(BaseDomainProcessor):
 
         # Clean existing DSSTDTC values
         if "DSSTDTC" in frame.columns:
-            frame["DSSTDTC"] = frame["DSSTDTC"].apply(DateTransformer.coerce_iso8601)
-            frame["DSSTDTC"] = frame["DSSTDTC"].replace(
+            frame.loc[:, "DSSTDTC"] = frame["DSSTDTC"].apply(
+                DateTransformer.coerce_iso8601
+            )
+            frame.loc[:, "DSSTDTC"] = frame["DSSTDTC"].replace(
                 {"": fallback_date, "1900-01-01": fallback_date}
             )
         else:
-            frame["DSSTDTC"] = fallback_date
+            frame.loc[:, "DSSTDTC"] = fallback_date
         DateTransformer.ensure_date_pair_order(frame, "DSSTDTC", None)
 
         # Build per-subject consent + disposition rows (always ensure both)
@@ -120,7 +122,7 @@ class DSProcessor(BaseDomainProcessor):
             expanded.reset_index(drop=True, inplace=True)
             frame.drop(index=frame.index.tolist(), inplace=True)
             for col in expanded.columns:
-                frame[col] = expanded[col]
+                frame.loc[:, col] = expanded[col]
 
         # Harmonize consent/disposition text and epochs (even for source rows)
         def _contains(series: pd.Series, token: str) -> pd.Series:
@@ -141,7 +143,7 @@ class DSProcessor(BaseDomainProcessor):
         frame.loc[disposition_mask, "EPOCH"] = "TREATMENT"
 
         # Replace disposition dates that precede consent with a padded end date
-        frame["DSSTDTC"] = frame["DSSTDTC"].apply(DateTransformer.coerce_iso8601)
+        frame.loc[:, "DSSTDTC"] = frame["DSSTDTC"].apply(DateTransformer.coerce_iso8601)
         dsstdtc_loc = cast(int, frame.columns.get_loc("DSSTDTC"))
         for pos in range(len(frame)):
             row = frame.iloc[pos]
@@ -156,17 +158,17 @@ class DSProcessor(BaseDomainProcessor):
                 frame.iat[pos, dsstdtc_loc] = base
 
         DateTransformer.compute_study_day(frame, "DSSTDTC", "DSSTDY", ref="RFSTDTC")
-        frame["DSDTC"] = frame["DSSTDTC"]
-        frame["DSDY"] = (
+        frame.loc[:, "DSDTC"] = frame["DSSTDTC"]
+        frame.loc[:, "DSDY"] = (
             NumericTransformer.force_numeric(frame.get("DSSTDY", pd.Series()))
             .fillna(1)
             .astype("Int64")
         )
-        frame["DSSTDY"] = frame["DSDY"]
+        frame.loc[:, "DSSTDY"] = frame["DSDY"]
 
         # Always regenerate DSSEQ - source values may not be unique (SD0005)
         NumericTransformer.assign_sequence(frame, "DSSEQ", "USUBJID")
-        frame["DSSEQ"] = NumericTransformer.force_numeric(frame["DSSEQ"]).astype(
+        frame.loc[:, "DSSEQ"] = NumericTransformer.force_numeric(frame["DSSEQ"]).astype(
             "Int64"
         )
 

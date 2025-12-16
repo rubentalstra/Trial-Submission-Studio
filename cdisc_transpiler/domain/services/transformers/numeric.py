@@ -40,4 +40,4 @@ class NumericTransformer:
     def assign_sequence(frame: pd.DataFrame, seq_var: str, group_by: str) -> None:
         if seq_var not in frame.columns or group_by not in frame.columns:
             return
-        frame[seq_var] = frame.groupby(group_by).cumcount() + 1
+        frame.loc[:, seq_var] = frame.groupby(group_by).cumcount() + 1

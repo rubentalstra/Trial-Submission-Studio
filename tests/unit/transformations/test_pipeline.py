@@ -4,6 +4,7 @@ Tests for TransformationPipeline class.
 """
 
 import pandas as pd
+import pytest
 
 from cdisc_transpiler.transformations import (
     TransformationPipeline,
@@ -363,25 +364,23 @@ class TestTransformationPipeline:
 
     def test_integration_with_real_transformers(self):
         """Test integration with real transformer structure."""
-        from cdisc_transpiler.transformations.findings import VSTransformer
+        from cdisc_transpiler.transformations.dates import ISODateFormatter
 
         pipeline = TransformationPipeline()
-        pipeline.add_transformer(VSTransformer())
+        pipeline.add_transformer(ISODateFormatter())
 
         # Create test data
         df = pd.DataFrame(
             {
                 "USUBJID": ["001"],
-                "VISIT": ["Visit 1"],
-                "ORRES_HEIGHT": [170],
-                "ORRESU_HEIGHT": ["cm"],
+                "AESTDTC": ["2025-01-02"],
             }
         )
 
-        context = TransformationContext(domain="VS", study_id="TEST001")
+        context = TransformationContext(domain="AE", study_id="TEST001")
         result = pipeline.execute(df, context)
 
         assert result.success
         assert result.applied
         assert len(result.metadata["applied_transformers"]) == 1
-        assert result.metadata["applied_transformers"][0]["name"] == "VSTransformer"
+        assert result.metadata["applied_transformers"][0]["name"] == "ISODateFormatter"

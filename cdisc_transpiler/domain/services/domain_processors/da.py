@@ -25,12 +25,12 @@ class DAProcessor(BaseDomainProcessor):
         self._drop_placeholder_rows(frame)
 
         # DATEST and DATESTCD are required; force to valid CT pair
-        frame["DATEST"] = "Dispensed Amount"
-        frame["DATESTCD"] = "DISPAMT"
+        frame.loc[:, "DATEST"] = "Dispensed Amount"
+        frame.loc[:, "DATESTCD"] = "DISPAMT"
         # Always assign unique DASEQ per subject (SD0005 compliance)
         # Source data SEQ values may not be unique - we must regenerate
-        frame["DASEQ"] = frame.groupby("USUBJID").cumcount() + 1
-        frame["DASEQ"] = NumericTransformer.force_numeric(frame["DASEQ"])
+        frame.loc[:, "DASEQ"] = frame.groupby("USUBJID").cumcount() + 1
+        frame.loc[:, "DASEQ"] = NumericTransformer.force_numeric(frame["DASEQ"])
 
         # Normalize DASTAT to CDISC CT 'Not Done'
         if "DASTAT" in frame.columns:
@@ -42,7 +42,7 @@ class DAProcessor(BaseDomainProcessor):
                 "": "",
                 "nan": "",
             }
-            frame["DASTAT"] = (
+            frame.loc[:, "DASTAT"] = (
                 frame["DASTAT"]
                 .astype(str)
                 .str.strip()
@@ -52,7 +52,7 @@ class DAProcessor(BaseDomainProcessor):
             )
 
         if "DAORRESU" not in frame.columns:
-            frame["DAORRESU"] = ""
+            frame.loc[:, "DAORRESU"] = ""
 
         # DASTRESC should be derived from DAORRES if available (SD0036, SD1320)
         if "DAORRES" in frame.columns:
@@ -63,7 +63,7 @@ class DAProcessor(BaseDomainProcessor):
                 .replace({"nan": "", "None": "", "<NA>": ""})
             )
             if "DASTRESC" not in frame.columns:
-                frame["DASTRESC"] = cleaned_orres
+                frame.loc[:, "DASTRESC"] = cleaned_orres
             else:
                 needs_stresc = frame["DASTRESC"].isna() | (
                     frame["DASTRESC"].astype(str).str.strip() == ""
@@ -73,16 +73,18 @@ class DAProcessor(BaseDomainProcessor):
                         needs_stresc
                     ]
         elif "DASTRESC" not in frame.columns:
-            frame["DASTRESC"] = ""
+            frame.loc[:, "DASTRESC"] = ""
 
         # Align DASTRESN with numeric interpretation of DASTRESC/DAORRES
         numeric_stresc = ensure_numeric_series(
             frame.get("DASTRESC", pd.Series()), frame.index
-        )
+        ).astype("float64")
         if "DASTRESN" not in frame.columns:
-            frame["DASTRESN"] = numeric_stresc
+            frame.loc[:, "DASTRESN"] = numeric_stresc
         else:
-            coerced = ensure_numeric_series(frame["DASTRESN"], frame.index)
+            coerced = ensure_numeric_series(frame["DASTRESN"], frame.index).astype(
+                "float64"
+            )
             needs_numeric = coerced.isna() & numeric_stresc.notna()
 
             # Ensure DASTRESN has the correct dtype before assignment to avoid FutureWarning
@@ -91,13 +93,13 @@ class DAProcessor(BaseDomainProcessor):
                 or frame["DASTRESN"].dtype != numeric_stresc.dtype
             ):
                 try:
-                    frame["DASTRESN"] = coerced.astype(numeric_stresc.dtype)
+                    frame.loc[:, "DASTRESN"] = coerced.astype("float64")
                 except (TypeError, ValueError):
                     # Silently handle dtype conversion failures - keep original coerced values
                     # This is acceptable since numeric assignment below will still work
-                    frame["DASTRESN"] = coerced
+                    frame.loc[:, "DASTRESN"] = coerced
             else:
-                frame["DASTRESN"] = coerced
+                frame.loc[:, "DASTRESN"] = coerced
 
             # Now safely assign the numeric values where needed
             if needs_numeric.any():
@@ -120,7 +122,7 @@ class DAProcessor(BaseDomainProcessor):
 
         # Backfill collection date from DATEST if provided
         if "DADTC" not in frame.columns:
-            frame["DADTC"] = ""
+            frame.loc[:, "DADTC"] = ""
         if "DATEST" in frame.columns:
             needs_dadtc = (
                 frame["DADTC"]
@@ -138,7 +140,7 @@ class DAProcessor(BaseDomainProcessor):
             empty_dadtc = frame["DADTC"].astype("string").fillna("").str.strip() == ""
             frame.loc[empty_dadtc, "DADTC"] = frame.loc[empty_dadtc, "RFSTDTC"]
         elif self.reference_starts and "USUBJID" in frame.columns:
-            frame["DADTC"] = frame.apply(
+            frame.loc[:, "DADTC"] = frame.apply(
                 lambda row: self.reference_starts.get(str(row["USUBJID"]), ""),
                 axis=1,
             )
@@ -146,38 +148,46 @@ class DAProcessor(BaseDomainProcessor):
         if "DADTC" in frame.columns:
             DateTransformer.compute_study_day(frame, "DADTC", "DADY", ref="RFSTDTC")
         if "EPOCH" in frame.columns:
-            frame["EPOCH"] = TextTransformer.replace_unknown(
+            frame.loc[:, "EPOCH"] = TextTransformer.replace_unknown(
                 frame["EPOCH"], "TREATMENT"
             )
         else:
-            frame["EPOCH"] = "TREATMENT"
+            frame.loc[:, "EPOCH"] = "TREATMENT"
         # Normalize VISITNUM to numeric per subject order to avoid type/key issues
         if "VISITNUM" in frame.columns:
-            frame["VISITNUM"] = (frame.groupby("USUBJID").cumcount() + 1).astype(int)
-            frame["VISIT"] = frame["VISITNUM"].apply(lambda n: f"Visit {n}")
+            frame.loc[:, "VISITNUM"] = (frame.groupby("USUBJID").cumcount() + 1).astype(
+                int
+            )
+            frame.loc[:, "VISIT"] = (
+                frame["VISITNUM"].apply(lambda n: f"Visit {int(n)}").astype("string")
+            )
         # Fill missing results to satisfy presence rules
         if "DAORRES" in frame.columns:
-            frame["DAORRES"] = frame["DAORRES"].astype("string")
+            frame.loc[:, "DAORRES"] = frame["DAORRES"].astype("string")
             empty_orres = frame["DAORRES"].fillna("").str.strip() == ""
             frame.loc[empty_orres, "DAORRES"] = "0"
         else:
-            frame["DAORRES"] = "0"
+            frame.loc[:, "DAORRES"] = "0"
         if "DASTRESC" in frame.columns:
             empty_stresc = (
                 frame["DASTRESC"].astype("string").fillna("").str.strip() == ""
             )
             frame.loc[empty_stresc, "DASTRESC"] = frame.loc[empty_stresc, "DAORRES"]
         else:
-            frame["DASTRESC"] = frame.get("DAORRES", "0")
+            frame.loc[:, "DASTRESC"] = frame.get("DAORRES", "0")
         if "DASTRESN" in frame.columns:
             coerced = ensure_numeric_series(frame["DASTRESN"], frame.index)
             fallback = ensure_numeric_series(frame["DAORRES"], frame.index)
-            frame["DASTRESN"] = coerced.fillna(fallback)
+            frame.loc[:, "DASTRESN"] = coerced.fillna(fallback)
         else:
-            frame["DASTRESN"] = ensure_numeric_series(
+            frame.loc[:, "DASTRESN"] = ensure_numeric_series(
                 frame.get("DAORRES", "0"), frame.index
             )
         # Normalize VISITNUM to numeric per subject order to avoid type/key issues
         if "VISITNUM" in frame.columns:
-            frame["VISITNUM"] = (frame.groupby("USUBJID").cumcount() + 1).astype(int)
-            frame["VISIT"] = frame["VISITNUM"].apply(lambda n: f"Visit {n}")
+            frame.loc[:, "VISITNUM"] = (frame.groupby("USUBJID").cumcount() + 1).astype(
+                int
+            )
+            frame.loc[:, "VISIT"] = (
+                frame["VISITNUM"].apply(lambda n: f"Visit {int(n)}").astype("string")
+            )

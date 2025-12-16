@@ -24,8 +24,8 @@ class IEProcessor(BaseDomainProcessor):
         self._drop_placeholder_rows(frame)
 
         # Always regenerate IESEQ - source values may not be unique (SD0005)
-        frame["IESEQ"] = frame.groupby("USUBJID").cumcount() + 1
-        frame["IESEQ"] = NumericTransformer.force_numeric(frame["IESEQ"])
+        frame.loc[:, "IESEQ"] = frame.groupby("USUBJID").cumcount() + 1
+        frame.loc[:, "IESEQ"] = NumericTransformer.force_numeric(frame["IESEQ"])
 
         # Normalize IEORRES to CDISC CT 'No Yes Response' (Y/N)
         if "IEORRES" in frame.columns:
@@ -39,7 +39,7 @@ class IEProcessor(BaseDomainProcessor):
                 "0": "N",
                 "FALSE": "N",
             }
-            frame["IEORRES"] = (
+            frame.loc[:, "IEORRES"] = (
                 frame["IEORRES"]
                 .astype(str)
                 .str.strip()
@@ -48,10 +48,10 @@ class IEProcessor(BaseDomainProcessor):
                 .fillna("Y")  # Default to Y (criterion met)
             )
         else:
-            frame["IEORRES"] = "Y"
+            frame.loc[:, "IEORRES"] = "Y"
 
         # IESTRESC must match IEORRES (SD0036, SD1320)
-        frame["IESTRESC"] = frame["IEORRES"]
+        frame.loc[:, "IESTRESC"] = frame["IEORRES"]
 
         # IETEST is required - derive from IETESTCD if available
         if "IETEST" not in frame.columns:
@@ -75,12 +75,12 @@ class IEProcessor(BaseDomainProcessor):
         # IECAT is required - INCLUSION or EXCLUSION
         if "IECAT" not in frame.columns:
             if "IESCAT" in frame.columns:
-                frame["IECAT"] = frame["IESCAT"]
+                frame.loc[:, "IECAT"] = frame["IESCAT"]
             elif "IETESTCD" in frame.columns:
-                frame["IECAT"] = frame["IETESTCD"]
+                frame.loc[:, "IECAT"] = frame["IETESTCD"]
             else:
-                frame["IECAT"] = "INCLUSION"
-        frame["IECAT"] = (
+                frame.loc[:, "IECAT"] = "INCLUSION"
+        frame.loc[:, "IECAT"] = (
             frame["IECAT"].astype(str).str.upper().replace({"2.0": "INCLUSION"})
         )
         needs_cat = frame["IECAT"].astype(str).str.strip() == ""
@@ -89,18 +89,22 @@ class IEProcessor(BaseDomainProcessor):
 
         # Ensure Inclusion criteria have IESTRESC='N' per SD1046
         if {"IECAT", "IESTRESC"} <= set(frame.columns):
-            frame["IESTRESC"] = "N"
+            frame.loc[:, "IESTRESC"] = "N"
         # Keep IEORRES aligned with IESTRESC to avoid mismatches
         if {"IEORRES", "IESTRESC"} <= set(frame.columns):
-            frame["IEORRES"] = frame["IESTRESC"]
+            frame.loc[:, "IEORRES"] = frame["IESTRESC"]
         # For inclusion rows, force IEORRES/IESTRESC to N
         if "IECAT" in frame.columns and {"IEORRES", "IESTRESC"} <= set(frame.columns):
-            frame[["IEORRES", "IESTRESC"]] = "N"
+            frame.loc[:, ["IEORRES", "IESTRESC"]] = "N"
 
         # Normalize VISITNUM to numeric and deduplicate records by key to reduce repeats
         if "VISITNUM" in frame.columns:
-            frame["VISITNUM"] = (frame.groupby("USUBJID").cumcount() + 1).astype(int)
-            frame["VISIT"] = frame["VISITNUM"].apply(lambda n: f"Visit {n}")
+            frame.loc[:, "VISITNUM"] = (frame.groupby("USUBJID").cumcount() + 1).astype(
+                int
+            )
+            frame.loc[:, "VISIT"] = (
+                frame["VISITNUM"].apply(lambda n: f"Visit {int(n)}").astype("string")
+            )
         # Reassign IESEQ after deduplication
         NumericTransformer.assign_sequence(frame, "IESEQ", "USUBJID")
         dedup_keys = [
@@ -118,18 +122,18 @@ class IEProcessor(BaseDomainProcessor):
         if "USUBJID" in frame.columns:
             frame.drop_duplicates(subset=["USUBJID"], keep="first", inplace=True)
             frame.reset_index(drop=True, inplace=True)
-            frame["IESEQ"] = frame.groupby("USUBJID").cumcount() + 1
+            frame.loc[:, "IESEQ"] = frame.groupby("USUBJID").cumcount() + 1
 
         if "EPOCH" in frame.columns:
-            frame["EPOCH"] = "SCREENING"
+            frame.loc[:, "EPOCH"] = "SCREENING"
         # Fill missing IECAT and timing info
         if "IECAT" in frame.columns:
             cats = frame["IECAT"].astype("string").replace({"<NA>": ""}).fillna("")
-            frame["IECAT"] = cats
+            frame.loc[:, "IECAT"] = cats
             empty_cat = frame["IECAT"].astype("string").str.strip() == ""
             frame.loc[empty_cat, "IECAT"] = "INCLUSION"
         else:
-            frame["IECAT"] = "INCLUSION"
+            frame.loc[:, "IECAT"] = "INCLUSION"
         if "IEDTC" in frame.columns:
             empty_dtc = frame["IEDTC"].astype("string").str.strip() == ""
             if "RFSTDTC" in frame.columns:
@@ -140,20 +144,22 @@ class IEProcessor(BaseDomainProcessor):
                 )
         else:
             if self.reference_starts and "USUBJID" in frame.columns:
-                frame["IEDTC"] = frame["USUBJID"].map(
+                frame.loc[:, "IEDTC"] = frame["USUBJID"].map(
                     lambda key: self.reference_starts.get(str(key), "")
                 )
             else:
-                frame["IEDTC"] = frame.get("RFSTDTC", "")
+                frame.loc[:, "IEDTC"] = frame.get("RFSTDTC", "")
         if "IEDY" in frame.columns:
             DateTransformer.compute_study_day(frame, "IEDTC", "IEDY", ref="RFSTDTC")
-            frame["IEDY"] = NumericTransformer.force_numeric(frame["IEDY"]).fillna(1)
+            frame.loc[:, "IEDY"] = NumericTransformer.force_numeric(
+                frame["IEDY"]
+            ).fillna(1)
         else:
-            frame["IEDY"] = 1
+            frame.loc[:, "IEDY"] = 1
         # Default test identifiers
         if "IETESTCD" not in frame.columns:
-            frame["IETESTCD"] = "IE"
+            frame.loc[:, "IETESTCD"] = "IE"
         if "IETEST" not in frame.columns:
-            frame["IETEST"] = "INCLUSION/EXCLUSION CRITERION"
+            frame.loc[:, "IETEST"] = "INCLUSION/EXCLUSION CRITERION"
         # Reassign IESEQ after deduplication
         NumericTransformer.assign_sequence(frame, "IESEQ", "USUBJID")

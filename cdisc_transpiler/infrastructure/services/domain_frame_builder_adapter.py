@@ -9,6 +9,12 @@ from ...domain.entities.mapping import MappingConfig
 from ...domain.entities.sdtm_domain import SDTMDomain
 from ...domain.entities.study_metadata import StudyMetadata
 from ...domain.services.domain_frame_builder import build_domain_dataframe
+from ...domain.services.domain_processors import get_domain_processor
+from ...domain.services.transformers import (
+    CodelistTransformer,
+    DateTransformer,
+    NumericTransformer,
+)
 
 from .xpt_validator import XPTValidator
 
@@ -25,6 +31,19 @@ class DomainFrameBuilderAdapter(DomainFrameBuilderPort):
         metadata: StudyMetadata | None = None,
     ) -> pd.DataFrame:
         validators = {"xpt": XPTValidator()} if not lenient else None
+        transformers = {
+            "date": DateTransformer,
+            "codelist": CodelistTransformer,
+            "numeric": NumericTransformer,
+        }
+
+        def domain_processor_factory(
+            dom: SDTMDomain,
+            ref_starts: dict[str, str] | None,
+            meta: StudyMetadata | None,
+        ):
+            return get_domain_processor(dom, ref_starts, meta)
+
         return build_domain_dataframe(
             frame,
             config,
@@ -32,5 +51,7 @@ class DomainFrameBuilderAdapter(DomainFrameBuilderPort):
             reference_starts=reference_starts,
             lenient=lenient,
             metadata=metadata,
+            domain_processor_factory=domain_processor_factory,
+            transformers=transformers,
             validators=validators,
         )

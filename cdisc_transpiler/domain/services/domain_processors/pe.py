@@ -24,8 +24,8 @@ class PEProcessor(BaseDomainProcessor):
         self._drop_placeholder_rows(frame)
 
         # Always regenerate PESEQ - source values may not be unique (SD0005)
-        frame["PESEQ"] = frame.groupby("USUBJID").cumcount() + 1
-        frame["PESEQ"] = NumericTransformer.force_numeric(frame["PESEQ"])
+        frame.loc[:, "PESEQ"] = frame.groupby("USUBJID").cumcount() + 1
+        frame.loc[:, "PESEQ"] = NumericTransformer.force_numeric(frame["PESEQ"])
         # Normalize visit numbering to align VISIT/VISITNUM
         TextTransformer.normalize_visit(frame)
 
@@ -39,7 +39,7 @@ class PEProcessor(BaseDomainProcessor):
                 "": "",
                 "nan": "",
             }
-            frame["PESTAT"] = (
+            frame.loc[:, "PESTAT"] = (
                 frame["PESTAT"]
                 .astype(str)
                 .str.strip()
@@ -51,9 +51,9 @@ class PEProcessor(BaseDomainProcessor):
         # PETEST is required - derive from PETESTCD if available (SD0002)
         if "PETEST" not in frame.columns:
             if "PETESTCD" in frame.columns:
-                frame["PETEST"] = frame["PETESTCD"].astype(str).str.upper()
+                frame.loc[:, "PETEST"] = frame["PETESTCD"].astype(str).str.upper()
             else:
-                frame["PETEST"] = "PHYSICAL EXAMINATION"
+                frame.loc[:, "PETEST"] = "PHYSICAL EXAMINATION"
         else:
             # Fill empty PETEST values
             needs_test = frame["PETEST"].isna() | (
@@ -87,13 +87,13 @@ class PEProcessor(BaseDomainProcessor):
         if "PEDTC" in frame.columns:
             DateTransformer.compute_study_day(frame, "PEDTC", "PEDY", ref="RFSTDTC")
         if "EPOCH" in frame.columns:
-            frame["EPOCH"] = TextTransformer.replace_unknown(
+            frame.loc[:, "EPOCH"] = TextTransformer.replace_unknown(
                 frame["EPOCH"], "TREATMENT"
             )
         else:
-            frame["EPOCH"] = "TREATMENT"
+            frame.loc[:, "EPOCH"] = "TREATMENT"
         dedup_keys = [k for k in ("USUBJID", "VISITNUM") if k in frame.columns]
         if dedup_keys:
             frame.drop_duplicates(subset=dedup_keys, keep="first", inplace=True)
             frame.reset_index(drop=True, inplace=True)
-            frame["PESEQ"] = frame.groupby("USUBJID").cumcount() + 1
+            frame.loc[:, "PESEQ"] = frame.groupby("USUBJID").cumcount() + 1

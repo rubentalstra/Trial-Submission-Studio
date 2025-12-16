@@ -24,15 +24,19 @@ class TextTransformer:
     @staticmethod
     def normalize_visit(frame: pd.DataFrame) -> None:
         if "VISITNUM" in frame.columns:
-            frame["VISITNUM"] = (
+            frame.loc[:, "VISITNUM"] = (
                 ensure_numeric_series(frame["VISITNUM"], frame.index)
                 .fillna(1)
                 .astype(int)
             )
-            frame["VISIT"] = frame["VISITNUM"].apply(lambda n: f"Visit {int(n)}")
+            frame.loc[:, "VISIT"] = (
+                frame["VISITNUM"].apply(lambda n: f"Visit {int(n)}").astype("string")
+            )
         elif "VISIT" in frame.columns:
             visit_text = frame["VISIT"].astype("string").str.extract(r"(\d+)")[0]
-            frame["VISITNUM"] = (
+            frame.loc[:, "VISITNUM"] = (
                 ensure_numeric_series(visit_text, frame.index).fillna(1).astype(int)
             )
-            frame["VISIT"] = frame["VISITNUM"].apply(lambda n: f"Visit {int(n)}")
+            frame.loc[:, "VISIT"] = (
+                frame["VISITNUM"].apply(lambda n: f"Visit {int(n)}").astype("string")
+            )

@@ -26,11 +26,13 @@ class VSProcessor(BaseDomainProcessor):
 
         TextTransformer.normalize_visit(frame)
         DateTransformer.compute_study_day(frame, "VSDTC", "VSDY", ref="RFSTDTC")
-        frame["VSDY"] = NumericTransformer.force_numeric(frame["VSDY"])
-        frame["VSLOBXFL"] = ""
+        frame.loc[:, "VSDY"] = NumericTransformer.force_numeric(frame["VSDY"])
+        frame.loc[:, "VSLOBXFL"] = ""
         if "VISITNUM" not in frame.columns:
-            frame["VISITNUM"] = (frame.groupby("USUBJID").cumcount() + 1).astype(int)
-            frame["VISIT"] = frame["VISITNUM"].apply(lambda n: f"Visit {n}")
+            frame.loc[:, "VISITNUM"] = (frame.groupby("USUBJID").cumcount() + 1).astype(
+                int
+            )
+            frame.loc[:, "VISIT"] = frame["VISITNUM"].apply(lambda n: f"Visit {n}")
 
         vstestcd_series = ensure_series(
             frame.get("VSTESTCD", pd.Series([""] * len(frame))), index=frame.index
@@ -39,7 +41,7 @@ class VSProcessor(BaseDomainProcessor):
         has_any_test = vstestcd_upper.ne("").any()
 
         # Preserve VSSTAT from upstream mapping/derivation
-        frame["VSSTAT"] = (
+        frame.loc[:, "VSSTAT"] = (
             ensure_series(
                 frame.get("VSSTAT", pd.Series([""] * len(frame))), index=frame.index
             )
@@ -48,25 +50,25 @@ class VSProcessor(BaseDomainProcessor):
         )
 
         default_unit = "beats/min" if not has_any_test else ""
-        frame["VSORRESU"] = TextTransformer.replace_unknown(
+        frame.loc[:, "VSORRESU"] = TextTransformer.replace_unknown(
             frame.get("VSORRESU", pd.Series([""] * len(frame))), default_unit
         )
-        frame["VSSTRESU"] = TextTransformer.replace_unknown(
+        frame.loc[:, "VSSTRESU"] = TextTransformer.replace_unknown(
             frame.get("VSSTRESU", pd.Series([""] * len(frame))), default_unit
         )
 
         if not has_any_test:
-            frame["VSTESTCD"] = "HR"
-            frame["VSTEST"] = "Heart Rate"
+            frame.loc[:, "VSTESTCD"] = "HR"
+            frame.loc[:, "VSTEST"] = "Heart Rate"
             vsorres = pd.Series([""] * len(frame))
             if "Pulserate" in frame.columns:
                 vsorres = frame["Pulserate"]
-            frame["VSORRES"] = vsorres.astype("string").fillna("")
+            frame.loc[:, "VSORRES"] = vsorres.astype("string").fillna("")
             if "Pulse rate (unit)" in frame.columns:
                 units = (
                     frame["Pulse rate (unit)"].astype("string").fillna("").str.strip()
                 )
-                frame["VSORRESU"] = units.replace("", "beats/min")
+                frame.loc[:, "VSORRESU"] = units.replace("", "beats/min")
 
         for perf_col in ("Were vital signs collected? - Code", "VSPERFCD"):
             if perf_col in frame.columns:
@@ -76,7 +78,7 @@ class VSProcessor(BaseDomainProcessor):
                 frame.loc[not_done, ["VSORRES", "VSORRESU"]] = ""
                 break
 
-        frame["VSSTRESC"] = frame.get("VSSTRESC", frame.get("VSORRES", ""))
+        frame.loc[:, "VSSTRESC"] = frame.get("VSSTRESC", frame.get("VSORRES", ""))
         if "VSSTRESC" in frame.columns and "VSORRES" in frame.columns:
             empty_stresc = (
                 frame["VSSTRESC"].astype("string").fillna("").str.strip() == ""
@@ -125,20 +127,22 @@ class VSProcessor(BaseDomainProcessor):
             normalized_units = normalized_units.where(
                 normalized_units.isin(ct_units.submission_values), ""
             )
-            frame["VSORRESU"] = normalized_units
+            frame.loc[:, "VSORRESU"] = normalized_units
         if ct_units and "VSSTRESU" in frame.columns:
             st_units = frame["VSSTRESU"].astype("string").fillna("").str.strip()
             normalized_st = st_units.apply(ct_units.normalize)
             normalized_st = normalized_st.where(
                 normalized_st.isin(ct_units.submission_values), ""
             )
-            frame["VSSTRESU"] = normalized_st
+            frame.loc[:, "VSSTRESU"] = normalized_st
         if "VSSTRESN" in frame.columns:
             numeric = pd.to_numeric(frame["VSORRES"], errors="coerce")
-            frame["VSSTRESN"] = ensure_numeric_series(numeric, frame.index)
+            frame.loc[:, "VSSTRESN"] = ensure_numeric_series(
+                numeric, frame.index
+            ).astype("float64")
         NumericTransformer.assign_sequence(frame, "VSSEQ", "USUBJID")
         if "VSLOBXFL" in frame.columns:
-            frame["VSLOBXFL"] = (
+            frame.loc[:, "VSLOBXFL"] = (
                 ensure_series(frame["VSLOBXFL"]).astype("string").fillna("")
             )
             if {"USUBJID", "VSTESTCD", "VSPOS"} <= set(frame.columns):
@@ -164,36 +168,34 @@ class VSProcessor(BaseDomainProcessor):
             canonical = raw.apply(ct_vstestcd.normalize)
             valid = canonical.isin(ct_vstestcd.submission_values)
             # Keep canonical when valid; keep original (uppercased) when not
-            frame["VSTESTCD"] = canonical.where(valid, raw.str.upper())
+            frame.loc[:, "VSTESTCD"] = canonical.where(valid, raw.str.upper())
             if "VSTEST" in frame.columns:
-                frame["VSTEST"] = frame["VSTEST"].astype("string").fillna("")
+                frame.loc[:, "VSTEST"] = frame["VSTEST"].astype("string").fillna("")
                 empty_vstest = frame["VSTEST"].str.strip() == ""
                 frame.loc[empty_vstest, "VSTEST"] = frame.loc[empty_vstest, "VSTESTCD"]
         ct_vstest = self._get_controlled_terminology(variable="VSTEST")
         if ct_vstest and "VSTEST" in frame.columns:
-            frame["VSTEST"] = (
+            frame.loc[:, "VSTEST"] = (
                 frame["VSTEST"].astype("string").fillna("").apply(ct_vstest.normalize)
             )
         # Clear non-ISO collection times that trigger format errors
         if "VSELTM" in frame.columns:
-            frame["VSELTM"] = ""
+            frame.loc[:, "VSELTM"] = ""
         if "VSTPTREF" in frame.columns:
-            frame["VSTPTREF"] = frame["VSTPTREF"].astype("string").fillna("")
+            frame.loc[:, "VSTPTREF"] = frame["VSTPTREF"].astype("string").fillna("")
         # Populate timing reference to avoid SD1238
-        frame["VSTPTREF"] = "VISIT"
-        frame["VSTPT"] = "VISIT"
+        frame.loc[:, "VSTPTREF"] = "VISIT"
+        frame.loc[:, "VSTPT"] = "VISIT"
         if "VISITNUM" in frame.columns:
-            frame["VSTPTNUM"] = ensure_numeric_series(
+            frame.loc[:, "VSTPTNUM"] = ensure_numeric_series(
                 frame["VISITNUM"], frame.index
             ).fillna(1)
         else:
-            frame["VSTPTNUM"] = 1
-        if "VSDTC" in frame.columns:
-            # Keep all timing records; avoid collapsing multiple measurements
-            frame["VSDTC"] = frame["VSDTC"]
+            frame.loc[:, "VSTPTNUM"] = 1
+        # Keep all timing records; avoid collapsing multiple measurements
         # Derive reference date for VS if missing
         if "VSRFTDTC" not in frame.columns:
-            frame["VSRFTDTC"] = frame.get("RFSTDTC", "")
+            frame.loc[:, "VSRFTDTC"] = frame.get("RFSTDTC", "")
         if (
             self.reference_starts
             and "USUBJID" in frame.columns
@@ -216,8 +218,8 @@ class VSProcessor(BaseDomainProcessor):
         frame.drop_duplicates(inplace=True)
         # Ensure EPOCH is set
         if "EPOCH" in frame.columns:
-            frame["EPOCH"] = TextTransformer.replace_unknown(
+            frame.loc[:, "EPOCH"] = TextTransformer.replace_unknown(
                 frame["EPOCH"], "TREATMENT"
             )
         else:
-            frame["EPOCH"] = "TREATMENT"
+            frame.loc[:, "EPOCH"] = "TREATMENT"

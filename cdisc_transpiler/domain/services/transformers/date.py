@@ -24,7 +24,11 @@ class DateTransformer:
                 and "DTC" in var.name
                 and var.name in frame.columns
             ):
-                frame[var.name] = frame[var.name].apply(normalize_iso8601)
+                source = ensure_series(frame[var.name], index=frame.index).astype(
+                    "string"
+                )
+                normalized = source.apply(normalize_iso8601).astype("string")
+                frame.loc[:, var.name] = normalized
 
     @staticmethod
     def normalize_durations(
@@ -32,7 +36,11 @@ class DateTransformer:
     ) -> None:
         for var in domain_variables:
             if var.type == "Char" and "DUR" in var.name and var.name in frame.columns:
-                frame[var.name] = frame[var.name].apply(normalize_iso8601_duration)
+                source = ensure_series(frame[var.name], index=frame.index).astype(
+                    "string"
+                )
+                normalized = source.apply(normalize_iso8601_duration).astype("string")
+                frame.loc[:, var.name] = normalized
 
     @staticmethod
     def calculate_dy(
@@ -47,7 +55,7 @@ class DateTransformer:
             if var.name.endswith("DY") and var.name[:-2] + "DTC" in frame.columns:
                 dtc_col = var.name[:-2] + "DTC"
                 if "USUBJID" in frame.columns:
-                    frame[var.name] = frame.apply(
+                    frame.loc[:, var.name] = frame.apply(
                         lambda row: DateTransformer._compute_dy_for_row(
                             row["USUBJID"],
                             row.get(dtc_col),
@@ -112,7 +120,7 @@ class DateTransformer:
             deltas.apply(lambda x: x + 1 if x >= 0 else x),
         )
 
-        frame[dy_var] = pd.to_numeric(study_days, errors="coerce")
+        frame.loc[:, dy_var] = pd.to_numeric(study_days, errors="coerce")
 
     @staticmethod
     def ensure_date_pair_order(
@@ -121,11 +129,11 @@ class DateTransformer:
         if start_var not in frame.columns:
             return
         start = frame[start_var].apply(DateTransformer.coerce_iso8601)
-        frame[start_var] = start
+        frame.loc[:, start_var] = start
         if end_var and end_var in frame.columns:
             end = frame[end_var].apply(DateTransformer.coerce_iso8601)
             needs_swap = (end == "") | (end < start)
-            frame[end_var] = end.where(~needs_swap, start)
+            frame.loc[:, end_var] = end.where(~needs_swap, start)
 
     @staticmethod
     def coerce_iso8601(raw_value: Any) -> str:

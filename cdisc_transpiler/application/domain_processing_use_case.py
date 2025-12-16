@@ -63,13 +63,6 @@ def _build_column_hints(frame: pd.DataFrame) -> Hints:
     return hints
 
 
-def _get_transformation_context_type() -> type:
-    """Lazy import of TransformationContext to avoid circular imports."""
-    from ..transformations.base import TransformationContext
-
-    return TransformationContext
-
-
 class DomainProcessingUseCase:
     """Use case for processing a single SDTM domain.
 
@@ -396,46 +389,13 @@ class DomainProcessingUseCase:
         ):
             return None
 
-        # Stage 2: Apply domain-specific transformations
-        frame, vs_long = self._apply_vs_transformation(
-            frame,
-            request.domain_code,
-            request.study_id,
-            display_name,
-            request.verbose > 0,
-        )
-        if frame is None:
-            return None
-
-        frame, lb_long = self._apply_lb_transformation(
-            frame,
-            request.domain_code,
-            request.study_id,
-            display_name,
-            request.verbose > 0,
-        )
-        if frame is None:
-            return None
-
-        frame, da_long = self._apply_da_transformation(
-            frame,
-            request.domain_code,
-            request.study_id,
-            display_name,
-            request.verbose > 0,
-        )
-        if frame is None:
-            return None
-
-        is_findings_long = vs_long or lb_long or da_long
-
         # Stage 3: Map columns
         config = self._build_config(
             frame=frame,
             domain_code=request.domain_code,
             metadata=request.metadata,
             min_confidence=request.min_confidence,
-            is_findings_long=is_findings_long,
+            is_findings_long=False,
             display_name=display_name,
             verbose=request.verbose > 0,
         )
@@ -470,7 +430,7 @@ class DomainProcessingUseCase:
                 f"    Row count changed: {row_count:,} → {output_rows:,} ({direction}{change_pct:.1f}%)"
             )
 
-        return domain_df, config, is_findings_long
+        return domain_df, config, False
 
     def _load_file(self, file_path: Path) -> pd.DataFrame:
         """Stage 1: Load and validate input file."""
@@ -497,174 +457,6 @@ class DomainProcessingUseCase:
                 )
             return True
         return False
-
-    def _apply_vs_transformation(
-        self,
-        frame: pd.DataFrame,
-        domain_code: str,
-        study_id: str,
-        display_name: str,
-        verbose: bool,
-    ) -> tuple[pd.DataFrame | None, bool]:
-        """Stage 2a: Apply VS domain transformation if needed."""
-        if domain_code.upper() != "VS":
-            return frame, False
-
-        from ..transformations.findings import VSTransformer
-
-        TransformationContext = _get_transformation_context_type()
-
-        input_rows = len(frame)
-
-        transformer = VSTransformer(
-            test_code_normalizer=self._terminology_service.normalize_testcd,
-            test_label_getter=self._terminology_service.get_testcd_label,
-        )
-        context = TransformationContext(domain="VS", study_id=study_id)
-        result = transformer.transform(frame, context)
-
-        if not result.success:
-            self.logger.warning(
-                f"{display_name}: VS transformation failed: {result.message}"
-            )
-            if result.errors:
-                for error in result.errors:
-                    self.logger.error(f"  - {error}")
-            return None, True
-
-        frame = result.data
-        output_rows = len(frame)
-
-        self.logger.info(
-            f"{domain_code}: reshape transformation {input_rows:,} → {output_rows:,} rows (wide-to-long)"
-        )
-
-        if frame.empty:
-            self.logger.warning(
-                f"{display_name}: No vital signs records after transformation"
-            )
-            if verbose:
-                self.logger.verbose(
-                    "    Note: Check source data for VSTESTCD/VSORRES columns"
-                )
-            return None, True
-
-        return frame, True
-
-    def _apply_lb_transformation(
-        self,
-        frame: pd.DataFrame,
-        domain_code: str,
-        study_id: str,
-        display_name: str,
-        verbose: bool,
-    ) -> tuple[pd.DataFrame | None, bool]:
-        """Stage 2b: Apply LB domain transformation if needed."""
-        if domain_code.upper() != "LB":
-            return frame, False
-
-        from ..transformations.findings import LBTransformer
-
-        TransformationContext = _get_transformation_context_type()
-
-        input_rows = len(frame)
-
-        transformer = LBTransformer(
-            test_code_normalizer=self._terminology_service.normalize_testcd,
-            test_label_getter=self._terminology_service.get_testcd_label,
-        )
-        context = TransformationContext(domain="LB", study_id=study_id)
-        result = transformer.transform(frame, context)
-
-        if not result.success:
-            self.logger.warning(
-                f"{display_name}: LB transformation failed: {result.message}"
-            )
-            if result.errors:
-                for error in result.errors:
-                    self.logger.error(f"  - {error}")
-            return None, True
-
-        reshaped = result.data
-
-        if "LBTESTCD" in reshaped.columns:
-            output_rows = len(reshaped)
-            unique_tests = reshaped["LBTESTCD"].nunique()
-
-            self.logger.info(
-                f"{domain_code}: reshape transformation {input_rows:,} → {output_rows:,} rows "
-                f"(wide-to-long, {unique_tests} test codes)"
-            )
-
-            if reshaped.empty:
-                self.logger.warning(
-                    f"{display_name}: No laboratory records after transformation"
-                )
-                if verbose:
-                    self.logger.verbose(
-                        "    Note: Check source data for lab test columns"
-                    )
-                return None, True
-
-            return reshaped, True
-        else:
-            if verbose:
-                self.logger.verbose(
-                    "  Skipping LB reshape (no recognizable test columns found)"
-                )
-                self.logger.verbose(
-                    "    Expected columns like: WBC, RBC, HGB, or LBTESTCD"
-                )
-            return None, False
-
-    def _apply_da_transformation(
-        self,
-        frame: pd.DataFrame,
-        domain_code: str,
-        study_id: str,
-        display_name: str,
-        verbose: bool,
-    ) -> tuple[pd.DataFrame | None, bool]:
-        """Stage 2c: Apply DA domain transformation if needed."""
-        if domain_code.upper() != "DA":
-            return frame, False
-
-        from ..transformations.findings import DATransformer
-
-        TransformationContext = _get_transformation_context_type()
-
-        input_rows = len(frame)
-
-        transformer = DATransformer(
-            test_code_normalizer=self._terminology_service.normalize_testcd,
-            test_label_getter=self._terminology_service.get_testcd_label,
-        )
-        context = TransformationContext(domain="DA", study_id=study_id)
-        result = transformer.transform(frame, context)
-
-        if not result.success:
-            self.logger.warning(
-                f"{display_name}: DA transformation failed: {result.message}"
-            )
-            if result.errors:
-                for error in result.errors:
-                    self.logger.error(f"  - {error}")
-            return None, True
-
-        reshaped = result.data
-        output_rows = len(reshaped)
-
-        self.logger.info(
-            f"{domain_code}: reshape transformation {input_rows:,} → {output_rows:,} rows (wide-to-long)"
-        )
-
-        if reshaped.empty:
-            self.logger.warning(
-                f"{display_name}: No drug accountability records after transformation"
-            )
-            return None, True
-
-        return reshaped, True
 
     def _build_config(
         self,

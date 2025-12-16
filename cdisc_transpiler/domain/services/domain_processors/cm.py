@@ -25,7 +25,7 @@ class CMProcessor(BaseDomainProcessor):
 
         # CMDOSU should be controlled; default to MG and uppercase values
         if "CMDOSU" in frame.columns:
-            frame["CMDOSU"] = (
+            frame.loc[:, "CMDOSU"] = (
                 frame["CMDOSU"]
                 .astype("string")
                 .fillna("mg")
@@ -33,12 +33,12 @@ class CMProcessor(BaseDomainProcessor):
                 .str.lower()
             )
         else:
-            frame["CMDOSU"] = "mg"
+            frame.loc[:, "CMDOSU"] = "mg"
         # CMDUR permissible – set default to keep presence check satisfied
         if "CMDUR" not in frame.columns:
-            frame["CMDUR"] = "P1D"
+            frame.loc[:, "CMDUR"] = "P1D"
         else:
-            frame["CMDUR"] = (
+            frame.loc[:, "CMDUR"] = (
                 frame["CMDUR"].astype("string").fillna("").replace("", "P1D")
             )
         # Remove duplicate records based on common key fields
@@ -50,8 +50,8 @@ class CMProcessor(BaseDomainProcessor):
         else:
             frame.drop_duplicates(inplace=True)
         # Always regenerate CMSEQ - source values may not be unique (SD0005)
-        frame["CMSEQ"] = frame.groupby("USUBJID").cumcount() + 1
-        frame["CMSEQ"] = NumericTransformer.force_numeric(frame["CMSEQ"])
+        frame.loc[:, "CMSEQ"] = frame.groupby("USUBJID").cumcount() + 1
+        frame.loc[:, "CMSEQ"] = NumericTransformer.force_numeric(frame["CMSEQ"])
         # Normalize CMDOSTXT to non-numeric descriptive text
         if "CMDOSTXT" in frame.columns:
 
@@ -61,7 +61,7 @@ class CMProcessor(BaseDomainProcessor):
                     return f"DOSE {text}"
                 return text
 
-            frame["CMDOSTXT"] = frame["CMDOSTXT"].apply(_normalize_dostxt)
+            frame.loc[:, "CMDOSTXT"] = frame["CMDOSTXT"].apply(_normalize_dostxt)
 
         # Normalize CMSTAT to CDISC CT 'Not Done'
         if "CMSTAT" in frame.columns:
@@ -71,7 +71,7 @@ class CMProcessor(BaseDomainProcessor):
                 "": "",
                 "nan": "",
             }
-            frame["CMSTAT"] = (
+            frame.loc[:, "CMSTAT"] = (
                 frame["CMSTAT"]
                 .astype(str)
                 .str.strip()
@@ -101,7 +101,7 @@ class CMProcessor(BaseDomainProcessor):
                 "nan": "",
             }
             upper_freq = frame["CMDOSFRQ"].astype(str).str.strip().str.upper()
-            frame["CMDOSFRQ"] = upper_freq.map(freq_map).fillna(upper_freq)
+            frame.loc[:, "CMDOSFRQ"] = upper_freq.map(freq_map).fillna(upper_freq)
 
         # Normalize CMROUTE to CDISC CT 'Route of Administration Response'
         if "CMROUTE" in frame.columns:
@@ -128,17 +128,21 @@ class CMProcessor(BaseDomainProcessor):
                 "nan": "",
             }
             upper_route = frame["CMROUTE"].astype(str).str.strip().str.upper()
-            frame["CMROUTE"] = upper_route.map(route_map).fillna(upper_route)
+            frame.loc[:, "CMROUTE"] = upper_route.map(route_map).fillna(upper_route)
         # Units - set to blank if not recognized to avoid CT errors
         if "CMDOSU" in frame.columns:
-            frame["CMDOSU"] = TextTransformer.replace_unknown(frame["CMDOSU"], "mg")
+            frame.loc[:, "CMDOSU"] = TextTransformer.replace_unknown(
+                frame["CMDOSU"], "mg"
+            )
 
         if "CMSTDTC" in frame.columns:
             DateTransformer.compute_study_day(frame, "CMSTDTC", "CMSTDY", ref="RFSTDTC")
         if "CMENDTC" in frame.columns:
             DateTransformer.compute_study_day(frame, "CMENDTC", "CMENDY", ref="RFSTDTC")
         if "EPOCH" in frame.columns:
-            frame["EPOCH"] = "TREATMENT"
+            frame.loc[:, "EPOCH"] = "TREATMENT"
+        else:
+            frame.loc[:, "EPOCH"] = "TREATMENT"
         # Final pass to remove any exact duplicate rows and realign sequence
         frame.drop_duplicates(inplace=True)
         NumericTransformer.assign_sequence(frame, "CMSEQ", "USUBJID")

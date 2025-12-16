@@ -41,24 +41,27 @@ class LBProcessor(BaseDomainProcessor):
                 "PLAT": "Platelets",
             }
             testcd = frame["LBTESTCD"].astype("string").str.upper().str.strip()
+            mapped_lbtest = testcd.map(lb_label_map).astype("string")
             existing_lbtest = (
                 frame["LBTEST"].astype("string")
                 if "LBTEST" in frame.columns
-                else pd.Series([""] * len(frame))
+                else pd.Series([""] * len(frame), index=frame.index, dtype="string")
             )
-            frame["LBTEST"] = testcd.map(lb_label_map).fillna(existing_lbtest)
-            frame["LBTESTCD"] = testcd
+            frame.loc[:, "LBTEST"] = (
+                mapped_lbtest.fillna(existing_lbtest).astype("string").fillna("")
+            )
+            frame.loc[:, "LBTESTCD"] = testcd
         # Derive LBDTC from LBENDTC before computing study days
         if "LBENDTC" in frame.columns:
             has_endtc = frame["LBENDTC"].astype(str).str.strip() != ""
             if "LBDTC" not in frame.columns:
-                frame["LBDTC"] = ""
+                frame.loc[:, "LBDTC"] = ""
             needs_dtc = has_endtc & (frame["LBDTC"].astype(str).str.strip() == "")
             if needs_dtc.any():
                 frame.loc[needs_dtc, "LBDTC"] = frame.loc[needs_dtc, "LBENDTC"]
         # If LBENDTC is missing, add and default it to LBDTC to avoid empty permissible column
         if "LBENDTC" not in frame.columns and "LBDTC" in frame.columns:
-            frame["LBENDTC"] = frame["LBDTC"]
+            frame.loc[:, "LBENDTC"] = frame["LBDTC"]
         if "LBENDTC" in frame.columns and "LBDTC" in frame.columns:
             empty_endtc = frame["LBENDTC"].astype(str).str.strip() == ""
             frame.loc[empty_endtc, "LBENDTC"] = frame.loc[empty_endtc, "LBDTC"]
@@ -68,14 +71,14 @@ class LBProcessor(BaseDomainProcessor):
         if "LBENDTC" in frame.columns and "LBENDY" in frame.columns:
             DateTransformer.compute_study_day(frame, "LBENDTC", "LBENDY", ref="RFSTDTC")
         if "LBDY" in frame.columns:
-            frame["LBDY"] = NumericTransformer.force_numeric(frame["LBDY"])
+            frame.loc[:, "LBDY"] = NumericTransformer.force_numeric(frame["LBDY"])
         else:
-            frame["LBDY"] = pd.NA
+            frame.loc[:, "LBDY"] = pd.NA
         # Expected variable LBLOBXFL should exist even when empty
         if "LBLOBXFL" not in frame.columns:
-            frame["LBLOBXFL"] = ""
+            frame.loc[:, "LBLOBXFL"] = ""
         if "LBSTRESC" in frame.columns:
-            frame["LBSTRESC"] = frame["LBSTRESC"].astype(object)
+            frame.loc[:, "LBSTRESC"] = frame["LBSTRESC"].astype("string")
         # Ensure LBSTRESC mirrors LBORRES when missing
         if "LBORRES" in frame.columns and "LBSTRESC" in frame.columns:
             empty_stresc = frame["LBSTRESC"].astype(str).str.strip() == ""
@@ -86,22 +89,25 @@ class LBProcessor(BaseDomainProcessor):
             )
             frame.loc[empty_stresc, "LBSTRESC"] = orres_str.where(orres_str != "", "0")
         if "LBORRESU" not in frame.columns:
-            frame["LBORRESU"] = ""
+            frame.loc[:, "LBORRESU"] = ""
         else:
-            frame["LBORRESU"] = frame["LBORRESU"].astype("string").fillna("")
+            frame.loc[:, "LBORRESU"] = frame["LBORRESU"].astype("string").fillna("")
         if "LBSTRESU" not in frame.columns:
-            frame["LBSTRESU"] = ""
+            frame.loc[:, "LBSTRESU"] = ""
         else:
-            frame["LBSTRESU"] = frame["LBSTRESU"].astype("string").fillna("")
-        frame["LBNRIND"] = TextTransformer.replace_unknown(frame["LBNRIND"], "NORMAL")
+            frame.loc[:, "LBSTRESU"] = frame["LBSTRESU"].astype("string").fillna("")
+        if "LBNRIND" in frame.columns:
+            frame.loc[:, "LBNRIND"] = TextTransformer.replace_unknown(
+                frame["LBNRIND"], "NORMAL"
+            ).astype("string")
         if "LBLOBXFL" not in frame.columns:
-            frame["LBLOBXFL"] = ""
+            frame.loc[:, "LBLOBXFL"] = ""
         else:
-            frame["LBLOBXFL"] = frame["LBLOBXFL"].fillna("")
+            frame.loc[:, "LBLOBXFL"] = frame["LBLOBXFL"].fillna("")
 
         # Always regenerate LBSEQ - source values may not be unique (SD0005)
-        frame["LBSEQ"] = frame.groupby("USUBJID").cumcount() + 1
-        frame["LBSEQ"] = NumericTransformer.force_numeric(frame["LBSEQ"])
+        frame.loc[:, "LBSEQ"] = frame.groupby("USUBJID").cumcount() + 1
+        frame.loc[:, "LBSEQ"] = NumericTransformer.force_numeric(frame["LBSEQ"])
 
         # Normalize LBCLSIG to CDISC CT 'No Yes Response' (Y/N)
         if "LBCLSIG" in frame.columns:
@@ -119,19 +125,21 @@ class LBProcessor(BaseDomainProcessor):
                 "": "",
                 "nan": "",
             }
-            frame["LBCLSIG"] = (
+            frame.loc[:, "LBCLSIG"] = (
                 frame["LBCLSIG"]
                 .astype(str)
                 .str.strip()
                 .str.upper()
                 .map(yn_map)
                 .fillna("")
+                .astype("string")
             )
 
         if "LBSTRESC" in frame.columns and "LBSTRESN" in frame.columns:
-            numeric = ensure_numeric_series(frame["LBSTRESC"], frame.index)
-            frame["LBSTRESN"] = numeric
-            frame.loc[numeric.isna(), "LBSTRESN"] = pd.NA
+            numeric = ensure_numeric_series(frame["LBSTRESC"], frame.index).astype(
+                "float64"
+            )
+            frame.loc[:, "LBSTRESN"] = numeric
         if "LBORRES" in frame.columns and "LBSTRESC" in frame.columns:
             empty_stresc = frame["LBSTRESC"].astype(str).str.strip() == ""
             orres_str = (
@@ -143,7 +151,7 @@ class LBProcessor(BaseDomainProcessor):
         # Also ensure LBSTRESC is populated when LBORRES exists (SD0036, SD1320)
         if "LBORRES" in frame.columns:
             if "LBSTRESC" not in frame.columns:
-                frame["LBSTRESC"] = frame["LBORRES"]
+                frame.loc[:, "LBSTRESC"] = frame["LBORRES"]
             else:
                 needs_stresc = frame["LBSTRESC"].isna() | (
                     frame["LBSTRESC"].astype(str).str.strip() == ""
@@ -154,13 +162,15 @@ class LBProcessor(BaseDomainProcessor):
                     ]
 
         if "LBSTRESN" in frame.columns:
-            frame["LBSTRESN"] = ensure_numeric_series(frame["LBSTRESN"], frame.index)
+            frame.loc[:, "LBSTRESN"] = ensure_numeric_series(
+                frame["LBSTRESN"], frame.index
+            ).astype("float64")
             needs_stresn = frame["LBSTRESN"].isna() & (
                 frame["LBSTRESC"].astype("string").fillna("").str.strip() != ""
             )
             numeric_fill = ensure_numeric_series(
                 frame.loc[needs_stresn, "LBSTRESC"], frame.index
-            )
+            ).astype("float64")
             frame.loc[needs_stresn, "LBSTRESN"] = numeric_fill
             frame.loc[
                 frame["LBSTRESC"]
@@ -168,20 +178,21 @@ class LBProcessor(BaseDomainProcessor):
                 .str.upper()
                 .isin({"NEGATIVE", "POSITIVE"}),
                 "LBSTRESN",
-            ] = pd.NA
+            ] = float("nan")
         for col in ("LBDY", "LBENDY", "VISITDY", "VISITNUM"):
             if col in frame.columns:
-                frame[col] = pd.to_numeric(frame[col], errors="coerce")
+                frame.loc[:, col] = pd.to_numeric(frame[col], errors="coerce")
         # LBORNRLO and LBORNRHI are character fields per SDTM IG
         # LBSTNRLO and LBSTNRHI are numeric
         for col in ("LBORNRLO", "LBORNRHI"):
             if col in frame.columns:
-                frame[col] = (
-                    frame[col].astype(str).replace({"nan": "", "0.0": "0", "0": "0"})
-                )
+                series = frame[col].astype("string").fillna("")
+                frame.loc[:, col] = series.replace({"0.0": "0", "0": "0"})
         for col in ("LBSTNRLO", "LBSTNRHI"):
             if col in frame.columns:
-                frame[col] = ensure_numeric_series(frame[col], frame.index).fillna(0)
+                frame.loc[:, col] = ensure_numeric_series(
+                    frame[col], frame.index
+                ).fillna(0)
         # Provide default units for non-missing results using CT values
         if "LBORRES" in frame.columns and "LBORRESU" in frame.columns:
             orres_str = frame["LBORRES"].astype("string").fillna("").str.strip()
@@ -202,12 +213,12 @@ class LBProcessor(BaseDomainProcessor):
                         normalized.isin(ct_lb_units.submission_values), "U/L"
                     )
                     normalized = normalized.where(has_value, "")
-                    frame[col] = normalized
+                    frame.loc[:, col] = normalized
 
         # LBCAT is required when LBSCAT is present (SD1098)
         if "LBSCAT" in frame.columns:
             if "LBCAT" not in frame.columns:
-                frame["LBCAT"] = "LABORATORY"
+                frame.loc[:, "LBCAT"] = "LABORATORY"
             else:
                 needs_cat = frame["LBCAT"].isna() | (
                     frame["LBCAT"].astype(str).str.strip() == ""
@@ -215,7 +226,7 @@ class LBProcessor(BaseDomainProcessor):
                 if needs_cat.any():
                     frame.loc[needs_cat, "LBCAT"] = "LABORATORY"
         elif "LBCAT" in frame.columns:
-            frame["LBCAT"] = (
+            frame.loc[:, "LBCAT"] = (
                 frame["LBCAT"].replace("", "LABORATORY").fillna("LABORATORY")
             )
 
@@ -223,7 +234,7 @@ class LBProcessor(BaseDomainProcessor):
         if "LBREASND" in frame.columns:
             has_reasnd = frame["LBREASND"].astype(str).str.strip() != ""
             if "LBSTAT" not in frame.columns:
-                frame["LBSTAT"] = ""
+                frame.loc[:, "LBSTAT"] = ""
             frame.loc[
                 has_reasnd & (frame["LBSTAT"].astype(str).str.strip() == ""),
                 "LBSTAT",
@@ -241,22 +252,22 @@ class LBProcessor(BaseDomainProcessor):
                 for col_series in range_cols
             )
             if has_ranges:
-                frame["LBORRES"] = numeric_orres.fillna(0).astype(str)
+                frame.loc[:, "LBORRES"] = numeric_orres.fillna(0).astype(str)
         if "EPOCH" in frame.columns:
-            frame["EPOCH"] = "TREATMENT"
+            frame.loc[:, "EPOCH"] = "TREATMENT"
         # Ensure LBLOBXFL is empty (last observation flag not applicable with single record)
         if "LBLOBXFL" in frame.columns:
-            frame["LBLOBXFL"] = ""
+            frame.loc[:, "LBLOBXFL"] = ""
         # Clear optional specimen/result type qualifiers that were non-CT values
         for col in ("LBRESTYP", "LBSPEC", "LBSPCCND"):
             if col in frame.columns:
-                frame[col] = ""
+                frame.loc[:, col] = ""
         # Drop optional columns causing CT issues when unneeded
         for col in ("LBANMETH", "LBTSTOPO", "LBTPTREF", "LBPDUR", "LBRFTDTC"):
             if col in frame.columns:
                 frame.drop(columns=[col], inplace=True)
         if "LBELTM" in frame.columns:
-            frame["LBELTM"] = ""
+            frame.loc[:, "LBELTM"] = ""
         for col in ("LBBDAGNT", "LBCLSIG", "LBREFID", "LBSCAT"):
             if col in frame.columns:
                 frame.drop(columns=[col], inplace=True)
@@ -288,25 +299,25 @@ class LBProcessor(BaseDomainProcessor):
             if col in frame.columns
         ]
         if dup_keys:
-            frame[dup_keys] = (
+            dedup_keys_frame = (
                 frame[dup_keys].astype("string").fillna("").replace({"<NA>": ""})
             )
-            keep_mask = ~frame.duplicated(subset=dup_keys, keep="first")
+            keep_mask = ~dedup_keys_frame.duplicated(keep="first")
             frame.drop(index=frame.index[~keep_mask].to_list(), inplace=True)
             frame.reset_index(drop=True, inplace=True)
-            frame["LBSEQ"] = frame.groupby("USUBJID").cumcount() + 1
+            frame.loc[:, "LBSEQ"] = frame.groupby("USUBJID").cumcount() + 1
         # Final deduplication pass using the same subset to eliminate residual duplicates
         if dup_keys:
             keep_mask = ~frame.duplicated(subset=dup_keys, keep="first")
             frame.drop(index=frame.index[~keep_mask].to_list(), inplace=True)
             frame.reset_index(drop=True, inplace=True)
-            frame["LBSEQ"] = frame.groupby("USUBJID").cumcount() + 1
+            frame.loc[:, "LBSEQ"] = frame.groupby("USUBJID").cumcount() + 1
         # Collapse to one record per subject/test/date to eliminate remaining duplicates
         final_keys = [k for k in ("USUBJID", "LBTESTCD", "LBDTC") if k in frame.columns]
         if final_keys:
             frame.drop_duplicates(subset=final_keys, keep="first", inplace=True)
             frame.reset_index(drop=True, inplace=True)
-            frame["LBSEQ"] = frame.groupby("USUBJID").cumcount() + 1
+            frame.loc[:, "LBSEQ"] = frame.groupby("USUBJID").cumcount() + 1
         final_keys = [
             k
             for k in (
@@ -326,7 +337,7 @@ class LBProcessor(BaseDomainProcessor):
         if final_keys:
             frame.drop_duplicates(subset=final_keys, keep="first", inplace=True)
             frame.reset_index(drop=True, inplace=True)
-            frame["LBSEQ"] = frame.groupby("USUBJID").cumcount() + 1
+            frame.loc[:, "LBSEQ"] = frame.groupby("USUBJID").cumcount() + 1
         # Drop optional columns that are fully empty to avoid order/presence warnings
         for col in ("LBBDAGNT", "LBCLSIG", "LBREFID", "LBSCAT"):
             if col in frame.columns:
@@ -336,21 +347,15 @@ class LBProcessor(BaseDomainProcessor):
                     or (series.astype("string").fillna("").str.strip() == "").all()
                 ):
                     frame.drop(columns=[col], inplace=True)
-        # Ensure LBSTRESN has the correct dtype before assignment to avoid FutureWarning
+        # Keep LBSTRESN consistently numeric to avoid pandas dtype warnings
         if {"LBSTRESC", "LBSTRESN"} <= set(frame.columns):
-            numeric = ensure_numeric_series(frame["LBSTRESC"], frame.index)
+            numeric = ensure_numeric_series(frame["LBSTRESC"], frame.index).astype(
+                "float64"
+            )
+            frame.loc[:, "LBSTRESN"] = ensure_numeric_series(
+                frame["LBSTRESN"], frame.index
+            ).astype("float64")
             needs_numeric = ensure_series(frame["LBSTRESN"]).isna()
-
-            # Ensure LBSTRESN has the correct dtype before assignment to avoid FutureWarning
-            if frame["LBSTRESN"].dtype != numeric.dtype:
-                try:
-                    frame["LBSTRESN"] = frame["LBSTRESN"].astype(numeric.dtype)
-                except (TypeError, ValueError):
-                    # Silently handle dtype conversion failures - keep original dtype
-                    # This is acceptable since numeric assignment below will still work
-                    pass
-
-            # Now safely assign the numeric values where needed
             if needs_numeric.any():
                 frame.loc[needs_numeric, "LBSTRESN"] = numeric.loc[needs_numeric]
         # Final pass: ensure LBSTRESC is never empty when LBORRES exists
@@ -368,9 +373,9 @@ class LBProcessor(BaseDomainProcessor):
                 "", "0"
             )
         # Normalize core lab fields for demo data
-        frame["LBCAT"] = "LABORATORY"
+        frame.loc[:, "LBCAT"] = "LABORATORY"
         if "LBSTRESC" in frame.columns:
-            frame["LBSTRESC"] = (
+            frame.loc[:, "LBSTRESC"] = (
                 frame["LBSTRESC"].astype("string").fillna("").replace({"<NA>": ""})
             )
         if "LBSTRESU" in frame.columns and "LBSTRESC" in frame.columns:
@@ -378,7 +383,7 @@ class LBProcessor(BaseDomainProcessor):
             needs_unit = frame["LBSTRESU"].astype("string").fillna("").str.strip() == ""
             frame.loc[needs_unit & (stresc_str != ""), "LBSTRESU"] = "U/L"
         elif "LBSTRESC" in frame.columns:
-            frame["LBSTRESU"] = (
+            frame.loc[:, "LBSTRESU"] = (
                 frame["LBSTRESC"]
                 .astype("string")
                 .fillna("")
@@ -386,7 +391,9 @@ class LBProcessor(BaseDomainProcessor):
             )
         # Ensure numeric STRESN whenever possible
         if "LBSTRESN" not in frame.columns and "LBSTRESC" in frame.columns:
-            frame["LBSTRESN"] = ensure_numeric_series(frame["LBSTRESC"], frame.index)
+            frame.loc[:, "LBSTRESN"] = ensure_numeric_series(
+                frame["LBSTRESC"], frame.index
+            )
         elif {"LBSTRESN", "LBSTRESC"} <= set(frame.columns):
             numeric = ensure_numeric_series(frame["LBSTRESC"], frame.index)
             needs = ensure_series(frame["LBSTRESN"]).isna()
@@ -394,15 +401,15 @@ class LBProcessor(BaseDomainProcessor):
         # Ensure study/visit day fields are numeric for metadata alignment
         for col in ("LBDY", "LBENDY", "VISITDY", "VISITNUM"):
             if col in frame.columns:
-                frame[col] = ensure_numeric_series(frame[col], frame.index).astype(
-                    "Int64"
-                )
+                frame.loc[:, col] = ensure_numeric_series(
+                    frame[col], frame.index
+                ).astype("float64")
         if {"VISITDY", "LBDY"} <= set(frame.columns):
             empty_visitdy = frame["VISITDY"].isna()
             frame.loc[empty_visitdy, "VISITDY"] = frame.loc[empty_visitdy, "LBDY"]
         # LBLOBXFL must not be entirely missing; mark last record per subject
         if {"LBLOBXFL", "USUBJID"} <= set(frame.columns):
-            frame["LBLOBXFL"] = ""
+            frame.loc[:, "LBLOBXFL"] = ""
             last_idx = frame.groupby("USUBJID").tail(1).index
             frame.loc[last_idx, "LBLOBXFL"] = "Y"
         # Deduplicate on streamlined keys to remove SD1117 noise
@@ -410,18 +417,22 @@ class LBProcessor(BaseDomainProcessor):
         if dedup_keys:
             collapsed = frame.copy()
             for key in dedup_keys:
-                collapsed[key] = collapsed[key].astype("string")
+                collapsed.loc[:, key] = collapsed[key].astype("string")
             collapsed = collapsed.sort_values(by=dedup_keys)
             collapsed = collapsed.drop_duplicates(subset=dedup_keys, keep="first")
             collapsed.reset_index(drop=True, inplace=True)
-            collapsed["LBSEQ"] = collapsed.groupby("USUBJID").cumcount() + 1
+            collapsed.loc[:, "LBSEQ"] = collapsed.groupby("USUBJID").cumcount() + 1
             if "VISITNUM" in collapsed.columns:
-                collapsed["VISITNUM"] = collapsed.groupby("USUBJID").cumcount() + 1
+                collapsed.loc[:, "VISITNUM"] = (
+                    collapsed.groupby("USUBJID").cumcount() + 1
+                ).astype("Int64")
             if "VISIT" in collapsed.columns:
-                collapsed["VISIT"] = collapsed["VISITNUM"].apply(
-                    lambda n: f"Visit {int(n)}"
+                collapsed.loc[:, "VISIT"] = (
+                    collapsed["VISITNUM"]
+                    .apply(lambda n: f"Visit {int(n)}")
+                    .astype("string")
                 )
             frame.drop(frame.index.tolist(), inplace=True)
             frame.drop(columns=list(frame.columns), inplace=True)
             for col in collapsed.columns:
-                frame[col] = collapsed[col].values
+                frame.loc[:, col] = collapsed[col].values
