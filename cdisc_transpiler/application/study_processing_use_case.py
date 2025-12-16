@@ -23,6 +23,8 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
+from ..constants import SDTMVersions
+
 from .models import (
     DefineDatasetDTO,
     DomainProcessingResult,
@@ -835,7 +837,9 @@ class StudyProcessingUseCase:
         try:
             # Context values per Define-XML 2.1 spec
             context = (
-                "Submission" if request.define_context == "Submission" else "Other"
+                SDTMVersions.DEFINE_CONTEXT_SUBMISSION
+                if request.define_context == SDTMVersions.DEFINE_CONTEXT_SUBMISSION
+                else SDTMVersions.DEFINE_CONTEXT_OTHER
             )
             self._define_xml_generator.generate(
                 study_datasets,

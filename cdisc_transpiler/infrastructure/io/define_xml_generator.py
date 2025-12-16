@@ -32,6 +32,9 @@ class DefineXmlGenerator:
     Example:
         >>> generator = DefineXmlGenerator()
         >>> datasets = [DefineDatasetDTO(...), DefineDatasetDTO(...)]
+        >>> # Prefer canonical defaults:
+        >>> # sdtm_version=SDTMVersions.DEFAULT_VERSION
+        >>> # context=SDTMVersions.DEFINE_CONTEXT_SUBMISSION
         >>> generator.generate(datasets, Path("define.xml"), sdtm_version="3.4", context="Submission")
     """
 
@@ -51,8 +54,8 @@ class DefineXmlGenerator:
         Args:
             datasets: Iterable of DefineDatasetDTO objects (application-layer)
             output_path: Path where Define-XML file should be written
-            sdtm_version: SDTM-IG version (e.g., "3.4")
-            context: Define-XML context - 'Submission' or 'Other'
+            sdtm_version: SDTM-IG version (e.g., SDTMVersions.DEFAULT_VERSION)
+            context: Define-XML context (e.g., SDTMVersions.DEFINE_CONTEXT_SUBMISSION)
 
         Raises:
             Exception: If generation or writing fails

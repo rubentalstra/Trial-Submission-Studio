@@ -64,7 +64,7 @@ def get_default_standards(
     """Return the default standard definitions for SDTM submissions.
 
     Args:
-        sdtm_version: SDTMIG version (e.g., "3.4")
+        sdtm_version: SDTMIG version (default: DEFAULT_SDTM_VERSION)
         ct_version: Controlled Terminology version (e.g., "2024-03-29")
         md_version: SDTM-MD (Medical Devices) version (default: "1.1")
 

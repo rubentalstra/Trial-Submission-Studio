@@ -209,6 +209,9 @@ class DependencyContainer:
 
         Example:
             >>> generator = container.create_define_xml_generator()
+            >>> # Prefer canonical defaults:
+            >>> # sdtm_version=SDTMVersions.DEFAULT_VERSION
+            >>> # context=SDTMVersions.DEFINE_CONTEXT_SUBMISSION
             >>> generator.generate(datasets, Path("define.xml"), sdtm_version="3.4", context="Submission")
         """
         if self._define_xml_generator_instance is None:

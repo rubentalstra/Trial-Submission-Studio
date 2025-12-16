@@ -8,6 +8,7 @@ import pandas as pd
 
 from .base import BaseDomainProcessor
 from ....pandas_utils import ensure_series
+from ....constants import SDTMVersions
 
 
 class TSProcessor(BaseDomainProcessor):
@@ -99,8 +100,8 @@ class TSProcessor(BaseDomainProcessor):
                 _row("PIPIND", "N", valcd="C49487"),
                 _row("RDIND", "N", valcd="C49487"),
                 _row("ONGOSIND", "N", valcd="C49487"),
-                _row("SDTIGVER", "3.4"),
-                _row("SDTMVER", "3.4"),
+                _row("SDTIGVER", SDTMVersions.DEFAULT_VERSION),
+                _row("SDTMVER", SDTMVersions.DEFAULT_VERSION),
                 _row("THERAREA", "GENERAL"),
                 _row("REGID", "NCT00000000"),
                 _row("SPONSOR", "GDISC"),

@@ -16,6 +16,8 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
+from ..constants import Defaults, SDTMVersions
+
 if TYPE_CHECKING:
     from ..domain.entities.mapping import MappingConfig
 
@@ -183,8 +185,8 @@ class ProcessStudyRequest:
         output_formats: Set of formats to generate ({"xpt", "xml"})
         generate_define_xml: Whether to generate Define-XML file
         generate_sas: Whether to generate SAS programs
-        sdtm_version: SDTM-IG version for Define-XML (e.g., "3.4")
-        define_context: Define-XML context ("Submission" or "Other")
+        sdtm_version: SDTM-IG version for Define-XML (e.g., SDTMVersions.DEFAULT_VERSION)
+        define_context: Define-XML context (e.g., SDTMVersions.DEFINE_CONTEXT_SUBMISSION)
         streaming: Use streaming mode for large datasets
         chunk_size: Chunk size for streaming mode
         min_confidence: Minimum confidence for fuzzy matches (0.0-1.0)
@@ -207,11 +209,11 @@ class ProcessStudyRequest:
     output_formats: set[str] = field(default_factory=lambda: {"xpt", "xml"})
     generate_define_xml: bool = True
     generate_sas: bool = True
-    sdtm_version: str = "3.4"
-    define_context: str = "Submission"
+    sdtm_version: str = SDTMVersions.DEFAULT_VERSION
+    define_context: str = SDTMVersions.DEFINE_CONTEXT_SUBMISSION
     streaming: bool = False
-    chunk_size: int = 1000
-    min_confidence: float = 0.5
+    chunk_size: int = Defaults.CHUNK_SIZE
+    min_confidence: float = Defaults.MIN_CONFIDENCE
     verbose: int = 0
 
 
