@@ -9,15 +9,14 @@ from typing import Any, cast
 import pandas as pd
 
 from ..xml_utils import attr, tag
-from .constants import SHARED_VARIABLE_OIDS
 
 
-def generate_item_oid(variable_name: str, domain_code: str) -> str:
+def generate_item_oid(variable_name: str, dataset_name: str) -> str:
     """Generate ItemOID following CDISC standard conventions.
 
-    Per CDISC Dataset-XML 1.0 standard:
-    - Shared variables (STUDYID, USUBJID) use IT.{VARIABLE} without domain prefix
-    - Domain-specific variables use IT.{DOMAIN}.{VARIABLE}
+    Per CDISC Dataset-XML 1.0 (and the CDISC MSG sample submission package fixtures
+    used in this repo), ItemOIDs follow the pattern:
+    - IT.{DOMAIN}.{VARIABLE}
 
     Args:
         variable_name: Variable name
@@ -26,10 +25,7 @@ def generate_item_oid(variable_name: str, domain_code: str) -> str:
     Returns:
         ItemOID string
     """
-    name = variable_name.upper()
-    if name in SHARED_VARIABLE_OIDS:
-        return f"IT.{name}"
-    return f"IT.{domain_code.upper()}.{variable_name}"
+    return f"IT.{dataset_name.upper()}.{variable_name.upper()}"
 
 
 def is_null(value: object) -> bool:
@@ -75,10 +71,11 @@ def format_value(value: object, column_name: str) -> str:
 
     # Convert to string
     if isinstance(value, (int, float)):
-        # Keep numeric precision
+        # Keep numeric precision.
+        # `g` defaults to 6 significant digits, which can round values and
+        # diverge from the CDISC MSG sample submission package fixtures.
         if isinstance(value, float):
-            # Remove trailing zeros for floats
-            return f"{value:g}"
+            return format(value, ".15g")
         return str(value)
 
     return str(value).strip()

@@ -31,6 +31,7 @@ def build_dataset_xml_tree(
     domain_code: str,
     config: MappingConfig,
     *,
+    dataset_name: str | None = None,
     metadata_version_oid: str | None = None,
     is_reference_data: bool = False,
 ) -> ET.Element:
@@ -40,6 +41,8 @@ def build_dataset_xml_tree(
         data: The pandas DataFrame containing the domain data
         domain_code: The SDTM domain code (e.g., "DM", "AE")
         config: The mapping configuration containing study metadata
+        dataset_name: Optional dataset name override used for ItemGroupOID/ItemOID
+            prefixing (e.g., split dataset names like "QSSL").
         metadata_version_oid: The MetaDataVersionOID to reference Define-XML
         is_reference_data: Whether this is reference data (trial design)
 
@@ -49,7 +52,9 @@ def build_dataset_xml_tree(
     domain = get_domain(domain_code)
     study_id = (config.study_id or "STUDY").strip() or "STUDY"
     study_oid = f"STDY.{study_id}"
-    dataset_name = domain.resolved_dataset_name()
+    dataset_name = (
+        dataset_name or domain.resolved_dataset_name()
+    ).strip() or domain.code
     timestamp = datetime.now(UTC).isoformat(timespec="seconds")
 
     # Determine MetaDataVersionOID
@@ -120,7 +125,7 @@ def append_item_group_data(
                 continue
 
             formatted_value = format_value(value, col_name)
-            item_oid = generate_item_oid(col_name, domain.code)
+            item_oid = generate_item_oid(col_name, dataset_name)
 
             ET.SubElement(
                 item_group_data,

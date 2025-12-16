@@ -23,6 +23,7 @@ def write_dataset_xml(
     config: MappingConfig,
     output: Path,
     *,
+    dataset_name: str | None = None,
     metadata_version_oid: str | None = None,
     is_reference_data: bool | None = None,
 ) -> None:
@@ -33,6 +34,8 @@ def write_dataset_xml(
         domain_code: The SDTM domain code (e.g., "DM", "AE")
         config: The mapping configuration containing study metadata
         output: The output file path
+        dataset_name: Optional dataset name override used for ItemGroupOID/ItemOID
+            prefixing (e.g., split dataset names like "QSSL").
         metadata_version_oid: The MetaDataVersionOID to reference Define-XML
         is_reference_data: Override for reference data detection
     """
@@ -47,6 +50,7 @@ def write_dataset_xml(
         data,
         domain_code,
         config,
+        dataset_name=dataset_name,
         metadata_version_oid=metadata_version_oid,
         is_reference_data=is_reference_data,
     )
