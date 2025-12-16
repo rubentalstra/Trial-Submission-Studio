@@ -23,7 +23,7 @@ from .constants import (
     DEFINE_VERSION,
     ACRF_LEAF_ID,
 )
-from ..xml_utils import tag, attr, safe_href
+from .constants import attr, safe_href, tag
 from .standards import get_default_standards
 from cdisc_transpiler.infrastructure.sdtm_spec.constants import CT_VERSION
 from cdisc_transpiler.infrastructure.sdtm_spec.registry import get_domain

@@ -17,7 +17,7 @@ from .models import (
     WhereClauseDefinition,
 )
 from .constants import ODM_NS, DEF_NS, XML_NS
-from ..xml_utils import tag, attr
+from .constants import attr, tag
 
 
 def build_supp_value_lists(

@@ -14,7 +14,7 @@ import pandas as pd
 from cdisc_transpiler.domain.entities.sdtm_domain import SDTMDomain, SDTMVariable
 from cdisc_transpiler.infrastructure.sdtm_spec.registry import get_domain
 from .constants import ODM_NS
-from ..xml_utils import tag
+from .constants import tag
 from .variable_builder import get_item_oid
 
 

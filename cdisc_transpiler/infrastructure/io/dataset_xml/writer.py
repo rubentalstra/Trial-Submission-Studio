@@ -15,7 +15,10 @@ if TYPE_CHECKING:
 
 from cdisc_transpiler.infrastructure.sdtm_spec.registry import get_domain
 from .builder import build_dataset_xml_tree
-from .models import DatasetXMLError
+
+
+class DatasetXMLError(RuntimeError):
+    """Raised when Dataset-XML generation or writing fails."""
 
 
 def write_dataset_xml(

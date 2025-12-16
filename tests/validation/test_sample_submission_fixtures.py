@@ -20,12 +20,12 @@ import pyreadstat
 import pytest
 
 from cdisc_transpiler.domain.entities.mapping import MappingConfig
-from cdisc_transpiler.infrastructure.io.dataset_xml.constants import (
+from cdisc_transpiler.infrastructure.io.dataset_xml_writer import (
     DATASET_XML_VERSION,
     DATA_NS,
     ODM_NS,
+    write_dataset_xml,
 )
-from cdisc_transpiler.infrastructure.io.dataset_xml.writer import write_dataset_xml
 from cdisc_transpiler.infrastructure.io.xpt_writer import XPTWriter
 
 

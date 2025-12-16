@@ -25,7 +25,7 @@ from .constants import (
     MEDDRA_HREF,
     MEDDRA_CODELIST_NAME,
 )
-from ..xml_utils import tag, attr
+from .constants import attr, tag
 
 
 @lru_cache(maxsize=1)

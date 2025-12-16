@@ -20,9 +20,9 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 from ...application.models import OutputRequest, OutputResult
-from .dataset_xml.models import DatasetXMLError
+from .dataset_xml_writer import DatasetXMLError
 from .sas_writer import SASWriterError
-from .xpt.xpt_write import XportGenerationError
+from .xpt_writer import XportGenerationError
 
 if TYPE_CHECKING:
     from ...application.ports import (
@@ -125,6 +125,8 @@ class FileGenerator:
                 )
             except (OSError, ValueError, XportGenerationError) as exc:
                 result.errors.append(f"XPT generation failed: {exc}")
+            except Exception as exc:  # noqa: BLE001
+                result.errors.append(f"XPT generation failed: {exc}")
 
         # Generate Dataset-XML file
         if "xml" in request.formats and request.output_dirs.xml_dir:
@@ -137,6 +139,8 @@ class FileGenerator:
                     disk_name,
                 )
             except (OSError, TypeError, ValueError, DatasetXMLError) as exc:
+                result.errors.append(f"XML generation failed: {exc}")
+            except Exception as exc:  # noqa: BLE001
                 result.errors.append(f"XML generation failed: {exc}")
 
         # Generate SAS program
@@ -152,6 +156,8 @@ class FileGenerator:
                     request.output_dataset,
                 )
             except (OSError, TypeError, ValueError, KeyError, SASWriterError) as exc:
+                result.errors.append(f"SAS generation failed: {exc}")
+            except Exception as exc:  # noqa: BLE001
                 result.errors.append(f"SAS generation failed: {exc}")
 
         return result
