@@ -412,10 +412,10 @@ class ProcessDomainResponse:
     warnings: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
-        """Convert to dictionary format for compatibility with existing code.
+        """Convert to a plain dictionary representation.
 
         Returns:
-            Dictionary with keys expected by legacy code
+            Dictionary with keys expected by existing callers
         """
         result = {
             "domain_code": self.domain_code,

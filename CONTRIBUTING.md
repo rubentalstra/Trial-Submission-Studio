@@ -1,6 +1,7 @@
 # Contributing to CDISC Transpiler
 
-Thank you for your interest in contributing to CDISC Transpiler! This guide will help you get started with contributing to the project.
+Thank you for your interest in contributing to CDISC Transpiler! This guide will
+help you get started with contributing to the project.
 
 ## Table of Contents
 
@@ -37,7 +38,8 @@ This project follows a professional code of conduct:
 
 ### Finding Issues to Work On
 
-1. Check the [Issues](https://github.com/rubentalstra/cdisc-transpiler/issues) page
+1. Check the [Issues](https://github.com/rubentalstra/cdisc-transpiler/issues)
+   page
 2. Look for issues labeled `good-first-issue` or `help-wanted`
 3. Review `IMPLEMENTATION_PROGRESS.md` for planned work
 4. Comment on an issue to express interest before starting work
@@ -106,7 +108,8 @@ git checkout -b fix/issue-description
 
 ### 2. Make Changes
 
-Follow the [Coding Standards](#coding-standards) and [Architecture Guidelines](#architecture-guidelines) below.
+Follow the [Coding Standards](#coding-standards) and
+[Architecture Guidelines](#architecture-guidelines) below.
 
 ### 3. Write Tests
 
@@ -163,6 +166,7 @@ git commit -m "test: add integration tests for XML generation"
 ```
 
 **Commit message format:**
+
 - `feat:` New feature
 - `fix:` Bug fix
 - `docs:` Documentation changes
@@ -177,7 +181,8 @@ git commit -m "test: add integration tests for XML generation"
 
 - **Python Version**: 3.10+ (use modern Python features)
 - **Line Length**: Maximum 88 characters (Black default)
-- **Imports**: Group by standard library, third-party, local (sorted alphabetically)
+- **Imports**: Group by standard library, third-party, local (sorted
+  alphabetically)
 - **Type Hints**: Use type hints for all function signatures
 - **Docstrings**: Use Google-style docstrings
 
@@ -206,7 +211,8 @@ cdisc_transpiler/
 
 ### Key Principles
 
-1. **Separation of Concerns**: Keep CLI, business logic, and infrastructure separate
+1. **Separation of Concerns**: Keep CLI, business logic, and infrastructure
+   separate
 2. **Dependency Injection**: Use `DependencyContainer` for wiring dependencies
 3. **Single Responsibility**: Each class/function should have one clear purpose
 4. **Testability**: Write code that's easy to test (avoid tight coupling)
@@ -215,6 +221,7 @@ cdisc_transpiler/
 ### Example: Good vs. Bad
 
 **❌ Bad (mixed concerns in CLI):**
+
 ```python
 @click.command()
 def study(study_folder: str):
@@ -226,6 +233,7 @@ def study(study_folder: str):
 ```
 
 **✅ Good (thin adapter pattern):**
+
 ```python
 @click.command()
 def study(study_folder: str):
@@ -254,6 +262,7 @@ We maintain 4 types of tests:
 - **Location**: Mirror source structure
 
 **Example:**
+
 ```python
 def test_summary_presenter_formats_table():
     presenter = SummaryPresenter(Console())
@@ -273,6 +282,7 @@ def test_summary_presenter_formats_table():
 - **Execution**: ~40 seconds total
 
 **Example:**
+
 ```python
 def test_study_processing_generates_xpt_files(tmp_path):
     study_folder = Path("mockdata/DEMO_GDISC")
@@ -300,6 +310,7 @@ def test_study_processing_generates_xpt_files(tmp_path):
 - **Marker**: `@pytest.mark.validation`
 
 **Example:**
+
 ```python
 @pytest.mark.validation
 def test_dm_domain_has_required_variables(processed_study):
@@ -319,6 +330,7 @@ def test_dm_domain_has_required_variables(processed_study):
 - **Usage**: `pytest -m benchmark --benchmark-only`
 
 **Example:**
+
 ```python
 @pytest.mark.benchmark
 def test_benchmark_large_study_processing(benchmark):
@@ -338,7 +350,8 @@ def test_benchmark_large_study_processing(benchmark):
 2. **One Assertion Per Test**: Test one thing at a time
 3. **Descriptive Names**: `test_<what>_<when>_<expected>`
 4. **Use Fixtures**: Share setup code via pytest fixtures
-5. **Mock External Dependencies**: Don't call real APIs or databases in unit tests
+5. **Mock External Dependencies**: Don't call real APIs or databases in unit
+   tests
 6. **Clean Up**: Use `tmp_path` fixture for file operations
 
 **Test Coverage:**
@@ -408,24 +421,29 @@ pytest -m benchmark --benchmark-compare=baseline
 
 ```markdown
 ## Summary
+
 Add support for custom domain processors via plugin system.
 
 ## Motivation
+
 Users need ability to process custom domains not in SDTM standard.
 
 ## Changes
+
 - Added `PluginRegistry` class in `domain/plugins/`
 - Modified `DomainProcessingUseCase` to check for plugins
 - Added integration tests for plugin loading
 - Updated documentation with plugin development guide
 
 ## Testing
+
 - Added 12 unit tests for `PluginRegistry`
 - Added 3 integration tests with sample plugin
 - All existing tests pass
 - Manually tested with custom domain "ZZ"
 
 ## Checklist
+
 - [x] Tests added and passing
 - [x] Documentation updated
 - [x] Type hints added
@@ -482,7 +500,8 @@ Reviewers check for:
 - **Documentation**: Is it well documented?
 - **Style**: Does it follow coding standards?
 - **Performance**: Are there performance concerns?
-- **Backward Compatibility**: Any breaking changes?
+- **API Stability**: Any breaking changes? If yes, include migration notes and
+  avoid adding compatibility shims/aliases—prefer updating call sites.
 
 ### After Merge
 
@@ -499,6 +518,7 @@ When adding features, respect the architecture layers:
 #### CLI Layer (`cdisc_transpiler/cli/`)
 
 **Responsibilities:**
+
 - Parse command-line arguments
 - Validate basic input
 - Create request DTOs
@@ -506,6 +526,7 @@ When adding features, respect the architecture layers:
 - Format output
 
 **DON'T:**
+
 - Put business logic here
 - Access infrastructure directly
 - Perform complex calculations
@@ -513,12 +534,14 @@ When adding features, respect the architecture layers:
 #### Application Layer (`cdisc_transpiler/application/`)
 
 **Responsibilities:**
+
 - Orchestrate workflows
 - Call domain services in correct order
 - Handle cross-cutting concerns (logging, errors)
 - Return structured responses
 
 **DON'T:**
+
 - Know about CLI or file formats
 - Contain domain business rules
 - Access infrastructure directly
@@ -526,11 +549,13 @@ When adding features, respect the architecture layers:
 #### Domain Layer (`cdisc_transpiler/domain/`)
 
 **Responsibilities:**
+
 - Core business logic
 - Domain rules and validations
 - Domain entities and value objects
 
 **DON'T:**
+
 - Depend on infrastructure
 - Know about CLI or use cases
 - Perform I/O operations
@@ -538,12 +563,14 @@ When adding features, respect the architecture layers:
 #### Infrastructure Layer (`cdisc_transpiler/infrastructure/`)
 
 **Responsibilities:**
+
 - File I/O (reading/writing)
 - External system integration
 - Data transformations
 - Repository implementations
 
 **DON'T:**
+
 - Contain business logic
 - Know about CLI or use cases
 
@@ -588,10 +615,11 @@ When adding features, respect the architecture layers:
 
 - **Docstrings**: All public classes, methods, functions
 - **Type Hints**: All function signatures
-- **Comments**: Explain *why*, not *what*
+- **Comments**: Explain _why_, not _what_
 - **Examples**: Include usage examples in docstrings
 
 **Example:**
+
 ```python
 def process_domain(
     domain_data: DomainData,
@@ -647,7 +675,8 @@ Contributors are recognized in:
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the MIT License.
+By contributing, you agree that your contributions will be licensed under the
+MIT License.
 
 ---
 

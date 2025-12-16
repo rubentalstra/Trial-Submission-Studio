@@ -38,8 +38,8 @@ class CTRepositoryPort(Protocol):
     - Cached in-memory storage
 
     Example:
-        >>> def validate_domain(ct_repo: CTRepositoryPort):
-        ...     ct = ct_repo.get_by_code("C66767")
+        >>> def validate_domain(ct_repository: CTRepositoryPort):
+        ...     ct = ct_repository.get_by_code("C66767")
         ...     if ct and "MALE" in ct.submission_values:
         ...         print("Valid gender value")
     """
@@ -54,7 +54,7 @@ class CTRepositoryPort(Protocol):
             ControlledTerminology object if found, None otherwise
 
         Example:
-            >>> ct = ct_repo.get_by_code("C66767")
+            >>> ct = ct_repository.get_by_code("C66767")
             >>> if ct:
             ...     print(f"Codelist: {ct.codelist_name}")
             ...     print(f"Values: {ct.submission_values}")
@@ -71,7 +71,7 @@ class CTRepositoryPort(Protocol):
             ControlledTerminology object if found, None otherwise
 
         Example:
-            >>> ct = ct_repo.get_by_name("SEX")
+            >>> ct = ct_repository.get_by_name("SEX")
             >>> if ct:
             ...     normalized = ct.normalize("male")  # Returns "MALE"
         """
@@ -84,7 +84,7 @@ class CTRepositoryPort(Protocol):
             List of all codelist codes available
 
         Example:
-            >>> codes = ct_repo.list_all_codes()
+            >>> codes = ct_repository.list_all_codes()
             >>> print(f"Available codelists: {len(codes)}")
         """
         raise NotImplementedError
@@ -104,8 +104,8 @@ class SDTMSpecRepositoryPort(Protocol):
     - Local cache with versioning
 
     Example:
-        >>> def get_domain_spec(spec_repo: SDTMSpecRepositoryPort):
-        ...     variables = spec_repo.get_domain_variables("DM")
+        >>> def get_domain_spec(spec_repository: SDTMSpecRepositoryPort):
+        ...     variables = spec_repository.get_domain_variables("DM")
         ...     for var in variables:
         ...         print(f"{var['Variable Name']}: {var['Label']}")
     """
@@ -121,7 +121,7 @@ class SDTMSpecRepositoryPort(Protocol):
             such as Variable Name, Label, Type, Length, Role, etc.
 
         Example:
-            >>> variables = spec_repo.get_domain_variables("DM")
+            >>> variables = spec_repository.get_domain_variables("DM")
             >>> for var in variables:
             ...     if var["Role"] == "Identifier":
             ...         print(f"Key variable: {var['Variable Name']}")
@@ -139,7 +139,7 @@ class SDTMSpecRepositoryPort(Protocol):
             or None if domain not found
 
         Example:
-            >>> attrs = spec_repo.get_dataset_attributes("DM")
+            >>> attrs = spec_repository.get_dataset_attributes("DM")
             >>> if attrs:
             ...     print(f"Class: {attrs['class']}")
             ...     print(f"Label: {attrs['label']}")
@@ -153,7 +153,7 @@ class SDTMSpecRepositoryPort(Protocol):
             List of domain codes available in the SDTM specification
 
         Example:
-            >>> domains = spec_repo.list_available_domains()
+            >>> domains = spec_repository.list_available_domains()
             >>> if "DM" in domains:
             ...     print("Demographics domain available")
         """
@@ -188,8 +188,8 @@ class StudyDataRepositoryPort(Protocol):
     - Cloud storage (S3, Azure Blob)
 
     Example:
-        >>> def load_demographics(data_repo: StudyDataRepositoryPort):
-        ...     dm_df = data_repo.read_dataset("DM.csv")
+        >>> def load_demographics(study_data_repository: StudyDataRepositoryPort):
+        ...     dm_df = study_data_repository.read_dataset("DM.csv")
         ...     print(f"Loaded {len(dm_df)} subjects")
     """
 
@@ -207,7 +207,7 @@ class StudyDataRepositoryPort(Protocol):
             DataParseError: If file cannot be parsed
 
         Example:
-            >>> df = data_repo.read_dataset("DM.csv")
+            >>> df = study_data_repository.read_dataset("DM.csv")
             >>> print(df.columns.tolist())
             ['STUDYID', 'DOMAIN', 'USUBJID', 'SUBJID', ...]
         """
@@ -226,7 +226,7 @@ class StudyDataRepositoryPort(Protocol):
             MetadataLoadError: If metadata files cannot be loaded
 
         Example:
-            >>> metadata = data_repo.load_study_metadata(Path("study001"))
+            >>> metadata = study_data_repository.load_study_metadata(Path("study001"))
             >>> for col_id, column in metadata.columns.items():
             ...     print(f"{col_id}: {column.label}")
         """
@@ -243,7 +243,7 @@ class StudyDataRepositoryPort(Protocol):
             List of Path objects for matching files
 
         Example:
-            >>> files = data_repo.list_data_files(Path("study001"))
+            >>> files = study_data_repository.list_data_files(Path("study001"))
             >>> domain_files = [f for f in files if f.stem.upper() in ["DM", "AE", "LB"]]
         """
         raise NotImplementedError

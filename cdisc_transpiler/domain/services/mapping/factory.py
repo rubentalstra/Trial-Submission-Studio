@@ -1,7 +1,6 @@
 """Factory helpers for mapping engines.
 
 These helpers live in the domain layer because mapping is pure business logic.
-Historically, compatibility wrappers re-exported these functions.
 """
 
 from __future__ import annotations

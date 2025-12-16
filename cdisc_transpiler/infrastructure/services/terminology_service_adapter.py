@@ -45,8 +45,8 @@ class TerminologyServiceAdapter(TerminologyPort):
         if not codelist_code:
             return None
 
-        ct_repo = CTRepository()
-        ct = ct_repo.get_by_code(codelist_code)
+        ct_repository = CTRepository()
+        ct = ct_repository.get_by_code(codelist_code)
         if ct is None:
             return None
 
@@ -61,8 +61,8 @@ class TerminologyServiceAdapter(TerminologyPort):
         if not codelist_code:
             return testcd
 
-        ct_repo = CTRepository()
-        ct = ct_repo.get_by_code(codelist_code)
+        ct_repository = CTRepository()
+        ct = ct_repository.get_by_code(codelist_code)
         if ct is None:
             return testcd
 

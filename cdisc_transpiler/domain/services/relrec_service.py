@@ -290,21 +290,3 @@ class RelrecService:
                 "RELID": relid,
             }
         )
-
-
-# Convenience function for backwards compatibility
-def build_relrec(
-    domain_dataframes: dict[str, pd.DataFrame],
-    study_id: str,
-) -> tuple[pd.DataFrame, MappingConfig]:
-    """Build RELREC dataframe and config from processed domain data.
-
-    Args:
-        domain_dataframes: Dictionary mapping domain codes to their dataframes
-        study_id: Study identifier
-
-    Returns:
-        Tuple of (RELREC dataframe, mapping config)
-    """
-    service = RelrecService()
-    return service.build_relrec(domain_dataframes, study_id)

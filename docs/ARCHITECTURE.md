@@ -67,11 +67,8 @@ below may fail until the hot-path errors are addressed.
 - `cdisc_transpiler/cli/commands/domains.py`: Lists supported domains via the
   SDTM spec registry.
 - `cdisc_transpiler/cli/presenters/*`: Rich formatting only (tables/progress).
-- `cdisc_transpiler/cli/helpers.py`: CLI-facing helpers (still contains
-  output-writing helpers like split XPTs; should move out of CLI).
-- Compatibility wrappers:
-  - `cdisc_transpiler/cli/logging_config.py`: global logger compatibility layer.
-  - `cdisc_transpiler/cli/utils.py`: `ProgressTracker` alias.
+- CLI should contain only drivers/presentation concerns (argument parsing,
+  calling use cases, and formatting output).
 
 #### `cdisc_transpiler/application/` (Use cases + ports + DTOs)
 
@@ -128,7 +125,7 @@ call sites to the clean layers:
 
 These modules exist outside the four “clean” layer folders and are a major
 source of confusion. They must either become true adapters/ports, move into the
-proper layer, or be reduced to thin compatibility shims.
+proper layer, or be removed.
 
 - `cdisc_transpiler/infrastructure/sdtm_spec/`: SDTM domain/variable registry
   loaded from spec CSVs (current implementation).
@@ -146,7 +143,7 @@ Be careful with these, because downstream users may import them directly:
 - `cdisc_transpiler/__init__.py` re-exports XML builders and domain metadata
   accessors (this is part of the public API).
 - Wrapper modules under `cdisc_transpiler/*_module/` have been removed after
-  migrating internal call sites; only explicit compatibility shims remain.
+  migrating internal call sites; do not introduce new compatibility shims.
 
 ### Legacy code candidates (safe-to-remove once call sites migrate)
 
@@ -161,8 +158,7 @@ Be careful with these, because downstream users may import them directly:
 ### Rewrapping / compatibility-layer candidates (thin pass-through)
 
 The wrapper packages listed above have been removed. Remaining candidates for
-cleanup are layer-crossing helpers such as
-`cdisc_transpiler/cli/logging_config.py` (global logger; bypasses `LoggerPort`).
+cleanup are layer-crossing helpers and re-export modules that bypass ports.
 
 ## 2) Clean/Hexagonal Diagnosis (Boundary Violations)
 
@@ -198,9 +194,8 @@ cleanup are layer-crossing helpers such as
 
 6. **Duplicate file-writing logic lives in multiple layers**
 
-- Domain split XPT writing exists both in `cdisc_transpiler/cli/helpers.py` and
-  in `cdisc_transpiler/application/domain_processing_use_case.py`
-  (`_write_variant_splits`) and bypasses the injected writer adapters.
+- Split XPT writing should live in the application layer (use case
+  orchestration) and route through injected ports/adapters.
 
 7. **(Resolved) Domain depended on `domains_module`**
 
@@ -308,8 +303,8 @@ Compatibility wrapper _packages_ (e.g. `io_module`, `terminology_module`,
 `submission_module`) are not part of the clean architecture.
 
 These wrapper packages have been removed in this repository after migrating
-internal call sites to `domain`/`application`/`infrastructure`. Only explicit,
-small compatibility shims remain where needed for public API stability.
+internal call sites to `domain`/`application`/`infrastructure`. Avoid adding
+compatibility shims; migrate call sites and remove shims when possible.
 
 ### Policy clarifications (make the boundaries real)
 
@@ -320,10 +315,10 @@ small compatibility shims remain where needed for public API stability.
 - **No side-effectful re-exports:** Avoid importing `legacy/*` (or triggering
   deprecation warnings) from non-legacy modules like
   `cdisc_transpiler/services/__init__.py`.
-- **Compatibility shims are explicit:** Prefer explicit, small shims over
-  wrapper _packages_. Shims must be thin re-exports (no duplicated
-  implementations, no orchestration). Internal code should import from the
-  “real” layers.
+- **Compatibility shims are discouraged:** Prefer migrating call sites to the
+  canonical API and removing shims. If a shim exists for public API stability,
+  keep it as a thin re-export only (no duplicated implementations, no
+  orchestration).
 - **Ports reference stable types:** Application ports should reference
   application/domain DTOs/entities, not `*_module` types.
 
@@ -389,9 +384,10 @@ Use this as the default “where should I move this?” reference.
 - Output directory creation + ACRF PDF placeholder:
   `cdisc_transpiler/services/file_organization_service.py` → infrastructure
   adapter
-- Domain split XPT writer: `cdisc_transpiler/cli/helpers.py` +
-  `cdisc_transpiler/application/domain_processing_use_case.py` → infrastructure
-  adapter (single implementation)
+- Split XPT writing:
+  `cdisc_transpiler/application/domain_processing_use_case.py`
+  (`_write_variant_splits`) → consider unifying behind an infrastructure adapter
+  / generator path (single implementation)
 - Controlled terminology loading:
   `cdisc_transpiler/infrastructure/repositories/ct_repository.py` (current
   implementation)
@@ -504,8 +500,7 @@ Each step is intended to be PR-sized and reversible.
 
 - **Goal:** There is exactly one implementation for split writing, and it is
   injected via ports.
-- **Affects:** `cdisc_transpiler/cli/helpers.py`,
-  `cdisc_transpiler/application/domain_processing_use_case.py`,
+- **Affects:** `cdisc_transpiler/application/domain_processing_use_case.py`,
   `cdisc_transpiler/infrastructure/io/file_generator.py`
 - **Verify:**
   `pytest -q tests/integration/test_cli.py::TestStudyCommandWithGDISC::test_study_with_split_datasets`

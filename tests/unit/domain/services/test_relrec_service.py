@@ -6,7 +6,7 @@ linking observations across SDTM domains.
 
 import pandas as pd
 
-from cdisc_transpiler.domain.services import RelrecService, build_relrec
+from cdisc_transpiler.domain.services import RelrecService
 
 
 class TestRelrecService:
@@ -15,7 +15,6 @@ class TestRelrecService:
     def test_service_can_be_imported(self):
         """Test that RELREC service can be imported."""
         assert RelrecService is not None
-        assert build_relrec is not None
 
     def test_service_instantiation(self):
         """Test that service can be instantiated."""
@@ -302,27 +301,6 @@ class TestRelrecService:
         # Check DS record uses minimum sequence (1)
         ds_record = df[df["RDOMAIN"] == "DS"].iloc[0]
         assert ds_record["IDVARVAL"] == "1"
-
-    def test_convenience_function(self):
-        """Test the convenience function build_relrec."""
-        ds_df = pd.DataFrame(
-            {
-                "USUBJID": ["SUB001"],
-                "DSSEQ": [1],
-                "DSDECOD": ["COMPLETED"],
-            }
-        )
-
-        domain_dataframes = {
-            "DS": ds_df,
-        }
-
-        df, config = build_relrec(domain_dataframes, "TEST001")
-
-        # Should work the same as service method
-        assert len(df) == 1
-        assert df.iloc[0]["RDOMAIN"] == "DS"
-        assert config.domain == "RELREC"
 
 
 class TestRelrecServiceHelpers:

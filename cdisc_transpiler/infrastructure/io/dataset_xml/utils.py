@@ -1,7 +1,7 @@
 """Utility functions for Dataset-XML generation.
 
-This module re-exports shared utilities from the parent xml module and
-provides Dataset-XML specific helper functions.
+This module imports shared XML helpers and provides Dataset-XML-specific
+utility functions.
 """
 
 from typing import Any, cast

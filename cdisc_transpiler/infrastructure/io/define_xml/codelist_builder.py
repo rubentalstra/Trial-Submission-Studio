@@ -29,14 +29,14 @@ from ..xml_utils import tag, attr
 
 
 @lru_cache(maxsize=1)
-def _ct_repo() -> CTRepository:
+def _ct_repository() -> CTRepository:
     return CTRepository()
 
 
 def _get_ct(variable: SDTMVariable, domain_code: str):
     """Resolve controlled terminology for a variable if available."""
     if variable.codelist_code:
-        ct = _ct_repo().get_by_code(variable.codelist_code)
+        ct = _ct_repository().get_by_code(variable.codelist_code)
         if ct is not None:
             return ct
 
@@ -47,12 +47,12 @@ def _get_ct(variable: SDTMVariable, domain_code: str):
         domain = get_domain(domain_code)
         for var in domain.variables:
             if var.name.upper() == variable.name.upper() and var.codelist_code:
-                return _ct_repo().get_by_code(var.codelist_code)
+                return _ct_repository().get_by_code(var.codelist_code)
     except Exception:
         pass
 
     # Last resort: try registry lookup by name
-    return _ct_repo().get_by_name(variable.name)
+    return _ct_repository().get_by_name(variable.name)
 
 
 # MedDRA variables that reference external MedDRA dictionary
@@ -220,9 +220,9 @@ def collect_extended_codelist_values(
         return set()
 
     ct = (
-        _ct_repo().get_by_code(variable.codelist_code)
+        _ct_repository().get_by_code(variable.codelist_code)
         if variable.codelist_code
-        else _ct_repo().get_by_name(variable.name)
+        else _ct_repository().get_by_name(variable.name)
     )
     if ct is None:
         return set()

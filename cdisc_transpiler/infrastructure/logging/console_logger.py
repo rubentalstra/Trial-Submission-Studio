@@ -660,7 +660,3 @@ class ConsoleLogger(LoggerPort):
             parts.append(self._context.domain_code)
 
         return f"[{':'.join(parts)}] " if parts else ""
-
-
-# Alias for backward compatibility
-SDTMLogger = ConsoleLogger

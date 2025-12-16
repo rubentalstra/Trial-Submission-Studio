@@ -26,7 +26,6 @@ from .synthesis_service import (
 )
 from .relrec_service import (
     RelrecService,
-    build_relrec,
 )
 
 __all__ = [
@@ -49,5 +48,4 @@ __all__ = [
     "SynthesisService",
     # RELREC service
     "RelrecService",
-    "build_relrec",
 ]

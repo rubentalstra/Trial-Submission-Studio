@@ -43,13 +43,13 @@ the codebase converges instead of drifting.
   results.
 - Presenters format output only; no orchestration/business logic.
 
-## Compatibility Policy (until next major)
+## Legacy / Compatibility Policy
 
-- `cdisc_transpiler/legacy/*` and the various “compatibility wrappers” exist
-  only to keep external API stability.
-- Do **not** add new internal call sites to legacy or wrapper modules; migrate
-  call sites to the proper layer instead.
-- If you remove a wrapper/legacy module, migrate call sites first, then delete,
+- Avoid compatibility shims and aliases. Prefer a single canonical API and
+  update call sites instead of preserving legacy surfaces.
+- `cdisc_transpiler/legacy/*` exists only for transitional support; do **not**
+  add new internal call sites to legacy or wrapper modules.
+- If you remove a legacy/wrapper module, migrate call sites first, then delete,
   then run the full test suite.
 
 ## Naming Conventions

@@ -182,8 +182,7 @@ def study_command(
     # Execute the use case
     response = use_case.execute(request)
 
-    # Convert response to format expected by SummaryPresenter
-    # Extract domain results as list of dicts for backward compatibility
+    # Convert response to the format expected by SummaryPresenter
     results = []
     for result in response.domain_results:
         result_dict = {

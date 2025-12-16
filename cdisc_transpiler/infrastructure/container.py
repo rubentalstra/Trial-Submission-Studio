@@ -72,7 +72,7 @@ class DependencyContainer:
         >>> # Get singleton instances
         >>> logger = container.create_logger()
         >>> file_gen = container.create_file_generator()
-        >>> study_repo = container.create_study_data_repository()
+        >>> study_data_repository = container.create_study_data_repository()
         >>>
         >>> # Create use cases (transient)
         >>> use_case = container.create_study_processing_use_case()
@@ -103,9 +103,9 @@ class DependencyContainer:
         self._define_xml_generator_instance: DefineXMLGeneratorPort | None = None
         self._output_preparer_instance: OutputPreparerPort | None = None
         self._xpt_writer_instance: XPTWriter | None = None
-        self._domain_definition_repo_instance: DomainDefinitionRepositoryPort | None = (
-            None
-        )
+        self._domain_definition_repository_instance: (
+            DomainDefinitionRepositoryPort | None
+        ) = None
         self._mapping_service_instance: MappingPort | None = None
         self._domain_frame_builder_instance: DomainFrameBuilderPort | None = None
         self._suppqual_service_instance: SuppqualPort | None = None
@@ -184,9 +184,9 @@ class DependencyContainer:
 
     def create_domain_definition_repository(self) -> DomainDefinitionRepositoryPort:
         """Create or return cached SDTM domain definition repository (singleton)."""
-        if self._domain_definition_repo_instance is None:
-            self._domain_definition_repo_instance = DomainDefinitionRepository()
-        return self._domain_definition_repo_instance
+        if self._domain_definition_repository_instance is None:
+            self._domain_definition_repository_instance = DomainDefinitionRepository()
+        return self._domain_definition_repository_instance
 
     def create_study_data_repository(self) -> StudyDataRepositoryPort:
         """Create or return cached study data repository instance (singleton).
@@ -302,7 +302,7 @@ class DependencyContainer:
         study_data_repository = self.create_study_data_repository()
         file_generator = self.create_file_generator()
         domain_processing_use_case = self.create_domain_processing_use_case()
-        domain_definition_repo = self.create_domain_definition_repository()
+        domain_definition_repository = self.create_domain_definition_repository()
         domain_discovery_service = DomainDiscoveryServiceAdapter(logger=logger)
         domain_frame_builder = self.create_domain_frame_builder()
         synthesis_service = self.create_synthesis_service()
@@ -321,7 +321,7 @@ class DependencyContainer:
             file_generator=file_generator,
             define_xml_generator=define_xml_generator,
             output_preparer=output_preparer,
-            domain_definition_repository=domain_definition_repo,
+            domain_definition_repository=domain_definition_repository,
         )
 
     def create_domain_processing_use_case(self):
@@ -344,7 +344,7 @@ class DependencyContainer:
         file_generator = self.create_file_generator()
         output_preparer = self.create_output_preparer()
         mapping_service = self.create_mapping_service()
-        domain_definition_repo = self.create_domain_definition_repository()
+        domain_definition_repository = self.create_domain_definition_repository()
         domain_frame_builder = self.create_domain_frame_builder()
         suppqual_service = self.create_suppqual_service()
         terminology_service = self.create_terminology_service()
@@ -359,7 +359,7 @@ class DependencyContainer:
             domain_frame_builder=domain_frame_builder,
             suppqual_service=suppqual_service,
             terminology_service=terminology_service,
-            domain_definition_repository=domain_definition_repo,
+            domain_definition_repository=domain_definition_repository,
             xpt_writer=xpt_writer,
         )
 
@@ -380,7 +380,7 @@ class DependencyContainer:
         self._study_data_repository_instance = None
         self._output_preparer_instance = None
         self._xpt_writer_instance = None
-        self._domain_definition_repo_instance = None
+        self._domain_definition_repository_instance = None
         self._define_xml_generator_instance = None
         self._mapping_service_instance = None
         self._domain_frame_builder_instance = None
@@ -419,11 +419,11 @@ class DependencyContainer:
         """Override the study data repository instance (for testing).
 
         Args:
-            repo: Custom study data repository implementation
+            study_data_repository: Custom study data repository implementation
 
         Example:
-            >>> mock_repo = MockStudyDataRepository()
-            >>> container.override_study_data_repository(mock_repo)
+            >>> mock_repository = MockStudyDataRepository()
+            >>> container.override_study_data_repository(mock_repository)
         """
         self._study_data_repository_instance = study_data_repository
 

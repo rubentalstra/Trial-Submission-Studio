@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 
 
 @lru_cache(maxsize=1)
-def _ct_repo() -> CTRepository:
+def _ct_repository() -> CTRepository:
     return CTRepository()
 
 
@@ -197,9 +197,9 @@ def _get_ct_value_map(
 
     ct = None
     if variable is not None and variable.codelist_code:
-        ct = _ct_repo().get_by_code(variable.codelist_code)
+        ct = _ct_repository().get_by_code(variable.codelist_code)
     if ct is None:
-        ct = _ct_repo().get_by_name(variable_name)
+        ct = _ct_repository().get_by_name(variable_name)
     if ct is None:
         return None
 

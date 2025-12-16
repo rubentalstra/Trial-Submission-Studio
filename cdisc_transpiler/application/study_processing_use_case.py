@@ -185,7 +185,7 @@ class StudyProcessingUseCase:
             csv_files = list(request.study_folder.glob("*.csv"))
             self.logger.verbose(f"Found {len(csv_files)} CSV files in study folder")
 
-            domain_discovery_service = self._get_discovery_service()
+            domain_discovery_service = self._get_domain_discovery_service()
             domain_files = domain_discovery_service.discover_domain_files(
                 csv_files, supported_domains
             )
@@ -895,8 +895,8 @@ class StudyProcessingUseCase:
             "Wire an infrastructure adapter in the composition root."
         )
 
-    def _get_discovery_service(self):
-        """Get or create domain discovery service."""
+    def _get_domain_discovery_service(self):
+        """Get injected domain discovery service."""
         if self._domain_discovery_service is None:
             raise RuntimeError(
                 "DomainDiscoveryPort is not configured. "

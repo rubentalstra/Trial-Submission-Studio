@@ -4,7 +4,6 @@ Tests verify that:
 1. LoggerPort protocol is properly implemented
 2. ConsoleLogger (moved from cli/logging_config.py) implements LoggerPort
 3. NullLogger provides silent testing capability
-4. Backward compatibility is maintained
 """
 
 import unittest
@@ -19,7 +18,6 @@ from cdisc_transpiler.infrastructure.logging import (
     LogContext,
     LogLevel,
     NullLogger,
-    SDTMLogger,
 )
 
 
@@ -173,43 +171,6 @@ class TestNullLogger(unittest.TestCase):
         self.assertTrue(hasattr(logger, "warning"))
         self.assertTrue(hasattr(logger, "error"))
         self.assertTrue(hasattr(logger, "debug"))
-
-
-class TestBackwardCompatibility(unittest.TestCase):
-    """Test backward compatibility with old SDTMLogger name."""
-
-    def test_sdtmlogger_alias_exists(self):
-        """SDTMLogger should be an alias for ConsoleLogger."""
-        self.assertIs(SDTMLogger, ConsoleLogger)
-
-    def test_can_import_from_old_location(self):
-        """Should be able to import from cli.logging_config for backward compatibility."""
-        from cdisc_transpiler.cli.logging_config import (
-            LogContext as OldLogContext,
-            LogLevel as OldLogLevel,
-            SDTMLogger as OldSDTMLogger,
-            create_logger,
-            get_logger,
-            set_logger,
-        )
-
-        # Verify classes are the same
-        self.assertIs(OldSDTMLogger, ConsoleLogger)
-        self.assertIs(OldLogContext, LogContext)
-        self.assertIs(OldLogLevel, LogLevel)
-
-        # Verify functions work
-        logger = create_logger(verbosity=1)
-        self.assertIsInstance(logger, ConsoleLogger)
-        self.assertEqual(logger.verbosity, 1)
-
-        retrieved_logger = get_logger()
-        self.assertIs(retrieved_logger, logger)
-
-        new_logger = ConsoleLogger(verbosity=2)
-        set_logger(new_logger)
-        retrieved_logger = get_logger()
-        self.assertIs(retrieved_logger, new_logger)
 
 
 class TestLogContext(unittest.TestCase):

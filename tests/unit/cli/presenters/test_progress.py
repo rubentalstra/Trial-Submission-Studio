@@ -308,30 +308,3 @@ class TestProgressPresenterIntegration:
         presenter.increment(error=True)
         assert presenter.processed == 2
         assert presenter.success_count == 1
-
-
-class TestBackwardCompatibility:
-    """Test backward compatibility with ProgressTracker."""
-
-    def test_progress_tracker_alias(self):
-        """Test that ProgressTracker is still available."""
-        from cdisc_transpiler.cli.utils import ProgressTracker
-        from cdisc_transpiler.cli.presenters import ProgressPresenter
-
-        assert ProgressTracker is ProgressPresenter
-
-    def test_progress_tracker_usage(self):
-        """Test that old ProgressTracker usage still works."""
-        from cdisc_transpiler.cli.utils import ProgressTracker
-        from io import StringIO
-        from rich.console import Console
-
-        console = Console(file=StringIO())
-        tracker = ProgressTracker(console, total_domains=5)
-
-        tracker.increment()
-        tracker.increment(error=True)
-
-        assert tracker.processed == 2
-        assert tracker.success_count == 1
-        assert tracker.errors == 1

@@ -55,7 +55,7 @@ class SynthesisResult:
     error: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert to dictionary format for compatibility."""
+        """Convert to a plain dictionary representation."""
         return {
             "domain_code": self.domain_code,
             "records": self.records,
