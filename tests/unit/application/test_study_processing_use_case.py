@@ -47,6 +47,8 @@ class TestStudyProcessingUseCase:
         mock_domain_frame_builder = Mock()
         mock_synthesis_service = Mock()
         mock_relrec_service = Mock()
+        mock_relsub_service = Mock()
+        mock_relspec_service = Mock()
         mock_file_gen = Mock()
         mock_output_preparer = Mock()
         mock_domain_definition_repository = Mock()
@@ -60,6 +62,8 @@ class TestStudyProcessingUseCase:
             domain_frame_builder=mock_domain_frame_builder,
             synthesis_service=mock_synthesis_service,
             relrec_service=mock_relrec_service,
+            relsub_service=mock_relsub_service,
+            relspec_service=mock_relspec_service,
             file_generator=mock_file_gen,
             output_preparer=mock_output_preparer,
             domain_definition_repository=mock_domain_definition_repository,
@@ -73,6 +77,8 @@ class TestStudyProcessingUseCase:
         assert use_case._domain_frame_builder == mock_domain_frame_builder
         assert use_case._synthesis_service == mock_synthesis_service
         assert use_case._relrec_service == mock_relrec_service
+        assert use_case._relsub_service == mock_relsub_service
+        assert use_case._relspec_service == mock_relspec_service
         assert use_case._file_generator == mock_file_gen
         assert use_case._output_preparer == mock_output_preparer
         assert (
@@ -120,6 +126,10 @@ class TestStudyProcessingUseCase:
         assert use_case._domain_processing_use_case is not None
         assert use_case._domain_discovery_service is not None
         assert use_case._domain_frame_builder is not None
+        assert use_case._synthesis_service is not None
+        assert use_case._relrec_service is not None
+        assert use_case._relsub_service is not None
+        assert use_case._relspec_service is not None
         assert use_case._file_generator is not None
         assert use_case._output_preparer is not None
         assert use_case._domain_definition_repository is not None

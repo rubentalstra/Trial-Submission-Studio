@@ -48,7 +48,12 @@ from .repositories import DomainDefinitionRepository, StudyDataRepository
 from .services.mapping_service_adapter import MappingServiceAdapter
 
 if TYPE_CHECKING:
-    from ..domain.services import RelrecService, SynthesisService
+    from ..domain.services import (
+        RelrecService,
+        RelspecService,
+        RelsubService,
+        SynthesisService,
+    )
 
 
 class DependencyContainer:
@@ -112,6 +117,8 @@ class DependencyContainer:
         self._terminology_service_instance: TerminologyPort | None = None
         self._synthesis_service_instance: "SynthesisService | None" = None
         self._relrec_service_instance: "RelrecService | None" = None
+        self._relsub_service_instance: "RelsubService | None" = None
+        self._relspec_service_instance: "RelspecService | None" = None
 
     # Infrastructure Components
 
@@ -278,6 +285,22 @@ class DependencyContainer:
             self._relrec_service_instance = RelrecService()
         return self._relrec_service_instance
 
+    def create_relsub_service(self) -> "RelsubService":
+        """Create or return cached RELSUB service instance (singleton)."""
+        if self._relsub_service_instance is None:
+            from ..domain.services import RelsubService
+
+            self._relsub_service_instance = RelsubService()
+        return self._relsub_service_instance
+
+    def create_relspec_service(self) -> "RelspecService":
+        """Create or return cached RELSPEC service instance (singleton)."""
+        if self._relspec_service_instance is None:
+            from ..domain.services import RelspecService
+
+            self._relspec_service_instance = RelspecService()
+        return self._relspec_service_instance
+
     # Application Use Cases
 
     def create_study_processing_use_case(self):
@@ -307,6 +330,8 @@ class DependencyContainer:
         domain_frame_builder = self.create_domain_frame_builder()
         synthesis_service = self.create_synthesis_service()
         relrec_service = self.create_relrec_service()
+        relsub_service = self.create_relsub_service()
+        relspec_service = self.create_relspec_service()
         define_xml_generator = self.create_define_xml_generator()
         output_preparer = self.create_output_preparer()
 
@@ -318,6 +343,8 @@ class DependencyContainer:
             domain_frame_builder=domain_frame_builder,
             synthesis_service=synthesis_service,
             relrec_service=relrec_service,
+            relsub_service=relsub_service,
+            relspec_service=relspec_service,
             file_generator=file_generator,
             define_xml_generator=define_xml_generator,
             output_preparer=output_preparer,
@@ -388,6 +415,8 @@ class DependencyContainer:
         self._terminology_service_instance = None
         self._synthesis_service_instance = None
         self._relrec_service_instance = None
+        self._relsub_service_instance = None
+        self._relspec_service_instance = None
 
     def override_logger(self, logger: LoggerPort) -> None:
         """Override the logger instance (for testing).

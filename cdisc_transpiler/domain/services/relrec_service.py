@@ -1,11 +1,15 @@
 """RELREC (Related Records) Service.
 
-This service builds RELREC domain records that link observations across
-different domains (e.g., linking AE records to DS disposition events).
+This service builds RELREC domain records that describe relationships between
+records for a subject within or across domains.
 
-SDTM Reference:
-    SDTMIG v3.4 Section 6.4 describes RELREC (Related Records) for linking
-    observations across domains.
+SDTMIG Reference:
+    SDTMIG v3.4 Section 8.2.1, Related Records (RELREC).
+
+Notes:
+    Per SDTMIG, relationships are expressed using STUDYID, RDOMAIN, USUBJID and
+    an identifying key (IDVAR/IDVARVAL) plus a relationship identifier (RELID).
+    RELTYPE is used only for dataset-to-dataset relationships (Section 8.3).
 """
 
 from __future__ import annotations
@@ -21,12 +25,19 @@ from ..entities.mapping import MappingConfig, ColumnMapping
 class RelrecService:
     """Service for building RELREC relationship records.
 
-    This service contains the logic for creating relationship records that
-    link observations across SDTM domains. It implements the following rules:
+        This service contains the logic for creating relationship records that
+        link observations across SDTM domains.
 
-    1. Links AE records to DS records by subject
-    2. Links EX records to DS records by subject
-    3. Creates fallback DS-only relationships if no other linkages exist
+                To avoid domain-specific hardcoding while remaining spec-aligned, the
+                service:
+
+                - Treats a domain as *eligible* only if it has ``USUBJID`` and at least
+                    one identifying variable suitable for IDVAR/IDVARVAL (typically
+                    ``{DOMAIN}SEQ``; otherwise any ``*SEQ``).
+                - Selects a reference domain dynamically (the one covering most subjects).
+                - Emits one relationship (RELID) per eligible record in a non-reference
+                    domain, relating that record to the reference domain's per-subject
+                    minimum sequence record.
 
     The service is pure domain logic with no dependencies on infrastructure.
     """
@@ -88,7 +99,7 @@ class RelrecService:
         domain_dataframes: dict[str, pd.DataFrame],
         study_id: str,
     ) -> list[dict[str, Any]]:
-        """Build RELREC records linking AE/EX records to DS by subject.
+        """Build RELREC records linking eligible domains by subject.
 
         Args:
             domain_dataframes: Dictionary mapping domain codes to their dataframes
@@ -97,89 +108,136 @@ class RelrecService:
         Returns:
             List of RELREC record dictionaries
         """
-        # Extract relevant domain dataframes
-        ae_df = self._get_domain_df(domain_dataframes, "AE")
-        ds_df = self._get_domain_df(domain_dataframes, "DS")
-        ex_df = self._get_domain_df(domain_dataframes, "EX")
-
         records: list[dict[str, Any]] = []
 
-        # Build DS sequence map (subject -> min DS sequence number)
-        ds_seq_map = self._build_seq_map(ds_df, "DSSEQ") if ds_df is not None else {}
+        eligible = self._get_eligible_domains(domain_dataframes)
+        if not eligible:
+            return records
 
-        # Link AE records to DS records
-        if ae_df is not None and ds_seq_map:
-            for idx, (_, row) in enumerate(ae_df.iterrows(), start=1):
-                usubjid = str(row.get("USUBJID", "") or "").strip()
+        reference_domain = self._pick_reference_domain(eligible)
+        ref_info = eligible[reference_domain]
+        ref_df = ref_info["df"]
+        ref_idvar = ref_info["idvar"]
+        ref_seq_map = self._build_seq_map(ref_df, ref_idvar)
+
+        # Link each non-reference domain to the reference domain by USUBJID.
+        for domain_code, info in eligible.items():
+            if domain_code == reference_domain:
+                continue
+
+            df = info["df"]
+            idvar = info["idvar"]
+
+            for idx, (_, row) in enumerate(df.iterrows(), start=1):
+                usubjid_val = row.get("USUBJID", "")
+                if pd.isna(usubjid_val):
+                    continue
+                usubjid = str(usubjid_val).strip()
                 if not usubjid:
                     continue
 
-                aeseq = self._stringify(row.get("AESEQ"), idx)
-                relid = f"AE_DS_{usubjid}_{aeseq}"
+                idvarval = self._stringify(row.get(idvar), idx)
 
-                # Add AE record
-                self._add_record(
-                    records, study_id, "AE", usubjid, "AESEQ", aeseq, relid
-                )
-
-                # Add linked DS record if available
-                ds_seq = ds_seq_map.get(usubjid)
-                if ds_seq is not None:
-                    self._add_record(
-                        records,
-                        study_id,
-                        "DS",
-                        usubjid,
-                        "DSSEQ",
-                        self._stringify(ds_seq, 1),
-                        relid,
-                    )
-
-        # Link EX records to DS records
-        if ex_df is not None and ds_seq_map:
-            for idx, (_, row) in enumerate(ex_df.iterrows(), start=1):
-                usubjid = str(row.get("USUBJID", "") or "").strip()
-                if not usubjid:
-                    continue
-
-                exseq = self._stringify(row.get("EXSEQ"), idx)
-                relid = f"EX_DS_{usubjid}_{exseq}"
-
-                # Add EX record
-                self._add_record(
-                    records, study_id, "EX", usubjid, "EXSEQ", exseq, relid
-                )
-
-                # Add linked DS record if available
-                ds_seq = ds_seq_map.get(usubjid)
-                if ds_seq is not None:
-                    self._add_record(
-                        records,
-                        study_id,
-                        "DS",
-                        usubjid,
-                        "DSSEQ",
-                        self._stringify(ds_seq, 1),
-                        relid,
-                    )
-
-        # Fallback: if no relationships were created but DS exists,
-        # create DS-only relationships
-        if not records and ds_df is not None:
-            ds_seq_map = self._build_seq_map(ds_df, "DSSEQ")
-            for usubjid, ds_seq in ds_seq_map.items():
-                relid = f"DS_ONLY_{usubjid}"
+                relid = f"{domain_code}_{reference_domain}_{usubjid}_{idvarval}"
                 self._add_record(
                     records,
                     study_id,
-                    "DS",
+                    domain_code,
+                    usubjid,
+                    idvar,
+                    idvarval,
+                    relid,
+                )
+
+                ref_seq = ref_seq_map.get(usubjid)
+                if ref_seq is not None:
+                    self._add_record(
+                        records,
+                        study_id,
+                        reference_domain,
+                        usubjid,
+                        ref_idvar,
+                        self._stringify(ref_seq, 1),
+                        relid,
+                    )
+
+        # Fallback: if only one eligible domain exists, create self-only
+        # relationships for the reference domain.
+        if not records:
+            for usubjid, seq in ref_seq_map.items():
+                relid = f"{reference_domain}_ONLY_{usubjid}"
+                self._add_record(
+                    records,
+                    study_id,
+                    reference_domain,
                     str(usubjid),
-                    "DSSEQ",
-                    self._stringify(ds_seq, 1),
+                    ref_idvar,
+                    self._stringify(seq, 1),
                     relid,
                 )
 
         return records
+
+    def _get_eligible_domains(
+        self, domain_dataframes: dict[str, pd.DataFrame]
+    ) -> dict[str, dict[str, Any]]:
+        eligible: dict[str, dict[str, Any]] = {}
+        for code, df in domain_dataframes.items():
+            if not isinstance(df, pd.DataFrame) or df.empty:
+                continue
+            if "USUBJID" not in df.columns:
+                continue
+            domain_code = str(code).upper()
+            idvar = self._infer_idvar(df, domain_code)
+            if idvar is None:
+                continue
+            eligible[domain_code] = {"df": df, "idvar": idvar}
+        return eligible
+
+    def _infer_idvar(self, df: pd.DataFrame, domain_code: str) -> str | None:
+        """Infer an identifying variable suitable for RELREC IDVAR.
+
+        SDTMIG 3.4 Section 8.2.1 describes using a unique record identifier
+        such as --SEQ, or a grouping identifier such as --GRPID.
+
+        Prefer the domain's canonical sequence variable (e.g. AESEQ). If absent,
+        fall back to any other *SEQ (excluding plain SEQ). If still absent,
+        fall back to any *GRPID.
+        """
+        expected = f"{domain_code}SEQ"
+        if expected in df.columns:
+            return expected
+
+        candidates = [
+            str(col)
+            for col in df.columns
+            if str(col).upper().endswith("SEQ") and str(col).upper() != "SEQ"
+        ]
+        if candidates:
+            return sorted(candidates, key=lambda c: c.upper())[0]
+
+        grp_candidates = [
+            str(col)
+            for col in df.columns
+            if str(col).upper().endswith("GRPID") and str(col).upper() != "GRPID"
+        ]
+        if grp_candidates:
+            return sorted(grp_candidates, key=lambda c: c.upper())[0]
+
+        return None
+
+    def _pick_reference_domain(self, eligible: dict[str, dict[str, Any]]) -> str:
+        # Pick the domain that covers the most distinct subjects.
+        scores: list[tuple[int, str]] = []
+        for domain_code, info in eligible.items():
+            df = info["df"]
+            idvar = info["idvar"]
+            subject_map = self._build_seq_map(df, idvar)
+            scores.append((len(subject_map), domain_code))
+
+        # Deterministic: most subjects, then lexicographic.
+        scores.sort(key=lambda item: (-item[0], item[1]))
+        return scores[0][1]
 
     def _get_domain_df(
         self,

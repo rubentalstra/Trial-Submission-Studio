@@ -30,6 +30,12 @@ class Defaults:
     GENERATE_DEFINE = True
     GENERATE_SAS = True
 
+    # SUPPQUAL heuristics
+    # Columns that appear across many input files are often operational metadata
+    # (e.g., file provenance columns) rather than domain-specific data.
+    OPERATIONAL_COLUMN_MIN_COUNT = 3
+    OPERATIONAL_COLUMN_COMMON_FRACTION = 0.5
+
 
 class Constraints:
     """System constraints from SDTM and SAS specifications.
@@ -129,3 +135,18 @@ class LogLevels:
     NORMAL = 0
     VERBOSE = 1
     DEBUG = 2
+
+
+class MissingValues:
+    """Common string markers representing missing values.
+
+    These show up in CSV/Excel exports and intermediate pandas conversions.
+    Prefer normalizing via `cdisc_transpiler.pandas_utils.normalize_missing_strings`.
+    """
+
+    STRING_MARKERS = {
+        "NAN",
+        "<NA>",
+        "NONE",
+        "NULL",
+    }

@@ -13,6 +13,8 @@ from typing import Any
 
 import pandas as pd
 
+from .constants import MissingValues
+
 
 def ensure_series(value: Any, index: pd.Index | None = None) -> pd.Series:
     """Coerce ``value`` to a :class:`pandas.Series`.
@@ -36,3 +38,26 @@ def ensure_numeric_series(value: Any, index: pd.Index | None = None) -> pd.Serie
     series = ensure_series(value, index=index)
     numeric = pd.to_numeric(series, errors="coerce")
     return ensure_series(numeric, index=series.index)
+
+
+def normalize_missing_strings(
+    value: Any,
+    *,
+    replacement: str = "",
+    markers: set[str] | None = None,
+) -> pd.Series:
+    """Normalize common string markers that represent missing values.
+
+    This is intentionally conservative:
+    - Operates on string-casted data.
+    - Strips whitespace.
+    - Replaces known markers (case-insensitive) with `replacement`.
+    - Leaves actual missing values (`NA`) as-is so callers can decide how to fill.
+    """
+
+    series = ensure_series(value).astype("string")
+    stripped = series.str.strip()
+    marker_set = {m.upper() for m in (markers or MissingValues.STRING_MARKERS)}
+    upper = stripped.str.upper()
+    marker_mask = upper.isin(marker_set)
+    return stripped.mask(marker_mask, replacement)

@@ -50,52 +50,82 @@ def append_item_refs(
 
 
 def get_key_sequence(domain_code: str) -> dict[str, int]:
-    """Return key sequence mapping for a domain.
+    """Infer key sequence mapping for a domain.
+
+    This is used to emit Define-XML 2.1 `ItemRef/@KeySequence`.
+
+    We intentionally avoid hardcoded per-domain tables here. The SDTMIG
+    Variables.csv already contains variable role/core/order metadata, and the
+    SDTM spec registry builds `SDTMDomain` definitions from it.
+
+    Heuristic:
+    - Consider only variables with Core == "Req".
+    - Exclude DOMAIN (it is required, but not treated as a dataset key).
+    - Prefer non-sequence Identifiers first (ordered by Variable Order).
+    - Then Topic keys commonly used to identify findings/trial summary rows
+      (e.g., *TESTCD, *PARMCD).
+    - Then sequence/group identifiers (*SEQ, *GRPID) last.
 
     Args:
         domain_code: Domain code
 
     Returns:
-        Dictionary mapping variable names to key sequence numbers
+        Dictionary mapping variable names to key sequence numbers (1-based)
     """
-    code = domain_code.upper()
 
-    base_keys = {"STUDYID": 1, "USUBJID": 2}
+    try:
+        domain = get_domain(domain_code)
+    except KeyError:
+        # Split datasets (SDTMIG v3.4 Section 4.1.7) such as LBCC/LBHM/VSRESP
+        # should inherit metadata (including keys) from the parent 2-char domain.
+        code = (domain_code or "").upper()
+        if len(code) > 2:
+            domain = get_domain(code[:2])
+        else:
+            raise
 
-    domain_specific = {
-        "DM": {"STUDYID": 1, "USUBJID": 2},
-        "AE": {"STUDYID": 1, "USUBJID": 2, "AESEQ": 3},
-        "CM": {"STUDYID": 1, "USUBJID": 2, "CMSEQ": 3},
-        "DS": {"STUDYID": 1, "USUBJID": 2, "DSSEQ": 3},
-        "EX": {"STUDYID": 1, "USUBJID": 2, "EXSEQ": 3},
-        "LB": {"STUDYID": 1, "USUBJID": 2, "LBSEQ": 3, "LBTESTCD": 4},
-        "VS": {"STUDYID": 1, "USUBJID": 2, "VSSEQ": 3, "VSTESTCD": 4},
-        "TS": {"STUDYID": 1, "TSSEQ": 2, "TSPARMCD": 3},
-        "DA": {"STUDYID": 1, "USUBJID": 2, "DASEQ": 3},
-        "TA": {"STUDYID": 1, "ARMCD": 2, "TAETORD": 3},
-        "TE": {"STUDYID": 1, "ETCD": 2},
-        "SE": {"STUDYID": 1, "USUBJID": 2, "SESEQ": 3},
-        "SUPP": {
-            "STUDYID": 1,
-            "RDOMAIN": 2,
-            "USUBJID": 3,
-            "IDVAR": 4,
-            "IDVARVAL": 5,
-            "QNAM": 6,
-        },
-        "RELREC": {
-            "STUDYID": 1,
-            "RDOMAIN": 2,
-            "USUBJID": 3,
-            "IDVAR": 4,
-            "IDVARVAL": 5,
-            "RELID": 6,
-        },
-    }
+    def _is_req(variable: SDTMVariable) -> bool:
+        return (variable.core or "").strip().lower() == "req"
 
-    if code.startswith("SUPP"):
-        return domain_specific["SUPP"]
-    return domain_specific.get(code, base_keys)
+    def _role(variable: SDTMVariable) -> str:
+        return (variable.role or "").strip().lower()
+
+    def _is_seq_like(name: str) -> bool:
+        upper = name.upper()
+        if upper in {"SEQ", "GRPID"}:
+            return False
+        return upper.endswith(("SEQ", "GRPID"))
+
+    def _is_topic_key_like(name: str) -> bool:
+        upper = name.upper()
+        return upper.endswith(("TESTCD", "PARMCD"))
+
+    required = [
+        v for v in domain.variables if _is_req(v) and v.name.upper() != "DOMAIN"
+    ]
+
+    identifiers_non_seq = [
+        v for v in required if _role(v) == "identifier" and not _is_seq_like(v.name)
+    ]
+    topic_keys = [
+        v for v in required if _role(v) == "topic" and _is_topic_key_like(v.name)
+    ]
+    identifiers_seq = [
+        v for v in required if _role(v) == "identifier" and _is_seq_like(v.name)
+    ]
+
+    ordered_keys = [*identifiers_non_seq, *topic_keys, *identifiers_seq]
+
+    # De-duplicate while preserving order.
+    seen: set[str] = set()
+    unique_keys: list[str] = []
+    for var in ordered_keys:
+        if var.name in seen:
+            continue
+        seen.add(var.name)
+        unique_keys.append(var.name)
+
+    return {name: idx for idx, name in enumerate(unique_keys, start=1)}
 
 
 def get_variable_role(

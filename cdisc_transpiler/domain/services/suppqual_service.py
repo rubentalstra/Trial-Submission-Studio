@@ -19,14 +19,12 @@ from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
+from ...constants import Constraints, Defaults
 from ...pandas_utils import ensure_numeric_series, ensure_series
 
 if TYPE_CHECKING:
     from ...domain.entities.sdtm_domain import SDTMDomain
     from ..entities.mapping import MappingConfig
-
-# Markers that indicate missing/null values
-_MISSING_MARKERS = {"", "NAN", "<NA>", "NONE", "NULL"}
 
 
 def _drop_missing_usubjid(frame: pd.DataFrame) -> pd.DataFrame:
@@ -40,9 +38,8 @@ def _drop_missing_usubjid(frame: pd.DataFrame) -> pd.DataFrame:
     """
     if "USUBJID" not in frame.columns:
         return frame
-    mask = frame["USUBJID"].isna() | frame["USUBJID"].astype(
-        "string"
-    ).str.strip().str.upper().isin(_MISSING_MARKERS)
+    series = frame["USUBJID"].astype("string")
+    mask = series.isna() | series.str.strip().eq("")
     return frame.loc[~mask].reset_index(drop=True)
 
 
@@ -60,7 +57,9 @@ def _clean_idvarval(values: pd.Series, is_seq: bool) -> pd.Series:
     if not is_seq:
         return series.astype("string")
     numeric = ensure_numeric_series(series).astype("Int64")
-    return numeric.astype(str).str.slice(0, 8)
+    # Keep formatting stable; enforce final max-length using SUPP domain metadata
+    # during `finalize_suppqual`.
+    return numeric.astype(str)
 
 
 def _is_operational_column(
@@ -83,7 +82,10 @@ def _is_operational_column(
         return False
     norm = name.strip().lower()
     count = common_counts.get(norm, 0)
-    threshold = max(3, total_files // 2)
+    threshold = max(
+        Defaults.OPERATIONAL_COLUMN_MIN_COUNT,
+        int(total_files * Defaults.OPERATIONAL_COLUMN_COMMON_FRACTION),
+    )
     return count >= threshold
 
 
@@ -115,7 +117,23 @@ def sanitize_qnam(name: str) -> str:
         safe = "QVAL"
     if safe[0].isdigit():
         safe = f"Q{safe}"
-    return safe[:8]
+    return safe[: Constraints.QNAM_MAX_LENGTH]
+
+
+def _get_variable_lengths(domain_def: "SDTMDomain") -> dict[str, int]:
+    lengths: dict[str, int] = {}
+    for var in getattr(domain_def, "variables", []) or []:
+        var_name = getattr(var, "name", None)
+        var_length = getattr(var, "length", None)
+        if not var_name or var_length is None:
+            continue
+        try:
+            length_int = int(var_length)
+        except Exception:  # noqa: BLE001
+            continue
+        if length_int > 0:
+            lengths[str(var_name).upper()] = length_int
+    return lengths
 
 
 def build_suppqual(
@@ -234,8 +252,8 @@ def build_suppqual(
                     "IDVAR": idvar or "",
                     "IDVARVAL": idvar_val,
                     "QNAM": sanitize_qnam(col),
-                    "QLABEL": sanitize_qnam(col),
-                    "QVAL": str(val)[:200],
+                    "QLABEL": str(col),
+                    "QVAL": str(val),
                     "QORIG": "CRF",
                     "QEVAL": "",
                 }
@@ -245,13 +263,6 @@ def build_suppqual(
         return None, set()
 
     supp_df = pd.DataFrame(records)
-
-    # Shrink QVAL width to actual max to avoid SD1082; keep reasonable cap
-    if "QVAL" in supp_df.columns:
-        supp_df["QVAL"] = supp_df["QVAL"].astype(str)
-        max_qval_len = supp_df["QVAL"].str.len().max() if not supp_df.empty else 1
-        max_qval_len = max(1, min(int(max_qval_len or 1), 50))
-        supp_df["QVAL"] = supp_df["QVAL"].str.slice(0, max_qval_len)
 
     return supp_df, set(extra_cols)
 
@@ -281,26 +292,29 @@ def finalize_suppqual(
         except Exception:
             pass
 
+        # Enforce SDTM/SAS lengths based on the SUPP domain definition.
+        # This keeps length constraints centralized in metadata rather than
+        # hard-coded slices in the builder.
+        lengths = _get_variable_lengths(supp_domain_def)
+        for col in result.columns:
+            max_len = lengths.get(str(col).upper())
+            if not max_len:
+                continue
+            result[col] = result[col].astype("string").str.slice(0, max_len)
+
+    # As a safety net, ensure QLABEL does not exceed the XPT label constraint.
+    if "QLABEL" in result.columns:
+        result["QLABEL"] = (
+            result["QLABEL"]
+            .astype("string")
+            .str.slice(0, Constraints.XPT_MAX_LABEL_LENGTH)
+        )
+
     # Deduplicate
     result.drop_duplicates(
         subset=["STUDYID", "USUBJID", "IDVAR", "IDVARVAL", "QNAM"], inplace=True
     )
     result.sort_values(by=["USUBJID", "IDVARVAL"], inplace=True)
-
-    # Keep QVAL within metadata length for SUPPDM to avoid SD1082
-    if parent_domain_code.upper() == "DM" and "QVAL" in result.columns:
-        if supp_domain_def is not None:
-            try:
-                qval_len = next(
-                    var.length
-                    for var in supp_domain_def.variables
-                    if var.name.upper() == "QVAL"
-                )
-            except Exception:
-                qval_len = 200
-        else:
-            qval_len = 200
-        result["QVAL"] = result["QVAL"].astype(str).str.slice(0, qval_len)
 
     return result
 

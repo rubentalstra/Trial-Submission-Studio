@@ -84,7 +84,7 @@ class SDTMDomain:
         - Events: AE, DS, MH, DV, CE, HO
         - Findings: LB, VS, EG, PE, QS, SC, FA
         - Trial Design: TA, TE, TV, TI, TS
-        - Relationship: RELREC, SUPPQUAL
+        - Relationship: RELREC, RELSUB, RELSPEC, SUPPQUAL
 
     Attributes:
         code: 2-character domain abbreviation (e.g., 'DM', 'AE')

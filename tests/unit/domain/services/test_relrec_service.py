@@ -43,8 +43,8 @@ class TestRelrecService:
         assert config.domain == "RELREC"
         assert config.study_id == "TEST001"
 
-    def test_build_relrec_ae_to_ds_linking(self):
-        """Test linking AE records to DS records."""
+    def test_build_relrec_links_two_domains_by_subject(self):
+        """Test linking two eligible domains by subject."""
         service = RelrecService()
 
         # Create sample domain dataframes
@@ -64,26 +64,16 @@ class TestRelrecService:
             }
         )
 
-        domain_dataframes = {
-            "AE": ae_df,
-            "DS": ds_df,
-        }
+        domain_dataframes = {"AE": ae_df, "DS": ds_df}
 
         df, config = service.build_relrec(domain_dataframes, "TEST001")
 
-        # Should create 4 records: 2 AE records + 2 linked DS records
+        # Should create 4 records: 2 records per subject (one per domain)
         assert len(df) == 4
 
-        # Check AE records
-        ae_records = df[df["RDOMAIN"] == "AE"]
-        assert len(ae_records) == 2
-        assert all(ae_records["IDVAR"] == "AESEQ")
-        assert all(ae_records["STUDYID"] == "TEST001")
-
-        # Check DS records
-        ds_records = df[df["RDOMAIN"] == "DS"]
-        assert len(ds_records) == 2
-        assert all(ds_records["IDVAR"] == "DSSEQ")
+        # Records must cover both domains
+        assert set(df["RDOMAIN"].unique()) == {"AE", "DS"}
+        assert all(df["STUDYID"] == "TEST001")
 
         # Check that records are linked by RELID
         for usubjid in ["SUB001", "SUB002"]:
@@ -93,8 +83,14 @@ class TestRelrecService:
             # Should have same RELID
             assert usubjid_records["RELID"].nunique() == 1
 
-    def test_build_relrec_ex_to_ds_linking(self):
-        """Test linking EX records to DS records."""
+            # IDVAR should match the expected *SEQ fields
+            assert set(usubjid_records["IDVAR"].unique()) in (
+                {"AESEQ", "DSSEQ"},
+                {"DSSEQ", "AESEQ"},
+            )
+
+    def test_build_relrec_links_other_domain_to_reference(self):
+        """Test linking another eligible domain to a second domain."""
         service = RelrecService()
 
         # Create sample domain dataframes
@@ -114,25 +110,13 @@ class TestRelrecService:
             }
         )
 
-        domain_dataframes = {
-            "EX": ex_df,
-            "DS": ds_df,
-        }
+        domain_dataframes = {"EX": ex_df, "DS": ds_df}
 
         df, config = service.build_relrec(domain_dataframes, "TEST001")
 
-        # Should create 4 records: 2 EX records + 2 linked DS records
+        # Should create 4 records: 2 records per subject (one per domain)
         assert len(df) == 4
-
-        # Check EX records
-        ex_records = df[df["RDOMAIN"] == "EX"]
-        assert len(ex_records) == 2
-        assert all(ex_records["IDVAR"] == "EXSEQ")
-
-        # Check DS records
-        ds_records = df[df["RDOMAIN"] == "DS"]
-        assert len(ds_records) == 2
-        assert all(ds_records["IDVAR"] == "DSSEQ")
+        assert set(df["RDOMAIN"].unique()) == {"EX", "DS"}
 
     def test_build_relrec_both_ae_and_ex(self):
         """Test linking both AE and EX records to DS."""
@@ -163,22 +147,20 @@ class TestRelrecService:
             }
         )
 
-        domain_dataframes = {
-            "AE": ae_df,
-            "EX": ex_df,
-            "DS": ds_df,
-        }
+        domain_dataframes = {"AE": ae_df, "EX": ex_df, "DS": ds_df}
 
         df, config = service.build_relrec(domain_dataframes, "TEST001")
 
-        # Should create 4 records: 1 AE + 1 EX + 2 DS (one for each link)
+        # Should create link records between the non-reference domains and
+        # the chosen reference domain (deterministic but not hardcoded).
         assert len(df) == 4
-        assert len(df[df["RDOMAIN"] == "AE"]) == 1
-        assert len(df[df["RDOMAIN"] == "EX"]) == 1
-        assert len(df[df["RDOMAIN"] == "DS"]) == 2
+        assert set(df["RDOMAIN"].unique()) == {"AE", "EX", "DS"}
+        assert len(df[df["RDOMAIN"] == "AE"]) >= 1
+        assert len(df[df["RDOMAIN"] == "EX"]) >= 1
+        assert len(df[df["RDOMAIN"] == "DS"]) >= 1
 
-    def test_build_relrec_ds_only_fallback(self):
-        """Test fallback to DS-only relationships when no AE/EX exist."""
+    def test_build_relrec_single_domain_fallback(self):
+        """Test fallback to self-only relationships when only one domain exists."""
         service = RelrecService()
 
         # Create only DS dataframe
@@ -196,13 +178,10 @@ class TestRelrecService:
 
         df, config = service.build_relrec(domain_dataframes, "TEST001")
 
-        # Should create 2 DS-only records
+        # Should create 2 self-only records
         assert len(df) == 2
         assert all(df["RDOMAIN"] == "DS")
         assert all(df["IDVAR"] == "DSSEQ")
-
-        # Check RELID format
-        assert all(df["RELID"].str.startswith("DS_ONLY_"))
 
     def test_build_relrec_missing_usubjid(self):
         """Test that records without USUBJID are skipped."""
@@ -264,11 +243,10 @@ class TestRelrecService:
 
         df, config = service.build_relrec(domain_dataframes, "TEST001")
 
-        # Should still create records, using fallback index for missing seq
-        ae_records = df[df["RDOMAIN"] == "AE"]
-        assert len(ae_records) == 1
-        # IDVARVAL should use fallback index (1)
-        assert ae_records.iloc[0]["IDVARVAL"] == "1"
+        # Per SDTMIG 3.4 Section 8.2.1, IDVAR/IDVARVAL must point to an actual
+        # identifying variable (e.g., --SEQ or --GRPID). If AE has no such
+        # variable, it cannot be referenced in RELREC and is excluded.
+        assert set(df["RDOMAIN"].unique()) == {"DS"}
 
     def test_build_relrec_min_ds_seq(self):
         """Test that minimum DS sequence is used for linking."""

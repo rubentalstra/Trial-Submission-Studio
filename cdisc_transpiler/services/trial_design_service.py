@@ -248,116 +248,14 @@ class TrialDesignService:
         Returns:
             Tuple of (dataframe, config)
         """
-        records = self._build_relrec_records(domain_results)
+        from ..domain.services import RelrecService
 
-        if records.empty:
-            # Return empty but structured dataframe
-            domain = get_domain("RELREC")
-            df = pd.DataFrame(
-                {
-                    var.name: pd.Series(dtype=var.pandas_dtype())
-                    for var in domain.variables
-                }
-            )
-        else:
-            df = records
-
-        config = self._build_config("RELREC", df)
+        service = RelrecService()
+        df, config = service.build_relrec(
+            domain_dataframes=domain_results,
+            study_id=self.study_id,
+        )
         return df, config
-
-    def _build_relrec_records(
-        self, domain_results: dict[str, pd.DataFrame]
-    ) -> pd.DataFrame:
-        """Build RELREC records from domain data."""
-        ae_df = domain_results.get("AE")
-        ds_df = domain_results.get("DS")
-        ex_df = domain_results.get("EX")
-
-        records = []
-
-        # Get DS sequence mapping
-        ds_seq_map = {}
-        if ds_df is not None and "DSSEQ" in ds_df.columns:
-            numeric = pd.to_numeric(ds_df["DSSEQ"], errors="coerce")
-            ds_seq_map = (
-                pd.DataFrame({"USUBJID": ds_df["USUBJID"], "DSSEQ": numeric})
-                .dropna(subset=["USUBJID", "DSSEQ"])
-                .groupby("USUBJID")["DSSEQ"]
-                .min()
-                .to_dict()
-            )
-
-        # Link AE to DS
-        if ae_df is not None and ds_seq_map:
-            for idx, (_, row) in enumerate(ae_df.iterrows(), start=1):
-                usubjid = str(row.get("USUBJID", "")).strip()
-                if not usubjid:
-                    continue
-                aeseq = self._stringify(row.get("AESEQ"), idx)
-                relid = f"AE_DS_{usubjid}_{aeseq}"
-
-                records.append(
-                    {
-                        "STUDYID": self.study_id,
-                        "RDOMAIN": "AE",
-                        "USUBJID": usubjid,
-                        "IDVAR": "AESEQ",
-                        "IDVARVAL": aeseq,
-                        "RELTYPE": "",
-                        "RELID": relid,
-                    }
-                )
-
-                ds_seq = ds_seq_map.get(usubjid)
-                if ds_seq is not None:
-                    records.append(
-                        {
-                            "STUDYID": self.study_id,
-                            "RDOMAIN": "DS",
-                            "USUBJID": usubjid,
-                            "IDVAR": "DSSEQ",
-                            "IDVARVAL": self._stringify(ds_seq, 1),
-                            "RELTYPE": "",
-                            "RELID": relid,
-                        }
-                    )
-
-        # Link EX to DS
-        if ex_df is not None and ds_seq_map:
-            for idx, (_, row) in enumerate(ex_df.iterrows(), start=1):
-                usubjid = str(row.get("USUBJID", "")).strip()
-                if not usubjid:
-                    continue
-                exseq = self._stringify(row.get("EXSEQ"), idx)
-                relid = f"EX_DS_{usubjid}_{exseq}"
-
-                records.append(
-                    {
-                        "STUDYID": self.study_id,
-                        "RDOMAIN": "EX",
-                        "USUBJID": usubjid,
-                        "IDVAR": "EXSEQ",
-                        "IDVARVAL": exseq,
-                        "RELTYPE": "",
-                        "RELID": relid,
-                    }
-                )
-
-                ds_seq = ds_seq_map.get(usubjid)
-                if ds_seq is not None:
-                    records.append(
-                        {
-                            "STUDYID": self.study_id,
-                            "RDOMAIN": "DS",
-                            "USUBJID": usubjid,
-                            "IDVAR": "DSSEQ",
-                            "IDVARVAL": self._stringify(ds_seq, 1),
-                            "RELTYPE": "",
-                            "RELID": relid,
-                        }
-                    )
-
-        return pd.DataFrame(records)
 
     def _base_row(self, domain: SDTMDomain) -> dict:
         """Create base row for a domain with default values."""

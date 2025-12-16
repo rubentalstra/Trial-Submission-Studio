@@ -27,6 +27,12 @@ from .synthesis_service import (
 from .relrec_service import (
     RelrecService,
 )
+from .relsub_service import (
+    RelsubService,
+)
+from .relspec_service import (
+    RelspecService,
+)
 
 __all__ = [
     # Domain frame builder
@@ -48,4 +54,8 @@ __all__ = [
     "SynthesisService",
     # RELREC service
     "RelrecService",
+    # RELSUB service
+    "RelsubService",
+    # RELSPEC service
+    "RelspecService",
 ]

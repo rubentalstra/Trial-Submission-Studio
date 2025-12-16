@@ -24,6 +24,8 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 
 from ..constants import SDTMVersions
+from ..constants import Defaults
+from ..pandas_utils import normalize_missing_strings
 
 from .models import (
     DefineDatasetDTO,
@@ -45,7 +47,12 @@ from .ports import (
 
 if TYPE_CHECKING:
     from .domain_processing_use_case import DomainProcessingUseCase
-    from ..domain.services import RelrecService, SynthesisService
+    from ..domain.services import (
+        RelrecService,
+        RelspecService,
+        RelsubService,
+        SynthesisService,
+    )
 
 
 class StudyProcessingUseCase:
@@ -91,6 +98,8 @@ class StudyProcessingUseCase:
         domain_frame_builder: DomainFrameBuilderPort | None = None,
         synthesis_service: "SynthesisService | None" = None,
         relrec_service: "RelrecService | None" = None,
+        relsub_service: "RelsubService | None" = None,
+        relspec_service: "RelspecService | None" = None,
         file_generator: FileGeneratorPort | None = None,
         define_xml_generator: DefineXMLGeneratorPort | None = None,
         output_preparer: OutputPreparerPort | None = None,
@@ -121,6 +130,16 @@ class StudyProcessingUseCase:
                 "StudyProcessingUseCase requires relrec_service to be injected "
                 "(use the DI container)."
             )
+        if relsub_service is None:
+            raise ValueError(
+                "StudyProcessingUseCase requires relsub_service to be injected "
+                "(use the DI container)."
+            )
+        if relspec_service is None:
+            raise ValueError(
+                "StudyProcessingUseCase requires relspec_service to be injected "
+                "(use the DI container)."
+            )
         if domain_frame_builder is None:
             raise ValueError(
                 "StudyProcessingUseCase requires domain_frame_builder to be injected "
@@ -133,6 +152,8 @@ class StudyProcessingUseCase:
         self._domain_frame_builder = domain_frame_builder
         self._synthesis_service = synthesis_service
         self._relrec_service = relrec_service
+        self._relsub_service = relsub_service
+        self._relspec_service = relspec_service
         self._file_generator = file_generator
         self._define_xml_generator = define_xml_generator
         self._output_preparer = output_preparer
@@ -425,19 +446,13 @@ class StudyProcessingUseCase:
     def _extract_reference_starts(self, dm_frame: pd.DataFrame) -> dict[str, str]:
         """Extract RFSTDTC reference starts from DM domain."""
         reference_starts: dict[str, str] = {}
-        baseline_default = "2023-01-01"
+        baseline_default = Defaults.DATE
 
         # Ensure RFSTDTC exists and is populated
         if "RFSTDTC" not in dm_frame.columns:
             dm_frame["RFSTDTC"] = baseline_default
         else:
-            rfstdtc_series = (
-                dm_frame["RFSTDTC"]
-                .astype("string")
-                .replace({"nan": "", "<NA>": "", "None": ""})
-                .fillna("")
-                .str.strip()
-            )
+            rfstdtc_series = normalize_missing_strings(dm_frame["RFSTDTC"]).fillna("")
             dm_frame.loc[rfstdtc_series == "", "RFSTDTC"] = baseline_default
 
         if {"USUBJID", "RFSTDTC"}.issubset(dm_frame.columns):
@@ -568,6 +583,28 @@ class StudyProcessingUseCase:
         # Synthesize RELREC
         if "RELREC" not in processed_domains:
             self._synthesize_relrec(
+                response=response,
+                request=request,
+                study_datasets=study_datasets,
+                xpt_dir=xpt_dir,
+                xml_dir=xml_dir,
+                sas_dir=sas_dir,
+            )
+
+        # Synthesize RELSUB
+        if "RELSUB" not in processed_domains:
+            self._synthesize_relsub(
+                response=response,
+                request=request,
+                study_datasets=study_datasets,
+                xpt_dir=xpt_dir,
+                xml_dir=xml_dir,
+                sas_dir=sas_dir,
+            )
+
+        # Synthesize RELSPEC
+        if "RELSPEC" not in processed_domains:
+            self._synthesize_relspec(
                 response=response,
                 request=request,
                 study_datasets=study_datasets,
@@ -815,6 +852,186 @@ class StudyProcessingUseCase:
             self.logger.error(f"RELREC: {exc}")
             response.errors.append(("RELREC", str(exc)))
 
+    def _synthesize_relsub(
+        self,
+        response: ProcessStudyResponse,
+        request: ProcessStudyRequest,
+        study_datasets: list[DefineDatasetDTO],
+        xpt_dir: Path | None,
+        xml_dir: Path | None,
+        sas_dir: Path | None,
+    ) -> None:
+        """Synthesize RELSUB domain (Related Subjects)."""
+        self.logger.log_synthesis_start("RELSUB", "Relationship scaffold")
+
+        try:
+            relsub_service = self._get_relsub_service()
+            relsub_df, relsub_config = relsub_service.build_relsub(
+                domain_dataframes=None,
+                study_id=request.study_id,
+            )
+
+            relsub_domain = self._get_domain("RELSUB")
+            domain_dataframe = self._domain_frame_builder.build_domain_dataframe(
+                relsub_df,
+                relsub_config,
+                relsub_domain,
+                lenient=True,
+            )
+
+            from .models import OutputDirs, OutputRequest
+
+            output_dirs = OutputDirs(
+                xpt_dir=xpt_dir,
+                xml_dir=xml_dir,
+                sas_dir=sas_dir,
+            )
+
+            output_formats = set()
+            if "xpt" in request.output_formats:
+                output_formats.add("xpt")
+            if "xml" in request.output_formats:
+                output_formats.add("xml")
+            if request.generate_sas:
+                output_formats.add("sas")
+
+            output_request = OutputRequest(
+                dataframe=domain_dataframe,
+                domain_code="RELSUB",
+                config=relsub_config,
+                output_dirs=output_dirs,
+                formats=output_formats,
+            )
+
+            file_generator = self._file_generator
+            output_result = (
+                file_generator.generate(output_request)
+                if file_generator is not None
+                else None
+            )
+
+            result = DomainProcessingResult(
+                domain_code="RELSUB",
+                success=True,
+                records=len(domain_dataframe),
+                domain_dataframe=domain_dataframe,
+                config=relsub_config,
+                xpt_path=output_result.xpt_path if output_result else None,
+                xml_path=output_result.xml_path if output_result else None,
+                sas_path=output_result.sas_path if output_result else None,
+                synthesized=True,
+                synthesis_reason="Relationship scaffold",
+            )
+
+            response.domain_results.append(result)
+            response.processed_domains.add("RELSUB")
+            response.total_records += result.records
+
+            if request.generate_define_xml and result.domain_dataframe is not None:
+                self._add_to_study_datasets(
+                    result, study_datasets, request.output_dir, request.output_formats
+                )
+
+            self.logger.success("Generated RELSUB")
+
+        except Exception as exc:
+            self.logger.error(f"RELSUB: {exc}")
+            response.errors.append(("RELSUB", str(exc)))
+
+    def _synthesize_relspec(
+        self,
+        response: ProcessStudyResponse,
+        request: ProcessStudyRequest,
+        study_datasets: list[DefineDatasetDTO],
+        xpt_dir: Path | None,
+        xml_dir: Path | None,
+        sas_dir: Path | None,
+    ) -> None:
+        """Synthesize RELSPEC domain (Related Specimens)."""
+        self.logger.log_synthesis_start("RELSPEC", "Relationship scaffold")
+
+        try:
+            domain_dataframes: dict[str, pd.DataFrame] = {}
+            for result in response.domain_results:
+                if (
+                    result.domain_dataframe is not None
+                    and not result.domain_dataframe.empty
+                ):
+                    domain_dataframes[result.domain_code] = result.domain_dataframe
+
+            relspec_service = self._get_relspec_service()
+            relspec_df, relspec_config = relspec_service.build_relspec(
+                domain_dataframes=domain_dataframes,
+                study_id=request.study_id,
+            )
+
+            relspec_domain = self._get_domain("RELSPEC")
+            domain_dataframe = self._domain_frame_builder.build_domain_dataframe(
+                relspec_df,
+                relspec_config,
+                relspec_domain,
+                lenient=True,
+            )
+
+            from .models import OutputDirs, OutputRequest
+
+            output_dirs = OutputDirs(
+                xpt_dir=xpt_dir,
+                xml_dir=xml_dir,
+                sas_dir=sas_dir,
+            )
+
+            output_formats = set()
+            if "xpt" in request.output_formats:
+                output_formats.add("xpt")
+            if "xml" in request.output_formats:
+                output_formats.add("xml")
+            if request.generate_sas:
+                output_formats.add("sas")
+
+            output_request = OutputRequest(
+                dataframe=domain_dataframe,
+                domain_code="RELSPEC",
+                config=relspec_config,
+                output_dirs=output_dirs,
+                formats=output_formats,
+            )
+
+            file_generator = self._file_generator
+            output_result = (
+                file_generator.generate(output_request)
+                if file_generator is not None
+                else None
+            )
+
+            result = DomainProcessingResult(
+                domain_code="RELSPEC",
+                success=True,
+                records=len(domain_dataframe),
+                domain_dataframe=domain_dataframe,
+                config=relspec_config,
+                xpt_path=output_result.xpt_path if output_result else None,
+                xml_path=output_result.xml_path if output_result else None,
+                sas_path=output_result.sas_path if output_result else None,
+                synthesized=True,
+                synthesis_reason="Relationship scaffold",
+            )
+
+            response.domain_results.append(result)
+            response.processed_domains.add("RELSPEC")
+            response.total_records += result.records
+
+            if request.generate_define_xml and result.domain_dataframe is not None:
+                self._add_to_study_datasets(
+                    result, study_datasets, request.output_dir, request.output_formats
+                )
+
+            self.logger.success("Generated RELSPEC")
+
+        except Exception as exc:
+            self.logger.error(f"RELSPEC: {exc}")
+            response.errors.append(("RELSPEC", str(exc)))
+
     def _generate_define_xml(
         self,
         study_datasets: list[DefineDatasetDTO],
@@ -931,6 +1148,24 @@ class StudyProcessingUseCase:
                 "Wire it in the composition root (DependencyContainer)."
             )
         return self._relrec_service
+
+    def _get_relsub_service(self):
+        """Get injected RELSUB service."""
+        if self._relsub_service is None:
+            raise RuntimeError(
+                "RelsubService is not configured. "
+                "Wire it in the composition root (DependencyContainer)."
+            )
+        return self._relsub_service
+
+    def _get_relspec_service(self):
+        """Get injected RELSPEC service."""
+        if self._relspec_service is None:
+            raise RuntimeError(
+                "RelspecService is not configured. "
+                "Wire it in the composition root (DependencyContainer)."
+            )
+        return self._relspec_service
 
     def _generate_synthesis_files(
         self,
