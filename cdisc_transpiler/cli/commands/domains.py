@@ -6,7 +6,10 @@ import click
 from rich.console import Console
 from rich.table import Table
 
-from ...domains_module import get_domain, list_domains as list_all_domains
+from ...infrastructure.sdtm_spec.registry import (
+    get_domain,
+    list_domains as list_all_domains,
+)
 
 
 console = Console()

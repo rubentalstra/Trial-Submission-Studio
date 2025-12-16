@@ -7,7 +7,7 @@ spec-loading mechanics (wrapper modules) in the infrastructure layer.
 from __future__ import annotations
 
 from ...application.ports.repositories import DomainDefinitionPort
-from ...domains_module import get_domain, list_domains
+from ..sdtm_spec.registry import get_domain, list_domains
 
 
 class DomainDefinitionRepository(DomainDefinitionPort):

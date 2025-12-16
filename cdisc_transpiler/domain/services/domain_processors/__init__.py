@@ -32,7 +32,7 @@ from .ta import TAProcessor
 from .te import TEProcessor
 
 if TYPE_CHECKING:
-    from ....domains_module import SDTMDomain
+    from ...entities.sdtm_domain import SDTMDomain
     from ...entities.controlled_terminology import ControlledTerminology
     from ...entities.study_metadata import StudyMetadata
 

@@ -1,19 +1,22 @@
-"""General Observation Class variable management."""
+"""General Observation Class variable management (infrastructure).
+
+This builds Identifier/Timing templates grouped by the three General
+Observation Classes, using SDTMIG/SDTM v2 CSV metadata.
+"""
 
 from __future__ import annotations
 
 from typing import Any
 
-from .constants import GENERAL_OBSERVATION_CLASSES
-from ..domain.entities.sdtm_domain import SDTMVariable
+from ...domain.entities.sdtm_domain import SDTMVariable
+from ...domain.entities.variable import variable_from_row
+from ...domain.entities.sdtm_classes import GENERAL_OBSERVATION_CLASSES
 from .utils import core_priority, normalize_class, normalize_general_class
-from ..domain.entities.variable import variable_from_row
 
 
 def is_preferred_variable(
     candidate: SDTMVariable, existing: SDTMVariable | None
 ) -> bool:
-    """Select the better variable template when duplicates exist."""
     if existing is None:
         return True
     cand_rank = core_priority(candidate.core)
@@ -34,7 +37,7 @@ def build_general_class_variables(
     """Collect Identifier/Timing templates grouped by General Observation Class."""
     registry: dict[str, dict[str, SDTMVariable]] = {}
     usage: dict[str, dict[str, set[str]]] = {}
-    # Process older standard first so SDTMIG (newer) wins ties
+
     caches = [sdtm_v2_cache, sdtmig_cache]
 
     for cache in caches:
@@ -61,3 +64,6 @@ def build_general_class_variables(
                     registry[general_class][implements] = variable
 
     return registry, usage
+
+
+__all__ = ["build_general_class_variables", "is_preferred_variable"]

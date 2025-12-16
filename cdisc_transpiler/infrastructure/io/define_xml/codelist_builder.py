@@ -13,7 +13,7 @@ from functools import lru_cache
 
 import pandas as pd
 
-from cdisc_transpiler.domains_module import SDTMVariable
+from cdisc_transpiler.domain.entities.sdtm_domain import SDTMVariable
 from .variable_builder import get_datatype
 from cdisc_transpiler.infrastructure.repositories.ct_repository import CTRepository
 from .constants import (
@@ -42,7 +42,7 @@ def _get_ct(variable: SDTMVariable, domain_code: str):
 
     # Fallback: try to find codelist code via domain metadata
     try:
-        from cdisc_transpiler.domains_module import get_domain
+        from cdisc_transpiler.infrastructure.sdtm_spec.registry import get_domain
 
         domain = get_domain(domain_code)
         for var in domain.variables:

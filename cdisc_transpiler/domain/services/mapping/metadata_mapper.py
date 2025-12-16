@@ -15,8 +15,8 @@ if TYPE_CHECKING:
     from ...entities.column_hints import Hints
     from ....domain.entities.study_metadata import StudyMetadata
 
-from ....domains_module import get_domain, SDTMDomain, SDTMVariable
 from ....domain.entities.mapping import ColumnMapping, MappingSuggestions, Suggestion
+from ...entities.sdtm_domain import SDTMDomain, SDTMVariable
 from .pattern_builder import build_variable_patterns
 from .utils import normalize_text, safe_column_name
 
@@ -41,7 +41,7 @@ class MetadataAwareMapper:
 
     def __init__(
         self,
-        domain_code: str,
+        domain: SDTMDomain,
         metadata: StudyMetadata | None = None,
         *,
         min_confidence: float = 0.5,
@@ -50,13 +50,13 @@ class MetadataAwareMapper:
         """Initialize the metadata-aware mapper.
 
         Args:
-            domain_code: Target SDTM domain code
+            domain: Target SDTM domain definition
             metadata: Optional StudyMetadata with Items.csv and CodeLists.csv data
             min_confidence: Minimum confidence threshold for fuzzy matches
             column_hints: Optional column hints from source data analysis
         """
-        self.domain: SDTMDomain = get_domain(domain_code)
-        self.domain_code = domain_code.upper()
+        self.domain = domain
+        self.domain_code = domain.code.upper()
         self.metadata = metadata
         self.min_confidence = min_confidence
         self.column_hints: Hints = column_hints or {}

@@ -10,7 +10,7 @@ from xml.etree import ElementTree as ET
 
 import pandas as pd
 
-from cdisc_transpiler.domains_module import SDTMDomain, SDTMVariable
+from cdisc_transpiler.domain.entities.sdtm_domain import SDTMDomain, SDTMVariable
 from .models import (
     ValueListDefinition,
     ValueListItemDefinition,

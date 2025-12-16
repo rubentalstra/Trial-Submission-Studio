@@ -13,7 +13,7 @@ import pandas as pd
 
 from cdisc_transpiler.infrastructure import create_default_container
 from cdisc_transpiler.application.models import ProcessStudyRequest
-from cdisc_transpiler.domains_module import get_domain
+from cdisc_transpiler.infrastructure.sdtm_spec import get_domain
 
 
 # Path to sample study data

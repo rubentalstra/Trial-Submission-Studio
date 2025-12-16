@@ -7,7 +7,7 @@ from ...application.ports import TerminologyPort
 
 def _get_variable_codelist_code(domain_code: str, variable_name: str) -> str | None:
     """Resolve a variable's CT codelist code using SDTM domain metadata."""
-    from ...domains_module import get_domain
+    from ..sdtm_spec.registry import get_domain
 
     try:
         domain = get_domain(domain_code)

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any, Callable, Protocol, Sequence
 
 import pandas as pd
 
-from ....domains_module import SDTMVariable
+from ...entities.sdtm_domain import SDTMVariable
 from ...entities.controlled_terminology import ControlledTerminology
 from ....pandas_utils import ensure_numeric_series, ensure_series
 

@@ -30,7 +30,7 @@ if TYPE_CHECKING:
     from ...domain.entities.mapping import MappingConfig
 
 # Import domain helper (still needed for resolving dataset names)
-from ...domains_module import get_domain
+from ..sdtm_spec.registry import get_domain
 
 
 class FileGenerator:

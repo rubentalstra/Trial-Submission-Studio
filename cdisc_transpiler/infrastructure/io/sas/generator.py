@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 
 from jinja2 import Environment, StrictUndefined
 
-from cdisc_transpiler.domains_module import get_domain
+from cdisc_transpiler.infrastructure.sdtm_spec.registry import get_domain
 
 from .constants import DEFAULT_STUDY_ID, SAS_PROGRAM_TEMPLATE
 from .utils import (

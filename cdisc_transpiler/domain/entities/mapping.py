@@ -7,16 +7,15 @@ column mappings between source data and SDTM target variables.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Iterable, Protocol
 
 from pydantic import BaseModel, Field
 
+from .sdtm_domain import SDTMDomain
 
-def _get_domain(domain_code: str):
-    """Lazy getter to avoid circular import with domains_module."""
-    from ...domains_module import get_domain
 
-    return get_domain(domain_code)
+class DomainResolver(Protocol):
+    def __call__(self, domain_code: str) -> SDTMDomain: ...
 
 
 # =============================================================================
@@ -52,11 +51,18 @@ class MappingConfig(BaseModel):
     def target_variables(self) -> set[str]:
         return {m.target_variable for m in self.mappings}
 
-    def enforce_domain(self) -> None:
-        _get_domain(self.domain)  # raises if invalid
+    def enforce_domain(self, domain_resolver: DomainResolver | None = None) -> None:
+        if domain_resolver is None:
+            return
+        domain_resolver(self.domain)  # raises if invalid
 
-    def missing_required(self) -> set[str]:
-        domain = _get_domain(self.domain)
+    def missing_required(
+        self, domain_resolver: DomainResolver | None = None
+    ) -> set[str]:
+        if domain_resolver is None:
+            return set()
+
+        domain = domain_resolver(self.domain)
         required = {
             var.name
             for var in domain.variables
@@ -65,8 +71,8 @@ class MappingConfig(BaseModel):
         auto_populated = {"STUDYID", "DOMAIN"}
         return (required - auto_populated) - self.target_variables
 
-    def validate_required(self) -> None:
-        missing = self.missing_required()
+    def validate_required(self, domain_resolver: DomainResolver | None = None) -> None:
+        missing = self.missing_required(domain_resolver)
         if missing:
             raise ValueError(
                 f"Missing required variables for domain {self.domain}: {sorted(missing)}"

@@ -7,12 +7,13 @@ post-processing logic unique to each SDTM domain.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
 if TYPE_CHECKING:
-    from ....domains_module import SDTMDomain
+    from ...entities.sdtm_domain import SDTMDomain
     from ...entities.controlled_terminology import ControlledTerminology
     from ...entities.study_metadata import StudyMetadata
 
@@ -31,7 +32,8 @@ class BaseDomainProcessor(ABC):
         domain: "SDTMDomain",
         reference_starts: dict[str, str] | None = None,
         metadata: "StudyMetadata | None" = None,
-        ct_resolver: "Callable[[str | None, str | None], ControlledTerminology | None] | None" = None,
+        ct_resolver: Callable[[str | None, str | None], "ControlledTerminology | None"]
+        | None = None,
     ):
         """Initialize the domain processor.
 
@@ -66,7 +68,7 @@ class BaseDomainProcessor(ABC):
         Args:
             frame: Domain DataFrame to process in-place
         """
-        pass
+        raise NotImplementedError
 
     def _drop_placeholder_rows(self, frame: pd.DataFrame) -> None:
         """Drop placeholder/header rows without subject identifiers.

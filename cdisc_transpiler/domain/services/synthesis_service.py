@@ -17,13 +17,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
+from collections.abc import Callable
 
 import pandas as pd
 
 from ...constants import Defaults
 
+from ..entities.sdtm_domain import SDTMDomain, SDTMVariable
+
 if TYPE_CHECKING:
-    from ..entities.sdtm_domain import SDTMDomain, SDTMVariable
+    from ..entities.sdtm_domain import SDTMVariable
     from ..entities.mapping import MappingConfig
 
 
@@ -82,6 +85,23 @@ class SynthesisService:
         ...     print(f"Generated {result.records} records")
         ...     # Application layer handles file generation
     """
+
+    def __init__(self, *, domain_resolver: Callable[[str], SDTMDomain] | None = None):
+        self._domain_resolver = domain_resolver
+
+    _FALLBACK_DOMAIN_VARIABLES: dict[str, tuple[str, ...]] = {
+        # Trial Design
+        "TS": ("STUDYID", "DOMAIN", "TSPARMCD", "TSPARM", "TSVAL"),
+        "TA": ("STUDYID", "DOMAIN", "ARMCD", "ARM", "ETCD", "ELEMENT", "EPOCH"),
+        "TE": ("STUDYID", "DOMAIN", "ETCD", "ELEMENT", "TEDUR"),
+        "SE": ("STUDYID", "DOMAIN", "USUBJID", "ETCD", "ELEMENT", "EPOCH"),
+        "DS": ("STUDYID", "DOMAIN", "USUBJID", "DSTERM", "DSDECOD"),
+        # Observation
+        "AE": ("STUDYID", "DOMAIN", "USUBJID", "AETERM", "AEDECOD"),
+        "LB": ("STUDYID", "DOMAIN", "USUBJID", "LBTESTCD", "LBTEST", "LBORRES"),
+        "VS": ("STUDYID", "DOMAIN", "USUBJID", "VSTESTCD", "VSTEST", "VSORRES"),
+        "EX": ("STUDYID", "DOMAIN", "USUBJID", "EXTRT", "EXDOSE"),
+    }
 
     def synthesize_trial_design(
         self,
@@ -384,10 +404,47 @@ class SynthesisService:
         return config
 
     def _get_domain(self, domain_code: str) -> SDTMDomain:
-        """Get domain definition via lazy import."""
-        from ...domains_module import get_domain
+        if self._domain_resolver is not None:
+            return self._domain_resolver(domain_code)
 
-        return get_domain(domain_code)
+        # Pure-domain fallback: for synthesis we only need a minimal set of
+        # variables to build a valid scaffold dataset.
+        key = domain_code.upper()
+        variable_names = self._FALLBACK_DOMAIN_VARIABLES.get(key)
+        if not variable_names:
+            raise RuntimeError(
+                f"SynthesisService requires a domain_resolver to synthesize '{domain_code}'."
+            )
+
+        def _infer_variable_type(name: str) -> tuple[str, int]:
+            upper = name.upper()
+            if upper in {"EXDOSE"} or upper.endswith("SEQ"):
+                return "Num", 8
+            return "Char", 200
+
+        variables: list[SDTMVariable] = []
+        for idx, name in enumerate(variable_names, start=1):
+            var_type, length = _infer_variable_type(name)
+            variables.append(
+                SDTMVariable(
+                    name=name,
+                    label=name,
+                    type=var_type,
+                    length=length,
+                    core="Req",
+                    variable_order=idx,
+                )
+            )
+
+        return SDTMDomain(
+            code=key,
+            description=f"Synthetic {key} domain",
+            class_name="Synthetic",
+            structure="One record per synthetic row",
+            label=key,
+            variables=tuple(variables),
+            dataset_name=key,
+        )
 
     def _build_domain_dataframe(
         self, frame: pd.DataFrame, config: MappingConfig

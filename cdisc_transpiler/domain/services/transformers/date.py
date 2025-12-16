@@ -6,7 +6,7 @@ from typing import Any, Sequence
 
 import pandas as pd
 
-from ....domains_module import SDTMVariable
+from ...entities.sdtm_domain import SDTMVariable
 from ....pandas_utils import ensure_series
 from .iso8601 import normalize_iso8601, normalize_iso8601_duration
 

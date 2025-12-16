@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 from ...repositories.ct_repository import CTRepository
 
 if TYPE_CHECKING:
-    from cdisc_transpiler.domains_module import SDTMVariable
+    from cdisc_transpiler.domain.entities.sdtm_domain import SDTMVariable
     from cdisc_transpiler.domain.entities.mapping import ColumnMapping
 
 

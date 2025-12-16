@@ -11,7 +11,7 @@ from typing import TYPE_CHECKING
 from .normalizers import render_assignment
 
 if TYPE_CHECKING:
-    from cdisc_transpiler.domains_module import SDTMDomain, SDTMVariable
+    from cdisc_transpiler.domain.entities.sdtm_domain import SDTMDomain, SDTMVariable
     from cdisc_transpiler.domain.entities.mapping import ColumnMapping, MappingConfig
 
 

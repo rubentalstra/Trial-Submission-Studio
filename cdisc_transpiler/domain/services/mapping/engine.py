@@ -15,8 +15,8 @@ from rapidfuzz import fuzz
 if TYPE_CHECKING:
     from ...entities.column_hints import Hints
 
-from ....domains_module import get_domain, SDTMDomain, SDTMVariable
 from ....domain.entities.mapping import ColumnMapping, MappingSuggestions, Suggestion
+from ...entities.sdtm_domain import SDTMDomain, SDTMVariable
 from .pattern_builder import build_variable_patterns
 from .utils import normalize_text, safe_column_name
 
@@ -28,7 +28,8 @@ class MappingEngine:
     mappings between source data columns and SDTM target variables.
 
     Example:
-        >>> engine = MappingEngine("DM", min_confidence=0.7)
+        >>> domain = None
+        >>> engine = MappingEngine(domain, min_confidence=0.7)
         >>> suggestions = engine.suggest(source_df)
         >>> for mapping in suggestions.mappings:
         ...     print(f"{mapping.source_column} -> {mapping.target_variable}")
@@ -36,7 +37,7 @@ class MappingEngine:
 
     def __init__(
         self,
-        domain_code: str,
+        domain: SDTMDomain,
         *,
         min_confidence: float = 0.5,
         column_hints: Hints | None = None,
@@ -44,11 +45,11 @@ class MappingEngine:
         """Initialize the mapping engine.
 
         Args:
-            domain_code: SDTM domain code (e.g., "DM", "AE")
+            domain: SDTM domain definition
             min_confidence: Minimum confidence score for suggestions (0.0-1.0)
             column_hints: Optional column hints for improved matching
         """
-        self.domain: SDTMDomain = get_domain(domain_code)
+        self.domain = domain
         self.min_confidence = min_confidence
         self.column_hints: Hints = column_hints or {}
         self.valid_targets: set[str] = set(self.domain.variable_names())

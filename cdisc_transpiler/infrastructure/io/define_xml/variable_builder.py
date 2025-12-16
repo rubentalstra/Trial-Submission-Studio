@@ -9,7 +9,7 @@ from __future__ import annotations
 from typing import Iterable
 from xml.etree import ElementTree as ET
 
-from cdisc_transpiler.domains_module import SDTMVariable
+from cdisc_transpiler.domain.entities.sdtm_domain import SDTMVariable
 from .constants import ODM_NS, DEF_NS, XML_NS
 from ..xml_utils import tag, attr
 

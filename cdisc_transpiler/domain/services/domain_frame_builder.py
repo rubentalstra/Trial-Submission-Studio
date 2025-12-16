@@ -59,7 +59,7 @@ def build_domain_dataframe(
         DataFrame with columns matching the SDTM domain layout
 
     Example:
-        >>> from cdisc_transpiler.domains_module import get_domain
+        >>> from cdisc_transpiler import get_domain
         >>> domain = get_domain("DM")
         >>> result = build_domain_dataframe(source_df, config, domain)
     """

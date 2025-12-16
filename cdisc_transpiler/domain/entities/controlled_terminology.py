@@ -3,7 +3,7 @@
 This is a pure data model representing CDISC controlled terminology.
 
 It is used by ports and repositories so the application layer does not
-depend on compatibility modules like `terminology_module`.
+depend on infrastructure adapters or legacy wrappers.
 """
 
 from __future__ import annotations

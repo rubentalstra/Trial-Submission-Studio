@@ -29,10 +29,10 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 if TYPE_CHECKING:
-    from ..domains_module import SDTMDomain
+    from ..domain.entities.sdtm_domain import SDTMDomain
 
 from ..constants import Defaults
-from ..domains_module import get_domain
+from ..infrastructure.sdtm_spec.registry import get_domain
 from ..domain.entities.mapping import ColumnMapping, build_config
 
 

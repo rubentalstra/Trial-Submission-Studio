@@ -1,12 +1,16 @@
-"""Domain construction from CSV metadata."""
+"""Domain construction from CSV metadata.
+
+This is infrastructure code: it loads SDTMIG/SDTM v2 CSV metadata and builds
+domain entities used by the application/domain layers.
+"""
 
 from __future__ import annotations
 
 from typing import Mapping, Sequence
 
-from ..domain.entities.sdtm_domain import SDTMDomain, SDTMVariable
+from ...domain.entities.sdtm_domain import SDTMDomain, SDTMVariable
+from ...domain.entities.variable import variable_from_row
 from .utils import normalize_class
-from ..domain.entities.variable import variable_from_row
 
 
 def compute_row_order(row: Mapping[str, str], idx: int) -> tuple[int, int]:
@@ -24,23 +28,10 @@ def build_domain_from_rows(
     source: str,
     dataset_attributes: dict[str, dict[str, str]],
 ) -> SDTMDomain | None:
-    """Construct a domain definition from CSV rows.
-
-    Args:
-        code: Domain code (e.g., 'DM', 'AE')
-        rows: Sequence of CSV row dictionaries containing variable metadata
-        source: Source identifier (e.g., 'SDTMIG v3.4', 'SDTM v2.0')
-        dataset_attributes: Mapping of {domain_code -> {attribute -> value}} where
-                          attributes include 'class', 'label', and 'structure'
-                          loaded from Datasets.csv
-
-    Returns:
-        SDTMDomain: Constructed domain definition, or None if no rows provided
-    """
+    """Construct a domain definition from CSV rows."""
     if not rows:
         return None
 
-    # Preserve CSV ordering; fall back to file order when Variable Order is missing
     rows_list = list(rows)
     ordered = [
         r
@@ -89,3 +80,6 @@ def build_supp_domain(code: str, suppqual_base: SDTMDomain | None) -> SDTMDomain
         variables=suppqual_base.variables,
         dataset_name=dataset_name,
     )
+
+
+__all__ = ["build_domain_from_rows", "build_supp_domain", "compute_row_order"]

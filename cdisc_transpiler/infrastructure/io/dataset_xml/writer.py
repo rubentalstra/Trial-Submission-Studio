@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     import pandas as pd
     from cdisc_transpiler.domain.entities.mapping import MappingConfig
 
-from cdisc_transpiler.domains_module import get_domain
+from cdisc_transpiler.infrastructure.sdtm_spec.registry import get_domain
 from .builder import build_dataset_xml_tree
 
 

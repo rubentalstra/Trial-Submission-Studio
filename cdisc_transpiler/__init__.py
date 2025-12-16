@@ -26,7 +26,8 @@ from cdisc_transpiler.infrastructure.io.dataset_xml.writer import write_dataset_
 from cdisc_transpiler.infrastructure.io.define_xml.metadata_builder import (
     build_study_define_tree,
 )
-from cdisc_transpiler.domains_module import SDTMDomain, SDTMVariable, get_domain
+from cdisc_transpiler.domain.entities.sdtm_domain import SDTMDomain, SDTMVariable
+from cdisc_transpiler.infrastructure.sdtm_spec.registry import get_domain
 
 __all__ = [
     "__version__",

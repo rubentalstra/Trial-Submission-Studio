@@ -18,7 +18,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ..domains_module import get_domain_class
+from ..infrastructure.sdtm_spec.utils import get_domain_class
 
 if TYPE_CHECKING:
     from ..application.ports.services import LoggerPort

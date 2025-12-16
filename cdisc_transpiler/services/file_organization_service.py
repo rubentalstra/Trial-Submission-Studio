@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from ..domains_module import get_domain
+from ..infrastructure.sdtm_spec.registry import get_domain
 
 
 def ensure_acrf_pdf(path: Path) -> None:

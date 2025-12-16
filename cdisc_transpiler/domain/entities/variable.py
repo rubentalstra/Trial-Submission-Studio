@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Mapping
 
 from .sdtm_domain import SDTMVariable
+from .sdtm_classes import GENERAL_OBSERVATION_CLASSES, normalize_general_class
 
 # Import constants directly to avoid circular import
 DEFAULT_CHAR_LENGTH = 200
@@ -39,10 +40,6 @@ def infer_implements(
     var_name: str, domain_code: str, class_name: str, role: str | None
 ) -> str | None:
     """Return generalized placeholder (e.g., --SEQ) for Identifier/Timing variables."""
-    # Import here to avoid circular dependency
-    from ...domains_module.constants import GENERAL_OBSERVATION_CLASSES
-    from ...domains_module.utils import normalize_general_class
-
     general_class = normalize_general_class(class_name)
     if general_class not in GENERAL_OBSERVATION_CLASSES:
         return None

@@ -20,7 +20,7 @@ from rich.console import Console
 from ..infrastructure.io.xpt_write import write_xpt_file
 
 if TYPE_CHECKING:
-    from ..domains_module import SDTMDomain
+    from ..domain.entities.sdtm_domain import SDTMDomain
 
 console = Console()
 

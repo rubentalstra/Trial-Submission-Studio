@@ -64,8 +64,8 @@ below may fail until the hot-path errors are addressed.
 
 - `cdisc_transpiler/cli/commands/study.py`: Thin Click adapter → builds
   `ProcessStudyRequest`, calls use case via DI container, renders via presenter.
-- `cdisc_transpiler/cli/commands/domains.py`: Lists supported domains (currently
-  reads from `domains_module` directly).
+- `cdisc_transpiler/cli/commands/domains.py`: Lists supported domains via the
+  SDTM spec registry.
 - `cdisc_transpiler/cli/presenters/*`: Rich formatting only (tables/progress).
 - `cdisc_transpiler/cli/helpers.py`: CLI-facing helpers (still contains
   output-writing helpers like split XPTs; should move out of CLI).
@@ -130,8 +130,8 @@ These modules exist outside the four “clean” layer folders and are a major
 source of confusion. They must either become true adapters/ports, move into the
 proper layer, or be reduced to thin compatibility shims.
 
-- `cdisc_transpiler/domains_module/`: SDTM domain/variable registry loaded from
-  spec CSVs. Currently re-exports domain entities for backwards compatibility.
+- `cdisc_transpiler/infrastructure/sdtm_spec/`: SDTM domain/variable registry
+  loaded from spec CSVs (current implementation).
 - `cdisc_transpiler/transformations/`: transformation framework and
   domain-specific transformers (VS/LB wide-to-long).
 - Output generation implementations live under
@@ -145,11 +145,8 @@ Be careful with these, because downstream users may import them directly:
 
 - `cdisc_transpiler/__init__.py` re-exports XML builders and domain metadata
   accessors (this is part of the public API).
-- `cdisc_transpiler/domains_module/__init__.py` re-exports
-  `SDTMDomain`/`SDTMVariable` from
-  `cdisc_transpiler/domain/entities/sdtm_domain.py`.
-- Wrapper modules under `cdisc_transpiler/*_module/` may be externally imported
-  (e.g. `domains_module`) even if internally we want to migrate away from them.
+- Wrapper modules under `cdisc_transpiler/*_module/` have been removed after
+  migrating internal call sites; only explicit compatibility shims remain.
 
 ### Legacy code candidates (safe-to-remove once call sites migrate)
 
@@ -205,37 +202,29 @@ cleanup are layer-crossing helpers such as
   in `cdisc_transpiler/application/domain_processing_use_case.py`
   (`_write_variant_splits`) and bypasses the injected writer adapters.
 
-7. **Domain depends on non-domain package (`domains_module`)**
+7. **(Resolved) Domain depended on `domains_module`**
 
-- `cdisc_transpiler/domain/entities/mapping.py` and
-  `cdisc_transpiler/domain/entities/variable.py` import from
-  `cdisc_transpiler/domains_module/*` to validate domains and derive General
-  Observation Class behavior. This creates import-direction ambiguity and
-  contributes to circular dependency pressure.
+- Domain entities/services no longer import the compatibility shim. General
+  Observation Class helpers live in the domain layer, and spec loading lives in
+  `cdisc_transpiler/infrastructure/sdtm_spec/`.
 
-8. **Terminology responsibilities duplicated**
+8. **(Resolved) Terminology responsibilities duplicated**
 
-- `cdisc_transpiler/terminology_module/*` loads CT and performs normalization,
-  while `cdisc_transpiler/infrastructure/repositories/ct_repository.py` also
-  loads CT with caching. Choose one “real implementation” and make the other a
-  shim.
+- Controlled terminology is loaded via `CTRepository` (infrastructure), and the
+  application accesses terminology via injected ports/adapters.
 
-9. **Domain imports compatibility/output modules (`*_module`)**
+9. **(Resolved) Domain imported compatibility/output modules (`*_module`)**
 
 - Domain processors previously imported transformers from an output-focused
   compatibility layer. These transformers now live in
   `cdisc_transpiler/domain/services/transformers/`.
-- Domain mapping/synthesis imports from `cdisc_transpiler/domains_module/*`,
-  `cdisc_transpiler/mapping_module/*`, and `cdisc_transpiler/io_module/*` (e.g.
-  `cdisc_transpiler/domain/services/mapping/*`,
-  `cdisc_transpiler/domain/entities/mapping.py`).
+- Domain mapping/synthesis uses domain entities/services directly, and receives
+  infrastructure concerns (spec/CT) via injected ports/adapters.
 
-10. **Application layer depends on compatibility modules (instead of ports)**
+10. **(Resolved) Application layer depended on compatibility modules**
 
-- `cdisc_transpiler/application/domain_processing_use_case.py` falls back to
-  `cdisc_transpiler/io_module` when repositories aren’t injected.
-- `cdisc_transpiler/application/ports/repositories.py` references
-  `cdisc_transpiler/terminology_module.models.ControlledTerminology`.
+- Use cases and ports have been migrated to depend on ports and domain entities,
+  with infrastructure adapters supplied by the DI container.
 
 11. **Legacy import side effects leak via `services/__init__.py`**
 
@@ -315,10 +304,12 @@ Keep the current top-level layout, but enforce strict boundaries:
 - `domain` → (no internal dependencies outside domain; external libs allowed but
   no I/O)
 
-Compatibility wrappers (e.g. `io_module`, `terminology_module`,
-`submission_module`) are not part of the clean architecture. They may exist for
-public API stability, but internal call sites should migrate to
-`domain`/`application`/`infrastructure` so wrappers become thin shims.
+Compatibility wrapper _packages_ (e.g. `io_module`, `terminology_module`,
+`submission_module`) are not part of the clean architecture.
+
+These wrapper packages have been removed in this repository after migrating
+internal call sites to `domain`/`application`/`infrastructure`. Only explicit,
+small compatibility shims remain where needed for public API stability.
 
 ### Policy clarifications (make the boundaries real)
 
@@ -329,9 +320,10 @@ public API stability, but internal call sites should migrate to
 - **No side-effectful re-exports:** Avoid importing `legacy/*` (or triggering
   deprecation warnings) from non-legacy modules like
   `cdisc_transpiler/services/__init__.py`.
-- **Wrappers are shims:** `*_module` packages should become thin re-exports (no
-  duplicated implementations, no orchestration). Internal code should import
-  from the “real” layers.
+- **Compatibility shims are explicit:** Prefer explicit, small shims over
+  wrapper _packages_. Shims must be thin re-exports (no duplicated
+  implementations, no orchestration). Internal code should import from the
+  “real” layers.
 - **Ports reference stable types:** Application ports should reference
   application/domain DTOs/entities, not `*_module` types.
 
@@ -346,8 +338,8 @@ Use these when you’re about to finish a refactor chunk:
 - `rg -n "cdisc_transpiler\\.cli|from \\.\\..*cli" -S cdisc_transpiler/domain`
 - `rg -n "cdisc_transpiler\\.legacy|from \\.\\..*legacy" -S cdisc_transpiler`
 
-- Domain/application must not import compatibility wrapper modules (internal
-  call sites):
+- Domain/application must not import removed wrapper modules (internal call
+  sites):
   - `rg -n "\\b(io_module|terminology_module|domains_module|metadata_module|mapping_module|submission_module)\\b" -S cdisc_transpiler/domain cdisc_transpiler/application`
 
 - “Services” package must not pull in legacy as a side effect:
@@ -372,7 +364,7 @@ Code is considered **rewrapping** if it:
 - exists only to avoid moving imports while the real implementation lives
   elsewhere.
 
-Examples today: `cdisc_transpiler/io_module/readers.py`,
+Examples (historical): `cdisc_transpiler/io_module/readers.py`,
 `cdisc_transpiler/mapping_module/config_io.py`.
 
 ### Allowed wrappers (only if they add real value)
@@ -400,19 +392,17 @@ Use this as the default “where should I move this?” reference.
 - Domain split XPT writer: `cdisc_transpiler/cli/helpers.py` +
   `cdisc_transpiler/application/domain_processing_use_case.py` → infrastructure
   adapter (single implementation)
-- Controlled terminology loading: `cdisc_transpiler/terminology_module/*` ↔
-  `cdisc_transpiler/infrastructure/repositories/ct_repository.py` → one real
-  implementation + one shim
-- SDTM domain metadata registry: `cdisc_transpiler/domains_module/*` → either a
-  domain-owned registry or an infrastructure-backed repository (but with clean
-  import direction)
+- Controlled terminology loading:
+  `cdisc_transpiler/infrastructure/repositories/ct_repository.py` (current
+  implementation)
+- SDTM domain metadata registry: `cdisc_transpiler/infrastructure/sdtm_spec/*`
+  (current implementation)
 
 Additional high-impact migrations (current reality):
 
 - Domain transformers: `cdisc_transpiler/domain/services/transformers/*`
-- Mapping engine: `cdisc_transpiler/domain/services/mapping/*` currently imports
-  `io_module` and `domains_module` → move the needed types into
-  domain/application and replace I/O with ports.
+- Mapping engine: `cdisc_transpiler/domain/services/mapping/*` (now pure
+  domain).
 - Dataset-XML: `cdisc_transpiler/infrastructure/io/dataset_xml/*`
 
 ## 6) Naming & Structure Improvement Plan (Required)
@@ -508,6 +498,8 @@ Each step is intended to be PR-sized and reversible.
   `cdisc_transpiler/application/study_processing_use_case.py`
 - **Verify:** `pytest -q tests/unit/application`
 
+✅ Completed (wrappers removed; use cases depend on ports/adapters).
+
 ### Step 6 — Unify XPT split writing behind infrastructure adapter (Risk: Medium)
 
 - **Goal:** There is exactly one implementation for split writing, and it is
@@ -521,7 +513,7 @@ Each step is intended to be PR-sized and reversible.
 ### Step 7 — Make domain synthesis pure (Risk: Medium/High)
 
 - **Goal:** `domain/services/synthesis_service.py` returns only domain data; it
-  must not import from `io_module` or other wrappers.
+  must not import from removed wrapper packages.
 - **Affects:** `cdisc_transpiler/domain/services/synthesis_service.py`,
   `cdisc_transpiler/application/study_processing_use_case.py`
 - **Verify:** `pytest -m validation`, `pytest -m benchmark --benchmark-only`
@@ -536,23 +528,27 @@ Each step is intended to be PR-sized and reversible.
 
 ### Step 9 — Controlled terminology access via ports (Risk: Medium)
 
-- **Goal:** Domain/application should not call `terminology_module` directly;
-  use a repository/port.
+- **Goal:** Domain/application should not call controlled terminology via
+  wrapper packages; use a repository/port.
 - **Affects:** `cdisc_transpiler/domain/services/domain_processors/*`,
   `cdisc_transpiler/application/ports/repositories.py`,
   `cdisc_transpiler/infrastructure/repositories/ct_repository.py`
 - **Verify:**
   `pytest -q tests/unit/infrastructure/repositories/test_ct_repository.py`
 
-### Step 10 — Make `domains_module` a shim (Risk: Medium)
+✅ Completed (CT via `CTRepository` + injected adapters).
 
-- **Goal:** Domain/application should not import registry helpers from
-  `domains_module` in production paths.
+### Step 10 — Remove `domains_module` shim (Risk: Medium)
+
+- **Goal:** Remove the `cdisc_transpiler.domains_module` compatibility import
+  path and migrate call sites to the SDTM spec registry.
 - **Affects:** `cdisc_transpiler/domain/entities/mapping.py`,
   `cdisc_transpiler/domain/entities/variable.py`,
   `cdisc_transpiler/application/study_processing_use_case.py`
 - **Verify:** boundary grep:
   `rg -n "\\bdomains_module\\b" -S cdisc_transpiler/domain cdisc_transpiler/application`
+
+✅ Completed (shim removed; use `cdisc_transpiler.infrastructure.sdtm_spec`).
 
 ### Step 11 — De-duplicate Dataset-XML implementation (Risk: Medium)
 
@@ -565,9 +561,13 @@ Each step is intended to be PR-sized and reversible.
 
 - **Goal:** Stop importing wrappers from internal code; keep shims only for
   external API stability until next major version.
-- **Affects:** `cdisc_transpiler/io_module/*`,
-  `cdisc_transpiler/submission_module/*`, `cdisc_transpiler/metadata_module/*`
+- **Affects (historical):** removed wrapper packages like
+  `cdisc_transpiler/io_module/*`, `cdisc_transpiler/submission_module/*`,
+  `cdisc_transpiler/metadata_module/*`
 - **Verify:** `pyright`, `pytest`
+
+✅ Completed (wrapper folders removed; compatibility maintained via explicit
+shims).
 
 ### Performance note
 

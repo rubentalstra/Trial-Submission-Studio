@@ -294,7 +294,7 @@ cdisc-transpiler/
 │   │   ├── io/                # XPT/XML/Define-XML/SAS generators/writers
 │   │   ├── logging/
 │   │   └── repositories/      # CSV/Excel/SAS + metadata/CT/spec access
-│   ├── domains_module/        # SDTM domain metadata registry (compat layer)
+│   │   └── sdtm_spec/          # SDTM domain/variable spec registry
 │   ├── transformations/       # Transformation pipeline (VS/LB wide-to-long)
 │   └── services/              # Layer-ambiguous services (mid-migration)
 ├── tests/                    # Test suites

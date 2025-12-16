@@ -9,7 +9,7 @@ from __future__ import annotations
 import re
 from functools import lru_cache
 
-from ....domains_module import SDTMDomain
+from ...entities.sdtm_domain import SDTMDomain
 
 
 def _deduplicate_preserving_order(items: list[str]) -> list[str]:

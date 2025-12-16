@@ -29,7 +29,7 @@ from typing import Any
 from rich.console import Console
 
 from ...application.ports.services import LoggerPort
-from ...domains_module import get_domain_class
+from ..sdtm_spec.utils import get_domain_class
 
 
 class LogLevel(IntEnum):

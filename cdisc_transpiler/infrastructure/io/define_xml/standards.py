@@ -6,7 +6,7 @@ used in Define-XML documents.
 
 from __future__ import annotations
 
-from cdisc_transpiler.domains_module import CT_VERSION
+from cdisc_transpiler.infrastructure.sdtm_spec.constants import CT_VERSION
 from .models import StandardDefinition, CommentDefinition
 from .constants import (
     DEFAULT_SDTM_VERSION,

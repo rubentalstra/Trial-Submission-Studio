@@ -224,7 +224,9 @@ class DependencyContainer:
     def create_mapping_service(self) -> MappingPort:
         """Create or return cached mapping service instance (singleton)."""
         if self._mapping_service_instance is None:
-            self._mapping_service_instance = MappingServiceAdapter()
+            self._mapping_service_instance = MappingServiceAdapter(
+                domain_definitions=self.create_domain_definition_repository()
+            )
         return self._mapping_service_instance
 
     def create_domain_frame_builder(self) -> DomainFrameBuilderPort:
@@ -256,7 +258,9 @@ class DependencyContainer:
         if self._synthesis_service_instance is None:
             from ..domain.services import SynthesisService
 
-            self._synthesis_service_instance = SynthesisService()
+            self._synthesis_service_instance = SynthesisService(
+                domain_resolver=self.create_domain_definition_repository().get_domain
+            )
         return self._synthesis_service_instance
 
     def create_relrec_service(self) -> "RelrecService":
