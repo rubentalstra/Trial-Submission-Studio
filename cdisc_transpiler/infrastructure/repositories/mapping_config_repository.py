@@ -1,7 +1,7 @@
 """Mapping configuration repository for loading/saving mapping configs.
 
 This module provides infrastructure-level I/O for mapping configurations.
-The mapping_module uses this as its implementation.
+This repository is the canonical implementation used by configuration I/O.
 """
 
 from __future__ import annotations

@@ -7,7 +7,6 @@ import pandas as pd
 from .base import BaseDomainProcessor
 from ..transformers import DateTransformer, NumericTransformer, TextTransformer
 from ....pandas_utils import ensure_numeric_series
-from ....terminology_module import get_controlled_terminology
 
 
 class PRProcessor(BaseDomainProcessor):
@@ -63,7 +62,7 @@ class PRProcessor(BaseDomainProcessor):
         frame["PRTPTNUM"] = frame.get("PRTPTNUM", 1)
         frame["PRELTM"] = frame.get("PRELTM", "PT0H")
         # PRDECOD should use CT value; default to first submission value if invalid/missing
-        ct_prdecod = get_controlled_terminology(variable="PRDECOD")
+        ct_prdecod = self._get_controlled_terminology(variable="PRDECOD")
         if ct_prdecod:
             canonical_default = sorted(ct_prdecod.submission_values)[0]
             if "PRDECOD" not in frame.columns:

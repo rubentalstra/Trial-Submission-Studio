@@ -8,7 +8,7 @@ This is core SDTM business logic that belongs in the domain layer.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Callable
 
 from .base import BaseDomainProcessor, DefaultDomainProcessor
 
@@ -33,7 +33,8 @@ from .te import TEProcessor
 
 if TYPE_CHECKING:
     from ....domains_module import SDTMDomain
-    from ....metadata_module import StudyMetadata
+    from ...entities.controlled_terminology import ControlledTerminology
+    from ...entities.study_metadata import StudyMetadata
 
 
 class DomainProcessorRegistry:
@@ -52,12 +53,13 @@ class DomainProcessorRegistry:
         domain: "SDTMDomain",
         reference_starts: dict[str, str] | None = None,
         metadata: "StudyMetadata | None" = None,
+        ct_resolver: "Callable[[str | None, str | None], ControlledTerminology | None] | None" = None,
     ) -> BaseDomainProcessor:
         """Get the appropriate processor for a domain."""
         processor_class = self._processors.get(
             domain.code.upper(), self._default_processor
         )
-        return processor_class(domain, reference_starts, metadata)
+        return processor_class(domain, reference_starts, metadata, ct_resolver)
 
 
 # Global registry instance
@@ -88,9 +90,10 @@ def get_domain_processor(
     domain: "SDTMDomain",
     reference_starts: dict[str, str] | None = None,
     metadata: "StudyMetadata | None" = None,
+    ct_resolver: "Callable[[str | None, str | None], ControlledTerminology | None] | None" = None,
 ) -> BaseDomainProcessor:
     """Get a processor for the specified domain."""
-    return _registry.get_processor(domain, reference_starts, metadata)
+    return _registry.get_processor(domain, reference_starts, metadata, ct_resolver)
 
 
 __all__ = [

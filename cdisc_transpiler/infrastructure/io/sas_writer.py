@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from ...mapping_module import MappingConfig
+    from ...domain.entities.mapping import MappingConfig
 
 from .sas.generator import generate_sas_program
 from .sas.writer import write_sas_file

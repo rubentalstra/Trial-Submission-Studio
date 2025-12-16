@@ -5,24 +5,32 @@
 [![Tests](https://img.shields.io/badge/tests-485%20passing-brightgreen.svg)](tests/)
 [![Coverage](https://img.shields.io/badge/coverage-76%25-green.svg)](tests/)
 
-A modern Python tool for transpiling clinical trial data to CDISC SDTM format with support for multiple output formats (XPT, Dataset-XML, Define-XML, and SAS).
+A modern Python tool for transpiling clinical trial data to CDISC SDTM format
+with support for multiple output formats (XPT, Dataset-XML, Define-XML, and
+SAS).
 
 ## ✨ Features
 
-- 🔄 **Multiple Output Formats**: Generate XPT, Dataset-XML, Define-XML 2.1, and SAS programs
+- 🔄 **Multiple Output Formats**: Generate XPT, Dataset-XML, Define-XML 2.1, and
+  SAS programs
 - 📊 **SDTM Compliance**: Automatic transformation to SDTM 3.2/3.4 standards
-- 🏗️ **Clean Architecture**: Ports & Adapters (Hexagonal) architecture for maintainability
+- 🏗️ **Clean Architecture**: Ports & Adapters (Hexagonal) architecture for
+  maintainability
 - ⚡ **High Performance**: Process studies with 18+ domains in ~2 seconds
 - 🧪 **Comprehensive Testing**: 485+ tests with 76% code coverage
-- ✅ **Validation Suite**: 42 tests for SDTM compliance and file format validation
+- ✅ **Validation Suite**: 42 tests for SDTM compliance and file format
+  validation
 - 📈 **Performance Benchmarks**: Track and prevent performance regressions
-- 🎯 **Domain Synthesis**: Automatic generation of supplemental and variant domains
+- 🎯 **Domain Synthesis**: Automatic generation of supplemental and variant
+  domains
 
 ## 🏗️ Architecture
 
-This project follows **Ports & Adapters (Hexagonal Architecture)** for clean separation of concerns.
+This project follows **Ports & Adapters (Hexagonal Architecture)** for clean
+separation of concerns.
 
-For the current boundaries, known violations, and the migration plan, see `docs/ARCHITECTURE.md`.
+For the current boundaries, known violations, and the migration plan, see
+`docs/ARCHITECTURE.md`.
 
 ```
 cdisc_transpiler/
@@ -45,9 +53,11 @@ cdisc_transpiler/
 ```
 
 **Benefits:**
+
 - ✅ **Testability**: Business logic isolated from I/O and CLI
 - ✅ **Maintainability**: Clear boundaries and single responsibility
-- ✅ **Flexibility**: Easy to swap implementations (e.g., different file formats)
+- ✅ **Flexibility**: Easy to swap implementations (e.g., different file
+  formats)
 - ✅ **Scalability**: Can add new features without touching core logic
 
 ## 📦 Installation
@@ -142,12 +152,12 @@ The project has comprehensive test coverage across multiple test suites:
 
 ### Test Suites
 
-| Suite | Tests | Coverage | Purpose |
-|-------|-------|----------|---------|
-| **Unit Tests** | 440+ | 76% | Core business logic, transformations, presenters |
-| **Integration Tests** | 40+ | - | End-to-end workflows with real data |
-| **Validation Tests** | 42 | - | SDTM compliance, XPT/XML/Define-XML format validation |
-| **Performance Benchmarks** | 3 | - | Track and prevent performance regressions |
+| Suite                      | Tests | Coverage | Purpose                                               |
+| -------------------------- | ----- | -------- | ----------------------------------------------------- |
+| **Unit Tests**             | 440+  | 76%      | Core business logic, transformations, presenters      |
+| **Integration Tests**      | 40+   | -        | End-to-end workflows with real data                   |
+| **Validation Tests**       | 42    | -        | SDTM compliance, XPT/XML/Define-XML format validation |
+| **Performance Benchmarks** | 3     | -        | Track and prevent performance regressions             |
 
 ### Running Tests
 
@@ -285,11 +295,7 @@ cdisc-transpiler/
 │   │   ├── logging/
 │   │   └── repositories/      # CSV/Excel/SAS + metadata/CT/spec access
 │   ├── domains_module/        # SDTM domain metadata registry (compat layer)
-│   ├── terminology_module/    # Controlled terminology helpers (mid-migration)
 │   ├── transformations/       # Transformation pipeline (VS/LB wide-to-long)
-│   ├── mapping_module/        # Mapping engine (fuzzy + metadata-aware)
-│   ├── metadata_module/       # Metadata loading (compat layer)
-│   ├── legacy/                # Deprecated legacy coordinators (compat)
 │   └── services/              # Layer-ambiguous services (mid-migration)
 ├── tests/                    # Test suites
 ├── mockdata/                 # Test data (DEMO studies)
@@ -315,18 +321,16 @@ We welcome contributions! Here's how you can help:
 - Run type checking (`pyright`)
 - Update documentation as needed
 
-See [implementation_tickets.md](implementation_tickets.md) for planned features and tasks.
-
 ## 📚 Documentation
 
 - **CDISC SDTM Standards**: https://library.cdisc.org/browser/#/mdr/sdtmig/3-4
-- **Test Coverage Report**: [TEST_COVERAGE_REPORT.md](TEST_COVERAGE_REPORT.md)
-- **Integration Test Report**: [TEST_INTEGRATION_REPORT.md](TEST_INTEGRATION_REPORT.md)
-- **Performance Benchmarks**: [tests/integration/BENCHMARK_README.md](tests/integration/BENCHMARK_README.md)
+- **Performance Benchmarks**:
+  [tests/integration/BENCHMARK_README.md](tests/integration/BENCHMARK_README.md)
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License - see the LICENSE file for
+details.
 
 ## 🔗 Links
 

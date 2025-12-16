@@ -35,7 +35,7 @@ class LBTransformer(WideToLongTransformer):
     - LBDTC: Multiple date variations (blood/stool/urine sample dates)
 
     Example:
-        >>> from cdisc_transpiler.terminology_module import normalize_testcd, get_testcd_label
+        >>> # Terminology normalization is provided via the application's TerminologyPort.
         >>> transformer = LBTransformer(
         ...     test_code_normalizer=normalize_testcd,
         ...     test_label_getter=get_testcd_label

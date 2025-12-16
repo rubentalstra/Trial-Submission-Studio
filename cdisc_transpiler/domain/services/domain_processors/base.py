@@ -7,13 +7,14 @@ post-processing logic unique to each SDTM domain.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 import pandas as pd
 
 if TYPE_CHECKING:
     from ....domains_module import SDTMDomain
-    from ....metadata_module import StudyMetadata
+    from ...entities.controlled_terminology import ControlledTerminology
+    from ...entities.study_metadata import StudyMetadata
 
 from ..transformers import TextTransformer
 
@@ -30,6 +31,7 @@ class BaseDomainProcessor(ABC):
         domain: "SDTMDomain",
         reference_starts: dict[str, str] | None = None,
         metadata: "StudyMetadata | None" = None,
+        ct_resolver: "Callable[[str | None, str | None], ControlledTerminology | None] | None" = None,
     ):
         """Initialize the domain processor.
 
@@ -41,7 +43,18 @@ class BaseDomainProcessor(ABC):
         self.domain = domain
         self.reference_starts = reference_starts or {}
         self.metadata = metadata
+        self._ct_resolver = ct_resolver
         self.config: Any | None = None
+
+    def _get_controlled_terminology(
+        self,
+        *,
+        codelist_code: str | None = None,
+        variable: str | None = None,
+    ) -> "ControlledTerminology | None":
+        if self._ct_resolver is None:
+            return None
+        return self._ct_resolver(codelist_code, variable)
 
     @abstractmethod
     def process(self, frame: pd.DataFrame) -> None:

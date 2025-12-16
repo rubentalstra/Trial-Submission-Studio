@@ -1,7 +1,7 @@
 """Study metadata loader for Items.csv and CodeLists.csv files.
 
 This module provides infrastructure-level loading of study metadata files.
-The metadata_module uses this as its implementation.
+This loader is the canonical implementation for reading study metadata.
 """
 
 from __future__ import annotations

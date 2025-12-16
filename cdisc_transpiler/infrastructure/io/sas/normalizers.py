@@ -6,13 +6,19 @@ including domain-specific normalizers and controlled terminology handling.
 
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import TYPE_CHECKING
 
-from cdisc_transpiler.terminology_module import get_controlled_terminology
+from ...repositories.ct_repository import CTRepository
 
 if TYPE_CHECKING:
     from cdisc_transpiler.domains_module import SDTMVariable
-    from cdisc_transpiler.mapping_module import ColumnMapping
+    from cdisc_transpiler.domain.entities.mapping import ColumnMapping
+
+
+@lru_cache(maxsize=1)
+def _ct_repo() -> CTRepository:
+    return CTRepository()
 
 
 def _synonyms(*values: str) -> set[str]:
@@ -184,10 +190,16 @@ _UPCASE_VARIABLES = {
 } | _YES_NO_TARGETS
 
 
-def _get_ct_value_map(variable_name: str) -> dict[str, set[str]] | None:
-    """Get value map from controlled terminology registry."""
+def _get_ct_value_map(
+    variable_name: str, variable: "SDTMVariable | None"
+) -> dict[str, set[str]] | None:
+    """Get value map from controlled terminology repository."""
 
-    ct = get_controlled_terminology(variable=variable_name)
+    ct = None
+    if variable is not None and variable.codelist_code:
+        ct = _ct_repo().get_by_code(variable.codelist_code)
+    if ct is None:
+        ct = _ct_repo().get_by_name(variable_name)
     if ct is None:
         return None
 
@@ -233,7 +245,7 @@ def render_assignment(mapping: "ColumnMapping", variable: "SDTMVariable | None")
         return f"{mapping.target_variable} = {expr};"
 
     # First check controlled terminology registry
-    ct_value_map = _get_ct_value_map(target_name)
+    ct_value_map = _get_ct_value_map(target_name, variable)
     if ct_value_map:
         return _render_value_map(mapping, ct_value_map)
 

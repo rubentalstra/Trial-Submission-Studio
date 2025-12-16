@@ -12,7 +12,7 @@ from .normalizers import render_assignment
 
 if TYPE_CHECKING:
     from cdisc_transpiler.domains_module import SDTMDomain, SDTMVariable
-    from cdisc_transpiler.mapping_module import ColumnMapping, MappingConfig
+    from cdisc_transpiler.domain.entities.mapping import ColumnMapping, MappingConfig
 
 
 def get_default_assignments(domain: SDTMDomain, config: MappingConfig) -> list[str]:

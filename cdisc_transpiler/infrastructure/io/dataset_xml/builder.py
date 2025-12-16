@@ -11,7 +11,7 @@ from xml.etree import ElementTree as ET
 
 if TYPE_CHECKING:
     import pandas as pd
-    from cdisc_transpiler.mapping_module import MappingConfig
+    from cdisc_transpiler.domain.entities.mapping import MappingConfig
 
 from cdisc_transpiler.domains_module import SDTMDomain, get_domain
 from .constants import (

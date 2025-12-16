@@ -7,7 +7,6 @@ from typing import Any, cast
 import pandas as pd
 
 from .base import BaseDomainProcessor
-from ....terminology_module import get_controlled_terminology
 from ....pandas_utils import ensure_series
 
 
@@ -30,8 +29,8 @@ class TSProcessor(BaseDomainProcessor):
             frame.get("STUDYID", pd.Series(["STUDY"])), index=frame.index
         )
         base_study = str(study_series.iloc[0]) if len(study_series) > 0 else "STUDY"
-        ct_parmcd = get_controlled_terminology(variable="TSPARMCD")
-        ct_parm = get_controlled_terminology(variable="TSPARM")
+        ct_parmcd = self._get_controlled_terminology(variable="TSPARMCD")
+        ct_parm = self._get_controlled_terminology(variable="TSPARM")
 
         def _parm_name(code: str) -> str:
             if not ct_parmcd or not ct_parm:

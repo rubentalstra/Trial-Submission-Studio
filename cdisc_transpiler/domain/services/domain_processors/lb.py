@@ -6,7 +6,6 @@ import pandas as pd
 
 from .base import BaseDomainProcessor
 from ..transformers import DateTransformer, NumericTransformer, TextTransformer
-from ....terminology_module import get_controlled_terminology
 from ....pandas_utils import ensure_numeric_series, ensure_series
 
 
@@ -192,7 +191,7 @@ class LBProcessor(BaseDomainProcessor):
             stresc_str = frame["LBSTRESC"].astype("string").fillna("").str.strip()
             needs_unit = frame["LBSTRESU"].astype("string").fillna("").str.strip() == ""
             frame.loc[needs_unit & (stresc_str != ""), "LBSTRESU"] = "U/L"
-        ct_lb_units = get_controlled_terminology(variable="LBORRESU")
+        ct_lb_units = self._get_controlled_terminology(variable="LBORRESU")
         if ct_lb_units:
             for col in ("LBORRESU", "LBSTRESU"):
                 if col in frame.columns:

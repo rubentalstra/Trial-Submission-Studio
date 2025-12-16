@@ -19,7 +19,9 @@ from cdisc_transpiler.domain.entities.study_metadata import (
     SourceColumn,
     StudyMetadata,
 )
-from cdisc_transpiler.terminology_module.models import ControlledTerminology
+from cdisc_transpiler.domain.entities.controlled_terminology import (
+    ControlledTerminology,
+)
 
 
 class MockCTRepository:

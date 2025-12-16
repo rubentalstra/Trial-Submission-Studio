@@ -14,7 +14,7 @@ from cdisc_transpiler.application.models import (
     OutputResult,
 )
 from cdisc_transpiler.infrastructure.io import FileGenerator
-from cdisc_transpiler.mapping_module import ColumnMapping, MappingConfig
+from cdisc_transpiler.domain.entities.mapping import ColumnMapping, MappingConfig
 
 
 @pytest.fixture

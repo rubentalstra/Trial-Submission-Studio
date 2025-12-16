@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 import pandas as pd
 
 if TYPE_CHECKING:
-    from cdisc_transpiler.mapping_module import MappingConfig
+    from cdisc_transpiler.domain.entities.mapping import MappingConfig
 
 from .dataset_xml.writer import write_dataset_xml
 

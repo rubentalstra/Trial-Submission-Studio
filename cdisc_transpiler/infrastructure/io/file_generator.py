@@ -27,7 +27,7 @@ if TYPE_CHECKING:
         SASWriterPort,
         XPTWriterPort,
     )
-    from ...mapping_module import MappingConfig
+    from ...domain.entities.mapping import MappingConfig
 
 # Import domain helper (still needed for resolving dataset names)
 from ...domains_module import get_domain

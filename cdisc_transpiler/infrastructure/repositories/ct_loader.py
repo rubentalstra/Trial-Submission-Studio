@@ -1,7 +1,9 @@
-"""Controlled terminology loader from CDISC CT CSV files.
+"""Controlled terminology loader (infrastructure).
 
-This module handles loading and parsing controlled terminology
-data from CSV files in the Controlled_Terminology directory.
+This module loads CDISC Controlled Terminology (CT) from CT CSV files on disk.
+
+It intentionally lives in the infrastructure layer because it performs
+filesystem I/O and depends on the CT CSV file layout.
 """
 
 from __future__ import annotations
@@ -12,18 +14,10 @@ from typing import Any, Dict, List, cast
 
 import pandas as pd
 
-from .models import ControlledTerminology
+from ...domain.entities.controlled_terminology import ControlledTerminology
 
 
 def _split_synonyms(raw: str | None) -> list[str]:
-    """Split a synonyms string into individual synonyms.
-
-    Args:
-        raw: Raw synonyms string (semicolon or comma separated)
-
-    Returns:
-        List of individual synonym strings
-    """
     if not raw:
         return []
     tokens: list[str] = []
@@ -37,16 +31,6 @@ def _split_synonyms(raw: str | None) -> list[str]:
 
 
 def _clean_value(raw: object) -> str:
-    """Clean a raw value to string form.
-
-    Handles None, NaN, and other missing value types.
-
-    Args:
-        raw: Raw value from CSV
-
-    Returns:
-        Cleaned string value
-    """
     if raw is None:
         return ""
     if isinstance(raw, (pd.Series, pd.DataFrame)):
@@ -71,41 +55,24 @@ def _clean_value(raw: object) -> str:
 
 
 def _iter_ct_files(ct_dir: Path) -> List[Path]:
-    """Return all CT CSV files in the specified directory.
-
-    Args:
-        ct_dir: Path to controlled terminology directory
-
-    Returns:
-        Sorted list of CSV file paths matching *CT_*.csv pattern
-    """
     if not ct_dir.exists():
         return []
     return sorted(ct_dir.glob("*CT_*.csv"))
 
 
 def _load_ct_rows(ct_dir: Path) -> Dict[str, list[dict[str, Any]]]:
-    """Load CT rows grouped by codelist code from all CT CSVs.
-
-    Args:
-        ct_dir: Path to controlled terminology directory
-
-    Returns:
-        Dictionary mapping codelist codes to lists of row dictionaries
-    """
     grouped: Dict[str, list[dict[str, Any]]] = {}
     for csv_path in _iter_ct_files(ct_dir):
         try:
             records = pd.read_csv(csv_path).to_dict(orient="records")
         except Exception:
-            continue  # Skip unreadable files rather than failing the entire registry
-        standard_hint = csv_path.stem  # e.g., SDTM_CT_2025-09-26
+            continue
+        standard_hint = csv_path.stem
         for raw_row in records:
             row: dict[str, Any] = {str(k): v for k, v in raw_row.items()}
             code = str(row.get("Codelist Code") or "").strip().upper()
             if not code:
                 continue
-            # Stash the source standard/date if the CSV omitted it
             row.setdefault("Standard and Date", standard_hint)
             row.setdefault("_source_file", csv_path.name)
             grouped.setdefault(code, []).append(row)
@@ -115,16 +82,8 @@ def _load_ct_rows(ct_dir: Path) -> Dict[str, list[dict[str, Any]]]:
 def _merge_ct(
     base: ControlledTerminology, other: ControlledTerminology
 ) -> ControlledTerminology:
-    """Merge two CT objects for the same codelist code.
-
-    Args:
-        base: Base CT object (takes precedence)
-        other: Other CT object to merge
-
-    Returns:
-        Merged ControlledTerminology object
-    """
     merged_submission = base.submission_values | other.submission_values
+
     merged_synonyms = None
     if base.synonyms or other.synonyms:
         merged_synonyms = {}
@@ -132,6 +91,7 @@ def _merge_ct(
             merged_synonyms.update(other.synonyms)
         if base.synonyms:
             merged_synonyms.update(base.synonyms)
+
     merged_nci = {**other.nci_codes, **base.nci_codes}
     merged_definitions = {**other.definitions, **base.definitions}
     merged_pref = {**other.preferred_terms, **base.preferred_terms}
@@ -151,8 +111,6 @@ def _merge_ct(
         sources=sources,
         definitions=merged_definitions,
         preferred_terms=merged_pref,
-        # Use base.variable if available, otherwise fall back to codelist_name
-        # since CT variable names often match the codelist name (e.g., SEX)
         variable=base.variable or other.variable or codelist_name,
     )
 
@@ -160,14 +118,8 @@ def _merge_ct(
 def build_registry(
     ct_dir: Path,
 ) -> tuple[Dict[str, ControlledTerminology], Dict[str, ControlledTerminology]]:
-    """Build registries keyed by codelist code and by codelist name.
+    """Build registries keyed by codelist code and by codelist name."""
 
-    Args:
-        ct_dir: Path to controlled terminology directory
-
-    Returns:
-        Tuple of (registry_by_code, registry_by_name)
-    """
     registry_by_code: Dict[str, ControlledTerminology] = {}
     registry_by_name: Dict[str, ControlledTerminology] = {}
     grouped = _load_ct_rows(ct_dir)
@@ -175,11 +127,13 @@ def build_registry(
     for code, rows in grouped.items():
         if not rows:
             continue
+
         submission_values: set[str] = set()
         synonyms: dict[str, str] = {}
         nci_codes: dict[str, str] = {}
         definitions: dict[str, str] = {}
         preferred_terms: dict[str, str] = {}
+
         extensible = (
             _clean_value(rows[0].get("Codelist Extensible (Yes/No)")).lower() == "yes"
         )
@@ -193,17 +147,20 @@ def build_registry(
                 continue
             canonical_value = submission
             submission_values.add(canonical_value)
+
             nci = _clean_value(row.get("Code"))
             if nci:
                 nci_codes[canonical_value] = nci
                 nci_codes[canonical_value.upper()] = nci
+
             definition = _clean_value(row.get("CDISC Definition"))
             if definition:
                 definitions[canonical_value] = definition
+
             pref_term = _clean_value(row.get("NCI Preferred Term"))
             if pref_term:
                 preferred_terms[canonical_value] = pref_term
-            # Store synonyms with uppercase keys for case-insensitive lookup
+
             synonyms[canonical_value.upper()] = canonical_value
             for syn in _split_synonyms(_clean_value(row.get("CDISC Synonym(s)"))):
                 synonyms[syn.upper()] = canonical_value
@@ -225,7 +182,7 @@ def build_registry(
         if code in registry_by_code:
             ct = _merge_ct(registry_by_code[code], ct)
         registry_by_code[code] = ct
-        # Keep the most complete CT for a given codelist name
+
         existing = registry_by_name.get(name)
         if existing:
             registry_by_name[name] = _merge_ct(existing, ct)

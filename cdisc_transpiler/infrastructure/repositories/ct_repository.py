@@ -10,9 +10,12 @@ from pathlib import Path
 
 from ...application.ports.repositories import CTRepositoryPort
 from ...config import TranspilerConfig
-from ...terminology_module.loader import build_registry
-from ...terminology_module.models import ControlledTerminology
+from ...domain.entities.controlled_terminology import ControlledTerminology
+from .ct_loader import build_registry
 from ..caching import MemoryCache
+
+
+_DEFAULT_CT_CACHE = MemoryCache()
 
 
 class CTRepository:
@@ -45,7 +48,9 @@ class CTRepository:
                        If None, uses latest version folder.
         """
         self._config = config or TranspilerConfig()
-        self._cache = cache or MemoryCache()
+        # Default to a shared cache so repeated CTRepository() instantiations
+        # (e.g., per normalization call) don't re-load large CT registries.
+        self._cache = cache or _DEFAULT_CT_CACHE
         self._ct_version = ct_version
         self._registry_cache_key = "ct_registry"
 

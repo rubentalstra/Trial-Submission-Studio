@@ -113,13 +113,16 @@ below may fail until the hot-path errors are addressed.
 - Logging: `cdisc_transpiler/infrastructure/logging/` (`ConsoleLogger`,
   `NullLogger`)
 
-#### `cdisc_transpiler/metadata_module/` (Compatibility layer)
+#### Removed compatibility wrappers
 
-- Mostly re-exports:
-  - metadata entities now live in
-    `cdisc_transpiler/domain/entities/study_metadata.py`
-  - loaders implemented in
-    `cdisc_transpiler/infrastructure/repositories/study_metadata_loader.py`
+The following wrapper packages have been removed after migrating all internal
+call sites to the clean layers:
+
+- `cdisc_transpiler/io_module/`
+- `cdisc_transpiler/mapping_module/`
+- `cdisc_transpiler/metadata_module/`
+- `cdisc_transpiler/submission_module/`
+- `cdisc_transpiler/terminology_module/`
 
 ### Other important packages (current state)
 
@@ -129,18 +132,10 @@ proper layer, or be reduced to thin compatibility shims.
 
 - `cdisc_transpiler/domains_module/`: SDTM domain/variable registry loaded from
   spec CSVs. Currently re-exports domain entities for backwards compatibility.
-- `cdisc_transpiler/terminology_module/`: controlled terminology registry +
-  normalization helpers. Duplicates infrastructure repository responsibilities
-  today.
 - `cdisc_transpiler/transformations/`: transformation framework and
   domain-specific transformers (VS/LB wide-to-long).
-- `cdisc_transpiler/mapping_module/`: fuzzy/metadata-aware mapping engine;
-  contains compatibility wrappers (`config_io.py` delegates to infrastructure).
 - Output generation implementations live under
   `cdisc_transpiler/infrastructure/io/` (XPT, Dataset-XML, Define-XML, SAS).
-- `cdisc_transpiler/io_module/`, `cdisc_transpiler/submission_module/`:
-  compatibility wrappers over the newer repository/domain-service
-  implementations.
 - `cdisc_transpiler/services/`: layer-ambiguous “service” bucket (mixes
   domain/application/infrastructure responsibilities).
 
@@ -154,7 +149,7 @@ Be careful with these, because downstream users may import them directly:
   `SDTMDomain`/`SDTMVariable` from
   `cdisc_transpiler/domain/entities/sdtm_domain.py`.
 - Wrapper modules under `cdisc_transpiler/*_module/` may be externally imported
-  even if internally we want to migrate away from them.
+  (e.g. `domains_module`) even if internally we want to migrate away from them.
 
 ### Legacy code candidates (safe-to-remove once call sites migrate)
 
@@ -168,19 +163,9 @@ Be careful with these, because downstream users may import them directly:
 
 ### Rewrapping / compatibility-layer candidates (thin pass-through)
 
-These are not “bad” per se, but should be reduced/removed once internal call
-sites stop using them:
-
-- `cdisc_transpiler/io_module/readers.py` (delegates to
-  `infrastructure.repositories.study_data_repository`)
-- `cdisc_transpiler/mapping_module/config_io.py` (delegates to
-  `infrastructure.repositories.mapping_config_repository`)
-- `cdisc_transpiler/metadata_module/loaders.py` (delegates to
-  `infrastructure.repositories.study_metadata_loader`)
-- `cdisc_transpiler/submission_module/suppqual.py` (delegates to
-  `domain.services.suppqual_service`)
-- `cdisc_transpiler/cli/logging_config.py` (global logger; bypasses
-  `LoggerPort`)
+The wrapper packages listed above have been removed. Remaining candidates for
+cleanup are layer-crossing helpers such as
+`cdisc_transpiler/cli/logging_config.py` (global logger; bypasses `LoggerPort`).
 
 ## 2) Clean/Hexagonal Diagnosis (Boundary Violations)
 

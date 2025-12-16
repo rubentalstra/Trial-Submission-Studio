@@ -16,7 +16,7 @@ from cdisc_transpiler.application.models import (
     OutputRequest,
     OutputResult,
 )
-from cdisc_transpiler.mapping_module.models import MappingConfig
+from cdisc_transpiler.domain.entities.mapping import MappingConfig
 
 
 class MockLogger:

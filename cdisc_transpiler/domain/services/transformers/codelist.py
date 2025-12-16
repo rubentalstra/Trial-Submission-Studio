@@ -2,23 +2,35 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Sequence
+from typing import TYPE_CHECKING, Any, Callable, Protocol, Sequence
 
 import pandas as pd
 
 from ....domains_module import SDTMVariable
+from ...entities.controlled_terminology import ControlledTerminology
 from ....pandas_utils import ensure_numeric_series, ensure_series
-from ....terminology_module import get_controlled_terminology
 
 if TYPE_CHECKING:
-    from ....metadata_module import StudyMetadata
+    from ...entities.study_metadata import StudyMetadata
+
+
+class CTResolver(Protocol):
+    def __call__(
+        self, *, codelist_code: str | None = None, variable: str | None = None
+    ) -> ControlledTerminology | None: ...
 
 
 class CodelistTransformer:
     """Transforms and validates controlled terminology values for SDTM compliance."""
 
-    def __init__(self, metadata: "StudyMetadata | None" = None):
+    def __init__(
+        self,
+        metadata: "StudyMetadata | None" = None,
+        *,
+        ct_resolver: CTResolver | None = None,
+    ):
         self.metadata = metadata
+        self._ct_resolver = ct_resolver
 
     def apply_codelist_transformation(
         self,
@@ -71,15 +83,22 @@ class CodelistTransformer:
 
     @staticmethod
     def apply_codelist_validations(
-        frame: pd.DataFrame, domain_variables: Sequence[SDTMVariable]
+        frame: pd.DataFrame,
+        domain_variables: Sequence[SDTMVariable],
+        *,
+        ct_resolver: CTResolver | None = None,
     ) -> None:
         for var in domain_variables:
             if var.codelist_code and var.name in frame.columns:
                 if var.name == "TSVCDREF":
                     continue
-                ct_lookup = get_controlled_terminology(
-                    codelist_code=var.codelist_code
-                ) or get_controlled_terminology(variable=var.name)
+
+                resolver = ct_resolver
+                ct_lookup = None
+                if resolver is not None:
+                    ct_lookup = resolver(codelist_code=var.codelist_code) or resolver(
+                        variable=var.name
+                    )
                 if ct_lookup is None:
                     continue
                 normalizer = ct_lookup.normalize
@@ -98,12 +117,17 @@ class CodelistTransformer:
 
     @staticmethod
     def validate_controlled_terms(
-        frame: pd.DataFrame, domain_variables: list[SDTMVariable]
+        frame: pd.DataFrame,
+        domain_variables: list[SDTMVariable],
+        *,
+        ct_resolver: CTResolver | None = None,
     ) -> None:
         for variable in domain_variables:
             if not variable.codelist_code:
                 continue
-            ct = get_controlled_terminology(codelist_code=variable.codelist_code)
+            if ct_resolver is None:
+                continue
+            ct = ct_resolver(codelist_code=variable.codelist_code)
             if not ct or variable.name not in frame.columns:
                 continue
             invalid = ct.invalid_values(frame[variable.name])

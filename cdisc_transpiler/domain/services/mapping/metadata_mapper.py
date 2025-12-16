@@ -33,8 +33,8 @@ class MetadataAwareMapper:
     3. Fuzzy matching with confidence threshold
 
     Example:
-        >>> from cdisc_transpiler.metadata_module import load_study_metadata
-        >>> metadata = load_study_metadata("study_folder")
+        >>> # Provide `StudyMetadata` from the application/infrastructure layer.
+        >>> metadata = None
         >>> mapper = MetadataAwareMapper("DM", metadata, min_confidence=0.7)
         >>> suggestions = mapper.suggest(source_df)
     """

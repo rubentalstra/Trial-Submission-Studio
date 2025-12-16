@@ -9,12 +9,13 @@ from __future__ import annotations
 
 from typing import Iterable
 from xml.etree import ElementTree as ET
+from functools import lru_cache
 
 import pandas as pd
 
 from cdisc_transpiler.domains_module import SDTMVariable
 from .variable_builder import get_datatype
-from cdisc_transpiler.terminology_module import get_controlled_terminology
+from cdisc_transpiler.infrastructure.repositories.ct_repository import CTRepository
 from .constants import (
     ODM_NS,
     DEF_NS,
@@ -25,6 +26,33 @@ from .constants import (
     MEDDRA_CODELIST_NAME,
 )
 from ..xml_utils import tag, attr
+
+
+@lru_cache(maxsize=1)
+def _ct_repo() -> CTRepository:
+    return CTRepository()
+
+
+def _get_ct(variable: SDTMVariable, domain_code: str):
+    """Resolve controlled terminology for a variable if available."""
+    if variable.codelist_code:
+        ct = _ct_repo().get_by_code(variable.codelist_code)
+        if ct is not None:
+            return ct
+
+    # Fallback: try to find codelist code via domain metadata
+    try:
+        from cdisc_transpiler.domains_module import get_domain
+
+        domain = get_domain(domain_code)
+        for var in domain.variables:
+            if var.name.upper() == variable.name.upper() and var.codelist_code:
+                return _ct_repo().get_by_code(var.codelist_code)
+    except Exception:
+        pass
+
+    # Last resort: try registry lookup by name
+    return _ct_repo().get_by_name(variable.name)
 
 
 # MedDRA variables that reference external MedDRA dictionary
@@ -89,7 +117,7 @@ def build_code_list_element(
     code_list = ET.Element(tag(ODM_NS, "CodeList"), attrib=attrib)
 
     use_enumerated = should_use_enumerated_item(variable.name)
-    ct = get_controlled_terminology(variable=variable.name)
+    ct = _get_ct(variable, domain_code)
     extended_set = {
         str(val).strip() for val in (extended_values or []) if str(val).strip()
     }
@@ -191,10 +219,10 @@ def collect_extended_codelist_values(
     if needs_meddra(variable.name):
         return set()
 
-    ct = get_controlled_terminology(variable=variable.name) or (
-        get_controlled_terminology(codelist_code=variable.codelist_code)
+    ct = (
+        _ct_repo().get_by_code(variable.codelist_code)
         if variable.codelist_code
-        else None
+        else _ct_repo().get_by_name(variable.name)
     )
     if ct is None:
         return set()

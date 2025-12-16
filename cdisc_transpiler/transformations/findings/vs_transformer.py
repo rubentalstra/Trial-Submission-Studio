@@ -35,7 +35,7 @@ class VSTransformer(WideToLongTransformer):
     - VSPOS: Position during measurement
 
     Example:
-        >>> from cdisc_transpiler.terminology_module import normalize_testcd, get_testcd_label
+        >>> # Terminology normalization is provided via the application's TerminologyPort.
         >>> transformer = VSTransformer(
         ...     test_code_normalizer=normalize_testcd,
         ...     test_label_getter=get_testcd_label

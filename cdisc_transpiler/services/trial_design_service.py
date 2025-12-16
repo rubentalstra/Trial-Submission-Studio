@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 
 from ..constants import Defaults
 from ..domains_module import get_domain
-from ..mapping_module import ColumnMapping, build_config
+from ..domain.entities.mapping import ColumnMapping, build_config
 
 
 class TrialDesignService:

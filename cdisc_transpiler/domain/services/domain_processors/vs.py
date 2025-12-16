@@ -6,7 +6,6 @@ import pandas as pd
 
 from .base import BaseDomainProcessor
 from ..transformers import DateTransformer, NumericTransformer, TextTransformer
-from ....terminology_module import get_controlled_terminology
 from ....pandas_utils import ensure_numeric_series, ensure_series
 
 
@@ -119,7 +118,7 @@ class VSProcessor(BaseDomainProcessor):
             if "VSSTRESC" in frame.columns:
                 frame.loc[empty_res, "VSSTRESC"] = frame.loc[empty_res, "VSORRES"]
 
-        ct_units = get_controlled_terminology(variable="VSORRESU")
+        ct_units = self._get_controlled_terminology(variable="VSORRESU")
         if ct_units and "VSORRESU" in frame.columns:
             units = frame["VSORRESU"].astype("string").fillna("").str.strip()
             normalized_units = units.apply(ct_units.normalize)
@@ -159,7 +158,7 @@ class VSProcessor(BaseDomainProcessor):
             )
             frame.loc[not_done_mask, "VSLOBXFL"] = ""
         # Normalize test codes to valid CT; fall back to Heart Rate
-        ct_vstestcd = get_controlled_terminology(variable="VSTESTCD")
+        ct_vstestcd = self._get_controlled_terminology(variable="VSTESTCD")
         if ct_vstestcd and "VSTESTCD" in frame.columns:
             raw = frame["VSTESTCD"].astype("string").str.strip()
             canonical = raw.apply(ct_vstestcd.normalize)
@@ -170,7 +169,7 @@ class VSProcessor(BaseDomainProcessor):
                 frame["VSTEST"] = frame["VSTEST"].astype("string").fillna("")
                 empty_vstest = frame["VSTEST"].str.strip() == ""
                 frame.loc[empty_vstest, "VSTEST"] = frame.loc[empty_vstest, "VSTESTCD"]
-        ct_vstest = get_controlled_terminology(variable="VSTEST")
+        ct_vstest = self._get_controlled_terminology(variable="VSTEST")
         if ct_vstest and "VSTEST" in frame.columns:
             frame["VSTEST"] = (
                 frame["VSTEST"].astype("string").fillna("").apply(ct_vstest.normalize)

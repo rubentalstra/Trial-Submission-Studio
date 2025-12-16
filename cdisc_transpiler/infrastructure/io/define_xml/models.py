@@ -11,7 +11,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from cdisc_transpiler.mapping_module import MappingConfig
+from cdisc_transpiler.domain.entities.mapping import MappingConfig
 
 
 class DefineGenerationError(RuntimeError):

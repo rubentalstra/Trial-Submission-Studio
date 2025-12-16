@@ -21,7 +21,7 @@ from .utils import (
 )
 
 if TYPE_CHECKING:
-    from cdisc_transpiler.mapping_module import MappingConfig
+    from cdisc_transpiler.domain.entities.mapping import MappingConfig
 
 
 class SASProgramGenerator:
