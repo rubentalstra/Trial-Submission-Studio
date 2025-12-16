@@ -11,15 +11,17 @@ infrastructure I/O layer easier to navigate.
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from functools import lru_cache
 from pathlib import Path
 from typing import Iterable
 from xml.etree import ElementTree as ET
 
 import pandas as pd
 
+from cdisc_transpiler.application.ports.repositories import CTRepositoryPort
 from cdisc_transpiler.domain.entities.sdtm_domain import SDTMDomain, SDTMVariable
-from cdisc_transpiler.infrastructure.repositories.ct_repository import CTRepository
+from cdisc_transpiler.infrastructure.repositories.ct_repository import (
+    get_default_ct_repository,
+)
 from cdisc_transpiler.infrastructure.sdtm_spec.constants import CT_VERSION
 from cdisc_transpiler.infrastructure.sdtm_spec.registry import get_domain
 
@@ -536,14 +538,10 @@ def get_item_oid(variable: SDTMVariable, domain_code: str | None) -> str:
     return f"IT.{code}.{variable.name}"
 
 
-@lru_cache(maxsize=1)
-def _ct_repository() -> CTRepository:
-    return CTRepository()
-
-
 def _get_ct(variable: SDTMVariable, domain_code: str):
+    ct_repository: CTRepositoryPort = get_default_ct_repository()
     if variable.codelist_code:
-        ct = _ct_repository().get_by_code(variable.codelist_code)
+        ct = ct_repository.get_by_code(variable.codelist_code)
         if ct is not None:
             return ct
 
@@ -551,11 +549,11 @@ def _get_ct(variable: SDTMVariable, domain_code: str):
         domain = get_domain(domain_code)
         for var in domain.variables:
             if var.name.upper() == variable.name.upper() and var.codelist_code:
-                return _ct_repository().get_by_code(var.codelist_code)
+                return ct_repository.get_by_code(var.codelist_code)
     except Exception:
         pass
 
-    return _ct_repository().get_by_name(variable.name)
+    return ct_repository.get_by_name(variable.name)
 
 
 _MEDDRA_VARIABLES = {
@@ -696,10 +694,11 @@ def collect_extended_codelist_values(
     if needs_meddra(variable.name):
         return set()
 
+    ct_repository: CTRepositoryPort = get_default_ct_repository()
     ct = (
-        _ct_repository().get_by_code(variable.codelist_code)
+        ct_repository.get_by_code(variable.codelist_code)
         if variable.codelist_code
-        else _ct_repository().get_by_name(variable.name)
+        else ct_repository.get_by_name(variable.name)
     )
     if ct is None:
         return set()

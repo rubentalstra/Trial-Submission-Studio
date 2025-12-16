@@ -16,6 +16,8 @@ import pandas as pd
 from cdisc_transpiler.constants import Constraints, SDTMVersions
 from cdisc_transpiler.infrastructure.sdtm_spec.registry import get_domain
 
+from .xml_utils import attr, tag
+
 if TYPE_CHECKING:
     from cdisc_transpiler.domain.entities.mapping import MappingConfig
 
@@ -37,14 +39,6 @@ DEFAULT_SDTM_VERSION = SDTMVersions.DEFAULT_VERSION
 
 class DatasetXMLError(RuntimeError):
     """Raised when Dataset-XML generation or writing fails."""
-
-
-def tag(namespace: str, name: str) -> str:
-    return f"{{{namespace}}}{name}"
-
-
-def attr(namespace: str, name: str) -> str:
-    return f"{{{namespace}}}{name}"
 
 
 def _generate_item_oid(variable_name: str, dataset_name: str) -> str:

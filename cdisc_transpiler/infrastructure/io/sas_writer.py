@@ -10,14 +10,16 @@ modules to keep the I/O layer easier to navigate.
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from functools import lru_cache
 from pathlib import Path
 import re
 from typing import TYPE_CHECKING
 
 from jinja2 import Environment, StrictUndefined
 
-from cdisc_transpiler.infrastructure.repositories.ct_repository import CTRepository
+from cdisc_transpiler.application.ports.repositories import CTRepositoryPort
+from cdisc_transpiler.infrastructure.repositories.ct_repository import (
+    get_default_ct_repository,
+)
 from cdisc_transpiler.infrastructure.sdtm_spec.registry import get_domain
 
 if TYPE_CHECKING:
@@ -57,11 +59,6 @@ RUN;
 
 DEFAULT_STUDY_ID = "STUDY"
 SAS_FILE_ENCODING = "utf-8"
-
-
-@lru_cache(maxsize=1)
-def _ct_repository() -> CTRepository:
-    return CTRepository()
 
 
 _WHITESPACE_RE = re.compile(r"\s+")
@@ -107,11 +104,12 @@ def _parse_submission_values(raw: str | None) -> set[str]:
 def _get_ct_value_map(
     variable_name: str, variable: "SDTMVariable | None"
 ) -> dict[str, set[str]] | None:
+    ct_repository: CTRepositoryPort = get_default_ct_repository()
     ct = None
     if variable is not None and variable.codelist_code:
-        ct = _ct_repository().get_by_code(variable.codelist_code)
+        ct = ct_repository.get_by_code(variable.codelist_code)
     if ct is None:
-        ct = _ct_repository().get_by_name(variable_name)
+        ct = ct_repository.get_by_name(variable_name)
     if ct is None:
         return None
 

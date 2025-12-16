@@ -110,7 +110,7 @@ unless narrowly scoped and clearly layer-specific.
 If a module truly is a small, cohesive collection of helpers, prefer a name
 describing what it helps with, e.g.
 
-- `dataset_xml/value_formatting.py`
+- `infrastructure/io/xml_utils.py`
 
 ## Examples
 

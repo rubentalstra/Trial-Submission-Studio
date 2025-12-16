@@ -6,6 +6,7 @@ clean repository interface with configurable paths and caching.
 
 from __future__ import annotations
 
+from functools import lru_cache
 from pathlib import Path
 
 from ...application.ports.repositories import CTRepositoryPort
@@ -156,6 +157,16 @@ class CTRepository:
     def clear_cache(self) -> None:
         """Clear the cache to force re-reading from disk."""
         self._cache.clear()
+
+
+@lru_cache(maxsize=1)
+def get_default_ct_repository() -> CTRepositoryPort:
+    """Return a cached default CT repository instance.
+
+    The repository itself uses a shared in-memory cache, but centralizing the
+    default instance removes duplicated singleton patterns across adapters.
+    """
+    return CTRepository()
 
 
 # Verify protocol compliance at runtime (duck typing)
