@@ -591,73 +591,24 @@ class DomainProcessingUseCase:
             total_files=request.total_input_files,
         )
 
-        # Pinnacle 21 SD1097: provide Treatment Emergent flag in SUPPAE.
-        # Compute TEAE using AESTDTC relative to RFSTDTC (per-subject baseline).
-        # If we cannot compute reliably, default to "Y" to satisfy presence checks.
-        if request.domain_code.upper() == "AE" and not domain_df.empty:
-            if {"USUBJID", "AESEQ"} <= set(domain_df.columns):
-                studyid = (
-                    domain_df.get(
-                        "STUDYID", pd.Series([request.study_id] * len(domain_df))
-                    )
-                    .astype("string")
-                    .fillna("")
-                )
-                empty_studyid = studyid.str.strip() == ""
-                if empty_studyid.any():
-                    studyid.loc[empty_studyid] = request.study_id
+        # Pinnacle 21 SD0046: ensure QLABEL is consistent per QNAM.
+        if supp_df is not None and {"QNAM", "QLABEL"} <= set(supp_df.columns):
+            qnam = supp_df["QNAM"].astype("string").fillna("")
+            qlabel = supp_df["QLABEL"].astype("string").fillna("")
 
-                usubjid = domain_df["USUBJID"].astype("string").fillna("")
-                aeseq = pd.to_numeric(domain_df["AESEQ"], errors="coerce").astype(
-                    "Int64"
-                )
-                idvarval = aeseq.astype(str).astype("string").replace("<NA>", "")
+            canonical: dict[str, str] = {}
+            for name in qnam.unique():
+                if not str(name).strip():
+                    continue
+                labels = qlabel.loc[qnam == name]
+                first_non_empty = next((v for v in labels if str(v).strip()), "")
+                canonical[str(name)] = first_non_empty.strip() or str(name)
 
-                aestdtc_raw = domain_df.get(
-                    "AESTDTC",
-                    pd.Series([pd.NA] * len(domain_df), index=domain_df.index),
-                )
-                aestdtc = pd.to_datetime(aestdtc_raw, errors="coerce")
+            if canonical:
+                supp_df.loc[:, "QLABEL"] = qnam.map(
+                    lambda v: canonical.get(str(v), str(v))
+                ).astype("string")
 
-                rfstdtc_map = request.reference_starts or {}
-                rfstdtc_raw = usubjid.map(rfstdtc_map)
-                rfstdtc = pd.to_datetime(rfstdtc_raw, errors="coerce")
-
-                teae = pd.Series(
-                    ["Y"] * len(domain_df), index=domain_df.index, dtype="string"
-                )
-                computable = aestdtc.notna() & rfstdtc.notna()
-                if computable.any():
-                    aest_date = aestdtc.dt.normalize()
-                    rfs_date = rfstdtc.dt.normalize()
-                    teae.loc[computable] = (aest_date >= rfs_date).map(
-                        {True: "Y", False: "N"}
-                    )
-
-                teae_df = pd.DataFrame(
-                    {
-                        "STUDYID": studyid,
-                        "RDOMAIN": "AE",
-                        "USUBJID": usubjid,
-                        "IDVAR": "AESEQ",
-                        "IDVARVAL": idvarval,
-                        "QNAM": "TEAE",
-                        "QLABEL": "Treatment Emergent Flag",
-                        "QVAL": teae,
-                        "QORIG": "DERIVED",
-                        "QEVAL": "",
-                    }
-                )
-                teae_df = teae_df.loc[
-                    teae_df["USUBJID"].astype("string").str.strip().ne("")
-                    & teae_df["IDVARVAL"].astype("string").str.strip().ne("")
-                ]
-
-                if not teae_df.empty:
-                    if supp_df is None or supp_df.empty:
-                        supp_df = teae_df
-                    else:
-                        supp_df = pd.concat([supp_df, teae_df], ignore_index=True)
         return supp_df
 
     def _generate_outputs_stage(

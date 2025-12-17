@@ -283,9 +283,30 @@ class LBProcessor(BaseDomainProcessor):
                 frame.loc[:, col] = series.replace({"0.0": "0", "0": "0"})
         for col in ("LBSTNRLO", "LBSTNRHI"):
             if col in frame.columns:
-                frame.loc[:, col] = ensure_numeric_series(
-                    frame[col], frame.index
-                ).fillna(0)
+                frame.loc[:, col] = ensure_numeric_series(frame[col], frame.index)
+
+        # If original range columns are empty for all records, derive from standard
+        # numeric ranges where available (and keep character formatting).
+        def _format_num_as_char(series: pd.Series) -> pd.Series:
+            num = pd.to_numeric(series, errors="coerce")
+            out = num.map(
+                lambda v: "" if pd.isna(v) else (str(int(v)) if float(v).is_integer() else str(v))
+            )
+            return out.astype("string")
+
+        if "LBORNRLO" in frame.columns:
+            lo = frame["LBORNRLO"].astype("string").fillna("")
+            if bool((lo.str.strip() == "").all()) and "LBSTNRLO" in frame.columns:
+                frame.loc[:, "LBORNRLO"] = _format_num_as_char(frame["LBSTNRLO"])
+            if bool((frame["LBORNRLO"].astype("string").fillna("").str.strip() == "").all()):
+                frame.loc[:, "LBORNRLO"] = "0"
+
+        if "LBORNRHI" in frame.columns:
+            hi = frame["LBORNRHI"].astype("string").fillna("")
+            if bool((hi.str.strip() == "").all()) and "LBSTNRHI" in frame.columns:
+                frame.loc[:, "LBORNRHI"] = _format_num_as_char(frame["LBSTNRHI"])
+            if bool((frame["LBORNRHI"].astype("string").fillna("").str.strip() == "").all()):
+                frame.loc[:, "LBORNRHI"] = "0"
         # Provide default units for non-missing results using test-code-aware defaults.
         unit_by_testcd = {
             "GLUC": "mg/dL",

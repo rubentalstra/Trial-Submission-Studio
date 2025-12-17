@@ -75,7 +75,6 @@ class TSProcessor(BaseDomainProcessor):
             return ""
 
         iso_datetime_dict = _pick_dict("ISO 21090")
-        iso_country_dict = _pick_dict("ISO 3166")
         cdisc_ct_dict = _pick_dict("CDISC CT")
 
         def _infer_dictionary_name_from_value(value: str) -> str:
@@ -97,9 +96,6 @@ class TSProcessor(BaseDomainProcessor):
         def _infer_dictionary_name_from_code(code: str) -> str:
             if not code:
                 return ""
-            upper = code.strip().upper()
-            if upper.endswith("CNTRY"):
-                return iso_country_dict
             return ""
 
         def _infer_value_code(code: str, value: str) -> tuple[str, str]:
@@ -233,19 +229,22 @@ class TSProcessor(BaseDomainProcessor):
                 _row("OBJSEC", "NONE"),
                 _row("OUTMSPRI", "EFFICACY"),
                 _row("HLTSUBJI", "N"),
+                _row("TDIGRP", "N", valcd="C49487"),
                 _row("EXTTIND", "N", valcd="C49487"),
                 _row("LENGTH", "P24M"),
                 _row(
                     "TRT",
                     "IBUPROFEN",
                     valcd="WK2XYI10QM",
-                    tsvcdref_val="UNII",
+                    tsvcdref_val="",
+                    tsvcdver_val="",
                 ),
                 _row(
                     "PCLAS",
                     "Nonsteroidal Anti-inflammatory Drug",
                     valcd="N0000175722",
-                    tsvcdref_val="MED-RT",
+                    tsvcdref_val="",
+                    tsvcdver_val="",
                 ),
                 _row(
                     "FCNTRY",
@@ -255,6 +254,12 @@ class TSProcessor(BaseDomainProcessor):
                 ),
             ]
         )
+
+        # Pinnacle profiles vary on acceptable TSVCDREF values.
+        # For this scaffold TS, keep reference terminology fields blank.
+        if {"TSVCDREF", "TSVCDVER"} <= set(params.columns):
+            params.loc[:, "TSVCDREF"] = ""
+            params.loc[:, "TSVCDVER"] = ""
         # Keep TSVALCD consistent for identical TSVAL values to satisfy SD1278
         value_code_map: dict[str, tuple[str, str]] = {}
         for _, row in params.iterrows():

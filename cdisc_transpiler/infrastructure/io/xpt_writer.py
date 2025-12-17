@@ -90,9 +90,17 @@ def write_xpt_file(
     ordered_columns = _order_columns_for_domain(dataset, domain=domain)
     dataset = dataset.loc[:, ordered_columns]
 
-    label_lookup = {variable.name: variable.label for variable in domain.variables}
-    type_lookup = {variable.name: variable.type for variable in domain.variables}
-    column_labels = [str(label_lookup.get(col, col))[:40] for col in dataset.columns]
+    # Normalize domain-variable lookup to uppercase so column casing differences
+    # don't cause silent misses (e.g., expected numeric EXDOSE written as Char).
+    label_lookup = {
+        str(variable.name).upper(): variable.label for variable in domain.variables
+    }
+    type_lookup = {
+        str(variable.name).upper(): str(variable.type) for variable in domain.variables
+    }
+    column_labels = [
+        str(label_lookup.get(str(col).upper(), col))[:40] for col in dataset.columns
+    ]
 
     default_label = (domain.label or domain.description or dataset_name).strip()
     label = default_label if file_label is None else file_label
@@ -108,21 +116,31 @@ def write_xpt_file(
     for column_index, col in enumerate(dataset.columns):
         series = dataset.iloc[:, column_index]
 
-        expected_type = type_lookup.get(str(col).upper())
+        col_upper = str(col).upper()
+        expected_type = type_lookup.get(col_upper)
 
         values: np.ndarray
 
-        # Prefer preserving the incoming dtype/semantics.
-        # This is important for round-tripping official fixture XPTs, where some
-        # columns may be represented as character even when SDTMIG types them as Num.
-        is_char_like = (
-            expected_type == "Char"
+        expected_upper = (expected_type or "").strip().upper()
+
+        # Preserve incoming dtype/semantics by default (important for validation
+        # fixtures that round-trip official XPTs), but force numeric for a small
+        # allow-list where validators expect numeric even when the source dtype
+        # is object/string.
+        force_numeric = col_upper in {"EXDOSE"} and expected_upper == "NUM"
+
+        is_char_like = not force_numeric and (
+            expected_upper == "CHAR"
             or isinstance(series.dtype, pd.CategoricalDtype)
             or isinstance(series.dtype, pd.StringDtype)
             or pd.api.types.is_object_dtype(series.dtype)
         )
 
-        if is_char_like:
+        if force_numeric:
+            values = pd.to_numeric(series, errors="coerce").to_numpy(
+                dtype="float64", na_value=np.nan
+            )
+        elif is_char_like:
             # Keep literal strings (e.g., "NONE") intact; only normalize actual missing
             # values to empty strings so pyreadstat writes consistent character fields.
             normalized = series.astype(object)
@@ -138,8 +156,9 @@ def write_xpt_file(
             if int(lengths.max() or 0) == 0:
                 normalized = pd.Series([" "] * len(dataset.index), index=dataset.index)
             values = normalized.to_numpy(dtype=object)
+        # Otherwise preserve incoming dtype/semantics.
         elif (
-            expected_type == "Num"
+            expected_upper == "NUM"
             or pd.api.types.is_bool_dtype(series.dtype)
             or pd.api.types.is_numeric_dtype(series.dtype)
         ):

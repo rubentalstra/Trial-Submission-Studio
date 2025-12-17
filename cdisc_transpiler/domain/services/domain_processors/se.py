@@ -26,9 +26,11 @@ class SEProcessor(BaseDomainProcessor):
 
         # Rebuild SE using reference starts to align ETCD/ELEMENT/EPOCH with TE/TA
         records = []
-        study_id = "STUDY"
-        if len(frame) > 0 and "STUDYID" in frame.columns:
-            study_id = frame["STUDYID"].iloc[0]
+        study_id = (getattr(self.config, "study_id", None) or "").strip()
+        if not study_id and len(frame) > 0 and "STUDYID" in frame.columns:
+            study_id = str(frame["STUDYID"].iloc[0]).strip()
+        if not study_id:
+            study_id = "STUDY"
 
         subjects_series = frame.get("USUBJID", pd.Series(dtype=str))
         subjects = (

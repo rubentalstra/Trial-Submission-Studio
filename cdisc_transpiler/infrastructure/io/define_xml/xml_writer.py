@@ -297,10 +297,29 @@ def append_item_refs(
 
 
 def get_key_sequence(domain_code: str) -> dict[str, int]:
+    code = (domain_code or "").upper()
+
+    # RELREC uniqueness is defined by RELID groups in practice.
+    # The SDTMIG spec marks RELID as required, but not as an Identifier role.
+    # P21 flags duplicate records when keys are underspecified, so include RELID.
+    if code == "RELREC":
+        return {"STUDYID": 1, "RDOMAIN": 2, "IDVAR": 3, "RELID": 4}
+
+    # SUPPQUAL uniqueness is defined by (STUDYID, RDOMAIN, USUBJID, IDVAR, IDVARVAL, QNAM).
+    # P21 flags duplicate records when key variables are underspecified.
+    if code.startswith("SUPP"):
+        return {
+            "STUDYID": 1,
+            "RDOMAIN": 2,
+            "USUBJID": 3,
+            "IDVAR": 4,
+            "IDVARVAL": 5,
+            "QNAM": 6,
+        }
+
     try:
         domain = get_domain(domain_code)
     except KeyError:
-        code = (domain_code or "").upper()
         if len(code) > 2:
             domain = get_domain(code[:2])
         else:
@@ -382,10 +401,29 @@ def get_active_domain_variables(
         if (var.core or "").strip().lower() == "req"
     }
 
+    qval_length: int | None = None
+    if (domain.code or "").upper().startswith("SUPP") and "QVAL" in available:
+        observed = dataset["QVAL"].astype("string").fillna("")
+        max_len = int(observed.str.len().max() or 0)
+        qval_length = min(max(1, max_len), 200)
+
     active: list[SDTMVariable] = []
     for var in domain.variables:
         if var.name in available or var.name in required:
-            active.append(var)
+            if qval_length is not None and var.name.upper() == "QVAL":
+                active.append(
+                    SDTMVariable(
+                        name=var.name,
+                        label=var.label,
+                        type=var.type,
+                        length=qval_length,
+                        core=var.core,
+                        role=var.role,
+                        codelist_code=var.codelist_code,
+                    )
+                )
+            else:
+                active.append(var)
 
     known = {var.name for var in active}
     extras = available - known

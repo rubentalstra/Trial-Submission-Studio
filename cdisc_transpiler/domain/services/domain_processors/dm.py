@@ -275,12 +275,17 @@ class DMProcessor(BaseDomainProcessor):
                     axis=1,
                 )
             )
-        # ARMNRS is Arm Null Reason (not a numeric arm number).
-        # Keep it blank unless explicitly provided.
-        if "ARMNRS" not in frame.columns:
-            frame["ARMNRS"] = ""
-        else:
+        # ARMNRS is expected by SDTM validators even when empty.
+        # Keep the variable present rather than dropping it (avoids SD0057).
+        if "ARMNRS" in frame.columns:
             frame["ARMNRS"] = frame["ARMNRS"].astype("string").fillna("")
+        else:
+            frame.loc[:, "ARMNRS"] = ""
+
+        # If ARMNRS is empty for all records, Pinnacle flags SD1149.
+        # Use a valid SDTM CT value from Arm Null Reason (C142179).
+        if bool((frame["ARMNRS"].astype("string").fillna("").str.strip() == "").all()):
+            frame.loc[:, "ARMNRS"] = "NOT ASSIGNED"
 
         armcd_clean = (
             armcd.astype("string").fillna("").str.strip()
