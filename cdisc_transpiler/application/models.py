@@ -220,6 +220,10 @@ class ProcessStudyRequest:
     write_conformance_report_json: bool = True
     fail_on_conformance_errors: bool = False
 
+    # Optional study-level defaults used for required variables when source data
+    # doesn't provide them (e.g., DM.COUNTRY).
+    default_country: str | None = None
+
 
 @dataclass
 class DomainProcessingResult:
@@ -379,6 +383,9 @@ class ProcessDomainRequest:
 
     # Conformance behavior
     fail_on_conformance_errors: bool = False
+
+    # Optional study-level defaults propagated into domain mapping/processing.
+    default_country: str | None = None
 
 
 @dataclass

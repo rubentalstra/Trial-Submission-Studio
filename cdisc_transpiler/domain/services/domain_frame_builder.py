@@ -175,7 +175,19 @@ class DomainFrameBuilder:
         # Validation and cleanup
         self._validate_and_cleanup(result)
 
+        # SDTMIG v3.4 4.1.4: ensure variable order is deterministic and
+        # consistent across outputs (Define-XML must match dataset order).
+        result = self._reorder_columns_for_domain(result)
+
         return result
+
+    def _reorder_columns_for_domain(self, result: pd.DataFrame) -> pd.DataFrame:
+        from .column_ordering import ordered_columns_for_domain
+
+        ordered = ordered_columns_for_domain(result, domain=self.domain)
+        if list(result.columns) == ordered:
+            return result
+        return result.loc[:, ordered]
 
     def _apply_common_normalizations(self, result: pd.DataFrame) -> None:
         """Apply minimal normalizations needed for SDTM compliance.
@@ -365,7 +377,6 @@ class DomainFrameBuilder:
 
         if xpt_validator:
             xpt_validator.drop_empty_optional_columns(result, self.domain.variables)
-            xpt_validator.reorder_columns(result, self.domain.variables)
             xpt_validator.enforce_required_values(
                 result, self.domain.variables, self.lenient
             )

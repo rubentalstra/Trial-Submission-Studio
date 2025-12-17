@@ -573,6 +573,7 @@ class StudyProcessingUseCase:
                 common_column_counts=common_column_counts or None,
                 total_input_files=total_input_files,
                 fail_on_conformance_errors=request.fail_on_conformance_errors,
+                default_country=request.default_country,
             )
 
             # Execute domain processing

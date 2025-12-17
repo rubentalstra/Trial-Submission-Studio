@@ -15,6 +15,7 @@ from pathlib import Path
 import click
 from rich.console import Console
 
+from ...config import ConfigLoader
 from ...application.models import ProcessStudyRequest
 from ...infrastructure.container import DependencyContainer
 from ..presenters import SummaryPresenter
@@ -175,6 +176,8 @@ def study_command(
     # Convert output format to set
     output_formats = {"xpt", "xml"} if output_format == "both" else {output_format}
 
+    runtime_config = ConfigLoader.load()
+
     # Create request object
     request = ProcessStudyRequest(
         study_folder=study_folder,
@@ -191,6 +194,7 @@ def study_command(
         verbose=verbose,
         write_conformance_report_json=write_conformance_report_json,
         fail_on_conformance_errors=fail_on_conformance_errors,
+        default_country=runtime_config.default_country,
     )
 
     # Create dependency container and use case

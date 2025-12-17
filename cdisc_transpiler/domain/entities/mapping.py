@@ -47,6 +47,10 @@ class MappingConfig(BaseModel):
     study_id: str | None = None
     mappings: list[ColumnMapping]
 
+    # Optional study-level defaults that domain processors may use to populate
+    # required values when the source does not contain them.
+    default_country: str | None = None
+
     @property
     def target_variables(self) -> set[str]:
         return {m.target_variable for m in self.mappings}

@@ -47,6 +47,12 @@ class TranspilerConfig:
     default_date: str = "2023-01-01"
     default_subject: str = "SYNTH001"
 
+    # Study defaults
+    # DM.COUNTRY is required and represents the country of the investigational site.
+    # SDTMIG guidance generally uses ISO 3166-1 Alpha-3, but requirements can vary.
+    # Provide this explicitly via env/TOML when the source data doesn't include it.
+    default_country: str | None = None
+
     # Format constraints (from SDTM and SAS specifications)
     xpt_max_label_length: int = 200
     xpt_max_variables: int = 40
@@ -93,6 +99,9 @@ class TranspilerConfig:
         Returns:
             TranspilerConfig with values from environment (falls back to defaults)
         """
+        raw_default_country = os.getenv("DEFAULT_COUNTRY")
+        default_country = raw_default_country.strip() if raw_default_country else None
+
         return cls(
             sdtm_spec_dir=Path(os.getenv("SDTM_SPEC_DIR", "docs/SDTMIG_v3.4")),
             ct_dir=Path(os.getenv("CT_DIR", "docs/Controlled_Terminology")),
@@ -100,6 +109,7 @@ class TranspilerConfig:
             chunk_size=int(os.getenv("CHUNK_SIZE", "1000")),
             default_date=os.getenv("DEFAULT_DATE", "2023-01-01"),
             default_subject=os.getenv("DEFAULT_SUBJECT", "SYNTH001"),
+            default_country=default_country,
         )
 
 
@@ -198,6 +208,14 @@ class ConfigLoader:
         # Defaults
         if "min_confidence" in default_section:
             kwargs["min_confidence"] = float(default_section["min_confidence"])
+
+        if "default_country" in default_section:
+            raw = default_section["default_country"]
+            if raw is None:
+                kwargs["default_country"] = None
+            else:
+                value = str(raw).strip()
+                kwargs["default_country"] = value or None
         if "chunk_size" in default_section:
             kwargs["chunk_size"] = int(default_section["chunk_size"])
         if "default_date" in default_section:
@@ -214,4 +232,5 @@ class ConfigLoader:
             chunk_size=kwargs.get("chunk_size", base_config.chunk_size),
             default_date=kwargs.get("default_date", base_config.default_date),
             default_subject=kwargs.get("default_subject", base_config.default_subject),
+            default_country=kwargs.get("default_country", base_config.default_country),
         )

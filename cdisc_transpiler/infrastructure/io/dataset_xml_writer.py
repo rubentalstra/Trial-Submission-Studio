@@ -84,6 +84,7 @@ def _build_dataset_xml_tree(
     is_reference_data: bool = False,
 ) -> ET.Element:
     domain = get_domain(domain_code)
+
     study_id = (config.study_id or "STUDY").strip() or "STUDY"
     study_oid = f"STDY.{study_id}"
     dataset_name = (

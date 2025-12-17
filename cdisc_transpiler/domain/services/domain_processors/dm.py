@@ -47,9 +47,22 @@ class DMProcessor(BaseDomainProcessor):
             frame.loc[:, "AGEU"] = ageu
 
         if "COUNTRY" in frame.columns:
-            frame.loc[:, "COUNTRY"] = (
-                frame["COUNTRY"].astype("string").fillna("").str.strip()
-            )
+            country = frame["COUNTRY"].astype("string").fillna("").str.strip()
+
+            # If COUNTRY is required but missing in the input, allow an explicit
+            # study-level default to be provided via MappingConfig.
+            default_country = ""
+            if self.config is not None:
+                default_country = str(
+                    getattr(self.config, "default_country", "") or ""
+                ).strip()
+
+            if default_country:
+                needs_default = country == ""
+                if bool(needs_default.any()):
+                    country.loc[needs_default] = default_country
+
+            frame.loc[:, "COUNTRY"] = country
 
         if "ETHNIC" in frame.columns:
             frame.loc[:, "ETHNIC"] = (

@@ -38,6 +38,12 @@ default_date = "2023-01-01"
 # Default: "SYNTH001"
 default_subject = "SYNTH001"
 
+# Default investigational site country for DM.COUNTRY.
+# Use this only when your source data does not provide a site country.
+# SDTMIG guidance generally uses ISO 3166-1 Alpha-3 (regulatory requirements may vary).
+# Default: unset
+# default_country = "NLD"
+
 # Output format: "xpt", "xml", or "both"
 # Default: "both"
 output_format = "both"

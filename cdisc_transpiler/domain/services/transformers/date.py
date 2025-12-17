@@ -84,7 +84,9 @@ class DateTransformer:
             obs_date = pd.to_datetime(dtc, errors="coerce")
             if pd.isna(start_date) or pd.isna(obs_date):
                 return None
-            delta = (obs_date - start_date).days
+            # SDTMIG v3.4 4.4.4: compare the *date portion* of DTC to the
+            # date portion of RFSTDTC (reference start) when calculating study day.
+            delta = (obs_date.date() - start_date.date()).days
             return delta + 1 if delta >= 0 else delta
         except (ValueError, TypeError):
             return None
@@ -105,22 +107,23 @@ class DateTransformer:
         if dy_var not in frame.columns:
             frame.loc[:, dy_var] = pd.NA
 
-        dates = pd.to_datetime(frame[dtc_var], errors="coerce")
+        # SDTMIG v3.4 4.4.4: study day is calculated using the date portion.
+        dates = pd.to_datetime(frame[dtc_var], errors="coerce").dt.normalize()
 
         baseline: pd.Series | None = None
         if reference_starts and "USUBJID" in frame.columns:
             baseline_series = ensure_series(frame["USUBJID"])
             baseline = baseline_series.map(reference_starts.get)
-            baseline = pd.to_datetime(baseline, errors="coerce")
+            baseline = pd.to_datetime(baseline, errors="coerce").dt.normalize()
 
         if baseline is None:
             if ref and ref in frame.columns:
-                baseline = pd.to_datetime(frame[ref], errors="coerce")
+                baseline = pd.to_datetime(frame[ref], errors="coerce").dt.normalize()
             else:
                 return
         if baseline.isna().all():
             if ref and ref in frame.columns:
-                baseline = pd.to_datetime(frame[ref], errors="coerce")
+                baseline = pd.to_datetime(frame[ref], errors="coerce").dt.normalize()
             else:
                 return
 

@@ -440,6 +440,7 @@ class DomainProcessingUseCase:
             return None
 
         config.study_id = request.study_id
+        config.default_country = request.default_country
 
         # Stage 4: Build domain dataframe
         # Dataset-XML can be generated in a more permissive mode (lenient)
