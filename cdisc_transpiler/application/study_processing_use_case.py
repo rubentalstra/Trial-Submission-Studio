@@ -67,7 +67,7 @@ class StudyProcessingUseCase:
     The use case orchestrates:
     1. Discovers domain files in the study folder
     2. Processes each domain (via DomainProcessingUseCase)
-    3. Synthesizes missing required domains
+    3. Optionally synthesizes missing domains (if enabled)
     4. Generates Define-XML metadata
     5. Collects and aggregates results
 
@@ -432,16 +432,17 @@ class StudyProcessingUseCase:
                         (domain_code, result.error or "Unknown error")
                     )
 
-            self._synthesize_missing_domains(
-                response=response,
-                processed_domains=processed_domains,
-                request=request,
-                reference_starts=reference_starts,
-                study_datasets=study_datasets,
-                xpt_dir=xpt_dir,
-                xml_dir=xml_dir,
-                sas_dir=sas_dir,
-            )
+            if request.synthesize_missing_domains:
+                self._synthesize_missing_domains(
+                    response=response,
+                    processed_domains=processed_domains,
+                    request=request,
+                    reference_starts=reference_starts,
+                    study_datasets=study_datasets,
+                    xpt_dir=xpt_dir,
+                    xml_dir=xml_dir,
+                    sas_dir=sas_dir,
+                )
 
             self._write_conformance_report_json(request=request, response=response)
 

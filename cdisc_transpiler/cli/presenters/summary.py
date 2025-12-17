@@ -113,13 +113,27 @@ class SummaryPresenter:
         )
 
         # Define columns
-        table.add_column("Domain", style="cyan", no_wrap=True, width=15)
-        table.add_column("Description", style="white", no_wrap=False, width=35)
-        table.add_column("Records", justify="right", style="yellow", width=9)
-        table.add_column("XPT", justify="center", style="green", width=5)
-        table.add_column("Dataset-XML", justify="center", style="green", width=13)
-        table.add_column("SAS", justify="center", style="green", width=5)
-        table.add_column("Notes", style="dim", width=25)
+        # NOTE: Avoid fixed widths so Rich can adapt to narrow consoles (e.g.,
+        # Click's CliRunner capture during tests) without eliding core headers
+        # like "Records".
+        table.add_column("Domain", style="cyan", no_wrap=True)
+        table.add_column(
+            "Description",
+            style="white",
+            no_wrap=False,
+            overflow="fold",
+            ratio=3,
+        )
+        table.add_column("Records", justify="right", style="yellow", no_wrap=True)
+        table.add_column("XPT", justify="center", style="green", no_wrap=True)
+        table.add_column("Dataset-XML", justify="center", style="green", no_wrap=True)
+        table.add_column("SAS", justify="center", style="green", no_wrap=True)
+        table.add_column(
+            "Notes",
+            style="dim",
+            overflow="fold",
+            ratio=2,
+        )
 
         # Process and organize results
         main_domains, supp_domains, split_domains, total_records = (
