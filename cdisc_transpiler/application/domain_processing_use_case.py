@@ -888,7 +888,7 @@ class DomainProcessingUseCase:
                     width = max_char_len.get(col_upper)
                     if width is None:
                         continue
-                    write_df[col] = (
+                    write_df.loc[:, col] = (
                         write_df[col]
                         .astype("string")
                         .fillna("")

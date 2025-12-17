@@ -165,6 +165,23 @@ def check_domain_dataframe(
                 continue
 
             series_for_ct = frame[var.name]
+            # DSDECOD is value-level controlled terminology in SDTMIG: the
+            # applicable codelist depends on DSCAT (e.g., DISPOSITION EVENT vs
+            # PROTOCOL MILESTONE). Our SDTM variable model currently exposes a
+            # single codelist for DSDECOD, so validate only the Disposition Event
+            # subset to avoid false CT_INVALID errors for protocol milestones.
+            if (
+                domain.code.upper() == "DS"
+                and var.name == "DSDECOD"
+                and "DSCAT" in frame.columns
+            ):
+                dscat_upper = (
+                    frame["DSCAT"].astype("string").fillna("").str.upper().str.strip()
+                )
+                disposition_mask = (dscat_upper == "DISPOSITION EVENT") | (
+                    dscat_upper == ""
+                )
+                series_for_ct = series_for_ct.loc[disposition_mask]
             # LBSTRESC is a character result field that can legitimately contain
             # numeric values. Avoid false positives by only CT-validating
             # non-numeric tokens.
