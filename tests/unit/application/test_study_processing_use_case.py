@@ -134,6 +134,188 @@ class TestStudyProcessingUseCase:
         assert use_case._output_preparer is not None
         assert use_case._domain_definition_repository is not None
 
+    def test_synthesis_jobs_expand_ts_parameters(self):
+        from cdisc_transpiler.application.study_processing_use_case import (
+            StudyProcessingUseCase,
+        )
+        from cdisc_transpiler.infrastructure.logging import NullLogger
+
+        use_case = StudyProcessingUseCase(
+            logger=NullLogger(),
+            study_data_repository=Mock(),
+            domain_processing_use_case=Mock(),
+            domain_discovery_service=Mock(),
+            domain_frame_builder=Mock(),
+            synthesis_service=Mock(),
+            relrec_service=Mock(),
+            relsub_service=Mock(),
+            relspec_service=Mock(),
+            file_generator=Mock(),
+            output_preparer=Mock(),
+            domain_definition_repository=Mock(),
+        )
+
+        request = ProcessStudyRequest(
+            study_folder=Path("/study"),
+            study_id="TEST001",
+            output_dir=Path("/out"),
+            generate_trial_design_domains=True,
+            trial_design_rows={},
+        )
+
+        response = ProcessStudyResponse(study_id="TEST001", output_dir=Path("/out"))
+
+        jobs = use_case._build_synthesis_jobs(
+            response=response,
+            present_domains=set(),
+            request=request,
+        )
+
+        ts_job = next(j for j in jobs if j.domain_code == "TS")
+        assert ts_job.rows is not None
+        rows = [r for r in ts_job.rows if isinstance(r, dict)]
+        codes = {str(r.get("TSPARMCD")) for r in rows}
+
+        # Spot-check a representative subset; the full list is enforced
+        # by the use case logic.
+        for required in [
+            "TITLE",
+            "TPHASE",
+            "TTYPE",
+            "SSTDTC",
+            "SENDTC",
+            "ACTSUB",
+            "FCNTRY",
+            "SDTIGVER",
+        ]:
+            assert required in codes
+
+        seqs = [r.get("TSSEQ") for r in rows]
+        assert seqs == list(range(1, len(rows) + 1))
+
+    def test_ts_rows_derive_actsub_from_dm(self):
+        from cdisc_transpiler.application.study_processing_use_case import (
+            StudyProcessingUseCase,
+        )
+        from cdisc_transpiler.infrastructure.logging import NullLogger
+
+        use_case = StudyProcessingUseCase(
+            logger=NullLogger(),
+            study_data_repository=Mock(),
+            domain_processing_use_case=Mock(),
+            domain_discovery_service=Mock(),
+            domain_frame_builder=Mock(),
+            synthesis_service=Mock(),
+            relrec_service=Mock(),
+            relsub_service=Mock(),
+            relspec_service=Mock(),
+            file_generator=Mock(),
+            output_preparer=Mock(),
+            domain_definition_repository=Mock(),
+        )
+
+        request = ProcessStudyRequest(
+            study_folder=Path("/study"),
+            study_id="TEST001",
+            output_dir=Path("/out"),
+            generate_trial_design_domains=True,
+            trial_design_rows={"TS": []},
+        )
+
+        dm = pd.DataFrame(
+            {
+                "USUBJID": ["SUBJ1", "SUBJ2", "SUBJ2"],
+                "RFSTDTC": ["2024-01-01", "2024-01-02", "2024-01-02"],
+            }
+        )
+        response = ProcessStudyResponse(
+            study_id="TEST001",
+            output_dir=Path("/out"),
+            domain_results=[
+                DomainProcessingResult(
+                    domain_code="DM",
+                    success=True,
+                    records=len(dm),
+                    domain_dataframe=dm,
+                )
+            ],
+        )
+
+        jobs = use_case._build_synthesis_jobs(
+            response=response,
+            present_domains=set(),
+            request=request,
+        )
+
+        ts_job = next(j for j in jobs if j.domain_code == "TS")
+        assert ts_job.rows is not None
+        actsub = next(
+            r
+            for r in ts_job.rows
+            if isinstance(r, dict) and r.get("TSPARMCD") == "ACTSUB"
+        )
+        assert actsub.get("TSVAL") == "2"
+        assert actsub.get("TSSEQ") is not None
+
+    def test_ts_rows_fill_blank_tsparm_labels(self):
+        from cdisc_transpiler.application.study_processing_use_case import (
+            StudyProcessingUseCase,
+        )
+        from cdisc_transpiler.infrastructure.logging import NullLogger
+
+        use_case = StudyProcessingUseCase(
+            logger=NullLogger(),
+            study_data_repository=Mock(),
+            domain_processing_use_case=Mock(),
+            domain_discovery_service=Mock(),
+            domain_frame_builder=Mock(),
+            synthesis_service=Mock(),
+            relrec_service=Mock(),
+            relsub_service=Mock(),
+            relspec_service=Mock(),
+            file_generator=Mock(),
+            output_preparer=Mock(),
+            domain_definition_repository=Mock(),
+        )
+
+        request = ProcessStudyRequest(
+            study_folder=Path("/study"),
+            study_id="TEST001",
+            output_dir=Path("/out"),
+            generate_trial_design_domains=True,
+            trial_design_rows={
+                "TS": [
+                    {"TSPARMCD": "AGEMIN", "TSPARM": ""},
+                    {"TSPARMCD": "TINDTP", "TSPARM": "   "},
+                    {"TSPARMCD": "PCLAS", "TSPARM": None},
+                    {"TSPARMCD": "AGEMAX", "TSPARM": float("nan")},
+                ]
+            },
+        )
+
+        response = ProcessStudyResponse(study_id="TEST001", output_dir=Path("/out"))
+
+        jobs = use_case._build_synthesis_jobs(
+            response=response,
+            present_domains=set(),
+            request=request,
+        )
+
+        ts_job = next(j for j in jobs if j.domain_code == "TS")
+        assert ts_job.rows is not None
+
+        def _row(code: str) -> dict:
+            return next(
+                r
+                for r in ts_job.rows
+                if isinstance(r, dict) and r.get("TSPARMCD") == code
+            )
+
+        assert _row("AGEMIN").get("TSPARM") == "Planned Minimum Age of Subjects"
+        assert _row("TINDTP").get("TSPARM") == "Trial Intent Type"
+        assert _row("PCLAS").get("TSPARM") == "Pharmacologic Class"
+        assert _row("AGEMAX").get("TSPARM") == "Planned Maximum Age of Subjects"
+
 
 class TestProcessStudyRequest:
     """Tests for ProcessStudyRequest DTO."""
