@@ -146,6 +146,27 @@ class DSProcessor(BaseDomainProcessor):
                 if bool(still_missing.any()):
                     frame.loc[still_missing, "DSDECOD"] = "COMPLETED"
 
+        # If DSTERM is obviously a site label, prefer the coded disposition.
+        if {"DSTERM", "DSDECOD"}.issubset(frame.columns):
+            dsterm = frame["DSTERM"].astype("string").fillna("").str.strip()
+            dsdecod = frame["DSDECOD"].astype("string").fillna("").str.strip()
+            looks_like_site = dsterm.str.contains(r"\bSITE\b", regex=True, na=False)
+            replace = looks_like_site & (dsdecod != "")
+            if bool(replace.any()):
+                frame.loc[replace, "DSTERM"] = dsdecod.loc[replace]
+
+        # Assign EPOCH when it can be inferred without date-based imputation.
+        if {"DSDECOD", "EPOCH"}.issubset(frame.columns):
+            dsdecod_u = (
+                frame["DSDECOD"].astype("string").fillna("").str.upper().str.strip()
+            )
+            epoch = frame["EPOCH"].astype("string").fillna("").str.strip()
+            empty_epoch = epoch == ""
+
+            screening = dsdecod_u.isin({"SCREEN FAILURE", "SCREENING NOT COMPLETED"})
+            if bool((empty_epoch & screening).any()):
+                frame.loc[empty_epoch & screening, "EPOCH"] = "SCREENING"
+
         # Controlled terminology normalization for DSDECOD.
         # Mapping heuristics sometimes land on raw yes/no codes (Y/N) or other
         # non-CT payload. In strict mode this triggers CT_INVALID findings.

@@ -129,6 +129,17 @@ class DMProcessor(BaseDomainProcessor):
                     .str[0]
                 )
 
+        # SDTMIG v3.4 notes RFSTDTC is sponsor-defined and may be defined as an
+        # enrollment date (not necessarily first dose) for certain study designs.
+        # When RFSTDTC is missing but RFICDTC is present, use RFICDTC as a
+        # deterministic fallback so study day calculations have a visible anchor.
+        if "RFSTDTC" in frame.columns and "RFICDTC" in frame.columns:
+            rfstdtc = frame["RFSTDTC"].astype("string").fillna("").str.strip()
+            rficdtc = frame["RFICDTC"].astype("string").fillna("").str.strip()
+            needs_rfstdtc = (rfstdtc == "") & (rficdtc != "")
+            if bool(needs_rfstdtc.any()):
+                frame.loc[needs_rfstdtc, "RFSTDTC"] = rficdtc.loc[needs_rfstdtc]
+
         if (
             "DMDY" in frame.columns
             and "DMDTC" in frame.columns

@@ -85,6 +85,34 @@ class MetadataAwareMapper:
         if self.metadata and self.metadata.items:
             self._add_metadata_aliases()
 
+        # Add a small set of domain-specific aliases for common vendor exports.
+        # These are intentionally narrow and deterministic.
+        self._add_domain_specific_aliases()
+
+    def _add_domain_specific_aliases(self) -> None:
+        """Add narrow, domain-specific alias patterns.
+
+        These cover common source column IDs that do not fuzzy-match well to
+        SDTM variable names, but are unambiguous within the domain.
+        """
+
+        def _add(pattern: str, target: str) -> None:
+            key = normalize_text(pattern)
+            if key not in self._aliases:
+                self._aliases[key] = target
+
+        dom = self.domain_code
+
+        if dom == "EX":
+            # Common: EXSTDAT/EXENDAT used instead of ISO 8601 *DTC.
+            _add("EXSTDAT", "EXSTDTC")
+            _add("EXENDAT", "EXENDTC")
+
+        if dom == "DS":
+            # Common end-of-trial exports: last contact / early termination dates.
+            _add("LCDAT", "DSSTDTC")
+            _add("ETDAT", "DSSTDTC")
+
     def _add_metadata_aliases(self) -> None:
         """Add aliases from Items.csv metadata."""
         if not self.metadata:

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+
 import pandas as pd
 
 from .base import BaseDomainProcessor
@@ -28,6 +30,14 @@ class EXProcessor(BaseDomainProcessor):
                 frame["EXTRT"].astype("string").fillna("").str.strip()
             )
 
+        # Ensure EPOCH exists and is populated where deterministically known.
+        # For EX records, EPOCH is commonly TREATMENT. If not known, leave null.
+        if "EPOCH" in frame.columns:
+            epoch = frame["EPOCH"].astype("string").fillna("").str.strip()
+            empty = epoch == ""
+            if bool(empty.any()):
+                frame.loc[empty, "EPOCH"] = "TREATMENT"
+
         # Some sources/mappings mistakenly place a treatment label into EXELTM
         # (elapsed time). If EXTRT is missing and EXELTM contains text, treat it
         # as the topic and clear EXELTM.
@@ -43,6 +53,15 @@ class EXProcessor(BaseDomainProcessor):
         # Do not drop records solely because EXTRT is missing. Missing topic values
         # should be reported via conformance checks, but the underlying exposure
         # record should be preserved.
+
+        # If EXSCAT is present but EXCAT is missing, provide a minimal category
+        # so conditional presence checks do not fail.
+        if {"EXSCAT", "EXCAT"}.issubset(frame.columns):
+            exscat = frame["EXSCAT"].astype("string").fillna("").str.strip()
+            excat = frame["EXCAT"].astype("string").fillna("").str.strip()
+            needs_cat = (exscat != "") & (excat == "")
+            if bool(needs_cat.any()):
+                frame.loc[needs_cat, "EXCAT"] = "TREATMENT"
 
         for date_col in ("EXSTDTC", "EXENDTC"):
             if date_col in frame.columns:
@@ -70,6 +89,25 @@ class EXProcessor(BaseDomainProcessor):
         # EXDOSE is numeric in SDTM. Coerce to numeric to avoid type mismatches.
         if "EXDOSE" in frame.columns:
             frame.loc[:, "EXDOSE"] = pd.to_numeric(frame["EXDOSE"], errors="coerce")
+
+        # Derive EXDOSU from metadata when dose is collected with an explicit unit
+        # in the source label (e.g., "Dose administered (mg)").
+        if {
+            "EXDOSE",
+            "EXDOSU",
+        }.issubset(frame.columns) and self.metadata is not None:
+            exdose = frame["EXDOSE"]
+            exdosu = frame["EXDOSU"].astype("string").fillna("").str.strip()
+            needs_u = exdose.notna() & (exdosu == "")
+            if bool(needs_u.any()):
+                col = self.metadata.get_column("EXDOSE")
+                label = (col.label or "") if col else ""
+                # Extract unit within parentheses.
+                match = re.search(r"\(([^)]+)\)", str(label))
+                if match:
+                    unit = match.group(1).strip()
+                    if unit:
+                        frame.loc[needs_u, "EXDOSU"] = unit
         for col in (
             "EXDOSFRM",
             "EXDOSU",

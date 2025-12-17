@@ -17,6 +17,15 @@ from ...domain.entities.sdtm_domain import SDTMVariable
 
 
 class XPTValidator:
+    # Some variables are marked Permissible in SDTMIG but are treated as
+    # regulatory-expected by common validators (e.g., Pinnacle 21) or are
+    # required for conditional presence rules (e.g., EXCAT with EXSCAT).
+    _KEEP_IF_EMPTY: set[str] = {
+        "EPOCH",
+        "EXCAT",
+        "EXENDY",
+    }
+
     def drop_empty_optional_columns(
         self, frame: pd.DataFrame, variables: Sequence[SDTMVariable]
     ) -> None:
@@ -26,6 +35,7 @@ class XPTValidator:
             v.name
             for v in variables
             if v.name in frame.columns
+            and v.name not in self._KEEP_IF_EMPTY
             and (v.core or "").strip().lower() not in ("req", "exp")
         }
 
