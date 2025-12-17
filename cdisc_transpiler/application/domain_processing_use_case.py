@@ -903,9 +903,19 @@ class DomainProcessingUseCase:
 
         # Avoid pandas FutureWarning around dtype inference when concatenating
         # empty/all-NA frames, while still preserving the union of columns.
-        union_columns: list[str] = sorted(
-            {col for df in all_dataframes for col in df.columns.astype(str)}
-        )
+        union_set = {col for df in all_dataframes for col in df.columns.astype(str)}
+        union_columns: list[str]
+
+        # Preserve SDTM variable order across merged inputs. Sorting the union
+        # alphabetically breaks SDTM ordering and triggers validator findings
+        # (e.g., Pinnacle 21 SD1079).
+        try:
+            domain = self._get_domain(domain_code)
+            ordered = [v.name for v in domain.variables if v.name in union_set]
+            extras = sorted([c for c in union_set if c not in ordered])
+            union_columns = ordered + extras
+        except Exception:
+            union_columns = sorted(union_set)
         non_empty = [df for df in all_dataframes if not df.empty]
         if not non_empty:
             return pd.DataFrame(columns=union_columns)

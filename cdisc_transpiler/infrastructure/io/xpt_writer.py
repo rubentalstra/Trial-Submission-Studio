@@ -12,13 +12,51 @@ import numpy as np
 import pandas as pd
 import pyreadstat  # type: ignore[import-untyped]
 
-from cdisc_transpiler.pandas_utils import normalize_missing_strings
-
 from cdisc_transpiler.infrastructure.sdtm_spec.registry import get_domain
 
 
 class XportGenerationError(RuntimeError):
     """Raised when XPT export cannot be completed."""
+
+
+def _order_columns_for_domain(dataset: pd.DataFrame, *, domain: object) -> list[str]:
+    """Return dataset columns ordered per SDTMIG spec for the domain.
+
+    Important: do NOT move unknown/sponsor columns.
+    Only reorders the subset of columns known to the SDTMIG spec, while leaving
+    any non-spec columns anchored in their original positions.
+    """
+    dataset_columns = [str(c) for c in dataset.columns]
+    present_upper = {c.upper() for c in dataset_columns}
+
+    spec_order_upper: list[str] = []
+    domain_vars = getattr(domain, "variables", None) or []
+    for var in domain_vars:
+        name = getattr(var, "name", None)
+        if not name:
+            continue
+        upper = str(name).upper()
+        if upper in present_upper:
+            spec_order_upper.append(upper)
+
+    # Preserve original casing of the incoming dataset columns.
+    by_upper = {c.upper(): c for c in dataset_columns}
+    spec_set = set(spec_order_upper)
+    spec_iter = iter(spec_order_upper)
+
+    ordered: list[str] = []
+    for col in dataset_columns:
+        if col.upper() in spec_set:
+            try:
+                next_upper = next(spec_iter)
+            except StopIteration:  # pragma: no cover
+                ordered.append(col)
+                continue
+            ordered.append(by_upper.get(next_upper, col))
+        else:
+            ordered.append(col)
+
+    return ordered
 
 
 def write_xpt_file(
@@ -49,6 +87,9 @@ def write_xpt_file(
     domain = get_domain(domain_code)
     dataset_name = (table_name or domain.resolved_dataset_name()).upper()[:8]
 
+    ordered_columns = _order_columns_for_domain(dataset, domain=domain)
+    dataset = dataset.loc[:, ordered_columns]
+
     label_lookup = {variable.name: variable.label for variable in domain.variables}
     type_lookup = {variable.name: variable.type for variable in domain.variables}
     column_labels = [str(label_lookup.get(col, col))[:40] for col in dataset.columns]
@@ -71,39 +112,35 @@ def write_xpt_file(
 
         values: np.ndarray
 
-        # Use SDTM spec typing when available (preferred).
-        if expected_type == "Num":
-            values = pd.to_numeric(series, errors="coerce").to_numpy(
-                dtype="float64", na_value=np.nan
+        # Prefer preserving the incoming dtype/semantics.
+        # This is important for round-tripping official fixture XPTs, where some
+        # columns may be represented as character even when SDTMIG types them as Num.
+        is_char_like = (
+            expected_type == "Char"
+            or isinstance(series.dtype, pd.CategoricalDtype)
+            or isinstance(series.dtype, pd.StringDtype)
+            or pd.api.types.is_object_dtype(series.dtype)
+        )
+
+        if is_char_like:
+            # Keep literal strings (e.g., "NONE") intact; only normalize actual missing
+            # values to empty strings so pyreadstat writes consistent character fields.
+            normalized = series.astype(object)
+            normalized = pd.Series(normalized, index=dataset.index).where(
+                ~pd.isna(normalized), ""
             )
-        elif expected_type == "Char":
-            cleaned = normalize_missing_strings(series, replacement="")
-            values = cleaned.fillna("").to_numpy(dtype=object, na_value="")
-        # Otherwise, fall back to dtype heuristics.
-        elif isinstance(series.dtype, pd.CategoricalDtype):
-            values = (
-                series.astype("string").fillna("").to_numpy(dtype=object, na_value="")
-            )
-        elif isinstance(series.dtype, pd.StringDtype):
-            values = (
-                normalize_missing_strings(series, replacement="")
-                .fillna("")
-                .to_numpy(dtype=object, na_value="")
-            )
-        elif pd.api.types.is_bool_dtype(series.dtype) or pd.api.types.is_integer_dtype(
-            series.dtype
+            values = normalized.to_numpy(dtype=object)
+        elif (
+            expected_type == "Num"
+            or pd.api.types.is_bool_dtype(series.dtype)
+            or pd.api.types.is_numeric_dtype(series.dtype)
         ):
-            values = pd.to_numeric(series, errors="coerce").to_numpy(
-                dtype="float64", na_value=np.nan
-            )
-        elif pd.api.types.is_float_dtype(series.dtype):
             values = pd.to_numeric(series, errors="coerce").to_numpy(
                 dtype="float64", na_value=np.nan
             )
         elif pd.api.types.is_extension_array_dtype(series.dtype):
             values = series.to_numpy(dtype=object)
         else:
-            # Leave normal numpy-backed dtypes as-is.
             values = series.to_numpy()
 
         export_df.insert(column_index, col, values, allow_duplicates=True)

@@ -179,7 +179,7 @@ class MetadataAwareMapper:
                     (column, codelist_name, code_column)
                 )
 
-        def _alias_priority(target: str, column: str) -> int:
+        def _alias_priority(target: str | None, column: str) -> int:
             """Return a higher number for better alias candidates."""
             t = (target or "").strip().upper()
             col_norm = normalize_text(column)

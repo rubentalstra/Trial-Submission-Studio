@@ -85,6 +85,10 @@ class OutputPreparer(OutputPreparerPort):
         # This prevents stale artifacts (e.g., RELSUB outputs from a previous run)
         # from lingering when they are not produced in the current run.
         self._remove_matching_files(output_dir / "xpt", "*.xpt")
+        # Split-domain outputs live under xpt/split; clean them too so validators
+        # (e.g., Pinnacle 21) don't see leftover split datasets that aren't
+        # referenced in the current Define-XML.
+        self._remove_matching_files(output_dir / "xpt" / "split", "*.xpt")
         self._remove_matching_files(output_dir / "dataset-xml", "*.xml")
         self._remove_matching_files(output_dir / "sas", "*.sas")
         define_path = output_dir / "define.xml"
