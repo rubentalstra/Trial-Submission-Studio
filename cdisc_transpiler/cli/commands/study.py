@@ -123,7 +123,9 @@ console = Console()
 @click.option(
     "-v", "--verbose", count=True, help="Increase verbosity level (e.g., -v, -vv)"
 )
+@click.pass_context
 def study_command(
+    ctx: click.Context,
     study_folder: Path,
     output_dir: Path | None,
     config_file: Path | None,
@@ -201,6 +203,14 @@ def study_command(
         "TA": [dict(row) for row in runtime_config.trial_design.ta],
         "TE": [dict(row) for row in runtime_config.trial_design.te],
     }
+
+    # If trial design scaffolds are present in TOML, treat them as user-provided
+    # study metadata and auto-generate missing TS/TA/TE unless the user
+    # explicitly set the flag.
+    if ctx.get_parameter_source(
+        "generate_trial_design"
+    ) == click.core.ParameterSource.DEFAULT and any(trial_design_rows.values()):
+        generate_trial_design = True
 
     # Create request object
     request = ProcessStudyRequest(

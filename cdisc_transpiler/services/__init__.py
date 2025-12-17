@@ -12,7 +12,6 @@ SDTM Reference:
     - Output file generation (XPT, Dataset-XML, Define-XML)
 
 Active Services:
-    - TrialDesignService: Synthesizes trial design domains (TS, TA, TE, etc.)
     - DomainDiscoveryService: Discovers and classifies domain files
     - FileOrganizationService: Manages output directory structure
     - ProgressReportingService: Reports progress and status to users
@@ -29,10 +28,8 @@ from __future__ import annotations
 from .domain_discovery_service import DomainDiscoveryService
 from .file_organization_service import FileOrganizationService, ensure_acrf_pdf
 from .progress_reporting_service import ProgressReportingService
-from .trial_design_service import TrialDesignService
 
 __all__ = [
-    "TrialDesignService",
     "DomainDiscoveryService",
     "FileOrganizationService",
     "ensure_acrf_pdf",

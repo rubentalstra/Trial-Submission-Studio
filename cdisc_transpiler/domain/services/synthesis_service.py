@@ -8,9 +8,14 @@ SDTM Reference:
     Trial Design domains are defined in SDTMIG v3.4 Section 5.
     Observation class domains are defined in Section 6.
 
-This service is a pure domain service - it returns only domain data
+This service is a pure domain service - it returns only scaffold data
 (DataFrames + metadata), with no file I/O or infrastructure concerns.
-File generation is handled by the application layer.
+
+Important:
+    The returned DataFrame is a *scaffold* (schema + optional configured
+    values). The SDTM-compliant dataset is built in the application layer via
+    the injected DomainFrameBuilderPort so that domain processors, transformers
+    and validators are applied consistently.
 """
 
 from __future__ import annotations
@@ -22,8 +27,6 @@ from collections.abc import Callable
 import pandas as pd
 
 from ..entities.sdtm_domain import SDTMDomain
-
-from .domain_frame_builder import build_domain_dataframe
 
 if TYPE_CHECKING:
     from ..entities.mapping import MappingConfig
@@ -98,7 +101,7 @@ class SynthesisService:
         """Synthesize a trial design domain.
 
         Creates scaffold trial design domains (TS, TA, TE, SE, DS) with
-        minimal required data to pass validation.
+        the SDTM schema and optional user-provided values.
 
         Args:
             domain_code: Domain code (TS, TA, TE, SE, DS)
@@ -126,19 +129,14 @@ class SynthesisService:
 
             config = self._build_identity_config(domain_code, frame, study_id)
 
-            # Build SDTM-compliant DataFrame (lenient: allow empty required values)
-            domain_dataframe = build_domain_dataframe(
-                frame,
-                config,
-                domain,
-                reference_starts=reference_starts,
-                lenient=True,
-            )
+            # Note: reference_starts is accepted for API compatibility, but
+            # the scaffold itself does not depend on subject dates.
+            _ = reference_starts
 
             return SynthesisResult(
                 domain_code=domain_code,
-                records=len(domain_dataframe),
-                domain_dataframe=domain_dataframe,
+                records=len(frame),
+                domain_dataframe=frame,
                 config=config,
                 success=True,
             )
@@ -173,18 +171,15 @@ class SynthesisService:
             domain = self._domain_resolver(domain_code)
             frame = self._build_scaffold_frame(domain)
             config = self._build_identity_config(domain_code, frame, study_id)
-            domain_dataframe = build_domain_dataframe(
-                frame,
-                config,
-                domain,
-                reference_starts=reference_starts,
-                lenient=True,
-            )
+
+            # Note: reference_starts is accepted for API compatibility, but
+            # the scaffold itself does not depend on subject dates.
+            _ = reference_starts
 
             return SynthesisResult(
                 domain_code=domain_code,
-                records=len(domain_dataframe),
-                domain_dataframe=domain_dataframe,
+                records=len(frame),
+                domain_dataframe=frame,
                 config=config,
                 success=True,
             )

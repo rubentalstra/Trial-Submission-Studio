@@ -18,9 +18,9 @@ using injected ports/use cases.
 from __future__ import annotations
 
 from collections import defaultdict
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import pandas as pd
 
@@ -56,6 +56,14 @@ if TYPE_CHECKING:
         RelsubService,
         SynthesisService,
     )
+
+
+@dataclass(frozen=True)
+class _SynthesisJob:
+    domain_code: str
+    kind: Literal["observation", "trial_design", "relrec", "relsub", "relspec"]
+    reason: str
+    rows: list[dict[str, Any]] | None = None
 
 
 class StudyProcessingUseCase:
@@ -432,22 +440,13 @@ class StudyProcessingUseCase:
                         (domain_code, result.error or "Unknown error")
                     )
 
-            if request.generate_trial_design_domains:
-                self._generate_trial_design_domains_from_config(
+            if (
+                request.generate_trial_design_domains
+                or request.synthesize_missing_domains
+            ):
+                self._run_synthesis_pass(
                     response=response,
-                    processed_domains=processed_domains,
-                    request=request,
-                    reference_starts=reference_starts,
-                    study_datasets=study_datasets,
-                    xpt_dir=xpt_dir,
-                    xml_dir=xml_dir,
-                    sas_dir=sas_dir,
-                )
-
-            if request.synthesize_missing_domains:
-                self._synthesize_missing_domains(
-                    response=response,
-                    processed_domains=processed_domains,
+                    present_domains=processed_domains,
                     request=request,
                     reference_starts=reference_starts,
                     study_datasets=study_datasets,
@@ -538,7 +537,7 @@ class StudyProcessingUseCase:
             for file_path, _ in files:
                 try:
                     headers = self._load_dataset(file_path)
-                except Exception:
+                except Exception:  # noqa: BLE001
                     continue
                 for col in headers.columns:
                     common_column_counts[str(col).strip().lower()] += 1
@@ -624,7 +623,7 @@ class StudyProcessingUseCase:
 
             return result
 
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             self.logger.error(f"{domain_code}: {exc}")
             return DomainProcessingResult(
                 domain_code=domain_code,
@@ -734,11 +733,11 @@ class StudyProcessingUseCase:
                         )
                     )
 
-    def _generate_trial_design_domains_from_config(
+    def _run_synthesis_pass(
         self,
         *,
         response: ProcessStudyResponse,
-        processed_domains: set[str],
+        present_domains: set[str],
         request: ProcessStudyRequest,
         reference_starts: dict[str, str],
         study_datasets: list[DefineDatasetDTO],
@@ -746,76 +745,23 @@ class StudyProcessingUseCase:
         xml_dir: Path | None,
         sas_dir: Path | None,
     ) -> None:
-        """Generate missing trial design datasets from configuration.
+        jobs = self._build_synthesis_jobs(
+            response=response,
+            present_domains=present_domains,
+            request=request,
+        )
 
-        This is an explicit opt-in behavior that treats the TOML trial design
-        section as study metadata input. It does not fabricate subject-level
-        SE records; SE is created as an empty scaffold only.
-        """
-
-        # TS/TA/TE: require configured rows
-        for domain_code in ["TS", "TA", "TE"]:
-            if (
-                domain_code in processed_domains
-                or domain_code in response.processed_domains
-            ):
+        for job in jobs:
+            # Avoid duplicates if something already produced the domain.
+            if job.domain_code in response.processed_domains:
                 continue
 
-            rows = (request.trial_design_rows or {}).get(domain_code, [])
-            if not rows:
-                self.logger.warning(
-                    f"{domain_code}: trial design generation enabled but no config rows found; skipping"
-                )
-                continue
-
-            self._synthesize_trial_design_domain(
-                domain_code=domain_code,
-                reason="Trial design from config",
-                response=response,
-                request=request,
-                reference_starts=reference_starts,
-                study_datasets=study_datasets,
-                xpt_dir=xpt_dir,
-                xml_dir=xml_dir,
-                sas_dir=sas_dir,
-                rows=rows,
-            )
-            processed_domains.add(domain_code)
-
-        # SE: subject-level, so generate empty scaffold only (if missing)
-        if "SE" not in processed_domains and "SE" not in response.processed_domains:
-            self._synthesize_trial_design_domain(
-                domain_code="SE",
-                reason="Trial design scaffold (empty SE)",
-                response=response,
-                request=request,
-                reference_starts=reference_starts,
-                study_datasets=study_datasets,
-                xpt_dir=xpt_dir,
-                xml_dir=xml_dir,
-                sas_dir=sas_dir,
-                rows=[],
-            )
-            processed_domains.add("SE")
-
-    def _synthesize_missing_domains(
-        self,
-        response: ProcessStudyResponse,
-        processed_domains: set[str],
-        request: ProcessStudyRequest,
-        reference_starts: dict[str, str],
-        study_datasets: list[DefineDatasetDTO],
-        xpt_dir: Path | None,
-        xml_dir: Path | None,
-        sas_dir: Path | None,
-    ) -> None:
-        """Synthesize missing required domains."""
-        # Synthesize core observation domains
-        for missing_domain in ["AE", "LB", "VS", "EX"]:
-            if missing_domain not in processed_domains:
-                self._synthesize_domain(
-                    domain_code=missing_domain,
-                    reason="No source files found",
+            if job.kind == "observation":
+                self._synthesize_scaffolded_domain(
+                    domain_code=job.domain_code,
+                    reason=job.reason,
+                    kind=job.kind,
+                    rows=None,
                     response=response,
                     request=request,
                     reference_starts=reference_starts,
@@ -824,13 +770,12 @@ class StudyProcessingUseCase:
                     xml_dir=xml_dir,
                     sas_dir=sas_dir,
                 )
-
-        # Synthesize trial design domains
-        for td_domain in ["TS", "TA", "TE", "SE", "DS"]:
-            if td_domain not in processed_domains:
-                self._synthesize_trial_design_domain(
-                    domain_code=td_domain,
-                    reason="Trial design scaffold",
+            elif job.kind == "trial_design":
+                self._synthesize_scaffolded_domain(
+                    domain_code=job.domain_code,
+                    reason=job.reason,
+                    kind=job.kind,
+                    rows=job.rows,
                     response=response,
                     request=request,
                     reference_starts=reference_starts,
@@ -839,113 +784,139 @@ class StudyProcessingUseCase:
                     xml_dir=xml_dir,
                     sas_dir=sas_dir,
                 )
-
-        # Synthesize RELREC
-        if "RELREC" not in processed_domains:
-            self._synthesize_relrec(
-                response=response,
-                request=request,
-                study_datasets=study_datasets,
-                xpt_dir=xpt_dir,
-                xml_dir=xml_dir,
-                sas_dir=sas_dir,
-            )
-
-        # Synthesize RELSUB
-        if "RELSUB" not in processed_domains:
-            self._synthesize_relsub(
-                response=response,
-                request=request,
-                study_datasets=study_datasets,
-                xpt_dir=xpt_dir,
-                xml_dir=xml_dir,
-                sas_dir=sas_dir,
-            )
-
-        # Synthesize RELSPEC
-        if "RELSPEC" not in processed_domains:
-            self._synthesize_relspec(
-                response=response,
-                request=request,
-                study_datasets=study_datasets,
-                xpt_dir=xpt_dir,
-                xml_dir=xml_dir,
-                sas_dir=sas_dir,
-            )
-
-    def _synthesize_domain(
-        self,
-        domain_code: str,
-        reason: str,
-        response: ProcessStudyResponse,
-        request: ProcessStudyRequest,
-        reference_starts: dict[str, str],
-        study_datasets: list[DefineDatasetDTO],
-        xpt_dir: Path | None,
-        xml_dir: Path | None,
-        sas_dir: Path | None,
-    ) -> None:
-        """Synthesize a missing observation domain.
-
-        The domain synthesis service returns pure domain data, and
-        file generation is handled here in the application layer.
-        """
-        self.logger.log_synthesis_start(domain_code, reason)
-
-        try:
-            synthesis_service = self._get_synthesis_service()
-            synthesis_result = synthesis_service.synthesize_observation(
-                domain_code=domain_code,
-                study_id=request.study_id,
-                reference_starts=reference_starts,
-            )
-
-            if not synthesis_result.success:
-                raise RuntimeError(synthesis_result.error or "Synthesis failed")
-
-            # Generate output files using FileGeneratorPort (application layer)
-            xpt_path, xml_path, sas_path = self._generate_synthesis_files(
-                domain_dataframe=synthesis_result.domain_dataframe,
-                domain_code=domain_code,
-                config=synthesis_result.config,
-                request=request,
-                xpt_dir=xpt_dir,
-                xml_dir=xml_dir,
-                sas_dir=sas_dir,
-            )
-
-            result = DomainProcessingResult(
-                domain_code=domain_code,
-                success=True,
-                records=synthesis_result.records,
-                domain_dataframe=synthesis_result.domain_dataframe,
-                config=synthesis_result.config,
-                xpt_path=xpt_path,
-                xml_path=xml_path,
-                sas_path=sas_path,
-                synthesized=True,
-                synthesis_reason=reason,
-            )
-
-            response.domain_results.append(result)
-            response.processed_domains.add(domain_code)
-            response.total_records += result.records
-
-            if request.generate_define_xml and result.domain_dataframe is not None:
-                self._add_to_study_datasets(
-                    result, study_datasets, request.output_dir, request.output_formats
+            elif job.kind == "relrec":
+                self._synthesize_relrec(
+                    response=response,
+                    request=request,
+                    study_datasets=study_datasets,
+                    xpt_dir=xpt_dir,
+                    xml_dir=xml_dir,
+                    sas_dir=sas_dir,
+                )
+            elif job.kind == "relsub":
+                self._synthesize_relsub(
+                    response=response,
+                    request=request,
+                    study_datasets=study_datasets,
+                    xpt_dir=xpt_dir,
+                    xml_dir=xml_dir,
+                    sas_dir=sas_dir,
+                )
+            elif job.kind == "relspec":
+                self._synthesize_relspec(
+                    response=response,
+                    request=request,
+                    study_datasets=study_datasets,
+                    xpt_dir=xpt_dir,
+                    xml_dir=xml_dir,
+                    sas_dir=sas_dir,
                 )
 
-            self.logger.log_synthesis_complete(domain_code, result.records)
-
-        except Exception as exc:
-            self.logger.error(f"{domain_code}: {exc}")
-            response.errors.append((domain_code, str(exc)))
-
-    def _synthesize_trial_design_domain(
+    def _build_synthesis_jobs(
         self,
+        *,
+        response: ProcessStudyResponse,
+        present_domains: set[str],
+        request: ProcessStudyRequest,
+    ) -> list[_SynthesisJob]:
+        """Build an ordered list of synthesis jobs.
+
+        `present_domains` includes domains that were discovered from files (even
+        if processing later failed). We should not synthesize over a dataset
+        that exists in source.
+        """
+
+        scheduled: set[str] = set()
+        jobs: list[_SynthesisJob] = []
+
+        def _missing(code: str) -> bool:
+            upper = code.upper()
+            return (upper not in present_domains) and (
+                upper not in response.processed_domains
+            )
+
+        # 1) Config-driven trial design (opt-in, highest precedence)
+        if request.generate_trial_design_domains:
+            for code in ["TS", "TA", "TE"]:
+                if not _missing(code) or code in scheduled:
+                    continue
+                rows = (request.trial_design_rows or {}).get(code, [])
+                if not rows:
+                    self.logger.warning(
+                        f"{code}: trial design generation enabled but no config rows found; skipping"
+                    )
+                    continue
+                jobs.append(
+                    _SynthesisJob(
+                        domain_code=code,
+                        kind="trial_design",
+                        reason="Trial design from config",
+                        rows=rows,
+                    )
+                )
+                scheduled.add(code)
+
+            # SE is subject-level: create an empty scaffold only.
+            if _missing("SE") and "SE" not in scheduled:
+                jobs.append(
+                    _SynthesisJob(
+                        domain_code="SE",
+                        kind="trial_design",
+                        reason="Trial design scaffold (empty SE)",
+                        rows=[],
+                    )
+                )
+                scheduled.add("SE")
+
+        # 2) Generic missing-domain synthesis (explicit opt-in)
+        if request.synthesize_missing_domains:
+            for code in ["AE", "LB", "VS", "EX"]:
+                if _missing(code) and code not in scheduled:
+                    jobs.append(
+                        _SynthesisJob(
+                            domain_code=code,
+                            kind="observation",
+                            reason="No source files found",
+                        )
+                    )
+                    scheduled.add(code)
+
+            for code in ["TS", "TA", "TE", "SE", "DS"]:
+                if _missing(code) and code not in scheduled:
+                    jobs.append(
+                        _SynthesisJob(
+                            domain_code=code,
+                            kind="trial_design",
+                            reason="Trial design scaffold",
+                            rows=None,
+                        )
+                    )
+                    scheduled.add(code)
+
+            for code, kind, reason in [
+                ("RELREC", "relrec", "Relationship scaffold"),
+                ("RELSUB", "relsub", "Related subjects scaffold"),
+                ("RELSPEC", "relspec", "Related specimens scaffold"),
+            ]:
+                if _missing(code) and code not in scheduled:
+                    jobs.append(
+                        _SynthesisJob(
+                            domain_code=code,
+                            kind=kind,  # type: ignore[arg-type]
+                            reason=reason,
+                        )
+                    )
+                    scheduled.add(code)
+
+        return jobs
+
+    def _synthesize_scaffolded_domain(
+        self,
+        *,
         domain_code: str,
         reason: str,
+        kind: Literal["observation", "trial_design"],
+        rows: list[dict[str, Any]] | None,
         response: ProcessStudyResponse,
         request: ProcessStudyRequest,
         reference_starts: dict[str, str],
@@ -953,30 +924,29 @@ class StudyProcessingUseCase:
         xpt_dir: Path | None,
         xml_dir: Path | None,
         sas_dir: Path | None,
-        rows: list[dict[str, Any]] | None = None,
     ) -> None:
-        """Synthesize a missing trial design domain.
-
-        The domain synthesis service returns pure domain data, and
-        file generation is handled here in the application layer.
-        """
+        """Synthesize a domain via scaffold → build → conformance → outputs."""
         self.logger.log_synthesis_start(domain_code, reason)
 
         try:
             synthesis_service = self._get_synthesis_service()
-            synthesis_result = synthesis_service.synthesize_trial_design(
-                domain_code=domain_code,
-                study_id=request.study_id,
-                reference_starts=reference_starts,
-                rows=rows,
-            )
+            if kind == "observation":
+                synthesis_result = synthesis_service.synthesize_observation(
+                    domain_code=domain_code,
+                    study_id=request.study_id,
+                    reference_starts=reference_starts,
+                )
+            else:
+                synthesis_result = synthesis_service.synthesize_trial_design(
+                    domain_code=domain_code,
+                    study_id=request.study_id,
+                    reference_starts=reference_starts,
+                    rows=rows,
+                )
 
             if not synthesis_result.success:
                 raise RuntimeError(synthesis_result.error or "Synthesis failed")
 
-            # Run synthesized Trial Design domains through the normal domain
-            # frame builder so domain processors (TS/TA/TE/SE) can populate
-            # required values and CT-backed names.
             domain_def = self._get_domain(domain_code)
             lenient = ("xpt" not in request.output_formats) and (
                 not request.generate_sas
@@ -991,10 +961,15 @@ class StudyProcessingUseCase:
                     study_id=request.study_id,
                     mappings=[],
                 )
-            domain_dataframe = self._domain_frame_builder.build_domain_dataframe(
+
+            scaffold = (
                 synthesis_result.domain_dataframe
                 if synthesis_result.domain_dataframe is not None
-                else pd.DataFrame(),
+                else pd.DataFrame()
+            )
+
+            domain_dataframe = self._domain_frame_builder.build_domain_dataframe(
+                scaffold,
                 synthesis_config,
                 domain_def,
                 reference_starts=reference_starts,
@@ -1018,7 +993,6 @@ class StudyProcessingUseCase:
                     f"{domain_code}: conformance errors present; strict output generation aborted"
                 )
 
-            # Generate output files using FileGeneratorPort (application layer)
             xpt_path, xml_path, sas_path = self._generate_synthesis_files(
                 domain_dataframe=domain_dataframe,
                 domain_code=domain_code,
@@ -1047,14 +1021,14 @@ class StudyProcessingUseCase:
             response.processed_domains.add(domain_code)
             response.total_records += result.records
 
-            if request.generate_define_xml and result.domain_dataframe is not None:
+            if request.generate_define_xml:
                 self._add_to_study_datasets(
                     result, study_datasets, request.output_dir, request.output_formats
                 )
 
             self.logger.log_synthesis_complete(domain_code, result.records)
 
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             self.logger.error(f"{domain_code}: {exc}")
             response.errors.append((domain_code, str(exc)))
 
@@ -1176,7 +1150,7 @@ class StudyProcessingUseCase:
 
             self.logger.log_synthesis_complete("RELREC", result.records)
 
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             self.logger.error(f"RELREC: {exc}")
             response.errors.append(("RELREC", str(exc)))
 
@@ -1294,7 +1268,7 @@ class StudyProcessingUseCase:
 
             self.logger.log_synthesis_complete("RELSUB", result.records)
 
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             self.logger.error(f"RELSUB: {exc}")
             response.errors.append(("RELSUB", str(exc)))
 
@@ -1409,7 +1383,7 @@ class StudyProcessingUseCase:
 
             self.logger.log_synthesis_complete("RELSPEC", result.records)
 
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             self.logger.error(f"RELSPEC: {exc}")
             response.errors.append(("RELSPEC", str(exc)))
 
@@ -1448,7 +1422,7 @@ class StudyProcessingUseCase:
             response.define_xml_path = define_path
             self.logger.success(f"Generated Define-XML 2.1 at {define_path}")
 
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             response.define_xml_error = str(exc)
             self.logger.error(f"Define-XML generation failed: {exc}")
             response.errors.append(("Define-XML", str(exc)))

@@ -1,10 +1,11 @@
 """Tests for synthesis service.
 
-These tests verify the synthesis service creates proper SDTM domain structures
+These tests verify the synthesis service creates proper SDTM domain scaffold structures
 for both trial design and observation domains.
 
-The SynthesisService is a pure domain service that returns only domain data
-(DataFrames + configs). File generation is handled in the application layer.
+The SynthesisService is a pure domain service that returns scaffold data
+(DataFrames + configs). SDTM building and file generation are handled in the
+application layer.
 """
 
 import pytest
@@ -119,10 +120,10 @@ class TestSynthesizeTrialDesign:
         assert "TSPARM" in df.columns
         assert "TSVAL" in df.columns
 
-        # Check values
-        assert df["STUDYID"].iloc[0] == "TEST001"
-        assert df["DOMAIN"].iloc[0] == "TS"
-        # Values for other columns are intentionally left empty in this scaffold.
+        # Values are intentionally left empty in this scaffold; the application
+        # layer builds SDTM-compliant datasets.
+        assert df["STUDYID"].isna().iloc[0]
+        assert df["DOMAIN"].isna().iloc[0]
 
     def test_synthesize_ta_domain(self, service):
         """Test TA (Trial Arms) domain synthesis."""
@@ -212,6 +213,20 @@ class TestSynthesizeTrialDesign:
         assert result.config.study_id == "TEST001"
         assert result.config.domain == "TS"
 
+    def test_synthesize_trial_design_injects_config_rows(self, service):
+        result = service.synthesize_trial_design(
+            domain_code="TS",
+            study_id="TEST001",
+            rows=[{"TSPARMCD": "ACTSUB", "TSVAL": "01"}],
+        )
+
+        assert result.success
+        assert result.domain_dataframe is not None
+        df = result.domain_dataframe
+        assert len(df) == 1
+        assert df["TSPARMCD"].iloc[0] == "ACTSUB"
+        assert df["TSVAL"].iloc[0] == "01"
+
 
 class TestSynthesizeObservation:
     """Tests for observation domain synthesis."""
@@ -241,9 +256,9 @@ class TestSynthesizeObservation:
         assert "AETERM" in df.columns
         assert "AEDECOD" in df.columns
 
-        # Check values populated by the domain builder
-        assert df["STUDYID"].iloc[0] == "TEST001"
-        assert df["DOMAIN"].iloc[0] == "AE"
+        # Values are intentionally left empty in this scaffold.
+        assert df["STUDYID"].isna().iloc[0]
+        assert df["DOMAIN"].isna().iloc[0]
 
     def test_synthesize_lb_domain(self, service):
         """Test LB (Laboratory) domain synthesis."""

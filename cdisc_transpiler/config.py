@@ -247,6 +247,8 @@ class ConfigLoader:
         def _rows(value: object) -> tuple[dict[str, object], ...]:
             if value is None:
                 return ()
+            if isinstance(value, dict):
+                return (dict(value),)
             if isinstance(value, list):
                 rows: list[dict[str, object]] = []
                 for item in value:
