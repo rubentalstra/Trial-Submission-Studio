@@ -27,6 +27,12 @@ console = Console()
 @click.command()
 @click.argument("study_folder", type=click.Path(exists=True, path_type=Path))
 @click.option(
+    "--config",
+    "config_file",
+    type=click.Path(exists=True, path_type=Path),
+    help="Path to a cdisc_transpiler.toml config file (default: ./cdisc_transpiler.toml)",
+)
+@click.option(
     "--output-dir",
     "output_dir",
     type=click.Path(path_type=Path),
@@ -105,11 +111,22 @@ console = Console()
     help="Fail the run (strict outputs only) when conformance errors are detected",
 )
 @click.option(
+    "--generate-trial-design/--no-generate-trial-design",
+    "generate_trial_design",
+    default=False,
+    show_default=True,
+    help=(
+        "Generate missing trial design datasets (TS/TA/TE/SE) from config (TOML). "
+        "TS/TA/TE use [trial_design] rows; SE is created empty (no subject fabrication)."
+    ),
+)
+@click.option(
     "-v", "--verbose", count=True, help="Increase verbosity level (e.g., -v, -vv)"
 )
 def study_command(
     study_folder: Path,
     output_dir: Path | None,
+    config_file: Path | None,
     study_id: str | None,
     output_format: str,
     generate_define: bool,
@@ -121,6 +138,7 @@ def study_command(
     min_confidence: float,
     write_conformance_report_json: bool,
     fail_on_conformance_errors: bool,
+    generate_trial_design: bool,
     verbose: int,
 ) -> None:
     """Process an entire study folder and generate SDTM submission files.
@@ -176,7 +194,13 @@ def study_command(
     # Convert output format to set
     output_formats = {"xpt", "xml"} if output_format == "both" else {output_format}
 
-    runtime_config = ConfigLoader.load()
+    runtime_config = ConfigLoader.load(config_file=config_file)
+
+    trial_design_rows = {
+        "TS": [dict(row) for row in runtime_config.trial_design.ts],
+        "TA": [dict(row) for row in runtime_config.trial_design.ta],
+        "TE": [dict(row) for row in runtime_config.trial_design.te],
+    }
 
     # Create request object
     request = ProcessStudyRequest(
@@ -195,6 +219,8 @@ def study_command(
         write_conformance_report_json=write_conformance_report_json,
         fail_on_conformance_errors=fail_on_conformance_errors,
         default_country=runtime_config.default_country,
+        generate_trial_design_domains=generate_trial_design,
+        trial_design_rows=trial_design_rows,
     )
 
     # Create dependency container and use case

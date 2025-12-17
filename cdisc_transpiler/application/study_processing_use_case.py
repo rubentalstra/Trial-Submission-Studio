@@ -432,6 +432,18 @@ class StudyProcessingUseCase:
                         (domain_code, result.error or "Unknown error")
                     )
 
+            if request.generate_trial_design_domains:
+                self._generate_trial_design_domains_from_config(
+                    response=response,
+                    processed_domains=processed_domains,
+                    request=request,
+                    reference_starts=reference_starts,
+                    study_datasets=study_datasets,
+                    xpt_dir=xpt_dir,
+                    xml_dir=xml_dir,
+                    sas_dir=sas_dir,
+                )
+
             if request.synthesize_missing_domains:
                 self._synthesize_missing_domains(
                     response=response,
@@ -722,6 +734,70 @@ class StudyProcessingUseCase:
                         )
                     )
 
+    def _generate_trial_design_domains_from_config(
+        self,
+        *,
+        response: ProcessStudyResponse,
+        processed_domains: set[str],
+        request: ProcessStudyRequest,
+        reference_starts: dict[str, str],
+        study_datasets: list[DefineDatasetDTO],
+        xpt_dir: Path | None,
+        xml_dir: Path | None,
+        sas_dir: Path | None,
+    ) -> None:
+        """Generate missing trial design datasets from configuration.
+
+        This is an explicit opt-in behavior that treats the TOML trial design
+        section as study metadata input. It does not fabricate subject-level
+        SE records; SE is created as an empty scaffold only.
+        """
+
+        # TS/TA/TE: require configured rows
+        for domain_code in ["TS", "TA", "TE"]:
+            if (
+                domain_code in processed_domains
+                or domain_code in response.processed_domains
+            ):
+                continue
+
+            rows = (request.trial_design_rows or {}).get(domain_code, [])
+            if not rows:
+                self.logger.warning(
+                    f"{domain_code}: trial design generation enabled but no config rows found; skipping"
+                )
+                continue
+
+            self._synthesize_trial_design_domain(
+                domain_code=domain_code,
+                reason="Trial design from config",
+                response=response,
+                request=request,
+                reference_starts=reference_starts,
+                study_datasets=study_datasets,
+                xpt_dir=xpt_dir,
+                xml_dir=xml_dir,
+                sas_dir=sas_dir,
+                rows=rows,
+            )
+            processed_domains.add(domain_code)
+
+        # SE: subject-level, so generate empty scaffold only (if missing)
+        if "SE" not in processed_domains and "SE" not in response.processed_domains:
+            self._synthesize_trial_design_domain(
+                domain_code="SE",
+                reason="Trial design scaffold (empty SE)",
+                response=response,
+                request=request,
+                reference_starts=reference_starts,
+                study_datasets=study_datasets,
+                xpt_dir=xpt_dir,
+                xml_dir=xml_dir,
+                sas_dir=sas_dir,
+                rows=[],
+            )
+            processed_domains.add("SE")
+
     def _synthesize_missing_domains(
         self,
         response: ProcessStudyResponse,
@@ -877,6 +953,7 @@ class StudyProcessingUseCase:
         xpt_dir: Path | None,
         xml_dir: Path | None,
         sas_dir: Path | None,
+        rows: list[dict[str, Any]] | None = None,
     ) -> None:
         """Synthesize a missing trial design domain.
 
@@ -891,6 +968,7 @@ class StudyProcessingUseCase:
                 domain_code=domain_code,
                 study_id=request.study_id,
                 reference_starts=reference_starts,
+                rows=rows,
             )
 
             if not synthesis_result.success:
@@ -944,7 +1022,7 @@ class StudyProcessingUseCase:
             xpt_path, xml_path, sas_path = self._generate_synthesis_files(
                 domain_dataframe=domain_dataframe,
                 domain_code=domain_code,
-                config=synthesis_result.config,
+                config=synthesis_config,
                 request=request,
                 xpt_dir=xpt_dir,
                 xml_dir=xml_dir,
@@ -956,7 +1034,7 @@ class StudyProcessingUseCase:
                 success=True,
                 records=len(domain_dataframe),
                 domain_dataframe=domain_dataframe,
-                config=synthesis_result.config,
+                config=synthesis_config,
                 xpt_path=xpt_path,
                 xml_path=xml_path,
                 sas_path=sas_path,

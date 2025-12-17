@@ -26,6 +26,9 @@ class TestTranspilerConfig:
         assert config.xpt_max_label_length == 200
         assert config.xpt_max_variables == 40
         assert config.qnam_max_length == 8
+        assert config.trial_design.ts == ()
+        assert config.trial_design.ta == ()
+        assert config.trial_design.te == ()
 
     def test_custom_config(self):
         """Test creating config with custom values."""
@@ -124,6 +127,11 @@ min_confidence = 0.9
 chunk_size = 3000
 default_date = "2026-01-01"
 default_subject = "TOML001"
+
+[[trial_design.ts]]
+TSPARMCD = "TITLE"
+TSPARM = "Study Title"
+TSVAL = "Example Study"
 """)
 
         config = ConfigLoader.load(config_file=toml_file)
@@ -134,6 +142,8 @@ default_subject = "TOML001"
         assert config.chunk_size == 3000
         assert config.default_date == "2026-01-01"
         assert config.default_subject == "TOML001"
+        assert len(config.trial_design.ts) == 1
+        assert config.trial_design.ts[0]["TSPARMCD"] == "TITLE"
 
     def test_load_toml_with_partial_config(self, tmp_path: Path):
         """Test loading TOML with only some values (others use defaults)."""

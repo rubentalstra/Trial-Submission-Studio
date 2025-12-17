@@ -93,6 +93,7 @@ class SynthesisService:
         domain_code: str,
         study_id: str,
         reference_starts: dict[str, str] | None = None,
+        rows: list[dict[str, Any]] | None = None,
     ) -> SynthesisResult:
         """Synthesize a trial design domain.
 
@@ -114,7 +115,14 @@ class SynthesisService:
             # Build a minimal scaffold frame based on the resolved domain
             # variable definitions. Values are intentionally left empty;
             # the SDTM schema comes from `SDTMDomain`.
-            frame = self._build_scaffold_frame(domain)
+            row_count = 1 if rows is None else len(rows)
+            frame = self._build_scaffold_frame(domain, rows=row_count)
+
+            if rows:
+                for i, row in enumerate(rows):
+                    for key, value in row.items():
+                        if key in frame.columns:
+                            frame.at[i, key] = value
 
             config = self._build_identity_config(domain_code, frame, study_id)
 

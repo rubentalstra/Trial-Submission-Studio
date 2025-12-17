@@ -12,6 +12,22 @@ from pathlib import Path
 
 
 @dataclass(frozen=True)
+class TrialDesignConfig:
+    """Configurable trial design scaffolds.
+
+    This is intended for study-level metadata that may not be present in the
+    source folder as CSV datasets. It is loaded from TOML and can be used to
+    generate TS/TA/TE datasets.
+
+    Note: SE is subject-level and should not be fabricated from configuration.
+    """
+
+    ts: tuple[dict[str, object], ...] = ()
+    ta: tuple[dict[str, object], ...] = ()
+    te: tuple[dict[str, object], ...] = ()
+
+
+@dataclass(frozen=True)
 class TranspilerConfig:
     """Immutable configuration for the CDISC Transpiler.
 
@@ -57,6 +73,9 @@ class TranspilerConfig:
     xpt_max_label_length: int = 200
     xpt_max_variables: int = 40
     qnam_max_length: int = 8
+
+    # Optional trial design scaffolds (loaded from TOML)
+    trial_design: TrialDesignConfig = field(default_factory=TrialDesignConfig)
 
     def __post_init__(self):
         """Validate configuration values after initialization."""
@@ -192,9 +211,10 @@ class ConfigLoader:
         with open(config_file, "rb") as f:
             data = tomllib.load(f)
 
-        # Extract paths section
+        # Extract sections
         paths = data.get("paths", {})
         default_section = data.get("default", {})
+        trial_design_section = data.get("trial_design", {})
 
         # Build kwargs from TOML data
         kwargs = {}
@@ -223,6 +243,24 @@ class ConfigLoader:
         if "default_subject" in default_section:
             kwargs["default_subject"] = default_section["default_subject"]
 
+        # Trial design scaffolds (study-level metadata)
+        def _rows(value: object) -> tuple[dict[str, object], ...]:
+            if value is None:
+                return ()
+            if isinstance(value, list):
+                rows: list[dict[str, object]] = []
+                for item in value:
+                    if isinstance(item, dict):
+                        rows.append(dict(item))
+                return tuple(rows)
+            return ()
+
+        trial_design = TrialDesignConfig(
+            ts=_rows(trial_design_section.get("ts")),
+            ta=_rows(trial_design_section.get("ta")),
+            te=_rows(trial_design_section.get("te")),
+        )
+
         # Create new config with TOML overrides
         # Use base config values as defaults, override with TOML values
         return TranspilerConfig(
@@ -233,4 +271,5 @@ class ConfigLoader:
             default_date=kwargs.get("default_date", base_config.default_date),
             default_subject=kwargs.get("default_subject", base_config.default_subject),
             default_country=kwargs.get("default_country", base_config.default_country),
+            trial_design=trial_design,
         )
