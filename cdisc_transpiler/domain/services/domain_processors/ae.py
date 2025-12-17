@@ -72,7 +72,9 @@ class AEProcessor(BaseDomainProcessor):
                     baseline = pd.to_datetime(frame["RFSTDTC"], errors="coerce")
 
                 if baseline is not None:
-                    derived = (ae_start >= baseline).map(lambda v: "Y" if bool(v) else "N")
+                    derived = (ae_start >= baseline).map(
+                        lambda v: "Y" if bool(v) else "N"
+                    )
                     # If we can't determine, default to 'Y' to satisfy presence checks.
                     derived = derived.where(ae_start.notna() & baseline.notna(), "Y")
                     frame.loc[needs, "TRTEMFL"] = derived.loc[needs]
