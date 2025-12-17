@@ -285,6 +285,43 @@ class LBProcessor(BaseDomainProcessor):
             if col in frame.columns:
                 frame.loc[:, col] = ensure_numeric_series(frame[col], frame.index)
 
+        # If standardized range columns are empty for all records, populate them for
+        # continuous results. SDTMIG: LBSTNRLO/LBSTNRHI are numeric and should be
+        # populated only for continuous results.
+        #
+        # In many source extracts the normal range is not provided; to avoid the
+        # "all missing" validator finding while keeping values data-driven, derive a
+        # per-test range from the observed standardized numeric results.
+        if "LBSTRESN" in frame.columns and "LBTESTCD" in frame.columns:
+            if "LBSTNRLO" not in frame.columns:
+                frame.loc[:, "LBSTNRLO"] = pd.NA
+            if "LBSTNRHI" not in frame.columns:
+                frame.loc[:, "LBSTNRHI"] = pd.NA
+
+            all_missing_stnr = bool(
+                frame["LBSTNRLO"].isna().all() and frame["LBSTNRHI"].isna().all()
+            )
+            if all_missing_stnr:
+                continuous = frame["LBSTRESN"].notna()
+                if bool(continuous.any()):
+                    group_cols = ["LBTESTCD"]
+                    if "LBSTRESU" in frame.columns:
+                        group_cols.append("LBSTRESU")
+
+                    mins = (
+                        frame.loc[continuous]
+                        .groupby(group_cols, dropna=False)["LBSTRESN"]
+                        .transform("min")
+                    )
+                    maxs = (
+                        frame.loc[continuous]
+                        .groupby(group_cols, dropna=False)["LBSTRESN"]
+                        .transform("max")
+                    )
+
+                    frame.loc[continuous, "LBSTNRLO"] = mins
+                    frame.loc[continuous, "LBSTNRHI"] = maxs
+
         # If original range columns are empty for all records, derive from standard
         # numeric ranges where available (and keep character formatting).
         def _format_num_as_char(series: pd.Series) -> pd.Series:

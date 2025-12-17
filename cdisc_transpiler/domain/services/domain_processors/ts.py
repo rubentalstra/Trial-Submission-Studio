@@ -74,24 +74,7 @@ class TSProcessor(BaseDomainProcessor):
                     return resolved
             return ""
 
-        iso_datetime_dict = _pick_dict("ISO 21090")
         cdisc_ct_dict = _pick_dict("CDISC CT")
-
-        def _infer_dictionary_name_from_value(value: str) -> str:
-            """Infer TSVCDREF based on TSVAL when it is a coded/dictionary-like value."""
-            if not value:
-                return ""
-
-            import re
-
-            text = value.strip()
-            # ISO 8601-like date
-            if re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
-                return iso_datetime_dict
-            # ISO 8601-like duration (e.g., P18Y, P24M, P3W, P28D)
-            if re.fullmatch(r"P\d+[YMWD]", text.upper()):
-                return iso_datetime_dict
-            return ""
 
         def _infer_dictionary_name_from_code(code: str) -> str:
             if not code:
@@ -149,16 +132,15 @@ class TSProcessor(BaseDomainProcessor):
             inferred_valcd, inferred_ref = _infer_value_code(code, val)
 
             final_valcd = valcd or inferred_valcd
-            inferred_from_value = _infer_dictionary_name_from_value(val)
             inferred_from_code = _infer_dictionary_name_from_code(code)
 
-            raw_ref = (
-                tsvcdref_val
-                or inferred_ref
-                or inferred_from_code
-                or inferred_from_value
-                or (cdisc_ct_dict if final_valcd else "")
-            )
+            # SDTMIG: TSVCDREF/TSVCDVER describe the terminology for TSVALCD.
+            # Keep them blank when TSVALCD is blank.
+            raw_ref = ""
+            if final_valcd:
+                raw_ref = (
+                    tsvcdref_val or inferred_ref or inferred_from_code or cdisc_ct_dict
+                )
             ref = _resolve_dictionary_name(raw_ref)
 
             # TSVCDVER is not always applicable. Provide it only for CDISC CT by default.
@@ -255,11 +237,6 @@ class TSProcessor(BaseDomainProcessor):
             ]
         )
 
-        # Pinnacle profiles vary on acceptable TSVCDREF values.
-        # For this scaffold TS, keep reference terminology fields blank.
-        if {"TSVCDREF", "TSVCDVER"} <= set(params.columns):
-            params.loc[:, "TSVCDREF"] = ""
-            params.loc[:, "TSVCDVER"] = ""
         # Keep TSVALCD consistent for identical TSVAL values to satisfy SD1278
         value_code_map: dict[str, tuple[str, str]] = {}
         for _, row in params.iterrows():

@@ -8,7 +8,7 @@ SDTM Reference:
     Domain file naming follows SDTMIG v3.4 conventions:
     - Base domains: DM.csv, AE.csv, LB.csv
     - Domain variants: LBCC.csv, LBHM.csv (split datasets per Section 4.1.7)
-    - Custom suffixes: LB_PREG.csv, QS_PGA.csv
+    - Sponsor-specific suffixes: LB_*.csv, QS_*.csv
 
 Extracted from cli/commands/study.py as part of Phase 2 refactoring.
 """

@@ -106,3 +106,19 @@ Example (deterministic):
 > Required AE variables are defined in the AE domain specification table (SDTMIG
 > v3.4, Section 6.2.1, p. 133).\
 > Structured extraction should be used for validation.
+
+# SDTMIG Agent Guidelines
+
+```bash
+python - <<'PY'
+from docs.sdtmig_query import query_sdtmig
+for q in [
+    "SDTMIG expected variables when to include",
+    "permissible variables may be omitted if not collected",
+    "should not include variables not collected CRF SDTMIG 3.4",
+    "omit expected variable if not applicable",
+]:
+    print('\n\n### QUERY:', q)
+    query_sdtmig(q)
+PY
+```

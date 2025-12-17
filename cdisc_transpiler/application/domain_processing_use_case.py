@@ -609,6 +609,52 @@ class DomainProcessingUseCase:
                     lambda v: canonical.get(str(v), str(v))
                 ).astype("string")
 
+        # Pinnacle 21 SD1097: Treatment-emergent flag information is expected
+        # as supplemental qualifiers (SUPPAE) rather than a non-model AE variable.
+        if request.domain_code.upper() == "AE":
+            required = {"USUBJID", "AESEQ"}
+            if required <= set(domain_df.columns):
+                base = domain_df
+                usubjid = base["USUBJID"].astype("string").fillna("").str.strip()
+                aeseq = base["AESEQ"].astype("Int64")
+
+                qval = pd.Series(["Y"] * len(base), index=base.index, dtype="string")
+                if "AESTDTC" in base.columns:
+                    ae_start = pd.to_datetime(base["AESTDTC"], errors="coerce")
+                    baseline = None
+                    if request.reference_starts:
+                        baseline = pd.to_datetime(
+                            usubjid.map(request.reference_starts), errors="coerce"
+                        )
+                    if baseline is not None:
+                        derived = (ae_start >= baseline).map(
+                            lambda v: "Y" if bool(v) else "N"
+                        )
+                        derived = derived.where(
+                            ae_start.notna() & baseline.notna(), "Y"
+                        ).astype("string")
+                        qval = derived
+
+                trtem_records = pd.DataFrame(
+                    {
+                        "STUDYID": request.study_id,
+                        "RDOMAIN": "AE",
+                        "USUBJID": usubjid,
+                        "IDVAR": "AESEQ",
+                        "IDVARVAL": aeseq.astype("string"),
+                        "QNAM": "TRTEMFL",
+                        "QLABEL": "Treatment Emergent Flag",
+                        "QVAL": qval,
+                        "QORIG": "DERIVED",
+                        "QEVAL": "",
+                    }
+                )
+
+                if supp_df is None:
+                    supp_df = trtem_records
+                else:
+                    supp_df = pd.concat([supp_df, trtem_records], ignore_index=True)
+
         return supp_df
 
     def _generate_outputs_stage(

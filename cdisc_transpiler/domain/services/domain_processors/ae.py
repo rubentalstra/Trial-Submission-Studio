@@ -53,31 +53,8 @@ class AEProcessor(BaseDomainProcessor):
         if "TEAE" in frame.columns:
             frame.drop(columns=["TEAE"], inplace=True)
 
-        # Pinnacle 21 SD1097: provide treatment-emergent info for AE.
-        # Some validator profiles check for TRTEMFL directly in AE.
-        if "TRTEMFL" not in frame.columns:
-            frame.loc[:, "TRTEMFL"] = ""
-        if {"AESTDTC", "TRTEMFL"} <= set(frame.columns):
-            trtem = frame["TRTEMFL"].astype("string").fillna("").str.strip().str.upper()
-            needs = trtem.eq("") | trtem.isin({"NAN", "<NA>"})
-            if bool(needs.any()):
-                ae_start = pd.to_datetime(frame["AESTDTC"], errors="coerce")
-                baseline = None
-                if self.reference_starts and "USUBJID" in frame.columns:
-                    baseline = pd.to_datetime(
-                        frame["USUBJID"].astype("string").map(self.reference_starts),
-                        errors="coerce",
-                    )
-                if baseline is None and "RFSTDTC" in frame.columns:
-                    baseline = pd.to_datetime(frame["RFSTDTC"], errors="coerce")
-
-                if baseline is not None:
-                    derived = (ae_start >= baseline).map(
-                        lambda v: "Y" if bool(v) else "N"
-                    )
-                    # If we can't determine, default to 'Y' to satisfy presence checks.
-                    derived = derived.where(ae_start.notna() & baseline.notna(), "Y")
-                    frame.loc[needs, "TRTEMFL"] = derived.loc[needs]
+        # Treatment-emergent info (e.g., TRTEMFL) is represented via SUPPAE
+        # supplemental qualifiers, not as a non-model AE variable.
         # Ensure expected MedDRA variables exist with default placeholders
         defaults = {
             "AEBODSYS": "GENERAL DISORDERS",
@@ -274,7 +251,8 @@ class AEProcessor(BaseDomainProcessor):
             raw = frame["AESINTV"].astype("string").fillna("").str.strip().str.upper()
             frame.loc[:, "AESINTV"] = raw.map(yn_map).fillna("")
         # Remove non-standard extras to keep AE aligned to SDTM metadata.
-        # Keep TRTEMFL: some validator profiles expect it in AE (SD1097).
+        # Treatment-emergent information is provided via SUPPAE (e.g., TRTEMFL)
+        # rather than adding non-model variables to AE.
         for extra in ("VISIT", "VISITNUM"):
             if extra in frame.columns:
                 frame.drop(columns=[extra], inplace=True)

@@ -37,77 +37,52 @@ class MHProcessor(BaseDomainProcessor):
             # Always regenerate MHSEQ - source values may not be unique (SD0005)
             frame.loc[:, "MHSEQ"] = frame.groupby("USUBJID").cumcount() + 1
         frame.loc[:, "MHSEQ"] = NumericTransformer.force_numeric(frame["MHSEQ"])
-        # MHTERM is required - derive from MHDECOD or source data if available
-        if (
-            "MHTERM" not in frame.columns
-            or frame["MHTERM"].astype("string").fillna("").str.strip().eq("").all()
-        ):
-            if (
-                "MHDECOD" in frame.columns
-                and not frame["MHDECOD"].astype(str).str.strip().eq("").all()
-            ):
-                frame["MHTERM"] = frame["MHDECOD"]
-            else:
-                frame.loc[:, "MHTERM"] = "MEDICAL HISTORY"
-        else:
-            # Fill empty MHTERM values with MHDECOD or default
+        # MHTERM is required; if it's missing but MHDECOD is present, derive it.
+        if "MHTERM" in frame.columns:
+            frame.loc[:, "MHTERM"] = (
+                frame["MHTERM"].astype("string").fillna("").str.strip()
+            )
             empty_mhterm = frame["MHTERM"].astype("string").fillna("").str.strip() == ""
-            if empty_mhterm.any():
-                if "MHDECOD" in frame.columns:
-                    frame.loc[empty_mhterm, "MHTERM"] = frame.loc[
-                        empty_mhterm, "MHDECOD"
-                    ]
-                else:
-                    frame.loc[empty_mhterm, "MHTERM"] = "MEDICAL HISTORY"
-        # Set EPOCH for screening
-        if "EPOCH" in frame.columns:
-            frame.loc[:, "EPOCH"] = "SCREENING"
-        else:
-            frame.loc[:, "EPOCH"] = "SCREENING"
+            if bool(empty_mhterm.any()) and "MHDECOD" in frame.columns:
+                mhdecod = frame["MHDECOD"].astype("string").fillna("").str.strip()
+                frame.loc[empty_mhterm & (mhdecod != ""), "MHTERM"] = mhdecod
 
-        # Remove problematic relation-to-reference variables when not populated correctly
-        for col in ("MHENRF",):
-            if col in frame.columns:
-                frame.drop(columns=[col], inplace=True)
-
-        # SD0021/SD0022 - Set default time-point values if missing
-        # Only fill values for columns that exist in the domain
-        if "MHSTTPT" in frame.columns:
-            empty_sttpt = frame["MHSTTPT"].astype(str).str.strip() == ""
-            frame.loc[empty_sttpt, "MHSTTPT"] = "BEFORE"
-        if "MHSTRTPT" in frame.columns:
-            empty_strtpt = frame["MHSTRTPT"].astype(str).str.strip() == ""
-            frame.loc[empty_strtpt, "MHSTRTPT"] = "SCREENING"
-        if "MHENTPT" in frame.columns:
-            empty_entpt = frame["MHENTPT"].astype(str).str.strip() == ""
-            frame.loc[empty_entpt, "MHENTPT"] = "ONGOING"
-        if "MHENRTPT" in frame.columns:
-            empty_enrtpt = frame["MHENRTPT"].astype(str).str.strip() == ""
-            frame.loc[empty_enrtpt, "MHENRTPT"] = "SCREENING"
-        # Ensure MHDTC exists, using MHSTDTC when available
-        if "MHDTC" not in frame.columns:
-            frame.loc[:, "MHDTC"] = frame.get("MHSTDTC", "")
-        else:
-            empty_mhdtc = frame["MHDTC"].astype("string").fillna("").str.strip() == ""
-            frame.loc[empty_mhdtc, "MHDTC"] = frame.get("MHSTDTC", "")
+            # Drop rows where we still have no topic term.
+            still_empty = frame["MHTERM"].astype("string").fillna("").str.strip() == ""
+            if bool(still_empty.any()):
+                frame.drop(index=frame.index[still_empty], inplace=True)
+                frame.reset_index(drop=True, inplace=True)
         for col in ("MHSTDTC", "MHENDTC", "MHDTC"):
             if col in frame.columns:
                 frame.loc[:, col] = frame[col].apply(DateTransformer.coerce_iso8601)
-        # Fill missing end dates from reference end if available
-        if "MHENDTC" in frame.columns:
-            empty_end = frame["MHENDTC"].astype("string").fillna("").str.strip() == ""
-            if "RFENDTC" in frame.columns:
-                frame.loc[empty_end, "MHENDTC"] = frame.loc[empty_end, "RFENDTC"]
-            elif self.reference_starts and "USUBJID" in frame.columns:
-                frame.loc[empty_end, "MHENDTC"] = frame.loc[empty_end, "USUBJID"].map(
-                    self.reference_starts
-                )
-        else:
-            frame.loc[:, "MHENDTC"] = frame.get("MHSTDTC", "")
+
+        # Normalize end-relative-to-reference-period values to CDISC submission
+        # values (CT C66728). Some sources provide boolean-like ongoing flags.
+        if "MHENRF" in frame.columns:
+            mh_enrf = frame["MHENRF"].astype("string").fillna("").str.strip()
+            upper = mh_enrf.str.upper()
+            mapped = upper.replace(
+                {
+                    # Boolean-like / ongoing indicators
+                    "Y": "ONGOING",
+                    "YES": "ONGOING",
+                    "TRUE": "ONGOING",
+                    "1": "ONGOING",
+                    "N": "",
+                    "NO": "",
+                    "FALSE": "",
+                    "0": "",
+                    # Common synonyms → submission values
+                    "PRIOR": "BEFORE",
+                    "POST": "AFTER",
+                    "CONCURRENT": "COINCIDENT",
+                    "UNK": "UNKNOWN",
+                    "U": "UNKNOWN",
+                }
+            )
+            frame.loc[:, "MHENRF"] = mapped
         # Compute study day for MHDTC into MHDY.
-        if "MHDTC" in frame.columns:
-            if "MHDY" not in frame.columns:
-                frame.loc[:, "MHDY"] = pd.NA
+        if "MHDTC" in frame.columns and "MHDY" in frame.columns:
             DateTransformer.compute_study_day(
                 frame,
                 "MHDTC",
@@ -115,16 +90,8 @@ class MHProcessor(BaseDomainProcessor):
                 reference_starts=self.reference_starts,
                 ref="RFSTDTC",
             )
-        if "MHDY" in frame.columns:
             frame.loc[:, "MHDY"] = ensure_numeric_series(
                 frame["MHDY"], frame.index
             ).astype("float64")
-        dedup_keys = [k for k in ("USUBJID", "MHTERM") if k in frame.columns]
-        if dedup_keys:
-            frame.drop_duplicates(subset=dedup_keys, keep="first", inplace=True)
-            frame.reset_index(drop=True, inplace=True)
-            frame.loc[:, "MHSEQ"] = frame.groupby("USUBJID").cumcount() + 1
-        if "USUBJID" in frame.columns:
-            frame.drop_duplicates(subset=["USUBJID"], keep="first", inplace=True)
-            frame.reset_index(drop=True, inplace=True)
-            frame.loc[:, "MHSEQ"] = frame.groupby("USUBJID").cumcount() + 1
+
+        NumericTransformer.assign_sequence(frame, "MHSEQ", "USUBJID")

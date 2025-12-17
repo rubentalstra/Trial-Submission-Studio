@@ -153,7 +153,8 @@ def write_xpt_file(
             # character variable in the XPT, which downstream validators flag.
             # Use a single space to force width=1 while still representing SAS missing.
             lengths = normalized.astype("string").fillna("").str.len()
-            if int(lengths.max() or 0) == 0:
+            max_length = lengths.max()
+            if pd.isna(max_length) or int(max_length) == 0:
                 normalized = pd.Series([" "] * len(dataset.index), index=dataset.index)
             values = normalized.to_numpy(dtype=object)
         # Otherwise preserve incoming dtype/semantics.
