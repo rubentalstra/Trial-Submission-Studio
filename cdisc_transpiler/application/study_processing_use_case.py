@@ -673,14 +673,17 @@ class StudyProcessingUseCase:
             dataset_href = Path(f"{disk_name}.xpt")
 
         if result.config and result.domain_dataframe is not None:
-            study_datasets.append(
-                DefineDatasetDTO(
-                    domain_code=result.domain_code,
-                    dataframe=result.domain_dataframe,
-                    config=result.config,
-                    archive_location=dataset_href,
+            # If split datasets exist for this domain, do not include the unsplit
+            # parent dataset in Define-XML (SDTMIG v3.4 4.1.7 splitting domains).
+            if not result.split_datasets:
+                study_datasets.append(
+                    DefineDatasetDTO(
+                        domain_code=result.domain_code,
+                        dataframe=result.domain_dataframe,
+                        config=result.config,
+                        archive_location=dataset_href,
+                    )
                 )
-            )
 
             # Add split datasets
             for split_name, split_df, split_path in result.split_datasets:

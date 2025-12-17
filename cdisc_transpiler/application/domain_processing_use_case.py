@@ -638,7 +638,15 @@ class DomainProcessingUseCase:
             xml_dir = request.output_dirs.get("xml")
             sas_dir = request.output_dirs.get("sas")
 
-            if xpt_dir and "xpt" in request.output_formats:
+            has_variant_splits = len(variant_frames) > 1
+            wants_xpt = xpt_dir is not None and "xpt" in request.output_formats
+            write_split_xpts_only = wants_xpt and has_variant_splits
+
+            if (
+                xpt_dir
+                and "xpt" in request.output_formats
+                and not write_split_xpts_only
+            ):
                 formats.add("xpt")
             if xml_dir and "xml" in request.output_formats:
                 formats.add("xml")
@@ -677,15 +685,6 @@ class DomainProcessingUseCase:
                     result["xpt_filename"] = output_result.xpt_path.name
                     self.logger.success(f"Generated XPT: {output_result.xpt_path}")
 
-                    # Handle domain variant splits (SDTMIG v3.4 Section 4.1.7)
-                    if len(variant_frames) > 1:
-                        assert xpt_dir is not None
-                        split_paths, split_datasets = self._write_variant_splits(
-                            variant_frames, domain, xpt_dir, request.verbose > 0
-                        )
-                        result["split_xpt_paths"] = split_paths
-                        result["split_datasets"] = split_datasets
-
                 if output_result.xml_path:
                     result["xml_path"] = output_result.xml_path
                     result["xml_filename"] = output_result.xml_path.name
@@ -700,6 +699,19 @@ class DomainProcessingUseCase:
                 # Log any errors
                 for error in output_result.errors:
                     self.logger.error(f"Output generation error: {error}")
+
+            # Handle domain variant splits (SDTMIG v3.4 Section 4.1.7)
+            # When variant datasets are present, do not emit an unsplit parent XPT.
+            if write_split_xpts_only:
+                assert xpt_dir is not None
+                split_paths, split_datasets = self._write_variant_splits(
+                    variant_frames, domain, xpt_dir, request.verbose > 0
+                )
+                result["split_xpt_paths"] = split_paths
+                result["split_datasets"] = split_datasets
+                self.logger.success(
+                    f"Generated split XPT datasets for {domain.code.upper()} (no base {base_filename}.xpt)"
+                )
 
         return result
 
@@ -809,6 +821,29 @@ class DomainProcessingUseCase:
         split_datasets: list[tuple[str, pd.DataFrame, Path]] = []
         domain_code = domain.code.upper()
 
+        # Pinnacle 21 SD1116 expects consistent SAS variable lengths across split datasets.
+        # Compute a shared max length per character variable across all split datasets.
+        char_vars = {
+            str(v.name).upper()
+            for v in getattr(domain, "variables", [])
+            if getattr(v, "type", None) == "Char" and getattr(v, "name", None)
+        }
+        max_char_len: dict[str, int] = {}
+        for _variant_name, df in variant_frames:
+            if df.empty:
+                continue
+            for col in df.columns:
+                col_upper = str(col).upper()
+                if col_upper not in char_vars:
+                    continue
+                series = df[col].astype("string").fillna("")
+                length = int(series.str.len().max() or 0)
+                # SAS v5 transport limits character length to 200.
+                length = min(max(length, 1), 200)
+                prev = max_char_len.get(col_upper, 1)
+                if length > prev:
+                    max_char_len[col_upper] = length
+
         for variant_name, variant_df in variant_frames:
             table = (
                 variant_name.replace(" ", "_").replace("(", "").replace(")", "").upper()
@@ -831,18 +866,34 @@ class DomainProcessingUseCase:
                 )
                 table = table[:8]
 
-            if "DOMAIN" in variant_df.columns:
-                variant_df = variant_df.copy()
-                variant_df["DOMAIN"] = domain_code
+            write_df = variant_df
+            if "DOMAIN" in write_df.columns:
+                write_df = write_df.copy()
+                write_df["DOMAIN"] = domain_code
 
             # Do not generate empty split datasets. They trigger validator
             # presence findings (and are not useful for submission).
-            if variant_df.empty:
+            if write_df.empty:
                 if verbose:
                     self.logger.verbose(
                         f"    Skipping split dataset {table} (0 records)"
                     )
                 continue
+
+            # Normalize character column lengths across split datasets.
+            if max_char_len:
+                write_df = write_df.copy()
+                for col in write_df.columns:
+                    col_upper = str(col).upper()
+                    width = max_char_len.get(col_upper)
+                    if width is None:
+                        continue
+                    write_df[col] = (
+                        write_df[col]
+                        .astype("string")
+                        .fillna("")
+                        .str.pad(width, side="right")
+                    )
 
             split_dir = xpt_dir / "split"
             if self._output_preparer is None:
@@ -869,7 +920,7 @@ class DomainProcessingUseCase:
                 )
 
             self._xpt_writer.write(
-                variant_df,
+                write_df,
                 domain.code,
                 split_path,
                 file_label=file_label,
