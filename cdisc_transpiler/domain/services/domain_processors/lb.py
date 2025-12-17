@@ -129,9 +129,21 @@ class LBProcessor(BaseDomainProcessor):
             frame.loc[empty_endtc, "LBENDTC"] = frame.loc[empty_endtc, "LBDTC"]
         # Compute study days
         if "LBDTC" in frame.columns:
-            DateTransformer.compute_study_day(frame, "LBDTC", "LBDY", ref="RFSTDTC")
+            DateTransformer.compute_study_day(
+                frame,
+                "LBDTC",
+                "LBDY",
+                reference_starts=self.reference_starts,
+                ref="RFSTDTC",
+            )
         if "LBENDTC" in frame.columns and "LBENDY" in frame.columns:
-            DateTransformer.compute_study_day(frame, "LBENDTC", "LBENDY", ref="RFSTDTC")
+            DateTransformer.compute_study_day(
+                frame,
+                "LBENDTC",
+                "LBENDY",
+                reference_starts=self.reference_starts,
+                ref="RFSTDTC",
+            )
         if "LBDY" in frame.columns:
             frame.loc[:, "LBDY"] = NumericTransformer.force_numeric(frame["LBDY"])
         else:
@@ -140,7 +152,16 @@ class LBProcessor(BaseDomainProcessor):
         if "LBLOBXFL" not in frame.columns:
             frame.loc[:, "LBLOBXFL"] = ""
         if "LBSTRESC" in frame.columns:
-            frame.loc[:, "LBSTRESC"] = frame["LBSTRESC"].astype("string")
+            stresc = frame["LBSTRESC"].astype("string").fillna("")
+            # Normalize common qualitative results to uppercase to align with
+            # user-defined codelists that frequently use uppercase tokens.
+            normalized = stresc.str.strip()
+            normalized = normalized.where(normalized != "", "")
+            normalized = normalized.replace(
+                {"Positive": "POSITIVE", "Negative": "NEGATIVE"}
+            )
+            normalized = normalized.str.upper()
+            frame.loc[:, "LBSTRESC"] = normalized
         # Ensure LBSTRESC mirrors LBORRES when missing
         if "LBORRES" in frame.columns and "LBSTRESC" in frame.columns:
             empty_stresc = frame["LBSTRESC"].astype(str).str.strip() == ""
@@ -265,15 +286,65 @@ class LBProcessor(BaseDomainProcessor):
                 frame.loc[:, col] = ensure_numeric_series(
                     frame[col], frame.index
                 ).fillna(0)
-        # Provide default units for non-missing results using CT values
-        if "LBORRES" in frame.columns and "LBORRESU" in frame.columns:
-            orres_str = frame["LBORRES"].astype("string").fillna("").str.strip()
-            needs_unit = frame["LBORRESU"].astype("string").fillna("").str.strip() == ""
-            frame.loc[needs_unit & (orres_str != ""), "LBORRESU"] = "U/L"
-        if "LBSTRESC" in frame.columns and "LBSTRESU" in frame.columns:
-            stresc_str = frame["LBSTRESC"].astype("string").fillna("").str.strip()
-            needs_unit = frame["LBSTRESU"].astype("string").fillna("").str.strip() == ""
-            frame.loc[needs_unit & (stresc_str != ""), "LBSTRESU"] = "U/L"
+        # Provide default units for non-missing results using test-code-aware defaults.
+        unit_by_testcd = {
+            "GLUC": "mg/dL",
+            "CHOL": "mg/dL",
+            "HGB": "g/dL",
+            "HCT": "%",
+            "RBC": "10^12/L",
+            "WBC": "10^9/L",
+            "PLAT": "10^9/L",
+            "ALT": "U/L",
+            "AST": "U/L",
+            "PROT": "g/L",
+            "PH": "",
+            "OCCBLD": "",
+        }
+        if {"LBTESTCD", "LBORRESU"} <= set(frame.columns):
+            testcd = (
+                frame["LBTESTCD"].astype("string").fillna("").str.strip().str.upper()
+            )
+            inferred = testcd.map(unit_by_testcd).fillna("")
+            has_result = (
+                frame.get("LBORRES", pd.Series(index=frame.index))
+                .astype("string")
+                .fillna("")
+                .str.strip()
+                != ""
+            ) | (
+                frame.get("LBSTRESC", pd.Series(index=frame.index))
+                .astype("string")
+                .fillna("")
+                .str.strip()
+                != ""
+            )
+            needs_oru = frame["LBORRESU"].astype("string").fillna("").str.strip() == ""
+            frame.loc[needs_oru & has_result, "LBORRESU"] = inferred.loc[
+                needs_oru & has_result
+            ]
+        if {"LBTESTCD", "LBSTRESU"} <= set(frame.columns):
+            testcd = (
+                frame["LBTESTCD"].astype("string").fillna("").str.strip().str.upper()
+            )
+            inferred = testcd.map(unit_by_testcd).fillna("")
+            has_result = (
+                frame.get("LBORRES", pd.Series(index=frame.index))
+                .astype("string")
+                .fillna("")
+                .str.strip()
+                != ""
+            ) | (
+                frame.get("LBSTRESC", pd.Series(index=frame.index))
+                .astype("string")
+                .fillna("")
+                .str.strip()
+                != ""
+            )
+            needs_su = frame["LBSTRESU"].astype("string").fillna("").str.strip() == ""
+            frame.loc[needs_su & has_result, "LBSTRESU"] = inferred.loc[
+                needs_su & has_result
+            ]
         ct_lb_units = self._get_controlled_terminology(variable="LBORRESU")
         if ct_lb_units:
             for col in ("LBORRESU", "LBSTRESU"):

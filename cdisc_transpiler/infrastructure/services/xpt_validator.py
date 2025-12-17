@@ -49,6 +49,24 @@ class XPTValidator:
         self, frame: pd.DataFrame, variables: Sequence[SDTMVariable]
     ) -> None:
         ordered = [v.name for v in variables if v.name in frame.columns]
+
+        # Many validators (including Pinnacle 21) expect the standard SDTM
+        # identifier columns to appear first, regardless of spec CSV ordering.
+        # Enforce a canonical prefix to prevent domain-spec anomalies from
+        # producing surprising column orders.
+        canonical_prefix = [
+            c for c in ("STUDYID", "DOMAIN", "USUBJID") if c in frame.columns
+        ]
+
+        # Prefer domain sequence variables early (typically immediately after USUBJID).
+        seq_cols = [
+            c
+            for c in ordered
+            if c.upper().endswith("SEQ") and c not in canonical_prefix
+        ]
+
+        prefix = canonical_prefix + [c for c in seq_cols if c not in canonical_prefix]
+        ordered = prefix + [c for c in ordered if c not in prefix]
         extras = [c for c in frame.columns if c not in ordered]
         desired = ordered + extras
 

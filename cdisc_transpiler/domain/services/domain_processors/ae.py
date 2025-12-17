@@ -49,6 +49,30 @@ class AEProcessor(BaseDomainProcessor):
             reference_starts=self.reference_starts,
             ref="RFSTDTC",
         )
+        # TRTEMFL (treatment emergent flag) is commonly expected by validators.
+        # Derive it conservatively from AESTDTC relative to RFSTDTC.
+        if "TRTEMFL" not in frame.columns:
+            frame.loc[:, "TRTEMFL"] = ""
+        if {"AESTDTC", "TRTEMFL"} <= set(frame.columns):
+            trtem = frame["TRTEMFL"].astype("string").fillna("").str.strip().str.upper()
+            needs = trtem.eq("") | trtem.isin({"NAN", "<NA>"})
+            if bool(needs.any()):
+                ae_start = pd.to_datetime(frame["AESTDTC"], errors="coerce")
+                baseline = None
+                if self.reference_starts and "USUBJID" in frame.columns:
+                    baseline = pd.to_datetime(
+                        frame["USUBJID"].astype("string").map(self.reference_starts),
+                        errors="coerce",
+                    )
+                if baseline is None and "RFSTDTC" in frame.columns:
+                    baseline = pd.to_datetime(frame["RFSTDTC"], errors="coerce")
+
+                if baseline is not None:
+                    derived = (ae_start >= baseline).map(
+                        lambda v: "Y" if bool(v) else "N"
+                    )
+                    derived = derived.where(ae_start.notna() & baseline.notna(), "")
+                    frame.loc[needs, "TRTEMFL"] = derived.loc[needs]
         # Keep TRTEMFL when present to satisfy treatment-emergent checks
         # Ensure expected MedDRA variables exist with default placeholders
         defaults = {

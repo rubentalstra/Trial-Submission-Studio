@@ -18,6 +18,7 @@ removing the delegation to legacy DomainProcessingCoordinator.
 from __future__ import annotations
 
 from pathlib import Path
+import traceback
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd
@@ -344,6 +345,8 @@ class DomainProcessingUseCase:
             response.success = False
             response.error = str(exc)
             self.logger.error(f"{request.domain_code}: {exc}")
+            if request.verbose >= 2:
+                self.logger.error(traceback.format_exc())
 
         return response
 
@@ -678,7 +681,7 @@ class DomainProcessingUseCase:
                     if len(variant_frames) > 1:
                         assert xpt_dir is not None
                         split_paths, split_datasets = self._write_variant_splits(
-                            variant_frames, domain, xpt_dir
+                            variant_frames, domain, xpt_dir, request.verbose > 0
                         )
                         result["split_xpt_paths"] = split_paths
                         result["split_datasets"] = split_datasets
@@ -796,6 +799,7 @@ class DomainProcessingUseCase:
         variant_frames: list[tuple[str, pd.DataFrame]],
         domain: SDTMDomain,
         xpt_dir: Path,
+        verbose: bool,
     ) -> tuple[list[Path], list[tuple[str, pd.DataFrame, Path]]]:
         """Write split XPT files for domain variants.
 
@@ -830,6 +834,15 @@ class DomainProcessingUseCase:
             if "DOMAIN" in variant_df.columns:
                 variant_df = variant_df.copy()
                 variant_df["DOMAIN"] = domain_code
+
+            # Do not generate empty split datasets. They trigger validator
+            # presence findings (and are not useful for submission).
+            if variant_df.empty:
+                if verbose:
+                    self.logger.verbose(
+                        f"    Skipping split dataset {table} (0 records)"
+                    )
+                continue
 
             split_dir = xpt_dir / "split"
             if self._output_preparer is None:

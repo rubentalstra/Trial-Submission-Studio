@@ -244,7 +244,7 @@ class DMProcessor(BaseDomainProcessor):
                 frame.loc[consent_after_start, "RFICDTC"] = frame.loc[
                     consent_after_start, "RFSTDTC"
                 ]
-        except Exception:
+        except (TypeError, ValueError):
             pass
 
         # Set other reference dates based on RFSTDTC
@@ -275,24 +275,33 @@ class DMProcessor(BaseDomainProcessor):
                     axis=1,
                 )
             )
-        # ARMNRS should only be populated when both planned/actual arm codes are missing
+        # ARMNRS is Arm Null Reason (not a numeric arm number).
+        # Keep it blank unless explicitly provided.
         if "ARMNRS" not in frame.columns:
             frame["ARMNRS"] = ""
-        armnrs = frame["ARMNRS"].astype("string").fillna("")
+        else:
+            frame["ARMNRS"] = frame["ARMNRS"].astype("string").fillna("")
+
         armcd_clean = (
-            armcd.astype("string").str.strip()
+            armcd.astype("string").fillna("").str.strip()
             if "ARMCD" in frame.columns
-            else pd.Series([""] * len(frame))
+            else pd.Series([""] * len(frame), index=frame.index, dtype="string")
         )
         actarmcd_clean = (
-            actarmcd.astype("string").str.strip()
+            actarmcd.astype("string").fillna("").str.strip()
             if "ACTARMCD" in frame.columns
-            else pd.Series([""] * len(frame))
+            else pd.Series([""] * len(frame), index=frame.index, dtype="string")
         )
-        needs_reason = (armcd_clean == "") & (actarmcd_clean == "")
-        frame.loc[needs_reason & (armnrs.str.strip() == ""), "ARMNRS"] = "NOT ASSIGNED"
-        # Keep ARMNRS empty when arm assignments exist
-        frame.loc[~needs_reason, "ARMNRS"] = ""
+
+        has_arm = (armcd_clean != "") | (actarmcd_clean != "")
+
+        # Clear arm/date fields for unassigned subjects.
+        needs_reason = ~has_arm
+        if bool(needs_reason.any()):
+            frame.loc[
+                needs_reason & (frame["ARMNRS"].astype(str).str.strip() == ""), "ARMNRS"
+            ] = ""
+
         if needs_reason.any():
             # Clear arm/date fields for unassigned subjects
             for col in ("ARMCD", "ACTARMCD", "ARM", "ACTARM", "ACTARMUD"):

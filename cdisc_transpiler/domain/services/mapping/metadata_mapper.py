@@ -138,8 +138,12 @@ class MetadataAwareMapper:
         unmapped: list[str] = []
         assigned_targets: set[str] = set()
 
-        # First pass: identify alias-based mappings
-        column_aliases: dict[str, tuple[str, str | None, str | None]] = {}
+        # First pass: identify alias-based mappings.
+        # When multiple source columns map to the same SDTM target, pick the
+        # best candidate (instead of letting DataFrame column order decide).
+        alias_candidates_by_target: dict[
+            str, list[tuple[str, str | None, str | None]]
+        ] = {}
 
         for column in frame.columns:
             normalized = normalize_text(column)
@@ -171,18 +175,56 @@ class MetadataAwareMapper:
                             codelist_name = col_def.format_name
 
             if target:
-                column_aliases[column] = (target, codelist_name, code_column)
+                alias_candidates_by_target.setdefault(target, []).append(
+                    (column, codelist_name, code_column)
+                )
 
-        # Process alias mappings first
-        for column, (target, codelist_name, code_column) in column_aliases.items():
+        def _alias_priority(target: str, column: str) -> int:
+            """Return a higher number for better alias candidates."""
+            t = (target or "").strip().upper()
+            col_norm = normalize_text(column)
+
+            # Domain-specific heuristic: DSSTDTC should prefer actual
+            # disposition/contact/discontinuation dates over generic event dates.
+            if self.domain_code == "DS" and t == "DSSTDTC":
+                score = 0
+                if (
+                    "LASTCONTACT" in col_norm
+                    or "LAST" in col_norm
+                    and "CONTACT" in col_norm
+                ):
+                    score += 30
+                if "EARLYDISCONTINUATION" in col_norm or "DISCONTINUATION" in col_norm:
+                    score += 20
+                if "WITHDRAW" in col_norm or "WITHDRAWAL" in col_norm:
+                    score += 15
+                if col_norm in {"EVENTDATE", "EVENTDATEOF"} or "EVENTDATE" in col_norm:
+                    score -= 10
+                return score
+
+            return 0
+
+        # Process alias mappings first (best candidate per target)
+        for target, candidates in alias_candidates_by_target.items():
             if target in assigned_targets:
-                unmapped.append(column)
+                for col, _, _ in candidates:
+                    unmapped.append(col)
                 continue
+
+            # Prefer the best-scoring candidate; tie-break by source column order.
+            best = max(
+                candidates,
+                key=lambda item: (
+                    _alias_priority(target, item[0]),
+                    -list(frame.columns).index(item[0]),
+                ),
+            )
+            best_col, codelist_name, code_column = best
 
             assigned_targets.add(target)
             suggestions.append(
                 ColumnMapping(
-                    source_column=safe_column_name(column),
+                    source_column=safe_column_name(best_col),
                     target_variable=target,
                     transformation=None,
                     confidence_score=1.0,
@@ -191,9 +233,15 @@ class MetadataAwareMapper:
                 )
             )
 
+            for col, _, _ in candidates:
+                if col != best_col:
+                    unmapped.append(col)
+
         # Second pass: fuzzy matching for remaining columns
+        # Second pass: fuzzy matching for remaining columns
+        already_mapped_columns = {m.source_column.strip('"') for m in suggestions}
         for column in frame.columns:
-            if column in column_aliases:
+            if column in already_mapped_columns:
                 continue  # Already processed
 
             # Skip code columns

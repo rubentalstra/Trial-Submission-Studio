@@ -40,8 +40,24 @@ class EXProcessor(BaseDomainProcessor):
             end_series.astype(str).str.strip() != "", frame["EXSTDTC"]
         )
         DateTransformer.ensure_date_pair_order(frame, "EXSTDTC", "EXENDTC")
-        DateTransformer.compute_study_day(frame, "EXSTDTC", "EXSTDY", ref="RFSTDTC")
-        DateTransformer.compute_study_day(frame, "EXENDTC", "EXENDY", ref="RFSTDTC")
+        DateTransformer.compute_study_day(
+            frame,
+            "EXSTDTC",
+            "EXSTDY",
+            reference_starts=self.reference_starts,
+            ref="RFSTDTC",
+        )
+        DateTransformer.compute_study_day(
+            frame,
+            "EXENDTC",
+            "EXENDY",
+            reference_starts=self.reference_starts,
+            ref="RFSTDTC",
+        )
+
+        # EXDOSE is numeric in SDTM. Coerce to numeric to avoid type mismatches.
+        if "EXDOSE" in frame.columns:
+            frame.loc[:, "EXDOSE"] = pd.to_numeric(frame["EXDOSE"], errors="coerce")
         frame.loc[:, "EXDOSFRM"] = TextTransformer.replace_unknown(
             frame["EXDOSFRM"], "TABLET"
         ).astype("string")
@@ -104,11 +120,23 @@ class EXProcessor(BaseDomainProcessor):
         NumericTransformer.assign_sequence(frame, "EXSEQ", "USUBJID")
         # Recompute dates/study days for any appended defaults
         DateTransformer.ensure_date_pair_order(frame, "EXSTDTC", "EXENDTC")
-        DateTransformer.compute_study_day(frame, "EXSTDTC", "EXSTDY", ref="RFSTDTC")
-        DateTransformer.compute_study_day(frame, "EXENDTC", "EXENDY", ref="RFSTDTC")
+        DateTransformer.compute_study_day(
+            frame,
+            "EXSTDTC",
+            "EXSTDY",
+            reference_starts=self.reference_starts,
+            ref="RFSTDTC",
+        )
+        DateTransformer.compute_study_day(
+            frame,
+            "EXENDTC",
+            "EXENDY",
+            reference_starts=self.reference_starts,
+            ref="RFSTDTC",
+        )
         for dy in ("EXSTDY", "EXENDY"):
             if dy in frame.columns:
-                frame.loc[:, dy] = NumericTransformer.force_numeric(frame[dy]).fillna(1)
+                frame.loc[:, dy] = NumericTransformer.force_numeric(frame[dy])
         # Ensure timing reference present when EXRFTDTC populated
         if "EXTPTREF" in frame.columns:
             frame.loc[:, "EXTPTREF"] = (

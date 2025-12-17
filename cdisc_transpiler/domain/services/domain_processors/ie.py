@@ -88,6 +88,17 @@ class IEProcessor(BaseDomainProcessor):
         cat_norm = cat_norm.where(cat_norm.isin({"INCLUSION", "EXCLUSION", "BOTH"}), "")
         frame.loc[:, "IECAT"] = cat_norm.replace("", "INCLUSION")
 
+        # Pinnacle 21 consistency rules expect the standardized result to align
+        # with the category (SD1045/SD1046).
+        if "IESTRESC" not in frame.columns:
+            frame.loc[:, "IESTRESC"] = ""
+        cats = frame["IECAT"].astype("string").fillna("").str.strip().str.upper()
+        frame.loc[cats.eq("EXCLUSION"), "IESTRESC"] = "Y"
+        frame.loc[cats.eq("INCLUSION"), "IESTRESC"] = "N"
+        # Keep IEORRES consistent with IESTRESC.
+        if "IEORRES" in frame.columns:
+            frame.loc[:, "IEORRES"] = frame["IESTRESC"].astype("string").fillna("")
+
         # Normalize VISITNUM to numeric and deduplicate records by key to reduce repeats
         if "VISITNUM" in frame.columns:
             frame.loc[:, "VISITNUM"] = (frame.groupby("USUBJID").cumcount() + 1).astype(
@@ -141,7 +152,13 @@ class IEProcessor(BaseDomainProcessor):
             else:
                 frame.loc[:, "IEDTC"] = frame.get("RFSTDTC", "")
         if "IEDY" in frame.columns:
-            DateTransformer.compute_study_day(frame, "IEDTC", "IEDY", ref="RFSTDTC")
+            DateTransformer.compute_study_day(
+                frame,
+                "IEDTC",
+                "IEDY",
+                reference_starts=self.reference_starts,
+                ref="RFSTDTC",
+            )
             frame.loc[:, "IEDY"] = NumericTransformer.force_numeric(
                 frame["IEDY"]
             ).fillna(1)
