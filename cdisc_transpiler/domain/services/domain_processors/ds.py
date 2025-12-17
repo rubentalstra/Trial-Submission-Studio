@@ -62,8 +62,12 @@ class DSProcessor(BaseDomainProcessor):
 
             junk_site_rows = is_site_payload & ~screen_failure
             if bool(junk_site_rows.any()):
-                frame.drop(index=frame.index[junk_site_rows], inplace=True)
-                frame.reset_index(drop=True, inplace=True)
+                # Don't drop rows: mapping heuristics can temporarily land the site
+                # code into DSDECOD/DSTERM. Preserve the record and clear the junk
+                # payload so later normalization (including DSTERM->DSDECOD) can
+                # still salvage the row.
+                frame.loc[junk_site_rows, "DSDECOD"] = ""
+                frame.loc[junk_site_rows & (dsterm_upper == site_upper), "DSTERM"] = ""
 
         # Controlled terminology normalization for DSDECOD.
         # Mapping heuristics sometimes land on raw yes/no codes (Y/N) or other

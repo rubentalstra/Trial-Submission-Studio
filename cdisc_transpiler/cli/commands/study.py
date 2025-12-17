@@ -252,6 +252,17 @@ def study_command(
             "domain_dataframe": result.domain_dataframe,
             "config": result.config,
             "xpt_path": result.xpt_path,
+            "split_xpt_paths": [
+                split_path for _, _, split_path in (result.split_datasets or [])
+            ],
+            "splits": [
+                {
+                    "domain_code": split_name,
+                    "records": len(split_df),
+                    "xpt_path": split_path,
+                }
+                for split_name, split_df, split_path in (result.split_datasets or [])
+            ],
             "xml_path": result.xml_path,
             "sas_path": result.sas_path,
             "conformance_report": conformance_report,

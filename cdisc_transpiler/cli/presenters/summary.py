@@ -122,10 +122,12 @@ class SummaryPresenter:
         table.add_column("Notes", style="dim", width=25)
 
         # Process and organize results
-        main_domains, supp_domains, total_records = self._organize_results(results)
+        main_domains, supp_domains, split_domains, total_records = (
+            self._organize_results(results)
+        )
 
         # Add rows to table
-        self._add_table_rows(table, main_domains, supp_domains)
+        self._add_table_rows(table, main_domains, supp_domains, split_domains)
 
         # Add total row
         table.add_section()
@@ -143,17 +145,18 @@ class SummaryPresenter:
 
     def _organize_results(
         self, results: list[dict[str, Any]]
-    ) -> tuple[dict[str, dict], dict[str, list], int]:
+    ) -> tuple[dict[str, dict], dict[str, list], dict[str, list], int]:
         """Organize results into main domains and supplemental domains.
 
         Args:
             results: List of processing results
 
         Returns:
-            Tuple of (main_domains, supp_domains, total_records)
+            Tuple of (main_domains, supp_domains, split_domains, total_records)
         """
         main_domains = {}
         supp_domains = {}
+        split_domains: dict[str, list[tuple[str, dict[str, Any]]]] = {}
         total_records = 0
 
         for result in results:
@@ -165,7 +168,15 @@ class SummaryPresenter:
             is_supp = domain_code.startswith("SUPP")
 
             # Determine output indicators
-            has_xpt = "✓" if result.get("xpt_path") else "–"
+            # When a domain is split (SDTMIG v3.4 4.1.7), the parent dataset may not
+            # be emitted. In that case, treat split XPTs as valid XPT output.
+            split_xpt_paths = result.get("split_xpt_paths") or []
+            split_datasets = result.get("split_datasets") or []
+            has_xpt = (
+                "✓"
+                if (result.get("xpt_path") or split_xpt_paths or split_datasets)
+                else "–"
+            )
             has_xml = "✓" if result.get("xml_path") else "–"
             has_sas = "✓" if result.get("sas_path") else "–"
 
@@ -190,6 +201,39 @@ class SummaryPresenter:
                 supp_domains[parent_domain].append((domain_code, domain_data))
             else:
                 main_domains[domain_code] = domain_data
+
+                # Handle split datasets (shown as nested rows, like SUPP, but purple)
+                splits: list[dict[str, Any]] = []
+                raw_splits = result.get("splits")
+                if isinstance(raw_splits, list):
+                    splits = [s for s in raw_splits if isinstance(s, dict)]
+                else:
+                    # Backwards-compatible fallback: derive split dataset names from paths.
+                    split_paths = result.get("split_xpt_paths") or []
+                    splits = [
+                        {"domain_code": getattr(p, "stem", ""), "records": 0}
+                        for p in split_paths
+                    ]
+
+                for split in splits:
+                    split_code = str(split.get("domain_code") or "").upper()
+                    if not split_code:
+                        continue
+
+                    split_records = int(split.get("records") or 0)
+                    split_domain_data = {
+                        "records": split_records,
+                        "description": "",
+                        "has_xpt": "✓",
+                        "has_xml": "–",
+                        "has_sas": "–",
+                        "notes": "",
+                        "is_supp": False,
+                        "is_split": True,
+                    }
+                    split_domains.setdefault(domain_code, []).append(
+                        (split_code, split_domain_data)
+                    )
 
                 # Handle nested supplemental domains (newer result shape)
                 for supp in result.get("supplementals", []) or []:
@@ -227,7 +271,7 @@ class SummaryPresenter:
 
             total_records += records
 
-        return main_domains, supp_domains, total_records
+        return main_domains, supp_domains, split_domains, total_records
 
     def _build_notes(self, result: dict[str, Any]) -> str:
         """Build notes string for a domain result.
@@ -238,21 +282,14 @@ class SummaryPresenter:
         Returns:
             Formatted notes string
         """
-        notes = []
-        split_paths = result.get("split_xpt_paths", [])
-        if split_paths:
-            split_names = ", ".join(p.name for p in split_paths[:2])
-            if len(split_paths) > 2:
-                split_names += f", +{len(split_paths) - 2}"
-            notes.append(f"splits: {split_names}")
-
-        return " • ".join(notes) if notes else ""
+        return ""
 
     def _add_table_rows(
         self,
         table: Table,
         main_domains: dict[str, dict],
         supp_domains: dict[str, list],
+        split_domains: dict[str, list],
     ) -> None:
         """Add domain rows to the table.
 
@@ -275,17 +312,35 @@ class SummaryPresenter:
                 data["notes"],
             )
 
-            # Add supplemental domains for this parent
-            if domain_code in supp_domains:
-                for supp_code, supp_data in sorted(supp_domains[domain_code]):
+            # Add child rows (splits + supplementals) with a proper tree connector.
+            children: list[tuple[str, str, dict[str, Any]]] = []
+            for split_code, split_data in sorted(split_domains.get(domain_code, [])):
+                children.append(("split", split_code, split_data))
+            for supp_code, supp_data in sorted(supp_domains.get(domain_code, [])):
+                children.append(("supp", supp_code, supp_data))
+
+            for idx, (kind, child_code, child_data) in enumerate(children):
+                connector = "└─" if idx == len(children) - 1 else "├─"
+
+                if kind == "split":
                     table.add_row(
-                        f"[dim cyan] └─ {supp_code}[/dim cyan]",
-                        f"[dim]{supp_data.get('description') or ''}[/dim]",
-                        f"[dim yellow]{supp_data['records']:,}[/dim yellow]",
-                        f"[dim]{supp_data['has_xpt']}[/dim]",
-                        f"[dim]{supp_data['has_xml']}[/dim]",
-                        f"[dim]{supp_data['has_sas']}[/dim]",
-                        f"[dim]{supp_data['notes']}[/dim]",
+                        f"[magenta] {connector} {child_code}[/magenta]",
+                        "[magenta]Split dataset[/magenta]",
+                        f"[magenta]{child_data['records']:,}[/magenta]",
+                        f"[magenta]{child_data['has_xpt']}[/magenta]",
+                        f"[magenta]{child_data['has_xml']}[/magenta]",
+                        f"[magenta]{child_data['has_sas']}[/magenta]",
+                        "",
+                    )
+                else:
+                    table.add_row(
+                        f"[dim cyan] {connector} {child_code}[/dim cyan]",
+                        f"[dim]{child_data.get('description') or ''}[/dim]",
+                        f"[dim yellow]{child_data['records']:,}[/dim yellow]",
+                        f"[dim]{child_data['has_xpt']}[/dim]",
+                        f"[dim]{child_data['has_xml']}[/dim]",
+                        f"[dim]{child_data['has_sas']}[/dim]",
+                        f"[dim]{child_data['notes']}[/dim]",
                     )
 
     def _print_status_summary(self, success_count: int, error_count: int) -> None:
@@ -344,7 +399,10 @@ class SummaryPresenter:
             generated_define = generate_define
         else:
             generated_xpt = any(
-                (r.get("xpt_path") is not None) for r in (results or [])
+                (r.get("xpt_path") is not None)
+                or bool(r.get("split_xpt_paths"))
+                or bool(r.get("split_datasets"))
+                for r in (results or [])
             )
             generated_xml = any(
                 (r.get("xml_path") is not None) for r in (results or [])

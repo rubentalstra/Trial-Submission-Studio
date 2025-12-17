@@ -28,11 +28,9 @@ class EXProcessor(BaseDomainProcessor):
                 frame["EXTRT"].astype("string").fillna("").str.strip()
             )
 
-        if "EXTRT" in frame.columns:
-            missing_topic = frame["EXTRT"].astype("string").fillna("").str.strip() == ""
-            if bool(missing_topic.any()):
-                frame.drop(index=frame.index[missing_topic], inplace=True)
-                frame.reset_index(drop=True, inplace=True)
+        # Do not drop records solely because EXTRT is missing. Missing topic values
+        # should be reported via conformance checks, but the underlying exposure
+        # record should be preserved.
 
         for date_col in ("EXSTDTC", "EXENDTC"):
             if date_col in frame.columns:

@@ -76,7 +76,7 @@ class TestSummaryPresenter:
 
     def test_organize_results_separates_main_and_supp(self, presenter, sample_results):
         """Test that results are organized into main and supplemental domains."""
-        main_domains, supp_domains, total_records = presenter._organize_results(
+        main_domains, supp_domains, _, total_records = presenter._organize_results(
             sample_results
         )
 
@@ -105,14 +105,14 @@ class TestSummaryPresenter:
             }
         ]
 
-        main_domains, _, _ = presenter._organize_results(results)
+        main_domains, _, _, _ = presenter._organize_results(results)
 
         assert main_domains["DM"]["has_xpt"] == "✓"
         assert main_domains["DM"]["has_xml"] == "–"
         assert main_domains["DM"]["has_sas"] == "–"
 
     def test_build_notes_with_split_datasets(self, presenter):
-        """Test that notes are built correctly for split datasets."""
+        """Split datasets are shown as nested rows, not Notes."""
         result = {
             "split_xpt_paths": [
                 Path("/output/xpt/split/lbhm.xpt"),
@@ -121,18 +121,16 @@ class TestSummaryPresenter:
         }
 
         notes = presenter._build_notes(result)
-        assert "splits:" in notes
-        assert "lbhm.xpt" in notes
-        assert "lbcc.xpt" in notes
+        assert notes == ""
 
     def test_build_notes_with_many_splits(self, presenter):
-        """Test that notes handle many split datasets with truncation."""
+        """Split datasets are shown as nested rows, not Notes."""
         result = {
             "split_xpt_paths": [Path(f"/output/xpt/split/lb{i}.xpt") for i in range(5)]
         }
 
         notes = presenter._build_notes(result)
-        assert "+3" in notes  # Should show +3 for remaining splits
+        assert notes == ""
 
     def test_build_notes_empty_when_no_splits(self, presenter):
         """Test that notes are empty when no splits exist."""
@@ -321,7 +319,9 @@ class TestSummaryPresenterIntegration:
         assert "Supplemental Qualifiers for AE" in output
 
         # Verify split datasets are mentioned
-        assert "splits:" in output
+        assert "LBHM" in output
+        assert "LBCC" in output
+        assert "Split dataset" in output
 
         # Verify total calculation
         assert "685" in output  # 50 + 120 + 15 + 500
