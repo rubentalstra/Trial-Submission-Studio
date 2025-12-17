@@ -30,13 +30,7 @@ class EXProcessor(BaseDomainProcessor):
                 frame["EXTRT"].astype("string").fillna("").str.strip()
             )
 
-        # Ensure EPOCH exists and is populated where deterministically known.
-        # For EX records, EPOCH is commonly TREATMENT. If not known, leave null.
-        if "EPOCH" in frame.columns:
-            epoch = frame["EPOCH"].astype("string").fillna("").str.strip()
-            empty = epoch == ""
-            if bool(empty.any()):
-                frame.loc[empty, "EPOCH"] = "TREATMENT"
+        # Do not default/guess EPOCH.
 
         # Some sources/mappings mistakenly place a treatment label into EXELTM
         # (elapsed time). If EXTRT is missing and EXELTM contains text, treat it
@@ -54,14 +48,7 @@ class EXProcessor(BaseDomainProcessor):
         # should be reported via conformance checks, but the underlying exposure
         # record should be preserved.
 
-        # If EXSCAT is present but EXCAT is missing, provide a minimal category
-        # so conditional presence checks do not fail.
-        if {"EXSCAT", "EXCAT"}.issubset(frame.columns):
-            exscat = frame["EXSCAT"].astype("string").fillna("").str.strip()
-            excat = frame["EXCAT"].astype("string").fillna("").str.strip()
-            needs_cat = (exscat != "") & (excat == "")
-            if bool(needs_cat.any()):
-                frame.loc[needs_cat, "EXCAT"] = "TREATMENT"
+        # Do not default/guess EXCAT.
 
         for date_col in ("EXSTDTC", "EXENDTC"):
             if date_col in frame.columns:

@@ -23,23 +23,14 @@ class CMProcessor(BaseDomainProcessor):
         # Drop placeholder rows
         self._drop_placeholder_rows(frame)
 
-        # CMDOSU should be controlled; default to MG and uppercase values
+        # Do not default/guess units or durations. If present, normalize casing/whitespace.
         if "CMDOSU" in frame.columns:
             frame.loc[:, "CMDOSU"] = (
-                frame["CMDOSU"]
-                .astype("string")
-                .fillna("mg")
-                .replace("", "mg")
-                .str.lower()
+                frame["CMDOSU"].astype("string").fillna("").str.strip().str.lower()
             )
-        else:
-            frame.loc[:, "CMDOSU"] = "mg"
-        # CMDUR permissible – set default to keep presence check satisfied
-        if "CMDUR" not in frame.columns:
-            frame.loc[:, "CMDUR"] = "P1D"
-        else:
+        if "CMDUR" in frame.columns:
             frame.loc[:, "CMDUR"] = (
-                frame["CMDUR"].astype("string").fillna("").replace("", "P1D")
+                frame["CMDUR"].astype("string").fillna("").str.strip()
             )
         # Remove duplicate records based on common key fields
         key_cols = [
@@ -130,10 +121,10 @@ class CMProcessor(BaseDomainProcessor):
             }
             upper_route = frame["CMROUTE"].astype(str).str.strip().str.upper()
             frame.loc[:, "CMROUTE"] = upper_route.map(route_map).fillna(upper_route)
-        # Units - set to blank if not recognized to avoid CT errors
+        # Units - blank unrecognized placeholders rather than defaulting.
         if "CMDOSU" in frame.columns:
             frame.loc[:, "CMDOSU"] = TextTransformer.replace_unknown(
-                frame["CMDOSU"], "mg"
+                frame["CMDOSU"], ""
             )
 
         if "CMSTDTC" in frame.columns:
@@ -152,10 +143,7 @@ class CMProcessor(BaseDomainProcessor):
                 reference_starts=self.reference_starts,
                 ref="RFSTDTC",
             )
-        if "EPOCH" in frame.columns:
-            frame.loc[:, "EPOCH"] = "TREATMENT"
-        else:
-            frame.loc[:, "EPOCH"] = "TREATMENT"
+        # Do not default/guess EPOCH.
         # Final pass to remove any exact duplicate rows and realign sequence
         frame.drop_duplicates(inplace=True)
         NumericTransformer.assign_sequence(frame, "CMSEQ", "USUBJID")

@@ -5,7 +5,7 @@ from __future__ import annotations
 import pandas as pd
 
 from .base import BaseDomainProcessor
-from ..transformers import DateTransformer, NumericTransformer, TextTransformer
+from ..transformers import DateTransformer, NumericTransformer
 from ....pandas_utils import ensure_numeric_series
 
 
@@ -21,17 +21,15 @@ class PRProcessor(BaseDomainProcessor):
         Args:
             frame: Domain DataFrame to process in-place
         """
-        # Drop placeholder rows
         self._drop_placeholder_rows(frame)
 
         # Always regenerate PRSEQ - source values may not be unique (SD0005)
-        frame.loc[:, "PRSEQ"] = frame.groupby("USUBJID").cumcount() + 1
-        frame.loc[:, "PRSEQ"] = NumericTransformer.force_numeric(frame["PRSEQ"])
-        # Normalize visit info
-        frame.loc[:, "VISITNUM"] = (frame.groupby("USUBJID").cumcount() + 1).astype(int)
-        frame.loc[:, "VISIT"] = (
-            frame["VISITNUM"].apply(lambda n: f"Visit {int(n)}").astype("string")
-        )
+        NumericTransformer.assign_sequence(frame, "PRSEQ", "USUBJID")
+
+        # Do not synthesize visit variables; only normalize when present.
+        for col in ("VISIT", "VISITNUM"):
+            if col in frame.columns:
+                frame.loc[:, col] = frame[col].astype("string").fillna("").str.strip()
         if "PRSTDTC" in frame.columns:
             DateTransformer.compute_study_day(
                 frame,
@@ -48,35 +46,19 @@ class PRProcessor(BaseDomainProcessor):
                 reference_starts=self.reference_starts,
                 ref="RFSTDTC",
             )
-        if "PRDUR" not in frame.columns:
-            frame.loc[:, "PRDUR"] = "P1D"
-        else:
-            frame.loc[:, "PRDUR"] = TextTransformer.replace_unknown(
-                frame["PRDUR"], "P1D"
-            ).astype("string")
-        if "PRRFTDTC" not in frame.columns:
-            frame.loc[:, "PRRFTDTC"] = frame.get("RFSTDTC", "")
-        else:
-            empty_prrft = (
-                frame["PRRFTDTC"].astype("string").fillna("").str.strip() == ""
+        if "PRDUR" in frame.columns:
+            frame.loc[:, "PRDUR"] = (
+                frame["PRDUR"].astype("string").fillna("").str.strip()
             )
-            frame.loc[empty_prrft, "PRRFTDTC"] = frame.get("RFSTDTC", "")
-        if (
-            "PRRFTDTC" in frame.columns
-            and self.reference_starts
-            and "USUBJID" in frame.columns
-        ):
-            empty_prrft = (
-                frame["PRRFTDTC"].astype("string").fillna("").str.strip() == ""
+
+        if "PRRFTDTC" in frame.columns:
+            frame.loc[:, "PRRFTDTC"] = (
+                frame["PRRFTDTC"].astype("string").fillna("").str.strip()
             )
-            frame.loc[empty_prrft, "PRRFTDTC"] = frame.loc[empty_prrft, "USUBJID"].map(
-                self.reference_starts
-            )
-        # Ensure timing reference present with supporting timing variables
-        frame.loc[:, "PRTPTREF"] = "VISIT"
-        frame.loc[:, "PRTPT"] = frame.get("PRTPT", "VISIT")
-        frame.loc[:, "PRTPTNUM"] = frame.get("PRTPTNUM", 1)
-        frame.loc[:, "PRELTM"] = frame.get("PRELTM", "PT0H")
+
+        for col in ("PRTPTREF", "PRTPT", "PRTPTNUM", "PRELTM"):
+            if col in frame.columns:
+                frame.loc[:, col] = frame[col].astype("string").fillna("").str.strip()
         # PRDECOD should use CT value. If we can't map confidently, leave it blank
         # rather than inventing a (potentially wrong) CT default.
         if "PRDECOD" in frame.columns:
@@ -117,7 +99,9 @@ class PRProcessor(BaseDomainProcessor):
                 decod = decod.where(decod.isin(ct_prdecod.submission_values), "")
                 frame.loc[:, "PRDECOD"] = decod
         if "EPOCH" in frame.columns:
-            frame.loc[:, "EPOCH"] = "TREATMENT"
+            frame.loc[:, "EPOCH"] = (
+                frame["EPOCH"].astype("string").fillna("").str.strip()
+            )
         # Ensure timing reference fields are populated to satisfy SD1282
         timing_defaults = {
             "PRTPTREF": "VISIT",

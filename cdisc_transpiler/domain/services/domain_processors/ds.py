@@ -23,12 +23,10 @@ class DSProcessor(BaseDomainProcessor):
         # Drop placeholder rows
         self._drop_placeholder_rows(frame)
 
-        # Normalize core string fields; override obvious non-SDTM payloads
+        # Normalize core string fields.
         for col in ("DSDECOD", "DSTERM", "DSCAT", "EPOCH"):
             if col in frame.columns:
                 frame.loc[:, col] = frame[col].astype("string").fillna("").str.strip()
-            else:
-                frame.loc[:, col] = ""
 
         # Clean up common study-export artifacts where a site code leaks into
         # DSDECOD/DSTERM instead of an actual disposition/milestone term.
@@ -57,8 +55,7 @@ class DSProcessor(BaseDomainProcessor):
                 # encode as the canonical CT term when we can.
                 frame.loc[screen_failure, "DSDECOD"] = "SCREEN FAILURE"
                 frame.loc[screen_failure, "DSTERM"] = "SCREEN FAILURE"
-                frame.loc[screen_failure, "DSCAT"] = "DISPOSITION EVENT"
-                frame.loc[screen_failure, "EPOCH"] = "SCREENING"
+                # Do not default DSCAT/EPOCH.
 
             junk_site_rows = is_site_payload & ~screen_failure
             if bool(junk_site_rows.any()):
@@ -95,11 +92,8 @@ class DSProcessor(BaseDomainProcessor):
                 move_reason = invalid & ((dsterm_raw == "") | looks_like_site)
                 if bool(move_reason.any()):
                     frame.loc[move_reason, "DSTERM"] = dscat_raw.loc[move_reason]
-                frame.loc[invalid, "DSCAT"] = "DISPOSITION EVENT"
-
-            blank_cat = frame["DSCAT"].astype("string").fillna("").str.strip() == ""
-            if bool(blank_cat.any()):
-                frame.loc[blank_cat, "DSCAT"] = "DISPOSITION EVENT"
+                # Do not default DSCAT; clear invalid values.
+                frame.loc[invalid, "DSCAT"] = ""
 
         # Ensure required DSDECOD is populated when possible.
         if {"DSDECOD", "DSTERM"}.issubset(frame.columns):
@@ -139,12 +133,7 @@ class DSProcessor(BaseDomainProcessor):
                 )
                 frame.loc[missing & lost_follow, "DSDECOD"] = "LOST TO FOLLOW-UP"
 
-                # Fall back to COMPLETED if we can't infer a non-completion reason.
-                still_missing = (
-                    frame["DSDECOD"].astype("string").fillna("").str.strip() == ""
-                )
-                if bool(still_missing.any()):
-                    frame.loc[still_missing, "DSDECOD"] = "COMPLETED"
+                # Do not default DSDECOD when it cannot be inferred.
 
         # If DSTERM is obviously a site label, prefer the coded disposition.
         if {"DSTERM", "DSDECOD"}.issubset(frame.columns):
@@ -155,17 +144,7 @@ class DSProcessor(BaseDomainProcessor):
             if bool(replace.any()):
                 frame.loc[replace, "DSTERM"] = dsdecod.loc[replace]
 
-        # Assign EPOCH when it can be inferred without date-based imputation.
-        if {"DSDECOD", "EPOCH"}.issubset(frame.columns):
-            dsdecod_u = (
-                frame["DSDECOD"].astype("string").fillna("").str.upper().str.strip()
-            )
-            epoch = frame["EPOCH"].astype("string").fillna("").str.strip()
-            empty_epoch = epoch == ""
-
-            screening = dsdecod_u.isin({"SCREEN FAILURE", "SCREENING NOT COMPLETED"})
-            if bool((empty_epoch & screening).any()):
-                frame.loc[empty_epoch & screening, "EPOCH"] = "SCREENING"
+        # Do not default/guess EPOCH.
 
         # Controlled terminology normalization for DSDECOD.
         # Mapping heuristics sometimes land on raw yes/no codes (Y/N) or other

@@ -19,28 +19,9 @@ class TEProcessor(BaseDomainProcessor):
         Args:
             frame: Domain DataFrame to process in-place
         """
-        # Drop placeholder rows
         self._drop_placeholder_rows(frame)
 
-        # Rebuild TE to align with SE/TA elements
-        study_id = "STUDY"
-        if len(frame) > 0 and "STUDYID" in frame.columns:
-            study_id = frame["STUDYID"].iloc[0]
-        elements = [
-            {
-                "ETCD": "SCRN",
-                "ELEMENT": "SCREENING",
-                "TESTRL": "START",
-                "TEENRL": "END",
-            },
-            {
-                "ETCD": "TRT",
-                "ELEMENT": "TREATMENT",
-                "TESTRL": "START",
-                "TEENRL": "END",
-            },
-        ]
-        te_df = pd.DataFrame(elements)
-        te_df["STUDYID"] = study_id
-        te_df["DOMAIN"] = "TE"
-        self._replace_frame_preserving_schema(frame, te_df)
+        # Do not synthesize TE records. Only normalize existing values.
+        for col in ("STUDYID", "DOMAIN", "ETCD", "ELEMENT", "TESTRL", "TEENRL"):
+            if col in frame.columns:
+                frame.loc[:, col] = frame[col].astype("string").fillna("").str.strip()

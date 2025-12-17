@@ -5,7 +5,7 @@ from __future__ import annotations
 import pandas as pd
 
 from .base import BaseDomainProcessor
-from ..transformers import DateTransformer, NumericTransformer, TextTransformer
+from ..transformers import DateTransformer, NumericTransformer
 from ....pandas_utils import ensure_numeric_series
 
 
@@ -24,16 +24,15 @@ class AEProcessor(BaseDomainProcessor):
         # Drop placeholder rows
         self._drop_placeholder_rows(frame)
 
-        # Ensure AEDUR populated to avoid SD1078 missing permissibles
+        # Do not default/guess durations.
         if "AEDUR" in frame.columns:
             frame.loc[:, "AEDUR"] = (
-                frame["AEDUR"].astype("string").fillna("").replace("", "P1D")
+                frame["AEDUR"].astype("string").fillna("").str.strip()
             )
-        else:
-            frame.loc[:, "AEDUR"] = "P1D"
-        # Standardize visit info only when present in source
-        if {"VISIT", "VISITNUM"} & set(frame.columns):
-            TextTransformer.normalize_visit(frame)
+        # Do not synthesize visit numbering; only normalize whitespace.
+        for col in ("VISIT", "VISITNUM"):
+            if col in frame.columns:
+                frame.loc[:, col] = frame[col].astype("string").fillna("").str.strip()
         DateTransformer.ensure_date_pair_order(frame, "AESTDTC", "AEENDTC")
         DateTransformer.compute_study_day(
             frame,
@@ -55,52 +54,31 @@ class AEProcessor(BaseDomainProcessor):
 
         # Treatment-emergent info (e.g., TRTEMFL) is represented via SUPPAE
         # supplemental qualifiers, not as a non-model AE variable.
-        # Ensure expected MedDRA variables exist with default placeholders
-        defaults = {
-            "AEBODSYS": "GENERAL DISORDERS",
-            "AEHLGT": "GENERAL DISORDERS",
-            "AEHLT": "GENERAL DISORDERS",
-            "AELLT": "GENERAL DISORDERS",
-            "AESOC": "GENERAL DISORDERS",
-        }
-        for col, val in defaults.items():
-            if col not in frame.columns:
-                frame.loc[:, col] = val
-                continue
-
-            # If the variable exists but is empty/missing, populate with the
-            # placeholder to satisfy presence checks.
-            current = frame[col].astype("string").fillna("").str.strip()
-            empty = current.eq("") | current.str.upper().isin({"NAN", "<NA>"})
-            if bool(empty.any()):
-                frame.loc[empty, col] = val
-        # AEACN - normalize to valid CDISC CT values
+        # Do not add placeholder MedDRA hierarchy values.
+        # AEACN - normalize known synonyms; do not default missing values.
         if "AEACN" in frame.columns:
             frame.loc[:, "AEACN"] = (
                 frame["AEACN"]
-                .astype(str)
+                .astype("string")
+                .fillna("")
                 .str.upper()
                 .str.strip()
                 .replace(
                     {
-                        "": "DOSE NOT CHANGED",
                         "NONE": "DOSE NOT CHANGED",
                         "NO ACTION": "DOSE NOT CHANGED",
-                        "NAN": "DOSE NOT CHANGED",
-                        "<NA>": "DOSE NOT CHANGED",
                         "UNK": "UNKNOWN",
                         "NA": "NOT APPLICABLE",
                         "N/A": "NOT APPLICABLE",
                     }
                 )
             )
-        else:
-            frame.loc[:, "AEACN"] = "DOSE NOT CHANGED"
-        # AESER - normalize to valid CDISC CT values (Y/N only)
+        # AESER - normalize to Y/N when possible; otherwise blank.
         if "AESER" in frame.columns:
             frame.loc[:, "AESER"] = (
                 frame["AESER"]
-                .astype(str)
+                .astype("string")
+                .fillna("")
                 .str.upper()
                 .str.strip()
                 .replace(
@@ -111,27 +89,19 @@ class AEProcessor(BaseDomainProcessor):
                         "0": "N",
                         "TRUE": "Y",
                         "FALSE": "N",
-                        "": "N",
-                        "NAN": "N",
-                        "<NA>": "N",
-                        "UNK": "N",
-                        "UNKNOWN": "N",
-                        "U": "N",
                     }
                 )
             )
-        else:
-            frame.loc[:, "AESER"] = "N"
-        # AEREL - normalize to valid CDISC CT values
+        # AEREL - normalize known synonyms; do not default missing values.
         if "AEREL" in frame.columns:
             frame.loc[:, "AEREL"] = (
                 frame["AEREL"]
-                .astype(str)
+                .astype("string")
+                .fillna("")
                 .str.upper()
                 .str.strip()
                 .replace(
                     {
-                        "": "NOT RELATED",
                         "NO": "NOT RELATED",
                         "N": "NOT RELATED",
                         "NOT SUSPECTED": "NOT RELATED",
@@ -141,25 +111,21 @@ class AEProcessor(BaseDomainProcessor):
                         "POSSIBLY RELATED": "RELATED",
                         "PROBABLY RELATED": "RELATED",
                         "SUSPECTED": "RELATED",
-                        "NAN": "NOT RELATED",
-                        "<NA>": "NOT RELATED",
                         "UNK": "UNKNOWN",
                         "NOT ASSESSED": "UNKNOWN",
                     }
                 )
             )
-        else:
-            frame.loc[:, "AEREL"] = "NOT RELATED"
-        # AEOUT - normalize to valid CDISC CT values
+        # AEOUT - normalize known synonyms; do not default missing values.
         if "AEOUT" in frame.columns:
             frame.loc[:, "AEOUT"] = (
                 frame["AEOUT"]
-                .astype(str)
+                .astype("string")
+                .fillna("")
                 .str.upper()
                 .str.strip()
                 .replace(
                     {
-                        "": "RECOVERED/RESOLVED",
                         "RECOVERED": "RECOVERED/RESOLVED",
                         "RESOLVED": "RECOVERED/RESOLVED",
                         "RECOVERED OR RESOLVED": "RECOVERED/RESOLVED",
@@ -173,45 +139,32 @@ class AEProcessor(BaseDomainProcessor):
                         "DEATH": "FATAL",
                         "5": "FATAL",
                         "GRADE 5": "FATAL",
-                        "NAN": "RECOVERED/RESOLVED",
-                        "<NA>": "RECOVERED/RESOLVED",
                         "UNK": "UNKNOWN",
                         "U": "UNKNOWN",
                     }
                 )
             )
-        else:
-            frame.loc[:, "AEOUT"] = "RECOVERED/RESOLVED"
-        # AESEV - normalize to valid CDISC CT values
+        # AESEV - normalize known severity encodings; do not default missing values.
         if "AESEV" in frame.columns:
             frame.loc[:, "AESEV"] = (
                 frame["AESEV"]
-                .astype(str)
+                .astype("string")
+                .fillna("")
                 .str.upper()
                 .str.strip()
                 .replace(
                     {
-                        "": "MILD",
                         "1": "MILD",
                         "GRADE 1": "MILD",
                         "2": "MODERATE",
                         "GRADE 2": "MODERATE",
                         "3": "SEVERE",
                         "GRADE 3": "SEVERE",
-                        "NAN": "MILD",
-                        "<NA>": "MILD",
                     }
                 )
             )
-        else:
-            frame.loc[:, "AESEV"] = "MILD"
-        # Ensure EPOCH is set for AE records
-        if "EPOCH" in frame.columns:
-            frame.loc[:, "EPOCH"] = TextTransformer.replace_unknown(
-                frame["EPOCH"], "TREATMENT"
-            )
-        else:
-            frame.loc[:, "EPOCH"] = "TREATMENT"
+
+        # Do not default/guess EPOCH.
         for code_var in (
             "AEPTCD",
             "AEHLGTCD",
@@ -222,11 +175,9 @@ class AEProcessor(BaseDomainProcessor):
         ):
             if code_var in frame.columns:
                 numeric = ensure_numeric_series(frame[code_var], frame.index)
-                frame.loc[:, code_var] = numeric.fillna(999999).astype("Int64")
+                frame.loc[:, code_var] = numeric.astype("Int64")
             else:
-                frame.loc[:, code_var] = pd.Series(
-                    [999999 for _ in frame.index], dtype="Int64"
-                )
+                frame.loc[:, code_var] = pd.Series([pd.NA] * len(frame), dtype="Int64")
         NumericTransformer.assign_sequence(frame, "AESEQ", "USUBJID")
         if "AESEQ" in frame.columns:
             frame.loc[:, "AESEQ"] = frame["AESEQ"].astype("Int64")

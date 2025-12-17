@@ -210,8 +210,7 @@ class DefaultDomainProcessor(BaseDomainProcessor):
         # Drop placeholder rows
         self._drop_placeholder_rows(frame)
 
-        # Set default EPOCH if present and empty
+        # Do not default/guess values. If EPOCH is present, only normalize
+        # placeholder tokens to blank.
         if "EPOCH" in frame.columns:
-            frame.loc[:, "EPOCH"] = TextTransformer.replace_unknown(
-                frame["EPOCH"], "TREATMENT"
-            )
+            frame.loc[:, "EPOCH"] = TextTransformer.replace_unknown(frame["EPOCH"], "")
