@@ -129,6 +129,14 @@ def write_xpt_file(
             normalized = pd.Series(normalized, index=dataset.index).where(
                 ~pd.isna(normalized), ""
             )
+
+            # pyreadstat derives SAS character widths from the max observed string
+            # length. If a column is entirely empty, that can yield a zero-length
+            # character variable in the XPT, which downstream validators flag.
+            # Use a single space to force width=1 while still representing SAS missing.
+            lengths = normalized.astype("string").fillna("").str.len()
+            if int(lengths.max() or 0) == 0:
+                normalized = pd.Series([" "] * len(dataset.index), index=dataset.index)
             values = normalized.to_numpy(dtype=object)
         elif (
             expected_type == "Num"

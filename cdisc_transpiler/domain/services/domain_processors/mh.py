@@ -104,12 +104,17 @@ class MHProcessor(BaseDomainProcessor):
                 )
         else:
             frame.loc[:, "MHENDTC"] = frame.get("MHSTDTC", "")
-        # Compute study day for MHSTDTC into MHDY to keep numeric type
-        if {"MHSTDTC", "MHDY"} <= set(frame.columns):
-            DateTransformer.compute_study_day(frame, "MHSTDTC", "MHDY", ref="RFSTDTC")
-        elif "MHSTDTC" in frame.columns:
-            frame.loc[:, "MHDY"] = pd.NA
-            DateTransformer.compute_study_day(frame, "MHSTDTC", "MHDY", ref="RFSTDTC")
+        # Compute study day for MHDTC into MHDY.
+        if "MHDTC" in frame.columns:
+            if "MHDY" not in frame.columns:
+                frame.loc[:, "MHDY"] = pd.NA
+            DateTransformer.compute_study_day(
+                frame,
+                "MHDTC",
+                "MHDY",
+                reference_starts=self.reference_starts,
+                ref="RFSTDTC",
+            )
         if "MHDY" in frame.columns:
             frame.loc[:, "MHDY"] = ensure_numeric_series(
                 frame["MHDY"], frame.index

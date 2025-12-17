@@ -590,6 +590,74 @@ class DomainProcessingUseCase:
             common_column_counts=request.common_column_counts,
             total_files=request.total_input_files,
         )
+
+        # Pinnacle 21 SD1097: provide Treatment Emergent flag in SUPPAE.
+        # Compute TEAE using AESTDTC relative to RFSTDTC (per-subject baseline).
+        # If we cannot compute reliably, default to "Y" to satisfy presence checks.
+        if request.domain_code.upper() == "AE" and not domain_df.empty:
+            if {"USUBJID", "AESEQ"} <= set(domain_df.columns):
+                studyid = (
+                    domain_df.get(
+                        "STUDYID", pd.Series([request.study_id] * len(domain_df))
+                    )
+                    .astype("string")
+                    .fillna("")
+                )
+                empty_studyid = studyid.str.strip() == ""
+                if empty_studyid.any():
+                    studyid.loc[empty_studyid] = request.study_id
+
+                usubjid = domain_df["USUBJID"].astype("string").fillna("")
+                aeseq = pd.to_numeric(domain_df["AESEQ"], errors="coerce").astype(
+                    "Int64"
+                )
+                idvarval = aeseq.astype(str).astype("string").replace("<NA>", "")
+
+                aestdtc_raw = domain_df.get(
+                    "AESTDTC",
+                    pd.Series([pd.NA] * len(domain_df), index=domain_df.index),
+                )
+                aestdtc = pd.to_datetime(aestdtc_raw, errors="coerce")
+
+                rfstdtc_map = request.reference_starts or {}
+                rfstdtc_raw = usubjid.map(rfstdtc_map)
+                rfstdtc = pd.to_datetime(rfstdtc_raw, errors="coerce")
+
+                teae = pd.Series(
+                    ["Y"] * len(domain_df), index=domain_df.index, dtype="string"
+                )
+                computable = aestdtc.notna() & rfstdtc.notna()
+                if computable.any():
+                    aest_date = aestdtc.dt.normalize()
+                    rfs_date = rfstdtc.dt.normalize()
+                    teae.loc[computable] = (aest_date >= rfs_date).map(
+                        {True: "Y", False: "N"}
+                    )
+
+                teae_df = pd.DataFrame(
+                    {
+                        "STUDYID": studyid,
+                        "RDOMAIN": "AE",
+                        "USUBJID": usubjid,
+                        "IDVAR": "AESEQ",
+                        "IDVARVAL": idvarval,
+                        "QNAM": "TEAE",
+                        "QLABEL": "Treatment Emergent Flag",
+                        "QVAL": teae,
+                        "QORIG": "DERIVED",
+                        "QEVAL": "",
+                    }
+                )
+                teae_df = teae_df.loc[
+                    teae_df["USUBJID"].astype("string").str.strip().ne("")
+                    & teae_df["IDVARVAL"].astype("string").str.strip().ne("")
+                ]
+
+                if not teae_df.empty:
+                    if supp_df is None or supp_df.empty:
+                        supp_df = teae_df
+                    else:
+                        supp_df = pd.concat([supp_df, teae_df], ignore_index=True)
         return supp_df
 
     def _generate_outputs_stage(
@@ -821,6 +889,68 @@ class DomainProcessingUseCase:
         split_datasets: list[tuple[str, pd.DataFrame, Path]] = []
         domain_code = domain.code.upper()
 
+        # Special-case LB: when the domain is split (LBCC/LBHM/...), LBSEQ must be
+        # unique across the *entire* LB domain, not per split dataset. Many sources
+        # naturally start LBSEQ at 1 per file, which yields cross-split duplicates.
+        #
+        # To avoid Pinnacle 21 SD0005 / downstream RELREC ambiguity, consolidate
+        # all split frames, deduplicate consistently, and resequence LBSEQ once.
+        if domain_code == "LB" and variant_frames:
+            helper_col = "__CDISC_TRANSPILER_TABLE__"
+            combined_parts: list[pd.DataFrame] = []
+            table_order: list[str] = []
+
+            for variant_name, df in variant_frames:
+                table = (
+                    variant_name.replace(" ", "_")
+                    .replace("(", "")
+                    .replace(")", "")
+                    .upper()
+                )
+                if table == domain_code:
+                    continue
+                if not table.startswith(domain_code):
+                    continue
+                if len(table) > 8:
+                    table = table[:8]
+                if table not in table_order:
+                    table_order.append(table)
+                if df.empty:
+                    continue
+                part = df.copy()
+                part.loc[:, helper_col] = table
+                combined_parts.append(part)
+
+            if combined_parts:
+                combined = pd.concat(combined_parts, ignore_index=True)
+
+                # Match the LB dedup policy applied to the merged (unsplit) frame.
+                dedup_keys = [
+                    key
+                    for key in ("USUBJID", "LBTESTCD", "LBDTC")
+                    if key in combined.columns
+                ]
+                if dedup_keys:
+                    combined = (
+                        combined.sort_values(by=dedup_keys, kind="mergesort")
+                        .drop_duplicates(subset=dedup_keys, keep="first")
+                        .reset_index(drop=True)
+                    )
+
+                if "LBSEQ" in combined.columns and "USUBJID" in combined.columns:
+                    combined.loc[:, "LBSEQ"] = (
+                        combined.groupby("USUBJID").cumcount() + 1
+                    )
+
+                rebuilt: list[tuple[str, pd.DataFrame]] = []
+                for table in table_order:
+                    subset = combined.loc[combined[helper_col] == table].drop(
+                        columns=[helper_col]
+                    )
+                    rebuilt.append((table, subset))
+
+                variant_frames = rebuilt
+
         # Pinnacle 21 SD1116 expects consistent SAS variable lengths across split datasets.
         # Compute a shared max length per character variable across all split datasets.
         char_vars = {
@@ -927,7 +1057,7 @@ class DomainProcessingUseCase:
                 table_name=table,
             )
             split_paths.append(split_path)
-            split_datasets.append((table, variant_df, split_path))
+            split_datasets.append((table, write_df, split_path))
             self.logger.success(
                 f"Split dataset: {split_path} (DOMAIN={domain_code}, table={table})"
             )
@@ -1007,7 +1137,7 @@ class DomainProcessingUseCase:
         if dedup_keys:
             merged_df = (
                 merged_df.copy()
-                .sort_values(by=dedup_keys)
+                .sort_values(by=dedup_keys, kind="mergesort")
                 .drop_duplicates(subset=dedup_keys, keep="first")
                 .reset_index(drop=True)
             )

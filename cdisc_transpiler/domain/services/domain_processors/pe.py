@@ -85,7 +85,13 @@ class PEProcessor(BaseDomainProcessor):
             empty_orres = frame["PEORRES"].astype("string").fillna("").str.strip() == ""
             frame.loc[empty_orres, "PEORRES"] = "NORMAL"
         if "PEDTC" in frame.columns:
-            DateTransformer.compute_study_day(frame, "PEDTC", "PEDY", ref="RFSTDTC")
+            DateTransformer.compute_study_day(
+                frame,
+                "PEDTC",
+                "PEDY",
+                reference_starts=self.reference_starts,
+                ref="RFSTDTC",
+            )
         if "EPOCH" in frame.columns:
             frame.loc[:, "EPOCH"] = TextTransformer.replace_unknown(
                 frame["EPOCH"], "TREATMENT"

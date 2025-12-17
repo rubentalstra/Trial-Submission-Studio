@@ -33,9 +33,21 @@ class PRProcessor(BaseDomainProcessor):
             frame["VISITNUM"].apply(lambda n: f"Visit {int(n)}").astype("string")
         )
         if "PRSTDTC" in frame.columns:
-            DateTransformer.compute_study_day(frame, "PRSTDTC", "PRSTDY", ref="RFSTDTC")
+            DateTransformer.compute_study_day(
+                frame,
+                "PRSTDTC",
+                "PRSTDY",
+                reference_starts=self.reference_starts,
+                ref="RFSTDTC",
+            )
         if "PRENDTC" in frame.columns:
-            DateTransformer.compute_study_day(frame, "PRENDTC", "PRENDY", ref="RFSTDTC")
+            DateTransformer.compute_study_day(
+                frame,
+                "PRENDTC",
+                "PRENDY",
+                reference_starts=self.reference_starts,
+                ref="RFSTDTC",
+            )
         if "PRDUR" not in frame.columns:
             frame.loc[:, "PRDUR"] = "P1D"
         else:

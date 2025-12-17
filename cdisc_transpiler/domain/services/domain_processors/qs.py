@@ -44,11 +44,12 @@ class QSProcessor(BaseDomainProcessor):
         frame.loc[:, "QSORRES"] = (
             frame["QSORRES"].astype("string").fillna("").replace("", "0")
         )
-        frame.loc[:, "QSSTRESC"] = frame.get("QSORRES", "")
-        if "QSSTRESC" in frame.columns:
-            frame.loc[:, "QSSTRESC"] = (
-                frame["QSSTRESC"].astype("string").fillna(frame["QSORRES"])
-            )
+        stresc = frame.get("QSSTRESC", frame["QSORRES"])
+        frame.loc[:, "QSSTRESC"] = stresc.astype("string").fillna("")
+        empty_stresc = frame["QSSTRESC"].astype("string").fillna("").str.strip() == ""
+        frame.loc[empty_stresc, "QSSTRESC"] = frame.loc[empty_stresc, "QSORRES"].astype(
+            "string"
+        )
         if "QSLOBXFL" not in frame.columns:
             frame.loc[:, "QSLOBXFL"] = ""
         else:
@@ -84,7 +85,13 @@ class QSProcessor(BaseDomainProcessor):
                 self.reference_starts
             )
         if "QSDTC" in frame.columns:
-            DateTransformer.compute_study_day(frame, "QSDTC", "QSDY", ref="RFSTDTC")
+            DateTransformer.compute_study_day(
+                frame,
+                "QSDTC",
+                "QSDY",
+                reference_starts=self.reference_starts,
+                ref="RFSTDTC",
+            )
         if "EPOCH" in frame.columns:
             frame.loc[:, "EPOCH"] = "TREATMENT"
         if "QSEVLINT" in frame.columns:
@@ -98,7 +105,13 @@ class QSProcessor(BaseDomainProcessor):
                 )
             elif "RFSTDTC" in frame.columns:
                 frame.loc[empty_qsdtc, "QSDTC"] = frame.loc[empty_qsdtc, "RFSTDTC"]
-            DateTransformer.compute_study_day(frame, "QSDTC", "QSDY", ref="RFSTDTC")
+            DateTransformer.compute_study_day(
+                frame,
+                "QSDTC",
+                "QSDY",
+                reference_starts=self.reference_starts,
+                ref="RFSTDTC",
+            )
         # Remove QSTPTREF if timing variables absent to avoid SD1282
         if {"QSELTM", "QSTPTNUM", "QSTPT"}.isdisjoint(
             frame.columns

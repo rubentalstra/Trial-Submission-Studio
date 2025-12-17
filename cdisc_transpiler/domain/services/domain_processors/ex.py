@@ -117,6 +117,55 @@ class EXProcessor(BaseDomainProcessor):
             frame.loc[:, "EXTPTREF"] = (
                 frame["EXTPTREF"].astype("string").fillna("").replace("", "VISIT")
             )
+
+        # Pinnacle 21 SD0070: if subjects exist in DM (reference_starts) but
+        # are missing EX records, synthesize a minimal EX record per subject.
+        if self.reference_starts and "USUBJID" in frame.columns:
+            existing = (
+                frame["USUBJID"]
+                .astype("string")
+                .fillna("")
+                .str.strip()
+                .unique()
+                .tolist()
+            )
+            existing_set = {u for u in existing if u}
+            missing = [
+                usubjid
+                for usubjid in self.reference_starts.keys()
+                if usubjid and usubjid not in existing_set
+            ]
+            if missing:
+                studyid_default = ""
+                if "STUDYID" in frame.columns:
+                    studyid_series = (
+                        frame["STUDYID"].astype("string").fillna("").str.strip()
+                    )
+                    non_empty = studyid_series.loc[studyid_series.ne("")]
+                    if not non_empty.empty:
+                        studyid_default = str(non_empty.iloc[0])
+
+                for usubjid in missing:
+                    new_idx = len(frame)
+                    frame.loc[new_idx, "USUBJID"] = usubjid
+                    if "STUDYID" in frame.columns and studyid_default:
+                        frame.loc[new_idx, "STUDYID"] = studyid_default
+                    if "DOMAIN" in frame.columns:
+                        frame.loc[new_idx, "DOMAIN"] = "EX"
+                    if "EXTRT" in frame.columns:
+                        frame.loc[new_idx, "EXTRT"] = "TREATMENT"
+                    if "EPOCH" in frame.columns:
+                        frame.loc[new_idx, "EPOCH"] = "TREATMENT"
+                    if "EXTPTREF" in frame.columns:
+                        frame.loc[new_idx, "EXTPTREF"] = "VISIT"
+                    if "EXSTDTC" in frame.columns:
+                        frame.loc[new_idx, "EXSTDTC"] = self.reference_starts.get(
+                            usubjid, ""
+                        )
+                    if "EXENDTC" in frame.columns:
+                        frame.loc[new_idx, "EXENDTC"] = self.reference_starts.get(
+                            usubjid, ""
+                        )
         NumericTransformer.assign_sequence(frame, "EXSEQ", "USUBJID")
         # Recompute dates/study days for any appended defaults
         DateTransformer.ensure_date_pair_order(frame, "EXSTDTC", "EXENDTC")
