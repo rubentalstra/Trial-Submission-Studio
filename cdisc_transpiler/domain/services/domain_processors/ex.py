@@ -28,6 +28,18 @@ class EXProcessor(BaseDomainProcessor):
                 frame["EXTRT"].astype("string").fillna("").str.strip()
             )
 
+        # Some sources/mappings mistakenly place a treatment label into EXELTM
+        # (elapsed time). If EXTRT is missing and EXELTM contains text, treat it
+        # as the topic and clear EXELTM.
+        if {"EXTRT", "EXELTM"}.issubset(frame.columns):
+            extrt = frame["EXTRT"].astype("string").fillna("").str.strip()
+            exeltm = frame["EXELTM"].astype("string").fillna("").str.strip()
+            has_letters = exeltm.str.contains(r"[A-Za-z]", regex=True, na=False)
+            fill_mask = (extrt == "") & (exeltm != "") & has_letters
+            if bool(fill_mask.any()):
+                frame.loc[fill_mask, "EXTRT"] = exeltm.loc[fill_mask]
+                frame.loc[fill_mask, "EXELTM"] = ""
+
         # Do not drop records solely because EXTRT is missing. Missing topic values
         # should be reported via conformance checks, but the underlying exposure
         # record should be preserved.

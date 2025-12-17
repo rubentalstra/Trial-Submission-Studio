@@ -54,8 +54,8 @@ class DSProcessor(BaseDomainProcessor):
             if bool(screen_failure.any()):
                 # DSDECOD must be a Completion/Reason for Non-Completion term.
                 # "SCREEN FAILURE" is not guaranteed to be in that codelist, so
-                # encode as NOT COMPLETED and keep the human-readable reason in DSTERM.
-                frame.loc[screen_failure, "DSDECOD"] = "NOT COMPLETED"
+                # encode as the canonical CT term when we can.
+                frame.loc[screen_failure, "DSDECOD"] = "SCREEN FAILURE"
                 frame.loc[screen_failure, "DSTERM"] = "SCREEN FAILURE"
                 frame.loc[screen_failure, "DSCAT"] = "DISPOSITION EVENT"
                 frame.loc[screen_failure, "EPOCH"] = "SCREENING"
@@ -69,6 +69,83 @@ class DSProcessor(BaseDomainProcessor):
                 frame.loc[junk_site_rows, "DSDECOD"] = ""
                 frame.loc[junk_site_rows & (dsterm_upper == site_upper), "DSTERM"] = ""
 
+        # Fix common mis-mapping where a discontinuation reason is placed into DSCAT
+        # and the site name leaks into DSTERM.
+        if {"DSCAT", "DSTERM"}.issubset(frame.columns):
+            dscat_raw = frame["DSCAT"].astype("string").fillna("").str.strip()
+            dsterm_raw = frame["DSTERM"].astype("string").fillna("").str.strip()
+            dsterm_upper = dsterm_raw.str.upper().str.strip()
+            looks_like_site = dsterm_upper.str.contains(
+                r"\bSITE\b", regex=True, na=False
+            )
+
+            ct_dscat = self._get_controlled_terminology(variable="DSCAT")
+            if ct_dscat:
+                dscat_norm = (
+                    dscat_raw.apply(ct_dscat.normalize).astype("string").fillna("")
+                )
+                dscat_norm = dscat_norm.astype("string").str.upper().str.strip()
+                is_valid = dscat_norm.isin(ct_dscat.submission_values)
+                invalid = (dscat_raw != "") & ~is_valid
+            else:
+                # Fallback: treat free-text as invalid.
+                invalid = dscat_raw != ""
+
+            if bool(invalid.any()):
+                move_reason = invalid & ((dsterm_raw == "") | looks_like_site)
+                if bool(move_reason.any()):
+                    frame.loc[move_reason, "DSTERM"] = dscat_raw.loc[move_reason]
+                frame.loc[invalid, "DSCAT"] = "DISPOSITION EVENT"
+
+            blank_cat = frame["DSCAT"].astype("string").fillna("").str.strip() == ""
+            if bool(blank_cat.any()):
+                frame.loc[blank_cat, "DSCAT"] = "DISPOSITION EVENT"
+
+        # Ensure required DSDECOD is populated when possible.
+        if {"DSDECOD", "DSTERM"}.issubset(frame.columns):
+            dsdecod_raw = frame["DSDECOD"].astype("string").fillna("").str.strip()
+            missing = dsdecod_raw == ""
+            if bool(missing.any()):
+                term_upper = (
+                    frame["DSTERM"].astype("string").fillna("").str.upper().str.strip()
+                )
+                screen_failure = term_upper.str.contains(
+                    r"SCREEN\s+FAILURE|FAILURE\s+TO\s+MEET",
+                    regex=True,
+                    na=False,
+                )
+                withdrawal_consent = term_upper.str.contains(
+                    r"WITHDRAW.*CONSENT|WITHDRAWAL\s+OF\s+CONSENT",
+                    regex=True,
+                    na=False,
+                )
+                withdrawal_subject = term_upper.str.contains(
+                    r"WITHDRAW.*SUBJECT|SUBJECT\s+WITHDRAW",
+                    regex=True,
+                    na=False,
+                )
+                lost_follow = term_upper.str.contains(
+                    r"LOST\s+TO\s+FOLLOW",
+                    regex=True,
+                    na=False,
+                )
+
+                frame.loc[missing & screen_failure, "DSDECOD"] = "SCREEN FAILURE"
+                frame.loc[missing & withdrawal_consent, "DSDECOD"] = (
+                    "WITHDRAWAL OF CONSENT"
+                )
+                frame.loc[missing & withdrawal_subject, "DSDECOD"] = (
+                    "WITHDRAWAL BY SUBJECT"
+                )
+                frame.loc[missing & lost_follow, "DSDECOD"] = "LOST TO FOLLOW-UP"
+
+                # Fall back to COMPLETED if we can't infer a non-completion reason.
+                still_missing = (
+                    frame["DSDECOD"].astype("string").fillna("").str.strip() == ""
+                )
+                if bool(still_missing.any()):
+                    frame.loc[still_missing, "DSDECOD"] = "COMPLETED"
+
         # Controlled terminology normalization for DSDECOD.
         # Mapping heuristics sometimes land on raw yes/no codes (Y/N) or other
         # non-CT payload. In strict mode this triggers CT_INVALID findings.
@@ -80,8 +157,9 @@ class DSProcessor(BaseDomainProcessor):
             yn_map = {
                 "Y": "COMPLETED",
                 "YES": "COMPLETED",
-                "N": "NOT COMPLETED",
-                "NO": "NOT COMPLETED",
+                # Generic non-completion signal: choose a valid CT umbrella term.
+                "N": "SCREENING NOT COMPLETED",
+                "NO": "SCREENING NOT COMPLETED",
             }
             canonical_upper = canonical.str.upper().str.strip()
             canonical = canonical.where(
