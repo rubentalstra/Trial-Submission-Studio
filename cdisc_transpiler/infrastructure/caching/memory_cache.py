@@ -51,6 +51,7 @@ class MemoryCache:
         Args:
             default_ttl: Default time-to-live for entries. None means no expiration.
         """
+        super().__init__()
         self._store: dict[str, CacheEntry[Any]] = {}
         self._default_ttl = default_ttl
 

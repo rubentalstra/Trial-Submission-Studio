@@ -54,13 +54,18 @@ def _is_null(value: object) -> bool:
 
 
 def _format_value(value: object) -> str:
-    if isinstance(value, (pd.Series, pd.DataFrame)):
-        try:
-            value = value.iloc[0]
-        except (AttributeError, IndexError, KeyError, TypeError):
+    if isinstance(value, pd.Series):
+        series = cast("pd.Series[Any]", value)
+        if series.empty:
             return ""
+        value = cast("object", series.iloc[0])
+    elif isinstance(value, pd.DataFrame):
+        if value.empty:
+            return ""
+        value = cast("object", value.iloc[0, 0])
     try:
-        if bool(pd.isna(cast("Any", value))):
+        missing = cast("bool", pd.isna(cast("Any", value)))
+        if missing:
             return ""
     except (TypeError, ValueError):
         pass

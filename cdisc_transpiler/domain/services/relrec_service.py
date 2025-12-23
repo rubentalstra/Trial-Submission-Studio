@@ -13,7 +13,7 @@ Notes:
 """
 
 import math
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
 
@@ -275,15 +275,16 @@ class RelrecService:
             return {}
 
         numeric = pd.to_numeric(df[seq_col], errors="coerce")
-        return (
+        mapped = (
             pd.DataFrame({"USUBJID": df["USUBJID"], seq_col: numeric})
             .dropna(subset=["USUBJID", seq_col])
             .groupby("USUBJID")[seq_col]
             .min()
             .to_dict()
         )
+        return {str(key): value for key, value in mapped.items()}
 
-    def _stringify(self, val: Any, fallback_index: int) -> str:
+    def _stringify(self, val: object, fallback_index: int) -> str:
         """Convert value to string, using fallback index if invalid.
 
         Args:
@@ -295,9 +296,11 @@ class RelrecService:
         """
         # Handle pandas Series/Index
         if isinstance(val, pd.Series):
-            val = val.iloc[0] if not val.empty else None
+            series = cast("pd.Series[Any]", val)
+            val = series.iloc[0] if not series.empty else None
         elif isinstance(val, pd.Index):
-            val = val[0] if len(val) else None
+            index = cast("pd.Index[Any]", val)
+            val = index[0] if len(index) else None
 
         # Handle None/NaN
         if val is None:

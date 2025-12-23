@@ -21,20 +21,22 @@ class TextTransformer:
 
     @staticmethod
     def normalize_visit(frame: pd.DataFrame) -> None:
+        def _visit_label(value: object) -> str:
+            try:
+                return f"Visit {int(float(str(value)))}"
+            except (TypeError, ValueError):
+                return "Visit 1"
+
         if "VISITNUM" in frame.columns:
             frame.loc[:, "VISITNUM"] = (
                 ensure_numeric_series(frame["VISITNUM"], frame.index)
                 .fillna(1)
                 .astype(int)
             )
-            frame.loc[:, "VISIT"] = (
-                frame["VISITNUM"].apply(lambda n: f"Visit {int(n)}").astype("string")
-            )
+            frame.loc[:, "VISIT"] = frame["VISITNUM"].map(_visit_label).astype("string")
         elif "VISIT" in frame.columns:
             visit_text = frame["VISIT"].astype("string").str.extract(r"(\d+)")[0]
             frame.loc[:, "VISITNUM"] = (
                 ensure_numeric_series(visit_text, frame.index).fillna(1).astype(int)
             )
-            frame.loc[:, "VISIT"] = (
-                frame["VISITNUM"].apply(lambda n: f"Visit {int(n)}").astype("string")
-            )
+            frame.loc[:, "VISIT"] = frame["VISITNUM"].map(_visit_label).astype("string")

@@ -6,9 +6,35 @@ It is used by ports and repositories so the application layer does not
 depend on infrastructure adapters or legacy wrappers.
 """
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from difflib import get_close_matches
 import re
+
+
+def _empty_submission_value_synonyms() -> dict[str, tuple[str, ...]]:
+    return {}
+
+
+def _empty_nci_codes() -> dict[str, str]:
+    return {}
+
+
+def _empty_standards() -> set[str]:
+    return set()
+
+
+def _empty_sources() -> set[str]:
+    return set()
+
+
+def _empty_definitions() -> dict[str, str]:
+    return {}
+
+
+def _empty_preferred_terms() -> dict[str, str]:
+    return {}
 
 
 @dataclass(frozen=True)
@@ -21,12 +47,14 @@ class ControlledTerminology:
     codelist_extensible: bool = False
     synonyms: dict[str, str] | None = None
     # Maps canonical CDISC Submission Value -> tuple of its CDISC Synonym(s) (as seen in CT files).
-    submission_value_synonyms: dict[str, tuple[str, ...]] = field(default_factory=dict)
-    nci_codes: dict[str, str] = field(default_factory=dict)
-    standards: set[str] = field(default_factory=set)
-    sources: set[str] = field(default_factory=set)
-    definitions: dict[str, str] = field(default_factory=dict)
-    preferred_terms: dict[str, str] = field(default_factory=dict)
+    submission_value_synonyms: dict[str, tuple[str, ...]] = field(
+        default_factory=_empty_submission_value_synonyms
+    )
+    nci_codes: dict[str, str] = field(default_factory=_empty_nci_codes)
+    standards: set[str] = field(default_factory=_empty_standards)
+    sources: set[str] = field(default_factory=_empty_sources)
+    definitions: dict[str, str] = field(default_factory=_empty_definitions)
+    preferred_terms: dict[str, str] = field(default_factory=_empty_preferred_terms)
     variable: str | None = None
 
     def _canonicalize_for_match(self, raw: str) -> str:

@@ -1,10 +1,24 @@
 """Data models for metadata structures."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
+
+
+def _empty_codelist_values() -> list[CodeListValue]:
+    return []
+
+
+def _empty_items() -> dict[str, SourceColumn]:
+    return {}
+
+
+def _empty_codelists() -> dict[str, CodeList]:
+    return {}
 
 
 @dataclass
@@ -21,7 +35,7 @@ class CodeList:
     """A codelist with its values for normalizing source data."""
 
     format_name: str  # The codelist identifier (e.g., "SEX", "RACE", "YESNO")
-    values: list[CodeListValue] = field(default_factory=list)
+    values: list[CodeListValue] = field(default_factory=_empty_codelist_values)
 
     def get_text(self, code: Any) -> str | None:
         """Get the text for a code value.
@@ -93,8 +107,8 @@ class SourceColumn:
 class StudyMetadata:
     """Container for all metadata loaded from a study folder."""
 
-    items: dict[str, SourceColumn] = field(default_factory=dict)
-    codelists: dict[str, CodeList] = field(default_factory=dict)
+    items: dict[str, SourceColumn] = field(default_factory=_empty_items)
+    codelists: dict[str, CodeList] = field(default_factory=_empty_codelists)
     source_path: Path | None = None
 
     def get_column(self, column_id: str) -> SourceColumn | None:

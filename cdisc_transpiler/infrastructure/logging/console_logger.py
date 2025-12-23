@@ -27,7 +27,7 @@ from typing import Any, override
 from rich.console import Console
 
 from ...application.ports.services import LoggerPort
-from ..sdtm_spec.utils import get_domain_class
+from ..sdtm_spec.registry import get_domain_class
 
 
 class LogLevel(IntEnum):
@@ -68,6 +68,7 @@ class ConsoleLogger(LoggerPort):
             console: Rich console for output (creates new if None)
             verbosity: Verbosity level (0=normal, 1=verbose, 2=debug)
         """
+        super().__init__()
         self.console = console or Console()
         self.verbosity = verbosity
         self._context: LogContext | None = None
@@ -581,8 +582,7 @@ class ConsoleLogger(LoggerPort):
         else:
             self._stats["records_processed"] += final_row_count
             self.verbose(
-                f"Final {domain_code} dataset: "
-                f"{final_row_count:,} rows × {final_column_count} columns"
+                f"Final {domain_code} dataset: {final_row_count:,} rows × {final_column_count} columns"
             )
 
     def log_file_written(
@@ -654,7 +654,7 @@ class ConsoleLogger(LoggerPort):
         if self._context is None or self.verbosity < LogLevel.DEBUG:
             return ""
 
-        parts = []
+        parts: list[str] = []
         if self._context.domain_code:
             parts.append(self._context.domain_code)
 

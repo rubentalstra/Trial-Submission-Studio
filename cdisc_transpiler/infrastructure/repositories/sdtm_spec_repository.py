@@ -34,13 +34,14 @@ class SDTMSpecRepository:
         self,
         config: TranspilerConfig | None = None,
         cache: MemoryCache | None = None,
-    ):
+    ) -> None:
         """Initialize the repository.
 
         Args:
             config: Configuration with spec directory paths. Uses default if None.
             cache: Optional cache instance for memoization. Creates one if None.
         """
+        super().__init__()
         self._config = config or TranspilerConfig()
         self._cache = cache or MemoryCache()
         self._variables_cache_key = "sdtm_variables"

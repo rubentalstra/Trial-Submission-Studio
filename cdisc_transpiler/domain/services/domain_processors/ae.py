@@ -176,7 +176,7 @@ class AEProcessor(BaseDomainProcessor):
         ):
             if code_var in frame.columns:
                 numeric = ensure_numeric_series(frame[code_var], frame.index)
-                frame.isetitem(frame.columns.get_loc(code_var), numeric.astype("Int64"))
+                frame[code_var] = numeric.astype("Int64")
             else:
                 frame[code_var] = pd.Series([pd.NA] * len(frame), dtype="Int64")
         NumericTransformer.assign_sequence(frame, "AESEQ", "USUBJID")

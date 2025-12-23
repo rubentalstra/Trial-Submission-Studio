@@ -8,21 +8,6 @@ from ...domain.entities.sdtm_classes import (
 )
 
 
-def get_domain_class(domain_code: str) -> str:
-    """Return the SDTM class for a domain via the registry."""
-    from .registry import get_domain
-
-    code = domain_code.upper()
-    if code.startswith("SUPP"):
-        return "Supplemental Qualifiers"
-
-    try:
-        domain = get_domain(code)
-        return domain.class_name or "Unknown"
-    except KeyError:
-        return "Unknown"
-
-
 def infer_implements(
     var_name: str, domain_code: str, class_name: str, role: str | None
 ) -> str | None:
@@ -44,7 +29,6 @@ def infer_implements(
 __all__ = [
     "GENERAL_OBSERVATION_CLASSES",
     "core_priority",
-    "get_domain_class",
     "infer_implements",
     "normalize_class",
     "normalize_general_class",

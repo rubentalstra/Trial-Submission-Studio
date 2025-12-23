@@ -53,8 +53,6 @@ class NumericTransformerPort(Protocol):
 
 
 class CodelistTransformerPort(Protocol):
-    def __init__(self, metadata: StudyMetadata | None = None) -> None: ...
-
     def apply_codelist_transformation(
         self,
         source_data: object,
@@ -63,6 +61,20 @@ class CodelistTransformerPort(Protocol):
         source_frame: pd.DataFrame | None = None,
         unquote_func: Callable[[str], str] | None = None,
     ) -> pd.Series: ...
+
+    @staticmethod
+    def apply_codelist_validations(
+        frame: pd.DataFrame,
+        domain_variables: Sequence[SDTMVariable],
+        *,
+        ct_resolver: CTResolver | None = None,
+    ) -> None: ...
+
+
+class CodelistTransformerFactory(Protocol):
+    def __call__(
+        self, metadata: StudyMetadata | None = None
+    ) -> CodelistTransformerPort: ...
 
     @staticmethod
     def apply_codelist_validations(
@@ -92,7 +104,7 @@ class DomainFrameValidatorPort(Protocol):
 
 class TransformerRegistry(TypedDict, total=False):
     date: DateTransformerPort
-    codelist: type[CodelistTransformerPort]
+    codelist: CodelistTransformerFactory
     numeric: NumericTransformerPort
 
 
@@ -196,6 +208,7 @@ class DomainFrameBuilder:
             transformers: Dict with 'date', 'codelist', 'numeric' transformer classes
             validators: Dict with 'xpt' validator class
         """
+        super().__init__()
         self.frame = frame.reset_index(drop=True)
         self.config = config
         self.domain = domain

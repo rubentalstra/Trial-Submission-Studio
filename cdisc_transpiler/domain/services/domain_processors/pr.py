@@ -27,13 +27,16 @@ class PRProcessor(BaseDomainProcessor):
         # Always regenerate PRSEQ - source values may not be unique (SD0005)
         NumericTransformer.assign_sequence(frame, "PRSEQ", "USUBJID")
 
+        def _visit_label(value: object) -> str:
+            try:
+                return f"Visit {int(float(str(value)))}"
+            except (TypeError, ValueError):
+                return "Visit 1"
+
         # Do not synthesize visit variables; only normalize when present.
         for col in ("VISIT", "VISITNUM"):
             if col in frame.columns:
-                frame.isetitem(
-                    frame.columns.get_loc(col),
-                    frame[col].astype("string").fillna("").str.strip(),
-                )
+                frame[col] = frame[col].astype("string").fillna("").str.strip()
         if "PRSTDTC" in frame.columns:
             DateTransformer.compute_study_day(
                 frame,
@@ -51,23 +54,16 @@ class PRProcessor(BaseDomainProcessor):
                 ref="RFSTDTC",
             )
         if "PRDUR" in frame.columns:
-            frame.isetitem(
-                frame.columns.get_loc("PRDUR"),
-                frame["PRDUR"].astype("string").fillna("").str.strip(),
-            )
+            frame["PRDUR"] = frame["PRDUR"].astype("string").fillna("").str.strip()
 
         if "PRRFTDTC" in frame.columns:
-            frame.isetitem(
-                frame.columns.get_loc("PRRFTDTC"),
-                frame["PRRFTDTC"].astype("string").fillna("").str.strip(),
+            frame["PRRFTDTC"] = (
+                frame["PRRFTDTC"].astype("string").fillna("").str.strip()
             )
 
         for col in ("PRTPTREF", "PRTPT", "PRTPTNUM", "PRELTM"):
             if col in frame.columns:
-                frame.isetitem(
-                    frame.columns.get_loc(col),
-                    frame[col].astype("string").fillna("").str.strip(),
-                )
+                frame[col] = frame[col].astype("string").fillna("").str.strip()
         # PRDECOD should use CT value. If we can't map confidently, leave it blank
         # rather than inventing a (potentially wrong) CT default.
         if "PRDECOD" in frame.columns:
@@ -95,23 +91,20 @@ class PRProcessor(BaseDomainProcessor):
                     .str.strip()
                 )
                 prdecod_upper = prdecod_upper.where(prdecod_upper != prefix, "")
-            frame.isetitem(frame.columns.get_loc("PRDECOD"), prdecod_upper)
+            frame["PRDECOD"] = prdecod_upper
         ct_prdecod = self._get_controlled_terminology(variable="PRDECOD")
         if ct_prdecod:
             if "PRDECOD" not in frame.columns:
-                frame.isetitem(frame.columns.get_loc("PRDECOD"), "")
+                frame["PRDECOD"] = ""
             else:
                 decod = (
                     frame["PRDECOD"].astype("string").fillna("").str.strip().str.upper()
                 )
                 decod = decod.apply(ct_prdecod.normalize)
                 decod = decod.where(decod.isin(ct_prdecod.submission_values), "")
-                frame.isetitem(frame.columns.get_loc("PRDECOD"), decod)
+                frame["PRDECOD"] = decod
         if "EPOCH" in frame.columns:
-            frame.isetitem(
-                frame.columns.get_loc("EPOCH"),
-                frame["EPOCH"].astype("string").fillna("").str.strip(),
-            )
+            frame["EPOCH"] = frame["EPOCH"].astype("string").fillna("").str.strip()
         # Ensure timing reference fields are populated to satisfy SD1282
         timing_defaults = {
             "PRTPTREF": "VISIT",
@@ -121,25 +114,19 @@ class PRProcessor(BaseDomainProcessor):
         }
         for col, default in timing_defaults.items():
             if col not in frame.columns:
-                frame.isetitem(frame.columns.get_loc(col), default)
+                frame[col] = default
             else:
                 series = frame[col].astype("string").fillna("")
                 if col == "PRTPTNUM":
                     numeric = ensure_numeric_series(series, frame.index).fillna(default)
-                    frame.isetitem(frame.columns.get_loc(col), numeric.astype(int))
+                    frame[col] = numeric.astype(int)
                 else:
-                    frame.isetitem(
-                        frame.columns.get_loc(col), series.replace("", default)
-                    )
+                    frame[col] = series.replace("", default)
         # Ensure VISITNUM numeric
         if "VISITNUM" in frame.columns:
-            frame.isetitem(
-                frame.columns.get_loc("VISITNUM"),
+            frame["VISITNUM"] = (
                 NumericTransformer.force_numeric(frame["VISITNUM"])
                 .fillna(1)
-                .astype(int),
+                .astype(int)
             )
-            frame.isetitem(
-                frame.columns.get_loc("VISIT"),
-                frame["VISITNUM"].apply(lambda n: f"Visit {int(n)}").astype("string"),
-            )
+            frame["VISIT"] = frame["VISITNUM"].map(_visit_label).astype("string")

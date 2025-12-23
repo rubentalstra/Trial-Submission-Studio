@@ -4,11 +4,39 @@ This module provides the SummaryPresenter class that formats and displays
 study processing results in a Rich table format.
 """
 
+from __future__ import annotations
+
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from rich.console import Console
 from rich.table import Table
+
+from ...application.models import DomainProcessingResult
+
+
+@dataclass(frozen=True)
+class _DomainRow:
+    description: str
+    records: int
+    has_xpt: bool
+    has_xml: bool
+    has_sas: bool
+    notes: str
+    is_supp: bool
+
+
+@dataclass(frozen=True)
+class _ErrorRow:
+    domain: str
+    kind: str
+    code: str
+    variable: str
+    count: str
+    message: str
+    examples: str
+    codelist: str
 
 
 class SummaryPresenter:
@@ -33,17 +61,19 @@ class SummaryPresenter:
         Args:
             console: Rich console for output
         """
+        super().__init__()
         self.console = console
 
     def present(
         self,
-        results: list[dict[str, Any]],
+        results: Sequence[DomainProcessingResult],
         errors: list[tuple[str, str]],
         output_dir: Path,
         output_format: str,
         generate_define: bool,
         generate_sas: bool,
         *,
+        domain_descriptions: Mapping[str, str] | None = None,
         conformance_report_path: Path | None = None,
         conformance_report_error: str | None = None,
     ) -> None:
@@ -56,6 +86,7 @@ class SummaryPresenter:
             output_format: Output format (xpt, xml, both)
             generate_define: Whether Define-XML was generated
             generate_sas: Whether SAS programs were generated
+            domain_descriptions: Optional mapping of domain code to description
 
         Example:
             >>> presenter.present(
@@ -70,13 +101,15 @@ class SummaryPresenter:
         self.console.print()
 
         # Build and display the summary table
-        table = self._build_summary_table(results)
+        table = self._build_summary_table(
+            results, domain_descriptions=domain_descriptions
+        )
         self.console.print(table)
         self.console.print()
 
         # Display status and output information
         total_records = sum(
-            r.get("records", 0) for r in self._iter_all_results(results)
+            self._result_records(r) for r in self._iter_all_results(results)
         )
         self._print_status_summary(len(results), len(errors))
         self._print_output_information(
@@ -93,11 +126,17 @@ class SummaryPresenter:
         # Print a readable list of all errors (processing + conformance)
         self._print_error_details(errors=errors, results=results)
 
-    def _build_summary_table(self, results: list[dict[str, Any]]) -> Table:
+    def _build_summary_table(
+        self,
+        results: Sequence[DomainProcessingResult],
+        *,
+        domain_descriptions: Mapping[str, str] | None,
+    ) -> Table:
         """Build the Rich table with domain processing results.
 
         Args:
             results: List of processing results
+            domain_descriptions: Optional mapping of domain code to description
 
         Returns:
             Formatted Rich Table
@@ -134,7 +173,9 @@ class SummaryPresenter:
         )
 
         # Process and organize results
-        main_domains, supp_domains, total_records = self._organize_results(results)
+        main_domains, supp_domains, total_records = self._organize_results(
+            results, domain_descriptions=domain_descriptions
+        )
 
         # Add rows to table
         self._add_table_rows(table, main_domains, supp_domains)
@@ -154,45 +195,51 @@ class SummaryPresenter:
         return table
 
     def _organize_results(
-        self, results: list[dict[str, Any]]
-    ) -> tuple[dict[str, dict], dict[str, list], int]:
+        self,
+        results: Sequence[DomainProcessingResult],
+        *,
+        domain_descriptions: Mapping[str, str] | None,
+    ) -> tuple[dict[str, _DomainRow], dict[str, list[tuple[str, _DomainRow]]], int]:
         """Organize results into main domains and supplemental domains.
 
         Args:
             results: List of processing results
+            domain_descriptions: Optional mapping of domain code to description
 
         Returns:
             Tuple of (main_domains, supp_domains, total_records)
         """
-        main_domains = {}
-        supp_domains = {}
+        main_domains: dict[str, _DomainRow] = {}
+        supp_domains: dict[str, list[tuple[str, _DomainRow]]] = {}
         total_records = 0
 
         for result in results:
-            domain_code = result.get("domain_code", "").upper()
-            records = result.get("records", 0)
-            description = str(result.get("description") or "")
+            domain_code = result.domain_code.upper()
+            records = self._result_records(result)
+            description = self._describe_domain(
+                domain_code, domain_descriptions=domain_descriptions
+            )
 
             # Check if this is a supplemental domain
             is_supp = domain_code.startswith("SUPP")
 
             # Determine output indicators
-            has_xpt = "✓" if result.get("xpt_path") else "–"
-            has_xml = "✓" if result.get("xml_path") else "–"
-            has_sas = "✓" if result.get("sas_path") else "–"
+            has_xpt = result.xpt_path is not None
+            has_xml = result.xml_path is not None
+            has_sas = result.sas_path is not None
 
             # Build notes
             notes = self._build_notes(result)
 
-            domain_data = {
-                "records": records,
-                "description": description,
-                "has_xpt": has_xpt,
-                "has_xml": has_xml,
-                "has_sas": has_sas,
-                "notes": notes,
-                "is_supp": is_supp,
-            }
+            domain_data = _DomainRow(
+                records=records,
+                description=description,
+                has_xpt=has_xpt,
+                has_xml=has_xml,
+                has_sas=has_sas,
+                notes=notes,
+                is_supp=is_supp,
+            )
 
             if is_supp:
                 # Extract parent domain (e.g., SUPPDM -> DM)
@@ -204,26 +251,25 @@ class SummaryPresenter:
                 main_domains[domain_code] = domain_data
 
                 # Handle nested supplemental domains (newer result shape)
-                for supp in result.get("supplementals", []) or []:
-                    if not isinstance(supp, dict):
-                        continue
-
-                    supp_code = str(supp.get("domain_code") or "").upper()
+                for supp in result.supplementals:
+                    supp_code = supp.domain_code.upper()
                     if not supp_code.startswith("SUPP"):
                         continue
 
-                    supp_records = int(supp.get("records") or 0)
-                    supp_description = str(supp.get("description") or "")
+                    supp_records = self._result_records(supp)
+                    supp_description = self._describe_domain(
+                        supp_code, domain_descriptions=domain_descriptions
+                    )
 
-                    supp_domain_data = {
-                        "records": supp_records,
-                        "description": supp_description,
-                        "has_xpt": "✓" if supp.get("xpt_path") else "–",
-                        "has_xml": "✓" if supp.get("xml_path") else "–",
-                        "has_sas": "✓" if supp.get("sas_path") else "–",
-                        "notes": self._build_notes(supp),
-                        "is_supp": True,
-                    }
+                    supp_domain_data = _DomainRow(
+                        records=supp_records,
+                        description=supp_description,
+                        has_xpt=supp.xpt_path is not None,
+                        has_xml=supp.xml_path is not None,
+                        has_sas=supp.sas_path is not None,
+                        notes=self._build_notes(supp),
+                        is_supp=True,
+                    )
 
                     # Prefer nesting under current main domain; fall back to suffix parent.
                     suffix_parent = supp_code[4:]
@@ -241,7 +287,7 @@ class SummaryPresenter:
 
         return main_domains, supp_domains, total_records
 
-    def _build_notes(self, result: dict[str, Any]) -> str:
+    def _build_notes(self, result: DomainProcessingResult) -> str:
         """Build notes string for a domain result.
 
         Args:
@@ -250,13 +296,46 @@ class SummaryPresenter:
         Returns:
             Formatted notes string
         """
-        return ""
+        notes: list[str] = []
+
+        if result.synthesized:
+            reason = f": {result.synthesis_reason}" if result.synthesis_reason else ""
+            notes.append(f"Synthesized{reason}")
+
+        report = result.conformance_report
+        if report is not None:
+            warnings = report.warning_count()
+            errors = report.error_count()
+            if errors:
+                notes.append(f"{errors} conformance error(s)")
+            if warnings:
+                notes.append(f"{warnings} warning(s)")
+
+        return "; ".join(notes)
+
+    @staticmethod
+    def _describe_domain(
+        domain_code: str, *, domain_descriptions: Mapping[str, str] | None
+    ) -> str:
+        if domain_descriptions is None:
+            return ""
+        return domain_descriptions.get(domain_code.upper(), "")
+
+    @staticmethod
+    def _result_records(result: DomainProcessingResult) -> int:
+        if result.domain_dataframe is not None:
+            return len(result.domain_dataframe)
+        return result.records
+
+    @staticmethod
+    def _format_flag(value: bool) -> str:
+        return "✓" if value else "–"
 
     def _add_table_rows(
         self,
         table: Table,
-        main_domains: dict[str, dict],
-        supp_domains: dict[str, list],
+        main_domains: dict[str, _DomainRow],
+        supp_domains: dict[str, list[tuple[str, _DomainRow]]],
     ) -> None:
         """Add domain rows to the table.
 
@@ -271,42 +350,28 @@ class SummaryPresenter:
             # Add main domain row
             table.add_row(
                 f"[bold cyan]{domain_code}[/bold cyan]",
-                str(data.get("description") or ""),
-                f"[yellow]{data['records']:,}[/yellow]",
-                data["has_xpt"],
-                data["has_xml"],
-                data["has_sas"],
-                data["notes"],
+                data.description,
+                f"[yellow]{data.records:,}[/yellow]",
+                self._format_flag(data.has_xpt),
+                self._format_flag(data.has_xml),
+                self._format_flag(data.has_sas),
+                data.notes,
             )
 
             # Add child rows (supplementals) with a proper tree connector.
-            children: list[tuple[str, str, dict[str, Any]]] = []
-            for supp_code, supp_data in sorted(supp_domains.get(domain_code, [])):
-                children.append(("supp", supp_code, supp_data))
-
-            for idx, (kind, child_code, child_data) in enumerate(children):
+            children = sorted(supp_domains.get(domain_code, []))
+            for idx, (child_code, child_data) in enumerate(children):
                 connector = "└─" if idx == len(children) - 1 else "├─"
 
-                if kind == "split":
-                    table.add_row(
-                        f"[magenta] {connector} {child_code}[/magenta]",
-                        "[magenta]Split dataset[/magenta]",
-                        f"[magenta]{child_data['records']:,}[/magenta]",
-                        f"[magenta]{child_data['has_xpt']}[/magenta]",
-                        f"[magenta]{child_data['has_xml']}[/magenta]",
-                        f"[magenta]{child_data['has_sas']}[/magenta]",
-                        "",
-                    )
-                else:
-                    table.add_row(
-                        f"[dim cyan] {connector} {child_code}[/dim cyan]",
-                        f"[dim]{child_data.get('description') or ''}[/dim]",
-                        f"[dim yellow]{child_data['records']:,}[/dim yellow]",
-                        f"[dim]{child_data['has_xpt']}[/dim]",
-                        f"[dim]{child_data['has_xml']}[/dim]",
-                        f"[dim]{child_data['has_sas']}[/dim]",
-                        f"[dim]{child_data['notes']}[/dim]",
-                    )
+                table.add_row(
+                    f"[dim cyan] {connector} {child_code}[/dim cyan]",
+                    f"[dim]{child_data.description}[/dim]",
+                    f"[dim yellow]{child_data.records:,}[/dim yellow]",
+                    f"[dim]{self._format_flag(child_data.has_xpt)}[/dim]",
+                    f"[dim]{self._format_flag(child_data.has_xml)}[/dim]",
+                    f"[dim]{self._format_flag(child_data.has_sas)}[/dim]",
+                    f"[dim]{child_data.notes}[/dim]",
+                )
 
     def _print_status_summary(self, success_count: int, error_count: int) -> None:
         """Print status summary line.
@@ -335,7 +400,7 @@ class SummaryPresenter:
         *,
         conformance_report_path: Path | None = None,
         conformance_report_error: str | None = None,
-        results: list[dict[str, Any]] | None = None,
+        results: Sequence[DomainProcessingResult] | None = None,
     ) -> None:
         """Print output directory and file information.
 
@@ -363,18 +428,10 @@ class SummaryPresenter:
             generated_sas = generate_sas
             generated_define = generate_define
         else:
-            generated_xpt = any(
-                (r.get("xpt_path") is not None)
-                or bool(r.get("split_xpt_paths"))
-                or bool(r.get("split_datasets"))
-                for r in (results or [])
-            )
-            generated_xml = any(
-                (r.get("xml_path") is not None) for r in (results or [])
-            )
-            generated_sas = any(
-                (r.get("sas_path") is not None) for r in (results or [])
-            )
+            all_results = self._iter_all_results(results)
+            generated_xpt = any(r.xpt_path is not None for r in all_results)
+            generated_xml = any(r.xml_path is not None for r in all_results)
+            generated_sas = any(r.sas_path is not None for r in all_results)
             define_path = output_dir / "define.xml"
             generated_define = generate_define and define_path.exists()
 
@@ -413,47 +470,42 @@ class SummaryPresenter:
             )
 
     def _print_error_details(
-        self, *, errors: list[tuple[str, str]], results: list[dict[str, Any]]
+        self,
+        *,
+        errors: list[tuple[str, str]],
+        results: Sequence[DomainProcessingResult],
     ) -> None:
-        rows: list[dict[str, Any]] = []
+        rows: list[_ErrorRow] = []
 
         for domain, message in errors:
             rows.append(
-                {
-                    "domain": (domain or "(UNKNOWN)").upper(),
-                    "kind": "Processing",
-                    "code": "",
-                    "variable": "",
-                    "count": "",
-                    "message": message,
-                    "examples": "",
-                    "codelist": "",
-                }
+                _ErrorRow(
+                    domain=(domain or "(UNKNOWN)").upper(),
+                    kind="Processing",
+                    code="",
+                    variable="",
+                    count="",
+                    message=message,
+                    examples="",
+                    codelist="",
+                )
             )
 
         for result in self._iter_all_results(results):
-            report = result.get("conformance_report")
-            if not isinstance(report, dict):
+            report = result.conformance_report
+            if report is None:
                 continue
 
-            issues = report.get("issues")
-            if not isinstance(issues, list):
-                continue
-
-            for issue in issues:
-                if not isinstance(issue, dict):
-                    continue
-                if issue.get("severity") != "error":
+            for issue in report.issues:
+                if issue.severity != "error":
                     continue
 
-                domain = str(
-                    issue.get("domain") or report.get("domain") or "(UNKNOWN)"
-                ).upper()
+                domain = (issue.domain or report.domain or "(UNKNOWN)").upper()
 
-                raw_message = str(issue.get("message") or "")
+                raw_message = issue.message or ""
                 message = raw_message
                 examples = ""
-                codelist = str(issue.get("codelist_code") or "")
+                codelist = issue.codelist_code or ""
 
                 # Many messages follow: "...; examples: a, b, c".
                 # Split examples into a separate column for readability.
@@ -468,18 +520,16 @@ class SummaryPresenter:
                     examples = raw_message[idx + len(marker) :].strip()
 
                 rows.append(
-                    {
-                        "domain": domain,
-                        "kind": "Conformance",
-                        "code": str(issue.get("code") or ""),
-                        "variable": str(issue.get("variable") or ""),
-                        "count": ""
-                        if issue.get("count") is None
-                        else str(issue.get("count")),
-                        "message": message,
-                        "examples": examples,
-                        "codelist": codelist,
-                    }
+                    _ErrorRow(
+                        domain=domain,
+                        kind="Conformance",
+                        code=issue.code or "",
+                        variable=issue.variable or "",
+                        count="" if issue.count is None else str(issue.count),
+                        message=message,
+                        examples=examples,
+                        codelist=codelist,
+                    )
                 )
 
         if not rows:
@@ -506,32 +556,33 @@ class SummaryPresenter:
         rows_sorted = sorted(
             rows,
             key=lambda r: (
-                r.get("domain") or "",
-                0 if r.get("kind") == "Processing" else 1,
-                r.get("code") or "",
-                r.get("variable") or "",
-                r.get("codelist") or "",
+                r.domain,
+                0 if r.kind == "Processing" else 1,
+                r.code,
+                r.variable,
+                r.codelist,
             ),
         )
 
         for r in rows_sorted:
-            domain = str(r.get("domain") or "(UNKNOWN)")
+            domain = r.domain or "(UNKNOWN)"
             table.add_row(
                 domain,
-                str(r.get("kind") or ""),
-                str(r.get("code") or ""),
-                str(r.get("variable") or ""),
-                str(r.get("codelist") or ""),
-                str(r.get("count") or ""),
-                str(r.get("message") or ""),
-                str(r.get("examples") or ""),
+                r.kind,
+                r.code,
+                r.variable,
+                r.codelist,
+                r.count,
+                r.message,
+                r.examples,
             )
 
         self.console.print(table)
 
-    def _iter_all_results(self, results: list[dict[str, Any]]):
+    def _iter_all_results(
+        self, results: Sequence[DomainProcessingResult]
+    ) -> Iterable[DomainProcessingResult]:
         for result in results:
             yield result
-            for supp in result.get("supplementals", []) or []:
-                if isinstance(supp, dict):
-                    yield supp
+            for supp in result.supplementals:
+                yield supp

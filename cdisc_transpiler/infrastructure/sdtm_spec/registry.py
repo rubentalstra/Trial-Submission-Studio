@@ -125,4 +125,17 @@ def generalized_identifiers(domain_code: str) -> dict[str, str]:
     return get_domain(domain_code).implements_mapping()
 
 
-__all__ = ["generalized_identifiers", "get_domain", "list_domains"]
+def get_domain_class(domain_code: str) -> str:
+    """Return the SDTM class for a domain via the registry."""
+    code = domain_code.upper()
+    if code.startswith("SUPP"):
+        return "Supplemental Qualifiers"
+
+    try:
+        domain = get_domain(code)
+        return domain.class_name or "Unknown"
+    except KeyError:
+        return "Unknown"
+
+
+__all__ = ["generalized_identifiers", "get_domain", "get_domain_class", "list_domains"]

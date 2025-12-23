@@ -53,12 +53,14 @@ class MetadataAwareMapper:
             min_confidence: Minimum confidence threshold for fuzzy matches
             column_hints: Optional column hints from source data analysis
         """
+        super().__init__()
         self.domain = domain
         self.domain_code = domain.code.upper()
         self.metadata = metadata
         self.min_confidence = min_confidence
         self.column_hints: Hints = column_hints or {}
         self.valid_targets: set[str] = set(self.domain.variable_names())
+        self._aliases: dict[str, str] = {}
 
         # Build dynamic patterns from domain metadata
         self._variable_patterns = build_variable_patterns(self.domain)
@@ -68,8 +70,6 @@ class MetadataAwareMapper:
 
     def _build_alias_dictionary(self) -> None:
         """Build the alias dictionary from metadata and dynamic patterns."""
-        self._aliases: dict[str, str] = {}
-
         # Add dynamic patterns from domain variables
         for target_var, patterns in self._variable_patterns.items():
             if target_var not in self.valid_targets:

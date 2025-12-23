@@ -37,6 +37,7 @@ class ProgressPresenter:
             console: Rich console for output
             total_domains: Total number of domains to process
         """
+        super().__init__()
         self.console = console
         self.total_domains = total_domains
         self.processed = 0
@@ -124,7 +125,7 @@ class ProgressPresenter:
             >>> presenter.print_progress_line()
             [Processing 5/10 domains... ✓ 4 ✗ 1]
         """
-        status_parts = []
+        status_parts: list[str] = []
         if self.success_count > 0:
             status_parts.append(f"[green]✓ {self.success_count}[/green]")
         if self.errors > 0:

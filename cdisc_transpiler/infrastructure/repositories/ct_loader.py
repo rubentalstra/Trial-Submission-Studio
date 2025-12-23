@@ -6,6 +6,8 @@ It intentionally lives in the infrastructure layer because it performs
 filesystem I/O and depends on the CT CSV file layout.
 """
 
+from __future__ import annotations
+
 import math
 from pathlib import Path
 from typing import Any, cast
@@ -31,25 +33,29 @@ def _split_synonyms(raw: str | None) -> list[str]:
 def _clean_value(raw: object) -> str:
     if raw is None:
         return ""
-    if isinstance(raw, (pd.Series, pd.DataFrame)):
-        try:
-            raw = raw.iloc[0]
-        except Exception:
+    if isinstance(raw, pd.Series):
+        series = cast("pd.Series[Any]", raw)
+        if series.empty:
             return ""
+        raw_value: object = series.iloc[0]
+    elif isinstance(raw, pd.DataFrame):
+        if raw.empty:
+            return ""
+        raw_value = raw.iloc[0, 0]
+    else:
+        raw_value = raw
+
+    if isinstance(raw_value, float) and math.isnan(raw_value):
+        return ""
     try:
-        if isinstance(raw, float) and math.isnan(raw):
+        if pd.isna(cast("Any", raw_value)):
             return ""
-    except Exception:
+    except (TypeError, ValueError):
         pass
-    if isinstance(raw, str):
-        return raw.strip()
-    if not isinstance(raw, (pd.Series, pd.DataFrame)):
-        try:
-            if bool(pd.isna(cast("Any", raw))):
-                return ""
-        except Exception:
-            pass
-    return str(raw).strip()
+
+    if isinstance(raw_value, str):
+        return raw_value.strip()
+    return str(raw_value).strip()
 
 
 def _iter_ct_files(ct_dir: Path) -> list[Path]:
@@ -82,7 +88,7 @@ def _merge_ct(
 ) -> ControlledTerminology:
     merged_submission = base.submission_values | other.submission_values
 
-    merged_synonyms = None
+    merged_synonyms: dict[str, str] | None = None
     if base.synonyms or other.synonyms:
         merged_synonyms = {}
         if other.synonyms:

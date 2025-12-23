@@ -8,14 +8,21 @@ builder modules. Consolidating them here reduces file count and makes the
 infrastructure I/O layer easier to navigate.
 """
 
-from collections.abc import Iterable
+from __future__ import annotations
+
+from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime
 from pathlib import Path
+from typing import TYPE_CHECKING, TypeAlias
 from xml.etree import ElementTree as ET
+from xml.etree.ElementTree import Element
 
 import pandas as pd
 
 from cdisc_transpiler.application.ports.repositories import CTRepositoryPort
+from cdisc_transpiler.domain.entities.controlled_terminology import (
+    ControlledTerminology,
+)
 from cdisc_transpiler.domain.entities.sdtm_domain import SDTMDomain, SDTMVariable
 from cdisc_transpiler.infrastructure.repositories.ct_repository import (
     get_default_ct_repository,
@@ -23,6 +30,7 @@ from cdisc_transpiler.infrastructure.repositories.ct_repository import (
 from cdisc_transpiler.infrastructure.sdtm_spec.constants import CT_VERSION
 from cdisc_transpiler.infrastructure.sdtm_spec.registry import get_domain
 
+from ..xml_utils import attr, safe_href, tag
 from .constants import (
     ACRF_LEAF_ID,
     CT_STANDARD_OID_SDTM,
@@ -34,18 +42,28 @@ from .constants import (
     ODM_NS,
     XLINK_NS,
     XML_NS,
-    attr,
-    safe_href,
-    tag,
 )
 from .models import (
+    CommentDefinition,
     DefineGenerationError,
+    MethodDefinition,
+    StandardDefinition,
     StudyDataset,
     ValueListDefinition,
     ValueListItemDefinition,
     WhereClauseDefinition,
 )
 from .standards import get_default_standard_comments, get_default_standards
+
+if TYPE_CHECKING:
+    XmlElement: TypeAlias = Element[str]
+else:
+    XmlElement: TypeAlias = Element
+ItemDefSpec: TypeAlias = tuple[
+    SDTMVariable, str, ValueListDefinition | None, WhereClauseDefinition | None
+]
+ValueListItemSpec: TypeAlias = tuple[SDTMVariable, str]
+CodeListSpec: TypeAlias = tuple[SDTMVariable, str, set[str]]
 
 
 def write_study_define_file(
@@ -79,7 +97,7 @@ def build_study_define_tree(
     study_id: str,
     sdtm_version: str,
     context: str,
-) -> ET.Element:
+) -> XmlElement:
     datasets = list(datasets)
     if not datasets:
         raise DefineGenerationError(
@@ -91,7 +109,7 @@ def build_study_define_tree(
     study_oid = f"STDY.{study_id}"
 
     define_file_oid = f"{study_oid}.Define-XML_{DEFINE_VERSION}"
-    root = ET.Element(
+    root: XmlElement = ET.Element(
         tag(ODM_NS, "ODM"),
         attrib={
             "FileType": "Snapshot",
@@ -130,10 +148,10 @@ def build_study_define_tree(
     acrf = ET.SubElement(metadata, tag(DEF_NS, "AnnotatedCRF"))
     ET.SubElement(acrf, tag(DEF_NS, "DocumentRef"), attrib={"leafID": ACRF_LEAF_ID})
 
-    item_groups: list[ET.Element] = []
-    item_def_specs: dict[str, tuple] = {}
-    vl_item_def_specs: dict[str, tuple] = {}
-    code_list_specs: dict[str, tuple] = {}
+    item_groups: list[XmlElement] = []
+    item_def_specs: dict[str, ItemDefSpec] = {}
+    vl_item_def_specs: dict[str, ValueListItemSpec] = {}
+    code_list_specs: dict[str, CodeListSpec] = {}
     value_list_defs: list[ValueListDefinition] = []
     where_clause_defs: list[WhereClauseDefinition] = []
 
@@ -158,7 +176,7 @@ def build_study_define_tree(
         if ds.archive_location:
             ig_attrib[attr(DEF_NS, "ArchiveLocationID")] = f"LF.{ds.domain_code}"
 
-        ig = ET.Element(tag(ODM_NS, "ItemGroupDef"), attrib=ig_attrib)
+        ig: XmlElement = ET.Element(tag(ODM_NS, "ItemGroupDef"), attrib=ig_attrib)
 
         desc = ET.SubElement(ig, tag(ODM_NS, "Description"))
         ET.SubElement(
@@ -202,7 +220,7 @@ def build_study_define_tree(
     for ig in item_groups:
         metadata.append(ig)
 
-    item_def_parent = ET.Element("temp")
+    item_def_parent: XmlElement = ET.Element("temp")
     for _oid, (var, domain_code, _, _) in sorted(item_def_specs.items()):
         append_item_defs(item_def_parent, [var], domain_code)
     for item_def in item_def_parent:
@@ -211,7 +229,7 @@ def build_study_define_tree(
     for _oid, (var, domain_code) in sorted(vl_item_def_specs.items()):
         append_item_defs(metadata, [var], domain_code)
 
-    cl_parent = ET.Element("temp")
+    cl_parent: XmlElement = ET.Element("temp")
     for _cl_oid, (var, domain_code, extended) in sorted(code_list_specs.items()):
         cl_parent.append(
             build_code_list_element(var, domain_code, extended_values=extended)
@@ -229,7 +247,9 @@ def build_study_define_tree(
     return root
 
 
-def _append_standards(parent: ET.Element, standards: list) -> None:
+def _append_standards(
+    parent: XmlElement, standards: Sequence[StandardDefinition]
+) -> None:
     standards_elem = ET.SubElement(parent, tag(DEF_NS, "Standards"))
 
     for std in standards:
@@ -254,7 +274,7 @@ def _append_standards(parent: ET.Element, standards: list) -> None:
 
 
 def append_item_refs(
-    parent: ET.Element, variables: Iterable[SDTMVariable], domain_code: str
+    parent: XmlElement, variables: Iterable[SDTMVariable], domain_code: str
 ) -> None:
     key_sequences = get_key_sequence(domain_code)
 
@@ -446,7 +466,7 @@ def get_domain_description_alias(domain: SDTMDomain) -> str | None:
 
 
 def append_item_defs(
-    parent: ET.Element, variables: Iterable[SDTMVariable], domain_code: str
+    parent: XmlElement, variables: Iterable[SDTMVariable], domain_code: str
 ) -> None:
     for variable in variables:
         data_type = get_datatype(variable)
@@ -557,7 +577,7 @@ def get_item_oid(variable: SDTMVariable, domain_code: str | None) -> str:
     return f"IT.{code}.{variable.name}"
 
 
-def _get_ct(variable: SDTMVariable, domain_code: str):
+def _get_ct(variable: SDTMVariable, domain_code: str) -> ControlledTerminology | None:
     ct_repository: CTRepositoryPort = get_default_ct_repository()
     if variable.codelist_code:
         ct = ct_repository.get_by_code(variable.codelist_code)
@@ -603,7 +623,7 @@ def build_code_list_element(
     domain_code: str,
     oid_override: str | None = None,
     extended_values: Iterable[str] | None = None,
-) -> ET.Element:
+) -> XmlElement:
     is_meddra = needs_meddra(variable.name)
     data_type = "text" if is_meddra else get_datatype(variable)
     attrib: dict[str, str] = {
@@ -906,7 +926,7 @@ def build_supp_value_lists(
 
 
 def append_value_list_defs(
-    parent: ET.Element, value_lists: list[ValueListDefinition]
+    parent: XmlElement, value_lists: Sequence[ValueListDefinition]
 ) -> None:
     for vl in value_lists:
         vl_elem = ET.SubElement(
@@ -937,7 +957,7 @@ def append_value_list_defs(
 
 
 def append_where_clause_defs(
-    parent: ET.Element, where_clauses: list[WhereClauseDefinition]
+    parent: XmlElement, where_clauses: Sequence[WhereClauseDefinition]
 ) -> None:
     for wc in where_clauses:
         wc_elem = ET.SubElement(
@@ -961,7 +981,7 @@ def append_where_clause_defs(
             ET.SubElement(range_check, tag(ODM_NS, "CheckValue")).text = value
 
 
-def append_method_defs(parent: ET.Element, methods: list) -> None:
+def append_method_defs(parent: XmlElement, methods: Sequence[MethodDefinition]) -> None:
     for method in methods:
         method_elem = ET.SubElement(
             parent,
@@ -988,7 +1008,9 @@ def append_method_defs(parent: ET.Element, methods: list) -> None:
             )
 
 
-def append_comment_defs(parent: ET.Element, comments: list) -> None:
+def append_comment_defs(
+    parent: XmlElement, comments: Sequence[CommentDefinition]
+) -> None:
     for comment in comments:
         comment_elem = ET.SubElement(
             parent,

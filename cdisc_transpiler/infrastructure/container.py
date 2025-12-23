@@ -85,7 +85,7 @@ class DependencyContainer:
         verbose: int = 0,
         console: Console | None = None,
         use_null_logger: bool = False,
-    ):
+    ) -> None:
         """Initialize the dependency container.
 
         Args:
@@ -93,6 +93,7 @@ class DependencyContainer:
             console: Rich console for output (None = create new)
             use_null_logger: Use NullLogger instead of ConsoleLogger (for testing)
         """
+        super().__init__()
         self.verbose = verbose
         self.console = console or Console()
         self.use_null_logger = use_null_logger
@@ -428,7 +429,6 @@ class DependencyContainer:
         self._suppqual_service_instance = None
         self._terminology_service_instance = None
         self._ct_repository_instance = None
-        self._synthesis_service_instance = None
         self._relrec_service_instance = None
         self._relsub_service_instance = None
         self._relspec_service_instance = None

@@ -40,6 +40,7 @@ class DomainProcessorRegistry:
     """Registry for domain-specific processors."""
 
     def __init__(self):
+        super().__init__()
         self._processors: dict[str, type[BaseDomainProcessor]] = {}
         self._default_processor = DefaultDomainProcessor
 

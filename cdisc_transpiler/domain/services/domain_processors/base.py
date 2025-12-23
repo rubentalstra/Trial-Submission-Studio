@@ -32,7 +32,7 @@ class BaseDomainProcessor(ABC):
         metadata: StudyMetadata | None = None,
         ct_resolver: Callable[[str | None, str | None], ControlledTerminology | None]
         | None = None,
-    ):
+    ) -> None:
         """Initialize the domain processor.
 
         Args:
@@ -40,6 +40,7 @@ class BaseDomainProcessor(ABC):
             reference_starts: Mapping of USUBJID -> RFSTDTC for study day calculations
             metadata: Study metadata (optional)
         """
+        super().__init__()
         self.domain = domain
         self.reference_starts = reference_starts or {}
         self.metadata = metadata

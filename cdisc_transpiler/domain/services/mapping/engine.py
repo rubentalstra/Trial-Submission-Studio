@@ -47,6 +47,7 @@ class MappingEngine:
             min_confidence: Minimum confidence score for suggestions (0.0-1.0)
             column_hints: Optional column hints for improved matching
         """
+        super().__init__()
         self.domain = domain
         self.min_confidence = min_confidence
         self.column_hints: Hints = column_hints or {}

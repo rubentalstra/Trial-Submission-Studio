@@ -227,6 +227,7 @@ def get_keep_clause(domain: SDTMDomain) -> str:
 
 class SASProgramGenerator:
     def __init__(self) -> None:
+        super().__init__()
         self._env = Environment(
             trim_blocks=True,
             lstrip_blocks=True,

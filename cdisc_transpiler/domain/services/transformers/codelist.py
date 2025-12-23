@@ -27,7 +27,8 @@ class CodelistTransformer:
         metadata: StudyMetadata | None = None,
         *,
         ct_resolver: CTResolver | None = None,
-    ):
+    ) -> None:
+        super().__init__()
         self.metadata = metadata
         self._ct_resolver = ct_resolver
 

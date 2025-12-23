@@ -36,7 +36,7 @@ class CTRepository:
         config: TranspilerConfig | None = None,
         cache: MemoryCache | None = None,
         ct_version: str | None = None,
-    ):
+    ) -> None:
         """Initialize the repository.
 
         Args:
@@ -45,6 +45,7 @@ class CTRepository:
             ct_version: CT version folder name (e.g., "2025-09-26").
                        If None, uses latest version folder.
         """
+        super().__init__()
         self._config = config or TranspilerConfig()
         # Default to a shared cache so repeated CTRepository() instantiations
         # (e.g., per normalization call) don't re-load large CT registries.

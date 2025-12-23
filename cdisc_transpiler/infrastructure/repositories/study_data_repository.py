@@ -36,6 +36,7 @@ class StudyDataRepository:
         Args:
             csv_reader: Optional CSV reader instance. Creates one if None.
         """
+        super().__init__()
         self._csv_reader = csv_reader or CSVReader()
 
     def read_dataset(self, file_path: str | Path) -> pd.DataFrame:
@@ -151,11 +152,11 @@ class StudyDataRepository:
         except ModuleNotFoundError as e:
             raise DataParseError(
                 "pyreadstat is required to read SAS files (optional dependency). "
-                "Install with: pip install pyreadstat"
+                + "Install with: pip install pyreadstat"
             ) from e
 
         try:
-            frame, _ = pyreadstat.read_sas7bdat(str(path))
+            frame, _meta = pyreadstat.read_sas7bdat(str(path))
             return frame
         except Exception as e:
             raise DataParseError(f"Failed to read SAS file {path}: {e}") from e

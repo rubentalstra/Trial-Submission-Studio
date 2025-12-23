@@ -15,7 +15,7 @@ It does not attempt to infer full specimen genealogy (PARENT/LEVEL) unless
 source datasets explicitly provide those concepts.
 """
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 
 import pandas as pd
 
@@ -81,7 +81,7 @@ class RelspecService:
 
     def _build_relspec_records(
         self,
-        domain_dataframes: dict[str, pd.DataFrame],
+        domain_dataframes: Mapping[str, pd.DataFrame | None],
         study_id: str,
     ) -> list[dict[str, object]]:
         records: dict[tuple[str, str], dict[str, object]] = {}
@@ -125,7 +125,7 @@ class RelspecService:
                         continue
 
                     key = (usubjid, refid)
-                    record = records.get(key)
+                    record: dict[str, object] | None = records.get(key)
                     if record is None:
                         record = {
                             "STUDYID": study_id,

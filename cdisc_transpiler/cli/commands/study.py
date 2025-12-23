@@ -231,69 +231,22 @@ def study_command(
     # Execute the use case
     response = use_case.execute(request)
 
-    # Convert response to the format expected by SummaryPresenter
-    def _report_to_dict(report: object | None) -> dict[str, object] | None:
-        if report is None:
-            return None
-        to_dict = getattr(report, "to_dict", None)
-        if callable(to_dict):
-            payload = to_dict()
-            if isinstance(payload, dict):
-                return payload
-        return None
-
-    results = []
+    domain_descriptions: dict[str, str] = {}
     for result in response.domain_results:
-        conformance_report = _report_to_dict(
-            getattr(result, "conformance_report", None)
-        )
-
-        result_df = getattr(result, "domain_dataframe", None)
-        result_records = len(result_df) if result_df is not None else result.records
-
-        result_dict = {
-            "domain_code": result.domain_code,
-            "description": _describe_domain(result.domain_code),
-            "records": result_records,
-            "domain_dataframe": result.domain_dataframe,
-            "config": result.config,
-            "xpt_path": result.xpt_path,
-            "xml_path": result.xml_path,
-            "sas_path": result.sas_path,
-            "conformance_report": conformance_report,
-            "supplementals": [
-                {
-                    "domain_code": supp.domain_code,
-                    "description": _describe_domain(supp.domain_code),
-                    "records": (
-                        len(supp_df)
-                        if (supp_df := getattr(supp, "domain_dataframe", None))
-                        is not None
-                        else supp.records
-                    ),
-                    "domain_dataframe": supp.domain_dataframe,
-                    "config": supp.config,
-                    "xpt_path": supp.xpt_path,
-                    "xml_path": supp.xml_path,
-                    "sas_path": supp.sas_path,
-                    "conformance_report": _report_to_dict(
-                        getattr(supp, "conformance_report", None)
-                    ),
-                }
-                for supp in result.supplementals
-            ],
-        }
-        results.append(result_dict)
+        domain_descriptions[result.domain_code] = _describe_domain(result.domain_code)
+        for supp in result.supplementals:
+            domain_descriptions[supp.domain_code] = _describe_domain(supp.domain_code)
 
     # Display summary using presenter
     presenter = SummaryPresenter(console)
     presenter.present(
-        results,
+        response.domain_results,
         response.errors,
         output_dir,
         output_format,
         generate_define,
         generate_sas,
+        domain_descriptions=domain_descriptions,
         conformance_report_path=response.conformance_report_path,
         conformance_report_error=response.conformance_report_error,
     )

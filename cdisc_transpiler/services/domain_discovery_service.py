@@ -15,7 +15,7 @@ Extracted from cli/commands/study.py as part of Phase 2 refactoring.
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ..infrastructure.sdtm_spec.utils import get_domain_class
+from ..infrastructure.sdtm_spec.registry import get_domain_class
 
 if TYPE_CHECKING:
     from ..application.ports.services import LoggerPort

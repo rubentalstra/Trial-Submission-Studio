@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 import pyreadstat
 
+from cdisc_transpiler.domain.entities.sdtm_domain import SDTMDomain
 from cdisc_transpiler.infrastructure.sdtm_spec.registry import get_domain
 
 
@@ -17,7 +18,9 @@ class XportGenerationError(RuntimeError):
     """Raised when XPT export cannot be completed."""
 
 
-def _order_columns_for_domain(dataset: pd.DataFrame, *, domain: object) -> list[str]:
+def _order_columns_for_domain(
+    dataset: pd.DataFrame, *, domain: SDTMDomain
+) -> list[str]:
     """Return dataset columns ordered per SDTMIG spec for the domain.
 
     Important: do NOT move unknown/sponsor columns.
@@ -28,12 +31,8 @@ def _order_columns_for_domain(dataset: pd.DataFrame, *, domain: object) -> list[
     present_upper = {c.upper() for c in dataset_columns}
 
     spec_order_upper: list[str] = []
-    domain_vars = getattr(domain, "variables", None) or []
-    for var in domain_vars:
-        name = getattr(var, "name", None)
-        if not name:
-            continue
-        upper = str(name).upper()
+    for var in domain.variables:
+        upper = var.name.upper()
         if upper in present_upper:
             spec_order_upper.append(upper)
 
@@ -73,8 +72,7 @@ def write_xpt_file(
 
     if len(output_path.stem) > 8:
         raise XportGenerationError(
-            "XPT filename stem must be <=8 characters to satisfy SDTM v5: "
-            f"{output_path.name}"
+            f"XPT filename stem must be <=8 characters to satisfy SDTM v5: {output_path.name}"
         )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)

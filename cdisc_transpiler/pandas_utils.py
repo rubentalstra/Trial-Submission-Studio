@@ -7,7 +7,9 @@ either a :class:`Series` or :class:`DataFrame`; by routing through these
 helpers we guarantee a concrete ``Series`` instance and stable return types.
 """
 
-from typing import Any
+from __future__ import annotations
+
+from typing import Any, cast
 
 import pandas as pd
 
@@ -23,7 +25,7 @@ def ensure_series(value: Any, index: pd.Index[Any] | None = None) -> pd.Series[A
     where a frame lookup was expected to yield a series.
     """
     if isinstance(value, pd.Series):
-        return value
+        return cast("pd.Series[Any]", value)
     if isinstance(value, pd.DataFrame):
         if value.shape[1] == 0:
             return pd.Series(index=value.index, dtype="object")

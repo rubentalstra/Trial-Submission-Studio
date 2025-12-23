@@ -9,10 +9,16 @@ This module provides a conservative ordering helper:
 - Leaves non-standard (sponsor) columns anchored in their original positions.
 """
 
+from __future__ import annotations
+
 import pandas as pd
 
+from ..entities.sdtm_domain import SDTMDomain
 
-def ordered_columns_for_domain(dataset: pd.DataFrame, *, domain: object) -> list[str]:
+
+def ordered_columns_for_domain(
+    dataset: pd.DataFrame, *, domain: SDTMDomain
+) -> list[str]:
     """Return dataset columns ordered per SDTMIG spec for the given domain.
 
     Important: do NOT move unknown/sponsor columns.
@@ -24,12 +30,8 @@ def ordered_columns_for_domain(dataset: pd.DataFrame, *, domain: object) -> list
     present_upper = {c.upper() for c in dataset_columns}
 
     spec_order_upper: list[str] = []
-    domain_vars = getattr(domain, "variables", None) or []
-    for var in domain_vars:
-        name = getattr(var, "name", None)
-        if not name:
-            continue
-        upper = str(name).upper()
+    for var in domain.variables:
+        upper = var.name.upper()
         if upper in present_upper:
             spec_order_upper.append(upper)
 

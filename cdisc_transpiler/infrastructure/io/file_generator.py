@@ -75,7 +75,7 @@ class FileGenerator:
         xpt_writer: XPTWriterPort,
         xml_writer: DatasetXMLWriterPort,
         sas_writer: SASWriterPort,
-    ):
+    ) -> None:
         """Initialize the FileGenerator with writer adapters.
 
         Args:
@@ -90,6 +90,7 @@ class FileGenerator:
             >>> from cdisc_transpiler.infrastructure.io.sas_writer import SASWriter
             >>> generator = FileGenerator(xpt_writer=XPTWriter(), xml_writer=DatasetXMLWriter(), sas_writer=SASWriter())
         """
+        super().__init__()
         self._xpt_writer = xpt_writer
         self._xml_writer = xml_writer
         self._sas_writer = sas_writer
