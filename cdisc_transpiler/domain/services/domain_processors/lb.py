@@ -116,14 +116,17 @@ class LBProcessor(BaseDomainProcessor):
                 "": "",
                 "nan": "",
             }
-            frame.loc[:, "LBCLSIG"] = (
-                frame["LBCLSIG"]
-                .astype("string")
-                .fillna("")
-                .str.strip()
-                .str.upper()
-                .map(yn_map)
-                .fillna("")
+            frame.isetitem(
+                frame.columns.get_loc("LBCLSIG"),
+                (
+                    frame["LBCLSIG"]
+                    .astype("string")
+                    .fillna("")
+                    .str.strip()
+                    .str.upper()
+                    .map(yn_map)
+                    .fillna("")
+                ),
             )
 
         # Controlled terminology normalization for units (blank invalid values; no defaults).
@@ -136,7 +139,7 @@ class LBProcessor(BaseDomainProcessor):
                     normalized = normalized.where(
                         normalized.isin(ct_lb_units.submission_values), ""
                     )
-                    frame.loc[:, col] = normalized
+                    frame.isetitem(frame.columns.get_loc(col), normalized)
 
         # Clear units when there is no corresponding result.
         if {"LBORRES", "LBORRESU"}.issubset(frame.columns):
