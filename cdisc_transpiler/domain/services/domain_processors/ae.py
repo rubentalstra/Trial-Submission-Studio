@@ -1,5 +1,7 @@
 """Domain processor for Adverse Events (AE) domain."""
 
+from typing import override
+
 import pandas as pd
 
 from ....pandas_utils import ensure_numeric_series
@@ -13,6 +15,7 @@ class AEProcessor(BaseDomainProcessor):
     Handles domain-specific processing for the AE domain.
     """
 
+    @override
     def process(self, frame: pd.DataFrame) -> None:
         """Process AE domain DataFrame.
 

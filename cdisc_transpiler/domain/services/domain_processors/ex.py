@@ -1,6 +1,7 @@
 """Domain processor for Exposure (EX) domain."""
 
 import re
+from typing import override
 
 import pandas as pd
 
@@ -14,6 +15,7 @@ class EXProcessor(BaseDomainProcessor):
     Handles domain-specific processing for the EX domain.
     """
 
+    @override
     def process(self, frame: pd.DataFrame) -> None:
         """Process EX domain DataFrame.
 

@@ -1,5 +1,7 @@
 """Domain processor for Trial Elements (TE) domain."""
 
+from typing import override
+
 import pandas as pd
 
 from .base import BaseDomainProcessor
@@ -11,6 +13,7 @@ class TEProcessor(BaseDomainProcessor):
     Handles domain-specific processing for the TE domain.
     """
 
+    @override
     def process(self, frame: pd.DataFrame) -> None:
         """Process TE domain DataFrame.
 

@@ -9,7 +9,7 @@ the Define-XML file.
 """
 
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, override
 
 from ...application.ports import DefineXMLGeneratorPort
 
@@ -39,6 +39,7 @@ class DefineXMLGenerator(DefineXMLGeneratorPort):
         >>> generator.generate(datasets, Path("define.xml"), sdtm_version="3.4", context="Submission")
     """
 
+    @override
     def generate(
         self,
         datasets: Iterable[DefineDatasetDTO],

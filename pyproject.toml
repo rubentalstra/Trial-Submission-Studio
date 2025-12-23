@@ -237,6 +237,8 @@ exclude = [
     "build",
     "dist",
     "cdisc_transpiler.egg-info",
+    "tests/**",
+    "docs/**",
 ]
 
 venvPath = "."

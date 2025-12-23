@@ -1,5 +1,7 @@
 """Domain processor for Laboratory (LB) domain."""
 
+from typing import override
+
 import pandas as pd
 
 from ....pandas_utils import ensure_numeric_series
@@ -13,6 +15,7 @@ class LBProcessor(BaseDomainProcessor):
     Handles domain-specific processing for the LB domain.
     """
 
+    @override
     def process(self, frame: pd.DataFrame) -> None:
         """Process LB domain DataFrame.
 

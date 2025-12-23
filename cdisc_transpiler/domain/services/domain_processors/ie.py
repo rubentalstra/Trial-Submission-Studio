@@ -1,5 +1,7 @@
 """Domain processor for Inclusion/Exclusion (IE) domain."""
 
+from typing import override
+
 import pandas as pd
 
 from ..transformers import DateTransformer, NumericTransformer
@@ -12,6 +14,7 @@ class IEProcessor(BaseDomainProcessor):
     Handles domain-specific processing for the IE domain.
     """
 
+    @override
     def process(self, frame: pd.DataFrame) -> None:
         """Process IE domain DataFrame.
 

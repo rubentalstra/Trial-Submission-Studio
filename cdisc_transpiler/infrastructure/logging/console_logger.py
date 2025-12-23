@@ -22,7 +22,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import IntEnum
 from pathlib import Path
-from typing import Any
+from typing import Any, override
 
 from rich.console import Console
 
@@ -100,6 +100,7 @@ class ConsoleLogger(LoggerPort):
     # Basic logging methods (LoggerPort interface)
     # =========================================================================
 
+    @override
     def info(self, message: str, *, level: int = LogLevel.NORMAL) -> None:
         """Log an informational message.
 
@@ -111,6 +112,7 @@ class ConsoleLogger(LoggerPort):
             prefix = self._get_prefix()
             self.console.print(f"{prefix}{message}")
 
+    @override
     def verbose(self, message: str) -> None:
         """Log a verbose message (shown with -v).
 
@@ -121,6 +123,7 @@ class ConsoleLogger(LoggerPort):
             prefix = self._get_prefix()
             self.console.print(f"[dim]{prefix}{message}[/dim]")
 
+    @override
     def debug(self, message: str) -> None:
         """Log a debug message (shown with -vv).
 
@@ -131,6 +134,7 @@ class ConsoleLogger(LoggerPort):
             prefix = self._get_prefix()
             self.console.print(f"[dim cyan]{prefix}{message}[/dim cyan]")
 
+    @override
     def success(self, message: str) -> None:
         """Log a success message (always shown).
 
@@ -139,6 +143,7 @@ class ConsoleLogger(LoggerPort):
         """
         self.console.print(f"[green]✓[/green] {message}")
 
+    @override
     def warning(self, message: str) -> None:
         """Log a warning message (always shown).
 
@@ -148,6 +153,7 @@ class ConsoleLogger(LoggerPort):
         self._stats["warnings"] += 1
         self.console.print(f"[yellow]⚠[/yellow] {message}")
 
+    @override
     def error(self, message: str) -> None:
         """Log an error message (always shown).
 
@@ -161,6 +167,7 @@ class ConsoleLogger(LoggerPort):
     # Structured logging methods for SDTM operations
     # =========================================================================
 
+    @override
     def log_study_start(
         self,
         study_id: str,
@@ -196,6 +203,7 @@ class ConsoleLogger(LoggerPort):
                 domains = ", ".join(sorted(domain_groups[cls]))
                 self.verbose(f"  {cls}: {domains}")
 
+    @override
     def log_metadata_loaded(
         self,
         *,
@@ -265,6 +273,7 @@ class ConsoleLogger(LoggerPort):
         else:
             self.verbose(f"No domain match for: {filename}")
 
+    @override
     def log_domain_start(
         self,
         domain_code: str,
@@ -304,6 +313,7 @@ class ConsoleLogger(LoggerPort):
         for input_file, _variant_name in files_for_domain:
             self.console.print(f"  - {input_file.name}")
 
+    @override
     def log_file_loaded(
         self,
         filename: str,
@@ -450,6 +460,7 @@ class ConsoleLogger(LoggerPort):
 
         self.success(msg)
 
+    @override
     def log_synthesis_start(
         self,
         domain_code: str,
@@ -468,6 +479,7 @@ class ConsoleLogger(LoggerPort):
             header += f" [dim]({domain_class})[/dim]"
         self.console.print(header)
 
+    @override
     def log_synthesis_complete(
         self,
         domain_code: str,
@@ -488,6 +500,7 @@ class ConsoleLogger(LoggerPort):
     # Summary and statistics methods
     # =========================================================================
 
+    @override
     def log_processing_summary(
         self,
         *,
@@ -520,6 +533,7 @@ class ConsoleLogger(LoggerPort):
         if generate_sas:
             self.console.print("[bold]SAS programs:[/bold] Will be generated")
 
+    @override
     def log_final_stats(self) -> None:
         """Log final processing statistics (verbose mode)."""
         if self.verbosity >= LogLevel.VERBOSE:
@@ -543,6 +557,7 @@ class ConsoleLogger(LoggerPort):
                     f"[dim red]  Errors: {self._stats['errors']}[/dim red]"
                 )
 
+    @override
     def log_domain_complete(
         self,
         domain_code: str,

@@ -1,5 +1,7 @@
 """Domain processor for Demographics (DM) domain."""
 
+from typing import override
+
 import pandas as pd
 
 from ..transformers import DateTransformer
@@ -12,6 +14,7 @@ class DMProcessor(BaseDomainProcessor):
     Handles domain-specific processing for the DM domain.
     """
 
+    @override
     def process(self, frame: pd.DataFrame) -> None:
         """Process DM domain DataFrame.
 

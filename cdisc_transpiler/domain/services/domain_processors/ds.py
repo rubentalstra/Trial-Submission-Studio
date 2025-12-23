@@ -1,5 +1,7 @@
 """Domain processor for Disposition (DS) domain."""
 
+from typing import override
+
 import pandas as pd
 
 from ..transformers import DateTransformer, NumericTransformer
@@ -12,6 +14,7 @@ class DSProcessor(BaseDomainProcessor):
     Handles domain-specific processing for the DS domain.
     """
 
+    @override
     def process(self, frame: pd.DataFrame) -> None:
         """Process DS domain DataFrame.
 

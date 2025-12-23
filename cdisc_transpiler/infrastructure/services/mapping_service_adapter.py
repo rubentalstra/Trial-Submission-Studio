@@ -5,6 +5,8 @@ This adapter exists so the application layer depends on a port, not on the
 concrete mapping implementation.
 """
 
+from typing import override
+
 import pandas as pd
 
 from ...application.ports.repositories import DomainDefinitionRepositoryPort
@@ -19,6 +21,7 @@ class MappingServiceAdapter(MappingPort):
     def __init__(self, *, domain_definition_repository: DomainDefinitionRepositoryPort):
         self._domain_definition_repository = domain_definition_repository
 
+    @override
     def suggest(
         self,
         *,

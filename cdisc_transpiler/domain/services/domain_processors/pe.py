@@ -1,5 +1,7 @@
 """Domain processor for Physical Examination (PE) domain."""
 
+from typing import override
+
 import pandas as pd
 
 from ..transformers import DateTransformer, NumericTransformer
@@ -12,6 +14,7 @@ class PEProcessor(BaseDomainProcessor):
     Handles domain-specific processing for the PE domain.
     """
 
+    @override
     def process(self, frame: pd.DataFrame) -> None:
         """Process PE domain DataFrame.
 

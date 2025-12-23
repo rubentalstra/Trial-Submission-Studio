@@ -6,7 +6,7 @@ post-processing logic unique to each SDTM domain.
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, override
 
 import pandas as pd
 
@@ -199,6 +199,7 @@ class BaseDomainProcessor(ABC):
 class DefaultDomainProcessor(BaseDomainProcessor):
     """Default processor for domains without specific processing needs."""
 
+    @override
     def process(self, frame: pd.DataFrame) -> None:
         """Apply common processing to any domain.
 

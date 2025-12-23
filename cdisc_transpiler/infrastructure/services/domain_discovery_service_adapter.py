@@ -7,6 +7,7 @@ This keeps StudyProcessingUseCase decoupled from concrete discovery services.
 """
 
 from pathlib import Path
+from typing import override
 
 from ...application.ports import DomainDiscoveryPort, LoggerPort
 
@@ -17,6 +18,7 @@ class DomainDiscoveryServiceAdapter(DomainDiscoveryPort):
 
         self._delegate = DomainDiscoveryService(logger=logger)
 
+    @override
     def discover_domain_files(
         self,
         csv_files: list[Path],

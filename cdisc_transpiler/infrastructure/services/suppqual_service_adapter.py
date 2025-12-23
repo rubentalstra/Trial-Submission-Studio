@@ -1,5 +1,7 @@
 """Infrastructure adapter for SUPPQUAL operations."""
 
+from typing import override
+
 import pandas as pd
 
 from ...application.ports import SuppqualPort
@@ -13,9 +15,11 @@ from ...domain.services.suppqual_service import (
 
 
 class SuppqualServiceAdapter(SuppqualPort):
+    @override
     def extract_used_columns(self, config: MappingConfig | None) -> set[str]:
         return extract_used_columns(config)
 
+    @override
     def build_suppqual(
         self,
         domain_code: str,
@@ -39,6 +43,7 @@ class SuppqualServiceAdapter(SuppqualPort):
             total_files=total_files,
         )
 
+    @override
     def finalize_suppqual(
         self,
         supp_df: pd.DataFrame,

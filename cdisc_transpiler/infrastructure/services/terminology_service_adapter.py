@@ -1,5 +1,7 @@
 """Infrastructure adapter for terminology helpers."""
 
+from typing import override
+
 from ...application.ports import TerminologyPort
 
 
@@ -74,6 +76,7 @@ def _normalize_to_submission_value(ct, source_value: str) -> str | None:
 
 
 class TerminologyServiceAdapter(TerminologyPort):
+    @override
     def normalize_testcd(self, domain_code: str, source_code: str) -> str | None:
         from ..repositories.ct_repository import CTRepository
 
@@ -90,6 +93,7 @@ class TerminologyServiceAdapter(TerminologyPort):
 
         return _normalize_to_submission_value(ct, source_code)
 
+    @override
     def get_testcd_label(self, domain_code: str, testcd: str) -> str:
         from ..repositories.ct_repository import CTRepository
 

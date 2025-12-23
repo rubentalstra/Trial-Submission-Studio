@@ -1,5 +1,7 @@
 """Domain processor for Subject Elements (SE) domain."""
 
+from typing import override
+
 import pandas as pd
 
 from ..transformers import DateTransformer, NumericTransformer
@@ -12,6 +14,7 @@ class SEProcessor(BaseDomainProcessor):
     Handles domain-specific processing for the SE domain.
     """
 
+    @override
     def process(self, frame: pd.DataFrame) -> None:
         """Process SE domain DataFrame.
 

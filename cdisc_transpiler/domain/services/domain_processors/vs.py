@@ -1,6 +1,6 @@
 """Domain processor for Vital Signs (VS) domain."""
 
-from typing import Any, cast
+from typing import Any, cast, override
 
 import pandas as pd
 
@@ -15,6 +15,7 @@ class VSProcessor(BaseDomainProcessor):
     Handles domain-specific processing for the VS domain.
     """
 
+    @override
     def process(self, frame: pd.DataFrame) -> None:
         """Process VS domain DataFrame.
 

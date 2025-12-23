@@ -1,5 +1,7 @@
 """Domain processor for Medical History (MH) domain."""
 
+from typing import override
+
 import pandas as pd
 
 from ....pandas_utils import ensure_numeric_series
@@ -13,6 +15,7 @@ class MHProcessor(BaseDomainProcessor):
     Handles domain-specific processing for the MH domain.
     """
 
+    @override
     def process(self, frame: pd.DataFrame) -> None:
         """Process MH domain DataFrame.
 

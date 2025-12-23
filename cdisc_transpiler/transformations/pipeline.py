@@ -4,7 +4,7 @@ This module provides a pipeline for orchestrating multiple transformers in seque
 with support for error handling, metadata collection, and conditional execution.
 """
 
-from typing import Any
+from typing import Any, override
 
 import pandas as pd
 
@@ -227,6 +227,7 @@ class TransformationPipeline:
         """Return the number of transformers in the pipeline."""
         return len(self.transformers)
 
+    @override
     def __repr__(self) -> str:
         """Return string representation of the pipeline."""
         transformer_names = [t.__class__.__name__ for t in self.transformers]

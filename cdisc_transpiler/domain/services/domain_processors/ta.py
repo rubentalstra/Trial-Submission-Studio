@@ -1,5 +1,7 @@
 """Domain processor for Trial Arms (TA) domain."""
 
+from typing import override
+
 import pandas as pd
 
 from .base import BaseDomainProcessor
@@ -11,6 +13,7 @@ class TAProcessor(BaseDomainProcessor):
     Handles domain-specific processing for the TA domain.
     """
 
+    @override
     def process(self, frame: pd.DataFrame) -> None:
         """Process TA domain DataFrame.
 

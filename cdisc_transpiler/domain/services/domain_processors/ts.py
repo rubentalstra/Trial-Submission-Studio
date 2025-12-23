@@ -1,5 +1,7 @@
 """Domain processor for Trial Summary (TS) domain."""
 
+from typing import override
+
 import pandas as pd
 
 from cdisc_transpiler.pandas_utils import ensure_series
@@ -13,6 +15,7 @@ class TSProcessor(BaseDomainProcessor):
     Handles domain-specific processing for the TS domain.
     """
 
+    @override
     def process(self, frame: pd.DataFrame) -> None:
         """Process TS domain DataFrame.
 

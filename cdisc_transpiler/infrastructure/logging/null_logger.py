@@ -5,6 +5,7 @@ all log messages. Useful for testing without console output.
 """
 
 from pathlib import Path
+from typing import override
 
 from ...application.ports.services import LoggerPort
 
@@ -21,6 +22,7 @@ class NullLogger(LoggerPort):
         >>> logger.error("This too")
     """
 
+    @override
     def info(self, message: str) -> None:
         """Log an informational message (discarded).
 
@@ -29,6 +31,7 @@ class NullLogger(LoggerPort):
         """
         return
 
+    @override
     def success(self, message: str) -> None:
         """Log a success message (discarded).
 
@@ -37,6 +40,7 @@ class NullLogger(LoggerPort):
         """
         return
 
+    @override
     def warning(self, message: str) -> None:
         """Log a warning message (discarded).
 
@@ -45,6 +49,7 @@ class NullLogger(LoggerPort):
         """
         return
 
+    @override
     def error(self, message: str) -> None:
         """Log an error message (discarded).
 
@@ -53,6 +58,7 @@ class NullLogger(LoggerPort):
         """
         return
 
+    @override
     def debug(self, message: str) -> None:
         """Log a debug message (discarded).
 
@@ -61,6 +67,7 @@ class NullLogger(LoggerPort):
         """
         return
 
+    @override
     def verbose(self, message: str) -> None:
         """Log a verbose message (discarded).
 
@@ -69,6 +76,7 @@ class NullLogger(LoggerPort):
         """
         return
 
+    @override
     def log_study_start(
         self,
         study_id: str,
@@ -78,6 +86,7 @@ class NullLogger(LoggerPort):
     ) -> None:
         return None
 
+    @override
     def log_metadata_loaded(
         self,
         *,
@@ -86,6 +95,7 @@ class NullLogger(LoggerPort):
     ) -> None:
         return None
 
+    @override
     def log_processing_summary(
         self,
         *,
@@ -98,14 +108,17 @@ class NullLogger(LoggerPort):
     ) -> None:
         return None
 
+    @override
     def log_final_stats(self) -> None:
         return None
 
+    @override
     def log_domain_start(
         self, domain_code: str, files_for_domain: list[tuple[Path, str]]
     ) -> None:
         return None
 
+    @override
     def log_domain_complete(
         self,
         domain_code: str,
@@ -117,6 +130,7 @@ class NullLogger(LoggerPort):
     ) -> None:
         return None
 
+    @override
     def log_file_loaded(
         self,
         filename: str,
@@ -125,8 +139,10 @@ class NullLogger(LoggerPort):
     ) -> None:
         return None
 
+    @override
     def log_synthesis_start(self, domain_code: str, reason: str) -> None:
         return None
 
+    @override
     def log_synthesis_complete(self, domain_code: str, records: int) -> None:
         return None

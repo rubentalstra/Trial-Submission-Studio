@@ -7,6 +7,7 @@ It implements the application port OutputPreparerPort.
 """
 
 from pathlib import Path
+from typing import override
 
 from ...application.ports import OutputPreparerPort
 
@@ -69,6 +70,7 @@ class OutputPreparer(OutputPreparerPort):
             if path.is_file():
                 path.unlink()
 
+    @override
     def prepare(
         self,
         *,
@@ -105,5 +107,6 @@ class OutputPreparer(OutputPreparerPort):
         if generate_define_xml:
             _ensure_acrf_pdf(output_dir / "acrf.pdf")
 
+    @override
     def ensure_dir(self, path: Path) -> None:
         path.mkdir(parents=True, exist_ok=True)

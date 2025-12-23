@@ -1,5 +1,7 @@
 """Infrastructure adapter for building SDTM domain dataframes."""
 
+from typing import override
+
 import pandas as pd
 
 from ...application.ports import DomainFrameBuilderPort
@@ -21,6 +23,7 @@ class DomainFrameBuilderAdapter(DomainFrameBuilderPort):
     def __init__(self, *, ct_repository: CTRepositoryPort | None = None) -> None:
         self._ct_repository = ct_repository
 
+    @override
     def build_domain_dataframe(
         self,
         frame: pd.DataFrame,

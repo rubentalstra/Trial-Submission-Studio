@@ -8,12 +8,14 @@ from collections.abc import Iterable
 from datetime import UTC, datetime
 import json
 from pathlib import Path
+from typing import override
 
 from ...application.ports.services import ConformanceReportWriterPort
 from ...domain.services.sdtm_conformance_checker import ConformanceReport
 
 
 class ConformanceReportWriterAdapter(ConformanceReportWriterPort):
+    @override
     def write_json(
         self,
         *,

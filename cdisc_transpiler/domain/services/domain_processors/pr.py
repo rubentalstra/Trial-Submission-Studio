@@ -1,5 +1,7 @@
 """Domain processor for Procedures (PR) domain."""
 
+from typing import override
+
 import pandas as pd
 
 from ....pandas_utils import ensure_numeric_series
@@ -13,6 +15,7 @@ class PRProcessor(BaseDomainProcessor):
     Handles domain-specific processing for the PR domain.
     """
 
+    @override
     def process(self, frame: pd.DataFrame) -> None:
         """Process PR domain DataFrame.
 

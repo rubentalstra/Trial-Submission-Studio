@@ -1,5 +1,7 @@
 """Domain processor for Concomitant Medications (CM) domain."""
 
+from typing import override
+
 import pandas as pd
 
 from ..transformers import DateTransformer, NumericTransformer, TextTransformer
@@ -12,6 +14,7 @@ class CMProcessor(BaseDomainProcessor):
     Handles domain-specific processing for the CM domain.
     """
 
+    @override
     def process(self, frame: pd.DataFrame) -> None:
         """Process CM domain DataFrame.
 

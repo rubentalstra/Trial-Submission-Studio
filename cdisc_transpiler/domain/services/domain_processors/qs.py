@@ -1,5 +1,7 @@
 """Domain processor for Questionnaires (QS) domain."""
 
+from typing import override
+
 import pandas as pd
 
 from ....pandas_utils import ensure_series
@@ -13,6 +15,7 @@ class QSProcessor(BaseDomainProcessor):
     Handles domain-specific processing for the QS domain.
     """
 
+    @override
     def process(self, frame: pd.DataFrame) -> None:
         """Process QS domain DataFrame.
 
