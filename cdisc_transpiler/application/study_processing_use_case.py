@@ -601,7 +601,6 @@ class StudyProcessingUseCase:
                 xpt_path=domain_response.xpt_path,
                 xml_path=domain_response.xml_path,
                 sas_path=domain_response.sas_path,
-                split_datasets=domain_response.split_datasets,
                 error=domain_response.error,
                 conformance_report=domain_response.conformance_report,
             )
@@ -686,33 +685,14 @@ class StudyProcessingUseCase:
             dataset_href = Path(f"{disk_name}.xpt")
 
         if result.config and result.domain_dataframe is not None:
-            # If split datasets exist for this domain, do not include the unsplit
-            # parent dataset in Define-XML (SDTMIG v3.4 4.1.7 splitting domains).
-            if not result.split_datasets:
-                study_datasets.append(
-                    DefineDatasetDTO(
-                        domain_code=result.domain_code,
-                        dataframe=result.domain_dataframe,
-                        config=result.config,
-                        archive_location=dataset_href,
-                    )
+            study_datasets.append(
+                DefineDatasetDTO(
+                    domain_code=result.domain_code,
+                    dataframe=result.domain_dataframe,
+                    config=result.config,
+                    archive_location=dataset_href,
                 )
-
-            # Add split datasets
-            for split_name, split_df, split_path in result.split_datasets:
-                split_href = split_path.relative_to(output_dir)
-                study_datasets.append(
-                    DefineDatasetDTO(
-                        domain_code=split_name,
-                        dataframe=split_df,
-                        config=result.config,
-                        archive_location=split_href,
-                        is_split=True,
-                        split_suffix=split_name[len(result.domain_code) :]
-                        if split_name.startswith(result.domain_code)
-                        else split_name,
-                    )
-                )
+            )
 
             # Add supplemental domains
             for supp in result.supplementals:

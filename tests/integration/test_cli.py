@@ -465,39 +465,5 @@ class TestStudyCommandWithGDISC:
         )
 
         # Check for key domains
-        for domain_file in ["dm.xpt", "ae.xpt", "vs.xpt"]:
+        for domain_file in ["dm.xpt", "ae.xpt", "vs.xpt", "lb.xpt"]:
             assert (xpt_dir / domain_file).exists(), f"{domain_file} should exist"
-
-        # LB may be split into multiple datasets (SDTMIG v3.4 4.1.7), in which case
-        # the parent LB dataset is not emitted as an XPT.
-        lb_path = xpt_dir / "lb.xpt"
-        split_dir = xpt_dir / "split"
-        has_split_lb = split_dir.exists() and any(split_dir.glob("lb*.xpt"))
-        assert lb_path.exists() or has_split_lb, "LB XPT or split LB XPTs should exist"
-
-    def test_study_with_split_datasets(self, runner, study_folder, tmp_path):
-        """Test that split datasets are created correctly."""
-        output_dir = tmp_path / "output"
-
-        result = runner.invoke(
-            app,
-            [
-                "study",
-                str(study_folder.absolute()),
-                "--output-dir",
-                str(output_dir),
-                "--format",
-                "xpt",
-                "--no-fail-on-conformance-errors",
-                "--no-define-xml",
-                "--no-sas",
-            ],
-        )
-
-        assert result.exit_code == 0
-
-        # DEMO_GDISC has split LB datasets (LBHM, LBCC, etc.)
-        split_dir = output_dir / "xpt" / "split"
-        if split_dir.exists():
-            split_files = list(split_dir.glob("lb*.xpt"))
-            assert len(split_files) > 0, "Should have split LB datasets"

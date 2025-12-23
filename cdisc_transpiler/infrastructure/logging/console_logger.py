@@ -452,27 +452,6 @@ class ConsoleLogger(LoggerPort):
 
         self.success(msg)
 
-    def log_split_dataset(
-        self,
-        path: Path,
-        domain_code: str,
-        table_name: str,
-        row_count: int,
-    ) -> None:
-        """Log split dataset generation per SDTMIG v3.4 Section 4.1.7.
-
-        Args:
-            path: Path to split file
-            domain_code: Parent domain code
-            table_name: Split table name
-            row_count: Number of rows in split
-        """
-        msg = f"Split dataset: {path} (DOMAIN={domain_code}, table={table_name}"
-        if self.verbosity >= LogLevel.VERBOSE:
-            msg += f", rows={row_count:,}"
-        msg += ")"
-        self.success(msg)
-
     def log_synthesis_start(
         self,
         domain_code: str,

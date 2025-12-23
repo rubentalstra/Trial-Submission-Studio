@@ -79,8 +79,6 @@ class DefineXMLGenerator(DefineXMLGeneratorPort):
                 config=dto.config,
                 label=dto.label,
                 structure=dto.structure,
-                is_split=dto.is_split,
-                split_suffix=dto.split_suffix,
                 archive_location=dto.archive_location,
             )
             for dto in datasets

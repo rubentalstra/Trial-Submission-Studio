@@ -140,17 +140,8 @@ def build_study_define_tree(
     where_clause_defs: list[WhereClauseDefinition] = []
 
     for ds in datasets:
-        if ds.is_split and len(ds.domain_code) > 2:
-            potential_parent = ds.domain_code[:2]
-            try:
-                domain = get_domain(potential_parent)
-                parent_domain_code = potential_parent
-            except Exception:
-                domain = get_domain(ds.domain_code)
-                parent_domain_code = ds.domain_code
-        else:
-            domain = get_domain(ds.domain_code)
-            parent_domain_code = ds.domain_code
+        domain = get_domain(ds.domain_code)
+        parent_domain_code = ds.domain_code
 
         active_vars = get_active_domain_variables(domain, ds.dataframe)
 
@@ -177,14 +168,6 @@ def build_study_define_tree(
             tag(ODM_NS, "TranslatedText"),
             attrib={attr(XML_NS, "lang"): "en"},
         ).text = ds.label or domain.label or ds.domain_code
-
-        alias_text = get_domain_description_alias(domain)
-        if alias_text and ds.is_split:
-            ET.SubElement(
-                ig,
-                tag(ODM_NS, "Alias"),
-                attrib={"Context": "DomainDescription", "Name": alias_text},
-            )
 
         append_item_refs(ig, active_vars, ds.domain_code)
 

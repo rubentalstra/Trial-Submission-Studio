@@ -229,7 +229,6 @@ class DomainProcessingUseCase:
 
             # Track all processed dataframes and configs for merging
             all_dataframes: list[pd.DataFrame] = []
-            variant_frames: list[tuple[str, pd.DataFrame]] = []
             last_config: MappingConfig | None = None
             supp_frames: list[pd.DataFrame] = []
 
@@ -247,7 +246,6 @@ class DomainProcessingUseCase:
 
                 frame, config, _is_findings_long = result
                 all_dataframes.append(frame)
-                variant_frames.append((variant_name or request.domain_code, frame))
                 last_config = config
 
                 # Build SUPPQUAL for non-LB domains
@@ -314,7 +312,6 @@ class DomainProcessingUseCase:
                 domain=domain,
                 request=request,
                 supp_frames=supp_frames,
-                variant_frames=variant_frames,
             )
 
             # Populate response
@@ -325,7 +322,6 @@ class DomainProcessingUseCase:
             response.xpt_path = output_result.get("xpt_path")
             response.xml_path = output_result.get("xml_path")
             response.sas_path = output_result.get("sas_path")
-            response.split_datasets = output_result.get("split_datasets", [])
 
             # Handle supplemental domains
             for supp_dict in output_result.get("supplementals", []):
@@ -665,7 +661,6 @@ class DomainProcessingUseCase:
         domain: SDTMDomain,
         request: ProcessDomainRequest,
         supp_frames: list[pd.DataFrame],
-        variant_frames: list[tuple[str, pd.DataFrame]],
     ) -> dict[str, Any]:
         """Stage 6: Generate output files (XPT, XML, SAS) using FileGeneratorPort."""
         from .models import OutputDirs, OutputRequest
@@ -680,8 +675,6 @@ class DomainProcessingUseCase:
             "xpt_path": None,
             "xml_path": None,
             "sas_path": None,
-            "split_xpt_paths": [],
-            "split_datasets": [],
             "supplementals": [],
         }
 
@@ -704,15 +697,7 @@ class DomainProcessingUseCase:
             xml_dir = request.output_dirs.get("xml")
             sas_dir = request.output_dirs.get("sas")
 
-            has_variant_splits = len(variant_frames) > 1
-            wants_xpt = xpt_dir is not None and "xpt" in request.output_formats
-            write_split_xpts_only = wants_xpt and has_variant_splits
-
-            if (
-                xpt_dir
-                and "xpt" in request.output_formats
-                and not write_split_xpts_only
-            ):
+            if xpt_dir and "xpt" in request.output_formats:
                 formats.add("xpt")
             if xml_dir and "xml" in request.output_formats:
                 formats.add("xml")
@@ -765,19 +750,6 @@ class DomainProcessingUseCase:
                 # Log any errors
                 for error in output_result.errors:
                     self.logger.error(f"Output generation error: {error}")
-
-            # Handle domain variant splits (SDTMIG v3.4 Section 4.1.7)
-            # When variant datasets are present, do not emit an unsplit parent XPT.
-            if write_split_xpts_only:
-                assert xpt_dir is not None
-                split_paths, split_datasets = self._write_variant_splits(
-                    variant_frames, domain, xpt_dir, request.verbose > 0
-                )
-                result["split_xpt_paths"] = split_paths
-                result["split_datasets"] = split_datasets
-                self.logger.success(
-                    f"Generated split XPT datasets for {domain.code.upper()} (no base {base_filename}.xpt)"
-                )
 
         return result
 
@@ -871,196 +843,6 @@ class DomainProcessingUseCase:
                     supp_result["xml_path"] = output_result.xml_path.name
 
         return supp_result
-
-    def _write_variant_splits(
-        self,
-        variant_frames: list[tuple[str, pd.DataFrame]],
-        domain: SDTMDomain,
-        xpt_dir: Path,
-        verbose: bool,
-    ) -> tuple[list[Path], list[tuple[str, pd.DataFrame, Path]]]:
-        """Write split XPT files for domain variants.
-
-        Per SDTMIG v3.4 Section 4.1.7 "Splitting Domains".
-        """
-        split_paths: list[Path] = []
-        split_datasets: list[tuple[str, pd.DataFrame, Path]] = []
-        domain_code = domain.code.upper()
-
-        # Special-case LB: when the domain is split (LBCC/LBHM/...), LBSEQ must be
-        # unique across the *entire* LB domain, not per split dataset. Many sources
-        # naturally start LBSEQ at 1 per file, which yields cross-split duplicates.
-        #
-        # To avoid Pinnacle 21 SD0005 / downstream RELREC ambiguity, consolidate
-        # all split frames, deduplicate consistently, and resequence LBSEQ once.
-        if domain_code == "LB" and variant_frames:
-            helper_col = "__CDISC_TRANSPILER_TABLE__"
-            combined_parts: list[pd.DataFrame] = []
-            table_order: list[str] = []
-
-            for variant_name, df in variant_frames:
-                table = (
-                    variant_name.replace(" ", "_")
-                    .replace("(", "")
-                    .replace(")", "")
-                    .upper()
-                )
-                if table == domain_code:
-                    continue
-                if not table.startswith(domain_code):
-                    continue
-                if len(table) > 8:
-                    table = table[:8]
-                if table not in table_order:
-                    table_order.append(table)
-                if df.empty:
-                    continue
-                part = df.copy()
-                part.loc[:, helper_col] = table
-                combined_parts.append(part)
-
-            if combined_parts:
-                combined = pd.concat(combined_parts, ignore_index=True)
-
-                # Match the LB dedup policy applied to the merged (unsplit) frame.
-                dedup_keys = [
-                    key
-                    for key in ("USUBJID", "LBTESTCD", "LBDTC")
-                    if key in combined.columns
-                ]
-                if dedup_keys:
-                    combined = (
-                        combined.sort_values(by=dedup_keys, kind="mergesort")
-                        .drop_duplicates(subset=dedup_keys, keep="first")
-                        .reset_index(drop=True)
-                    )
-
-                if "LBSEQ" in combined.columns and "USUBJID" in combined.columns:
-                    combined.loc[:, "LBSEQ"] = (
-                        combined.groupby("USUBJID").cumcount() + 1
-                    )
-
-                rebuilt: list[tuple[str, pd.DataFrame]] = []
-                for table in table_order:
-                    subset = combined.loc[combined[helper_col] == table].drop(
-                        columns=[helper_col]
-                    )
-                    rebuilt.append((table, subset))
-
-                variant_frames = rebuilt
-
-        # Pinnacle 21 SD1116 expects consistent SAS variable lengths across split datasets.
-        # Compute a shared max length per character variable across all split datasets.
-        char_vars = {
-            str(v.name).upper()
-            for v in getattr(domain, "variables", [])
-            if getattr(v, "type", None) == "Char" and getattr(v, "name", None)
-        }
-        max_char_len: dict[str, int] = {}
-        for _variant_name, df in variant_frames:
-            if df.empty:
-                continue
-            for col in df.columns:
-                col_upper = str(col).upper()
-                if col_upper not in char_vars:
-                    continue
-                series = df[col].astype("string").fillna("")
-                length = int(series.str.len().max() or 0)
-                # SAS v5 transport limits character length to 200.
-                length = min(max(length, 1), 200)
-                prev = max_char_len.get(col_upper, 1)
-                if length > prev:
-                    max_char_len[col_upper] = length
-
-        for variant_name, variant_df in variant_frames:
-            table = (
-                variant_name.replace(" ", "_").replace("(", "").replace(")", "").upper()
-            )
-
-            if table == domain_code:
-                continue
-
-            if not table.startswith(domain_code):
-                self.logger.warning(
-                    f"Warning: Split dataset '{table}' does not start "
-                    f"with domain code '{domain_code}'. Skipping."
-                )
-                continue
-
-            if len(table) > 8:
-                self.logger.warning(
-                    f"Warning: Split dataset name '{table}' exceeds "
-                    "8 characters. Truncating to comply with SDTMIG v3.4."
-                )
-                table = table[:8]
-
-            write_df = variant_df
-            if "DOMAIN" in write_df.columns:
-                write_df = write_df.copy()
-                write_df["DOMAIN"] = domain_code
-
-            # Do not generate empty split datasets. They trigger validator
-            # presence findings (and are not useful for submission).
-            if write_df.empty:
-                if verbose:
-                    self.logger.verbose(
-                        f"    Skipping split dataset {table} (0 records)"
-                    )
-                continue
-
-            # Normalize character column lengths across split datasets.
-            if max_char_len:
-                write_df = write_df.copy()
-                for col in write_df.columns:
-                    col_upper = str(col).upper()
-                    width = max_char_len.get(col_upper)
-                    if width is None:
-                        continue
-                    write_df.loc[:, col] = (
-                        write_df[col]
-                        .astype("string")
-                        .fillna("")
-                        .str.pad(width, side="right")
-                    )
-
-            split_dir = xpt_dir / "split"
-            if self._output_preparer is None:
-                raise RuntimeError(
-                    "OutputPreparerPort is not configured. "
-                    "Wire an infrastructure adapter in the composition root."
-                )
-            self._output_preparer.ensure_dir(split_dir)
-
-            split_name = table.lower()
-            split_path = split_dir / f"{split_name}.xpt"
-
-            split_suffix = table[len(domain_code) :]
-            file_label = (
-                f"{domain.description} - {split_suffix}"
-                if split_suffix
-                else domain.description
-            )
-
-            if self._xpt_writer is None:
-                raise RuntimeError(
-                    "XPTWriterPort is not configured. "
-                    "Wire an infrastructure adapter in the composition root."
-                )
-
-            self._xpt_writer.write(
-                write_df,
-                domain.code,
-                split_path,
-                file_label=file_label,
-                table_name=table,
-            )
-            split_paths.append(split_path)
-            split_datasets.append((table, write_df, split_path))
-            self.logger.success(
-                f"Split dataset: {split_path} (DOMAIN={domain_code}, table={table})"
-            )
-
-        return split_paths, split_datasets
 
     # ========== Helper Methods ==========
 

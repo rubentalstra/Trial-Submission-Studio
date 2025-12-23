@@ -143,8 +143,6 @@ class DefineDatasetDTO:
         config: Mapping configuration with column metadata
         label: Dataset label (optional)
         structure: Dataset structure description
-        is_split: Whether this is a split dataset (e.g., LBHM, LBUR)
-        split_suffix: Suffix for split datasets (e.g., "HM" for LBHM)
         archive_location: Relative path to the dataset file in the archive
 
     Example:
@@ -161,8 +159,6 @@ class DefineDatasetDTO:
     config: "MappingConfig"
     label: str | None = None
     structure: str = "One record per subject per domain-specific entity"
-    is_split: bool = False
-    split_suffix: str | None = None
     archive_location: Path | None = None
 
 
@@ -257,7 +253,6 @@ class DomainProcessingResult:
         xml_path: Path to generated Dataset-XML file (if any)
         sas_path: Path to generated SAS program (if any)
         supplementals: List of supplemental domain results (e.g., SUPPAE)
-        split_datasets: List of split datasets for large domains
         error: Error message if processing failed
         synthesized: Whether this domain was synthesized (not from source data)
         synthesis_reason: Reason for synthesis (if synthesized)
@@ -281,7 +276,6 @@ class DomainProcessingResult:
     xml_path: Path | None = None
     sas_path: Path | None = None
     supplementals: list[DomainProcessingResult] = field(default_factory=list)
-    split_datasets: list[tuple[str, pd.DataFrame, Path]] = field(default_factory=list)
     error: str | None = None
     synthesized: bool = False
     synthesis_reason: str | None = None
@@ -420,7 +414,6 @@ class ProcessDomainResponse:
         xml_path: Path to generated Dataset-XML file (if any)
         sas_path: Path to generated SAS program (if any)
         supplementals: List of supplemental domain responses (e.g., SUPPAE)
-        split_datasets: List of (name, dataframe, path) for split datasets
         error: Error message if processing failed
         warnings: List of warning messages
 
@@ -443,7 +436,6 @@ class ProcessDomainResponse:
     xml_path: Path | None = None
     sas_path: Path | None = None
     supplementals: list[ProcessDomainResponse] = field(default_factory=list)
-    split_datasets: list[tuple[str, pd.DataFrame, Path]] = field(default_factory=list)
     error: str | None = None
     warnings: list[str] = field(default_factory=list)
 
@@ -476,7 +468,6 @@ class ProcessDomainResponse:
                 }
                 for supp in self.supplementals
             ],
-            "split_datasets": self.split_datasets,
             "conformance_report": self.conformance_report,
         }
         return result
