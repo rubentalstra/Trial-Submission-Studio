@@ -4,8 +4,6 @@ This module provides infrastructure-level I/O for mapping configurations.
 This repository is the canonical implementation used by configuration I/O.
 """
 
-from __future__ import annotations
-
 import json
 from pathlib import Path
 

@@ -6,8 +6,6 @@ These are intentionally tiny primitives to avoid repeating namespace handling
 logic across modules.
 """
 
-from __future__ import annotations
-
 from pathlib import Path
 
 

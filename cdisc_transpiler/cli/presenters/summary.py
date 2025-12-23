@@ -4,8 +4,6 @@ This module provides the SummaryPresenter class that formats and displays
 study processing results in a Rich table format.
 """
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Any
 

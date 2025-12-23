@@ -3,8 +3,6 @@
 These helpers live in the domain layer because mapping is pure business logic.
 """
 
-from __future__ import annotations
-
 from ...entities.column_hints import Hints
 from ...entities.sdtm_domain import SDTMDomain
 from ...entities.study_metadata import StudyMetadata

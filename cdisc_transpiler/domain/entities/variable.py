@@ -1,7 +1,5 @@
 """Variable construction from CSV metadata."""
 
-from __future__ import annotations
-
 from collections.abc import Mapping
 
 from .sdtm_classes import GENERAL_OBSERVATION_CLASSES, normalize_general_class

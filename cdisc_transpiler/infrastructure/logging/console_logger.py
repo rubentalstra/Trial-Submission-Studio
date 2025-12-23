@@ -18,8 +18,6 @@ SDTM Reference:
     - Split dataset handling per Section 4.1.7
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import IntEnum

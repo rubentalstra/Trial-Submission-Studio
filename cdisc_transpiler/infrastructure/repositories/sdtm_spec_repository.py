@@ -4,8 +4,6 @@ This module provides access to SDTM Implementation Guide specifications
 (domain variables, dataset attributes) through a clean repository interface.
 """
 
-from __future__ import annotations
-
 from pathlib import Path
 
 import pandas as pd

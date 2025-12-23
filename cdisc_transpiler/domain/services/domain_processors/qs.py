@@ -1,7 +1,5 @@
 """Domain processor for Questionnaires (QS) domain."""
 
-from __future__ import annotations
-
 import pandas as pd
 
 from ....pandas_utils import ensure_series

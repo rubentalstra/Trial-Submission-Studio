@@ -9,8 +9,6 @@ SDTM Reference:
     mechanism allows special characters in source column names.
 """
 
-from __future__ import annotations
-
 import re
 
 # Pattern for SAS name literal syntax: "column name"n

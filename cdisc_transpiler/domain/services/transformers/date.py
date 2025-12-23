@@ -1,7 +1,5 @@
 """Date, time, and duration transformation utilities for SDTM domains."""
 
-from __future__ import annotations
-
 from collections.abc import Sequence
 from typing import Any, cast
 

@@ -4,8 +4,6 @@ This module provides infrastructure-level loading of study metadata files.
 This loader is the canonical implementation for reading study metadata.
 """
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Any
 

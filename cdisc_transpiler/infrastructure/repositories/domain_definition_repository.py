@@ -4,8 +4,6 @@ Provides SDTMDomain definitions via an application-facing port, while keeping
 spec-loading mechanics (wrapper modules) in the infrastructure layer.
 """
 
-from __future__ import annotations
-
 from ...application.ports.repositories import DomainDefinitionRepositoryPort
 from ..sdtm_spec.registry import get_domain, list_domains
 

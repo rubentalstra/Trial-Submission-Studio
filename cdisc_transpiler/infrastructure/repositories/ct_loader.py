@@ -6,8 +6,6 @@ It intentionally lives in the infrastructure layer because it performs
 filesystem I/O and depends on the CT CSV file layout.
 """
 
-from __future__ import annotations
-
 import math
 from pathlib import Path
 from typing import Any, cast

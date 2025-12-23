@@ -4,8 +4,6 @@ This package provides a modular command-line interface for the CDISC Transpiler.
 Commands are organized into separate modules for better maintainability.
 """
 
-from __future__ import annotations
-
 import click
 
 from .commands import domains, study

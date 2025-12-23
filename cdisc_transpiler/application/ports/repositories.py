@@ -9,8 +9,6 @@ All repository ports use Protocol for duck typing, so implementations don't
 need to explicitly inherit from these interfaces.
 """
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 

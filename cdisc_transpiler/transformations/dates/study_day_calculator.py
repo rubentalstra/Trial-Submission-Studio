@@ -10,8 +10,6 @@ SDTM Study Day Calculation Rules:
 - Missing dates result in missing study day
 """
 
-from __future__ import annotations
-
 import pandas as pd
 
 from ..base import TransformationContext, TransformationResult

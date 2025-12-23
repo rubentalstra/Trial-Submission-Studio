@@ -9,8 +9,6 @@ This module provides a conservative ordering helper:
 - Leaves non-standard (sponsor) columns anchored in their original positions.
 """
 
-from __future__ import annotations
-
 import pandas as pd
 
 

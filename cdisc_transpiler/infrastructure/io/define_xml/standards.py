@@ -4,8 +4,6 @@ This module handles the creation and management of CDISC standards definitions
 used in Define-XML documents.
 """
 
-from __future__ import annotations
-
 from cdisc_transpiler.infrastructure.sdtm_spec.constants import CT_VERSION
 
 from .constants import (

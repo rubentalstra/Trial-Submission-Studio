@@ -4,8 +4,6 @@ This module defines protocols (interfaces) that services depend on,
 following the Ports & Adapters (Hexagonal) architecture pattern.
 """
 
-from __future__ import annotations
-
 from collections.abc import Iterable
 from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable

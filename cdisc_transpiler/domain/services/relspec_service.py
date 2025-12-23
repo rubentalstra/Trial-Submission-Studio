@@ -15,8 +15,6 @@ It does not attempt to infer full specimen genealogy (PARENT/LEVEL) unless
 source datasets explicitly provide those concepts.
 """
 
-from __future__ import annotations
-
 from collections.abc import Iterable
 
 import pandas as pd

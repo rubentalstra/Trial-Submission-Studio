@@ -1,7 +1,5 @@
 """ISO 8601 date/time normalization utilities."""
 
-from __future__ import annotations
-
 import re
 from typing import Any, cast
 

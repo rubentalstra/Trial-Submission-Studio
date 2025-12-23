@@ -4,8 +4,6 @@ This module provides an adapter implementation for writing XPT (SAS Transport)
 files while conforming to the XPTWriterPort protocol.
 """
 
-from __future__ import annotations
-
 from pathlib import Path
 
 import numpy as np

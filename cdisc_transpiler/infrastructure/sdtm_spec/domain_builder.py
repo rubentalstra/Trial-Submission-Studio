@@ -4,8 +4,6 @@ This is infrastructure code: it loads SDTMIG/SDTM v2 CSV metadata and builds
 domain entities used by the application/domain layers.
 """
 
-from __future__ import annotations
-
 from collections.abc import Mapping, Sequence
 
 from ...domain.entities.sdtm_domain import SDTMDomain, SDTMVariable

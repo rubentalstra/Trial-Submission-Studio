@@ -12,8 +12,6 @@ SDTM Reference:
 Extracted from cli/commands/study.py as part of Phase 2 refactoring.
 """
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import TYPE_CHECKING
 

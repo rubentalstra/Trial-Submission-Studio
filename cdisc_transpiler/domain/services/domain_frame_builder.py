@@ -10,8 +10,6 @@ SDTM Reference:
     Findings) and include Identifier, Topic, Timing, and Qualifier roles.
 """
 
-from __future__ import annotations
-
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 

@@ -4,8 +4,6 @@ This module provides a pipeline for orchestrating multiple transformers in seque
 with support for error handling, metadata collection, and conditional execution.
 """
 
-from __future__ import annotations
-
 from typing import Any
 
 import pandas as pd

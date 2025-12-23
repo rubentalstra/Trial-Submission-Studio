@@ -5,8 +5,6 @@ throughout the codebase. Constants are organized by category and include
 SDTM references where applicable.
 """
 
-from __future__ import annotations
-
 
 class Defaults:
     """Default values used throughout the application.

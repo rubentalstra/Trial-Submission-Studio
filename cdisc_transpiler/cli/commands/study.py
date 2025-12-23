@@ -8,8 +8,6 @@ application layer's StudyProcessingUseCase. It is responsible for:
 4. Formatting the response for user output
 """
 
-from __future__ import annotations
-
 from pathlib import Path
 
 import click

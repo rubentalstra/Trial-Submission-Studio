@@ -4,8 +4,6 @@ This module provides the MetadataAwareMapper class which uses Items.csv and
 CodeLists.csv metadata to provide more accurate mapping suggestions.
 """
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 import pandas as pd
@@ -216,10 +214,8 @@ class MetadataAwareMapper:
             # disposition/contact/discontinuation dates over generic event dates.
             if self.domain_code == "DS" and t == "DSSTDTC":
                 score = 0
-                if (
-                    "LASTCONTACT" in col_norm
-                    or ("LAST" in col_norm
-                    and "CONTACT" in col_norm)
+                if "LASTCONTACT" in col_norm or (
+                    "LAST" in col_norm and "CONTACT" in col_norm
                 ):
                     score += 30
                 if "EARLYDISCONTINUATION" in col_norm or "DISCONTINUATION" in col_norm:

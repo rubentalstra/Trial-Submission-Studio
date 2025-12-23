@@ -8,8 +8,6 @@ The legacy package has been removed; no code should import it.
 CLEAN2-A3 Implementation.
 """
 
-from __future__ import annotations
-
 import ast
 from pathlib import Path
 import re

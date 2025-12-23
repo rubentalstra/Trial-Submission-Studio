@@ -1,7 +1,5 @@
 """Domains command - List all supported SDTM domains."""
 
-from __future__ import annotations
-
 import click
 from rich.console import Console
 from rich.table import Table

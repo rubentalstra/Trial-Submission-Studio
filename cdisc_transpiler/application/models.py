@@ -8,8 +8,6 @@ Includes:
 - Output generation DTOs (OutputDirs, OutputRequest, OutputResult)
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any

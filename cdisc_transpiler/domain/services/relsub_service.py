@@ -13,8 +13,6 @@ The application layer is responsible for shaping the dataset using domain
 metadata (via DomainFrameBuilder) and generating output files.
 """
 
-from __future__ import annotations
-
 import pandas as pd
 
 from ..entities.mapping import ColumnMapping, MappingConfig

@@ -4,8 +4,6 @@ This module provides a simple in-memory cache with optional TTL support
 for expensive operations like CSV parsing.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Generic, TypeVar

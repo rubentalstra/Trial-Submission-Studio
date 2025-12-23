@@ -4,8 +4,6 @@ This module provides the base class for domain-specific processors that handle
 post-processing logic unique to each SDTM domain.
 """
 
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any

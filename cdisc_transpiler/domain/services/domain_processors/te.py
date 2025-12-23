@@ -1,7 +1,5 @@
 """Domain processor for Trial Elements (TE) domain."""
 
-from __future__ import annotations
-
 import pandas as pd
 
 from .base import BaseDomainProcessor

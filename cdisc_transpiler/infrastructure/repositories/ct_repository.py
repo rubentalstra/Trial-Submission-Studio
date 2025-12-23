@@ -4,8 +4,6 @@ This module provides access to CDISC Controlled Terminology through a
 clean repository interface with configurable paths and caching.
 """
 
-from __future__ import annotations
-
 from functools import lru_cache
 from pathlib import Path
 

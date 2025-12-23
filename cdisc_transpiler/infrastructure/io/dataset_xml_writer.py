@@ -4,8 +4,6 @@ This module intentionally contains the full Dataset-XML implementation to keep
 the I/O layer simpler and reduce file count.
 """
 
-from __future__ import annotations
-
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast

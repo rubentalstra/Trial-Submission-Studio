@@ -1,7 +1,5 @@
 """Unit tests for configuration and constants."""
 
-from __future__ import annotations
-
 from pathlib import Path
 
 import pytest

@@ -3,8 +3,6 @@
 These are used by the infrastructure spec loader/registry.
 """
 
-from __future__ import annotations
-
 # Controlled Terminology version used for metadata stamping.
 # The SDTM-MSG v2.0 example relies on the 2024-03-29 package. When this
 # exact folder is not present locally, the terminology loader falls back

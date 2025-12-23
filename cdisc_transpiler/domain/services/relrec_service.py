@@ -12,8 +12,6 @@ Notes:
     RELTYPE is used only for dataset-to-dataset relationships (Section 8.3).
 """
 
-from __future__ import annotations
-
 import math
 from typing import Any
 

@@ -4,8 +4,6 @@ Tests validate that constants are defined correctly and
 remain consistent with SDTM specifications.
 """
 
-from __future__ import annotations
-
 import re
 
 from cdisc_transpiler.constants import (

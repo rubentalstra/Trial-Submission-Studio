@@ -9,8 +9,6 @@ SDTM IG v3.4 Requirements:
 - Partial dates are supported (YYYY, YYYY-MM, YYYY-MM-DD)
 """
 
-from __future__ import annotations
-
 import pandas as pd
 
 from ...domain.services.transformers import (

@@ -7,8 +7,6 @@ It is designed to be injected into the domain frame builder (domain layer)
 as a collaborator.
 """
 
-from __future__ import annotations
-
 from collections.abc import Sequence
 
 import pandas as pd

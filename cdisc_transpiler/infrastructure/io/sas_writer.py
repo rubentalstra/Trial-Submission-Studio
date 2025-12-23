@@ -7,8 +7,6 @@ It intentionally consolidates what used to live in multiple SAS-related
 modules to keep the I/O layer easier to navigate.
 """
 
-from __future__ import annotations
-
 from datetime import UTC, datetime
 from pathlib import Path
 import re

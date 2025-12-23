@@ -1,7 +1,5 @@
 """Utility helpers for SDTM spec/metadata processing (infrastructure)."""
 
-from __future__ import annotations
-
 from ...domain.entities.sdtm_classes import (
     GENERAL_OBSERVATION_CLASSES,
     core_priority,

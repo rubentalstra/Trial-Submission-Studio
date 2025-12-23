@@ -6,8 +6,6 @@ existing discovery logic.
 This keeps StudyProcessingUseCase decoupled from concrete discovery services.
 """
 
-from __future__ import annotations
-
 from pathlib import Path
 
 from ...application.ports import DomainDiscoveryPort, LoggerPort

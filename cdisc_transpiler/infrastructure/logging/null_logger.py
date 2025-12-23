@@ -4,8 +4,6 @@ This module provides a silent logger implementation that discards
 all log messages. Useful for testing without console output.
 """
 
-from __future__ import annotations
-
 from pathlib import Path
 
 from ...application.ports.services import LoggerPort

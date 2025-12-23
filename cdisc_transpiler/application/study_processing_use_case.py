@@ -12,8 +12,6 @@ The use case orchestrates:
 using injected ports/use cases.
 """
 
-from __future__ import annotations
-
 from collections import defaultdict
 from dataclasses import dataclass, replace
 from pathlib import Path

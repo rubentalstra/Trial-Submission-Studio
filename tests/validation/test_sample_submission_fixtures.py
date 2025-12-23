@@ -9,8 +9,6 @@ The intent is to validate standard-compliant serialization (XPT and Dataset-XML)
 without depending on the full end-to-end mapping pipeline.
 """
 
-from __future__ import annotations
-
 from collections.abc import Iterable
 from pathlib import Path
 import xml.etree.ElementTree as ET

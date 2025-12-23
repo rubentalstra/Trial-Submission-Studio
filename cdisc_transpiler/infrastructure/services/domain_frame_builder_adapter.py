@@ -1,7 +1,5 @@
 """Infrastructure adapter for building SDTM domain dataframes."""
 
-from __future__ import annotations
-
 import pandas as pd
 
 from ...application.ports import DomainFrameBuilderPort

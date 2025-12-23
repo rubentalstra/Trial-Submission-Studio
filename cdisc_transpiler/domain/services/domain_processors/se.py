@@ -1,7 +1,5 @@
 """Domain processor for Subject Elements (SE) domain."""
 
-from __future__ import annotations
-
 import pandas as pd
 
 from ..transformers import DateTransformer, NumericTransformer

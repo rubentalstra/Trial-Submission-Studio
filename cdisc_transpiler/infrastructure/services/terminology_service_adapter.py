@@ -1,7 +1,5 @@
 """Infrastructure adapter for terminology helpers."""
 
-from __future__ import annotations
-
 from ...application.ports import TerminologyPort
 
 

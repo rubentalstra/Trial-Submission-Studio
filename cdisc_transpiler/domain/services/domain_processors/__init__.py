@@ -6,8 +6,6 @@ allowing each SDTM domain to have custom post-processing logic.
 This is core SDTM business logic that belongs in the domain layer.
 """
 
-from __future__ import annotations
-
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
@@ -54,7 +52,8 @@ class DomainProcessorRegistry:
         domain: SDTMDomain,
         reference_starts: dict[str, str] | None = None,
         metadata: StudyMetadata | None = None,
-        ct_resolver: Callable[[str | None, str | None], ControlledTerminology | None] | None = None,
+        ct_resolver: Callable[[str | None, str | None], ControlledTerminology | None]
+        | None = None,
     ) -> BaseDomainProcessor:
         """Get the appropriate processor for a domain."""
         processor_class = self._processors.get(
@@ -91,7 +90,8 @@ def get_domain_processor(
     domain: SDTMDomain,
     reference_starts: dict[str, str] | None = None,
     metadata: StudyMetadata | None = None,
-    ct_resolver: Callable[[str | None, str | None], ControlledTerminology | None] | None = None,
+    ct_resolver: Callable[[str | None, str | None], ControlledTerminology | None]
+    | None = None,
 ) -> BaseDomainProcessor:
     """Get a processor for the specified domain."""
     return _registry.get_processor(domain, reference_starts, metadata, ct_resolver)

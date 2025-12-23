@@ -4,8 +4,6 @@ This module contains all dataclass definitions used in Define-XML generation.
 These are pure data containers with no business logic.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from pathlib import Path
 

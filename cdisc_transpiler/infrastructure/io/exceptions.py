@@ -1,7 +1,5 @@
 """Custom exceptions for infrastructure layer."""
 
-from __future__ import annotations
-
 
 class TranspilerInfrastructureError(Exception):
     """Base exception for infrastructure layer errors."""

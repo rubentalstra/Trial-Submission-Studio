@@ -1,7 +1,5 @@
 """Domain processor for Trial Summary (TS) domain."""
 
-from __future__ import annotations
-
 import pandas as pd
 
 from cdisc_transpiler.pandas_utils import ensure_series

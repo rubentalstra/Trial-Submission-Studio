@@ -1,7 +1,5 @@
 """Domain processor for Concomitant Medications (CM) domain."""
 
-from __future__ import annotations
-
 import pandas as pd
 
 from ..transformers import DateTransformer, NumericTransformer, TextTransformer

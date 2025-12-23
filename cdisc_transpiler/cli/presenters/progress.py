@@ -4,8 +4,6 @@ This module provides the ProgressPresenter class that tracks and displays
 progress during study processing operations.
 """
 
-from __future__ import annotations
-
 from rich.console import Console
 
 

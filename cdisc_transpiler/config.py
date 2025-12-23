@@ -4,8 +4,6 @@ This module provides immutable configuration with support for
 environment variables and TOML configuration files.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 import os
 from pathlib import Path

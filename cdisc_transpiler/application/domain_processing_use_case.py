@@ -15,8 +15,6 @@ CLEAN2-D1: This use case is now fully implemented with injected dependencies,
 removing the delegation to legacy DomainProcessingCoordinator.
 """
 
-from __future__ import annotations
-
 from pathlib import Path
 import traceback
 from typing import TYPE_CHECKING, Any

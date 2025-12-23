@@ -5,8 +5,6 @@ This adapter exists so the application layer depends on a port, not on the
 concrete mapping implementation.
 """
 
-from __future__ import annotations
-
 import pandas as pd
 
 from ...application.ports.repositories import DomainDefinitionRepositoryPort

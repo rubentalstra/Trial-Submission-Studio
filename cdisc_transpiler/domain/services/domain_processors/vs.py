@@ -1,7 +1,5 @@
 """Domain processor for Vital Signs (VS) domain."""
 
-from __future__ import annotations
-
 from typing import Any, cast
 
 import pandas as pd

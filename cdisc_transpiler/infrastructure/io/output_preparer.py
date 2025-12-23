@@ -6,8 +6,6 @@ study run (directories and a placeholder ACRF PDF used by Define-XML).
 It implements the application port OutputPreparerPort.
 """
 
-from __future__ import annotations
-
 from pathlib import Path
 
 from ...application.ports import OutputPreparerPort

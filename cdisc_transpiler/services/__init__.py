@@ -23,8 +23,6 @@ Legacy coordinators:
     - application.domain_processing_use_case.DomainProcessingUseCase
 """
 
-from __future__ import annotations
-
 from .domain_discovery_service import DomainDiscoveryService
 from .file_organization_service import FileOrganizationService, ensure_acrf_pdf
 from .progress_reporting_service import ProgressReportingService

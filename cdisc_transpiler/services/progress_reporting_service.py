@@ -6,8 +6,6 @@ summaries for study processing operations.
 Extracted from cli/commands/study.py as part of Phase 2 refactoring.
 """
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Any
 
 from rich.console import Console

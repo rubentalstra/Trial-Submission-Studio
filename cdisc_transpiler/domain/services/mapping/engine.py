@@ -5,8 +5,6 @@ from source columns to SDTM target variables using fuzzy matching and
 pattern recognition.
 """
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 import pandas as pd

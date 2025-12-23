@@ -4,8 +4,6 @@ This module generates mapping patterns dynamically from the domain metadata
 instead of using hardcoded patterns.
 """
 
-from __future__ import annotations
-
 from functools import lru_cache
 import re
 

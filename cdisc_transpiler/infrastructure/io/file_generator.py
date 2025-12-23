@@ -12,8 +12,6 @@ Key Features:
 - Dependency injection of writer adapters
 """
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import TYPE_CHECKING
 

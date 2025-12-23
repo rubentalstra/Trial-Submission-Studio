@@ -5,8 +5,6 @@ SDTM Reference:
     Each domain contains variables with specific roles and attributes.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 

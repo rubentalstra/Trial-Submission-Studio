@@ -11,8 +11,6 @@ modes (e.g., XPT/SAS). They do not try to infer "applicability" conditions for
 Expected variables.
 """
 
-from __future__ import annotations
-
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal

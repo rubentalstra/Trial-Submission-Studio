@@ -4,8 +4,6 @@ This module provides access to study source data files and metadata
 through a clean repository interface.
 """
 
-from __future__ import annotations
-
 from pathlib import Path
 
 import pandas as pd

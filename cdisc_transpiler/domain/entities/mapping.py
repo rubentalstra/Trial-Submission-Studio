@@ -4,8 +4,6 @@ This module contains the core data models used for defining and managing
 column mappings between source data and SDTM target variables.
 """
 
-from __future__ import annotations
-
 from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Protocol

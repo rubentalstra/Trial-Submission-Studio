@@ -6,8 +6,6 @@ These are domain-level concepts used to relate domain-specific variable names
 Kept in the domain layer because this is pure business logic.
 """
 
-from __future__ import annotations
-
 # General Observation Classes (SDTM v2.0 Section 3.2)
 GENERAL_OBSERVATION_CLASSES = {"INTERVENTIONS", "EVENTS", "FINDINGS"}
 

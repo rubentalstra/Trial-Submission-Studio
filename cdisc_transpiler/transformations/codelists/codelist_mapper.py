@@ -4,8 +4,6 @@ This module provides a transformer that maps coded values to their text equivale
 using codelist definitions from study metadata or CDISC Controlled Terminology.
 """
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd

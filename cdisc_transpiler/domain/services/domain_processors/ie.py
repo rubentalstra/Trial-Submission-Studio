@@ -1,7 +1,5 @@
 """Domain processor for Inclusion/Exclusion (IE) domain."""
 
-from __future__ import annotations
-
 import pandas as pd
 
 from ..transformers import DateTransformer, NumericTransformer
