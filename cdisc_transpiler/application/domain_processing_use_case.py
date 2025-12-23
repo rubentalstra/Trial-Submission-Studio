@@ -244,7 +244,7 @@ class DomainProcessingUseCase:
                 if result is None:
                     continue
 
-                frame, config, _is_findings_long = result
+                frame, config, _is_findings_long, consumed_cols = result
                 all_dataframes.append(frame)
                 last_config = config
 
@@ -256,6 +256,7 @@ class DomainProcessingUseCase:
                         config=config,
                         domain=domain,
                         request=request,
+                        extra_consumed_columns=consumed_cols,
                     )
                     if supp_df is not None and not supp_df.empty:
                         supp_frames.append(supp_df)
@@ -354,7 +355,7 @@ class DomainProcessingUseCase:
         variant_name: str,
         request: ProcessDomainRequest,
         domain: SDTMDomain,
-    ) -> tuple[pd.DataFrame, MappingConfig, bool] | None:
+    ) -> tuple[pd.DataFrame, MappingConfig, bool, set[str]] | None:
         """Process a single input file through the pipeline.
 
         Returns:
@@ -398,24 +399,20 @@ class DomainProcessingUseCase:
         # Stage 2: Apply domain-specific wide-to-long transformations when applicable.
         # This prevents fuzzy-mapping wide EDC extracts into topic variables like *TESTCD.
         is_findings_long = False
-        if request.domain_code.upper() in {"VS", "LB"}:
-            from ..domain.services.wide_to_long import (
-                transform_lb_wide_to_long,
-                transform_vs_wide_to_long,
-            )
+        consumed_columns: set[str] = set()
 
-            if request.domain_code.upper() == "VS":
-                transformed = transform_vs_wide_to_long(
-                    frame, study_id=request.study_id
-                )
-            else:
-                transformed = transform_lb_wide_to_long(
-                    frame, study_id=request.study_id
-                )
+        if request.domain_code.upper() in {"VS", "LB"}:
+            from ..domain.services.wide_to_long import transform_wide_to_long
+
+            transformed = transform_wide_to_long(
+                frame, domain_code=request.domain_code, study_id=request.study_id
+            )
 
             if transformed.is_long:
                 frame = transformed.frame
                 is_findings_long = True
+                if transformed.consumed_columns:
+                    consumed_columns.update(transformed.consumed_columns)
 
                 if request.verbose > 0:
                     self.logger.verbose(
@@ -464,7 +461,7 @@ class DomainProcessingUseCase:
                 f"    Row count changed: {row_count:,} → {output_rows:,} ({direction}{change_pct:.1f}%)"
             )
 
-        return domain_df, config, is_findings_long
+        return domain_df, config, is_findings_long, consumed_columns
 
     def _load_file(self, file_path: Path) -> pd.DataFrame:
         """Stage 1: Load and validate input file."""
@@ -574,9 +571,13 @@ class DomainProcessingUseCase:
         config: MappingConfig,
         domain: SDTMDomain,
         request: ProcessDomainRequest,
+        extra_consumed_columns: set[str] | None = None,
     ) -> pd.DataFrame | None:
         """Stage 5: Generate supplemental qualifiers."""
         used_columns = self._suppqual_service.extract_used_columns(config)
+        if extra_consumed_columns:
+            used_columns.update(extra_consumed_columns)
+
         supp_df, _ = self._suppqual_service.build_suppqual(
             request.domain_code,
             source_df,
