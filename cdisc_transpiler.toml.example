@@ -28,15 +28,6 @@ min_confidence = 0.5
 # Default: 1000
 chunk_size = 1000
 
-# Default date for domain synthesis (ISO 8601 format)
-# Used when generating missing trial design domains
-# Default: "2023-01-01"
-default_date = "2023-01-01"
-
-# Default subject identifier for domain synthesis
-# Used when generating empty observation domains
-# Default: "SYNTH001"
-default_subject = "SYNTH001"
 
 # Default investigational site country for DM.COUNTRY.
 # Use this only when your source data does not provide a site country.

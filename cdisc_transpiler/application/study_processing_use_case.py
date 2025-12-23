@@ -7,9 +7,6 @@ generation.
 CLEAN2-D2: This use case is now fully implemented with injected dependencies,
 removing the delegation to legacy coordinators and old module imports.
 
-CLEAN2-D3: Synthesis now uses the new SynthesisService from domain/services
-instead of the legacy DomainSynthesisCoordinator.
-
 The use case orchestrates:
 - Discovery → per-domain processing → synthesis → Define-XML generation
 using injected ports/use cases.
@@ -54,14 +51,13 @@ if TYPE_CHECKING:
         RelrecService,
         RelspecService,
         RelsubService,
-        SynthesisService,
     )
 
 
 @dataclass(frozen=True)
 class _SynthesisJob:
     domain_code: str
-    kind: Literal["observation", "relrec", "relsub", "relspec"]
+    kind: Literal["relrec", "relsub", "relspec"]
     reason: str
 
 
@@ -106,7 +102,6 @@ class StudyProcessingUseCase:
         domain_processing_use_case: DomainProcessingUseCase | None = None,
         domain_discovery_service: DomainDiscoveryPort | None = None,
         domain_frame_builder: DomainFrameBuilderPort | None = None,
-        synthesis_service: "SynthesisService | None" = None,
         relrec_service: "RelrecService | None" = None,
         relsub_service: "RelsubService | None" = None,
         relspec_service: "RelspecService | None" = None,
@@ -130,11 +125,6 @@ class StudyProcessingUseCase:
         if domain_discovery_service is None:
             raise ValueError(
                 "StudyProcessingUseCase requires domain_discovery_service to be injected "
-                "(use the DI container)."
-            )
-        if synthesis_service is None:
-            raise ValueError(
-                "StudyProcessingUseCase requires synthesis_service to be injected "
                 "(use the DI container)."
             )
         if relrec_service is None:
@@ -162,7 +152,6 @@ class StudyProcessingUseCase:
         self._domain_processing_use_case = domain_processing_use_case
         self._domain_discovery_service = domain_discovery_service
         self._domain_frame_builder = domain_frame_builder
-        self._synthesis_service = synthesis_service
         self._relrec_service = relrec_service
         self._relsub_service = relsub_service
         self._relspec_service = relspec_service
@@ -439,8 +428,7 @@ class StudyProcessingUseCase:
                         (domain_code, result.error or "Unknown error")
                     )
 
-            # Always run synthesis pass (RELREC/RELSUB/RELSPEC are always attempted,
-            # while trial design and other scaffolds depend on request flags).
+            # Always run synthesis pass (RELREC/RELSUB/RELSPEC are always attempted).
             self._run_synthesis_pass(
                 response=response,
                 present_domains=processed_domains,
@@ -733,20 +721,7 @@ class StudyProcessingUseCase:
             if job.domain_code in response.processed_domains:
                 continue
 
-            if job.kind == "observation":
-                self._synthesize_scaffolded_domain(
-                    domain_code=job.domain_code,
-                    reason=job.reason,
-                    kind=job.kind,
-                    response=response,
-                    request=request,
-                    reference_starts=reference_starts,
-                    study_datasets=study_datasets,
-                    xpt_dir=xpt_dir,
-                    xml_dir=xml_dir,
-                    sas_dir=sas_dir,
-                )
-            elif job.kind == "relrec":
+            if job.kind == "relrec":
                 self._synthesize_relrec(
                     response=response,
                     request=request,
@@ -797,20 +772,7 @@ class StudyProcessingUseCase:
                 upper not in response.processed_domains
             )
 
-        # 1) Generic missing-domain synthesis (explicit opt-in)
-        if request.synthesize_missing_domains:
-            for code in ["AE", "LB", "VS", "EX"]:
-                if _missing(code) and code not in scheduled:
-                    jobs.append(
-                        _SynthesisJob(
-                            domain_code=code,
-                            kind="observation",
-                            reason="No source files found",
-                        )
-                    )
-                    scheduled.add(code)
-
-        # 2) Relationship domains (always attempt synthesis if missing)
+        # 1) Relationship domains (always attempt synthesis if missing)
         for code, kind, reason in [
             ("RELREC", "relrec", "Relationship scaffold"),
             ("RELSUB", "relsub", "Related subjects scaffold"),
@@ -889,123 +851,6 @@ class StudyProcessingUseCase:
         mask_blank = frame["TSPARM"].isna() | tsparm_str.eq("")
         mask_fillable = mask_blank & fill.notna()
         frame.loc[mask_fillable, "TSPARM"] = fill[mask_fillable]
-
-    def _synthesize_scaffolded_domain(
-        self,
-        *,
-        domain_code: str,
-        reason: str,
-        kind: Literal["observation"],
-        response: ProcessStudyResponse,
-        request: ProcessStudyRequest,
-        reference_starts: dict[str, str],
-        study_datasets: list[DefineDatasetDTO],
-        xpt_dir: Path | None,
-        xml_dir: Path | None,
-        sas_dir: Path | None,
-    ) -> None:
-        """Synthesize a domain via scaffold → build → conformance → outputs."""
-        self.logger.log_synthesis_start(domain_code, reason)
-
-        try:
-            synthesis_service = self._get_synthesis_service()
-            # kind is always "observation" now
-            synthesis_result = synthesis_service.synthesize_observation(
-                domain_code=domain_code,
-                study_id=request.study_id,
-                reference_starts=reference_starts,
-            )
-
-            if not synthesis_result.success:
-                raise RuntimeError(synthesis_result.error or "Synthesis failed")
-
-            domain_def = self._get_domain(domain_code)
-            lenient = ("xpt" not in request.output_formats) and (
-                not request.generate_sas
-            )
-
-            synthesis_config = synthesis_result.config
-            if synthesis_config is None:
-                from cdisc_transpiler.domain.entities.mapping import MappingConfig
-
-                synthesis_config = MappingConfig(
-                    domain=domain_code,
-                    study_id=request.study_id,
-                    mappings=[],
-                )
-
-            scaffold = (
-                synthesis_result.domain_dataframe
-                if synthesis_result.domain_dataframe is not None
-                else pd.DataFrame()
-            )
-
-            domain_dataframe = self._domain_frame_builder.build_domain_dataframe(
-                scaffold,
-                synthesis_config,
-                domain_def,
-                reference_starts=reference_starts,
-                lenient=lenient,
-            )
-
-            if domain_code.upper() == "TS":
-                self._fill_tsparm_labels(domain_dataframe)
-
-            strict = ("xpt" in request.output_formats) or request.generate_sas
-            report = self._log_conformance_report(
-                frame=domain_dataframe,
-                domain=domain_def,
-                strict=strict,
-            )
-
-            if (
-                strict
-                and request.fail_on_conformance_errors
-                and report is not None
-                and getattr(report, "has_errors", lambda: False)()
-            ):
-                raise ValueError(
-                    f"{domain_code}: conformance errors present; strict output generation aborted"
-                )
-
-            xpt_path, xml_path, sas_path = self._generate_synthesis_files(
-                domain_dataframe=domain_dataframe,
-                domain_code=domain_code,
-                config=synthesis_config,
-                request=request,
-                xpt_dir=xpt_dir,
-                xml_dir=xml_dir,
-                sas_dir=sas_dir,
-            )
-
-            result = DomainProcessingResult(
-                domain_code=domain_code,
-                success=True,
-                records=len(domain_dataframe),
-                domain_dataframe=domain_dataframe,
-                config=synthesis_config,
-                xpt_path=xpt_path,
-                xml_path=xml_path,
-                sas_path=sas_path,
-                synthesized=True,
-                synthesis_reason=reason,
-                conformance_report=report,
-            )
-
-            response.domain_results.append(result)
-            response.processed_domains.add(domain_code)
-            response.total_records += result.records
-
-            if request.generate_define_xml:
-                self._add_to_study_datasets(
-                    result, study_datasets, request.output_dir, request.output_formats
-                )
-
-            self.logger.log_synthesis_complete(domain_code, result.records)
-
-        except Exception as exc:  # noqa: BLE001
-            self.logger.error(f"{domain_code}: {exc}")
-            response.errors.append((domain_code, str(exc)))
 
     def _synthesize_relrec(
         self,
@@ -1460,15 +1305,6 @@ class StudyProcessingUseCase:
             "DomainProcessingUseCase is not configured. "
             "Wire it in the composition root (DependencyContainer)."
         )
-
-    def _get_synthesis_service(self):
-        """Get injected domain synthesis service."""
-        if self._synthesis_service is None:
-            raise RuntimeError(
-                "SynthesisService is not configured. "
-                "Wire it in the composition root (DependencyContainer)."
-            )
-        return self._synthesis_service
 
     def _get_relrec_service(self):
         """Get injected RELREC service."""

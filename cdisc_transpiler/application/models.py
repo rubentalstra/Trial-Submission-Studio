@@ -220,11 +220,6 @@ class ProcessStudyRequest:
     # doesn't provide them (e.g., DM.COUNTRY).
     default_country: str | None = None
 
-    # Whether the pipeline may synthesize datasets that are missing from the
-    # source folder (trial design scaffolds, empty observation domains, etc.).
-    # For regulatory submissions, this should typically be False.
-    synthesize_missing_domains: bool = False
-
 
 @dataclass
 class DomainProcessingResult:

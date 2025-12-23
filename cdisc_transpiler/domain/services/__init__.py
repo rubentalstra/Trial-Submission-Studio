@@ -20,10 +20,6 @@ from .suppqual_service import (
     finalize_suppqual,
     sanitize_qnam,
 )
-from .synthesis_service import (
-    SynthesisResult,
-    SynthesisService,
-)
 from .relrec_service import (
     RelrecService,
 )
@@ -49,9 +45,6 @@ __all__ = [
     "extract_used_columns",
     "finalize_suppqual",
     "sanitize_qnam",
-    # Synthesis service
-    "SynthesisResult",
-    "SynthesisService",
     # RELREC service
     "RelrecService",
     # RELSUB service

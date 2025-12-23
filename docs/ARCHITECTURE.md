@@ -187,7 +187,7 @@ cleanup are layer-crossing helpers and re-export modules that bypass ports.
 5. **“Service” package is layer-ambiguous**
 
 - `cdisc_transpiler/services/*` contains a mix of:
-  - domain-ish logic (trial design synthesis),
+  - domain-ish logic,
   - application-ish orchestration helpers,
   - infrastructure-ish filesystem side effects (output dir creation, PDF stub
     generation).
@@ -255,8 +255,7 @@ Keep the current top-level layout, but enforce strict boundaries:
 - Location: `cdisc_transpiler/domain/`
 - Contains:
   - entities: `Study`, `Domain`, `Variable` (and current SDTM entities)
-  - domain services: `DomainFrameBuilder`, `SuppQualService`, `RelRecService`,
-    `SynthesisService` (pure synthesis only)
+  - domain services: `DomainFrameBuilder`, `SuppQualService`, `RelRecService`
 - Must NOT:
   - touch filesystem, Click, Rich, XML/XPT/SAS writers, pandas I/O
   - import from `cdisc_transpiler.infrastructure` or `cdisc_transpiler.cli`

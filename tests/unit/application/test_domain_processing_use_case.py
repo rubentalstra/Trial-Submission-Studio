@@ -316,27 +316,6 @@ class TestProcessDomainResponse:
         assert response.supplementals[0].domain_code == "SUPPAE"
         assert response.supplementals[0].records == 1
 
-    def test_create_with_split_datasets(self):
-        """Test creating response with split datasets."""
-        main_df = pd.DataFrame({"STUDYID": ["TEST001"] * 100})
-        split1_df = pd.DataFrame({"STUDYID": ["TEST001"] * 50})
-        split2_df = pd.DataFrame({"STUDYID": ["TEST001"] * 50})
-
-        response = ProcessDomainResponse(
-            success=True,
-            domain_code="LB",
-            records=100,
-            domain_dataframe=main_df,
-            split_datasets=[
-                ("LB01", split1_df, Path("/output/xpt/lb01.xpt")),
-                ("LB02", split2_df, Path("/output/xpt/lb02.xpt")),
-            ],
-        )
-
-        assert len(response.split_datasets) == 2
-        assert response.split_datasets[0][0] == "LB01"
-        assert len(response.split_datasets[0][1]) == 50
-
     def test_create_with_warnings(self):
         """Test creating response with warnings."""
         df = pd.DataFrame({"STUDYID": ["TEST001"]})
@@ -372,7 +351,6 @@ class TestProcessDomainResponse:
             domain_dataframe=df,
             xpt_path=Path("/output/xpt/ae.xpt"),
             supplementals=[supp_response],
-            split_datasets=[("AE01", df, Path("/output/xpt/ae01.xpt"))],
         )
 
         result_dict = response.to_dict()
@@ -382,7 +360,6 @@ class TestProcessDomainResponse:
         assert result_dict["xpt_path"] == Path("/output/xpt/ae.xpt")
         assert len(result_dict["supplementals"]) == 1
         assert result_dict["supplementals"][0]["domain_code"] == "SUPPAE"
-        assert len(result_dict["split_datasets"]) == 1
 
     def test_to_dict_with_empty_collections(self):
         """Test to_dict with empty supplementals and splits."""
@@ -398,4 +375,3 @@ class TestProcessDomainResponse:
         result_dict = response.to_dict()
 
         assert result_dict["supplementals"] == []
-        assert result_dict["split_datasets"] == []

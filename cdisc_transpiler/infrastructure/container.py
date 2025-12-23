@@ -52,7 +52,6 @@ if TYPE_CHECKING:
         RelrecService,
         RelspecService,
         RelsubService,
-        SynthesisService,
     )
 
 
@@ -116,7 +115,6 @@ class DependencyContainer:
         self._suppqual_service_instance: SuppqualPort | None = None
         self._terminology_service_instance: TerminologyPort | None = None
         self._ct_repository_instance: CTRepositoryPort | None = None
-        self._synthesis_service_instance: "SynthesisService | None" = None
         self._relrec_service_instance: "RelrecService | None" = None
         self._relsub_service_instance: "RelsubService | None" = None
         self._relspec_service_instance: "RelspecService | None" = None
@@ -291,16 +289,6 @@ class DependencyContainer:
             self._conformance_report_writer_instance = ConformanceReportWriterAdapter()
         return self._conformance_report_writer_instance
 
-    def create_synthesis_service(self) -> "SynthesisService":
-        """Create or return cached synthesis service instance (singleton)."""
-        if self._synthesis_service_instance is None:
-            from ..domain.services import SynthesisService
-
-            self._synthesis_service_instance = SynthesisService(
-                domain_resolver=self.create_domain_definition_repository().get_domain
-            )
-        return self._synthesis_service_instance
-
     def create_relrec_service(self) -> "RelrecService":
         """Create or return cached RELREC service instance (singleton)."""
         if self._relrec_service_instance is None:
@@ -352,7 +340,6 @@ class DependencyContainer:
         domain_definition_repository = self.create_domain_definition_repository()
         domain_discovery_service = DomainDiscoveryServiceAdapter(logger=logger)
         domain_frame_builder = self.create_domain_frame_builder()
-        synthesis_service = self.create_synthesis_service()
         relrec_service = self.create_relrec_service()
         relsub_service = self.create_relsub_service()
         relspec_service = self.create_relspec_service()
@@ -367,7 +354,6 @@ class DependencyContainer:
             domain_processing_use_case=domain_processing_use_case,
             domain_discovery_service=domain_discovery_service,
             domain_frame_builder=domain_frame_builder,
-            synthesis_service=synthesis_service,
             relrec_service=relrec_service,
             relsub_service=relsub_service,
             relspec_service=relspec_service,
