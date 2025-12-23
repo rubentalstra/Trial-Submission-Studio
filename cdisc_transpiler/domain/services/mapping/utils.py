@@ -82,5 +82,4 @@ def unquote_column_name(name: str | None) -> str:
         return name_str
     quoted = match.group("quoted")
     # Remove surrounding quotes and unescape doubled quotes
-    unescaped = quoted[1:-1].replace('""', '"')
-    return unescaped
+    return quoted[1:-1].replace('""', '"')

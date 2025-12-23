@@ -117,106 +117,138 @@ def check_domain_dataframe(
 
     issues: list[ConformanceIssue] = []
 
-    def _is_numeric_like_text(value: pd.Series) -> pd.Series:
-        text = value.astype("string").fillna("").str.strip()
-        # Accept plain numbers and simple comparators like '<35', '>= 1.2'.
-        return text.str.match(r"^(?:[<>]=?\s*)?\d+(?:\.\d+)?$")
-
     for var in domain.variables:
         if var.name not in frame.columns:
-            if _is_required(var.core):
-                issues.append(
-                    ConformanceIssue(
-                        severity="error",
-                        code="REQ_MISSING_COLUMN",
-                        domain=domain.code,
-                        variable=var.name,
-                        message=f"Missing required column {var.name}",
-                    )
-                )
-            elif _is_expected(var.core):
-                issues.append(
-                    ConformanceIssue(
-                        severity="warning",
-                        code="EXP_MISSING_COLUMN",
-                        domain=domain.code,
-                        variable=var.name,
-                        message=f"Missing expected column {var.name}",
-                    )
-                )
+            issues.extend(_missing_column_issues(domain, var))
             continue
 
-        if _is_required(var.core):
-            missing = _missing_count(frame[var.name], var)
-            if missing:
-                issues.append(
-                    ConformanceIssue(
-                        severity="error",
-                        code="REQ_MISSING_VALUE",
-                        domain=domain.code,
-                        variable=var.name,
-                        count=missing,
-                        message=f"Required variable {var.name} has {missing} missing/blank values",
-                    )
-                )
+        issues.extend(_missing_value_issues(frame, domain, var))
 
         if ct_resolver is not None and (var.codelist_code or var.name):
-            ct = ct_resolver(var)
-            if ct is None:
-                continue
-
-            series_for_ct = frame[var.name]
-            # DSDECOD is value-level controlled terminology in SDTMIG: the
-            # applicable codelist depends on DSCAT (e.g., DISPOSITION EVENT vs
-            # PROTOCOL MILESTONE). Our SDTM variable model currently exposes a
-            # single codelist for DSDECOD, so validate only the Disposition Event
-            # subset to avoid false CT_INVALID errors for protocol milestones.
-            if (
-                domain.code.upper() == "DS"
-                and var.name == "DSDECOD"
-                and "DSCAT" in frame.columns
-            ):
-                dscat_upper = (
-                    frame["DSCAT"].astype("string").fillna("").str.upper().str.strip()
-                )
-                disposition_mask = (dscat_upper == "DISPOSITION EVENT") | (
-                    dscat_upper == ""
-                )
-                series_for_ct = series_for_ct.loc[disposition_mask]
-            # LBSTRESC is a character result field that can legitimately contain
-            # numeric values. Avoid false positives by only CT-validating
-            # non-numeric tokens.
-            if domain.code.upper() == "LB" and var.name == "LBSTRESC":
-                mask_numeric = _is_numeric_like_text(series_for_ct)
-                series_for_ct = series_for_ct.loc[~mask_numeric]
-
-            invalid = ct.invalid_values(series_for_ct)
-            if invalid:
-                example_items: list[str] = []
-                for raw in sorted(list(invalid))[:5]:
-                    suggestions = ct.suggest_submission_values(raw, limit=1)
-                    if suggestions:
-                        canonical = suggestions[0]
-                        formatted = ct.format_submission_value_with_synonyms(canonical)
-                        example_items.append(f"{raw} → {formatted}")
-                    else:
-                        example_items.append(raw)
-
-                examples = ", ".join(example_items)
-                severity: Severity = "warning" if ct.codelist_extensible else "error"
-                issues.append(
-                    ConformanceIssue(
-                        severity=severity,
-                        code="CT_INVALID",
-                        domain=domain.code,
-                        variable=var.name,
-                        count=len(invalid),
-                        codelist_code=ct.codelist_code,
-                        message=(
-                            f"{var.name} contains {len(invalid)} value(s) not found in CT for {ct.codelist_name} "
-                            f"({ct.codelist_code}). examples: {examples}"
-                        ),
-                    )
-                )
+            issues.extend(_ct_issues(frame, domain, var, ct_resolver))
 
     return ConformanceReport(domain=domain.code, issues=tuple(issues))
+
+
+def _missing_column_issues(
+    domain: SDTMDomain, var: SDTMVariable
+) -> list[ConformanceIssue]:
+    if _is_required(var.core):
+        return [
+            ConformanceIssue(
+                severity="error",
+                code="REQ_MISSING_COLUMN",
+                domain=domain.code,
+                variable=var.name,
+                message=f"Missing required column {var.name}",
+            )
+        ]
+    if _is_expected(var.core):
+        return [
+            ConformanceIssue(
+                severity="warning",
+                code="EXP_MISSING_COLUMN",
+                domain=domain.code,
+                variable=var.name,
+                message=f"Missing expected column {var.name}",
+            )
+        ]
+    return []
+
+
+def _missing_value_issues(
+    frame: pd.DataFrame, domain: SDTMDomain, var: SDTMVariable
+) -> list[ConformanceIssue]:
+    if not _is_required(var.core):
+        return []
+    missing = _missing_count(frame[var.name], var)
+    if not missing:
+        return []
+    return [
+        ConformanceIssue(
+            severity="error",
+            code="REQ_MISSING_VALUE",
+            domain=domain.code,
+            variable=var.name,
+            count=missing,
+            message=f"Required variable {var.name} has {missing} missing/blank values",
+        )
+    ]
+
+
+def _ct_issues(
+    frame: pd.DataFrame,
+    domain: SDTMDomain,
+    var: SDTMVariable,
+    ct_resolver: CTResolver,
+) -> list[ConformanceIssue]:
+    ct = ct_resolver(var)
+    if ct is None:
+        return []
+
+    series_for_ct = _select_ct_series(frame, domain, var)
+    invalid = ct.invalid_values(series_for_ct)
+    if not invalid:
+        return []
+
+    example_items: list[str] = []
+    for raw in sorted(invalid)[:5]:
+        suggestions = ct.suggest_submission_values(raw, limit=1)
+        if suggestions:
+            canonical = suggestions[0]
+            formatted = ct.format_submission_value_with_synonyms(canonical)
+            example_items.append(f"{raw} → {formatted}")
+        else:
+            example_items.append(raw)
+
+    examples = ", ".join(example_items)
+    severity: Severity = "warning" if ct.codelist_extensible else "error"
+    return [
+        ConformanceIssue(
+            severity=severity,
+            code="CT_INVALID",
+            domain=domain.code,
+            variable=var.name,
+            count=len(invalid),
+            codelist_code=ct.codelist_code,
+            message=(
+                f"{var.name} contains {len(invalid)} value(s) not found in CT for {ct.codelist_name} "
+                f"({ct.codelist_code}). examples: {examples}"
+            ),
+        )
+    ]
+
+
+def _select_ct_series(
+    frame: pd.DataFrame,
+    domain: SDTMDomain,
+    var: SDTMVariable,
+) -> pd.Series:
+    series_for_ct = frame[var.name]
+
+    # DSDECOD is value-level controlled terminology in SDTMIG: the applicable
+    # codelist depends on DSCAT (e.g., DISPOSITION EVENT vs PROTOCOL MILESTONE).
+    # Our SDTM variable model currently exposes a single codelist for DSDECOD,
+    # so validate only the Disposition Event subset to avoid false CT_INVALID.
+    if (
+        domain.code.upper() == "DS"
+        and var.name == "DSDECOD"
+        and "DSCAT" in frame.columns
+    ):
+        dscat_upper = frame["DSCAT"].astype("string").fillna("").str.upper().str.strip()
+        disposition_mask = (dscat_upper == "DISPOSITION EVENT") | (dscat_upper == "")
+        series_for_ct = series_for_ct.loc[disposition_mask]
+
+    # LBSTRESC is a character result field that can legitimately contain numeric
+    # values. Avoid false positives by only CT-validating non-numeric tokens.
+    if domain.code.upper() == "LB" and var.name == "LBSTRESC":
+        mask_numeric = _is_numeric_like_text(series_for_ct)
+        series_for_ct = series_for_ct.loc[~mask_numeric]
+
+    return series_for_ct
+
+
+def _is_numeric_like_text(value: pd.Series) -> pd.Series:
+    text = value.astype("string").fillna("").str.strip()
+    # Accept plain numbers and simple comparators like '<35', '>= 1.2'.
+    return text.str.match(r"^(?:[<>]=?\s*)?\d+(?:\.\d+)?$")

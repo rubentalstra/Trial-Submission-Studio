@@ -5,10 +5,10 @@ This module provides access to SDTM Implementation Guide specifications
 """
 
 from pathlib import Path
+from typing import cast
 
 import pandas as pd
 
-from ...application.ports.repositories import SDTMSpecRepositoryPort
 from ...config import TranspilerConfig
 from ..caching.memory_cache import MemoryCache
 
@@ -33,7 +33,7 @@ class SDTMSpecRepository:
     def __init__(
         self,
         config: TranspilerConfig | None = None,
-        cache: MemoryCache | None = None,
+        cache: MemoryCache[object] | None = None,
     ) -> None:
         """Initialize the repository.
 
@@ -43,7 +43,7 @@ class SDTMSpecRepository:
         """
         super().__init__()
         self._config = config or TranspilerConfig()
-        self._cache = cache or MemoryCache()
+        self._cache: MemoryCache[object] = cache or MemoryCache()
         self._variables_cache_key = "sdtm_variables"
         self._datasets_cache_key = "sdtm_datasets"
 
@@ -90,8 +90,8 @@ class SDTMSpecRepository:
             Dictionary mapping domain codes to lists of variable dictionaries
         """
         cached = self._cache.get(self._variables_cache_key)
-        if cached is not None:
-            return cached
+        if isinstance(cached, dict):
+            return cast("dict[str, list[dict[str, str]]]", cached)
 
         variables_by_domain: dict[str, list[dict[str, str]]] = {}
 
@@ -99,11 +99,9 @@ class SDTMSpecRepository:
         variables_file = self._resolve_spec_path("Variables.csv")
 
         if variables_file and variables_file.exists():
-            try:
-                df = pd.read_csv(variables_file, dtype=str, na_filter=False)
+            df = self._read_spec_csv(variables_file)
+            if df is not None:
                 variables_by_domain = self._parse_variables_df(df)
-            except Exception:
-                pass  # Fall through to empty dict
 
         self._cache.set(self._variables_cache_key, variables_by_domain)
         return variables_by_domain
@@ -115,19 +113,17 @@ class SDTMSpecRepository:
             Dictionary mapping domain codes to dataset attribute dictionaries
         """
         cached = self._cache.get(self._datasets_cache_key)
-        if cached is not None:
-            return cached
+        if isinstance(cached, dict):
+            return cast("dict[str, dict[str, str]]", cached)
 
         datasets: dict[str, dict[str, str]] = {}
 
         datasets_file = self._resolve_spec_path("Datasets.csv")
 
         if datasets_file and datasets_file.exists():
-            try:
-                df = pd.read_csv(datasets_file, dtype=str, na_filter=False)
+            df = self._read_spec_csv(datasets_file)
+            if df is not None:
                 datasets = self._parse_datasets_df(df)
-            except Exception:
-                pass  # Fall through to empty dict
 
         self._cache.set(self._datasets_cache_key, datasets)
         return datasets
@@ -155,6 +151,13 @@ class SDTMSpecRepository:
             return spec_path
 
         return None
+
+    @staticmethod
+    def _read_spec_csv(path: Path) -> pd.DataFrame | None:
+        try:
+            return pd.read_csv(path, dtype=str, na_filter=False)
+        except Exception:
+            return None
 
     def _parse_variables_df(self, df: pd.DataFrame) -> dict[str, list[dict[str, str]]]:
         """Parse a Variables DataFrame into domain-grouped dictionaries.
@@ -230,13 +233,3 @@ class SDTMSpecRepository:
     def clear_cache(self) -> None:
         """Clear the cache to force re-reading from disk."""
         self._cache.clear()
-
-
-# Verify protocol compliance at runtime (duck typing)
-def _verify_protocol_compliance() -> None:
-    """Verify SDTMSpecRepository implements SDTMSpecRepositoryPort."""
-    repo: SDTMSpecRepositoryPort = SDTMSpecRepository()
-    assert isinstance(repo, SDTMSpecRepositoryPort)
-
-
-_verify_protocol_compliance()

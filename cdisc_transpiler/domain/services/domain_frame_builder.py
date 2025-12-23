@@ -242,9 +242,7 @@ class DomainFrameBuilder:
 
         # SDTMIG v3.4 4.1.4: ensure variable order is deterministic and
         # consistent across outputs (Define-XML must match dataset order).
-        result = self._reorder_columns_for_domain(result)
-
-        return result
+        return self._reorder_columns_for_domain(result)
 
     def _reorder_columns_for_domain(self, result: pd.DataFrame) -> pd.DataFrame:
         ordered = ordered_columns_for_domain(result, domain=self.domain)

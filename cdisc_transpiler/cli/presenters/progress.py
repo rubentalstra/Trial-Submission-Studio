@@ -4,7 +4,10 @@ This module provides the ProgressPresenter class that tracks and displays
 progress during study processing operations.
 """
 
-from rich.console import Console
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from rich.console import Console
 
 
 class ProgressPresenter:
@@ -30,7 +33,7 @@ class ProgressPresenter:
         >>> presenter.print_summary()
     """
 
-    def __init__(self, console: Console, total_domains: int):
+    def __init__(self, console: Console, total_domains: int) -> None:
         """Initialize the progress presenter.
 
         Args:

@@ -11,11 +11,9 @@ The use case implements a clean pipeline architecture with explicit stages:
 5. Generate SUPPQUAL (supplemental qualifiers)
 6. Generate outputs via DatasetOutputPort
 
-CLEAN2-D1: This use case is now fully implemented with injected dependencies,
-without compatibility shims.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import traceback
 from typing import TYPE_CHECKING
 
@@ -85,6 +83,29 @@ class DomainProcessingDependencies:
     ct_repository: CTRepositoryPort | None = None
 
 
+@dataclass(slots=True)
+class SuppqualOutputResult:
+    domain_code: str
+    records: int
+    domain_dataframe: pd.DataFrame
+    config: MappingConfig
+    xpt_path: Path | None = None
+    xml_path: Path | None = None
+    sas_path: Path | None = None
+
+
+@dataclass(slots=True)
+class OutputStageResult:
+    domain_code: str
+    records: int
+    domain_dataframe: pd.DataFrame
+    config: MappingConfig
+    xpt_path: Path | None = None
+    xml_path: Path | None = None
+    sas_path: Path | None = None
+    suppqual_domains: list[SuppqualOutputResult] = field(default_factory=list)
+
+
 class DomainProcessingUseCase:
     """Use case for processing a single SDTM domain.
 
@@ -150,8 +171,9 @@ class DomainProcessingUseCase:
         ) -> ControlledTerminology | None:
             if ct_repo is None:
                 return None
-            if getattr(variable, "codelist_code", None):
-                return ct_repo.get_by_code(variable.codelist_code)
+            codelist_code = getattr(variable, "codelist_code", None)
+            if codelist_code:
+                return ct_repo.get_by_code(codelist_code)
             return ct_repo.get_by_name(getattr(variable, "name", ""))
 
         report = check_domain_dataframe(frame, domain, ct_resolver=_ct_resolver)
@@ -303,21 +325,21 @@ class DomainProcessingUseCase:
             response.records = len(merged_df)
             response.domain_dataframe = merged_df
             response.config = last_config
-            response.xpt_path = output_result.get("xpt_path")
-            response.xml_path = output_result.get("xml_path")
-            response.sas_path = output_result.get("sas_path")
+            response.xpt_path = output_result.xpt_path
+            response.xml_path = output_result.xml_path
+            response.sas_path = output_result.sas_path
 
             # Handle SUPPQUAL domains
-            for supp_dict in output_result.get("suppqual_domains", []):
+            for supp_result in output_result.suppqual_domains:
                 supp_response = ProcessDomainResponse(
                     success=True,
-                    domain_code=supp_dict.get("domain_code", ""),
-                    records=supp_dict.get("records", 0),
-                    domain_dataframe=supp_dict.get("domain_dataframe"),
-                    config=supp_dict.get("config"),
-                    xpt_path=supp_dict.get("xpt_path"),
-                    xml_path=supp_dict.get("xml_path"),
-                    sas_path=supp_dict.get("sas_path"),
+                    domain_code=supp_result.domain_code,
+                    records=supp_result.records,
+                    domain_dataframe=supp_result.domain_dataframe,
+                    config=supp_result.config,
+                    xpt_path=supp_result.xpt_path,
+                    xml_path=supp_result.xml_path,
+                    sas_path=supp_result.sas_path,
                 )
                 response.suppqual_domains.append(supp_response)
 
@@ -428,12 +450,7 @@ class DomainProcessingUseCase:
 
     def _load_file(self, file_path: Path) -> pd.DataFrame:
         """Stage 1: Load and validate input file."""
-        if self._study_data_repository is not None:
-            return self._study_data_repository.read_dataset(file_path)
-
-        raise RuntimeError(
-            "StudyDataRepositoryPort is not configured. Wire an infrastructure adapter in the composition root."
-        )
+        return self._study_data_repository.read_dataset(file_path)
 
     def _should_skip_vstat(
         self, domain_code: str, variant_name: str | None, verbose: bool
@@ -601,20 +618,16 @@ class DomainProcessingUseCase:
         domain: SDTMDomain,
         request: ProcessDomainRequest,
         suppqual_frames: list[pd.DataFrame],
-    ) -> dict[str, object]:
+    ) -> OutputStageResult:
         """Stage 6: Generate dataset outputs (XPT, XML, SAS) using DatasetOutputPort."""
         base_filename = domain.resolved_dataset_name()
 
-        result: dict[str, object] = {
-            "domain_code": request.domain_code,
-            "records": len(merged_df),
-            "domain_dataframe": merged_df,
-            "config": config,
-            "xpt_path": None,
-            "xml_path": None,
-            "sas_path": None,
-            "suppqual_domains": [],
-        }
+        result = OutputStageResult(
+            domain_code=request.domain_code,
+            records=len(merged_df),
+            domain_dataframe=merged_df,
+            config=config,
+        )
 
         # Handle SUPPQUAL qualifiers
         if suppqual_frames:
@@ -625,7 +638,7 @@ class DomainProcessingUseCase:
                 request.output_formats,
                 request.output_dirs,
             )
-            result["suppqual_domains"].append(suppqual_result)
+            result.suppqual_domains.append(suppqual_result)
 
         # Use DatasetOutputPort if available
         if self._dataset_output is not None:
@@ -670,19 +683,17 @@ class DomainProcessingUseCase:
 
                 # Update result
                 if output_result.xpt_path:
-                    result["xpt_path"] = output_result.xpt_path
-                    result["xpt_filename"] = output_result.xpt_path.name
+                    result.xpt_path = output_result.xpt_path
                     self.logger.success(f"Generated XPT: {output_result.xpt_path}")
 
                 if output_result.xml_path:
-                    result["xml_path"] = output_result.xml_path
-                    result["xml_filename"] = output_result.xml_path.name
+                    result.xml_path = output_result.xml_path
                     self.logger.success(
                         f"Generated Dataset-XML: {output_result.xml_path}"
                     )
 
                 if output_result.sas_path:
-                    result["sas_path"] = output_result.sas_path
+                    result.sas_path = output_result.sas_path
                     self.logger.success(f"Generated SAS: {output_result.sas_path}")
 
                 # Log any errors
@@ -698,7 +709,7 @@ class DomainProcessingUseCase:
         study_id: str,
         output_formats: set[str],
         output_dirs: dict[str, Path | None],
-    ) -> dict[str, object]:
+    ) -> SuppqualOutputResult:
         """Generate SUPPQUAL dataset files using DatasetOutputPort."""
         merged_supp = (
             suppqual_frames[0]
@@ -735,15 +746,12 @@ class DomainProcessingUseCase:
         supp_domain = supp_domain_def or self._get_domain(supp_domain_code)
         base_filename = supp_domain.resolved_dataset_name()
 
-        suppqual_result: dict[str, object] = {
-            "domain_code": supp_domain_code,
-            "records": len(merged_supp),
-            "domain_dataframe": merged_supp,
-            "config": supp_config,
-            "xpt_path": None,
-            "xml_path": None,
-            "sas_path": None,
-        }
+        suppqual_result = SuppqualOutputResult(
+            domain_code=supp_domain_code,
+            records=len(merged_supp),
+            domain_dataframe=merged_supp,
+            config=supp_config,
+        )
 
         # Use DatasetOutputPort if available
         if self._dataset_output is not None:
@@ -769,12 +777,10 @@ class DomainProcessingUseCase:
                 output_result = self._dataset_output.generate(output_request)
 
                 if output_result.xpt_path:
-                    suppqual_result["xpt_path"] = output_result.xpt_path
-                    suppqual_result["xpt_filename"] = output_result.xpt_path.name
+                    suppqual_result.xpt_path = output_result.xpt_path
 
                 if output_result.xml_path:
-                    suppqual_result["xml_path"] = output_result.xml_path
-                    suppqual_result["xml_filename"] = output_result.xml_path.name
+                    suppqual_result.xml_path = output_result.xml_path
 
         return suppqual_result
 
@@ -782,10 +788,6 @@ class DomainProcessingUseCase:
 
     def _get_domain(self, domain_code: str) -> SDTMDomain:
         """Get SDTM domain definition."""
-        if self._domain_definition_repository is None:
-            raise RuntimeError(
-                "DomainDefinitionRepositoryPort is not configured. Wire an infrastructure adapter in the composition root."
-            )
         return self._domain_definition_repository.get_domain(domain_code)
 
     def _merge_dataframes(

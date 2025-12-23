@@ -8,7 +8,9 @@ application layer's StudyProcessingUseCase. It is responsible for:
 4. Formatting the response for user output
 """
 
+from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 import click
 from rich.console import Console
@@ -16,9 +18,53 @@ from rich.console import Console
 from ...application.models import ProcessStudyRequest
 from ...config import ConfigLoader
 from ...infrastructure.container import DependencyContainer
-from ..presenters.summary import SummaryPresenter
+from ..presenters.summary import SummaryPresenter, SummaryRequest
 
 console = Console()
+
+MIN_STUDY_ID_PARTS = 2
+SUPP_PREFIX_LEN = 4
+
+
+@dataclass(frozen=True)
+class StudyCommandOptions:
+    output_dir: Path | None
+    config_file: Path | None
+    study_id: str | None
+    output_format: str
+    generate_define: bool
+    generate_sas: bool
+    sdtm_version: str
+    define_context: str
+    streaming: bool
+    chunk_size: int
+    min_confidence: float
+    write_conformance_report_json: bool
+    fail_on_conformance_errors: bool
+    verbose: int
+
+    @classmethod
+    def from_kwargs(cls, options: dict[str, object]) -> StudyCommandOptions:
+        return cls(
+            output_dir=cast("Path | None", options.get("output_dir")),
+            config_file=cast("Path | None", options.get("config_file")),
+            study_id=cast("str | None", options.get("study_id")),
+            output_format=cast("str", options["output_format"]),
+            generate_define=cast("bool", options["generate_define"]),
+            generate_sas=cast("bool", options["generate_sas"]),
+            sdtm_version=cast("str", options["sdtm_version"]),
+            define_context=cast("str", options["define_context"]),
+            streaming=cast("bool", options["streaming"]),
+            chunk_size=cast("int", options["chunk_size"]),
+            min_confidence=cast("float", options["min_confidence"]),
+            write_conformance_report_json=cast(
+                "bool", options["write_conformance_report_json"]
+            ),
+            fail_on_conformance_errors=cast(
+                "bool", options["fail_on_conformance_errors"]
+            ),
+            verbose=cast("int", options["verbose"]),
+        )
 
 
 @click.command()
@@ -110,24 +156,9 @@ console = Console()
 @click.option(
     "-v", "--verbose", count=True, help="Increase verbosity level (e.g., -v, -vv)"
 )
-@click.pass_context
 def study_command(
-    ctx: click.Context,
     study_folder: Path,
-    output_dir: Path | None,
-    config_file: Path | None,
-    study_id: str | None,
-    output_format: str,
-    generate_define: bool,
-    generate_sas: bool,
-    sdtm_version: str,
-    define_context: str,
-    streaming: bool,
-    chunk_size: int,
-    min_confidence: float,
-    write_conformance_report_json: bool,
-    fail_on_conformance_errors: bool,
-    verbose: int,
+    **options: object,
 ) -> None:
     """Process an entire study folder and generate SDTM submission files.
 
@@ -166,23 +197,31 @@ def study_command(
         cdisc-transpiler study data/ --output-dir submission/ --study-id STUDY123
     """
 
+    command_options = StudyCommandOptions.from_kwargs(dict(options))
+
     # Derive study ID from folder name if not provided
-    if study_id is None:
+    if command_options.study_id is None:
         folder_name = study_folder.name
         parts = folder_name.split("_")
-        if len(parts) >= 2:
-            study_id = "_".join(parts[:2])
-        else:
-            study_id = folder_name
+        study_id = (
+            "_".join(parts[:MIN_STUDY_ID_PARTS])
+            if len(parts) >= MIN_STUDY_ID_PARTS
+            else folder_name
+        )
+    else:
+        study_id = command_options.study_id
 
     # Set output directory
-    if output_dir is None:
-        output_dir = study_folder / "output"
+    output_dir = command_options.output_dir or (study_folder / "output")
 
     # Convert output format to set
-    output_formats = {"xpt", "xml"} if output_format == "both" else {output_format}
+    output_formats = (
+        {"xpt", "xml"}
+        if command_options.output_format == "both"
+        else {command_options.output_format}
+    )
 
-    runtime_config = ConfigLoader.load(config_file=config_file)
+    runtime_config = ConfigLoader.load(config_file=command_options.config_file)
 
     # Create request object
     request = ProcessStudyRequest(
@@ -190,21 +229,21 @@ def study_command(
         study_id=study_id,
         output_dir=output_dir,
         output_formats=output_formats,
-        generate_define_xml=generate_define,
-        generate_sas=generate_sas,
-        sdtm_version=sdtm_version,
-        define_context=define_context,
-        streaming=streaming,
-        chunk_size=chunk_size,
-        min_confidence=min_confidence,
-        verbose=verbose,
-        write_conformance_report_json=write_conformance_report_json,
-        fail_on_conformance_errors=fail_on_conformance_errors,
+        generate_define_xml=command_options.generate_define,
+        generate_sas=command_options.generate_sas,
+        sdtm_version=command_options.sdtm_version,
+        define_context=command_options.define_context,
+        streaming=command_options.streaming,
+        chunk_size=command_options.chunk_size,
+        min_confidence=command_options.min_confidence,
+        verbose=command_options.verbose,
+        write_conformance_report_json=command_options.write_conformance_report_json,
+        fail_on_conformance_errors=command_options.fail_on_conformance_errors,
         default_country=runtime_config.default_country,
     )
 
     # Create dependency container and use case
-    container = DependencyContainer(verbose=verbose, console=console)
+    container = DependencyContainer(verbose=command_options.verbose, console=console)
     use_case = container.create_study_processing_use_case()
 
     # Domain descriptions (used in the Study Processing Summary table)
@@ -220,8 +259,8 @@ def study_command(
         # datasets we always prefer a resolved label.
         if code == "SUPPQUAL":
             return "Supplemental Qualifiers"
-        if code.startswith("SUPP") and len(code) > 4:
-            return f"Supplemental Qualifiers for {code[4:]}"
+        if code.startswith("SUPP") and len(code) > SUPP_PREFIX_LEN:
+            return f"Supplemental Qualifiers for {code[SUPP_PREFIX_LEN:]}"
         try:
             domain = domain_definition_repository.get_domain(code)
             return str(getattr(domain, "description", "") or "")
@@ -240,18 +279,20 @@ def study_command(
     # Display summary using presenter
     presenter = SummaryPresenter(console)
     presenter.present(
-        response.domain_results,
-        response.errors,
-        output_dir,
-        output_format,
-        generate_define,
-        generate_sas,
-        domain_descriptions=domain_descriptions,
-        conformance_report_path=response.conformance_report_path,
-        conformance_report_error=response.conformance_report_error,
+        SummaryRequest(
+            results=response.domain_results,
+            errors=response.errors,
+            output_dir=output_dir,
+            output_format=command_options.output_format,
+            generate_define=command_options.generate_define,
+            generate_sas=command_options.generate_sas,
+            domain_descriptions=domain_descriptions,
+            conformance_report_path=response.conformance_report_path,
+            conformance_report_error=response.conformance_report_error,
+        )
     )
 
-    if fail_on_conformance_errors and not response.success:
+    if command_options.fail_on_conformance_errors and not response.success:
         raise click.ClickException(
             "Run failed due to errors (conformance gating may have been enabled)."
         )

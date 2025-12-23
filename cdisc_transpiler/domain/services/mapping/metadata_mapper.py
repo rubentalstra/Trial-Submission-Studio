@@ -124,11 +124,10 @@ class MetadataAwareMapper:
             normalized = normalize_text(col_id)
 
             # Check if column ID matches or starts with domain code
-            if col_id.startswith(self.domain_code):
+            if col_id.startswith(self.domain_code) and col_id in self.valid_targets:
                 # Direct SDTM variable match
-                if col_id in self.valid_targets:
-                    self._aliases[normalized] = col_id
-                    continue
+                self._aliases[normalized] = col_id
+                continue
 
             # Check if it matches any variable pattern
             for target_var, patterns in self._variable_patterns.items():
@@ -164,10 +163,23 @@ class MetadataAwareMapper:
         Returns:
             MappingSuggestions with mappings and unmapped columns
         """
-        suggestions: list[ColumnMapping] = []
-        unmapped: list[str] = []
-        assigned_targets: set[str] = set()
+        alias_candidates_by_target = self._collect_alias_candidates(frame)
+        suggestions, unmapped, assigned_targets = self._resolve_alias_candidates(
+            frame,
+            alias_candidates_by_target,
+        )
+        self._apply_fuzzy_matching(
+            frame,
+            suggestions,
+            unmapped,
+            assigned_targets,
+        )
 
+        return MappingSuggestions(mappings=suggestions, unmapped_columns=unmapped)
+
+    def _collect_alias_candidates(
+        self, frame: pd.DataFrame
+    ) -> dict[str, list[tuple[str, str | None, str | None]]]:
         # First pass: identify alias-based mappings.
         # When multiple source columns map to the same SDTM target, pick the
         # best candidate (instead of letting DataFrame column order decide).
@@ -178,73 +190,96 @@ class MetadataAwareMapper:
         for column in frame.columns:
             normalized = normalize_text(column)
             target = self._aliases.get(normalized)
+            if not target:
+                continue
 
-            # Check for codelist association
             codelist_name = None
             code_column = None
 
             if self.metadata:
-                # Check if there's a corresponding code column
-                if column.endswith("CD"):
-                    # This is a code column, try to find its text column
-                    text_col = column[:-2]
-                    if text_col in frame.columns:
-                        continue  # Skip code columns, we'll use text columns
-                else:
-                    # Check if there's a code column for this text column
-                    code_col = column + "CD"
-                    if code_col in frame.columns:
-                        code_column = code_col
-                        col_def = self.metadata.get_column(code_col)
-                        if col_def and col_def.format_name:
-                            codelist_name = col_def.format_name
-                    else:
-                        # Check the column itself for a codelist
-                        col_def = self.metadata.get_column(column)
-                        if col_def and col_def.format_name:
-                            codelist_name = col_def.format_name
-
-            if target:
-                alias_candidates_by_target.setdefault(target, []).append(
-                    (column, codelist_name, code_column)
+                codelist_name, code_column, skip = self._resolve_codelist_info(
+                    frame, column
                 )
+                if skip:
+                    continue
 
-        def _alias_priority(target: str | None, column: str) -> int:
-            """Return a higher number for better alias candidates."""
-            t = (target or "").strip().upper()
-            col_norm = normalize_text(column)
+            alias_candidates_by_target.setdefault(target, []).append(
+                (column, codelist_name, code_column)
+            )
 
-            # Domain-specific heuristic: DSSTDTC should prefer actual
-            # disposition/contact/discontinuation dates over generic event dates.
-            if self.domain_code == "DS" and t == "DSSTDTC":
-                score = 0
-                if "LASTCONTACT" in col_norm or (
-                    "LAST" in col_norm and "CONTACT" in col_norm
-                ):
-                    score += 30
-                if "EARLYDISCONTINUATION" in col_norm or "DISCONTINUATION" in col_norm:
-                    score += 20
-                if "WITHDRAW" in col_norm or "WITHDRAWAL" in col_norm:
-                    score += 15
-                if col_norm in {"EVENTDATE", "EVENTDATEOF"} or "EVENTDATE" in col_norm:
-                    score -= 10
-                return score
+        return alias_candidates_by_target
 
-            return 0
+    def _resolve_codelist_info(
+        self, frame: pd.DataFrame, column: str
+    ) -> tuple[str | None, str | None, bool]:
+        if not self.metadata:
+            return None, None, False
 
-        # Process alias mappings first (best candidate per target)
+        if column.endswith("CD"):
+            text_col = column[:-2]
+            if text_col in frame.columns:
+                return None, None, True
+
+        codelist_name = None
+        code_column = None
+        code_col = column + "CD"
+        if code_col in frame.columns:
+            code_column = code_col
+            col_def = self.metadata.get_column(code_col)
+            if col_def and col_def.format_name:
+                codelist_name = col_def.format_name
+        else:
+            col_def = self.metadata.get_column(column)
+            if col_def and col_def.format_name:
+                codelist_name = col_def.format_name
+
+        return codelist_name, code_column, False
+
+    def _alias_priority(self, target: str | None, column: str) -> int:
+        """Return a higher number for better alias candidates."""
+        t = (target or "").strip().upper()
+        col_norm = normalize_text(column)
+
+        # Domain-specific heuristic: DSSTDTC should prefer actual
+        # disposition/contact/discontinuation dates over generic event dates.
+        if self.domain_code == "DS" and t == "DSSTDTC":
+            score = 0
+            if "LASTCONTACT" in col_norm or (
+                "LAST" in col_norm and "CONTACT" in col_norm
+            ):
+                score += 30
+            if "EARLYDISCONTINUATION" in col_norm or "DISCONTINUATION" in col_norm:
+                score += 20
+            if "WITHDRAW" in col_norm or "WITHDRAWAL" in col_norm:
+                score += 15
+            if col_norm in {"EVENTDATE", "EVENTDATEOF"} or "EVENTDATE" in col_norm:
+                score -= 10
+            return score
+
+        return 0
+
+    def _resolve_alias_candidates(
+        self,
+        frame: pd.DataFrame,
+        alias_candidates_by_target: dict[
+            str, list[tuple[str, str | None, str | None]]
+        ],
+    ) -> tuple[list[ColumnMapping], list[str], set[str]]:
+        suggestions: list[ColumnMapping] = []
+        unmapped: list[str] = []
+        assigned_targets: set[str] = set()
+        column_positions = {name: idx for idx, name in enumerate(frame.columns)}
+
         for target, candidates in alias_candidates_by_target.items():
             if target in assigned_targets:
-                for col, _, _ in candidates:
-                    unmapped.append(col)
+                unmapped.extend(col for col, _, _ in candidates)
                 continue
 
-            # Prefer the best-scoring candidate; tie-break by source column order.
             best = max(
                 candidates,
                 key=lambda item: (
-                    _alias_priority(target, item[0]),
-                    -list(frame.columns).index(item[0]),
+                    self._alias_priority(target, item[0]),
+                    -column_positions[item[0]],
                 ),
             )
             best_col, codelist_name, code_column = best
@@ -265,18 +300,23 @@ class MetadataAwareMapper:
                 if col != best_col:
                     unmapped.append(col)
 
-        # Second pass: fuzzy matching for remaining columns
-        # Second pass: fuzzy matching for remaining columns
+        return suggestions, unmapped, assigned_targets
+
+    def _apply_fuzzy_matching(
+        self,
+        frame: pd.DataFrame,
+        suggestions: list[ColumnMapping],
+        unmapped: list[str],
+        assigned_targets: set[str],
+    ) -> None:
         already_mapped_columns = {m.source_column.strip('"') for m in suggestions}
+
         for column in frame.columns:
             if column in already_mapped_columns:
-                continue  # Already processed
+                continue
 
-            # Skip code columns
-            if column.endswith("CD"):
-                base_col = column[:-2]
-                if base_col in frame.columns:
-                    continue
+            if column.endswith("CD") and column[:-2] in frame.columns:
+                continue
 
             match = self._best_fuzzy_match(column)
             if match is None or match.confidence < self.min_confidence:
@@ -288,13 +328,7 @@ class MetadataAwareMapper:
                 continue
 
             assigned_targets.add(match.candidate)
-
-            # Check for codelist
-            codelist_name = None
-            if self.metadata:
-                col_def = self.metadata.get_column(column)
-                if col_def and col_def.format_name:
-                    codelist_name = col_def.format_name
+            codelist_name = self._codelist_for_column(column)
 
             suggestions.append(
                 ColumnMapping(
@@ -306,7 +340,13 @@ class MetadataAwareMapper:
                 )
             )
 
-        return MappingSuggestions(mappings=suggestions, unmapped_columns=unmapped)
+    def _codelist_for_column(self, column: str) -> str | None:
+        if not self.metadata:
+            return None
+        col_def = self.metadata.get_column(column)
+        if col_def and col_def.format_name:
+            return col_def.format_name
+        return None
 
     def _best_fuzzy_match(self, column: str) -> Suggestion | None:
         """Find the best fuzzy match for a column.

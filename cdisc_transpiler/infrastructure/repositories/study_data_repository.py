@@ -13,7 +13,6 @@ try:
 except ModuleNotFoundError:  # pragma: no cover - optional dependency
     pyreadstat = None
 
-from ...application.ports.repositories import StudyDataRepositoryPort
 from ...domain.entities.study_metadata import StudyMetadata
 from ..io.csv_reader import CSVReader, CSVReadOptions
 from ..io.exceptions import DataParseError, DataSourceNotFoundError
@@ -164,12 +163,3 @@ class StudyDataRepository:
         except Exception as e:
             raise DataParseError(f"Failed to read SAS file {path}: {e}") from e
 
-
-# Verify protocol compliance at runtime (duck typing)
-def _verify_protocol_compliance() -> None:
-    """Verify StudyDataRepository implements StudyDataRepositoryPort."""
-    repo: StudyDataRepositoryPort = StudyDataRepository()
-    assert isinstance(repo, StudyDataRepositoryPort)
-
-
-_verify_protocol_compliance()

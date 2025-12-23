@@ -9,7 +9,8 @@ The intent is to validate standard-compliant serialization (XPT and Dataset-XML)
 without depending on the full end-to-end mapping pipeline.
 """
 
-from collections.abc import Iterable
+from typing import TYPE_CHECKING
+
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
@@ -21,10 +22,14 @@ from cdisc_transpiler.domain.entities.mapping import MappingConfig
 from cdisc_transpiler.infrastructure.io.dataset_xml_writer import (
     DATA_NS,
     DATASET_XML_VERSION,
+    DatasetXMLOptions,
     ODM_NS,
     write_dataset_xml,
 )
 from cdisc_transpiler.infrastructure.io.xpt_writer import XPTWriter
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 FIXTURES_DIR = Path(__file__).parent / "data"
 FIXTURE_XPT_DIR = FIXTURES_DIR / "xpt"
@@ -168,7 +173,7 @@ def test_dataset_xml_matches_official_fixture(
         domain_code=domain_code,
         config=config,
         output=out_xml,
-        dataset_name=dataset_name,
+        options=DatasetXMLOptions(dataset_name=dataset_name),
     )
 
     # Minimal structural assertions (avoid volatile fixture-specific attributes)

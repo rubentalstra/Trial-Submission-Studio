@@ -8,14 +8,16 @@ from functools import lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from ...application.ports.repositories import CTRepositoryPort
 from ...config import TranspilerConfig
 from ..caching.memory_cache import MemoryCache
 from .ct_loader import build_registry
 
-_DEFAULT_CT_CACHE = MemoryCache()
+_DEFAULT_CT_CACHE: MemoryCache[
+    tuple[dict[str, ControlledTerminology], dict[str, ControlledTerminology]]
+] = MemoryCache()
 
 if TYPE_CHECKING:
+    from ...application.ports.repositories import CTRepositoryPort
     from ...domain.entities.controlled_terminology import ControlledTerminology
 
 
@@ -37,7 +39,12 @@ class CTRepository:
     def __init__(
         self,
         config: TranspilerConfig | None = None,
-        cache: MemoryCache | None = None,
+        cache: MemoryCache[
+            tuple[
+                dict[str, ControlledTerminology], dict[str, ControlledTerminology]
+            ]
+        ]
+        | None = None,
         ct_version: str | None = None,
     ) -> None:
         """Initialize the repository.
@@ -168,13 +175,3 @@ def get_default_ct_repository() -> CTRepositoryPort:
     default instance removes duplicated singleton patterns across adapters.
     """
     return CTRepository()
-
-
-# Verify protocol compliance at runtime (duck typing)
-def _verify_protocol_compliance() -> None:
-    """Verify CTRepository implements CTRepositoryPort."""
-    repo: CTRepositoryPort = CTRepository()
-    assert isinstance(repo, CTRepositoryPort)
-
-
-_verify_protocol_compliance()

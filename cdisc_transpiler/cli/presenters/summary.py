@@ -4,14 +4,18 @@ This module provides the SummaryPresenter class that formats and displays
 study processing results in a Rich table format.
 """
 
-from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-from rich.console import Console
 from rich.table import Table
 
-from ...application.models import DomainProcessingResult
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping, Sequence
+    from pathlib import Path
+
+    from rich.console import Console
+
+    from ...application.models import DomainProcessingResult
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,6 +41,31 @@ class _ErrorRow:
     codelist: str
 
 
+@dataclass(frozen=True, slots=True)
+class SummaryRequest:
+    results: Sequence[DomainProcessingResult]
+    errors: list[tuple[str, str]]
+    output_dir: Path
+    output_format: str
+    generate_define: bool
+    generate_sas: bool
+    domain_descriptions: Mapping[str, str] | None = None
+    conformance_report_path: Path | None = None
+    conformance_report_error: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class _OutputInfo:
+    output_dir: Path
+    output_format: str
+    generate_define: bool
+    generate_sas: bool
+    total_records: int
+    conformance_report_path: Path | None
+    conformance_report_error: str | None
+    results: Sequence[DomainProcessingResult] | None
+
+
 class SummaryPresenter:
     """Presenter for formatting study processing summaries.
 
@@ -53,7 +82,7 @@ class SummaryPresenter:
         >>> presenter.present(results, errors, output_dir, "xpt", True, True)
     """
 
-    def __init__(self, console: Console):
+    def __init__(self, console: Console) -> None:
         """Initialize the presenter with a console.
 
         Args:
@@ -62,19 +91,7 @@ class SummaryPresenter:
         super().__init__()
         self.console = console
 
-    def present(
-        self,
-        results: Sequence[DomainProcessingResult],
-        errors: list[tuple[str, str]],
-        output_dir: Path,
-        output_format: str,
-        generate_define: bool,
-        generate_sas: bool,
-        *,
-        domain_descriptions: Mapping[str, str] | None = None,
-        conformance_report_path: Path | None = None,
-        conformance_report_error: str | None = None,
-    ) -> None:
+    def present(self, request: SummaryRequest) -> None:
         """Present study processing results in a formatted table.
 
         Args:
@@ -100,29 +117,31 @@ class SummaryPresenter:
 
         # Build and display the summary table
         table = self._build_summary_table(
-            results, domain_descriptions=domain_descriptions
+            request.results, domain_descriptions=request.domain_descriptions
         )
         self.console.print(table)
         self.console.print()
 
         # Display status and output information
         total_records = sum(
-            self._result_records(r) for r in self._iter_all_results(results)
+            self._result_records(r) for r in self._iter_all_results(request.results)
         )
-        self._print_status_summary(len(results), len(errors))
+        self._print_status_summary(len(request.results), len(request.errors))
         self._print_output_information(
-            output_dir,
-            output_format,
-            generate_define,
-            generate_sas,
-            total_records,
-            conformance_report_path=conformance_report_path,
-            conformance_report_error=conformance_report_error,
-            results=results,
+            _OutputInfo(
+                output_dir=request.output_dir,
+                output_format=request.output_format,
+                generate_define=request.generate_define,
+                generate_sas=request.generate_sas,
+                total_records=total_records,
+                conformance_report_path=request.conformance_report_path,
+                conformance_report_error=request.conformance_report_error,
+                results=request.results,
+            )
         )
 
         # Print a readable list of all errors (processing + conformance)
-        self._print_error_details(errors=errors, results=results)
+        self._print_error_details(errors=request.errors, results=request.results)
 
     def _build_summary_table(
         self,
@@ -329,7 +348,7 @@ class SummaryPresenter:
 
     @staticmethod
     def _format_flag(value: bool) -> str:
-        return "✓" if value else "–"
+        return "✓" if value else "-"
 
     def _add_table_rows(
         self,
@@ -390,18 +409,7 @@ class SummaryPresenter:
 
         self.console.print(status_line)
 
-    def _print_output_information(
-        self,
-        output_dir: Path,
-        output_format: str,
-        generate_define: bool,
-        generate_sas: bool,
-        total_records: int,
-        *,
-        conformance_report_path: Path | None = None,
-        conformance_report_error: str | None = None,
-        results: Sequence[DomainProcessingResult] | None = None,
-    ) -> None:
+    def _print_output_information(self, info: _OutputInfo) -> None:
         """Print output directory and file information.
 
         Args:
@@ -413,44 +421,44 @@ class SummaryPresenter:
         """
         # Avoid Rich's path highlighter splitting strings (keeps tests simple).
         self.console.print(
-            f"[bold]📁 Output:[/bold] [cyan]{output_dir}[/cyan]", highlight=False
+            f"[bold]📁 Output:[/bold] [cyan]{info.output_dir}[/cyan]", highlight=False
         )
         self.console.print(
-            f"[bold]📈 Total records:[/bold] [yellow]{total_records:,}[/yellow]"
+            f"[bold]📈 Total records:[/bold] [yellow]{info.total_records:,}[/yellow]"
         )
 
         # If `results` are present, only show artifacts that were actually written.
         # If `results` is omitted (e.g., unit tests calling this method directly),
         # fall back to showing the *requested* outputs.
-        if results is None:
-            generated_xpt = output_format in ("xpt", "both")
-            generated_xml = output_format in ("xml", "both")
-            generated_sas = generate_sas
-            generated_define = generate_define
+        if info.results is None:
+            generated_xpt = info.output_format in ("xpt", "both")
+            generated_xml = info.output_format in ("xml", "both")
+            generated_sas = info.generate_sas
+            generated_define = info.generate_define
         else:
-            all_results = self._iter_all_results(results)
+            all_results = self._iter_all_results(info.results)
             generated_xpt = any(r.xpt_path is not None for r in all_results)
             generated_xml = any(r.xml_path is not None for r in all_results)
             generated_sas = any(r.sas_path is not None for r in all_results)
-            define_path = output_dir / "define.xml"
-            generated_define = generate_define and define_path.exists()
+            define_path = info.output_dir / "define.xml"
+            generated_define = info.generate_define and define_path.exists()
 
         outputs: list[str] = []
-        if output_format in ("xpt", "both") and generated_xpt:
+        if info.output_format in ("xpt", "both") and generated_xpt:
             outputs.append(
-                f"  [dim]├─[/dim] XPT files: [cyan]{output_dir / 'xpt'}[/cyan]"
+                f"  [dim]├─[/dim] XPT files: [cyan]{info.output_dir / 'xpt'}[/cyan]"
             )
-        if output_format in ("xml", "both") and generated_xml:
+        if info.output_format in ("xml", "both") and generated_xml:
             outputs.append(
-                f"  [dim]├─[/dim] Dataset-XML: [cyan]{output_dir / 'dataset-xml'}[/cyan]"
+                f"  [dim]├─[/dim] Dataset-XML: [cyan]{info.output_dir / 'dataset-xml'}[/cyan]"
             )
-        if generate_sas and generated_sas:
+        if info.generate_sas and generated_sas:
             outputs.append(
-                f"  [dim]├─[/dim] SAS programs: [cyan]{output_dir / 'sas'}[/cyan]"
+                f"  [dim]├─[/dim] SAS programs: [cyan]{info.output_dir / 'sas'}[/cyan]"
             )
         if generated_define:
             outputs.append(
-                f"  [dim]└─[/dim] Define-XML: [cyan]{output_dir / 'define.xml'}[/cyan]"
+                f"  [dim]└─[/dim] Define-XML: [cyan]{info.output_dir / 'define.xml'}[/cyan]"
             )
 
         if outputs:
@@ -459,14 +467,14 @@ class SummaryPresenter:
             for output in outputs:
                 self.console.print(output, highlight=False)
 
-        if conformance_report_path is not None:
+        if info.conformance_report_path is not None:
             self.console.print(
-                f"[bold]🧾 Conformance report JSON:[/bold] [cyan]{conformance_report_path}[/cyan]",
+                f"[bold]🧾 Conformance report JSON:[/bold] [cyan]{info.conformance_report_path}[/cyan]",
                 highlight=False,
             )
-        elif conformance_report_error is not None:
+        elif info.conformance_report_error is not None:
             self.console.print(
-                f"[bold]🧾 Conformance report JSON:[/bold] [red]{conformance_report_error}[/red]"
+                f"[bold]🧾 Conformance report JSON:[/bold] [red]{info.conformance_report_error}[/red]"
             )
 
     def _print_error_details(
@@ -584,5 +592,4 @@ class SummaryPresenter:
     ) -> Iterable[DomainProcessingResult]:
         for result in results:
             yield result
-            for supp in result.suppqual_domains:
-                yield supp
+            yield from result.suppqual_domains

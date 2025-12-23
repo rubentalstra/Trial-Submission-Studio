@@ -53,13 +53,11 @@ def _generate_item_oid(variable_name: str, dataset_name: str) -> str:
 
 
 def _is_null(value: object) -> bool:
-    if value is None:
-        return True
-    if isinstance(value, float) and pd.isna(value):
-        return True
-    if isinstance(value, str) and value.strip() == "":
-        return True
-    return False
+    return (
+        value is None
+        or (isinstance(value, float) and pd.isna(value))
+        or (isinstance(value, str) and value.strip() == "")
+    )
 
 
 def _format_value(value: object) -> str:

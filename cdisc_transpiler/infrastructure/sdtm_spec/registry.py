@@ -3,8 +3,6 @@
 This replaces the former `domains_module.registry` package.
 """
 
-from __future__ import annotations
-
 from functools import cache, lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any

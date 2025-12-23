@@ -12,6 +12,8 @@ The use case orchestrates:
 using injected ports/use cases.
 """
 
+from __future__ import annotations
+
 from collections import defaultdict
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -174,8 +176,9 @@ class StudyProcessingUseCase:
         def _ct_resolver(variable: SDTMVariable) -> ControlledTerminology | None:
             if ct_repo is None:
                 return None
-            if getattr(variable, "codelist_code", None):
-                return ct_repo.get_by_code(variable.codelist_code)
+            codelist_code = getattr(variable, "codelist_code", None)
+            if codelist_code:
+                return ct_repo.get_by_code(codelist_code)
             return ct_repo.get_by_name(getattr(variable, "name", ""))
 
         report = check_domain_dataframe(frame, domain, ct_resolver=_ct_resolver)
@@ -266,176 +269,24 @@ class StudyProcessingUseCase:
         )
 
         try:
-            supported_domains = list(self._list_domains())
-
-            # Log study initialization
-            self.logger.log_study_start(
-                request.study_id,
-                request.study_folder,
-                "/".join(request.output_formats),
-                supported_domains,
-            )
-
-            # Load study metadata via repository
-            study_metadata = self._load_study_metadata(request.study_folder)
-            self.logger.log_metadata_loaded(
-                items_count=len(study_metadata.items) if study_metadata.items else None,
-                codelists_count=len(study_metadata.codelists)
-                if study_metadata.codelists
-                else None,
-            )
-
-            if write_outputs:
-                self._setup_output_directories(request)
-            else:
-                request.output_dir.mkdir(parents=True, exist_ok=True)
-
-            # Discover domain files
-            csv_files = list(request.study_folder.glob("*.csv"))
-            self.logger.verbose(f"Found {len(csv_files)} CSV files in study folder")
-
-            domain_discovery_service = self._get_domain_discovery_service()
-            domain_files = domain_discovery_service.discover_domain_files(
-                csv_files, supported_domains
-            )
-
-            if not domain_files:
-                response.success = False
-                response.errors.append(
-                    ("DISCOVERY", f"No domain files found in {request.study_folder}")
-                )
+            init = self._initialize_run(request, response, write_outputs)
+            if init is None:
                 return response
 
-            # Build common column counts for heuristic analysis
-            common_column_counts = self._build_column_counts(domain_files)
-            total_input_files = sum(len(files) for files in domain_files.values())
-
-            summary = ProcessingSummary(
-                study_id=request.study_id,
-                domain_count=len(domain_files),
-                file_count=total_input_files,
-                output_format="/".join(request.output_formats),
-                generate_define=request.generate_define_xml,
-                generate_sas=request.generate_sas,
+            context, domain_files, study_datasets, processed_domains = init
+            self._process_domains(
+                domain_files,
+                context,
+                response,
+                study_datasets,
+                write_outputs=write_outputs,
             )
-            self.logger.log_processing_summary(summary)
-
-            study_datasets: list[DefineDatasetDTO] = []
-            reference_starts: dict[str, str] = {}
-            processed_domains = set(domain_files.keys())
-
-            if write_outputs:
-                xpt_dir = (
-                    request.output_dir / "xpt"
-                    if "xpt" in request.output_formats
-                    else None
-                )
-                xml_dir = (
-                    request.output_dir / "dataset-xml"
-                    if "xml" in request.output_formats
-                    else None
-                )
-                sas_dir = request.output_dir / "sas" if request.generate_sas else None
-            else:
-                xpt_dir = None
-                xml_dir = None
-                sas_dir = None
-
-            output_dirs = DatasetOutputDirs(
-                xpt_dir=xpt_dir,
-                xml_dir=xml_dir,
-                sas_dir=sas_dir,
-            )
-            context = _DomainRunContext(
-                request=request,
-                study_metadata=study_metadata,
-                reference_starts=reference_starts,
-                common_column_counts=common_column_counts,
-                total_input_files=total_input_files,
-                output_dirs=output_dirs,
-            )
-
-            ordered_domains = sorted(
-                domain_files.keys(), key=lambda code: (code != "DM", code)
-            )
-
-            for domain_code in ordered_domains:
-                result = self._process_domain(
-                    domain_code=domain_code,
-                    files_for_domain=domain_files[domain_code],
-                    context=context,
-                )
-
-                response.domain_results.append(result)
-
-                if result.domain_dataframe is not None:
-                    self.logger.log_domain_complete(
-                        domain_code,
-                        final_row_count=len(result.domain_dataframe),
-                        final_column_count=len(result.domain_dataframe.columns),
-                        skipped=not result.success,
-                        reason=result.error,
-                    )
-                else:
-                    self.logger.log_domain_complete(
-                        domain_code,
-                        final_row_count=0,
-                        final_column_count=0,
-                        skipped=not result.success,
-                        reason=result.error,
-                    )
-
-                # SUPPQUAL datasets are not treated as top-level "domains" in the
-                # CLI, but their rows should contribute to record totals.
-                for supp in result.suppqual_domains:
-                    supp_frame = supp.domain_dataframe
-                    if supp_frame is None:
-                        self.logger.log_domain_complete(
-                            supp.domain_code,
-                            final_row_count=0,
-                            final_column_count=0,
-                            skipped=not supp.success,
-                            reason=supp.error,
-                        )
-                    else:
-                        self.logger.log_domain_complete(
-                            supp.domain_code,
-                            final_row_count=len(supp_frame),
-                            final_column_count=len(supp_frame.columns),
-                            skipped=not supp.success,
-                            reason=supp.error,
-                        )
-
-                if result.success:
-                    response.processed_domains.add(domain_code)
-                    response.total_records += result.records
-
-                    if domain_code == "DM" and result.domain_dataframe is not None:
-                        reference_starts.update(
-                            self._extract_reference_starts(result.domain_dataframe)
-                        )
-
-                    if (
-                        write_outputs
-                        and request.generate_define_xml
-                        and result.domain_dataframe is not None
-                    ):
-                        self._add_to_study_datasets(
-                            result,
-                            study_datasets,
-                            request.output_dir,
-                            request.output_formats,
-                        )
-                else:
-                    response.errors.append(
-                        (domain_code, result.error or "Unknown error")
-                    )
 
             # Always run synthesis pass (RELREC/RELSUB/RELSPEC are always attempted).
             synthesis_context = _SynthesisContext(
                 request=request,
                 study_datasets=study_datasets,
-                output_dirs=output_dirs,
+                output_dirs=context.output_dirs,
             )
             self._run_synthesis_pass(
                 response=response,
@@ -461,6 +312,178 @@ class StudyProcessingUseCase:
             self.logger.error(f"Study processing failed: {exc}")
 
         return response
+
+    def _initialize_run(
+        self,
+        request: ProcessStudyRequest,
+        response: ProcessStudyResponse,
+        write_outputs: bool,
+    ) -> (
+        tuple[
+            _DomainRunContext,
+            dict[str, list[tuple[Path, str]]],
+            list[DefineDatasetDTO],
+            set[str],
+        ]
+        | None
+    ):
+        supported_domains = list(self._list_domains())
+
+        self.logger.log_study_start(
+            request.study_id,
+            request.study_folder,
+            "/".join(request.output_formats),
+            supported_domains,
+        )
+
+        study_metadata = self._load_study_metadata(request.study_folder)
+        self.logger.log_metadata_loaded(
+            items_count=len(study_metadata.items) if study_metadata.items else None,
+            codelists_count=len(study_metadata.codelists)
+            if study_metadata.codelists
+            else None,
+        )
+
+        if write_outputs:
+            self._setup_output_directories(request)
+        else:
+            request.output_dir.mkdir(parents=True, exist_ok=True)
+
+        domain_files = self._discover_domain_files(
+            request=request,
+            supported_domains=supported_domains,
+            response=response,
+        )
+        if domain_files is None:
+            return None
+
+        common_column_counts = self._build_column_counts(domain_files)
+        total_input_files = sum(len(files) for files in domain_files.values())
+
+        summary = ProcessingSummary(
+            study_id=request.study_id,
+            domain_count=len(domain_files),
+            file_count=total_input_files,
+            output_format="/".join(request.output_formats),
+            generate_define=request.generate_define_xml,
+            generate_sas=request.generate_sas,
+        )
+        self.logger.log_processing_summary(summary)
+
+        study_datasets: list[DefineDatasetDTO] = []
+        reference_starts: dict[str, str] = {}
+        processed_domains = set(domain_files.keys())
+
+        output_dirs = self._resolve_output_dirs(request, write_outputs)
+        context = _DomainRunContext(
+            request=request,
+            study_metadata=study_metadata,
+            reference_starts=reference_starts,
+            common_column_counts=common_column_counts,
+            total_input_files=total_input_files,
+            output_dirs=output_dirs,
+        )
+
+        return context, domain_files, study_datasets, processed_domains
+
+    def _discover_domain_files(
+        self,
+        *,
+        request: ProcessStudyRequest,
+        supported_domains: list[str],
+        response: ProcessStudyResponse,
+    ) -> dict[str, list[tuple[Path, str]]] | None:
+        csv_files = list(request.study_folder.glob("*.csv"))
+        self.logger.verbose(f"Found {len(csv_files)} CSV files in study folder")
+
+        domain_discovery_service = self._get_domain_discovery_service()
+        domain_files = domain_discovery_service.discover_domain_files(
+            csv_files, supported_domains
+        )
+        if not domain_files:
+            response.success = False
+            response.errors.append(
+                ("DISCOVERY", f"No domain files found in {request.study_folder}")
+            )
+            return None
+        return domain_files
+
+    @staticmethod
+    def _resolve_output_dirs(
+        request: ProcessStudyRequest, write_outputs: bool
+    ) -> DatasetOutputDirs:
+        if not write_outputs:
+            return DatasetOutputDirs(xpt_dir=None, xml_dir=None, sas_dir=None)
+        xpt_dir = request.output_dir / "xpt" if "xpt" in request.output_formats else None
+        xml_dir = (
+            request.output_dir / "dataset-xml"
+            if "xml" in request.output_formats
+            else None
+        )
+        sas_dir = request.output_dir / "sas" if request.generate_sas else None
+        return DatasetOutputDirs(xpt_dir=xpt_dir, xml_dir=xml_dir, sas_dir=sas_dir)
+
+    def _process_domains(
+        self,
+        domain_files: dict[str, list[tuple[Path, str]]],
+        context: _DomainRunContext,
+        response: ProcessStudyResponse,
+        study_datasets: list[DefineDatasetDTO],
+        *,
+        write_outputs: bool,
+    ) -> None:
+        ordered_domains = sorted(
+            domain_files.keys(), key=lambda code: (code != "DM", code)
+        )
+
+        for domain_code in ordered_domains:
+            result = self._process_domain(
+                domain_code=domain_code,
+                files_for_domain=domain_files[domain_code],
+                context=context,
+            )
+
+            response.domain_results.append(result)
+            self._log_domain_result(result)
+            for supp in result.suppqual_domains:
+                self._log_domain_result(supp)
+
+            if result.success:
+                response.processed_domains.add(domain_code)
+                response.total_records += result.records
+
+                if domain_code == "DM" and result.domain_dataframe is not None:
+                    context.reference_starts.update(
+                        self._extract_reference_starts(result.domain_dataframe)
+                    )
+
+                if (
+                    write_outputs
+                    and context.request.generate_define_xml
+                    and result.domain_dataframe is not None
+                ):
+                    self._add_to_study_datasets(
+                        result,
+                        study_datasets,
+                        context.request.output_dir,
+                        context.request.output_formats,
+                    )
+            else:
+                response.errors.append(
+                    (domain_code, result.error or "Unknown error")
+                )
+
+    def _log_domain_result(self, result: DomainProcessingResult) -> None:
+        frame = result.domain_dataframe
+        row_count = len(frame) if frame is not None else 0
+        col_count = len(frame.columns) if frame is not None else 0
+        self.logger.log_domain_complete(
+            result.domain_code,
+            final_row_count=row_count,
+            final_column_count=col_count,
+            skipped=not result.success,
+            reason=result.error,
+        )
 
     def _write_conformance_report_json(
         self, *, request: ProcessStudyRequest, response: ProcessStudyResponse
@@ -517,14 +540,20 @@ class StudyProcessingUseCase:
 
         for files in domain_files.values():
             for file_path, _ in files:
-                try:
-                    headers = self._load_dataset(file_path)
-                except Exception:
+                headers = self._safe_load_headers(file_path)
+                if headers is None:
                     continue
                 for col in headers.columns:
                     common_column_counts[str(col).strip().lower()] += 1
 
         return common_column_counts
+
+    def _safe_load_headers(self, file_path: Path) -> pd.DataFrame | None:
+        try:
+            return self._load_dataset(file_path)
+        except Exception as exc:
+            self.logger.debug(f"Skipping header scan for {file_path}: {exc}")
+            return None
 
     def _process_domain(
         self,
@@ -1195,37 +1224,19 @@ class StudyProcessingUseCase:
 
     def _list_domains(self) -> list[str]:
         """Get list of supported domains via DomainDefinitionRepositoryPort."""
-        if self._domain_definition_repository is None:
-            raise RuntimeError(
-                "DomainDefinitionRepositoryPort is not configured. Wire an infrastructure adapter in the composition root."
-            )
         return list(self._domain_definition_repository.list_domains())
 
     def _get_domain(self, domain_code: str) -> SDTMDomain:
         """Get domain definition via DomainDefinitionRepositoryPort."""
-        if self._domain_definition_repository is None:
-            raise RuntimeError(
-                "DomainDefinitionRepositoryPort is not configured. Wire an infrastructure adapter in the composition root."
-            )
         return self._domain_definition_repository.get_domain(domain_code)
 
     def _load_study_metadata(self, study_folder: Path) -> StudyMetadata:
         """Load study metadata via repository or fallback."""
-        if self._study_data_repository is not None:
-            return self._study_data_repository.load_study_metadata(study_folder)
-
-        raise RuntimeError(
-            "StudyDataRepositoryPort is not configured. Wire an infrastructure adapter in the composition root."
-        )
+        return self._study_data_repository.load_study_metadata(study_folder)
 
     def _load_dataset(self, file_path: Path) -> pd.DataFrame:
         """Load a dataset via repository or fallback."""
-        if self._study_data_repository is not None:
-            return self._study_data_repository.read_dataset(file_path)
-
-        raise RuntimeError(
-            "StudyDataRepositoryPort is not configured. Wire an infrastructure adapter in the composition root."
-        )
+        return self._study_data_repository.read_dataset(file_path)
 
     def _get_domain_discovery_service(self) -> DomainDiscoveryPort:
         """Get injected domain discovery service."""
@@ -1233,12 +1244,7 @@ class StudyProcessingUseCase:
 
     def _get_domain_processing_use_case(self) -> DomainProcessingUseCase:
         """Get or create domain processing use case."""
-        if self._domain_processing_use_case is not None:
-            return self._domain_processing_use_case
-
-        raise RuntimeError(
-            "DomainProcessingUseCase is not configured. Wire it in the composition root (DependencyContainer)."
-        )
+        return self._domain_processing_use_case
 
     def _get_relrec_service(self) -> RelrecService:
         """Get injected RELREC service."""

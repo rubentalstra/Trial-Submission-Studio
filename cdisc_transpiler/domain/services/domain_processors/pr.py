@@ -25,20 +25,27 @@ class PRProcessor(BaseDomainProcessor):
             frame: Domain DataFrame to process in-place
         """
         self._drop_placeholder_rows(frame)
+        self._assign_sequence(frame)
+        self._normalize_visit_fields(frame)
+        self._compute_study_days(frame)
+        self._normalize_prdur(frame)
+        self._normalize_reference_fields(frame)
+        self._normalize_prdecod(frame)
+        self._normalize_epoch(frame)
+        self._apply_timing_defaults(frame)
+        self._normalize_visitnum(frame)
 
-        # Always regenerate PRSEQ - source values may not be unique (SD0005)
+    @staticmethod
+    def _assign_sequence(frame: pd.DataFrame) -> None:
         NumericTransformer.assign_sequence(frame, "PRSEQ", "USUBJID")
 
-        def _visit_label(value: object) -> str:
-            try:
-                return f"Visit {int(float(str(value)))}"
-            except (TypeError, ValueError):
-                return "Visit 1"
-
-        # Do not synthesize visit variables; only normalize when present.
+    @staticmethod
+    def _normalize_visit_fields(frame: pd.DataFrame) -> None:
         for col in ("VISIT", "VISITNUM"):
             if col in frame.columns:
                 frame[col] = frame[col].astype("string").fillna("").str.strip()
+
+    def _compute_study_days(self, frame: pd.DataFrame) -> None:
         if "PRSTDTC" in frame.columns:
             DateTransformer.compute_study_day(
                 frame,
@@ -55,19 +62,23 @@ class PRProcessor(BaseDomainProcessor):
                 reference_starts=self.reference_starts,
                 ref="RFSTDTC",
             )
+
+    @staticmethod
+    def _normalize_prdur(frame: pd.DataFrame) -> None:
         if "PRDUR" in frame.columns:
             frame["PRDUR"] = frame["PRDUR"].astype("string").fillna("").str.strip()
 
+    @staticmethod
+    def _normalize_reference_fields(frame: pd.DataFrame) -> None:
         if "PRRFTDTC" in frame.columns:
             frame["PRRFTDTC"] = (
                 frame["PRRFTDTC"].astype("string").fillna("").str.strip()
             )
-
         for col in ("PRTPTREF", "PRTPT", "PRTPTNUM", "PRELTM"):
             if col in frame.columns:
                 frame[col] = frame[col].astype("string").fillna("").str.strip()
-        # PRDECOD should use CT value. If we can't map confidently, leave it blank
-        # rather than inventing a (potentially wrong) CT default.
+
+    def _normalize_prdecod(self, frame: pd.DataFrame) -> None:
         if "PRDECOD" in frame.columns:
             prdecod = frame["PRDECOD"].astype("string").fillna("").str.strip()
             prdecod_upper = prdecod.str.upper()
@@ -81,7 +92,6 @@ class PRProcessor(BaseDomainProcessor):
                         .str.upper()
                     )
                     prdecod_upper = prdecod_upper.where(prdecod_upper != site, "")
-            # Also treat USUBJID prefix (e.g., KIEM-01) as contamination.
             if "USUBJID" in frame.columns:
                 prefix = (
                     frame["USUBJID"]
@@ -94,6 +104,7 @@ class PRProcessor(BaseDomainProcessor):
                 )
                 prdecod_upper = prdecod_upper.where(prdecod_upper != prefix, "")
             frame["PRDECOD"] = prdecod_upper
+
         ct_prdecod = self._get_controlled_terminology(variable="PRDECOD")
         if ct_prdecod:
             if "PRDECOD" not in frame.columns:
@@ -105,9 +116,14 @@ class PRProcessor(BaseDomainProcessor):
                 decod = decod.apply(ct_prdecod.normalize)
                 decod = decod.where(decod.isin(ct_prdecod.submission_values), "")
                 frame["PRDECOD"] = decod
+
+    @staticmethod
+    def _normalize_epoch(frame: pd.DataFrame) -> None:
         if "EPOCH" in frame.columns:
             frame["EPOCH"] = frame["EPOCH"].astype("string").fillna("").str.strip()
-        # Ensure timing reference fields are populated to satisfy SD1282
+
+    @staticmethod
+    def _apply_timing_defaults(frame: pd.DataFrame) -> None:
         timing_defaults = {
             "PRTPTREF": "VISIT",
             "PRTPT": "VISIT",
@@ -124,11 +140,19 @@ class PRProcessor(BaseDomainProcessor):
                     frame[col] = numeric.astype(int)
                 else:
                     frame[col] = series.replace("", default)
-        # Ensure VISITNUM numeric
-        if "VISITNUM" in frame.columns:
-            frame["VISITNUM"] = (
-                NumericTransformer.force_numeric(frame["VISITNUM"])
-                .fillna(1)
-                .astype(int)
-            )
-            frame["VISIT"] = frame["VISITNUM"].map(_visit_label).astype("string")
+
+    @staticmethod
+    def _normalize_visitnum(frame: pd.DataFrame) -> None:
+        if "VISITNUM" not in frame.columns:
+            return
+        frame["VISITNUM"] = (
+            NumericTransformer.force_numeric(frame["VISITNUM"]).fillna(1).astype(int)
+        )
+        frame["VISIT"] = frame["VISITNUM"].map(_visit_label).astype("string")
+
+
+def _visit_label(value: object) -> str:
+    try:
+        return f"Visit {int(float(str(value)))}"
+    except (TypeError, ValueError):
+        return "Visit 1"

@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-import pandas as pd
+from ...pandas_utils import is_missing_scalar
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -46,7 +46,7 @@ class CodeList:
         Returns:
             The text value if found, None otherwise
         """
-        if code is None or pd.isna(code):
+        if code is None or is_missing_scalar(code):
             return None
 
         # Normalize the lookup value
@@ -67,7 +67,7 @@ class CodeList:
         Returns:
             The code value if found, None otherwise
         """
-        if text is None or pd.isna(text):
+        if text is None or is_missing_scalar(text):
             return None
 
         text_str = str(text).strip().upper()

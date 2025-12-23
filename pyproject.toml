@@ -97,10 +97,8 @@ select = [
 
 ignore = [
     "E501",    # Line too long (formatter handles this)
-    "S603",    # subprocess without shell=True (too strict)
-    "S607",    # Starting a process with a partial path (too strict)
-    "ANN101",  # Missing type annotation for self (redundant)
-    "ANN102",  # Missing type annotation for cls (redundant)
+    # "S603",    # subprocess without shell=True (too strict)
+    # "S607",    # Starting a process with a partial path (too strict)
 ]
 
 exclude = [

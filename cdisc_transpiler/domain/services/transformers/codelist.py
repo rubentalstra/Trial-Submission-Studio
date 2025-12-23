@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, Protocol
 
 import pandas as pd
 
-from ....pandas_utils import ensure_numeric_series, ensure_series
+from ....pandas_utils import ensure_numeric_series, ensure_series, is_missing_scalar
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
@@ -48,6 +48,10 @@ class CodelistTransformer:
         if not codelist:
             return ensure_series(source_data)
 
+        index: pd.Index | None = None
+        if isinstance(source_data, (pd.Series, pd.DataFrame)):
+            index = source_data.index
+
         if code_column and source_frame is not None:
             code_col = code_column
             if code_col not in source_frame.columns and unquote_func:
@@ -58,11 +62,11 @@ class CodelistTransformer:
             if code_col in source_frame.columns:
                 code_values = ensure_series(
                     source_frame[code_col],
-                    index=source_data.index if hasattr(source_data, "index") else None,
+                    index=index,
                 )
 
                 def transform(code_val: object) -> object:
-                    if pd.isna(code_val):
+                    if is_missing_scalar(code_val):
                         return None
                     text = codelist.get_text(code_val)
                     return text if text is not None else str(code_val)
@@ -72,7 +76,7 @@ class CodelistTransformer:
                 )
 
         def transform_value(val: object) -> object:
-            if pd.isna(val):
+            if is_missing_scalar(val):
                 return val
             text = codelist.get_text(val)
             if text is not None:
@@ -108,8 +112,10 @@ class CodelistTransformer:
                 trimmed = series.str.strip()
                 mask = trimmed.notna() & (trimmed != "")
 
-                def _normalize_ct_value(value: str) -> str:
-                    normalized = normalizer(value)
+                def _normalize_ct_value(
+                    value: str, *, _normalizer: Callable[[str], str] = normalizer
+                ) -> str:
+                    normalized = _normalizer(value)
                     return normalized or value
 
                 normalized = series.copy()

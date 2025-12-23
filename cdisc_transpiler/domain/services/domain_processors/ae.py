@@ -23,18 +23,30 @@ class AEProcessor(BaseDomainProcessor):
         Args:
             frame: Domain DataFrame to process in-place
         """
-        # Drop placeholder rows
         self._drop_placeholder_rows(frame)
+        self._normalize_duration(frame)
+        self._normalize_visits(frame)
+        self._apply_date_fields(frame)
+        self._drop_nonmodel_columns(frame)
+        self._normalize_core_terms(frame)
+        self._normalize_code_columns(frame)
+        self._assign_sequence(frame)
+        self._normalize_yes_no(frame)
+        self._drop_visit_extras(frame)
 
-        # Do not default/guess durations.
-        if "AEDUR" in frame.columns:
-            frame.loc[:, "AEDUR"] = (
-                frame["AEDUR"].astype("string").fillna("").str.strip()
-            )
-        # Do not synthesize visit numbering; only normalize whitespace.
+    @staticmethod
+    def _normalize_duration(frame: pd.DataFrame) -> None:
+        if "AEDUR" not in frame.columns:
+            return
+        frame.loc[:, "AEDUR"] = frame["AEDUR"].astype("string").fillna("").str.strip()
+
+    @staticmethod
+    def _normalize_visits(frame: pd.DataFrame) -> None:
         for col in ("VISIT", "VISITNUM"):
             if col in frame.columns:
                 frame.loc[:, col] = frame[col].astype("string").fillna("").str.strip()
+
+    def _apply_date_fields(self, frame: pd.DataFrame) -> None:
         DateTransformer.ensure_date_pair_order(frame, "AESTDTC", "AEENDTC")
         DateTransformer.compute_study_day(
             frame,
@@ -50,123 +62,106 @@ class AEProcessor(BaseDomainProcessor):
             reference_starts=self.reference_starts,
             ref="RFSTDTC",
         )
-        # Avoid emitting TEAE (non-model) in AE.
+
+    @staticmethod
+    def _drop_nonmodel_columns(frame: pd.DataFrame) -> None:
         if "TEAE" in frame.columns:
             frame.drop(columns=["TEAE"], inplace=True)
 
-        # Treatment-emergent info (e.g., TRTEMFL) is represented via SUPPAE
-        # supplemental qualifiers, not as a non-model AE variable.
-        # Do not add placeholder MedDRA hierarchy values.
-        # AEACN - normalize known synonyms; do not default missing values.
-        if "AEACN" in frame.columns:
-            frame.loc[:, "AEACN"] = (
-                frame["AEACN"]
-                .astype("string")
-                .fillna("")
-                .str.upper()
-                .str.strip()
-                .replace(
-                    {
-                        "NONE": "DOSE NOT CHANGED",
-                        "NO ACTION": "DOSE NOT CHANGED",
-                        "UNK": "UNKNOWN",
-                        "NA": "NOT APPLICABLE",
-                        "N/A": "NOT APPLICABLE",
-                    }
-                )
-            )
-        # AESER - normalize to Y/N when possible; otherwise blank.
-        if "AESER" in frame.columns:
-            frame.loc[:, "AESER"] = (
-                frame["AESER"]
-                .astype("string")
-                .fillna("")
-                .str.upper()
-                .str.strip()
-                .replace(
-                    {
-                        "YES": "Y",
-                        "NO": "N",
-                        "1": "Y",
-                        "0": "N",
-                        "TRUE": "Y",
-                        "FALSE": "N",
-                    }
-                )
-            )
-        # AEREL - normalize known synonyms; do not default missing values.
-        if "AEREL" in frame.columns:
-            frame.loc[:, "AEREL"] = (
-                frame["AEREL"]
-                .astype("string")
-                .fillna("")
-                .str.upper()
-                .str.strip()
-                .replace(
-                    {
-                        "NO": "NOT RELATED",
-                        "N": "NOT RELATED",
-                        "NOT SUSPECTED": "NOT RELATED",
-                        "UNLIKELY RELATED": "NOT RELATED",
-                        "YES": "RELATED",
-                        "Y": "RELATED",
-                        "POSSIBLY RELATED": "RELATED",
-                        "PROBABLY RELATED": "RELATED",
-                        "SUSPECTED": "RELATED",
-                        "UNK": "UNKNOWN",
-                        "NOT ASSESSED": "UNKNOWN",
-                    }
-                )
-            )
-        # AEOUT - normalize known synonyms; do not default missing values.
-        if "AEOUT" in frame.columns:
-            frame.loc[:, "AEOUT"] = (
-                frame["AEOUT"]
-                .astype("string")
-                .fillna("")
-                .str.upper()
-                .str.strip()
-                .replace(
-                    {
-                        "RECOVERED": "RECOVERED/RESOLVED",
-                        "RESOLVED": "RECOVERED/RESOLVED",
-                        "RECOVERED OR RESOLVED": "RECOVERED/RESOLVED",
-                        "RECOVERING": "RECOVERING/RESOLVING",
-                        "RESOLVING": "RECOVERING/RESOLVING",
-                        "NOT RECOVERED": "NOT RECOVERED/NOT RESOLVED",
-                        "NOT RESOLVED": "NOT RECOVERED/NOT RESOLVED",
-                        "UNRESOLVED": "NOT RECOVERED/NOT RESOLVED",
-                        "RECOVERED WITH SEQUELAE": "RECOVERED/RESOLVED WITH SEQUELAE",
-                        "RESOLVED WITH SEQUELAE": "RECOVERED/RESOLVED WITH SEQUELAE",
-                        "DEATH": "FATAL",
-                        "5": "FATAL",
-                        "GRADE 5": "FATAL",
-                        "UNK": "UNKNOWN",
-                        "U": "UNKNOWN",
-                    }
-                )
-            )
-        # AESEV - normalize known severity encodings; do not default missing values.
-        if "AESEV" in frame.columns:
-            frame.loc[:, "AESEV"] = (
-                frame["AESEV"]
-                .astype("string")
-                .fillna("")
-                .str.upper()
-                .str.strip()
-                .replace(
-                    {
-                        "1": "MILD",
-                        "GRADE 1": "MILD",
-                        "2": "MODERATE",
-                        "GRADE 2": "MODERATE",
-                        "3": "SEVERE",
-                        "GRADE 3": "SEVERE",
-                    }
-                )
-            )
+    def _normalize_core_terms(self, frame: pd.DataFrame) -> None:
+        self._normalize_with_map(
+            frame,
+            "AEACN",
+            {
+                "NONE": "DOSE NOT CHANGED",
+                "NO ACTION": "DOSE NOT CHANGED",
+                "UNK": "UNKNOWN",
+                "NA": "NOT APPLICABLE",
+                "N/A": "NOT APPLICABLE",
+            },
+        )
+        self._normalize_with_map(
+            frame,
+            "AESER",
+            {
+                "YES": "Y",
+                "NO": "N",
+                "1": "Y",
+                "0": "N",
+                "TRUE": "Y",
+                "FALSE": "N",
+            },
+        )
+        self._normalize_with_map(
+            frame,
+            "AEREL",
+            {
+                "NO": "NOT RELATED",
+                "N": "NOT RELATED",
+                "NOT SUSPECTED": "NOT RELATED",
+                "UNLIKELY RELATED": "NOT RELATED",
+                "YES": "RELATED",
+                "Y": "RELATED",
+                "POSSIBLY RELATED": "RELATED",
+                "PROBABLY RELATED": "RELATED",
+                "SUSPECTED": "RELATED",
+                "UNK": "UNKNOWN",
+                "NOT ASSESSED": "UNKNOWN",
+            },
+        )
+        self._normalize_with_map(
+            frame,
+            "AEOUT",
+            {
+                "RECOVERED": "RECOVERED/RESOLVED",
+                "RESOLVED": "RECOVERED/RESOLVED",
+                "RECOVERED OR RESOLVED": "RECOVERED/RESOLVED",
+                "RECOVERING": "RECOVERING/RESOLVING",
+                "RESOLVING": "RECOVERING/RESOLVING",
+                "NOT RECOVERED": "NOT RECOVERED/NOT RESOLVED",
+                "NOT RESOLVED": "NOT RECOVERED/NOT RESOLVED",
+                "UNRESOLVED": "NOT RECOVERED/NOT RESOLVED",
+                "RECOVERED WITH SEQUELAE": "RECOVERED/RESOLVED WITH SEQUELAE",
+                "RESOLVED WITH SEQUELAE": "RECOVERED/RESOLVED WITH SEQUELAE",
+                "DEATH": "FATAL",
+                "5": "FATAL",
+                "GRADE 5": "FATAL",
+                "UNK": "UNKNOWN",
+                "U": "UNKNOWN",
+            },
+        )
+        self._normalize_with_map(
+            frame,
+            "AESEV",
+            {
+                "1": "MILD",
+                "GRADE 1": "MILD",
+                "2": "MODERATE",
+                "GRADE 2": "MODERATE",
+                "3": "SEVERE",
+                "GRADE 3": "SEVERE",
+            },
+        )
 
-        # Do not default/guess EPOCH.
+    @staticmethod
+    def _normalize_with_map(
+        frame: pd.DataFrame,
+        column: str,
+        mapping: dict[str, str],
+    ) -> None:
+        if column not in frame.columns:
+            return
+        frame.loc[:, column] = (
+            frame[column]
+            .astype("string")
+            .fillna("")
+            .str.upper()
+            .str.strip()
+            .replace(mapping)
+        )
+
+    @staticmethod
+    def _normalize_code_columns(frame: pd.DataFrame) -> None:
         for code_var in (
             "AEPTCD",
             "AEHLGTCD",
@@ -180,32 +175,35 @@ class AEProcessor(BaseDomainProcessor):
                 frame[code_var] = numeric.astype("Int64")
             else:
                 frame[code_var] = pd.Series([pd.NA] * len(frame), dtype="Int64")
+
+    @staticmethod
+    def _assign_sequence(frame: pd.DataFrame) -> None:
         NumericTransformer.assign_sequence(frame, "AESEQ", "USUBJID")
         if "AESEQ" in frame.columns:
             frame.loc[:, "AESEQ"] = frame["AESEQ"].astype("Int64")
 
-        # AESINTV is a Yes/No Response field (C66742). When mapped from non-YN
-        # source columns (e.g., design version numbers), blank it rather than
-        # emitting CT-invalid values.
-        if "AESINTV" in frame.columns:
-            yn_map = {
-                "Y": "Y",
-                "YES": "Y",
-                "1": "Y",
-                "TRUE": "Y",
-                "N": "N",
-                "NO": "N",
-                "0": "N",
-                "FALSE": "N",
-                "": "",
-                "NAN": "",
-                "<NA>": "",
-            }
-            raw = frame["AESINTV"].astype("string").fillna("").str.strip().str.upper()
-            frame.loc[:, "AESINTV"] = raw.map(yn_map).fillna("")
-        # Remove non-standard extras to keep AE aligned to SDTM metadata.
-        # Treatment-emergent information is provided via SUPPAE (e.g., TRTEMFL)
-        # rather than adding non-model variables to AE.
+    @staticmethod
+    def _normalize_yes_no(frame: pd.DataFrame) -> None:
+        if "AESINTV" not in frame.columns:
+            return
+        yn_map = {
+            "Y": "Y",
+            "YES": "Y",
+            "1": "Y",
+            "TRUE": "Y",
+            "N": "N",
+            "NO": "N",
+            "0": "N",
+            "FALSE": "N",
+            "": "",
+            "NAN": "",
+            "<NA>": "",
+        }
+        raw = frame["AESINTV"].astype("string").fillna("").str.strip().str.upper()
+        frame.loc[:, "AESINTV"] = raw.map(yn_map).fillna("")
+
+    @staticmethod
+    def _drop_visit_extras(frame: pd.DataFrame) -> None:
         for extra in ("VISIT", "VISITNUM"):
             if extra in frame.columns:
                 frame.drop(columns=[extra], inplace=True)

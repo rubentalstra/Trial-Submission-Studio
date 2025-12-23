@@ -8,7 +8,9 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 import os
 from pathlib import Path
+import tomllib
 from typing import cast
+import warnings
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,9 +154,10 @@ class ConfigLoader:
                 config = ConfigLoader._load_from_toml(config_file, config)
             except Exception as e:
                 # Log warning but don't fail - fall back to env/defaults
-                import warnings
-
-                warnings.warn(f"Failed to load config from {config_file}: {e}")
+                warnings.warn(
+                    f"Failed to load config from {config_file}: {e}",
+                    stacklevel=2,
+                )
 
         return config
 
@@ -176,10 +179,8 @@ class ConfigLoader:
             ImportError: If TOML library not available
             ValueError: If TOML file is malformed
         """
-        import tomllib
-
-        with open(config_file, "rb") as f:
-            data = tomllib.load(f)
+        with config_file.open("rb") as handle:
+            data = tomllib.load(handle)
 
         # Extract sections
         paths = _get_table(data, "paths")

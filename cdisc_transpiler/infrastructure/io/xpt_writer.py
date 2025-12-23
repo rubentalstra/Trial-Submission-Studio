@@ -133,8 +133,7 @@ def write_xpt_file(
 
         is_char_like = not force_numeric and (
             expected_upper == "CHAR"
-            or isinstance(series.dtype, pd.CategoricalDtype)
-            or isinstance(series.dtype, pd.StringDtype)
+            or isinstance(series.dtype, (pd.CategoricalDtype, pd.StringDtype))
             or pd.api.types.is_object_dtype(series.dtype)
         )
 

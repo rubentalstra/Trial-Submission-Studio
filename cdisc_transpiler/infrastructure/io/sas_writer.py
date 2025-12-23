@@ -12,7 +12,7 @@ from pathlib import Path
 import re
 from typing import TYPE_CHECKING
 
-from jinja2 import Environment, StrictUndefined
+from jinja2 import Environment, StrictUndefined, select_autoescape
 
 from cdisc_transpiler.infrastructure.repositories.ct_repository import (
     get_default_ct_repository,
@@ -66,8 +66,7 @@ _WHITESPACE_RE = re.compile(r"\s+")
 def _normalize_token(value: str) -> str:
     upper = (value or "").strip().upper()
     upper = upper.replace("_", " ").replace("-", " ")
-    upper = _WHITESPACE_RE.sub(" ", upper)
-    return upper
+    return _WHITESPACE_RE.sub(" ", upper)
 
 
 def _token_variants(value: str) -> set[str]:
@@ -232,6 +231,7 @@ class SASProgramGenerator:
             trim_blocks=True,
             lstrip_blocks=True,
             undefined=StrictUndefined,
+            autoescape=select_autoescape(default_for_string=False),
         )
         self._template = self._env.from_string(SAS_PROGRAM_TEMPLATE)
 

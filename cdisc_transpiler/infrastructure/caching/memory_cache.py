@@ -6,16 +6,14 @@ for expensive operations like CSV parsing.
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import TYPE_CHECKING, Generic, TypeVar
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from datetime import timedelta
 
-T = TypeVar("T")
-
 
 @dataclass(slots=True)
-class CacheEntry(Generic[T]):
+class CacheEntry[T]:
     """A cache entry with optional expiration."""
 
     value: T
@@ -29,7 +27,7 @@ class CacheEntry(Generic[T]):
         return datetime.now() > self.expires_at
 
 
-class MemoryCache(Generic[T]):
+class MemoryCache[T]:
     """Simple in-memory cache with optional TTL.
 
     This cache provides a controlled interface for caching expensive operations

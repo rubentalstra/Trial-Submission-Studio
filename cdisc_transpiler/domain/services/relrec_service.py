@@ -270,9 +270,8 @@ class RelrecService:
             Domain dataframe or None if not found or empty
         """
         for code, df in domain_dataframes.items():
-            if code.upper() == domain_code.upper():
-                if not df.empty:
-                    return df
+            if code.upper() == domain_code.upper() and not df.empty:
+                return df
         return None
 
     def _build_seq_map(

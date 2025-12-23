@@ -8,8 +8,10 @@ builder modules. Consolidating them here reduces file count and makes the
 infrastructure I/O layer easier to navigate.
 """
 
+from contextlib import suppress
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING, TypeAlias
+from typing import TYPE_CHECKING
 from xml.etree import ElementTree as ET
 from xml.etree.ElementTree import Element
 
@@ -20,7 +22,10 @@ from cdisc_transpiler.infrastructure.repositories.ct_repository import (
     get_default_ct_repository,
 )
 from cdisc_transpiler.infrastructure.sdtm_spec.constants import CT_VERSION
-from cdisc_transpiler.infrastructure.sdtm_spec.registry import get_domain
+from cdisc_transpiler.infrastructure.sdtm_spec.registry import (
+    SUPP_DOMAIN_CODE_LENGTH,
+    get_domain,
+)
 
 from ..xml_utils import attr, safe_href, tag
 from .constants import (
@@ -60,15 +65,14 @@ if TYPE_CHECKING:
         StudyDataset,
     )
 
-    XmlElement: TypeAlias = Element[str]
-else:
-    XmlElement: TypeAlias = Element
-ItemDefSpec: TypeAlias = tuple[
+type XmlElement = Element
+type ItemDefSpec = tuple[
     SDTMVariable, str, ValueListDefinition | None, WhereClauseDefinition | None
 ]
-ValueListItemSpec: TypeAlias = tuple[SDTMVariable, str]
-CodeListSpec: TypeAlias = tuple[SDTMVariable, str, set[str]]
+type ValueListItemSpec = tuple[SDTMVariable, str]
+type CodeListSpec = tuple[SDTMVariable, str, set[str]]
 DTC_DATETIME_MIN_LENGTH = 19
+DOMAIN_CODE_PREFIX_LEN = 2
 
 
 def write_study_define_file(
@@ -109,10 +113,43 @@ def build_study_define_tree(
             "No datasets supplied for study-level Define generation"
         )
 
-    timestamp = datetime.now(UTC).isoformat(timespec="seconds")
     study_id = (study_id or "STUDY").strip() or "STUDY"
-    study_oid = f"STDY.{study_id}"
+    root, metadata = _build_define_header(study_id, sdtm_version, context)
 
+    state = _DefineBuildState()
+    for ds in datasets:
+        _collect_dataset_definitions(state, ds)
+
+    _append_item_groups(metadata, state.item_groups)
+    _append_item_defs(metadata, state.item_def_specs)
+    _append_value_list_item_defs(metadata, state.vl_item_def_specs)
+    _append_code_lists(metadata, state.code_list_specs)
+
+    append_value_list_defs(metadata, state.value_list_defs)
+    append_where_clause_defs(metadata, state.where_clause_defs)
+    append_method_defs(metadata, [])
+
+    comments = get_default_standard_comments()
+    append_comment_defs(metadata, comments)
+
+    return root
+
+
+@dataclass(slots=True)
+class _DefineBuildState:
+    item_groups: list[XmlElement] = field(default_factory=list)
+    item_def_specs: dict[str, ItemDefSpec] = field(default_factory=dict)
+    vl_item_def_specs: dict[str, ValueListItemSpec] = field(default_factory=dict)
+    code_list_specs: dict[str, CodeListSpec] = field(default_factory=dict)
+    value_list_defs: list[ValueListDefinition] = field(default_factory=list)
+    where_clause_defs: list[WhereClauseDefinition] = field(default_factory=list)
+
+
+def _build_define_header(
+    study_id: str, sdtm_version: str, context: str
+) -> tuple[XmlElement, XmlElement]:
+    timestamp = datetime.now(UTC).isoformat(timespec="seconds")
+    study_oid = f"STDY.{study_id}"
     define_file_oid = f"{study_oid}.Define-XML_{DEFINE_VERSION}"
     root: XmlElement = ET.Element(
         tag(ODM_NS, "ODM"),
@@ -153,87 +190,102 @@ def build_study_define_tree(
     acrf = ET.SubElement(metadata, tag(DEF_NS, "AnnotatedCRF"))
     ET.SubElement(acrf, tag(DEF_NS, "DocumentRef"), attrib={"leafID": ACRF_LEAF_ID})
 
-    item_groups: list[XmlElement] = []
-    item_def_specs: dict[str, ItemDefSpec] = {}
-    vl_item_def_specs: dict[str, ValueListItemSpec] = {}
-    code_list_specs: dict[str, CodeListSpec] = {}
-    value_list_defs: list[ValueListDefinition] = []
-    where_clause_defs: list[WhereClauseDefinition] = []
+    return root, metadata
 
-    for ds in datasets:
-        domain = get_domain(ds.domain_code)
-        parent_domain_code = ds.domain_code
 
-        active_vars = get_active_domain_variables(domain, ds.dataframe)
+def _collect_dataset_definitions(state: _DefineBuildState, ds: StudyDataset) -> None:
+    domain = get_domain(ds.domain_code)
+    active_vars = get_active_domain_variables(domain, ds.dataframe)
 
-        ig_attrib: dict[str, str] = {
-            "OID": f"IG.{ds.domain_code}",
-            "Name": ds.domain_code,
-            "Repeating": "Yes",
-            "Domain": parent_domain_code,
-            "SASDatasetName": ds.domain_code[:8],
-        }
-        ig_attrib[attr(DEF_NS, "Structure")] = (
-            ds.structure or "One record per subject per domain-specific entity"
+    ig = _build_item_group(ds, domain, active_vars)
+    state.item_groups.append(ig)
+
+    for var in active_vars:
+        oid = f"IT.{ds.domain_code}.{var.name}"
+        if oid not in state.item_def_specs:
+            state.item_def_specs[oid] = (var, ds.domain_code, None, None)
+        if var.codelist_code:
+            cl_oid = f"CL.{ds.domain_code}.{var.name}"
+            if cl_oid not in state.code_list_specs:
+                extended = collect_extended_codelist_values(ds.dataframe, var)
+                state.code_list_specs[cl_oid] = (var, ds.domain_code, extended)
+
+    vl_defs, wc_defs, vl_items, _vl_oid = build_supp_value_lists(ds.dataframe, domain)
+    state.value_list_defs.extend(vl_defs)
+    state.where_clause_defs.extend(wc_defs)
+    state.vl_item_def_specs.update(vl_items)
+
+
+def _build_item_group(
+    ds: StudyDataset, domain: SDTMDomain, active_vars: Iterable[SDTMVariable]
+) -> XmlElement:
+    ig_attrib: dict[str, str] = {
+        "OID": f"IG.{ds.domain_code}",
+        "Name": ds.domain_code,
+        "Repeating": "Yes",
+        "Domain": ds.domain_code,
+        "SASDatasetName": ds.domain_code[:8],
+    }
+    ig_attrib[attr(DEF_NS, "Structure")] = (
+        ds.structure or "One record per subject per domain-specific entity"
+    )
+    ig_attrib[attr(DEF_NS, "Class")] = domain.class_name or "EVENTS"
+
+    if ds.archive_location:
+        ig_attrib[attr(DEF_NS, "ArchiveLocationID")] = f"LF.{ds.domain_code}"
+
+    ig: XmlElement = ET.Element(tag(ODM_NS, "ItemGroupDef"), attrib=ig_attrib)
+
+    desc = ET.SubElement(ig, tag(ODM_NS, "Description"))
+    ET.SubElement(
+        desc,
+        tag(ODM_NS, "TranslatedText"),
+        attrib={attr(XML_NS, "lang"): "en"},
+    ).text = ds.label or domain.label or ds.domain_code
+
+    append_item_refs(ig, active_vars, ds.domain_code)
+
+    if ds.archive_location:
+        leaf = ET.SubElement(
+            ig,
+            tag(DEF_NS, "leaf"),
+            attrib={
+                "ID": f"LF.{ds.domain_code}",
+                attr(XLINK_NS, "href"): safe_href(str(ds.archive_location)),
+            },
         )
-        ig_attrib[attr(DEF_NS, "Class")] = domain.class_name or "EVENTS"
+        ET.SubElement(leaf, tag(DEF_NS, "title")).text = f"{ds.domain_code}.xpt"
 
-        if ds.archive_location:
-            ig_attrib[attr(DEF_NS, "ArchiveLocationID")] = f"LF.{ds.domain_code}"
+    return ig
 
-        ig: XmlElement = ET.Element(tag(ODM_NS, "ItemGroupDef"), attrib=ig_attrib)
 
-        desc = ET.SubElement(ig, tag(ODM_NS, "Description"))
-        ET.SubElement(
-            desc,
-            tag(ODM_NS, "TranslatedText"),
-            attrib={attr(XML_NS, "lang"): "en"},
-        ).text = ds.label or domain.label or ds.domain_code
-
-        append_item_refs(ig, active_vars, ds.domain_code)
-
-        if ds.archive_location:
-            leaf = ET.SubElement(
-                ig,
-                tag(DEF_NS, "leaf"),
-                attrib={
-                    "ID": f"LF.{ds.domain_code}",
-                    attr(XLINK_NS, "href"): safe_href(str(ds.archive_location)),
-                },
-            )
-            ET.SubElement(leaf, tag(DEF_NS, "title")).text = f"{ds.domain_code}.xpt"
-
-        item_groups.append(ig)
-
-        for var in active_vars:
-            oid = f"IT.{ds.domain_code}.{var.name}"
-            if oid not in item_def_specs:
-                item_def_specs[oid] = (var, ds.domain_code, None, None)
-            if var.codelist_code:
-                cl_oid = f"CL.{ds.domain_code}.{var.name}"
-                if cl_oid not in code_list_specs:
-                    extended = collect_extended_codelist_values(ds.dataframe, var)
-                    code_list_specs[cl_oid] = (var, ds.domain_code, extended)
-
-        vl_defs, wc_defs, vl_items, _vl_oid = build_supp_value_lists(
-            ds.dataframe, domain
-        )
-        value_list_defs.extend(vl_defs)
-        where_clause_defs.extend(wc_defs)
-        vl_item_def_specs.update(vl_items)
-
+def _append_item_groups(
+    metadata: XmlElement, item_groups: Iterable[XmlElement]
+) -> None:
     for ig in item_groups:
         metadata.append(ig)
 
+
+def _append_item_defs(
+    metadata: XmlElement, item_def_specs: dict[str, ItemDefSpec]
+) -> None:
     item_def_parent: XmlElement = ET.Element("temp")
     for _oid, (var, domain_code, _, _) in sorted(item_def_specs.items()):
         append_item_defs(item_def_parent, [var], domain_code)
     for item_def in item_def_parent:
         metadata.append(item_def)
 
+
+def _append_value_list_item_defs(
+    metadata: XmlElement, vl_item_def_specs: dict[str, ValueListItemSpec]
+) -> None:
     for _oid, (var, domain_code) in sorted(vl_item_def_specs.items()):
         append_item_defs(metadata, [var], domain_code)
 
+
+def _append_code_lists(
+    metadata: XmlElement, code_list_specs: dict[str, CodeListSpec]
+) -> None:
     cl_parent: XmlElement = ET.Element("temp")
     for _cl_oid, (var, domain_code, extended) in sorted(code_list_specs.items()):
         cl_parent.append(
@@ -241,15 +293,6 @@ def build_study_define_tree(
         )
     for cl in cl_parent:
         metadata.append(cl)
-
-    append_value_list_defs(metadata, value_list_defs)
-    append_where_clause_defs(metadata, where_clause_defs)
-    append_method_defs(metadata, [])
-
-    comments = get_default_standard_comments()
-    append_comment_defs(metadata, comments)
-
-    return root
 
 
 def _append_standards(
@@ -326,7 +369,7 @@ def get_key_sequence(domain_code: str) -> dict[str, int]:
     try:
         domain = get_domain(domain_code)
     except KeyError:
-        if len(code) > 2:
+        if len(code) > DOMAIN_CODE_PREFIX_LEN:
             domain = get_domain(code[:2])
         else:
             raise
@@ -433,8 +476,8 @@ def get_active_domain_variables(
 
     known = {var.name for var in active}
     extras = available - known
-    for name in sorted(extras):
-        active.append(
+    active.extend(
+        [
             SDTMVariable(
                 name=name,
                 label=name,
@@ -442,30 +485,28 @@ def get_active_domain_variables(
                 length=200,
                 core="Perm",
             )
-        )
+            for name in sorted(extras)
+        ]
+    )
     return tuple(active)
 
 
 def get_domain_description_alias(domain: SDTMDomain) -> str | None:
     code = (domain.code or "").upper()
 
-    if code.startswith("SUPP") and len(code) == 6:
+    if code.startswith("SUPP") and len(code) == SUPP_DOMAIN_CODE_LENGTH:
         base_code = code[4:]
-        try:
+        with suppress(Exception):
             base_domain = get_domain(base_code)
             if base_domain.label:
                 return base_domain.label
-        except Exception:
-            pass
 
-    if len(code) > 2:
+    if len(code) > DOMAIN_CODE_PREFIX_LEN:
         potential_parent = code[:2]
-        try:
+        with suppress(Exception):
             parent_domain = get_domain(potential_parent)
             if code.startswith(potential_parent) and code != potential_parent:
                 return parent_domain.label
-        except Exception:
-            pass
 
     return domain.label or None
 
@@ -546,28 +587,27 @@ def get_origin(
     code = domain_code.upper()
     role_hint = (role or "").strip().lower()
 
+    origin_type = "Collected"
+    origin_source = "Investigator"
+
     if name == "DOMAIN":
-        return ("Assigned", "Sponsor")
-    if name == "STUDYID":
-        return ("Protocol", "Sponsor")
+        origin_type, origin_source = "Assigned", "Sponsor"
+    elif name == "STUDYID":
+        origin_type, origin_source = "Protocol", "Sponsor"
+    elif name == "USUBJID" or name.endswith(("SEQ", "DY")):
+        origin_type, origin_source = "Derived", "Sponsor"
+    elif name in ("EPOCH", "QORIG", "RDOMAIN") or name.endswith(("CD", "FLG")):
+        origin_type, origin_source = "Assigned", "Sponsor"
+    elif code == "TS" or name in ("VISITNUM", "VISITDY", "TAETORD"):
+        origin_type, origin_source = "Protocol", "Sponsor"
+    elif role_hint == "identifier":
+        origin_type, origin_source = "Assigned", "Sponsor"
+    elif role_hint == "timing":
+        origin_type, origin_source = "Derived", "Sponsor"
+    elif role_hint == "topic":
+        origin_type, origin_source = "Collected", "Investigator"
 
-    if name == "USUBJID" or name.endswith(("SEQ", "DY")):
-        return ("Derived", "Sponsor")
-
-    if name in ("EPOCH", "QORIG", "RDOMAIN") or name.endswith(("CD", "FLG")):
-        return ("Assigned", "Sponsor")
-
-    if code == "TS" or name in ("VISITNUM", "VISITDY", "TAETORD"):
-        return ("Protocol", "Sponsor")
-
-    if role_hint == "identifier":
-        return ("Assigned", "Sponsor")
-    if role_hint == "timing":
-        return ("Derived", "Sponsor")
-    if role_hint == "topic":
-        return ("Collected", "Investigator")
-
-    return ("Collected", "Investigator")
+    return origin_type, origin_source
 
 
 def get_item_oid(variable: SDTMVariable, domain_code: str | None) -> str:
@@ -589,13 +629,11 @@ def _get_ct(variable: SDTMVariable, domain_code: str) -> ControlledTerminology |
         if ct is not None:
             return ct
 
-    try:
+    with suppress(KeyError):
         domain = get_domain(domain_code)
         for var in domain.variables:
             if var.name.upper() == variable.name.upper() and var.codelist_code:
                 return ct_repository.get_by_code(var.codelist_code)
-    except Exception:
-        pass
 
     return ct_repository.get_by_name(variable.name)
 
@@ -630,6 +668,32 @@ def build_code_list_element(
     extended_values: Iterable[str] | None = None,
 ) -> XmlElement:
     is_meddra = needs_meddra(variable.name)
+    attrib = _build_code_list_attrib(variable, domain_code, oid_override, is_meddra)
+    code_list = ET.Element(tag(ODM_NS, "CodeList"), attrib=attrib)
+
+    ct, all_values = _collect_code_list_values(
+        variable, domain_code, extended_values=extended_values
+    )
+    use_enumerated = should_use_enumerated_item(variable.name)
+    _append_code_list_items(
+        code_list,
+        variable,
+        ct,
+        all_values,
+        use_enumerated=use_enumerated,
+    )
+    _append_external_codelist(code_list, is_meddra)
+    _append_codelist_alias(code_list, variable, is_meddra)
+
+    return code_list
+
+
+def _build_code_list_attrib(
+    variable: SDTMVariable,
+    domain_code: str,
+    oid_override: str | None,
+    is_meddra: bool,
+) -> dict[str, str]:
     data_type = "text" if is_meddra else get_datatype(variable)
     attrib: dict[str, str] = {
         "OID": oid_override or get_code_list_oid(variable, domain_code),
@@ -638,15 +702,19 @@ def build_code_list_element(
         else f"{domain_code}.{variable.name} Controlled Terms",
         "DataType": "text" if data_type == "text" else data_type,
     }
-
     if is_meddra:
         attrib[attr(DEF_NS, "IsNonStandard")] = "Yes"
     else:
         attrib[attr(DEF_NS, "StandardOID")] = CT_STANDARD_OID_SDTM
+    return attrib
 
-    code_list = ET.Element(tag(ODM_NS, "CodeList"), attrib=attrib)
 
-    use_enumerated = should_use_enumerated_item(variable.name)
+def _collect_code_list_values(
+    variable: SDTMVariable,
+    domain_code: str,
+    *,
+    extended_values: Iterable[str] | None,
+) -> tuple[ControlledTerminology | None, list[tuple[str, bool]]]:
     ct = _get_ct(variable, domain_code)
     extended_set = {
         str(val).strip() for val in (extended_values or []) if str(val).strip()
@@ -669,65 +737,102 @@ def build_code_list_element(
         all_values.append((value, True))
         seen.add(value)
 
+    return ct, all_values
+
+
+def _append_code_list_items(
+    code_list: XmlElement,
+    variable: SDTMVariable,
+    ct: ControlledTerminology | None,
+    all_values: list[tuple[str, bool]],
+    *,
+    use_enumerated: bool,
+) -> None:
     for value, is_extended in all_values:
         code = ct.lookup_code(value) if ct else None
-
         if use_enumerated:
-            enum_item = ET.SubElement(
-                code_list,
-                tag(ODM_NS, "EnumeratedItem"),
-                attrib={"CodedValue": value},
-            )
-            if is_extended:
-                enum_item.set(attr(DEF_NS, "ExtendedValue"), "Yes")
-            if code:
-                ET.SubElement(
-                    enum_item,
-                    tag(ODM_NS, "Alias"),
-                    attrib={"Context": "nci:ExtCodeID", "Name": code},
-                )
+            _append_enumerated_item(code_list, value, code, is_extended)
         else:
-            cli_attrib = {"CodedValue": value}
-            if is_extended:
-                cli_attrib[attr(DEF_NS, "ExtendedValue")] = "Yes"
-            cli = ET.SubElement(
-                code_list,
-                tag(ODM_NS, "CodeListItem"),
-                attrib=cli_attrib,
-            )
-            decode = ET.SubElement(cli, tag(ODM_NS, "Decode"))
-            ET.SubElement(
-                decode,
-                tag(ODM_NS, "TranslatedText"),
-                attrib={attr(XML_NS, "lang"): "en"},
-            ).text = get_decode_value(variable.name, value)
+            _append_codelist_item(code_list, variable, value, code, is_extended)
 
-            if code:
-                ET.SubElement(
-                    cli,
-                    tag(ODM_NS, "Alias"),
-                    attrib={"Context": "nci:ExtCodeID", "Name": code},
-                )
 
-    if is_meddra:
+def _append_enumerated_item(
+    code_list: XmlElement,
+    value: str,
+    code: str | None,
+    is_extended: bool,
+) -> None:
+    enum_item = ET.SubElement(
+        code_list,
+        tag(ODM_NS, "EnumeratedItem"),
+        attrib={"CodedValue": value},
+    )
+    if is_extended:
+        enum_item.set(attr(DEF_NS, "ExtendedValue"), "Yes")
+    if code:
         ET.SubElement(
-            code_list,
-            tag(ODM_NS, "ExternalCodeList"),
-            attrib={
-                "Dictionary": "MedDRA",
-                "Version": DEFAULT_MEDDRA_VERSION,
-                "href": MEDDRA_HREF,
-            },
-        )
-
-    if variable.codelist_code and not is_meddra:
-        ET.SubElement(
-            code_list,
+            enum_item,
             tag(ODM_NS, "Alias"),
-            attrib={"Context": "nci:ExtCodeID", "Name": variable.codelist_code},
+            attrib={"Context": "nci:ExtCodeID", "Name": code},
         )
 
-    return code_list
+
+def _append_codelist_item(
+    code_list: XmlElement,
+    variable: SDTMVariable,
+    value: str,
+    code: str | None,
+    is_extended: bool,
+) -> None:
+    cli_attrib = {"CodedValue": value}
+    if is_extended:
+        cli_attrib[attr(DEF_NS, "ExtendedValue")] = "Yes"
+    cli = ET.SubElement(
+        code_list,
+        tag(ODM_NS, "CodeListItem"),
+        attrib=cli_attrib,
+    )
+    decode = ET.SubElement(cli, tag(ODM_NS, "Decode"))
+    ET.SubElement(
+        decode,
+        tag(ODM_NS, "TranslatedText"),
+        attrib={attr(XML_NS, "lang"): "en"},
+    ).text = get_decode_value(variable.name, value)
+
+    if code:
+        ET.SubElement(
+            cli,
+            tag(ODM_NS, "Alias"),
+            attrib={"Context": "nci:ExtCodeID", "Name": code},
+        )
+
+
+def _append_external_codelist(code_list: XmlElement, is_meddra: bool) -> None:
+    if not is_meddra:
+        return
+    ET.SubElement(
+        code_list,
+        tag(ODM_NS, "ExternalCodeList"),
+        attrib={
+            "Dictionary": "MedDRA",
+            "Version": DEFAULT_MEDDRA_VERSION,
+            "href": MEDDRA_HREF,
+        },
+    )
+
+
+def _append_codelist_alias(
+    code_list: XmlElement,
+    variable: SDTMVariable,
+    is_meddra: bool,
+) -> None:
+    if not variable.codelist_code or is_meddra:
+        return
+    ET.SubElement(
+        code_list,
+        tag(ODM_NS, "Alias"),
+        attrib={"Context": "nci:ExtCodeID", "Name": variable.codelist_code},
+    )
 
 
 def collect_extended_codelist_values(
@@ -750,12 +855,15 @@ def collect_extended_codelist_values(
     extras: set[str] = set()
     series = pd.Series(dataset[variable.name])
     for raw_value in series.dropna().unique():
-        if isinstance(raw_value, (bytes, bytearray)):
-            raw_value = raw_value.decode(errors="ignore")
-        text = str(raw_value).strip()
+        value = (
+            raw_value.decode(errors="ignore")
+            if isinstance(raw_value, (bytes, bytearray))
+            else raw_value
+        )
+        text = str(value).strip()
         if not text:
             continue
-        normalized = ct.normalize(raw_value)
+        normalized = ct.normalize(value)
         canonical = normalized or text
         if canonical in ct.submission_values:
             continue
@@ -869,15 +977,12 @@ def build_supp_value_lists(
     qlabels: dict[str, str] = {}
     if "QLABEL" in dataset.columns:
         for qnam in qnames:
-            try:
-                label_val = (
-                    dataset.loc[dataset["QNAM"] == qnam, "QLABEL"].dropna().iloc[0]
-                )
-                label_text = str(label_val).strip()
-                if label_text:
-                    qlabels[qnam] = label_text
-            except Exception:
+            labels = dataset.loc[dataset["QNAM"] == qnam, "QLABEL"].dropna()
+            if labels.empty:
                 continue
+            label_text = str(labels.iloc[0]).strip()
+            if label_text:
+                qlabels[qnam] = label_text
 
     vl_items: list[ValueListItemDefinition] = []
     wc_defs: list[WhereClauseDefinition] = []

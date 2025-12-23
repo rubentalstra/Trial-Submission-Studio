@@ -5,6 +5,8 @@ throughout the codebase. Constants are organized by category and include
 SDTM references where applicable.
 """
 
+from typing import ClassVar
+
 
 class Defaults:
     """Default values used throughout the application.
@@ -97,13 +99,13 @@ class MetadataFiles:
     README = "README.txt"  # Study documentation
 
     # Files to skip during domain discovery
-    SKIP_PATTERNS = [
+    SKIP_PATTERNS: ClassVar[tuple[str, ...]] = (
         "CODELISTS",
         "CODELIST",
         "ITEMS",
         "README",
         "METADATA",
-    ]
+    )
 
 
 class SDTMVersions:
@@ -114,7 +116,7 @@ class SDTMVersions:
     """
 
     DEFAULT_VERSION = "3.4"
-    SUPPORTED_VERSIONS = ["3.4"]
+    SUPPORTED_VERSIONS: ClassVar[tuple[str, ...]] = ("3.4",)
 
     # Define-XML context
     DEFINE_CONTEXT_SUBMISSION = "Submission"
@@ -142,9 +144,11 @@ class MissingValues:
     Prefer normalizing via `cdisc_transpiler.pandas_utils.normalize_missing_strings`.
     """
 
-    STRING_MARKERS = {
-        "NAN",
-        "<NA>",
-        "NONE",
-        "NULL",
-    }
+    STRING_MARKERS: ClassVar[frozenset[str]] = frozenset(
+        {
+            "NAN",
+            "<NA>",
+            "NONE",
+            "NULL",
+        }
+    )

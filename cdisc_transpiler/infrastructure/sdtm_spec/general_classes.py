@@ -4,8 +4,6 @@ This builds Identifier/Timing templates grouped by the three General
 Observation Classes, using SDTMIG/SDTM v2 CSV metadata.
 """
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING, Any
 
 from ...domain.entities.sdtm_classes import GENERAL_OBSERVATION_CLASSES

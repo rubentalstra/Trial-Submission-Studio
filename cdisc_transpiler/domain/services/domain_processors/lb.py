@@ -25,8 +25,20 @@ class LBProcessor(BaseDomainProcessor):
             frame: Domain DataFrame to process in-place
         """
         self._drop_placeholder_rows(frame)
+        self._clean_unit_placeholders(frame)
+        self._normalize_lbtestcd(frame)
+        self._ensure_lbtest(frame)
+        self._compute_study_days(frame)
+        self._normalize_lbstresc(frame)
+        self._sync_lbstresc(frame)
+        self._sync_lbstresn(frame)
+        self._normalize_lbclsig(frame)
+        self._normalize_units(frame)
+        self._clear_units_without_results(frame)
+        NumericTransformer.assign_sequence(frame, "LBSEQ", "USUBJID")
 
-        # Clean up literal string placeholders that commonly appear after mapping.
+    @staticmethod
+    def _clean_unit_placeholders(frame: pd.DataFrame) -> None:
         for col in ("LBORRESU", "LBSTRESU"):
             if col in frame.columns:
                 frame.loc[:, col] = (
@@ -37,27 +49,28 @@ class LBProcessor(BaseDomainProcessor):
                     .str.strip()
                 )
 
-        # Normalize LBTESTCD using CT when available; do not drop rows or default values.
-        if "LBTESTCD" in frame.columns:
-            testcd = (
-                frame["LBTESTCD"].astype("string").fillna("").str.upper().str.strip()
-            )
-            ct_lbtestcd = self._get_controlled_terminology(variable="LBTESTCD")
-            if ct_lbtestcd:
-                canonical = testcd.apply(ct_lbtestcd.normalize)
-                valid = canonical.isin(ct_lbtestcd.submission_values)
-                testcd = canonical.where(valid, "")
-            frame.loc[:, "LBTESTCD"] = testcd
+    def _normalize_lbtestcd(self, frame: pd.DataFrame) -> None:
+        if "LBTESTCD" not in frame.columns:
+            return
+        testcd = frame["LBTESTCD"].astype("string").fillna("").str.upper().str.strip()
+        ct_lbtestcd = self._get_controlled_terminology(variable="LBTESTCD")
+        if ct_lbtestcd:
+            canonical = testcd.apply(ct_lbtestcd.normalize)
+            valid = canonical.isin(ct_lbtestcd.submission_values)
+            testcd = canonical.where(valid, "")
+        frame.loc[:, "LBTESTCD"] = testcd
 
-        # Keep LBTEST aligned with LBTESTCD when LBTEST exists and is blank.
-        if {"LBTEST", "LBTESTCD"}.issubset(frame.columns):
-            lbtest = frame["LBTEST"].astype("string").fillna("").str.strip()
-            testcd = frame["LBTESTCD"].astype("string").fillna("").str.strip()
-            needs = (lbtest == "") & (testcd != "")
-            if bool(needs.any()):
-                frame.loc[needs, "LBTEST"] = testcd.loc[needs]
+    @staticmethod
+    def _ensure_lbtest(frame: pd.DataFrame) -> None:
+        if not {"LBTEST", "LBTESTCD"}.issubset(frame.columns):
+            return
+        lbtest = frame["LBTEST"].astype("string").fillna("").str.strip()
+        testcd = frame["LBTESTCD"].astype("string").fillna("").str.strip()
+        needs = (lbtest == "") & (testcd != "")
+        if bool(needs.any()):
+            frame.loc[needs, "LBTEST"] = testcd.loc[needs]
 
-        # Compute study days when dates are present.
+    def _compute_study_days(self, frame: pd.DataFrame) -> None:
         if "LBDTC" in frame.columns:
             DateTransformer.compute_study_day(
                 frame,
@@ -75,73 +88,82 @@ class LBProcessor(BaseDomainProcessor):
                 ref="RFSTDTC",
             )
 
-        # Normalize qualitative results conservatively.
-        if "LBSTRESC" in frame.columns:
-            stresc = frame["LBSTRESC"].astype("string").fillna("").str.strip()
-            frame.loc[:, "LBSTRESC"] = stresc.replace(
-                {"Positive": "POSITIVE", "Negative": "NEGATIVE"}
-            )
+    @staticmethod
+    def _normalize_lbstresc(frame: pd.DataFrame) -> None:
+        if "LBSTRESC" not in frame.columns:
+            return
+        stresc = frame["LBSTRESC"].astype("string").fillna("").str.strip()
+        frame.loc[:, "LBSTRESC"] = stresc.replace(
+            {"Positive": "POSITIVE", "Negative": "NEGATIVE"}
+        )
 
-        # Ensure LBSTRESC mirrors LBORRES when both columns exist.
-        if {"LBORRES", "LBSTRESC"}.issubset(frame.columns):
-            orres = (
-                frame["LBORRES"]
-                .astype("string")
-                .fillna("")
-                .replace({"<NA>": "", "nan": "", "None": ""})
-                .str.strip()
-            )
-            stresc = frame["LBSTRESC"].astype("string").fillna("").str.strip()
-            needs = (stresc == "") & (orres != "")
-            if bool(needs.any()):
-                frame.loc[needs, "LBSTRESC"] = orres.loc[needs]
+    @staticmethod
+    def _sync_lbstresc(frame: pd.DataFrame) -> None:
+        if not {"LBORRES", "LBSTRESC"}.issubset(frame.columns):
+            return
+        orres = (
+            frame["LBORRES"]
+            .astype("string")
+            .fillna("")
+            .replace({"<NA>": "", "nan": "", "None": ""})
+            .str.strip()
+        )
+        stresc = frame["LBSTRESC"].astype("string").fillna("").str.strip()
+        needs = (stresc == "") & (orres != "")
+        if bool(needs.any()):
+            frame.loc[needs, "LBSTRESC"] = orres.loc[needs]
 
-        # Keep LBSTRESN numeric when present.
+    @staticmethod
+    def _sync_lbstresn(frame: pd.DataFrame) -> None:
         if "LBSTRESN" in frame.columns and "LBSTRESC" in frame.columns:
             numeric = ensure_numeric_series(frame["LBSTRESC"], frame.index).astype(
                 "float64"
             )
             frame.loc[:, "LBSTRESN"] = numeric
 
-        # Normalize LBCLSIG to Y/N when present.
-        if "LBCLSIG" in frame.columns:
-            yn_map = {
-                "YES": "Y",
-                "Y": "Y",
-                "1": "Y",
-                "TRUE": "Y",
-                "NO": "N",
-                "N": "N",
-                "0": "N",
-                "FALSE": "N",
-                "CS": "Y",
-                "NCS": "N",
-                "": "",
-                "nan": "",
-            }
-            frame["LBCLSIG"] = (
-                frame["LBCLSIG"]
-                .astype("string")
-                .fillna("")
-                .str.strip()
-                .str.upper()
-                .map(yn_map)
-                .fillna("")
-            )
+    @staticmethod
+    def _normalize_lbclsig(frame: pd.DataFrame) -> None:
+        if "LBCLSIG" not in frame.columns:
+            return
+        yn_map = {
+            "YES": "Y",
+            "Y": "Y",
+            "1": "Y",
+            "TRUE": "Y",
+            "NO": "N",
+            "N": "N",
+            "0": "N",
+            "FALSE": "N",
+            "CS": "Y",
+            "NCS": "N",
+            "": "",
+            "nan": "",
+        }
+        frame["LBCLSIG"] = (
+            frame["LBCLSIG"]
+            .astype("string")
+            .fillna("")
+            .str.strip()
+            .str.upper()
+            .map(yn_map)
+            .fillna("")
+        )
 
-        # Controlled terminology normalization for units (blank invalid values; no defaults).
+    def _normalize_units(self, frame: pd.DataFrame) -> None:
         ct_lb_units = self._get_controlled_terminology(variable="LBORRESU")
-        if ct_lb_units:
-            for col in ("LBORRESU", "LBSTRESU"):
-                if col in frame.columns:
-                    units = frame[col].astype("string").fillna("").str.strip()
-                    normalized = units.apply(ct_lb_units.normalize)
-                    normalized = normalized.where(
-                        normalized.isin(ct_lb_units.submission_values), ""
-                    )
-                    frame[col] = normalized
+        if not ct_lb_units:
+            return
+        for col in ("LBORRESU", "LBSTRESU"):
+            if col in frame.columns:
+                units = frame[col].astype("string").fillna("").str.strip()
+                normalized = units.apply(ct_lb_units.normalize)
+                normalized = normalized.where(
+                    normalized.isin(ct_lb_units.submission_values), ""
+                )
+                frame[col] = normalized
 
-        # Clear units when there is no corresponding result.
+    @staticmethod
+    def _clear_units_without_results(frame: pd.DataFrame) -> None:
         if {"LBORRES", "LBORRESU"}.issubset(frame.columns):
             empty_orres = frame["LBORRES"].astype("string").fillna("").str.strip() == ""
             frame.loc[empty_orres, "LBORRESU"] = ""
@@ -150,6 +172,3 @@ class LBProcessor(BaseDomainProcessor):
                 frame["LBSTRESC"].astype("string").fillna("").str.strip() == ""
             )
             frame.loc[empty_stresc, "LBSTRESU"] = ""
-
-        # Always regenerate LBSEQ - source values may not be unique (SD0005)
-        NumericTransformer.assign_sequence(frame, "LBSEQ", "USUBJID")

@@ -4,6 +4,7 @@ This module provides infrastructure-level loading of study metadata files.
 This loader is the canonical implementation for reading study metadata.
 """
 
+from contextlib import suppress
 from typing import TYPE_CHECKING
 
 import pandas as pd
@@ -14,6 +15,7 @@ from ...domain.entities.study_metadata import (
     SourceColumn,
     StudyMetadata,
 )
+from ...pandas_utils import is_missing_scalar
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -137,7 +139,7 @@ def _parse_mandatory_field(value: object) -> bool:
 
 def _parse_format_name(value: object) -> str | None:
     """Parse a format name field value."""
-    if pd.isna(value):
+    if is_missing_scalar(value):
         return None
     format_val = str(value).strip()
     if not format_val or format_val.lower() in ("", "nan", "none"):
@@ -147,10 +149,10 @@ def _parse_format_name(value: object) -> str | None:
 
 def _parse_content_length(value: object) -> int | None:
     """Parse a content length field value."""
-    if pd.isna(value):
+    if is_missing_scalar(value):
         return None
     try:
-        return int(float(value))
+        return int(float(str(value)))
     except (ValueError, TypeError):
         return None
 
@@ -339,15 +341,11 @@ def load_study_metadata(study_folder: Path) -> StudyMetadata:
     metadata = StudyMetadata(source_path=study_folder)
 
     if items_path:
-        try:
+        with suppress(MetadataLoadError):
             metadata.items = load_items_csv(items_path)
-        except MetadataLoadError:
-            pass  # Continue without items
 
     if codelists_path:
-        try:
+        with suppress(MetadataLoadError):
             metadata.codelists = load_codelists_csv(codelists_path)
-        except MetadataLoadError:
-            pass  # Continue without codelists
 
     return metadata

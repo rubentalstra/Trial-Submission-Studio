@@ -1,6 +1,6 @@
 """Domain processor for Vital Signs (VS) domain."""
 
-from typing import Any, cast, override
+from typing import override
 
 import pandas as pd
 
@@ -24,8 +24,18 @@ class VSProcessor(BaseDomainProcessor):
             frame: Domain DataFrame to process in-place
         """
         self._drop_placeholder_rows(frame)
+        self._compute_study_day(frame)
+        self._sync_stresc(frame)
+        self._sync_units(frame)
+        self._clear_units_when_missing(frame)
+        self._normalize_units_ct(frame)
+        self._normalize_test_codes(frame)
+        self._sync_numeric_results(frame)
+        NumericTransformer.assign_sequence(frame, "VSSEQ", "USUBJID")
+        self._flag_last_observation(frame)
+        self._normalize_collection_time(frame)
 
-        # Study day is a deterministic derivation from VSDTC and RFSTDTC/reference starts.
+    def _compute_study_day(self, frame: pd.DataFrame) -> None:
         if "VSDTC" in frame.columns:
             DateTransformer.compute_study_day(
                 frame,
@@ -37,105 +47,89 @@ class VSProcessor(BaseDomainProcessor):
         if "VSDY" in frame.columns:
             frame.loc[:, "VSDY"] = NumericTransformer.force_numeric(frame["VSDY"])
 
-        # Keep standardized results aligned with original results without defaulting.
-        if {"VSORRES", "VSSTRESC"}.issubset(frame.columns):
-            s_orres = ensure_series(frame["VSORRES"]).astype("string")
-            s_orres = ensure_series(cast("Any", s_orres).fillna(""))
-            orres = s_orres.str.strip()
+    @staticmethod
+    def _string_series(frame: pd.DataFrame, column: str) -> pd.Series:
+        series = ensure_series(frame[column]).astype("string")
+        return ensure_series(series.fillna("")).astype("string").str.strip()
 
-            s_stresc = ensure_series(frame["VSSTRESC"]).astype("string")
-            s_stresc = ensure_series(cast("Any", s_stresc).fillna(""))
-            stresc = s_stresc.str.strip()
+    def _sync_stresc(self, frame: pd.DataFrame) -> None:
+        if not {"VSORRES", "VSSTRESC"}.issubset(frame.columns):
+            return
+        orres = self._string_series(frame, "VSORRES")
+        stresc = self._string_series(frame, "VSSTRESC")
+        needs = (stresc == "") & (orres != "")
+        if bool(needs.any()):
+            frame.loc[needs, "VSSTRESC"] = orres.loc[needs]
 
-            needs = (stresc == "") & (orres != "")
-            if bool(needs.any()):
-                frame.loc[needs, "VSSTRESC"] = orres.loc[needs]
+    def _sync_units(self, frame: pd.DataFrame) -> None:
+        if not {"VSORRESU", "VSSTRESU"}.issubset(frame.columns):
+            return
+        oru = self._string_series(frame, "VSORRESU")
+        stu = self._string_series(frame, "VSSTRESU")
+        needs = (stu == "") & (oru != "")
+        if bool(needs.any()):
+            frame.loc[needs, "VSSTRESU"] = oru.loc[needs]
 
-        if {"VSORRESU", "VSSTRESU"}.issubset(frame.columns):
-            s_oru = ensure_series(frame["VSORRESU"]).astype("string")
-            s_oru = ensure_series(cast("Any", s_oru).fillna(""))
-            oru = s_oru.str.strip()
-
-            s_stu = ensure_series(frame["VSSTRESU"]).astype("string")
-            s_stu = ensure_series(cast("Any", s_stu).fillna(""))
-            stu = s_stu.str.strip()
-
-            needs = (stu == "") & (oru != "")
-            if bool(needs.any()):
-                frame.loc[needs, "VSSTRESU"] = oru.loc[needs]
-
-        # When results missing, clear units to avoid CT issues.
+    def _clear_units_when_missing(self, frame: pd.DataFrame) -> None:
         if {"VSORRES", "VSORRESU"}.issubset(frame.columns):
-            s = ensure_series(frame["VSORRES"]).astype("string")
-            s = ensure_series(cast("Any", s).fillna(""))
-            empty_orres = s.str.strip() == ""
+            empty_orres = self._string_series(frame, "VSORRES") == ""
             frame.loc[empty_orres, "VSORRESU"] = ""
         if {"VSSTRESC", "VSSTRESU"}.issubset(frame.columns):
-            s = ensure_series(frame["VSSTRESC"]).astype("string")
-            s = ensure_series(cast("Any", s).fillna(""))
-            empty_stresc = s.str.strip() == ""
+            empty_stresc = self._string_series(frame, "VSSTRESC") == ""
             frame.loc[empty_stresc, "VSSTRESU"] = ""
 
-        # Controlled terminology normalization (blank invalid values; no defaults).
+    def _normalize_units_ct(self, frame: pd.DataFrame) -> None:
         ct_units = self._get_controlled_terminology(variable="VSORRESU")
-        if ct_units:
-            for col in ("VSORRESU", "VSSTRESU"):
-                if col in frame.columns:
-                    s = ensure_series(frame[col]).astype("string")
-                    s = ensure_series(cast("Any", s).fillna(""))
-                    units = s.str.strip()
-                    normalized = ensure_series(
-                        cast("Any", units).apply(ct_units.normalize)
-                    )
-                    normalized = normalized.where(
-                        normalized.isin(ct_units.submission_values), ""
-                    )
-                    frame.loc[:, col] = normalized
+        if not ct_units:
+            return
+        for col in ("VSORRESU", "VSSTRESU"):
+            if col in frame.columns:
+                units = self._string_series(frame, col)
+                normalized = units.apply(ct_units.normalize)
+                normalized = normalized.where(
+                    normalized.isin(ct_units.submission_values), ""
+                )
+                frame.loc[:, col] = normalized
 
+    def _normalize_test_codes(self, frame: pd.DataFrame) -> None:
         ct_vstestcd = self._get_controlled_terminology(variable="VSTESTCD")
         if ct_vstestcd and "VSTESTCD" in frame.columns:
-            s = ensure_series(frame["VSTESTCD"]).astype("string")
-            s = ensure_series(cast("Any", s).fillna(""))
-            raw = s.str.strip()
-            canonical = ensure_series(cast("Any", raw).apply(ct_vstestcd.normalize))
+            raw = self._string_series(frame, "VSTESTCD")
+            canonical = raw.apply(ct_vstestcd.normalize)
             valid = canonical.isin(ct_vstestcd.submission_values)
             frame.loc[:, "VSTESTCD"] = canonical.where(valid, "")
 
         ct_vstest = self._get_controlled_terminology(variable="VSTEST")
         if ct_vstest and "VSTEST" in frame.columns:
-            s = ensure_series(frame["VSTEST"]).astype("string")
-            s = ensure_series(cast("Any", s).fillna(""))
-            raw = s.str.strip()
-            canonical = ensure_series(cast("Any", raw).apply(ct_vstest.normalize))
+            raw = self._string_series(frame, "VSTEST")
+            canonical = raw.apply(ct_vstest.normalize)
             valid = canonical.isin(ct_vstest.submission_values)
             frame.loc[:, "VSTEST"] = canonical.where(valid, "")
 
+    @staticmethod
+    def _sync_numeric_results(frame: pd.DataFrame) -> None:
         if {"VSORRES", "VSSTRESN"}.issubset(frame.columns):
             numeric = pd.to_numeric(frame["VSORRES"], errors="coerce")
             frame.loc[:, "VSSTRESN"] = ensure_numeric_series(
                 numeric, frame.index
             ).astype("float64")
 
-        NumericTransformer.assign_sequence(frame, "VSSEQ", "USUBJID")
-
-        if "VSLOBXFL" in frame.columns and {"USUBJID", "VSTESTCD"}.issubset(
+    def _flag_last_observation(self, frame: pd.DataFrame) -> None:
+        if "VSLOBXFL" not in frame.columns or not {"USUBJID", "VSTESTCD"}.issubset(
             frame.columns
         ):
-            s = ensure_series(frame["VSLOBXFL"]).astype("string")
-            frame.loc[:, "VSLOBXFL"] = ensure_series(cast("Any", s).fillna(""))
-            group_cols = ["USUBJID", "VSTESTCD"]
-            if "VSPOS" in frame.columns:
-                group_cols.append("VSPOS")
-            frame.loc[:, "VSLOBXFL"] = ""
-            # Cast groupby to Any to avoid partially unknown type
-            last_idx = cast("Any", frame.groupby(group_cols)).tail(1).index
-            frame.loc[last_idx, "VSLOBXFL"] = "Y"
+            return
+        frame.loc[:, "VSLOBXFL"] = self._string_series(frame, "VSLOBXFL")
+        group_cols = ["USUBJID", "VSTESTCD"]
+        if "VSPOS" in frame.columns:
+            group_cols.append("VSPOS")
+        frame.loc[:, "VSLOBXFL"] = ""
+        last_idx = frame.groupby(group_cols).tail(1).index
+        frame.loc[last_idx, "VSLOBXFL"] = "Y"
 
-        # Clear non-ISO collection times that trigger format errors.
-        if "VSELTM" in frame.columns:
-            s = ensure_series(frame["VSELTM"]).astype("string")
-            s = ensure_series(cast("Any", s).fillna(""))
-            raw = s.str.strip()
-            # Accept HH:MM or HH:MM:SS; otherwise blank.
-            valid = raw.str.match(r"^\d{2}:\d{2}(:\d{2})?$", na=False)
-            frame.loc[:, "VSELTM"] = raw.where(valid, "")
+    def _normalize_collection_time(self, frame: pd.DataFrame) -> None:
+        if "VSELTM" not in frame.columns:
+            return
+        raw = self._string_series(frame, "VSELTM")
+        valid = raw.str.match(r"^\d{2}:\d{2}(:\d{2})?$", na=False)
+        frame.loc[:, "VSELTM"] = raw.where(valid, "")

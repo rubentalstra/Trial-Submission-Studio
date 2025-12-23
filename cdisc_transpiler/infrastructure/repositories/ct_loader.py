@@ -33,17 +33,16 @@ def _split_synonyms(raw: str | None) -> list[str]:
 def _clean_value(raw: object) -> str:
     if raw is None:
         return ""
+    raw_value: object = raw
     if isinstance(raw, pd.Series):
         series = cast("pd.Series[Any]", raw)
         if series.empty:
             return ""
-        raw_value: object = series.iloc[0]
+        raw_value = series.iloc[0]
     elif isinstance(raw, pd.DataFrame):
         if raw.empty:
             return ""
         raw_value = raw.iloc[0, 0]
-    else:
-        raw_value = raw
 
     if isinstance(raw_value, float) and math.isnan(raw_value):
         return ""
@@ -53,9 +52,15 @@ def _clean_value(raw: object) -> str:
     except (TypeError, ValueError):
         pass
 
-    if isinstance(raw_value, str):
-        return raw_value.strip()
-    return str(raw_value).strip()
+    return raw_value.strip() if isinstance(raw_value, str) else str(raw_value).strip()
+
+
+def _read_csv_records(csv_path: Path) -> list[dict[str, Any]] | None:
+    try:
+        raw_records = pd.read_csv(csv_path).to_dict(orient="records")
+    except Exception:
+        return None
+    return [{str(k): v for k, v in record.items()} for record in raw_records]
 
 
 def _iter_ct_files(ct_dir: Path) -> list[Path]:
@@ -67,13 +72,11 @@ def _iter_ct_files(ct_dir: Path) -> list[Path]:
 def _load_ct_rows(ct_dir: Path) -> dict[str, list[dict[str, Any]]]:
     grouped: dict[str, list[dict[str, Any]]] = {}
     for csv_path in _iter_ct_files(ct_dir):
-        try:
-            records = pd.read_csv(csv_path).to_dict(orient="records")
-        except Exception:
+        records = _read_csv_records(csv_path)
+        if records is None:
             continue
         standard_hint = csv_path.stem
-        for raw_row in records:
-            row: dict[str, Any] = {str(k): v for k, v in raw_row.items()}
+        for row in records:
             code = str(row.get("Codelist Code") or "").strip().upper()
             if not code:
                 continue
@@ -110,7 +113,7 @@ def _merge_ct(
                 other.submission_value_synonyms.get(key, ())
             )
             if merged:
-                merged_synonyms_by_submission[key] = tuple(sorted(list(merged)))
+                merged_synonyms_by_submission[key] = tuple(sorted(merged))
     merged_extensible = base.codelist_extensible or other.codelist_extensible
     standards = set(base.standards) | set(other.standards)
     sources = set(base.sources) | set(other.sources)
@@ -189,7 +192,7 @@ def build_registry(
                     synonyms_by_submission.setdefault(canonical_value, set()).add(syn)
 
         submission_value_synonyms = {
-            canonical: tuple(sorted(list(values)))
+            canonical: tuple(sorted(values))
             for canonical, values in synonyms_by_submission.items()
             if values
         }

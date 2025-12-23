@@ -91,11 +91,10 @@ class ConsoleLogger(LoggerPort):
             **kwargs: Context fields (study_id, domain_code, file_name, operation)
         """
         if self._context is None:
-            self._context = LogContext(**kwargs)
-        else:
-            for key, value in kwargs.items():
-                if hasattr(self._context, key):
-                    setattr(self._context, key, value)
+            self._context = LogContext()
+        for key, value in kwargs.items():
+            if hasattr(self._context, key):
+                setattr(self._context, key, value)
 
     def clear_context(self) -> None:
         """Clear the current logging context."""
@@ -505,10 +504,10 @@ class ConsoleLogger(LoggerPort):
         else:
             self._stats["records_processed"] += final_row_count
             self.verbose(
-                f"Final {domain_code} dataset: {final_row_count:,} rows × {final_column_count} columns"
+                f"Final {domain_code} dataset: {final_row_count:,} rows x {final_column_count} columns"
             )
 
-    def get_stats(self) -> dict[str, Any]:
+    def get_stats(self) -> dict[str, int]:
         """Get processing statistics.
 
         Returns:

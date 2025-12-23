@@ -14,7 +14,7 @@ import pandas as pd
 from .constants import MissingValues
 
 
-def ensure_series(value: Any, index: pd.Index[Any] | None = None) -> pd.Series[Any]:
+def ensure_series(value: object, index: pd.Index[Any] | None = None) -> pd.Series[Any]:
     """Coerce ``value`` to a :class:`pandas.Series`.
 
     The function is intentionally permissive: it accepts scalars, lists,
@@ -23,16 +23,16 @@ def ensure_series(value: Any, index: pd.Index[Any] | None = None) -> pd.Series[A
     where a frame lookup was expected to yield a series.
     """
     if isinstance(value, pd.Series):
-        return cast("pd.Series[Any]", value)
+        return cast("pd.Series[object]", value)
     if isinstance(value, pd.DataFrame):
         if value.shape[1] == 0:
             return pd.Series(index=value.index, dtype="object")
         return value.iloc[:, 0]
-    return pd.Series(value, index=index)
+    return pd.Series(cast("Any", value), index=index)
 
 
 def ensure_numeric_series(
-    value: Any, index: pd.Index[Any] | None = None
+    value: object, index: pd.Index[Any] | None = None
 ) -> pd.Series[Any]:
     """Return a numeric :class:`Series` with ``NaN`` on conversion failures."""
     series = ensure_series(value, index=index)
@@ -40,8 +40,16 @@ def ensure_numeric_series(
     return ensure_series(numeric, index=series.index)
 
 
+def is_missing_scalar(value: object) -> bool:
+    """Return True when a scalar-like value is missing (NaN/NA/NaT/None)."""
+    try:
+        return bool(pd.isna(cast("Any", value)))
+    except (TypeError, ValueError):
+        return False
+
+
 def normalize_missing_strings(
-    value: Any,
+    value: object,
     *,
     replacement: str = "",
     markers: set[str] | None = None,

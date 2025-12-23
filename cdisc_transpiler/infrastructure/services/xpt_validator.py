@@ -7,7 +7,7 @@ It is designed to be injected into the domain frame builder (domain layer)
 as a collaborator.
 """
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 import pandas as pd
 
@@ -21,11 +21,13 @@ class XPTValidator:
     # Some variables are marked Permissible in SDTMIG but are treated as
     # regulatory-expected by common validators (e.g., Pinnacle 21) or are
     # required for conditional presence rules (e.g., EXCAT with EXSCAT).
-    _KEEP_IF_EMPTY: set[str] = {
-        "EPOCH",
-        "EXCAT",
-        "EXENDY",
-    }
+    _KEEP_IF_EMPTY: ClassVar[frozenset[str]] = frozenset(
+        {
+            "EPOCH",
+            "EXCAT",
+            "EXENDY",
+        }
+    )
 
     def drop_empty_optional_columns(
         self, frame: pd.DataFrame, variables: Sequence[SDTMVariable]

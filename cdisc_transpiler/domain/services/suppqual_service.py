@@ -13,6 +13,7 @@ SDTM Reference:
     - QVAL: Qualifier value
 """
 
+from contextlib import suppress
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -37,6 +38,16 @@ class SuppqualBuildRequest:
     study_id: str | None = None
     common_column_counts: dict[str, int] | None = None
     total_files: int | None = None
+
+
+@dataclass(slots=True)
+class _SuppqualRecordContext:
+    request: SuppqualBuildRequest
+    aligned_source: pd.DataFrame
+    mapped_df: pd.DataFrame
+    idvar: str | None
+    idvals: pd.Series
+    id_is_seq: bool
 
 
 def _drop_missing_usubjid(frame: pd.DataFrame) -> pd.DataFrame:
@@ -141,11 +152,131 @@ def _get_variable_lengths(domain_def: SDTMDomain) -> dict[str, int]:
             continue
         try:
             length_int = int(var_length)
-        except Exception:
-            continue
+        except (TypeError, ValueError):
+            length_int = 0
         if length_int > 0:
             lengths[str(var_name).upper()] = length_int
     return lengths
+
+
+def _select_idvar(
+    mapped_df: pd.DataFrame,
+    *,
+    domain: str,
+) -> tuple[str | None, pd.Series, bool] | None:
+    mapped_cols = set(mapped_df.columns)
+    seq_var = f"{domain}SEQ"
+    if seq_var in mapped_cols:
+        return seq_var, mapped_df[seq_var], True
+    if "USUBJID" in mapped_cols:
+        return None, mapped_df["USUBJID"], False
+    return None
+
+
+def _align_by_length(
+    source: pd.DataFrame,
+    idvals: pd.Series,
+    mapped_df: pd.DataFrame,
+) -> tuple[pd.DataFrame, pd.Series]:
+    max_len = min(len(source), len(mapped_df))
+    return source.iloc[:max_len], idvals.iloc[:max_len]
+
+
+def _extra_suppqual_columns(
+    request: SuppqualBuildRequest,
+    aligned_source: pd.DataFrame,
+) -> list[str]:
+    used_source_columns = request.used_source_columns or set()
+    core_vars = set(request.domain_def.variable_names())
+    return [
+        col
+        for col in aligned_source.columns
+        if col not in used_source_columns
+        and col.upper() not in core_vars
+        and not _is_operational_column(
+            str(col),
+            common_counts=request.common_column_counts,
+            total_files=request.total_files,
+        )
+    ]
+
+
+def _build_suppqual_records(
+    context: _SuppqualRecordContext,
+    *,
+    extra_cols: list[str],
+) -> list[dict[str, object]]:
+    records: list[dict[str, object]] = []
+
+    aligned_source = context.aligned_source
+    for col in extra_cols:
+        series = aligned_source[col].astype("string").fillna("").str.strip()
+        if series.eq("").all():
+            continue
+        records.extend(
+            _build_column_records(
+                context,
+                col=col,
+                series_values=series.to_list(),
+            )
+        )
+
+    return records
+
+
+def _build_column_records(
+    context: _SuppqualRecordContext,
+    *,
+    col: str,
+    series_values: list[str],
+) -> list[dict[str, object]]:
+    records: list[dict[str, object]] = []
+    request = context.request
+    domain = request.domain_code.upper()
+    aligned_source = context.aligned_source
+    mapped_df = context.mapped_df
+    idvar = context.idvar
+    idvals = context.idvals
+    id_is_seq = context.id_is_seq
+
+    for pos, val in enumerate(series_values):
+        if val == "":
+            continue
+        idval = idvals.iloc[pos]
+        idvar_val = (
+            str(_clean_idvarval(pd.Series([idval]), id_is_seq).iloc[0]) if idvar else ""
+        )
+        usubjid = (
+            str(aligned_source.iloc[pos]["USUBJID"])
+            if "USUBJID" in aligned_source.columns
+            else ""
+        )
+        if (
+            not usubjid or usubjid.strip() == ""
+        ) and "USUBJID" in mapped_df.columns:
+            usubjid = str(mapped_df.iloc[pos]["USUBJID"])
+        studyid = ""
+        if "STUDYID" in aligned_source.columns:
+            studyid = str(aligned_source.iloc[pos]["STUDYID"]).strip()
+        if not studyid:
+            studyid = request.study_id or ""
+
+        records.append(
+            {
+                "STUDYID": studyid,
+                "RDOMAIN": domain,
+                "USUBJID": usubjid,
+                "IDVAR": idvar or "",
+                "IDVARVAL": idvar_val,
+                "QNAM": sanitize_qnam(col),
+                "QLABEL": str(col),
+                "QVAL": str(val),
+                "QORIG": "CRF",
+                "QEVAL": "",
+            }
+        )
+
+    return records
 
 
 def build_suppqual(
@@ -165,103 +296,41 @@ def build_suppqual(
         - supp_df: SUPPQUAL DataFrame or None if no qualifiers found
         - used_columns: Set of source columns included in SUPPQUAL
     """
-    if request.source_df.empty:
-        return None, set()
+    supp_df: pd.DataFrame | None = None
+    used_columns: set[str] = set()
 
-    used_source_columns = request.used_source_columns or set()
-    domain = request.domain_code.upper()
-    core_vars = set(request.domain_def.variable_names())
+    if not request.source_df.empty:
+        aligned_source = _drop_missing_usubjid(request.source_df.copy())
+        if not aligned_source.empty:
+            extra_cols = _extra_suppqual_columns(request, aligned_source)
+            if extra_cols and request.mapped_df is not None:
+                selection = _select_idvar(
+                    request.mapped_df, domain=request.domain_code.upper()
+                )
+                if selection is not None:
+                    idvar, idvals, id_is_seq = selection
+                    aligned_source, idvals = _align_by_length(
+                        aligned_source,
+                        idvals,
+                        request.mapped_df,
+                    )
+                    context = _SuppqualRecordContext(
+                        request=request,
+                        aligned_source=aligned_source,
+                        mapped_df=request.mapped_df,
+                        idvar=idvar,
+                        idvals=idvals,
+                        id_is_seq=id_is_seq,
+                    )
+                    records = _build_suppqual_records(
+                        context,
+                        extra_cols=extra_cols,
+                    )
+                    if records:
+                        supp_df = pd.DataFrame(records)
+                        used_columns = set(extra_cols)
 
-    # Drop rows with missing USUBJID to mirror domain processing
-    aligned_source = _drop_missing_usubjid(request.source_df.copy())
-    if aligned_source.empty:
-        return None, set()
-
-    # Identify non-model, non-mapped columns
-    extra_cols = [
-        col
-        for col in aligned_source.columns
-        if col not in used_source_columns
-        and col.upper() not in core_vars
-        and not _is_operational_column(
-            str(col),
-            common_counts=request.common_column_counts,
-            total_files=request.total_files,
-        )
-    ]
-    if not extra_cols:
-        return None, set()
-
-    if request.mapped_df is None:
-        return None, set()
-    mapped_cols = set(request.mapped_df.columns)
-    seq_var = f"{domain}SEQ"
-    if seq_var in mapped_cols:
-        idvar: str | None = seq_var
-        idvals = request.mapped_df[seq_var]
-        id_is_seq = True
-    elif "USUBJID" in mapped_cols:
-        # For domains without a sequence variable, leave IDVAR/IDVARVAL blank
-        idvar = None
-        idvals = request.mapped_df["USUBJID"]
-        id_is_seq = False
-    else:
-        return None, set()
-
-    # Ensure lengths align; if not, align by index up to min length
-    max_len = min(len(aligned_source), len(request.mapped_df))
-    aligned_source = aligned_source.iloc[:max_len]
-    idvals = idvals.iloc[:max_len]
-
-    records: list[dict[str, object]] = []
-    for col in extra_cols:
-        series = aligned_source[col].astype("string").fillna("").str.strip()
-        if series.eq("").all():
-            continue
-        for pos, val in enumerate(series.to_list()):
-            if val == "":
-                continue
-            idval = idvals.iloc[pos]
-            idvar_val = (
-                str(_clean_idvarval(pd.Series([idval]), id_is_seq).iloc[0])
-                if idvar
-                else ""
-            )
-            usubjid = (
-                str(aligned_source.iloc[pos]["USUBJID"])
-                if "USUBJID" in aligned_source.columns
-                else ""
-            )
-            if (
-                not usubjid or usubjid.strip() == ""
-            ) and "USUBJID" in request.mapped_df.columns:
-                usubjid = str(request.mapped_df.iloc[pos]["USUBJID"])
-            records.append(
-                {
-                    "STUDYID": (
-                        str(aligned_source.iloc[pos]["STUDYID"])
-                        if "STUDYID" in aligned_source.columns
-                        and str(aligned_source.iloc[pos]["STUDYID"]).strip() != ""
-                        else (request.study_id or "")
-                    ),
-                    "RDOMAIN": domain,
-                    "USUBJID": usubjid,
-                    "IDVAR": idvar or "",
-                    "IDVARVAL": idvar_val,
-                    "QNAM": sanitize_qnam(col),
-                    "QLABEL": str(col),
-                    "QVAL": str(val),
-                    "QORIG": "CRF",
-                    "QEVAL": "",
-                }
-            )
-
-    if not records:
-        return None, set()
-
-    supp_df = pd.DataFrame(records)
-
-    return supp_df, set(extra_cols)
+    return supp_df, used_columns
 
 
 def finalize_suppqual(
@@ -282,11 +351,9 @@ def finalize_suppqual(
 
     # Reorder columns based on domain definition if available
     if supp_domain_def is not None:
-        try:
+        with suppress(Exception):
             ordering = list(supp_domain_def.variable_names())
             result = result.reindex(columns=ordering)
-        except Exception:
-            pass
 
         # Enforce SDTM/SAS lengths based on the SUPP domain definition.
         # This keeps length constraints centralized in metadata rather than

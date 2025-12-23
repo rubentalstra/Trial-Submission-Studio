@@ -97,7 +97,7 @@ class MappingEngine:
             )
 
         # Second pass: process all columns
-        for column, alias_target in column_details:
+        for column, _alias_target in column_details:
             # Use alias mapping if available
             if column in alias_mappings:
                 suggestions.append(alias_mappings[column])

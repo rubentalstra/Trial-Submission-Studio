@@ -65,8 +65,7 @@ class ControlledTerminology:
         if not text:
             return ""
         text = re.sub(r"\s*/\s*", "/", text)
-        text = re.sub(r"\s+", " ", text)
-        return text
+        return re.sub(r"\s+", " ", text)
 
     def _looks_like_code_value(self, text: str) -> bool:
         """Heuristic: code-like values (e.g., test codes) should not get fuzzy suggestions."""
@@ -74,10 +73,80 @@ class ControlledTerminology:
             return False
         if " " in text:
             return False
-        # Typical code values are short and mostly A–Z/0–9 with a few separators.
+        # Typical code values are short and mostly A-Z/0-9 with a few separators.
         if len(text) > CODELIKE_MAX_LENGTH:
             return False
         return bool(re.fullmatch(r"[A-Z0-9_./-]+", text.upper()))
+
+    def _normalize_query_text(self, raw_value: object) -> str | None:
+        if raw_value is None:
+            return None
+        raw_text = str(raw_value).strip()
+        if not raw_text:
+            return None
+        query_text = self._canonicalize_for_match(raw_text)
+        return query_text or None
+
+    def _build_candidate_index(self) -> dict[str, str]:
+        candidate_to_canonical: dict[str, str] = {}
+
+        for submission in self.submission_values:
+            key = self._canonicalize_for_match(submission).upper()
+            if key:
+                candidate_to_canonical[key] = submission
+
+        if self.synonyms:
+            for syn_upper, canonical in self.synonyms.items():
+                key = self._canonicalize_for_match(syn_upper).upper()
+                if key:
+                    candidate_to_canonical.setdefault(key, canonical)
+
+        for canonical, preferred in self.preferred_terms.items():
+            pref = self._canonicalize_for_match(preferred)
+            if pref:
+                candidate_to_canonical.setdefault(pref.upper(), canonical)
+
+        return candidate_to_canonical
+
+    def _suggest_from_candidates(
+        self,
+        query_text: str,
+        candidate_to_canonical: dict[str, str],
+        *,
+        limit: int,
+    ) -> list[str]:
+        query = query_text.upper()
+
+        # High-confidence: exact match (case-insensitive) against Submission Value, Synonym(s), or Preferred Term.
+        exact = candidate_to_canonical.get(query)
+        if exact:
+            return [exact]
+
+        # Conservative: avoid fuzzy suggestions for short / code-like values (e.g., TESTCD variables).
+        if (
+            self._looks_like_code_value(query_text)
+            or len(query_text) < FUZZY_SUGGEST_MIN_LENGTH
+        ):
+            return []
+
+        if not candidate_to_canonical:
+            return []
+
+        candidates = list(candidate_to_canonical.keys())
+
+        # Low-confidence fuzzy match (used only for longer, non-code-like free-text).
+        matches = get_close_matches(query, candidates, n=limit * 3, cutoff=0.85)
+        suggestions: list[str] = []
+        seen: set[str] = set()
+        for match in matches:
+            canonical = candidate_to_canonical.get(match)
+            if not canonical or canonical in seen:
+                continue
+            seen.add(canonical)
+            suggestions.append(canonical)
+            if len(suggestions) >= limit:
+                break
+        return suggestions
 
     def synonyms_for_submission_value(self, submission_value: str) -> tuple[str, ...]:
         if not submission_value:
@@ -107,65 +176,16 @@ class ControlledTerminology:
         Uses CT content (Submission Value + Synonym(s) + Preferred Term) to suggest
         the most likely canonical Submission Value.
         """
-        if raw_value is None:
-            return []
-        raw_text = str(raw_value).strip()
-        if not raw_text:
+        query_text = self._normalize_query_text(raw_value)
+        if query_text is None:
             return []
 
-        query_text = self._canonicalize_for_match(raw_text)
-        if not query_text:
-            return []
-
-        query = query_text.upper()
-
-        candidate_to_canonical: dict[str, str] = {}
-
-        for submission in self.submission_values:
-            key = self._canonicalize_for_match(submission).upper()
-            if key:
-                candidate_to_canonical[key] = submission
-
-        if self.synonyms:
-            for syn_upper, canonical in self.synonyms.items():
-                key = self._canonicalize_for_match(syn_upper).upper()
-                if key:
-                    candidate_to_canonical.setdefault(key, canonical)
-
-        for canonical, preferred in self.preferred_terms.items():
-            pref = self._canonicalize_for_match(preferred)
-            if pref:
-                candidate_to_canonical.setdefault(pref.upper(), canonical)
-
-        # High-confidence: exact match (case-insensitive) against Submission Value, Synonym(s), or Preferred Term.
-        exact = candidate_to_canonical.get(query)
-        if exact:
-            return [exact]
-
-        # Conservative: avoid fuzzy suggestions for short / code-like values (e.g., TESTCD variables).
-        if (
-            self._looks_like_code_value(query_text)
-            or len(query_text) < FUZZY_SUGGEST_MIN_LENGTH
-        ):
-            return []
-
-        candidates = list(candidate_to_canonical.keys())
-        if not candidates:
-            return []
-
-        # Low-confidence fuzzy match (used only for longer, non-code-like free-text).
-        matches = get_close_matches(query, candidates, n=limit * 3, cutoff=0.85)
-        suggestions: list[str] = []
-        seen: set[str] = set()
-        for match in matches:
-            canonical = candidate_to_canonical.get(match)
-            if not canonical or canonical in seen:
-                continue
-            seen.add(canonical)
-            suggestions.append(canonical)
-            if len(suggestions) >= limit:
-                break
-        return suggestions
+        candidate_to_canonical = self._build_candidate_index()
+        return self._suggest_from_candidates(
+            query_text,
+            candidate_to_canonical,
+            limit=limit,
+        )
 
     def normalize(self, raw_value: object) -> str:
         if raw_value is None:

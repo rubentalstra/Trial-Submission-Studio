@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 
-from ....pandas_utils import ensure_series
+from ....pandas_utils import ensure_series, is_missing_scalar
 from .iso8601 import normalize_iso8601, normalize_iso8601_duration
 
 if TYPE_CHECKING:
@@ -64,11 +64,11 @@ class DateTransformer:
                     usubjids = ensure_series(frame["USUBJID"], index=frame.index)
                     dtcs = ensure_series(frame[dtc_col], index=frame.index)
                     dy_values: list[int | None] = []
-                    for usubjid, dtc in zip(usubjids, dtcs):
+                    for usubjid, dtc in zip(usubjids, dtcs, strict=False):
                         dy_values.append(
                             DateTransformer._compute_dy_for_row(
-                                str(usubjid) if pd.notna(usubjid) else "",
-                                str(dtc) if pd.notna(dtc) else None,
+                                str(usubjid) if not is_missing_scalar(usubjid) else "",
+                                str(dtc) if not is_missing_scalar(dtc) else None,
                                 reference_starts,
                             )
                         )
@@ -139,10 +139,12 @@ class DateTransformer:
         deltas = ensure_series(diff.dt.days)
 
         def adjust_study_day(x: object) -> object:
-            if pd.isna(x):
+            if is_missing_scalar(x):
                 return x
             # SDTM rule: no day 0. If delta >= 0, it's day 1+. If delta < 0, it's day -1-.
-            return x + 1 if x >= 0 else x
+            if isinstance(x, (int, float)):
+                return x + 1 if x >= 0 else x
+            return x
 
         study_days = ensure_series(deltas.map(adjust_study_day))
         frame.loc[:, dy_var] = pd.to_numeric(study_days, errors="coerce")
