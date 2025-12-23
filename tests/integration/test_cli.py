@@ -29,8 +29,8 @@ class TestStudyCommand:
     @pytest.fixture
     def study_folder(self):
         """Provide path to DEMO_GDISC study folder for tests that expect files."""
-        if not DEMO_GDISC.exists():
-            pytest.skip("DEMO_GDISC sample data not available")
+        # if not DEMO_GDISC.exists():
+        #     pytest.skip("DEMO_GDISC sample data not available")
         return DEMO_GDISC
 
     def test_study_help(self, runner):
@@ -430,8 +430,8 @@ class TestStudyCommandWithGDISC:
     @pytest.fixture
     def study_folder(self):
         """Provide path to DEMO_GDISC study folder."""
-        if not DEMO_GDISC.exists():
-            pytest.skip("DEMO_GDISC sample data not available")
+        # if not DEMO_GDISC.exists():
+        #     pytest.skip("DEMO_GDISC sample data not available")
         return DEMO_GDISC
 
     def test_study_full_processing(self, runner, study_folder, tmp_path):

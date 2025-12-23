@@ -27,8 +27,8 @@ class TestXPTFormatReadability:
     @pytest.fixture(scope="class")
     def processed_study(self, tmp_path_factory):
         """Process a study and return the output directory."""
-        if not DEMO_GDISC.exists():
-            pytest.skip("DEMO_GDISC sample data not available")
+        # if not DEMO_GDISC.exists():
+        #     pytest.skip("DEMO_GDISC sample data not available")
 
         output_dir = tmp_path_factory.mktemp("xpt_validation")
 
@@ -61,12 +61,12 @@ class TestXPTFormatReadability:
     def test_xpt_files_readable_by_pyreadstat(self, processed_study):
         """Test that all XPT files can be read by pyreadstat."""
         xpt_dir = processed_study / "xpt"
-        if not xpt_dir.exists():
-            pytest.skip("XPT directory not found")
+        # if not xpt_dir.exists():
+        #     pytest.skip("XPT directory not found")
 
         xpt_files = list(xpt_dir.glob("*.xpt"))
-        if not xpt_files:
-            pytest.skip("No XPT files found")
+        # if not xpt_files:
+        #     pytest.skip("No XPT files found")
 
         for xpt_file in xpt_files:
             try:
@@ -79,12 +79,12 @@ class TestXPTFormatReadability:
     def test_xpt_file_sizes_reasonable(self, processed_study):
         """Test that XPT files have reasonable sizes (not too small or suspiciously large)."""
         xpt_dir = processed_study / "xpt"
-        if not xpt_dir.exists():
-            pytest.skip("XPT directory not found")
+        # if not xpt_dir.exists():
+        #     pytest.skip("XPT directory not found")
 
         xpt_files = list(xpt_dir.glob("*.xpt"))
-        if not xpt_files:
-            pytest.skip("No XPT files found")
+        # if not xpt_files:
+        #     pytest.skip("No XPT files found")
 
         for xpt_file in xpt_files:
             size = xpt_file.stat().st_size
@@ -106,8 +106,8 @@ class TestXPTMetadata:
     @pytest.fixture(scope="class")
     def processed_study(self, tmp_path_factory):
         """Process a study and return the output directory."""
-        if not DEMO_GDISC.exists():
-            pytest.skip("DEMO_GDISC sample data not available")
+        # if not DEMO_GDISC.exists():
+        #     pytest.skip("DEMO_GDISC sample data not available")
 
         output_dir = tmp_path_factory.mktemp("xpt_metadata")
 
@@ -132,12 +132,12 @@ class TestXPTMetadata:
     def test_xpt_has_column_labels(self, processed_study):
         """Test that XPT files have column labels (metadata)."""
         xpt_dir = processed_study / "xpt"
-        if not xpt_dir.exists():
-            pytest.skip("XPT directory not found")
+        # if not xpt_dir.exists():
+        #     pytest.skip("XPT directory not found")
 
         xpt_files = list(xpt_dir.glob("*.xpt"))
-        if not xpt_files:
-            pytest.skip("No XPT files found")
+        # if not xpt_files:
+        #     pytest.skip("No XPT files found")
 
         for xpt_file in xpt_files:
             df, meta = pyreadstat.read_xport(str(xpt_file))
@@ -154,12 +154,12 @@ class TestXPTMetadata:
     def test_xpt_column_names_valid(self, processed_study):
         """Test that XPT column names are valid SAS names."""
         xpt_dir = processed_study / "xpt"
-        if not xpt_dir.exists():
-            pytest.skip("XPT directory not found")
+        # if not xpt_dir.exists():
+        #     pytest.skip("XPT directory not found")
 
         xpt_files = list(xpt_dir.glob("*.xpt"))
-        if not xpt_files:
-            pytest.skip("No XPT files found")
+        # if not xpt_files:
+        #     pytest.skip("No XPT files found")
 
         for xpt_file in xpt_files:
             df, meta = pyreadstat.read_xport(str(xpt_file))
@@ -180,12 +180,12 @@ class TestXPTMetadata:
     def test_xpt_has_table_name(self, processed_study):
         """Test that XPT files have table/member names set."""
         xpt_dir = processed_study / "xpt"
-        if not xpt_dir.exists():
-            pytest.skip("XPT directory not found")
+        # if not xpt_dir.exists():
+        #     pytest.skip("XPT directory not found")
 
         xpt_files = list(xpt_dir.glob("*.xpt"))
-        if not xpt_files:
-            pytest.skip("No XPT files found")
+        # if not xpt_files:
+        #     pytest.skip("No XPT files found")
 
         for xpt_file in xpt_files:
             df, meta = pyreadstat.read_xport(str(xpt_file))
@@ -208,8 +208,8 @@ class TestXPTDataIntegrity:
     @pytest.fixture(scope="class")
     def processed_study(self, tmp_path_factory):
         """Process a study and return the output directory."""
-        if not DEMO_GDISC.exists():
-            pytest.skip("DEMO_GDISC sample data not available")
+        # if not DEMO_GDISC.exists():
+        #     pytest.skip("DEMO_GDISC sample data not available")
 
         output_dir = tmp_path_factory.mktemp("xpt_integrity")
 
@@ -234,12 +234,12 @@ class TestXPTDataIntegrity:
     def test_xpt_data_not_empty(self, processed_study):
         """Test that XPT files contain data (not just headers)."""
         xpt_dir = processed_study / "xpt"
-        if not xpt_dir.exists():
-            pytest.skip("XPT directory not found")
+        # if not xpt_dir.exists():
+        #     pytest.skip("XPT directory not found")
 
         xpt_files = list(xpt_dir.glob("*.xpt"))
-        if not xpt_files:
-            pytest.skip("No XPT files found")
+        # if not xpt_files:
+        #     pytest.skip("No XPT files found")
 
         non_empty_count = 0
         for xpt_file in xpt_files:
@@ -254,12 +254,12 @@ class TestXPTDataIntegrity:
     def test_xpt_no_invalid_dates(self, processed_study):
         """Test that XPT files don't have obviously invalid dates."""
         xpt_dir = processed_study / "xpt"
-        if not xpt_dir.exists():
-            pytest.skip("XPT directory not found")
+        # if not xpt_dir.exists():
+        #     pytest.skip("XPT directory not found")
 
         xpt_files = list(xpt_dir.glob("*.xpt"))
-        if not xpt_files:
-            pytest.skip("No XPT files found")
+        # if not xpt_files:
+        #     pytest.skip("No XPT files found")
 
         for xpt_file in xpt_files:
             df, meta = pyreadstat.read_xport(str(xpt_file))
@@ -285,12 +285,12 @@ class TestXPTDataIntegrity:
     def test_xpt_string_encoding(self, processed_study):
         """Test that XPT files handle string encoding correctly."""
         xpt_dir = processed_study / "xpt"
-        if not xpt_dir.exists():
-            pytest.skip("XPT directory not found")
+        # if not xpt_dir.exists():
+        #     pytest.skip("XPT directory not found")
 
         xpt_files = list(xpt_dir.glob("*.xpt"))
-        if not xpt_files:
-            pytest.skip("No XPT files found")
+        # if not xpt_files:
+        #     pytest.skip("No XPT files found")
 
         for xpt_file in xpt_files:
             try:

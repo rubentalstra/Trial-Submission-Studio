@@ -23,8 +23,8 @@ class TestDomainFileDiscovery:
     @pytest.fixture
     def study_folder(self):
         """Provide path to sample study folder."""
-        if not DEMO_GDISC.exists():
-            pytest.skip("Sample data not available")
+        # if not DEMO_GDISC.exists():
+        #     pytest.skip("Sample data not available")
         return DEMO_GDISC
 
     def test_can_find_dm_domain_file(self, study_folder):
@@ -109,8 +109,8 @@ class TestDomainDataReading:
     @pytest.fixture
     def study_folder(self):
         """Provide path to sample study folder."""
-        if not DEMO_GDISC.exists():
-            pytest.skip("Sample data not available")
+        # if not DEMO_GDISC.exists():
+        #     pytest.skip("Sample data not available")
         return DEMO_GDISC
 
     def test_can_read_dm_file_as_dataframe(self, study_folder):

@@ -92,8 +92,8 @@ class TestCLIImportBoundary:
     def test_services_do_not_import_cli(self):
         """Services layer must not import from CLI."""
         services_dir = PACKAGE_ROOT / "services"
-        if not services_dir.exists():
-            pytest.skip("services directory not found")
+        # if not services_dir.exists():
+        #     pytest.skip("services directory not found")
 
         violations = []
         for py_file in get_python_files(services_dir):
@@ -110,8 +110,8 @@ class TestCLIImportBoundary:
     def test_application_does_not_import_cli(self):
         """Application layer must not import from CLI."""
         application_dir = PACKAGE_ROOT / "application"
-        if not application_dir.exists():
-            pytest.skip("application directory not found")
+        # if not application_dir.exists():
+        #     pytest.skip("application directory not found")
 
         violations = []
         for py_file in get_python_files(application_dir):
@@ -128,8 +128,8 @@ class TestCLIImportBoundary:
     def test_domain_does_not_import_cli(self):
         """Domain layer must not import from CLI."""
         domain_dir = PACKAGE_ROOT / "domain"
-        if not domain_dir.exists():
-            pytest.skip("domain directory not found")
+        # if not domain_dir.exists():
+        #     pytest.skip("domain directory not found")
 
         violations = []
         for py_file in get_python_files(domain_dir):
@@ -146,8 +146,8 @@ class TestCLIImportBoundary:
     def test_infrastructure_does_not_import_cli(self):
         """Infrastructure layer must not import from CLI."""
         infrastructure_dir = PACKAGE_ROOT / "infrastructure"
-        if not infrastructure_dir.exists():
-            pytest.skip("infrastructure directory not found")
+        # if not infrastructure_dir.exists():
+        #     pytest.skip("infrastructure directory not found")
 
         violations = []
         for py_file in get_python_files(infrastructure_dir):

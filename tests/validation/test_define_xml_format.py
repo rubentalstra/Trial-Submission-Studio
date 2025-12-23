@@ -27,8 +27,8 @@ class TestDefineXMLWellFormedness:
     @pytest.fixture(scope="class")
     def processed_study(self, tmp_path_factory):
         """Process a study with Define-XML generation."""
-        if not DEMO_GDISC.exists():
-            pytest.skip("DEMO_GDISC sample data not available")
+        # if not DEMO_GDISC.exists():
+        #     pytest.skip("DEMO_GDISC sample data not available")
 
         output_dir = tmp_path_factory.mktemp("define_validation")
 
@@ -54,8 +54,8 @@ class TestDefineXMLWellFormedness:
         """Test that Define-XML file was created."""
         define_files = list(processed_study.glob("define*.xml"))
 
-        if not define_files:
-            pytest.skip("Define-XML not generated")
+        # if not define_files:
+        #     pytest.skip("Define-XML not generated")
 
         assert len(define_files) > 0, "Define-XML file should exist"
 
@@ -63,8 +63,8 @@ class TestDefineXMLWellFormedness:
         """Test that Define-XML is well-formed XML."""
         define_files = list(processed_study.glob("define*.xml"))
 
-        if not define_files:
-            pytest.skip("Define-XML not found")
+        # if not define_files:
+        #     pytest.skip("Define-XML not found")
 
         for define_file in define_files:
             try:
@@ -78,8 +78,8 @@ class TestDefineXMLWellFormedness:
         """Test that Define-XML has ODM root element."""
         define_files = list(processed_study.glob("define*.xml"))
 
-        if not define_files:
-            pytest.skip("Define-XML not found")
+        # if not define_files:
+        #     pytest.skip("Define-XML not found")
 
         for define_file in define_files:
             tree = ET.parse(define_file)
@@ -100,8 +100,8 @@ class TestDefineXMLStructure:
     @pytest.fixture(scope="class")
     def processed_study(self, tmp_path_factory):
         """Process a study with Define-XML generation."""
-        if not DEMO_GDISC.exists():
-            pytest.skip("DEMO_GDISC sample data not available")
+        # if not DEMO_GDISC.exists():
+        #     pytest.skip("DEMO_GDISC sample data not available")
 
         output_dir = tmp_path_factory.mktemp("define_structure")
 
@@ -127,8 +127,8 @@ class TestDefineXMLStructure:
         """Test that Define-XML has Study element."""
         define_files = list(processed_study.glob("define*.xml"))
 
-        if not define_files:
-            pytest.skip("Define-XML not found")
+        # if not define_files:
+        #     pytest.skip("Define-XML not found")
 
         for define_file in define_files:
             tree = ET.parse(define_file)
@@ -147,8 +147,8 @@ class TestDefineXMLStructure:
         """Test that Define-XML has MetaDataVersion element."""
         define_files = list(processed_study.glob("define*.xml"))
 
-        if not define_files:
-            pytest.skip("Define-XML not found")
+        # if not define_files:
+        #     pytest.skip("Define-XML not found")
 
         for define_file in define_files:
             tree = ET.parse(define_file)
@@ -169,8 +169,8 @@ class TestDefineXMLStructure:
         """Test that Define-XML has ItemGroupDef elements (datasets)."""
         define_files = list(processed_study.glob("define*.xml"))
 
-        if not define_files:
-            pytest.skip("Define-XML not found")
+        # if not define_files:
+        #     pytest.skip("Define-XML not found")
 
         for define_file in define_files:
             tree = ET.parse(define_file)
@@ -192,8 +192,8 @@ class TestDefineXMLStructure:
         """Test that Define-XML has ItemDef elements (variables)."""
         define_files = list(processed_study.glob("define*.xml"))
 
-        if not define_files:
-            pytest.skip("Define-XML not found")
+        # if not define_files:
+        #     pytest.skip("Define-XML not found")
 
         for define_file in define_files:
             tree = ET.parse(define_file)
@@ -218,8 +218,8 @@ class TestDefineXMLAttributes:
     @pytest.fixture(scope="class")
     def processed_study(self, tmp_path_factory):
         """Process a study with Define-XML generation."""
-        if not DEMO_GDISC.exists():
-            pytest.skip("DEMO_GDISC sample data not available")
+        # if not DEMO_GDISC.exists():
+        #     pytest.skip("DEMO_GDISC sample data not available")
 
         output_dir = tmp_path_factory.mktemp("define_attributes")
 
@@ -245,8 +245,8 @@ class TestDefineXMLAttributes:
         """Test that Define-XML has ODM version attribute."""
         define_files = list(processed_study.glob("define*.xml"))
 
-        if not define_files:
-            pytest.skip("Define-XML not found")
+        # if not define_files:
+        #     pytest.skip("Define-XML not found")
 
         for define_file in define_files:
             tree = ET.parse(define_file)
@@ -265,8 +265,8 @@ class TestDefineXMLAttributes:
         """Test that Define-XML has reasonable file size."""
         define_files = list(processed_study.glob("define*.xml"))
 
-        if not define_files:
-            pytest.skip("Define-XML not found")
+        # if not define_files:
+        #     pytest.skip("Define-XML not found")
 
         for define_file in define_files:
             size = define_file.stat().st_size
@@ -283,8 +283,8 @@ class TestDefineXMLAttributes:
         """Test that ItemGroupDef elements have OID attributes."""
         define_files = list(processed_study.glob("define*.xml"))
 
-        if not define_files:
-            pytest.skip("Define-XML not found")
+        # if not define_files:
+        #     pytest.skip("Define-XML not found")
 
         for define_file in define_files:
             tree = ET.parse(define_file)
