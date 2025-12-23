@@ -25,13 +25,12 @@ def normalize_iso8601(raw_value: object) -> str:
 
     try:
         parsed = pd.to_datetime(text, errors="coerce", utc=False)
-        if is_missing_scalar(parsed):
-            if re.match(r"^\d{4}(-\d{2})?(-\d{2})?", text):
-                return text
-            return text
-        return parsed.isoformat()
     except Exception:
-        return text
+        parsed = None
+
+    if isinstance(parsed, pd.Timestamp):
+        return parsed.isoformat()
+    return text
 
 
 def normalize_iso8601_duration(raw_value: object) -> str:

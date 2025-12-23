@@ -40,9 +40,7 @@ class CTRepository:
         self,
         config: TranspilerConfig | None = None,
         cache: MemoryCache[
-            tuple[
-                dict[str, ControlledTerminology], dict[str, ControlledTerminology]
-            ]
+            tuple[dict[str, ControlledTerminology], dict[str, ControlledTerminology]]
         ]
         | None = None,
         ct_version: str | None = None,

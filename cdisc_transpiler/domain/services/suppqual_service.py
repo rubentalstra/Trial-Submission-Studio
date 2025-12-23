@@ -251,9 +251,7 @@ def _build_column_records(
             if "USUBJID" in aligned_source.columns
             else ""
         )
-        if (
-            not usubjid or usubjid.strip() == ""
-        ) and "USUBJID" in mapped_df.columns:
+        if (not usubjid or usubjid.strip() == "") and "USUBJID" in mapped_df.columns:
             usubjid = str(mapped_df.iloc[pos]["USUBJID"])
         studyid = ""
         if "STUDYID" in aligned_source.columns:

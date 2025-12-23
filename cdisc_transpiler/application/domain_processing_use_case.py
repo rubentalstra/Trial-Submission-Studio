@@ -83,6 +83,10 @@ class DomainProcessingDependencies:
     ct_repository: CTRepositoryPort | None = None
 
 
+def _empty_suppqual_results() -> list[SuppqualOutputResult]:
+    return []
+
+
 @dataclass(slots=True)
 class SuppqualOutputResult:
     domain_code: str
@@ -103,7 +107,9 @@ class OutputStageResult:
     xpt_path: Path | None = None
     xml_path: Path | None = None
     sas_path: Path | None = None
-    suppqual_domains: list[SuppqualOutputResult] = field(default_factory=list)
+    suppqual_domains: list[SuppqualOutputResult] = field(
+        default_factory=_empty_suppqual_results
+    )
 
 
 class DomainProcessingUseCase:

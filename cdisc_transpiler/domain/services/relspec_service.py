@@ -16,7 +16,7 @@ source datasets explicitly provide those concepts.
 """
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import pandas as pd
 
@@ -171,14 +171,17 @@ class RelspecService:
             key = (usubjid, refid)
             record = records.get(key)
             if record is None:
-                record: dict[str, object] = {
-                    "STUDYID": context.study_id,
-                    "USUBJID": usubjid,
-                    "REFID": refid,
-                    "SPEC": "",
-                    "PARENT": "",
-                    "LEVEL": 1,
-                }
+                record = cast(
+                    "dict[str, object]",
+                    {
+                        "STUDYID": context.study_id,
+                        "USUBJID": usubjid,
+                        "REFID": refid,
+                        "SPEC": "",
+                        "PARENT": "",
+                        "LEVEL": 1,
+                    },
+                )
                 records[key] = record
 
             if context.spec_col and not record.get("SPEC"):

@@ -12,8 +12,6 @@ The use case orchestrates:
 using injected ports/use cases.
 """
 
-from __future__ import annotations
-
 from collections import defaultdict
 from dataclasses import dataclass, replace
 from pathlib import Path
@@ -414,7 +412,9 @@ class StudyProcessingUseCase:
     ) -> DatasetOutputDirs:
         if not write_outputs:
             return DatasetOutputDirs(xpt_dir=None, xml_dir=None, sas_dir=None)
-        xpt_dir = request.output_dir / "xpt" if "xpt" in request.output_formats else None
+        xpt_dir = (
+            request.output_dir / "xpt" if "xpt" in request.output_formats else None
+        )
         xml_dir = (
             request.output_dir / "dataset-xml"
             if "xml" in request.output_formats
@@ -469,9 +469,7 @@ class StudyProcessingUseCase:
                         context.request.output_formats,
                     )
             else:
-                response.errors.append(
-                    (domain_code, result.error or "Unknown error")
-                )
+                response.errors.append((domain_code, result.error or "Unknown error"))
 
     def _log_domain_result(self, result: DomainProcessingResult) -> None:
         frame = result.domain_dataframe

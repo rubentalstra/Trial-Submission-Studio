@@ -23,7 +23,7 @@ def ensure_series(value: object, index: pd.Index[Any] | None = None) -> pd.Serie
     where a frame lookup was expected to yield a series.
     """
     if isinstance(value, pd.Series):
-        return cast("pd.Series[object]", value)
+        return cast("pd.Series[Any]", value)
     if isinstance(value, pd.DataFrame):
         if value.shape[1] == 0:
             return pd.Series(index=value.index, dtype="object")
@@ -43,7 +43,7 @@ def ensure_numeric_series(
 def is_missing_scalar(value: object) -> bool:
     """Return True when a scalar-like value is missing (NaN/NA/NaT/None)."""
     try:
-        return bool(pd.isna(cast("Any", value)))
+        return cast("bool", pd.isna(cast("Any", value)))
     except (TypeError, ValueError):
         return False
 

@@ -1,6 +1,6 @@
 """Codelist and controlled terminology transformation utilities."""
 
-from typing import TYPE_CHECKING, Protocol
+from typing import TYPE_CHECKING, Any, Protocol, cast
 
 import pandas as pd
 
@@ -83,7 +83,7 @@ class CodelistTransformer:
                 return text
             return val
 
-        series = ensure_series(source_data)
+        series = ensure_series(cast("Any", source_data))
         return ensure_series(series.map(transform_value), index=series.index)
 
     @staticmethod

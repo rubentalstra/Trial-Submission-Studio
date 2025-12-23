@@ -261,9 +261,7 @@ class MetadataAwareMapper:
     def _resolve_alias_candidates(
         self,
         frame: pd.DataFrame,
-        alias_candidates_by_target: dict[
-            str, list[tuple[str, str | None, str | None]]
-        ],
+        alias_candidates_by_target: dict[str, list[tuple[str, str | None, str | None]]],
     ) -> tuple[list[ColumnMapping], list[str], set[str]]:
         suggestions: list[ColumnMapping] = []
         unmapped: list[str] = []

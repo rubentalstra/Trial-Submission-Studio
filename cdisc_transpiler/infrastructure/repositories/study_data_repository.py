@@ -162,4 +162,3 @@ class StudyDataRepository:
             return frame
         except Exception as e:
             raise DataParseError(f"Failed to read SAS file {path}: {e}") from e
-

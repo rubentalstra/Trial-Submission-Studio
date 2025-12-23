@@ -11,9 +11,8 @@ infrastructure I/O layer easier to navigate.
 from contextlib import suppress
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 from xml.etree import ElementTree as ET
-from xml.etree.ElementTree import Element
 
 import pandas as pd
 
@@ -51,6 +50,7 @@ from .standards import get_default_standard_comments, get_default_standards
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
     from pathlib import Path
+    from xml.etree.ElementTree import Element
 
     from cdisc_transpiler.application.ports.repositories import CTRepositoryPort
     from cdisc_transpiler.domain.entities.controlled_terminology import (
@@ -65,14 +65,41 @@ if TYPE_CHECKING:
         StudyDataset,
     )
 
-type XmlElement = Element
-type ItemDefSpec = tuple[
+    type XmlElement = Element[str]
+else:
+    type XmlElement = Any
+
+ItemDefSpec = tuple[
     SDTMVariable, str, ValueListDefinition | None, WhereClauseDefinition | None
 ]
-type ValueListItemSpec = tuple[SDTMVariable, str]
-type CodeListSpec = tuple[SDTMVariable, str, set[str]]
+ValueListItemSpec = tuple[SDTMVariable, str]
+CodeListSpec = tuple[SDTMVariable, str, set[str]]
 DTC_DATETIME_MIN_LENGTH = 19
 DOMAIN_CODE_PREFIX_LEN = 2
+
+
+def _empty_item_groups() -> list[XmlElement]:
+    return []
+
+
+def _empty_item_def_specs() -> dict[str, ItemDefSpec]:
+    return {}
+
+
+def _empty_value_list_specs() -> dict[str, ValueListItemSpec]:
+    return {}
+
+
+def _empty_code_list_specs() -> dict[str, CodeListSpec]:
+    return {}
+
+
+def _empty_value_list_defs() -> list[ValueListDefinition]:
+    return []
+
+
+def _empty_where_clause_defs() -> list[WhereClauseDefinition]:
+    return []
 
 
 def write_study_define_file(
@@ -137,12 +164,22 @@ def build_study_define_tree(
 
 @dataclass(slots=True)
 class _DefineBuildState:
-    item_groups: list[XmlElement] = field(default_factory=list)
-    item_def_specs: dict[str, ItemDefSpec] = field(default_factory=dict)
-    vl_item_def_specs: dict[str, ValueListItemSpec] = field(default_factory=dict)
-    code_list_specs: dict[str, CodeListSpec] = field(default_factory=dict)
-    value_list_defs: list[ValueListDefinition] = field(default_factory=list)
-    where_clause_defs: list[WhereClauseDefinition] = field(default_factory=list)
+    item_groups: list[XmlElement] = field(default_factory=_empty_item_groups)
+    item_def_specs: dict[str, ItemDefSpec] = field(
+        default_factory=_empty_item_def_specs
+    )
+    vl_item_def_specs: dict[str, ValueListItemSpec] = field(
+        default_factory=_empty_value_list_specs
+    )
+    code_list_specs: dict[str, CodeListSpec] = field(
+        default_factory=_empty_code_list_specs
+    )
+    value_list_defs: list[ValueListDefinition] = field(
+        default_factory=_empty_value_list_defs
+    )
+    where_clause_defs: list[WhereClauseDefinition] = field(
+        default_factory=_empty_where_clause_defs
+    )
 
 
 def _build_define_header(
