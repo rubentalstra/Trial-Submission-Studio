@@ -15,11 +15,14 @@ It does not attempt to infer full specimen genealogy (PARENT/LEVEL) unless
 source datasets explicitly provide those concepts.
 """
 
-from collections.abc import Iterable, Mapping
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
 from ..entities.mapping import ColumnMapping, MappingConfig
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Mapping
 
 
 class RelspecService:

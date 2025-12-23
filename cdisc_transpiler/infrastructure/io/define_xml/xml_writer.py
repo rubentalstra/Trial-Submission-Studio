@@ -8,8 +8,6 @@ builder modules. Consolidating them here reduces file count and makes the
 infrastructure I/O layer easier to navigate.
 """
 
-from __future__ import annotations
-
 from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime
 from pathlib import Path

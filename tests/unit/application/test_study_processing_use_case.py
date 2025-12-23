@@ -27,6 +27,7 @@ class TestStudyProcessingUseCase:
     def test_use_case_can_be_imported(self):
         """Test that use case can be imported without issues."""
         from cdisc_transpiler.application.study_processing_use_case import (
+            StudyProcessingDependencies,
             StudyProcessingUseCase,
         )
 
@@ -54,7 +55,7 @@ class TestStudyProcessingUseCase:
         mock_domain_definition_repository = Mock()
 
         # This should work without errors
-        use_case = StudyProcessingUseCase(
+        dependencies = StudyProcessingDependencies(
             logger=mock_logger,
             study_data_repository=mock_repo,
             domain_processing_use_case=mock_domain_use_case,
@@ -63,10 +64,11 @@ class TestStudyProcessingUseCase:
             relrec_service=mock_relrec_service,
             relsub_service=mock_relsub_service,
             relspec_service=mock_relspec_service,
+            domain_definition_repository=mock_domain_definition_repository,
             dataset_output=mock_file_gen,
             output_preparer=mock_output_preparer,
-            domain_definition_repository=mock_domain_definition_repository,
         )
+        use_case = StudyProcessingUseCase(dependencies)
 
         assert use_case is not None
         assert use_case.logger == mock_logger

@@ -1,8 +1,9 @@
 """Domain processor for Inclusion/Exclusion (IE) domain."""
 
-from typing import override
+from typing import TYPE_CHECKING, override
 
-import pandas as pd
+if TYPE_CHECKING:
+    import pandas as pd
 
 from ..transformers.date import DateTransformer
 from ..transformers.numeric import NumericTransformer

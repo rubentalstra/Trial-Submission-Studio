@@ -13,12 +13,15 @@ Expected variables.
 
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
 
 import pandas as pd
 
 from ..entities.controlled_terminology import ControlledTerminology
-from ..entities.sdtm_domain import SDTMDomain, SDTMVariable
+from ..entities.sdtm_domain import SDTMVariable
+
+if TYPE_CHECKING:
+    from ..entities.sdtm_domain import SDTMDomain
 
 Severity = Literal["error", "warning"]
 

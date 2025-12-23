@@ -1,13 +1,12 @@
 """ISO 8601 date/time normalization utilities."""
 
 import re
-from typing import Any, cast
 
 import pandas as pd
-from pandas import Timestamp, isna
+from pandas import isna
 
 
-def normalize_iso8601(raw_value: Any) -> str:
+def normalize_iso8601(raw_value: object) -> str:
     if isna(raw_value) or raw_value == "":
         return ""
 
@@ -20,17 +19,17 @@ def normalize_iso8601(raw_value: Any) -> str:
         return cleaned or ""
 
     try:
-        parsed = cast("Any", pd.to_datetime(raw_value, errors="coerce", utc=False))
+        parsed = pd.to_datetime(raw_value, errors="coerce", utc=False)
         if pd.isna(parsed):
             if re.match(r"^\d{4}(-\d{2})?(-\d{2})?", text):
                 return text
             return str(raw_value)
-        return cast("Timestamp", parsed).isoformat()
+        return parsed.isoformat()
     except Exception:
         return str(raw_value)
 
 
-def normalize_iso8601_duration(raw_value: Any) -> str:
+def normalize_iso8601_duration(raw_value: object) -> str:
     if isna(raw_value) or raw_value == "":
         return ""
 

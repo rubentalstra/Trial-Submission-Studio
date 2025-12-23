@@ -1,12 +1,12 @@
 """Data models for metadata structures."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING
 
 import pandas as pd
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _empty_codelist_values() -> list[CodeListValue]:
@@ -37,7 +37,7 @@ class CodeList:
     format_name: str  # The codelist identifier (e.g., "SEX", "RACE", "YESNO")
     values: list[CodeListValue] = field(default_factory=_empty_codelist_values)
 
-    def get_text(self, code: Any) -> str | None:
+    def get_text(self, code: object) -> str | None:
         """Get the text for a code value.
 
         Args:
@@ -58,7 +58,7 @@ class CodeList:
 
         return None
 
-    def get_code(self, text: Any) -> str | None:
+    def get_code(self, text: object) -> str | None:
         """Get the code for a text value (reverse lookup).
 
         Args:
@@ -126,7 +126,7 @@ class StudyMetadata:
             return self.get_codelist(column.format_name)
         return None
 
-    def transform_value(self, column_id: str, value: Any) -> Any:
+    def transform_value(self, column_id: str, value: object) -> object:
         """Transform a value using its codelist if applicable.
 
         Args:

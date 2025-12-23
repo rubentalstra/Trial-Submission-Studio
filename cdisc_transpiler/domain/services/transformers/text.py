@@ -1,17 +1,18 @@
 """Text transformation utilities for SDTM domains."""
 
-from typing import Any
-
-import pandas as pd
+from typing import TYPE_CHECKING
 
 from ....pandas_utils import ensure_numeric_series, ensure_series
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 class TextTransformer:
     """Transforms text values for SDTM compliance."""
 
     @staticmethod
-    def replace_unknown(series: Any, default: str) -> pd.Series:
+    def replace_unknown(series: object, default: str) -> pd.Series:
         normalized = ensure_series(series).astype("string").fillna("")
         upper = normalized.str.upper()
         missing_tokens = {"", "UNK", "UNKNOWN", "NA", "N/A", "NONE", "NAN", "<NA>"}

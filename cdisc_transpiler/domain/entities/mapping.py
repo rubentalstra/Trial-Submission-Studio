@@ -4,13 +4,15 @@ This module contains the core data models used for defining and managing
 column mappings between source data and SDTM target variables.
 """
 
-from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from pydantic import BaseModel, Field
 
-from .sdtm_domain import SDTMDomain
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from .sdtm_domain import SDTMDomain
 
 
 class DomainResolver(Protocol):

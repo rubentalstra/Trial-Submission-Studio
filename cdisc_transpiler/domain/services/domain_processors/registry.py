@@ -1,10 +1,9 @@
 """Domain processor registry and factory."""
 
-from collections.abc import Callable
 from typing import TYPE_CHECKING
 
 from .ae import AEProcessor
-from .base import BaseDomainProcessor, DefaultDomainProcessor
+from .base import DefaultDomainProcessor
 from .cm import CMProcessor
 from .da import DAProcessor
 from .dm import DMProcessor
@@ -23,9 +22,12 @@ from .ts import TSProcessor
 from .vs import VSProcessor
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from ...entities.controlled_terminology import ControlledTerminology
     from ...entities.sdtm_domain import SDTMDomain
     from ...entities.study_metadata import StudyMetadata
+    from .base import BaseDomainProcessor
 
 
 class DomainProcessorRegistry:

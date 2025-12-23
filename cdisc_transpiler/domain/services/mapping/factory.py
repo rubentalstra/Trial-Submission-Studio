@@ -3,11 +3,15 @@
 These helpers live in the domain layer because mapping is pure business logic.
 """
 
-from ...entities.column_hints import Hints
-from ...entities.sdtm_domain import SDTMDomain
-from ...entities.study_metadata import StudyMetadata
+from typing import TYPE_CHECKING
+
 from .engine import MappingEngine
 from .metadata_mapper import MetadataAwareMapper
+
+if TYPE_CHECKING:
+    from ...entities.column_hints import Hints
+    from ...entities.sdtm_domain import SDTMDomain
+    from ...entities.study_metadata import StudyMetadata
 
 
 def create_mapper(

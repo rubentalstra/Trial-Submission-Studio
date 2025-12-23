@@ -8,17 +8,16 @@ Includes:
 - Dataset output DTOs (DatasetOutputDirs, DatasetOutputRequest, DatasetOutputResult)
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
-from pathlib import Path
 from typing import TYPE_CHECKING
-
-import pandas as pd
 
 from ..constants import Defaults, SDTMVersions
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
+    import pandas as pd
+
     from ..domain.entities.mapping import MappingConfig
     from ..domain.entities.study_metadata import StudyMetadata
     from ..domain.services.sdtm_conformance_checker import ConformanceReport
@@ -149,6 +148,23 @@ class DatasetOutputResult:
     def success(self) -> bool:
         """Check if generation was successful (no errors)."""
         return len(self.errors) == 0
+
+
+# ============================================================================
+# Port Request DTOs
+# ============================================================================
+
+
+@dataclass(slots=True)
+class ProcessingSummary:
+    """Summary of study processing inputs for logging."""
+
+    study_id: str
+    domain_count: int
+    file_count: int
+    output_format: str
+    generate_define: bool
+    generate_sas: bool
 
 
 # ============================================================================

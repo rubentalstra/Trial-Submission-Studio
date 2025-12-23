@@ -1,9 +1,12 @@
 """Variable construction from CSV metadata."""
 
-from collections.abc import Mapping
+from typing import TYPE_CHECKING
 
 from .sdtm_classes import GENERAL_OBSERVATION_CLASSES, normalize_general_class
 from .sdtm_domain import SDTMVariable
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping
 
 # Import constants directly to avoid circular import
 DEFAULT_CHAR_LENGTH = 200

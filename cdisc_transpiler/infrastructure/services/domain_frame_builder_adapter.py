@@ -1,26 +1,29 @@
 """Infrastructure adapter for building SDTM domain dataframes."""
 
-from typing import cast, override
-
-import pandas as pd
+from dataclasses import replace
+from typing import TYPE_CHECKING, cast, override
 
 from ...application.ports.repositories import CTRepositoryPort
 from ...application.ports.services import DomainFrameBuilderPort
-from ...domain.entities.controlled_terminology import ControlledTerminology
-from ...domain.entities.mapping import MappingConfig
-from ...domain.entities.sdtm_domain import SDTMDomain
-from ...domain.entities.study_metadata import StudyMetadata
 from ...domain.services.domain_frame_builder import (
+    DomainFrameBuildRequest,
     TransformerRegistry,
     ValidatorRegistry,
     build_domain_dataframe,
 )
-from ...domain.services.domain_processors.base import BaseDomainProcessor
 from ...domain.services.domain_processors.registry import get_domain_processor
 from ...domain.services.transformers.codelist import CodelistTransformer
 from ...domain.services.transformers.date import DateTransformer
 from ...domain.services.transformers.numeric import NumericTransformer
 from .xpt_validator import XPTValidator
+
+if TYPE_CHECKING:
+    import pandas as pd
+
+    from ...domain.entities.controlled_terminology import ControlledTerminology
+    from ...domain.entities.sdtm_domain import SDTMDomain
+    from ...domain.entities.study_metadata import StudyMetadata
+    from ...domain.services.domain_processors.base import BaseDomainProcessor
 
 
 class DomainFrameBuilderAdapter(DomainFrameBuilderPort):
@@ -29,18 +32,9 @@ class DomainFrameBuilderAdapter(DomainFrameBuilderPort):
         self._ct_repository = ct_repository
 
     @override
-    def build_domain_dataframe(
-        self,
-        frame: pd.DataFrame,
-        config: MappingConfig,
-        domain: SDTMDomain,
-        *,
-        reference_starts: dict[str, str] | None = None,
-        lenient: bool = False,
-        metadata: StudyMetadata | None = None,
-    ) -> pd.DataFrame:
+    def build_domain_dataframe(self, request: DomainFrameBuildRequest) -> pd.DataFrame:
         validators: ValidatorRegistry | None = None
-        if not lenient:
+        if not request.lenient:
             validators = cast("ValidatorRegistry", {"xpt": XPTValidator()})
 
         transformers: TransformerRegistry = {
@@ -69,14 +63,10 @@ class DomainFrameBuilderAdapter(DomainFrameBuilderPort):
 
             return get_domain_processor(dom, ref_starts, meta, ct_resolver=ct_resolver)
 
-        return build_domain_dataframe(
-            frame,
-            config,
-            domain,
-            reference_starts=reference_starts,
-            lenient=lenient,
-            metadata=metadata,
+        enriched_request = replace(
+            request,
             domain_processor_factory=domain_processor_factory,
             transformers=transformers,
             validators=validators,
         )
+        return build_domain_dataframe(enriched_request)

@@ -21,13 +21,17 @@ SDTM Reference:
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import IntEnum
-from pathlib import Path
-from typing import Any, override
+from typing import TYPE_CHECKING, override
 
 from rich.console import Console
 
 from ...application.ports.services import LoggerPort
 from ..sdtm_spec.registry import get_domain_class
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from ...application.models import ProcessingSummary
 
 
 class LogLevel(IntEnum):
@@ -61,7 +65,7 @@ class ConsoleLogger(LoggerPort):
     dependency injection.
     """
 
-    def __init__(self, console: Console | None = None, verbosity: int = 0):
+    def __init__(self, console: Console | None = None, verbosity: int = 0) -> None:
         """Initialize the logger.
 
         Args:
@@ -72,7 +76,7 @@ class ConsoleLogger(LoggerPort):
         self.console = console or Console()
         self.verbosity = verbosity
         self._context: LogContext | None = None
-        self._stats: dict[str, Any] = {
+        self._stats: dict[str, int] = {
             "files_processed": 0,
             "domains_processed": 0,
             "records_processed": 0,
@@ -80,7 +84,7 @@ class ConsoleLogger(LoggerPort):
             "errors": 0,
         }
 
-    def set_context(self, **kwargs: Any) -> None:
+    def set_context(self, **kwargs: str) -> None:
         """Set the current logging context.
 
         Args:
@@ -221,58 +225,6 @@ class ConsoleLogger(LoggerPort):
             self.verbose(f"Loaded {items_count} column definitions from Items.csv")
         if codelists_count:
             self.verbose(f"Loaded {codelists_count} codelists from CodeLists.csv")
-
-    def log_files_discovered(
-        self,
-        total_files: int,
-        domain_files: dict[str, list[tuple[Path, str]]],
-    ) -> None:
-        """Log file discovery results.
-
-        Args:
-            total_files: Total CSV files found
-            domain_files: Dictionary of domains to their files
-        """
-        self.verbose(f"Found {total_files} CSV files in study folder")
-
-        if self.verbosity >= LogLevel.DEBUG:
-            self.debug("Domain file mapping:")
-            for domain, files in sorted(domain_files.items()):
-                variants = [v for _, v in files]
-                self.debug(f"  {domain}: {', '.join(variants)}")
-
-    def log_file_match(
-        self,
-        filename: str,
-        domain: str | None,
-        variant: str | None,
-        *,
-        is_metadata: bool = False,
-        match_type: str | None = None,
-        category: str | None = None,
-    ) -> None:
-        """Log file matching result.
-
-        Args:
-            filename: Name of the file
-            domain: Matched domain code or None
-            variant: Variant name or None
-            is_metadata: Whether this is a metadata file being skipped
-            match_type: Type of match (exact, variant, etc.)
-            category: Domain category (EVENTS, FINDINGS, etc.)
-        """
-        if is_metadata:
-            self.verbose(f"Skipping metadata file: {filename}")
-        elif domain:
-            msg = f"Matched {filename} → {domain} (variant: {variant}"
-            if match_type:
-                msg += f", type: {match_type}"
-            if category:
-                msg += f", category: {category}"
-            msg += ")"
-            self.verbose(msg)
-        else:
-            self.verbose(f"No domain match for: {filename}")
 
     @override
     def log_domain_start(
@@ -441,26 +393,6 @@ class ConsoleLogger(LoggerPort):
             msg = f"  Generated {supp_code}: {record_count:,} records ({variable_count} variables)"
             self.verbose(msg)
 
-    def log_file_generated(
-        self,
-        file_type: str,
-        path: Path,
-        *,
-        record_count: int | None = None,
-    ) -> None:
-        """Log dataset output generation success.
-
-        Args:
-            file_type: Type of file (XPT, Dataset-XML, SAS, Define-XML)
-            path: Path to generated file
-            record_count: Number of records in file (optional)
-        """
-        msg = f"Generated {file_type}: {path}"
-        if record_count is not None and self.verbosity >= LogLevel.VERBOSE:
-            msg += f" ({record_count:,} records)"
-
-        self.success(msg)
-
     @override
     def log_synthesis_start(
         self,
@@ -504,34 +436,25 @@ class ConsoleLogger(LoggerPort):
     @override
     def log_processing_summary(
         self,
-        *,
-        study_id: str,
-        domain_count: int,
-        file_count: int,
-        output_format: str,
-        generate_define: bool,
-        generate_sas: bool,
+        summary: ProcessingSummary,
     ) -> None:
         """Log study processing summary before starting.
 
         Args:
-            study_id: Study identifier
-            domain_count: Number of domains to process
-            file_count: Number of files to process
-            output_format: Output format
-            generate_define: Whether Define-XML will be generated
-            generate_sas: Whether SAS will be generated
+            summary: Processing summary details
         """
         self.console.print()
-        self.console.print(f"[bold]Study: {study_id}[/bold]")
+        self.console.print(f"[bold]Study: {summary.study_id}[/bold]")
         self.console.print(
-            f"[bold]Found {domain_count} domains ({file_count} files) to process[/bold]"
+            f"[bold]Found {summary.domain_count} domains ({summary.file_count} files) to process[/bold]"
         )
-        self.console.print(f"[bold]Output format:[/bold] {output_format.upper()}")
+        self.console.print(
+            f"[bold]Output format:[/bold] {summary.output_format.upper()}"
+        )
 
-        if generate_define:
+        if summary.generate_define:
             self.console.print("[bold]Define-XML:[/bold] Will be generated")
-        if generate_sas:
+        if summary.generate_sas:
             self.console.print("[bold]SAS programs:[/bold] Will be generated")
 
     @override
@@ -584,44 +507,6 @@ class ConsoleLogger(LoggerPort):
             self.verbose(
                 f"Final {domain_code} dataset: {final_row_count:,} rows × {final_column_count} columns"
             )
-
-    def log_file_written(
-        self,
-        file_path: Path,
-        file_type: str,
-        *,
-        size_bytes: int | None = None,
-    ) -> None:
-        """Log file write results.
-
-        Args:
-            file_path: Path to written file
-            file_type: Type of file (XPT, XML, SAS)
-            size_bytes: File size in bytes (optional)
-        """
-        msg = f"Wrote {file_type}: {file_path.name}"
-        if size_bytes:
-            kb = size_bytes / 1024
-            if kb < 1024:
-                msg += f" ({kb:.1f} KB)"
-            else:
-                mb = kb / 1024
-                msg += f" ({mb:.1f} MB)"
-        self.verbose(msg)
-
-    def log_study_summary(self) -> None:
-        """Log study processing summary."""
-        self.console.print()
-        self.console.print("[bold green]Study Processing Complete[/bold green]")
-        self.console.print(f"  Domains processed: {self._stats['domains_processed']}")
-        self.console.print(f"  Files processed: {self._stats['files_processed']}")
-        self.console.print(f"  Records processed: {self._stats['records_processed']:,}")
-        if self._stats["warnings"] > 0:
-            self.console.print(
-                f"  [yellow]Warnings: {self._stats['warnings']}[/yellow]"
-            )
-        if self._stats["errors"] > 0:
-            self.console.print(f"  [red]Errors: {self._stats['errors']}[/red]")
 
     def get_stats(self) -> dict[str, Any]:
         """Get processing statistics.

@@ -6,8 +6,12 @@ instead of using hardcoded patterns.
 
 from functools import lru_cache
 import re
+from typing import TYPE_CHECKING
 
-from ...entities.sdtm_domain import SDTMDomain
+if TYPE_CHECKING:
+    from ...entities.sdtm_domain import SDTMDomain
+
+MIN_LABEL_TERM_LENGTH = 3
 
 
 def _deduplicate_preserving_order(items: list[str]) -> list[str]:
@@ -72,7 +76,7 @@ def _extract_label_terms(label: str) -> list[str]:
 
     for word in words:
         word_upper = word.upper()
-        if word_upper not in skip_words and len(word_upper) >= 3:
+        if word_upper not in skip_words and len(word_upper) >= MIN_LABEL_TERM_LENGTH:
             terms.append(_normalize_text(word))
 
     # Also add the full normalized label

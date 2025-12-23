@@ -1,8 +1,9 @@
 """Domain processor for Trial Summary (TS) domain."""
 
-from typing import override
+from typing import TYPE_CHECKING, override
 
-import pandas as pd
+if TYPE_CHECKING:
+    import pandas as pd
 
 from cdisc_transpiler.pandas_utils import ensure_series
 

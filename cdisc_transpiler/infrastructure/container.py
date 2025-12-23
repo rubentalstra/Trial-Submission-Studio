@@ -34,7 +34,6 @@ from ..application.ports.services import (
     MappingPort,
     OutputPreparerPort,
     SuppqualPort,
-    TerminologyPort,
 )
 from .io.csv_reader import CSVReader
 from .io.dataset_output import DatasetOutputAdapter
@@ -114,7 +113,6 @@ class DependencyContainer:
         self._mapping_service_instance: MappingPort | None = None
         self._domain_frame_builder_instance: DomainFrameBuilderPort | None = None
         self._suppqual_service_instance: SuppqualPort | None = None
-        self._terminology_service_instance: TerminologyPort | None = None
         self._ct_repository_instance: CTRepositoryPort | None = None
         self._relrec_service_instance: RelrecService | None = None
         self._relsub_service_instance: RelsubService | None = None
@@ -264,14 +262,6 @@ class DependencyContainer:
             self._suppqual_service_instance = SuppqualServiceAdapter()
         return self._suppqual_service_instance
 
-    def create_terminology_service(self) -> TerminologyPort:
-        """Create or return cached terminology service adapter (singleton)."""
-        if self._terminology_service_instance is None:
-            from .services.terminology_service_adapter import TerminologyServiceAdapter
-
-            self._terminology_service_instance = TerminologyServiceAdapter()
-        return self._terminology_service_instance
-
     def create_ct_repository(self) -> CTRepositoryPort:
         """Create or return cached Controlled Terminology repository (singleton)."""
         if self._ct_repository_instance is None:
@@ -329,7 +319,10 @@ class DependencyContainer:
             >>> response = use_case.execute(request)
         """
         # Import here to avoid circular import at module level
-        from ..application.study_processing_use_case import StudyProcessingUseCase
+        from ..application.study_processing_use_case import (
+            StudyProcessingDependencies,
+            StudyProcessingUseCase,
+        )
         from .services.domain_discovery_adapter import DomainDiscoveryAdapter
 
         logger = self.create_logger()
@@ -347,7 +340,7 @@ class DependencyContainer:
         ct_repository = self.create_ct_repository()
         conformance_report_writer = self.create_conformance_report_writer()
 
-        return StudyProcessingUseCase(
+        dependencies = StudyProcessingDependencies(
             logger=logger,
             study_data_repository=study_data_repository,
             domain_processing_use_case=domain_processing_use_case,
@@ -356,13 +349,14 @@ class DependencyContainer:
             relrec_service=relrec_service,
             relsub_service=relsub_service,
             relspec_service=relspec_service,
+            domain_definition_repository=domain_definition_repository,
             dataset_output=dataset_output,
             define_xml_generator=define_xml_generator,
             output_preparer=output_preparer,
-            domain_definition_repository=domain_definition_repository,
             ct_repository=ct_repository,
             conformance_report_writer=conformance_report_writer,
         )
+        return StudyProcessingUseCase(dependencies)
 
     def create_domain_processing_use_case(self):
         """Create a new domain processing use case instance (transient).
@@ -377,33 +371,31 @@ class DependencyContainer:
             >>> response = use_case.execute(request)
         """
         # Import here to avoid circular import at module level
-        from ..application.domain_processing_use_case import DomainProcessingUseCase
+        from ..application.domain_processing_use_case import (
+            DomainProcessingDependencies,
+            DomainProcessingUseCase,
+        )
 
         logger = self.create_logger()
         study_data_repository = self.create_study_data_repository()
         dataset_output = self.create_dataset_output()
-        output_preparer = self.create_output_preparer()
         mapping_service = self.create_mapping_service()
         domain_definition_repository = self.create_domain_definition_repository()
         domain_frame_builder = self.create_domain_frame_builder()
         suppqual_service = self.create_suppqual_service()
-        terminology_service = self.create_terminology_service()
         ct_repository = self.create_ct_repository()
-        xpt_writer = self.create_xpt_writer()
 
-        return DomainProcessingUseCase(
+        dependencies = DomainProcessingDependencies(
             logger=logger,
             study_data_repository=study_data_repository,
-            dataset_output=dataset_output,
             mapping_service=mapping_service,
-            output_preparer=output_preparer,
             domain_frame_builder=domain_frame_builder,
             suppqual_service=suppqual_service,
-            terminology_service=terminology_service,
             domain_definition_repository=domain_definition_repository,
-            xpt_writer=xpt_writer,
+            dataset_output=dataset_output,
             ct_repository=ct_repository,
         )
+        return DomainProcessingUseCase(dependencies)
 
     # Helper Methods
 
@@ -427,7 +419,6 @@ class DependencyContainer:
         self._mapping_service_instance = None
         self._domain_frame_builder_instance = None
         self._suppqual_service_instance = None
-        self._terminology_service_instance = None
         self._ct_repository_instance = None
         self._relrec_service_instance = None
         self._relsub_service_instance = None

@@ -6,11 +6,14 @@ It is used by ports and repositories so the application layer does not
 depend on infrastructure adapters or compatibility shims.
 """
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 from difflib import get_close_matches
 import re
+
+from ...pandas_utils import ensure_series
+
+CODELIKE_MAX_LENGTH = 12
+FUZZY_SUGGEST_MIN_LENGTH = 6
 
 
 def _empty_submission_value_synonyms() -> dict[str, tuple[str, ...]]:
@@ -72,7 +75,7 @@ class ControlledTerminology:
         if " " in text:
             return False
         # Typical code values are short and mostly A–Z/0–9 with a few separators.
-        if len(text) > 12:
+        if len(text) > CODELIKE_MAX_LENGTH:
             return False
         return bool(re.fullmatch(r"[A-Z0-9_./-]+", text.upper()))
 
@@ -140,7 +143,10 @@ class ControlledTerminology:
             return [exact]
 
         # Conservative: avoid fuzzy suggestions for short / code-like values (e.g., TESTCD variables).
-        if self._looks_like_code_value(query_text) or len(query_text) < 6:
+        if (
+            self._looks_like_code_value(query_text)
+            or len(query_text) < FUZZY_SUGGEST_MIN_LENGTH
+        ):
             return []
 
         candidates = list(candidate_to_canonical.keys())
@@ -181,7 +187,6 @@ class ControlledTerminology:
 
     def invalid_values(self, series: object) -> set[str]:
         invalid: set[str] = set()
-        from ...pandas_utils import ensure_series
 
         series_values = ensure_series(series)
 

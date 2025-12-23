@@ -10,15 +10,19 @@ SDTM Reference:
     Findings) and include Identifier, Topic, Timing, and Qualifier roles.
 """
 
-from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol, TypedDict
 
 import pandas as pd
 
-from ..entities.sdtm_domain import SDTMDomain, SDTMVariable
+from .column_ordering import ordered_columns_for_domain
+from .mapping.utils import unquote_column_name
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
     from ..entities.mapping import ColumnMapping, MappingConfig
+    from ..entities.sdtm_domain import SDTMDomain, SDTMVariable
     from ..entities.study_metadata import StudyMetadata
     from .domain_processors.base import BaseDomainProcessor
     from .transformers.codelist import CTResolver
@@ -112,36 +116,33 @@ class ValidatorRegistry(TypedDict, total=False):
     xpt: DomainFrameValidatorPort
 
 
-def build_domain_dataframe(
-    frame: pd.DataFrame,
-    config: MappingConfig,
-    domain: SDTMDomain,
-    *,
-    reference_starts: dict[str, str] | None = None,
-    lenient: bool = False,
-    metadata: StudyMetadata | None = None,
-    domain_processor_factory: Callable[
-        [SDTMDomain, dict[str, str] | None, StudyMetadata | None], BaseDomainProcessor
-    ]
-    | None = None,
-    transformers: TransformerRegistry | None = None,
-    validators: ValidatorRegistry | None = None,
-) -> pd.DataFrame:
+@dataclass(slots=True)
+class DomainFrameBuildRequest:
+    frame: pd.DataFrame
+    config: MappingConfig
+    domain: SDTMDomain
+    reference_starts: dict[str, str] | None = None
+    lenient: bool = False
+    metadata: StudyMetadata | None = None
+    domain_processor_factory: (
+        Callable[
+            [SDTMDomain, dict[str, str] | None, StudyMetadata | None],
+            BaseDomainProcessor,
+        ]
+        | None
+    ) = None
+    transformers: TransformerRegistry | None = None
+    validators: ValidatorRegistry | None = None
+
+
+def build_domain_dataframe(request: DomainFrameBuildRequest) -> pd.DataFrame:
     """Build an SDTM-compliant domain DataFrame from source data.
 
     This is the main entry point for domain DataFrame construction. It orchestrates
     the full pipeline of creating, mapping, transforming, and validating domain data.
 
     Args:
-        frame: Source DataFrame with raw data
-        config: Mapping configuration specifying column mappings
-        domain: SDTMDomain definition for the target domain
-        reference_starts: Optional USUBJID -> RFSTDTC mapping for study day calculations
-        lenient: If True, skip validation of required values (useful for Dataset-XML)
-        metadata: Optional StudyMetadata for codelist transformations
-        domain_processor_factory: Optional factory to get domain-specific processors
-        transformers: Optional dict of transformer classes (DateTransformer, etc.)
-        validators: Optional dict of validator classes (XPTValidator)
+        request: Domain frame build request with configuration and options
 
     Returns:
         DataFrame with columns matching the SDTM domain layout
@@ -149,18 +150,11 @@ def build_domain_dataframe(
     Example:
         >>> from cdisc_transpiler.infrastructure.sdtm_spec.registry import get_domain
         >>> domain = get_domain("DM")
-        >>> result = build_domain_dataframe(source_df, config, domain)
+        >>> request = DomainFrameBuildRequest(frame=source_df, config=config, domain=domain)
+        >>> result = build_domain_dataframe(request)
     """
     builder = DomainFrameBuilder(
-        frame,
-        config,
-        domain,
-        reference_starts=reference_starts,
-        lenient=lenient,
-        metadata=metadata,
-        domain_processor_factory=domain_processor_factory,
-        transformers=transformers,
-        validators=validators,
+        request,
     )
     return builder.build()
 
@@ -178,53 +172,31 @@ class DomainFrameBuilder:
     This is core SDTM domain logic that belongs in the domain layer.
     """
 
-    def __init__(
-        self,
-        frame: pd.DataFrame,
-        config: MappingConfig,
-        domain: SDTMDomain,
-        *,
-        reference_starts: dict[str, str] | None = None,
-        lenient: bool = False,
-        metadata: StudyMetadata | None = None,
-        domain_processor_factory: Callable[
-            [SDTMDomain, dict[str, str] | None, StudyMetadata | None],
-            BaseDomainProcessor,
-        ]
-        | None = None,
-        transformers: TransformerRegistry | None = None,
-        validators: ValidatorRegistry | None = None,
-    ) -> None:
+    def __init__(self, request: DomainFrameBuildRequest) -> None:
         """Initialize the builder.
 
         Args:
-            frame: Source DataFrame
-            config: Mapping configuration
-            domain: SDTMDomain definition (injected, not looked up)
-            reference_starts: USUBJID -> RFSTDTC mapping
-            lenient: Skip required value validation
-            metadata: Study metadata for transformations
-            domain_processor_factory: Factory to get domain processors
-            transformers: Dict with 'date', 'codelist', 'numeric' transformer classes
-            validators: Dict with 'xpt' validator class
+            request: Domain frame build request
         """
         super().__init__()
-        self.frame = frame.reset_index(drop=True)
-        self.config = config
-        self.domain = domain
-        self.variable_lookup = {var.name: var for var in domain.variables}
-        self.length = len(frame)
-        self.reference_starts = reference_starts or {}
-        self.lenient = lenient
-        self.metadata = metadata
-        self._domain_processor_factory = domain_processor_factory
-        self._transformers: TransformerRegistry = transformers or {}
-        self._validators: ValidatorRegistry = validators or {}
+        self.frame = request.frame.reset_index(drop=True)
+        self.config = request.config
+        self.domain = request.domain
+        self.variable_lookup = {var.name: var for var in request.domain.variables}
+        self.length = len(request.frame)
+        self.reference_starts = request.reference_starts or {}
+        self.lenient = request.lenient
+        self.metadata = request.metadata
+        self._domain_processor_factory = request.domain_processor_factory
+        self._transformers: TransformerRegistry = request.transformers or {}
+        self._validators: ValidatorRegistry = request.validators or {}
 
         # Initialize codelist transformer if provided
         codelist_transformer_cls = self._transformers.get("codelist")
         self.codelist_transformer: CodelistTransformerPort | None = (
-            codelist_transformer_cls(metadata) if codelist_transformer_cls else None
+            codelist_transformer_cls(request.metadata)
+            if codelist_transformer_cls
+            else None
         )
 
     def build(self) -> pd.DataFrame:
@@ -275,8 +247,6 @@ class DomainFrameBuilder:
         return result
 
     def _reorder_columns_for_domain(self, result: pd.DataFrame) -> pd.DataFrame:
-        from .column_ordering import ordered_columns_for_domain
-
         ordered = ordered_columns_for_domain(result, domain=self.domain)
         if list(result.columns) == ordered:
             return result
@@ -377,9 +347,6 @@ class DomainFrameBuilder:
         """Apply a single column mapping to the result DataFrame."""
         if mapping.target_variable not in self.variable_lookup:
             return
-
-        # Lazy import to avoid circular dependencies
-        from .mapping.utils import unquote_column_name
 
         source_column = mapping.source_column
         raw_source = unquote_column_name(source_column)

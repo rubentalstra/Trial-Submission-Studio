@@ -13,16 +13,30 @@ SDTM Reference:
     - QVAL: Qualifier value
 """
 
-from typing import TYPE_CHECKING, Any
+from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
 from ...constants import Constraints, Defaults
 from ...pandas_utils import ensure_numeric_series, ensure_series
+from .mapping.utils import unquote_column_name
 
 if TYPE_CHECKING:
     from ...domain.entities.sdtm_domain import SDTMDomain
     from ..entities.mapping import MappingConfig
+
+
+@dataclass(slots=True)
+class SuppqualBuildRequest:
+    domain_code: str
+    source_df: pd.DataFrame
+    mapped_df: pd.DataFrame | None
+    domain_def: SDTMDomain
+    used_source_columns: set[str] | None = None
+    study_id: str | None = None
+    common_column_counts: dict[str, int] | None = None
+    total_files: int | None = None
 
 
 def _drop_missing_usubjid(frame: pd.DataFrame) -> pd.DataFrame:
@@ -135,15 +149,7 @@ def _get_variable_lengths(domain_def: SDTMDomain) -> dict[str, int]:
 
 
 def build_suppqual(
-    domain_code: str,
-    source_df: pd.DataFrame,
-    mapped_df: pd.DataFrame | None,
-    domain_def: SDTMDomain,
-    used_source_columns: set[str] | None = None,
-    *,
-    study_id: str | None = None,
-    common_column_counts: dict[str, int] | None = None,
-    total_files: int | None = None,
+    request: SuppqualBuildRequest,
 ) -> tuple[pd.DataFrame | None, set[str]]:
     """Build a SUPP-- DataFrame for non-model columns in a parent domain.
 
@@ -152,29 +158,22 @@ def build_suppqual(
     domain model.
 
     Args:
-        domain_code: Two-character domain code (e.g., "DM", "AE")
-        source_df: Source DataFrame with raw data
-        mapped_df: Mapped DataFrame with processed domain data
-        domain_def: SDTMDomain definition for the parent domain
-        used_source_columns: Set of source columns already mapped
-        study_id: Study identifier for STUDYID column
-        common_column_counts: Count of column appearances across files
-        total_files: Total number of input files
+        request: SUPPQUAL build request
 
     Returns:
         Tuple of (supp_df, used_columns):
         - supp_df: SUPPQUAL DataFrame or None if no qualifiers found
         - used_columns: Set of source columns included in SUPPQUAL
     """
-    if source_df.empty:
+    if request.source_df.empty:
         return None, set()
 
-    used_source_columns = used_source_columns or set()
-    domain = domain_code.upper()
-    core_vars = set(domain_def.variable_names())
+    used_source_columns = request.used_source_columns or set()
+    domain = request.domain_code.upper()
+    core_vars = set(request.domain_def.variable_names())
 
     # Drop rows with missing USUBJID to mirror domain processing
-    aligned_source = _drop_missing_usubjid(source_df.copy())
+    aligned_source = _drop_missing_usubjid(request.source_df.copy())
     if aligned_source.empty:
         return None, set()
 
@@ -186,35 +185,35 @@ def build_suppqual(
         and col.upper() not in core_vars
         and not _is_operational_column(
             str(col),
-            common_counts=common_column_counts,
-            total_files=total_files,
+            common_counts=request.common_column_counts,
+            total_files=request.total_files,
         )
     ]
     if not extra_cols:
         return None, set()
 
-    if mapped_df is None:
+    if request.mapped_df is None:
         return None, set()
-    mapped_cols = set(mapped_df.columns)
+    mapped_cols = set(request.mapped_df.columns)
     seq_var = f"{domain}SEQ"
     if seq_var in mapped_cols:
         idvar: str | None = seq_var
-        idvals = mapped_df[seq_var]
+        idvals = request.mapped_df[seq_var]
         id_is_seq = True
     elif "USUBJID" in mapped_cols:
         # For domains without a sequence variable, leave IDVAR/IDVARVAL blank
         idvar = None
-        idvals = mapped_df["USUBJID"]
+        idvals = request.mapped_df["USUBJID"]
         id_is_seq = False
     else:
         return None, set()
 
     # Ensure lengths align; if not, align by index up to min length
-    max_len = min(len(aligned_source), len(mapped_df))
+    max_len = min(len(aligned_source), len(request.mapped_df))
     aligned_source = aligned_source.iloc[:max_len]
     idvals = idvals.iloc[:max_len]
 
-    records: list[dict[str, Any]] = []
+    records: list[dict[str, object]] = []
     for col in extra_cols:
         series = aligned_source[col].astype("string").fillna("").str.strip()
         if series.eq("").all():
@@ -235,15 +234,15 @@ def build_suppqual(
             )
             if (
                 not usubjid or usubjid.strip() == ""
-            ) and "USUBJID" in mapped_df.columns:
-                usubjid = str(mapped_df.iloc[pos]["USUBJID"])
+            ) and "USUBJID" in request.mapped_df.columns:
+                usubjid = str(request.mapped_df.iloc[pos]["USUBJID"])
             records.append(
                 {
                     "STUDYID": (
                         str(aligned_source.iloc[pos]["STUDYID"])
                         if "STUDYID" in aligned_source.columns
                         and str(aligned_source.iloc[pos]["STUDYID"]).strip() != ""
-                        else (study_id or "")
+                        else (request.study_id or "")
                     ),
                     "RDOMAIN": domain,
                     "USUBJID": usubjid,
@@ -268,7 +267,6 @@ def build_suppqual(
 def finalize_suppqual(
     supp_df: pd.DataFrame,
     supp_domain_def: SDTMDomain | None = None,
-    parent_domain_code: str = "DM",
 ) -> pd.DataFrame:
     """Finalize a SUPPQUAL DataFrame with proper ordering and deduplication.
 
@@ -329,8 +327,6 @@ def extract_used_columns(config: MappingConfig | None) -> set[str]:
     Returns:
         Set of source column names that are used in the configuration
     """
-    from .mapping.utils import unquote_column_name
-
     used_columns: set[str] = set()
     if config and config.mappings:
         for mapping in config.mappings:

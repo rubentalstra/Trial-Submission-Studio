@@ -1,10 +1,11 @@
 """Numeric transformation utilities for SDTM domains."""
 
-from typing import Any
-
-import pandas as pd
+from typing import TYPE_CHECKING
 
 from ....pandas_utils import ensure_numeric_series, ensure_series
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 class NumericTransformer:
@@ -29,7 +30,7 @@ class NumericTransformer:
             frame.loc[mask, stresc_col] = orres_str.loc[mask]
 
     @staticmethod
-    def force_numeric(series: Any) -> pd.Series:
+    def force_numeric(series: object) -> pd.Series:
         return ensure_numeric_series(series)
 
     @staticmethod

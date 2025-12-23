@@ -14,6 +14,7 @@ from cdisc_transpiler.application.models import (
     DatasetOutputDirs,
     DatasetOutputRequest,
     DatasetOutputResult,
+    ProcessingSummary,
 )
 from cdisc_transpiler.application.ports.services import DatasetOutputPort, LoggerPort
 from cdisc_transpiler.domain.entities.mapping import MappingConfig
@@ -77,25 +78,12 @@ class MockLogger:
 
     def log_processing_summary(
         self,
-        *,
-        study_id: str,
-        domain_count: int,
-        file_count: int,
-        output_format: str,
-        generate_define: bool,
-        generate_sas: bool,
+        summary: ProcessingSummary,
     ) -> None:
         self.messages.append(
             (
                 "log_processing_summary",
-                {
-                    "study_id": study_id,
-                    "domain_count": domain_count,
-                    "file_count": file_count,
-                    "output_format": output_format,
-                    "generate_define": generate_define,
-                    "generate_sas": generate_sas,
-                },
+                summary,
             )
         )
 

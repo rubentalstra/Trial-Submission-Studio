@@ -15,37 +15,42 @@ CLEAN2-D1: This use case is now fully implemented with injected dependencies,
 without compatibility shims.
 """
 
-from pathlib import Path
+from dataclasses import dataclass
 import traceback
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
-from .models import ProcessDomainRequest, ProcessDomainResponse
-from .ports.repositories import (
-    CTRepositoryPort,
-    DomainDefinitionRepositoryPort,
-    StudyDataRepositoryPort,
-)
-from .ports.services import (
-    DatasetOutputPort,
-    DomainFrameBuilderPort,
-    LoggerPort,
-    MappingPort,
-    OutputPreparerPort,
-    SuppqualPort,
-    TerminologyPort,
-    XPTWriterPort,
-)
+from ..domain.entities.column_hints import ColumnHint
+from ..domain.entities.mapping import ColumnMapping, build_config
+from ..domain.services.domain_frame_builder import DomainFrameBuildRequest
+from ..domain.services.sdtm_conformance_checker import check_domain_dataframe
+from ..domain.services.suppqual_service import SuppqualBuildRequest
+from .models import DatasetOutputDirs, DatasetOutputRequest, ProcessDomainResponse
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
+    from ..domain.entities.controlled_terminology import ControlledTerminology
     from ..domain.entities.mapping import MappingConfig
-    from ..domain.entities.sdtm_domain import SDTMDomain
+    from ..domain.entities.sdtm_domain import SDTMDomain, SDTMVariable
+    from ..domain.services.sdtm_conformance_checker import ConformanceReport
+    from .models import ProcessDomainRequest
+    from .ports.repositories import (
+        CTRepositoryPort,
+        DomainDefinitionRepositoryPort,
+        StudyDataRepositoryPort,
+    )
+    from .ports.services import (
+        DatasetOutputPort,
+        DomainFrameBuilderPort,
+        LoggerPort,
+        MappingPort,
+        SuppqualPort,
+    )
 
-from ..domain.entities.column_hints import ColumnHint, Hints
 
-
-def _build_column_hints(frame: pd.DataFrame) -> Hints:
+def _build_column_hints(frame: pd.DataFrame) -> dict[str, ColumnHint]:
     """Derive lightweight per-column hints used by mapping heuristics."""
     hints: dict[str, ColumnHint] = {}
     row_count = len(frame)
@@ -62,6 +67,22 @@ def _build_column_hints(frame: pd.DataFrame) -> Hints:
             null_ratio=null_ratio,
         )
     return hints
+
+
+VERBOSE_TRACEBACK_LEVEL = 2
+COLUMN_SAMPLE_LIMIT = 10
+
+
+@dataclass(slots=True)
+class DomainProcessingDependencies:
+    logger: LoggerPort
+    study_data_repository: StudyDataRepositoryPort
+    mapping_service: MappingPort
+    domain_frame_builder: DomainFrameBuilderPort
+    suppqual_service: SuppqualPort
+    domain_definition_repository: DomainDefinitionRepositoryPort
+    dataset_output: DatasetOutputPort | None = None
+    ct_repository: CTRepositoryPort | None = None
 
 
 class DomainProcessingUseCase:
@@ -96,55 +117,21 @@ class DomainProcessingUseCase:
         ...     print(f"Processed {response.records} records")
     """
 
-    def __init__(
-        self,
-        logger: LoggerPort,
-        study_data_repository: StudyDataRepositoryPort | None = None,
-        dataset_output: DatasetOutputPort | None = None,
-        mapping_service: MappingPort | None = None,
-        output_preparer: OutputPreparerPort | None = None,
-        domain_frame_builder: DomainFrameBuilderPort | None = None,
-        suppqual_service: SuppqualPort | None = None,
-        terminology_service: TerminologyPort | None = None,
-        domain_definition_repository: DomainDefinitionRepositoryPort | None = None,
-        xpt_writer: XPTWriterPort | None = None,
-        ct_repository: CTRepositoryPort | None = None,
-    ) -> None:
+    def __init__(self, dependencies: DomainProcessingDependencies) -> None:
         """Initialize the use case with injected dependencies.
 
         Args:
-            logger: Logger for progress and error reporting
-            study_data_repository: Repository for loading study data files
-            dataset_output: Adapter for dataset outputs (XPT, Dataset-XML, SAS)
+            dependencies: Bundled ports/adapters for domain processing
         """
         super().__init__()
-        self.logger = logger
-        self._study_data_repository = study_data_repository
-        self._dataset_output = dataset_output
-        if mapping_service is None:
-            raise RuntimeError(
-                "MappingPort is not configured. Wire an infrastructure adapter in the composition root."
-            )
-        self._mapping_service = mapping_service
-        self._output_preparer = output_preparer
-        if domain_frame_builder is None:
-            raise RuntimeError(
-                "DomainFrameBuilderPort is not configured. Wire an infrastructure adapter in the composition root."
-            )
-        self._domain_frame_builder = domain_frame_builder
-        if suppqual_service is None:
-            raise RuntimeError(
-                "SuppqualPort is not configured. Wire an infrastructure adapter in the composition root."
-            )
-        self._suppqual_service = suppqual_service
-        if terminology_service is None:
-            raise RuntimeError(
-                "TerminologyPort is not configured. Wire an infrastructure adapter in the composition root."
-            )
-        self._terminology_service = terminology_service
-        self._domain_definition_repository = domain_definition_repository
-        self._xpt_writer = xpt_writer
-        self._ct_repository = ct_repository
+        self.logger = dependencies.logger
+        self._study_data_repository = dependencies.study_data_repository
+        self._dataset_output = dependencies.dataset_output
+        self._mapping_service = dependencies.mapping_service
+        self._domain_frame_builder = dependencies.domain_frame_builder
+        self._suppqual_service = dependencies.suppqual_service
+        self._domain_definition_repository = dependencies.domain_definition_repository
+        self._ct_repository = dependencies.ct_repository
 
     def _log_conformance_report(
         self,
@@ -152,15 +139,15 @@ class DomainProcessingUseCase:
         frame: pd.DataFrame,
         domain: SDTMDomain,
         strict: bool,
-    ) -> Any | None:
+    ) -> ConformanceReport | None:
         if not strict:
             return None
 
-        from ..domain.services.sdtm_conformance_checker import check_domain_dataframe
-
         ct_repo = self._ct_repository
 
-        def _ct_resolver(variable: Any):
+        def _ct_resolver(
+            variable: SDTMVariable,
+        ) -> ControlledTerminology | None:
             if ct_repo is None:
                 return None
             if getattr(variable, "codelist_code", None):
@@ -251,7 +238,6 @@ class DomainProcessingUseCase:
                         source_df=self._load_file(input_file),
                         domain_df=frame,
                         config=config,
-                        domain=domain,
                         request=request,
                         extra_consumed_columns=consumed_cols,
                     )
@@ -339,7 +325,7 @@ class DomainProcessingUseCase:
             response.success = False
             response.error = str(exc)
             self.logger.error(f"{request.domain_code}: {exc}")
-            if request.verbose >= 2:
+            if request.verbose >= VERBOSE_TRACEBACK_LEVEL:
                 self.logger.error(traceback.format_exc())
 
         return response
@@ -382,9 +368,9 @@ class DomainProcessingUseCase:
         )
 
         if request.verbose > 0 and row_count > 0:
-            col_names = ", ".join(frame.columns[:10].tolist())
-            if len(frame.columns) > 10:
-                col_names += f" ... (+{len(frame.columns) - 10} more)"
+            col_names = ", ".join(frame.columns[:COLUMN_SAMPLE_LIMIT].tolist())
+            if len(frame.columns) > COLUMN_SAMPLE_LIMIT:
+                col_names += f" ... (+{len(frame.columns) - COLUMN_SAMPLE_LIMIT} more)"
             self.logger.verbose(f"    Columns: {col_names}")
 
         # Skip VSTAT helper files (VS domain operational files)
@@ -401,12 +387,9 @@ class DomainProcessingUseCase:
         # Stage 3: Map columns
         config = self._build_config(
             frame=frame,
-            domain_code=request.domain_code,
-            metadata=request.metadata,
-            min_confidence=request.min_confidence,
+            request=request,
             is_findings_long=is_findings_long,
             display_name=display_name,
-            verbose=request.verbose > 0,
         )
         if config is None:
             return None
@@ -419,14 +402,15 @@ class DomainProcessingUseCase:
         # to support streaming/partial metadata scenarios; XPT/SAS should
         # be strict because they are typically validated by downstream tools.
         lenient = ("xpt" not in request.output_formats) and (not request.generate_sas)
-        domain_df = self._build_domain_dataframe(
+        build_request = DomainFrameBuildRequest(
             frame=frame,
             config=config,
             domain=domain,
-            metadata=request.metadata,
             reference_starts=request.reference_starts,
             lenient=lenient,
+            metadata=request.metadata,
         )
+        domain_df = self._domain_frame_builder.build_domain_dataframe(build_request)
 
         output_rows = len(domain_df)
         self.logger.info(f"{request.domain_code}: {output_rows:,} rows processed")
@@ -470,16 +454,12 @@ class DomainProcessingUseCase:
     def _build_config(
         self,
         frame: pd.DataFrame,
-        domain_code: str,
-        metadata: Any,
-        min_confidence: float,
+        request: ProcessDomainRequest,
+        *,
         is_findings_long: bool,
         display_name: str,
-        verbose: bool,
     ) -> MappingConfig | None:
         """Stage 3: Build mapping configuration."""
-        from ..domain.entities.mapping import ColumnMapping, build_config
-
         if is_findings_long:
             # Use identity mapping for post-transformation data
             mappings = [
@@ -491,9 +471,9 @@ class DomainProcessingUseCase:
                 )
                 for col in frame.columns
             ]
-            config = build_config(domain_code, mappings)
+            config = build_config(request.domain_code, mappings)
 
-            if verbose:
+            if request.verbose > 0:
                 self.logger.verbose("    Using identity mapping (post-transformation)")
 
             return config
@@ -501,10 +481,10 @@ class DomainProcessingUseCase:
         # Build mapped configuration using fuzzy matching.
         column_hints = _build_column_hints(frame)
         suggestions = self._mapping_service.suggest(
-            domain_code=domain_code,
+            domain_code=request.domain_code,
             frame=frame,
-            metadata=metadata,
-            min_confidence=min_confidence,
+            metadata=request.metadata,
+            min_confidence=request.min_confidence,
             column_hints=column_hints,
         )
 
@@ -512,9 +492,9 @@ class DomainProcessingUseCase:
             self.logger.warning(f"{display_name}: No mappings found, skipping")
             return None
 
-        config = build_config(domain_code, suggestions.mappings)
+        config = build_config(request.domain_code, suggestions.mappings)
 
-        if verbose:
+        if request.verbose > 0:
             mapping_count = len(config.mappings) if config.mappings else 0
             self.logger.verbose(
                 f"    Column mappings: {mapping_count} variables mapped"
@@ -522,32 +502,11 @@ class DomainProcessingUseCase:
 
         return config
 
-    def _build_domain_dataframe(
-        self,
-        frame: pd.DataFrame,
-        config: MappingConfig,
-        domain: SDTMDomain,
-        metadata: Any,
-        reference_starts: dict[str, str] | None,
-        *,
-        lenient: bool,
-    ) -> pd.DataFrame:
-        """Stage 4: Build SDTM domain dataframe."""
-        return self._domain_frame_builder.build_domain_dataframe(
-            frame,
-            config,
-            domain,
-            lenient=lenient,
-            metadata=metadata,
-            reference_starts=reference_starts,
-        )
-
     def _generate_suppqual_stage(
         self,
         source_df: pd.DataFrame,
         domain_df: pd.DataFrame,
         config: MappingConfig,
-        domain: SDTMDomain,
         request: ProcessDomainRequest,
         extra_consumed_columns: set[str] | None = None,
     ) -> pd.DataFrame | None:
@@ -556,16 +515,18 @@ class DomainProcessingUseCase:
         if extra_consumed_columns:
             used_columns.update(extra_consumed_columns)
 
-        supp_df, _ = self._suppqual_service.build_suppqual(
-            request.domain_code,
-            source_df,
-            domain_df,
-            domain,
-            used_columns,
+        domain_def = self._get_domain(request.domain_code)
+        supp_request = SuppqualBuildRequest(
+            domain_code=request.domain_code,
+            source_df=source_df,
+            mapped_df=domain_df,
+            domain_def=domain_def,
+            used_source_columns=used_columns,
             study_id=request.study_id,
             common_column_counts=request.common_column_counts,
             total_files=request.total_input_files,
         )
+        supp_df, _ = self._suppqual_service.build_suppqual(supp_request)
 
         # Pinnacle 21 SD0046: ensure QLABEL is consistent per QNAM.
         if supp_df is not None and {"QNAM", "QLABEL"} <= set(supp_df.columns):
@@ -640,13 +601,11 @@ class DomainProcessingUseCase:
         domain: SDTMDomain,
         request: ProcessDomainRequest,
         suppqual_frames: list[pd.DataFrame],
-    ) -> dict[str, Any]:
+    ) -> dict[str, object]:
         """Stage 6: Generate dataset outputs (XPT, XML, SAS) using DatasetOutputPort."""
-        from .models import DatasetOutputDirs, DatasetOutputRequest
-
         base_filename = domain.resolved_dataset_name()
 
-        result: dict[str, Any] = {
+        result: dict[str, object] = {
             "domain_code": request.domain_code,
             "records": len(merged_df),
             "domain_dataframe": merged_df,
@@ -739,11 +698,8 @@ class DomainProcessingUseCase:
         study_id: str,
         output_formats: set[str],
         output_dirs: dict[str, Path | None],
-    ) -> dict[str, Any]:
+    ) -> dict[str, object]:
         """Generate SUPPQUAL dataset files using DatasetOutputPort."""
-        from ..domain.entities.mapping import ColumnMapping, build_config
-        from .models import DatasetOutputDirs, DatasetOutputRequest
-
         merged_supp = (
             suppqual_frames[0]
             if len(suppqual_frames) == 1
@@ -761,7 +717,6 @@ class DomainProcessingUseCase:
             merged_supp = self._suppqual_service.finalize_suppqual(
                 merged_supp,
                 supp_domain_def=supp_domain_def,
-                parent_domain_code=domain_code,
             )
 
         # Build identity config for SUPPQUAL
@@ -780,7 +735,7 @@ class DomainProcessingUseCase:
         supp_domain = supp_domain_def or self._get_domain(supp_domain_code)
         base_filename = supp_domain.resolved_dataset_name()
 
-        suppqual_result: dict[str, Any] = {
+        suppqual_result: dict[str, object] = {
             "domain_code": supp_domain_code,
             "records": len(merged_supp),
             "domain_dataframe": merged_supp,

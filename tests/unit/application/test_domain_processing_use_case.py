@@ -16,6 +16,7 @@ from unittest.mock import Mock, patch
 import pandas as pd
 
 from cdisc_transpiler.application.domain_processing_use_case import (
+    DomainProcessingDependencies,
     DomainProcessingUseCase,
 )
 from cdisc_transpiler.application.models import (
@@ -44,27 +45,22 @@ class TestDomainProcessingUseCase:
         mock_repo = Mock()
         mock_generator = Mock()
         mock_mapping = Mock()
-        mock_output_preparer = Mock()
         mock_domain_frame_builder = Mock()
         mock_suppqual_service = Mock()
-        mock_terminology_service = Mock()
         mock_domain_definition_repository = Mock()
         mock_domain_definition_repository.get_domain.return_value = (
             self._create_mock_domain()
         )
-        mock_xpt_writer = Mock()
-        return DomainProcessingUseCase(
+        dependencies = DomainProcessingDependencies(
             logger=logger,
             study_data_repository=mock_repo,
-            dataset_output=mock_generator,
             mapping_service=mock_mapping,
-            output_preparer=mock_output_preparer,
             domain_frame_builder=mock_domain_frame_builder,
             suppqual_service=mock_suppqual_service,
-            terminology_service=mock_terminology_service,
             domain_definition_repository=mock_domain_definition_repository,
-            xpt_writer=mock_xpt_writer,
+            dataset_output=mock_generator,
         )
+        return DomainProcessingUseCase(dependencies)
 
     def test_execute_returns_failed_response_on_no_data(self):
         """Test that processing returns failed response when no data can be processed."""
@@ -130,30 +126,24 @@ class TestDomainProcessingUseCase:
         mock_repo = Mock()
         mock_generator = Mock()
         mock_mapping = Mock()
-        mock_output_preparer = Mock()
         mock_domain_frame_builder = Mock()
         mock_suppqual_service = Mock()
-        mock_terminology_service = Mock()
         mock_domain_definition_repository = Mock()
-        mock_xpt_writer = Mock()
 
-        use_case = DomainProcessingUseCase(
+        dependencies = DomainProcessingDependencies(
             logger=logger,
             study_data_repository=mock_repo,
-            dataset_output=mock_generator,
             mapping_service=mock_mapping,
-            output_preparer=mock_output_preparer,
             domain_frame_builder=mock_domain_frame_builder,
             suppqual_service=mock_suppqual_service,
-            terminology_service=mock_terminology_service,
             domain_definition_repository=mock_domain_definition_repository,
-            xpt_writer=mock_xpt_writer,
+            dataset_output=mock_generator,
         )
+        use_case = DomainProcessingUseCase(dependencies)
 
         assert use_case.logger is logger
         assert use_case._study_data_repository is mock_repo
         assert use_case._dataset_output is mock_generator
-        assert use_case._terminology_service is mock_terminology_service
 
     def test_container_creates_use_case_with_dependencies(self):
         """Test that DependencyContainer properly wires dependencies."""

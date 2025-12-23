@@ -1,15 +1,16 @@
 """Codelist and controlled terminology transformation utilities."""
 
-from collections.abc import Callable, Sequence
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Protocol
 
 import pandas as pd
 
 from ....pandas_utils import ensure_numeric_series, ensure_series
-from ...entities.controlled_terminology import ControlledTerminology
-from ...entities.sdtm_domain import SDTMVariable
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Sequence
+
+    from ...entities.controlled_terminology import ControlledTerminology
+    from ...entities.sdtm_domain import SDTMVariable
     from ...entities.study_metadata import StudyMetadata
 
 
@@ -34,7 +35,7 @@ class CodelistTransformer:
 
     def apply_codelist_transformation(
         self,
-        source_data: Any,
+        source_data: object,
         codelist_name: str,
         code_column: str | None = None,
         source_frame: pd.DataFrame | None = None,
@@ -60,7 +61,7 @@ class CodelistTransformer:
                     index=source_data.index if hasattr(source_data, "index") else None,
                 )
 
-                def transform(code_val: Any) -> Any:
+                def transform(code_val: object) -> object:
                     if pd.isna(code_val):
                         return None
                     text = codelist.get_text(code_val)
@@ -70,7 +71,7 @@ class CodelistTransformer:
                     code_values.map(transform), index=code_values.index
                 )
 
-        def transform_value(val: Any) -> Any:
+        def transform_value(val: object) -> object:
             if pd.isna(val):
                 return val
             text = codelist.get_text(val)

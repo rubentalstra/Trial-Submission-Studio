@@ -6,17 +6,21 @@ CodeLists.csv metadata to provide more accurate mapping suggestions.
 
 from typing import TYPE_CHECKING
 
-import pandas as pd
 from rapidfuzz import fuzz
 
 if TYPE_CHECKING:
+    import pandas as pd
+
     from ....domain.entities.study_metadata import StudyMetadata
     from ...entities.column_hints import Hints
+    from ...entities.sdtm_domain import SDTMDomain, SDTMVariable
 
 from ....domain.entities.mapping import ColumnMapping, MappingSuggestions, Suggestion
-from ...entities.sdtm_domain import SDTMDomain, SDTMVariable
 from .pattern_builder import build_variable_patterns
 from .utils import normalize_text, safe_column_name
+
+SEQ_UNIQUENESS_MIN = 0.5
+REQUIRED_NULL_RATIO_MAX = 0.5
 
 
 class MetadataAwareMapper:
@@ -407,11 +411,14 @@ class MetadataAwareMapper:
             adjusted *= 0.85
 
         # SEQ variables should have high uniqueness
-        if variable.name.endswith("SEQ") and hint.unique_ratio < 0.5:
+        if variable.name.endswith("SEQ") and hint.unique_ratio < SEQ_UNIQUENESS_MIN:
             adjusted *= 0.9
 
         # Required variables shouldn't have high null ratio
-        if hint.null_ratio > 0.5 and (variable.core or "").strip().lower() == "req":
+        if (
+            hint.null_ratio > REQUIRED_NULL_RATIO_MAX
+            and (variable.core or "").strip().lower() == "req"
+        ):
             adjusted *= 0.9
 
         return adjusted

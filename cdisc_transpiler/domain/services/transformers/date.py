@@ -1,13 +1,16 @@
 """Date, time, and duration transformation utilities for SDTM domains."""
 
-from collections.abc import Sequence
-from typing import Any, cast
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
 from ....pandas_utils import ensure_series
-from ...entities.sdtm_domain import SDTMVariable
 from .iso8601 import normalize_iso8601, normalize_iso8601_duration
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from ...entities.sdtm_domain import SDTMVariable
 
 
 class DateTransformer:
@@ -133,10 +136,9 @@ class DateTransformer:
         baseline = ensure_series(baseline.bfill().ffill())
         # dates - baseline results in a Series of Timedeltas. .dt.days extracts the integer days.
         diff = dates - baseline
-        # Cast to Any to access .dt.days which pyright misses on the result of subtraction
-        deltas = ensure_series(cast("Any", diff).dt.days)
+        deltas = ensure_series(diff.dt.days)
 
-        def adjust_study_day(x: Any) -> Any:
+        def adjust_study_day(x: object) -> object:
             if pd.isna(x):
                 return x
             # SDTM rule: no day 0. If delta >= 0, it's day 1+. If delta < 0, it's day -1-.
@@ -159,7 +161,7 @@ class DateTransformer:
             frame.loc[:, end_var] = end.where(~needs_swap, start)
 
     @staticmethod
-    def coerce_iso8601(raw_value: Any) -> str:
+    def coerce_iso8601(raw_value: object) -> str:
         normalized = normalize_iso8601(raw_value)
         fixed = normalized
         if "NK" in normalized.upper():

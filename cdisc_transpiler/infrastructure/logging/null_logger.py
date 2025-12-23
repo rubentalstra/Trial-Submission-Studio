@@ -4,10 +4,14 @@ This module provides a silent logger implementation that discards
 all log messages. Useful for testing without console output.
 """
 
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from ...application.ports.services import LoggerPort
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from ...application.models import ProcessingSummary
 
 
 class NullLogger(LoggerPort):
@@ -98,13 +102,7 @@ class NullLogger(LoggerPort):
     @override
     def log_processing_summary(
         self,
-        *,
-        study_id: str,
-        domain_count: int,
-        file_count: int,
-        output_format: str,
-        generate_define: bool,
-        generate_sas: bool,
+        summary: ProcessingSummary,
     ) -> None:
         return None
 

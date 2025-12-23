@@ -106,7 +106,3 @@ class OutputPreparer(OutputPreparerPort):
 
         if generate_define_xml:
             _ensure_acrf_pdf(output_dir / "acrf.pdf")
-
-    @override
-    def ensure_dir(self, path: Path) -> None:
-        path.mkdir(parents=True, exist_ok=True)

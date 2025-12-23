@@ -7,8 +7,6 @@ either a :class:`Series` or :class:`DataFrame`; by routing through these
 helpers we guarantee a concrete ``Series`` instance and stable return types.
 """
 
-from __future__ import annotations
-
 from typing import Any, cast
 
 import pandas as pd

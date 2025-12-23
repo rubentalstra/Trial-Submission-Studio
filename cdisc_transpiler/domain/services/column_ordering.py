@@ -9,11 +9,12 @@ This module provides a conservative ordering helper:
 - Leaves non-standard (sponsor) columns anchored in their original positions.
 """
 
-from __future__ import annotations
+from typing import TYPE_CHECKING
 
-import pandas as pd
+if TYPE_CHECKING:
+    import pandas as pd
 
-from ..entities.sdtm_domain import SDTMDomain
+    from ..entities.sdtm_domain import SDTMDomain
 
 
 def ordered_columns_for_domain(

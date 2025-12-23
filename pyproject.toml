@@ -103,6 +103,16 @@ ignore = [
     "ANN102",  # Missing type annotation for cls (redundant)
 ]
 
+exclude = [
+    "**/__pycache__",
+    ".venv",
+    "build",
+    "dist",
+    "cdisc_transpiler.egg-info",
+    "tests/**",
+    "docs/**",
+]
+
 # Per-file ignores
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = [

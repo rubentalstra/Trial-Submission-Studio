@@ -9,6 +9,8 @@ from ..transformers.date import DateTransformer
 from ..transformers.numeric import NumericTransformer
 from .base import BaseDomainProcessor
 
+USUBJID_SITE_PARTS_MIN = 2
+
 
 class QSProcessor(BaseDomainProcessor):
     """Questionnaires domain processor.
@@ -93,7 +95,7 @@ class QSProcessor(BaseDomainProcessor):
                 if "USUBJID" in frame.columns:
                     usubjid = frame["USUBJID"].astype("string").fillna("").str.strip()
                     parts = usubjid.str.split("-", n=2, expand=True)
-                    if parts.shape[1] >= 2:
+                    if parts.shape[1] >= USUBJID_SITE_PARTS_MIN:
                         site_part = parts[1].astype("string").fillna("").str.strip()
                         testcd = (
                             frame["QSTESTCD"].astype("string").fillna("").str.strip()

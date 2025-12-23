@@ -1,8 +1,9 @@
 """Domain processor for Medical History (MH) domain."""
 
-from typing import override
+from typing import TYPE_CHECKING, override
 
-import pandas as pd
+if TYPE_CHECKING:
+    import pandas as pd
 
 from ....pandas_utils import ensure_numeric_series
 from ..transformers.date import DateTransformer

@@ -4,19 +4,27 @@ This module defines protocols (interfaces) that services depend on,
 following the Ports & Adapters (Hexagonal) architecture pattern.
 """
 
-from collections.abc import Iterable
-from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-import pandas as pd
-
 if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from pathlib import Path
+
+    import pandas as pd
+
     from ...domain.entities.column_hints import Hints
     from ...domain.entities.mapping import MappingConfig, MappingSuggestions
     from ...domain.entities.sdtm_domain import SDTMDomain
     from ...domain.entities.study_metadata import StudyMetadata
+    from ...domain.services.domain_frame_builder import DomainFrameBuildRequest
     from ...domain.services.sdtm_conformance_checker import ConformanceReport
-    from ..models import DatasetOutputRequest, DatasetOutputResult, DefineDatasetDTO
+    from ...domain.services.suppqual_service import SuppqualBuildRequest
+    from ..models import (
+        DatasetOutputRequest,
+        DatasetOutputResult,
+        DefineDatasetDTO,
+        ProcessingSummary,
+    )
 
 
 @runtime_checkable
@@ -40,11 +48,7 @@ class OutputPreparerPort(Protocol):
 
         Implementations may create directories and files as needed.
         """
-        raise NotImplementedError
-
-    def ensure_dir(self, path: Path) -> None:
-        """Ensure a directory exists at path."""
-        raise NotImplementedError
+        ...
 
 
 @runtime_checkable
@@ -67,7 +71,7 @@ class LoggerPort(Protocol):
         Args:
             message: The message to log
         """
-        raise NotImplementedError
+        ...
 
     def success(self, message: str) -> None:
         """Log a success message.
@@ -75,7 +79,7 @@ class LoggerPort(Protocol):
         Args:
             message: The message to log
         """
-        raise NotImplementedError
+        ...
 
     def warning(self, message: str) -> None:
         """Log a warning message.
@@ -83,7 +87,7 @@ class LoggerPort(Protocol):
         Args:
             message: The message to log
         """
-        raise NotImplementedError
+        ...
 
     def error(self, message: str) -> None:
         """Log an error message.
@@ -91,7 +95,7 @@ class LoggerPort(Protocol):
         Args:
             message: The message to log
         """
-        raise NotImplementedError
+        ...
 
     def debug(self, message: str) -> None:
         """Log a debug message.
@@ -99,7 +103,7 @@ class LoggerPort(Protocol):
         Args:
             message: The message to log
         """
-        raise NotImplementedError
+        ...
 
     def verbose(self, message: str) -> None:
         """Log a verbose message.
@@ -107,7 +111,7 @@ class LoggerPort(Protocol):
         Args:
             message: The message to log
         """
-        raise NotImplementedError
+        ...
 
     def log_study_start(
         self,
@@ -117,7 +121,7 @@ class LoggerPort(Protocol):
         supported_domains: list[str],
     ) -> None:
         """Log the start of study processing."""
-        raise NotImplementedError
+        ...
 
     def log_metadata_loaded(
         self,
@@ -126,30 +130,21 @@ class LoggerPort(Protocol):
         codelists_count: int | None,
     ) -> None:
         """Log study metadata loading results."""
-        raise NotImplementedError
+        ...
 
-    def log_processing_summary(
-        self,
-        *,
-        study_id: str,
-        domain_count: int,
-        file_count: int,
-        output_format: str,
-        generate_define: bool,
-        generate_sas: bool,
-    ) -> None:
+    def log_processing_summary(self, summary: ProcessingSummary) -> None:
         """Log a summary of processing configuration and inputs."""
-        raise NotImplementedError
+        ...
 
     def log_final_stats(self) -> None:
         """Log final overall processing statistics."""
-        raise NotImplementedError
+        ...
 
     def log_domain_start(
         self, domain_code: str, files_for_domain: list[tuple[Path, str]]
     ) -> None:
         """Log the start of processing a specific domain."""
-        raise NotImplementedError
+        ...
 
     def log_domain_complete(
         self,
@@ -161,7 +156,7 @@ class LoggerPort(Protocol):
         reason: str | None = None,
     ) -> None:
         """Log completion of processing a specific domain and update stats."""
-        raise NotImplementedError
+        ...
 
     def log_file_loaded(
         self,
@@ -170,15 +165,15 @@ class LoggerPort(Protocol):
         column_count: int | None = None,
     ) -> None:
         """Log a file load event and update stats."""
-        raise NotImplementedError
+        ...
 
     def log_synthesis_start(self, domain_code: str, reason: str) -> None:
         """Log the start of synthesis for a domain."""
-        raise NotImplementedError
+        ...
 
     def log_synthesis_complete(self, domain_code: str, records: int) -> None:
         """Log successful completion of synthesis for a domain."""
-        raise NotImplementedError
+        ...
 
 
 @runtime_checkable
@@ -225,7 +220,7 @@ class DatasetOutputPort(Protocol):
             ... else:
             ...     print(f"Errors: {result.errors}")
         """
-        raise NotImplementedError
+        ...
 
 
 @runtime_checkable
@@ -246,7 +241,7 @@ class DomainDiscoveryPort(Protocol):
         Returns a mapping of domain code to a list of (file_path, variant_name)
         tuples.
         """
-        raise NotImplementedError
+        ...
 
 
 @runtime_checkable
@@ -258,62 +253,26 @@ class DomainFrameBuilderPort(Protocol):
     """
 
     def build_domain_dataframe(
-        self,
-        frame: pd.DataFrame,
-        config: MappingConfig,
-        domain: SDTMDomain,
-        *,
-        reference_starts: dict[str, str] | None = None,
-        lenient: bool = False,
-        metadata: StudyMetadata | None = None,
-    ) -> pd.DataFrame:
-        raise NotImplementedError
+        self, request: DomainFrameBuildRequest
+    ) -> pd.DataFrame: ...
 
 
 @runtime_checkable
 class SuppqualPort(Protocol):
     """Protocol for SUPPQUAL (supplemental qualifiers) operations."""
 
-    def extract_used_columns(self, config: MappingConfig | None) -> set[str]:
-        raise NotImplementedError
+    def extract_used_columns(self, config: MappingConfig | None) -> set[str]: ...
 
     def build_suppqual(
-        self,
-        domain_code: str,
-        source_df: pd.DataFrame,
-        mapped_df: pd.DataFrame | None,
-        domain_def: SDTMDomain,
-        used_source_columns: set[str] | None = None,
-        *,
-        study_id: str | None = None,
-        common_column_counts: dict[str, int] | None = None,
-        total_files: int | None = None,
-    ) -> tuple[pd.DataFrame | None, set[str]]:
-        raise NotImplementedError
+        self, request: SuppqualBuildRequest
+    ) -> tuple[pd.DataFrame | None, set[str]]: ...
 
     def finalize_suppqual(
         self,
         supp_df: pd.DataFrame,
         *,
         supp_domain_def: SDTMDomain | None = None,
-        parent_domain_code: str = "DM",
-    ) -> pd.DataFrame:
-        raise NotImplementedError
-
-
-@runtime_checkable
-class TerminologyPort(Protocol):
-    """Protocol for terminology helpers used by transformations.
-
-    This keeps the application layer decoupled from compatibility shims
-    modules.
-    """
-
-    def normalize_testcd(self, domain_code: str, source_code: str) -> str | None:
-        raise NotImplementedError
-
-    def get_testcd_label(self, domain_code: str, testcd: str) -> str:
-        raise NotImplementedError
+    ) -> pd.DataFrame: ...
 
 
 @runtime_checkable
@@ -334,7 +293,7 @@ class MappingPort(Protocol):
         column_hints: Hints | None = None,
     ) -> MappingSuggestions:
         """Suggest mappings for the given source dataframe."""
-        raise NotImplementedError
+        ...
 
 
 @runtime_checkable
@@ -372,7 +331,7 @@ class XPTWriterPort(Protocol):
             >>> df = pd.DataFrame({"STUDYID": ["001"], "USUBJID": ["001-001"]})
             >>> writer.write(df, "DM", Path("dm.xpt"))
         """
-        raise NotImplementedError
+        ...
 
 
 @runtime_checkable
@@ -409,7 +368,7 @@ class DatasetXMLWriterPort(Protocol):
             >>> df = pd.DataFrame({"STUDYID": ["001"], "USUBJID": ["001-001"]})
             >>> writer.write(df, "DM", config, Path("dm.xml"))
         """
-        raise NotImplementedError
+        ...
 
 
 @runtime_checkable
@@ -447,7 +406,7 @@ class SASWriterPort(Protocol):
         Example:
             >>> writer.write("DM", config, Path("dm.sas"), "raw.demo", "final.dm")
         """
-        raise NotImplementedError
+        ...
 
 
 @runtime_checkable
@@ -472,7 +431,7 @@ class ConformanceReportWriterPort(Protocol):
         Returns:
             Path to the written JSON file.
         """
-        raise NotImplementedError
+        ...
 
 
 @runtime_checkable
@@ -516,4 +475,4 @@ class DefineXMLGeneratorPort(Protocol):
             >>> datasets = [DefineDatasetDTO(...), DefineDatasetDTO(...)]
             >>> generator.generate(datasets, Path("define.xml"), sdtm_version="3.4", context="Submission")
         """
-        raise NotImplementedError
+        ...

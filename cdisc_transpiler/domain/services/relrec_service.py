@@ -12,12 +12,24 @@ Notes:
     RELTYPE is used only for dataset-to-dataset relationships (Section 8.3).
 """
 
+from dataclasses import dataclass
 import math
 from typing import Any, cast
 
 import pandas as pd
 
 from ..entities.mapping import ColumnMapping, MappingConfig
+
+
+@dataclass(frozen=True, slots=True)
+class _RelrecRecord:
+    study_id: str
+    rdomain: str
+    usubjid: str
+    idvar: str
+    idvarval: str
+    relid: str
+    reltype: str | None = None
 
 
 class RelrecService:
@@ -139,24 +151,28 @@ class RelrecService:
                 relid = f"{domain_code}_{reference_domain}_{usubjid}_{idvarval}"
                 self._add_record(
                     records,
-                    study_id,
-                    domain_code,
-                    usubjid,
-                    idvar,
-                    idvarval,
-                    relid,
+                    _RelrecRecord(
+                        study_id=study_id,
+                        rdomain=domain_code,
+                        usubjid=usubjid,
+                        idvar=idvar,
+                        idvarval=idvarval,
+                        relid=relid,
+                    ),
                 )
 
                 ref_seq = ref_seq_map.get(usubjid)
                 if ref_seq is not None:
                     self._add_record(
                         records,
-                        study_id,
-                        reference_domain,
-                        usubjid,
-                        ref_idvar,
-                        self._stringify(ref_seq, 1),
-                        relid,
+                        _RelrecRecord(
+                            study_id=study_id,
+                            rdomain=reference_domain,
+                            usubjid=usubjid,
+                            idvar=ref_idvar,
+                            idvarval=self._stringify(ref_seq, 1),
+                            relid=relid,
+                        ),
                     )
 
         # Fallback: if only one eligible domain exists, create self-only
@@ -166,12 +182,14 @@ class RelrecService:
                 relid = f"{reference_domain}_ONLY_{usubjid}"
                 self._add_record(
                     records,
-                    study_id,
-                    reference_domain,
-                    str(usubjid),
-                    ref_idvar,
-                    self._stringify(seq, 1),
-                    relid,
+                    _RelrecRecord(
+                        study_id=study_id,
+                        rdomain=reference_domain,
+                        usubjid=str(usubjid),
+                        idvar=ref_idvar,
+                        idvarval=self._stringify(seq, 1),
+                        relid=relid,
+                    ),
                 )
 
         return records
@@ -318,34 +336,22 @@ class RelrecService:
     def _add_record(
         self,
         records: list[dict[str, Any]],
-        study_id: str,
-        rdomain: str,
-        usubjid: str,
-        idvar: str,
-        idvarval: str,
-        relid: str,
-        reltype: str | None = None,
+        record: _RelrecRecord,
     ) -> None:
         """Add a relationship record to the list.
 
         Args:
             records: List to append record to
-            study_id: Study identifier
-            rdomain: Related domain code
-            usubjid: Unique subject identifier
-            idvar: ID variable name
-            idvarval: ID variable value
-            relid: Relationship identifier
-            reltype: Relationship type (optional)
+            record: Relationship record details
         """
         records.append(
             {
-                "STUDYID": study_id,
-                "RDOMAIN": rdomain,
-                "USUBJID": usubjid,
-                "IDVAR": idvar,
-                "IDVARVAL": idvarval,
-                "RELTYPE": reltype or "",
-                "RELID": relid,
+                "STUDYID": record.study_id,
+                "RDOMAIN": record.rdomain,
+                "USUBJID": record.usubjid,
+                "IDVAR": record.idvar,
+                "IDVARVAL": record.idvarval,
+                "RELTYPE": record.reltype or "",
+                "RELID": record.relid,
             }
         )

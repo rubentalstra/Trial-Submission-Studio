@@ -9,16 +9,16 @@ All repository ports use Protocol for duck typing, so implementations don't
 need to explicitly inherit from these interfaces.
 """
 
-from pathlib import Path
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
-import pandas as pd
-
-from ...domain.entities.controlled_terminology import ControlledTerminology
-from ...domain.entities.study_metadata import StudyMetadata
-
 if TYPE_CHECKING:
+    from pathlib import Path
+
+    import pandas as pd
+
+    from ...domain.entities.controlled_terminology import ControlledTerminology
     from ...domain.entities.sdtm_domain import SDTMDomain
+    from ...domain.entities.study_metadata import StudyMetadata
 
 
 @runtime_checkable
@@ -57,7 +57,7 @@ class CTRepositoryPort(Protocol):
             ...     print(f"Codelist: {ct.codelist_name}")
             ...     print(f"Values: {ct.submission_values}")
         """
-        raise NotImplementedError
+        ...
 
     def get_by_name(self, codelist_name: str) -> ControlledTerminology | None:
         """Retrieve controlled terminology by codelist name.
@@ -73,7 +73,7 @@ class CTRepositoryPort(Protocol):
             >>> if ct:
             ...     normalized = ct.normalize("male")  # Returns "MALE"
         """
-        raise NotImplementedError
+        ...
 
     def list_all_codes(self) -> list[str]:
         """List all available codelist codes.
@@ -85,7 +85,7 @@ class CTRepositoryPort(Protocol):
             >>> codes = ct_repository.list_all_codes()
             >>> print(f"Available codelists: {len(codes)}")
         """
-        raise NotImplementedError
+        ...
 
 
 @runtime_checkable
@@ -124,7 +124,7 @@ class SDTMSpecRepositoryPort(Protocol):
             ...     if var["Role"] == "Identifier":
             ...         print(f"Key variable: {var['Variable Name']}")
         """
-        raise NotImplementedError
+        ...
 
     def get_dataset_attributes(self, domain_code: str) -> dict[str, str] | None:
         """Retrieve dataset-level attributes for a domain.
@@ -142,7 +142,7 @@ class SDTMSpecRepositoryPort(Protocol):
             ...     print(f"Class: {attrs['class']}")
             ...     print(f"Label: {attrs['label']}")
         """
-        raise NotImplementedError
+        ...
 
     def list_available_domains(self) -> list[str]:
         """List all available SDTM domains in the specification.
@@ -155,7 +155,7 @@ class SDTMSpecRepositoryPort(Protocol):
             >>> if "DM" in domains:
             ...     print("Demographics domain available")
         """
-        raise NotImplementedError
+        ...
 
 
 @runtime_checkable
@@ -164,11 +164,11 @@ class DomainDefinitionRepositoryPort(Protocol):
 
     def list_domains(self) -> list[str]:
         """List all supported SDTM domain codes."""
-        raise NotImplementedError
+        ...
 
     def get_domain(self, domain_code: str) -> SDTMDomain:
         """Return the SDTM domain definition for a domain code."""
-        raise NotImplementedError
+        ...
 
 
 @runtime_checkable
@@ -209,7 +209,7 @@ class StudyDataRepositoryPort(Protocol):
             >>> print(df.columns.tolist())
             ['STUDYID', 'DOMAIN', 'USUBJID', 'SUBJID', ...]
         """
-        raise NotImplementedError
+        ...
 
     def load_study_metadata(self, study_folder: Path) -> StudyMetadata:
         """Load study metadata from Items.csv and CodeLists.csv.
@@ -228,7 +228,7 @@ class StudyDataRepositoryPort(Protocol):
             >>> for col_id, column in metadata.columns.items():
             ...     print(f"{col_id}: {column.label}")
         """
-        raise NotImplementedError
+        ...
 
     def list_data_files(self, folder: Path, pattern: str = "*.csv") -> list[Path]:
         """List data files in a folder matching a pattern.
@@ -244,4 +244,4 @@ class StudyDataRepositoryPort(Protocol):
             >>> files = study_data_repository.list_data_files(Path("study001"))
             >>> domain_files = [f for f in files if f.stem.upper() in ["DM", "AE", "LB"]]
         """
-        raise NotImplementedError
+        ...

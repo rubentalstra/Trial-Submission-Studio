@@ -15,39 +15,50 @@ using injected ports/use cases.
 from collections import defaultdict
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal, cast
+from typing import TYPE_CHECKING, Literal, cast
 
 import pandas as pd
 
 from ..constants import Defaults, SDTMVersions
+from ..domain.services.domain_frame_builder import DomainFrameBuildRequest
+from ..domain.services.sdtm_conformance_checker import (
+    ConformanceReport,
+    check_domain_dataframe,
+)
 from ..pandas_utils import normalize_missing_strings
 from .models import (
+    DatasetOutputDirs,
+    DatasetOutputRequest,
     DefineDatasetDTO,
     DomainProcessingResult,
     ProcessDomainRequest,
-    ProcessStudyRequest,
+    ProcessingSummary,
     ProcessStudyResponse,
-)
-from .ports.repositories import (
-    CTRepositoryPort,
-    DomainDefinitionRepositoryPort,
-    StudyDataRepositoryPort,
-)
-from .ports.services import (
-    ConformanceReportWriterPort,
-    DatasetOutputPort,
-    DefineXMLGeneratorPort,
-    DomainDiscoveryPort,
-    DomainFrameBuilderPort,
-    LoggerPort,
-    OutputPreparerPort,
 )
 
 if TYPE_CHECKING:
+    from ..domain.entities.controlled_terminology import ControlledTerminology
+    from ..domain.entities.sdtm_domain import SDTMDomain, SDTMVariable
+    from ..domain.entities.study_metadata import StudyMetadata
     from ..domain.services.relrec_service import RelrecService
     from ..domain.services.relspec_service import RelspecService
     from ..domain.services.relsub_service import RelsubService
     from .domain_processing_use_case import DomainProcessingUseCase
+    from .models import ProcessStudyRequest
+    from .ports.repositories import (
+        CTRepositoryPort,
+        DomainDefinitionRepositoryPort,
+        StudyDataRepositoryPort,
+    )
+    from .ports.services import (
+        ConformanceReportWriterPort,
+        DatasetOutputPort,
+        DefineXMLGeneratorPort,
+        DomainDiscoveryPort,
+        DomainFrameBuilderPort,
+        LoggerPort,
+        OutputPreparerPort,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,6 +66,41 @@ class _SynthesisJob:
     domain_code: str
     kind: Literal["relrec", "relsub", "relspec"]
     reason: str
+
+
+@dataclass(frozen=True, slots=True)
+class _DomainRunContext:
+    request: ProcessStudyRequest
+    study_metadata: StudyMetadata
+    reference_starts: dict[str, str]
+    common_column_counts: dict[str, int]
+    total_input_files: int
+    output_dirs: DatasetOutputDirs
+
+
+@dataclass(slots=True)
+class _SynthesisContext:
+    request: ProcessStudyRequest
+    study_datasets: list[DefineDatasetDTO]
+    output_dirs: DatasetOutputDirs
+
+
+@dataclass(slots=True)
+class StudyProcessingDependencies:
+    logger: LoggerPort
+    study_data_repository: StudyDataRepositoryPort
+    domain_processing_use_case: DomainProcessingUseCase
+    domain_discovery_service: DomainDiscoveryPort
+    domain_frame_builder: DomainFrameBuilderPort
+    relrec_service: RelrecService
+    relsub_service: RelsubService
+    relspec_service: RelspecService
+    domain_definition_repository: DomainDefinitionRepositoryPort
+    dataset_output: DatasetOutputPort | None = None
+    define_xml_generator: DefineXMLGeneratorPort | None = None
+    output_preparer: OutputPreparerPort | None = None
+    ct_repository: CTRepositoryPort | None = None
+    conformance_report_writer: ConformanceReportWriterPort | None = None
 
 
 class StudyProcessingUseCase:
@@ -91,84 +137,41 @@ class StudyProcessingUseCase:
         ...     print(f"Processed {len(response.domain_results)} domains")
     """
 
-    def __init__(
-        self,
-        logger: LoggerPort,
-        study_data_repository: StudyDataRepositoryPort | None = None,
-        domain_processing_use_case: DomainProcessingUseCase | None = None,
-        domain_discovery_service: DomainDiscoveryPort | None = None,
-        domain_frame_builder: DomainFrameBuilderPort | None = None,
-        relrec_service: RelrecService | None = None,
-        relsub_service: RelsubService | None = None,
-        relspec_service: RelspecService | None = None,
-        dataset_output: DatasetOutputPort | None = None,
-        define_xml_generator: DefineXMLGeneratorPort | None = None,
-        output_preparer: OutputPreparerPort | None = None,
-        domain_definition_repository: DomainDefinitionRepositoryPort | None = None,
-        ct_repository: CTRepositoryPort | None = None,
-        conformance_report_writer: ConformanceReportWriterPort | None = None,
-    ) -> None:
+    def __init__(self, dependencies: StudyProcessingDependencies) -> None:
         """Initialize the use case with injected dependencies.
 
         Args:
-            logger: Logger for progress and error reporting
-            study_data_repository: Repository for loading study data and metadata
-            domain_processing_use_case: Use case for processing individual domains
-            domain_discovery_service: Service for discovering domain files
-            dataset_output: Adapter for dataset output (XPT, Dataset-XML, SAS)
-            define_xml_generator: Generator for Define-XML files
+            dependencies: Bundled ports/adapters for study processing
         """
         super().__init__()
-        if domain_discovery_service is None:
-            raise ValueError(
-                "StudyProcessingUseCase requires domain_discovery_service to be injected (use the DI container)."
-            )
-        if relrec_service is None:
-            raise ValueError(
-                "StudyProcessingUseCase requires relrec_service to be injected (use the DI container)."
-            )
-        if relsub_service is None:
-            raise ValueError(
-                "StudyProcessingUseCase requires relsub_service to be injected (use the DI container)."
-            )
-        if relspec_service is None:
-            raise ValueError(
-                "StudyProcessingUseCase requires relspec_service to be injected (use the DI container)."
-            )
-        if domain_frame_builder is None:
-            raise ValueError(
-                "StudyProcessingUseCase requires domain_frame_builder to be injected (use the DI container)."
-            )
-        self.logger = logger
-        self._study_data_repository = study_data_repository
-        self._domain_processing_use_case = domain_processing_use_case
-        self._domain_discovery_service = domain_discovery_service
-        self._domain_frame_builder = domain_frame_builder
-        self._relrec_service = relrec_service
-        self._relsub_service = relsub_service
-        self._relspec_service = relspec_service
-        self._dataset_output = dataset_output
-        self._define_xml_generator = define_xml_generator
-        self._output_preparer = output_preparer
-        self._domain_definition_repository = domain_definition_repository
-        self._ct_repository = ct_repository
-        self._conformance_report_writer = conformance_report_writer
+        self.logger = dependencies.logger
+        self._study_data_repository = dependencies.study_data_repository
+        self._domain_processing_use_case = dependencies.domain_processing_use_case
+        self._domain_discovery_service = dependencies.domain_discovery_service
+        self._domain_frame_builder = dependencies.domain_frame_builder
+        self._relrec_service = dependencies.relrec_service
+        self._relsub_service = dependencies.relsub_service
+        self._relspec_service = dependencies.relspec_service
+        self._dataset_output = dependencies.dataset_output
+        self._define_xml_generator = dependencies.define_xml_generator
+        self._output_preparer = dependencies.output_preparer
+        self._domain_definition_repository = dependencies.domain_definition_repository
+        self._ct_repository = dependencies.ct_repository
+        self._conformance_report_writer = dependencies.conformance_report_writer
 
     def _log_conformance_report(
         self,
         *,
         frame: pd.DataFrame,
-        domain: Any,
+        domain: SDTMDomain,
         strict: bool,
-    ) -> Any | None:
+    ) -> ConformanceReport | None:
         if not strict:
             return None
 
-        from ..domain.services.sdtm_conformance_checker import check_domain_dataframe
-
         ct_repo = self._ct_repository
 
-        def _ct_resolver(variable: Any):
+        def _ct_resolver(variable: SDTMVariable) -> ControlledTerminology | None:
             if ct_repo is None:
                 return None
             if getattr(variable, "codelist_code", None):
@@ -307,7 +310,7 @@ class StudyProcessingUseCase:
             common_column_counts = self._build_column_counts(domain_files)
             total_input_files = sum(len(files) for files in domain_files.values())
 
-            self.logger.log_processing_summary(
+            summary = ProcessingSummary(
                 study_id=request.study_id,
                 domain_count=len(domain_files),
                 file_count=total_input_files,
@@ -315,6 +318,7 @@ class StudyProcessingUseCase:
                 generate_define=request.generate_define_xml,
                 generate_sas=request.generate_sas,
             )
+            self.logger.log_processing_summary(summary)
 
             study_datasets: list[DefineDatasetDTO] = []
             reference_starts: dict[str, str] = {}
@@ -337,6 +341,20 @@ class StudyProcessingUseCase:
                 xml_dir = None
                 sas_dir = None
 
+            output_dirs = DatasetOutputDirs(
+                xpt_dir=xpt_dir,
+                xml_dir=xml_dir,
+                sas_dir=sas_dir,
+            )
+            context = _DomainRunContext(
+                request=request,
+                study_metadata=study_metadata,
+                reference_starts=reference_starts,
+                common_column_counts=common_column_counts,
+                total_input_files=total_input_files,
+                output_dirs=output_dirs,
+            )
+
             ordered_domains = sorted(
                 domain_files.keys(), key=lambda code: (code != "DM", code)
             )
@@ -345,14 +363,7 @@ class StudyProcessingUseCase:
                 result = self._process_domain(
                     domain_code=domain_code,
                     files_for_domain=domain_files[domain_code],
-                    request=request,
-                    study_metadata=study_metadata,
-                    reference_starts=reference_starts,
-                    common_column_counts=common_column_counts,
-                    total_input_files=total_input_files,
-                    xpt_dir=xpt_dir,
-                    xml_dir=xml_dir,
-                    sas_dir=sas_dir,
+                    context=context,
                 )
 
                 response.domain_results.append(result)
@@ -421,15 +432,15 @@ class StudyProcessingUseCase:
                     )
 
             # Always run synthesis pass (RELREC/RELSUB/RELSPEC are always attempted).
+            synthesis_context = _SynthesisContext(
+                request=request,
+                study_datasets=study_datasets,
+                output_dirs=output_dirs,
+            )
             self._run_synthesis_pass(
                 response=response,
                 present_domains=processed_domains,
-                request=request,
-                reference_starts=reference_starts,
-                study_datasets=study_datasets,
-                xpt_dir=xpt_dir,
-                xml_dir=xml_dir,
-                sas_dir=sas_dir,
+                context=synthesis_context,
             )
 
             self._write_conformance_report_json(request=request, response=response)
@@ -461,8 +472,6 @@ class StudyProcessingUseCase:
         if writer is None:
             response.conformance_report_error = "ConformanceReportWriterPort is not configured. Wire an infrastructure adapter in the composition root."
             return
-
-        from ..domain.services.sdtm_conformance_checker import ConformanceReport
 
         reports: list[ConformanceReport] = []
         for domain_result in response.domain_results:
@@ -521,14 +530,7 @@ class StudyProcessingUseCase:
         self,
         domain_code: str,
         files_for_domain: list[tuple[Path, str]],
-        request: ProcessStudyRequest,
-        study_metadata: Any,
-        reference_starts: dict[str, str],
-        common_column_counts: dict[str, int],
-        total_input_files: int,
-        xpt_dir: Path | None,
-        xml_dir: Path | None,
-        sas_dir: Path | None,
+        context: _DomainRunContext,
     ) -> DomainProcessingResult:
         """Process a single domain using DomainProcessingUseCase."""
         self.logger.log_domain_start(domain_code, files_for_domain)
@@ -536,6 +538,7 @@ class StudyProcessingUseCase:
         try:
             # Get the domain processing use case
             domain_use_case = self._get_domain_processing_use_case()
+            request = context.request
 
             # Build request for domain processing
             domain_request = ProcessDomainRequest(
@@ -544,19 +547,19 @@ class StudyProcessingUseCase:
                 study_id=request.study_id,
                 output_formats=request.output_formats,
                 output_dirs={
-                    "xpt": xpt_dir,
-                    "xml": xml_dir,
-                    "sas": sas_dir,
+                    "xpt": context.output_dirs.xpt_dir,
+                    "xml": context.output_dirs.xml_dir,
+                    "sas": context.output_dirs.sas_dir,
                 },
                 min_confidence=request.min_confidence,
                 streaming=request.streaming,
                 chunk_size=request.chunk_size,
                 generate_sas=request.generate_sas,
                 verbose=request.verbose,
-                metadata=study_metadata,
-                reference_starts=reference_starts or None,
-                common_column_counts=common_column_counts or None,
-                total_input_files=total_input_files,
+                metadata=context.study_metadata,
+                reference_starts=context.reference_starts or None,
+                common_column_counts=context.common_column_counts or None,
+                total_input_files=context.total_input_files,
                 fail_on_conformance_errors=request.fail_on_conformance_errors,
                 default_country=request.default_country,
             )
@@ -691,17 +694,11 @@ class StudyProcessingUseCase:
         *,
         response: ProcessStudyResponse,
         present_domains: set[str],
-        request: ProcessStudyRequest,
-        reference_starts: dict[str, str],
-        study_datasets: list[DefineDatasetDTO],
-        xpt_dir: Path | None,
-        xml_dir: Path | None,
-        sas_dir: Path | None,
+        context: _SynthesisContext,
     ) -> None:
         jobs = self._build_synthesis_jobs(
             response=response,
             present_domains=present_domains,
-            request=request,
         )
 
         for job in jobs:
@@ -712,29 +709,17 @@ class StudyProcessingUseCase:
             if job.kind == "relrec":
                 self._synthesize_relrec(
                     response=response,
-                    request=request,
-                    study_datasets=study_datasets,
-                    xpt_dir=xpt_dir,
-                    xml_dir=xml_dir,
-                    sas_dir=sas_dir,
+                    context=context,
                 )
             elif job.kind == "relsub":
                 self._synthesize_relsub(
                     response=response,
-                    request=request,
-                    study_datasets=study_datasets,
-                    xpt_dir=xpt_dir,
-                    xml_dir=xml_dir,
-                    sas_dir=sas_dir,
+                    context=context,
                 )
             elif job.kind == "relspec":
                 self._synthesize_relspec(
                     response=response,
-                    request=request,
-                    study_datasets=study_datasets,
-                    xpt_dir=xpt_dir,
-                    xml_dir=xml_dir,
-                    sas_dir=sas_dir,
+                    context=context,
                 )
 
     def _build_synthesis_jobs(
@@ -742,7 +727,6 @@ class StudyProcessingUseCase:
         *,
         response: ProcessStudyResponse,
         present_domains: set[str],
-        request: ProcessStudyRequest,
     ) -> list[_SynthesisJob]:
         """Build an ordered list of synthesis jobs.
 
@@ -778,6 +762,17 @@ class StudyProcessingUseCase:
                 scheduled.add(code)
 
         return jobs
+
+    @staticmethod
+    def _build_output_formats(request: ProcessStudyRequest) -> set[str]:
+        formats: set[str] = set()
+        if "xpt" in request.output_formats:
+            formats.add("xpt")
+        if "xml" in request.output_formats:
+            formats.add("xml")
+        if request.generate_sas:
+            formats.add("sas")
+        return formats
 
     def _fill_tsparm_labels(self, frame: pd.DataFrame) -> None:
         if frame.empty:
@@ -844,11 +839,7 @@ class StudyProcessingUseCase:
     def _synthesize_relrec(
         self,
         response: ProcessStudyResponse,
-        request: ProcessStudyRequest,
-        study_datasets: list[DefineDatasetDTO],
-        xpt_dir: Path | None,
-        xml_dir: Path | None,
-        sas_dir: Path | None,
+        context: _SynthesisContext,
     ) -> None:
         """Synthesize RELREC domain.
 
@@ -858,6 +849,10 @@ class StudyProcessingUseCase:
         self.logger.log_synthesis_start("RELREC", "Relationship scaffold")
 
         try:
+            request = context.request
+            output_dirs = context.output_dirs
+            study_datasets = context.study_datasets
+
             # Build dictionary of domain dataframes for RELREC service
             domain_dataframes: dict[str, pd.DataFrame] = {}
             for result in response.domain_results:
@@ -879,10 +874,12 @@ class StudyProcessingUseCase:
                 not request.generate_sas
             )
             domain_dataframe = self._domain_frame_builder.build_domain_dataframe(
-                relrec_df,
-                relrec_config,
-                relrec_domain,
-                lenient=lenient,
+                DomainFrameBuildRequest(
+                    frame=relrec_df,
+                    config=relrec_config,
+                    domain=relrec_domain,
+                    lenient=lenient,
+                )
             )
 
             strict = ("xpt" in request.output_formats) or request.generate_sas
@@ -902,23 +899,7 @@ class StudyProcessingUseCase:
                     "RELREC: conformance errors present; strict output generation aborted"
                 )
 
-            # Generate dataset outputs
-            from .models import DatasetOutputDirs, DatasetOutputRequest
-
-            output_dirs = DatasetOutputDirs(
-                xpt_dir=xpt_dir,
-                xml_dir=xml_dir,
-                sas_dir=sas_dir,
-            )
-
-            output_formats: set[str] = set()
-            if "xpt" in request.output_formats:
-                output_formats.add("xpt")
-            if "xml" in request.output_formats:
-                output_formats.add("xml")
-            if request.generate_sas:
-                output_formats.add("sas")
-
+            output_formats = self._build_output_formats(request)
             output_request = DatasetOutputRequest(
                 dataframe=domain_dataframe,
                 domain_code="RELREC",
@@ -966,14 +947,14 @@ class StudyProcessingUseCase:
     def _synthesize_relsub(
         self,
         response: ProcessStudyResponse,
-        request: ProcessStudyRequest,
-        study_datasets: list[DefineDatasetDTO],
-        xpt_dir: Path | None,
-        xml_dir: Path | None,
-        sas_dir: Path | None,
+        context: _SynthesisContext,
     ) -> None:
         """Synthesize RELSUB domain (Related Subjects)."""
         try:
+            request = context.request
+            output_dirs = context.output_dirs
+            study_datasets = context.study_datasets
+
             relsub_service = self._get_relsub_service()
             relsub_df, relsub_config = relsub_service.build_relsub(
                 domain_dataframes=None,
@@ -994,10 +975,12 @@ class StudyProcessingUseCase:
                 not request.generate_sas
             )
             domain_dataframe = self._domain_frame_builder.build_domain_dataframe(
-                relsub_df,
-                relsub_config,
-                relsub_domain,
-                lenient=lenient,
+                DomainFrameBuildRequest(
+                    frame=relsub_df,
+                    config=relsub_config,
+                    domain=relsub_domain,
+                    lenient=lenient,
+                )
             )
 
             if domain_dataframe.empty:
@@ -1021,22 +1004,7 @@ class StudyProcessingUseCase:
                     "RELSUB: conformance errors present; strict output generation aborted"
                 )
 
-            from .models import DatasetOutputDirs, DatasetOutputRequest
-
-            output_dirs = DatasetOutputDirs(
-                xpt_dir=xpt_dir,
-                xml_dir=xml_dir,
-                sas_dir=sas_dir,
-            )
-
-            output_formats: set[str] = set()
-            if "xpt" in request.output_formats:
-                output_formats.add("xpt")
-            if "xml" in request.output_formats:
-                output_formats.add("xml")
-            if request.generate_sas:
-                output_formats.add("sas")
-
+            output_formats = self._build_output_formats(request)
             output_request = DatasetOutputRequest(
                 dataframe=domain_dataframe,
                 domain_code="RELSUB",
@@ -1084,16 +1052,16 @@ class StudyProcessingUseCase:
     def _synthesize_relspec(
         self,
         response: ProcessStudyResponse,
-        request: ProcessStudyRequest,
-        study_datasets: list[DefineDatasetDTO],
-        xpt_dir: Path | None,
-        xml_dir: Path | None,
-        sas_dir: Path | None,
+        context: _SynthesisContext,
     ) -> None:
         """Synthesize RELSPEC domain (Related Specimens)."""
         self.logger.log_synthesis_start("RELSPEC", "Relationship scaffold")
 
         try:
+            request = context.request
+            output_dirs = context.output_dirs
+            study_datasets = context.study_datasets
+
             domain_dataframes: dict[str, pd.DataFrame] = {}
             for result in response.domain_results:
                 if (
@@ -1113,10 +1081,12 @@ class StudyProcessingUseCase:
                 not request.generate_sas
             )
             domain_dataframe = self._domain_frame_builder.build_domain_dataframe(
-                relspec_df,
-                relspec_config,
-                relspec_domain,
-                lenient=lenient,
+                DomainFrameBuildRequest(
+                    frame=relspec_df,
+                    config=relspec_config,
+                    domain=relspec_domain,
+                    lenient=lenient,
+                )
             )
 
             strict = ("xpt" in request.output_formats) or request.generate_sas
@@ -1136,22 +1106,7 @@ class StudyProcessingUseCase:
                     "RELSPEC: conformance errors present; strict output generation aborted"
                 )
 
-            from .models import DatasetOutputDirs, DatasetOutputRequest
-
-            output_dirs = DatasetOutputDirs(
-                xpt_dir=xpt_dir,
-                xml_dir=xml_dir,
-                sas_dir=sas_dir,
-            )
-
-            output_formats: set[str] = set()
-            if "xpt" in request.output_formats:
-                output_formats.add("xpt")
-            if "xml" in request.output_formats:
-                output_formats.add("xml")
-            if request.generate_sas:
-                output_formats.add("sas")
-
+            output_formats = self._build_output_formats(request)
             output_request = DatasetOutputRequest(
                 dataframe=domain_dataframe,
                 domain_code="RELSPEC",
@@ -1246,7 +1201,7 @@ class StudyProcessingUseCase:
             )
         return list(self._domain_definition_repository.list_domains())
 
-    def _get_domain(self, domain_code: str):
+    def _get_domain(self, domain_code: str) -> SDTMDomain:
         """Get domain definition via DomainDefinitionRepositoryPort."""
         if self._domain_definition_repository is None:
             raise RuntimeError(
@@ -1254,7 +1209,7 @@ class StudyProcessingUseCase:
             )
         return self._domain_definition_repository.get_domain(domain_code)
 
-    def _load_study_metadata(self, study_folder: Path):
+    def _load_study_metadata(self, study_folder: Path) -> StudyMetadata:
         """Load study metadata via repository or fallback."""
         if self._study_data_repository is not None:
             return self._study_data_repository.load_study_metadata(study_folder)
@@ -1272,11 +1227,11 @@ class StudyProcessingUseCase:
             "StudyDataRepositoryPort is not configured. Wire an infrastructure adapter in the composition root."
         )
 
-    def _get_domain_discovery_service(self):
+    def _get_domain_discovery_service(self) -> DomainDiscoveryPort:
         """Get injected domain discovery service."""
         return self._domain_discovery_service
 
-    def _get_domain_processing_use_case(self):
+    def _get_domain_processing_use_case(self) -> DomainProcessingUseCase:
         """Get or create domain processing use case."""
         if self._domain_processing_use_case is not None:
             return self._domain_processing_use_case
@@ -1285,89 +1240,14 @@ class StudyProcessingUseCase:
             "DomainProcessingUseCase is not configured. Wire it in the composition root (DependencyContainer)."
         )
 
-    def _get_relrec_service(self):
+    def _get_relrec_service(self) -> RelrecService:
         """Get injected RELREC service."""
         return self._relrec_service
 
-    def _get_relsub_service(self):
+    def _get_relsub_service(self) -> RelsubService:
         """Get injected RELSUB service."""
         return self._relsub_service
 
-    def _get_relspec_service(self):
+    def _get_relspec_service(self) -> RelspecService:
         """Get injected RELSPEC service."""
         return self._relspec_service
-
-    def _generate_synthesis_files(
-        self,
-        domain_dataframe: pd.DataFrame | None,
-        domain_code: str,
-        config: Any,
-        request: ProcessStudyRequest,
-        xpt_dir: Path | None,
-        xml_dir: Path | None,
-        sas_dir: Path | None,
-    ) -> tuple[Path | None, Path | None, Path | None]:
-        """Generate dataset outputs for synthesized domain data.
-
-        This method handles file generation in the application layer,
-        using the DatasetOutputPort to write dataset outputs.
-
-        Args:
-            domain_dataframe: Synthesized domain DataFrame
-            domain_code: SDTM domain code
-            config: Mapping configuration
-            request: Study processing request
-            xpt_dir: XPT output directory
-            xml_dir: XML output directory
-            sas_dir: SAS output directory
-
-        Returns:
-            Tuple of (xpt_path, xml_path, sas_path) - paths to generated files
-        """
-        dataset_output = self._dataset_output
-        if domain_dataframe is None or dataset_output is None:
-            return None, None, None
-
-        from .models import DatasetOutputDirs, DatasetOutputRequest
-
-        # Determine output formats
-        formats: set[str] = set()
-        if xpt_dir and "xpt" in request.output_formats:
-            formats.add("xpt")
-        if xml_dir and "xml" in request.output_formats:
-            formats.add("xml")
-        if sas_dir and request.generate_sas:
-            formats.add("sas")
-
-        if not formats:
-            return None, None, None
-
-        output_request = DatasetOutputRequest(
-            dataframe=domain_dataframe,
-            domain_code=domain_code,
-            config=config,
-            output_dirs=DatasetOutputDirs(
-                xpt_dir=xpt_dir,
-                xml_dir=xml_dir,
-                sas_dir=sas_dir,
-            ),
-            formats=formats,
-        )
-
-        output_result = dataset_output.generate(output_request)
-
-        # Log success
-        if output_result.xpt_path:
-            self.logger.success(
-                f"Generated {domain_code} XPT: {output_result.xpt_path}"
-            )
-        if output_result.xml_path:
-            self.logger.success(
-                f"Generated {domain_code} Dataset-XML: {output_result.xml_path}"
-            )
-        if output_result.sas_path:
-            self.logger.success(
-                f"Generated {domain_code} SAS: {output_result.sas_path}"
-            )
-
-        return output_result.xpt_path, output_result.xml_path, output_result.sas_path
