@@ -8,7 +8,7 @@ SDTM Reference:
 from dataclasses import dataclass
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class SDTMVariable:
     """SDTM variable definition.
 
@@ -66,7 +66,7 @@ class SDTMVariable:
         return "string"
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class SDTMDomain:
     """SDTM domain definition.
 

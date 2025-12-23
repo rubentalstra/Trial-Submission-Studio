@@ -4,7 +4,7 @@ from typing import override
 
 import pandas as pd
 
-from ...application.ports import SuppqualPort
+from ...application.ports.services import SuppqualPort
 from ...domain.entities.mapping import MappingConfig
 from ...domain.entities.sdtm_domain import SDTMDomain
 from ...domain.services.suppqual_service import (

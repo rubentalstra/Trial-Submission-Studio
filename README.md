@@ -17,9 +17,9 @@ SAS).
 - 🏗️ **Clean Architecture**: Ports & Adapters (Hexagonal) architecture for
   maintainability
 - ⚡ **High Performance**: Process studies with 18+ domains in ~2 seconds
-- 🧪 **Comprehensive Testing**: 485+ tests with 76% code coverage
-- ✅ **Validation Suite**: 42 tests for SDTM compliance and file format
-  validation
+- 🧪 **Comprehensive Testing**: Unit, integration, validation, and benchmark
+  suites
+- ✅ **Validation Suite**: SDTM compliance and file format validation
 - 📈 **Performance Benchmarks**: Track and prevent performance regressions
 - 🎯 **Domain Synthesis**: Automatic generation of supplemental and variant
   domains
@@ -30,7 +30,8 @@ This project follows **Ports & Adapters (Hexagonal Architecture)** for clean
 separation of concerns.
 
 For the current boundaries, known violations, and the migration plan, see
-`docs/ARCHITECTURE.md`.
+`docs/ARCHITECTURE.md`. For the refactor roadmap and planned cleanup steps, see
+`docs/REFACTOR_PLAN.md`.
 
 ```
 cdisc_transpiler/
@@ -152,12 +153,12 @@ The project has comprehensive test coverage across multiple test suites:
 
 ### Test Suites
 
-| Suite                      | Tests | Coverage | Purpose                                               |
-| -------------------------- | ----- | -------- | ----------------------------------------------------- |
-| **Unit Tests**             | 440+  | 76%      | Core business logic, transformations, presenters      |
-| **Integration Tests**      | 40+   | -        | End-to-end workflows with real data                   |
-| **Validation Tests**       | 42    | -        | SDTM compliance, XPT/XML/Define-XML format validation |
-| **Performance Benchmarks** | 3     | -        | Track and prevent performance regressions             |
+| Suite                      | Purpose                                               |
+| -------------------------- | ----------------------------------------------------- |
+| **Unit Tests**             | Core business logic, normalization, presenters        |
+| **Integration Tests**      | End-to-end workflows with real data                   |
+| **Validation Tests**       | SDTM compliance, XPT/XML/Define-XML format validation |
+| **Performance Benchmarks** | Track and prevent performance regressions             |
 
 ### Running Tests
 
@@ -201,17 +202,17 @@ pytest -m benchmark
 
 ```
 tests/
-├── unit/                  # Unit tests (440+ tests)
+├── unit/                  # Unit tests
 │   ├── application/      # Use case tests
 │   ├── cli/              # Presenter and command tests
 │   ├── domain/           # Domain logic tests
-│   └── infrastructure/   # File generation, transformation tests
-├── integration/          # Integration tests (40+ tests)
+│   └── infrastructure/   # File generation and repository tests
+├── integration/          # Integration tests
 │   ├── test_cli.py       # CLI end-to-end tests
 │   ├── test_study_workflow.py
 │   ├── test_domain_workflow.py
 │   └── test_performance_benchmarks.py
-└── validation/           # Validation tests (42 tests)
+└── validation/           # Validation tests
     ├── test_sdtm_compliance.py      # SDTM standards validation
     ├── test_xpt_format.py           # XPT format validation
     ├── test_xml_format.py           # Dataset-XML validation
@@ -280,7 +281,6 @@ cdisc-transpiler/
 │   │   ├── presenters/        # Output formatting
 │   │   │   ├── summary.py     # SummaryPresenter (table formatting)
 │   │   │   └── progress.py    # ProgressPresenter (progress tracking)
-│   │   └── helpers.py         # CLI utilities
 │   ├── application/           # Application layer (Use Cases + Ports)
 │   │   ├── ports/             # Interfaces (Protocols)
 │   │   ├── models.py          # DTOs (ProcessStudyRequest/Response, etc.)
@@ -289,14 +289,14 @@ cdisc-transpiler/
 │   ├── domain/                # Domain layer (Business Logic)
 │   │   ├── entities/
 │   │   └── services/
+│   │       ├── domain_processors/ # Domain-specific normalization
+│   │       └── transformers/      # Value transformers
 │   ├── infrastructure/        # Infrastructure layer (Adapters + DI wiring)
 │   │   ├── container.py       # DI container / composition root
 │   │   ├── io/                # XPT/XML/Define-XML/SAS generators/writers
 │   │   ├── logging/
-│   │   └── repositories/      # CSV/Excel/SAS + metadata/CT/spec access
+│   │   ├── repositories/      # CSV/Excel/SAS + metadata/CT/spec access
 │   │   └── sdtm_spec/          # SDTM domain/variable spec registry
-│   ├── transformations/       # Transformation pipeline (VS/LB wide-to-long)
-│   └── services/              # Layer-ambiguous services (mid-migration)
 ├── tests/                    # Test suites
 ├── mockdata/                 # Test data (DEMO studies)
 ├── pyproject.toml           # Project configuration

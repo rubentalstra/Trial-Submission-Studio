@@ -57,7 +57,7 @@ def _empty_error_list() -> list[tuple[str, str]]:
 # ============================================================================
 
 
-@dataclass
+@dataclass(slots=True)
 class OutputDirs:
     """Output directory configuration.
 
@@ -81,7 +81,7 @@ class OutputDirs:
     sas_dir: Path | None = None
 
 
-@dataclass
+@dataclass(slots=True)
 class OutputRequest:
     """Request for file generation.
 
@@ -118,7 +118,7 @@ class OutputRequest:
     output_dataset: str | None = None
 
 
-@dataclass
+@dataclass(slots=True)
 class OutputResult:
     """Result of file generation.
 
@@ -156,7 +156,7 @@ class OutputResult:
 # ============================================================================
 
 
-@dataclass
+@dataclass(slots=True)
 class DefineDatasetDTO:
     """Application-layer DTO for Define-XML dataset metadata.
 
@@ -197,7 +197,7 @@ class DefineDatasetDTO:
 # ============================================================================
 
 
-@dataclass
+@dataclass(slots=True)
 class ProcessStudyRequest:
     """Request to process a study folder.
 
@@ -251,7 +251,7 @@ class ProcessStudyRequest:
     default_country: str | None = None
 
 
-@dataclass
+@dataclass(slots=True)
 class DomainProcessingResult:
     """Result of processing a single domain.
 
@@ -301,7 +301,7 @@ class DomainProcessingResult:
     conformance_report: ConformanceReport | None = None
 
 
-@dataclass
+@dataclass(slots=True)
 class ProcessStudyResponse:
     """Response from study processing.
 
@@ -361,7 +361,7 @@ class ProcessStudyResponse:
         return [code for code, _ in self.errors]
 
 
-@dataclass
+@dataclass(slots=True)
 class ProcessDomainRequest:
     """Request to process a single SDTM domain.
 
@@ -416,7 +416,7 @@ class ProcessDomainRequest:
     default_country: str | None = None
 
 
-@dataclass
+@dataclass(slots=True)
 class ProcessDomainResponse:
     """Response from domain processing.
 

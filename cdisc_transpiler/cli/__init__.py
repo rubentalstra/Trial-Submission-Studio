@@ -6,7 +6,8 @@ Commands are organized into separate modules for better maintainability.
 
 import click
 
-from .commands import domains, study
+from .commands.domains import list_domains_command
+from .commands.study import study_command
 
 
 @click.group()
@@ -16,8 +17,8 @@ def app() -> None:
 
 
 # Register commands
-app.add_command(study.study_command, name="study")
-app.add_command(domains.list_domains_command, name="domains")
+app.add_command(study_command, name="study")
+app.add_command(list_domains_command, name="domains")
 
 
 __all__ = ["app"]

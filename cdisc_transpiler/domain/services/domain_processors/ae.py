@@ -5,7 +5,8 @@ from typing import override
 import pandas as pd
 
 from ....pandas_utils import ensure_numeric_series
-from ..transformers import DateTransformer, NumericTransformer
+from ..transformers.date import DateTransformer
+from ..transformers.numeric import NumericTransformer
 from .base import BaseDomainProcessor
 
 

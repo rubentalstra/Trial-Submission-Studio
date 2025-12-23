@@ -9,7 +9,7 @@ It implements the application port OutputPreparerPort.
 from pathlib import Path
 from typing import override
 
-from ...application.ports import OutputPreparerPort
+from ...application.ports.services import OutputPreparerPort
 
 
 def _ensure_acrf_pdf(path: Path) -> None:

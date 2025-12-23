@@ -21,7 +21,7 @@ def _empty_codelists() -> dict[str, CodeList]:
     return {}
 
 
-@dataclass
+@dataclass(slots=True)
 class CodeListValue:
     """A single value in a codelist."""
 
@@ -30,7 +30,7 @@ class CodeListValue:
     data_type: str  # The data type (e.g., "text", "integer")
 
 
-@dataclass
+@dataclass(slots=True)
 class CodeList:
     """A codelist with its values for normalizing source data."""
 
@@ -79,7 +79,7 @@ class CodeList:
         return None
 
 
-@dataclass
+@dataclass(slots=True)
 class SourceColumn:
     """A source column definition from Items.csv."""
 
@@ -103,7 +103,7 @@ class SourceColumn:
         return self.id
 
 
-@dataclass
+@dataclass(slots=True)
 class StudyMetadata:
     """Container for all metadata loaded from a study folder."""
 

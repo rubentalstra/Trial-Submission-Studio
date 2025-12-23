@@ -4,7 +4,9 @@ from typing import override
 
 import pandas as pd
 
-from ..transformers import DateTransformer, NumericTransformer, TextTransformer
+from ..transformers.date import DateTransformer
+from ..transformers.numeric import NumericTransformer
+from ..transformers.text import TextTransformer
 from .base import BaseDomainProcessor
 
 

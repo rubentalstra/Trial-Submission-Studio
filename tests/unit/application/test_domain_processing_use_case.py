@@ -22,7 +22,7 @@ from cdisc_transpiler.application.models import (
     ProcessDomainRequest,
     ProcessDomainResponse,
 )
-from cdisc_transpiler.infrastructure.logging import NullLogger
+from cdisc_transpiler.infrastructure.logging.null_logger import NullLogger
 
 
 class TestDomainProcessingUseCase:

@@ -16,7 +16,7 @@ from rich.console import Console
 from ...application.models import ProcessStudyRequest
 from ...config import ConfigLoader
 from ...infrastructure.container import DependencyContainer
-from ..presenters import SummaryPresenter
+from ..presenters.summary import SummaryPresenter
 
 console = Console()
 

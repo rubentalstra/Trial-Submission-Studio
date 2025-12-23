@@ -15,7 +15,7 @@ from cdisc_transpiler.application.models import (
     OutputRequest,
     OutputResult,
 )
-from cdisc_transpiler.application.ports import FileGeneratorPort, LoggerPort
+from cdisc_transpiler.application.ports.services import FileGeneratorPort, LoggerPort
 from cdisc_transpiler.domain.entities.mapping import MappingConfig
 
 

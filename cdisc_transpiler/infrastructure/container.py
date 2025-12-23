@@ -20,17 +20,19 @@ from typing import TYPE_CHECKING
 
 from rich.console import Console
 
-from ..application.ports import (
-    ConformanceReportWriterPort,
+from ..application.ports.repositories import (
     CTRepositoryPort,
-    DefineXMLGeneratorPort,
     DomainDefinitionRepositoryPort,
+    StudyDataRepositoryPort,
+)
+from ..application.ports.services import (
+    ConformanceReportWriterPort,
+    DefineXMLGeneratorPort,
     DomainFrameBuilderPort,
     FileGeneratorPort,
     LoggerPort,
     MappingPort,
     OutputPreparerPort,
-    StudyDataRepositoryPort,
     SuppqualPort,
     TerminologyPort,
 )
@@ -41,16 +43,16 @@ from .io.file_generator import FileGenerator
 from .io.output_preparer import OutputPreparer
 from .io.sas_writer import SASWriter
 from .io.xpt_writer import XPTWriter
-from .logging import ConsoleLogger, NullLogger
-from .repositories import DomainDefinitionRepository, StudyDataRepository
+from .logging.console_logger import ConsoleLogger
+from .logging.null_logger import NullLogger
+from .repositories.domain_definition_repository import DomainDefinitionRepository
+from .repositories.study_data_repository import StudyDataRepository
 from .services.mapping_service_adapter import MappingServiceAdapter
 
 if TYPE_CHECKING:
-    from ..domain.services import (
-        RelrecService,
-        RelspecService,
-        RelsubService,
-    )
+    from ..domain.services.relrec_service import RelrecService
+    from ..domain.services.relspec_service import RelspecService
+    from ..domain.services.relsub_service import RelsubService
 
 
 class DependencyContainer:
@@ -291,7 +293,7 @@ class DependencyContainer:
     def create_relrec_service(self) -> RelrecService:
         """Create or return cached RELREC service instance (singleton)."""
         if self._relrec_service_instance is None:
-            from ..domain.services import RelrecService
+            from ..domain.services.relrec_service import RelrecService
 
             self._relrec_service_instance = RelrecService()
         return self._relrec_service_instance
@@ -299,7 +301,7 @@ class DependencyContainer:
     def create_relsub_service(self) -> RelsubService:
         """Create or return cached RELSUB service instance (singleton)."""
         if self._relsub_service_instance is None:
-            from ..domain.services import RelsubService
+            from ..domain.services.relsub_service import RelsubService
 
             self._relsub_service_instance = RelsubService()
         return self._relsub_service_instance
@@ -307,7 +309,7 @@ class DependencyContainer:
     def create_relspec_service(self) -> RelspecService:
         """Create or return cached RELSPEC service instance (singleton)."""
         if self._relspec_service_instance is None:
-            from ..domain.services import RelspecService
+            from ..domain.services.relspec_service import RelspecService
 
             self._relspec_service_instance = RelspecService()
         return self._relspec_service_instance
@@ -328,16 +330,14 @@ class DependencyContainer:
         """
         # Import here to avoid circular import at module level
         from ..application.study_processing_use_case import StudyProcessingUseCase
-        from .services.domain_discovery_service_adapter import (
-            DomainDiscoveryServiceAdapter,
-        )
+        from .services.domain_discovery_adapter import DomainDiscoveryAdapter
 
         logger = self.create_logger()
         study_data_repository = self.create_study_data_repository()
         file_generator = self.create_file_generator()
         domain_processing_use_case = self.create_domain_processing_use_case()
         domain_definition_repository = self.create_domain_definition_repository()
-        domain_discovery_service = DomainDiscoveryServiceAdapter(logger=logger)
+        domain_discovery_service = DomainDiscoveryAdapter(logger=logger)
         domain_frame_builder = self.create_domain_frame_builder()
         relrec_service = self.create_relrec_service()
         relsub_service = self.create_relsub_service()

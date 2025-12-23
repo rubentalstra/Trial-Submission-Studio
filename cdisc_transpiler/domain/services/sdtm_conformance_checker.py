@@ -23,7 +23,7 @@ from ..entities.sdtm_domain import SDTMDomain, SDTMVariable
 Severity = Literal["error", "warning"]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ConformanceIssue:
     severity: Severity
     code: str
@@ -52,7 +52,7 @@ class ConformanceIssue:
         }
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ConformanceReport:
     domain: str
     issues: tuple[ConformanceIssue, ...]

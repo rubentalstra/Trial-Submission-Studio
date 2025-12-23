@@ -15,7 +15,7 @@ if TYPE_CHECKING:
     from ...entities.sdtm_domain import SDTMDomain
     from ...entities.study_metadata import StudyMetadata
 
-from ..transformers import TextTransformer
+from ..transformers.text import TextTransformer
 
 
 class BaseDomainProcessor(ABC):

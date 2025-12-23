@@ -3,7 +3,7 @@
 This is a pure data model representing CDISC controlled terminology.
 
 It is used by ports and repositories so the application layer does not
-depend on infrastructure adapters or legacy wrappers.
+depend on infrastructure adapters or compatibility shims.
 """
 
 from __future__ import annotations
@@ -37,7 +37,7 @@ def _empty_preferred_terms() -> dict[str, str]:
     return {}
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ControlledTerminology:
     """Represents controlled terminology using column-aligned names from CT CSVs."""
 

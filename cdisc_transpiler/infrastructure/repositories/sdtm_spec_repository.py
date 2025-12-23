@@ -10,7 +10,7 @@ import pandas as pd
 
 from ...application.ports.repositories import SDTMSpecRepositoryPort
 from ...config import TranspilerConfig
-from ..caching import MemoryCache
+from ..caching.memory_cache import MemoryCache
 
 
 class SDTMSpecRepository:

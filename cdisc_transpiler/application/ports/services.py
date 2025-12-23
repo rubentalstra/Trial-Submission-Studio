@@ -305,7 +305,7 @@ class SuppqualPort(Protocol):
 class TerminologyPort(Protocol):
     """Protocol for terminology helpers used by transformations.
 
-    This keeps the application layer decoupled from legacy/shim terminology
+    This keeps the application layer decoupled from compatibility shims
     modules.
     """
 

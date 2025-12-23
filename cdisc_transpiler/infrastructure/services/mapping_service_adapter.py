@@ -14,7 +14,7 @@ from ...application.ports.services import MappingPort
 from ...domain.entities.column_hints import Hints
 from ...domain.entities.mapping import MappingSuggestions
 from ...domain.entities.study_metadata import StudyMetadata
-from ...domain.services.mapping import create_mapper
+from ...domain.services.mapping.factory import create_mapper
 
 
 class MappingServiceAdapter(MappingPort):

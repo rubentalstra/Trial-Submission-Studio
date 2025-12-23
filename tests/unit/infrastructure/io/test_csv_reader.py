@@ -5,9 +5,8 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from cdisc_transpiler.infrastructure.io import (
-    CSVReader,
-    CSVReadOptions,
+from cdisc_transpiler.infrastructure.io.csv_reader import CSVReader, CSVReadOptions
+from cdisc_transpiler.infrastructure.io.exceptions import (
     DataParseError,
     DataSourceNotFoundError,
 )

@@ -10,7 +10,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from cdisc_transpiler.application.ports import (
+from cdisc_transpiler.application.ports.repositories import (
     CTRepositoryPort,
     SDTMSpecRepositoryPort,
     StudyDataRepositoryPort,

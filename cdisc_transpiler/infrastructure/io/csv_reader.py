@@ -20,7 +20,7 @@ import pandas as pd
 from .exceptions import DataParseError, DataSourceNotFoundError
 
 
-@dataclass
+@dataclass(slots=True)
 class CSVReadOptions:
     """Configuration options for CSV reading.
 

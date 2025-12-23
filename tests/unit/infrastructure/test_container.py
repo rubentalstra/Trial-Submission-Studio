@@ -7,13 +7,15 @@ testing overrides.
 
 from rich.console import Console
 
-from cdisc_transpiler.application.ports import FileGeneratorPort, LoggerPort
-from cdisc_transpiler.infrastructure import (
+from cdisc_transpiler.application.ports.services import FileGeneratorPort, LoggerPort
+from cdisc_transpiler.infrastructure.container import (
     DependencyContainer,
     create_default_container,
 )
-from cdisc_transpiler.infrastructure.io import CSVReader, FileGenerator
-from cdisc_transpiler.infrastructure.logging import ConsoleLogger, NullLogger
+from cdisc_transpiler.infrastructure.io.csv_reader import CSVReader
+from cdisc_transpiler.infrastructure.io.file_generator import FileGenerator
+from cdisc_transpiler.infrastructure.logging.console_logger import ConsoleLogger
+from cdisc_transpiler.infrastructure.logging.null_logger import NullLogger
 
 
 class MockLogger:

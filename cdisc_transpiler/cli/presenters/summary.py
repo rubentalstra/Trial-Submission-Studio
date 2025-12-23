@@ -16,7 +16,7 @@ from rich.table import Table
 from ...application.models import DomainProcessingResult
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _DomainRow:
     description: str
     records: int
@@ -27,7 +27,7 @@ class _DomainRow:
     is_supp: bool
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _ErrorRow:
     domain: str
     kind: str

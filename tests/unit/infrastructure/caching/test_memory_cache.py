@@ -3,7 +3,7 @@
 from datetime import timedelta
 import time
 
-from cdisc_transpiler.infrastructure.caching import MemoryCache
+from cdisc_transpiler.infrastructure.caching.memory_cache import MemoryCache
 
 
 class TestMemoryCache:

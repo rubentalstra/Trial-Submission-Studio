@@ -7,7 +7,9 @@ from cdisc_transpiler.infrastructure.io.exceptions import (
     DataParseError,
     DataSourceNotFoundError,
 )
-from cdisc_transpiler.infrastructure.repositories import StudyDataRepository
+from cdisc_transpiler.infrastructure.repositories.study_data_repository import (
+    StudyDataRepository,
+)
 
 
 class TestStudyDataRepository:

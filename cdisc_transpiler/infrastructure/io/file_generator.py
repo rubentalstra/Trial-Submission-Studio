@@ -1,8 +1,7 @@
 """Unified file generator for consistent output across formats.
 
-This module consolidates file generation logic that was duplicated
-across multiple services (domain_processing_coordinator,
-domain_synthesis_coordinator, study_orchestration_service).
+This module consolidates file generation logic into a single infrastructure
+adapter used by the application layer.
 
 Key Features:
 - Single source of truth for XPT/XML/SAS generation
@@ -23,7 +22,7 @@ from .sas_writer import SASWriterError
 from .xpt_writer import XportGenerationError
 
 if TYPE_CHECKING:
-    from ...application.ports import (
+    from ...application.ports.services import (
         DatasetXMLWriterPort,
         SASWriterPort,
         XPTWriterPort,

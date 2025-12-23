@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import cast
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class TranspilerConfig:
     """Immutable configuration for the CDISC Transpiler.
 

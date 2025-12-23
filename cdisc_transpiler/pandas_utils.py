@@ -21,7 +21,7 @@ def ensure_series(value: Any, index: pd.Index[Any] | None = None) -> pd.Series[A
 
     The function is intentionally permissive: it accepts scalars, lists,
     ``Series`` instances, and single-column ``DataFrame`` objects. Multi-column
-    frames fall back to the first column, which preserves legacy behaviour
+    frames fall back to the first column, which preserves prior behavior
     where a frame lookup was expected to yield a series.
     """
     if isinstance(value, pd.Series):

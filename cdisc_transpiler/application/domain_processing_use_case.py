@@ -5,14 +5,14 @@ orchestrating file loading, transformations, mapping, and output generation.
 
 The use case implements a clean pipeline architecture with explicit stages:
 1. Load input files via StudyDataRepositoryPort
-2. Apply transformations via TransformationPipeline (VS/LB)
+2. Apply domain-specific normalization (e.g., VS/LB wide-to-long)
 3. Map columns via mapping service/engine
 4. Build SDTM domain dataframe
 5. Generate SUPPQUAL (supplemental qualifiers)
 6. Generate outputs via FileGeneratorPort
 
 CLEAN2-D1: This use case is now fully implemented with injected dependencies,
-removing the delegation to legacy DomainProcessingCoordinator.
+without compatibility shims.
 """
 
 from pathlib import Path
@@ -22,15 +22,17 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 
 from .models import ProcessDomainRequest, ProcessDomainResponse
-from .ports import (
+from .ports.repositories import (
     CTRepositoryPort,
     DomainDefinitionRepositoryPort,
+    StudyDataRepositoryPort,
+)
+from .ports.services import (
     DomainFrameBuilderPort,
     FileGeneratorPort,
     LoggerPort,
     MappingPort,
     OutputPreparerPort,
-    StudyDataRepositoryPort,
     SuppqualPort,
     TerminologyPort,
     XPTWriterPort,

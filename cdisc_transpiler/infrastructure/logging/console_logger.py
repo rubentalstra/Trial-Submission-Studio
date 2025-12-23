@@ -38,7 +38,7 @@ class LogLevel(IntEnum):
     DEBUG = 2
 
 
-@dataclass
+@dataclass(slots=True)
 class LogContext:
     """Context information for logging operations."""
 

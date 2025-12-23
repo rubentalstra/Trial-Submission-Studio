@@ -16,7 +16,7 @@ class DefineGenerationError(RuntimeError):
     """Raised when Define-XML export fails."""
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class StandardDefinition:
     """Represents a def:Standard element in Define-XML 2.1."""
 
@@ -29,7 +29,7 @@ class StandardDefinition:
     comment_oid: str | None = None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class OriginDefinition:
     """Represents def:Origin metadata for a variable."""
 
@@ -40,7 +40,7 @@ class OriginDefinition:
     page_refs: str | None = None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class MethodDefinition:
     """Represents a MethodDef element for derivation algorithms."""
 
@@ -51,7 +51,7 @@ class MethodDefinition:
     document_refs: tuple[str, ...] = ()
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class CommentDefinition:
     """Represents a def:CommentDef element."""
 
@@ -59,7 +59,7 @@ class CommentDefinition:
     text: str
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class WhereClauseDefinition:
     """Represents a def:WhereClauseDef for value-level metadata."""
 
@@ -72,7 +72,7 @@ class WhereClauseDefinition:
     comment_oid: str | None = None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ValueListItemDefinition:
     """Represents a single item in a value list (def:ItemRef within def:ValueListDef)."""
 
@@ -83,7 +83,7 @@ class ValueListItemDefinition:
     method_oid: str | None = None
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class ValueListDefinition:
     """Represents a def:ValueListDef for value-level metadata."""
 
@@ -91,7 +91,7 @@ class ValueListDefinition:
     items: tuple[ValueListItemDefinition, ...]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class StudyDataset:
     """Represents a single dataset with its metadata and data."""
 

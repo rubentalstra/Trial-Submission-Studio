@@ -10,7 +10,7 @@ from pathlib import Path
 from ...application.ports.repositories import CTRepositoryPort
 from ...config import TranspilerConfig
 from ...domain.entities.controlled_terminology import ControlledTerminology
-from ..caching import MemoryCache
+from ..caching.memory_cache import MemoryCache
 from .ct_loader import build_registry
 
 _DEFAULT_CT_CACHE = MemoryCache()

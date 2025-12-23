@@ -4,7 +4,7 @@ from typing import override
 
 import pandas as pd
 
-from ..transformers import DateTransformer
+from ..transformers.date import DateTransformer
 from .base import BaseDomainProcessor
 
 

@@ -2,7 +2,7 @@
 
 from typing import override
 
-from ...application.ports import TerminologyPort
+from ...application.ports.services import TerminologyPort
 from ...domain.entities.controlled_terminology import ControlledTerminology
 
 

@@ -13,12 +13,12 @@ import unittest
 from rich.console import Console
 
 from cdisc_transpiler.application.ports.services import LoggerPort
-from cdisc_transpiler.infrastructure.logging import (
+from cdisc_transpiler.infrastructure.logging.console_logger import (
     ConsoleLogger,
     LogContext,
     LogLevel,
-    NullLogger,
 )
+from cdisc_transpiler.infrastructure.logging.null_logger import NullLogger
 
 
 class TestLoggerPort(unittest.TestCase):

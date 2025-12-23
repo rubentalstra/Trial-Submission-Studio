@@ -5,7 +5,7 @@ orchestrating file discovery, domain processing, synthesis, and Define-XML
 generation.
 
 CLEAN2-D2: This use case is now fully implemented with injected dependencies,
-removing the delegation to legacy coordinators and old module imports.
+without compatibility shims or cross-layer imports.
 
 The use case orchestrates:
 - Discovery → per-domain processing → synthesis → Define-XML generation
@@ -28,29 +28,29 @@ from .models import (
     ProcessStudyRequest,
     ProcessStudyResponse,
 )
-from .ports import (
-    ConformanceReportWriterPort,
+from .ports.repositories import (
     CTRepositoryPort,
-    DefineXMLGeneratorPort,
     DomainDefinitionRepositoryPort,
+    StudyDataRepositoryPort,
+)
+from .ports.services import (
+    ConformanceReportWriterPort,
+    DefineXMLGeneratorPort,
     DomainDiscoveryPort,
     DomainFrameBuilderPort,
     FileGeneratorPort,
     LoggerPort,
     OutputPreparerPort,
-    StudyDataRepositoryPort,
 )
 
 if TYPE_CHECKING:
-    from ..domain.services import (
-        RelrecService,
-        RelspecService,
-        RelsubService,
-    )
+    from ..domain.services.relrec_service import RelrecService
+    from ..domain.services.relspec_service import RelspecService
+    from ..domain.services.relsub_service import RelsubService
     from .domain_processing_use_case import DomainProcessingUseCase
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, slots=True)
 class _SynthesisJob:
     domain_code: str
     kind: Literal["relrec", "relsub", "relspec"]
@@ -853,7 +853,7 @@ class StudyProcessingUseCase:
         """Synthesize RELREC domain.
 
         CLEAN2-D4: Now uses the new RelrecService from domain/services
-        instead of the legacy StudyOrchestrationService.
+        instead of an external orchestration shim.
         """
         self.logger.log_synthesis_start("RELREC", "Relationship scaffold")
 

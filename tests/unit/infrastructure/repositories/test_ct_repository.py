@@ -3,8 +3,8 @@
 import pytest
 
 from cdisc_transpiler.config import TranspilerConfig
-from cdisc_transpiler.infrastructure.caching import MemoryCache
-from cdisc_transpiler.infrastructure.repositories import CTRepository
+from cdisc_transpiler.infrastructure.caching.memory_cache import MemoryCache
+from cdisc_transpiler.infrastructure.repositories.ct_repository import CTRepository
 
 
 class TestCTRepository:

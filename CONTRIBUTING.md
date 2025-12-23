@@ -196,17 +196,19 @@ cdisc_transpiler/
 │   ├── commands/          # Click commands (argument parsing only)
 │   └── presenters/        # Output formatting (no business logic)
 ├── application/           # Application Layer (use cases)
-│   ├── use_cases/        # Business workflows
 │   ├── ports/            # Interface definitions
-│   └── models/           # DTOs (request/response objects)
+│   ├── models.py         # DTOs (request/response objects)
+│   ├── study_processing_use_case.py
+│   └── domain_processing_use_case.py
 ├── domain/               # Domain Layer (core business logic)
 │   ├── entities/         # Domain models
-│   ├── services/         # Domain services
-│   └── value_objects/    # Immutable value objects
+│   └── services/         # Domain services + normalization logic
 └── infrastructure/       # Infrastructure Layer (I/O, external systems)
+    ├── container.py      # Composition root
+    ├── io/               # File generation + writers
     ├── repositories/     # Data access
-    ├── file_generators/  # File generation
-    └── transformers/     # Data transformations
+    ├── logging/          # Logger adapters
+    └── sdtm_spec/         # SDTM spec registry
 ```
 
 ### Key Principles
@@ -552,7 +554,7 @@ When adding features, respect the architecture layers:
 
 - Core business logic
 - Domain rules and validations
-- Domain entities and value objects
+- Domain entities and services
 
 **DON'T:**
 
@@ -566,7 +568,7 @@ When adding features, respect the architecture layers:
 
 - File I/O (reading/writing)
 - External system integration
-- Data transformations
+- Output generation adapters
 - Repository implementations
 
 **DON'T:**
@@ -625,9 +627,9 @@ def process_domain(
     domain_data: DomainData,
     sdtm_version: str = "3.2",
 ) -> ProcessedDomain:
-    """Process a single SDTM domain with transformations.
+    """Process a single SDTM domain with SDTM normalization.
     
-    Applies all required transformations including variable mapping,
+    Applies required normalization including variable mapping,
     controlled terminology, and data standardization.
     
     Args:
@@ -635,7 +637,7 @@ def process_domain(
         sdtm_version: SDTM version to target (default: "3.2")
     
     Returns:
-        Processed domain with all transformations applied
+        Processed domain with SDTM normalization applied
     
     Raises:
         ValidationError: If domain data fails SDTM validation

@@ -3,8 +3,10 @@
 import pytest
 
 from cdisc_transpiler.config import TranspilerConfig
-from cdisc_transpiler.infrastructure.caching import MemoryCache
-from cdisc_transpiler.infrastructure.repositories import SDTMSpecRepository
+from cdisc_transpiler.infrastructure.caching.memory_cache import MemoryCache
+from cdisc_transpiler.infrastructure.repositories.sdtm_spec_repository import (
+    SDTMSpecRepository,
+)
 
 
 class TestSDTMSpecRepository:

@@ -4,8 +4,8 @@ from typing import cast, override
 
 import pandas as pd
 
-from ...application.ports import DomainFrameBuilderPort
 from ...application.ports.repositories import CTRepositoryPort
+from ...application.ports.services import DomainFrameBuilderPort
 from ...domain.entities.controlled_terminology import ControlledTerminology
 from ...domain.entities.mapping import MappingConfig
 from ...domain.entities.sdtm_domain import SDTMDomain
@@ -15,15 +15,11 @@ from ...domain.services.domain_frame_builder import (
     ValidatorRegistry,
     build_domain_dataframe,
 )
-from ...domain.services.domain_processors import (
-    BaseDomainProcessor,
-    get_domain_processor,
-)
-from ...domain.services.transformers import (
-    CodelistTransformer,
-    DateTransformer,
-    NumericTransformer,
-)
+from ...domain.services.domain_processors.base import BaseDomainProcessor
+from ...domain.services.domain_processors.registry import get_domain_processor
+from ...domain.services.transformers.codelist import CodelistTransformer
+from ...domain.services.transformers.date import DateTransformer
+from ...domain.services.transformers.numeric import NumericTransformer
 from .xpt_validator import XPTValidator
 
 

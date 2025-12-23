@@ -87,7 +87,7 @@ class MappingConfig(BaseModel):
 # =============================================================================
 
 
-@dataclass
+@dataclass(slots=True)
 class Suggestion:
     """A single mapping suggestion."""
 
@@ -96,7 +96,7 @@ class Suggestion:
     confidence: float
 
 
-@dataclass
+@dataclass(slots=True)
 class MappingSuggestions:
     """Collection of mapping suggestions."""
 

@@ -87,10 +87,12 @@ below may fail until the hot-path errors are addressed.
   `study_metadata.py`, `mapping.py`)
 - Domain services: `cdisc_transpiler/domain/services/`
   - `domain_frame_builder.py`: builds SDTM domain DataFrames
+  - `domain_processors/`: domain-specific normalization and defaults
+  - `transformers/`: date/codelist/numeric/text normalization helpers
   - `suppqual_service.py`: builds SUPPQUAL frames
-  - `relrec_service.py`: RELREC synthesis logic
-  - `synthesis_service.py`: domain synthesis (currently mixes orchestration +
-    file generation concerns; see violations)
+  - `relrec_service.py`, `relsub_service.py`, `relspec_service.py`: relationship
+    dataset synthesis
+  - `sdtm_conformance_checker.py`: dataset conformance checks
 
 #### `cdisc_transpiler/infrastructure/` (Adapters + wiring)
 
@@ -123,37 +125,26 @@ call sites to the clean layers:
 
 ### Other important packages (current state)
 
-These modules exist outside the four “clean” layer folders and are a major
-source of confusion. They must either become true adapters/ports, move into the
-proper layer, or be removed.
-
 - `cdisc_transpiler/infrastructure/sdtm_spec/`: SDTM domain/variable registry
   loaded from spec CSVs (current implementation).
-- `cdisc_transpiler/transformations/`: transformation framework and
-  domain-specific transformers (VS/LB wide-to-long).
+- SDTM normalization logic lives in domain services:
+  `cdisc_transpiler/domain/services/transformers/` and
+  `cdisc_transpiler/domain/services/domain_processors/`.
 - Output generation implementations live under
   `cdisc_transpiler/infrastructure/io/` (XPT, Dataset-XML, Define-XML, SAS).
-- `cdisc_transpiler/services/`: layer-ambiguous “service” bucket (mixes
-  domain/application/infrastructure responsibilities).
 
 ### Public API surface (stability constraints)
 
-Be careful with these, because downstream users may import them directly:
+The top-level package only exposes `__version__`. Import from defining modules
+directly; do not rely on re-exports.
 
-- `cdisc_transpiler/__init__.py` re-exports XML builders and domain metadata
-  accessors (this is part of the public API).
-- Wrapper modules under `cdisc_transpiler/*_module/` have been removed after
-  migrating internal call sites; do not introduce new compatibility shims.
+Wrapper modules under `cdisc_transpiler/*_module/` have been removed after
+migrating internal call sites; do not introduce new compatibility shims.
 
-### Legacy code candidates (safe-to-remove once call sites migrate)
+### Legacy code candidates
 
-- `cdisc_transpiler/legacy/`
-  - `domain_processing_coordinator.py`
-  - `domain_synthesis_coordinator.py`
-  - `study_orchestration_service.py`
-  - `cdisc_transpiler/legacy/__init__.py` (deprecation shim)
-- `cdisc_transpiler/services/__init__.py` re-exports deprecated legacy classes
-  (should stop doing this once downstream code migrates).
+Legacy/compatibility packages have been removed. Do not introduce new shims or
+side-effectful re-export modules.
 
 ### Rewrapping / compatibility-layer candidates (thin pass-through)
 
@@ -184,13 +175,10 @@ cleanup are layer-crossing helpers and re-export modules that bypass ports.
 - **Resolution:** Created `DefineDatasetDTO` in application layer. The adapter
   converts DTOs to infrastructure `StudyDataset`.
 
-5. **“Service” package is layer-ambiguous**
+5. ~~**“Service” package is layer-ambiguous**~~ ✅ RESOLVED
 
-- `cdisc_transpiler/services/*` contains a mix of:
-  - domain-ish logic,
-  - application-ish orchestration helpers,
-  - infrastructure-ish filesystem side effects (output dir creation, PDF stub
-    generation).
+- `cdisc_transpiler/services/*` has been removed; discovery and output prep
+  logic now live in infrastructure adapters.
 
 6. **Duplicate file-writing logic lives in multiple layers**
 
@@ -221,11 +209,9 @@ cleanup are layer-crossing helpers and re-export modules that bypass ports.
 - Use cases and ports have been migrated to depend on ports and domain entities,
   with infrastructure adapters supplied by the DI container.
 
-11. **Legacy import side effects leak via `services/__init__.py`**
+11. ~~**Legacy import side effects leak via `services/__init__.py`**~~ ✅ RESOLVED
 
-- `cdisc_transpiler/services/__init__.py` imports from
-  `cdisc_transpiler/legacy`, which triggers deprecation warnings (and couples
-  unrelated imports to legacy code paths).
+- The services package (and related legacy shims) has been removed.
 
 12. **Duplicated Dataset-XML implementation exists in two places**
 
@@ -270,7 +256,7 @@ Keep the current top-level layout, but enforce strict boundaries:
     output-generation DTOs (move out of infrastructure)
   - ports for:
     - study input reading (`StudyDataRepositoryPort`)
-    - transformation pipeline (if we want to swap pipelines)
+    - domain normalization and mapping helpers
     - output generation (XPT/XML/Define-XML/SAS)
     - metadata access (CT/spec repositories)
     - progress/logging (`LoggerPort`)
@@ -311,13 +297,10 @@ compatibility shims; migrate call sites and remove shims when possible.
   `cdisc_transpiler/infrastructure/container.py`.
 - **Driver owns wiring:** CLI builds request DTOs, calls use cases, and presents
   results. CLI should not construct repositories/writers/generators directly.
-- **No side-effectful re-exports:** Avoid importing `legacy/*` (or triggering
-  deprecation warnings) from non-legacy modules like
-  `cdisc_transpiler/services/__init__.py`.
-- **Compatibility shims are discouraged:** Prefer migrating call sites to the
-  canonical API and removing shims. If a shim exists for public API stability,
-  keep it as a thin re-export only (no duplicated implementations, no
-  orchestration).
+- **No barrel re-exports:** Avoid re-exporting symbols via `__init__.py`; import
+  from defining modules instead.
+- **Compatibility shims are not allowed:** Prefer a single canonical API and
+  update call sites; remove shims instead of re-exporting.
 - **Ports reference stable types:** Application ports should reference
   application/domain DTOs/entities, not `*_module` types.
 
@@ -336,8 +319,6 @@ Use these when you’re about to finish a refactor chunk:
   sites):
   - `rg -n "\\b(io_module|terminology_module|domains_module|metadata_module|mapping_module|submission_module)\\b" -S cdisc_transpiler/domain cdisc_transpiler/application`
 
-- “Services” package must not pull in legacy as a side effect:
-  - `rg -n "from \\.\\.legacy" -S cdisc_transpiler/services`
 
 ## 4) Migration Rules (Definitions)
 
@@ -380,13 +361,10 @@ Use this as the default “where should I move this?” reference.
   `cdisc_transpiler/application/models.py`
 - Define-XML dataset model used by the use case: infrastructure `StudyDataset` →
   application DTO (infra converts)
-- Output directory creation + ACRF PDF placeholder:
-  `cdisc_transpiler/services/file_organization_service.py` → infrastructure
-  adapter
-- Split XPT writing:
-  `cdisc_transpiler/application/domain_processing_use_case.py`
-  (`_write_variant_splits`) → consider unifying behind an infrastructure adapter
-  / generator path (single implementation)
+- Output directory creation + ACRF PDF placeholder: ✅
+  `cdisc_transpiler/infrastructure/io/output_preparer.py`
+- Split XPT writing: ✅ unified in
+  `cdisc_transpiler/infrastructure/io/file_generator.py`
 - Controlled terminology loading:
   `cdisc_transpiler/infrastructure/repositories/ct_repository.py` (current
   implementation)
@@ -400,170 +378,18 @@ Additional high-impact migrations (current reality):
   domain).
 - Dataset-XML: `cdisc_transpiler/infrastructure/io/dataset_xml/*`
 
-## 6) Naming & Structure Improvement Plan (Required)
+## 6) Refactor Roadmap
 
-### Conventions to enforce
+The live refactor plan is tracked in `docs/REFACTOR_PLAN.md`. It is the
+single place where step-by-step cleanup is recorded and updated.
 
-- Use cases end with `UseCase`
-- Port interfaces end with `Port` (e.g., `StudyReaderPort`,
-  `OutputGeneratorPort`)
-- Adapter implementations end with `Adapter` (e.g., `CSVStudyReaderAdapter`,
-  `XPTWriterAdapter`)
-- Avoid vague names (`utils`, `helpers`, `manager`, `processor`) unless narrowly
-  scoped and layer-specific
-- Filenames match the primary class/function inside
+Recent completed milestones:
+- Legacy/unused packages removed (`cdisc_transpiler/services`, `cdisc_transpiler/transformations`).
+- Barrel `__init__` re-exports removed; imports point to defining modules.
+- Domain processor registry moved to `domain/services/domain_processors/registry.py`.
+- Dataclasses use slots for reduced overhead.
 
-### Concrete cleanup targets (proposed)
-
-Low-risk, high-signal naming changes (with compatibility aliases where needed):
-
-- `cdisc_transpiler/infrastructure/container.py` → keep file name, but consider
-  exporting an alias `DependencyContainer` in a small `dependency_container.py`
-  shim if external docs/tools assume that name.
-- `cdisc_transpiler/infrastructure/io/file_generator.py:FileGenerator` →
-  consider `OutputGenerationAdapter` or `FileGeneratorAdapter` (keep
-  `FileGenerator` alias temporarily).
-- `cdisc_transpiler/infrastructure/repositories/study_data_repository.py:StudyDataRepository`
-  → consider `StudyDataRepositoryAdapter` (keep old class name alias
-  temporarily).
-- `cdisc_transpiler/services/domain_discovery_service.py:DomainDiscoveryService`
-  → rename to `DomainFileDiscoveryService` and move to application/domain
-  (depending on final responsibility).
-- `cdisc_transpiler/services/file_organization_service.py` → move to
-  infrastructure and rename to `OutputLayoutAdapter` / `OutputDirectoryService`.
-- `cdisc_transpiler/services/trial_design_service.py` → deprecate in favor of a
-  single synthesis service (avoid duplication with
-  `domain/services/synthesis_service.py`).
-
-## 7) Refactor Plan (Small, Safe Steps)
-
-Each step is intended to be PR-sized and reversible.
-
-### Step 1 — Move output-generation DTOs to application (Risk: Medium)
-
-- **Goal:** Remove application/port dependencies on infrastructure I/O DTOs.
-- **Status:** ✅ Completed (DTOs are in
-  `cdisc_transpiler/application/models.py`).
-- **Verify:** `pyright`, `pytest`
-
-### Step 2 — Define-XML boundary cleanup (Risk: Medium) ✅ DONE
-
-- **Goal:** Application produces a Define-XML-neutral DTO; infrastructure
-  adapter turns it into `StudyDataset` / XML.
-- **Affects:** `cdisc_transpiler/application/study_processing_use_case.py`,
-  `cdisc_transpiler/infrastructure/io/define_xml_generator.py`
-- **Status:** Completed
-- **Changes made:**
-  - Created `DefineDatasetDTO` in `cdisc_transpiler/application/models.py` as
-    application-layer DTO
-  - Updated `DefineXmlGeneratorPort` in
-    `cdisc_transpiler/application/ports/services.py` to accept
-    `DefineDatasetDTO`
-  - Updated `StudyProcessingUseCase` to use `DefineDatasetDTO` instead of
-    infrastructure `StudyDataset`
-  - Updated `DefineXmlGenerator` adapter in infrastructure to convert from
-    `DefineDatasetDTO` to `StudyDataset`
-  - Removed imports of the concrete `StudyDataset` model and constants from the
-    application layer
-- **Verify:** `pytest -m validation`
-
-### Step 3 — Remove legacy import side effects from `services/__init__.py` (Risk: Low)
-
-- **Goal:** Importing `cdisc_transpiler.services` must not pull
-  `cdisc_transpiler.legacy` (and emit deprecation warnings) unless a caller
-  explicitly imports legacy.
-- **Affects:** `cdisc_transpiler/services/__init__.py`
-- **Verify:** `pytest -q tests/unit/architecture/test_import_boundaries.py`
-
-### Step 4 — Add an application port for output layout (dirs + ACRF placeholder) (Risk: Medium)
-
-- **Goal:** Output directory creation and placeholder files are infrastructure
-  concerns.
-- **Affects:** `cdisc_transpiler/services/file_organization_service.py`,
-  `cdisc_transpiler/application/study_processing_use_case.py`, new port under
-  `cdisc_transpiler/application/ports/`
-- **Verify:**
-  `pytest -q tests/integration/test_cli.py::TestStudyCommand::test_study_with_default_options`
-
-### Step 5 — Remove `io_module` fallbacks from use cases (Risk: Medium)
-
-- **Goal:** Application must depend on ports, not “if not injected, import
-  wrapper”.
-- **Affects:** `cdisc_transpiler/application/domain_processing_use_case.py`,
-  `cdisc_transpiler/application/study_processing_use_case.py`
-- **Verify:** `pytest -q tests/unit/application`
-
-✅ Completed (wrappers removed; use cases depend on ports/adapters).
-
-### Step 6 — Unify XPT split writing behind infrastructure adapter (Risk: Medium)
-
-- **Goal:** There is exactly one implementation for split writing, and it is
-  injected via ports.
-- **Affects:** `cdisc_transpiler/application/domain_processing_use_case.py`,
-  `cdisc_transpiler/infrastructure/io/file_generator.py`
-- **Verify:**
-  `pytest -q tests/integration/test_cli.py::TestStudyCommandWithGDISC::test_study_with_split_datasets`
-
-### Step 7 — Make domain synthesis pure (Risk: Medium/High)
-
-- **Goal:** `domain/services/synthesis_service.py` returns only domain data; it
-  must not import from removed wrapper packages.
-- **Affects:** `cdisc_transpiler/domain/services/synthesis_service.py`,
-  `cdisc_transpiler/application/study_processing_use_case.py`
-- **Verify:** `pytest -m validation`, `pytest -m benchmark --benchmark-only`
-
-### Step 8 — Move domain processors off output-focused transformers (Risk: Medium)
-
-- **Goal:** Domain processors must not import output-focused transformer
-  modules.
-- **Affects:** `cdisc_transpiler/domain/services/domain_processors/*`
-- **Mechanics:** move/duplicate transformers into a domain-owned module.
-- **Verify:** `pytest -q tests/unit/domain`
-
-### Step 9 — Controlled terminology access via ports (Risk: Medium)
-
-- **Goal:** Domain/application should not call controlled terminology via
-  wrapper packages; use a repository/port.
-- **Affects:** `cdisc_transpiler/domain/services/domain_processors/*`,
-  `cdisc_transpiler/application/ports/repositories.py`,
-  `cdisc_transpiler/infrastructure/repositories/ct_repository.py`
-- **Verify:**
-  `pytest -q tests/unit/infrastructure/repositories/test_ct_repository.py`
-
-✅ Completed (CT via `CTRepository` + injected adapters).
-
-### Step 10 — Remove `domains_module` shim (Risk: Medium)
-
-- **Goal:** Remove the `cdisc_transpiler.domains_module` compatibility import
-  path and migrate call sites to the SDTM spec registry.
-- **Affects:** `cdisc_transpiler/domain/entities/mapping.py`,
-  `cdisc_transpiler/domain/entities/variable.py`,
-  `cdisc_transpiler/application/study_processing_use_case.py`
-- **Verify:** boundary grep:
-  `rg -n "\\bdomains_module\\b" -S cdisc_transpiler/domain cdisc_transpiler/application`
-
-✅ Completed (shim removed; use `cdisc_transpiler.infrastructure.sdtm_spec`).
-
-### Step 11 — De-duplicate Dataset-XML implementation (Risk: Medium)
-
-- **Goal:** Choose one concrete implementation (recommend infrastructure) and
-  make the other a shim.
-- **Affects:** `cdisc_transpiler/infrastructure/io/dataset_xml/*`
-- **Verify:** `pytest -m validation`
-
-### Step 12 — Reduce compatibility shims (Risk: Low/Medium)
-
-- **Goal:** Stop importing wrappers from internal code; keep shims only for
-  external API stability until next major version.
-- **Affects (historical):** removed wrapper packages like
-  `cdisc_transpiler/io_module/*`, `cdisc_transpiler/submission_module/*`,
-  `cdisc_transpiler/metadata_module/*`
-- **Verify:** `pyright`, `pytest`
-
-✅ Completed (wrapper folders removed; compatibility maintained via explicit
-shims).
-
-### Performance note
+## 7) Performance Note
 
 When changing transformation/build/generation hot paths, run:
 
@@ -573,7 +399,7 @@ And for end-to-end correctness:
 
 - `pytest -m validation`
 
-## 8) “Definition of Done” for this migration
+## 8) Definition of Done
 
 The repo is considered “clean architecture consistent” when:
 
@@ -584,8 +410,8 @@ The repo is considered “clean architecture consistent” when:
 - Ports do not reference infrastructure types.
 - Infrastructure holds all concrete I/O and all external library glue
   (XPT/XML/SAS, filesystem, `pyreadstat`, etc.).
-- Legacy coordinators are removed, and wrapper modules are either removed or no
-  longer used internally.
+- No legacy/compatibility shims remain; no barrel re-exports are used
+  internally.
 - `pyright && ruff check . && ruff format . && pytest` pass.
 - Validation suite passes: `pytest -m validation`
 - No significant benchmark regression: `pytest -m benchmark --benchmark-only`

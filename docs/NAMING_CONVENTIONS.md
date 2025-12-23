@@ -78,7 +78,7 @@ Use one of:
 
 Examples:
 
-- `DomainDiscoveryServiceAdapter`
+- `DomainDiscoveryAdapter`
 - `StudyDataRepository`
 - `XPTWriter`
 
@@ -118,7 +118,7 @@ describing what it helps with, e.g.
 
 - `DomainDefinitionRepositoryPort.get_domain(domain_code: str)`
 - `StudyProcessingUseCase.execute(request: ProcessStudyRequest)`
-- `DomainDiscoveryServiceAdapter` (implements `DomainDiscoveryPort`)
+- `DomainDiscoveryAdapter` (implements `DomainDiscoveryPort`)
 
 ### Avoid
 

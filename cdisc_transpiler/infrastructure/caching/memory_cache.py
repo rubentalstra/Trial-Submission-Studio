@@ -11,7 +11,7 @@ from typing import Any, Generic, TypeVar
 T = TypeVar("T")
 
 
-@dataclass
+@dataclass(slots=True)
 class CacheEntry(Generic[T]):
     """A cache entry with optional expiration."""
 

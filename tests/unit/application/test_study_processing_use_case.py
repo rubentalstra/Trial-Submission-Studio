@@ -38,7 +38,7 @@ class TestStudyProcessingUseCase:
         from cdisc_transpiler.application.study_processing_use_case import (
             StudyProcessingUseCase,
         )
-        from cdisc_transpiler.infrastructure.logging import NullLogger
+        from cdisc_transpiler.infrastructure.logging.null_logger import NullLogger
 
         # Create mock dependencies
         mock_logger = NullLogger()

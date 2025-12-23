@@ -11,7 +11,7 @@ the Define-XML file.
 from pathlib import Path
 from typing import TYPE_CHECKING, override
 
-from ...application.ports import DefineXMLGeneratorPort
+from ...application.ports.services import DefineXMLGeneratorPort
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
