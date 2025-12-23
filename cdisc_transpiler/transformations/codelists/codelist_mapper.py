@@ -156,7 +156,7 @@ class CodelistMapperTransformer:
             code_column = code_columns.get(column)
             if code_column and code_column in result_df.columns:
                 # Use code column for lookup, write to target column
-                result_df[column] = self._map_column_with_code_source(
+                result_df.loc[:, column] = self._map_column_with_code_source(
                     result_df[code_column], codelist
                 )
                 applied_mappings.append(
@@ -164,7 +164,7 @@ class CodelistMapperTransformer:
                 )
             else:
                 # Transform the column in place
-                result_df[column] = self._map_column(result_df[column], codelist)
+                result_df.loc[:, column] = self._map_column(result_df[column], codelist)
                 applied_mappings.append(f"{column} using {codelist_name}")
 
         if not applied_mappings:

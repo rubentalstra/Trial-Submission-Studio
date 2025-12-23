@@ -85,13 +85,15 @@ class ISODateFormatter:
         for col in transformed_df.columns:
             if "DTC" in col:
                 dtc_columns.append(col)
-                transformed_df[col] = transformed_df[col].apply(normalize_iso8601)
+                transformed_df.loc[:, col] = transformed_df[col].apply(
+                    normalize_iso8601
+                )
 
         # Find and normalize DUR columns
         for col in transformed_df.columns:
             if "DUR" in col:
                 dur_columns.append(col)
-                transformed_df[col] = transformed_df[col].apply(
+                transformed_df.loc[:, col] = transformed_df[col].apply(
                     normalize_iso8601_duration
                 )
 

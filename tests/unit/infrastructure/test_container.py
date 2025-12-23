@@ -154,7 +154,7 @@ class TestFileGeneratorFactory:
 class TestUseCaseFactories:
     """Tests for use case factory methods."""
 
-    @pytest.mark.skip(reason="Circular import issue: services -> cli -> services")
+    # @pytest.mark.skip(reason="Circular import issue: services -> cli -> services")
     def test_create_study_processing_use_case(self):
         """Test creating study processing use case."""
         container = DependencyContainer(use_null_logger=True)
@@ -171,7 +171,7 @@ class TestUseCaseFactories:
         assert hasattr(use_case, "execute")
         assert hasattr(use_case, "logger")
 
-    @pytest.mark.skip(reason="Circular import issue: services -> cli -> services")
+    # @pytest.mark.skip(reason="Circular import issue: services -> cli -> services")
     def test_create_study_processing_use_case_is_transient(self):
         """Test that study use case factory returns new instances (transient)."""
         container = DependencyContainer(use_null_logger=True)
@@ -208,7 +208,7 @@ class TestUseCaseFactories:
         # Should be different instances
         assert use_case1 is not use_case2
 
-    @pytest.mark.skip(reason="Circular import issue: services -> cli -> services")
+    # @pytest.mark.skip(reason="Circular import issue: services -> cli -> services")
     def test_use_cases_share_logger_singleton(self):
         """Test that use cases share the same logger instance."""
         container = DependencyContainer(use_null_logger=True)
@@ -278,7 +278,7 @@ class TestOverrideMethods:
 
         assert generator is mock_gen
 
-    @pytest.mark.skip(reason="Circular import issue: services -> cli -> services")
+    # @pytest.mark.skip(reason="Circular import issue: services -> cli -> services")
     def test_overridden_logger_used_by_use_cases(self):
         """Test that overridden logger is used by use cases."""
         container = DependencyContainer()

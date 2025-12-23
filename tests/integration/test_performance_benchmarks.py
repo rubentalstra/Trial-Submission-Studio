@@ -144,9 +144,9 @@ class TestTransformationPerformance:
         def perform_operations():
             # Common operations: filter, sort, groupby
             result = df.copy()
-            result = result[result["TESTCD"].isin(["ALT", "AST"])]
+            result = result[result["TESTCD"].isin(["ALT", "AST"])].copy()
             result = result.sort_values(["USUBJID", "VISIT", "TESTCD"])
-            result["SEQ"] = result.groupby("USUBJID").cumcount() + 1
+            result.loc[:, "SEQ"] = result.groupby("USUBJID").cumcount() + 1
             return result
 
         # Run benchmark

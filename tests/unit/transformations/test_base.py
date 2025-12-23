@@ -295,7 +295,7 @@ class TestTransformerIntegration:
 
                 for col in result_df.columns:
                     if result_df[col].dtype == object:
-                        result_df[col] = result_df[col].str.upper()
+                        result_df.loc[:, col] = result_df[col].str.upper()
                         modified_cols.append(col)
 
                 return TransformationResult(
