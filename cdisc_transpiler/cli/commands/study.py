@@ -234,7 +234,7 @@ def study_command(
     domain_descriptions: dict[str, str] = {}
     for result in response.domain_results:
         domain_descriptions[result.domain_code] = _describe_domain(result.domain_code)
-        for supp in result.supplementals:
+        for supp in result.suppqual_domains:
             domain_descriptions[supp.domain_code] = _describe_domain(supp.domain_code)
 
     # Display summary using presenter

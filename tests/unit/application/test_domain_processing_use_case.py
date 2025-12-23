@@ -56,7 +56,7 @@ class TestDomainProcessingUseCase:
         return DomainProcessingUseCase(
             logger=logger,
             study_data_repository=mock_repo,
-            file_generator=mock_generator,
+            dataset_output=mock_generator,
             mapping_service=mock_mapping,
             output_preparer=mock_output_preparer,
             domain_frame_builder=mock_domain_frame_builder,
@@ -140,7 +140,7 @@ class TestDomainProcessingUseCase:
         use_case = DomainProcessingUseCase(
             logger=logger,
             study_data_repository=mock_repo,
-            file_generator=mock_generator,
+            dataset_output=mock_generator,
             mapping_service=mock_mapping,
             output_preparer=mock_output_preparer,
             domain_frame_builder=mock_domain_frame_builder,
@@ -152,7 +152,7 @@ class TestDomainProcessingUseCase:
 
         assert use_case.logger is logger
         assert use_case._study_data_repository is mock_repo
-        assert use_case._file_generator is mock_generator
+        assert use_case._dataset_output is mock_generator
         assert use_case._terminology_service is mock_terminology_service
 
     def test_container_creates_use_case_with_dependencies(self):
@@ -165,7 +165,7 @@ class TestDomainProcessingUseCase:
         assert use_case is not None
         assert use_case.logger is not None
         assert use_case._study_data_repository is not None
-        assert use_case._file_generator is not None
+        assert use_case._dataset_output is not None
 
 
 class TestProcessDomainRequest:
@@ -292,8 +292,8 @@ class TestProcessDomainResponse:
         assert response.domain_dataframe is None
         assert response.records == 0
 
-    def test_create_with_supplementals(self):
-        """Test creating response with supplemental domains."""
+    def test_create_with_suppqual_domains(self):
+        """Test creating response with SUPPQUAL domains."""
         main_df = pd.DataFrame({"STUDYID": ["TEST001"], "DOMAIN": ["AE"]})
         supp_df = pd.DataFrame({"STUDYID": ["TEST001"], "RDOMAIN": ["AE"]})
 
@@ -310,12 +310,12 @@ class TestProcessDomainResponse:
             domain_code="AE",
             records=1,
             domain_dataframe=main_df,
-            supplementals=[supp_response],
+            suppqual_domains=[supp_response],
         )
 
-        assert len(response.supplementals) == 1
-        assert response.supplementals[0].domain_code == "SUPPAE"
-        assert response.supplementals[0].records == 1
+        assert len(response.suppqual_domains) == 1
+        assert response.suppqual_domains[0].domain_code == "SUPPAE"
+        assert response.suppqual_domains[0].records == 1
 
     def test_create_with_warnings(self):
         """Test creating response with warnings."""
@@ -351,7 +351,7 @@ class TestProcessDomainResponse:
             records=1,
             domain_dataframe=df,
             xpt_path=Path("/output/xpt/ae.xpt"),
-            supplementals=[supp_response],
+            suppqual_domains=[supp_response],
         )
 
         result_dict = response.to_dict()
@@ -359,11 +359,11 @@ class TestProcessDomainResponse:
         assert result_dict["domain_code"] == "AE"
         assert result_dict["records"] == 1
         assert result_dict["xpt_path"] == Path("/output/xpt/ae.xpt")
-        assert len(result_dict["supplementals"]) == 1
-        assert result_dict["supplementals"][0]["domain_code"] == "SUPPAE"
+        assert len(result_dict["suppqual_domains"]) == 1
+        assert result_dict["suppqual_domains"][0]["domain_code"] == "SUPPAE"
 
     def test_to_dict_with_empty_collections(self):
-        """Test to_dict with empty supplementals and splits."""
+        """Test to_dict with empty suppqual_domains and splits."""
         df = pd.DataFrame({"STUDYID": ["TEST001"]})
 
         response = ProcessDomainResponse(
@@ -375,4 +375,4 @@ class TestProcessDomainResponse:
 
         result_dict = response.to_dict()
 
-        assert result_dict["supplementals"] == []
+        assert result_dict["suppqual_domains"] == []

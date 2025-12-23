@@ -11,11 +11,11 @@ import pandas as pd
 import pytest
 
 from cdisc_transpiler.application.models import (
-    OutputDirs,
-    OutputRequest,
-    OutputResult,
+    DatasetOutputDirs,
+    DatasetOutputRequest,
+    DatasetOutputResult,
 )
-from cdisc_transpiler.application.ports.services import FileGeneratorPort, LoggerPort
+from cdisc_transpiler.application.ports.services import DatasetOutputPort, LoggerPort
 from cdisc_transpiler.domain.entities.mapping import MappingConfig
 
 
@@ -164,12 +164,12 @@ class MockLogger:
         )
 
 
-class MockFileGenerator:
-    """Mock file generator for testing protocol compliance."""
+class MockDatasetOutputAdapter:
+    """Mock dataset output adapter for testing protocol compliance."""
 
-    def generate(self, request: OutputRequest) -> OutputResult:
+    def generate(self, request: DatasetOutputRequest) -> DatasetOutputResult:
         """Mock implementation that returns success result."""
-        result = OutputResult()
+        result = DatasetOutputResult()
 
         if "xpt" in request.formats and request.output_dirs.xpt_dir:
             result.xpt_path = (
@@ -264,13 +264,13 @@ class TestLoggerPortContract:
             assert len(logger.messages) == 5
 
 
-class TestFileGeneratorPortContract:
-    """Contract tests for FileGeneratorPort implementations."""
+class TestDatasetOutputPortContract:
+    """Contract tests for DatasetOutputPort implementations."""
 
     @pytest.fixture
-    def file_generator(self):
-        """Provide a mock file generator."""
-        return MockFileGenerator()
+    def dataset_output(self):
+        """Provide a mock dataset output adapter."""
+        return MockDatasetOutputAdapter()
 
     @pytest.fixture
     def sample_dataframe(self):
@@ -294,12 +294,12 @@ class TestFileGeneratorPortContract:
 
     @pytest.fixture
     def sample_request(self, sample_dataframe, sample_config, tmp_path):
-        """Provide a sample OutputRequest for testing."""
-        return OutputRequest(
+        """Provide a sample DatasetOutputRequest for testing."""
+        return DatasetOutputRequest(
             dataframe=sample_dataframe,
             domain_code="DM",
             config=sample_config,
-            output_dirs=OutputDirs(
+            output_dirs=DatasetOutputDirs(
                 xpt_dir=tmp_path / "xpt",
                 xml_dir=tmp_path / "xml",
                 sas_dir=tmp_path / "sas",
@@ -307,25 +307,25 @@ class TestFileGeneratorPortContract:
             formats={"xpt", "xml", "sas"},
         )
 
-    def test_implements_protocol(self, file_generator):
+    def test_implements_protocol(self, dataset_output):
         """Test that implementation satisfies the protocol."""
-        assert isinstance(file_generator, FileGeneratorPort)
+        assert isinstance(dataset_output, DatasetOutputPort)
 
-    def test_has_generate_method(self, file_generator):
-        """Test that file generator has generate method."""
-        assert hasattr(file_generator, "generate")
-        assert callable(file_generator.generate)
+    def test_has_generate_method(self, dataset_output):
+        """Test that dataset output adapter has generate method."""
+        assert hasattr(dataset_output, "generate")
+        assert callable(dataset_output.generate)
 
-    def test_generate_returns_output_result(self, file_generator, sample_request):
-        """Test that generate returns OutputResult."""
-        result = file_generator.generate(sample_request)
-        assert isinstance(result, OutputResult)
+    def test_generate_returns_output_result(self, dataset_output, sample_request):
+        """Test that generate returns DatasetOutputResult."""
+        result = dataset_output.generate(sample_request)
+        assert isinstance(result, DatasetOutputResult)
 
     def test_generate_result_has_expected_attributes(
-        self, file_generator, sample_request
+        self, dataset_output, sample_request
     ):
-        """Test that OutputResult has expected attributes."""
-        result = file_generator.generate(sample_request)
+        """Test that DatasetOutputResult has expected attributes."""
+        result = dataset_output.generate(sample_request)
         assert hasattr(result, "xpt_path")
         assert hasattr(result, "xml_path")
         assert hasattr(result, "sas_path")
@@ -333,61 +333,61 @@ class TestFileGeneratorPortContract:
         assert hasattr(result, "success")
 
     def test_generate_result_paths_are_path_or_none(
-        self, file_generator, sample_request
+        self, dataset_output, sample_request
     ):
         """Test that result paths are Path objects or None."""
-        result = file_generator.generate(sample_request)
+        result = dataset_output.generate(sample_request)
         assert result.xpt_path is None or isinstance(result.xpt_path, Path)
         assert result.xml_path is None or isinstance(result.xml_path, Path)
         assert result.sas_path is None or isinstance(result.sas_path, Path)
 
-    def test_generate_result_errors_is_list(self, file_generator, sample_request):
+    def test_generate_result_errors_is_list(self, dataset_output, sample_request):
         """Test that result errors is a list."""
-        result = file_generator.generate(sample_request)
+        result = dataset_output.generate(sample_request)
         assert isinstance(result.errors, list)
 
-    def test_generate_result_success_is_bool(self, file_generator, sample_request):
+    def test_generate_result_success_is_bool(self, dataset_output, sample_request):
         """Test that result success is a boolean."""
-        result = file_generator.generate(sample_request)
+        result = dataset_output.generate(sample_request)
         assert isinstance(result.success, bool)
 
-    def test_generate_with_xpt_format(self, file_generator, sample_request):
+    def test_generate_with_xpt_format(self, dataset_output, sample_request):
         """Test generate with XPT format only."""
         sample_request.formats = {"xpt"}
-        result = file_generator.generate(sample_request)
-        assert isinstance(result, OutputResult)
+        result = dataset_output.generate(sample_request)
+        assert isinstance(result, DatasetOutputResult)
         # XPT path should be set or None (depending on implementation)
 
-    def test_generate_with_xml_format(self, file_generator, sample_request):
+    def test_generate_with_xml_format(self, dataset_output, sample_request):
         """Test generate with XML format only."""
         sample_request.formats = {"xml"}
-        result = file_generator.generate(sample_request)
-        assert isinstance(result, OutputResult)
+        result = dataset_output.generate(sample_request)
+        assert isinstance(result, DatasetOutputResult)
         # XML path should be set or None (depending on implementation)
 
-    def test_generate_with_sas_format(self, file_generator, sample_request):
+    def test_generate_with_sas_format(self, dataset_output, sample_request):
         """Test generate with SAS format only."""
         sample_request.formats = {"sas"}
-        result = file_generator.generate(sample_request)
-        assert isinstance(result, OutputResult)
+        result = dataset_output.generate(sample_request)
+        assert isinstance(result, DatasetOutputResult)
         # SAS path should be set or None (depending on implementation)
 
-    def test_generate_with_multiple_formats(self, file_generator, sample_request):
+    def test_generate_with_multiple_formats(self, dataset_output, sample_request):
         """Test generate with multiple formats."""
         sample_request.formats = {"xpt", "xml", "sas"}
-        result = file_generator.generate(sample_request)
-        assert isinstance(result, OutputResult)
+        result = dataset_output.generate(sample_request)
+        assert isinstance(result, DatasetOutputResult)
         # Multiple paths may be set (depending on implementation)
 
-    def test_generate_with_empty_formats(self, file_generator, sample_request):
+    def test_generate_with_empty_formats(self, dataset_output, sample_request):
         """Test generate with no formats."""
         sample_request.formats = set()
-        result = file_generator.generate(sample_request)
-        assert isinstance(result, OutputResult)
+        result = dataset_output.generate(sample_request)
+        assert isinstance(result, DatasetOutputResult)
         # No paths should be generated
 
-    def test_generate_accepts_output_request(self, file_generator, sample_request):
-        """Test that generate accepts OutputRequest parameter."""
+    def test_generate_accepts_output_request(self, dataset_output, sample_request):
+        """Test that generate accepts DatasetOutputRequest parameter."""
         # Should not raise TypeError
-        result = file_generator.generate(sample_request)
+        result = dataset_output.generate(sample_request)
         assert result is not None

@@ -43,6 +43,8 @@ with SDTM terminology where it is unambiguous.
 5. SDTM naming alignment
    - Prefer SDTM terms (Domain/Dataset, SUPPQUAL, RELREC, Trial Design, etc.).
    - Rename internal components where names conflict with SDTM usage.
+   - Align output naming to datasets (DatasetOutput*).
+   - Use SUPPQUAL naming for supplemental domain collections (`suppqual_domains`).
 
 6. Docs update
    - Update `README.md` and `docs/ARCHITECTURE.md` to reflect the new
@@ -53,6 +55,5 @@ with SDTM terminology where it is unambiguous.
 
 ## Status
 
-- Completed: Steps 1-4
-- In progress: Step 5 (SDTM naming alignment)
-- Pending: Steps 6-7
+- Completed: Steps 1-6
+- Pending: Step 7 (Health checks)

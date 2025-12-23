@@ -35,10 +35,10 @@ from .ports.repositories import (
 )
 from .ports.services import (
     ConformanceReportWriterPort,
+    DatasetOutputPort,
     DefineXMLGeneratorPort,
     DomainDiscoveryPort,
     DomainFrameBuilderPort,
-    FileGeneratorPort,
     LoggerPort,
     OutputPreparerPort,
 )
@@ -79,7 +79,7 @@ class StudyProcessingUseCase:
         ...     study_data_repository=repo,
         ...     domain_processing_use_case=domain_use_case,
         ...     domain_discovery_service=domain_discovery_service,
-        ...     file_generator=file_gen,
+        ...     dataset_output=file_gen,
         ... )
         >>> request = ProcessStudyRequest(
         ...     study_folder=Path("study001"),
@@ -101,7 +101,7 @@ class StudyProcessingUseCase:
         relrec_service: RelrecService | None = None,
         relsub_service: RelsubService | None = None,
         relspec_service: RelspecService | None = None,
-        file_generator: FileGeneratorPort | None = None,
+        dataset_output: DatasetOutputPort | None = None,
         define_xml_generator: DefineXMLGeneratorPort | None = None,
         output_preparer: OutputPreparerPort | None = None,
         domain_definition_repository: DomainDefinitionRepositoryPort | None = None,
@@ -115,7 +115,7 @@ class StudyProcessingUseCase:
             study_data_repository: Repository for loading study data and metadata
             domain_processing_use_case: Use case for processing individual domains
             domain_discovery_service: Service for discovering domain files
-            file_generator: Generator for output files
+            dataset_output: Adapter for dataset output (XPT, Dataset-XML, SAS)
             define_xml_generator: Generator for Define-XML files
         """
         super().__init__()
@@ -147,7 +147,7 @@ class StudyProcessingUseCase:
         self._relrec_service = relrec_service
         self._relsub_service = relsub_service
         self._relspec_service = relspec_service
-        self._file_generator = file_generator
+        self._dataset_output = dataset_output
         self._define_xml_generator = define_xml_generator
         self._output_preparer = output_preparer
         self._domain_definition_repository = domain_definition_repository
@@ -245,7 +245,7 @@ class StudyProcessingUseCase:
             report = getattr(domain_result, "conformance_report", None)
             if report is not None and getattr(report, "has_errors", lambda: False)():
                 domains.append(domain_result.domain_code)
-            for supp in getattr(domain_result, "supplementals", []) or []:
+            for supp in getattr(domain_result, "suppqual_domains", []) or []:
                 supp_report = getattr(supp, "conformance_report", None)
                 if (
                     supp_report is not None
@@ -374,9 +374,9 @@ class StudyProcessingUseCase:
                         reason=result.error,
                     )
 
-                # Supplemental datasets are not treated as top-level "domains" in the
+                # SUPPQUAL datasets are not treated as top-level "domains" in the
                 # CLI, but their rows should contribute to record totals.
-                for supp in result.supplementals:
+                for supp in result.suppqual_domains:
                     supp_frame = supp.domain_dataframe
                     if supp_frame is None:
                         self.logger.log_domain_complete(
@@ -469,7 +469,7 @@ class StudyProcessingUseCase:
             report = domain_result.conformance_report
             if isinstance(report, ConformanceReport):
                 reports.append(report)
-            for supp in domain_result.supplementals:
+            for supp in domain_result.suppqual_domains:
                 supp_report = getattr(supp, "conformance_report", None)
                 if isinstance(supp_report, ConformanceReport):
                     reports.append(supp_report)
@@ -578,20 +578,20 @@ class StudyProcessingUseCase:
                 conformance_report=domain_response.conformance_report,
             )
 
-            # Handle supplemental domains
-            for supp_response in domain_response.supplementals:
-                supp_result = DomainProcessingResult(
-                    domain_code=supp_response.domain_code,
-                    success=supp_response.success,
-                    records=supp_response.records,
-                    domain_dataframe=supp_response.domain_dataframe,
-                    config=supp_response.config,
-                    xpt_path=supp_response.xpt_path,
-                    xml_path=supp_response.xml_path,
-                    sas_path=supp_response.sas_path,
-                    conformance_report=supp_response.conformance_report,
+            # Handle SUPPQUAL domains
+            for suppqual_response in domain_response.suppqual_domains:
+                suppqual_result = DomainProcessingResult(
+                    domain_code=suppqual_response.domain_code,
+                    success=suppqual_response.success,
+                    records=suppqual_response.records,
+                    domain_dataframe=suppqual_response.domain_dataframe,
+                    config=suppqual_response.config,
+                    xpt_path=suppqual_response.xpt_path,
+                    xml_path=suppqual_response.xml_path,
+                    sas_path=suppqual_response.sas_path,
+                    conformance_report=suppqual_response.conformance_report,
                 )
-                result.supplementals.append(supp_result)
+                result.suppqual_domains.append(suppqual_result)
 
             return result
 
@@ -667,8 +667,8 @@ class StudyProcessingUseCase:
                 )
             )
 
-            # Add supplemental domains
-            for supp in result.supplementals:
+            # Add SUPPQUAL domains
+            for supp in result.suppqual_domains:
                 if supp.domain_dataframe is not None and supp.config is not None:
                     supp_href = (
                         supp.xpt_path.relative_to(output_dir)
@@ -902,10 +902,10 @@ class StudyProcessingUseCase:
                     "RELREC: conformance errors present; strict output generation aborted"
                 )
 
-            # Generate output files
-            from .models import OutputDirs, OutputRequest
+            # Generate dataset outputs
+            from .models import DatasetOutputDirs, DatasetOutputRequest
 
-            output_dirs = OutputDirs(
+            output_dirs = DatasetOutputDirs(
                 xpt_dir=xpt_dir,
                 xml_dir=xml_dir,
                 sas_dir=sas_dir,
@@ -919,7 +919,7 @@ class StudyProcessingUseCase:
             if request.generate_sas:
                 output_formats.add("sas")
 
-            output_request = OutputRequest(
+            output_request = DatasetOutputRequest(
                 dataframe=domain_dataframe,
                 domain_code="RELREC",
                 config=relrec_config,
@@ -927,10 +927,10 @@ class StudyProcessingUseCase:
                 formats=output_formats,
             )
 
-            file_generator = self._file_generator
+            dataset_output = self._dataset_output
             output_result = (
-                file_generator.generate(output_request)
-                if file_generator is not None
+                dataset_output.generate(output_request)
+                if dataset_output is not None
                 else None
             )
 
@@ -981,7 +981,7 @@ class StudyProcessingUseCase:
             )
 
             # RELSUB relationships are often not inferable; if we have no rows,
-            # do not generate empty output files and do not include the domain
+            # do not generate empty dataset outputs and do not include the domain
             # in Define-XML inputs.
             if relsub_df.empty:
                 self.logger.verbose("RELSUB: no relationships detected; skipping")
@@ -1021,9 +1021,9 @@ class StudyProcessingUseCase:
                     "RELSUB: conformance errors present; strict output generation aborted"
                 )
 
-            from .models import OutputDirs, OutputRequest
+            from .models import DatasetOutputDirs, DatasetOutputRequest
 
-            output_dirs = OutputDirs(
+            output_dirs = DatasetOutputDirs(
                 xpt_dir=xpt_dir,
                 xml_dir=xml_dir,
                 sas_dir=sas_dir,
@@ -1037,7 +1037,7 @@ class StudyProcessingUseCase:
             if request.generate_sas:
                 output_formats.add("sas")
 
-            output_request = OutputRequest(
+            output_request = DatasetOutputRequest(
                 dataframe=domain_dataframe,
                 domain_code="RELSUB",
                 config=relsub_config,
@@ -1045,10 +1045,10 @@ class StudyProcessingUseCase:
                 formats=output_formats,
             )
 
-            file_generator = self._file_generator
+            dataset_output = self._dataset_output
             output_result = (
-                file_generator.generate(output_request)
-                if file_generator is not None
+                dataset_output.generate(output_request)
+                if dataset_output is not None
                 else None
             )
 
@@ -1136,9 +1136,9 @@ class StudyProcessingUseCase:
                     "RELSPEC: conformance errors present; strict output generation aborted"
                 )
 
-            from .models import OutputDirs, OutputRequest
+            from .models import DatasetOutputDirs, DatasetOutputRequest
 
-            output_dirs = OutputDirs(
+            output_dirs = DatasetOutputDirs(
                 xpt_dir=xpt_dir,
                 xml_dir=xml_dir,
                 sas_dir=sas_dir,
@@ -1152,7 +1152,7 @@ class StudyProcessingUseCase:
             if request.generate_sas:
                 output_formats.add("sas")
 
-            output_request = OutputRequest(
+            output_request = DatasetOutputRequest(
                 dataframe=domain_dataframe,
                 domain_code="RELSPEC",
                 config=relspec_config,
@@ -1160,10 +1160,10 @@ class StudyProcessingUseCase:
                 formats=output_formats,
             )
 
-            file_generator = self._file_generator
+            dataset_output = self._dataset_output
             output_result = (
-                file_generator.generate(output_request)
-                if file_generator is not None
+                dataset_output.generate(output_request)
+                if dataset_output is not None
                 else None
             )
 
@@ -1307,10 +1307,10 @@ class StudyProcessingUseCase:
         xml_dir: Path | None,
         sas_dir: Path | None,
     ) -> tuple[Path | None, Path | None, Path | None]:
-        """Generate output files for synthesized domain data.
+        """Generate dataset outputs for synthesized domain data.
 
         This method handles file generation in the application layer,
-        using the FileGeneratorPort to write output files.
+        using the DatasetOutputPort to write dataset outputs.
 
         Args:
             domain_dataframe: Synthesized domain DataFrame
@@ -1324,11 +1324,11 @@ class StudyProcessingUseCase:
         Returns:
             Tuple of (xpt_path, xml_path, sas_path) - paths to generated files
         """
-        file_generator = self._file_generator
-        if domain_dataframe is None or file_generator is None:
+        dataset_output = self._dataset_output
+        if domain_dataframe is None or dataset_output is None:
             return None, None, None
 
-        from .models import OutputDirs, OutputRequest
+        from .models import DatasetOutputDirs, DatasetOutputRequest
 
         # Determine output formats
         formats: set[str] = set()
@@ -1342,11 +1342,11 @@ class StudyProcessingUseCase:
         if not formats:
             return None, None, None
 
-        output_request = OutputRequest(
+        output_request = DatasetOutputRequest(
             dataframe=domain_dataframe,
             domain_code=domain_code,
             config=config,
-            output_dirs=OutputDirs(
+            output_dirs=DatasetOutputDirs(
                 xpt_dir=xpt_dir,
                 xml_dir=xml_dir,
                 sas_dir=sas_dir,
@@ -1354,7 +1354,7 @@ class StudyProcessingUseCase:
             formats=formats,
         )
 
-        output_result = file_generator.generate(output_request)
+        output_result = dataset_output.generate(output_request)
 
         # Log success
         if output_result.xpt_path:

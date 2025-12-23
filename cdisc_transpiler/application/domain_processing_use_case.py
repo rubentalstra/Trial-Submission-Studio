@@ -9,7 +9,7 @@ The use case implements a clean pipeline architecture with explicit stages:
 3. Map columns via mapping service/engine
 4. Build SDTM domain dataframe
 5. Generate SUPPQUAL (supplemental qualifiers)
-6. Generate outputs via FileGeneratorPort
+6. Generate outputs via DatasetOutputPort
 
 CLEAN2-D1: This use case is now fully implemented with injected dependencies,
 without compatibility shims.
@@ -28,8 +28,8 @@ from .ports.repositories import (
     StudyDataRepositoryPort,
 )
 from .ports.services import (
+    DatasetOutputPort,
     DomainFrameBuilderPort,
-    FileGeneratorPort,
     LoggerPort,
     MappingPort,
     OutputPreparerPort,
@@ -82,7 +82,7 @@ class DomainProcessingUseCase:
         >>> use_case = DomainProcessingUseCase(
         ...     logger=my_logger,
         ...     study_data_repository=repo,
-        ...     file_generator=generator,
+        ...     dataset_output=generator,
         ... )
         >>> request = ProcessDomainRequest(
         ...     files_for_domain=[(Path("DM.csv"), "DM")],
@@ -100,7 +100,7 @@ class DomainProcessingUseCase:
         self,
         logger: LoggerPort,
         study_data_repository: StudyDataRepositoryPort | None = None,
-        file_generator: FileGeneratorPort | None = None,
+        dataset_output: DatasetOutputPort | None = None,
         mapping_service: MappingPort | None = None,
         output_preparer: OutputPreparerPort | None = None,
         domain_frame_builder: DomainFrameBuilderPort | None = None,
@@ -115,12 +115,12 @@ class DomainProcessingUseCase:
         Args:
             logger: Logger for progress and error reporting
             study_data_repository: Repository for loading study data files
-            file_generator: Generator for output files (XPT, XML, SAS)
+            dataset_output: Adapter for dataset outputs (XPT, Dataset-XML, SAS)
         """
         super().__init__()
         self.logger = logger
         self._study_data_repository = study_data_repository
-        self._file_generator = file_generator
+        self._dataset_output = dataset_output
         if mapping_service is None:
             raise RuntimeError(
                 "MappingPort is not configured. Wire an infrastructure adapter in the composition root."
@@ -204,7 +204,7 @@ class DomainProcessingUseCase:
         - Maps columns
         - Builds domain dataframe
         - Generates SUPPQUAL
-        - Generates output files
+        - Generates dataset outputs
 
         Args:
             request: Domain processing request with all parameters
@@ -227,7 +227,7 @@ class DomainProcessingUseCase:
             # Track all processed dataframes and configs for merging
             all_dataframes: list[pd.DataFrame] = []
             last_config: MappingConfig | None = None
-            supp_frames: list[pd.DataFrame] = []
+            suppqual_frames: list[pd.DataFrame] = []
 
             # Process each input file
             for input_file, variant_name in request.files_for_domain:
@@ -256,7 +256,7 @@ class DomainProcessingUseCase:
                         extra_consumed_columns=consumed_cols,
                     )
                     if supp_df is not None and not supp_df.empty:
-                        supp_frames.append(supp_df)
+                        suppqual_frames.append(supp_df)
 
             if not all_dataframes:
                 raise ValueError(
@@ -303,13 +303,13 @@ class DomainProcessingUseCase:
                 )
                 return response
 
-            # Generate output files
+            # Generate dataset outputs
             output_result = self._generate_outputs_stage(
                 merged_df=merged_df,
                 config=last_config,
                 domain=domain,
                 request=request,
-                supp_frames=supp_frames,
+                suppqual_frames=suppqual_frames,
             )
 
             # Populate response
@@ -321,8 +321,8 @@ class DomainProcessingUseCase:
             response.xml_path = output_result.get("xml_path")
             response.sas_path = output_result.get("sas_path")
 
-            # Handle supplemental domains
-            for supp_dict in output_result.get("supplementals", []):
+            # Handle SUPPQUAL domains
+            for supp_dict in output_result.get("suppqual_domains", []):
                 supp_response = ProcessDomainResponse(
                     success=True,
                     domain_code=supp_dict.get("domain_code", ""),
@@ -333,7 +333,7 @@ class DomainProcessingUseCase:
                     xml_path=supp_dict.get("xml_path"),
                     sas_path=supp_dict.get("sas_path"),
                 )
-                response.supplementals.append(supp_response)
+                response.suppqual_domains.append(supp_response)
 
         except Exception as exc:
             response.success = False
@@ -551,7 +551,7 @@ class DomainProcessingUseCase:
         request: ProcessDomainRequest,
         extra_consumed_columns: set[str] | None = None,
     ) -> pd.DataFrame | None:
-        """Stage 5: Generate supplemental qualifiers."""
+        """Stage 5: Generate SUPPQUAL (supplemental qualifiers)."""
         used_columns = self._suppqual_service.extract_used_columns(config)
         if extra_consumed_columns:
             used_columns.update(extra_consumed_columns)
@@ -639,10 +639,10 @@ class DomainProcessingUseCase:
         config: MappingConfig,
         domain: SDTMDomain,
         request: ProcessDomainRequest,
-        supp_frames: list[pd.DataFrame],
+        suppqual_frames: list[pd.DataFrame],
     ) -> dict[str, Any]:
-        """Stage 6: Generate output files (XPT, XML, SAS) using FileGeneratorPort."""
-        from .models import OutputDirs, OutputRequest
+        """Stage 6: Generate dataset outputs (XPT, XML, SAS) using DatasetOutputPort."""
+        from .models import DatasetOutputDirs, DatasetOutputRequest
 
         base_filename = domain.resolved_dataset_name()
 
@@ -654,22 +654,22 @@ class DomainProcessingUseCase:
             "xpt_path": None,
             "xml_path": None,
             "sas_path": None,
-            "supplementals": [],
+            "suppqual_domains": [],
         }
 
-        # Handle supplemental qualifiers
-        if supp_frames:
-            supp_result = self._generate_supplemental_files(
-                supp_frames,
+        # Handle SUPPQUAL qualifiers
+        if suppqual_frames:
+            suppqual_result = self._generate_suppqual_files(
+                suppqual_frames,
                 request.domain_code,
                 request.study_id,
                 request.output_formats,
                 request.output_dirs,
             )
-            result["supplementals"].append(supp_result)
+            result["suppqual_domains"].append(suppqual_result)
 
-        # Use FileGeneratorPort if available
-        if self._file_generator is not None:
+        # Use DatasetOutputPort if available
+        if self._dataset_output is not None:
             # Determine output formats
             formats: set[str] = set()
             xpt_dir = request.output_dirs.get("xpt")
@@ -691,11 +691,11 @@ class DomainProcessingUseCase:
                 input_dataset = first_input_file.stem if first_input_file else None
 
                 # Create output request
-                output_request = OutputRequest(
+                output_request = DatasetOutputRequest(
                     dataframe=merged_df,
                     domain_code=request.domain_code,
                     config=config,
-                    output_dirs=OutputDirs(
+                    output_dirs=DatasetOutputDirs(
                         xpt_dir=xpt_dir,
                         xml_dir=xml_dir,
                         sas_dir=sas_dir,
@@ -707,7 +707,7 @@ class DomainProcessingUseCase:
                 )
 
                 # Generate outputs
-                output_result = self._file_generator.generate(output_request)
+                output_result = self._dataset_output.generate(output_request)
 
                 # Update result
                 if output_result.xpt_path:
@@ -732,22 +732,22 @@ class DomainProcessingUseCase:
 
         return result
 
-    def _generate_supplemental_files(
+    def _generate_suppqual_files(
         self,
-        supp_frames: list[pd.DataFrame],
+        suppqual_frames: list[pd.DataFrame],
         domain_code: str,
         study_id: str,
         output_formats: set[str],
         output_dirs: dict[str, Path | None],
     ) -> dict[str, Any]:
-        """Generate supplemental qualifier files using FileGeneratorPort."""
+        """Generate SUPPQUAL dataset files using DatasetOutputPort."""
         from ..domain.entities.mapping import ColumnMapping, build_config
-        from .models import OutputDirs, OutputRequest
+        from .models import DatasetOutputDirs, DatasetOutputRequest
 
         merged_supp = (
-            supp_frames[0]
-            if len(supp_frames) == 1
-            else pd.concat(supp_frames, ignore_index=True)
+            suppqual_frames[0]
+            if len(suppqual_frames) == 1
+            else pd.concat(suppqual_frames, ignore_index=True)
         )
 
         supp_domain_code = f"SUPP{domain_code.upper()}"
@@ -780,7 +780,7 @@ class DomainProcessingUseCase:
         supp_domain = supp_domain_def or self._get_domain(supp_domain_code)
         base_filename = supp_domain.resolved_dataset_name()
 
-        supp_result: dict[str, Any] = {
+        suppqual_result: dict[str, Any] = {
             "domain_code": supp_domain_code,
             "records": len(merged_supp),
             "domain_dataframe": merged_supp,
@@ -790,8 +790,8 @@ class DomainProcessingUseCase:
             "sas_path": None,
         }
 
-        # Use FileGeneratorPort if available
-        if self._file_generator is not None:
+        # Use DatasetOutputPort if available
+        if self._dataset_output is not None:
             formats: set[str] = set()
             xpt_dir = output_dirs.get("xpt")
             xml_dir = output_dirs.get("xml")
@@ -802,26 +802,26 @@ class DomainProcessingUseCase:
                 formats.add("xml")
 
             if formats:
-                output_request = OutputRequest(
+                output_request = DatasetOutputRequest(
                     dataframe=merged_supp,
                     domain_code=supp_domain_code,
                     config=supp_config,
-                    output_dirs=OutputDirs(xpt_dir=xpt_dir, xml_dir=xml_dir),
+                    output_dirs=DatasetOutputDirs(xpt_dir=xpt_dir, xml_dir=xml_dir),
                     formats=formats,
                     base_filename=base_filename,
                 )
 
-                output_result = self._file_generator.generate(output_request)
+                output_result = self._dataset_output.generate(output_request)
 
                 if output_result.xpt_path:
-                    supp_result["xpt_path"] = output_result.xpt_path
-                    supp_result["xpt_filename"] = output_result.xpt_path.name
+                    suppqual_result["xpt_path"] = output_result.xpt_path
+                    suppqual_result["xpt_filename"] = output_result.xpt_path.name
 
                 if output_result.xml_path:
-                    supp_result["xml_path"] = output_result.xml_path
-                    supp_result["xml_filename"] = output_result.xml_path.name
+                    suppqual_result["xml_path"] = output_result.xml_path
+                    suppqual_result["xml_filename"] = output_result.xml_path.name
 
-        return supp_result
+        return suppqual_result
 
     # ========== Helper Methods ==========
 

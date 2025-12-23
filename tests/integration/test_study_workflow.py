@@ -205,10 +205,10 @@ class TestDependencyContainerIntegration:
         logger.info("Test message")
         logger.success("Test success")
 
-    def test_container_creates_file_generator(self):
-        """Test that container creates a working file generator."""
+    def test_container_creates_dataset_output(self):
+        """Test that container creates a working dataset output adapter."""
         container = create_default_container()
-        generator = container.create_file_generator()
+        generator = container.create_dataset_output()
 
         assert generator is not None
         assert hasattr(generator, "generate")

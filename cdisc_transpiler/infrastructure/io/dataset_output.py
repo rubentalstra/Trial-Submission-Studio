@@ -1,12 +1,12 @@
-"""Unified file generator for consistent output across formats.
+"""Dataset output adapter for consistent SDTM dataset exports.
 
-This module consolidates file generation logic into a single infrastructure
-adapter used by the application layer.
+This module consolidates dataset output generation into a single
+infrastructure adapter used by the application layer.
 
 Key Features:
 - Single source of truth for XPT/XML/SAS generation
 - Consistent error handling and logging
-- Configurable output via OutputRequest/OutputResult DTOs
+- Configurable output via DatasetOutputRequest/DatasetOutputResult DTOs
 - No duplicate code
 - Dependency injection of writer adapters
 """
@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 
-from ...application.models import OutputRequest, OutputResult
+from ...application.models import DatasetOutputRequest, DatasetOutputResult
 from .dataset_xml_writer import DatasetXMLError
 from .sas_writer import SASWriterError
 from .xpt_writer import XportGenerationError
@@ -33,35 +33,30 @@ if TYPE_CHECKING:
 from ..sdtm_spec.registry import get_domain
 
 
-class FileGenerator:
-    """Centralized file generation for all formats.
+class DatasetOutputAdapter:
+    """Centralized dataset output generation for all formats.
 
-    This class replaces duplicated file generation logic across:
-    - domain_processing_coordinator.py (3 copies of similar logic)
-    - domain_synthesis_coordinator.py (3 copies)
-    - study_orchestration_service.py (2 copies)
-
-    The FileGenerator now accepts writer adapters via dependency injection,
-    following the Ports & Adapters architecture pattern. This allows for
-    flexible writer implementations and better testability.
+    The adapter accepts writer adapters via dependency injection, following the
+    Ports & Adapters architecture pattern. This allows for flexible writer
+    implementations and better testability.
 
     Example:
-        >>> from cdisc_transpiler.application.models import OutputDirs, OutputRequest
-        >>> from cdisc_transpiler.infrastructure.io.file_generator import FileGenerator
+        >>> from cdisc_transpiler.application.models import DatasetOutputDirs, DatasetOutputRequest
+        >>> from cdisc_transpiler.infrastructure.io.dataset_output import DatasetOutputAdapter
         >>> from cdisc_transpiler.infrastructure.io.xpt_writer import XPTWriter
         >>> from cdisc_transpiler.infrastructure.io.dataset_xml_writer import DatasetXMLWriter
         >>> from cdisc_transpiler.infrastructure.io.sas_writer import SASWriter
         >>>
-        >>> generator = FileGenerator(
+        >>> generator = DatasetOutputAdapter(
         ...     xpt_writer=XPTWriter(),
         ...     xml_writer=DatasetXMLWriter(),
         ...     sas_writer=SASWriter(),
         ... )
-        >>> request = OutputRequest(
+        >>> request = DatasetOutputRequest(
         ...     dataframe=dm_df,
         ...     domain_code="DM",
         ...     config=config,
-        ...     output_dirs=OutputDirs(xpt_dir=Path("output/xpt")),
+        ...     output_dirs=DatasetOutputDirs(xpt_dir=Path("output/xpt")),
         ...     formats={"xpt"},
         ... )
         >>> result = generator.generate(request)
@@ -75,7 +70,7 @@ class FileGenerator:
         xml_writer: DatasetXMLWriterPort,
         sas_writer: SASWriterPort,
     ) -> None:
-        """Initialize the FileGenerator with writer adapters.
+        """Initialize the DatasetOutputAdapter with writer adapters.
 
         Args:
             xpt_writer: Adapter for writing XPT files
@@ -83,27 +78,27 @@ class FileGenerator:
             sas_writer: Adapter for writing SAS programs
 
         Example:
-            >>> from cdisc_transpiler.infrastructure.io.file_generator import FileGenerator
+            >>> from cdisc_transpiler.infrastructure.io.dataset_output import DatasetOutputAdapter
             >>> from cdisc_transpiler.infrastructure.io.xpt_writer import XPTWriter
             >>> from cdisc_transpiler.infrastructure.io.dataset_xml_writer import DatasetXMLWriter
             >>> from cdisc_transpiler.infrastructure.io.sas_writer import SASWriter
-            >>> generator = FileGenerator(xpt_writer=XPTWriter(), xml_writer=DatasetXMLWriter(), sas_writer=SASWriter())
+            >>> generator = DatasetOutputAdapter(xpt_writer=XPTWriter(), xml_writer=DatasetXMLWriter(), sas_writer=SASWriter())
         """
         super().__init__()
         self._xpt_writer = xpt_writer
         self._xml_writer = xml_writer
         self._sas_writer = sas_writer
 
-    def generate(self, request: OutputRequest) -> OutputResult:
+    def generate(self, request: DatasetOutputRequest) -> DatasetOutputResult:
         """Generate all requested output files.
 
         Args:
             request: Output generation request with dataframe and configuration
 
         Returns:
-            OutputResult with paths to generated files and any errors
+            DatasetOutputResult with paths to generated files and any errors
         """
-        result = OutputResult()
+        result = DatasetOutputResult()
 
         # Determine base filename
         base_filename = request.base_filename

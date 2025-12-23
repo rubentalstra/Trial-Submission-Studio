@@ -425,15 +425,15 @@ class ConsoleLogger(LoggerPort):
         record_count: int,
         variable_count: int,
     ) -> None:
-        """Log supplemental qualifier generation.
+        """Log SUPPQUAL (supplemental qualifier) generation.
 
         Args:
             domain_code: Parent domain code
             record_count: Number of SUPPQUAL records
-            variable_count: Number of supplemental variables
+            variable_count: Number of SUPPQUAL variables
         """
         if record_count > 0:
-            # Supplemental records should count towards the overall record total.
+            # SUPPQUAL records should count towards the overall record total.
             # We intentionally do not increment `domains_processed` here because
             # the summary reports "domains" as top-level SDTM datasets.
             self._stats["records_processed"] += int(record_count or 0)
@@ -448,7 +448,7 @@ class ConsoleLogger(LoggerPort):
         *,
         record_count: int | None = None,
     ) -> None:
-        """Log file generation success.
+        """Log dataset output generation success.
 
         Args:
             file_type: Type of file (XPT, Dataset-XML, SAS, Define-XML)

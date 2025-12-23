@@ -7,13 +7,13 @@ testing overrides.
 
 from rich.console import Console
 
-from cdisc_transpiler.application.ports.services import FileGeneratorPort, LoggerPort
+from cdisc_transpiler.application.ports.services import DatasetOutputPort, LoggerPort
 from cdisc_transpiler.infrastructure.container import (
     DependencyContainer,
     create_default_container,
 )
 from cdisc_transpiler.infrastructure.io.csv_reader import CSVReader
-from cdisc_transpiler.infrastructure.io.file_generator import FileGenerator
+from cdisc_transpiler.infrastructure.io.dataset_output import DatasetOutputAdapter
 from cdisc_transpiler.infrastructure.logging.console_logger import ConsoleLogger
 from cdisc_transpiler.infrastructure.logging.null_logger import NullLogger
 
@@ -131,23 +131,23 @@ class TestCSVReaderFactory:
         assert reader1 is reader2
 
 
-class TestFileGeneratorFactory:
-    """Tests for file generator factory method."""
+class TestDatasetOutputAdapterFactory:
+    """Tests for dataset output adapter factory method."""
 
-    def test_create_file_generator_returns_instance(self):
-        """Test that create_file_generator returns FileGenerator."""
+    def test_create_dataset_output_returns_instance(self):
+        """Test that create_dataset_output returns DatasetOutputAdapter."""
         container = DependencyContainer()
-        generator = container.create_file_generator()
+        generator = container.create_dataset_output()
 
-        assert isinstance(generator, FileGenerator)
-        assert isinstance(generator, FileGeneratorPort)
+        assert isinstance(generator, DatasetOutputAdapter)
+        assert isinstance(generator, DatasetOutputPort)
 
-    def test_create_file_generator_is_singleton(self):
-        """Test that create_file_generator returns the same instance."""
+    def test_create_dataset_output_is_singleton(self):
+        """Test that create_dataset_output returns the same instance."""
         container = DependencyContainer()
 
-        gen1 = container.create_file_generator()
-        gen2 = container.create_file_generator()
+        gen1 = container.create_dataset_output()
+        gen2 = container.create_dataset_output()
 
         assert gen1 is gen2
 
@@ -230,7 +230,7 @@ class TestSingletonReset:
 
         # Create instances
         logger1 = container.create_logger()
-        gen1 = container.create_file_generator()
+        gen1 = container.create_dataset_output()
         reader1 = container.create_csv_reader()
 
         # Reset
@@ -238,7 +238,7 @@ class TestSingletonReset:
 
         # Create new instances
         logger2 = container.create_logger()
-        gen2 = container.create_file_generator()
+        gen2 = container.create_dataset_output()
         reader2 = container.create_csv_reader()
 
         # Should be different instances
@@ -265,17 +265,17 @@ class TestOverrideMethods:
         assert len(mock_logger.messages) == 1
         assert mock_logger.messages[0] == ("info", "Test message")
 
-    def test_override_file_generator(self):
-        """Test overriding file generator with custom implementation."""
+    def test_override_dataset_output(self):
+        """Test overriding dataset output adapter with custom implementation."""
         container = DependencyContainer()
 
-        class MockFileGenerator:
+        class MockDatasetOutputAdapter:
             def generate(self, request):
                 return {"mock": True}
 
-        mock_gen = MockFileGenerator()
-        container.override_file_generator(mock_gen)
-        generator = container.create_file_generator()
+        mock_gen = MockDatasetOutputAdapter()
+        container.override_dataset_output(mock_gen)
+        generator = container.create_dataset_output()
 
         assert generator is mock_gen
 
@@ -312,7 +312,7 @@ class TestConvenienceFunction:
         container = create_default_container()
 
         logger = container.create_logger()
-        generator = container.create_file_generator()
+        generator = container.create_dataset_output()
         reader = container.create_csv_reader()
 
         assert logger is not None

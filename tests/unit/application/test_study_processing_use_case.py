@@ -63,7 +63,7 @@ class TestStudyProcessingUseCase:
             relrec_service=mock_relrec_service,
             relsub_service=mock_relsub_service,
             relspec_service=mock_relspec_service,
-            file_generator=mock_file_gen,
+            dataset_output=mock_file_gen,
             output_preparer=mock_output_preparer,
             domain_definition_repository=mock_domain_definition_repository,
         )
@@ -77,7 +77,7 @@ class TestStudyProcessingUseCase:
         assert use_case._relrec_service == mock_relrec_service
         assert use_case._relsub_service == mock_relsub_service
         assert use_case._relspec_service == mock_relspec_service
-        assert use_case._file_generator == mock_file_gen
+        assert use_case._dataset_output == mock_file_gen
         assert use_case._output_preparer == mock_output_preparer
         assert (
             use_case._domain_definition_repository == mock_domain_definition_repository
@@ -127,7 +127,7 @@ class TestStudyProcessingUseCase:
         assert use_case._relrec_service is not None
         assert use_case._relsub_service is not None
         assert use_case._relspec_service is not None
-        assert use_case._file_generator is not None
+        assert use_case._dataset_output is not None
         assert use_case._output_preparer is not None
         assert use_case._domain_definition_repository is not None
 
@@ -204,8 +204,8 @@ class TestDomainProcessingResult:
         assert result.error == "File not found"
         assert result.domain_dataframe is None
 
-    def test_create_with_supplementals(self):
-        """Test creating result with supplemental domains."""
+    def test_create_with_suppqual_domains(self):
+        """Test creating result with SUPPQUAL domains."""
         main_df = pd.DataFrame({"STUDYID": ["TEST001"]})
         supp_df = pd.DataFrame({"STUDYID": ["TEST001"]})
 
@@ -221,11 +221,11 @@ class TestDomainProcessingResult:
             success=True,
             records=1,
             domain_dataframe=main_df,
-            supplementals=[supp_result],
+            suppqual_domains=[supp_result],
         )
 
-        assert len(result.supplementals) == 1
-        assert result.supplementals[0].domain_code == "SUPPAE"
+        assert len(result.suppqual_domains) == 1
+        assert result.suppqual_domains[0].domain_code == "SUPPAE"
 
     def test_synthesized_domain(self):
         """Test creating a synthesized domain result."""

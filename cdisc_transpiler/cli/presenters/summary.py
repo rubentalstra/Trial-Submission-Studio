@@ -173,12 +173,12 @@ class SummaryPresenter:
         )
 
         # Process and organize results
-        main_domains, supp_domains, total_records = self._organize_results(
+        main_domains, suppqual_domains, total_records = self._organize_results(
             results, domain_descriptions=domain_descriptions
         )
 
         # Add rows to table
-        self._add_table_rows(table, main_domains, supp_domains)
+        self._add_table_rows(table, main_domains, suppqual_domains)
 
         # Add total row
         table.add_section()
@@ -200,17 +200,17 @@ class SummaryPresenter:
         *,
         domain_descriptions: Mapping[str, str] | None,
     ) -> tuple[dict[str, _DomainRow], dict[str, list[tuple[str, _DomainRow]]], int]:
-        """Organize results into main domains and supplemental domains.
+        """Organize results into main domains and SUPPQUAL domains.
 
         Args:
             results: List of processing results
             domain_descriptions: Optional mapping of domain code to description
 
         Returns:
-            Tuple of (main_domains, supp_domains, total_records)
+            Tuple of (main_domains, suppqual_domains, total_records)
         """
         main_domains: dict[str, _DomainRow] = {}
-        supp_domains: dict[str, list[tuple[str, _DomainRow]]] = {}
+        suppqual_domains: dict[str, list[tuple[str, _DomainRow]]] = {}
         total_records = 0
 
         for result in results:
@@ -220,7 +220,7 @@ class SummaryPresenter:
                 domain_code, domain_descriptions=domain_descriptions
             )
 
-            # Check if this is a supplemental domain
+            # Check if this is a SUPPQUAL domain
             is_supp = domain_code.startswith("SUPP")
 
             # Determine output indicators
@@ -244,14 +244,14 @@ class SummaryPresenter:
             if is_supp:
                 # Extract parent domain (e.g., SUPPDM -> DM)
                 parent_domain = domain_code[4:]  # Remove "SUPP" prefix
-                if parent_domain not in supp_domains:
-                    supp_domains[parent_domain] = []
-                supp_domains[parent_domain].append((domain_code, domain_data))
+                if parent_domain not in suppqual_domains:
+                    suppqual_domains[parent_domain] = []
+                suppqual_domains[parent_domain].append((domain_code, domain_data))
             else:
                 main_domains[domain_code] = domain_data
 
-                # Handle nested supplemental domains (newer result shape)
-                for supp in result.supplementals:
+                # Handle nested SUPPQUAL domains (newer result shape)
+                for supp in result.suppqual_domains:
                     supp_code = supp.domain_code.upper()
                     if not supp_code.startswith("SUPP"):
                         continue
@@ -277,15 +277,17 @@ class SummaryPresenter:
                         domain_code if suffix_parent == domain_code else suffix_parent
                     )
 
-                    if parent_domain not in supp_domains:
-                        supp_domains[parent_domain] = []
-                    supp_domains[parent_domain].append((supp_code, supp_domain_data))
+                    if parent_domain not in suppqual_domains:
+                        suppqual_domains[parent_domain] = []
+                    suppqual_domains[parent_domain].append(
+                        (supp_code, supp_domain_data)
+                    )
 
                     total_records += supp_records
 
             total_records += records
 
-        return main_domains, supp_domains, total_records
+        return main_domains, suppqual_domains, total_records
 
     def _build_notes(self, result: DomainProcessingResult) -> str:
         """Build notes string for a domain result.
@@ -335,14 +337,14 @@ class SummaryPresenter:
         self,
         table: Table,
         main_domains: dict[str, _DomainRow],
-        supp_domains: dict[str, list[tuple[str, _DomainRow]]],
+        suppqual_domains: dict[str, list[tuple[str, _DomainRow]]],
     ) -> None:
         """Add domain rows to the table.
 
         Args:
             table: Rich Table to add rows to
             main_domains: Main domain data
-            supp_domains: Supplemental domain data organized by parent
+            suppqual_domains: SUPPQUAL domain data organized by parent
         """
         for domain_code in sorted(main_domains.keys()):
             data = main_domains[domain_code]
@@ -358,8 +360,8 @@ class SummaryPresenter:
                 data.notes,
             )
 
-            # Add child rows (supplementals) with a proper tree connector.
-            children = sorted(supp_domains.get(domain_code, []))
+            # Add child rows (SUPPQUAL domains) with a proper tree connector.
+            children = sorted(suppqual_domains.get(domain_code, []))
             for idx, (child_code, child_data) in enumerate(children):
                 connector = "└─" if idx == len(children) - 1 else "├─"
 
@@ -584,5 +586,5 @@ class SummaryPresenter:
     ) -> Iterable[DomainProcessingResult]:
         for result in results:
             yield result
-            for supp in result.supplementals:
+            for supp in result.suppqual_domains:
                 yield supp

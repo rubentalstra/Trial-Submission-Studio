@@ -79,7 +79,7 @@ below may fail until the hot-path errors are addressed.
 - Ports (Protocols): `cdisc_transpiler/application/ports/`
   - `repositories.py`: `StudyDataRepositoryPort`, `CTRepositoryPort`,
     `SDTMSpecRepositoryPort`
-  - `services.py`: `LoggerPort`, `FileGeneratorPort`, writer/generator ports
+  - `services.py`: `LoggerPort`, `DatasetOutputPort`, writer/generator ports
 
 #### `cdisc_transpiler/domain/` (Entities + domain services)
 
@@ -100,11 +100,11 @@ below may fail until the hot-path errors are addressed.
 - I/O adapters: `cdisc_transpiler/infrastructure/io/`
   - reading: `csv_reader.py`
   - writing: `xpt_writer.py`, `dataset_xml_writer.py`, `sas_writer.py`
-  - output orchestration: `file_generator.py`
+  - output orchestration: `dataset_output.py`
   - Define-XML: `define_xml_generator.py`, plus `define_xml/*` builders
   - Output DTOs live in the application layer
     (`cdisc_transpiler/application/models.py`:
-    `OutputRequest`/`OutputResult`/`OutputDirs`).
+    `DatasetOutputRequest`/`DatasetOutputResult`/`DatasetOutputDirs`).
 - Repositories (adapters over disk/metadata):
   `cdisc_transpiler/infrastructure/repositories/`
   - `study_data_repository.py`, `study_metadata_loader.py`
@@ -364,7 +364,7 @@ Use this as the default “where should I move this?” reference.
 - Output directory creation + ACRF PDF placeholder: ✅
   `cdisc_transpiler/infrastructure/io/output_preparer.py`
 - Split XPT writing: ✅ unified in
-  `cdisc_transpiler/infrastructure/io/file_generator.py`
+  `cdisc_transpiler/infrastructure/io/dataset_output.py`
 - Controlled terminology loading:
   `cdisc_transpiler/infrastructure/repositories/ct_repository.py` (current
   implementation)

@@ -205,7 +205,7 @@ cdisc_transpiler/
 │   └── services/         # Domain services + normalization logic
 └── infrastructure/       # Infrastructure Layer (I/O, external systems)
     ├── container.py      # Composition root
-    ├── io/               # File generation + writers
+    ├── io/               # Dataset output + writers
     ├── repositories/     # Data access
     ├── logging/          # Logger adapters
     └── sdtm_spec/         # SDTM spec registry

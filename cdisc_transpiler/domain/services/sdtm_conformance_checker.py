@@ -211,7 +211,7 @@ def check_domain_dataframe(
                         codelist_code=ct.codelist_code,
                         message=(
                             f"{var.name} contains {len(invalid)} value(s) not found in CT for {ct.codelist_name} "
-                            f"({ct.codelist_code}). Expected CDISC Submission Value (CDISC Synonym(s)); examples: {examples}"
+                            f"({ct.codelist_code}). examples: {examples}"
                         ),
                     )
                 )

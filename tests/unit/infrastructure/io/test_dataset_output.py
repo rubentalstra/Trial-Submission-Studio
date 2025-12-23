@@ -1,4 +1,4 @@
-"""Unit tests for FileGenerator."""
+"""Unit tests for DatasetOutputAdapter."""
 
 from pathlib import Path
 from unittest.mock import Mock
@@ -7,12 +7,12 @@ import pandas as pd
 import pytest
 
 from cdisc_transpiler.application.models import (
-    OutputDirs,
-    OutputRequest,
-    OutputResult,
+    DatasetOutputDirs,
+    DatasetOutputRequest,
+    DatasetOutputResult,
 )
 from cdisc_transpiler.domain.entities.mapping import ColumnMapping, MappingConfig
-from cdisc_transpiler.infrastructure.io.file_generator import FileGenerator
+from cdisc_transpiler.infrastructure.io.dataset_output import DatasetOutputAdapter
 
 
 @pytest.fixture
@@ -85,21 +85,21 @@ def mock_sas_writer():
 
 
 @pytest.fixture
-def file_generator(mock_xpt_writer, mock_xml_writer, mock_sas_writer):
-    """Create a FileGenerator with mock writers."""
-    return FileGenerator(
+def dataset_output(mock_xpt_writer, mock_xml_writer, mock_sas_writer):
+    """Create a DatasetOutputAdapter with mock writers."""
+    return DatasetOutputAdapter(
         xpt_writer=mock_xpt_writer,
         xml_writer=mock_xml_writer,
         sas_writer=mock_sas_writer,
     )
 
 
-class TestOutputDirs:
-    """Test suite for OutputDirs model."""
+class TestDatasetOutputDirs:
+    """Test suite for DatasetOutputDirs model."""
 
     def test_create_output_dirs(self, tmp_path: Path):
-        """Test creating OutputDirs with all directories."""
-        dirs = OutputDirs(
+        """Test creating DatasetOutputDirs with all directories."""
+        dirs = DatasetOutputDirs(
             xpt_dir=tmp_path / "xpt",
             xml_dir=tmp_path / "xml",
             sas_dir=tmp_path / "sas",
@@ -110,21 +110,21 @@ class TestOutputDirs:
         assert dirs.sas_dir == tmp_path / "sas"
 
     def test_create_output_dirs_partial(self, tmp_path: Path):
-        """Test creating OutputDirs with only some directories."""
-        dirs = OutputDirs(xpt_dir=tmp_path / "xpt")
+        """Test creating DatasetOutputDirs with only some directories."""
+        dirs = DatasetOutputDirs(xpt_dir=tmp_path / "xpt")
 
         assert dirs.xpt_dir == tmp_path / "xpt"
         assert dirs.xml_dir is None
         assert dirs.sas_dir is None
 
 
-class TestOutputRequest:
-    """Test suite for OutputRequest model."""
+class TestDatasetOutputRequest:
+    """Test suite for DatasetOutputRequest model."""
 
     def test_create_request(self, sample_dataframe, sample_config, tmp_path: Path):
         """Test creating an output request."""
-        dirs = OutputDirs(xpt_dir=tmp_path / "xpt")
-        request = OutputRequest(
+        dirs = DatasetOutputDirs(xpt_dir=tmp_path / "xpt")
+        request = DatasetOutputRequest(
             dataframe=sample_dataframe,
             domain_code="DM",
             config=sample_config,
@@ -138,12 +138,12 @@ class TestOutputRequest:
         assert "xpt" in request.formats
 
 
-class TestOutputResult:
-    """Test suite for OutputResult model."""
+class TestDatasetOutputResult:
+    """Test suite for DatasetOutputResult model."""
 
     def test_result_success(self, tmp_path: Path):
         """Test result with no errors is successful."""
-        result = OutputResult(
+        result = DatasetOutputResult(
             xpt_path=tmp_path / "dm.xpt",
             errors=[],
         )
@@ -153,7 +153,7 @@ class TestOutputResult:
 
     def test_result_failure(self, tmp_path: Path):
         """Test result with errors is not successful."""
-        result = OutputResult(
+        result = DatasetOutputResult(
             xpt_path=tmp_path / "dm.xpt",
             errors=["XPT generation failed"],
         )
@@ -162,12 +162,12 @@ class TestOutputResult:
         assert len(result.errors) == 1
 
 
-class TestFileGenerator:
-    """Test suite for FileGenerator class."""
+class TestDatasetOutputAdapter:
+    """Test suite for DatasetOutputAdapter class."""
 
     def test_generate_xpt_only(
         self,
-        file_generator,
+        dataset_output,
         mock_xpt_writer,
         sample_dataframe,
         sample_config,
@@ -178,8 +178,8 @@ class TestFileGenerator:
         xpt_dir = tmp_path / "xpt"
         xpt_dir.mkdir()
 
-        dirs = OutputDirs(xpt_dir=xpt_dir)
-        request = OutputRequest(
+        dirs = DatasetOutputDirs(xpt_dir=xpt_dir)
+        request = DatasetOutputRequest(
             dataframe=sample_dataframe,
             domain_code="DM",
             config=sample_config,
@@ -189,7 +189,7 @@ class TestFileGenerator:
         )
 
         # Execute
-        result = file_generator.generate(request)
+        result = dataset_output.generate(request)
 
         # Verify
         assert result.success
@@ -202,7 +202,7 @@ class TestFileGenerator:
 
     def test_generate_all_formats(
         self,
-        file_generator,
+        dataset_output,
         mock_xpt_writer,
         mock_xml_writer,
         mock_sas_writer,
@@ -219,8 +219,8 @@ class TestFileGenerator:
         xml_dir.mkdir()
         sas_dir.mkdir()
 
-        dirs = OutputDirs(xpt_dir=xpt_dir, xml_dir=xml_dir, sas_dir=sas_dir)
-        request = OutputRequest(
+        dirs = DatasetOutputDirs(xpt_dir=xpt_dir, xml_dir=xml_dir, sas_dir=sas_dir)
+        request = DatasetOutputRequest(
             dataframe=sample_dataframe,
             domain_code="DM",
             config=sample_config,
@@ -230,7 +230,7 @@ class TestFileGenerator:
         )
 
         # Execute
-        result = file_generator.generate(request)
+        result = dataset_output.generate(request)
 
         # Verify
         assert result.success
@@ -253,7 +253,7 @@ class TestFileGenerator:
 
     def test_generate_with_error(
         self,
-        file_generator,
+        dataset_output,
         mock_xpt_writer,
         sample_dataframe,
         sample_config,
@@ -266,8 +266,8 @@ class TestFileGenerator:
 
         mock_xpt_writer.write.side_effect = Exception("Write failed")
 
-        dirs = OutputDirs(xpt_dir=xpt_dir)
-        request = OutputRequest(
+        dirs = DatasetOutputDirs(xpt_dir=xpt_dir)
+        request = DatasetOutputRequest(
             dataframe=sample_dataframe,
             domain_code="DM",
             config=sample_config,
@@ -277,7 +277,7 @@ class TestFileGenerator:
         )
 
         # Execute
-        result = file_generator.generate(request)
+        result = dataset_output.generate(request)
 
         # Verify
         assert not result.success
@@ -286,7 +286,7 @@ class TestFileGenerator:
 
     def test_generate_with_custom_base_filename(
         self,
-        file_generator,
+        dataset_output,
         mock_xpt_writer,
         sample_dataframe,
         sample_config,
@@ -297,8 +297,8 @@ class TestFileGenerator:
         xpt_dir = tmp_path / "xpt"
         xpt_dir.mkdir()
 
-        dirs = OutputDirs(xpt_dir=xpt_dir)
-        request = OutputRequest(
+        dirs = DatasetOutputDirs(xpt_dir=xpt_dir)
+        request = DatasetOutputRequest(
             dataframe=sample_dataframe,
             domain_code="DM",
             config=sample_config,
@@ -308,7 +308,7 @@ class TestFileGenerator:
         )
 
         # Execute
-        result = file_generator.generate(request)
+        result = dataset_output.generate(request)
 
         # Verify
         assert result.success
@@ -319,7 +319,7 @@ class TestFileGenerator:
 
     def test_generate_sas_with_custom_datasets(
         self,
-        file_generator,
+        dataset_output,
         mock_sas_writer,
         sample_dataframe,
         sample_config,
@@ -330,8 +330,8 @@ class TestFileGenerator:
         sas_dir = tmp_path / "sas"
         sas_dir.mkdir()
 
-        dirs = OutputDirs(sas_dir=sas_dir)
-        request = OutputRequest(
+        dirs = DatasetOutputDirs(sas_dir=sas_dir)
+        request = DatasetOutputRequest(
             dataframe=sample_dataframe,
             domain_code="DM",
             config=sample_config,
@@ -343,7 +343,7 @@ class TestFileGenerator:
         )
 
         # Execute
-        result = file_generator.generate(request)
+        result = dataset_output.generate(request)
 
         # Verify
         assert result.success
@@ -360,15 +360,15 @@ class TestFileGenerator:
 
     def test_generate_no_formats(
         self,
-        file_generator,
+        dataset_output,
         sample_dataframe,
         sample_config,
         tmp_path: Path,
     ):
         """Test generation with no formats requested."""
         # Setup
-        dirs = OutputDirs()
-        request = OutputRequest(
+        dirs = DatasetOutputDirs()
+        request = DatasetOutputRequest(
             dataframe=sample_dataframe,
             domain_code="DM",
             config=sample_config,
@@ -377,7 +377,7 @@ class TestFileGenerator:
         )
 
         # Execute
-        result = file_generator.generate(request)
+        result = dataset_output.generate(request)
 
         # Verify
         assert result.success

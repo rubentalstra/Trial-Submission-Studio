@@ -5,7 +5,7 @@ by application layer use cases to maintain clear boundaries and enable testing.
 
 Includes:
 - Study/Domain processing request/response DTOs
-- Output generation DTOs (OutputDirs, OutputRequest, OutputResult)
+- Dataset output DTOs (DatasetOutputDirs, DatasetOutputRequest, DatasetOutputResult)
 """
 
 from __future__ import annotations
@@ -58,8 +58,8 @@ def _empty_error_list() -> list[tuple[str, str]]:
 
 
 @dataclass(slots=True)
-class OutputDirs:
-    """Output directory configuration.
+class DatasetOutputDirs:
+    """Dataset output directory configuration.
 
     This DTO specifies which output directories should be used for each
     output format. Setting a directory to None skips generation for that format.
@@ -70,7 +70,7 @@ class OutputDirs:
         sas_dir: Directory for SAS programs (None to skip)
 
     Example:
-        >>> dirs = OutputDirs(
+        >>> dirs = DatasetOutputDirs(
         ...     xpt_dir=Path("output/xpt"),
         ...     xml_dir=Path("output/dataset-xml"),
         ... )
@@ -82,11 +82,11 @@ class OutputDirs:
 
 
 @dataclass(slots=True)
-class OutputRequest:
-    """Request for file generation.
+class DatasetOutputRequest:
+    """Request for dataset output generation.
 
-    This DTO encapsulates all inputs needed for output file generation,
-    providing a clean interface between use cases and file generators.
+    This DTO encapsulates all inputs needed for dataset output generation,
+    providing a clean interface between use cases and dataset output adapters.
 
     Attributes:
         dataframe: DataFrame to write
@@ -99,11 +99,11 @@ class OutputRequest:
         output_dataset: Output dataset name for SAS (e.g., "sdtm.dm")
 
     Example:
-        >>> request = OutputRequest(
+        >>> request = DatasetOutputRequest(
         ...     dataframe=df,
         ...     domain_code="DM",
         ...     config=config,
-        ...     output_dirs=OutputDirs(xpt_dir=Path("output/xpt")),
+        ...     output_dirs=DatasetOutputDirs(xpt_dir=Path("output/xpt")),
         ...     formats={"xpt", "xml"},
         ... )
     """
@@ -111,7 +111,7 @@ class OutputRequest:
     dataframe: pd.DataFrame
     domain_code: str
     config: MappingConfig
-    output_dirs: OutputDirs
+    output_dirs: DatasetOutputDirs
     formats: set[str]
     base_filename: str | None = None
     input_dataset: str | None = None
@@ -119,11 +119,11 @@ class OutputRequest:
 
 
 @dataclass(slots=True)
-class OutputResult:
-    """Result of file generation.
+class DatasetOutputResult:
+    """Result of dataset output generation.
 
-    This DTO captures the outputs from file generation, including paths
-    to generated files and any errors encountered.
+    This DTO captures the outputs from dataset output generation, including
+    paths to generated files and any errors encountered.
 
     Attributes:
         xpt_path: Path to generated XPT file (None if not generated)
@@ -132,7 +132,7 @@ class OutputResult:
         errors: List of error messages encountered
 
     Example:
-        >>> result = OutputResult(
+        >>> result = DatasetOutputResult(
         ...     xpt_path=Path("output/xpt/dm.xpt"),
         ...     xml_path=Path("output/dataset-xml/dm.xml"),
         ... )
@@ -256,7 +256,7 @@ class DomainProcessingResult:
     """Result of processing a single domain.
 
     This DTO captures the output of domain processing for a single domain,
-    including the generated dataframe, files, and any supplemental domains.
+    including the generated dataframe, files, and any SUPPQUAL domains.
 
     Attributes:
         domain_code: SDTM domain code (e.g., "DM", "AE")
@@ -267,7 +267,7 @@ class DomainProcessingResult:
         xpt_path: Path to generated XPT file (if any)
         xml_path: Path to generated Dataset-XML file (if any)
         sas_path: Path to generated SAS program (if any)
-        supplementals: List of supplemental domain results (e.g., SUPPAE)
+        suppqual_domains: List of SUPPQUAL domain results (e.g., SUPPAE)
         error: Error message if processing failed
         synthesized: Whether this domain was synthesized (not from source data)
         synthesis_reason: Reason for synthesis (if synthesized)
@@ -290,7 +290,7 @@ class DomainProcessingResult:
     xpt_path: Path | None = None
     xml_path: Path | None = None
     sas_path: Path | None = None
-    supplementals: list[DomainProcessingResult] = field(
+    suppqual_domains: list[DomainProcessingResult] = field(
         default_factory=_empty_domain_results
     )
     error: str | None = None
@@ -432,7 +432,7 @@ class ProcessDomainResponse:
         xpt_path: Path to generated XPT file (if any)
         xml_path: Path to generated Dataset-XML file (if any)
         sas_path: Path to generated SAS program (if any)
-        supplementals: List of supplemental domain responses (e.g., SUPPAE)
+        suppqual_domains: List of SUPPQUAL domain responses (e.g., SUPPAE)
         error: Error message if processing failed
         warnings: List of warning messages
 
@@ -454,7 +454,7 @@ class ProcessDomainResponse:
     xpt_path: Path | None = None
     xml_path: Path | None = None
     sas_path: Path | None = None
-    supplementals: list[ProcessDomainResponse] = field(
+    suppqual_domains: list[ProcessDomainResponse] = field(
         default_factory=_empty_domain_responses
     )
     error: str | None = None
@@ -477,7 +477,7 @@ class ProcessDomainResponse:
             "xpt_path": self.xpt_path,
             "xml_path": self.xml_path,
             "sas_path": self.sas_path,
-            "supplementals": [
+            "suppqual_domains": [
                 {
                     "domain_code": supp.domain_code,
                     "records": supp.records,
@@ -487,7 +487,7 @@ class ProcessDomainResponse:
                     "xml_path": supp.xml_path,
                     "sas_path": supp.sas_path,
                 }
-                for supp in self.supplementals
+                for supp in self.suppqual_domains
             ],
             "conformance_report": self.conformance_report,
         }

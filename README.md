@@ -21,7 +21,7 @@ SAS).
   suites
 - ✅ **Validation Suite**: SDTM compliance and file format validation
 - 📈 **Performance Benchmarks**: Track and prevent performance regressions
-- 🎯 **Domain Synthesis**: Automatic generation of supplemental and variant
+- 🎯 **Domain Synthesis**: Automatic generation of SUPPQUAL and variant
   domains
 
 ## 🏗️ Architecture
@@ -206,7 +206,7 @@ tests/
 │   ├── application/      # Use case tests
 │   ├── cli/              # Presenter and command tests
 │   ├── domain/           # Domain logic tests
-│   └── infrastructure/   # File generation and repository tests
+│   └── infrastructure/   # Dataset output and repository tests
 ├── integration/          # Integration tests
 │   ├── test_cli.py       # CLI end-to-end tests
 │   ├── test_study_workflow.py

@@ -5,7 +5,7 @@ and wires up all application dependencies. It follows the Dependency Injection
 pattern to enable testability and flexibility.
 
 The container provides factory methods for creating:
-- Infrastructure components (CSV reader, file generator, logger)
+- Infrastructure components (CSV reader, dataset output adapter, logger)
 - Application use cases
 - Domain services
 
@@ -27,9 +27,9 @@ from ..application.ports.repositories import (
 )
 from ..application.ports.services import (
     ConformanceReportWriterPort,
+    DatasetOutputPort,
     DefineXMLGeneratorPort,
     DomainFrameBuilderPort,
-    FileGeneratorPort,
     LoggerPort,
     MappingPort,
     OutputPreparerPort,
@@ -37,9 +37,9 @@ from ..application.ports.services import (
     TerminologyPort,
 )
 from .io.csv_reader import CSVReader
+from .io.dataset_output import DatasetOutputAdapter
 from .io.dataset_xml_writer import DatasetXMLWriter
 from .io.define_xml_generator import DefineXMLGenerator
-from .io.file_generator import FileGenerator
 from .io.output_preparer import OutputPreparer
 from .io.sas_writer import SASWriter
 from .io.xpt_writer import XPTWriter
@@ -66,7 +66,7 @@ class DependencyContainer:
         verbose: Verbosity level (0=normal, 1=verbose, 2=debug)
         console: Rich console for output (optional)
         _logger_instance: Cached logger instance (singleton)
-        _file_generator_instance: Cached file generator instance (singleton)
+        _dataset_output_instance: Cached dataset output adapter instance (singleton)
         _study_data_repository_instance: Cached study data repository instance (singleton)
 
     Example:
@@ -75,7 +75,7 @@ class DependencyContainer:
         >>>
         >>> # Get singleton instances
         >>> logger = container.create_logger()
-        >>> file_gen = container.create_file_generator()
+        >>> file_gen = container.create_dataset_output()
         >>> study_data_repository = container.create_study_data_repository()
         >>>
         >>> # Create use cases (transient)
@@ -102,7 +102,7 @@ class DependencyContainer:
 
         # Singleton instances
         self._logger_instance: LoggerPort | None = None
-        self._file_generator_instance: FileGeneratorPort | None = None
+        self._dataset_output_instance: DatasetOutputPort | None = None
         self._csv_reader_instance: CSVReader | None = None
         self._study_data_repository_instance: StudyDataRepositoryPort | None = None
         self._define_xml_generator_instance: DefineXMLGeneratorPort | None = None
@@ -159,32 +159,32 @@ class DependencyContainer:
             self._csv_reader_instance = CSVReader()
         return self._csv_reader_instance
 
-    def create_file_generator(self) -> FileGeneratorPort:
-        """Create or return cached file generator instance (singleton).
+    def create_dataset_output(self) -> DatasetOutputPort:
+        """Create or return cached dataset output adapter instance (singleton).
 
-        The file generator is configured with writer adapters for XPT,
+        The dataset output adapter is configured with writer adapters for XPT,
         Dataset-XML, and SAS output formats.
 
         Returns:
-            FileGeneratorPort implementation (FileGenerator)
+            DatasetOutputPort implementation (DatasetOutputAdapter)
 
         Example:
-            >>> generator = container.create_file_generator()
+            >>> generator = container.create_dataset_output()
             >>> result = generator.generate(request)
         """
-        if self._file_generator_instance is None:
+        if self._dataset_output_instance is None:
             # Create writer adapters
             xpt_writer = self.create_xpt_writer()
             xml_writer = DatasetXMLWriter()
             sas_writer = SASWriter()
 
-            # Create file generator with injected writers
-            self._file_generator_instance = FileGenerator(
+            # Create dataset output adapter with injected writers
+            self._dataset_output_instance = DatasetOutputAdapter(
                 xpt_writer=xpt_writer,
                 xml_writer=xml_writer,
                 sas_writer=sas_writer,
             )
-        return self._file_generator_instance
+        return self._dataset_output_instance
 
     def create_xpt_writer(self) -> XPTWriter:
         """Create or return cached XPT writer instance (singleton)."""
@@ -334,7 +334,7 @@ class DependencyContainer:
 
         logger = self.create_logger()
         study_data_repository = self.create_study_data_repository()
-        file_generator = self.create_file_generator()
+        dataset_output = self.create_dataset_output()
         domain_processing_use_case = self.create_domain_processing_use_case()
         domain_definition_repository = self.create_domain_definition_repository()
         domain_discovery_service = DomainDiscoveryAdapter(logger=logger)
@@ -356,7 +356,7 @@ class DependencyContainer:
             relrec_service=relrec_service,
             relsub_service=relsub_service,
             relspec_service=relspec_service,
-            file_generator=file_generator,
+            dataset_output=dataset_output,
             define_xml_generator=define_xml_generator,
             output_preparer=output_preparer,
             domain_definition_repository=domain_definition_repository,
@@ -381,7 +381,7 @@ class DependencyContainer:
 
         logger = self.create_logger()
         study_data_repository = self.create_study_data_repository()
-        file_generator = self.create_file_generator()
+        dataset_output = self.create_dataset_output()
         output_preparer = self.create_output_preparer()
         mapping_service = self.create_mapping_service()
         domain_definition_repository = self.create_domain_definition_repository()
@@ -394,7 +394,7 @@ class DependencyContainer:
         return DomainProcessingUseCase(
             logger=logger,
             study_data_repository=study_data_repository,
-            file_generator=file_generator,
+            dataset_output=dataset_output,
             mapping_service=mapping_service,
             output_preparer=output_preparer,
             domain_frame_builder=domain_frame_builder,
@@ -417,7 +417,7 @@ class DependencyContainer:
             >>> new_logger = container.create_logger()  # Fresh instance
         """
         self._logger_instance = None
-        self._file_generator_instance = None
+        self._dataset_output_instance = None
         self._csv_reader_instance = None
         self._study_data_repository_instance = None
         self._output_preparer_instance = None
@@ -446,17 +446,17 @@ class DependencyContainer:
         """
         self._logger_instance = logger
 
-    def override_file_generator(self, file_generator: FileGeneratorPort) -> None:
-        """Override the file generator instance (for testing).
+    def override_dataset_output(self, dataset_output: DatasetOutputPort) -> None:
+        """Override the dataset output adapter instance (for testing).
 
         Args:
-            file_generator: Custom file generator implementation
+            dataset_output: Custom dataset output adapter implementation
 
         Example:
-            >>> mock_generator = MockFileGenerator()
-            >>> container.override_file_generator(mock_generator)
+            >>> mock_generator = MockDatasetOutputAdapter()
+            >>> container.override_dataset_output(mock_generator)
         """
-        self._file_generator_instance = file_generator
+        self._dataset_output_instance = dataset_output
 
     def override_study_data_repository(
         self, study_data_repository: StudyDataRepositoryPort

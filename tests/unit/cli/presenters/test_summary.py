@@ -76,8 +76,8 @@ class TestSummaryPresenter:
         assert "Adverse Events" in output
 
     def test_organize_results_separates_main_and_supp(self, presenter, sample_results):
-        """Test that results are organized into main and supplemental domains."""
-        main_domains, supp_domains, total_records = presenter._organize_results(
+        """Test that results are organized into main and SUPPQUAL domains."""
+        main_domains, suppqual_domains, total_records = presenter._organize_results(
             sample_results
         )
 
@@ -86,10 +86,10 @@ class TestSummaryPresenter:
         assert "DM" in main_domains
         assert "AE" in main_domains
 
-        # Should have 1 supplemental domain under DM
-        assert "DM" in supp_domains
-        assert len(supp_domains["DM"]) == 1
-        assert supp_domains["DM"][0][0] == "SUPPDM"
+        # Should have 1 SUPPQUAL domain under DM
+        assert "DM" in suppqual_domains
+        assert len(suppqual_domains["DM"]) == 1
+        assert suppqual_domains["DM"][0][0] == "SUPPDM"
 
         # Total records should sum correctly
         assert total_records == 360  # 100 + 250 + 10
@@ -255,7 +255,7 @@ class TestSummaryPresenterIntegration:
                 "xpt_path": Path("/output/xpt/ae.xpt"),
                 "xml_path": None,
                 "sas_path": Path("/output/sas/ae.sas"),
-                "supplementals": [
+                "suppqual_domains": [
                     {
                         "domain_code": "SUPPAE",
                         "description": "Supplemental Qualifiers for AE",
@@ -290,7 +290,7 @@ class TestSummaryPresenterIntegration:
         assert "AE" in output
         assert "LB" in output
 
-        # Verify supplemental is shown under parent
+        # Verify SUPPQUAL is shown under parent
         assert "SUPPAE" in output
         assert "Supplemental Qualifiers for AE" in output
 

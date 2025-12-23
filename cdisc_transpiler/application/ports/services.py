@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from ...domain.entities.sdtm_domain import SDTMDomain
     from ...domain.entities.study_metadata import StudyMetadata
     from ...domain.services.sdtm_conformance_checker import ConformanceReport
-    from ..models import DefineDatasetDTO, OutputRequest, OutputResult
+    from ..models import DatasetOutputRequest, DatasetOutputResult, DefineDatasetDTO
 
 
 @runtime_checkable
@@ -182,10 +182,10 @@ class LoggerPort(Protocol):
 
 
 @runtime_checkable
-class FileGeneratorPort(Protocol):
-    """Protocol for file generation services.
+class DatasetOutputPort(Protocol):
+    """Protocol for dataset output generation services.
 
-    This interface abstracts file generation operations, allowing different
+    This interface abstracts dataset output operations, allowing different
     implementations for different output formats (XPT, XML, SAS) without
     coupling the application to specific generation logic.
 
@@ -195,8 +195,8 @@ class FileGeneratorPort(Protocol):
     - SAS program generation
 
     Example:
-        >>> def save_domain(generator: FileGeneratorPort, df: pd.DataFrame):
-        ...     request = OutputRequest(
+        >>> def save_domain(generator: DatasetOutputPort, df: pd.DataFrame):
+        ...     request = DatasetOutputRequest(
         ...         dataframe=df,
         ...         domain_code="DM",
         ...         config=config,
@@ -208,14 +208,14 @@ class FileGeneratorPort(Protocol):
         ...         print(f"Generated XPT: {result.xpt_path}")
     """
 
-    def generate(self, request: OutputRequest) -> OutputResult:
-        """Generate output files based on the request.
+    def generate(self, request: DatasetOutputRequest) -> DatasetOutputResult:
+        """Generate dataset outputs based on the request.
 
         Args:
-            request: OutputRequest containing DataFrame, domain, and configuration
+            request: DatasetOutputRequest containing DataFrame, domain, and configuration
 
         Returns:
-            OutputResult with paths to generated files and any errors
+            DatasetOutputResult with paths to generated files and any errors
 
         Example:
             >>> result = generator.generate(request)
