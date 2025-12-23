@@ -881,20 +881,21 @@ class StudyProcessingUseCase:
                     )
                     scheduled.add(code)
 
-            for code, kind, reason in [
-                ("RELREC", "relrec", "Relationship scaffold"),
-                ("RELSUB", "relsub", "Related subjects scaffold"),
-                ("RELSPEC", "relspec", "Related specimens scaffold"),
-            ]:
-                if _missing(code) and code not in scheduled:
-                    jobs.append(
-                        _SynthesisJob(
-                            domain_code=code,
-                            kind=kind,  # type: ignore[arg-type]
-                            reason=reason,
-                        )
+        # 3) Relationship domains (always attempt synthesis if missing)
+        for code, kind, reason in [
+            ("RELREC", "relrec", "Relationship scaffold"),
+            ("RELSUB", "relsub", "Related subjects scaffold"),
+            ("RELSPEC", "relspec", "Related specimens scaffold"),
+        ]:
+            if _missing(code) and code not in scheduled:
+                jobs.append(
+                    _SynthesisJob(
+                        domain_code=code,
+                        kind=kind,  # type: ignore[arg-type]
+                        reason=reason,
                     )
-                    scheduled.add(code)
+                )
+                scheduled.add(code)
 
         return jobs
 
