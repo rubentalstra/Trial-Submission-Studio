@@ -91,63 +91,6 @@ class SynthesisService:
     def __init__(self, *, domain_resolver: Callable[[str], SDTMDomain]):
         self._domain_resolver = domain_resolver
 
-    def synthesize_trial_design(
-        self,
-        domain_code: str,
-        study_id: str,
-        reference_starts: dict[str, str] | None = None,
-        rows: list[dict[str, Any]] | None = None,
-    ) -> SynthesisResult:
-        """Synthesize a trial design domain.
-
-        Creates scaffold trial design domains (TS, TA, TE, SE, DS) with
-        the SDTM schema and optional user-provided values.
-
-        Args:
-            domain_code: Domain code (TS, TA, TE, SE, DS)
-            study_id: Study identifier
-            reference_starts: Reference start dates by subject
-
-        Returns:
-            SynthesisResult with generated DataFrame and config
-        """
-        try:
-            # Resolve the domain dynamically (no hardcoded fallbacks).
-            domain = self._domain_resolver(domain_code)
-
-            # Build a minimal scaffold frame based on the resolved domain
-            # variable definitions. Values are intentionally left empty;
-            # the SDTM schema comes from `SDTMDomain`.
-            row_count = 1 if rows is None else len(rows)
-            frame = self._build_scaffold_frame(domain, rows=row_count)
-
-            if rows:
-                for i, row in enumerate(rows):
-                    for key, value in row.items():
-                        if key in frame.columns:
-                            frame.at[i, key] = value
-
-            config = self._build_identity_config(domain_code, frame, study_id)
-
-            # Note: reference_starts is accepted for API compatibility, but
-            # the scaffold itself does not depend on subject dates.
-            _ = reference_starts
-
-            return SynthesisResult(
-                domain_code=domain_code,
-                records=len(frame),
-                domain_dataframe=frame,
-                config=config,
-                success=True,
-            )
-
-        except Exception as exc:
-            return SynthesisResult(
-                domain_code=domain_code,
-                success=False,
-                error=str(exc),
-            )
-
     def synthesize_observation(
         self,
         domain_code: str,

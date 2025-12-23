@@ -111,16 +111,6 @@ console = Console()
     help="Fail the run (strict outputs only) when conformance errors are detected",
 )
 @click.option(
-    "--generate-trial-design/--no-generate-trial-design",
-    "generate_trial_design",
-    default=False,
-    show_default=True,
-    help=(
-        "Generate missing trial design datasets (TS/TA/TE/SE) from config (TOML). "
-        "TS/TA/TE use [trial_design] rows; SE is created empty (no subject fabrication)."
-    ),
-)
-@click.option(
     "-v", "--verbose", count=True, help="Increase verbosity level (e.g., -v, -vv)"
 )
 @click.pass_context
@@ -140,7 +130,6 @@ def study_command(
     min_confidence: float,
     write_conformance_report_json: bool,
     fail_on_conformance_errors: bool,
-    generate_trial_design: bool,
     verbose: int,
 ) -> None:
     """Process an entire study folder and generate SDTM submission files.
@@ -198,20 +187,6 @@ def study_command(
 
     runtime_config = ConfigLoader.load(config_file=config_file)
 
-    trial_design_rows = {
-        "TS": [dict(row) for row in runtime_config.trial_design.ts],
-        "TA": [dict(row) for row in runtime_config.trial_design.ta],
-        "TE": [dict(row) for row in runtime_config.trial_design.te],
-    }
-
-    # If trial design scaffolds are present in TOML, treat them as user-provided
-    # study metadata and auto-generate missing TS/TA/TE unless the user
-    # explicitly set the flag.
-    if ctx.get_parameter_source(
-        "generate_trial_design"
-    ) == click.core.ParameterSource.DEFAULT and any(trial_design_rows.values()):
-        generate_trial_design = True
-
     # Create request object
     request = ProcessStudyRequest(
         study_folder=study_folder,
@@ -229,8 +204,6 @@ def study_command(
         write_conformance_report_json=write_conformance_report_json,
         fail_on_conformance_errors=fail_on_conformance_errors,
         default_country=runtime_config.default_country,
-        generate_trial_design_domains=generate_trial_design,
-        trial_design_rows=trial_design_rows,
     )
 
     # Create dependency container and use case

@@ -61,9 +61,8 @@ if TYPE_CHECKING:
 @dataclass(frozen=True)
 class _SynthesisJob:
     domain_code: str
-    kind: Literal["observation", "trial_design", "relrec", "relsub", "relspec"]
+    kind: Literal["observation", "relrec", "relsub", "relspec"]
     reason: str
-    rows: list[dict[str, Any]] | None = None
 
 
 class StudyProcessingUseCase:
@@ -440,20 +439,18 @@ class StudyProcessingUseCase:
                         (domain_code, result.error or "Unknown error")
                     )
 
-            if (
-                request.generate_trial_design_domains
-                or request.synthesize_missing_domains
-            ):
-                self._run_synthesis_pass(
-                    response=response,
-                    present_domains=processed_domains,
-                    request=request,
-                    reference_starts=reference_starts,
-                    study_datasets=study_datasets,
-                    xpt_dir=xpt_dir,
-                    xml_dir=xml_dir,
-                    sas_dir=sas_dir,
-                )
+            # Always run synthesis pass (RELREC/RELSUB/RELSPEC are always attempted,
+            # while trial design and other scaffolds depend on request flags).
+            self._run_synthesis_pass(
+                response=response,
+                present_domains=processed_domains,
+                request=request,
+                reference_starts=reference_starts,
+                study_datasets=study_datasets,
+                xpt_dir=xpt_dir,
+                xml_dir=xml_dir,
+                sas_dir=sas_dir,
+            )
 
             self._write_conformance_report_json(request=request, response=response)
 
@@ -741,21 +738,6 @@ class StudyProcessingUseCase:
                     domain_code=job.domain_code,
                     reason=job.reason,
                     kind=job.kind,
-                    rows=None,
-                    response=response,
-                    request=request,
-                    reference_starts=reference_starts,
-                    study_datasets=study_datasets,
-                    xpt_dir=xpt_dir,
-                    xml_dir=xml_dir,
-                    sas_dir=sas_dir,
-                )
-            elif job.kind == "trial_design":
-                self._synthesize_scaffolded_domain(
-                    domain_code=job.domain_code,
-                    reason=job.reason,
-                    kind=job.kind,
-                    rows=job.rows,
                     response=response,
                     request=request,
                     reference_starts=reference_starts,
@@ -815,39 +797,7 @@ class StudyProcessingUseCase:
                 upper not in response.processed_domains
             )
 
-        # 1) Config-driven trial design (opt-in, highest precedence)
-        if request.generate_trial_design_domains:
-            for code in ["TS", "TA", "TE"]:
-                if not _missing(code) or code in scheduled:
-                    continue
-                rows = self._build_trial_design_rows(
-                    domain_code=code,
-                    response=response,
-                    request=request,
-                )
-                jobs.append(
-                    _SynthesisJob(
-                        domain_code=code,
-                        kind="trial_design",
-                        reason="Trial design from config",
-                        rows=rows,
-                    )
-                )
-                scheduled.add(code)
-
-            # SE is subject-level: create an empty scaffold only.
-            if _missing("SE") and "SE" not in scheduled:
-                jobs.append(
-                    _SynthesisJob(
-                        domain_code="SE",
-                        kind="trial_design",
-                        reason="Trial design scaffold (empty SE)",
-                        rows=[],
-                    )
-                )
-                scheduled.add("SE")
-
-        # 2) Generic missing-domain synthesis (explicit opt-in)
+        # 1) Generic missing-domain synthesis (explicit opt-in)
         if request.synthesize_missing_domains:
             for code in ["AE", "LB", "VS", "EX"]:
                 if _missing(code) and code not in scheduled:
@@ -860,28 +810,7 @@ class StudyProcessingUseCase:
                     )
                     scheduled.add(code)
 
-            for code in ["TS", "TA", "TE", "SE", "DS"]:
-                if _missing(code) and code not in scheduled:
-                    rows = (
-                        self._build_trial_design_rows(
-                            domain_code=code,
-                            response=response,
-                            request=request,
-                        )
-                        if code == "TS"
-                        else None
-                    )
-                    jobs.append(
-                        _SynthesisJob(
-                            domain_code=code,
-                            kind="trial_design",
-                            reason="Trial design scaffold",
-                            rows=rows,
-                        )
-                    )
-                    scheduled.add(code)
-
-        # 3) Relationship domains (always attempt synthesis if missing)
+        # 2) Relationship domains (always attempt synthesis if missing)
         for code, kind, reason in [
             ("RELREC", "relrec", "Relationship scaffold"),
             ("RELSUB", "relsub", "Related subjects scaffold"),
@@ -898,222 +827,6 @@ class StudyProcessingUseCase:
                 scheduled.add(code)
 
         return jobs
-
-    def _build_trial_design_rows(
-        self,
-        *,
-        domain_code: str,
-        response: ProcessStudyResponse,
-        request: ProcessStudyRequest,
-    ) -> list[dict[str, Any]]:
-        """Build study-level rows for trial design domains.
-
-        For TS, we expand user-provided rows with the full set of commonly
-        validator-expected parameters (from `pinnacle_21_rules.md`). Values are
-        only filled when deterministically derivable from real data/config.
-
-        For TA/TE, rows come from config only.
-        """
-        code = (domain_code or "").upper()
-        user_rows = (request.trial_design_rows or {}).get(code, [])
-
-        if code != "TS":
-            if not user_rows:
-                self.logger.warning(
-                    f"{code}: trial design generation enabled but no config rows found; skipping"
-                )
-            return user_rows
-
-        return self._expand_ts_rows(
-            user_rows=user_rows,
-            response=response,
-            request=request,
-        )
-
-    def _expand_ts_rows(
-        self,
-        *,
-        user_rows: list[dict[str, Any]],
-        response: ProcessStudyResponse,
-        request: ProcessStudyRequest,
-    ) -> list[dict[str, Any]]:
-        required: list[tuple[str, str]] = [
-            ("ADDON", "Added on to Existing Treatments"),
-            ("AGEMAX", "Planned Maximum Age of Subjects"),
-            ("AGEMIN", "Planned Minimum Age of Subjects"),
-            ("LENGTH", "Trial Length"),
-            ("PLANSUB", "Planned Number of Subjects"),
-            ("RANDOM", "Trial is Randomized"),
-            ("SEXPOP", "Sex of Participants"),
-            ("STOPRULE", "Study Stop Rules"),
-            ("TBLIND", "Trial Blinding Schema"),
-            ("TCNTRL", "Control Type"),
-            ("TDIGRP", "Diagnosis Group"),
-            ("TINDTP", "Trial Intent Type"),
-            ("TITLE", "Trial Title"),
-            ("TPHASE", "Trial Phase Classification"),
-            ("TTYPE", "Trial Type"),
-            ("CURTRT", "Current Therapy or Treatment"),
-            ("OBJPRIM", "Trial Primary Objective"),
-            ("SPONSOR", "Clinical Study Sponsor"),
-            ("TRT", "Investigational Therapy or Treatment"),
-            ("REGID", "Registry Identifier"),
-            ("OUTMSPRI", "Primary Outcome Measure"),
-            ("PCLAS", "Pharmacologic Class"),
-            ("FCNTRY", "Planned Country of Investigational Sites"),
-            ("ADAPT", "Adaptive Design"),
-            ("DCUTDTC", "Data Cutoff Date"),
-            ("DCUTDESC", "Data Cutoff Description"),
-            ("INTMODEL", "Intervention Model"),
-            ("NARMS", "Planned Number of Arms"),
-            ("STYPE", "Study Type"),
-            ("INTTYPE", "Intervention Type"),
-            ("SSTDTC", "Study Start Date"),
-            ("SENDTC", "Study End Date"),
-            ("ACTSUB", "Actual Number of Subjects"),
-            ("HLTSUBJI", "Healthy Subject Indicator"),
-            # FDA desired (TCG) rows captured in `pinnacle_21_rules.md`
-            ("EXTTIND", "Extension Trial Indicator"),
-            ("NCOHORT", "Number of Groups/Cohorts"),
-            ("OBJSEC", "Trial Secondary Objective"),
-            ("PDPSTIND", "Pediatric Postmarket Study Indicator"),
-            ("PDSTIND", "Pediatric Study Indicator"),
-            ("PIPIND", "Pediatric Investigation Plan Indicator"),
-            ("RDIND", "Rare Disease Indicator"),
-            ("SDTIGVER", "SDTM IG Version"),
-            ("SDTMVER", "SDTM Version"),
-            ("THERAREA", "Therapeutic Area"),
-            ("ONGOSIND", "Ongoing Study Indicator"),
-        ]
-
-        def _code_of(row: dict[str, Any]) -> str:
-            raw = row.get("TSPARMCD")
-            return str(raw).strip().upper() if raw is not None else ""
-
-        keyed: dict[str, list[dict[str, Any]]] = {}
-        extras: list[dict[str, Any]] = []
-        for row in user_rows:
-            if not isinstance(row, dict):
-                continue
-            code = _code_of(row)
-            if not code:
-                extras.append(dict(row))
-                continue
-            keyed.setdefault(code, []).append(dict(row))
-
-        for code, label in required:
-            if code not in keyed:
-                keyed[code] = [
-                    {
-                        "TSPARMCD": code,
-                        "TSPARM": label,
-                    }
-                ]
-            else:
-                for item in keyed[code]:
-                    item.setdefault("TSPARMCD", code)
-                    item.setdefault("TSPARM", label)
-
-        # Always set STUDYID/DOMAIN when missing (deterministic).
-        for rows in keyed.values():
-            for row in rows:
-                row.setdefault("STUDYID", request.study_id)
-                row.setdefault("DOMAIN", "TS")
-
-        def _primary(code: str) -> dict[str, Any]:
-            return keyed[code][0]
-
-        # Deterministic TSVAL derivations from actual processed data/config.
-        dm = next(
-            (
-                r.domain_dataframe
-                for r in response.domain_results
-                if r.domain_code == "DM" and r.domain_dataframe is not None
-            ),
-            None,
-        )
-
-        def _is_blank(value: Any) -> bool:
-            if value is None:
-                return True
-            # pandas may represent missing values as NaN/NA.
-            try:
-                if pd.isna(value):
-                    return True
-            except TypeError:
-                # Some values are not compatible with pandas missing checks.
-                pass
-            if isinstance(value, str) and value.strip() == "":
-                return True
-            return False
-
-        # Fill required parameter labels when config provided blanks.
-        for code, label in required:
-            for item in keyed.get(code, []):
-                if _is_blank(item.get("TSPARM")):
-                    item["TSPARM"] = label
-
-        if dm is not None and not dm.empty:
-            if "USUBJID" in dm.columns and _is_blank(_primary("ACTSUB").get("TSVAL")):
-                actsub = (
-                    dm["USUBJID"]
-                    .astype("string")
-                    .dropna()
-                    .loc[lambda s: s != ""]
-                    .nunique()
-                )
-                _primary("ACTSUB")["TSVAL"] = str(int(actsub))
-
-            if "RFSTDTC" in dm.columns and _is_blank(_primary("SSTDTC").get("TSVAL")):
-                rfstdtc = dm["RFSTDTC"].astype("string").dropna().loc[lambda s: s != ""]
-                if not rfstdtc.empty:
-                    parsed = pd.to_datetime(rfstdtc, errors="coerce").dropna()
-                    if not parsed.empty:
-                        _primary("SSTDTC")["TSVAL"] = str(
-                            parsed.min().date().isoformat()
-                        )
-
-            if "RFENDTC" in dm.columns and _is_blank(_primary("SENDTC").get("TSVAL")):
-                rfendtc = dm["RFENDTC"].astype("string").dropna().loc[lambda s: s != ""]
-                if not rfendtc.empty:
-                    parsed = pd.to_datetime(rfendtc, errors="coerce").dropna()
-                    if not parsed.empty:
-                        _primary("SENDTC")["TSVAL"] = str(
-                            parsed.max().date().isoformat()
-                        )
-
-        if _is_blank(_primary("FCNTRY").get("TSVAL")) and request.default_country:
-            _primary("FCNTRY")["TSVAL"] = request.default_country
-
-        if _is_blank(_primary("SDTIGVER").get("TSVAL")) and request.sdtm_version:
-            _primary("SDTIGVER")["TSVAL"] = str(request.sdtm_version)
-
-        # Planned number of arms: derive from TA config rows if present.
-        if _is_blank(_primary("NARMS").get("TSVAL")):
-            ta_rows = (request.trial_design_rows or {}).get("TA", [])
-            armcds = {
-                str(r.get("ARMCD")).strip()
-                for r in ta_rows
-                if isinstance(r, dict) and r.get("ARMCD") is not None
-            }
-            armcds = {a for a in armcds if a}
-            if armcds:
-                _primary("NARMS")["TSVAL"] = str(len(armcds))
-
-        # Order: keep required parameter order, then any unkeyed extras.
-        ordered: list[dict[str, Any]] = []
-        for code, _label in required:
-            ordered.extend(keyed[code])
-        ordered.extend(extras)
-
-        # TSSEQ is required for TS and ensures uniqueness (SDTMIG v3.4
-        # variables table). Assign deterministically in output order.
-        for i, row in enumerate(ordered, start=1):
-            row.setdefault("STUDYID", request.study_id)
-            row.setdefault("DOMAIN", "TS")
-            row["TSSEQ"] = i
-
-        return ordered
 
     def _fill_tsparm_labels(self, frame: pd.DataFrame) -> None:
         if frame is None or frame.empty:
@@ -1182,8 +895,7 @@ class StudyProcessingUseCase:
         *,
         domain_code: str,
         reason: str,
-        kind: Literal["observation", "trial_design"],
-        rows: list[dict[str, Any]] | None,
+        kind: Literal["observation"],
         response: ProcessStudyResponse,
         request: ProcessStudyRequest,
         reference_starts: dict[str, str],
@@ -1197,19 +909,12 @@ class StudyProcessingUseCase:
 
         try:
             synthesis_service = self._get_synthesis_service()
-            if kind == "observation":
-                synthesis_result = synthesis_service.synthesize_observation(
-                    domain_code=domain_code,
-                    study_id=request.study_id,
-                    reference_starts=reference_starts,
-                )
-            else:
-                synthesis_result = synthesis_service.synthesize_trial_design(
-                    domain_code=domain_code,
-                    study_id=request.study_id,
-                    reference_starts=reference_starts,
-                    rows=rows,
-                )
+            # kind is always "observation" now
+            synthesis_result = synthesis_service.synthesize_observation(
+                domain_code=domain_code,
+                study_id=request.study_id,
+                reference_starts=reference_starts,
+            )
 
             if not synthesis_result.success:
                 raise RuntimeError(synthesis_result.error or "Synthesis failed")

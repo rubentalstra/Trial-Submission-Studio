@@ -225,16 +225,6 @@ class ProcessStudyRequest:
     # For regulatory submissions, this should typically be False.
     synthesize_missing_domains: bool = False
 
-    # Whether to generate missing trial design datasets (TS/TA/TE/SE).
-    # TS/TA/TE are expected to come from study-level configuration, not from
-    # subject-level synthesis. SE is generated as an empty scaffold only.
-    generate_trial_design_domains: bool = False
-
-    # Optional trial design rows keyed by domain code ("TS", "TA", "TE").
-    # Values are treated as study metadata inputs (i.e., the "source of truth"
-    # for generating trial design datasets).
-    trial_design_rows: dict[str, list[dict[str, Any]]] = field(default_factory=dict)
-
 
 @dataclass
 class DomainProcessingResult:
