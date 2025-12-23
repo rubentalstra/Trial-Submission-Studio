@@ -5,7 +5,6 @@ including singleton and transient patterns, configuration injection, and
 testing overrides.
 """
 
-import pytest
 from rich.console import Console
 
 from cdisc_transpiler.infrastructure import (

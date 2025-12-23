@@ -89,13 +89,6 @@ class CodelistTransformer:
         ct_resolver: CTResolver | None = None,
     ) -> None:
         for var in domain_variables:
-            if var.name == "VSTESTCD":
-                print(
-                    f"DEBUG: apply_codelist_validations for VSTESTCD. Codelist: {var.codelist_code}, Resolver: {ct_resolver}"
-                )
-                if var.name in frame.columns:
-                    print(f"DEBUG: VSTESTCD values before: {frame[var.name].unique()}")
-
             if var.codelist_code and var.name in frame.columns:
                 if var.name == "TSVCDREF":
                     continue
@@ -116,8 +109,6 @@ class CodelistTransformer:
 
                 def _normalize_ct_value(value: str) -> str:
                     normalized = normalizer(value)
-                    if var.name == "VSTESTCD" and value == "PLS":
-                        print(f"DEBUG: Normalizing VSTESTCD 'PLS' -> '{normalized}'")
                     return normalized or value
 
                 normalized = series.copy()

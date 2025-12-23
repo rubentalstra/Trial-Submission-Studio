@@ -47,11 +47,7 @@ exclude = [
     "cdisc_transpiler.egg-info",
 ]
 pythonVersion = "3.12"
-typeCheckingMode = "standard"
-useLibraryCodeForTypes = true
-reportMissingImports = "error"
-reportMissingTypeStubs = true
-reportUnusedFunction = true
+typeCheckingMode = "strict"
 
 [tool.pytest.ini_options]
 markers = [
