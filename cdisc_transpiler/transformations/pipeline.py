@@ -36,13 +36,14 @@ class TransformationPipeline:
         ...     print(f"Applied {len(result.metadata['applied_transformers'])} transformers")
     """
 
-    def __init__(self, fail_safe: bool = False):
+    def __init__(self, fail_safe: bool = False) -> None:
         """Initialize the transformation pipeline.
 
         Args:
             fail_safe: If True, continue pipeline execution even if a transformer fails.
                       If False, stop on first error. Default is False.
         """
+        super().__init__()
         self.transformers: list[TransformerPort] = []
         self.fail_safe = fail_safe
 
@@ -104,7 +105,7 @@ class TransformationPipeline:
 
         input_rows = len(df)
 
-        for i, transformer in enumerate(self.transformers):
+        for transformer in self.transformers:
             transformer_name = transformer.__class__.__name__
 
             # Check if transformer applies

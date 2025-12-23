@@ -15,7 +15,7 @@ using injected ports/use cases.
 from collections import defaultdict
 from dataclasses import dataclass, replace
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, cast
 
 import pandas as pd
 
@@ -107,7 +107,7 @@ class StudyProcessingUseCase:
         domain_definition_repository: DomainDefinitionRepositoryPort | None = None,
         ct_repository: CTRepositoryPort | None = None,
         conformance_report_writer: ConformanceReportWriterPort | None = None,
-    ):
+    ) -> None:
         """Initialize the use case with injected dependencies.
 
         Args:
@@ -118,30 +118,26 @@ class StudyProcessingUseCase:
             file_generator: Generator for output files
             define_xml_generator: Generator for Define-XML files
         """
+        super().__init__()
         if domain_discovery_service is None:
             raise ValueError(
-                "StudyProcessingUseCase requires domain_discovery_service to be injected "
-                "(use the DI container)."
+                "StudyProcessingUseCase requires domain_discovery_service to be injected (use the DI container)."
             )
         if relrec_service is None:
             raise ValueError(
-                "StudyProcessingUseCase requires relrec_service to be injected "
-                "(use the DI container)."
+                "StudyProcessingUseCase requires relrec_service to be injected (use the DI container)."
             )
         if relsub_service is None:
             raise ValueError(
-                "StudyProcessingUseCase requires relsub_service to be injected "
-                "(use the DI container)."
+                "StudyProcessingUseCase requires relsub_service to be injected (use the DI container)."
             )
         if relspec_service is None:
             raise ValueError(
-                "StudyProcessingUseCase requires relspec_service to be injected "
-                "(use the DI container)."
+                "StudyProcessingUseCase requires relspec_service to be injected (use the DI container)."
             )
         if domain_frame_builder is None:
             raise ValueError(
-                "StudyProcessingUseCase requires domain_frame_builder to be injected "
-                "(use the DI container)."
+                "StudyProcessingUseCase requires domain_frame_builder to be injected (use the DI container)."
             )
         self.logger = logger
         self._study_data_repository = study_data_repository
@@ -463,10 +459,7 @@ class StudyProcessingUseCase:
 
         writer = self._conformance_report_writer
         if writer is None:
-            response.conformance_report_error = (
-                "ConformanceReportWriterPort is not configured. "
-                "Wire an infrastructure adapter in the composition root."
-            )
+            response.conformance_report_error = "ConformanceReportWriterPort is not configured. Wire an infrastructure adapter in the composition root."
             return
 
         from ..domain.services.sdtm_conformance_checker import ConformanceReport
@@ -497,8 +490,7 @@ class StudyProcessingUseCase:
         """Set up output directory structure."""
         if self._output_preparer is None:
             raise RuntimeError(
-                "OutputPreparerPort is not configured. "
-                "Wire an infrastructure adapter in the composition root."
+                "OutputPreparerPort is not configured. Wire an infrastructure adapter in the composition root."
             )
 
         self._output_preparer.prepare(
@@ -677,7 +669,7 @@ class StudyProcessingUseCase:
 
             # Add supplemental domains
             for supp in result.supplementals:
-                if supp.domain_dataframe is not None:
+                if supp.domain_dataframe is not None and supp.config is not None:
                     supp_href = (
                         supp.xpt_path.relative_to(output_dir)
                         if supp.xpt_path
@@ -775,10 +767,11 @@ class StudyProcessingUseCase:
             ("RELSPEC", "relspec", "Related specimens scaffold"),
         ]:
             if _missing(code) and code not in scheduled:
+                kind_literal = cast("Literal['relrec', 'relsub', 'relspec']", kind)
                 jobs.append(
                     _SynthesisJob(
                         domain_code=code,
-                        kind=kind,
+                        kind=kind_literal,
                         reason=reason,
                     )
                 )
@@ -787,7 +780,7 @@ class StudyProcessingUseCase:
         return jobs
 
     def _fill_tsparm_labels(self, frame: pd.DataFrame) -> None:
-        if frame is None or frame.empty:
+        if frame.empty:
             return
         if "TSPARMCD" not in frame.columns or "TSPARM" not in frame.columns:
             return
@@ -866,7 +859,7 @@ class StudyProcessingUseCase:
 
         try:
             # Build dictionary of domain dataframes for RELREC service
-            domain_dataframes = {}
+            domain_dataframes: dict[str, pd.DataFrame] = {}
             for result in response.domain_results:
                 if (
                     result.domain_dataframe is not None
@@ -918,7 +911,7 @@ class StudyProcessingUseCase:
                 sas_dir=sas_dir,
             )
 
-            output_formats = set()
+            output_formats: set[str] = set()
             if "xpt" in request.output_formats:
                 output_formats.add("xpt")
             if "xml" in request.output_formats:
@@ -990,7 +983,7 @@ class StudyProcessingUseCase:
             # RELSUB relationships are often not inferable; if we have no rows,
             # do not generate empty output files and do not include the domain
             # in Define-XML inputs.
-            if relsub_df is None or relsub_df.empty:
+            if relsub_df.empty:
                 self.logger.verbose("RELSUB: no relationships detected; skipping")
                 return
 
@@ -1007,7 +1000,7 @@ class StudyProcessingUseCase:
                 lenient=lenient,
             )
 
-            if domain_dataframe is None or domain_dataframe.empty:
+            if domain_dataframe.empty:
                 self.logger.verbose("RELSUB: synthesized dataset is empty; skipping")
                 return
 
@@ -1036,7 +1029,7 @@ class StudyProcessingUseCase:
                 sas_dir=sas_dir,
             )
 
-            output_formats = set()
+            output_formats: set[str] = set()
             if "xpt" in request.output_formats:
                 output_formats.add("xpt")
             if "xml" in request.output_formats:
@@ -1151,7 +1144,7 @@ class StudyProcessingUseCase:
                 sas_dir=sas_dir,
             )
 
-            output_formats = set()
+            output_formats: set[str] = set()
             if "xpt" in request.output_formats:
                 output_formats.add("xpt")
             if "xml" in request.output_formats:
@@ -1249,8 +1242,7 @@ class StudyProcessingUseCase:
         """Get list of supported domains via DomainDefinitionRepositoryPort."""
         if self._domain_definition_repository is None:
             raise RuntimeError(
-                "DomainDefinitionRepositoryPort is not configured. "
-                "Wire an infrastructure adapter in the composition root."
+                "DomainDefinitionRepositoryPort is not configured. Wire an infrastructure adapter in the composition root."
             )
         return list(self._domain_definition_repository.list_domains())
 
@@ -1258,8 +1250,7 @@ class StudyProcessingUseCase:
         """Get domain definition via DomainDefinitionRepositoryPort."""
         if self._domain_definition_repository is None:
             raise RuntimeError(
-                "DomainDefinitionRepositoryPort is not configured. "
-                "Wire an infrastructure adapter in the composition root."
+                "DomainDefinitionRepositoryPort is not configured. Wire an infrastructure adapter in the composition root."
             )
         return self._domain_definition_repository.get_domain(domain_code)
 
@@ -1269,8 +1260,7 @@ class StudyProcessingUseCase:
             return self._study_data_repository.load_study_metadata(study_folder)
 
         raise RuntimeError(
-            "StudyDataRepositoryPort is not configured. "
-            "Wire an infrastructure adapter in the composition root."
+            "StudyDataRepositoryPort is not configured. Wire an infrastructure adapter in the composition root."
         )
 
     def _load_dataset(self, file_path: Path) -> pd.DataFrame:
@@ -1279,17 +1269,11 @@ class StudyProcessingUseCase:
             return self._study_data_repository.read_dataset(file_path)
 
         raise RuntimeError(
-            "StudyDataRepositoryPort is not configured. "
-            "Wire an infrastructure adapter in the composition root."
+            "StudyDataRepositoryPort is not configured. Wire an infrastructure adapter in the composition root."
         )
 
     def _get_domain_discovery_service(self):
         """Get injected domain discovery service."""
-        if self._domain_discovery_service is None:
-            raise RuntimeError(
-                "DomainDiscoveryPort is not configured. "
-                "Wire it in the composition root (DependencyContainer)."
-            )
         return self._domain_discovery_service
 
     def _get_domain_processing_use_case(self):
@@ -1298,35 +1282,19 @@ class StudyProcessingUseCase:
             return self._domain_processing_use_case
 
         raise RuntimeError(
-            "DomainProcessingUseCase is not configured. "
-            "Wire it in the composition root (DependencyContainer)."
+            "DomainProcessingUseCase is not configured. Wire it in the composition root (DependencyContainer)."
         )
 
     def _get_relrec_service(self):
         """Get injected RELREC service."""
-        if self._relrec_service is None:
-            raise RuntimeError(
-                "RelrecService is not configured. "
-                "Wire it in the composition root (DependencyContainer)."
-            )
         return self._relrec_service
 
     def _get_relsub_service(self):
         """Get injected RELSUB service."""
-        if self._relsub_service is None:
-            raise RuntimeError(
-                "RelsubService is not configured. "
-                "Wire it in the composition root (DependencyContainer)."
-            )
         return self._relsub_service
 
     def _get_relspec_service(self):
         """Get injected RELSPEC service."""
-        if self._relspec_service is None:
-            raise RuntimeError(
-                "RelspecService is not configured. "
-                "Wire it in the composition root (DependencyContainer)."
-            )
         return self._relspec_service
 
     def _generate_synthesis_files(

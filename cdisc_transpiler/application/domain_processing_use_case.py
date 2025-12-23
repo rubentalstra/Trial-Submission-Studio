@@ -107,7 +107,7 @@ class DomainProcessingUseCase:
         domain_definition_repository: DomainDefinitionRepositoryPort | None = None,
         xpt_writer: XPTWriterPort | None = None,
         ct_repository: CTRepositoryPort | None = None,
-    ):
+    ) -> None:
         """Initialize the use case with injected dependencies.
 
         Args:
@@ -115,32 +115,29 @@ class DomainProcessingUseCase:
             study_data_repository: Repository for loading study data files
             file_generator: Generator for output files (XPT, XML, SAS)
         """
+        super().__init__()
         self.logger = logger
         self._study_data_repository = study_data_repository
         self._file_generator = file_generator
         if mapping_service is None:
             raise RuntimeError(
-                "MappingPort is not configured. "
-                "Wire an infrastructure adapter in the composition root."
+                "MappingPort is not configured. Wire an infrastructure adapter in the composition root."
             )
         self._mapping_service = mapping_service
         self._output_preparer = output_preparer
         if domain_frame_builder is None:
             raise RuntimeError(
-                "DomainFrameBuilderPort is not configured. "
-                "Wire an infrastructure adapter in the composition root."
+                "DomainFrameBuilderPort is not configured. Wire an infrastructure adapter in the composition root."
             )
         self._domain_frame_builder = domain_frame_builder
         if suppqual_service is None:
             raise RuntimeError(
-                "SuppqualPort is not configured. "
-                "Wire an infrastructure adapter in the composition root."
+                "SuppqualPort is not configured. Wire an infrastructure adapter in the composition root."
             )
         self._suppqual_service = suppqual_service
         if terminology_service is None:
             raise RuntimeError(
-                "TerminologyPort is not configured. "
-                "Wire an infrastructure adapter in the composition root."
+                "TerminologyPort is not configured. Wire an infrastructure adapter in the composition root."
             )
         self._terminology_service = terminology_service
         self._domain_definition_repository = domain_definition_repository
@@ -449,8 +446,7 @@ class DomainProcessingUseCase:
             return self._study_data_repository.read_dataset(file_path)
 
         raise RuntimeError(
-            "StudyDataRepositoryPort is not configured. "
-            "Wire an infrastructure adapter in the composition root."
+            "StudyDataRepositoryPort is not configured. Wire an infrastructure adapter in the composition root."
         )
 
     def _should_skip_vstat(
@@ -571,15 +567,15 @@ class DomainProcessingUseCase:
 
         # Pinnacle 21 SD0046: ensure QLABEL is consistent per QNAM.
         if supp_df is not None and {"QNAM", "QLABEL"} <= set(supp_df.columns):
-            qnam = supp_df["QNAM"].astype("string").fillna("")
-            qlabel = supp_df["QLABEL"].astype("string").fillna("")
+            qnam: pd.Series = supp_df["QNAM"].astype("string").fillna("")
+            qlabel: pd.Series = supp_df["QLABEL"].astype("string").fillna("")
 
             canonical: dict[str, str] = {}
             for name in qnam.unique():
                 if not str(name).strip():
                     continue
-                labels = qlabel.loc[qnam == name]
-                first_non_empty = next((v for v in labels if str(v).strip()), "")
+                labels: pd.Series = qlabel.loc[qnam == name]
+                first_non_empty = next((str(v) for v in labels if str(v).strip()), "")
                 canonical[str(name)] = first_non_empty.strip() or str(name)
 
             if canonical:
@@ -673,7 +669,7 @@ class DomainProcessingUseCase:
         # Use FileGeneratorPort if available
         if self._file_generator is not None:
             # Determine output formats
-            formats = set()
+            formats: set[str] = set()
             xpt_dir = request.output_dirs.get("xpt")
             xml_dir = request.output_dirs.get("xml")
             sas_dir = request.output_dirs.get("sas")
@@ -794,7 +790,7 @@ class DomainProcessingUseCase:
 
         # Use FileGeneratorPort if available
         if self._file_generator is not None:
-            formats = set()
+            formats: set[str] = set()
             xpt_dir = output_dirs.get("xpt")
             xml_dir = output_dirs.get("xml")
 
@@ -821,7 +817,7 @@ class DomainProcessingUseCase:
 
                 if output_result.xml_path:
                     supp_result["xml_path"] = output_result.xml_path
-                    supp_result["xml_path"] = output_result.xml_path.name
+                    supp_result["xml_filename"] = output_result.xml_path.name
 
         return supp_result
 
@@ -831,8 +827,7 @@ class DomainProcessingUseCase:
         """Get SDTM domain definition."""
         if self._domain_definition_repository is None:
             raise RuntimeError(
-                "DomainDefinitionRepositoryPort is not configured. "
-                "Wire an infrastructure adapter in the composition root."
+                "DomainDefinitionRepositoryPort is not configured. Wire an infrastructure adapter in the composition root."
             )
         return self._domain_definition_repository.get_domain(domain_code)
 

@@ -18,7 +18,10 @@ from ...domain.services.mapping import create_mapper
 
 
 class MappingServiceAdapter(MappingPort):
-    def __init__(self, *, domain_definition_repository: DomainDefinitionRepositoryPort):
+    def __init__(
+        self, *, domain_definition_repository: DomainDefinitionRepositoryPort
+    ) -> None:
+        super().__init__()
         self._domain_definition_repository = domain_definition_repository
 
     @override

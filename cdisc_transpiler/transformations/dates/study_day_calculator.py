@@ -10,6 +10,8 @@ SDTM Study Day Calculation Rules:
 - Missing dates result in missing study day
 """
 
+from typing import cast
+
 import pandas as pd
 
 from ..base import TransformationContext, TransformationResult
@@ -48,9 +50,9 @@ class StudyDayCalculator:
         ...     data_with_dy = result.data
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the study day calculator transformer."""
-        pass
+        super().__init__()
 
     def can_transform(self, df: pd.DataFrame, domain: str) -> bool:
         """Check if transformer applies to this data.
@@ -83,8 +85,8 @@ class StudyDayCalculator:
         transformed_df = df.copy()
 
         # Get reference start dates from context metadata
-        reference_starts = (
-            context.metadata.get("reference_starts", {}) if context.metadata else {}
+        reference_starts = cast(
+            "dict[str, str]", context.metadata.get("reference_starts", {})
         )
 
         if not reference_starts:
@@ -105,7 +107,7 @@ class StudyDayCalculator:
                 warnings=["Study day calculation requires USUBJID column"],
             )
 
-        dy_columns_calculated = []
+        dy_columns_calculated: list[str] = []
 
         # Find all --DY columns and calculate them
         for col in transformed_df.columns:
@@ -118,14 +120,16 @@ class StudyDayCalculator:
                     continue
 
                 # Calculate study day for each row
-                transformed_df[col] = transformed_df.apply(
-                    lambda row: self._compute_dy_for_row(
-                        row.get("USUBJID"),
-                        row.get(dtc_col),
+                def _compute_row(row: pd.Series) -> int | None:
+                    usubjid = row.get("USUBJID")
+                    dtc = row.get(dtc_col)
+                    return self._compute_dy_for_row(
+                        str(usubjid) if pd.notna(usubjid) else None,
+                        str(dtc) if pd.notna(dtc) else None,
                         reference_starts,
-                    ),
-                    axis=1,
-                )
+                    )
+
+                transformed_df[col] = transformed_df.apply(_compute_row, axis=1)
 
                 dy_columns_calculated.append(col)
 

@@ -26,9 +26,17 @@ Example:
 """
 
 from dataclasses import dataclass, field
-from typing import Any, Protocol
+from typing import Protocol
 
 import pandas as pd
+
+
+def _empty_str_list() -> list[str]:
+    return []
+
+
+def _empty_metadata() -> dict[str, object]:
+    return {}
 
 
 @dataclass
@@ -56,9 +64,9 @@ class TransformationContext:
     domain: str
     study_id: str | None = None
     source_file: str | None = None
-    metadata: dict[str, Any] = field(default_factory=dict)
+    metadata: dict[str, object] = field(default_factory=_empty_metadata)
 
-    def with_metadata(self, **kwargs: Any) -> TransformationContext:
+    def with_metadata(self, **kwargs: object) -> TransformationContext:
         """Create a new context with additional metadata.
 
         Args:
@@ -71,7 +79,7 @@ class TransformationContext:
             >>> context = TransformationContext(domain="LB")
             >>> new_context = context.with_metadata(test_type="chemistry")
         """
-        new_metadata = {**self.metadata, **kwargs}
+        new_metadata: dict[str, object] = {**self.metadata, **kwargs}
         return TransformationContext(
             domain=self.domain,
             study_id=self.study_id,
@@ -107,19 +115,19 @@ class TransformationResult:
     data: pd.DataFrame
     applied: bool = True
     message: str = ""
-    warnings: list[str] = field(default_factory=list)
-    errors: list[str] = field(default_factory=list)
-    metadata: dict[str, Any] = field(default_factory=dict)
+    warnings: list[str] = field(default_factory=_empty_str_list)
+    errors: list[str] = field(default_factory=_empty_str_list)
+    metadata: dict[str, object] = field(default_factory=_empty_metadata)
 
     @property
     def success(self) -> bool:
         """Whether transformation completed without errors."""
-        return self.applied and (self.errors is None or len(self.errors) == 0)
+        return self.applied and len(self.errors) == 0
 
     @property
     def has_warnings(self) -> bool:
         """Whether transformation generated any warnings."""
-        return self.warnings is not None and len(self.warnings) > 0
+        return len(self.warnings) > 0
 
     def add_warning(self, warning: str) -> None:
         """Add a warning message.
@@ -148,7 +156,7 @@ class TransformationResult:
             Transformation applied: Converted wide to long format
             Warnings (1): Column 'AGE' has missing values
         """
-        lines = []
+        lines: list[str] = []
         if self.message:
             status = "applied" if self.applied else "skipped"
             lines.append(f"Transformation {status}: {self.message}")
@@ -239,7 +247,7 @@ class TransformerPort(Protocol):
         ...
 
 
-def is_transformer(obj: Any) -> bool:
+def is_transformer(obj: object) -> bool:
     """Check if an object implements the TransformerPort protocol.
 
     This function performs runtime checking to verify that an object
@@ -261,9 +269,6 @@ def is_transformer(obj: Any) -> bool:
         >>> is_transformer("not a transformer")
         False
     """
-    return (
-        hasattr(obj, "can_transform")
-        and callable(obj.can_transform)
-        and hasattr(obj, "transform")
-        and callable(obj.transform)
-    )
+    can_transform = getattr(obj, "can_transform", None)
+    transform = getattr(obj, "transform", None)
+    return callable(can_transform) and callable(transform)

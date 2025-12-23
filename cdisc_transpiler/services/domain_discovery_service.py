@@ -33,12 +33,13 @@ class DomainDiscoveryService:
         3. Metadata files are automatically skipped (CodeLists, Items, etc.)
     """
 
-    def __init__(self, logger: LoggerPort | None = None):
+    def __init__(self, logger: LoggerPort | None = None) -> None:
         """Initialize the domain discovery service.
 
         Args:
             logger: Optional logger for verbose output. If None, logging is silently skipped.
         """
+        super().__init__()
         self._logger = logger
         self._match_stats = {
             "total_files": 0,
@@ -117,8 +118,7 @@ class DomainDiscoveryService:
                 category = get_domain_class(matched_domain)
                 match_type = "exact" if variant_name == matched_domain else "variant"
                 self._log_verbose(
-                    f"Matched {csv_file.name} → {matched_domain} "
-                    f"(variant: {variant_name}, type: {match_type}, category: {category})"
+                    f"Matched {csv_file.name} → {matched_domain} (variant: {variant_name}, type: {match_type}, category: {category})"
                 )
             else:
                 self._match_stats["unmatched_files"] += 1
@@ -135,8 +135,7 @@ class DomainDiscoveryService:
         # Log detailed summary
         stats = self._match_stats
         self._log_verbose(
-            f"File discovery complete: {stats['matched_files']}/{stats['total_files']} "
-            f"files matched to {len(domain_files)} domains"
+            f"File discovery complete: {stats['matched_files']}/{stats['total_files']} files matched to {len(domain_files)} domains"
         )
 
         if stats["skipped_metadata"] > 0:

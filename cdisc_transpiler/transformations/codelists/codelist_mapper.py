@@ -4,10 +4,11 @@ This module provides a transformer that maps coded values to their text equivale
 using codelist definitions from study metadata or CDISC Controlled Terminology.
 """
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, cast
 
 import pandas as pd
 
+from ...domain.entities.study_metadata import CodeList
 from ..base import TransformationContext, TransformationResult
 
 if TYPE_CHECKING:
@@ -60,13 +61,14 @@ class CodelistMapperTransformer:
         2    Male
     """
 
-    def __init__(self, metadata: StudyMetadata | None = None):
+    def __init__(self, metadata: StudyMetadata | None = None) -> None:
         """Initialize the codelist mapper transformer.
 
         Args:
             metadata: Optional study metadata containing codelist definitions.
                      If None, transformer will pass through values unchanged.
         """
+        super().__init__()
         self.metadata = metadata
 
     def can_transform(self, df: pd.DataFrame, domain: str) -> bool:
@@ -121,8 +123,10 @@ class CodelistMapperTransformer:
             )
 
         # Extract mapping configuration from context
-        codelist_mappings = context.metadata.get("codelist_mappings", {})
-        code_columns = context.metadata.get("code_columns", {})
+        codelist_mappings = cast(
+            "dict[str, str]", context.metadata.get("codelist_mappings", {})
+        )
+        code_columns = cast("dict[str, str]", context.metadata.get("code_columns", {}))
 
         if not codelist_mappings:
             return TransformationResult(
@@ -132,9 +136,9 @@ class CodelistMapperTransformer:
             )
 
         result_df = df.copy()
-        applied_mappings = []
-        skipped_mappings = []
-        warnings = []
+        applied_mappings: list[str] = []
+        skipped_mappings: list[str] = []
+        warnings: list[str] = []
 
         for column, codelist_name in codelist_mappings.items():
             if column not in result_df.columns:
@@ -192,7 +196,7 @@ class CodelistMapperTransformer:
             },
         )
 
-    def _map_column(self, series: pd.Series, codelist: Any) -> pd.Series:
+    def _map_column(self, series: pd.Series, codelist: CodeList) -> pd.Series:
         """Map a series using a codelist.
 
         Args:
@@ -213,10 +217,10 @@ class CodelistMapperTransformer:
             # If not found in codelist, return as-is
             return val
 
-        return series.apply(transform_value)
+        return series.map(transform_value)
 
     def _map_column_with_code_source(
-        self, code_series: pd.Series, codelist: Any
+        self, code_series: pd.Series, codelist: CodeList
     ) -> pd.Series:
         """Map a series using codes from another column.
 
@@ -234,4 +238,4 @@ class CodelistMapperTransformer:
             text = codelist.get_text(code_val)
             return text if text is not None else str(code_val)
 
-        return code_series.apply(transform_code)
+        return code_series.map(transform_code)

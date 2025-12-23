@@ -13,9 +13,10 @@ from ...application.ports import DomainDiscoveryPort, LoggerPort
 
 
 class DomainDiscoveryServiceAdapter(DomainDiscoveryPort):
-    def __init__(self, *, logger: LoggerPort):
+    def __init__(self, *, logger: LoggerPort) -> None:
         from ...services.domain_discovery_service import DomainDiscoveryService
 
+        super().__init__()
         self._delegate = DomainDiscoveryService(logger=logger)
 
     @override

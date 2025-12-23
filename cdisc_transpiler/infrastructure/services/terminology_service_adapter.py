@@ -3,6 +3,7 @@
 from typing import override
 
 from ...application.ports import TerminologyPort
+from ...domain.entities.controlled_terminology import ControlledTerminology
 
 
 def _looks_like_code_value(text: str) -> bool:
@@ -31,7 +32,9 @@ def _get_variable_codelist_code(domain_code: str, variable_name: str) -> str | N
     return None
 
 
-def _normalize_to_submission_value(ct, source_value: str) -> str | None:
+def _normalize_to_submission_value(
+    ct: ControlledTerminology, source_value: str
+) -> str | None:
     if not source_value:
         return None
     source_upper = source_value.upper().strip()
@@ -45,7 +48,7 @@ def _normalize_to_submission_value(ct, source_value: str) -> str | None:
 
     # Preferred Term exact match (case-insensitive)
     # CT stores preferred_terms as canonical -> preferred term.
-    for canonical, preferred in (ct.preferred_terms or {}).items():
+    for canonical, preferred in ct.preferred_terms.items():
         if preferred and preferred.strip().upper() == source_upper:
             return canonical
 
@@ -64,7 +67,7 @@ def _normalize_to_submission_value(ct, source_value: str) -> str | None:
                     best = submission
                     best_dist = dist
                     tied = False
-                elif best_dist is not None and dist == best_dist:
+                elif dist == best_dist:
                     tied = True
 
             if best is not None and best_dist == 1 and not tied:

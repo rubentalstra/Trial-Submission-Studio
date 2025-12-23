@@ -43,8 +43,9 @@ class ISODateFormatter:
         ...     formatted_data = result.data
     """
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize the ISO date formatter transformer."""
+        super().__init__()
 
     def can_transform(self, df: pd.DataFrame, domain: str) -> bool:
         """Check if transformer applies to this data.
@@ -76,8 +77,8 @@ class ISODateFormatter:
         _ = context
         transformed_df = df.copy()
 
-        dtc_columns = []
-        dur_columns = []
+        dtc_columns: list[str] = []
+        dur_columns: list[str] = []
 
         # Find and normalize DTC columns
         for col in transformed_df.columns:
@@ -102,7 +103,7 @@ class ISODateFormatter:
                 message="No date/time or duration columns found",
             )
 
-        message_parts = []
+        message_parts: list[str] = []
         if dtc_columns:
             message_parts.append(f"{len(dtc_columns)} date/time columns")
         if dur_columns:

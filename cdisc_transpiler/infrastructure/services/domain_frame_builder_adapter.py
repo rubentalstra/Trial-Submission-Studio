@@ -1,16 +1,24 @@
 """Infrastructure adapter for building SDTM domain dataframes."""
 
-from typing import override
+from typing import cast, override
 
 import pandas as pd
 
 from ...application.ports import DomainFrameBuilderPort
 from ...application.ports.repositories import CTRepositoryPort
+from ...domain.entities.controlled_terminology import ControlledTerminology
 from ...domain.entities.mapping import MappingConfig
 from ...domain.entities.sdtm_domain import SDTMDomain
 from ...domain.entities.study_metadata import StudyMetadata
-from ...domain.services.domain_frame_builder import build_domain_dataframe
-from ...domain.services.domain_processors import get_domain_processor
+from ...domain.services.domain_frame_builder import (
+    TransformerRegistry,
+    ValidatorRegistry,
+    build_domain_dataframe,
+)
+from ...domain.services.domain_processors import (
+    BaseDomainProcessor,
+    get_domain_processor,
+)
 from ...domain.services.transformers import (
     CodelistTransformer,
     DateTransformer,
@@ -21,6 +29,7 @@ from .xpt_validator import XPTValidator
 
 class DomainFrameBuilderAdapter(DomainFrameBuilderPort):
     def __init__(self, *, ct_repository: CTRepositoryPort | None = None) -> None:
+        super().__init__()
         self._ct_repository = ct_repository
 
     @override
@@ -34,8 +43,11 @@ class DomainFrameBuilderAdapter(DomainFrameBuilderPort):
         lenient: bool = False,
         metadata: StudyMetadata | None = None,
     ) -> pd.DataFrame:
-        validators = {"xpt": XPTValidator()} if not lenient else None
-        transformers = {
+        validators: ValidatorRegistry | None = None
+        if not lenient:
+            validators = cast("ValidatorRegistry", {"xpt": XPTValidator()})
+
+        transformers: TransformerRegistry = {
             "date": DateTransformer,
             "codelist": CodelistTransformer,
             "numeric": NumericTransformer,
@@ -45,10 +57,12 @@ class DomainFrameBuilderAdapter(DomainFrameBuilderPort):
             dom: SDTMDomain,
             ref_starts: dict[str, str] | None,
             meta: StudyMetadata | None,
-        ):
+        ) -> BaseDomainProcessor:
             ct_repository = self._ct_repository
 
-            def ct_resolver(codelist_code: str | None, variable: str | None):
+            def ct_resolver(
+                codelist_code: str | None, variable: str | None
+            ) -> ControlledTerminology | None:
                 if ct_repository is None:
                     return None
                 if codelist_code:

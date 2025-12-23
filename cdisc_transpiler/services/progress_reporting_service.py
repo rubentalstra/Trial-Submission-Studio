@@ -21,13 +21,14 @@ class ProgressReportingService:
     status messages, and summary reporting during study processing.
     """
 
-    def __init__(self, verbose: int = 0, logger: LoggerPort | None = None):
+    def __init__(self, verbose: int = 0, logger: LoggerPort | None = None) -> None:
         """Initialize the progress reporting service.
 
         Args:
             verbose: Verbosity level (0 = normal, 1+ = verbose)
             logger: Optional logger for verbose output. If None, logging is silently skipped.
         """
+        super().__init__()
         self.console = Console()
         self.verbose = verbose
         self._logger = logger

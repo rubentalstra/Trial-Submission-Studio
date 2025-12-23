@@ -10,8 +10,8 @@ SDTM Reference:
     Findings) and include Identifier, Topic, Timing, and Qualifier roles.
 """
 
-from collections.abc import Callable
-from typing import TYPE_CHECKING
+from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING, Protocol, TypedDict
 
 import pandas as pd
 
@@ -20,10 +20,84 @@ from ..entities.sdtm_domain import SDTMDomain, SDTMVariable
 if TYPE_CHECKING:
     from ..entities.mapping import ColumnMapping, MappingConfig
     from ..entities.study_metadata import StudyMetadata
+    from .domain_processors.base import BaseDomainProcessor
+    from .transformers.codelist import CTResolver
 
 
 class DomainFrameBuildError(RuntimeError):
     """Raised when domain DataFrame construction fails."""
+
+
+class DateTransformerPort(Protocol):
+    @staticmethod
+    def normalize_dates(
+        frame: pd.DataFrame, domain_variables: Sequence[SDTMVariable]
+    ) -> None: ...
+
+    @staticmethod
+    def normalize_durations(
+        frame: pd.DataFrame, domain_variables: Sequence[SDTMVariable]
+    ) -> None: ...
+
+    @staticmethod
+    def calculate_dy(
+        frame: pd.DataFrame,
+        domain_variables: Sequence[SDTMVariable],
+        reference_starts: dict[str, str],
+    ) -> None: ...
+
+
+class NumericTransformerPort(Protocol):
+    @staticmethod
+    def populate_stresc_from_orres(frame: pd.DataFrame, domain_code: str) -> None: ...
+
+
+class CodelistTransformerPort(Protocol):
+    def __init__(self, metadata: StudyMetadata | None = None) -> None: ...
+
+    def apply_codelist_transformation(
+        self,
+        source_data: object,
+        codelist_name: str,
+        code_column: str | None = None,
+        source_frame: pd.DataFrame | None = None,
+        unquote_func: Callable[[str], str] | None = None,
+    ) -> pd.Series: ...
+
+    @staticmethod
+    def apply_codelist_validations(
+        frame: pd.DataFrame,
+        domain_variables: Sequence[SDTMVariable],
+        *,
+        ct_resolver: CTResolver | None = None,
+    ) -> None: ...
+
+
+class DomainFrameValidatorPort(Protocol):
+    def drop_empty_optional_columns(
+        self, frame: pd.DataFrame, domain_variables: Sequence[SDTMVariable]
+    ) -> None: ...
+
+    def enforce_required_values(
+        self,
+        frame: pd.DataFrame,
+        domain_variables: Sequence[SDTMVariable],
+        lenient: bool,
+    ) -> None: ...
+
+    def enforce_lengths(
+        self, frame: pd.DataFrame, domain_variables: Sequence[SDTMVariable]
+    ) -> None: ...
+
+
+class TransformerRegistry(TypedDict, total=False):
+    date: DateTransformerPort
+    codelist: type[CodelistTransformerPort]
+    numeric: NumericTransformerPort
+
+
+class ValidatorRegistry(TypedDict, total=False):
+    xpt: DomainFrameValidatorPort
 
 
 def build_domain_dataframe(
@@ -34,9 +108,12 @@ def build_domain_dataframe(
     reference_starts: dict[str, str] | None = None,
     lenient: bool = False,
     metadata: StudyMetadata | None = None,
-    domain_processor_factory: Callable | None = None,
-    transformers: dict | None = None,
-    validators: dict | None = None,
+    domain_processor_factory: Callable[
+        [SDTMDomain, dict[str, str] | None, StudyMetadata | None], BaseDomainProcessor
+    ]
+    | None = None,
+    transformers: TransformerRegistry | None = None,
+    validators: ValidatorRegistry | None = None,
 ) -> pd.DataFrame:
     """Build an SDTM-compliant domain DataFrame from source data.
 
@@ -98,9 +175,13 @@ class DomainFrameBuilder:
         reference_starts: dict[str, str] | None = None,
         lenient: bool = False,
         metadata: StudyMetadata | None = None,
-        domain_processor_factory: Callable | None = None,
-        transformers: dict | None = None,
-        validators: dict | None = None,
+        domain_processor_factory: Callable[
+            [SDTMDomain, dict[str, str] | None, StudyMetadata | None],
+            BaseDomainProcessor,
+        ]
+        | None = None,
+        transformers: TransformerRegistry | None = None,
+        validators: ValidatorRegistry | None = None,
     ) -> None:
         """Initialize the builder.
 
@@ -124,12 +205,12 @@ class DomainFrameBuilder:
         self.lenient = lenient
         self.metadata = metadata
         self._domain_processor_factory = domain_processor_factory
-        self._transformers = transformers or {}
-        self._validators = validators or {}
+        self._transformers: TransformerRegistry = transformers or {}
+        self._validators: ValidatorRegistry = validators or {}
 
         # Initialize codelist transformer if provided
         codelist_transformer_cls = self._transformers.get("codelist")
-        self.codelist_transformer = (
+        self.codelist_transformer: CodelistTransformerPort | None = (
             codelist_transformer_cls(metadata) if codelist_transformer_cls else None
         )
 
