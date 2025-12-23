@@ -20,21 +20,17 @@ from typing import TYPE_CHECKING
 
 from rich.console import Console
 
-from ..application.ports.repositories import (
-    CTRepositoryPort,
-    DomainDefinitionRepositoryPort,
-    StudyDataRepositoryPort,
+from ..application.domain_processing_use_case import (
+    DomainProcessingDependencies,
+    DomainProcessingUseCase,
 )
-from ..application.ports.services import (
-    ConformanceReportWriterPort,
-    DatasetOutputPort,
-    DefineXMLGeneratorPort,
-    DomainFrameBuilderPort,
-    LoggerPort,
-    MappingPort,
-    OutputPreparerPort,
-    SuppqualPort,
+from ..application.study_processing_use_case import (
+    StudyProcessingDependencies,
+    StudyProcessingUseCase,
 )
+from ..domain.services.relrec_service import RelrecService
+from ..domain.services.relspec_service import RelspecService
+from ..domain.services.relsub_service import RelsubService
 from .io.csv_reader import CSVReader
 from .io.dataset_output import DatasetOutputAdapter
 from .io.dataset_xml_writer import DatasetXMLWriter
@@ -44,14 +40,31 @@ from .io.sas_writer import SASWriter
 from .io.xpt_writer import XPTWriter
 from .logging.console_logger import ConsoleLogger
 from .logging.null_logger import NullLogger
+from .repositories.ct_repository import get_default_ct_repository
 from .repositories.domain_definition_repository import DomainDefinitionRepository
 from .repositories.study_data_repository import StudyDataRepository
+from .services.conformance_report_writer_adapter import ConformanceReportWriterAdapter
+from .services.domain_discovery_adapter import DomainDiscoveryAdapter
+from .services.domain_frame_builder_adapter import DomainFrameBuilderAdapter
 from .services.mapping_service_adapter import MappingServiceAdapter
+from .services.suppqual_service_adapter import SuppqualServiceAdapter
 
 if TYPE_CHECKING:
-    from ..domain.services.relrec_service import RelrecService
-    from ..domain.services.relspec_service import RelspecService
-    from ..domain.services.relsub_service import RelsubService
+    from ..application.ports.repositories import (
+        CTRepositoryPort,
+        DomainDefinitionRepositoryPort,
+        StudyDataRepositoryPort,
+    )
+    from ..application.ports.services import (
+        ConformanceReportWriterPort,
+        DatasetOutputPort,
+        DefineXMLGeneratorPort,
+        DomainFrameBuilderPort,
+        LoggerPort,
+        MappingPort,
+        OutputPreparerPort,
+        SuppqualPort,
+    )
 
 
 class DependencyContainer:
@@ -247,8 +260,6 @@ class DependencyContainer:
     def create_domain_frame_builder(self) -> DomainFrameBuilderPort:
         """Create or return cached domain frame builder adapter (singleton)."""
         if self._domain_frame_builder_instance is None:
-            from .services.domain_frame_builder_adapter import DomainFrameBuilderAdapter
-
             self._domain_frame_builder_instance = DomainFrameBuilderAdapter(
                 ct_repository=self.create_ct_repository()
             )
@@ -257,56 +268,42 @@ class DependencyContainer:
     def create_suppqual_service(self) -> SuppqualPort:
         """Create or return cached SUPPQUAL adapter (singleton)."""
         if self._suppqual_service_instance is None:
-            from .services.suppqual_service_adapter import SuppqualServiceAdapter
-
             self._suppqual_service_instance = SuppqualServiceAdapter()
         return self._suppqual_service_instance
 
     def create_ct_repository(self) -> CTRepositoryPort:
         """Create or return cached Controlled Terminology repository (singleton)."""
         if self._ct_repository_instance is None:
-            from .repositories.ct_repository import get_default_ct_repository
-
             self._ct_repository_instance = get_default_ct_repository()
         return self._ct_repository_instance
 
     def create_conformance_report_writer(self) -> ConformanceReportWriterPort:
         """Create or return cached conformance report writer (singleton)."""
         if self._conformance_report_writer_instance is None:
-            from .services.conformance_report_writer_adapter import (
-                ConformanceReportWriterAdapter,
-            )
-
             self._conformance_report_writer_instance = ConformanceReportWriterAdapter()
         return self._conformance_report_writer_instance
 
     def create_relrec_service(self) -> RelrecService:
         """Create or return cached RELREC service instance (singleton)."""
         if self._relrec_service_instance is None:
-            from ..domain.services.relrec_service import RelrecService
-
             self._relrec_service_instance = RelrecService()
         return self._relrec_service_instance
 
     def create_relsub_service(self) -> RelsubService:
         """Create or return cached RELSUB service instance (singleton)."""
         if self._relsub_service_instance is None:
-            from ..domain.services.relsub_service import RelsubService
-
             self._relsub_service_instance = RelsubService()
         return self._relsub_service_instance
 
     def create_relspec_service(self) -> RelspecService:
         """Create or return cached RELSPEC service instance (singleton)."""
         if self._relspec_service_instance is None:
-            from ..domain.services.relspec_service import RelspecService
-
             self._relspec_service_instance = RelspecService()
         return self._relspec_service_instance
 
     # Application Use Cases
 
-    def create_study_processing_use_case(self):
+    def create_study_processing_use_case(self) -> StudyProcessingUseCase:
         """Create a new study processing use case instance (transient).
 
         Returns a new instance each time with all dependencies wired.
@@ -318,13 +315,6 @@ class DependencyContainer:
             >>> use_case = container.create_study_processing_use_case()
             >>> response = use_case.execute(request)
         """
-        # Import here to avoid circular import at module level
-        from ..application.study_processing_use_case import (
-            StudyProcessingDependencies,
-            StudyProcessingUseCase,
-        )
-        from .services.domain_discovery_adapter import DomainDiscoveryAdapter
-
         logger = self.create_logger()
         study_data_repository = self.create_study_data_repository()
         dataset_output = self.create_dataset_output()
@@ -358,7 +348,7 @@ class DependencyContainer:
         )
         return StudyProcessingUseCase(dependencies)
 
-    def create_domain_processing_use_case(self):
+    def create_domain_processing_use_case(self) -> DomainProcessingUseCase:
         """Create a new domain processing use case instance (transient).
 
         Returns a new instance each time with all dependencies wired.
@@ -370,12 +360,6 @@ class DependencyContainer:
             >>> use_case = container.create_domain_processing_use_case()
             >>> response = use_case.execute(request)
         """
-        # Import here to avoid circular import at module level
-        from ..application.domain_processing_use_case import (
-            DomainProcessingDependencies,
-            DomainProcessingUseCase,
-        )
-
         logger = self.create_logger()
         study_data_repository = self.create_study_data_repository()
         dataset_output = self.create_dataset_output()

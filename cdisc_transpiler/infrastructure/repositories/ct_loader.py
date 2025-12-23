@@ -7,12 +7,14 @@ filesystem I/O and depends on the CT CSV file layout.
 """
 
 import math
-from pathlib import Path
-from typing import Any, cast
+from typing import TYPE_CHECKING, Any, cast
 
 import pandas as pd
 
 from ...domain.entities.controlled_terminology import ControlledTerminology
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _split_synonyms(raw: str | None) -> list[str]:

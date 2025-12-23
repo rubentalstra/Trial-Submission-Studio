@@ -5,11 +5,14 @@ These are pure data containers with no business logic.
 """
 
 from dataclasses import dataclass
-from pathlib import Path
+from typing import TYPE_CHECKING
 
-import pandas as pd
+if TYPE_CHECKING:
+    from pathlib import Path
 
-from cdisc_transpiler.domain.entities.mapping import MappingConfig
+    import pandas as pd
+
+    from cdisc_transpiler.domain.entities.mapping import MappingConfig
 
 
 class DefineGenerationError(RuntimeError):

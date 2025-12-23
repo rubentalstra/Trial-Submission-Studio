@@ -6,14 +6,17 @@ clean repository interface with configurable paths and caching.
 
 from functools import lru_cache
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from ...application.ports.repositories import CTRepositoryPort
 from ...config import TranspilerConfig
-from ...domain.entities.controlled_terminology import ControlledTerminology
 from ..caching.memory_cache import MemoryCache
 from .ct_loader import build_registry
 
 _DEFAULT_CT_CACHE = MemoryCache()
+
+if TYPE_CHECKING:
+    from ...domain.entities.controlled_terminology import ControlledTerminology
 
 
 class CTRepository:

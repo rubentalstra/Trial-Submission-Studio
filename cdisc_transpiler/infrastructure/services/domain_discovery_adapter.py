@@ -1,10 +1,16 @@
 """Infrastructure adapter for SDTM domain file discovery."""
 
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
-from ...application.ports.services import DomainDiscoveryPort, LoggerPort
+from ...application.ports.services import DomainDiscoveryPort
 from ..sdtm_spec.registry import get_domain_class
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+    from ...application.ports.services import LoggerPort
+
+UNMATCHED_PREVIEW_LIMIT = 5
 
 
 class DomainDiscoveryAdapter(DomainDiscoveryPort):
@@ -97,8 +103,8 @@ class DomainDiscoveryAdapter(DomainDiscoveryPort):
 
         if unmatched:
             self._log_verbose(
-                f"  Unmatched files ({len(unmatched)}): {', '.join(unmatched[:5])}"
-                + ("..." if len(unmatched) > 5 else "")
+                f"  Unmatched files ({len(unmatched)}): {', '.join(unmatched[:UNMATCHED_PREVIEW_LIMIT])}"
+                + ("..." if len(unmatched) > UNMATCHED_PREVIEW_LIMIT else "")
             )
 
         return domain_files

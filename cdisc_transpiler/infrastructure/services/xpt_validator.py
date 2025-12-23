@@ -7,11 +7,14 @@ It is designed to be injected into the domain frame builder (domain layer)
 as a collaborator.
 """
 
-from collections.abc import Sequence
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
-from ...domain.entities.sdtm_domain import SDTMVariable
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from ...domain.entities.sdtm_domain import SDTMVariable
 
 
 class XPTValidator:

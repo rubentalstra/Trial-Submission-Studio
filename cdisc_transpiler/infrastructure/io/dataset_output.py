@@ -11,17 +11,19 @@ Key Features:
 - Dependency injection of writer adapters
 """
 
-from pathlib import Path
 from typing import TYPE_CHECKING
 
-import pandas as pd
-
-from ...application.models import DatasetOutputRequest, DatasetOutputResult
+from ...application.models import DatasetOutputResult
 from .dataset_xml_writer import DatasetXMLError
 from .sas_writer import SASWriterError
 from .xpt_writer import XportGenerationError
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
+    import pandas as pd
+
+    from ...application.models import DatasetOutputRequest
     from ...application.ports.services import (
         DatasetXMLWriterPort,
         SASWriterPort,
@@ -139,15 +141,7 @@ class DatasetOutputAdapter:
         # Generate SAS program
         if "sas" in request.formats and request.output_dirs.sas_dir:
             try:
-                result.sas_path = self._generate_sas(
-                    request.domain_code,
-                    request.config,
-                    request.output_dirs.sas_dir,
-                    disk_name,
-                    base_filename,
-                    request.input_dataset,
-                    request.output_dataset,
-                )
+                result.sas_path = self._generate_sas(request, disk_name, base_filename)
             except (OSError, TypeError, ValueError, KeyError, SASWriterError) as exc:
                 result.errors.append(f"SAS generation failed: {exc}")
             except Exception as exc:
@@ -203,40 +197,37 @@ class DatasetOutputAdapter:
 
     def _generate_sas(
         self,
-        domain_code: str,
-        config: MappingConfig,
-        sas_dir: Path,
+        request: DatasetOutputRequest,
         disk_name: str,
         base_filename: str,
-        input_dataset: str | None,
-        output_dataset: str | None,
     ) -> Path:
         """Generate SAS program using the injected SAS writer.
 
         Args:
-            domain_code: Domain code
-            config: Mapping configuration
-            sas_dir: Output directory
+            request: Dataset output request
             disk_name: Base filename (without extension)
             base_filename: Base filename for output dataset
-            input_dataset: Input dataset name (e.g., "work.dm")
-            output_dataset: Output dataset name (e.g., "sdtm.dm")
 
         Returns:
             Path to generated SAS file
         """
+        sas_dir = request.output_dirs.sas_dir
+        if sas_dir is None:
+            raise ValueError("SAS output directory is not configured")
         sas_path = sas_dir / f"{disk_name}.sas"
 
         # Determine input/output dataset names
+        input_dataset = request.input_dataset
+        output_dataset = request.output_dataset
         if input_dataset is None:
-            input_dataset = f"work.{domain_code.lower()}"
+            input_dataset = f"work.{request.domain_code.lower()}"
         if output_dataset is None:
             output_dataset = f"sdtm.{base_filename}"
 
         # Use the injected SAS writer
         self._sas_writer.write(
-            domain_code,
-            config,
+            request.domain_code,
+            request.config,
             sas_path,
             input_dataset=input_dataset,
             output_dataset=output_dataset,

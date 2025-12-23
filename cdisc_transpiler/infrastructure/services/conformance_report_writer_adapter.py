@@ -4,14 +4,17 @@ This adapter implements the application-level ConformanceReportWriterPort and
 performs filesystem I/O (JSON persistence).
 """
 
-from collections.abc import Iterable
 from datetime import UTC, datetime
 import json
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from ...application.ports.services import ConformanceReportWriterPort
-from ...domain.services.sdtm_conformance_checker import ConformanceReport
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+    from pathlib import Path
+
+    from ...domain.services.sdtm_conformance_checker import ConformanceReport
 
 
 class ConformanceReportWriterAdapter(ConformanceReportWriterPort):

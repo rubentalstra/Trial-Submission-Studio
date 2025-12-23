@@ -14,13 +14,13 @@ from typing import TYPE_CHECKING
 
 from jinja2 import Environment, StrictUndefined
 
-from cdisc_transpiler.application.ports.repositories import CTRepositoryPort
 from cdisc_transpiler.infrastructure.repositories.ct_repository import (
     get_default_ct_repository,
 )
 from cdisc_transpiler.infrastructure.sdtm_spec.registry import get_domain
 
 if TYPE_CHECKING:
+    from cdisc_transpiler.application.ports.repositories import CTRepositoryPort
     from cdisc_transpiler.domain.entities.mapping import ColumnMapping
     from cdisc_transpiler.domain.entities.sdtm_domain import SDTMDomain, SDTMVariable
 

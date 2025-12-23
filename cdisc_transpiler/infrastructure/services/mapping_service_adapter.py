@@ -5,16 +5,18 @@ This adapter exists so the application layer depends on a port, not on the
 concrete mapping implementation.
 """
 
-from typing import override
+from typing import TYPE_CHECKING, override
 
-import pandas as pd
-
-from ...application.ports.repositories import DomainDefinitionRepositoryPort
 from ...application.ports.services import MappingPort
-from ...domain.entities.column_hints import Hints
-from ...domain.entities.mapping import MappingSuggestions
-from ...domain.entities.study_metadata import StudyMetadata
 from ...domain.services.mapping.factory import create_mapper
+
+if TYPE_CHECKING:
+    import pandas as pd
+
+    from ...application.ports.repositories import DomainDefinitionRepositoryPort
+    from ...domain.entities.column_hints import Hints
+    from ...domain.entities.mapping import MappingSuggestions
+    from ...domain.entities.study_metadata import StudyMetadata
 
 
 class MappingServiceAdapter(MappingPort):

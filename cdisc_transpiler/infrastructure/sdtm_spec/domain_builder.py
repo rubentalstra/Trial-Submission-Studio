@@ -4,11 +4,16 @@ This is infrastructure code: it loads SDTMIG/SDTM v2 CSV metadata and builds
 domain entities used by the application/domain layers.
 """
 
-from collections.abc import Mapping, Sequence
+from typing import TYPE_CHECKING
 
-from ...domain.entities.sdtm_domain import SDTMDomain, SDTMVariable
+from ...domain.entities.sdtm_domain import SDTMDomain
 from ...domain.entities.variable import variable_from_row
 from .utils import normalize_class
+
+if TYPE_CHECKING:
+    from collections.abc import Mapping, Sequence
+
+    from ...domain.entities.sdtm_domain import SDTMVariable
 
 
 def compute_row_order(row: Mapping[str, str], idx: int) -> tuple[int, int]:

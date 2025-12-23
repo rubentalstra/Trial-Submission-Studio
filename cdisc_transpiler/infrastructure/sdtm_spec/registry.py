@@ -3,16 +3,23 @@
 This replaces the former `domains_module.registry` package.
 """
 
-from collections.abc import Iterable
+from __future__ import annotations
+
 from functools import cache, lru_cache
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from cdisc_transpiler.config import TranspilerConfig
-from cdisc_transpiler.domain.entities.sdtm_domain import SDTMDomain
 
 from .domain_builder import build_domain_from_rows, build_supp_domain
 from .loaders import load_csv_rows, load_dataset_attributes
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
+
+    from cdisc_transpiler.domain.entities.sdtm_domain import SDTMDomain
+
+SUPP_DOMAIN_CODE_LENGTH = 6
 
 
 def _get_spec_paths() -> tuple[Path, Path, Path]:
@@ -100,7 +107,7 @@ def get_domain(code: str) -> SDTMDomain:
     if key in _DOMAIN_DEFINITIONS:
         return _DOMAIN_DEFINITIONS[key]
 
-    if key.startswith("SUPP") and len(key) == 6:
+    if key.startswith("SUPP") and len(key) == SUPP_DOMAIN_CODE_LENGTH:
         suppqual_base = _DOMAIN_DEFINITIONS.get("SUPPQUAL") or _build_domain_from_cache(
             "SUPPQUAL"
         )

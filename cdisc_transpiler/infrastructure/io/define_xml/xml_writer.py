@@ -8,20 +8,14 @@ builder modules. Consolidating them here reduces file count and makes the
 infrastructure I/O layer easier to navigate.
 """
 
-from collections.abc import Iterable, Sequence
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import TYPE_CHECKING, TypeAlias
 from xml.etree import ElementTree as ET
 from xml.etree.ElementTree import Element
 
 import pandas as pd
 
-from cdisc_transpiler.application.ports.repositories import CTRepositoryPort
-from cdisc_transpiler.domain.entities.controlled_terminology import (
-    ControlledTerminology,
-)
-from cdisc_transpiler.domain.entities.sdtm_domain import SDTMDomain, SDTMVariable
+from cdisc_transpiler.domain.entities.sdtm_domain import SDTMVariable
 from cdisc_transpiler.infrastructure.repositories.ct_repository import (
     get_default_ct_repository,
 )
@@ -42,11 +36,7 @@ from .constants import (
     XML_NS,
 )
 from .models import (
-    CommentDefinition,
     DefineGenerationError,
-    MethodDefinition,
-    StandardDefinition,
-    StudyDataset,
     ValueListDefinition,
     ValueListItemDefinition,
     WhereClauseDefinition,
@@ -54,6 +44,22 @@ from .models import (
 from .standards import get_default_standard_comments, get_default_standards
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
+    from pathlib import Path
+
+    from cdisc_transpiler.application.ports.repositories import CTRepositoryPort
+    from cdisc_transpiler.domain.entities.controlled_terminology import (
+        ControlledTerminology,
+    )
+    from cdisc_transpiler.domain.entities.sdtm_domain import SDTMDomain
+
+    from .models import (
+        CommentDefinition,
+        MethodDefinition,
+        StandardDefinition,
+        StudyDataset,
+    )
+
     XmlElement: TypeAlias = Element[str]
 else:
     XmlElement: TypeAlias = Element
@@ -62,6 +68,7 @@ ItemDefSpec: TypeAlias = tuple[
 ]
 ValueListItemSpec: TypeAlias = tuple[SDTMVariable, str]
 CodeListSpec: TypeAlias = tuple[SDTMVariable, str, set[str]]
+DTC_DATETIME_MIN_LENGTH = 19
 
 
 def write_study_define_file(
@@ -515,7 +522,7 @@ def get_datatype(variable: SDTMVariable) -> str:
     var_type = variable.type.lower()
 
     if name.endswith("DTC"):
-        if variable.length >= 19:
+        if variable.length >= DTC_DATETIME_MIN_LENGTH:
             return "datetime"
         return "date"
 

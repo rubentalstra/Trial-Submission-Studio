@@ -4,12 +4,16 @@ This builds Identifier/Timing templates grouped by the three General
 Observation Classes, using SDTMIG/SDTM v2 CSV metadata.
 """
 
-from typing import Any
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 from ...domain.entities.sdtm_classes import GENERAL_OBSERVATION_CLASSES
-from ...domain.entities.sdtm_domain import SDTMVariable
 from ...domain.entities.variable import variable_from_row
 from .utils import core_priority, normalize_class, normalize_general_class
+
+if TYPE_CHECKING:
+    from ...domain.entities.sdtm_domain import SDTMVariable
 
 
 def is_preferred_variable(

@@ -4,8 +4,7 @@ This module provides infrastructure-level loading of study metadata files.
 This loader is the canonical implementation for reading study metadata.
 """
 
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
@@ -15,6 +14,14 @@ from ...domain.entities.study_metadata import (
     SourceColumn,
     StudyMetadata,
 )
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+
+HEADER_ROW_MIN_ROWS = 2
+FIRST_ROW_SPACE_THRESHOLD = 0.5
+SECOND_ROW_CODE_THRESHOLD = 0.3
 
 
 class MetadataLoadError(Exception):
@@ -73,15 +80,18 @@ def detect_header_row(df: pd.DataFrame) -> int:
     Returns:
         Row index to use as header (0 or 1)
     """
-    if len(df) < 2:
+    if len(df) < HEADER_ROW_MIN_ROWS:
         return 0
 
     first_row = df.iloc[0].astype(str)
     second_row = df.iloc[1].astype(str)
 
     # If first row has spaces and second row looks like codes, use second
-    first_has_spaces = first_row.str.contains(r"\s").mean() > 0.5
-    second_is_codes = second_row.str.match(r"^[A-Za-z][A-Za-z0-9_]*$").mean() > 0.3
+    first_has_spaces = first_row.str.contains(r"\s").mean() > FIRST_ROW_SPACE_THRESHOLD
+    second_is_codes = (
+        second_row.str.match(r"^[A-Za-z][A-Za-z0-9_]*$").mean()
+        > SECOND_ROW_CODE_THRESHOLD
+    )
 
     if first_has_spaces and second_is_codes:
         return 1
@@ -118,14 +128,14 @@ def find_column(df: pd.DataFrame, candidates: list[str]) -> str | None:
     return None
 
 
-def _parse_mandatory_field(value: Any) -> bool:
+def _parse_mandatory_field(value: object) -> bool:
     """Parse a mandatory field value to boolean."""
     if not value:
         return False
     return str(value).strip().lower() in ("true", "yes", "1", "y", "req")
 
 
-def _parse_format_name(value: Any) -> str | None:
+def _parse_format_name(value: object) -> str | None:
     """Parse a format name field value."""
     if pd.isna(value):
         return None
@@ -135,7 +145,7 @@ def _parse_format_name(value: Any) -> str | None:
     return format_val
 
 
-def _parse_content_length(value: Any) -> int | None:
+def _parse_content_length(value: object) -> int | None:
     """Parse a content length field value."""
     if pd.isna(value):
         return None

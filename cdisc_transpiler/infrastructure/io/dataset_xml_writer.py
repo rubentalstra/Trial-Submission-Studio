@@ -4,8 +4,8 @@ This module intentionally contains the full Dataset-XML implementation to keep
 the I/O layer simpler and reduce file count.
 """
 
+from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import TYPE_CHECKING, Any, cast
 from xml.etree import ElementTree as ET
 
@@ -17,6 +17,8 @@ from cdisc_transpiler.infrastructure.sdtm_spec.registry import get_domain
 from .xml_utils import attr, tag
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
     from cdisc_transpiler.domain.entities.mapping import MappingConfig
 
 
@@ -37,6 +39,13 @@ DEFAULT_SDTM_VERSION = SDTMVersions.DEFAULT_VERSION
 
 class DatasetXMLError(RuntimeError):
     """Raised when Dataset-XML generation or writing fails."""
+
+
+@dataclass(slots=True)
+class DatasetXMLOptions:
+    dataset_name: str | None = None
+    metadata_version_oid: str | None = None
+    is_reference_data: bool | None = None
 
 
 def _generate_item_oid(variable_name: str, dataset_name: str) -> str:
@@ -82,20 +91,23 @@ def _build_dataset_xml_tree(
     domain_code: str,
     config: MappingConfig,
     *,
-    dataset_name: str | None = None,
-    metadata_version_oid: str | None = None,
-    is_reference_data: bool = False,
+    options: DatasetXMLOptions | None = None,
 ) -> ET.Element:
+    if options is None:
+        options = DatasetXMLOptions()
+
     domain = get_domain(domain_code)
 
     study_id = (config.study_id or "STUDY").strip() or "STUDY"
     study_oid = f"STDY.{study_id}"
     dataset_name = (
-        dataset_name or domain.resolved_dataset_name()
+        options.dataset_name or domain.resolved_dataset_name()
     ).strip() or domain.code
     timestamp = datetime.now(UTC).isoformat(timespec="seconds")
 
-    mdv_oid = metadata_version_oid or f"MDV.{study_oid}.SDTMIG.{DEFAULT_SDTM_VERSION}"
+    mdv_oid = (
+        options.metadata_version_oid or f"MDV.{study_oid}.SDTMIG.{DEFAULT_SDTM_VERSION}"
+    )
     define_file_oid = f"{study_oid}.Define-XML_{DEFINE_XML_VERSION}"
 
     root = ET.Element(
@@ -112,7 +124,9 @@ def _build_dataset_xml_tree(
     root.set("xmlns:xlink", XLINK_NS)
     root.set(attr(DATA_NS, "DatasetXMLVersion"), DATASET_XML_VERSION)
 
-    container_tag_name = "ReferenceData" if is_reference_data else "ClinicalData"
+    container_tag_name = (
+        "ReferenceData" if options.is_reference_data else "ClinicalData"
+    )
     container = ET.SubElement(
         root,
         tag(ODM_NS, container_tag_name),
@@ -149,25 +163,26 @@ def write_dataset_xml(
     config: MappingConfig,
     output: Path,
     *,
-    dataset_name: str | None = None,
-    metadata_version_oid: str | None = None,
-    is_reference_data: bool | None = None,
+    options: DatasetXMLOptions | None = None,
 ) -> None:
     """Write a Dataset-XML 1.0 file for a single domain."""
     try:
         domain = get_domain(domain_code)
 
         class_name = (domain.class_name or "").replace("-", " ").strip().upper()
-        if is_reference_data is None:
-            is_reference_data = class_name in ("TRIAL DESIGN", "STUDY REFERENCE")
+        if options is None:
+            options = DatasetXMLOptions()
+        if options.is_reference_data is None:
+            options.is_reference_data = class_name in (
+                "TRIAL DESIGN",
+                "STUDY REFERENCE",
+            )
 
         root = _build_dataset_xml_tree(
             data,
             domain_code,
             config,
-            dataset_name=dataset_name,
-            metadata_version_oid=metadata_version_oid,
-            is_reference_data=is_reference_data,
+            options=options,
         )
         tree = ET.ElementTree(root)
         output.parent.mkdir(parents=True, exist_ok=True)

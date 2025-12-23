@@ -6,10 +6,12 @@ study run (directories and a placeholder ACRF PDF used by Define-XML).
 It implements the application port OutputPreparerPort.
 """
 
-from pathlib import Path
-from typing import override
+from typing import TYPE_CHECKING, override
 
 from ...application.ports.services import OutputPreparerPort
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def _ensure_acrf_pdf(path: Path) -> None:

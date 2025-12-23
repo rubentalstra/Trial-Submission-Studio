@@ -12,12 +12,18 @@ Key Features:
 """
 
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
 from .exceptions import DataParseError, DataSourceNotFoundError
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+HEADER_SAMPLE_ROWS = 2
+HEADER_SPACE_THRESHOLD = 0.5
+HEADER_CODE_THRESHOLD = 0.5
 
 
 @dataclass(slots=True)
@@ -137,9 +143,9 @@ class CSVReader:
         """
         try:
             # Read first 2 rows without assuming header
-            sample = pd.read_csv(path, nrows=2, header=None)
+            sample = pd.read_csv(path, nrows=HEADER_SAMPLE_ROWS, header=None)
 
-            if sample.empty or len(sample) < 2:
+            if sample.empty or len(sample) < HEADER_SAMPLE_ROWS:
                 return 0
 
             # Check if first row has spaces (human-readable) and second is codes
@@ -147,10 +153,15 @@ class CSVReader:
             second_row = sample.iloc[1].astype(str)
 
             # First row should have spaces in most columns (human-readable text)
-            first_has_spaces = first_row.str.contains(r"\s").mean() > 0.5
+            first_has_spaces = (
+                first_row.str.contains(r"\s").mean() > HEADER_SPACE_THRESHOLD
+            )
             # Second row should match code pattern in most columns
             # Treat CamelCase "code" rows as well as all-caps codes as identifiers
-            second_is_codes = second_row.str.match(r"^[A-Z][A-Za-z0-9_]*$").mean() > 0.5
+            second_is_codes = (
+                second_row.str.match(r"^[A-Z][A-Za-z0-9_]*$").mean()
+                > HEADER_CODE_THRESHOLD
+            )
 
             # Both conditions must be true to use row 1 as header
             if first_has_spaces and second_is_codes:

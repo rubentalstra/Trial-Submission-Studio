@@ -8,13 +8,15 @@ them to infrastructure-specific models (StudyDataset) before generating
 the Define-XML file.
 """
 
-from pathlib import Path
 from typing import TYPE_CHECKING, override
 
 from ...application.ports.services import DefineXMLGeneratorPort
+from .define_xml.models import StudyDataset
+from .define_xml.xml_writer import write_study_define_file
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
+    from pathlib import Path
 
     from cdisc_transpiler.application.models import DefineDatasetDTO
 
@@ -67,10 +69,6 @@ class DefineXMLGenerator(DefineXMLGeneratorPort):
             >>> datasets = [DefineDatasetDTO(...)]
             >>> generator.generate(datasets, Path("define.xml"), sdtm_version="3.4", context="Submission")
         """
-        # Import at runtime to avoid circular import
-        from .define_xml.models import StudyDataset
-        from .define_xml.xml_writer import write_study_define_file
-
         # Convert application DTOs to infrastructure models
         infra_datasets = [
             StudyDataset(

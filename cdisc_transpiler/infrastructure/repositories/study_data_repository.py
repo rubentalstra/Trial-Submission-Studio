@@ -8,6 +8,11 @@ from pathlib import Path
 
 import pandas as pd
 
+try:
+    import pyreadstat
+except ModuleNotFoundError:  # pragma: no cover - optional dependency
+    pyreadstat = None
+
 from ...application.ports.repositories import StudyDataRepositoryPort
 from ...domain.entities.study_metadata import StudyMetadata
 from ..io.csv_reader import CSVReader, CSVReadOptions
@@ -30,7 +35,7 @@ class StudyDataRepository:
         >>> print(f"Loaded {len(metadata.items or {})} columns")
     """
 
-    def __init__(self, csv_reader: CSVReader | None = None):
+    def __init__(self, csv_reader: CSVReader | None = None) -> None:
         """Initialize the repository.
 
         Args:
@@ -147,13 +152,11 @@ class StudyDataRepository:
         Raises:
             DataParseError: If pyreadstat is not installed
         """
-        try:
-            import pyreadstat
-        except ModuleNotFoundError as e:
+        if pyreadstat is None:
             raise DataParseError(
                 "pyreadstat is required to read SAS files (optional dependency). "
                 + "Install with: pip install pyreadstat"
-            ) from e
+            )
 
         try:
             frame, _meta = pyreadstat.read_sas7bdat(str(path))

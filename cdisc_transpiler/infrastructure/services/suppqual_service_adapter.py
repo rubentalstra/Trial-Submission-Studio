@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, override
 
 from ...application.ports.services import SuppqualPort
 from ...domain.services.suppqual_service import (
-    SuppqualBuildRequest,
     build_suppqual,
     extract_used_columns,
     finalize_suppqual,
@@ -15,6 +14,7 @@ if TYPE_CHECKING:
 
     from ...domain.entities.mapping import MappingConfig
     from ...domain.entities.sdtm_domain import SDTMDomain
+    from ...domain.services.suppqual_service import SuppqualBuildRequest
 
 
 class SuppqualServiceAdapter(SuppqualPort):

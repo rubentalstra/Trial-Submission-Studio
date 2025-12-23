@@ -3,14 +3,8 @@
 from dataclasses import replace
 from typing import TYPE_CHECKING, cast, override
 
-from ...application.ports.repositories import CTRepositoryPort
 from ...application.ports.services import DomainFrameBuilderPort
-from ...domain.services.domain_frame_builder import (
-    DomainFrameBuildRequest,
-    TransformerRegistry,
-    ValidatorRegistry,
-    build_domain_dataframe,
-)
+from ...domain.services.domain_frame_builder import build_domain_dataframe
 from ...domain.services.domain_processors.registry import get_domain_processor
 from ...domain.services.transformers.codelist import CodelistTransformer
 from ...domain.services.transformers.date import DateTransformer
@@ -20,9 +14,15 @@ from .xpt_validator import XPTValidator
 if TYPE_CHECKING:
     import pandas as pd
 
+    from ...application.ports.repositories import CTRepositoryPort
     from ...domain.entities.controlled_terminology import ControlledTerminology
     from ...domain.entities.sdtm_domain import SDTMDomain
     from ...domain.entities.study_metadata import StudyMetadata
+    from ...domain.services.domain_frame_builder import (
+        DomainFrameBuildRequest,
+        TransformerRegistry,
+        ValidatorRegistry,
+    )
     from ...domain.services.domain_processors.base import BaseDomainProcessor
 
 

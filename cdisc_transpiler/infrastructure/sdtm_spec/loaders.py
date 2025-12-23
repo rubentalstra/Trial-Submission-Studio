@@ -1,8 +1,12 @@
 """CSV loaders for SDTM metadata."""
 
+from __future__ import annotations
+
 import csv
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 
 def load_csv_rows(

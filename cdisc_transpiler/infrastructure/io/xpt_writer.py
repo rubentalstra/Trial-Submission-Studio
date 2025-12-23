@@ -5,13 +5,19 @@ files while conforming to the XPTWriterPort protocol.
 """
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 import pyreadstat
 
-from cdisc_transpiler.domain.entities.sdtm_domain import SDTMDomain
 from cdisc_transpiler.infrastructure.sdtm_spec.registry import get_domain
+
+if TYPE_CHECKING:
+    from cdisc_transpiler.domain.entities.sdtm_domain import SDTMDomain
+
+
+MAX_XPT_FILENAME_STEM = 8
 
 
 class XportGenerationError(RuntimeError):
@@ -70,7 +76,7 @@ def write_xpt_file(
     # Force lower-case disk names to match MSG sample package convention
     output_path = output_path.with_name(output_path.name.lower())
 
-    if len(output_path.stem) > 8:
+    if len(output_path.stem) > MAX_XPT_FILENAME_STEM:
         raise XportGenerationError(
             f"XPT filename stem must be <=8 characters to satisfy SDTM v5: {output_path.name}"
         )

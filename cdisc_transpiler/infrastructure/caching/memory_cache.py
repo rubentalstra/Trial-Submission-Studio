@@ -5,8 +5,11 @@ for expensive operations like CSV parsing.
 """
 
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
-from typing import Any, Generic, TypeVar
+from datetime import datetime
+from typing import TYPE_CHECKING, Generic, TypeVar
+
+if TYPE_CHECKING:
+    from datetime import timedelta
 
 T = TypeVar("T")
 
@@ -26,7 +29,7 @@ class CacheEntry(Generic[T]):
         return datetime.now() > self.expires_at
 
 
-class MemoryCache:
+class MemoryCache(Generic[T]):
     """Simple in-memory cache with optional TTL.
 
     This cache provides a controlled interface for caching expensive operations
@@ -45,17 +48,17 @@ class MemoryCache:
         True
     """
 
-    def __init__(self, default_ttl: timedelta | None = None):
+    def __init__(self, default_ttl: timedelta | None = None) -> None:
         """Initialize the cache.
 
         Args:
             default_ttl: Default time-to-live for entries. None means no expiration.
         """
         super().__init__()
-        self._store: dict[str, CacheEntry[Any]] = {}
+        self._store: dict[str, CacheEntry[T]] = {}
         self._default_ttl = default_ttl
 
-    def get(self, key: str) -> Any | None:
+    def get(self, key: str) -> T | None:
         """Get a value from the cache.
 
         Args:
@@ -74,7 +77,7 @@ class MemoryCache:
 
         return entry.value
 
-    def set(self, key: str, value: Any, ttl: timedelta | None = None) -> None:
+    def set(self, key: str, value: T, ttl: timedelta | None = None) -> None:
         """Set a value in the cache.
 
         Args:
