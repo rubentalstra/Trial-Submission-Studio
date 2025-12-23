@@ -401,24 +401,6 @@ class DomainProcessingUseCase:
         is_findings_long = False
         consumed_columns: set[str] = set()
 
-        if request.domain_code.upper() in {"VS", "LB"}:
-            from ..domain.services.wide_to_long import transform_wide_to_long
-
-            transformed = transform_wide_to_long(
-                frame, domain_code=request.domain_code, study_id=request.study_id
-            )
-
-            if transformed.is_long:
-                frame = transformed.frame
-                is_findings_long = True
-                if transformed.consumed_columns:
-                    consumed_columns.update(transformed.consumed_columns)
-
-                if request.verbose > 0:
-                    self.logger.verbose(
-                        f"    Applied wide-to-long transformation ({request.domain_code}: {len(frame):,} rows)"
-                    )
-
         # Stage 3: Map columns
         config = self._build_config(
             frame=frame,

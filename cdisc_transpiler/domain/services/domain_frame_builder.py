@@ -179,6 +179,14 @@ class DomainFrameBuilder:
         # consistent across outputs (Define-XML must match dataset order).
         result = self._reorder_columns_for_domain(result)
 
+        if self.domain.code == "VS" and "VSTESTCD" in result.columns:
+            print(
+                f"DEBUG: Final VS dataframe VSTESTCD unique values: {result['VSTESTCD'].unique()}"
+            )
+            print(
+                f"DEBUG: Final VS dataframe head:\n{result[['VSTESTCD', 'VSORRES']].head()}"
+            )
+
         return result
 
     def _reorder_columns_for_domain(self, result: pd.DataFrame) -> pd.DataFrame:

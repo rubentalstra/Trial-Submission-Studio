@@ -77,6 +77,20 @@ class VSProcessor(BaseDomainProcessor):
             raw = frame["VSTESTCD"].astype("string").fillna("").str.strip()
             canonical = raw.apply(ct_vstestcd.normalize)
             valid = canonical.isin(ct_vstestcd.submission_values)
+
+            # DEBUG: Check for PLS
+            if "PLS" in raw.values:
+                print(f"DEBUG: VSProcessor VSTESTCD check. 'PLS' found in raw.")
+                pls_idx = raw[raw == "PLS"].index[0]
+                print(f"DEBUG: Normalized 'PLS' -> '{canonical[pls_idx]}'")
+                print(f"DEBUG: Is Valid? {valid[pls_idx]}")
+                if not valid[pls_idx]:
+                    print(
+                        f"DEBUG: 'PLS' not in submission values. First 10 values: {sorted(list(ct_vstestcd.submission_values))[:10]}"
+                    )
+                    if "PULSE" in ct_vstestcd.submission_values:
+                        print("DEBUG: 'PULSE' is in submission values.")
+
             frame.loc[:, "VSTESTCD"] = canonical.where(valid, "")
 
         ct_vstest = self._get_controlled_terminology(variable="VSTEST")
