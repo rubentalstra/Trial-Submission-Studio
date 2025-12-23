@@ -4,13 +4,13 @@ This module contains performance benchmarks to track processing speed
 and detect performance regressions. Tests use pytest-benchmark.
 """
 
-import pytest
 from pathlib import Path
 import tempfile
 
-from cdisc_transpiler.infrastructure import create_default_container
-from cdisc_transpiler.application.models import ProcessStudyRequest
+import pytest
 
+from cdisc_transpiler.application.models import ProcessStudyRequest
+from cdisc_transpiler.infrastructure import create_default_container
 
 # Path to sample study data
 MOCKDATA_DIR = Path(__file__).parent.parent.parent / "mockdata"

@@ -7,14 +7,14 @@ This module tests that generated datasets comply with SDTM requirements:
 - Controlled terminology is used correctly
 """
 
-import pytest
 from pathlib import Path
+
 import pandas as pd
+import pytest
 
-from cdisc_transpiler.infrastructure import create_default_container
 from cdisc_transpiler.application.models import ProcessStudyRequest
+from cdisc_transpiler.infrastructure import create_default_container
 from cdisc_transpiler.infrastructure.sdtm_spec import get_domain
-
 
 # Path to sample study data
 MOCKDATA_DIR = Path(__file__).parent.parent.parent / "mockdata"
@@ -354,5 +354,5 @@ class TestSDTMStructure:
                     ):
                         pytest.fail(
                             f"{xpt_file.name} column {col} contains "
-                            f"problematic character: {repr(char)}"
+                            f"problematic character: {char!r}"
                         )

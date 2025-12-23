@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import click
 
-from .commands import study, domains
+from .commands import domains, study
 
 
 @click.group()

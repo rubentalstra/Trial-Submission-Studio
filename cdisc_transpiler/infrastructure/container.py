@@ -23,18 +23,18 @@ from typing import TYPE_CHECKING
 from rich.console import Console
 
 from ..application.ports import (
-    CTRepositoryPort,
     ConformanceReportWriterPort,
-    DomainFrameBuilderPort,
+    CTRepositoryPort,
     DefineXMLGeneratorPort,
+    DomainDefinitionRepositoryPort,
+    DomainFrameBuilderPort,
     FileGeneratorPort,
     LoggerPort,
     MappingPort,
     OutputPreparerPort,
+    StudyDataRepositoryPort,
     SuppqualPort,
     TerminologyPort,
-    DomainDefinitionRepositoryPort,
-    StudyDataRepositoryPort,
 )
 from .io.csv_reader import CSVReader
 from .io.dataset_xml_writer import DatasetXMLWriter
@@ -115,9 +115,9 @@ class DependencyContainer:
         self._suppqual_service_instance: SuppqualPort | None = None
         self._terminology_service_instance: TerminologyPort | None = None
         self._ct_repository_instance: CTRepositoryPort | None = None
-        self._relrec_service_instance: "RelrecService | None" = None
-        self._relsub_service_instance: "RelsubService | None" = None
-        self._relspec_service_instance: "RelspecService | None" = None
+        self._relrec_service_instance: RelrecService | None = None
+        self._relsub_service_instance: RelsubService | None = None
+        self._relspec_service_instance: RelspecService | None = None
         self._conformance_report_writer_instance: ConformanceReportWriterPort | None = (
             None
         )
@@ -289,7 +289,7 @@ class DependencyContainer:
             self._conformance_report_writer_instance = ConformanceReportWriterAdapter()
         return self._conformance_report_writer_instance
 
-    def create_relrec_service(self) -> "RelrecService":
+    def create_relrec_service(self) -> RelrecService:
         """Create or return cached RELREC service instance (singleton)."""
         if self._relrec_service_instance is None:
             from ..domain.services import RelrecService
@@ -297,7 +297,7 @@ class DependencyContainer:
             self._relrec_service_instance = RelrecService()
         return self._relrec_service_instance
 
-    def create_relsub_service(self) -> "RelsubService":
+    def create_relsub_service(self) -> RelsubService:
         """Create or return cached RELSUB service instance (singleton)."""
         if self._relsub_service_instance is None:
             from ..domain.services import RelsubService
@@ -305,7 +305,7 @@ class DependencyContainer:
             self._relsub_service_instance = RelsubService()
         return self._relsub_service_instance
 
-    def create_relspec_service(self) -> "RelspecService":
+    def create_relspec_service(self) -> RelspecService:
         """Create or return cached RELSPEC service instance (singleton)."""
         if self._relspec_service_instance is None:
             from ..domain.services import RelspecService

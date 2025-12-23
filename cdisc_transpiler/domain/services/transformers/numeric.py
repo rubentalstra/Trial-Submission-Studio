@@ -6,7 +6,7 @@ from typing import Any
 
 import pandas as pd
 
-from ....pandas_utils import ensure_numeric_series
+from ....pandas_utils import ensure_numeric_series, ensure_series
 
 
 class NumericTransformer:
@@ -18,15 +18,13 @@ class NumericTransformer:
         stresc_col = f"{domain_code}STRESC"
 
         if orres_col in frame.columns and stresc_col in frame.columns:
-            orres_str = (
-                frame[orres_col]
-                .astype(str)
-                .replace({"nan": "", "None": "", "<NA>": ""})
+            s_orres = ensure_series(frame[orres_col]).astype(str)
+            orres_str = ensure_series(
+                s_orres.replace({"nan": "", "None": "", "<NA>": ""})
             )
-            stresc_str = (
-                frame[stresc_col]
-                .astype(str)
-                .replace({"nan": "", "None": "", "<NA>": ""})
+            s_stresc = ensure_series(frame[stresc_col]).astype(str)
+            stresc_str = ensure_series(
+                s_stresc.replace({"nan": "", "None": "", "<NA>": ""})
             )
 
             mask = (stresc_str.str.strip() == "") & (orres_str.str.strip() != "")

@@ -13,8 +13,8 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 
 if TYPE_CHECKING:
-    from ...entities.sdtm_domain import SDTMDomain
     from ...entities.controlled_terminology import ControlledTerminology
+    from ...entities.sdtm_domain import SDTMDomain
     from ...entities.study_metadata import StudyMetadata
 
 from ..transformers import TextTransformer
@@ -29,10 +29,10 @@ class BaseDomainProcessor(ABC):
 
     def __init__(
         self,
-        domain: "SDTMDomain",
+        domain: SDTMDomain,
         reference_starts: dict[str, str] | None = None,
-        metadata: "StudyMetadata | None" = None,
-        ct_resolver: Callable[[str | None, str | None], "ControlledTerminology | None"]
+        metadata: StudyMetadata | None = None,
+        ct_resolver: Callable[[str | None, str | None], ControlledTerminology | None]
         | None = None,
     ):
         """Initialize the domain processor.
@@ -53,7 +53,7 @@ class BaseDomainProcessor(ABC):
         *,
         codelist_code: str | None = None,
         variable: str | None = None,
-    ) -> "ControlledTerminology | None":
+    ) -> ControlledTerminology | None:
         if self._ct_resolver is None:
             return None
 
@@ -115,7 +115,7 @@ class BaseDomainProcessor(ABC):
 
                 # Avoid turning header-placeholder rows into "valid" USUBJIDs.
                 placeholder_subjid = subjid.str.upper().isin(
-                    {"SUBJID", "SUBJECTID", "SUBJECT ID", "SUBJECTID", "SUBJECTID"}
+                    {"SUBJID", "SUBJECTID", "SUBJECT ID"}
                 )
                 can_fill = missing_ids & ~placeholder_subjid & (subjid != "")
 

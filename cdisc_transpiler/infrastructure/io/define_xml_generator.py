@@ -16,7 +16,8 @@ from typing import TYPE_CHECKING
 from ...application.ports import DefineXMLGeneratorPort
 
 if TYPE_CHECKING:
-    from typing import Iterable
+    from collections.abc import Iterable
+
     from cdisc_transpiler.application.models import DefineDatasetDTO
 
 
@@ -68,8 +69,8 @@ class DefineXMLGenerator(DefineXMLGeneratorPort):
             >>> generator.generate(datasets, Path("define.xml"), sdtm_version="3.4", context="Submission")
         """
         # Import at runtime to avoid circular import
-        from .define_xml.xml_writer import write_study_define_file
         from .define_xml.models import StudyDataset
+        from .define_xml.xml_writer import write_study_define_file
 
         # Convert application DTOs to infrastructure models
         infra_datasets = [

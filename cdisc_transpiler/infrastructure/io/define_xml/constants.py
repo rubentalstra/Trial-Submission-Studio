@@ -6,8 +6,9 @@ values used in Define-XML 2.1.0 specification compliance.
 
 from __future__ import annotations
 
-from cdisc_transpiler.constants import Constraints, SDTMVersions
 from xml.etree import ElementTree as ET
+
+from cdisc_transpiler.constants import Constraints, SDTMVersions
 
 from ..xml_utils import attr, safe_href, tag  # noqa: F401
 

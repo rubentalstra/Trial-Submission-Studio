@@ -170,7 +170,7 @@ class TransformationPipeline:
                     skipped_transformers.append(transformer_name)
 
             except Exception as e:
-                error_msg = f"{transformer_name}: Unexpected error: {str(e)}"
+                error_msg = f"{transformer_name}: Unexpected error: {e!s}"
                 all_errors.append(error_msg)
 
                 if self.fail_safe:

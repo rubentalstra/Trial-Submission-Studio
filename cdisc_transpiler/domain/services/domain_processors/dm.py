@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .base import BaseDomainProcessor
 from ..transformers import DateTransformer
+from .base import BaseDomainProcessor
 
 
 class DMProcessor(BaseDomainProcessor):

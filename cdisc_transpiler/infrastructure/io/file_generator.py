@@ -125,7 +125,7 @@ class FileGenerator:
                 )
             except (OSError, ValueError, XportGenerationError) as exc:
                 result.errors.append(f"XPT generation failed: {exc}")
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 result.errors.append(f"XPT generation failed: {exc}")
 
         # Generate Dataset-XML file
@@ -140,7 +140,7 @@ class FileGenerator:
                 )
             except (OSError, TypeError, ValueError, DatasetXMLError) as exc:
                 result.errors.append(f"XML generation failed: {exc}")
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 result.errors.append(f"XML generation failed: {exc}")
 
         # Generate SAS program
@@ -157,7 +157,7 @@ class FileGenerator:
                 )
             except (OSError, TypeError, ValueError, KeyError, SASWriterError) as exc:
                 result.errors.append(f"SAS generation failed: {exc}")
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 result.errors.append(f"SAS generation failed: {exc}")
 
         return result

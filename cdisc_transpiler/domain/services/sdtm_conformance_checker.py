@@ -13,14 +13,14 @@ Expected variables.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Literal
+from typing import Literal
 
 import pandas as pd
 
 from ..entities.controlled_terminology import ControlledTerminology
 from ..entities.sdtm_domain import SDTMDomain, SDTMVariable
-
 
 Severity = Literal["error", "warning"]
 

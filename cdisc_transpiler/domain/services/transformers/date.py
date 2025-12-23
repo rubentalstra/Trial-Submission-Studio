@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any, cast
 
 import pandas as pd
 
-from ...entities.sdtm_domain import SDTMVariable
 from ....pandas_utils import ensure_series
+from ...entities.sdtm_domain import SDTMVariable
 from .iso8601 import normalize_iso8601, normalize_iso8601_duration
 
 
@@ -27,7 +28,9 @@ class DateTransformer:
                 source = ensure_series(frame[var.name], index=frame.index).astype(
                     "string"
                 )
-                normalized = source.apply(normalize_iso8601).astype("string")
+                normalized = ensure_series(source.map(normalize_iso8601)).astype(
+                    "string"
+                )
                 frame.loc[:, var.name] = normalized
 
     @staticmethod
@@ -39,7 +42,9 @@ class DateTransformer:
                 source = ensure_series(frame[var.name], index=frame.index).astype(
                     "string"
                 )
-                normalized = source.apply(normalize_iso8601_duration).astype("string")
+                normalized = ensure_series(
+                    source.map(normalize_iso8601_duration)
+                ).astype("string")
                 frame.loc[:, var.name] = normalized
 
     @staticmethod
@@ -127,14 +132,19 @@ class DateTransformer:
             else:
                 return
 
-        baseline = baseline.bfill().ffill()
-        deltas = (dates - baseline).dt.days  # type: ignore[attr-defined]
+        baseline = ensure_series(baseline.bfill().ffill())
+        # dates - baseline results in a Series of Timedeltas. .dt.days extracts the integer days.
+        diff = dates - baseline
+        # Cast to Any to access .dt.days which pyright misses on the result of subtraction
+        deltas = ensure_series(cast("Any", diff).dt.days)
 
-        study_days = deltas.where(
-            deltas.isna(),
-            deltas.apply(lambda x: x + 1 if x >= 0 else x),
-        )
+        def adjust_study_day(x: Any) -> Any:
+            if pd.isna(x):
+                return x
+            # SDTM rule: no day 0. If delta >= 0, it's day 1+. If delta < 0, it's day -1-.
+            return x + 1 if x >= 0 else x
 
+        study_days = ensure_series(deltas.map(adjust_study_day))
         frame.loc[:, dy_var] = pd.to_numeric(study_days, errors="coerce")
 
     @staticmethod
@@ -143,10 +153,10 @@ class DateTransformer:
     ) -> None:
         if start_var not in frame.columns:
             return
-        start = frame[start_var].apply(DateTransformer.coerce_iso8601)
+        start = ensure_series(frame[start_var].map(DateTransformer.coerce_iso8601))
         frame.loc[:, start_var] = start
         if end_var and end_var in frame.columns:
-            end = frame[end_var].apply(DateTransformer.coerce_iso8601)
+            end = ensure_series(frame[end_var].map(DateTransformer.coerce_iso8601))
             needs_swap = (end == "") | (end < start)
             frame.loc[:, end_var] = end.where(~needs_swap, start)
 

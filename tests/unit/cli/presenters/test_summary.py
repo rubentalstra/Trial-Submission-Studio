@@ -1,8 +1,9 @@
 """Unit tests for SummaryPresenter class."""
 
-import pytest
-from pathlib import Path
 from io import StringIO
+from pathlib import Path
+
+import pytest
 from rich.console import Console
 
 from cdisc_transpiler.cli.presenters import SummaryPresenter

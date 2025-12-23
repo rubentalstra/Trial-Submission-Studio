@@ -6,7 +6,7 @@ domain entities used by the application/domain layers.
 
 from __future__ import annotations
 
-from typing import Mapping, Sequence
+from collections.abc import Mapping, Sequence
 
 from ...domain.entities.sdtm_domain import SDTMDomain, SDTMVariable
 from ...domain.entities.variable import variable_from_row

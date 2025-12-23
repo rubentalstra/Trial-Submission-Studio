@@ -6,10 +6,10 @@ performs filesystem I/O (JSON persistence).
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+from datetime import UTC, datetime
 import json
-from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable
 
 from ...application.ports.services import ConformanceReportWriterPort
 from ...domain.services.sdtm_conformance_checker import ConformanceReport
@@ -27,7 +27,7 @@ class ConformanceReportWriterAdapter(ConformanceReportWriterPort):
         output_dir.mkdir(parents=True, exist_ok=True)
         output_path = output_dir / filename
 
-        now = datetime.now(timezone.utc).isoformat()
+        now = datetime.now(UTC).isoformat()
         payload = {
             "schema": "cdisc-transpiler.conformance-report",
             "schema_version": 1,

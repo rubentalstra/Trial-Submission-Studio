@@ -4,12 +4,12 @@ This module contains end-to-end integration tests for all CLI commands,
 testing the complete workflow from command invocation to file output.
 """
 
-import pytest
 from pathlib import Path
+
 from click.testing import CliRunner
+import pytest
 
 from cdisc_transpiler.cli import app
-
 
 # Path to sample study data
 MOCKDATA_DIR = Path(__file__).parent.parent.parent / "mockdata"

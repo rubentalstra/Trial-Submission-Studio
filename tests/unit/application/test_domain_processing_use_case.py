@@ -12,14 +12,15 @@ has been resolved by implementing the real DomainProcessingUseCase.
 import inspect
 from pathlib import Path
 from unittest.mock import Mock, patch
+
 import pandas as pd
 
+from cdisc_transpiler.application.domain_processing_use_case import (
+    DomainProcessingUseCase,
+)
 from cdisc_transpiler.application.models import (
     ProcessDomainRequest,
     ProcessDomainResponse,
-)
-from cdisc_transpiler.application.domain_processing_use_case import (
-    DomainProcessingUseCase,
 )
 from cdisc_transpiler.infrastructure.logging import NullLogger
 
@@ -87,7 +88,7 @@ class TestDomainProcessingUseCase:
 
         # Make domain lookup raise an exception
         with patch.object(
-            use_case._domain_definition_repository,  # type: ignore[union-attr]
+            use_case._domain_definition_repository,
             "get_domain",
             side_effect=ValueError("Domain not found"),
         ):

@@ -29,7 +29,7 @@ class NullLogger(LoggerPort):
         Args:
             message: The message to log (ignored)
         """
-        return None
+        return
 
     def success(self, message: str) -> None:
         """Log a success message (discarded).
@@ -37,7 +37,7 @@ class NullLogger(LoggerPort):
         Args:
             message: The message to log (ignored)
         """
-        return None
+        return
 
     def warning(self, message: str) -> None:
         """Log a warning message (discarded).
@@ -45,7 +45,7 @@ class NullLogger(LoggerPort):
         Args:
             message: The message to log (ignored)
         """
-        return None
+        return
 
     def error(self, message: str) -> None:
         """Log an error message (discarded).
@@ -53,7 +53,7 @@ class NullLogger(LoggerPort):
         Args:
             message: The message to log (ignored)
         """
-        return None
+        return
 
     def debug(self, message: str) -> None:
         """Log a debug message (discarded).
@@ -61,7 +61,7 @@ class NullLogger(LoggerPort):
         Args:
             message: The message to log (ignored)
         """
-        return None
+        return
 
     def verbose(self, message: str) -> None:
         """Log a verbose message (discarded).
@@ -69,7 +69,7 @@ class NullLogger(LoggerPort):
         Args:
             message: The message to log (ignored)
         """
-        return None
+        return
 
     def log_study_start(
         self,

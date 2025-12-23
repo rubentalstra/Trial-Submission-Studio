@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import re
-from typing import Any
+from typing import Any, cast
 
 import pandas as pd
-from pandas import isna
+from pandas import Timestamp, isna
 
 
 def normalize_iso8601(raw_value: Any) -> str:
@@ -22,12 +22,12 @@ def normalize_iso8601(raw_value: Any) -> str:
         return cleaned or ""
 
     try:
-        parsed = pd.to_datetime(raw_value, errors="coerce", utc=False)
+        parsed = cast("Any", pd.to_datetime(raw_value, errors="coerce", utc=False))
         if pd.isna(parsed):
             if re.match(r"^\d{4}(-\d{2})?(-\d{2})?", text):
                 return text
             return str(raw_value)
-        return parsed.isoformat()
+        return cast("Timestamp", parsed).isoformat()
     except Exception:
         return str(raw_value)
 

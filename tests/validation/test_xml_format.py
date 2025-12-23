@@ -6,13 +6,13 @@ This module tests that generated Dataset-XML files:
 - Can be parsed by standard XML tools
 """
 
-import pytest
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
-from cdisc_transpiler.infrastructure import create_default_container
-from cdisc_transpiler.application.models import ProcessStudyRequest
+import pytest
 
+from cdisc_transpiler.application.models import ProcessStudyRequest
+from cdisc_transpiler.infrastructure import create_default_container
 
 # Path to sample study data
 MOCKDATA_DIR = Path(__file__).parent.parent.parent / "mockdata"
@@ -180,7 +180,7 @@ class TestXMLStructure:
             pytest.skip("No XML files found")
 
         for xml_file in xml_files:
-            with open(xml_file, "r", encoding="utf-8") as f:
+            with open(xml_file, encoding="utf-8") as f:
                 content = f.read().strip()
                 assert len(content) > 0, f"{xml_file.name} is empty"
 
@@ -227,7 +227,7 @@ class TestXMLEncoding:
             pytest.skip("No XML files found")
 
         for xml_file in xml_files:
-            with open(xml_file, "r", encoding="utf-8") as f:
+            with open(xml_file, encoding="utf-8") as f:
                 first_line = f.readline()
                 # Check for XML declaration
                 if first_line.strip().startswith("<?xml"):

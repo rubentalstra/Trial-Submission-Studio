@@ -1,6 +1,6 @@
 # CDISC Transpiler
 
-[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
+[![Python 3.14+](https://img.shields.io/badge/python-3.14+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Tests](https://img.shields.io/badge/tests-485%20passing-brightgreen.svg)](tests/)
 [![Coverage](https://img.shields.io/badge/coverage-76%25-green.svg)](tests/)
@@ -64,7 +64,7 @@ cdisc_transpiler/
 
 ### Prerequisites
 
-- Python 3.12 or higher
+- Python 3.14 or higher
 - pip package manager
 
 ### Standard Installation

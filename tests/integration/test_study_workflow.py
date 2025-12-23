@@ -4,13 +4,13 @@ These tests verify the complete study processing workflow from start to finish,
 using real sample data from the mockdata folder.
 """
 
-import pytest
 from pathlib import Path
 import shutil
 
-from cdisc_transpiler.infrastructure import create_default_container
-from cdisc_transpiler.application.models import ProcessStudyRequest
+import pytest
 
+from cdisc_transpiler.application.models import ProcessStudyRequest
+from cdisc_transpiler.infrastructure import create_default_container
 
 # Path to sample study data
 MOCKDATA_DIR = Path(__file__).parent.parent.parent / "mockdata"

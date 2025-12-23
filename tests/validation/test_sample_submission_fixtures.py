@@ -11,8 +11,8 @@ without depending on the full end-to-end mapping pipeline.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 import xml.etree.ElementTree as ET
 
 import pandas.testing as pdt
@@ -21,13 +21,12 @@ import pytest
 
 from cdisc_transpiler.domain.entities.mapping import MappingConfig
 from cdisc_transpiler.infrastructure.io.dataset_xml_writer import (
-    DATASET_XML_VERSION,
     DATA_NS,
+    DATASET_XML_VERSION,
     ODM_NS,
     write_dataset_xml,
 )
 from cdisc_transpiler.infrastructure.io.xpt_writer import XPTWriter
-
 
 FIXTURES_DIR = Path(__file__).parent / "data"
 FIXTURE_XPT_DIR = FIXTURES_DIR / "xpt"

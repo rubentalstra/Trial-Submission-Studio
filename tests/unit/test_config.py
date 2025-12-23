@@ -50,7 +50,7 @@ class TestTranspilerConfig:
         config = TranspilerConfig()
 
         with pytest.raises(Exception):  # FrozenInstanceError
-            config.min_confidence = 0.8  # type: ignore[misc]
+            config.min_confidence = 0.8
 
     def test_config_validation_min_confidence(self):
         """Test validation of min_confidence range."""

@@ -1,5 +1,5 @@
 """CLI command modules."""
 
-from . import study, domains
+from . import domains, study
 
-__all__ = ["study", "domains"]
+__all__ = ["domains", "study"]

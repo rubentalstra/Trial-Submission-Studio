@@ -5,9 +5,10 @@ This replaces the former `domains_module.registry` package.
 
 from __future__ import annotations
 
-from functools import lru_cache
+from collections.abc import Iterable
+from functools import cache, lru_cache
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from cdisc_transpiler.config import TranspilerConfig
 from cdisc_transpiler.domain.entities.sdtm_domain import SDTMDomain
@@ -93,7 +94,7 @@ def _ensure_registry_built() -> None:
             _register(domain)
 
 
-@lru_cache(maxsize=None)
+@cache
 def get_domain(code: str) -> SDTMDomain:
     _ensure_registry_built()
 
@@ -126,4 +127,4 @@ def generalized_identifiers(domain_code: str) -> dict[str, str]:
     return get_domain(domain_code).implements_mapping()
 
 
-__all__ = ["get_domain", "list_domains", "generalized_identifiers"]
+__all__ = ["generalized_identifiers", "get_domain", "list_domains"]

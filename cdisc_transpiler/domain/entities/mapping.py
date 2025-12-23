@@ -6,8 +6,9 @@ column mappings between source data and SDTM target variables.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Iterable, Protocol
+from typing import Protocol
 
 from pydantic import BaseModel, Field
 

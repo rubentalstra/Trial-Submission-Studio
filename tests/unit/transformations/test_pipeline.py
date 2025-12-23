@@ -6,8 +6,8 @@ Tests for TransformationPipeline class.
 import pandas as pd
 
 from cdisc_transpiler.transformations import (
-    TransformationPipeline,
     TransformationContext,
+    TransformationPipeline,
     TransformationResult,
 )
 

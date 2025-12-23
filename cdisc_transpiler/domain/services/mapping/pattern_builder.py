@@ -6,8 +6,8 @@ instead of using hardcoded patterns.
 
 from __future__ import annotations
 
-import re
 from functools import lru_cache
+import re
 
 from ...entities.sdtm_domain import SDTMDomain
 

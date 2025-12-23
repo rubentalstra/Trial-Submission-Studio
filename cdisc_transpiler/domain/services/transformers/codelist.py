@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Callable, Protocol, Sequence
+from collections.abc import Callable, Sequence
+from typing import TYPE_CHECKING, Any, Protocol
 
 import pandas as pd
 
-from ...entities.sdtm_domain import SDTMVariable
-from ...entities.controlled_terminology import ControlledTerminology
 from ....pandas_utils import ensure_numeric_series, ensure_series
+from ...entities.controlled_terminology import ControlledTerminology
+from ...entities.sdtm_domain import SDTMVariable
 
 if TYPE_CHECKING:
     from ...entities.study_metadata import StudyMetadata
@@ -25,7 +26,7 @@ class CodelistTransformer:
 
     def __init__(
         self,
-        metadata: "StudyMetadata | None" = None,
+        metadata: StudyMetadata | None = None,
         *,
         ct_resolver: CTResolver | None = None,
     ):
@@ -67,7 +68,7 @@ class CodelistTransformer:
                     return text if text is not None else str(code_val)
 
                 return ensure_series(
-                    code_values.apply(transform), index=code_values.index
+                    code_values.map(transform), index=code_values.index
                 )
 
         def transform_value(val: Any) -> Any:
@@ -79,7 +80,7 @@ class CodelistTransformer:
             return val
 
         series = ensure_series(source_data)
-        return ensure_series(series.apply(transform_value), index=series.index)
+        return ensure_series(series.map(transform_value), index=series.index)
 
     @staticmethod
     def apply_codelist_validations(
@@ -103,7 +104,7 @@ class CodelistTransformer:
                     continue
                 normalizer = ct_lookup.normalize
 
-                series = frame[var.name].astype("string")
+                series = ensure_series(frame[var.name]).astype("string")
                 trimmed = series.str.strip()
                 mask = trimmed.notna() & (trimmed != "")
 
@@ -112,7 +113,11 @@ class CodelistTransformer:
                     return normalized or value
 
                 normalized = series.copy()
-                normalized.loc[mask] = trimmed.loc[mask].apply(_normalize_ct_value)
+                # Explicitly cast the result of apply to Series[str] via ensure_series if needed,
+                # but here we are assigning to a slice.
+                # To help pyright, we can extract the series to apply on.
+                to_normalize = ensure_series(trimmed.loc[mask])
+                normalized.loc[mask] = to_normalize.map(_normalize_ct_value)
                 frame[var.name] = normalized.astype("string")
 
     @staticmethod
@@ -177,13 +182,11 @@ class CodelistTransformer:
             "AELLT": "GENERAL DISORDERS",
         }.items():
             if soc_var in frame.columns:
-                frame[soc_var] = (
-                    frame[soc_var]
-                    .astype("string")
-                    .fillna("")
-                    .replace("", term)
-                    .fillna(term)
-                )
+                s = ensure_series(frame[soc_var]).astype("string")
+                s = ensure_series(s.fillna(""))
+                s = ensure_series(s.replace("", term))
+                s = ensure_series(s.fillna(term))
+                frame[soc_var] = s
             else:
                 frame[soc_var] = term
 
@@ -197,7 +200,8 @@ class CodelistTransformer:
         ):
             if code_var in frame.columns:
                 code_series = ensure_numeric_series(frame[code_var], index=frame.index)
-                frame[code_var] = code_series.fillna(999999).astype("Int64")
+                s_filled = ensure_series(code_series.fillna(999999))
+                frame[code_var] = s_filled.astype("Int64")
             else:
                 frame[code_var] = pd.Series(
                     [999999 for _ in frame.index], dtype="Int64"

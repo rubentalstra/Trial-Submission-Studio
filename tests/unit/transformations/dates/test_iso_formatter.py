@@ -5,8 +5,8 @@ Tests for ISODateFormatter class.
 
 import pandas as pd
 
-from cdisc_transpiler.transformations.dates import ISODateFormatter
 from cdisc_transpiler.transformations import TransformationContext
+from cdisc_transpiler.transformations.dates import ISODateFormatter
 
 
 class TestISODateFormatter:

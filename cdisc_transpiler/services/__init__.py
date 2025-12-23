@@ -32,6 +32,6 @@ from .progress_reporting_service import ProgressReportingService
 __all__ = [
     "DomainDiscoveryService",
     "FileOrganizationService",
-    "ensure_acrf_pdf",
     "ProgressReportingService",
+    "ensure_acrf_pdf",
 ]

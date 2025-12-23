@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import math
 from pathlib import Path
-from typing import Any, Dict, List, cast
+from typing import Any, cast
 
 import pandas as pd
 
@@ -35,7 +35,7 @@ def _clean_value(raw: object) -> str:
         return ""
     if isinstance(raw, (pd.Series, pd.DataFrame)):
         try:
-            raw = raw.iloc[0]  # type: ignore[index]
+            raw = raw.iloc[0]
         except Exception:
             return ""
     try:
@@ -47,21 +47,21 @@ def _clean_value(raw: object) -> str:
         return raw.strip()
     if not isinstance(raw, (pd.Series, pd.DataFrame)):
         try:
-            if bool(pd.isna(cast(Any, raw))):
+            if bool(pd.isna(cast("Any", raw))):
                 return ""
         except Exception:
             pass
     return str(raw).strip()
 
 
-def _iter_ct_files(ct_dir: Path) -> List[Path]:
+def _iter_ct_files(ct_dir: Path) -> list[Path]:
     if not ct_dir.exists():
         return []
     return sorted(ct_dir.glob("*CT_*.csv"))
 
 
-def _load_ct_rows(ct_dir: Path) -> Dict[str, list[dict[str, Any]]]:
-    grouped: Dict[str, list[dict[str, Any]]] = {}
+def _load_ct_rows(ct_dir: Path) -> dict[str, list[dict[str, Any]]]:
+    grouped: dict[str, list[dict[str, Any]]] = {}
     for csv_path in _iter_ct_files(ct_dir):
         try:
             records = pd.read_csv(csv_path).to_dict(orient="records")
@@ -130,11 +130,11 @@ def _merge_ct(
 
 def build_registry(
     ct_dir: Path,
-) -> tuple[Dict[str, ControlledTerminology], Dict[str, ControlledTerminology]]:
+) -> tuple[dict[str, ControlledTerminology], dict[str, ControlledTerminology]]:
     """Build registries keyed by codelist code and by codelist name."""
 
-    registry_by_code: Dict[str, ControlledTerminology] = {}
-    registry_by_name: Dict[str, ControlledTerminology] = {}
+    registry_by_code: dict[str, ControlledTerminology] = {}
+    registry_by_name: dict[str, ControlledTerminology] = {}
     grouped = _load_ct_rows(ct_dir)
 
     for code, rows in grouped.items():

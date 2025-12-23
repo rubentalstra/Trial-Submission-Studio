@@ -168,7 +168,7 @@ class DomainDefinitionRepositoryPort(Protocol):
         """List all supported SDTM domain codes."""
         raise NotImplementedError
 
-    def get_domain(self, domain_code: str) -> "SDTMDomain":
+    def get_domain(self, domain_code: str) -> SDTMDomain:
         """Return the SDTM domain definition for a domain code."""
         raise NotImplementedError
 

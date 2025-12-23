@@ -15,11 +15,10 @@ from pathlib import Path
 import click
 from rich.console import Console
 
-from ...config import ConfigLoader
 from ...application.models import ProcessStudyRequest
+from ...config import ConfigLoader
 from ...infrastructure.container import DependencyContainer
 from ..presenters import SummaryPresenter
-
 
 console = Console()
 

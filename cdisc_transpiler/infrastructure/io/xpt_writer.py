@@ -10,7 +10,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-import pyreadstat  # type: ignore[import-untyped]
+import pyreadstat
 
 from cdisc_transpiler.infrastructure.sdtm_spec.registry import get_domain
 

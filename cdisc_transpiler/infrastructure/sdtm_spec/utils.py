@@ -45,9 +45,9 @@ def infer_implements(
 
 __all__ = [
     "GENERAL_OBSERVATION_CLASSES",
-    "normalize_class",
-    "normalize_general_class",
     "core_priority",
     "get_domain_class",
     "infer_implements",
+    "normalize_class",
+    "normalize_general_class",
 ]

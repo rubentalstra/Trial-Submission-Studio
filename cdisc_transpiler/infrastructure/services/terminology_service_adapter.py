@@ -69,7 +69,7 @@ def _normalize_to_submission_value(ct, source_value: str) -> str | None:
 
             if best is not None and best_dist == 1 and not tied:
                 return best
-        except Exception:  # noqa: BLE001
+        except Exception:
             # Fall back to strict behavior if rapidfuzz distance isn't available.
             return None
     return None

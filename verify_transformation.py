@@ -1,6 +1,7 @@
-import pandas as pd
 from pathlib import Path
 import xml.etree.ElementTree as ET
+
+import pandas as pd
 
 
 def parse_dataset_xml(xml_path):
@@ -143,12 +144,11 @@ def verify_lb():
         testcd = col.replace("ORRES_", "")
         if testcd in unique_tests:
             print(f"✅ Found records for {testcd}")
+        # Some might be filtered if empty
+        elif source_df[col].notna().any():
+            print(f"❌ Missing records for {testcd} (Source has data)")
         else:
-            # Some might be filtered if empty
-            if source_df[col].notna().any():
-                print(f"❌ Missing records for {testcd} (Source has data)")
-            else:
-                print(f"ℹ️ No records for {testcd} (Source is empty)")
+            print(f"ℹ️ No records for {testcd} (Source is empty)")
 
     if supp_path.exists():
         supp_df = parse_dataset_xml(supp_path)

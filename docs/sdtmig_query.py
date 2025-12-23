@@ -1,9 +1,9 @@
 from llama_index.core import (
+    Settings,
     StorageContext,
     load_index_from_storage,
 )
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
-from llama_index.core import Settings
 
 INDEX_DIR = "docs/sdtmig_index"
 

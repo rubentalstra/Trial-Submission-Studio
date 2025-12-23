@@ -1,13 +1,13 @@
 """Tests for SUPPQUAL service."""
 
-import pytest
 import pandas as pd
+import pytest
 
 from cdisc_transpiler.domain.services.suppqual_service import (
-    sanitize_qnam,
     build_suppqual,
-    finalize_suppqual,
     extract_used_columns,
+    finalize_suppqual,
+    sanitize_qnam,
 )
 
 

@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from typing import Mapping
+from collections.abc import Mapping
 
-from .sdtm_domain import SDTMVariable
 from .sdtm_classes import GENERAL_OBSERVATION_CLASSES, normalize_general_class
+from .sdtm_domain import SDTMVariable
 
 # Import constants directly to avoid circular import
 DEFAULT_CHAR_LENGTH = 200

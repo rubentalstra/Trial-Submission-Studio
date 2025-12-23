@@ -265,7 +265,7 @@ def is_transformer(obj: Any) -> bool:
     """
     return (
         hasattr(obj, "can_transform")
-        and callable(getattr(obj, "can_transform"))
+        and callable(obj.can_transform)
         and hasattr(obj, "transform")
-        and callable(getattr(obj, "transform"))
+        and callable(obj.transform)
     )

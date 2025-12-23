@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import pandas as pd
 
+from cdisc_transpiler.pandas_utils import ensure_series
+
 from .base import BaseDomainProcessor
 
 
@@ -38,25 +40,33 @@ class TSProcessor(BaseDomainProcessor):
             "TSVALNF",
         ):
             if col in frame.columns:
-                frame.loc[:, col] = frame[col].astype("string").fillna("").str.strip()
+                s = ensure_series(frame[col]).astype("string")
+                s = ensure_series(s.fillna(""))
+                frame.loc[:, col] = s.str.strip()
 
         ct_parmcd = self._get_controlled_terminology(variable="TSPARMCD")
         if ct_parmcd and "TSPARMCD" in frame.columns:
-            raw = frame["TSPARMCD"].astype("string").fillna("").str.strip()
-            canonical = raw.apply(ct_parmcd.normalize)
+            s = ensure_series(frame["TSPARMCD"]).astype("string")
+            s = ensure_series(s.fillna(""))
+            raw = s.str.strip()
+            canonical = ensure_series(raw.apply(ct_parmcd.normalize))
             valid = canonical.isin(ct_parmcd.submission_values)
             frame.loc[:, "TSPARMCD"] = canonical.where(valid, "")
 
         ct_parm = self._get_controlled_terminology(variable="TSPARM")
         if ct_parm and "TSPARM" in frame.columns:
-            raw = frame["TSPARM"].astype("string").fillna("").str.strip()
-            canonical = raw.apply(ct_parm.normalize)
+            s = ensure_series(frame["TSPARM"]).astype("string")
+            s = ensure_series(s.fillna(""))
+            raw = s.str.strip()
+            canonical = ensure_series(raw.apply(ct_parm.normalize))
             valid = canonical.isin(ct_parm.submission_values)
             frame.loc[:, "TSPARM"] = canonical.where(valid, "")
 
         ct_dict = self._get_controlled_terminology(variable="TSVCDREF")
         if ct_dict and "TSVCDREF" in frame.columns:
-            raw = frame["TSVCDREF"].astype("string").fillna("").str.strip()
-            canonical = raw.apply(ct_dict.normalize)
+            s = ensure_series(frame["TSVCDREF"]).astype("string")
+            s = ensure_series(s.fillna(""))
+            raw = s.str.strip()
+            canonical = ensure_series(raw.apply(ct_dict.normalize))
             valid = canonical.isin(ct_dict.submission_values)
             frame.loc[:, "TSVCDREF"] = canonical.where(valid, "")

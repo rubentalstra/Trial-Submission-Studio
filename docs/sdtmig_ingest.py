@@ -1,14 +1,13 @@
 import re
-from typing import List, Tuple
 
 from llama_index.core import (
-    VectorStoreIndex,
-    Settings,
     Document,
+    Settings,
+    VectorStoreIndex,
 )
-from llama_index.readers.file import PyMuPDFReader
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.embeddings.huggingface import HuggingFaceEmbedding
+from llama_index.readers.file import PyMuPDFReader
 
 PDF_PATH = "docs/SDTMIG v3.4-FINAL_2022-07-21.pdf"
 INDEX_DIR = "docs/sdtmig_index"
@@ -17,7 +16,7 @@ INDEX_DIR = "docs/sdtmig_index"
 SECTION_RE = re.compile(r"^(\d+(?:\.\d+)+)\s+(.+)$", re.MULTILINE)
 
 
-def extract_sections(text: str) -> List[Tuple[str, str]]:
+def extract_sections(text: str) -> list[tuple[str, str]]:
     """
     Split page text into (section_title, section_text).
     Falls back to 'UNSPECIFIED' if no section headers exist.
@@ -27,7 +26,7 @@ def extract_sections(text: str) -> List[Tuple[str, str]]:
     if not matches:
         return [("UNSPECIFIED", text.strip())]
 
-    sections: List[Tuple[str, str]] = []
+    sections: list[tuple[str, str]] = []
 
     for i, match in enumerate(matches):
         start = match.end()
@@ -56,7 +55,7 @@ def main() -> None:
     if not pages:
         raise RuntimeError("No pages loaded from SDTMIG PDF")
 
-    documents: List[Document] = []
+    documents: list[Document] = []
 
     # ✅ ENUMERATE for reliable page numbers
     for page_index, page in enumerate(pages, start=1):

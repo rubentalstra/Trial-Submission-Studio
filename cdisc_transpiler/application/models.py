@@ -80,7 +80,7 @@ class OutputRequest:
 
     dataframe: pd.DataFrame
     domain_code: str
-    config: "MappingConfig"
+    config: MappingConfig
     output_dirs: OutputDirs
     formats: set[str]
     base_filename: str | None = None
@@ -156,7 +156,7 @@ class DefineDatasetDTO:
 
     domain_code: str
     dataframe: pd.DataFrame
-    config: "MappingConfig"
+    config: MappingConfig
     label: str | None = None
     structure: str = "One record per subject per domain-specific entity"
     archive_location: Path | None = None

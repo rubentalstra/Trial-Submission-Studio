@@ -12,9 +12,8 @@ from pathlib import Path
 from ...application.ports.repositories import CTRepositoryPort
 from ...config import TranspilerConfig
 from ...domain.entities.controlled_terminology import ControlledTerminology
-from .ct_loader import build_registry
 from ..caching import MemoryCache
-
+from .ct_loader import build_registry
 
 _DEFAULT_CT_CACHE = MemoryCache()
 

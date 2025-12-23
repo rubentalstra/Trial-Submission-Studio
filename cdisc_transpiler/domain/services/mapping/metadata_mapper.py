@@ -12,8 +12,8 @@ import pandas as pd
 from rapidfuzz import fuzz
 
 if TYPE_CHECKING:
-    from ...entities.column_hints import Hints
     from ....domain.entities.study_metadata import StudyMetadata
+    from ...entities.column_hints import Hints
 
 from ....domain.entities.mapping import ColumnMapping, MappingSuggestions, Suggestion
 from ...entities.sdtm_domain import SDTMDomain, SDTMVariable
@@ -218,8 +218,8 @@ class MetadataAwareMapper:
                 score = 0
                 if (
                     "LASTCONTACT" in col_norm
-                    or "LAST" in col_norm
-                    and "CONTACT" in col_norm
+                    or ("LAST" in col_norm
+                    and "CONTACT" in col_norm)
                 ):
                     score += 30
                 if "EARLYDISCONTINUATION" in col_norm or "DISCONTINUATION" in col_norm:

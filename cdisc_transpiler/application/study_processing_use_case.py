@@ -21,10 +21,8 @@ from typing import TYPE_CHECKING, Any, Literal
 
 import pandas as pd
 
-from ..constants import SDTMVersions
-from ..constants import Defaults
+from ..constants import Defaults, SDTMVersions
 from ..pandas_utils import normalize_missing_strings
-
 from .models import (
     DefineDatasetDTO,
     DomainProcessingResult,
@@ -33,25 +31,25 @@ from .models import (
     ProcessStudyResponse,
 )
 from .ports import (
+    ConformanceReportWriterPort,
+    CTRepositoryPort,
     DefineXMLGeneratorPort,
+    DomainDefinitionRepositoryPort,
     DomainDiscoveryPort,
     DomainFrameBuilderPort,
     FileGeneratorPort,
     LoggerPort,
-    DomainDefinitionRepositoryPort,
-    StudyDataRepositoryPort,
     OutputPreparerPort,
-    CTRepositoryPort,
-    ConformanceReportWriterPort,
+    StudyDataRepositoryPort,
 )
 
 if TYPE_CHECKING:
-    from .domain_processing_use_case import DomainProcessingUseCase
     from ..domain.services import (
         RelrecService,
         RelspecService,
         RelsubService,
     )
+    from .domain_processing_use_case import DomainProcessingUseCase
 
 
 @dataclass(frozen=True)
@@ -102,9 +100,9 @@ class StudyProcessingUseCase:
         domain_processing_use_case: DomainProcessingUseCase | None = None,
         domain_discovery_service: DomainDiscoveryPort | None = None,
         domain_frame_builder: DomainFrameBuilderPort | None = None,
-        relrec_service: "RelrecService | None" = None,
-        relsub_service: "RelsubService | None" = None,
-        relspec_service: "RelspecService | None" = None,
+        relrec_service: RelrecService | None = None,
+        relsub_service: RelsubService | None = None,
+        relspec_service: RelspecService | None = None,
         file_generator: FileGeneratorPort | None = None,
         define_xml_generator: DefineXMLGeneratorPort | None = None,
         output_preparer: OutputPreparerPort | None = None,
@@ -452,7 +450,7 @@ class StudyProcessingUseCase:
             self.logger.log_final_stats()
             response.success = len(response.errors) == 0
 
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             response.success = False
             response.errors.append(("GENERAL", str(exc)))
             self.logger.error(f"Study processing failed: {exc}")
@@ -494,7 +492,7 @@ class StudyProcessingUseCase:
                 study_id=request.study_id,
                 reports=reports,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             response.conformance_report_error = str(exc)
 
     def _setup_output_directories(self, request: ProcessStudyRequest) -> None:
@@ -522,7 +520,7 @@ class StudyProcessingUseCase:
             for file_path, _ in files:
                 try:
                     headers = self._load_dataset(file_path)
-                except Exception:  # noqa: BLE001
+                except Exception:
                     continue
                 for col in headers.columns:
                     common_column_counts[str(col).strip().lower()] += 1
@@ -607,7 +605,7 @@ class StudyProcessingUseCase:
 
             return result
 
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self.logger.error(f"{domain_code}: {exc}")
             return DomainProcessingResult(
                 domain_code=domain_code,
@@ -782,7 +780,7 @@ class StudyProcessingUseCase:
                 jobs.append(
                     _SynthesisJob(
                         domain_code=code,
-                        kind=kind,  # type: ignore[arg-type]
+                        kind=kind,
                         reason=reason,
                     )
                 )
@@ -970,7 +968,7 @@ class StudyProcessingUseCase:
 
             self.logger.log_synthesis_complete("RELREC", result.records)
 
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self.logger.error(f"RELREC: {exc}")
             response.errors.append(("RELREC", str(exc)))
 
@@ -1088,7 +1086,7 @@ class StudyProcessingUseCase:
 
             self.logger.log_synthesis_complete("RELSUB", result.records)
 
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self.logger.error(f"RELSUB: {exc}")
             response.errors.append(("RELSUB", str(exc)))
 
@@ -1203,7 +1201,7 @@ class StudyProcessingUseCase:
 
             self.logger.log_synthesis_complete("RELSPEC", result.records)
 
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self.logger.error(f"RELSPEC: {exc}")
             response.errors.append(("RELSPEC", str(exc)))
 
@@ -1242,7 +1240,7 @@ class StudyProcessingUseCase:
             response.define_xml_path = define_path
             self.logger.success(f"Generated Define-XML 2.1 at {define_path}")
 
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             response.define_xml_error = str(exc)
             self.logger.error(f"Define-XML generation failed: {exc}")
             response.errors.append(("Define-XML", str(exc)))

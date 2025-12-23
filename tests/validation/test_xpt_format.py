@@ -6,13 +6,13 @@ This module tests that generated XPT files:
 - Comply with SAS Transport File (XPORT) format specifications
 """
 
-import pytest
 from pathlib import Path
+
 import pyreadstat
+import pytest
 
-from cdisc_transpiler.infrastructure import create_default_container
 from cdisc_transpiler.application.models import ProcessStudyRequest
-
+from cdisc_transpiler.infrastructure import create_default_container
 
 # Path to sample study data
 MOCKDATA_DIR = Path(__file__).parent.parent.parent / "mockdata"

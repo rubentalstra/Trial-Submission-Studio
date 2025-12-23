@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from ...domain.entities.sdtm_classes import GENERAL_OBSERVATION_CLASSES
 from ...domain.entities.sdtm_domain import SDTMVariable
 from ...domain.entities.variable import variable_from_row
-from ...domain.entities.sdtm_classes import GENERAL_OBSERVATION_CLASSES
 from .utils import core_priority, normalize_class, normalize_general_class
 
 

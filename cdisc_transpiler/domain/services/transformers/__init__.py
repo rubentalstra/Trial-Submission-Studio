@@ -10,8 +10,8 @@ from .numeric import NumericTransformer
 from .text import TextTransformer
 
 __all__ = [
-    "DateTransformer",
     "CodelistTransformer",
+    "DateTransformer",
     "NumericTransformer",
     "TextTransformer",
     "normalize_iso8601",

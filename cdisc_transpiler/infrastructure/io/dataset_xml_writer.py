@@ -58,11 +58,11 @@ def _is_null(value: object) -> bool:
 def _format_value(value: object) -> str:
     if isinstance(value, (pd.Series, pd.DataFrame)):
         try:
-            value = value.iloc[0]  # type: ignore[index]
+            value = value.iloc[0]
         except (AttributeError, IndexError, KeyError, TypeError):
             return ""
     try:
-        if bool(pd.isna(cast(Any, value))):
+        if bool(pd.isna(cast("Any", value))):
             return ""
     except (TypeError, ValueError):
         pass

@@ -9,8 +9,8 @@ depend on infrastructure adapters or legacy wrappers.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-import re
 from difflib import get_close_matches
+import re
 
 
 @dataclass(frozen=True)

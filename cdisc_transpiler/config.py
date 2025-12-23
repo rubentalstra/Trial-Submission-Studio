@@ -6,8 +6,8 @@ environment variables and TOML configuration files.
 
 from __future__ import annotations
 
-import os
 from dataclasses import dataclass, field
+import os
 from pathlib import Path
 
 
@@ -178,7 +178,7 @@ class ConfigLoader:
         """
         try:
             # Try Python 3.11+ built-in tomllib
-            import tomllib  # type: ignore[import-not-found]
+            import tomllib
         except ImportError:
             try:
                 # Fall back to tomli for Python < 3.11

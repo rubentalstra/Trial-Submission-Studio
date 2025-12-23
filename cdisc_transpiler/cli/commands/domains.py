@@ -11,7 +11,6 @@ from ...infrastructure.sdtm_spec.registry import (
     list_domains as list_all_domains,
 )
 
-
 console = Console()
 
 

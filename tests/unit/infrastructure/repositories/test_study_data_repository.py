@@ -1,14 +1,13 @@
 """Tests for StudyDataRepository."""
 
+import pandas as pd
 import pytest
 
-import pandas as pd
-
-from cdisc_transpiler.infrastructure.repositories import StudyDataRepository
 from cdisc_transpiler.infrastructure.io.exceptions import (
     DataParseError,
     DataSourceNotFoundError,
 )
+from cdisc_transpiler.infrastructure.repositories import StudyDataRepository
 
 
 class TestStudyDataRepository:

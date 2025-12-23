@@ -11,12 +11,13 @@ injected dependencies and no longer imports from legacy modules.
 
 from pathlib import Path
 from unittest.mock import Mock
+
 import pandas as pd
 
 from cdisc_transpiler.application.models import (
+    DomainProcessingResult,
     ProcessStudyRequest,
     ProcessStudyResponse,
-    DomainProcessingResult,
 )
 
 
@@ -90,7 +91,7 @@ class TestStudyProcessingUseCase:
             / "application"
             / "study_processing_use_case.py"
         )
-        with open(use_case_path, "r", encoding="utf-8") as f:
+        with open(use_case_path, encoding="utf-8") as f:
             source = f.read()
 
         # Check for module-level imports (outside of functions/methods)

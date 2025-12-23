@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pandas as pd
 
-from .base import BaseDomainProcessor
-from ..transformers import DateTransformer, NumericTransformer
 from ....pandas_utils import ensure_series
+from ..transformers import DateTransformer, NumericTransformer
+from .base import BaseDomainProcessor
 
 
 class QSProcessor(BaseDomainProcessor):

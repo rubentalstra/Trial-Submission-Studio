@@ -16,7 +16,7 @@ import pandas as pd
 from .constants import MissingValues
 
 
-def ensure_series(value: Any, index: pd.Index | None = None) -> pd.Series:
+def ensure_series(value: Any, index: pd.Index[Any] | None = None) -> pd.Series[Any]:
     """Coerce ``value`` to a :class:`pandas.Series`.
 
     The function is intentionally permissive: it accepts scalars, lists,
@@ -33,7 +33,9 @@ def ensure_series(value: Any, index: pd.Index | None = None) -> pd.Series:
     return pd.Series(value, index=index)
 
 
-def ensure_numeric_series(value: Any, index: pd.Index | None = None) -> pd.Series:
+def ensure_numeric_series(
+    value: Any, index: pd.Index[Any] | None = None
+) -> pd.Series[Any]:
     """Return a numeric :class:`Series` with ``NaN`` on conversion failures."""
     series = ensure_series(value, index=index)
     numeric = pd.to_numeric(series, errors="coerce")
@@ -45,7 +47,7 @@ def normalize_missing_strings(
     *,
     replacement: str = "",
     markers: set[str] | None = None,
-) -> pd.Series:
+) -> pd.Series[str]:
     """Normalize common string markers that represent missing values.
 
     This is intentionally conservative:

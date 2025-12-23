@@ -12,9 +12,9 @@ import pandas as pd
 
 from ...application.ports.repositories import StudyDataRepositoryPort
 from ...domain.entities.study_metadata import StudyMetadata
-from .study_metadata_loader import load_study_metadata as _load_metadata
 from ..io.csv_reader import CSVReader, CSVReadOptions
 from ..io.exceptions import DataParseError, DataSourceNotFoundError
+from .study_metadata_loader import load_study_metadata as _load_metadata
 
 
 class StudyDataRepository:
@@ -68,13 +68,12 @@ class StudyDataRepository:
         # Route to appropriate reader based on extension
         if ext in (".csv", ".tsv", ".txt"):
             return self._read_csv(path)
-        elif ext in (".xls", ".xlsx"):
+        if ext in (".xls", ".xlsx"):
             return self._read_excel(path)
-        elif ext == ".sas7bdat":
+        if ext == ".sas7bdat":
             return self._read_sas(path)
-        else:
-            supported = ".csv, .tsv, .txt, .xls, .xlsx, .sas7bdat"
-            raise DataParseError(f"Unsupported format '{ext}'. Supported: {supported}")
+        supported = ".csv, .tsv, .txt, .xls, .xlsx, .sas7bdat"
+        raise DataParseError(f"Unsupported format '{ext}'. Supported: {supported}")
 
     def load_study_metadata(self, study_folder: Path) -> StudyMetadata:
         """Load study metadata from Items.csv and CodeLists.csv.
@@ -150,7 +149,7 @@ class StudyDataRepository:
             DataParseError: If pyreadstat is not installed
         """
         try:
-            import pyreadstat  # type: ignore[import-untyped]
+            import pyreadstat
         except ModuleNotFoundError as e:
             raise DataParseError(
                 "pyreadstat is required to read SAS files (optional dependency). "

@@ -130,7 +130,7 @@ class DomainDiscoveryService:
         # Log summary statistics
         # Summary by category - use get_domain_class directly
         category_counts: dict[str, int] = {}
-        for domain in domain_files.keys():
+        for domain in domain_files:
             category = get_domain_class(domain)
             category_counts[category] = category_counts.get(category, 0) + 1
 

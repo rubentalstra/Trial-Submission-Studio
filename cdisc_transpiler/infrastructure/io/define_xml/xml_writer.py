@@ -10,9 +10,9 @@ infrastructure I/O layer easier to navigate.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterable
 from xml.etree import ElementTree as ET
 
 import pandas as pd
@@ -28,14 +28,14 @@ from cdisc_transpiler.infrastructure.sdtm_spec.registry import get_domain
 from .constants import (
     ACRF_LEAF_ID,
     CT_STANDARD_OID_SDTM,
-    DEFAULT_MEDDRA_VERSION,
     DEF_NS,
+    DEFAULT_MEDDRA_VERSION,
     DEFINE_VERSION,
     MEDDRA_CODELIST_NAME,
     MEDDRA_HREF,
     ODM_NS,
-    XML_NS,
     XLINK_NS,
+    XML_NS,
     attr,
     safe_href,
     tag,

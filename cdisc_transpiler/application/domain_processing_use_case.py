@@ -32,15 +32,15 @@ from .ports import (
     LoggerPort,
     MappingPort,
     OutputPreparerPort,
-    SuppqualPort,
     StudyDataRepositoryPort,
+    SuppqualPort,
     TerminologyPort,
     XPTWriterPort,
 )
 
 if TYPE_CHECKING:
-    from ..domain.entities.sdtm_domain import SDTMDomain
     from ..domain.entities.mapping import MappingConfig
+    from ..domain.entities.sdtm_domain import SDTMDomain
 
 from ..domain.entities.column_hints import ColumnHint, Hints
 
@@ -338,7 +338,7 @@ class DomainProcessingUseCase:
                 )
                 response.supplementals.append(supp_response)
 
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             response.success = False
             response.error = str(exc)
             self.logger.error(f"{request.domain_code}: {exc}")
@@ -745,8 +745,8 @@ class DomainProcessingUseCase:
         output_dirs: dict[str, Path | None],
     ) -> dict[str, Any]:
         """Generate supplemental qualifier files using FileGeneratorPort."""
-        from .models import OutputDirs, OutputRequest
         from ..domain.entities.mapping import ColumnMapping, build_config
+        from .models import OutputDirs, OutputRequest
 
         merged_supp = (
             supp_frames[0]
@@ -759,7 +759,7 @@ class DomainProcessingUseCase:
         # Finalize (ordering + dedup) after merge to avoid duplicates across files.
         try:
             supp_domain_def = self._get_domain(supp_domain_code)
-        except Exception:  # noqa: BLE001
+        except Exception:
             supp_domain_def = None
         if not merged_supp.empty:
             merged_supp = self._suppqual_service.finalize_suppqual(

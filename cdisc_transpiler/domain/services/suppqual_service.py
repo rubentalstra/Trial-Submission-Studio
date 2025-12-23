@@ -120,7 +120,7 @@ def sanitize_qnam(name: str) -> str:
     return safe[: Constraints.QNAM_MAX_LENGTH]
 
 
-def _get_variable_lengths(domain_def: "SDTMDomain") -> dict[str, int]:
+def _get_variable_lengths(domain_def: SDTMDomain) -> dict[str, int]:
     lengths: dict[str, int] = {}
     for var in getattr(domain_def, "variables", []) or []:
         var_name = getattr(var, "name", None)
@@ -129,7 +129,7 @@ def _get_variable_lengths(domain_def: "SDTMDomain") -> dict[str, int]:
             continue
         try:
             length_int = int(var_length)
-        except Exception:  # noqa: BLE001
+        except Exception:
             continue
         if length_int > 0:
             lengths[str(var_name).upper()] = length_int

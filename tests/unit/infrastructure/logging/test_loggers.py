@@ -6,9 +6,9 @@ Tests verify that:
 3. NullLogger provides silent testing capability
 """
 
-import unittest
 from io import StringIO
 from pathlib import Path
+import unittest
 
 from rich.console import Console
 

@@ -8,32 +8,33 @@ This is core SDTM business logic that belongs in the domain layer.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
+from .ae import AEProcessor
 from .base import BaseDomainProcessor, DefaultDomainProcessor
+from .cm import CMProcessor
+from .da import DAProcessor
 
 # Import all domain processors
 from .dm import DMProcessor
-from .ae import AEProcessor
-from .cm import CMProcessor
 from .ds import DSProcessor
 from .ex import EXProcessor
+from .ie import IEProcessor
 from .lb import LBProcessor
-from .vs import VSProcessor
 from .mh import MHProcessor
 from .pe import PEProcessor
-from .qs import QSProcessor
-from .da import DAProcessor
-from .ie import IEProcessor
 from .pr import PRProcessor
+from .qs import QSProcessor
 from .se import SEProcessor
-from .ts import TSProcessor
 from .ta import TAProcessor
 from .te import TEProcessor
+from .ts import TSProcessor
+from .vs import VSProcessor
 
 if TYPE_CHECKING:
-    from ...entities.sdtm_domain import SDTMDomain
     from ...entities.controlled_terminology import ControlledTerminology
+    from ...entities.sdtm_domain import SDTMDomain
     from ...entities.study_metadata import StudyMetadata
 
 
@@ -50,10 +51,10 @@ class DomainProcessorRegistry:
 
     def get_processor(
         self,
-        domain: "SDTMDomain",
+        domain: SDTMDomain,
         reference_starts: dict[str, str] | None = None,
-        metadata: "StudyMetadata | None" = None,
-        ct_resolver: "Callable[[str | None, str | None], ControlledTerminology | None] | None" = None,
+        metadata: StudyMetadata | None = None,
+        ct_resolver: Callable[[str | None, str | None], ControlledTerminology | None] | None = None,
     ) -> BaseDomainProcessor:
         """Get the appropriate processor for a domain."""
         processor_class = self._processors.get(
@@ -87,10 +88,10 @@ _registry.register("TE", TEProcessor)
 
 
 def get_domain_processor(
-    domain: "SDTMDomain",
+    domain: SDTMDomain,
     reference_starts: dict[str, str] | None = None,
-    metadata: "StudyMetadata | None" = None,
-    ct_resolver: "Callable[[str | None, str | None], ControlledTerminology | None] | None" = None,
+    metadata: StudyMetadata | None = None,
+    ct_resolver: Callable[[str | None, str | None], ControlledTerminology | None] | None = None,
 ) -> BaseDomainProcessor:
     """Get a processor for the specified domain."""
     return _registry.get_processor(domain, reference_starts, metadata, ct_resolver)

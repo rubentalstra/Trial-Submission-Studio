@@ -16,7 +16,6 @@ from ...domain.services.transformers import (
     DateTransformer,
     NumericTransformer,
 )
-
 from .xpt_validator import XPTValidator
 
 

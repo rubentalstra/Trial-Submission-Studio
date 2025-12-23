@@ -1,7 +1,8 @@
 """Unit tests for ProgressPresenter class."""
 
-import pytest
 from io import StringIO
+
+import pytest
 from rich.console import Console
 
 from cdisc_transpiler.cli.presenters import ProgressPresenter

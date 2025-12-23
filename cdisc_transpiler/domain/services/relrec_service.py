@@ -19,7 +19,7 @@ from typing import Any
 
 import pandas as pd
 
-from ..entities.mapping import MappingConfig, ColumnMapping
+from ..entities.mapping import ColumnMapping, MappingConfig
 
 
 class RelrecService:
@@ -183,7 +183,7 @@ class RelrecService:
     ) -> dict[str, dict[str, Any]]:
         eligible: dict[str, dict[str, Any]] = {}
         for code, df in domain_dataframes.items():
-            if not isinstance(df, pd.DataFrame) or df.empty:
+            if df.empty:
                 continue
             if "USUBJID" not in df.columns:
                 continue
@@ -255,7 +255,7 @@ class RelrecService:
         """
         for code, df in domain_dataframes.items():
             if code.upper() == domain_code.upper():
-                if isinstance(df, pd.DataFrame) and not df.empty:
+                if not df.empty:
                     return df
         return None
 

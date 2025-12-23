@@ -13,8 +13,8 @@ from cdisc_transpiler.application.models import (
     OutputRequest,
     OutputResult,
 )
-from cdisc_transpiler.infrastructure.io import FileGenerator
 from cdisc_transpiler.domain.entities.mapping import ColumnMapping, MappingConfig
+from cdisc_transpiler.infrastructure.io import FileGenerator
 
 
 @pytest.fixture

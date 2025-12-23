@@ -11,12 +11,11 @@ CLEAN2-A3 Implementation.
 from __future__ import annotations
 
 import ast
-import re
 from pathlib import Path
+import re
 import sys
 
 import pytest
-
 
 # Root of the cdisc_transpiler package
 PACKAGE_ROOT = Path(__file__).parent.parent.parent.parent / "cdisc_transpiler"
@@ -46,7 +45,7 @@ def extract_imports_from_file(file_path: Path) -> list[str]:
     imports = []
 
     try:
-        with open(file_path, "r", encoding="utf-8") as f:
+        with open(file_path, encoding="utf-8") as f:
             content = f.read()
 
         tree = ast.parse(content)

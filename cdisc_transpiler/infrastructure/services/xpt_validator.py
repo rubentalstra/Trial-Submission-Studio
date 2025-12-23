@@ -48,9 +48,8 @@ class XPTValidator:
                 ).str.strip().eq("")
                 if bool(empty.all()):
                     to_drop.append(name)
-            else:
-                if bool(series.isna().all()):
-                    to_drop.append(name)
+            elif bool(series.isna().all()):
+                to_drop.append(name)
 
         if to_drop:
             frame.drop(columns=to_drop, inplace=True)

@@ -12,7 +12,8 @@ SDTM Reference:
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 import pandas as pd
 
@@ -29,12 +30,12 @@ class DomainFrameBuildError(RuntimeError):
 
 def build_domain_dataframe(
     frame: pd.DataFrame,
-    config: "MappingConfig",
+    config: MappingConfig,
     domain: SDTMDomain,
     *,
     reference_starts: dict[str, str] | None = None,
     lenient: bool = False,
-    metadata: "StudyMetadata | None" = None,
+    metadata: StudyMetadata | None = None,
     domain_processor_factory: Callable | None = None,
     transformers: dict | None = None,
     validators: dict | None = None,
@@ -93,12 +94,12 @@ class DomainFrameBuilder:
     def __init__(
         self,
         frame: pd.DataFrame,
-        config: "MappingConfig",
+        config: MappingConfig,
         domain: SDTMDomain,
         *,
         reference_starts: dict[str, str] | None = None,
         lenient: bool = False,
-        metadata: "StudyMetadata | None" = None,
+        metadata: StudyMetadata | None = None,
         domain_processor_factory: Callable | None = None,
         transformers: dict | None = None,
         validators: dict | None = None,
@@ -280,7 +281,7 @@ class DomainFrameBuilder:
             if numeric.isna().all() or numeric.nunique(dropna=True) <= 1:
                 result.loc[:, col] = result.groupby(usubjid).cumcount() + 1
 
-    def _apply_mapping(self, result: pd.DataFrame, mapping: "ColumnMapping") -> None:
+    def _apply_mapping(self, result: pd.DataFrame, mapping: ColumnMapping) -> None:
         """Apply a single column mapping to the result DataFrame."""
         if mapping.target_variable not in self.variable_lookup:
             return
@@ -301,33 +302,32 @@ class DomainFrameBuilder:
             elif raw_expr in self.frame.columns:
                 result[mapping.target_variable] = self.frame[raw_expr].copy()
             return
+        # Get the source data
+        if source_column in self.frame.columns:
+            source_data = self.frame[source_column].copy()
+        elif raw_source in self.frame.columns:
+            source_data = self.frame[raw_source].copy()
         else:
-            # Get the source data
-            if source_column in self.frame.columns:
-                source_data = self.frame[source_column].copy()
-            elif raw_source in self.frame.columns:
-                source_data = self.frame[raw_source].copy()
-            else:
-                return
+            return
 
-            # Apply codelist transformation if specified
-            if (
-                mapping.codelist_name
-                and self.metadata
-                and mapping.target_variable != "TSVCDREF"
-                and self.codelist_transformer
-            ):
-                code_column = mapping.use_code_column
-                code_column = unquote_column_name(code_column) if code_column else None
-                source_data = self.codelist_transformer.apply_codelist_transformation(
-                    source_data,
-                    mapping.codelist_name,
-                    code_column,
-                    self.frame,
-                    unquote_column_name,
-                )
+        # Apply codelist transformation if specified
+        if (
+            mapping.codelist_name
+            and self.metadata
+            and mapping.target_variable != "TSVCDREF"
+            and self.codelist_transformer
+        ):
+            code_column = mapping.use_code_column
+            code_column = unquote_column_name(code_column) if code_column else None
+            source_data = self.codelist_transformer.apply_codelist_transformation(
+                source_data,
+                mapping.codelist_name,
+                code_column,
+                self.frame,
+                unquote_column_name,
+            )
 
-            result[mapping.target_variable] = source_data
+        result[mapping.target_variable] = source_data
 
     def _default_column(self, variable: SDTMVariable) -> pd.Series:
         """Return a default column series for a given variable."""

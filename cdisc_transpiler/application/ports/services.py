@@ -6,19 +6,19 @@ following the Ports & Adapters (Hexagonal) architecture pattern.
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from pathlib import Path
-from typing import TYPE_CHECKING, Iterable, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 import pandas as pd
 
 if TYPE_CHECKING:
-    from ..models import DefineDatasetDTO, OutputRequest, OutputResult
-    from ...domain.entities.mapping import MappingConfig
-    from ...domain.entities.mapping import MappingSuggestions
-    from ...domain.entities.study_metadata import StudyMetadata
     from ...domain.entities.column_hints import Hints
+    from ...domain.entities.mapping import MappingConfig, MappingSuggestions
     from ...domain.entities.sdtm_domain import SDTMDomain
+    from ...domain.entities.study_metadata import StudyMetadata
     from ...domain.services.sdtm_conformance_checker import ConformanceReport
+    from ..models import DefineDatasetDTO, OutputRequest, OutputResult
 
 
 @runtime_checkable
@@ -262,12 +262,12 @@ class DomainFrameBuilderPort(Protocol):
     def build_domain_dataframe(
         self,
         frame: pd.DataFrame,
-        config: "MappingConfig",
-        domain: "SDTMDomain",
+        config: MappingConfig,
+        domain: SDTMDomain,
         *,
         reference_starts: dict[str, str] | None = None,
         lenient: bool = False,
-        metadata: "StudyMetadata | None" = None,
+        metadata: StudyMetadata | None = None,
     ) -> pd.DataFrame:
         raise NotImplementedError
 
@@ -276,7 +276,7 @@ class DomainFrameBuilderPort(Protocol):
 class SuppqualPort(Protocol):
     """Protocol for SUPPQUAL (supplemental qualifiers) operations."""
 
-    def extract_used_columns(self, config: "MappingConfig | None") -> set[str]:
+    def extract_used_columns(self, config: MappingConfig | None) -> set[str]:
         raise NotImplementedError
 
     def build_suppqual(
@@ -284,7 +284,7 @@ class SuppqualPort(Protocol):
         domain_code: str,
         source_df: pd.DataFrame,
         mapped_df: pd.DataFrame | None,
-        domain_def: "SDTMDomain",
+        domain_def: SDTMDomain,
         used_source_columns: set[str] | None = None,
         *,
         study_id: str | None = None,
@@ -297,7 +297,7 @@ class SuppqualPort(Protocol):
         self,
         supp_df: pd.DataFrame,
         *,
-        supp_domain_def: "SDTMDomain | None" = None,
+        supp_domain_def: SDTMDomain | None = None,
         parent_domain_code: str = "DM",
     ) -> pd.DataFrame:
         raise NotImplementedError
@@ -331,10 +331,10 @@ class MappingPort(Protocol):
         *,
         domain_code: str,
         frame: pd.DataFrame,
-        metadata: "StudyMetadata | None" = None,
+        metadata: StudyMetadata | None = None,
         min_confidence: float = 0.5,
-        column_hints: "Hints | None" = None,
-    ) -> "MappingSuggestions":
+        column_hints: Hints | None = None,
+    ) -> MappingSuggestions:
         """Suggest mappings for the given source dataframe."""
         raise NotImplementedError
 
@@ -466,7 +466,7 @@ class ConformanceReportWriterPort(Protocol):
         *,
         output_dir: Path,
         study_id: str,
-        reports: Iterable["ConformanceReport"],
+        reports: Iterable[ConformanceReport],
         filename: str = "conformance_report.json",
     ) -> Path:
         """Write a machine-readable conformance report as JSON.
