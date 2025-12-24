@@ -8,6 +8,10 @@ rust-version.workspace = true
 name = "sdtm"
 path = "src/main.rs"
 
+[[bin]]
+name = "cdisc-transpiler"
+path = "src/bin/cdisc-transpiler.rs"
+
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
