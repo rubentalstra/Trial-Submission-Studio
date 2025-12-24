@@ -177,6 +177,7 @@ pub fn validate_domains(
     }
     if let Some(p21_rules) = ctx.p21_rules {
         apply_reject_rules(&domain_map, &frame_map, p21_rules, &mut report_map);
+        apply_missing_dataset_issues(&domain_map, &frame_map, p21_rules, &mut report_map);
     }
     report_map.into_values().collect()
 }
@@ -516,6 +517,39 @@ fn apply_reject_rules(
     let p21_lookup = build_p21_lookup(Some(p21_rules));
     apply_missing_dataset_rejects(domain_map, frame_map, p21_rules, report_map);
     apply_ts_sstdtc_rejects(domain_map, frame_map, &p21_lookup, report_map);
+}
+
+fn apply_missing_dataset_issues(
+    domain_map: &BTreeMap<String, &Domain>,
+    frame_map: &BTreeMap<String, &DataFrame>,
+    p21_rules: &[P21Rule],
+    report_map: &mut BTreeMap<String, ConformanceReport>,
+) {
+    for rule in p21_rules {
+        if parse_severity(rule) == Some(IssueSeverity::Reject) {
+            continue;
+        }
+        let Some(code) = missing_dataset_code(&rule.message) else {
+            continue;
+        };
+        if !domain_map.contains_key(&code) {
+            continue;
+        }
+        if frame_map.contains_key(&code) {
+            continue;
+        }
+        let issue = ConformanceIssue {
+            code: rule.rule_id.clone(),
+            message: rule_message(rule, None),
+            severity: rule_severity(Some(rule), IssueSeverity::Error),
+            variable: None,
+            count: Some(1),
+            rule_id: Some(rule.rule_id.clone()),
+            category: rule.category.clone(),
+            codelist_code: None,
+        };
+        add_report_issue(report_map, &code, issue);
+    }
 }
 
 fn apply_missing_dataset_rejects(
