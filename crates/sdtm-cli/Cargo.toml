@@ -5,5 +5,17 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
+anyhow.workspace = true
+clap.workspace = true
+comfy-table.workspace = true
+polars.workspace = true
+sdtm-core = { path = "../sdtm-core" }
+sdtm-ingest = { path = "../sdtm-ingest" }
+sdtm-map = { path = "../sdtm-map" }
+sdtm-model = { path = "../sdtm-model" }
+sdtm-report = { path = "../sdtm-report" }
+sdtm-standards = { path = "../sdtm-standards" }
+sdtm-validate = { path = "../sdtm-validate" }
+sdtm-xpt = { path = "../sdtm-xpt" }
 tracing.workspace = true
 tracing-subscriber.workspace = true

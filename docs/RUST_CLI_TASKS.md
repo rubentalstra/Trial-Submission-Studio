@@ -205,12 +205,12 @@ Exit criteria:
 
 Goal: provide a minimal but stable CLI entry point.
 
-- [ ] Implement `study` command with `--output-dir`, `--format`, `-v`
-- [ ] Implement `domains` command
-- [ ] Render a summary table and error details per the CLI spec
-- [ ] Map verbosity flags to log levels
-- [ ] Use non-zero exit codes on failure
-- [ ] Add `--dry-run` support (optional)
+- [x] Implement `study` command with `--output-dir`, `--format`, `-v`
+- [x] Implement `domains` command
+- [x] Render a summary table and error details per the CLI spec
+- [x] Map verbosity flags to log levels
+- [x] Use non-zero exit codes on failure
+- [x] Add `--dry-run` support (optional)
 
 Exit criteria:
 
