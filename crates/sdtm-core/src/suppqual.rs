@@ -39,6 +39,14 @@ fn any_to_string(value: AnyValue) -> String {
     }
 }
 
+fn strip_wrapping_quotes(value: &str) -> String {
+    let trimmed = value.trim();
+    if trimmed.len() >= 2 && trimmed.starts_with('"') && trimmed.ends_with('"') {
+        return trimmed[1..trimmed.len() - 1].to_string();
+    }
+    trimmed.to_string()
+}
+
 fn sanitize_qnam(name: &str) -> String {
     let mut safe = String::new();
     for ch in name.chars() {
@@ -193,26 +201,26 @@ pub fn build_suppqual(
 
     for col in &extra_cols {
         for idx in 0..row_count {
-            let raw_val = column_value(source_df, col, idx).trim().to_string();
+            let raw_val = strip_wrapping_quotes(&column_value(source_df, col, idx));
             if raw_val.is_empty() {
                 continue;
             }
             let study_value = parent_cols
                 .study_id
                 .as_deref()
-                .map(|name| column_value(source_df, name, idx))
+                .map(|name| strip_wrapping_quotes(&column_value(source_df, name, idx)))
                 .unwrap_or_default();
             let usubjid_value = parent_cols
                 .usubjid
                 .as_deref()
-                .map(|name| column_value(source_df, name, idx))
+                .map(|name| strip_wrapping_quotes(&column_value(source_df, name, idx)))
                 .unwrap_or_default();
             let mapped_usubjid = mapped_df
                 .and_then(|df| {
                     parent_cols
                         .usubjid
                         .as_deref()
-                        .map(|name| column_value(df, name, idx))
+                        .map(|name| strip_wrapping_quotes(&column_value(df, name, idx)))
                 })
                 .unwrap_or_default();
             let final_usubjid = if !usubjid_value.is_empty() {

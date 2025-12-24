@@ -52,6 +52,14 @@ pub(super) fn string_column(df: &DataFrame, name: &str, trim: Trim) -> Result<Ve
     Ok(values)
 }
 
+fn strip_quotes(value: &str) -> String {
+    let trimmed = value.trim();
+    if !trimmed.contains('"') {
+        return trimmed.to_string();
+    }
+    trimmed.chars().filter(|ch| *ch != '"').collect()
+}
+
 pub(super) fn numeric_column_f64(df: &DataFrame, name: &str) -> Result<Vec<Option<f64>>> {
     let series = df.column(name)?;
     let mut values = Vec::with_capacity(df.height());
@@ -286,6 +294,9 @@ pub(super) fn drop_placeholder_rows(
         return Ok(());
     }
     let mut usubjid_vals = string_column(df, &usubjid_col, Trim::Both)?;
+    for value in &mut usubjid_vals {
+        *value = strip_quotes(value);
+    }
     let mut missing = vec![false; df.height()];
     for idx in 0..df.height() {
         missing[idx] = is_missing_usubjid(&usubjid_vals[idx]);
@@ -304,7 +315,8 @@ pub(super) fn drop_placeholder_rows(
                     if !missing[idx] {
                         continue;
                     }
-                    let subjid = subjid_vals[idx].trim();
+                    let subjid = strip_quotes(&subjid_vals[idx]);
+                    let subjid = subjid.trim();
                     let placeholder = matches!(
                         subjid.to_uppercase().as_str(),
                         "SUBJID" | "SUBJECTID" | "SUBJECT ID"
@@ -312,7 +324,7 @@ pub(super) fn drop_placeholder_rows(
                     if subjid.is_empty() || placeholder {
                         continue;
                     }
-                    let studyid = studyid_vals[idx].trim();
+                    let studyid = strip_quotes(studyid_vals[idx].trim());
                     if studyid.is_empty() {
                         usubjid_vals[idx] = subjid.to_string();
                     } else {
@@ -339,7 +351,7 @@ pub(super) fn drop_placeholder_rows(
         if has_column(df, &studyid_col) {
             let study_vals = string_column(df, &studyid_col, Trim::Both)?;
             if let Some(found) = study_vals.iter().find(|value| !value.is_empty()) {
-                study_id = found.clone();
+                study_id = strip_quotes(found);
             }
         }
     }

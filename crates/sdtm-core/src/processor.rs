@@ -17,6 +17,14 @@ fn any_to_string(value: AnyValue) -> String {
     }
 }
 
+fn sanitize_identifier(raw: &str) -> String {
+    let trimmed = raw.trim();
+    if !trimmed.contains('"') {
+        return trimmed.to_string();
+    }
+    trimmed.chars().filter(|ch| *ch != '"').collect()
+}
+
 pub fn apply_base_rules(domain: &Domain, df: &mut DataFrame, study_id: &str) -> Result<()> {
     let columns = standard_columns(domain);
     let usubjid_col = match columns.usubjid.as_ref() {
@@ -35,11 +43,13 @@ pub fn apply_base_rules(domain: &Domain, df: &mut DataFrame, study_id: &str) -> 
     let mut updated = Vec::with_capacity(df.height());
 
     for idx in 0..df.height() {
-        let mut usubjid = any_to_string(usubjid_series.get(idx).unwrap_or(AnyValue::Null));
+        let raw_usubjid = any_to_string(usubjid_series.get(idx).unwrap_or(AnyValue::Null));
+        let mut usubjid = sanitize_identifier(&raw_usubjid);
         let study_value = study_series
             .as_ref()
             .map(|series| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
             .unwrap_or_else(|| study_id.to_string());
+        let study_value = sanitize_identifier(&study_value);
         if !study_value.is_empty() && !usubjid.is_empty() {
             let prefix = format!("{study_value}-");
             if !usubjid.starts_with(&prefix) {
