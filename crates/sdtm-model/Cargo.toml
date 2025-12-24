@@ -1,11 +1,10 @@
 [package]
-name = "sdtm-core"
+name = "sdtm-model"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-anyhow.workspace = true
+hex.workspace = true
+serde.workspace = true
 thiserror.workspace = true
-
-sdtm-model = { path = "../sdtm-model" }

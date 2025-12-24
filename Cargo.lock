@@ -441,6 +441,28 @@ dependencies = [
 name = "sdtm-core"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
+ "sdtm-model",
+ "thiserror",
+]
+
+[[package]]
+name = "sdtm-ingest"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "csv",
+ "sdtm-model",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
+name = "sdtm-model"
+version = "0.1.0"
+dependencies = [
+ "hex",
+ "serde",
  "thiserror",
 ]
 

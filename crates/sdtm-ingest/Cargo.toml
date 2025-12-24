@@ -1,11 +1,15 @@
 [package]
-name = "sdtm-core"
+name = "sdtm-ingest"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
 anyhow.workspace = true
-thiserror.workspace = true
+csv.workspace = true
+sha2.workspace = true
 
 sdtm-model = { path = "../sdtm-model" }
+
+[dev-dependencies]
+serde_json.workspace = true
