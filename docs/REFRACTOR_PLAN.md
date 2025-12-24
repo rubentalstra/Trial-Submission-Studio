@@ -28,7 +28,7 @@ supersede. Key behaviors and expectations:
   - Scans `*.csv` in study folder
   - Skips metadata and helper files (`CODELISTS`, `README`, `_LC`, etc)
   - Matches domain by exact token or prefix variant (e.g., `AE`, `AE_1`, `LB*`)
-- Domain processing pipeline (per domain, AE first):
+- Domain processing pipeline (per domain, DM first):
   - Read CSV
   - Build column hints (numeric, null ratio, uniqueness)
   - Mapping engine uses fuzzy matching (RapidFuzz) + alias patterns
@@ -36,7 +36,8 @@ supersede. Key behaviors and expectations:
   - Domain processors apply domain-specific transforms
   - SUPPQUAL generation for non-LB domains
   - Special cases: LB de-duplication, TS parameter label fill
-- Synthesis pass (if missing): RELREC, RELSUB, RELSPEC scaffolds
+- Relationship generation pass (if missing): RELREC, RELSUB, RELSPEC derived from source data
+- No fabricated records; generated domains must be derived from available source data
 - Validation gating:
   - Conformance report per domain, CT checks
   - If strict outputs (XPT or SAS) and `fail-on-conformance-errors`, outputs are
@@ -78,7 +79,7 @@ Planned workspace layout (mirrors existing `Cargo.toml` intent):
 - `sdtm-map`
   - Column mapping engine, patterns, fuzzy matching
 - `sdtm-core`
-  - Use cases: study processing, domain processing, synthesis
+  - Use cases: study processing, domain processing, relationship generation
 - `sdtm-validate`
   - Conformance checks, CT validation, XPT constraints
 - `sdtm-report`
@@ -168,7 +169,7 @@ Phase 3 - Domain Processing
 
 - Implement domain processors and transformations
 - SUPPQUAL generation
-- RELREC/RELSUB/RELSPEC synthesis
+- Generate RELREC/RELSUB/RELSPEC from available data
 
 Phase 4 - Validation and Outputs
 
