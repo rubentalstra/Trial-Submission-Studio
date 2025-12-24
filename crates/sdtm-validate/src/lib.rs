@@ -8,7 +8,7 @@ use serde::Serialize;
 
 use sdtm_model::{
     ConformanceIssue, ConformanceReport, ControlledTerminology, CtRegistry, Domain, IssueSeverity,
-    Variable, VariableType,
+    OutputFormat, Variable, VariableType,
 };
 use sdtm_standards::loaders::P21Rule;
 
@@ -16,6 +16,38 @@ use sdtm_standards::loaders::P21Rule;
 pub struct ValidationContext<'a> {
     pub ct_registry: Option<&'a CtRegistry>,
     pub p21_rules: Option<&'a [P21Rule]>,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct GatingDecision {
+    pub block_strict_outputs: bool,
+    pub blocking_domains: Vec<String>,
+}
+
+pub fn strict_outputs_requested(output_formats: &[OutputFormat]) -> bool {
+    output_formats
+        .iter()
+        .any(|format| matches!(format, OutputFormat::Xpt))
+}
+
+pub fn gate_strict_outputs(
+    output_formats: &[OutputFormat],
+    fail_on_conformance_errors: bool,
+    reports: &[ConformanceReport],
+) -> GatingDecision {
+    if !fail_on_conformance_errors || !strict_outputs_requested(output_formats) {
+        return GatingDecision::default();
+    }
+    let mut blocking = BTreeSet::new();
+    for report in reports {
+        if report.has_errors() {
+            blocking.insert(report.domain_code.clone());
+        }
+    }
+    GatingDecision {
+        block_strict_outputs: !blocking.is_empty(),
+        blocking_domains: blocking.into_iter().collect(),
+    }
 }
 
 impl<'a> ValidationContext<'a> {

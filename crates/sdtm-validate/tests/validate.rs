@@ -3,11 +3,14 @@ use std::path::PathBuf;
 
 use polars::prelude::{Column, DataFrame};
 
-use sdtm_model::{ConformanceReport, IssueSeverity, VariableType};
+use sdtm_model::{ConformanceIssue, ConformanceReport, IssueSeverity, OutputFormat, VariableType};
 use sdtm_standards::{
     load_default_ct_registry, load_default_p21_rules, load_default_sdtm_ig_domains,
 };
-use sdtm_validate::{ValidationContext, validate_domain, write_conformance_report_json};
+use sdtm_validate::{
+    ValidationContext, gate_strict_outputs, strict_outputs_requested, validate_domain,
+    write_conformance_report_json,
+};
 
 fn temp_dir() -> PathBuf {
     let mut dir = std::env::temp_dir();
@@ -149,4 +152,50 @@ fn writes_conformance_report_json_payload() {
     assert!(contents.contains("cdisc-transpiler.conformance-report"));
     assert!(contents.contains("STUDY1"));
     fs::remove_dir_all(&dir).expect("cleanup");
+}
+
+#[test]
+fn strict_output_gate_blocks_on_errors() {
+    let report = ConformanceReport {
+        domain_code: "AE".to_string(),
+        issues: vec![ConformanceIssue {
+            code: "REQ_MISSING_VALUE".to_string(),
+            message: "missing".to_string(),
+            severity: IssueSeverity::Error,
+            variable: Some("AETERM".to_string()),
+            count: Some(1),
+            rule_id: None,
+            category: None,
+            codelist_code: None,
+        }],
+    };
+    let decision = gate_strict_outputs(&[OutputFormat::Xpt], true, &[report]);
+    assert!(decision.block_strict_outputs);
+    assert_eq!(decision.blocking_domains, vec!["AE".to_string()]);
+}
+
+#[test]
+fn strict_output_gate_ignored_without_strict_formats() {
+    let report = ConformanceReport {
+        domain_code: "AE".to_string(),
+        issues: vec![ConformanceIssue {
+            code: "REQ_MISSING_VALUE".to_string(),
+            message: "missing".to_string(),
+            severity: IssueSeverity::Error,
+            variable: Some("AETERM".to_string()),
+            count: Some(1),
+            rule_id: None,
+            category: None,
+            codelist_code: None,
+        }],
+    };
+    let decision = gate_strict_outputs(&[OutputFormat::Xml], true, &[report]);
+    assert!(!decision.block_strict_outputs);
+    assert!(decision.blocking_domains.is_empty());
+}
+
+#[test]
+fn strict_outputs_requested_only_for_xpt() {
+    assert!(strict_outputs_requested(&[OutputFormat::Xpt]));
+    assert!(!strict_outputs_requested(&[OutputFormat::Xml]));
 }
