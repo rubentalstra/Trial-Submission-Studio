@@ -3,8 +3,10 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, anyhow};
 use clap::{ArgAction, Parser, Subcommand, ValueEnum};
-use comfy_table::Table;
-use comfy_table::presets::ASCII_FULL;
+use comfy_table::{
+    Attribute, Cell, CellAlignment, Color, ColumnConstraint, ContentArrangement, Table, Width,
+};
+use comfy_table::presets::UTF8_FULL_CONDENSED;
 use polars::prelude::DataFrame;
 
 use sdtm_cli::logging::init_logging;
@@ -15,7 +17,7 @@ use sdtm_core::{
 use sdtm_ingest::{build_column_hints, discover_domain_files, list_csv_files, read_csv_table};
 use sdtm_map::MappingEngine;
 use sdtm_model::{
-    ConformanceReport, Domain, MappingConfig, MappingSuggestion, OutputFormat,
+    ConformanceReport, Domain, IssueSeverity, MappingConfig, MappingSuggestion, OutputFormat,
 };
 use sdtm_report::{
     DefineXmlOptions, SasProgramOptions, write_dataset_xml_outputs, write_define_xml,
@@ -112,7 +114,7 @@ fn run_domains() -> Result<()> {
     let mut domains = load_default_sdtm_ig_domains().context("load standards")?;
     domains.sort_by(|a, b| a.code.cmp(&b.code));
     let mut table = Table::new();
-    table.load_preset(ASCII_FULL);
+    apply_table_style(&mut table);
     table.set_header(vec!["Domain", "Description"]);
     for domain in domains {
         let description = domain
@@ -589,7 +591,7 @@ fn print_summary(result: &StudyResult) {
         println!("Conformance report: {}", path.display());
     }
     let mut table = Table::new();
-    table.load_preset(ASCII_FULL);
+    apply_table_style(&mut table);
     table.set_header(vec![
         "Domain",
         "Description",
@@ -600,26 +602,51 @@ fn print_summary(result: &StudyResult) {
         "Errors",
         "Warnings",
     ]);
-    for summary in &result.domains {
+    align_column(&mut table, 2, CellAlignment::Right);
+    align_column(&mut table, 3, CellAlignment::Center);
+    align_column(&mut table, 4, CellAlignment::Center);
+    align_column(&mut table, 5, CellAlignment::Center);
+    align_column(&mut table, 6, CellAlignment::Right);
+    align_column(&mut table, 7, CellAlignment::Right);
+    let ordered = ordered_summaries(&result.domains);
+    let mut total_records = 0usize;
+    let mut total_errors = 0usize;
+    let mut total_warnings = 0usize;
+    for summary in ordered {
         let (errors, warnings) = match &summary.conformance {
-            Some(report) => (
-                report.error_count().to_string(),
-                report.warning_count().to_string(),
-            ),
-            None => ("-".to_string(), "-".to_string()),
+            Some(report) => (Some(report.error_count()), Some(report.warning_count())),
+            None => (None, None),
         };
+        total_records += summary.records;
+        if let Some(count) = errors {
+            total_errors += count;
+        }
+        if let Some(count) = warnings {
+            total_warnings += count;
+        }
         table.add_row(vec![
-            summary.domain_code.clone(),
-            summary.description.clone(),
-            summary.records.to_string(),
-            flag(summary.outputs.xpt.as_ref()),
-            flag(summary.outputs.dataset_xml.as_ref()),
-            flag(summary.outputs.sas.as_ref()),
-            errors,
-            warnings,
+            Cell::new(summary.domain_code.clone()),
+            Cell::new(summary.description.clone()),
+            Cell::new(summary.records),
+            output_cell(summary.outputs.xpt.as_ref()),
+            output_cell(summary.outputs.dataset_xml.as_ref()),
+            output_cell(summary.outputs.sas.as_ref()),
+            count_cell(errors, Color::Red),
+            count_cell(warnings, Color::Yellow),
         ]);
     }
+    table.add_row(vec![
+        Cell::new("TOTAL").add_attribute(Attribute::Bold),
+        Cell::new("All domains").add_attribute(Attribute::Bold),
+        Cell::new(total_records).add_attribute(Attribute::Bold),
+        dim_cell("-"),
+        dim_cell("-"),
+        dim_cell("-"),
+        count_cell(Some(total_errors), Color::Red).add_attribute(Attribute::Bold),
+        count_cell(Some(total_warnings), Color::Yellow).add_attribute(Attribute::Bold),
+    ]);
     println!("{table}");
+    print_issue_table(result);
     if !result.errors.is_empty() {
         eprintln!("Errors:");
         for error in &result.errors {
@@ -628,10 +655,141 @@ fn print_summary(result: &StudyResult) {
     }
 }
 
-fn flag(path: Option<&PathBuf>) -> String {
-    if path.is_some() {
-        "yes".to_string()
-    } else {
-        "-".to_string()
+fn print_issue_table(result: &StudyResult) {
+    let mut issues = Vec::new();
+    let ordered = ordered_summaries(&result.domains);
+    for summary in ordered {
+        let report = match &summary.conformance {
+            Some(report) => report,
+            None => continue,
+        };
+        for issue in &report.issues {
+            let (message, examples) = split_examples(&issue.message);
+            issues.push((
+                summary.domain_code.clone(),
+                issue.severity,
+                issue.variable.clone().unwrap_or_else(|| "-".to_string()),
+                issue.code.clone(),
+                issue.count.map(|v| v.to_string()).unwrap_or_else(|| "-".to_string()),
+                issue.rule_id.clone().unwrap_or_else(|| "-".to_string()),
+                issue.category.clone().unwrap_or_else(|| "-".to_string()),
+                message,
+                examples,
+            ));
+        }
     }
+    if issues.is_empty() {
+        println!();
+        println!("Issues: none");
+        return;
+    }
+    let mut table = Table::new();
+    apply_table_style(&mut table);
+    table.set_header(vec![
+        "Domain",
+        "Severity",
+        "Variable",
+        "Code",
+        "Count",
+        "Rule",
+        "Category",
+        "Message",
+        "Examples",
+    ]);
+    align_column(&mut table, 4, CellAlignment::Right);
+    if let Some(column) = table.column_mut(7) {
+        column.set_constraint(ColumnConstraint::UpperBoundary(Width::Fixed(70)));
+    }
+    if let Some(column) = table.column_mut(8) {
+        column.set_constraint(ColumnConstraint::UpperBoundary(Width::Fixed(40)));
+    }
+    for (domain, severity, variable, code, count, rule, category, message, examples) in issues {
+        table.add_row(vec![
+            Cell::new(domain),
+            severity_cell(severity),
+            Cell::new(variable),
+            Cell::new(code),
+            Cell::new(count),
+            Cell::new(rule),
+            Cell::new(category),
+            Cell::new(message),
+            example_cell(examples),
+        ]);
+    }
+    println!();
+    println!("Issues:");
+    println!("{table}");
+}
+
+fn output_cell(path: Option<&PathBuf>) -> Cell {
+    if path.is_some() {
+        Cell::new("yes").fg(Color::Green)
+    } else {
+        dim_cell("-")
+    }
+}
+
+fn count_cell(count: Option<usize>, color: Color) -> Cell {
+    match count {
+        Some(value) => {
+            let cell = Cell::new(value);
+            if value > 0 {
+                cell.fg(color)
+            } else {
+                dim_cell("0")
+            }
+        }
+        None => dim_cell("-"),
+    }
+}
+
+fn apply_table_style(table: &mut Table) {
+    table.load_preset(UTF8_FULL_CONDENSED);
+    table.set_content_arrangement(ContentArrangement::Dynamic);
+}
+
+fn align_column(table: &mut Table, index: usize, alignment: CellAlignment) {
+    if let Some(column) = table.column_mut(index) {
+        column.set_cell_alignment(alignment);
+    }
+}
+
+fn ordered_summaries<'a>(summaries: &'a [DomainSummary]) -> Vec<&'a DomainSummary> {
+    let mut ordered: Vec<&DomainSummary> = summaries.iter().collect();
+    ordered.sort_by(|a, b| summary_sort_key(&a.domain_code).cmp(&summary_sort_key(&b.domain_code)));
+    ordered
+}
+
+fn summary_sort_key(code: &str) -> (String, u8, String) {
+    let upper = code.to_uppercase();
+    if let Some(parent) = upper.strip_prefix("SUPP") {
+        return (parent.to_string(), 1, upper);
+    }
+    (upper.clone(), 0, upper)
+}
+
+fn severity_cell(severity: IssueSeverity) -> Cell {
+    match severity {
+        IssueSeverity::Error => Cell::new("error").fg(Color::Red),
+        IssueSeverity::Warning => Cell::new("warning").fg(Color::Yellow),
+    }
+}
+
+fn split_examples(message: &str) -> (String, String) {
+    match message.rsplit_once(" examples: ") {
+        Some((head, tail)) => (head.to_string(), tail.to_string()),
+        None => (message.to_string(), "-".to_string()),
+    }
+}
+
+fn example_cell(value: String) -> Cell {
+    if value == "-" {
+        dim_cell(value)
+    } else {
+        Cell::new(value)
+    }
+}
+
+fn dim_cell<T: ToString>(value: T) -> Cell {
+    Cell::new(value).fg(Color::DarkGrey)
 }
