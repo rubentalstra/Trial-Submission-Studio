@@ -14,7 +14,9 @@ use sdtm_core::{
 };
 use sdtm_ingest::{build_column_hints, discover_domain_files, list_csv_files, read_csv_table};
 use sdtm_map::MappingEngine;
-use sdtm_model::{ConformanceReport, MappingConfig, MappingSuggestion, OutputFormat};
+use sdtm_model::{
+    ConformanceReport, Domain, MappingConfig, MappingSuggestion, OutputFormat,
+};
 use sdtm_report::{
     DefineXmlOptions, SasProgramOptions, write_dataset_xml_outputs, write_define_xml,
     write_sas_outputs, write_xpt_outputs,
@@ -31,7 +33,7 @@ struct Cli {
     #[command(subcommand)]
     command: Command,
 
-    #[arg(short = 'v', long = "verbose", action = ArgAction::Count)]
+    #[arg(short = 'v', long = "verbose", action = ArgAction::Count, global = true)]
     verbose: u8,
 }
 
@@ -143,9 +145,9 @@ fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     let ct_registry = load_default_ct_registry().context("load ct registry")?;
     let p21_rules = load_default_p21_rules().context("load p21 rules")?;
     let domain_codes: Vec<String> = standards.iter().map(|d| d.code.clone()).collect();
-    let mut domain_map = BTreeMap::new();
+    let mut standards_map = BTreeMap::new();
     for domain in &standards {
-        domain_map.insert(domain.code.to_uppercase(), domain);
+        standards_map.insert(domain.code.to_uppercase(), domain);
     }
 
     let csv_files = list_csv_files(study_folder).context("list csv files")?;
@@ -157,12 +159,12 @@ fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     let mut errors = Vec::new();
 
     let ctx = ProcessingContext::new(&study_id).with_ct_registry(&ct_registry);
-    let suppqual_domain = domain_map
+    let suppqual_domain = standards_map
         .get("SUPPQUAL")
         .ok_or_else(|| anyhow!("missing SUPPQUAL metadata"))?;
 
     for (domain_code, files) in discovered {
-        let domain = match domain_map.get(&domain_code.to_uppercase()) {
+        let domain = match standards_map.get(&domain_code.to_uppercase()) {
             Some(domain) => domain,
             None => {
                 errors.push(format!("missing standards metadata for {domain_code}"));
@@ -262,12 +264,14 @@ fn run_study(args: &StudyArgs) -> Result<StudyResult> {
             errors.push(format!("SUPPQUAL merge: {error}"));
         }
     }
-    let relationship_frames = build_relationship_frames(
-        &frames.values().cloned().collect::<Vec<_>>(),
-        &standards,
-        &study_id,
-    )
-    .context("build relationship domains")?;
+    let relationship_sources: Vec<DomainFrame> = frames
+        .values()
+        .filter(|frame| !is_supporting_domain(&frame.domain_code))
+        .cloned()
+        .collect();
+    let relationship_frames =
+        build_relationship_frames(&relationship_sources, &standards, &study_id)
+            .context("build relationship domains")?;
     for frame in relationship_frames {
         if let Err(error) = insert_frame(&mut frames, frame) {
             errors.push(format!("relationship merge: {error}"));
@@ -276,6 +280,9 @@ fn run_study(args: &StudyArgs) -> Result<StudyResult> {
 
     let mut frame_list: Vec<DomainFrame> = frames.into_values().collect();
     frame_list.sort_by(|a, b| a.domain_code.cmp(&b.domain_code));
+
+    let report_domains = build_report_domains(&standards, &frame_list)?;
+    let report_domain_map = domain_map_by_code(&report_domains);
 
     let validation_ctx = ValidationContext::new()
         .with_ct_registry(&ct_registry)
@@ -309,7 +316,9 @@ fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     } else {
         let options = DefineXmlOptions::new("3.4", "Submission");
         let path = output_dir.join("define.xml");
-        if let Err(error) = write_define_xml(&path, &study_id, &standards, &frame_list, &options) {
+        if let Err(error) =
+            write_define_xml(&path, &study_id, &report_domains, &frame_list, &options)
+        {
             errors.push(format!("define-xml: {error}"));
             None
         } else {
@@ -320,7 +329,7 @@ fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     if !args.dry_run {
         if want_xpt {
             let options = XptWriterOptions::default();
-            match write_xpt_outputs(&output_dir, &standards, &frame_list, &options) {
+            match write_xpt_outputs(&output_dir, &report_domains, &frame_list, &options) {
                 Ok(paths) => {
                     for path in paths {
                         let key = path
@@ -335,7 +344,13 @@ fn run_study(args: &StudyArgs) -> Result<StudyResult> {
             }
         }
         if want_xml {
-            match write_dataset_xml_outputs(&output_dir, &standards, &frame_list, &study_id, "3.4")
+            match write_dataset_xml_outputs(
+                &output_dir,
+                &report_domains,
+                &frame_list,
+                &study_id,
+                "3.4",
+            )
             {
                 Ok(paths) => {
                     for path in paths {
@@ -366,7 +381,7 @@ fn run_study(args: &StudyArgs) -> Result<StudyResult> {
             let options = SasProgramOptions::default();
             match write_sas_outputs(
                 &output_dir,
-                &standards,
+                &report_domains,
                 &sas_frames,
                 &merged_mappings,
                 &options,
@@ -389,7 +404,7 @@ fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     let mut summaries = Vec::new();
     for frame in &frame_list {
         let code = frame.domain_code.to_uppercase();
-        let domain = domain_map.get(&code);
+        let domain = report_domain_map.get(&code);
         let description = domain
             .and_then(|d| d.description.clone().or(d.label.clone()))
             .unwrap_or_default();
@@ -515,6 +530,53 @@ fn merge_mapping_configs(
         mappings: best.into_values().collect(),
         unmapped_columns: unmapped.into_iter().collect(),
     }
+}
+
+fn domain_map_by_code(domains: &[Domain]) -> BTreeMap<String, &Domain> {
+    let mut map = BTreeMap::new();
+    for domain in domains {
+        map.insert(domain.code.to_uppercase(), domain);
+    }
+    map
+}
+
+fn build_report_domains(standards: &[Domain], frames: &[DomainFrame]) -> Result<Vec<Domain>> {
+    let mut domains = standards.to_vec();
+    let mut known: BTreeSet<String> = standards
+        .iter()
+        .map(|domain| domain.code.to_uppercase())
+        .collect();
+    let suppqual = standards
+        .iter()
+        .find(|domain| domain.code.eq_ignore_ascii_case("SUPPQUAL"))
+        .ok_or_else(|| anyhow!("missing SUPPQUAL metadata"))?;
+
+    for frame in frames {
+        let code = frame.domain_code.to_uppercase();
+        if known.contains(&code) {
+            continue;
+        }
+        if let Some(parent) = code.strip_prefix("SUPP") {
+            if parent.is_empty() {
+                continue;
+            }
+            let label = format!("Supplemental Qualifiers for {parent}");
+            let mut domain = suppqual.clone();
+            domain.code = code.clone();
+            domain.dataset_name = Some(code.clone());
+            domain.label = Some(label.clone());
+            domain.description = Some(label);
+            domains.push(domain);
+            known.insert(code);
+        }
+    }
+    domains.sort_by(|a, b| a.code.cmp(&b.code));
+    Ok(domains)
+}
+
+fn is_supporting_domain(code: &str) -> bool {
+    let upper = code.to_uppercase();
+    upper.starts_with("SUPP") || matches!(upper.as_str(), "RELREC" | "RELSPEC" | "RELSUB")
 }
 
 fn print_summary(result: &StudyResult) {

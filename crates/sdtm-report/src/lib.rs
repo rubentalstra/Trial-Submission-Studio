@@ -788,46 +788,65 @@ fn resolve_codelist(
     ct_registry: &sdtm_model::CtRegistry,
     code_lists: &mut BTreeMap<String, CodeListSpec>,
 ) -> Result<Option<String>> {
-    let mut candidate = None;
-    if let Some(code) = variable.codelist_code.as_ref() {
-        candidate = ct_registry.by_code.get(&code.to_uppercase());
-    }
-    if candidate.is_none() {
-        candidate = ct_registry.by_name.get(&variable.name.to_uppercase());
-    }
-    let ct = match candidate {
-        Some(ct) => ct,
-        None => {
-            if variable.codelist_code.is_some() {
-                return Err(anyhow!(
-                    "missing codelist {} for {}.{}",
-                    variable.codelist_code.as_deref().unwrap_or(""),
-                    domain.code,
-                    variable.name
-                ));
+    let mut ct_entries = Vec::new();
+    if let Some(raw) = variable.codelist_code.as_ref() {
+        let codes = parse_codelist_codes(raw);
+        for code in codes {
+            if let Some(ct) = ct_registry.by_code.get(&code.to_uppercase()) {
+                ct_entries.push(ct);
             }
-            return Ok(None);
         }
-    };
+    }
+    if ct_entries.is_empty() {
+        if let Some(ct) = ct_registry.by_name.get(&variable.name.to_uppercase()) {
+            ct_entries.push(ct);
+        }
+    }
+    if ct_entries.is_empty() {
+        if let Some(raw) = variable.codelist_code.as_ref() {
+            return Err(anyhow!(
+                "missing codelist {} for {}.{}",
+                raw,
+                domain.code,
+                variable.name
+            ));
+        }
+        return Ok(None);
+    }
     let oid = format!("CL.{}.{}", domain.code, variable.name);
     if !code_lists.contains_key(&oid) {
         let mut values = BTreeSet::new();
-        for value in &ct.submission_values {
-            let trimmed = value.trim();
-            if !trimmed.is_empty() {
-                values.insert(trimmed.to_string());
+        let mut names = BTreeSet::new();
+        let mut extensible = false;
+        for ct in &ct_entries {
+            names.insert(ct.codelist_name.clone());
+            extensible |= ct.extensible;
+            for value in &ct.submission_values {
+                let trimmed = value.trim();
+                if !trimmed.is_empty() {
+                    values.insert(trimmed.to_string());
+                }
             }
         }
+        let name = names.into_iter().collect::<Vec<_>>().join("; ");
         code_lists.insert(
             oid.clone(),
             CodeListSpec {
-                name: ct.codelist_name.clone(),
+                name,
                 values: values.into_iter().collect(),
-                extensible: ct.extensible,
+                extensible,
             },
         );
     }
     Ok(Some(oid))
+}
+
+fn parse_codelist_codes(raw: &str) -> Vec<String> {
+    raw.split(|ch| ch == ';' || ch == ',')
+        .map(|part| part.trim())
+        .filter(|part| !part.is_empty())
+        .map(|part| part.to_string())
+        .collect()
 }
 
 fn build_assignment_map(domain: &Domain, mapping: &MappingConfig) -> Vec<String> {
