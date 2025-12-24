@@ -239,7 +239,7 @@ fn missing_column_issues(
     p21_lookup: &BTreeMap<String, &P21Rule>,
 ) -> Vec<ConformanceIssue> {
     if is_required(variable.core.as_deref()) {
-        let rule = p21_lookup.get(RULE_REQUIRED_VAR_MISSING);
+        let rule = p21_lookup.get(RULE_REQUIRED_VAR_MISSING).copied();
         let base = rule_base_message(rule, "SDTM Required variable not found");
         let message = format!("{base}: {}", variable.name);
         return vec![issue_from_rule(
@@ -253,7 +253,7 @@ fn missing_column_issues(
         )];
     }
     if is_expected(variable.core.as_deref()) {
-        let rule = p21_lookup.get(RULE_EXPECTED_VAR_MISSING);
+        let rule = p21_lookup.get(RULE_EXPECTED_VAR_MISSING).copied();
         let base = rule_base_message(rule, "SDTM Expected variable not found");
         let message = format!("{base}: {}", variable.name);
         return vec![issue_from_rule(
@@ -290,7 +290,7 @@ fn missing_value_issue(
     if missing == 0 {
         return None;
     }
-    let rule = p21_lookup.get(RULE_REQUIRED_VALUE_MISSING);
+    let rule = p21_lookup.get(RULE_REQUIRED_VALUE_MISSING).copied();
     let base = rule_base_message(rule, "Null value in variable marked as Required");
     let message = format!(
         "{base}: {} has {} missing/blank value(s)",
@@ -338,7 +338,7 @@ fn type_issue(
     if invalid == 0 {
         return None;
     }
-    let rule = p21_lookup.get(RULE_DATATYPE_MISMATCH);
+    let rule = p21_lookup.get(RULE_DATATYPE_MISMATCH).copied();
     let base = rule_base_message(
         rule,
         "Variable datatype is not the expected SDTM datatype",
@@ -385,7 +385,7 @@ fn length_issue(
     if over == 0 {
         return None;
     }
-    let rule = p21_lookup.get(RULE_LENGTH_EXCEEDED);
+    let rule = p21_lookup.get(RULE_LENGTH_EXCEEDED).copied();
     let base = rule_base_message(rule, "Variable value is longer than defined max length");
     let message = format!(
         "{base}: {} exceeds length {} in {} value(s)",
@@ -420,7 +420,7 @@ fn ct_issue(
     } else {
         (RULE_CT_NON_EXTENSIBLE, IssueSeverity::Error)
     };
-    let rule = p21_lookup.get(rule_id);
+    let rule = p21_lookup.get(rule_id).copied();
     let mut examples = invalid.iter().take(5).cloned().collect::<Vec<_>>();
     examples.sort();
     let examples = examples.join(", ");
@@ -492,7 +492,7 @@ fn issue_from_rule(
     count: Option<u64>,
     codelist_code: Option<String>,
 ) -> ConformanceIssue {
-    let rule = p21_lookup.get(&rule_id.to_uppercase());
+    let rule = p21_lookup.get(&rule_id.to_uppercase()).copied();
     let severity = rule_severity(rule, fallback_severity);
     let category = rule.and_then(|rule| rule.category.clone());
     let resolved_id = rule
