@@ -885,6 +885,7 @@ fn dim_cell<T: ToString>(value: T) -> Cell {
 struct LbWideGroup {
     key: String,
     test_col: Option<usize>,
+    testcd_col: Option<usize>,
     orres_col: Option<usize>,
     orresu_col: Option<usize>,
     orresu_alt_col: Option<usize>,
@@ -893,6 +894,8 @@ struct LbWideGroup {
     ornr_upper_col: Option<usize>,
     range_col: Option<usize>,
     clsig_col: Option<usize>,
+    date_col: Option<usize>,
+    time_col: Option<usize>,
     extra_cols: Vec<usize>,
 }
 
@@ -991,7 +994,136 @@ fn detect_lb_wide_groups(headers: &[String]) -> (BTreeMap<String, LbWideGroup>, 
             wide_columns.insert(upper);
         }
     }
+
+    for (idx, header) in headers.iter().enumerate() {
+        let upper = header.to_uppercase();
+        if wide_columns.contains(&upper) || upper.contains('_') {
+            continue;
+        }
+        if let Some(stripped) = upper.strip_suffix("CD") {
+            if let Some((key, kind)) = parse_lb_suffix(stripped) {
+                let entry = groups.entry(key.clone()).or_insert_with(|| LbWideGroup {
+                    key,
+                    ..LbWideGroup::default()
+                });
+                match kind {
+                    LbSuffixKind::TestCd
+                    | LbSuffixKind::Test
+                    | LbSuffixKind::Orres
+                    | LbSuffixKind::Orresu
+                    | LbSuffixKind::OrresuAlt
+                    | LbSuffixKind::OrnrRange
+                    | LbSuffixKind::OrnrLower
+                    | LbSuffixKind::OrnrUpper
+                    | LbSuffixKind::Range
+                    | LbSuffixKind::Clsig => {
+                        entry.extra_cols.push(idx);
+                        wide_columns.insert(upper);
+                    }
+                }
+                continue;
+            }
+        }
+        if let Some((key, kind)) = parse_lb_suffix(&upper) {
+            let entry = groups.entry(key.clone()).or_insert_with(|| LbWideGroup {
+                key,
+                ..LbWideGroup::default()
+            });
+            match kind {
+                LbSuffixKind::TestCd => entry.testcd_col = Some(idx),
+                LbSuffixKind::Test => entry.test_col = Some(idx),
+                LbSuffixKind::Orres => entry.orres_col = Some(idx),
+                LbSuffixKind::Orresu => entry.orresu_col = Some(idx),
+                LbSuffixKind::OrresuAlt => entry.orresu_alt_col = Some(idx),
+                LbSuffixKind::OrnrRange => entry.ornr_range_col = Some(idx),
+                LbSuffixKind::OrnrLower => entry.ornr_lower_col = Some(idx),
+                LbSuffixKind::OrnrUpper => entry.ornr_upper_col = Some(idx),
+                LbSuffixKind::Range => entry.range_col = Some(idx),
+                LbSuffixKind::Clsig => entry.clsig_col = Some(idx),
+            }
+            wide_columns.insert(upper);
+        }
+    }
+
+    for (idx, header) in headers.iter().enumerate() {
+        let upper = header.to_uppercase();
+        if wide_columns.contains(&upper) || upper.contains('_') {
+            continue;
+        }
+        if let Some((key, is_time)) = parse_lb_time_suffix(&upper) {
+            if let Some(entry) = groups.get_mut(&key) {
+                if is_time {
+                    entry.time_col = Some(idx);
+                } else {
+                    entry.date_col = Some(idx);
+                }
+                wide_columns.insert(upper);
+            }
+        }
+    }
     (groups, wide_columns)
+}
+
+#[derive(Debug, Clone, Copy)]
+enum LbSuffixKind {
+    TestCd,
+    Test,
+    Orres,
+    Orresu,
+    OrresuAlt,
+    OrnrRange,
+    OrnrLower,
+    OrnrUpper,
+    Range,
+    Clsig,
+}
+
+fn parse_lb_suffix(value: &str) -> Option<(String, LbSuffixKind)> {
+    let patterns = [
+        ("TESTCD", LbSuffixKind::TestCd),
+        ("TEST", LbSuffixKind::Test),
+        ("ORRESUO", LbSuffixKind::OrresuAlt),
+        ("ORRESU", LbSuffixKind::Orresu),
+        ("ORRES", LbSuffixKind::Orres),
+        ("ORNRLOWER", LbSuffixKind::OrnrLower),
+        ("ORNRUPPER", LbSuffixKind::OrnrUpper),
+        ("ORNRLO", LbSuffixKind::OrnrLower),
+        ("ORNRHI", LbSuffixKind::OrnrUpper),
+        ("ORNR", LbSuffixKind::OrnrRange),
+        ("CLSIG", LbSuffixKind::Clsig),
+        ("RANGE", LbSuffixKind::Range),
+    ];
+    for (suffix, kind) in patterns {
+        if value.len() > suffix.len() && value.ends_with(suffix) {
+            let key = value[..value.len() - suffix.len()]
+                .trim_end_matches('_')
+                .to_string();
+            if !key.is_empty() {
+                return Some((key, kind));
+            }
+        }
+    }
+    None
+}
+
+fn parse_lb_time_suffix(value: &str) -> Option<(String, bool)> {
+    let patterns = [
+        ("DATE", false),
+        ("DAT", false),
+        ("TIME", true),
+        ("TIM", true),
+    ];
+    for (suffix, is_time) in patterns {
+        if value.len() > suffix.len() && value.ends_with(suffix) {
+            let key = value[..value.len() - suffix.len()]
+                .trim_end_matches('_')
+                .to_string();
+            if !key.is_empty() {
+                return Some((key, is_time));
+            }
+        }
+    }
+    None
 }
 
 fn filter_table_columns(
@@ -1032,7 +1164,7 @@ fn filter_table_columns(
 fn find_lb_date_column(headers: &[String]) -> Option<usize> {
     for (idx, header) in headers.iter().enumerate() {
         let upper = header.to_uppercase();
-        if upper.ends_with("DAT") && !upper.contains("EVENT") {
+        if (upper.ends_with("DAT") || upper.ends_with("DATE")) && !upper.contains("EVENT") {
             return Some(idx);
         }
     }
@@ -1042,7 +1174,7 @@ fn find_lb_date_column(headers: &[String]) -> Option<usize> {
 fn find_lb_time_column(headers: &[String]) -> Option<usize> {
     for (idx, header) in headers.iter().enumerate() {
         let upper = header.to_uppercase();
-        if upper.ends_with("TIM") && !upper.contains("EVENT") {
+        if (upper.ends_with("TIM") || upper.ends_with("TIME")) && !upper.contains("EVENT") {
             return Some(idx);
         }
     }
@@ -1065,6 +1197,7 @@ fn expand_lb_wide(
     for group in groups.values() {
         for idx in [
             group.test_col,
+            group.testcd_col,
             group.orres_col,
             group.orresu_col,
             group.orresu_alt_col,
@@ -1073,6 +1206,8 @@ fn expand_lb_wide(
             group.ornr_upper_col,
             group.range_col,
             group.clsig_col,
+            group.date_col,
+            group.time_col,
         ] {
             if let Some(idx) = idx {
                 if let Some(name) = table.headers.get(idx) {
@@ -1098,17 +1233,42 @@ fn expand_lb_wide(
     }
     let mut total_rows = 0usize;
     for row_idx in 0..table.rows.len() {
-        let date_value = date_idx
+        let base_date_value = date_idx
             .and_then(|idx| table.rows[row_idx].get(idx))
             .cloned()
             .unwrap_or_default();
-        let time_value = time_idx
+        let base_time_value = time_idx
             .and_then(|idx| table.rows[row_idx].get(idx))
             .cloned()
             .unwrap_or_default();
         for group in groups.values() {
+            let group_date_value = group
+                .date_col
+                .and_then(|idx| table.rows[row_idx].get(idx))
+                .cloned()
+                .unwrap_or_default();
+            let group_time_value = group
+                .time_col
+                .and_then(|idx| table.rows[row_idx].get(idx))
+                .cloned()
+                .unwrap_or_default();
+            let date_value = if !group_date_value.trim().is_empty() {
+                group_date_value
+            } else {
+                base_date_value.clone()
+            };
+            let time_value = if !group_time_value.trim().is_empty() {
+                group_time_value
+            } else {
+                base_time_value.clone()
+            };
             let test_value = group
                 .test_col
+                .and_then(|idx| table.rows[row_idx].get(idx))
+                .cloned()
+                .unwrap_or_default();
+            let testcd_value = group
+                .testcd_col
                 .and_then(|idx| table.rows[row_idx].get(idx))
                 .cloned()
                 .unwrap_or_default();
@@ -1154,7 +1314,11 @@ fn expand_lb_wide(
             }
 
             total_rows += 1;
-            let test_code = sanitize_lbtestcd(&group.key);
+            let test_code = if !testcd_value.trim().is_empty() {
+                sanitize_lbtestcd(testcd_value.trim())
+            } else {
+                sanitize_lbtestcd(&group.key)
+            };
             let mut base_values: BTreeMap<String, String> = BTreeMap::new();
             for variable in &domain.variables {
                 let val = column_value_string(base_df, &variable.name, row_idx);
