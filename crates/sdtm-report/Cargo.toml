@@ -6,7 +6,10 @@ rust-version.workspace = true
 
 [dependencies]
 anyhow.workspace = true
+chrono.workspace = true
 polars.workspace = true
+quick-xml.workspace = true
 sdtm-core = { path = "../sdtm-core" }
 sdtm-model = { path = "../sdtm-model" }
+sdtm-standards = { path = "../sdtm-standards" }
 sdtm-xpt = { path = "../sdtm-xpt" }

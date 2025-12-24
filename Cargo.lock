@@ -2392,9 +2392,12 @@ name = "sdtm-report"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "chrono",
  "polars",
+ "quick-xml",
  "sdtm-core",
  "sdtm-model",
+ "sdtm-standards",
  "sdtm-xpt",
 ]
 

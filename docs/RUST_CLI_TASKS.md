@@ -191,15 +191,15 @@ Exit criteria:
 Goal: generate files with the same layout and constraints as Python.
 
 - [x] Write XPT files (8-char dataset names, labels, type coercion)
-- [ ] Write Dataset-XML v1.0 (deterministic order, streaming option)
-- [ ] Generate Define-XML v2.1 from dataset metadata
-- [ ] Generate SAS scripts (deterministic)
-- [ ] Preserve output layout: `output/xpt`, `output/dataset-xml`, `output/sas`
+- [x] Write Dataset-XML v1.0 (deterministic order, streaming option)
+- [x] Generate Define-XML v2.1 from dataset metadata
+- [x] Generate SAS scripts (deterministic)
+- [x] Preserve output layout: `output/xpt`, `output/dataset-xml`, `output/sas`
 
 Exit criteria:
 
-- [ ] Output files are deterministic and parseable
-- [ ] Output paths follow the expected layout
+- [x] Output files are deterministic and parseable
+- [x] Output paths follow the expected layout
 
 ## Phase 10 - CLI Wiring (sdtm-cli)
 

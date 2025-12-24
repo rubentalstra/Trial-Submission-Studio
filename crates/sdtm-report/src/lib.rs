@@ -1,14 +1,54 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
+use std::fs::File;
+use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, anyhow};
+use chrono::{SecondsFormat, Utc};
 use polars::prelude::{AnyValue, DataFrame};
+use quick_xml::Writer;
+use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 
-use sdtm_core::DomainFrame;
-use sdtm_model::{Domain, Variable, VariableType};
+use sdtm_core::{DomainFrame, standard_columns};
+use sdtm_model::{Domain, MappingConfig, Variable, VariableType};
+use sdtm_standards::load_default_ct_registry;
 use sdtm_xpt::{XptColumn, XptDataset, XptType, XptValue, XptWriterOptions, write_xpt};
 
 const SAS_NUMERIC_LEN: u16 = 8;
+const ODM_NS: &str = "http://www.cdisc.org/ns/odm/v1.3";
+const DATASET_XML_NS: &str = "http://www.cdisc.org/ns/Dataset-XML/v1.0";
+const DEFINE_XML_NS: &str = "http://www.cdisc.org/ns/def/v2.1";
+const XLINK_NS: &str = "http://www.w3.org/1999/xlink";
+const DATASET_XML_VERSION: &str = "1.0";
+const DEFINE_XML_VERSION: &str = "2.1";
+
+#[derive(Debug, Clone, Default)]
+pub struct DatasetXmlOptions {
+    pub dataset_name: Option<String>,
+    pub metadata_version_oid: Option<String>,
+    pub is_reference_data: Option<bool>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DefineXmlOptions {
+    pub sdtm_ig_version: String,
+    pub context: String,
+}
+
+impl DefineXmlOptions {
+    pub fn new(sdtm_ig_version: impl Into<String>, context: impl Into<String>) -> Self {
+        Self {
+            sdtm_ig_version: sdtm_ig_version.into(),
+            context: context.into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct SasProgramOptions {
+    pub input_dataset: Option<String>,
+    pub output_dataset: Option<String>,
+}
 
 pub fn write_xpt_outputs(
     output_dir: &Path,
@@ -34,12 +74,410 @@ pub fn write_xpt_outputs(
             .get(&code)
             .ok_or_else(|| anyhow!("missing domain definition for {code}"))?;
         let dataset = build_xpt_dataset(domain, frame)?;
-        let filename = format!("{code}.xpt");
+        let disk_name = dataset.name.to_lowercase();
+        let filename = format!("{disk_name}.xpt");
         let path = xpt_dir.join(filename);
         write_xpt(&path, &dataset, options)?;
         outputs.push(path);
     }
     Ok(outputs)
+}
+
+pub fn write_dataset_xml_outputs(
+    output_dir: &Path,
+    domains: &[Domain],
+    frames: &[DomainFrame],
+    study_id: &str,
+    sdtm_ig_version: &str,
+) -> Result<Vec<PathBuf>> {
+    let domain_map = domain_map(domains);
+    let mut frames_sorted: Vec<&DomainFrame> = frames.iter().collect();
+    frames_sorted.sort_by(|a, b| a.domain_code.cmp(&b.domain_code));
+
+    let xml_dir = output_dir.join("dataset-xml");
+    std::fs::create_dir_all(&xml_dir).with_context(|| format!("create {}", xml_dir.display()))?;
+
+    let mut outputs = Vec::new();
+    for frame in frames_sorted {
+        let code = frame.domain_code.to_uppercase();
+        let domain = domain_map
+            .get(&code)
+            .ok_or_else(|| anyhow!("missing domain definition for {code}"))?;
+        let dataset_name = dataset_name(domain);
+        let disk_name = dataset_name.to_lowercase();
+        let path = xml_dir.join(format!("{disk_name}.xml"));
+        write_dataset_xml(&path, domain, frame, study_id, sdtm_ig_version, None)?;
+        outputs.push(path);
+    }
+    Ok(outputs)
+}
+
+pub fn write_dataset_xml(
+    output_path: &Path,
+    domain: &Domain,
+    frame: &DomainFrame,
+    study_id: &str,
+    sdtm_ig_version: &str,
+    options: Option<&DatasetXmlOptions>,
+) -> Result<()> {
+    let options = options.cloned().unwrap_or_default();
+    let dataset_name = options.dataset_name.unwrap_or_else(|| dataset_name(domain));
+    let study_id = normalize_study_id(study_id);
+    let study_oid = format!("STDY.{study_id}");
+    let mdv_oid = options
+        .metadata_version_oid
+        .unwrap_or_else(|| format!("MDV.{study_oid}.SDTMIG.{sdtm_ig_version}"));
+    let define_file_oid = format!("{study_oid}.Define-XML_{DEFINE_XML_VERSION}");
+    let file_oid = format!("{define_file_oid}(IG.{dataset_name})");
+    let is_reference = options
+        .is_reference_data
+        .unwrap_or_else(|| is_reference_domain(domain));
+    let container_name = if is_reference {
+        "ReferenceData"
+    } else {
+        "ClinicalData"
+    };
+
+    let timestamp = Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true);
+    let file =
+        File::create(output_path).with_context(|| format!("create {}", output_path.display()))?;
+    let writer = BufWriter::new(file);
+    let mut xml = Writer::new_with_indent(writer, b' ', 2);
+
+    xml.write_event(Event::Decl(BytesDecl::new("1.0", Some("UTF-8"), None)))?;
+
+    let mut root = BytesStart::new("ODM");
+    root.push_attribute(("xmlns", ODM_NS));
+    root.push_attribute(("xmlns:xlink", XLINK_NS));
+    root.push_attribute(("xmlns:data", DATASET_XML_NS));
+    root.push_attribute(("data:DatasetXMLVersion", DATASET_XML_VERSION));
+    root.push_attribute(("FileType", "Snapshot"));
+    root.push_attribute(("FileOID", file_oid.as_str()));
+    root.push_attribute(("PriorFileOID", define_file_oid.as_str()));
+    root.push_attribute(("ODMVersion", "1.3.2"));
+    root.push_attribute(("CreationDateTime", timestamp.as_str()));
+    root.push_attribute(("Originator", "CDISC-Transpiler"));
+    xml.write_event(Event::Start(root))?;
+
+    let mut container = BytesStart::new(container_name);
+    container.push_attribute(("StudyOID", study_oid.as_str()));
+    container.push_attribute(("MetaDataVersionOID", mdv_oid.as_str()));
+    xml.write_event(Event::Start(container))?;
+
+    let df = &frame.data;
+    let mut columns = Vec::with_capacity(domain.variables.len());
+    for variable in &domain.variables {
+        let series = df
+            .column(variable.name.as_str())
+            .with_context(|| format!("missing column {}", variable.name))?;
+        columns.push(series);
+    }
+
+    for row_idx in 0..df.height() {
+        let mut group = BytesStart::new("ItemGroupData");
+        let group_oid = format!("IG.{dataset_name}");
+        let group_seq = format!("{}", row_idx + 1);
+        group.push_attribute(("ItemGroupOID", group_oid.as_str()));
+        group.push_attribute(("data:ItemGroupDataSeq", group_seq.as_str()));
+        xml.write_event(Event::Start(group))?;
+        for (variable, column) in domain.variables.iter().zip(columns.iter()) {
+            let value = column.get(row_idx).unwrap_or(AnyValue::Null);
+            if let Some(text) = xml_value(value) {
+                let mut item = BytesStart::new("ItemData");
+                let item_oid = format!("IT.{dataset_name}.{}", variable.name);
+                item.push_attribute(("ItemOID", item_oid.as_str()));
+                item.push_attribute(("Value", text.as_str()));
+                xml.write_event(Event::Empty(item))?;
+            }
+        }
+        xml.write_event(Event::End(BytesEnd::new("ItemGroupData")))?;
+    }
+
+    xml.write_event(Event::End(BytesEnd::new(container_name)))?;
+    xml.write_event(Event::End(BytesEnd::new("ODM")))?;
+    Ok(())
+}
+
+pub fn write_define_xml(
+    output_path: &Path,
+    study_id: &str,
+    domains: &[Domain],
+    frames: &[DomainFrame],
+    options: &DefineXmlOptions,
+) -> Result<()> {
+    if frames.is_empty() {
+        return Err(anyhow!("no datasets supplied for define-xml"));
+    }
+    let study_id = normalize_study_id(study_id);
+    let study_oid = format!("STDY.{study_id}");
+    let file_oid = format!("{study_oid}.Define-XML_{DEFINE_XML_VERSION}");
+    let mdv_oid = format!("MDV.{study_oid}.SDTMIG.{}", options.sdtm_ig_version);
+    let timestamp = Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true);
+
+    let domain_map = domain_map(domains);
+    let mut entries: Vec<(&Domain, &DomainFrame)> = Vec::new();
+    for frame in frames {
+        let code = frame.domain_code.to_uppercase();
+        let domain = domain_map
+            .get(&code)
+            .ok_or_else(|| anyhow!("missing domain definition for {code}"))?;
+        entries.push((domain, frame));
+    }
+    entries.sort_by(|a, b| a.0.code.cmp(&b.0.code));
+
+    let ct_registry = load_default_ct_registry().context("load ct registry")?;
+    let mut item_defs: BTreeMap<String, ItemDefSpec> = BTreeMap::new();
+    let mut code_lists: BTreeMap<String, CodeListSpec> = BTreeMap::new();
+
+    for (domain, frame) in &entries {
+        for variable in &domain.variables {
+            let oid = format!("IT.{}.{}", domain.code, variable.name);
+            let length = match variable.data_type {
+                VariableType::Char => Some(variable_length(variable, &frame.data)?),
+                VariableType::Num => None,
+            };
+            let codelist_oid = resolve_codelist(domain, variable, &ct_registry, &mut code_lists)?;
+            item_defs.insert(
+                oid.clone(),
+                ItemDefSpec {
+                    oid,
+                    name: variable.name.clone(),
+                    label: variable.label.clone(),
+                    data_type: variable.data_type,
+                    length,
+                    codelist_oid,
+                },
+            );
+        }
+    }
+
+    let file =
+        File::create(output_path).with_context(|| format!("create {}", output_path.display()))?;
+    let writer = BufWriter::new(file);
+    let mut xml = Writer::new_with_indent(writer, b' ', 2);
+
+    xml.write_event(Event::Decl(BytesDecl::new("1.0", Some("UTF-8"), None)))?;
+
+    let mut root = BytesStart::new("ODM");
+    root.push_attribute(("xmlns", ODM_NS));
+    root.push_attribute(("xmlns:def", DEFINE_XML_NS));
+    root.push_attribute(("xmlns:xlink", XLINK_NS));
+    root.push_attribute(("FileType", "Snapshot"));
+    root.push_attribute(("FileOID", file_oid.as_str()));
+    root.push_attribute(("ODMVersion", "1.3.2"));
+    root.push_attribute(("CreationDateTime", timestamp.as_str()));
+    root.push_attribute(("Originator", "CDISC-Transpiler"));
+    root.push_attribute(("SourceSystem", "CDISC-Transpiler"));
+    root.push_attribute(("SourceSystemVersion", "1.0"));
+    root.push_attribute(("def:Context", options.context.as_str()));
+    xml.write_event(Event::Start(root))?;
+
+    let mut study = BytesStart::new("Study");
+    study.push_attribute(("OID", study_oid.as_str()));
+    xml.write_event(Event::Start(study))?;
+
+    xml.write_event(Event::Start(BytesStart::new("GlobalVariables")))?;
+    write_text_element(&mut xml, "StudyName", &study_id)?;
+    write_text_element(
+        &mut xml,
+        "StudyDescription",
+        &format!("SDTM submission for {study_id}"),
+    )?;
+    write_text_element(&mut xml, "ProtocolName", &study_id)?;
+    xml.write_event(Event::End(BytesEnd::new("GlobalVariables")))?;
+
+    let mut metadata = BytesStart::new("MetaDataVersion");
+    metadata.push_attribute(("OID", mdv_oid.as_str()));
+    let mdv_name = format!("Study {study_id}, Data Definitions");
+    let mdv_desc = format!(
+        "SDTM {} metadata definitions for {study_id}",
+        options.sdtm_ig_version
+    );
+    metadata.push_attribute(("Name", mdv_name.as_str()));
+    metadata.push_attribute(("Description", mdv_desc.as_str()));
+    metadata.push_attribute(("def:DefineVersion", DEFINE_XML_VERSION));
+    xml.write_event(Event::Start(metadata))?;
+
+    for (domain, _frame) in &entries {
+        let mut ig = BytesStart::new("ItemGroupDef");
+        let ig_oid = format!("IG.{}", domain.code);
+        let sas_dataset_name = domain.code.chars().take(8).collect::<String>();
+        ig.push_attribute(("OID", ig_oid.as_str()));
+        ig.push_attribute(("Name", domain.code.as_str()));
+        ig.push_attribute(("Repeating", "Yes"));
+        ig.push_attribute(("Domain", domain.code.as_str()));
+        ig.push_attribute(("SASDatasetName", sas_dataset_name.as_str()));
+        if let Some(label) = domain.label.as_ref() {
+            ig.push_attribute(("def:Label", label.as_str()));
+        }
+        if let Some(class_name) = domain.class_name.as_ref() {
+            ig.push_attribute(("def:Class", class_name.as_str()));
+        }
+        if let Some(structure) = domain.structure.as_ref() {
+            ig.push_attribute(("def:Structure", structure.as_str()));
+        }
+        if is_reference_domain(domain) {
+            ig.push_attribute(("def:IsReferenceData", "Yes"));
+        }
+        xml.write_event(Event::Start(ig))?;
+        let mut key_sequence = 1usize;
+        for (idx, variable) in domain.variables.iter().enumerate() {
+            let mut item_ref = BytesStart::new("ItemRef");
+            let item_oid = format!("IT.{}.{}", domain.code, variable.name);
+            let order_number = format!("{}", idx + 1);
+            item_ref.push_attribute(("ItemOID", item_oid.as_str()));
+            item_ref.push_attribute(("OrderNumber", order_number.as_str()));
+            item_ref.push_attribute((
+                "Mandatory",
+                if is_required(variable) { "Yes" } else { "No" },
+            ));
+            if is_identifier(variable) {
+                let seq = format!("{key_sequence}");
+                item_ref.push_attribute(("KeySequence", seq.as_str()));
+                key_sequence += 1;
+            }
+            xml.write_event(Event::Empty(item_ref))?;
+        }
+        xml.write_event(Event::End(BytesEnd::new("ItemGroupDef")))?;
+    }
+
+    for item_def in item_defs.values() {
+        let mut item = BytesStart::new("ItemDef");
+        item.push_attribute(("OID", item_def.oid.as_str()));
+        item.push_attribute(("Name", item_def.name.as_str()));
+        item.push_attribute(("DataType", item_def.data_type.as_define_type()));
+        if let Some(length) = item_def.length {
+            let length_text = format!("{length}");
+            item.push_attribute(("Length", length_text.as_str()));
+        }
+        xml.write_event(Event::Start(item))?;
+        if let Some(label) = item_def.label.as_ref() {
+            write_translated_text(&mut xml, "Description", label)?;
+        }
+        if let Some(codelist_oid) = item_def.codelist_oid.as_ref() {
+            let mut ref_node = BytesStart::new("CodeListRef");
+            ref_node.push_attribute(("CodeListOID", codelist_oid.as_str()));
+            xml.write_event(Event::Empty(ref_node))?;
+        }
+        xml.write_event(Event::End(BytesEnd::new("ItemDef")))?;
+    }
+
+    for (oid, list) in code_lists {
+        let mut node = BytesStart::new("CodeList");
+        node.push_attribute(("OID", oid.as_str()));
+        node.push_attribute(("Name", list.name.as_str()));
+        node.push_attribute(("DataType", "text"));
+        if list.extensible {
+            node.push_attribute(("def:Extensible", "Yes"));
+        }
+        xml.write_event(Event::Start(node))?;
+        for value in list.values {
+            let mut item = BytesStart::new("CodeListItem");
+            item.push_attribute(("CodedValue", value.as_str()));
+            xml.write_event(Event::Start(item))?;
+            write_translated_text(&mut xml, "Decode", &value)?;
+            xml.write_event(Event::End(BytesEnd::new("CodeListItem")))?;
+        }
+        xml.write_event(Event::End(BytesEnd::new("CodeList")))?;
+    }
+
+    xml.write_event(Event::End(BytesEnd::new("MetaDataVersion")))?;
+    xml.write_event(Event::End(BytesEnd::new("Study")))?;
+    xml.write_event(Event::End(BytesEnd::new("ODM")))?;
+    Ok(())
+}
+
+pub fn write_sas_outputs(
+    output_dir: &Path,
+    domains: &[Domain],
+    frames: &[DomainFrame],
+    mappings: &BTreeMap<String, MappingConfig>,
+    options: &SasProgramOptions,
+) -> Result<Vec<PathBuf>> {
+    let domain_map = domain_map(domains);
+    let mut frames_sorted: Vec<&DomainFrame> = frames.iter().collect();
+    frames_sorted.sort_by(|a, b| a.domain_code.cmp(&b.domain_code));
+
+    let sas_dir = output_dir.join("sas");
+    std::fs::create_dir_all(&sas_dir).with_context(|| format!("create {}", sas_dir.display()))?;
+
+    let mut outputs = Vec::new();
+    for frame in frames_sorted {
+        let code = frame.domain_code.to_uppercase();
+        let domain = domain_map
+            .get(&code)
+            .ok_or_else(|| anyhow!("missing domain definition for {code}"))?;
+        let mapping = mappings
+            .get(&code)
+            .ok_or_else(|| anyhow!("missing mapping config for {code}"))?;
+        let dataset_name = dataset_name(domain);
+        let disk_name = dataset_name.to_lowercase();
+        let path = sas_dir.join(format!("{disk_name}.sas"));
+        let program = generate_sas_program(domain, frame, mapping, options)?;
+        std::fs::write(&path, program).with_context(|| format!("write {}", path.display()))?;
+        outputs.push(path);
+    }
+    Ok(outputs)
+}
+
+pub fn generate_sas_program(
+    domain: &Domain,
+    frame: &DomainFrame,
+    mapping: &MappingConfig,
+    options: &SasProgramOptions,
+) -> Result<String> {
+    let input_dataset = options
+        .input_dataset
+        .clone()
+        .unwrap_or_else(|| format!("work.{}", domain.code.to_lowercase()));
+    let output_dataset = options
+        .output_dataset
+        .clone()
+        .unwrap_or_else(|| format!("sdtm.{}", dataset_name(domain).to_lowercase()));
+    let timestamp = Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true);
+
+    let mut lines = Vec::new();
+    lines.push("/* Generated by CDISC Transpiler */".to_string());
+    lines.push(format!("/* Domain: {} */", domain.code));
+    lines.push(format!("/* Generated: {} */", timestamp));
+    lines.push(String::new());
+    lines.push(format!("DATA {output_dataset};"));
+    lines.push(format!("    SET {input_dataset};"));
+    lines.push("    length".to_string());
+    for variable in &domain.variables {
+        let length = variable_length(variable, &frame.data)?;
+        let suffix = if variable.data_type == VariableType::Char {
+            format!("${length}")
+        } else {
+            format!("{length}")
+        };
+        lines.push(format!("        {} {}", variable.name, suffix));
+    }
+    lines.push("    ;".to_string());
+    lines.push(String::new());
+    lines.push("    /* Column mappings */".to_string());
+    let assignment_map = build_assignment_map(domain, mapping);
+    for assignment in assignment_map {
+        for line in assignment.lines() {
+            lines.push(format!("    {line}"));
+        }
+    }
+    lines.push(String::new());
+    lines.push("    /* Defaulted required fields */".to_string());
+    for default_line in default_assignments(domain, mapping) {
+        lines.push(format!("    {default_line}"));
+    }
+    let standard = standard_columns(domain);
+    if let Some(study_col) = standard.study_id.as_ref() {
+        lines.push(format!("    {study_col} = \"{}\";", mapping.study_id));
+    }
+    if let Some(domain_col) = standard.domain.as_ref() {
+        lines.push(format!("    {domain_col} = \"{}\";", domain.code));
+    }
+    lines.push(String::new());
+    lines.push(format!("    KEEP {};", keep_clause(domain)));
+    lines.push("RUN;".to_string());
+    Ok(lines.join("\n"))
 }
 
 pub fn build_xpt_dataset(domain: &Domain, frame: &DomainFrame) -> Result<XptDataset> {
@@ -184,4 +622,300 @@ fn format_numeric(value: f64) -> String {
     } else {
         value.to_string()
     }
+}
+
+trait VariableTypeExt {
+    fn as_define_type(&self) -> &'static str;
+}
+
+impl VariableTypeExt for VariableType {
+    fn as_define_type(&self) -> &'static str {
+        match self {
+            VariableType::Char => "text",
+            VariableType::Num => "float",
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct ItemDefSpec {
+    oid: String,
+    name: String,
+    label: Option<String>,
+    data_type: VariableType,
+    length: Option<u16>,
+    codelist_oid: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+struct CodeListSpec {
+    name: String,
+    values: Vec<String>,
+    extensible: bool,
+}
+
+fn domain_map(domains: &[Domain]) -> BTreeMap<String, &Domain> {
+    let mut map = BTreeMap::new();
+    for domain in domains {
+        map.insert(domain.code.to_uppercase(), domain);
+    }
+    map
+}
+
+fn dataset_name(domain: &Domain) -> String {
+    domain
+        .dataset_name
+        .clone()
+        .unwrap_or_else(|| domain.code.clone())
+}
+
+fn normalize_study_id(study_id: &str) -> String {
+    let trimmed = study_id.trim();
+    if trimmed.is_empty() {
+        "STUDY".to_string()
+    } else {
+        trimmed.to_string()
+    }
+}
+
+fn is_reference_domain(domain: &Domain) -> bool {
+    let class_name = match domain.class_name.as_ref() {
+        Some(value) => value,
+        None => return false,
+    };
+    let normalized = normalize_class(class_name);
+    normalized == "TRIAL DESIGN" || normalized == "STUDY REFERENCE"
+}
+
+fn normalize_class(value: &str) -> String {
+    let mut out = String::new();
+    let mut last_space = false;
+    for ch in value.chars() {
+        let c = if ch == '-' || ch == '_' { ' ' } else { ch };
+        let upper = c.to_ascii_uppercase();
+        if upper == ' ' {
+            if !last_space {
+                out.push(' ');
+                last_space = true;
+            }
+        } else {
+            out.push(upper);
+            last_space = false;
+        }
+    }
+    out.trim().to_string()
+}
+
+fn xml_value(value: AnyValue) -> Option<String> {
+    match value {
+        AnyValue::Null => None,
+        AnyValue::String(v) => {
+            let trimmed = v.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_string())
+            }
+        }
+        AnyValue::StringOwned(v) => {
+            let trimmed = v.as_str().trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_string())
+            }
+        }
+        AnyValue::Float64(v) => {
+            if v.is_nan() {
+                None
+            } else {
+                Some(format_numeric(v))
+            }
+        }
+        AnyValue::Float32(v) => {
+            if v.is_nan() {
+                None
+            } else {
+                Some(format_numeric(v as f64))
+            }
+        }
+        AnyValue::Int64(v) => Some(v.to_string()),
+        AnyValue::Int32(v) => Some(v.to_string()),
+        AnyValue::Int16(v) => Some(v.to_string()),
+        AnyValue::Int8(v) => Some(v.to_string()),
+        AnyValue::UInt64(v) => Some(v.to_string()),
+        AnyValue::UInt32(v) => Some(v.to_string()),
+        AnyValue::UInt16(v) => Some(v.to_string()),
+        AnyValue::UInt8(v) => Some(v.to_string()),
+        AnyValue::Boolean(v) => Some(if v { "1" } else { "0" }.to_string()),
+        value => {
+            let text = value.to_string();
+            let trimmed = text.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_string())
+            }
+        }
+    }
+}
+
+fn write_text_element<W: Write>(writer: &mut Writer<W>, name: &str, text: &str) -> Result<()> {
+    writer.write_event(Event::Start(BytesStart::new(name)))?;
+    writer.write_event(Event::Text(BytesText::new(text)))?;
+    writer.write_event(Event::End(BytesEnd::new(name)))?;
+    Ok(())
+}
+
+fn write_translated_text<W: Write>(
+    writer: &mut Writer<W>,
+    wrapper: &str,
+    text: &str,
+) -> Result<()> {
+    writer.write_event(Event::Start(BytesStart::new(wrapper)))?;
+    let mut translated = BytesStart::new("TranslatedText");
+    translated.push_attribute(("xml:lang", "en"));
+    writer.write_event(Event::Start(translated))?;
+    writer.write_event(Event::Text(BytesText::new(text)))?;
+    writer.write_event(Event::End(BytesEnd::new("TranslatedText")))?;
+    writer.write_event(Event::End(BytesEnd::new(wrapper)))?;
+    Ok(())
+}
+
+fn resolve_codelist(
+    domain: &Domain,
+    variable: &Variable,
+    ct_registry: &sdtm_model::CtRegistry,
+    code_lists: &mut BTreeMap<String, CodeListSpec>,
+) -> Result<Option<String>> {
+    let mut candidate = None;
+    if let Some(code) = variable.codelist_code.as_ref() {
+        candidate = ct_registry.by_code.get(&code.to_uppercase());
+    }
+    if candidate.is_none() {
+        candidate = ct_registry.by_name.get(&variable.name.to_uppercase());
+    }
+    let ct = match candidate {
+        Some(ct) => ct,
+        None => {
+            if variable.codelist_code.is_some() {
+                return Err(anyhow!(
+                    "missing codelist {} for {}.{}",
+                    variable.codelist_code.as_deref().unwrap_or(""),
+                    domain.code,
+                    variable.name
+                ));
+            }
+            return Ok(None);
+        }
+    };
+    let oid = format!("CL.{}.{}", domain.code, variable.name);
+    if !code_lists.contains_key(&oid) {
+        let mut values = BTreeSet::new();
+        for value in &ct.submission_values {
+            let trimmed = value.trim();
+            if !trimmed.is_empty() {
+                values.insert(trimmed.to_string());
+            }
+        }
+        code_lists.insert(
+            oid.clone(),
+            CodeListSpec {
+                name: ct.codelist_name.clone(),
+                values: values.into_iter().collect(),
+                extensible: ct.extensible,
+            },
+        );
+    }
+    Ok(Some(oid))
+}
+
+fn build_assignment_map(domain: &Domain, mapping: &MappingConfig) -> Vec<String> {
+    let mut variable_lookup = BTreeMap::new();
+    for variable in &domain.variables {
+        variable_lookup.insert(variable.name.to_uppercase(), variable);
+    }
+    let mut assignments = Vec::new();
+    for item in &mapping.mappings {
+        let variable = variable_lookup
+            .get(&item.target_variable.to_uppercase())
+            .copied();
+        assignments.push(render_assignment(item, variable));
+    }
+    assignments
+}
+
+fn render_assignment(
+    mapping: &sdtm_model::MappingSuggestion,
+    variable: Option<&Variable>,
+) -> String {
+    let mut expr = mapping
+        .transformation
+        .clone()
+        .unwrap_or_else(|| mapping.source_column.clone());
+    if let Some(var) = variable {
+        if var.data_type == VariableType::Char {
+            expr = format!("strip(coalescec({}, ''))", expr);
+            if should_upcase(var) {
+                expr = format!("upcase({expr})");
+            }
+        }
+    }
+    format!("{} = {};", mapping.target_variable, expr)
+}
+
+fn default_assignments(domain: &Domain, mapping: &MappingConfig) -> Vec<String> {
+    let mut mapped: BTreeSet<String> = mapping
+        .mappings
+        .iter()
+        .map(|item| item.target_variable.to_uppercase())
+        .collect();
+    let mut defaults = Vec::new();
+    for variable in &domain.variables {
+        if !is_required(variable) {
+            continue;
+        }
+        if mapped.contains(&variable.name.to_uppercase()) {
+            continue;
+        }
+        defaults.push(default_assignment(variable));
+        mapped.insert(variable.name.to_uppercase());
+    }
+    defaults
+}
+
+fn default_assignment(variable: &Variable) -> String {
+    match variable.data_type {
+        VariableType::Num => format!("{} = .;", variable.name),
+        VariableType::Char => format!("{} = '';", variable.name),
+    }
+}
+
+fn keep_clause(domain: &Domain) -> String {
+    domain
+        .variables
+        .iter()
+        .map(|var| var.name.as_str())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+fn is_required(variable: &Variable) -> bool {
+    variable
+        .core
+        .as_deref()
+        .map(|v| v.eq_ignore_ascii_case("req"))
+        .unwrap_or(false)
+}
+
+fn is_identifier(variable: &Variable) -> bool {
+    variable
+        .role
+        .as_deref()
+        .map(|v| v.eq_ignore_ascii_case("identifier"))
+        .unwrap_or(false)
+}
+
+fn should_upcase(variable: &Variable) -> bool {
+    is_identifier(variable) || variable.codelist_code.is_some()
 }
