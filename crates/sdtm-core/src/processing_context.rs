@@ -18,10 +18,7 @@ impl<'a> ProcessingContext<'a> {
         }
     }
 
-    pub fn with_reference_starts(
-        mut self,
-        reference_starts: &'a BTreeMap<String, String>,
-    ) -> Self {
+    pub fn with_reference_starts(mut self, reference_starts: &'a BTreeMap<String, String>) -> Self {
         self.reference_starts = Some(reference_starts);
         self
     }

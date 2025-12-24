@@ -6,17 +6,14 @@ use crate::processing_context::ProcessingContext;
 
 use super::common::*;
 
-pub(super) fn process_se(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingContext) -> Result<()> {
+pub(super) fn process_se(
+    domain: &Domain,
+    df: &mut DataFrame,
+    ctx: &ProcessingContext,
+) -> Result<()> {
     drop_placeholder_rows(domain, df, ctx)?;
     for col_name in [
-        "STUDYID",
-        "DOMAIN",
-        "USUBJID",
-        "ETCD",
-        "ELEMENT",
-        "EPOCH",
-        "SESTDTC",
-        "SEENDTC",
+        "STUDYID", "DOMAIN", "USUBJID", "ETCD", "ELEMENT", "EPOCH", "SESTDTC", "SEENDTC",
     ] {
         if let Some(name) = col(domain, col_name) {
             if has_column(df, &name) {

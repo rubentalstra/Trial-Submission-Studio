@@ -8,8 +8,8 @@ use polars::prelude::{
 
 use sdtm_model::{ControlledTerminology, Domain};
 
-use crate::processing_context::ProcessingContext;
 use crate::domain_utils::column_name;
+use crate::processing_context::ProcessingContext;
 
 pub(super) fn col(domain: &Domain, name: &str) -> Option<String> {
     column_name(domain, name)
@@ -78,13 +78,21 @@ pub(super) fn set_string_column(df: &mut DataFrame, name: &str, values: Vec<Stri
     Ok(())
 }
 
-pub(super) fn set_f64_column(df: &mut DataFrame, name: &str, values: Vec<Option<f64>>) -> Result<()> {
+pub(super) fn set_f64_column(
+    df: &mut DataFrame,
+    name: &str,
+    values: Vec<Option<f64>>,
+) -> Result<()> {
     let series = Series::new(name.into(), values);
     df.with_column(series)?;
     Ok(())
 }
 
-pub(super) fn set_i64_column(df: &mut DataFrame, name: &str, values: Vec<Option<i64>>) -> Result<()> {
+pub(super) fn set_i64_column(
+    df: &mut DataFrame,
+    name: &str,
+    values: Vec<Option<i64>>,
+) -> Result<()> {
     let series = Series::new(name.into(), values);
     df.with_column(series)?;
     Ok(())
@@ -149,8 +157,14 @@ pub(super) fn assign_sequence(df: &mut DataFrame, seq_col: &str, group_col: &str
     Ok(())
 }
 
-pub(super) fn apply_map_upper(df: &mut DataFrame, column: Option<&str>, mapping: &HashMap<String, String>) -> Result<()> {
-    let Some(column) = column else { return Ok(()); };
+pub(super) fn apply_map_upper(
+    df: &mut DataFrame,
+    column: Option<&str>,
+    mapping: &HashMap<String, String>,
+) -> Result<()> {
+    let Some(column) = column else {
+        return Ok(());
+    };
     if !has_column(df, column) {
         return Ok(());
     }
@@ -260,7 +274,11 @@ pub(super) fn is_numeric_string(value: &str) -> bool {
     trimmed.parse::<f64>().is_ok()
 }
 
-pub(super) fn drop_placeholder_rows(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingContext) -> Result<()> {
+pub(super) fn drop_placeholder_rows(
+    domain: &Domain,
+    df: &mut DataFrame,
+    ctx: &ProcessingContext,
+) -> Result<()> {
     let Some(usubjid_col) = col(domain, "USUBJID") else {
         return Ok(());
     };
@@ -493,7 +511,8 @@ pub(super) fn sort_by_numeric(df: &mut DataFrame, column: &str) -> Result<()> {
     indices.sort_by(|a, b| {
         let left = values[*a as usize];
         let right = values[*b as usize];
-        left.partial_cmp(&right).unwrap_or(std::cmp::Ordering::Equal)
+        left.partial_cmp(&right)
+            .unwrap_or(std::cmp::Ordering::Equal)
     });
     let idx = UInt32Chunked::from_vec("idx".into(), indices);
     *df = df.take(&idx)?;
@@ -504,9 +523,13 @@ pub(super) fn is_valid_time(value: &str) -> bool {
     let trimmed = value.trim();
     let parts: Vec<&str> = trimmed.split(':').collect();
     match parts.as_slice() {
-        [hh, mm] => hh.len() == 2 && mm.len() == 2 && hh.parse::<u32>().is_ok() && mm.parse::<u32>().is_ok(),
+        [hh, mm] => {
+            hh.len() == 2 && mm.len() == 2 && hh.parse::<u32>().is_ok() && mm.parse::<u32>().is_ok()
+        }
         [hh, mm, ss] => {
-            hh.len() == 2 && mm.len() == 2 && ss.len() == 2
+            hh.len() == 2
+                && mm.len() == 2
+                && ss.len() == 2
                 && hh.parse::<u32>().is_ok()
                 && mm.parse::<u32>().is_ok()
                 && ss.parse::<u32>().is_ok()

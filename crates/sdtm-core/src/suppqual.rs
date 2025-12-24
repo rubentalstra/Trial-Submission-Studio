@@ -55,7 +55,12 @@ fn sanitize_qnam(name: &str) -> String {
     if safe.is_empty() {
         safe = "QVAL".to_string();
     }
-    if safe.chars().next().map(|c| c.is_ascii_digit()).unwrap_or(false) {
+    if safe
+        .chars()
+        .next()
+        .map(|c| c.is_ascii_digit())
+        .unwrap_or(false)
+    {
         safe = format!("Q{safe}");
     }
     safe.chars().take(8).collect()
@@ -106,10 +111,7 @@ pub fn build_suppqual(
     }
 
     let idvar = infer_seq_column(parent_domain).and_then(|seq_var| {
-        if mapped_df
-            .and_then(|df| df.column(&seq_var).ok())
-            .is_some()
-        {
+        if mapped_df.and_then(|df| df.column(&seq_var).ok()).is_some() {
             Some(seq_var)
         } else {
             None
@@ -174,10 +176,7 @@ pub fn build_suppqual(
                     study_id.to_string()
                 },
             );
-            push_value(
-                suppqual_cols.rdomain.as_deref(),
-                parent_domain_code.clone(),
-            );
+            push_value(suppqual_cols.rdomain.as_deref(), parent_domain_code.clone());
             push_value(suppqual_cols.usubjid.as_deref(), final_usubjid);
             push_value(suppqual_cols.idvar.as_deref(), idvar_value);
             push_value(suppqual_cols.idvarval.as_deref(), idvarval);

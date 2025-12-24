@@ -6,7 +6,11 @@ use crate::processing_context::ProcessingContext;
 
 use super::common::*;
 
-pub(super) fn process_ae(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingContext) -> Result<()> {
+pub(super) fn process_ae(
+    domain: &Domain,
+    df: &mut DataFrame,
+    ctx: &ProcessingContext,
+) -> Result<()> {
     drop_placeholder_rows(domain, df, ctx)?;
     if let Some(aedur) = col(domain, "AEDUR") {
         if has_column(df, &aedur) {
@@ -96,7 +100,10 @@ pub(super) fn process_ae(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingCo
             ("NOT RECOVERED", "NOT RECOVERED/NOT RESOLVED"),
             ("NOT RESOLVED", "NOT RECOVERED/NOT RESOLVED"),
             ("UNRESOLVED", "NOT RECOVERED/NOT RESOLVED"),
-            ("RECOVERED WITH SEQUELAE", "RECOVERED/RESOLVED WITH SEQUELAE"),
+            (
+                "RECOVERED WITH SEQUELAE",
+                "RECOVERED/RESOLVED WITH SEQUELAE",
+            ),
             ("RESOLVED WITH SEQUELAE", "RECOVERED/RESOLVED WITH SEQUELAE"),
             ("DEATH", "FATAL"),
             ("5", "FATAL"),
@@ -119,12 +126,7 @@ pub(super) fn process_ae(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingCo
     )?;
 
     for code in [
-        "AEPTCD",
-        "AEHLGTCD",
-        "AEHLTCD",
-        "AELLTCD",
-        "AESOCCD",
-        "AEBDSYCD",
+        "AEPTCD", "AEHLGTCD", "AEHLTCD", "AELLTCD", "AESOCCD", "AEBDSYCD",
     ] {
         if let Some(name) = col(domain, code) {
             let values = numeric_column_i64(df, &name)?;

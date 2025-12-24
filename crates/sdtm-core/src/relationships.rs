@@ -5,7 +5,7 @@ use polars::prelude::{AnyValue, Column, DataFrame, NamedFrom, Series};
 
 use sdtm_model::{Domain, VariableType};
 
-use crate::domain_utils::{infer_seq_column, refid_candidates, standard_columns, StandardColumns};
+use crate::domain_utils::{StandardColumns, infer_seq_column, refid_candidates, standard_columns};
 use crate::frame::DomainFrame;
 
 #[derive(Debug, Clone)]
@@ -34,7 +34,7 @@ pub fn build_relrec(
                 return Err(anyhow::anyhow!(
                     "missing standards metadata for domain {}",
                     frame.domain_code
-                ))
+                ));
             }
         };
         let domain_columns = standard_columns(domain_def);
@@ -79,13 +79,12 @@ pub fn build_relrec(
                 continue;
             }
             let idvarval = match entry.data.column(&entry.idvar) {
-                Ok(series) => stringify_idvarval(series.get(idx).unwrap_or(AnyValue::Null), idx + 1),
+                Ok(series) => {
+                    stringify_idvarval(series.get(idx).unwrap_or(AnyValue::Null), idx + 1)
+                }
                 Err(_) => stringify_idvarval(AnyValue::Null, idx + 1),
             };
-            let relid = format!(
-                "{}_{}_{}_{}",
-                entry.code, reference_code, usubjid, idvarval
-            );
+            let relid = format!("{}_{}_{}_{}", entry.code, reference_code, usubjid, idvarval);
             records.push(relrec_record(
                 relrec_domain,
                 study_id,
@@ -150,7 +149,7 @@ pub fn build_relspec(
                 return Err(anyhow::anyhow!(
                     "missing standards metadata for domain {}",
                     frame.domain_code
-                ))
+                ));
             }
         };
         let domain_columns = standard_columns(domain_def);
@@ -245,11 +244,7 @@ fn pick_reference_domain(eligible: &[EligibleDomain<'_>]) -> String {
         .unwrap_or_else(|| "RELREC".to_string())
 }
 
-fn build_seq_map(
-    df: &DataFrame,
-    usubjid_col: &str,
-    seq_col: &str,
-) -> BTreeMap<String, String> {
+fn build_seq_map(df: &DataFrame, usubjid_col: &str, seq_col: &str) -> BTreeMap<String, String> {
     if df.column(seq_col).is_err() || df.column(usubjid_col).is_err() {
         return BTreeMap::new();
     }
@@ -388,12 +383,7 @@ fn build_domain_frame(domain: &Domain, records: &[BTreeMap<String, String>]) -> 
             VariableType::Char => {
                 let mut values: Vec<String> = Vec::with_capacity(records.len());
                 for record in records {
-                    values.push(
-                        record
-                            .get(&variable.name)
-                            .cloned()
-                            .unwrap_or_default(),
-                    );
+                    values.push(record.get(&variable.name).cloned().unwrap_or_default());
                 }
                 columns.push(Series::new(variable.name.as_str().into(), values).into());
             }
@@ -415,12 +405,7 @@ struct RelspecRecord {
 }
 
 impl RelspecRecord {
-    fn new(
-        study_id: &str,
-        usubjid: &str,
-        refid: &str,
-        relspec_domain: &Domain,
-    ) -> Self {
+    fn new(study_id: &str, usubjid: &str, refid: &str, relspec_domain: &Domain) -> Self {
         let mut columns = BTreeMap::new();
         for variable in &relspec_domain.variables {
             columns.insert(variable.name.clone(), String::new());
@@ -438,12 +423,10 @@ impl RelspecRecord {
 
     fn into_map(mut self, columns: &StandardColumns) -> BTreeMap<String, String> {
         if let Some(name) = columns.study_id.as_ref() {
-            self.columns
-                .insert(name.clone(), self.study_id.clone());
+            self.columns.insert(name.clone(), self.study_id.clone());
         }
         if let Some(name) = columns.usubjid.as_ref() {
-            self.columns
-                .insert(name.clone(), self.usubjid.clone());
+            self.columns.insert(name.clone(), self.usubjid.clone());
         }
         if let Some(name) = columns.refid.as_ref() {
             self.columns.insert(name.clone(), self.refid.clone());
@@ -452,8 +435,7 @@ impl RelspecRecord {
             self.columns.insert(name.clone(), self.spec.clone());
         }
         if let Some(name) = columns.parent.as_ref() {
-            self.columns
-                .insert(name.clone(), self.parent.clone());
+            self.columns.insert(name.clone(), self.parent.clone());
         }
         if let Some(name) = columns.level.as_ref() {
             self.columns.insert(name.clone(), self.level.clone());

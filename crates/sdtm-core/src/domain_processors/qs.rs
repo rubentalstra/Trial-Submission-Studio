@@ -6,20 +6,17 @@ use crate::processing_context::ProcessingContext;
 
 use super::common::*;
 
-pub(super) fn process_qs(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingContext) -> Result<()> {
+pub(super) fn process_qs(
+    domain: &Domain,
+    df: &mut DataFrame,
+    ctx: &ProcessingContext,
+) -> Result<()> {
     drop_placeholder_rows(domain, df, ctx)?;
     if let (Some(qsseq), Some(usubjid)) = (col(domain, "QSSEQ"), col(domain, "USUBJID")) {
         assign_sequence(df, &qsseq, &usubjid)?;
     }
     for col_name in [
-        "QSTESTCD",
-        "QSTEST",
-        "QSCAT",
-        "QSSCAT",
-        "QSORRES",
-        "QSSTRESC",
-        "QSLOBXFL",
-        "VISIT",
+        "QSTESTCD", "QSTEST", "QSCAT", "QSSCAT", "QSORRES", "QSSTRESC", "QSLOBXFL", "VISIT",
         "EPOCH",
     ] {
         if let Some(name) = col(domain, col_name) {
@@ -45,8 +42,7 @@ pub(super) fn process_qs(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingCo
         }
     }
     if pga_score.is_none() {
-        if let (Some(qsorres), Some(qsgrpid)) = (col(domain, "QSORRES"), col(domain, "QSGRPID"))
-        {
+        if let (Some(qsorres), Some(qsgrpid)) = (col(domain, "QSORRES"), col(domain, "QSGRPID")) {
             if has_column(df, &qsorres) && has_column(df, &qsgrpid) {
                 let orres_vals = string_column(df, &qsorres, Trim::Both)?;
                 let grpid_vals = string_column(df, &qsgrpid, Trim::Both)?;

@@ -7,9 +7,9 @@ const METADATA_SKIP_PATTERNS: [&str; 5] = ["CODELISTS", "CODELIST", "ITEMS", "RE
 
 pub fn list_csv_files(study_dir: &Path) -> Result<Vec<PathBuf>> {
     let mut files = Vec::new();
-    for entry in std::fs::read_dir(study_dir).with_context(|| {
-        format!("read study directory: {}", study_dir.display())
-    })? {
+    for entry in std::fs::read_dir(study_dir)
+        .with_context(|| format!("read study directory: {}", study_dir.display()))?
+    {
         let entry = entry?;
         let path = entry.path();
         if !path.is_file() {
@@ -64,10 +64,7 @@ fn is_metadata_file(filename: &str) -> bool {
         .any(|pattern| filename.contains(pattern))
 }
 
-fn match_domain(
-    filename: &str,
-    supported_domains: &[String],
-) -> Option<(String, String)> {
+fn match_domain(filename: &str, supported_domains: &[String]) -> Option<(String, String)> {
     let padded = format!("_{filename}_");
     if let Some(domain) = supported_domains
         .iter()

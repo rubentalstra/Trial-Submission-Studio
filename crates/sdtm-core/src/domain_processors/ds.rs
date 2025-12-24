@@ -6,7 +6,11 @@ use crate::processing_context::ProcessingContext;
 
 use super::common::*;
 
-pub(super) fn process_ds(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingContext) -> Result<()> {
+pub(super) fn process_ds(
+    domain: &Domain,
+    df: &mut DataFrame,
+    ctx: &ProcessingContext,
+) -> Result<()> {
     drop_placeholder_rows(domain, df, ctx)?;
     for col_name in ["DSDECOD", "DSTERM", "DSCAT", "EPOCH"] {
         if let Some(name) = col(domain, col_name) {
@@ -16,9 +20,11 @@ pub(super) fn process_ds(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingCo
             }
         }
     }
-    if let (Some(usubjid), Some(dsdecod), Some(dsterm)) =
-        (col(domain, "USUBJID"), col(domain, "DSDECOD"), col(domain, "DSTERM"))
-    {
+    if let (Some(usubjid), Some(dsdecod), Some(dsterm)) = (
+        col(domain, "USUBJID"),
+        col(domain, "DSDECOD"),
+        col(domain, "DSTERM"),
+    ) {
         if has_column(df, &usubjid) && has_column(df, &dsdecod) && has_column(df, &dsterm) {
             let usub_vals = string_column(df, &usubjid, Trim::Both)?;
             let mut decod_vals = string_column(df, &dsdecod, Trim::Both)?;
@@ -70,10 +76,7 @@ pub(super) fn process_ds(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingCo
                         continue;
                     }
                     let canonical = normalize_ct_value(ct, &dscat_vals[idx]);
-                    let is_valid = ct
-                        .submission_values
-                        .iter()
-                        .any(|val| val == &canonical);
+                    let is_valid = ct.submission_values.iter().any(|val| val == &canonical);
                     invalid[idx] = !is_valid;
                 }
             } else {
@@ -152,12 +155,13 @@ pub(super) fn process_ds(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingCo
                     if has_column(df, &dsterm) {
                         let term_vals = string_column(df, &dsterm, Trim::Both)?;
                         for idx in 0..df.height() {
-                            let term_code = normalize_ct_value(ct, &term_vals[idx])
-                                .to_uppercase();
+                            let term_code = normalize_ct_value(ct, &term_vals[idx]).to_uppercase();
                             let valid_from_term =
                                 ct.submission_values.iter().any(|val| val == &term_code);
-                            let valid_from_decod =
-                                ct.submission_values.iter().any(|val| val == &decod_vals[idx]);
+                            let valid_from_decod = ct
+                                .submission_values
+                                .iter()
+                                .any(|val| val == &decod_vals[idx]);
                             if valid_from_term && !valid_from_decod {
                                 decod_vals[idx] = term_code;
                             }

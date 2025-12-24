@@ -5,7 +5,7 @@ use anyhow::{Context, Result};
 use csv::ReaderBuilder;
 
 use sdtm_model::{
-    CtRegistry, ControlledTerminology, DatasetMetadata, Domain, Variable, VariableType,
+    ControlledTerminology, CtRegistry, DatasetMetadata, Domain, Variable, VariableType,
 };
 
 #[derive(Debug, Clone)]
@@ -131,14 +131,8 @@ fn build_domains(
             DatasetMetadata {
                 dataset_name: name.to_uppercase(),
                 class_name: row.get("Class").filter(|v| !v.is_empty()).cloned(),
-                label: row
-                    .get("Dataset Label")
-                    .filter(|v| !v.is_empty())
-                    .cloned(),
-                structure: row
-                    .get("Structure")
-                    .filter(|v| !v.is_empty())
-                    .cloned(),
+                label: row.get("Dataset Label").filter(|v| !v.is_empty()).cloned(),
+                structure: row.get("Structure").filter(|v| !v.is_empty()).cloned(),
             },
         );
     }
@@ -218,32 +212,40 @@ pub fn load_ct_registry(ct_dir: &Path) -> Result<CtRegistry> {
             if submission_value.is_empty() {
                 continue;
             }
-            let mut entry = by_code.remove(&codelist_code).unwrap_or(ControlledTerminology {
-                codelist_code: codelist_code.clone(),
-                codelist_name: codelist_name.clone(),
-                extensible,
-                submission_values: Vec::new(),
-                synonyms: BTreeMap::new(),
-                submission_value_synonyms: BTreeMap::new(),
-                nci_codes: BTreeMap::new(),
-                definitions: BTreeMap::new(),
-                preferred_terms: BTreeMap::new(),
-                standards: Vec::new(),
-                sources: Vec::new(),
-            });
+            let mut entry = by_code
+                .remove(&codelist_code)
+                .unwrap_or(ControlledTerminology {
+                    codelist_code: codelist_code.clone(),
+                    codelist_name: codelist_name.clone(),
+                    extensible,
+                    submission_values: Vec::new(),
+                    synonyms: BTreeMap::new(),
+                    submission_value_synonyms: BTreeMap::new(),
+                    nci_codes: BTreeMap::new(),
+                    definitions: BTreeMap::new(),
+                    preferred_terms: BTreeMap::new(),
+                    standards: Vec::new(),
+                    sources: Vec::new(),
+                });
 
             entry.extensible |= extensible;
             if !entry.submission_values.contains(&submission_value) {
                 entry.submission_values.push(submission_value.clone());
             }
             if let Some(def) = row.get("CDISC Definition").filter(|v| !v.is_empty()) {
-                entry.definitions.insert(submission_value.clone(), def.clone());
+                entry
+                    .definitions
+                    .insert(submission_value.clone(), def.clone());
             }
             if let Some(pref) = row.get("NCI Preferred Term").filter(|v| !v.is_empty()) {
-                entry.preferred_terms.insert(submission_value.clone(), pref.clone());
+                entry
+                    .preferred_terms
+                    .insert(submission_value.clone(), pref.clone());
             }
             if let Some(code) = row.get("Code").filter(|v| !v.is_empty()) {
-                entry.nci_codes.insert(submission_value.clone(), code.clone());
+                entry
+                    .nci_codes
+                    .insert(submission_value.clone(), code.clone());
             }
             if let Some(standard) = row.get("Standard and Date").filter(|v| !v.is_empty()) {
                 if !entry.standards.contains(standard) {
@@ -275,7 +277,9 @@ pub fn load_ct_registry(ct_dir: &Path) -> Result<CtRegistry> {
                         .or_insert_with(Vec::new)
                         .extend(syns.iter().cloned());
                     for syn in syns {
-                        entry.synonyms.insert(syn.to_uppercase(), submission_value.clone());
+                        entry
+                            .synonyms
+                            .insert(syn.to_uppercase(), submission_value.clone());
                     }
                 }
             }

@@ -6,7 +6,11 @@ use crate::processing_context::ProcessingContext;
 
 use super::common::*;
 
-pub(super) fn process_lb(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingContext) -> Result<()> {
+pub(super) fn process_lb(
+    domain: &Domain,
+    df: &mut DataFrame,
+    ctx: &ProcessingContext,
+) -> Result<()> {
     drop_placeholder_rows(domain, df, ctx)?;
     for col_name in ["LBORRESU", "LBSTRESU"] {
         if let Some(name) = col(domain, col_name) {

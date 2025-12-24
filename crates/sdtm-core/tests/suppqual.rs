@@ -1,5 +1,5 @@
-use std::collections::BTreeSet;
 use polars::prelude::{AnyValue, Column, DataFrame};
+use std::collections::BTreeSet;
 
 use sdtm_core::{build_suppqual, column_name, suppqual_domain_code};
 use sdtm_standards::load_default_sdtm_ig_domains;

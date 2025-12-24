@@ -6,7 +6,11 @@ use crate::processing_context::ProcessingContext;
 
 use super::common::*;
 
-pub(super) fn process_da(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingContext) -> Result<()> {
+pub(super) fn process_da(
+    domain: &Domain,
+    df: &mut DataFrame,
+    ctx: &ProcessingContext,
+) -> Result<()> {
     drop_placeholder_rows(domain, df, ctx)?;
     if let (Some(daseq), Some(usubjid)) = (col(domain, "DASEQ"), col(domain, "USUBJID")) {
         assign_sequence(df, &daseq, &usubjid)?;
@@ -69,7 +73,7 @@ pub(super) fn process_da(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingCo
     if let Some(dadtc) = col(domain, "DADTC") {
         if has_column(df, &dadtc) {
             if let Some(dady) = col(domain, "DADY") {
-            compute_study_day(domain, df, &dadtc, &dady, ctx, "RFSTDTC")?;
+                compute_study_day(domain, df, &dadtc, &dady, ctx, "RFSTDTC")?;
             }
         }
     }

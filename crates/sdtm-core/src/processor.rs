@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use polars::prelude::{AnyValue, DataFrame, NamedFrom, Series};
 
 use sdtm_model::Domain;

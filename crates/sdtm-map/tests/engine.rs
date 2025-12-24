@@ -1,7 +1,7 @@
-use std::collections::BTreeMap;
 use sdtm_map::MappingEngine;
 use sdtm_model::{ColumnHint, Domain};
 use sdtm_standards::load_default_sdtm_ig_domains;
+use std::collections::BTreeMap;
 
 fn sample_domain() -> Domain {
     let domains = load_default_sdtm_ig_domains().expect("standards");
@@ -31,9 +31,16 @@ fn suggests_mappings_and_unmapped() {
     ];
     let result = engine.suggest(&columns);
 
-    assert!(result.mappings.iter().any(|m| m.target_variable == "STUDYID"));
+    assert!(
+        result
+            .mappings
+            .iter()
+            .any(|m| m.target_variable == "STUDYID")
+    );
     assert!(result.mappings.iter().any(|m| m.target_variable == "AGE"));
-    assert!(result
-        .unmapped_columns
-        .contains(&"UNLIKELY_COLUMN".to_string()));
+    assert!(
+        result
+            .unmapped_columns
+            .contains(&"UNLIKELY_COLUMN".to_string())
+    );
 }

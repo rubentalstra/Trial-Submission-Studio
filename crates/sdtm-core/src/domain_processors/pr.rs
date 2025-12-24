@@ -6,7 +6,11 @@ use crate::processing_context::ProcessingContext;
 
 use super::common::*;
 
-pub(super) fn process_pr(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingContext) -> Result<()> {
+pub(super) fn process_pr(
+    domain: &Domain,
+    df: &mut DataFrame,
+    ctx: &ProcessingContext,
+) -> Result<()> {
     drop_placeholder_rows(domain, df, ctx)?;
     if let (Some(prseq), Some(usubjid)) = (col(domain, "PRSEQ"), col(domain, "USUBJID")) {
         assign_sequence(df, &prseq, &usubjid)?;
@@ -59,14 +63,7 @@ pub(super) fn process_pr(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingCo
                 if has_column(df, &usubjid) {
                     let prefixes = string_column(df, &usubjid, Trim::Both)?
                         .into_iter()
-                        .map(|value| {
-                            value
-                                .split('-')
-                                .next()
-                                .unwrap_or("")
-                                .trim()
-                                .to_uppercase()
-                        })
+                        .map(|value| value.split('-').next().unwrap_or("").trim().to_uppercase())
                         .collect::<Vec<_>>();
                     for idx in 0..df.height() {
                         if !prefixes[idx].is_empty() && values[idx] == prefixes[idx] {
@@ -123,10 +120,7 @@ pub(super) fn process_pr(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingCo
         } else {
             vec![Some(1); df.height()]
         };
-        let normalized = values
-            .into_iter()
-            .map(|value| value.or(Some(1)))
-            .collect();
+        let normalized = values.into_iter().map(|value| value.or(Some(1))).collect();
         set_i64_column(df, &prtptnum, normalized)?;
     }
     if let Some(visitnum) = col(domain, "VISITNUM") {

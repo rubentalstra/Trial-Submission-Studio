@@ -125,14 +125,9 @@ impl MappingEngine {
         let normalized = normalize_text(column);
         let mut best: Option<(String, f32)> = None;
         for variable in &self.domain.variables {
-            let score_raw = jaro_similarity(
-                column.to_uppercase().chars(),
-                variable.name.chars(),
-            );
-            let score_norm = jaro_similarity(
-                normalized.chars(),
-                variable.name.to_lowercase().chars(),
-            );
+            let score_raw = jaro_similarity(column.to_uppercase().chars(), variable.name.chars());
+            let score_norm =
+                jaro_similarity(normalized.chars(), variable.name.to_lowercase().chars());
             let mut score = score_raw.max(score_norm);
             score = self.apply_hints(column, variable.name.as_str(), score);
             let score_f32 = score as f32;

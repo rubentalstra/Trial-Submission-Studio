@@ -8,7 +8,11 @@ use crate::processing_context::ProcessingContext;
 
 use super::common::*;
 
-pub(super) fn process_vs(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingContext) -> Result<()> {
+pub(super) fn process_vs(
+    domain: &Domain,
+    df: &mut DataFrame,
+    ctx: &ProcessingContext,
+) -> Result<()> {
     drop_placeholder_rows(domain, df, ctx)?;
     if let Some(vsdtc) = col(domain, "VSDTC") {
         if let Some(vsdy) = col(domain, "VSDY") {
@@ -29,8 +33,7 @@ pub(super) fn process_vs(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingCo
             set_string_column(df, &vsstresc, stresc)?;
         }
     }
-    if let (Some(vsorresu), Some(vsstresu)) = (col(domain, "VSORRESU"), col(domain, "VSSTRESU"))
-    {
+    if let (Some(vsorresu), Some(vsstresu)) = (col(domain, "VSORRESU"), col(domain, "VSSTRESU")) {
         if has_column(df, &vsorresu) && has_column(df, &vsstresu) {
             let orresu = string_column(df, &vsorresu, Trim::Both)?;
             let mut stresu = string_column(df, &vsstresu, Trim::Both)?;
@@ -42,8 +45,7 @@ pub(super) fn process_vs(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingCo
             set_string_column(df, &vsstresu, stresu)?;
         }
     }
-    if let (Some(vsorres), Some(vsorresu)) = (col(domain, "VSORRES"), col(domain, "VSORRESU"))
-    {
+    if let (Some(vsorres), Some(vsorresu)) = (col(domain, "VSORRES"), col(domain, "VSORRESU")) {
         if has_column(df, &vsorres) && has_column(df, &vsorresu) {
             let orres = string_column(df, &vsorres, Trim::Both)?;
             let mut orresu = string_column(df, &vsorresu, Trim::Both)?;
@@ -55,9 +57,7 @@ pub(super) fn process_vs(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingCo
             set_string_column(df, &vsorresu, orresu)?;
         }
     }
-    if let (Some(vsstresc), Some(vsstresu)) =
-        (col(domain, "VSSTRESC"), col(domain, "VSSTRESU"))
-    {
+    if let (Some(vsstresc), Some(vsstresu)) = (col(domain, "VSSTRESC"), col(domain, "VSSTRESU")) {
         if has_column(df, &vsstresc) && has_column(df, &vsstresu) {
             let stresc = string_column(df, &vsstresc, Trim::Both)?;
             let mut stresu = string_column(df, &vsstresu, Trim::Both)?;
@@ -110,8 +110,7 @@ pub(super) fn process_vs(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingCo
             }
         }
     }
-    if let (Some(vsorres), Some(vsstresn)) = (col(domain, "VSORRES"), col(domain, "VSSTRESN"))
-    {
+    if let (Some(vsorres), Some(vsstresn)) = (col(domain, "VSORRES"), col(domain, "VSSTRESN")) {
         if has_column(df, &vsorres) {
             let orres_vals = string_column(df, &vsorres, Trim::Both)?;
             let numeric_vals = orres_vals
@@ -125,10 +124,8 @@ pub(super) fn process_vs(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingCo
         assign_sequence(df, &vsseq, &usubjid)?;
     }
     if let Some(vslobxfl) = col(domain, "VSLOBXFL") {
-        if let (Some(usubjid), Some(vstestcd)) = (col(domain, "USUBJID"), col(domain, "VSTESTCD"))
-        {
-            if has_column(df, &vslobxfl) && has_column(df, &usubjid) && has_column(df, &vstestcd)
-            {
+        if let (Some(usubjid), Some(vstestcd)) = (col(domain, "USUBJID"), col(domain, "VSTESTCD")) {
+            if has_column(df, &vslobxfl) && has_column(df, &usubjid) && has_column(df, &vstestcd) {
                 let mut flags = vec![String::new(); df.height()];
                 let usub_vals = string_column(df, &usubjid, Trim::Both)?;
                 let test_vals = string_column(df, &vstestcd, Trim::Both)?;

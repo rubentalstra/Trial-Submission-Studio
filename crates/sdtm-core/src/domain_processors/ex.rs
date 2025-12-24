@@ -6,7 +6,11 @@ use crate::processing_context::ProcessingContext;
 
 use super::common::*;
 
-pub(super) fn process_ex(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingContext) -> Result<()> {
+pub(super) fn process_ex(
+    domain: &Domain,
+    df: &mut DataFrame,
+    ctx: &ProcessingContext,
+) -> Result<()> {
     drop_placeholder_rows(domain, df, ctx)?;
     if let Some(extrt) = col(domain, "EXTRT") {
         if has_column(df, &extrt) {
@@ -41,7 +45,7 @@ pub(super) fn process_ex(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingCo
         }
     }
     if let (Some(exstdtc), Some(exstdy)) = (col(domain, "EXSTDTC"), col(domain, "EXSTDY")) {
-            compute_study_day(domain, df, &exstdtc, &exstdy, ctx, "RFSTDTC")?;
+        compute_study_day(domain, df, &exstdtc, &exstdy, ctx, "RFSTDTC")?;
     }
     if let (Some(exendtc), Some(exendy)) = (col(domain, "EXENDTC"), col(domain, "EXENDY")) {
         compute_study_day(domain, df, &exendtc, &exendy, ctx, "RFSTDTC")?;
@@ -53,16 +57,8 @@ pub(super) fn process_ex(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingCo
         }
     }
     for col_name in [
-        "EXDOSFRM",
-        "EXDOSU",
-        "EXDOSFRQ",
-        "EXDUR",
-        "EXSCAT",
-        "EXCAT",
-        "EPOCH",
-        "EXELTM",
-        "EXTPTREF",
-        "EXRFTDTC",
+        "EXDOSFRM", "EXDOSU", "EXDOSFRQ", "EXDUR", "EXSCAT", "EXCAT", "EPOCH", "EXELTM",
+        "EXTPTREF", "EXRFTDTC",
     ] {
         if let Some(name) = col(domain, col_name) {
             if has_column(df, &name) {

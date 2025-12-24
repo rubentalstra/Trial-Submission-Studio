@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 
 use polars::prelude::{AnyValue, Column, DataFrame};
 
-use sdtm_core::{build_relrec, build_relspec, build_relsub, column_name, DomainFrame};
+use sdtm_core::{DomainFrame, build_relrec, build_relspec, build_relsub, column_name};
 use sdtm_standards::load_default_sdtm_ig_domains;
 
 fn any_to_string(value: AnyValue) -> String {
@@ -21,8 +21,14 @@ fn builds_relrec_from_domain_frames() {
         .iter()
         .find(|domain| domain.code == "RELREC")
         .expect("RELREC domain");
-    let ds_domain = standards.iter().find(|domain| domain.code == "DS").expect("DS domain");
-    let lb_domain = standards.iter().find(|domain| domain.code == "LB").expect("LB domain");
+    let ds_domain = standards
+        .iter()
+        .find(|domain| domain.code == "DS")
+        .expect("DS domain");
+    let lb_domain = standards
+        .iter()
+        .find(|domain| domain.code == "LB")
+        .expect("LB domain");
     let ds_usubjid = column_name(ds_domain, "USUBJID").expect("DS USUBJID");
     let ds_seq = column_name(ds_domain, "DSSEQ").expect("DSSEQ");
     let lb_usubjid = column_name(lb_domain, "USUBJID").expect("LB USUBJID");
@@ -120,6 +126,10 @@ fn builds_relsub_empty_frame() {
         .iter()
         .map(|col| col.name().to_string())
         .collect();
-    let expected: Vec<String> = relsub.variables.iter().map(|var| var.name.clone()).collect();
+    let expected: Vec<String> = relsub
+        .variables
+        .iter()
+        .map(|var| var.name.clone())
+        .collect();
     assert_eq!(cols, expected);
 }

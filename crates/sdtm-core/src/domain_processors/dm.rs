@@ -6,7 +6,11 @@ use crate::processing_context::ProcessingContext;
 
 use super::common::*;
 
-pub(super) fn process_dm(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingContext) -> Result<()> {
+pub(super) fn process_dm(
+    domain: &Domain,
+    df: &mut DataFrame,
+    ctx: &ProcessingContext,
+) -> Result<()> {
     drop_placeholder_rows(domain, df, ctx)?;
     if let Some(age) = col(domain, "AGE") {
         if has_column(df, &age) {
@@ -85,7 +89,9 @@ pub(super) fn process_dm(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingCo
             set_string_column(df, &sex, values)?;
         }
     }
-    for date_col in ["RFICDTC", "RFSTDTC", "RFENDTC", "RFXSTDTC", "RFXENDTC", "DMDTC"] {
+    for date_col in [
+        "RFICDTC", "RFSTDTC", "RFENDTC", "RFXSTDTC", "RFXENDTC", "DMDTC",
+    ] {
         if let Some(name) = col(domain, date_col) {
             if has_column(df, &name) {
                 let values = string_column(df, &name, Trim::Both)?
@@ -108,9 +114,11 @@ pub(super) fn process_dm(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingCo
             set_string_column(df, &rfstdtc, rfstd_vals)?;
         }
     }
-    if let (Some(dmdtc), Some(dmdy), Some(rfstdtc)) =
-        (col(domain, "DMDTC"), col(domain, "DMDY"), col(domain, "RFSTDTC"))
-    {
+    if let (Some(dmdtc), Some(dmdy), Some(rfstdtc)) = (
+        col(domain, "DMDTC"),
+        col(domain, "DMDY"),
+        col(domain, "RFSTDTC"),
+    ) {
         if has_column(df, &dmdtc) && has_column(df, &rfstdtc) {
             compute_study_day(domain, df, &dmdtc, &dmdy, ctx, "RFSTDTC")?;
         }

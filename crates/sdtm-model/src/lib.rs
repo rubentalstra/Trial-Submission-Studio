@@ -10,8 +10,7 @@ pub use domain::{DatasetMetadata, Domain, Variable, VariableType};
 pub use error::{Result, SdtmError};
 pub use mapping::{ColumnHint, MappingConfig, MappingSuggestion};
 pub use processing::{
-    DomainResult, OutputFormat, OutputPaths, ProcessStudyRequest, ProcessStudyResponse,
-    StudyError,
+    DomainResult, OutputFormat, OutputPaths, ProcessStudyRequest, ProcessStudyResponse, StudyError,
 };
 pub use terminology::{ControlledTerminology, CtRegistry};
 
