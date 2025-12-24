@@ -32,6 +32,7 @@ serde_json = "1.0.147"
 sha2 = "0.10.9"
 thiserror = "2.0.17"
 tracing = "0.1.44"
+indicatif = "0.18.3"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
 
 [profile.dev]
