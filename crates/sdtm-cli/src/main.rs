@@ -120,9 +120,16 @@ struct StudyFileReport {
 }
 
 #[derive(Debug, serde::Serialize)]
+struct StudySkippedFileReport {
+    input: String,
+    reason: String,
+}
+
+#[derive(Debug, serde::Serialize)]
 struct StudyReport {
     input_dir: String,
     files: Vec<StudyFileReport>,
+    skipped: Vec<StudySkippedFileReport>,
     total_errors: usize,
     total_warnings: usize,
 }
@@ -425,12 +432,30 @@ fn main() -> anyhow::Result<()> {
                 let mut report = StudyReport {
                     input_dir: input_dir.to_string_lossy().to_string(),
                     files: Vec::new(),
+                    skipped: Vec::new(),
                     total_errors: 0,
                     total_warnings: 0,
                 };
 
                 for path in files {
-                    let inference = infer_domain_for_file(&registry, &path)?;
+                    let inference = match infer_domain_for_file(&registry, &path) {
+                        Ok(v) => v,
+                        Err(e) => {
+                            let reason = e.to_string();
+                            report.skipped.push(StudySkippedFileReport {
+                                input: path.to_string_lossy().to_string(),
+                                reason: reason.clone(),
+                            });
+                            if json.is_none() {
+                                println!(
+                                    "{}: skipped ({})",
+                                    path.to_string_lossy(),
+                                    reason
+                                );
+                            }
+                            continue;
+                        }
+                    };
                     let domain_code = sdtm_model::DomainCode::new(inference.domain.clone())?;
 
                     let source_id = stable_source_id(&input_dir, &path);
@@ -467,6 +492,14 @@ fn main() -> anyhow::Result<()> {
                     });
                 }
 
+                if report.files.is_empty() {
+                    return Err(anyhow::anyhow!(
+                        "no SDTM dataset CSVs could be inferred under {} (skipped={})",
+                        input_dir.to_string_lossy(),
+                        report.skipped.len()
+                    ));
+                }
+
                 if let Some(json) = json {
                     let out = serde_json::to_string_pretty(&report)?;
                     if json == "-" {
@@ -489,10 +522,12 @@ fn main() -> anyhow::Result<()> {
                         );
                     }
                     println!(
-                        "study: total errors={} warnings={} files={}",
+                        "study: total errors={} warnings={} files={} skipped={}",
                         report.total_errors,
                         report.total_warnings,
                         report.files.len()
+                            ,
+                        report.skipped.len()
                     );
                 }
 
