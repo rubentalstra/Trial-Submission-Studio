@@ -30,6 +30,7 @@ pub struct ValidationIssue {
     pub severity: Severity,
     pub domain: String,
     pub var: Option<String>,
+    pub row_id: Option<String>,
     pub message: String,
 }
 
@@ -53,6 +54,7 @@ pub fn validate_table_against_standards(
             severity: Severity::Error,
             domain: domain.clone(),
             var: None,
+            row_id: None,
             message: "unknown SDTM domain".to_string(),
         });
         report.errors += 1;
@@ -74,6 +76,7 @@ pub fn validate_table_against_standards(
                 severity: Severity::Error,
                 domain: domain.clone(),
                 var: Some(req.clone()),
+                row_id: None,
                 message: "missing required variable".to_string(),
             });
             report.errors += 1;
@@ -86,13 +89,141 @@ pub fn validate_table_against_standards(
                 severity: Severity::Warning,
                 domain: domain.clone(),
                 var: Some(col.clone()),
+                row_id: None,
                 message: "unknown variable for domain".to_string(),
             });
             report.warnings += 1;
         }
     }
 
+    // Controlled Terminology (CT) membership checks.
+    // Only run CT checks for known variables (present + allowed) that have codelist codes.
+    for col in &present {
+        if !allowed.contains(col) {
+            continue;
+        }
+
+        let Some(constraint) = ct_constraint_for_var(registry, &domain, col) else {
+            continue;
+        };
+
+        let var_name = VarName::new(col.to_string())
+            .expect("validated VarName from standards registry and table headers");
+
+        for row in &table.rows {
+            let Some(cell) = row.cells.get(&var_name) else {
+                continue;
+            };
+
+            let value = match cell {
+                sdtm_model::CellValue::Text(v) => v.trim(),
+                sdtm_model::CellValue::Missing => continue,
+            };
+
+            if value.is_empty() {
+                continue;
+            }
+
+            if !constraint.allowed_values.contains(value) {
+                report.issues.push(ValidationIssue {
+                    severity: constraint.invalid_severity,
+                    domain: domain.clone(),
+                    var: Some(col.clone()),
+                    row_id: Some(row.id.to_hex()),
+                    message: format!(
+                        "invalid controlled terminology (codelists: {})",
+                        constraint.codelist_codes.join(",")
+                    ),
+                });
+                match constraint.invalid_severity {
+                    Severity::Error => report.errors += 1,
+                    Severity::Warning => report.warnings += 1,
+                }
+            }
+        }
+    }
+
+    report.issues.sort_by(|a, b| {
+        a.severity
+            .cmp(&b.severity)
+            .then_with(|| a.domain.cmp(&b.domain))
+            .then_with(|| a.var.cmp(&b.var))
+            .then_with(|| a.row_id.cmp(&b.row_id))
+            .then_with(|| a.message.cmp(&b.message))
+    });
+
     report
+}
+
+#[derive(Debug, Clone)]
+struct CtConstraint {
+    codelist_codes: Vec<String>,
+    allowed_values: BTreeSet<String>,
+    invalid_severity: Severity,
+}
+
+fn ct_constraint_for_var(
+    registry: &StandardsRegistry,
+    domain: &str,
+    var: &str,
+) -> Option<CtConstraint> {
+    let mut codelist_codes: Vec<String> = lookup_codelist_codes(registry, domain, var)?;
+    codelist_codes.sort();
+    codelist_codes.dedup();
+
+    let mut allowed_values: BTreeSet<String> = BTreeSet::new();
+    let mut any_non_extensible = false;
+    for code in &codelist_codes {
+        let extensible = registry
+            .ct_sdtm
+            .codelists
+            .get(code)
+            .and_then(|c| c.extensible)
+            .unwrap_or(false);
+        if !extensible {
+            any_non_extensible = true;
+        }
+        if let Some(values) = registry.ct_sdtm.terms_by_codelist.get(code) {
+            allowed_values.extend(values.iter().cloned());
+        }
+    }
+
+    if allowed_values.is_empty() {
+        return None;
+    }
+
+    Some(CtConstraint {
+        codelist_codes,
+        allowed_values,
+        invalid_severity: if any_non_extensible {
+            Severity::Error
+        } else {
+            Severity::Warning
+        },
+    })
+}
+
+fn lookup_codelist_codes(
+    registry: &StandardsRegistry,
+    domain: &str,
+    var: &str,
+) -> Option<Vec<String>> {
+    // NOTE: StandardsRegistry stores variables in a domain -> Vec<VariableMeta> index.
+    // Prefer domain-specific over global (*).
+    if let Some(vars) = registry.variables_by_domain.get(domain)
+        && let Some(m) = vars.iter().find(|m| m.var == var)
+        && !m.codelist_codes.is_empty()
+    {
+        return Some(m.codelist_codes.clone());
+    }
+
+    if let Some(vars) = registry.variables_by_domain.get("*")
+        && let Some(m) = vars.iter().find(|m| m.var == var)
+        && !m.codelist_codes.is_empty()
+    {
+        return Some(m.codelist_codes.clone());
+    }
+    None
 }
 
 fn required_vars_for_domain(registry: &StandardsRegistry, domain: &str) -> BTreeSet<String> {
