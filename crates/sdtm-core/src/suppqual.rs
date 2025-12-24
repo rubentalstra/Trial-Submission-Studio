@@ -2,6 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use anyhow::Result;
 use polars::prelude::{AnyValue, Column, DataFrame, NamedFrom, Series};
+use sdtm_model::Domain;
 
 pub struct SuppqualResult {
     pub domain_code: String,
@@ -11,6 +12,22 @@ pub struct SuppqualResult {
 
 pub fn suppqual_domain_code(parent_domain: &str) -> String {
     format!("SUPP{}", parent_domain.to_uppercase())
+}
+
+fn ordered_variable_names(domain: &Domain) -> Vec<String> {
+    domain
+        .variables
+        .iter()
+        .map(|variable| variable.name.clone())
+        .collect()
+}
+
+fn variable_name_set(domain: &Domain) -> BTreeSet<String> {
+    domain
+        .variables
+        .iter()
+        .map(|variable| variable.name.to_uppercase())
+        .collect()
 }
 
 fn any_to_string(value: AnyValue) -> String {
@@ -51,15 +68,16 @@ fn column_value(df: &DataFrame, name: &str, idx: usize) -> String {
 }
 
 pub fn build_suppqual(
-    domain_code: &str,
+    parent_domain: &Domain,
+    suppqual_domain: &Domain,
     source_df: &DataFrame,
     mapped_df: Option<&DataFrame>,
-    ordered_columns: &[String],
     used_source_columns: &BTreeSet<String>,
-    core_variables: &BTreeSet<String>,
     study_id: &str,
 ) -> Result<Option<SuppqualResult>> {
-    let parent_domain = domain_code.to_uppercase();
+    let parent_domain_code = parent_domain.code.to_uppercase();
+    let ordered_columns = ordered_variable_names(suppqual_domain);
+    let core_variables = variable_name_set(parent_domain);
     if ordered_columns.is_empty() {
         return Ok(None);
     }
@@ -84,7 +102,7 @@ pub fn build_suppqual(
         row_count = row_count.min(mapped.height());
     }
 
-    let seq_var = format!("{parent_domain}SEQ");
+    let seq_var = format!("{parent_domain_code}SEQ");
     let idvar = if mapped_df
         .and_then(|df| df.column(&seq_var).ok())
         .is_some()
@@ -95,7 +113,7 @@ pub fn build_suppqual(
     };
 
     let mut values: BTreeMap<String, Vec<String>> = BTreeMap::new();
-    for key in ordered_columns {
+    for key in &ordered_columns {
         values.insert(key.to_string(), Vec::new());
     }
 
@@ -131,7 +149,7 @@ pub fn build_suppqual(
                 });
             }
             if let Some(entry) = values.get_mut("RDOMAIN") {
-                entry.push(parent_domain.clone());
+                entry.push(parent_domain_code.clone());
             }
             if let Some(entry) = values.get_mut("USUBJID") {
                 entry.push(final_usubjid);
@@ -178,7 +196,7 @@ pub fn build_suppqual(
     let data = DataFrame::new(columns)?;
 
     Ok(Some(SuppqualResult {
-        domain_code: suppqual_domain_code(&parent_domain),
+        domain_code: suppqual_domain_code(&parent_domain_code),
         data,
         used_columns: extra_cols,
     }))

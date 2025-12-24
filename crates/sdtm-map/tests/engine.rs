@@ -1,46 +1,14 @@
 use std::collections::BTreeMap;
-
 use sdtm_map::MappingEngine;
-use sdtm_model::{ColumnHint, Domain, Variable, VariableType};
+use sdtm_model::{ColumnHint, Domain};
+use sdtm_standards::load_default_sdtm_ig_domains;
 
 fn sample_domain() -> Domain {
-    Domain {
-        code: "DM".to_string(),
-        description: None,
-        class_name: None,
-        label: None,
-        structure: None,
-        dataset_name: Some("DM".to_string()),
-        variables: vec![
-            Variable {
-                name: "STUDYID".to_string(),
-                label: None,
-                data_type: VariableType::Char,
-                length: None,
-                role: None,
-                core: None,
-                codelist_code: None,
-            },
-            Variable {
-                name: "USUBJID".to_string(),
-                label: None,
-                data_type: VariableType::Char,
-                length: None,
-                role: None,
-                core: None,
-                codelist_code: None,
-            },
-            Variable {
-                name: "AGE".to_string(),
-                label: None,
-                data_type: VariableType::Num,
-                length: None,
-                role: None,
-                core: None,
-                codelist_code: None,
-            },
-        ],
-    }
+    let domains = load_default_sdtm_ig_domains().expect("standards");
+    domains
+        .into_iter()
+        .find(|domain| domain.code == "DM")
+        .expect("DM domain")
 }
 
 #[test]

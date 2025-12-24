@@ -2370,6 +2370,7 @@ version = "0.1.0"
 dependencies = [
  "rapidfuzz",
  "sdtm-model",
+ "sdtm-standards",
  "serde",
 ]
 

@@ -18,6 +18,38 @@ pub struct P21Rule {
     pub severity: Option<String>,
 }
 
+const DEFAULT_CT_VERSION: &str = "2024-03-29";
+const DEFAULT_SDTMIG_VERSION: &str = "v3_4";
+const DEFAULT_SDTM_VERSION: &str = "v2_0";
+const STANDARDS_ENV_VAR: &str = "CDISC_STANDARDS_DIR";
+
+pub fn default_standards_root() -> PathBuf {
+    if let Ok(root) = std::env::var(STANDARDS_ENV_VAR) {
+        return PathBuf::from(root);
+    }
+    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../standards")
+}
+
+pub fn load_default_sdtm_ig_domains() -> Result<Vec<Domain>> {
+    let root = default_standards_root();
+    load_sdtm_ig_domains(&root.join("sdtmig").join(DEFAULT_SDTMIG_VERSION))
+}
+
+pub fn load_default_sdtm_domains() -> Result<Vec<Domain>> {
+    let root = default_standards_root();
+    load_sdtm_domains(&root.join("sdtm").join(DEFAULT_SDTM_VERSION))
+}
+
+pub fn load_default_ct_registry() -> Result<CtRegistry> {
+    let root = default_standards_root();
+    load_ct_registry(&root.join("ct").join(DEFAULT_CT_VERSION))
+}
+
+pub fn load_default_p21_rules() -> Result<Vec<P21Rule>> {
+    let root = default_standards_root();
+    load_p21_rules(&root.join("p21").join("Rules.csv"))
+}
+
 fn read_csv_rows(path: &Path) -> Result<Vec<BTreeMap<String, String>>> {
     let mut reader = ReaderBuilder::new()
         .has_headers(true)

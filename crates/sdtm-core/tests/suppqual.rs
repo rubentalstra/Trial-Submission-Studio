@@ -1,9 +1,8 @@
 use std::collections::BTreeSet;
-
 use polars::prelude::{Column, DataFrame};
 
 use sdtm_core::{build_suppqual, suppqual_domain_code};
-use sdtm_standards::load_sdtm_ig_domains;
+use sdtm_standards::load_default_sdtm_ig_domains;
 
 #[test]
 fn builds_suppqual_for_any_domain() {
@@ -16,20 +15,18 @@ fn builds_suppqual_for_any_domain() {
     .expect("df");
 
     let used = BTreeSet::new();
-    let mut core = BTreeSet::new();
-    core.insert("STUDYID".to_string());
-    core.insert("USUBJID".to_string());
-    core.insert("LBTEST".to_string());
 
-    let standards = load_sdtm_ig_domains(std::path::Path::new("../../standards/sdtmig/v3_4"))
-        .expect("load standards");
+    let standards = load_default_sdtm_ig_domains().expect("load standards");
     let suppqual = standards
         .iter()
         .find(|domain| domain.code == "SUPPQUAL")
         .expect("suppqual");
-    let ordered: Vec<String> = suppqual.variables.iter().map(|var| var.name.clone()).collect();
+    let parent = standards
+        .iter()
+        .find(|domain| domain.code == "LB")
+        .expect("LB domain");
 
-    let result = build_suppqual("LB", &df, None, &ordered, &used, &core, "STUDY1")
+    let result = build_suppqual(parent, suppqual, &df, None, &used, "STUDY1")
         .expect("suppqual")
         .expect("suppqual rows");
 

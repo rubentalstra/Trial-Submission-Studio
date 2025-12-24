@@ -1,5 +1,7 @@
 use std::path::{Path, PathBuf};
 
+use crate::loaders::default_standards_root;
+
 #[derive(Debug, Clone)]
 pub struct XslAsset {
     pub name: String,
@@ -32,4 +34,9 @@ pub fn list_xsl_assets(xsl_dir: &Path) -> Vec<XslAsset> {
     }
     assets.sort_by(|a, b| a.name.cmp(&b.name));
     assets
+}
+
+pub fn list_default_xsl_assets() -> Vec<XslAsset> {
+    let root = default_standards_root();
+    list_xsl_assets(&root.join("xsl"))
 }
