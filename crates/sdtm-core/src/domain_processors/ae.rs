@@ -48,6 +48,18 @@ pub(super) fn process_ae(
             df.drop_in_place(&teae)?;
         }
     }
+    if let (Some(aedecod), Some(aeterm)) = (col(domain, "AEDECOD"), col(domain, "AETERM")) {
+        if has_column(df, &aedecod) && has_column(df, &aeterm) {
+            let mut decod_vals = string_column(df, &aedecod, Trim::Both)?;
+            let term_vals = string_column(df, &aeterm, Trim::Both)?;
+            for idx in 0..df.height() {
+                if decod_vals[idx].is_empty() && !term_vals[idx].is_empty() {
+                    decod_vals[idx] = term_vals[idx].clone();
+                }
+            }
+            set_string_column(df, &aedecod, decod_vals)?;
+        }
+    }
     apply_map_upper(
         df,
         col(domain, "AEACN").as_deref(),

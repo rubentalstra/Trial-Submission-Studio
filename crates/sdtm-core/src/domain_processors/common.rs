@@ -235,6 +235,74 @@ pub(super) fn normalize_ct_value_keep(ct: &ControlledTerminology, raw: &str) -> 
     }
 }
 
+fn compact_key(value: &str, expand_bp: bool) -> String {
+    let mut out = String::new();
+    let mut token = String::new();
+    let flush = |token: &mut String, out: &mut String| {
+        if token.is_empty() {
+            return;
+        }
+        let upper = token.to_uppercase();
+        if expand_bp && upper == "BP" {
+            out.push_str("BLOODPRESSURE");
+        } else {
+            out.push_str(&upper);
+        }
+        token.clear();
+    };
+    for ch in value.chars() {
+        if ch.is_ascii_alphanumeric() {
+            token.push(ch);
+        } else {
+            flush(&mut token, &mut out);
+        }
+    }
+    flush(&mut token, &mut out);
+    out
+}
+
+fn matches_compact(a: &str, b: &str) -> bool {
+    let a_compact = compact_key(a, false);
+    let b_compact = compact_key(b, false);
+    if a_compact == b_compact {
+        return true;
+    }
+    let a_bp = compact_key(a, true);
+    let b_bp = compact_key(b, true);
+    a_bp == b_bp
+}
+
+pub(super) fn resolve_ct_submission_value(ct: &ControlledTerminology, raw: &str) -> Option<String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    let canonical = normalize_ct_value(ct, trimmed);
+    if ct.submission_values.iter().any(|val| val == &canonical) {
+        return Some(canonical);
+    }
+    for (synonym, submission) in &ct.synonyms {
+        if matches_compact(trimmed, synonym) {
+            return Some(submission.clone());
+        }
+    }
+    for submission in &ct.submission_values {
+        if matches_compact(trimmed, submission) {
+            return Some(submission.clone());
+        }
+    }
+    for (submission, preferred) in &ct.preferred_terms {
+        if matches_compact(trimmed, preferred) {
+            return Some(submission.clone());
+        }
+    }
+    None
+}
+
+pub(super) fn preferred_term_for(ct: &ControlledTerminology, submission: &str) -> Option<String> {
+    ct.preferred_terms.get(submission).cloned()
+}
+
 fn any_to_f64(value: AnyValue) -> Option<f64> {
     match value {
         AnyValue::Null => None,

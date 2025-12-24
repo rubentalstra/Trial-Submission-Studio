@@ -81,6 +81,26 @@ pub(super) fn process_vs(
             set_string_column(df, &vstest, test_vals)?;
         }
     }
+    if let (Some(vstest), Some(vstestcd)) = (col(domain, "VSTEST"), col(domain, "VSTESTCD")) {
+        if has_column(df, &vstest) && has_column(df, &vstestcd) {
+            if let Some(ct) = ctx.resolve_ct(domain, "VSTESTCD") {
+                let test_vals = string_column(df, &vstest, Trim::Both)?;
+                let mut testcd_vals = string_column(df, &vstestcd, Trim::Both)?;
+                for idx in 0..df.height() {
+                    let existing = testcd_vals[idx].clone();
+                    let valid = !existing.is_empty()
+                        && ct.submission_values.iter().any(|val| val == &existing);
+                    if valid {
+                        continue;
+                    }
+                    if let Some(mapped) = resolve_ct_submission_value(ct, &test_vals[idx]) {
+                        testcd_vals[idx] = mapped;
+                    }
+                }
+                set_string_column(df, &vstestcd, testcd_vals)?;
+            }
+        }
+    }
     if let Some(ct) = ctx.resolve_ct(domain, "VSORRESU") {
         for col_name in ["VSORRESU", "VSSTRESU"] {
             if let Some(name) = col(domain, col_name) {
@@ -113,6 +133,35 @@ pub(super) fn process_vs(
                     values[idx] = normalize_ct_value_keep(ct, &values[idx]);
                 }
                 set_string_column(df, &vstest, values)?;
+            }
+        }
+    }
+    if let (Some(vstest), Some(vstestcd)) = (col(domain, "VSTEST"), col(domain, "VSTESTCD")) {
+        if has_column(df, &vstest) && has_column(df, &vstestcd) {
+            if let Some(ct) = ctx.resolve_ct(domain, "VSTESTCD") {
+                let ct_names = ctx.resolve_ct(domain, "VSTEST");
+                let mut test_vals = string_column(df, &vstest, Trim::Both)?;
+                let testcd_vals = string_column(df, &vstestcd, Trim::Both)?;
+                for idx in 0..df.height() {
+                    if testcd_vals[idx].is_empty() {
+                        continue;
+                    }
+                    let needs_label = test_vals[idx].is_empty()
+                        || test_vals[idx].eq_ignore_ascii_case(&testcd_vals[idx]);
+                    let valid_name = ct_names
+                        .map(|ct| {
+                            let canonical = normalize_ct_value(ct, &test_vals[idx]);
+                            ct.submission_values.iter().any(|val| val == &canonical)
+                        })
+                        .unwrap_or(true);
+                    if !needs_label && valid_name {
+                        continue;
+                    }
+                    if let Some(preferred) = preferred_term_for(ct, &testcd_vals[idx]) {
+                        test_vals[idx] = preferred;
+                    }
+                }
+                set_string_column(df, &vstest, test_vals)?;
             }
         }
     }

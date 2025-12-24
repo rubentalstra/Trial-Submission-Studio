@@ -943,6 +943,7 @@ struct LbWideGroup {
 #[derive(Debug, Default, Clone)]
 struct VsWideGroup {
     key: String,
+    label: Option<String>,
     orres_col: Option<usize>,
     orresu_col: Option<usize>,
     pos_col: Option<usize>,
@@ -995,7 +996,8 @@ fn build_vs_wide_frame(
     domain: &Domain,
     study_id: &str,
 ) -> Result<Option<(MappingConfig, DomainFrame, BTreeSet<String>)>> {
-    let (groups, shared, wide_columns) = detect_vs_wide_groups(&table.headers);
+    let (groups, shared, wide_columns) =
+        detect_vs_wide_groups(&table.headers, table.labels.as_deref());
     if groups.is_empty() {
         return Ok(None);
     }
@@ -1226,6 +1228,7 @@ fn parse_lb_time_suffix(value: &str) -> Option<(String, bool)> {
 
 fn detect_vs_wide_groups(
     headers: &[String],
+    labels: Option<&[String]>,
 ) -> (
     BTreeMap<String, VsWideGroup>,
     VsWideShared,
@@ -1243,6 +1246,16 @@ fn detect_vs_wide_groups(
                 ..VsWideGroup::default()
             });
             entry.orres_col = Some(idx);
+            if entry.label.is_none() {
+                if let Some(labels) = labels {
+                    if let Some(label) = labels.get(idx) {
+                        let trimmed = label.trim();
+                        if !trimmed.is_empty() {
+                            entry.label = Some(trimmed.to_string());
+                        }
+                    }
+                }
+            }
             wide_columns.insert(upper);
             continue;
         }
@@ -1478,6 +1491,7 @@ fn expand_vs_wide(
 
             total_rows += 1;
             let test_code = sanitize_vstestcd(&group.key);
+            let test_label = group.label.clone().unwrap_or_default();
             let mut base_values: BTreeMap<String, String> = BTreeMap::new();
             for variable in &domain.variables {
                 let val = column_value_string(base_df, &variable.name, row_idx);
@@ -1487,7 +1501,9 @@ fn expand_vs_wide(
                 *value = test_code.clone();
             }
             if let Some(value) = base_values.get_mut("VSTEST") {
-                if !test_code.is_empty() {
+                if !test_label.is_empty() {
+                    *value = test_label.clone();
+                } else if !test_code.is_empty() {
                     *value = test_code.clone();
                 }
             }

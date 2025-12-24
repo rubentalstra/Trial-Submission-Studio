@@ -132,6 +132,21 @@ pub(super) fn process_ds(
             set_string_column(df, &dsterm, term_vals)?;
         }
     }
+    if let (Some(dsterm), Some(dsdecod)) = (col(domain, "DSTERM"), col(domain, "DSDECOD")) {
+        if has_column(df, &dsterm) && has_column(df, &dsdecod) {
+            let mut term_vals = string_column(df, &dsterm, Trim::Both)?;
+            let mut decod_vals = string_column(df, &dsdecod, Trim::Both)?;
+            for idx in 0..df.height() {
+                if term_vals[idx].is_empty() && !decod_vals[idx].is_empty() {
+                    term_vals[idx] = decod_vals[idx].clone();
+                } else if decod_vals[idx].is_empty() && !term_vals[idx].is_empty() {
+                    decod_vals[idx] = term_vals[idx].clone();
+                }
+            }
+            set_string_column(df, &dsterm, term_vals)?;
+            set_string_column(df, &dsdecod, decod_vals)?;
+        }
+    }
     if let Some(dsdecod) = col(domain, "DSDECOD") {
         if has_column(df, &dsdecod) {
             if let Some(ct) = ctx.resolve_ct(domain, "DSDECOD") {

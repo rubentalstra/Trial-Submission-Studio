@@ -261,6 +261,7 @@ pub fn build_suppqual(
         qnam_map.insert(col.clone(), qnam);
     }
 
+    let mut qlabel_by_qnam: BTreeMap<String, String> = BTreeMap::new();
     let mut seen_keys: BTreeSet<String> = BTreeSet::new();
     for col in &extra_cols {
         let qnam = qnam_map
@@ -329,7 +330,11 @@ pub fn build_suppqual(
             push_value(suppqual_cols.idvar.as_deref(), idvar_value);
             push_value(suppqual_cols.idvarval.as_deref(), idvarval);
             push_value(suppqual_cols.qnam.as_deref(), qnam.clone());
-            push_value(suppqual_cols.qlabel.as_deref(), col.to_string());
+            let qlabel = qlabel_by_qnam
+                .entry(qnam.clone())
+                .or_insert_with(|| col.to_string())
+                .clone();
+            push_value(suppqual_cols.qlabel.as_deref(), qlabel);
             push_value(suppqual_cols.qval.as_deref(), raw_val);
             push_value(suppqual_cols.qorig.as_deref(), "CRF".to_string());
             push_value(suppqual_cols.qeval.as_deref(), String::new());

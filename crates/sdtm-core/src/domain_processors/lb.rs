@@ -51,6 +51,26 @@ pub(super) fn process_lb(
     }
     if let (Some(lbtest), Some(lbtestcd)) = (col(domain, "LBTEST"), col(domain, "LBTESTCD")) {
         if has_column(df, &lbtest) && has_column(df, &lbtestcd) {
+            if let Some(ct) = ctx.resolve_ct(domain, "LBTESTCD") {
+                let test_vals = string_column(df, &lbtest, Trim::Both)?;
+                let mut testcd_vals = string_column(df, &lbtestcd, Trim::Both)?;
+                for idx in 0..df.height() {
+                    let existing = testcd_vals[idx].clone();
+                    let valid = !existing.is_empty()
+                        && ct.submission_values.iter().any(|val| val == &existing);
+                    if valid {
+                        continue;
+                    }
+                    if let Some(mapped) = resolve_ct_submission_value(ct, &test_vals[idx]) {
+                        testcd_vals[idx] = mapped;
+                    }
+                }
+                set_string_column(df, &lbtestcd, testcd_vals)?;
+            }
+        }
+    }
+    if let (Some(lbtest), Some(lbtestcd)) = (col(domain, "LBTEST"), col(domain, "LBTESTCD")) {
+        if has_column(df, &lbtest) && has_column(df, &lbtestcd) {
             let mut lbtest_vals = string_column(df, &lbtest, Trim::Both)?;
             let testcd_vals = string_column(df, &lbtestcd, Trim::Both)?;
             for idx in 0..df.height() {
@@ -59,6 +79,28 @@ pub(super) fn process_lb(
                 }
             }
             set_string_column(df, &lbtest, lbtest_vals)?;
+        }
+    }
+    if let (Some(lbtest), Some(lbtestcd)) = (col(domain, "LBTEST"), col(domain, "LBTESTCD")) {
+        if has_column(df, &lbtest) && has_column(df, &lbtestcd) {
+            if let Some(ct) = ctx.resolve_ct(domain, "LBTESTCD") {
+                let mut test_vals = string_column(df, &lbtest, Trim::Both)?;
+                let testcd_vals = string_column(df, &lbtestcd, Trim::Both)?;
+                for idx in 0..df.height() {
+                    if testcd_vals[idx].is_empty() {
+                        continue;
+                    }
+                    let needs_label = test_vals[idx].is_empty()
+                        || test_vals[idx].eq_ignore_ascii_case(&testcd_vals[idx]);
+                    if !needs_label {
+                        continue;
+                    }
+                    if let Some(preferred) = preferred_term_for(ct, &testcd_vals[idx]) {
+                        test_vals[idx] = preferred;
+                    }
+                }
+                set_string_column(df, &lbtest, test_vals)?;
+            }
         }
     }
     if let Some(lbdtc) = col(domain, "LBDTC") {
