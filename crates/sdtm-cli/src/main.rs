@@ -447,11 +447,7 @@ fn main() -> anyhow::Result<()> {
                                 reason: reason.clone(),
                             });
                             if json.is_none() {
-                                println!(
-                                    "{}: skipped ({})",
-                                    path.to_string_lossy(),
-                                    reason
-                                );
+                                println!("{}: skipped ({})", path.to_string_lossy(), reason);
                             }
                             continue;
                         }
@@ -525,8 +521,7 @@ fn main() -> anyhow::Result<()> {
                         "study: total errors={} warnings={} files={} skipped={}",
                         report.total_errors,
                         report.total_warnings,
-                        report.files.len()
-                            ,
+                        report.files.len(),
                         report.skipped.len()
                     );
                 }
