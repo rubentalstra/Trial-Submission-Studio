@@ -45,42 +45,43 @@ Exit criteria:
 
 Goal: create buildable crates with clear boundaries.
 
-- [ ] Create workspace crates under `crates/` per `Cargo.toml`
-- [ ] Add `lib.rs` + minimal module layout per crate
-- [ ] Define shared error types and result aliases
-- [ ] Wire `tracing` + `tracing-subscriber` with `-v` verbosity mapping
-- [ ] Set up `cargo fmt` and `cargo clippy` configuration
+- [x] Create workspace crates under `crates/` per `Cargo.toml`
+- [x] Add `lib.rs` + minimal module layout per crate
+- [x] Define shared error types and result aliases
+- [x] Wire `tracing` + `tracing-subscriber` with `-v` verbosity mapping
+- [x] Set up `cargo fmt` and `cargo clippy` configuration
 
 Exit criteria:
 
-- [ ] `cargo check` passes for all crates
-- [ ] Logging initializes without panics
+- [x] `cargo check` passes for all crates
+- [x] Logging initializes without panics
 
 ## Phase 2 - Dependencies, Logging, and CLI UI Decisions
 
 Goal: make dependency and UX choices explicit for deterministic output.
 
-- [ ] Use CLI crate: `clap` (derive)
-- [ ] Use CSV crate: `csv`
-- [ ] Use XML writing crate or strategy: `quick-xml` or custom writer
-- [ ] Use table UI crate: `comfy-table` or `tabled`
-- [ ] Use progress/spinner crate: `indicatif` or none
-- [ ] Use logging crates: `tracing`, `tracing-subscriber`
-- [ ] Prune config-related crates if unused (remove `figment`, `toml` if no
-      config)
-- [ ] Define log policy: levels, default level, `-v` mapping, and log format
-- [ ] Define log structure: study/domain spans and key fields
-- [ ] Define output policy: stdout for summary, stderr for logs
-- [ ] Define CLI output spec: table columns, totals line, error sections
-- [ ] Define summary table columns (Domain, Description, Records, XPT,
-      Dataset-XML, SAS, Notes)
-- [ ] Define symbols and ASCII fallback (checkmarks, warnings, errors)
-- [ ] Define color policy: color on TTY, plain text fallback
+- [x] Use CLI crate: `clap` (derive)
+- [x] Use CSV crate: `csv`
+- [x] Use XML writing crate: `quick-xml`
+- [x] Use table UI crate: `comfy-table`
+- [x] Use progress/spinner crate: none for v1
+- [x] Use logging crates: `tracing`, `tracing-subscriber`
+- [x] Prune config-related crates (remove `figment`, `toml`)
+- [x] Log policy: default info, `-v` => debug, `-vv` => trace, no timestamps
+- [x] Log structure: study_id and domain_code as span fields
+- [x] Output policy: stdout for summary, stderr for logs
+- [x] CLI output spec (v1):
+  - Summary table columns: Domain, Description, Records, XPT, Dataset-XML, Notes
+  - Totals line at bottom with total record count
+  - Error section lists domain code + message
+  - Output paths shown after summary
+- [x] Symbols: use ASCII markers (OK/WARN/ERR), no Unicode required
+- [x] Color policy: color on TTY, plain text fallback
 
 Exit criteria:
 
-- [ ] Dependencies are listed in `Cargo.toml` and justified
-- [ ] CLI output spec is documented in this file
+- [x] Dependencies are listed in `Cargo.toml` and justified
+- [x] CLI output spec is documented in this file
 
 ## Phase 3 - Core Data Contracts (sdtm-model)
 
@@ -105,7 +106,7 @@ Goal: deterministic loading of SDTM/SDTMIG/CT/P21 assets from `standards/`.
 - [ ] Load SDTMIG datasets and variables from `standards/sdtmig/v3_4/`
 - [ ] Load SDTM datasets/metadata from `standards/sdtm/`
 - [ ] Load Controlled Terminology from `standards/ct/`
-- [ ] Load Pinnacle 21 rules from `standards/p21/rules.csv`
+- [ ] Load Pinnacle 21 rules from `standards/p21/Rules.csv`
 - [ ] Wire optional XSL assets from `standards/xsl/` for Define-XML
 - [ ] Add unit tests for each loader and registry lookup behavior
 
