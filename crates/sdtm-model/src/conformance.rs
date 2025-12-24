@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum IssueSeverity {
+    Reject,
     Error,
     Warning,
 }
@@ -30,7 +31,7 @@ impl ConformanceReport {
     pub fn error_count(&self) -> usize {
         self.issues
             .iter()
-            .filter(|issue| issue.severity == IssueSeverity::Error)
+            .filter(|issue| matches!(issue.severity, IssueSeverity::Error | IssueSeverity::Reject))
             .count()
     }
 

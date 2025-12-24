@@ -3,10 +3,10 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, anyhow};
 use clap::{ArgAction, Parser, Subcommand, ValueEnum};
+use comfy_table::presets::UTF8_FULL_CONDENSED;
 use comfy_table::{
     Attribute, Cell, CellAlignment, Color, ColumnConstraint, ContentArrangement, Table, Width,
 };
-use comfy_table::presets::UTF8_FULL_CONDENSED;
 use polars::prelude::DataFrame;
 
 use sdtm_cli::logging::init_logging;
@@ -352,8 +352,7 @@ fn run_study(args: &StudyArgs) -> Result<StudyResult> {
                 &frame_list,
                 &study_id,
                 "3.4",
-            )
-            {
+            ) {
                 Ok(paths) => {
                     for path in paths {
                         let key = path
@@ -419,6 +418,21 @@ fn run_study(args: &StudyArgs) -> Result<StudyResult> {
             outputs,
             conformance,
         });
+    }
+    if !report_map.is_empty() {
+        for (code, report) in report_map {
+            let domain = report_domain_map.get(&code);
+            let description = domain
+                .and_then(|d| d.description.clone().or(d.label.clone()))
+                .unwrap_or_default();
+            summaries.push(DomainSummary {
+                domain_code: code,
+                description,
+                records: 0,
+                outputs: sdtm_model::OutputPaths::default(),
+                conformance: Some(report),
+            });
+        }
     }
 
     let has_errors = !errors.is_empty()
@@ -670,7 +684,10 @@ fn print_issue_table(result: &StudyResult) {
                 issue.severity,
                 issue.variable.clone().unwrap_or_else(|| "-".to_string()),
                 issue.code.clone(),
-                issue.count.map(|v| v.to_string()).unwrap_or_else(|| "-".to_string()),
+                issue
+                    .count
+                    .map(|v| v.to_string())
+                    .unwrap_or_else(|| "-".to_string()),
                 issue.rule_id.clone().unwrap_or_else(|| "-".to_string()),
                 issue.category.clone().unwrap_or_else(|| "-".to_string()),
                 message,
@@ -686,14 +703,7 @@ fn print_issue_table(result: &StudyResult) {
     let mut table = Table::new();
     apply_table_style(&mut table);
     table.set_header(vec![
-        "Domain",
-        "Severity",
-        "Variable",
-        "Code",
-        "Count",
-        "Rule",
-        "Category",
-        "Message",
+        "Domain", "Severity", "Variable", "Code", "Count", "Rule", "Category", "Message",
         "Examples",
     ]);
     align_column(&mut table, 4, CellAlignment::Right);
@@ -770,6 +780,9 @@ fn summary_sort_key(code: &str) -> (String, u8, String) {
 
 fn severity_cell(severity: IssueSeverity) -> Cell {
     match severity {
+        IssueSeverity::Reject => Cell::new("reject")
+            .fg(Color::Red)
+            .add_attribute(Attribute::Bold),
         IssueSeverity::Error => Cell::new("error").fg(Color::Red),
         IssueSeverity::Warning => Cell::new("warning").fg(Color::Yellow),
     }
