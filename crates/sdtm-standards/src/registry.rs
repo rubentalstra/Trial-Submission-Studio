@@ -1,7 +1,7 @@
 #![deny(unsafe_code)]
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 
 use crate::csv::ct::{CtIndex, parse_ct_csv};
 use crate::csv::datasets::{DatasetMeta, parse_datasets_csv};
@@ -16,11 +16,14 @@ const REQUIRED_ROLES: &[&str] = &[
     "sdtm_variables",
     "sdtmig_datasets",
     "sdtmig_variables",
-    "ct_sdtm",
     "pinnacle21_rules",
     "define_xsl_2_1",
     "define_xsl_2_0",
 ];
+
+const CT_ROLES: &[&str] = &["ct_sdtm", "ct_define_xml"];
+
+const ALLOWED_KINDS: &[&str] = &["csv", "json", "toml", "xsd", "xsl", "pdf", "other"];
 
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct Conflict {
@@ -64,7 +67,7 @@ impl StandardsRegistry {
     pub fn verify_and_load(standards_dir: &Path) -> Result<(Self, VerifySummary), StandardsError> {
         let manifest = load_manifest(&standards_dir.join("manifest.toml"))?;
 
-        validate_manifest(&manifest)?;
+        validate_manifest(&manifest, standards_dir)?;
 
         let mut files = manifest.files.clone();
         files.sort_by(|a, b| a.path.cmp(&b.path));
@@ -91,7 +94,7 @@ impl StandardsRegistry {
             "sdtmig",
         )?;
 
-        let ct_sdtm = parse_ct_csv(&resolve_role_path(standards_dir, &files, "ct_sdtm")?)?;
+        let ct_sdtm = parse_ct_csv(&resolve_role_path_any(standards_dir, &files, CT_ROLES)?)?;
 
         let p21_rules = parse_pinnacle21_rules_csv(&resolve_role_path(
             standards_dir,
@@ -148,7 +151,7 @@ fn load_manifest(path: &Path) -> Result<Manifest, StandardsError> {
     })
 }
 
-fn validate_manifest(manifest: &Manifest) -> Result<(), StandardsError> {
+fn validate_manifest(manifest: &Manifest, standards_dir: &Path) -> Result<(), StandardsError> {
     if manifest.manifest.schema != "cdisc-transpiler.standards-manifest" {
         return Err(StandardsError::InvalidManifest {
             message: format!("unsupported schema: {}", manifest.manifest.schema),
@@ -163,7 +166,34 @@ fn validate_manifest(manifest: &Manifest) -> Result<(), StandardsError> {
         });
     }
 
-    let roles: BTreeSet<&str> = manifest.files.iter().map(|f| f.role.as_str()).collect();
+    let mut roles: BTreeSet<&str> = BTreeSet::new();
+    let mut ct_present = false;
+    let mut manifest_paths: BTreeSet<PathBuf> = BTreeSet::new();
+
+    for file in &manifest.files {
+        if roles.contains(file.role.as_str()) {
+            return Err(StandardsError::DuplicateRole {
+                role: file.role.clone(),
+            });
+        }
+        roles.insert(file.role.as_str());
+
+        if CT_ROLES.contains(&file.role.as_str()) {
+            ct_present = true;
+        }
+
+        if !ALLOWED_KINDS.contains(&file.kind.as_str()) {
+            return Err(StandardsError::InvalidManifest {
+                message: format!("unsupported kind '{}' for {}", file.kind, file.path),
+            });
+        }
+
+        validate_sha(&file.sha256, &file.path)?;
+
+        let path = validate_path(&file.path)?;
+        manifest_paths.insert(path);
+    }
+
     for role in REQUIRED_ROLES {
         if !roles.contains(role) {
             return Err(StandardsError::MissingRole {
@@ -172,16 +202,34 @@ fn validate_manifest(manifest: &Manifest) -> Result<(), StandardsError> {
         }
     }
 
+    if !ct_present {
+        return Err(StandardsError::MissingCtRole {
+            roles: CT_ROLES.join(", "),
+        });
+    }
+
+    let actual_files = list_files_under(standards_dir)?;
+    let manifest_paths: BTreeSet<PathBuf> = manifest_paths
+        .into_iter()
+        .map(|p| normalize_path(&p))
+        .collect();
+
+    for path in actual_files {
+        if path == PathBuf::from("manifest.toml") {
+            continue;
+        }
+        let normalized = normalize_path(&path);
+        if !manifest_paths.contains(&normalized) {
+            return Err(StandardsError::UnexpectedFile {
+                path: standards_dir.join(path),
+            });
+        }
+    }
+
     Ok(())
 }
 
 fn verify_file(standards_dir: &Path, file: &ManifestFile) -> Result<(), StandardsError> {
-    if file.path.contains('\\') {
-        return Err(StandardsError::InvalidManifest {
-            message: format!("manifest path must use '/' separators: {}", file.path),
-        });
-    }
-
     let full_path = standards_dir.join(&file.path);
     let bytes = std::fs::read(&full_path).map_err(|e| {
         if e.kind() == std::io::ErrorKind::NotFound {
@@ -217,6 +265,21 @@ fn resolve_role_path(
             role: role.to_string(),
         })?;
     Ok(standards_dir.join(&f.path))
+}
+
+fn resolve_role_path_any(
+    standards_dir: &Path,
+    files: &[ManifestFile],
+    roles: &[&str],
+) -> Result<PathBuf, StandardsError> {
+    for role in roles {
+        if let Some(path) = files.iter().find(|f| f.role == *role) {
+            return Ok(standards_dir.join(&path.path));
+        }
+    }
+    Err(StandardsError::MissingCtRole {
+        roles: roles.join(", "),
+    })
 }
 
 fn detect_conflicts(
@@ -349,6 +412,81 @@ fn detect_conflicts(
             .then_with(|| a.field.cmp(&b.field))
     });
     conflicts
+}
+
+fn validate_sha(sha: &str, path: &str) -> Result<(), StandardsError> {
+    if sha.len() != 64 || !sha.chars().all(|c| c.is_ascii_hexdigit()) {
+        return Err(StandardsError::InvalidSha256 {
+            path: PathBuf::from(path),
+            message: "sha256 must be 64 hex characters".to_string(),
+        });
+    }
+    Ok(())
+}
+
+fn validate_path(path: &str) -> Result<PathBuf, StandardsError> {
+    if path.contains('\\') {
+        return Err(StandardsError::InvalidPath {
+            path: PathBuf::from(path),
+            message: "manifest path must use '/' separators".to_string(),
+        });
+    }
+
+    let p = PathBuf::from(path);
+    if p.is_absolute() {
+        return Err(StandardsError::InvalidPath {
+            path: p,
+            message: "manifest path must be relative".to_string(),
+        });
+    }
+
+    for c in p.components() {
+        if matches!(c, Component::ParentDir) {
+            return Err(StandardsError::InvalidPath {
+                path: PathBuf::from(path),
+                message: "manifest path must not traverse out of standards/".to_string(),
+            });
+        }
+    }
+
+    Ok(p)
+}
+
+fn list_files_under(root: &Path) -> Result<BTreeSet<PathBuf>, StandardsError> {
+    let mut stack = vec![root.to_path_buf()];
+    let mut files = BTreeSet::new();
+
+    while let Some(dir) = stack.pop() {
+        for entry in std::fs::read_dir(&dir).map_err(|e| StandardsError::io(&dir, e))? {
+            let entry = entry.map_err(|e| StandardsError::io(&dir, e))?;
+            let path = entry.path();
+            if path.is_dir() {
+                stack.push(path);
+            } else if path.is_file() {
+                let rel = path
+                    .strip_prefix(root)
+                    .map_err(|e| StandardsError::InvalidPath {
+                        path: path.clone(),
+                        message: format!("failed to relativize path: {e}"),
+                    })?
+                    .to_path_buf();
+                files.insert(rel);
+            }
+        }
+    }
+
+    Ok(files)
+}
+
+fn normalize_path(p: &Path) -> PathBuf {
+    let mut out = PathBuf::new();
+    for c in p.components() {
+        match c {
+            Component::CurDir => {}
+            _ => out.push(c.as_os_str()),
+        }
+    }
+    out
 }
 
 fn build_datasets_by_domain(

@@ -24,8 +24,23 @@ pub enum StandardsError {
     #[error("missing required role in manifest: {role}")]
     MissingRole { role: String },
 
+    #[error("missing one of the required CT roles in manifest: {roles}")]
+    MissingCtRole { roles: String },
+
+    #[error("duplicate role in manifest: {role}")]
+    DuplicateRole { role: String },
+
+    #[error("invalid sha256 for {path}: {message}")]
+    InvalidSha256 { path: PathBuf, message: String },
+
+    #[error("invalid manifest path {path}: {message}")]
+    InvalidPath { path: PathBuf, message: String },
+
     #[error("missing file listed in manifest: {path}")]
     MissingFile { path: PathBuf },
+
+    #[error("unexpected file present under standards/: {path}")]
+    UnexpectedFile { path: PathBuf },
 
     #[error("sha256 mismatch for {path} (expected {expected}, got {actual})")]
     Sha256Mismatch {

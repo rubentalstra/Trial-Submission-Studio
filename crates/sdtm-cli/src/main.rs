@@ -1,6 +1,7 @@
 #![deny(unsafe_code)]
 
 use clap::{Parser, Subcommand};
+use std::collections::BTreeMap;
 use std::path::PathBuf;
 
 use sdtm_standards::StandardsRegistry;
@@ -92,6 +93,10 @@ enum RunCommand {
         #[arg(long, value_name = "PATH")]
         input_dir: PathBuf,
 
+        /// Increase verbosity (-v, -vv) for more discovery/progress output.
+        #[arg(short, long, action = clap::ArgAction::Count)]
+        verbose: u8,
+
         /// Optional per-study config TOML that can explicitly map files to domains.
         /// This is the preferred (deterministic) domain identification strategy.
         ///
@@ -133,6 +138,9 @@ struct StudyFileReport {
     input: String,
     inferred_domain: String,
     inference_reason: String,
+    match_type: String,
+    variant: String,
+    category: String,
     ingested_rows: usize,
     ingested_columns: usize,
     mapped_tables: usize,
@@ -142,6 +150,7 @@ struct StudyFileReport {
 #[derive(Debug, serde::Serialize)]
 struct StudySkippedFileReport {
     input: String,
+    kind: String,
     reason: String,
 }
 
@@ -166,6 +175,13 @@ struct DomainInference {
     reason: String,
 }
 
+#[derive(Debug, Clone)]
+struct DomainMatchMeta {
+    match_type: String,
+    variant: String,
+    category: String,
+}
+
 fn list_csv_files(input_dir: &std::path::Path) -> anyhow::Result<Vec<std::path::PathBuf>> {
     let mut files: Vec<std::path::PathBuf> = Vec::new();
     for entry in std::fs::read_dir(input_dir)? {
@@ -184,6 +200,75 @@ fn list_csv_files(input_dir: &std::path::Path) -> anyhow::Result<Vec<std::path::
     }
     files.sort_by(|a, b| a.to_string_lossy().cmp(&b.to_string_lossy()));
     Ok(files)
+}
+
+fn infer_study_id(input_dir: &std::path::Path) -> String {
+    // Deterministic best-effort, similar to the Python tool's behavior.
+    let name = input_dir
+        .file_name()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_string();
+    let tokens: Vec<&str> = name.split('_').filter(|t| !t.is_empty()).collect();
+    if tokens.len() >= 2 {
+        let a = tokens[0];
+        let b = tokens[1];
+        if b.chars().all(|c| c.is_ascii_alphabetic()) {
+            return format!("{a}_{b}");
+        }
+    }
+    name
+}
+
+fn file_kind(path: &std::path::Path) -> Option<&'static str> {
+    let name = path.file_name()?.to_str()?.to_ascii_uppercase();
+    if name.ends_with("_ITEMS.CSV") {
+        return Some("metadata");
+    }
+    if name.ends_with("_CODELISTS.CSV") {
+        return Some("metadata");
+    }
+    None
+}
+
+fn dataset_category(registry: &StandardsRegistry, domain: &str) -> String {
+    registry
+        .datasets_by_domain
+        .get(domain)
+        .and_then(|d| d.class.clone())
+        .unwrap_or_else(|| "UNKNOWN".to_string())
+        .to_ascii_uppercase()
+}
+
+fn supported_domains_by_category(registry: &StandardsRegistry) -> BTreeMap<String, Vec<String>> {
+    let mut out: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for domain in registry.datasets_by_domain.keys() {
+        let cat = dataset_category(registry, domain);
+        out.entry(cat).or_default().push(domain.clone());
+    }
+    for v in out.values_mut() {
+        v.sort();
+        v.dedup();
+    }
+    out
+}
+
+fn variant_from_filename(domain: &str, path: &std::path::Path) -> String {
+    // Example: *_DS_EOT.csv -> DS_EOT, *_LB_PREG.csv -> LB_PREG.
+    let stem = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_ascii_uppercase();
+    let tokens: Vec<&str> = stem.split('_').filter(|t| !t.is_empty()).collect();
+    if tokens.len() >= 2 {
+        let last = tokens[tokens.len() - 1];
+        let prev = tokens[tokens.len() - 2];
+        if prev == domain {
+            return format!("{domain}_{last}");
+        }
+    }
+    domain.to_string()
 }
 
 fn csv_headers_upper(path: &std::path::Path) -> anyhow::Result<std::collections::BTreeSet<String>> {
@@ -326,6 +411,47 @@ fn infer_domain_for_file(
             "header match (required_hits={required_hits}, known_hits={known_hits}, unknown_headers={unknown_headers})"
         ),
     })
+}
+
+fn match_meta(
+    registry: &StandardsRegistry,
+    inference: &DomainInference,
+    path: &std::path::Path,
+) -> DomainMatchMeta {
+    let match_type = if inference.reason.starts_with("explicit config") {
+        "config"
+    } else if inference.reason.starts_with("filename token") {
+        "exact"
+    } else {
+        "signature"
+    };
+    let category = dataset_category(registry, &inference.domain);
+    let variant = variant_from_filename(&inference.domain, path);
+    DomainMatchMeta {
+        match_type: match_type.to_string(),
+        variant,
+        category,
+    }
+}
+
+fn is_probable_helper_file(path: &std::path::Path) -> bool {
+    // Heuristic: 2-4 uppercase token at end that is not a domain, plus minimal SDTM headers.
+    // We use this only for labeling skipped files more nicely.
+    let stem = path
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .to_ascii_uppercase();
+    let tokens: Vec<&str> = stem
+        .split(|c: char| !c.is_ascii_alphanumeric() && c != '_')
+        .flat_map(|s| s.split('_'))
+        .filter(|t| !t.is_empty())
+        .collect();
+    if let Some(last) = tokens.last() {
+        let len = last.len();
+        return (2..=6).contains(&len) && last.chars().all(|c| c.is_ascii_uppercase());
+    }
+    false
 }
 
 fn required_and_known_vars(
@@ -486,6 +612,7 @@ fn main() -> anyhow::Result<()> {
 
             RunCommand::Study {
                 input_dir,
+                verbose,
                 config,
                 min_known_hits,
                 min_required_hits,
@@ -508,6 +635,22 @@ fn main() -> anyhow::Result<()> {
                     ));
                 }
 
+                if json.is_none() {
+                    println!("Processing study folder: {}", input_dir.to_string_lossy());
+                    println!("Study ID: {}", infer_study_id(&input_dir));
+
+                    if verbose > 0 {
+                        let by_cat = supported_domains_by_category(&registry);
+                        let total: usize = by_cat.values().map(|v| v.len()).sum();
+                        println!("Supported domains ({} total):", total);
+                        for (cat, ds) in by_cat {
+                            println!("  {}: {}", cat, ds.join(", "));
+                        }
+                    }
+
+                    println!("Found {} CSV files in study folder", files.len());
+                }
+
                 let mapper = sdtm_map::SimpleMapper::new();
 
                 let mut report = StudyReport {
@@ -519,6 +662,19 @@ fn main() -> anyhow::Result<()> {
                 };
 
                 for path in files {
+                    if let Some(kind) = file_kind(&path) {
+                        let reason = format!("{kind} file");
+                        report.skipped.push(StudySkippedFileReport {
+                            input: path.to_string_lossy().to_string(),
+                            kind: kind.to_string(),
+                            reason: reason.clone(),
+                        });
+                        if json.is_none() && verbose > 0 {
+                            println!("Skipping {kind} file: {}", path.to_string_lossy());
+                        }
+                        continue;
+                    }
+
                     let inference = match infer_domain_for_file(
                         &registry,
                         study_config.as_ref(),
@@ -530,8 +686,14 @@ fn main() -> anyhow::Result<()> {
                         Ok(v) => v,
                         Err(e) => {
                             let reason = e.to_string();
+                            let kind = if is_probable_helper_file(&path) {
+                                "helper"
+                            } else {
+                                "unmatched"
+                            };
                             report.skipped.push(StudySkippedFileReport {
                                 input: path.to_string_lossy().to_string(),
+                                kind: kind.to_string(),
                                 reason: reason.clone(),
                             });
                             if json.is_none() {
@@ -540,6 +702,22 @@ fn main() -> anyhow::Result<()> {
                             continue;
                         }
                     };
+
+                    let meta = match_meta(&registry, &inference, &path);
+
+                    if json.is_none() && verbose > 0 {
+                        println!(
+                            "Matched {} -> {} (variant: {}, type: {}, category: {})",
+                            path.file_name()
+                                .and_then(|s| s.to_str())
+                                .unwrap_or_else(|| path.to_string_lossy().as_ref()),
+                            inference.domain,
+                            meta.variant,
+                            meta.match_type,
+                            meta.category
+                        );
+                    }
+
                     let domain_code = sdtm_model::DomainCode::new(inference.domain.clone())?;
 
                     let source_id = stable_source_id(&input_dir, &path);
@@ -569,6 +747,9 @@ fn main() -> anyhow::Result<()> {
                         input: path.to_string_lossy().to_string(),
                         inferred_domain: inference.domain.clone(),
                         inference_reason: inference.reason.clone(),
+                        match_type: meta.match_type,
+                        variant: meta.variant,
+                        category: meta.category,
                         ingested_rows,
                         ingested_columns,
                         mapped_tables: mapped.len(),
@@ -595,10 +776,11 @@ fn main() -> anyhow::Result<()> {
                 } else {
                     for f in &report.files {
                         println!(
-                            "{}: inferred_domain={} ({}) rows={} cols={} errors={} warnings={}",
+                            "{}: inferred_domain={} ({}) category={} rows={} cols={} errors={} warnings={}",
                             f.input,
                             f.inferred_domain,
                             f.inference_reason,
+                            f.category,
                             f.ingested_rows,
                             f.ingested_columns,
                             f.validation.errors,
@@ -612,6 +794,20 @@ fn main() -> anyhow::Result<()> {
                         report.files.len(),
                         report.skipped.len()
                     );
+
+                    if verbose > 0 {
+                        let mut skipped_counts: BTreeMap<String, usize> = BTreeMap::new();
+                        for s in &report.skipped {
+                            *skipped_counts.entry(s.kind.clone()).or_insert(0) += 1;
+                        }
+                        if !skipped_counts.is_empty() {
+                            let parts: Vec<String> = skipped_counts
+                                .into_iter()
+                                .map(|(k, v)| format!("{k}={v}"))
+                                .collect();
+                            println!("skipped breakdown: {}", parts.join(", "));
+                        }
+                    }
                 }
 
                 if report.total_errors > 0 {

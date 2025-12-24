@@ -14,6 +14,12 @@ ct = "2024-03-29"
 precedence = "sdtm_then_sdtmig"
 
 [[files]]
+path = "README.md"
+sha256 = "d6ac6d69f0257c74010ba98c46c44aaa581ac40197e86369224c3ac0d0f0e57a"
+kind = "other"
+role = "standards_readme"
+
+[[files]]
 path = "sdtm/v2_0/Datasets.csv"
 sha256 = "3e0fa7a4d4d0ab2d46885a2a694d5a20de5c4b1d876704fbbde4eb651b4f3e4a"
 kind = "csv"
@@ -24,6 +30,12 @@ path = "sdtm/v2_0/Variables.csv"
 sha256 = "ddc98d606fd878f3b3a49dfa475052691c19e22b7377735f91898fb6cd7e4015"
 kind = "csv"
 role = "sdtm_variables"
+
+[[files]]
+path = "sdtm/v2_0/README.md"
+sha256 = "accafa23a4e064b01c33f8e72c3d4e38caa7ed9ed25b3fe926f79c85069598b8"
+kind = "other"
+role = "sdtm_readme"
 
 [[files]]
 path = "sdtmig/v3_4/Datasets.csv"
@@ -44,10 +56,112 @@ kind = "pdf"
 role = "sdtmig_pdf"
 
 [[files]]
+path = "sdtmig/v3_4/README.md"
+sha256 = "5332c43662ee71c389b53b73ee67bd2e08b7ac31deb1e336250c1994493270f5"
+kind = "other"
+role = "sdtmig_readme"
+
+[[files]]
+path = "ct/2025-09-26/SDTM_CT_2025-09-26.csv"
+sha256 = "fe118888e861cbf664143d78fdcd5a100ea17caf61c460a16f91830867543471"
+kind = "csv"
+role = "ct_sdtm"
+
+[[files]]
+path = "ct/2025-09-26/Define-XML_CT_2025-09-26.csv"
+sha256 = "f0bb4584fc2be78f241ccdbaa6f566867778daf1bcaf0c179cbbdb4794098e3e"
+kind = "csv"
+role = "ct_define_xml"
+
+[[files]]
+path = "ct/2025-09-26/ADaM_CT_2025-09-26.csv"
+sha256 = "cbec4c04526fe28610eaca5e1a072dc110c7d3e10d8b9cbd43db8d54039aa6b2"
+kind = "csv"
+role = "ct_adam_2025_09_26"
+
+[[files]]
+path = "ct/2025-09-26/DDF_CT_2025-09-26.csv"
+sha256 = "35e404fd1cd0cab88990ced9650690d78b90c49dc4f5b82af672c93b1a9debcd"
+kind = "csv"
+role = "ct_ddf_2025_09_26"
+
+[[files]]
+path = "ct/2025-09-26/MRCT_CT_2025-09-26.csv"
+sha256 = "989261f1653f4779a2f170c1ba67c4812e1e912b40832c01b69556157aa5cf28"
+kind = "csv"
+role = "ct_mrct_2025_09_26"
+
+[[files]]
+path = "ct/2025-09-26/Protocol_CT_2025-09-26.csv"
+sha256 = "1964e5a3f600371e232886cd304370c2cf4d0ff0374084e4f425a1763155d679"
+kind = "csv"
+role = "ct_protocol_2025_09_26"
+
+[[files]]
+path = "ct/2025-09-26/SEND_CT_2025-09-26.csv"
+sha256 = "9a9025b08489c2fb5eac5ef13ed73f7a4dba23316cad620fd582bda28ba7d414"
+kind = "csv"
+role = "ct_send_2025_09_26"
+
+[[files]]
+path = "ct/2025-09-26/Glossary_CT_2025-09-26.csv"
+sha256 = "e3c23dc252b597e8a5ddf83563ca335804ff5f6689193faa82e759a98e6510bf"
+kind = "csv"
+role = "ct_glossary_2025_09_26"
+
+[[files]]
+path = "ct/2025-09-26/README.md"
+sha256 = "da27d638dfc955de96af5b7845cdd309272e30b8675229295386871ac1ad4f71"
+kind = "other"
+role = "ct_readme_2025_09_26"
+
+[[files]]
 path = "ct/2024-03-29/SDTM_CT_2024-03-29.csv"
 sha256 = "58d77d63c0788c44b520868409b529f53860aec22470b9e9f20b10eb7f713d2f"
 kind = "csv"
-role = "ct_sdtm"
+role = "ct_sdtm_2024_03_29"
+
+[[files]]
+path = "ct/2024-03-29/Define-XML_CT_2024-03-29.csv"
+sha256 = "f08fdbafbe9b044418fbecceb2d8595cfc33e9959c3bd09170ef223b1d2e5cc7"
+kind = "csv"
+role = "ct_define_xml_2024_03_29"
+
+[[files]]
+path = "ct/2024-03-29/ADaM_CT_2024-03-29.csv"
+sha256 = "c4539cb7a9211459c58eef2d0caa1bc1093dcec96409365f5a43a80e32e4e0d9"
+kind = "csv"
+role = "ct_adam_2024_03_29"
+
+[[files]]
+path = "ct/2024-03-29/DDF_CT_2024-03-29.csv"
+sha256 = "ff6bd8f79e94b82df8d454d9d1c8c0df79ff4a1279e15542cbb9b948738c2555"
+kind = "csv"
+role = "ct_ddf_2024_03_29"
+
+[[files]]
+path = "ct/2024-03-29/MRCT_CT_2024-03-29.csv"
+sha256 = "771fec245c10615b10aef6591bc4604522710f53a32d95fa2c75bcf171414b9a"
+kind = "csv"
+role = "ct_mrct_2024_03_29"
+
+[[files]]
+path = "ct/2024-03-29/Protocol_CT_2024-03-29.csv"
+sha256 = "f6c4a9e661d63f097dd02252fd5a0320c0aacfd8d9d9c87275d74f7b279587b8"
+kind = "csv"
+role = "ct_protocol_2024_03_29"
+
+[[files]]
+path = "ct/2024-03-29/SEND_CT_2024-03-29.csv"
+sha256 = "ae66f7e1046eeab704b8eb7e208064e5254593d066c33eccc272e60318723421"
+kind = "csv"
+role = "ct_send_2024_03_29"
+
+[[files]]
+path = "ct/2024-03-29/README.md"
+sha256 = "92bcf24ae883ecf1be47840b7fdfbf46a35f6274ad038e3cb3abd056b3b60b71"
+kind = "other"
+role = "ct_readme_2024_03_29"
 
 [[files]]
 path = "Pinnacle21/Rules.csv"
@@ -66,3 +180,9 @@ path = "xsl/define2-0-0.xsl"
 sha256 = "00e5cb8144ff04beb124e8c2715fb18766f948b0a2f277107264be2962c89f42"
 kind = "xsl"
 role = "define_xsl_2_0"
+
+[[files]]
+path = "xsl/README.md"
+sha256 = "0a0831d811bad25ab11de15457c17c56335a80ea40073c454627f47630e370d3"
+kind = "other"
+role = "xsl_readme"
