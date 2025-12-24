@@ -73,6 +73,56 @@ fn column_value(df: &DataFrame, name: &str, idx: usize) -> String {
     }
 }
 
+fn populated_columns(df: &DataFrame) -> BTreeSet<String> {
+    let mut populated = BTreeSet::new();
+    for series in df.get_columns() {
+        let mut has_value = false;
+        for idx in 0..df.height() {
+            let value = any_to_string(series.get(idx).unwrap_or(AnyValue::Null));
+            if !value.trim().is_empty() {
+                has_value = true;
+                break;
+            }
+        }
+        if has_value {
+            populated.insert(series.name().to_uppercase());
+        }
+    }
+    populated
+}
+
+fn is_duplicate_of_mapped(name: &str, populated: &BTreeSet<String>) -> bool {
+    if populated.is_empty() {
+        return false;
+    }
+    let upper = name.to_uppercase();
+    if upper.ends_with("SEQ") && populated.iter().any(|col| col.ends_with("SEQ")) {
+        return true;
+    }
+    if upper.ends_with("CD") && upper.len() > 2 {
+        let base = &upper[..upper.len() - 2];
+        if populated.contains(base) {
+            return true;
+        }
+    }
+    if let Some(prefix) = upper.strip_suffix("DATE") {
+        if populated.contains(&format!("{prefix}DTC")) {
+            return true;
+        }
+    }
+    if let Some(prefix) = upper.strip_suffix("DAT") {
+        if populated.contains(&format!("{prefix}DTC")) {
+            return true;
+        }
+    }
+    if let Some(prefix) = upper.strip_suffix("DT") {
+        if populated.contains(&format!("{prefix}DTC")) {
+            return true;
+        }
+    }
+    false
+}
+
 pub fn build_suppqual(
     parent_domain: &Domain,
     suppqual_domain: &Domain,
@@ -86,6 +136,7 @@ pub fn build_suppqual(
     let core_variables = variable_name_set(parent_domain);
     let suppqual_cols = standard_columns(suppqual_domain);
     let parent_cols = standard_columns(parent_domain);
+    let populated = mapped_df.map(populated_columns).unwrap_or_default();
     if ordered_columns.is_empty() {
         return Ok(None);
     }
@@ -96,6 +147,9 @@ pub fn build_suppqual(
             continue;
         }
         if core_variables.contains(&name.to_uppercase()) {
+            continue;
+        }
+        if is_duplicate_of_mapped(&name, &populated) {
             continue;
         }
         extra_cols.push(name);

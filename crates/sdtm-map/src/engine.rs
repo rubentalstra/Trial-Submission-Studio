@@ -118,6 +118,52 @@ impl MappingEngine {
                 }
             }
         }
+        if let Some(target) = self.date_alias_override(column) {
+            return Some(target);
+        }
+        if let Some(target) = self.seq_alias_override(column) {
+            return Some(target);
+        }
+        None
+    }
+
+    fn date_alias_override(&self, column: &str) -> Option<String> {
+        let upper = column.trim().to_uppercase();
+        if upper.ends_with("DTC") {
+            return None;
+        }
+        for suffix in ["DATE", "DAT", "DT"] {
+            if upper.ends_with(suffix) && upper.len() > suffix.len() {
+                let prefix = &upper[..upper.len() - suffix.len()];
+                let candidate = format!("{prefix}DTC");
+                if self
+                    .domain
+                    .variables
+                    .iter()
+                    .any(|var| var.name.eq_ignore_ascii_case(&candidate))
+                {
+                    return Some(candidate);
+                }
+            }
+        }
+        None
+    }
+
+    fn seq_alias_override(&self, column: &str) -> Option<String> {
+        let compact = normalize_text(column).replace(' ', "").to_uppercase();
+        if !compact.ends_with("SEQ") {
+            return None;
+        }
+        let seq_vars: Vec<&str> = self
+            .domain
+            .variables
+            .iter()
+            .map(|var| var.name.as_str())
+            .filter(|name| name.to_uppercase().ends_with("SEQ"))
+            .collect();
+        if seq_vars.len() == 1 {
+            return Some(seq_vars[0].to_string());
+        }
         None
     }
 
@@ -144,6 +190,15 @@ impl MappingEngine {
             None => return score,
         };
         let mut adjusted = score;
+        let col_upper = column.trim().to_uppercase();
+        let var_upper = variable_name.to_uppercase();
+        if col_upper.ends_with("SEQ") {
+            if var_upper.ends_with("SEQ") {
+                adjusted *= 1.05;
+            } else {
+                adjusted *= 0.7;
+            }
+        }
         let is_numeric_var = variable_name.to_uppercase().ends_with("N");
         if is_numeric_var != hint.is_numeric {
             adjusted *= 0.85;
