@@ -39,3 +39,17 @@ fn reads_table_and_builds_hints() {
     let _ = fs::remove_file(&path);
     let _ = fs::remove_dir_all(path.parent().unwrap());
 }
+
+#[test]
+fn reads_table_with_multiple_headers() {
+    let contents = "Label A,Label B,Label C\nA,B,C\n1,x,\n2,y,z\n";
+    let path = temp_file("multi.csv", contents);
+    let table = read_csv_table(&path).expect("read csv");
+    assert_eq!(table.headers, vec!["A", "B", "C"]);
+    assert_eq!(table.rows.len(), 2);
+    assert_eq!(table.rows[0], vec!["1", "x", ""]);
+    assert_eq!(table.rows[1], vec!["2", "y", "z"]);
+
+    let _ = fs::remove_file(&path);
+    let _ = fs::remove_dir_all(path.parent().unwrap());
+}

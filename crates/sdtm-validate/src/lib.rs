@@ -339,10 +339,7 @@ fn type_issue(
         return None;
     }
     let rule = p21_lookup.get(RULE_DATATYPE_MISMATCH).copied();
-    let base = rule_base_message(
-        rule,
-        "Variable datatype is not the expected SDTM datatype",
-    );
+    let base = rule_base_message(rule, "Variable datatype is not the expected SDTM datatype");
     let message = format!(
         "{base}: {} has {} non-numeric value(s)",
         variable.name, invalid

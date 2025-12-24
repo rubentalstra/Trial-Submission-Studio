@@ -37,11 +37,9 @@ fn missing_required_column_emits_error() {
     let df = DataFrame::new(vec![]).expect("df");
     let report = validate_domain(domain, &df, &ValidationContext::new());
     assert!(
-        report
-            .issues
-            .iter()
-            .any(|issue| issue.code == "SD0056"
-                && issue.variable.as_deref() == Some(&required.name))
+        report.issues.iter().any(
+            |issue| issue.code == "SD0056" && issue.variable.as_deref() == Some(&required.name)
+        )
     );
 }
 
