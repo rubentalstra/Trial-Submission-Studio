@@ -1,5 +1,5 @@
 use std::collections::BTreeSet;
-use polars::prelude::{Column, DataFrame};
+use polars::prelude::{AnyValue, Column, DataFrame};
 
 use sdtm_core::{build_suppqual, suppqual_domain_code};
 use sdtm_standards::load_default_sdtm_ig_domains;
@@ -36,11 +36,13 @@ fn builds_suppqual_for_any_domain() {
         .data
         .column("QNAM")
         .expect("qnam")
-        .as_series()
-        .expect("series")
-        .str()
-        .expect("str")
         .get(0)
-        .unwrap_or("");
+        .unwrap_or(AnyValue::Null);
+    let qnam = match qnam {
+        AnyValue::String(value) => value.to_string(),
+        AnyValue::StringOwned(value) => value.to_string(),
+        AnyValue::Null => String::new(),
+        _ => qnam.to_string(),
+    };
     assert_eq!(qnam, "EXTRA");
 }

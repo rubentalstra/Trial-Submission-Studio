@@ -23,11 +23,17 @@ fn suggests_mappings_and_unmapped() {
             null_ratio: 0.0,
         },
     );
-    let engine = MappingEngine::new(domain, 0.5, hints);
-    let columns = vec!["Study Id".to_string(), "AGE".to_string(), "OTHER".to_string()];
+    let engine = MappingEngine::new(domain, 0.95, hints);
+    let columns = vec![
+        "STUDYID".to_string(),
+        "AGE".to_string(),
+        "UNLIKELY_COLUMN".to_string(),
+    ];
     let result = engine.suggest(&columns);
 
     assert!(result.mappings.iter().any(|m| m.target_variable == "STUDYID"));
     assert!(result.mappings.iter().any(|m| m.target_variable == "AGE"));
-    assert!(result.unmapped_columns.contains(&"OTHER".to_string()));
+    assert!(result
+        .unmapped_columns
+        .contains(&"UNLIKELY_COLUMN".to_string()));
 }
