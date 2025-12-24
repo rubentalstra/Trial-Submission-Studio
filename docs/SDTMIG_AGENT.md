@@ -1,5 +1,9 @@
 # SDTMIG Knowledge Access Rules (v3.4)
 
+Note: These rules apply to the Rust rebuild as well. SDTMIG assets in
+`standards/` are the authoritative offline source and must not be edited or
+loaded in full by agents.
+
 This repository includes the SDTMIG v3.4 standard as a **machine-readable
 knowledge base**, consisting of:
 
@@ -11,7 +15,7 @@ The SDTMIG PDF itself must never be loaded directly by agents.
 
 ## Source of Truth
 
-- PDF: `docs/SDTMIG v3.4-FINAL_2022-07-21.pdf`
+- PDF: `standards/sdtmig/v3_4/SDTMIG_v3.4.pdf`
 - Vector index (textual guidance): `docs/sdtmig_index/`
 
 ⚠️ The PDF is **too large to load directly**.\
