@@ -1,1 +1,584 @@
+use std::collections::{BTreeMap, BTreeSet};
+use std::path::{Path, PathBuf};
 
+use anyhow::Result;
+use chrono::Utc;
+use polars::prelude::{AnyValue, DataFrame};
+use serde::Serialize;
+
+use sdtm_model::{
+    ConformanceIssue, ConformanceReport, ControlledTerminology, CtRegistry, Domain, IssueSeverity,
+    Variable, VariableType,
+};
+use sdtm_standards::loaders::P21Rule;
+
+#[derive(Debug, Clone, Default)]
+pub struct ValidationContext<'a> {
+    pub ct_registry: Option<&'a CtRegistry>,
+    pub p21_rules: Option<&'a [P21Rule]>,
+}
+
+impl<'a> ValidationContext<'a> {
+    pub fn new() -> Self {
+        Self {
+            ct_registry: None,
+            p21_rules: None,
+        }
+    }
+
+    pub fn with_ct_registry(mut self, ct_registry: &'a CtRegistry) -> Self {
+        self.ct_registry = Some(ct_registry);
+        self
+    }
+
+    pub fn with_p21_rules(mut self, p21_rules: &'a [P21Rule]) -> Self {
+        self.p21_rules = Some(p21_rules);
+        self
+    }
+}
+
+#[derive(Debug, Serialize)]
+pub struct ConformanceReportPayload {
+    pub schema: &'static str,
+    pub schema_version: u32,
+    pub generated_at: String,
+    pub study_id: String,
+    pub reports: Vec<ConformanceReportSummary>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ConformanceReportSummary {
+    pub domain: String,
+    pub error_count: usize,
+    pub warning_count: usize,
+    pub issues: Vec<ConformanceIssueJson>,
+}
+
+#[derive(Debug, Serialize)]
+pub struct ConformanceIssueJson {
+    pub severity: IssueSeverity,
+    pub code: String,
+    pub domain: String,
+    pub variable: Option<String>,
+    pub message: String,
+    pub rule_id: Option<String>,
+    pub category: Option<String>,
+    pub count: Option<u64>,
+    pub codelist_code: Option<String>,
+}
+
+const REPORT_SCHEMA: &str = "cdisc-transpiler.conformance-report";
+const REPORT_SCHEMA_VERSION: u32 = 1;
+
+pub fn validate_domain(
+    domain: &Domain,
+    df: &DataFrame,
+    ctx: &ValidationContext,
+) -> ConformanceReport {
+    let column_lookup = build_column_lookup(df);
+    let p21_lookup = build_p21_lookup(ctx.p21_rules);
+    let mut issues = Vec::new();
+    for variable in &domain.variables {
+        let column = column_lookup.get(&variable.name.to_uppercase());
+        if column.is_none() {
+            issues.extend(missing_column_issues(domain, variable));
+            continue;
+        }
+        let column = column.expect("column lookup");
+        if let Some(issue) = missing_value_issue(domain, variable, df, column) {
+            issues.push(issue);
+        }
+        if let Some(issue) = type_issue(domain, variable, df, column) {
+            issues.push(issue);
+        }
+        if let Some(issue) = length_issue(domain, variable, df, column) {
+            issues.push(issue);
+        }
+        if let Some(ct_registry) = ctx.ct_registry {
+            if let Some(ct) = resolve_ct(ct_registry, variable) {
+                if let Some(issue) = ct_issue(
+                    domain,
+                    variable,
+                    df,
+                    column,
+                    ct,
+                    &p21_lookup,
+                    &column_lookup,
+                ) {
+                    issues.push(issue);
+                }
+            }
+        }
+    }
+    ConformanceReport {
+        domain_code: domain.code.clone(),
+        issues,
+    }
+}
+
+pub fn validate_domains(
+    domains: &[Domain],
+    frames: &[(&str, &DataFrame)],
+    ctx: &ValidationContext,
+) -> Vec<ConformanceReport> {
+    let mut domain_map: BTreeMap<String, &Domain> = BTreeMap::new();
+    for domain in domains {
+        domain_map.insert(domain.code.to_uppercase(), domain);
+    }
+    let mut reports = Vec::new();
+    for (domain_code, df) in frames {
+        if let Some(domain) = domain_map.get(&domain_code.to_uppercase()) {
+            reports.push(validate_domain(domain, df, ctx));
+        }
+    }
+    reports
+}
+
+pub fn has_conformance_errors(reports: &[ConformanceReport]) -> bool {
+    reports.iter().any(|report| report.has_errors())
+}
+
+pub fn write_conformance_report_json(
+    output_dir: &Path,
+    study_id: &str,
+    reports: &[ConformanceReport],
+) -> Result<PathBuf> {
+    std::fs::create_dir_all(output_dir)?;
+    let output_path = output_dir.join("conformance_report.json");
+    let payload = ConformanceReportPayload {
+        schema: REPORT_SCHEMA,
+        schema_version: REPORT_SCHEMA_VERSION,
+        generated_at: Utc::now().to_rfc3339(),
+        study_id: study_id.to_string(),
+        reports: reports
+            .iter()
+            .map(|report| ConformanceReportSummary {
+                domain: report.domain_code.clone(),
+                error_count: report.error_count(),
+                warning_count: report.warning_count(),
+                issues: report
+                    .issues
+                    .iter()
+                    .map(|issue| ConformanceIssueJson {
+                        severity: issue.severity,
+                        code: issue.code.clone(),
+                        domain: report.domain_code.clone(),
+                        variable: issue.variable.clone(),
+                        message: issue.message.clone(),
+                        rule_id: issue.rule_id.clone(),
+                        category: issue.category.clone(),
+                        count: issue.count,
+                        codelist_code: issue.codelist_code.clone(),
+                    })
+                    .collect(),
+            })
+            .collect(),
+    };
+    let json = serde_json::to_string_pretty(&payload)?;
+    std::fs::write(&output_path, format!("{json}\n"))?;
+    Ok(output_path)
+}
+
+fn build_column_lookup(df: &DataFrame) -> BTreeMap<String, String> {
+    df.get_column_names_owned()
+        .into_iter()
+        .map(|name| (name.to_uppercase(), name.to_string()))
+        .collect()
+}
+
+fn missing_column_issues(_domain: &Domain, variable: &Variable) -> Vec<ConformanceIssue> {
+    if is_required(variable.core.as_deref()) {
+        return vec![ConformanceIssue {
+            code: "REQ_MISSING_COLUMN".to_string(),
+            message: format!("Missing required column {}", variable.name),
+            severity: IssueSeverity::Error,
+            variable: Some(variable.name.clone()),
+            count: None,
+            rule_id: None,
+            category: None,
+            codelist_code: None,
+        }];
+    }
+    if is_expected(variable.core.as_deref()) {
+        return vec![ConformanceIssue {
+            code: "EXP_MISSING_COLUMN".to_string(),
+            message: format!("Missing expected column {}", variable.name),
+            severity: IssueSeverity::Warning,
+            variable: Some(variable.name.clone()),
+            count: None,
+            rule_id: None,
+            category: None,
+            codelist_code: None,
+        }];
+    }
+    Vec::new()
+}
+
+fn missing_value_issue(
+    _domain: &Domain,
+    variable: &Variable,
+    df: &DataFrame,
+    column: &str,
+) -> Option<ConformanceIssue> {
+    if !is_required(variable.core.as_deref()) {
+        return None;
+    }
+    let series = df.column(column).ok()?;
+    let mut missing = 0u64;
+    for idx in 0..df.height() {
+        let value = series.get(idx).unwrap_or(AnyValue::Null);
+        if is_missing_value(&value) {
+            missing += 1;
+        }
+    }
+    if missing == 0 {
+        return None;
+    }
+    Some(ConformanceIssue {
+        code: "REQ_MISSING_VALUE".to_string(),
+        message: format!(
+            "Required variable {} has {} missing/blank values",
+            variable.name, missing
+        ),
+        severity: IssueSeverity::Error,
+        variable: Some(variable.name.clone()),
+        count: Some(missing),
+        rule_id: None,
+        category: None,
+        codelist_code: None,
+    })
+}
+
+fn type_issue(
+    _domain: &Domain,
+    variable: &Variable,
+    df: &DataFrame,
+    column: &str,
+) -> Option<ConformanceIssue> {
+    if variable.data_type != VariableType::Num {
+        return None;
+    }
+    let series = df.column(column).ok()?;
+    let mut invalid = 0u64;
+    for idx in 0..df.height() {
+        let value = series.get(idx).unwrap_or(AnyValue::Null);
+        if is_missing_value(&value) {
+            continue;
+        }
+        if is_numeric_value(&value) {
+            continue;
+        }
+        let text = any_to_string(value);
+        if text.trim().is_empty() {
+            continue;
+        }
+        if text.trim().parse::<f64>().is_err() {
+            invalid += 1;
+        }
+    }
+    if invalid == 0 {
+        return None;
+    }
+    Some(ConformanceIssue {
+        code: "TYPE_INVALID_NUMERIC".to_string(),
+        message: format!(
+            "Numeric variable {} has {} non-numeric value(s)",
+            variable.name, invalid
+        ),
+        severity: IssueSeverity::Error,
+        variable: Some(variable.name.clone()),
+        count: Some(invalid),
+        rule_id: None,
+        category: None,
+        codelist_code: None,
+    })
+}
+
+fn length_issue(
+    _domain: &Domain,
+    variable: &Variable,
+    df: &DataFrame,
+    column: &str,
+) -> Option<ConformanceIssue> {
+    let Some(limit) = variable.length else {
+        return None;
+    };
+    if variable.data_type != VariableType::Char {
+        return None;
+    }
+    let series = df.column(column).ok()?;
+    let mut over = 0u64;
+    for idx in 0..df.height() {
+        let value = any_to_string(series.get(idx).unwrap_or(AnyValue::Null));
+        if value.trim().is_empty() {
+            continue;
+        }
+        if value.chars().count() > limit as usize {
+            over += 1;
+        }
+    }
+    if over == 0 {
+        return None;
+    }
+    Some(ConformanceIssue {
+        code: "LENGTH_EXCEEDED".to_string(),
+        message: format!(
+            "Variable {} exceeds length {} in {} value(s)",
+            variable.name, limit, over
+        ),
+        severity: IssueSeverity::Error,
+        variable: Some(variable.name.clone()),
+        count: Some(over),
+        rule_id: None,
+        category: None,
+        codelist_code: None,
+    })
+}
+
+fn ct_issue(
+    domain: &Domain,
+    variable: &Variable,
+    df: &DataFrame,
+    column: &str,
+    ct: &ControlledTerminology,
+    p21_lookup: &BTreeMap<String, &P21Rule>,
+    column_lookup: &BTreeMap<String, String>,
+) -> Option<ConformanceIssue> {
+    let invalid = collect_invalid_ct_values(domain, variable, df, column, ct, column_lookup);
+    if invalid.is_empty() {
+        return None;
+    }
+    let (rule_id, default_severity) = if ct.extensible {
+        ("CT2002", IssueSeverity::Warning)
+    } else {
+        ("CT2001", IssueSeverity::Error)
+    };
+    let rule = p21_lookup.get(rule_id);
+    let severity = rule
+        .and_then(|rule| parse_severity(rule))
+        .unwrap_or(default_severity);
+    let mut examples = invalid.iter().take(5).cloned().collect::<Vec<_>>();
+    examples.sort();
+    let examples = examples.join(", ");
+    let base = rule
+        .map(|rule| rule.message.as_str())
+        .and_then(|text| if text.is_empty() { None } else { Some(text) })
+        .unwrap_or("Variable value not found in codelist");
+    let mut message = format!(
+        "{}. {} contains {} value(s) not found in CT for {} ({}).",
+        base,
+        variable.name,
+        invalid.len(),
+        ct.codelist_name,
+        ct.codelist_code
+    );
+    if !examples.is_empty() {
+        message.push_str(&format!(" examples: {}", examples));
+    }
+    Some(ConformanceIssue {
+        code: "CT_INVALID".to_string(),
+        message,
+        severity,
+        variable: Some(variable.name.clone()),
+        count: Some(invalid.len() as u64),
+        rule_id: rule.map(|rule| rule.rule_id.clone()),
+        category: rule.and_then(|rule| rule.category.clone()),
+        codelist_code: Some(ct.codelist_code.clone()),
+    })
+}
+
+fn build_p21_lookup<'a>(rules: Option<&'a [P21Rule]>) -> BTreeMap<String, &'a P21Rule> {
+    let mut lookup = BTreeMap::new();
+    if let Some(rules) = rules {
+        for rule in rules {
+            lookup.insert(rule.rule_id.to_uppercase(), rule);
+        }
+    }
+    lookup
+}
+
+fn parse_severity(rule: &P21Rule) -> Option<IssueSeverity> {
+    let raw = rule.severity.as_ref()?.trim().to_lowercase();
+    match raw.as_str() {
+        "error" => Some(IssueSeverity::Error),
+        "warning" => Some(IssueSeverity::Warning),
+        _ => None,
+    }
+}
+
+fn collect_invalid_ct_values(
+    domain: &Domain,
+    variable: &Variable,
+    df: &DataFrame,
+    column: &str,
+    ct: &ControlledTerminology,
+    column_lookup: &BTreeMap<String, String>,
+) -> BTreeSet<String> {
+    let mut invalid = BTreeSet::new();
+    let series = match df.column(column) {
+        Ok(series) => series,
+        Err(_) => return invalid,
+    };
+    let submission_values: BTreeSet<String> = ct
+        .submission_values
+        .iter()
+        .map(|value| value.to_uppercase())
+        .collect();
+
+    let dscat_col = if domain.code.eq_ignore_ascii_case("DS")
+        && variable.name.eq_ignore_ascii_case("DSDECOD")
+    {
+        column_lookup.get("DSCAT").cloned()
+    } else {
+        None
+    };
+
+    for idx in 0..df.height() {
+        if let Some(dscat_col) = dscat_col.as_ref() {
+            let dscat = column_value(df, dscat_col, idx).to_uppercase();
+            if !dscat.is_empty() && dscat != "DISPOSITION EVENT" {
+                continue;
+            }
+        }
+        let raw = any_to_string(series.get(idx).unwrap_or(AnyValue::Null));
+        let trimmed = raw.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if domain.code.eq_ignore_ascii_case("LB")
+            && variable.name.eq_ignore_ascii_case("LBSTRESC")
+            && is_numeric_like_text(trimmed)
+        {
+            continue;
+        }
+        let normalized = normalize_ct_value(ct, trimmed);
+        if normalized.is_empty() {
+            continue;
+        }
+        let key = normalized.to_uppercase();
+        if submission_values.contains(&key) {
+            continue;
+        }
+        if ct.extensible {
+            invalid.insert(trimmed.to_string());
+            continue;
+        }
+        invalid.insert(trimmed.to_string());
+    }
+    invalid
+}
+
+fn normalize_ct_value(ct: &ControlledTerminology, raw: &str) -> String {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+    let lookup = trimmed.to_uppercase();
+    ct.synonyms
+        .get(&lookup)
+        .cloned()
+        .unwrap_or_else(|| trimmed.to_string())
+}
+
+fn resolve_ct<'a>(
+    registry: &'a CtRegistry,
+    variable: &Variable,
+) -> Option<&'a ControlledTerminology> {
+    if let Some(code_raw) = variable.codelist_code.as_ref() {
+        for code in split_codelist_codes(code_raw) {
+            let code_key = code.to_uppercase();
+            if let Some(ct) = registry.by_code.get(&code_key) {
+                return Some(ct);
+            }
+        }
+    }
+    let name_key = variable.name.to_uppercase();
+    registry.by_name.get(&name_key)
+}
+
+fn split_codelist_codes(raw: &str) -> Vec<String> {
+    let text = raw.trim();
+    if text.is_empty() {
+        return Vec::new();
+    }
+    for sep in [';', ',', ' '] {
+        if text.contains(sep) {
+            return text
+                .split(sep)
+                .map(|part| part.trim().to_string())
+                .filter(|part| !part.is_empty())
+                .collect();
+        }
+    }
+    vec![text.to_string()]
+}
+
+fn is_required(core: Option<&str>) -> bool {
+    matches!(
+        core.map(|value| value.trim().to_lowercase()).as_deref(),
+        Some("req")
+    )
+}
+
+fn is_expected(core: Option<&str>) -> bool {
+    matches!(
+        core.map(|value| value.trim().to_lowercase()).as_deref(),
+        Some("exp")
+    )
+}
+
+fn is_missing_value(value: &AnyValue) -> bool {
+    match value {
+        AnyValue::Null => true,
+        AnyValue::String(value) => value.trim().is_empty(),
+        AnyValue::StringOwned(value) => value.trim().is_empty(),
+        _ => false,
+    }
+}
+
+fn is_numeric_value(value: &AnyValue) -> bool {
+    matches!(
+        value,
+        AnyValue::Float32(_)
+            | AnyValue::Float64(_)
+            | AnyValue::Int8(_)
+            | AnyValue::Int16(_)
+            | AnyValue::Int32(_)
+            | AnyValue::Int64(_)
+            | AnyValue::UInt8(_)
+            | AnyValue::UInt16(_)
+            | AnyValue::UInt32(_)
+            | AnyValue::UInt64(_)
+    )
+}
+
+fn any_to_string(value: AnyValue) -> String {
+    match value {
+        AnyValue::String(value) => value.to_string(),
+        AnyValue::StringOwned(value) => value.to_string(),
+        AnyValue::Null => String::new(),
+        _ => value.to_string(),
+    }
+}
+
+fn column_value(df: &DataFrame, name: &str, idx: usize) -> String {
+    match df.column(name) {
+        Ok(series) => any_to_string(series.get(idx).unwrap_or(AnyValue::Null)),
+        Err(_) => String::new(),
+    }
+}
+
+fn is_numeric_like_text(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return false;
+    }
+    let cleaned = trimmed
+        .strip_prefix("<=")
+        .or_else(|| trimmed.strip_prefix(">="))
+        .or_else(|| trimmed.strip_prefix('<'))
+        .or_else(|| trimmed.strip_prefix('>'))
+        .unwrap_or(trimmed)
+        .trim();
+    cleaned.parse::<f64>().is_ok()
+}

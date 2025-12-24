@@ -29,6 +29,9 @@ mod tests {
                     severity: IssueSeverity::Error,
                     variable: Some("AETERM".to_string()),
                     count: Some(2),
+                    rule_id: None,
+                    category: None,
+                    codelist_code: None,
                 },
                 ConformanceIssue {
                     code: "AE002".to_string(),
@@ -36,6 +39,9 @@ mod tests {
                     severity: IssueSeverity::Warning,
                     variable: Some("AESEV".to_string()),
                     count: Some(1),
+                    rule_id: None,
+                    category: None,
+                    codelist_code: None,
                 },
             ],
         };

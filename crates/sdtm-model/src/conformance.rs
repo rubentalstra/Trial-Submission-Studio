@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum IssueSeverity {
     Error,
     Warning,
@@ -13,10 +14,14 @@ pub struct ConformanceIssue {
     pub severity: IssueSeverity,
     pub variable: Option<String>,
     pub count: Option<u64>,
+    pub rule_id: Option<String>,
+    pub category: Option<String>,
+    pub codelist_code: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ConformanceReport {
+    #[serde(rename = "domain")]
     pub domain_code: String,
     pub issues: Vec<ConformanceIssue>,
 }

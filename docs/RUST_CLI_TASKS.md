@@ -174,16 +174,16 @@ Exit criteria:
 
 Goal: enforce conformance and CT validation with deterministic reporting.
 
-- [ ] Implement required/expected/permissible variable checks
-- [ ] Enforce type and length constraints
-- [ ] Validate CT submission values and synonyms
-- [ ] Apply P21 rules with error/warn severity mapping
-- [ ] Emit conformance report JSON schema
+- [x] Implement required/expected/permissible variable checks
+- [x] Enforce type and length constraints
+- [x] Validate CT submission values and synonyms
+- [x] Apply P21 rules with error/warn severity mapping
+- [x] Emit conformance report JSON schema
 - [ ] Gate strict outputs on conformance errors
 
 Exit criteria:
 
-- [ ] Conformance report matches Python structure
+- [x] Conformance report matches Python structure
 - [ ] Gating behavior matches v1 spec
 
 ## Phase 9 - Output Writers (sdtm-report)
