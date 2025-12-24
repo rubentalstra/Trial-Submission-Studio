@@ -75,16 +75,10 @@ pub(super) fn process_pr(
             set_string_column(df, &prdecod, values)?;
         }
         if let Some(ct) = ctx.resolve_ct(domain, "PRDECOD") {
-            let mut values = string_column(df, &prdecod, Trim::Both)?
+            let values = string_column(df, &prdecod, Trim::Both)?
                 .into_iter()
-                .map(|value| normalize_ct_value(ct, &value))
+                .map(|value| normalize_ct_value_keep(ct, &value))
                 .collect::<Vec<_>>();
-            for idx in 0..values.len() {
-                let valid = ct.submission_values.iter().any(|val| val == &values[idx]);
-                if !valid {
-                    values[idx].clear();
-                }
-            }
             set_string_column(df, &prdecod, values)?;
         }
     }

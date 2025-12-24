@@ -222,6 +222,19 @@ pub(super) fn normalize_ct_value(ct: &ControlledTerminology, raw: &str) -> Strin
         .unwrap_or_else(|| text.to_string())
 }
 
+pub(super) fn normalize_ct_value_keep(ct: &ControlledTerminology, raw: &str) -> String {
+    let text = raw.trim();
+    if text.is_empty() {
+        return String::new();
+    }
+    let canonical = normalize_ct_value(ct, text);
+    if ct.submission_values.iter().any(|val| val == &canonical) {
+        canonical
+    } else {
+        text.to_string()
+    }
+}
+
 fn any_to_f64(value: AnyValue) -> Option<f64> {
     match value {
         AnyValue::Null => None,

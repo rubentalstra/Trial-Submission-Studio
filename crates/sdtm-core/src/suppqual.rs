@@ -74,6 +74,32 @@ fn sanitize_qnam(name: &str) -> String {
     safe.chars().take(8).collect()
 }
 
+fn unique_qnam(name: &str, used: &mut BTreeMap<String, String>) -> String {
+    let base = sanitize_qnam(name);
+    if let Some(existing) = used.get(&base) {
+        if existing.eq_ignore_ascii_case(name) {
+            return base;
+        }
+    } else {
+        used.insert(base.clone(), name.to_string());
+        return base;
+    }
+    for idx in 1..=99 {
+        let suffix = format!("{idx:02}");
+        let prefix_len = 8usize.saturating_sub(suffix.len()).max(1);
+        let mut prefix: String = base.chars().take(prefix_len).collect();
+        if prefix.is_empty() {
+            prefix = "Q".to_string();
+        }
+        let candidate = format!("{prefix}{suffix}");
+        if !used.contains_key(&candidate) {
+            used.insert(candidate.clone(), name.to_string());
+            return candidate;
+        }
+    }
+    base
+}
+
 fn column_value(df: &DataFrame, name: &str, idx: usize) -> String {
     match df.column(name) {
         Ok(series) => any_to_string(series.get(idx).unwrap_or(AnyValue::Null)),
@@ -169,6 +195,35 @@ pub fn build_suppqual(
         extra_cols.push(name);
     }
 
+    let mut extra_upper: BTreeMap<String, String> = BTreeMap::new();
+    let mut non_empty_upper = BTreeSet::new();
+    for name in &extra_cols {
+        extra_upper.insert(name.to_uppercase(), name.clone());
+        let upper = name.to_uppercase();
+        if let Ok(series) = source_df.column(name) {
+            for idx in 0..source_df.height() {
+                let value = any_to_string(series.get(idx).unwrap_or(AnyValue::Null));
+                if !value.trim().is_empty() {
+                    non_empty_upper.insert(upper.clone());
+                    break;
+                }
+            }
+        }
+    }
+    extra_cols = extra_cols
+        .into_iter()
+        .filter(|name| {
+            let upper = name.to_uppercase();
+            if upper.ends_with("CD") && upper.len() > 2 {
+                let base = &upper[..upper.len() - 2];
+                if extra_upper.contains_key(base) && non_empty_upper.contains(base) {
+                    return false;
+                }
+            }
+            true
+        })
+        .collect();
+
     if extra_cols.is_empty() {
         return Ok(None);
     }
@@ -199,7 +254,19 @@ pub fn build_suppqual(
         }
     };
 
+    let mut qnam_used: BTreeMap<String, String> = BTreeMap::new();
+    let mut qnam_map: BTreeMap<String, String> = BTreeMap::new();
     for col in &extra_cols {
+        let qnam = unique_qnam(col, &mut qnam_used);
+        qnam_map.insert(col.clone(), qnam);
+    }
+
+    let mut seen_keys: BTreeSet<String> = BTreeSet::new();
+    for col in &extra_cols {
+        let qnam = qnam_map
+            .get(col)
+            .cloned()
+            .unwrap_or_else(|| sanitize_qnam(col));
         for idx in 0..row_count {
             let raw_val = strip_wrapping_quotes(&column_value(source_df, col, idx));
             if raw_val.is_empty() {
@@ -236,6 +303,19 @@ pub fn build_suppqual(
                 String::new()
             };
 
+            let dedupe_key = format!(
+                "{}|{}|{}|{}|{}|{}",
+                study_value.trim(),
+                parent_domain_code,
+                final_usubjid.trim(),
+                idvar_value.trim(),
+                idvarval.trim(),
+                qnam
+            );
+            if !seen_keys.insert(dedupe_key) {
+                continue;
+            }
+
             push_value(
                 suppqual_cols.study_id.as_deref(),
                 if !study_value.is_empty() {
@@ -248,7 +328,7 @@ pub fn build_suppqual(
             push_value(suppqual_cols.usubjid.as_deref(), final_usubjid);
             push_value(suppqual_cols.idvar.as_deref(), idvar_value);
             push_value(suppqual_cols.idvarval.as_deref(), idvarval);
-            push_value(suppqual_cols.qnam.as_deref(), sanitize_qnam(col));
+            push_value(suppqual_cols.qnam.as_deref(), qnam.clone());
             push_value(suppqual_cols.qlabel.as_deref(), col.to_string());
             push_value(suppqual_cols.qval.as_deref(), raw_val);
             push_value(suppqual_cols.qorig.as_deref(), "CRF".to_string());

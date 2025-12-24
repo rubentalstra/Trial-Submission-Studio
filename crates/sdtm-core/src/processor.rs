@@ -78,7 +78,7 @@ pub fn process_domain_with_context(
     domain_processors::process_domain(domain, df, ctx)?;
     let columns = standard_columns(domain);
     if let (Some(seq_col), Some(usubjid_col)) = (infer_seq_column(domain), columns.usubjid) {
-        if needs_sequence_assignment(df, &seq_col)? {
+        if needs_sequence_assignment(df, &seq_col, &usubjid_col)? {
             assign_sequence(df, &seq_col, &usubjid_col)?;
         }
     }
@@ -139,38 +139,39 @@ fn assign_sequence(df: &mut DataFrame, seq_column: &str, group_column: &str) -> 
     Ok(())
 }
 
-fn needs_sequence_assignment(df: &DataFrame, seq_column: &str) -> Result<bool> {
+fn needs_sequence_assignment(df: &DataFrame, seq_column: &str, group_column: &str) -> Result<bool> {
     let series = match df.column(seq_column) {
         Ok(series) => series,
         Err(_) => return Ok(true),
     };
-    let mut unique = BTreeSet::new();
+    let group_series = match df.column(group_column) {
+        Ok(series) => series,
+        Err(_) => return Ok(true),
+    };
+    let mut groups: BTreeMap<String, BTreeSet<i64>> = BTreeMap::new();
     let mut has_value = false;
     for idx in 0..df.height() {
         let value = series.get(idx).unwrap_or(AnyValue::Null);
-        if let Some(parsed) = any_to_i64(value) {
+        let group = any_to_string(group_series.get(idx).unwrap_or(AnyValue::Null));
+        let group = group.trim().to_string();
+        if group.is_empty() {
+            continue;
+        }
+        let value_str = any_to_string(value);
+        let trimmed = value_str.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if let Ok(parsed) = trimmed.parse::<i64>() {
             has_value = true;
-            unique.insert(parsed);
+            let entry = groups.entry(group).or_default();
+            if entry.contains(&parsed) {
+                return Ok(true);
+            }
+            entry.insert(parsed);
+        } else {
+            return Ok(true);
         }
     }
-    Ok(!has_value || unique.len() <= 1)
-}
-
-fn any_to_i64(value: AnyValue) -> Option<i64> {
-    match value {
-        AnyValue::Null => None,
-        AnyValue::Int8(value) => Some(value as i64),
-        AnyValue::Int16(value) => Some(value as i64),
-        AnyValue::Int32(value) => Some(value as i64),
-        AnyValue::Int64(value) => Some(value),
-        AnyValue::UInt8(value) => Some(value as i64),
-        AnyValue::UInt16(value) => Some(value as i64),
-        AnyValue::UInt32(value) => Some(value as i64),
-        AnyValue::UInt64(value) => Some(value as i64),
-        AnyValue::Float32(value) => Some(value as i64),
-        AnyValue::Float64(value) => Some(value as i64),
-        AnyValue::String(value) => value.trim().parse::<i64>().ok(),
-        AnyValue::StringOwned(value) => value.trim().parse::<i64>().ok(),
-        _ => None,
-    }
+    Ok(!has_value)
 }

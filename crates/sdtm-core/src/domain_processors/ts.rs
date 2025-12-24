@@ -31,9 +31,7 @@ pub(super) fn process_ts(
             if let Some(ct) = ctx.resolve_ct(domain, "TSPARMCD") {
                 let mut values = string_column(df, &tsparmcd, Trim::Both)?;
                 for idx in 0..values.len() {
-                    let canonical = normalize_ct_value(ct, &values[idx]);
-                    let valid = ct.submission_values.iter().any(|val| val == &canonical);
-                    values[idx] = if valid { canonical } else { "".to_string() };
+                    values[idx] = normalize_ct_value_keep(ct, &values[idx]);
                 }
                 set_string_column(df, &tsparmcd, values)?;
             }
@@ -44,9 +42,7 @@ pub(super) fn process_ts(
             if let Some(ct) = ctx.resolve_ct(domain, "TSPARM") {
                 let mut values = string_column(df, &tsparm, Trim::Both)?;
                 for idx in 0..values.len() {
-                    let canonical = normalize_ct_value(ct, &values[idx]);
-                    let valid = ct.submission_values.iter().any(|val| val == &canonical);
-                    values[idx] = if valid { canonical } else { "".to_string() };
+                    values[idx] = normalize_ct_value_keep(ct, &values[idx]);
                 }
                 set_string_column(df, &tsparm, values)?;
             }
@@ -57,9 +53,7 @@ pub(super) fn process_ts(
             if let Some(ct) = ctx.resolve_ct(domain, "TSVCDREF") {
                 let mut values = string_column(df, &tsvcdref, Trim::Both)?;
                 for idx in 0..values.len() {
-                    let canonical = normalize_ct_value(ct, &values[idx]);
-                    let valid = ct.submission_values.iter().any(|val| val == &canonical);
-                    values[idx] = if valid { canonical } else { "".to_string() };
+                    values[idx] = normalize_ct_value_keep(ct, &values[idx]);
                 }
                 set_string_column(df, &tsvcdref, values)?;
             }

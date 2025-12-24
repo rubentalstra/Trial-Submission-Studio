@@ -69,15 +69,25 @@ pub(super) fn process_vs(
             set_string_column(df, &vsstresu, stresu)?;
         }
     }
+    if let (Some(vstest), Some(vstestcd)) = (col(domain, "VSTEST"), col(domain, "VSTESTCD")) {
+        if has_column(df, &vstest) && has_column(df, &vstestcd) {
+            let mut test_vals = string_column(df, &vstest, Trim::Both)?;
+            let testcd_vals = string_column(df, &vstestcd, Trim::Both)?;
+            for idx in 0..df.height() {
+                if test_vals[idx].is_empty() && !testcd_vals[idx].is_empty() {
+                    test_vals[idx] = testcd_vals[idx].clone();
+                }
+            }
+            set_string_column(df, &vstest, test_vals)?;
+        }
+    }
     if let Some(ct) = ctx.resolve_ct(domain, "VSORRESU") {
         for col_name in ["VSORRESU", "VSSTRESU"] {
             if let Some(name) = col(domain, col_name) {
                 if has_column(df, &name) {
                     let mut values = string_column(df, &name, Trim::Both)?;
                     for idx in 0..values.len() {
-                        let canonical = normalize_ct_value(ct, &values[idx]);
-                        let valid = ct.submission_values.iter().any(|val| val == &canonical);
-                        values[idx] = if valid { canonical } else { "".to_string() };
+                        values[idx] = normalize_ct_value_keep(ct, &values[idx]);
                     }
                     set_string_column(df, &name, values)?;
                 }
@@ -89,9 +99,7 @@ pub(super) fn process_vs(
             if has_column(df, &vstestcd) {
                 let mut values = string_column(df, &vstestcd, Trim::Both)?;
                 for idx in 0..values.len() {
-                    let canonical = normalize_ct_value(ct, &values[idx]);
-                    let valid = ct.submission_values.iter().any(|val| val == &canonical);
-                    values[idx] = if valid { canonical } else { "".to_string() };
+                    values[idx] = normalize_ct_value_keep(ct, &values[idx]);
                 }
                 set_string_column(df, &vstestcd, values)?;
             }
@@ -102,12 +110,54 @@ pub(super) fn process_vs(
             if has_column(df, &vstest) {
                 let mut values = string_column(df, &vstest, Trim::Both)?;
                 for idx in 0..values.len() {
-                    let canonical = normalize_ct_value(ct, &values[idx]);
-                    let valid = ct.submission_values.iter().any(|val| val == &canonical);
-                    values[idx] = if valid { canonical } else { "".to_string() };
+                    values[idx] = normalize_ct_value_keep(ct, &values[idx]);
                 }
                 set_string_column(df, &vstest, values)?;
             }
+        }
+    }
+    if let (Some(vstest), Some(vstestcd)) = (col(domain, "VSTEST"), col(domain, "VSTESTCD")) {
+        if has_column(df, &vstest) && has_column(df, &vstestcd) {
+            let test_vals = string_column(df, &vstest, Trim::Both)?;
+            let testcd_vals = string_column(df, &vstestcd, Trim::Both)?;
+            let orres_vals = col(domain, "VSORRES")
+                .filter(|name| has_column(df, name))
+                .map(|name| string_column(df, &name, Trim::Both).ok())
+                .flatten()
+                .unwrap_or_else(|| vec![String::new(); df.height()]);
+            let stresc_vals = col(domain, "VSSTRESC")
+                .filter(|name| has_column(df, name))
+                .map(|name| string_column(df, &name, Trim::Both).ok())
+                .flatten()
+                .unwrap_or_else(|| vec![String::new(); df.height()]);
+            let orresu_vals = col(domain, "VSORRESU")
+                .filter(|name| has_column(df, name))
+                .map(|name| string_column(df, &name, Trim::Both).ok())
+                .flatten()
+                .unwrap_or_else(|| vec![String::new(); df.height()]);
+            let stresu_vals = col(domain, "VSSTRESU")
+                .filter(|name| has_column(df, name))
+                .map(|name| string_column(df, &name, Trim::Both).ok())
+                .flatten()
+                .unwrap_or_else(|| vec![String::new(); df.height()]);
+            let pos_vals = col(domain, "VSPOS")
+                .filter(|name| has_column(df, name))
+                .map(|name| string_column(df, &name, Trim::Both).ok())
+                .flatten()
+                .unwrap_or_else(|| vec![String::new(); df.height()]);
+            let mut keep = vec![true; df.height()];
+            for idx in 0..df.height() {
+                let has_test = !test_vals[idx].is_empty() || !testcd_vals[idx].is_empty();
+                let has_result = !orres_vals[idx].is_empty()
+                    || !stresc_vals[idx].is_empty()
+                    || !orresu_vals[idx].is_empty()
+                    || !stresu_vals[idx].is_empty()
+                    || !pos_vals[idx].is_empty();
+                if !has_test && !has_result {
+                    keep[idx] = false;
+                }
+            }
+            filter_rows(df, &keep)?;
         }
     }
     if let (Some(vsorres), Some(vsstresn)) = (col(domain, "VSORRES"), col(domain, "VSSTRESN")) {

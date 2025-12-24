@@ -93,13 +93,7 @@ pub(super) fn process_ds(
                     dsterm_vals[idx] = dscat_vals[idx].clone();
                 }
             }
-            let mut dscat_new = dscat_vals.clone();
-            for idx in 0..df.height() {
-                if invalid[idx] {
-                    dscat_new[idx].clear();
-                }
-            }
-            set_string_column(df, &dscat, dscat_new)?;
+            set_string_column(df, &dscat, dscat_vals)?;
             set_string_column(df, &dsterm, dsterm_vals)?;
         }
     }

@@ -23,6 +23,18 @@ pub(super) fn process_lb(
             }
         }
     }
+    if let (Some(lborresu), Some(lbstresu)) = (col(domain, "LBORRESU"), col(domain, "LBSTRESU")) {
+        if has_column(df, &lborresu) && has_column(df, &lbstresu) {
+            let orresu_vals = string_column(df, &lborresu, Trim::Both)?;
+            let mut stresu_vals = string_column(df, &lbstresu, Trim::Both)?;
+            for idx in 0..df.height() {
+                if stresu_vals[idx].is_empty() && !orresu_vals[idx].is_empty() {
+                    stresu_vals[idx] = orresu_vals[idx].clone();
+                }
+            }
+            set_string_column(df, &lbstresu, stresu_vals)?;
+        }
+    }
     if let Some(lbtestcd) = col(domain, "LBTESTCD") {
         if has_column(df, &lbtestcd) {
             let mut values = string_column(df, &lbtestcd, Trim::Both)?
@@ -31,9 +43,7 @@ pub(super) fn process_lb(
                 .collect::<Vec<_>>();
             if let Some(ct) = ctx.resolve_ct(domain, "LBTESTCD") {
                 for idx in 0..values.len() {
-                    let canonical = normalize_ct_value(ct, &values[idx]);
-                    let valid = ct.submission_values.iter().any(|val| val == &canonical);
-                    values[idx] = if valid { canonical } else { "".to_string() };
+                    values[idx] = normalize_ct_value_keep(ct, &values[idx]);
                 }
             }
             set_string_column(df, &lbtestcd, values)?;
@@ -122,9 +132,7 @@ pub(super) fn process_lb(
                 if has_column(df, &name) {
                     let mut values = string_column(df, &name, Trim::Both)?;
                     for idx in 0..values.len() {
-                        let canonical = normalize_ct_value(ct, &values[idx]);
-                        let valid = ct.submission_values.iter().any(|val| val == &canonical);
-                        values[idx] = if valid { canonical } else { "".to_string() };
+                        values[idx] = normalize_ct_value_keep(ct, &values[idx]);
                     }
                     set_string_column(df, &name, values)?;
                 }
