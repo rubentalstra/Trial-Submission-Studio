@@ -169,6 +169,59 @@ pub(super) fn process_ae(
         }
     }
 
+    if let Some(aeacndev) = col(domain, "AEACNDEV") {
+        if has_column(df, &aeacndev) {
+            let ct_dev = ctx.resolve_ct(domain, "AEACNDEV");
+            let ct_acn = ctx.resolve_ct(domain, "AEACN");
+            let aeacn_col = col(domain, "AEACN").filter(|name| has_column(df, name));
+            let aeacnoth_col = col(domain, "AEACNOTH").filter(|name| has_column(df, name));
+            if ct_dev.is_some() {
+                let mut dev_vals = string_column(df, &aeacndev, Trim::Both)?;
+                let mut acn_vals = aeacn_col
+                    .as_ref()
+                    .map(|name| string_column(df, name, Trim::Both))
+                    .transpose()?
+                    .unwrap_or_else(|| vec![String::new(); df.height()]);
+                let mut oth_vals = aeacnoth_col
+                    .as_ref()
+                    .map(|name| string_column(df, name, Trim::Both))
+                    .transpose()?
+                    .unwrap_or_else(|| vec![String::new(); df.height()]);
+                for idx in 0..df.height() {
+                    if dev_vals[idx].trim().is_empty() {
+                        continue;
+                    }
+                    let dev_valid = ct_dev
+                        .and_then(|ct| resolve_ct_submission_value(ct, &dev_vals[idx]))
+                        .is_some();
+                    if dev_valid {
+                        continue;
+                    }
+                    let moved_to_acn = ct_acn
+                        .and_then(|ct| resolve_ct_submission_value(ct, &dev_vals[idx]))
+                        .map(|_| {
+                            if acn_vals[idx].trim().is_empty() {
+                                acn_vals[idx] = dev_vals[idx].clone();
+                            }
+                            true
+                        })
+                        .unwrap_or(false);
+                    if !moved_to_acn && oth_vals[idx].trim().is_empty() {
+                        oth_vals[idx] = dev_vals[idx].clone();
+                    }
+                    dev_vals[idx].clear();
+                }
+                set_string_column(df, &aeacndev, dev_vals)?;
+                if let Some(name) = aeacn_col {
+                    set_string_column(df, &name, acn_vals)?;
+                }
+                if let Some(name) = aeacnoth_col {
+                    set_string_column(df, &name, oth_vals)?;
+                }
+            }
+        }
+    }
+
     for visit_col in ["VISIT", "VISITNUM"] {
         if let Some(name) = col(domain, visit_col) {
             if has_column(df, &name) {

@@ -6,6 +6,71 @@ use crate::processing_context::ProcessingContext;
 
 use super::common::*;
 
+fn split_codelist_codes(raw: &str) -> Vec<String> {
+    let text = raw.trim();
+    if text.is_empty() {
+        return Vec::new();
+    }
+    for sep in [';', ',', ' '] {
+        if text.contains(sep) {
+            return text
+                .split(sep)
+                .map(|part| part.trim().to_string())
+                .filter(|part| !part.is_empty())
+                .collect();
+        }
+    }
+    vec![text.to_string()]
+}
+
+fn dsdecod_codelists(domain: &Domain) -> Vec<String> {
+    domain
+        .variables
+        .iter()
+        .find(|var| var.name.eq_ignore_ascii_case("DSDECOD"))
+        .and_then(|var| var.codelist_code.as_ref())
+        .map(|raw| split_codelist_codes(raw))
+        .unwrap_or_default()
+}
+
+fn resolve_dsdecod_codelist<'a>(
+    ctx: &'a ProcessingContext<'a>,
+    codes: &[String],
+    value: &str,
+) -> Option<&'a sdtm_model::ControlledTerminology> {
+    let registry = ctx.ct_registry?;
+    for code in codes {
+        if let Some(ct) = registry.by_code.get(&code.to_uppercase()) {
+            if resolve_ct_submission_value(ct, value).is_some() {
+                return Some(ct);
+            }
+        }
+    }
+    None
+}
+
+fn dscat_value_for_codelist(
+    dscat_ct: &sdtm_model::ControlledTerminology,
+    dsdecod_ct: &sdtm_model::ControlledTerminology,
+) -> Option<String> {
+    let name_upper = dsdecod_ct.codelist_name.to_uppercase();
+    let hint = if name_upper.contains("MILESTONE") {
+        "PROTOCOL MILESTONE"
+    } else if name_upper.contains("OTHER") {
+        "OTHER EVENT"
+    } else {
+        "DISPOSITION EVENT"
+    };
+    resolve_ct_submission_value(dscat_ct, hint).or_else(|| {
+        let upper = hint.to_uppercase();
+        dscat_ct
+            .submission_values
+            .iter()
+            .find(|val| val.to_uppercase() == upper)
+            .cloned()
+    })
+}
+
 pub(super) fn process_ds(
     domain: &Domain,
     df: &mut DataFrame,
@@ -193,6 +258,30 @@ pub(super) fn process_ds(
                     }
                 }
                 set_string_column(df, &dsdecod, decod_vals)?;
+            }
+        }
+    }
+    if let (Some(dsdecod), Some(dscat)) = (col(domain, "DSDECOD"), col(domain, "DSCAT")) {
+        if has_column(df, &dsdecod) && has_column(df, &dscat) {
+            let codes = dsdecod_codelists(domain);
+            let decod_vals = string_column(df, &dsdecod, Trim::Both)?;
+            let mut dscat_vals = string_column(df, &dscat, Trim::Both)?;
+            if let (Some(dscat_ct), Some(_)) = (ctx.resolve_ct(domain, "DSCAT"), ctx.ct_registry) {
+                for idx in 0..df.height() {
+                    if !dscat_vals[idx].trim().is_empty() {
+                        continue;
+                    }
+                    let decod = decod_vals[idx].trim();
+                    if decod.is_empty() {
+                        continue;
+                    }
+                    if let Some(dsdecod_ct) = resolve_dsdecod_codelist(ctx, &codes, decod) {
+                        if let Some(value) = dscat_value_for_codelist(dscat_ct, dsdecod_ct) {
+                            dscat_vals[idx] = value;
+                        }
+                    }
+                }
+                set_string_column(df, &dscat, dscat_vals)?;
             }
         }
     }

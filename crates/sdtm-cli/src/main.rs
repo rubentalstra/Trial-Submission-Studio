@@ -1023,9 +1023,11 @@ fn fill_missing_test_fields(
     } else if code == "DA" {
         let ctdatest = ctx.resolve_ct(domain, "DATEST");
         let ctdatestcd = ctx.resolve_ct(domain, "DATESTCD");
+        let ct_units = ctx.resolve_ct(domain, "DAORRESU");
         let datest_extensible = ctdatest.map(|ct| ct.extensible).unwrap_or(false);
         let datestcd_extensible = ctdatestcd.map(|ct| ct.extensible).unwrap_or(false);
-        let mut candidates: Vec<(Option<String>, Option<String>, Vec<String>)> = Vec::new();
+        let mut candidates: Vec<(Option<String>, Option<String>, Option<String>, Vec<String>)> =
+            Vec::new();
         for header in &table.headers {
             let upper = header.to_uppercase();
             if let Some(prefix) = upper.strip_suffix("_DAORRES") {
@@ -1062,7 +1064,15 @@ fn fill_missing_test_fields(
                         let raw = label.clone().unwrap_or_else(|| prefix.to_string());
                         test_code = Some(sanitize_vstestcd(&raw));
                     }
-                    candidates.push((test_name, test_code, values));
+                    let unit = ct_units
+                        .and_then(|ct| resolve_ct_value_from_hint(ct, &hint))
+                        .or_else(|| {
+                            label.as_deref().and_then(|text| {
+                                ct_units.and_then(|ct| resolve_ct_value_from_hint(ct, text))
+                            })
+                        })
+                        .or_else(|| ct_units.and_then(|ct| resolve_ct_value_from_hint(ct, prefix)));
+                    candidates.push((test_name, test_code, unit, values));
                 }
             }
         }
@@ -1088,14 +1098,30 @@ fn fill_missing_test_fields(
             } else {
                 vec![String::new(); df.height()]
             };
+            let mut daorresu_vals = if let Ok(series) = df.column("DAORRESU") {
+                (0..df.height())
+                    .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
+                    .collect::<Vec<_>>()
+            } else {
+                vec![String::new(); df.height()]
+            };
+            let mut dastresu_vals = if let Ok(series) = df.column("DASTRESU") {
+                (0..df.height())
+                    .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
+                    .collect::<Vec<_>>()
+            } else {
+                vec![String::new(); df.height()]
+            };
             for idx in 0..df.height() {
                 let needs_orres = daorres_vals[idx].trim().is_empty();
                 let needs_test = datest_vals[idx].trim().is_empty();
                 let needs_testcd = datestcd_vals[idx].trim().is_empty();
-                if !needs_orres && !needs_test && !needs_testcd {
+                let needs_orresu = daorresu_vals[idx].trim().is_empty();
+                let needs_stresu = dastresu_vals[idx].trim().is_empty();
+                if !needs_orres && !needs_test && !needs_testcd && !needs_orresu && !needs_stresu {
                     continue;
                 }
-                for (test_name, test_code, values) in &candidates {
+                for (test_name, test_code, unit, values) in &candidates {
                     let value = values.get(idx).map(|v| v.trim()).unwrap_or("");
                     if value.is_empty() {
                         continue;
@@ -1119,12 +1145,24 @@ fn fill_missing_test_fields(
                             datestcd_vals[idx] = code.clone();
                         }
                     }
+                    if needs_orresu {
+                        if let Some(unit) = unit {
+                            daorresu_vals[idx] = unit.clone();
+                        }
+                    }
+                    if needs_stresu {
+                        if let Some(unit) = unit {
+                            dastresu_vals[idx] = unit.clone();
+                        }
+                    }
                     break;
                 }
             }
             df.with_column(Series::new("DAORRES".into(), daorres_vals))?;
             df.with_column(Series::new("DATEST".into(), datest_vals))?;
             df.with_column(Series::new("DATESTCD".into(), datestcd_vals))?;
+            df.with_column(Series::new("DAORRESU".into(), daorresu_vals))?;
+            df.with_column(Series::new("DASTRESU".into(), dastresu_vals))?;
         }
     } else if code == "IE" {
         let mut candidates: Vec<(String, Vec<String>, String)> = Vec::new();

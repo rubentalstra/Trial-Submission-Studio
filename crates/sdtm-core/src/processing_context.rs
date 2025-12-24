@@ -36,12 +36,31 @@ impl<'a> ProcessingContext<'a> {
             .find(|var| var.name.eq_ignore_ascii_case(variable))
             .and_then(|var| var.codelist_code.as_ref());
         if let Some(code) = code {
-            let code_key = code.to_uppercase();
-            if let Some(ct) = registry.by_code.get(&code_key) {
-                return Some(ct);
+            for entry in split_codelist_codes(code) {
+                let code_key = entry.to_uppercase();
+                if let Some(ct) = registry.by_code.get(&code_key) {
+                    return Some(ct);
+                }
             }
         }
         let name_key = variable.to_uppercase();
         registry.by_name.get(&name_key)
     }
+}
+
+fn split_codelist_codes(raw: &str) -> Vec<String> {
+    let text = raw.trim();
+    if text.is_empty() {
+        return Vec::new();
+    }
+    for sep in [';', ',', ' '] {
+        if text.contains(sep) {
+            return text
+                .split(sep)
+                .map(|part| part.trim().to_string())
+                .filter(|part| !part.is_empty())
+                .collect();
+        }
+    }
+    vec![text.to_string()]
 }
