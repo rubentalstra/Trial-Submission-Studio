@@ -440,6 +440,7 @@ dependencies = [
  "sdtm-validate",
  "serde",
  "serde_json",
+ "toml",
  "tracing",
  "tracing-subscriber",
 ]

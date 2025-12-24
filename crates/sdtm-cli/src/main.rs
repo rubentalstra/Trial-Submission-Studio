@@ -92,6 +92,26 @@ enum RunCommand {
         #[arg(long, value_name = "PATH")]
         input_dir: PathBuf,
 
+        /// Optional per-study config TOML that can explicitly map files to domains.
+        /// This is the preferred (deterministic) domain identification strategy.
+        ///
+        /// Example:
+        ///
+        /// [domains]
+        /// "DEMO_GDISC_20240903_072908_DS_EOT.csv" = "DS"
+        #[arg(long, value_name = "PATH")]
+        config: Option<PathBuf>,
+
+        /// Minimum number of known SDTM variables that must match headers for header-based inference.
+        /// If the best-scoring domain has fewer matches, the file is treated as non-domain and skipped.
+        #[arg(long, default_value_t = 1)]
+        min_known_hits: usize,
+
+        /// Minimum number of required variables that must match headers for header-based inference.
+        /// If the best-scoring domain has fewer matches, the file is treated as non-domain and skipped.
+        #[arg(long, default_value_t = 0)]
+        min_required_hits: usize,
+
         /// Write machine-readable JSON report to this path. Use '-' for stdout.
         #[arg(long, value_name = "PATH")]
         json: Option<String>,
@@ -132,6 +152,12 @@ struct StudyReport {
     skipped: Vec<StudySkippedFileReport>,
     total_errors: usize,
     total_warnings: usize,
+}
+
+#[derive(Debug, Default, serde::Deserialize)]
+struct StudyConfig {
+    #[serde(default)]
+    domains: std::collections::BTreeMap<String, String>,
 }
 
 #[derive(Debug, Clone)]
@@ -175,10 +201,54 @@ fn csv_headers_upper(path: &std::path::Path) -> anyhow::Result<std::collections:
     Ok(out)
 }
 
+fn load_study_config(path: &std::path::Path) -> anyhow::Result<StudyConfig> {
+    let raw = std::fs::read_to_string(path)?;
+    let cfg: StudyConfig = toml::from_str(&raw)?;
+    Ok(cfg)
+}
+
+fn config_domain_for_file(
+    cfg: Option<&StudyConfig>,
+    input_dir: &std::path::Path,
+    path: &std::path::Path,
+) -> Option<String> {
+    let cfg = cfg?;
+
+    let rel = stable_source_id(input_dir, path);
+    let file_name = path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+    let stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
+
+    // Deterministic lookup order.
+    for key in [rel.as_str(), file_name, stem] {
+        if let Some(v) = cfg.domains.get(key) {
+            return Some(v.trim().to_ascii_uppercase());
+        }
+    }
+
+    None
+}
+
 fn infer_domain_for_file(
     registry: &StandardsRegistry,
+    cfg: Option<&StudyConfig>,
+    input_dir: &std::path::Path,
+    min_known_hits: usize,
+    min_required_hits: usize,
     path: &std::path::Path,
 ) -> anyhow::Result<DomainInference> {
+    // 0) Explicit config override.
+    if let Some(domain) = config_domain_for_file(cfg, input_dir, path) {
+        if !registry.datasets_by_domain.contains_key(&domain) {
+            return Err(anyhow::anyhow!(
+                "config mapped file to unknown SDTM domain '{domain}'"
+            ));
+        }
+        return Ok(DomainInference {
+            domain,
+            reason: "explicit config mapping".to_string(),
+        });
+    }
+
     // 1) Filename-based inference.
     let domains: Vec<String> = registry.datasets_by_domain.keys().cloned().collect();
 
@@ -244,9 +314,9 @@ fn infer_domain_for_file(
         ));
     };
 
-    if known_hits == 0 {
+    if known_hits < min_known_hits || required_hits < min_required_hits {
         return Err(anyhow::anyhow!(
-            "could not infer domain from filename or headers (no known variables matched)"
+            "could not infer domain from filename or headers (best header match below threshold: required_hits={required_hits} (min={min_required_hits}), known_hits={known_hits} (min={min_known_hits}))"
         ));
     }
 
@@ -414,10 +484,21 @@ fn main() -> anyhow::Result<()> {
                 Ok(())
             }
 
-            RunCommand::Study { input_dir, json } => {
+            RunCommand::Study {
+                input_dir,
+                config,
+                min_known_hits,
+                min_required_hits,
+                json,
+            } => {
                 let (registry, _summary) =
                     sdtm_standards::StandardsRegistry::verify_and_load(&cli.standards_dir)
                         .map_err(|e| anyhow::anyhow!(e))?;
+
+                let study_config = match config.as_ref() {
+                    Some(p) => Some(load_study_config(p)?),
+                    None => None,
+                };
 
                 let files = list_csv_files(&input_dir)?;
                 if files.is_empty() {
@@ -438,7 +519,14 @@ fn main() -> anyhow::Result<()> {
                 };
 
                 for path in files {
-                    let inference = match infer_domain_for_file(&registry, &path) {
+                    let inference = match infer_domain_for_file(
+                        &registry,
+                        study_config.as_ref(),
+                        &input_dir,
+                        min_known_hits,
+                        min_required_hits,
+                        &path,
+                    ) {
                         Ok(v) => v,
                         Err(e) => {
                             let reason = e.to_string();
