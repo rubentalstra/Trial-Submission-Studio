@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use anyhow::{Result, anyhow};
 use polars::prelude::{AnyValue, DataFrame, NamedFrom, Series};
 
-use sdtm_model::Domain;
+use sdtm_model::{ControlledTerminology, Domain, VariableType};
 
 use crate::domain_processors;
 use crate::domain_utils::{infer_seq_column, standard_columns};
@@ -23,6 +23,64 @@ fn sanitize_identifier(raw: &str) -> String {
         return trimmed.to_string();
     }
     trimmed.chars().filter(|ch| *ch != '"').collect()
+}
+
+fn normalize_ct_value_keep(ct: &ControlledTerminology, raw: &str) -> String {
+    let text = raw.trim();
+    if text.is_empty() {
+        return String::new();
+    }
+    let key = text.to_uppercase();
+    let canonical = ct
+        .synonyms
+        .get(&key)
+        .cloned()
+        .unwrap_or_else(|| text.to_string());
+    if ct.submission_values.iter().any(|val| val == &canonical) {
+        canonical
+    } else {
+        text.to_string()
+    }
+}
+
+fn normalize_ct_columns(
+    domain: &Domain,
+    df: &mut DataFrame,
+    ctx: &ProcessingContext,
+) -> Result<()> {
+    if ctx.ct_registry.is_none() {
+        return Ok(());
+    }
+    for variable in &domain.variables {
+        if !matches!(variable.data_type, VariableType::Char) {
+            continue;
+        }
+        let Some(ct) = ctx.resolve_ct(domain, &variable.name) else {
+            continue;
+        };
+        let Ok(series) = df.column(variable.name.as_str()) else {
+            continue;
+        };
+        let mut values = Vec::with_capacity(df.height());
+        let mut changed = false;
+        for idx in 0..df.height() {
+            let raw = any_to_string(series.get(idx).unwrap_or(AnyValue::Null));
+            if raw.trim().is_empty() {
+                values.push(raw);
+                continue;
+            }
+            let normalized = normalize_ct_value_keep(ct, &raw);
+            if normalized != raw {
+                changed = true;
+            }
+            values.push(normalized);
+        }
+        if changed {
+            let new_series = Series::new(variable.name.as_str().into(), values);
+            df.with_column(new_series)?;
+        }
+    }
+    Ok(())
 }
 
 pub fn apply_base_rules(domain: &Domain, df: &mut DataFrame, study_id: &str) -> Result<()> {
@@ -76,6 +134,7 @@ pub fn process_domain_with_context(
 ) -> Result<()> {
     apply_base_rules(domain, df, ctx.study_id)?;
     domain_processors::process_domain(domain, df, ctx)?;
+    normalize_ct_columns(domain, df, ctx)?;
     let columns = standard_columns(domain);
     if let (Some(seq_col), Some(usubjid_col)) = (infer_seq_column(domain), columns.usubjid) {
         if needs_sequence_assignment(df, &seq_col, &usubjid_col)? {

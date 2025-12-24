@@ -772,8 +772,107 @@ fn resolve_ct_value_from_hint(ct: &ControlledTerminology, hint: &str) -> Option<
     if matches.len() == 1 {
         Some(matches.remove(0))
     } else {
-        None
+        let mut best_dist = usize::MAX;
+        let mut best_val: Option<String> = None;
+        let mut best_count = 0usize;
+        for submission in &ct.submission_values {
+            let dist = edit_distance(&hint_compact, &compact_key(submission));
+            if dist < best_dist {
+                best_dist = dist;
+                best_val = Some(submission.clone());
+                best_count = 1;
+            } else if dist == best_dist {
+                best_count += 1;
+            }
+        }
+        if best_dist <= 1 && best_count == 1 {
+            best_val
+        } else {
+            None
+        }
     }
+}
+
+fn edit_distance(a: &str, b: &str) -> usize {
+    if a == b {
+        return 0;
+    }
+    let a_len = a.len();
+    let b_len = b.len();
+    if a_len == 0 {
+        return b_len;
+    }
+    if b_len == 0 {
+        return a_len;
+    }
+    let mut prev: Vec<usize> = (0..=b_len).collect();
+    let mut curr = vec![0usize; b_len + 1];
+    for (i, a_ch) in a.chars().enumerate() {
+        curr[0] = i + 1;
+        for (j, b_ch) in b.chars().enumerate() {
+            let cost = if a_ch == b_ch { 0 } else { 1 };
+            let insert = curr[j] + 1;
+            let delete = prev[j + 1] + 1;
+            let replace = prev[j] + cost;
+            curr[j + 1] = insert.min(delete).min(replace);
+        }
+        prev.clone_from_slice(&curr);
+    }
+    prev[b_len]
+}
+
+fn ct_column_match(
+    table: &sdtm_ingest::CsvTable,
+    domain: &Domain,
+    ct: &ControlledTerminology,
+) -> Option<(String, Vec<Option<String>>, Vec<String>)> {
+    let mut standard_vars = BTreeSet::new();
+    for variable in &domain.variables {
+        standard_vars.insert(variable.name.to_uppercase());
+    }
+    let mut best: Option<(String, Vec<Option<String>>, Vec<String>, f64, usize)> = None;
+    for header in &table.headers {
+        if standard_vars.contains(&header.to_uppercase()) {
+            continue;
+        }
+        let Some(values) = table_column_values(table, header) else {
+            continue;
+        };
+        let mut mapped = Vec::with_capacity(values.len());
+        let mut matches = 0usize;
+        let mut non_empty = 0usize;
+        for value in &values {
+            let trimmed = value.trim();
+            if trimmed.is_empty() {
+                mapped.push(None);
+                continue;
+            }
+            non_empty += 1;
+            if let Some(ct_value) = resolve_ct_submission_value(ct, trimmed) {
+                matches += 1;
+                mapped.push(Some(ct_value));
+            } else {
+                mapped.push(None);
+            }
+        }
+        if non_empty == 0 || matches == 0 {
+            continue;
+        }
+        let ratio = matches as f64 / non_empty as f64;
+        if ratio < 0.6 {
+            continue;
+        }
+        let replace = match &best {
+            Some((_, _, _, best_ratio, best_matches)) => {
+                ratio > *best_ratio || (ratio == *best_ratio && matches > *best_matches)
+            }
+            None => true,
+        };
+        if replace {
+            best = Some((header.clone(), mapped, values, ratio, matches));
+        }
+    }
+    best.map(|(header, mapped, values, _ratio, _matches)| (header, mapped, values))
 }
 
 fn resolve_ct_for_variable(
@@ -833,7 +932,40 @@ fn fill_missing_test_fields(
             fill_string_column(df, "PETEST", &label)?;
             fill_string_column(df, "PETESTCD", &test_code)?;
         }
+    } else if code == "DS" {
+        if let Some(ct) = ctx.resolve_ct(domain, "DSDECOD") {
+            if let Some((_header, mapped, raw)) = ct_column_match(table, domain, ct) {
+                let mut decod_vals = if let Ok(series) = df.column("DSDECOD") {
+                    (0..df.height())
+                        .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
+                        .collect::<Vec<_>>()
+                } else {
+                    vec![String::new(); df.height()]
+                };
+                let mut term_vals = if let Ok(series) = df.column("DSTERM") {
+                    (0..df.height())
+                        .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
+                        .collect::<Vec<_>>()
+                } else {
+                    vec![String::new(); df.height()]
+                };
+                for idx in 0..df.height().min(mapped.len()).min(raw.len()) {
+                    if decod_vals[idx].trim().is_empty() {
+                        if let Some(ct_value) = &mapped[idx] {
+                            decod_vals[idx] = ct_value.clone();
+                        }
+                    }
+                    if term_vals[idx].trim().is_empty() && !raw[idx].trim().is_empty() {
+                        term_vals[idx] = raw[idx].trim().to_string();
+                    }
+                }
+                df.with_column(Series::new("DSDECOD".into(), decod_vals))?;
+                df.with_column(Series::new("DSTERM".into(), term_vals))?;
+            }
+        }
     } else if code == "DA" {
+        let ctdatest = ctx.resolve_ct(domain, "DATEST");
+        let ctdatestcd = ctx.resolve_ct(domain, "DATESTCD");
         let mut candidates: Vec<(Option<String>, Option<String>, Vec<String>)> = Vec::new();
         for header in &table.headers {
             let upper = header.to_uppercase();
@@ -841,11 +973,19 @@ fn fill_missing_test_fields(
                 if let Some(values) = table_column_values(table, header) {
                     let label = table_label(table, header);
                     let hint = label.clone().unwrap_or_else(|| prefix.to_string());
-                    let allow_raw = label.is_some();
-                    let test_name =
-                        resolve_ct_for_variable(ctx, domain, "DATEST", &hint, allow_raw);
-                    let test_code = resolve_ct_for_variable(ctx, domain, "DATESTCD", &hint, false)
-                        .or_else(|| allow_raw.then(|| sanitize_vstestcd(&hint)));
+                    let test_code = ctdatestcd
+                        .and_then(|ct| resolve_ct_value_from_hint(ct, &hint))
+                        .or_else(|| {
+                            ctdatestcd.and_then(|ct| resolve_ct_value_from_hint(ct, prefix))
+                        });
+                    let mut test_name = ctdatest
+                        .and_then(|ct| resolve_ct_value_from_hint(ct, &hint))
+                        .or_else(|| ctdatest.and_then(|ct| resolve_ct_value_from_hint(ct, prefix)));
+                    if test_name.is_none() {
+                        if let (Some(ct), Some(code)) = (ctdatestcd, test_code.as_ref()) {
+                            test_name = ct.preferred_terms.get(code).cloned();
+                        }
+                    }
                     candidates.push((test_name, test_code, values));
                 }
             }
