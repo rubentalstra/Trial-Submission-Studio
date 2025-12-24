@@ -1,0 +1,32 @@
+[workspace]
+members = [
+    "crates/sdtm-cli",
+    "crates/sdtm-core",
+    "crates/sdtm-report",
+    "crates/sdtm-standards",
+    "crates/sdtm-validate",
+]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.92"
+
+[workspace.dependencies]
+anyhow = "1.0.100"
+clap = { version = "4.5.53", features = ["derive"] }
+csv = "1.4.0"
+figment = { version = "0.10.19", features = ["env", "toml"] }
+hex = "0.4.3"
+insta = { version = "1.45.0", features = ["json"] }
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.147"
+sha2 = "0.10.9"
+thiserror = "2.0.17"
+toml = "0.9.8"
+tracing = "0.1.44"
+tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
+
+[profile.dev]
+debug = 1

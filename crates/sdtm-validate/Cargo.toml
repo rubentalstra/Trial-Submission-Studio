@@ -1,0 +1,9 @@
+[package]
+name = "sdtm-validate"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+sdtm-core = { path = "../sdtm-core" }
+thiserror.workspace = true
