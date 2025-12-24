@@ -1,11 +1,13 @@
 # standards/
 
-This folder contains **offline, version-pinned** standards assets used by the Rust SDTM transpiler.
+This folder contains **offline, version-pinned** standards assets used by the
+Rust SDTM transpiler.
 
 ## Key properties
 
 - No runtime downloads or web fetching.
-- All files are addressed through [manifest.toml](manifest.toml) and verified via `sdtm standards verify`.
+- All files are addressed through [manifest.toml](manifest.toml) and verified
+  via `sdtm standards verify`.
 - Checksums are **SHA-256 over raw bytes** as stored in git.
 
 ## Layout

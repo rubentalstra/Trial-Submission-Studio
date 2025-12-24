@@ -1,0 +1,101 @@
+---
+source: crates/sdtm-standards/tests/doctor_snapshot.rs
+expression: "serde_json::to_value(report).unwrap()"
+---
+{
+  "conflicts": [
+    {
+      "domain": "DM",
+      "field": "structure",
+      "kind": "dataset",
+      "sdtm": null,
+      "sdtmig": "One record per subject",
+      "var": null
+    },
+    {
+      "domain": "DM",
+      "field": "required",
+      "kind": "variable",
+      "sdtm": null,
+      "sdtmig": "true",
+      "var": "STUDYID"
+    }
+  ],
+  "counts": {
+    "ct_codelists": 1,
+    "files": 8,
+    "sdtm_domains": 1,
+    "sdtm_variables": 1,
+    "sdtmig_domains": 1,
+    "sdtmig_variables": 1
+  },
+  "files": [
+    {
+      "kind": "toml",
+      "notes": null,
+      "path": "conformance_rules/v2_0/catalog.toml",
+      "role": "conformance_rules_catalog",
+      "sha256": "44be499b0cc296762dd93e2de6b2572096c1dedb4056be0af3fe898d9b83c0b7"
+    },
+    {
+      "kind": "csv",
+      "notes": null,
+      "path": "ct/2024-03-29/SDTM_CT_2024-03-29.csv",
+      "role": "ct_sdtm",
+      "sha256": "c17e3ab174ca0d1b90f2709da12e8f92eb182a4ee81ec01b217746503dd4b5ff"
+    },
+    {
+      "kind": "csv",
+      "notes": null,
+      "path": "sdtm/v2_0/Datasets.csv",
+      "role": "sdtm_datasets",
+      "sha256": "ee651fc25d5fe8b3ece22b676498c4caa50268a3dfe838b831e79c028f138585"
+    },
+    {
+      "kind": "csv",
+      "notes": null,
+      "path": "sdtm/v2_0/Variables.csv",
+      "role": "sdtm_variables",
+      "sha256": "5e899c06c32eccab9a22a760a3ea0d181deee19ed377c7ee0199cbf5018b96a3"
+    },
+    {
+      "kind": "csv",
+      "notes": null,
+      "path": "sdtmig/v3_4/Datasets.csv",
+      "role": "sdtmig_datasets",
+      "sha256": "27ea1c399a0c98bded45d2b6e0d4e093bd84f8565d437ee80a178012fb47236e"
+    },
+    {
+      "kind": "csv",
+      "notes": null,
+      "path": "sdtmig/v3_4/Variables.csv",
+      "role": "sdtmig_variables",
+      "sha256": "3bea05de11b4b9b59b9d62e85ea363677218bb603b7da7ed4679928f19cafce2"
+    },
+    {
+      "kind": "xsl",
+      "notes": null,
+      "path": "xsl/define2-0-0.xsl",
+      "role": "define_xsl_2_0",
+      "sha256": "41eabf600073e249171110b1c7cdf4fa7190a5426f73e9ba703bcc3c7a02da7a"
+    },
+    {
+      "kind": "xsl",
+      "notes": null,
+      "path": "xsl/define2-1.xsl",
+      "role": "define_xsl_2_1",
+      "sha256": "41eabf600073e249171110b1c7cdf4fa7190a5426f73e9ba703bcc3c7a02da7a"
+    }
+  ],
+  "pins": {
+    "conformance_rules": "v2_0",
+    "ct": "2024-03-29",
+    "sdtm": "v2_0",
+    "sdtmig": "v3_4"
+  },
+  "policy": {
+    "precedence": "sdtm_then_sdtmig"
+  },
+  "schema": "cdisc-transpiler.standards-doctor",
+  "schema_version": 1
+}
