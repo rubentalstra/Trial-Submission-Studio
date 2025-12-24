@@ -3,3 +3,8 @@ name = "sdtm-map"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+
+[dependencies]
+rapidfuzz = "0.5.0"
+serde.workspace = true
+sdtm-model = { path = "../sdtm-model" }

@@ -135,16 +135,16 @@ Exit criteria:
 
 Goal: map source columns to SDTM variables deterministically.
 
-- [ ] Implement alias pattern builder
-- [ ] Port fuzzy matching and scoring rules
-- [ ] Apply hint adjustments (numeric mismatch, SEQ uniqueness, null ratio)
-- [ ] Build mapping suggestions and a stable mapping config
-- [ ] Unit test mapping parity vs Python behavior
+- [x] Implement alias pattern builder
+- [x] Port fuzzy matching and scoring rules
+- [x] Apply hint adjustments (numeric mismatch, SEQ uniqueness, null ratio)
+- [x] Build mapping suggestions and a stable mapping config
+- [x] Unit test mapping parity vs Python behavior
 
 Exit criteria:
 
-- [ ] Mapping is deterministic given the same inputs
-- [ ] Minimum confidence handling matches v1 defaults
+- [x] Mapping is deterministic given the same inputs
+- [x] Minimum confidence handling matches v1 defaults
 
 ## Phase 7 - Domain Processing (sdtm-core)
 
