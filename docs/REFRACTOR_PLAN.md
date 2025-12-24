@@ -46,7 +46,7 @@ supersede. Key behaviors and expectations:
   - XPT (SAS V5) with column ordering and types
   - Dataset-XML v1.0
   - Define-XML v2.1 (uses gathered dataset metadata)
-  - SAS program files
+  - SAS program files (deferred in Rust v1)
   - Output layout: `output/xpt`, `output/dataset-xml`, `output/sas`
   - Conformance report JSON in output dir
 - Summary output:
@@ -131,7 +131,7 @@ Compatibility choices:
   - Streaming mode for large datasets
 - Define-XML v2.1:
   - Derived from domain dataframes and spec metadata
-- SAS scripts:
+- SAS scripts (deferred in Rust v1):
   - Deterministic mapping scripts with provenance annotations
 
 ## Testing Strategy
@@ -174,7 +174,7 @@ Phase 3 - Domain Processing
 Phase 4 - Validation and Outputs
 
 - Conformance checks, CT validation
-- XPT, Dataset-XML, Define-XML, SAS generation
+- XPT, Dataset-XML, Define-XML generation (SAS deferred in v1)
 - Conformance report JSON
 
 Phase 5 - Parity and Hardening

@@ -23,17 +23,23 @@ Complete phases in order; each phase unlocks the next.
 
 Goal: lock the v1 surface area and inputs so implementation is deterministic.
 
-- [ ] Confirm v1 outputs: XPT, Dataset-XML, Define-XML, SAS
-- [ ] Confirm v1 CLI flags: `--output-dir`, `--format`, `-v`
-- [ ] Confirm no config file in v1; defaults are compiled
-- [ ] Verify standards sources under `standards/` (`ct`, `sdtm`, `sdtmig`,
-      `p21`, `xsl`)
-- [ ] Define compiled defaults (min confidence, chunk size, default date)
+- [x] v1 outputs: XPT + Dataset-XML + Define-XML; SAS scripts deferred (no CLI flag)
+- [x] v1 CLI flags: `--output-dir`, `--format`, `-v`
+- [x] No config file in v1; defaults are compiled
+- [x] Standards sources under `standards/` (ct, sdtm, sdtmig, p21, xsl)
+- [x] Compiled defaults:
+  - output_format = both
+  - min_confidence = 0.5
+  - chunk_size = 1000
+  - sdtm_version = 2.0
+  - sdtmig_version = 3.4
+  - dataset_xml_version = 1.0
+  - define_xml_version = 2.1
 
 Exit criteria:
 
-- [ ] v1 scope is documented and agreed
-- [ ] Defaults are enumerated in this file
+- [x] v1 scope is documented and agreed
+- [x] Defaults are enumerated in this file
 
 ## Phase 1 - Workspace and Crate Skeletons
 

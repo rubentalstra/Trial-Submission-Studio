@@ -1,8 +1,8 @@
 # CDISC Transpiler (Rust)
 
 A Rust-first CLI tool for transpiling clinical trial source data into CDISC
-SDTM outputs (XPT, Dataset-XML, Define-XML, and SAS scripts) with strict,
-offline validation.
+SDTM outputs (XPT, Dataset-XML, Define-XML; SAS scripts deferred in v1) with
+strict, offline validation.
 
 ## Status
 
@@ -16,7 +16,7 @@ offline validation.
 - Fully offline operation with committed standards and CT
 - Deterministic, auditable output generation
 - Validation-first pipeline with conformance gating
-- Outputs: XPT (SAS V5), Dataset-XML 1.0, Define-XML 2.1, optional SAS programs
+- Outputs: XPT (SAS V5), Dataset-XML 1.0, Define-XML 2.1, SAS deferred in v1
 
 ## Rust CLI (Planned Interface)
 
