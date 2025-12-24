@@ -155,13 +155,13 @@ supporting domains from available source data.
 
 - [x] Implement domain frame builder (polars DataFrame, basic types)
 - [x] Implement base processor behaviors (USUBJID study prefix)
-- [ ] Port domain processors in priority order (DM, AE, CM, DS, EX, LB, MH, PR,
-      QS, SE, TA, TE, TS, VS, DA, IE, PE)
+- [ ] Port domain processors in alphabetical order (AE, CM, DA, DM, DS, EX, IE, LB,
+      MH, PE, PR, QS, SE, TA, TE, TS, VS)
 - [x] Generate SUPPQUAL from source-mapped data (all domains, including LB)
 - [x] Use SUPPQUAL column order from `standards/sdtmig/v3_4/Variables.csv`
-- [ ] Generate relationship domains (RELREC, RELSPEC, RELSUB) from available
+- [x] Generate relationship domains (RELREC, RELSPEC, RELSUB) from available
       data
-- [ ] Add regression tests for domain-specific transforms
+- [x] Add regression tests for domain-specific transforms
 
 Exit criteria:
 

@@ -1,21 +1,11 @@
 use std::collections::BTreeSet;
 use polars::prelude::{AnyValue, Column, DataFrame};
 
-use sdtm_core::{build_suppqual, suppqual_domain_code};
+use sdtm_core::{build_suppqual, column_name, suppqual_domain_code};
 use sdtm_standards::load_default_sdtm_ig_domains;
 
 #[test]
 fn builds_suppqual_for_any_domain() {
-    let df = DataFrame::new(vec![
-        Column::new("STUDYID".into(), ["STUDY1", "STUDY1"]),
-        Column::new("USUBJID".into(), ["SUBJ1", "SUBJ2"]),
-        Column::new("LBTEST".into(), ["HGB", "WBC"]),
-        Column::new("EXTRA".into(), ["X", ""]),
-    ])
-    .expect("df");
-
-    let used = BTreeSet::new();
-
     let standards = load_default_sdtm_ig_domains().expect("load standards");
     let suppqual = standards
         .iter()
@@ -25,6 +15,19 @@ fn builds_suppqual_for_any_domain() {
         .iter()
         .find(|domain| domain.code == "LB")
         .expect("LB domain");
+    let study_col = column_name(parent, "STUDYID").expect("STUDYID");
+    let usubjid_col = column_name(parent, "USUBJID").expect("USUBJID");
+    let lbtest_col = column_name(parent, "LBTEST").expect("LBTEST");
+
+    let df = DataFrame::new(vec![
+        Column::new(study_col.clone().into(), ["STUDY1", "STUDY1"]),
+        Column::new(usubjid_col.clone().into(), ["SUBJ1", "SUBJ2"]),
+        Column::new(lbtest_col.clone().into(), ["HGB", "WBC"]),
+        Column::new("EXTRA".into(), ["X", ""]),
+    ])
+    .expect("df");
+
+    let used = BTreeSet::new();
 
     let result = build_suppqual(parent, suppqual, &df, None, &used, "STUDY1")
         .expect("suppqual")

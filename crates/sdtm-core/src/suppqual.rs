@@ -4,6 +4,7 @@ use anyhow::Result;
 use polars::prelude::{AnyValue, Column, DataFrame, NamedFrom, Series};
 use sdtm_model::Domain;
 
+use crate::domain_utils::{infer_seq_column, standard_columns};
 pub struct SuppqualResult {
     pub domain_code: String,
     pub data: DataFrame,
@@ -78,6 +79,8 @@ pub fn build_suppqual(
     let parent_domain_code = parent_domain.code.to_uppercase();
     let ordered_columns = ordered_variable_names(suppqual_domain);
     let core_variables = variable_name_set(parent_domain);
+    let suppqual_cols = standard_columns(suppqual_domain);
+    let parent_cols = standard_columns(parent_domain);
     if ordered_columns.is_empty() {
         return Ok(None);
     }
@@ -102,20 +105,29 @@ pub fn build_suppqual(
         row_count = row_count.min(mapped.height());
     }
 
-    let seq_var = format!("{parent_domain_code}SEQ");
-    let idvar = if mapped_df
-        .and_then(|df| df.column(&seq_var).ok())
-        .is_some()
-    {
-        Some(seq_var)
-    } else {
-        None
-    };
+    let idvar = infer_seq_column(parent_domain).and_then(|seq_var| {
+        if mapped_df
+            .and_then(|df| df.column(&seq_var).ok())
+            .is_some()
+        {
+            Some(seq_var)
+        } else {
+            None
+        }
+    });
 
     let mut values: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for key in &ordered_columns {
         values.insert(key.to_string(), Vec::new());
     }
+
+    let mut push_value = |key: Option<&str>, value: String| {
+        if let Some(name) = key {
+            if let Some(entry) = values.get_mut(name) {
+                entry.push(value);
+            }
+        }
+    };
 
     for col in &extra_cols {
         for idx in 0..row_count {
@@ -123,10 +135,23 @@ pub fn build_suppqual(
             if raw_val.is_empty() {
                 continue;
             }
-            let study_value = column_value(source_df, "STUDYID", idx);
-            let usubjid_value = column_value(source_df, "USUBJID", idx);
+            let study_value = parent_cols
+                .study_id
+                .as_deref()
+                .map(|name| column_value(source_df, name, idx))
+                .unwrap_or_default();
+            let usubjid_value = parent_cols
+                .usubjid
+                .as_deref()
+                .map(|name| column_value(source_df, name, idx))
+                .unwrap_or_default();
             let mapped_usubjid = mapped_df
-                .map(|df| column_value(df, "USUBJID", idx))
+                .and_then(|df| {
+                    parent_cols
+                        .usubjid
+                        .as_deref()
+                        .map(|name| column_value(df, name, idx))
+                })
                 .unwrap_or_default();
             let final_usubjid = if !usubjid_value.is_empty() {
                 usubjid_value
@@ -141,44 +166,35 @@ pub fn build_suppqual(
                 String::new()
             };
 
-            if let Some(entry) = values.get_mut("STUDYID") {
-                entry.push(if !study_value.is_empty() {
+            push_value(
+                suppqual_cols.study_id.as_deref(),
+                if !study_value.is_empty() {
                     study_value
                 } else {
                     study_id.to_string()
-                });
-            }
-            if let Some(entry) = values.get_mut("RDOMAIN") {
-                entry.push(parent_domain_code.clone());
-            }
-            if let Some(entry) = values.get_mut("USUBJID") {
-                entry.push(final_usubjid);
-            }
-            if let Some(entry) = values.get_mut("IDVAR") {
-                entry.push(idvar_value);
-            }
-            if let Some(entry) = values.get_mut("IDVARVAL") {
-                entry.push(idvarval);
-            }
-            if let Some(entry) = values.get_mut("QNAM") {
-                entry.push(sanitize_qnam(col));
-            }
-            if let Some(entry) = values.get_mut("QLABEL") {
-                entry.push(col.to_string());
-            }
-            if let Some(entry) = values.get_mut("QVAL") {
-                entry.push(raw_val);
-            }
-            if let Some(entry) = values.get_mut("QORIG") {
-                entry.push("CRF".to_string());
-            }
-            if let Some(entry) = values.get_mut("QEVAL") {
-                entry.push(String::new());
-            }
+                },
+            );
+            push_value(
+                suppqual_cols.rdomain.as_deref(),
+                parent_domain_code.clone(),
+            );
+            push_value(suppqual_cols.usubjid.as_deref(), final_usubjid);
+            push_value(suppqual_cols.idvar.as_deref(), idvar_value);
+            push_value(suppqual_cols.idvarval.as_deref(), idvarval);
+            push_value(suppqual_cols.qnam.as_deref(), sanitize_qnam(col));
+            push_value(suppqual_cols.qlabel.as_deref(), col.to_string());
+            push_value(suppqual_cols.qval.as_deref(), raw_val);
+            push_value(suppqual_cols.qorig.as_deref(), "CRF".to_string());
+            push_value(suppqual_cols.qeval.as_deref(), String::new());
         }
     }
 
-    let total_rows = values.get("QVAL").map(|vals| vals.len()).unwrap_or(0);
+    let total_rows = suppqual_cols
+        .qval
+        .as_deref()
+        .and_then(|name| values.get(name))
+        .map(|vals| vals.len())
+        .unwrap_or(0);
     if total_rows == 0 {
         return Ok(None);
     }
