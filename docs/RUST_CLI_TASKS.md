@@ -23,7 +23,7 @@ Complete phases in order; each phase unlocks the next.
 
 Goal: lock the v1 surface area and inputs so implementation is deterministic.
 
-- [ ] Confirm v1 outputs: XPT, Dataset-XML, Define-XML, SAS (optional)
+- [ ] Confirm v1 outputs: XPT, Dataset-XML, Define-XML, SAS
 - [ ] Confirm v1 CLI flags: `--output-dir`, `--format`, `-v`
 - [ ] Confirm no config file in v1; defaults are compiled
 - [ ] Verify standards sources under `standards/` (`ct`, `sdtm`, `sdtmig`,
@@ -183,7 +183,7 @@ Goal: generate files with the same layout and constraints as Python.
 - [ ] Write XPT files (8-char dataset names, labels, type coercion)
 - [ ] Write Dataset-XML v1.0 (deterministic order, streaming option)
 - [ ] Generate Define-XML v2.1 from dataset metadata
-- [ ] Generate SAS scripts (optional, deterministic)
+- [ ] Generate SAS scripts (deterministic)
 - [ ] Preserve output layout: `output/xpt`, `output/dataset-xml`, `output/sas`
 
 Exit criteria:
