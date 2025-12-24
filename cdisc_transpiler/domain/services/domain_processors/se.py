@@ -1,31 +1,18 @@
-"""Domain processor for Subject Elements (SE) domain."""
-
 from typing import TYPE_CHECKING, override
 
 if TYPE_CHECKING:
     import pandas as pd
-
 from ..transformers.date import DateTransformer
 from ..transformers.numeric import NumericTransformer
 from .base import BaseDomainProcessor
 
 
 class SEProcessor(BaseDomainProcessor):
-    """Subject Elements domain processor.
-
-    Handles domain-specific processing for the SE domain.
-    """
+    pass
 
     @override
     def process(self, frame: pd.DataFrame) -> None:
-        """Process SE domain DataFrame.
-
-        Args:
-            frame: Domain DataFrame to process in-place
-        """
         self._drop_placeholder_rows(frame)
-
-        # Do not synthesize SE records. Only normalize and derive deterministic values.
         for col in (
             "STUDYID",
             "DOMAIN",
@@ -38,7 +25,6 @@ class SEProcessor(BaseDomainProcessor):
         ):
             if col in frame.columns:
                 frame.loc[:, col] = frame[col].astype("string").fillna("").str.strip()
-
         DateTransformer.ensure_date_pair_order(frame, "SESTDTC", "SEENDTC")
         if "SESTDTC" in frame.columns:
             DateTransformer.compute_study_day(
@@ -56,5 +42,4 @@ class SEProcessor(BaseDomainProcessor):
                 reference_starts=self.reference_starts,
                 ref="RFSTDTC",
             )
-
         NumericTransformer.assign_sequence(frame, "SESEQ", "USUBJID")

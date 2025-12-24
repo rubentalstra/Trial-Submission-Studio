@@ -1,5 +1,3 @@
-"""Domain processor for Vital Signs (VS) domain."""
-
 from typing import override
 
 import pandas as pd
@@ -11,18 +9,10 @@ from .base import BaseDomainProcessor
 
 
 class VSProcessor(BaseDomainProcessor):
-    """Vital Signs domain processor.
-
-    Handles domain-specific processing for the VS domain.
-    """
+    pass
 
     @override
     def process(self, frame: pd.DataFrame) -> None:
-        """Process VS domain DataFrame.
-
-        Args:
-            frame: Domain DataFrame to process in-place
-        """
         self._drop_placeholder_rows(frame)
         self._compute_study_day(frame)
         self._sync_stresc(frame)
@@ -98,7 +88,6 @@ class VSProcessor(BaseDomainProcessor):
             canonical = raw.apply(ct_vstestcd.normalize)
             valid = canonical.isin(ct_vstestcd.submission_values)
             frame.loc[:, "VSTESTCD"] = canonical.where(valid, "")
-
         ct_vstest = self._get_controlled_terminology(variable="VSTEST")
         if ct_vstest and "VSTEST" in frame.columns:
             raw = self._string_series(frame, "VSTEST")
@@ -131,5 +120,5 @@ class VSProcessor(BaseDomainProcessor):
         if "VSELTM" not in frame.columns:
             return
         raw = self._string_series(frame, "VSELTM")
-        valid = raw.str.match(r"^\d{2}:\d{2}(:\d{2})?$", na=False)
+        valid = raw.str.match("^\\d{2}:\\d{2}(:\\d{2})?$", na=False)
         frame.loc[:, "VSELTM"] = raw.where(valid, "")

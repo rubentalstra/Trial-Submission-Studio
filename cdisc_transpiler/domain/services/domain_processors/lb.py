@@ -1,10 +1,7 @@
-"""Domain processor for Laboratory (LB) domain."""
-
 from typing import TYPE_CHECKING, override
 
 if TYPE_CHECKING:
     import pandas as pd
-
 from ....pandas_utils import ensure_numeric_series
 from ..transformers.date import DateTransformer
 from ..transformers.numeric import NumericTransformer
@@ -12,18 +9,10 @@ from .base import BaseDomainProcessor
 
 
 class LBProcessor(BaseDomainProcessor):
-    """Laboratory domain processor.
-
-    Handles domain-specific processing for the LB domain.
-    """
+    pass
 
     @override
     def process(self, frame: pd.DataFrame) -> None:
-        """Process LB domain DataFrame.
-
-        Args:
-            frame: Domain DataFrame to process in-place
-        """
         self._drop_placeholder_rows(frame)
         self._clean_unit_placeholders(frame)
         self._normalize_lbtestcd(frame)

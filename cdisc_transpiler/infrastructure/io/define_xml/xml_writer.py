@@ -1,13 +1,3 @@
-"""Define-XML writer + builders.
-
-This module contains XML serialization and the concrete builder implementation
-for Define-XML documents.
-
-Rationale: the Define-XML implementation was previously split across many small
-builder modules. Consolidating them here reduces file count and makes the
-infrastructure I/O layer easier to navigate.
-"""
-
 from contextlib import suppress
 from dataclasses import dataclass, field
 from datetime import UTC, datetime

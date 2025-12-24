@@ -1,10 +1,7 @@
-"""Domain processor for Concomitant Medications (CM) domain."""
-
 from typing import TYPE_CHECKING, override
 
 if TYPE_CHECKING:
     import pandas as pd
-
 from ..transformers.date import DateTransformer
 from ..transformers.numeric import NumericTransformer
 from ..transformers.text import TextTransformer
@@ -12,22 +9,11 @@ from .base import BaseDomainProcessor
 
 
 class CMProcessor(BaseDomainProcessor):
-    """Concomitant Medications domain processor.
-
-    Handles domain-specific processing for the CM domain.
-    """
+    pass
 
     @override
     def process(self, frame: pd.DataFrame) -> None:
-        """Process CM domain DataFrame.
-
-        Args:
-            frame: Domain DataFrame to process in-place
-        """
-        # Drop placeholder rows
         self._drop_placeholder_rows(frame)
-
-        # Do not default/guess units or durations. If present, normalize casing/whitespace.
         if "CMDOSU" in frame.columns:
             frame.loc[:, "CMDOSU"] = (
                 frame["CMDOSU"].astype("string").fillna("").str.strip().str.lower()
@@ -36,7 +22,6 @@ class CMProcessor(BaseDomainProcessor):
             frame.loc[:, "CMDUR"] = (
                 frame["CMDUR"].astype("string").fillna("").str.strip()
             )
-        # Remove duplicate records based on common key fields
         key_cols = [
             c for c in ("USUBJID", "CMTRT", "CMSTDTC", "CMENDTC") if c in frame.columns
         ]
@@ -44,10 +29,8 @@ class CMProcessor(BaseDomainProcessor):
             frame.drop_duplicates(subset=key_cols, keep="first", inplace=True)
         else:
             frame.drop_duplicates(inplace=True)
-        # Always regenerate CMSEQ - source values may not be unique (SD0005)
         frame.loc[:, "CMSEQ"] = frame.groupby("USUBJID").cumcount() + 1
         frame.loc[:, "CMSEQ"] = NumericTransformer.force_numeric(frame["CMSEQ"])
-        # Normalize CMDOSTXT to non-numeric descriptive text
         if "CMDOSTXT" in frame.columns:
 
             def _normalize_dostxt(val: object) -> str:
@@ -57,25 +40,16 @@ class CMProcessor(BaseDomainProcessor):
                 return text
 
             frame.loc[:, "CMDOSTXT"] = frame["CMDOSTXT"].apply(_normalize_dostxt)
-
-        # Normalize CMSTAT to CDISC CT 'Not Done'
         if "CMSTAT" in frame.columns:
-            stat_map = {
-                "NOT DONE": "NOT DONE",
-                "ND": "NOT DONE",
-                "": "",
-                "nan": "",
-            }
+            stat_map = {"NOT DONE": "NOT DONE", "ND": "NOT DONE", "": "", "nan": ""}
             frame.loc[:, "CMSTAT"] = (
                 frame["CMSTAT"]
                 .astype(str)
                 .str.strip()
                 .str.upper()
                 .map(stat_map)
-                .fillna("")  # Clear invalid values
+                .fillna("")
             )
-
-        # Normalize CMDOSFRQ to CDISC CT 'Frequency' codelist
         if "CMDOSFRQ" in frame.columns:
             freq_map = {
                 "ONCE": "ONCE",
@@ -98,8 +72,6 @@ class CMProcessor(BaseDomainProcessor):
             }
             upper_freq = frame["CMDOSFRQ"].astype(str).str.strip().str.upper()
             frame.loc[:, "CMDOSFRQ"] = upper_freq.map(freq_map).fillna(upper_freq)
-
-        # Normalize CMROUTE to CDISC CT 'Route of Administration Response'
         if "CMROUTE" in frame.columns:
             route_map = {
                 "ORAL": "ORAL",
@@ -125,12 +97,10 @@ class CMProcessor(BaseDomainProcessor):
             }
             upper_route = frame["CMROUTE"].astype(str).str.strip().str.upper()
             frame.loc[:, "CMROUTE"] = upper_route.map(route_map).fillna(upper_route)
-        # Units - blank unrecognized placeholders rather than defaulting.
         if "CMDOSU" in frame.columns:
             frame.loc[:, "CMDOSU"] = TextTransformer.replace_unknown(
                 frame["CMDOSU"], ""
             )
-
         if "CMSTDTC" in frame.columns:
             DateTransformer.compute_study_day(
                 frame,
@@ -147,7 +117,5 @@ class CMProcessor(BaseDomainProcessor):
                 reference_starts=self.reference_starts,
                 ref="RFSTDTC",
             )
-        # Do not default/guess EPOCH.
-        # Final pass to remove any exact duplicate rows and realign sequence
         frame.drop_duplicates(inplace=True)
         NumericTransformer.assign_sequence(frame, "CMSEQ", "USUBJID")

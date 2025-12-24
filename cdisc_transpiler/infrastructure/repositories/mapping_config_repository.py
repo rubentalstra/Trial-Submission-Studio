@@ -1,9 +1,3 @@
-"""Mapping configuration repository for loading/saving mapping configs.
-
-This module provides infrastructure-level I/O for mapping configurations.
-This repository is the canonical implementation used by configuration I/O.
-"""
-
 import json
 from pathlib import Path
 
@@ -12,34 +6,17 @@ from ..io.exceptions import DataParseError, DataSourceNotFoundError
 
 
 class MappingConfigLoadError(DataParseError):
-    """Raised when a mapping config cannot be loaded."""
+    pass
 
 
 class MappingConfigSaveError(DataParseError):
-    """Raised when a mapping config cannot be saved."""
+    pass
 
 
 def load_mapping_config(path: str | Path) -> MappingConfig:
-    """Load a MappingConfig from a JSON file.
-
-    Args:
-        path: Path to JSON configuration file
-
-    Returns:
-        Loaded and validated mapping configuration
-
-    Raises:
-        DataSourceNotFoundError: If file doesn't exist
-        MappingConfigLoadError: If file cannot be parsed
-
-    Example:
-        >>> config = load_mapping_config("mappings/dm.json")
-    """
     file_path = Path(path)
-
     if not file_path.exists():
         raise DataSourceNotFoundError(f"Mapping config not found: {file_path}")
-
     try:
         with file_path.open("r", encoding="utf-8") as handle:
             data = json.load(handle)
@@ -55,20 +32,7 @@ def load_mapping_config(path: str | Path) -> MappingConfig:
 
 
 def save_mapping_config(config: MappingConfig, path: str | Path) -> None:
-    """Save a MappingConfig to a JSON file.
-
-    Args:
-        config: Mapping configuration to save
-        path: Path where JSON file should be written
-
-    Raises:
-        MappingConfigSaveError: If file cannot be written
-
-    Example:
-        >>> save_mapping_config(config, "mappings/dm.json")
-    """
     file_path = Path(path)
-
     try:
         file_path.parent.mkdir(parents=True, exist_ok=True)
         payload = config.model_dump()

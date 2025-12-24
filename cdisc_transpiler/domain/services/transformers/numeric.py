@@ -1,5 +1,3 @@
-"""Numeric transformation utilities for SDTM domains."""
-
 from typing import TYPE_CHECKING
 
 from ....pandas_utils import ensure_numeric_series, ensure_series
@@ -9,13 +7,12 @@ if TYPE_CHECKING:
 
 
 class NumericTransformer:
-    """Transforms numeric values for SDTM compliance."""
+    pass
 
     @staticmethod
     def populate_stresc_from_orres(frame: pd.DataFrame, domain_code: str) -> None:
         orres_col = f"{domain_code}ORRES"
         stresc_col = f"{domain_code}STRESC"
-
         if orres_col in frame.columns and stresc_col in frame.columns:
             s_orres = ensure_series(frame[orres_col]).astype(str)
             orres_str = ensure_series(
@@ -25,7 +22,6 @@ class NumericTransformer:
             stresc_str = ensure_series(
                 s_stresc.replace({"nan": "", "None": "", "<NA>": ""})
             )
-
             mask = (stresc_str.str.strip() == "") & (orres_str.str.strip() != "")
             frame.loc[mask, stresc_col] = orres_str.loc[mask]
 

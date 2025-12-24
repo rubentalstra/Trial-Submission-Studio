@@ -11,56 +11,6 @@ SAS).
 
 ## ✨ Features
 
-- 🔄 **Multiple Output Formats**: Generate XPT, Dataset-XML, Define-XML 2.1, and
-  SAS programs
-- 📊 **SDTM Compliance**: Automatic transformation to SDTM 3.2/3.4 standards
-- 🏗️ **Clean Architecture**: Ports & Adapters (Hexagonal) architecture for
-  maintainability
-- ⚡ **High Performance**: Process studies with 18+ domains in ~2 seconds
-- 🧪 **Comprehensive Testing**: Unit, integration, validation, and benchmark
-  suites
-- ✅ **Validation Suite**: SDTM compliance and file format validation
-- 📈 **Performance Benchmarks**: Track and prevent performance regressions
-- 🎯 **Domain Synthesis**: Automatic generation of SUPPQUAL and variant
-  domains
-
-## 🏗️ Architecture
-
-This project follows **Ports & Adapters (Hexagonal Architecture)** for clean
-separation of concerns.
-
-For the current boundaries, known violations, and the migration plan, see
-`docs/ARCHITECTURE.md`. For the refactor roadmap and planned cleanup steps, see
-`docs/REFACTOR_PLAN.md`.
-
-```
-cdisc_transpiler/
-├── cli/                      # Driver adapter (Click)
-│   ├── commands/             # Thin CLI commands (args → request DTO → use case)
-│   └── presenters/           # Output formatting (Rich)
-├── application/              # Use cases + ports + DTOs
-│   ├── ports/                # Protocols (interfaces)
-│   ├── models.py             # Request/response DTOs
-│   ├── study_processing_use_case.py
-│   └── domain_processing_use_case.py
-├── domain/                   # Entities + domain services (pure, no I/O)
-│   ├── entities/
-│   └── services/
-└── infrastructure/           # Adapters + DI wiring
-    ├── container.py          # Composition root
-    ├── io/                   # Writers/generators (XPT/XML/Define-XML/SAS)
-    ├── repositories/         # CSV/Excel/SAS + metadata/CT/spec access
-    └── logging/
-```
-
-**Benefits:**
-
-- ✅ **Testability**: Business logic isolated from I/O and CLI
-- ✅ **Maintainability**: Clear boundaries and single responsibility
-- ✅ **Flexibility**: Easy to swap implementations (e.g., different file
-  formats)
-- ✅ **Scalability**: Can add new features without touching core logic
-
 ## 📦 Installation
 
 ### Prerequisites
@@ -198,27 +148,6 @@ pytest -m validation
 pytest -m benchmark
 ```
 
-### Test Organization
-
-```
-tests/
-├── unit/                  # Unit tests
-│   ├── application/      # Use case tests
-│   ├── cli/              # Presenter and command tests
-│   ├── domain/           # Domain logic tests
-│   └── infrastructure/   # Dataset output and repository tests
-├── integration/          # Integration tests
-│   ├── test_cli.py       # CLI end-to-end tests
-│   ├── test_study_workflow.py
-│   ├── test_domain_workflow.py
-│   └── test_performance_benchmarks.py
-└── validation/           # Validation tests
-    ├── test_sdtm_compliance.py      # SDTM standards validation
-    ├── test_xpt_format.py           # XPT format validation
-    ├── test_xml_format.py           # Dataset-XML validation
-    └── test_define_xml_format.py    # Define-XML validation
-```
-
 ## 💻 Development
 
 ### Setup Development Environment
@@ -266,41 +195,6 @@ pytest -m benchmark --benchmark-only --benchmark-compare=baseline
 
 # Fail if >10% slower
 pytest -m benchmark --benchmark-only --benchmark-compare=baseline --benchmark-compare-fail=mean:10%
-```
-
-## 📁 Project Structure
-
-```
-cdisc-transpiler/
-├── cdisc_transpiler/           # Main package
-│   ├── __init__.py
-│   ├── cli/                    # CLI layer (Ports & Adapters)
-│   │   ├── commands/          # Click commands (study, domains)
-│   │   │   ├── study.py       # Study processing command (thin adapter)
-│   │   │   └── domains.py     # List domains command
-│   │   ├── presenters/        # Output formatting
-│   │   │   ├── summary.py     # SummaryPresenter (table formatting)
-│   │   │   └── progress.py    # ProgressPresenter (progress tracking)
-│   ├── application/           # Application layer (Use Cases + Ports)
-│   │   ├── ports/             # Interfaces (Protocols)
-│   │   ├── models.py          # DTOs (ProcessStudyRequest/Response, etc.)
-│   │   ├── study_processing_use_case.py
-│   │   └── domain_processing_use_case.py
-│   ├── domain/                # Domain layer (Business Logic)
-│   │   ├── entities/
-│   │   └── services/
-│   │       ├── domain_processors/ # Domain-specific normalization
-│   │       └── transformers/      # Value transformers
-│   ├── infrastructure/        # Infrastructure layer (Adapters + DI wiring)
-│   │   ├── container.py       # DI container / composition root
-│   │   ├── io/                # XPT/XML/Define-XML/SAS generators/writers
-│   │   ├── logging/
-│   │   ├── repositories/      # CSV/Excel/SAS + metadata/CT/spec access
-│   │   └── sdtm_spec/          # SDTM domain/variable spec registry
-├── tests/                    # Test suites
-├── mockdata/                 # Test data (DEMO studies)
-├── pyproject.toml           # Project configuration
-└── README.md                # This file
 ```
 
 ## 🤝 Contributing

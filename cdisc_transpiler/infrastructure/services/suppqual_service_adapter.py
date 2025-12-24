@@ -1,5 +1,3 @@
-"""Infrastructure adapter for SUPPQUAL operations."""
-
 from typing import TYPE_CHECKING, override
 
 from ...application.ports.services import SuppqualPort
@@ -18,6 +16,8 @@ if TYPE_CHECKING:
 
 
 class SuppqualServiceAdapter(SuppqualPort):
+    pass
+
     @override
     def extract_used_columns(self, config: MappingConfig | None) -> set[str]:
         return extract_used_columns(config)
@@ -30,12 +30,6 @@ class SuppqualServiceAdapter(SuppqualPort):
 
     @override
     def finalize_suppqual(
-        self,
-        supp_df: pd.DataFrame,
-        *,
-        supp_domain_def: SDTMDomain | None = None,
+        self, supp_df: pd.DataFrame, *, supp_domain_def: SDTMDomain | None = None
     ) -> pd.DataFrame:
-        return finalize_suppqual(
-            supp_df,
-            supp_domain_def=supp_domain_def,
-        )
+        return finalize_suppqual(supp_df, supp_domain_def=supp_domain_def)

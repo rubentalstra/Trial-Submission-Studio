@@ -1,9 +1,3 @@
-"""Summary presenter for study processing results.
-
-This module provides the SummaryPresenter class that formats and displays
-study processing results in a Rich table format.
-"""
-
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -67,62 +61,19 @@ class _OutputInfo:
 
 
 class SummaryPresenter:
-    """Presenter for formatting study processing summaries.
-
-    This class is responsible for taking raw study processing results and
-    formatting them into a user-friendly Rich table display. It separates
-    presentation logic from business logic.
-
-    Attributes:
-        console: Rich console for output
-
-    Example:
-        >>> console = Console()
-        >>> presenter = SummaryPresenter(console)
-        >>> presenter.present(results, errors, output_dir, "xpt", True, True)
-    """
+    pass
 
     def __init__(self, console: Console) -> None:
-        """Initialize the presenter with a console.
-
-        Args:
-            console: Rich console for output
-        """
         super().__init__()
         self.console = console
 
     def present(self, request: SummaryRequest) -> None:
-        """Present study processing results in a formatted table.
-
-        Args:
-            results: List of processing results with domain information
-            errors: List of (domain, error) tuples for failed domains
-            output_dir: Output directory path
-            output_format: Output format (xpt, xml, both)
-            generate_define: Whether Define-XML was generated
-            generate_sas: Whether SAS programs were generated
-            domain_descriptions: Optional mapping of domain code to description
-
-        Example:
-            >>> presenter.present(
-            ...     results=[{"domain_code": "DM", "records": 100}],
-            ...     errors=[],
-            ...     output_dir=Path("output"),
-            ...     output_format="xpt",
-            ...     generate_define=True,
-            ...     generate_sas=True,
-            ... )
-        """
         self.console.print()
-
-        # Build and display the summary table
         table = self._build_summary_table(
             request.results, domain_descriptions=request.domain_descriptions
         )
         self.console.print(table)
         self.console.print()
-
-        # Display status and output information
         total_records = sum(
             self._result_records(r) for r in self._iter_all_results(request.results)
         )
@@ -139,8 +90,6 @@ class SummaryPresenter:
                 results=request.results,
             )
         )
-
-        # Print a readable list of all errors (processing + conformance)
         self._print_error_details(errors=request.errors, results=request.results)
 
     def _build_summary_table(
@@ -149,15 +98,6 @@ class SummaryPresenter:
         *,
         domain_descriptions: Mapping[str, str] | None,
     ) -> Table:
-        """Build the Rich table with domain processing results.
-
-        Args:
-            results: List of processing results
-            domain_descriptions: Optional mapping of domain code to description
-
-        Returns:
-            Formatted Rich Table
-        """
         table = Table(
             title="📊 Study Processing Summary",
             show_header=True,
@@ -165,39 +105,19 @@ class SummaryPresenter:
             border_style="bright_blue",
             title_style="bold magenta",
         )
-
-        # Define columns
-        # NOTE: Avoid fixed widths so Rich can adapt to narrow consoles (e.g.,
-        # Click's CliRunner capture during tests) without eliding core headers
-        # like "Records".
         table.add_column("Domain", style="cyan", no_wrap=True)
         table.add_column(
-            "Description",
-            style="white",
-            no_wrap=False,
-            overflow="fold",
-            ratio=3,
+            "Description", style="white", no_wrap=False, overflow="fold", ratio=3
         )
         table.add_column("Records", justify="right", style="yellow", no_wrap=True)
         table.add_column("XPT", justify="center", style="green", no_wrap=True)
         table.add_column("Dataset-XML", justify="center", style="green", no_wrap=True)
         table.add_column("SAS", justify="center", style="green", no_wrap=True)
-        table.add_column(
-            "Notes",
-            style="dim",
-            overflow="fold",
-            ratio=2,
-        )
-
-        # Process and organize results
+        table.add_column("Notes", style="dim", overflow="fold", ratio=2)
         main_domains, suppqual_domains, total_records = self._organize_results(
             results, domain_descriptions=domain_descriptions
         )
-
-        # Add rows to table
         self._add_table_rows(table, main_domains, suppqual_domains)
-
-        # Add total row
         table.add_section()
         table.add_row(
             "[bold]Total[/bold]",
@@ -208,7 +128,6 @@ class SummaryPresenter:
             "",
             "",
         )
-
         return table
 
     def _organize_results(
@@ -217,37 +136,20 @@ class SummaryPresenter:
         *,
         domain_descriptions: Mapping[str, str] | None,
     ) -> tuple[dict[str, _DomainRow], dict[str, list[tuple[str, _DomainRow]]], int]:
-        """Organize results into main domains and SUPPQUAL domains.
-
-        Args:
-            results: List of processing results
-            domain_descriptions: Optional mapping of domain code to description
-
-        Returns:
-            Tuple of (main_domains, suppqual_domains, total_records)
-        """
         main_domains: dict[str, _DomainRow] = {}
         suppqual_domains: dict[str, list[tuple[str, _DomainRow]]] = {}
         total_records = 0
-
         for result in results:
             domain_code = result.domain_code.upper()
             records = self._result_records(result)
             description = self._describe_domain(
                 domain_code, domain_descriptions=domain_descriptions
             )
-
-            # Check if this is a SUPPQUAL domain
             is_supp = domain_code.startswith("SUPP")
-
-            # Determine output indicators
             has_xpt = result.xpt_path is not None
             has_xml = result.xml_path is not None
             has_sas = result.sas_path is not None
-
-            # Build notes
             notes = self._build_notes(result)
-
             domain_data = _DomainRow(
                 records=records,
                 description=description,
@@ -257,27 +159,21 @@ class SummaryPresenter:
                 notes=notes,
                 is_supp=is_supp,
             )
-
             if is_supp:
-                # Extract parent domain (e.g., SUPPDM -> DM)
-                parent_domain = domain_code[4:]  # Remove "SUPP" prefix
+                parent_domain = domain_code[4:]
                 if parent_domain not in suppqual_domains:
                     suppqual_domains[parent_domain] = []
                 suppqual_domains[parent_domain].append((domain_code, domain_data))
             else:
                 main_domains[domain_code] = domain_data
-
-                # Handle nested SUPPQUAL domains (newer result shape)
                 for supp in result.suppqual_domains:
                     supp_code = supp.domain_code.upper()
                     if not supp_code.startswith("SUPP"):
                         continue
-
                     supp_records = self._result_records(supp)
                     supp_description = self._describe_domain(
                         supp_code, domain_descriptions=domain_descriptions
                     )
-
                     supp_domain_data = _DomainRow(
                         records=supp_records,
                         description=supp_description,
@@ -287,40 +183,24 @@ class SummaryPresenter:
                         notes=self._build_notes(supp),
                         is_supp=True,
                     )
-
-                    # Prefer nesting under current main domain; fall back to suffix parent.
                     suffix_parent = supp_code[4:]
                     parent_domain = (
                         domain_code if suffix_parent == domain_code else suffix_parent
                     )
-
                     if parent_domain not in suppqual_domains:
                         suppqual_domains[parent_domain] = []
                     suppqual_domains[parent_domain].append(
                         (supp_code, supp_domain_data)
                     )
-
                     total_records += supp_records
-
             total_records += records
-
-        return main_domains, suppqual_domains, total_records
+        return (main_domains, suppqual_domains, total_records)
 
     def _build_notes(self, result: DomainProcessingResult) -> str:
-        """Build notes string for a domain result.
-
-        Args:
-            result: Domain processing result
-
-        Returns:
-            Formatted notes string
-        """
         notes: list[str] = []
-
         if result.synthesized:
             reason = f": {result.synthesis_reason}" if result.synthesis_reason else ""
             notes.append(f"Synthesized{reason}")
-
         report = result.conformance_report
         if report is not None:
             warnings = report.warning_count()
@@ -329,7 +209,6 @@ class SummaryPresenter:
                 notes.append(f"{errors} conformance error(s)")
             if warnings:
                 notes.append(f"{warnings} warning(s)")
-
         return "; ".join(notes)
 
     @staticmethod
@@ -356,17 +235,8 @@ class SummaryPresenter:
         main_domains: dict[str, _DomainRow],
         suppqual_domains: dict[str, list[tuple[str, _DomainRow]]],
     ) -> None:
-        """Add domain rows to the table.
-
-        Args:
-            table: Rich Table to add rows to
-            main_domains: Main domain data
-            suppqual_domains: SUPPQUAL domain data organized by parent
-        """
         for domain_code in sorted(main_domains.keys()):
             data = main_domains[domain_code]
-
-            # Add main domain row
             table.add_row(
                 f"[bold cyan]{domain_code}[/bold cyan]",
                 data.description,
@@ -376,12 +246,9 @@ class SummaryPresenter:
                 self._format_flag(data.has_sas),
                 data.notes,
             )
-
-            # Add child rows (SUPPQUAL domains) with a proper tree connector.
             children = sorted(suppqual_domains.get(domain_code, []))
             for idx, (child_code, child_data) in enumerate(children):
                 connector = "└─" if idx == len(children) - 1 else "├─"
-
                 table.add_row(
                     f"[dim cyan] {connector} {child_code}[/dim cyan]",
                     f"[dim]{child_data.description}[/dim]",
@@ -393,43 +260,19 @@ class SummaryPresenter:
                 )
 
     def _print_status_summary(self, success_count: int, error_count: int) -> None:
-        """Print status summary line.
-
-        Args:
-            success_count: Number of successful domains
-            error_count: Number of failed domains
-        """
         if error_count == 0:
             status_line = f"[bold green]✓ {success_count} domains processed successfully[/bold green]"
         else:
-            status_line = (
-                f"[green]✓ {success_count} succeeded[/green]  "
-                f"[red]✗ {error_count} failed[/red]"
-            )
-
+            status_line = f"[green]✓ {success_count} succeeded[/green]  [red]✗ {error_count} failed[/red]"
         self.console.print(status_line)
 
     def _print_output_information(self, info: _OutputInfo) -> None:
-        """Print output directory and file information.
-
-        Args:
-            output_dir: Output directory path
-            output_format: Output format (xpt, xml, both)
-            generate_define: Whether Define-XML was generated
-            generate_sas: Whether SAS programs were generated
-            total_records: Total number of records processed
-        """
-        # Avoid Rich's path highlighter splitting strings (keeps tests simple).
         self.console.print(
             f"[bold]📁 Output:[/bold] [cyan]{info.output_dir}[/cyan]", highlight=False
         )
         self.console.print(
             f"[bold]📈 Total records:[/bold] [yellow]{info.total_records:,}[/yellow]"
         )
-
-        # If `results` are present, only show artifacts that were actually written.
-        # If `results` is omitted (e.g., unit tests calling this method directly),
-        # fall back to showing the *requested* outputs.
         if info.results is None:
             generated_xpt = info.output_format in ("xpt", "both")
             generated_xml = info.output_format in ("xml", "both")
@@ -442,7 +285,6 @@ class SummaryPresenter:
             generated_sas = any(r.sas_path is not None for r in all_results)
             define_path = info.output_dir / "define.xml"
             generated_define = info.generate_define and define_path.exists()
-
         outputs: list[str] = []
         if info.output_format in ("xpt", "both") and generated_xpt:
             outputs.append(
@@ -460,13 +302,11 @@ class SummaryPresenter:
             outputs.append(
                 f"  [dim]└─[/dim] Define-XML: [cyan]{info.output_dir / 'define.xml'}[/cyan]"
             )
-
         if outputs:
             outputs[-1] = outputs[-1].replace("├─", "└─")
             self.console.print("[bold]📦 Generated:[/bold]")
             for output in outputs:
                 self.console.print(output, highlight=False)
-
         if info.conformance_report_path is not None:
             self.console.print(
                 f"[bold]🧾 Conformance report JSON:[/bold] [cyan]{info.conformance_report_path}[/cyan]",
@@ -484,7 +324,6 @@ class SummaryPresenter:
         results: Sequence[DomainProcessingResult],
     ) -> None:
         rows: list[_ErrorRow] = []
-
         for domain, message in errors:
             rows.append(
                 _ErrorRow(
@@ -498,25 +337,18 @@ class SummaryPresenter:
                     codelist="",
                 )
             )
-
         for result in self._iter_all_results(results):
             report = result.conformance_report
             if report is None:
                 continue
-
             for issue in report.issues:
                 if issue.severity != "error":
                     continue
-
                 domain = (issue.domain or report.domain or "(UNKNOWN)").upper()
-
                 raw_message = issue.message or ""
                 message = raw_message
                 examples = ""
                 codelist = issue.codelist_code or ""
-
-                # Many messages follow: "...; examples: a, b, c".
-                # Split examples into a separate column for readability.
                 lower = raw_message.lower()
                 marker = "; examples:"
                 idx = lower.find(marker)
@@ -526,7 +358,6 @@ class SummaryPresenter:
                 if idx != -1:
                     message = raw_message[:idx].rstrip(" ;")
                     examples = raw_message[idx + len(marker) :].strip()
-
                 rows.append(
                     _ErrorRow(
                         domain=domain,
@@ -539,13 +370,10 @@ class SummaryPresenter:
                         codelist=codelist,
                     )
                 )
-
         if not rows:
             return
-
         self.console.print()
         self.console.print("[bold]Error details[/bold]")
-
         table = Table(
             show_header=True,
             header_style="bold red",
@@ -560,7 +388,6 @@ class SummaryPresenter:
         table.add_column("Count", justify="right", style="yellow", width=7)
         table.add_column("Message", style="white")
         table.add_column("Examples", style="dim")
-
         rows_sorted = sorted(
             rows,
             key=lambda r: (
@@ -571,7 +398,6 @@ class SummaryPresenter:
                 r.codelist,
             ),
         )
-
         for r in rows_sorted:
             domain = r.domain or "(UNKNOWN)"
             table.add_row(
@@ -584,7 +410,6 @@ class SummaryPresenter:
                 r.message,
                 r.examples,
             )
-
         self.console.print(table)
 
     def _iter_all_results(

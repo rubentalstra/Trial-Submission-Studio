@@ -1,5 +1,3 @@
-"""Domain processor registry and factory."""
-
 from typing import TYPE_CHECKING
 
 from .ae import AEProcessor
@@ -31,7 +29,7 @@ if TYPE_CHECKING:
 
 
 class DomainProcessorRegistry:
-    """Registry for domain-specific processors."""
+    pass
 
     def __init__(self) -> None:
         super().__init__()
@@ -41,7 +39,6 @@ class DomainProcessorRegistry:
     def register(
         self, domain_code: str, processor_class: type[BaseDomainProcessor]
     ) -> None:
-        """Register a processor for a specific domain."""
         self._processors[domain_code.upper()] = processor_class
 
     def get_processor(
@@ -52,7 +49,6 @@ class DomainProcessorRegistry:
         ct_resolver: Callable[[str | None, str | None], ControlledTerminology | None]
         | None = None,
     ) -> BaseDomainProcessor:
-        """Get the appropriate processor for a domain."""
         processor_class = self._processors.get(
             domain.code.upper(), self._default_processor
         )
@@ -60,7 +56,6 @@ class DomainProcessorRegistry:
 
 
 _registry = DomainProcessorRegistry()
-
 _registry.register("DM", DMProcessor)
 _registry.register("AE", AEProcessor)
 _registry.register("CM", CMProcessor)
@@ -87,5 +82,4 @@ def get_domain_processor(
     ct_resolver: Callable[[str | None, str | None], ControlledTerminology | None]
     | None = None,
 ) -> BaseDomainProcessor:
-    """Get a processor for the specified domain."""
     return _registry.get_processor(domain, reference_starts, metadata, ct_resolver)

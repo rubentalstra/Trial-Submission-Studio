@@ -1,5 +1,3 @@
-"""Domain processor for Exposure (EX) domain."""
-
 import re
 from typing import override
 
@@ -11,18 +9,10 @@ from .base import BaseDomainProcessor
 
 
 class EXProcessor(BaseDomainProcessor):
-    """Exposure domain processor.
-
-    Handles domain-specific processing for the EX domain.
-    """
+    pass
 
     @override
     def process(self, frame: pd.DataFrame) -> None:
-        """Process EX domain DataFrame.
-
-        Args:
-            frame: Domain DataFrame to process in-place
-        """
         self._drop_placeholder_rows(frame)
         self._normalize_extrt(frame)
         self._reassign_exeltm_as_extrt(frame)
@@ -46,7 +36,7 @@ class EXProcessor(BaseDomainProcessor):
             return
         extrt = frame["EXTRT"].astype("string").fillna("").str.strip()
         exeltm = frame["EXELTM"].astype("string").fillna("").str.strip()
-        has_letters = exeltm.str.contains(r"[A-Za-z]", regex=True, na=False)
+        has_letters = exeltm.str.contains("[A-Za-z]", regex=True, na=False)
         fill_mask = (extrt == "") & (exeltm != "") & has_letters
         if bool(fill_mask.any()):
             frame.loc[fill_mask, "EXTRT"] = exeltm.loc[fill_mask]
@@ -58,7 +48,6 @@ class EXProcessor(BaseDomainProcessor):
                 frame.loc[:, date_col] = frame[date_col].apply(
                     DateTransformer.coerce_iso8601
                 )
-
         if "EXSTDTC" in frame.columns and "EXSTDY" in frame.columns:
             DateTransformer.compute_study_day(
                 frame,
@@ -90,8 +79,8 @@ class EXProcessor(BaseDomainProcessor):
         if not bool(needs_u.any()):
             return
         col = self.metadata.get_column("EXDOSE")
-        label = (col.label or "") if col else ""
-        match = re.search(r"\(([^)]+)\)", str(label))
+        label = col.label or "" if col else ""
+        match = re.search("\\(([^)]+)\\)", str(label))
         if not match:
             return
         unit = match.group(1).strip()

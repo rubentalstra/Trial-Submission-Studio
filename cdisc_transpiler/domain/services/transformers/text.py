@@ -1,5 +1,3 @@
-"""Text transformation utilities for SDTM domains."""
-
 from typing import TYPE_CHECKING
 
 from ....pandas_utils import ensure_numeric_series, ensure_series
@@ -9,7 +7,7 @@ if TYPE_CHECKING:
 
 
 class TextTransformer:
-    """Transforms text values for SDTM compliance."""
+    pass
 
     @staticmethod
     def replace_unknown(series: object, default: str) -> pd.Series:
@@ -36,7 +34,7 @@ class TextTransformer:
             )
             frame.loc[:, "VISIT"] = frame["VISITNUM"].map(_visit_label).astype("string")
         elif "VISIT" in frame.columns:
-            visit_text = frame["VISIT"].astype("string").str.extract(r"(\d+)")[0]
+            visit_text = frame["VISIT"].astype("string").str.extract("(\\d+)")[0]
             frame.loc[:, "VISITNUM"] = (
                 ensure_numeric_series(visit_text, frame.index).fillna(1).astype(int)
             )

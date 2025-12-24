@@ -1,16 +1,3 @@
-"""Dataset output adapter for consistent SDTM dataset exports.
-
-This module consolidates dataset output generation into a single
-infrastructure adapter used by the application layer.
-
-Key Features:
-- Single source of truth for XPT/XML/SAS generation
-- Consistent error handling and logging
-- Configurable output via DatasetOutputRequest/DatasetOutputResult DTOs
-- No duplicate code
-- Dependency injection of writer adapters
-"""
-
 from typing import TYPE_CHECKING
 
 from ...application.models import DatasetOutputResult
@@ -30,41 +17,11 @@ if TYPE_CHECKING:
         XPTWriterPort,
     )
     from ...domain.entities.mapping import MappingConfig
-
-# Import domain helper (still needed for resolving dataset names)
 from ..sdtm_spec.registry import get_domain
 
 
 class DatasetOutputAdapter:
-    """Centralized dataset output generation for all formats.
-
-    The adapter accepts writer adapters via dependency injection, following the
-    Ports & Adapters architecture pattern. This allows for flexible writer
-    implementations and better testability.
-
-    Example:
-        >>> from cdisc_transpiler.application.models import DatasetOutputDirs, DatasetOutputRequest
-        >>> from cdisc_transpiler.infrastructure.io.dataset_output import DatasetOutputAdapter
-        >>> from cdisc_transpiler.infrastructure.io.xpt_writer import XPTWriter
-        >>> from cdisc_transpiler.infrastructure.io.dataset_xml_writer import DatasetXMLWriter
-        >>> from cdisc_transpiler.infrastructure.io.sas_writer import SASWriter
-        >>>
-        >>> generator = DatasetOutputAdapter(
-        ...     xpt_writer=XPTWriter(),
-        ...     xml_writer=DatasetXMLWriter(),
-        ...     sas_writer=SASWriter(),
-        ... )
-        >>> request = DatasetOutputRequest(
-        ...     dataframe=dm_df,
-        ...     domain_code="DM",
-        ...     config=config,
-        ...     output_dirs=DatasetOutputDirs(xpt_dir=Path("output/xpt")),
-        ...     formats={"xpt"},
-        ... )
-        >>> result = generator.generate(request)
-        >>> if result.success:
-        ...     print(f"Generated: {result.xpt_path}")
-    """
+    pass
 
     def __init__(
         self,
@@ -72,44 +29,18 @@ class DatasetOutputAdapter:
         xml_writer: DatasetXMLWriterPort,
         sas_writer: SASWriterPort,
     ) -> None:
-        """Initialize the DatasetOutputAdapter with writer adapters.
-
-        Args:
-            xpt_writer: Adapter for writing XPT files
-            xml_writer: Adapter for writing Dataset-XML files
-            sas_writer: Adapter for writing SAS programs
-
-        Example:
-            >>> from cdisc_transpiler.infrastructure.io.dataset_output import DatasetOutputAdapter
-            >>> from cdisc_transpiler.infrastructure.io.xpt_writer import XPTWriter
-            >>> from cdisc_transpiler.infrastructure.io.dataset_xml_writer import DatasetXMLWriter
-            >>> from cdisc_transpiler.infrastructure.io.sas_writer import SASWriter
-            >>> generator = DatasetOutputAdapter(xpt_writer=XPTWriter(), xml_writer=DatasetXMLWriter(), sas_writer=SASWriter())
-        """
         super().__init__()
         self._xpt_writer = xpt_writer
         self._xml_writer = xml_writer
         self._sas_writer = sas_writer
 
     def generate(self, request: DatasetOutputRequest) -> DatasetOutputResult:
-        """Generate all requested output files.
-
-        Args:
-            request: Output generation request with dataframe and configuration
-
-        Returns:
-            DatasetOutputResult with paths to generated files and any errors
-        """
         result = DatasetOutputResult()
-
-        # Determine base filename
         base_filename = request.base_filename
         if base_filename is None:
             domain = get_domain(request.domain_code)
             base_filename = domain.resolved_dataset_name()
         disk_name = base_filename.lower()
-
-        # Generate XPT file
         if "xpt" in request.formats and request.output_dirs.xpt_dir:
             try:
                 result.xpt_path = self._generate_xpt(
@@ -122,8 +53,6 @@ class DatasetOutputAdapter:
                 result.errors.append(f"XPT generation failed: {exc}")
             except Exception as exc:
                 result.errors.append(f"XPT generation failed: {exc}")
-
-        # Generate Dataset-XML file
         if "xml" in request.formats and request.output_dirs.xml_dir:
             try:
                 result.xml_path = self._generate_xml(
@@ -137,8 +66,6 @@ class DatasetOutputAdapter:
                 result.errors.append(f"XML generation failed: {exc}")
             except Exception as exc:
                 result.errors.append(f"XML generation failed: {exc}")
-
-        # Generate SAS program
         if "sas" in request.formats and request.output_dirs.sas_dir:
             try:
                 result.sas_path = self._generate_sas(request, disk_name, base_filename)
@@ -146,27 +73,11 @@ class DatasetOutputAdapter:
                 result.errors.append(f"SAS generation failed: {exc}")
             except Exception as exc:
                 result.errors.append(f"SAS generation failed: {exc}")
-
         return result
 
     def _generate_xpt(
-        self,
-        dataframe: pd.DataFrame,
-        domain_code: str,
-        xpt_dir: Path,
-        disk_name: str,
+        self, dataframe: pd.DataFrame, domain_code: str, xpt_dir: Path, disk_name: str
     ) -> Path:
-        """Generate XPT file using the injected XPT writer.
-
-        Args:
-            dataframe: Data to write
-            domain_code: Domain code
-            xpt_dir: Output directory
-            disk_name: Base filename (without extension)
-
-        Returns:
-            Path to generated XPT file
-        """
         xpt_path = xpt_dir / f"{disk_name}.xpt"
         self._xpt_writer.write(dataframe, domain_code, xpt_path)
         return xpt_path
@@ -179,52 +90,23 @@ class DatasetOutputAdapter:
         xml_dir: Path,
         disk_name: str,
     ) -> Path:
-        """Generate Dataset-XML file using the injected XML writer.
-
-        Args:
-            dataframe: Data to write
-            domain_code: Domain code
-            config: Mapping configuration
-            xml_dir: Output directory
-            disk_name: Base filename (without extension)
-
-        Returns:
-            Path to generated XML file
-        """
         xml_path = xml_dir / f"{disk_name}.xml"
         self._xml_writer.write(dataframe, domain_code, config, xml_path)
         return xml_path
 
     def _generate_sas(
-        self,
-        request: DatasetOutputRequest,
-        disk_name: str,
-        base_filename: str,
+        self, request: DatasetOutputRequest, disk_name: str, base_filename: str
     ) -> Path:
-        """Generate SAS program using the injected SAS writer.
-
-        Args:
-            request: Dataset output request
-            disk_name: Base filename (without extension)
-            base_filename: Base filename for output dataset
-
-        Returns:
-            Path to generated SAS file
-        """
         sas_dir = request.output_dirs.sas_dir
         if sas_dir is None:
             raise ValueError("SAS output directory is not configured")
         sas_path = sas_dir / f"{disk_name}.sas"
-
-        # Determine input/output dataset names
         input_dataset = request.input_dataset
         output_dataset = request.output_dataset
         if input_dataset is None:
             input_dataset = f"work.{request.domain_code.lower()}"
         if output_dataset is None:
             output_dataset = f"sdtm.{base_filename}"
-
-        # Use the injected SAS writer
         self._sas_writer.write(
             request.domain_code,
             request.config,
@@ -232,5 +114,4 @@ class DatasetOutputAdapter:
             input_dataset=input_dataset,
             output_dataset=output_dataset,
         )
-
         return sas_path

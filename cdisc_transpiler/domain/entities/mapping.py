@@ -1,9 +1,3 @@
-"""Configuration models for column mapping.
-
-This module contains the core data models used for defining and managing
-column mappings between source data and SDTM target variables.
-"""
-
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 
@@ -16,40 +10,28 @@ if TYPE_CHECKING:
 
 
 class DomainResolver(Protocol):
+    pass
+
     def __call__(self, domain_code: str) -> SDTMDomain: ...
 
 
-# =============================================================================
-# Configuration Models
-# =============================================================================
-
-
 class ColumnMapping(BaseModel):
-    """Mapping from a source column to an SDTM target variable."""
-
     source_column: str
     target_variable: str
     transformation: str | None = None
     confidence_score: float = Field(ge=0.0, le=1.0)
-    # New fields for metadata-driven mappings
-    codelist_name: str | None = None  # Name of codelist to apply
-    use_code_column: str | None = None  # Column containing coded values
+    codelist_name: str | None = None
+    use_code_column: str | None = None
 
     def to_assignment(self) -> str:
-        """Return SAS assignment snippet for the mapping."""
         expr = self.transformation or self.source_column
         return f"{self.target_variable} = {expr};"
 
 
 class MappingConfig(BaseModel):
-    """Configuration for mapping source data to an SDTM domain."""
-
     domain: str
     study_id: str | None = None
     mappings: list[ColumnMapping]
-
-    # Optional study-level defaults that domain processors may use to populate
-    # required values when the source does not contain them.
     default_country: str | None = None
 
     @property
@@ -59,14 +41,13 @@ class MappingConfig(BaseModel):
     def enforce_domain(self, domain_resolver: DomainResolver | None = None) -> None:
         if domain_resolver is None:
             return
-        domain_resolver(self.domain)  # raises if invalid
+        domain_resolver(self.domain)
 
     def missing_required(
         self, domain_resolver: DomainResolver | None = None
     ) -> set[str]:
         if domain_resolver is None:
             return set()
-
         domain = domain_resolver(self.domain)
         required = {
             var.name
@@ -74,7 +55,7 @@ class MappingConfig(BaseModel):
             if (var.core or "").strip().lower() == "req"
         }
         auto_populated = {"STUDYID", "DOMAIN"}
-        return (required - auto_populated) - self.target_variables
+        return required - auto_populated - self.target_variables
 
     def validate_required(self, domain_resolver: DomainResolver | None = None) -> None:
         missing = self.missing_required(domain_resolver)
@@ -84,15 +65,8 @@ class MappingConfig(BaseModel):
             )
 
 
-# =============================================================================
-# Suggestion Models
-# =============================================================================
-
-
 @dataclass(slots=True)
 class Suggestion:
-    """A single mapping suggestion."""
-
     column: str
     candidate: str
     confidence: float
@@ -100,21 +74,13 @@ class Suggestion:
 
 @dataclass(slots=True)
 class MappingSuggestions:
-    """Collection of mapping suggestions."""
-
     mappings: list[ColumnMapping]
     unmapped_columns: list[str]
-
-
-# =============================================================================
-# Utility Functions
-# =============================================================================
 
 
 def merge_mappings(
     base: MappingConfig, extra: Iterable[ColumnMapping]
 ) -> MappingConfig:
-    """Merge additional mappings into an existing config."""
     existing = {m.target_variable: m for m in base.mappings}
     for mapping in extra:
         existing.setdefault(mapping.target_variable, mapping)
@@ -123,7 +89,6 @@ def merge_mappings(
 
 
 def build_config(domain_code: str, mappings: Iterable[ColumnMapping]) -> MappingConfig:
-    """Build a MappingConfig from a list of column mappings."""
     config = MappingConfig(domain=domain_code, mappings=list(mappings))
     config.enforce_domain()
     return config

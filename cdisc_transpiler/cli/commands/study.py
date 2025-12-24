@@ -1,13 +1,3 @@
-"""Study command - Process an entire study folder and generate SDTM submission files.
-
-This module serves as a thin adapter between the Click CLI framework and the
-application layer's StudyProcessingUseCase. It is responsible for:
-1. Parsing CLI arguments
-2. Creating the ProcessStudyRequest
-3. Calling the use case
-4. Formatting the response for user output
-"""
-
 from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
@@ -21,7 +11,6 @@ from ...infrastructure.container import DependencyContainer
 from ..presenters.summary import SummaryPresenter, SummaryRequest
 
 console = Console()
-
 MIN_STUDY_ID_PARTS = 2
 SUPP_PREFIX_LEN = 4
 
@@ -81,10 +70,7 @@ class StudyCommandOptions:
     type=click.Path(path_type=Path),
     help="Output directory for generated files (default: <study_folder>/output)",
 )
-@click.option(
-    "--study-id",
-    help="Study identifier (default: derived from folder name)",
-)
+@click.option("--study-id", help="Study identifier (default: derived from folder name)")
 @click.option(
     "--format",
     "output_format",
@@ -156,50 +142,8 @@ class StudyCommandOptions:
 @click.option(
     "-v", "--verbose", count=True, help="Increase verbosity level (e.g., -v, -vv)"
 )
-def study_command(
-    study_folder: Path,
-    **options: object,
-) -> None:
-    """Process an entire study folder and generate SDTM submission files.
-
-    This command scans the study folder for CSV files matching known SDTM domain
-    patterns and generates the requested output files:
-
-    \b
-    - XPT files: SAS transport files for regulatory submission
-    - Dataset-XML: CDISC Dataset-XML 1.0 files
-    - Define-XML: Single Define-XML 2.1 metadata file for the entire study
-    - SAS programs: SAS code for data transformation
-
-    Domain variants like LBCC, LBHM, LB_PREG are recognized and merged
-    into their base domain files for SDTM compliance.
-
-    Examples:
-
-    \b
-        # Generate both XPT and Dataset-XML with Define-XML
-        cdisc-transpiler study Mockdata/DEMO_GDISC_20240903_072908/
-
-    \b
-        # Generate only XPT files
-        cdisc-transpiler study Mockdata/DEMO_GDISC_20240903_072908/ --format xpt
-
-    \b
-        # Generate only Dataset-XML files
-        cdisc-transpiler study Mockdata/DEMO_GDISC_20240903_072908/ --format xml
-
-    \b
-        # Skip Define-XML generation
-        cdisc-transpiler study Mockdata/DEMO_GDISC_20240903_072908/ --no-define-xml
-
-    \b
-        # Custom output directory and study ID
-        cdisc-transpiler study data/ --output-dir submission/ --study-id STUDY123
-    """
-
+def study_command(study_folder: Path, **options: object) -> None:
     command_options = StudyCommandOptions.from_kwargs(dict(options))
-
-    # Derive study ID from folder name if not provided
     if command_options.study_id is None:
         folder_name = study_folder.name
         parts = folder_name.split("_")
@@ -210,20 +154,13 @@ def study_command(
         )
     else:
         study_id = command_options.study_id
-
-    # Set output directory
-    output_dir = command_options.output_dir or (study_folder / "output")
-
-    # Convert output format to set
+    output_dir = command_options.output_dir or study_folder / "output"
     output_formats = (
         {"xpt", "xml"}
         if command_options.output_format == "both"
         else {command_options.output_format}
     )
-
     runtime_config = ConfigLoader.load(config_file=command_options.config_file)
-
-    # Create request object
     request = ProcessStudyRequest(
         study_folder=study_folder,
         study_id=study_id,
@@ -241,22 +178,14 @@ def study_command(
         fail_on_conformance_errors=command_options.fail_on_conformance_errors,
         default_country=runtime_config.default_country,
     )
-
-    # Create dependency container and use case
     container = DependencyContainer(verbose=command_options.verbose, console=console)
     use_case = container.create_study_processing_use_case()
-
-    # Domain descriptions (used in the Study Processing Summary table)
     domain_definition_repository = container.create_domain_definition_repository()
 
     def _describe_domain(domain_code: str) -> str:
         code = (domain_code or "").upper()
         if not code:
             return ""
-
-        # SDTMIG metadata uses a placeholder label for SUPPQUAL
-        # ("Supplemental Qualifiers for [domain name]"). For concrete SUPP--
-        # datasets we always prefer a resolved label.
         if code == "SUPPQUAL":
             return "Supplemental Qualifiers"
         if code.startswith("SUPP") and len(code) > SUPP_PREFIX_LEN:
@@ -267,16 +196,12 @@ def study_command(
         except Exception:
             return ""
 
-    # Execute the use case
     response = use_case.execute(request)
-
     domain_descriptions: dict[str, str] = {}
     for result in response.domain_results:
         domain_descriptions[result.domain_code] = _describe_domain(result.domain_code)
         for supp in result.suppqual_domains:
             domain_descriptions[supp.domain_code] = _describe_domain(supp.domain_code)
-
-    # Display summary using presenter
     presenter = SummaryPresenter(console)
     presenter.present(
         SummaryRequest(
@@ -291,12 +216,9 @@ def study_command(
             conformance_report_error=response.conformance_report_error,
         )
     )
-
-    if command_options.fail_on_conformance_errors and not response.success:
+    if command_options.fail_on_conformance_errors and (not response.success):
         raise click.ClickException(
             "Run failed due to errors (conformance gating may have been enabled)."
         )
-
-    # Exit with error code if there were errors
     if not response.success or response.has_errors:
         raise click.ClickException("Study processing completed with errors")

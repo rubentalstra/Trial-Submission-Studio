@@ -1,5 +1,3 @@
-"""Utility helpers for SDTM spec/metadata processing (infrastructure)."""
-
 from ...domain.entities.sdtm_classes import (
     GENERAL_OBSERVATION_CLASSES,
     core_priority,
@@ -11,7 +9,6 @@ from ...domain.entities.sdtm_classes import (
 def infer_implements(
     var_name: str, domain_code: str, class_name: str, role: str | None
 ) -> str | None:
-    """Return generalized placeholder (e.g., --SEQ) for Identifier/Timing variables."""
     general_class = normalize_general_class(class_name)
     if general_class not in GENERAL_OBSERVATION_CLASSES:
         return None

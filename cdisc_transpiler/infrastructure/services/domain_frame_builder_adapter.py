@@ -1,5 +1,3 @@
-"""Infrastructure adapter for building SDTM domain dataframes."""
-
 from dataclasses import replace
 from typing import TYPE_CHECKING, cast, override
 
@@ -27,6 +25,8 @@ if TYPE_CHECKING:
 
 
 class DomainFrameBuilderAdapter(DomainFrameBuilderPort):
+    pass
+
     def __init__(self, *, ct_repository: CTRepositoryPort | None = None) -> None:
         super().__init__()
         self._ct_repository = ct_repository
@@ -36,7 +36,6 @@ class DomainFrameBuilderAdapter(DomainFrameBuilderPort):
         validators: ValidatorRegistry | None = None
         if not request.lenient:
             validators = cast("ValidatorRegistry", {"xpt": XPTValidator()})
-
         transformers: TransformerRegistry = {
             "date": DateTransformer,
             "codelist": CodelistTransformer,

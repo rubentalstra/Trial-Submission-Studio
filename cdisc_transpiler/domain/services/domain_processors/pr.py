@@ -1,10 +1,7 @@
-"""Domain processor for Procedures (PR) domain."""
-
 from typing import TYPE_CHECKING, override
 
 if TYPE_CHECKING:
     import pandas as pd
-
 from ....pandas_utils import ensure_numeric_series
 from ..transformers.date import DateTransformer
 from ..transformers.numeric import NumericTransformer
@@ -12,18 +9,10 @@ from .base import BaseDomainProcessor
 
 
 class PRProcessor(BaseDomainProcessor):
-    """Procedures domain processor.
-
-    Handles domain-specific processing for the PR domain.
-    """
+    pass
 
     @override
     def process(self, frame: pd.DataFrame) -> None:
-        """Process PR domain DataFrame.
-
-        Args:
-            frame: Domain DataFrame to process in-place
-        """
         self._drop_placeholder_rows(frame)
         self._assign_sequence(frame)
         self._normalize_visit_fields(frame)
@@ -104,7 +93,6 @@ class PRProcessor(BaseDomainProcessor):
                 )
                 prdecod_upper = prdecod_upper.where(prdecod_upper != prefix, "")
             frame["PRDECOD"] = prdecod_upper
-
         ct_prdecod = self._get_controlled_terminology(variable="PRDECOD")
         if ct_prdecod:
             if "PRDECOD" not in frame.columns:

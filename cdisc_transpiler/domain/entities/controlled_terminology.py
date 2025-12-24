@@ -1,11 +1,3 @@
-"""Controlled terminology domain entity.
-
-This is a pure data model representing CDISC controlled terminology.
-
-It is used by ports and repositories so the application layer does not
-depend on infrastructure adapters or compatibility shims.
-"""
-
 from dataclasses import dataclass, field
 from difflib import get_close_matches
 import re
@@ -42,14 +34,11 @@ def _empty_preferred_terms() -> dict[str, str]:
 
 @dataclass(frozen=True, slots=True)
 class ControlledTerminology:
-    """Represents controlled terminology using column-aligned names from CT CSVs."""
-
     codelist_code: str | None
     codelist_name: str
     submission_values: set[str]
     codelist_extensible: bool = False
     synonyms: dict[str, str] | None = None
-    # Maps canonical CDISC Submission Value -> tuple of its CDISC Synonym(s) (as seen in CT files).
     submission_value_synonyms: dict[str, tuple[str, ...]] = field(
         default_factory=_empty_submission_value_synonyms
     )
@@ -64,19 +53,17 @@ class ControlledTerminology:
         text = raw.strip()
         if not text:
             return ""
-        text = re.sub(r"\s*/\s*", "/", text)
-        return re.sub(r"\s+", " ", text)
+        text = re.sub("\\s*/\\s*", "/", text)
+        return re.sub("\\s+", " ", text)
 
     def _looks_like_code_value(self, text: str) -> bool:
-        """Heuristic: code-like values (e.g., test codes) should not get fuzzy suggestions."""
         if not text:
             return False
         if " " in text:
             return False
-        # Typical code values are short and mostly A-Z/0-9 with a few separators.
         if len(text) > CODELIKE_MAX_LENGTH:
             return False
-        return bool(re.fullmatch(r"[A-Z0-9_./-]+", text.upper()))
+        return bool(re.fullmatch("[A-Z0-9_./-]+", text.upper()))
 
     def _normalize_query_text(self, raw_value: object) -> str | None:
         if raw_value is None:
@@ -89,52 +76,36 @@ class ControlledTerminology:
 
     def _build_candidate_index(self) -> dict[str, str]:
         candidate_to_canonical: dict[str, str] = {}
-
         for submission in self.submission_values:
             key = self._canonicalize_for_match(submission).upper()
             if key:
                 candidate_to_canonical[key] = submission
-
         if self.synonyms:
             for syn_upper, canonical in self.synonyms.items():
                 key = self._canonicalize_for_match(syn_upper).upper()
                 if key:
                     candidate_to_canonical.setdefault(key, canonical)
-
         for canonical, preferred in self.preferred_terms.items():
             pref = self._canonicalize_for_match(preferred)
             if pref:
                 candidate_to_canonical.setdefault(pref.upper(), canonical)
-
         return candidate_to_canonical
 
     def _suggest_from_candidates(
-        self,
-        query_text: str,
-        candidate_to_canonical: dict[str, str],
-        *,
-        limit: int,
+        self, query_text: str, candidate_to_canonical: dict[str, str], *, limit: int
     ) -> list[str]:
         query = query_text.upper()
-
-        # High-confidence: exact match (case-insensitive) against Submission Value, Synonym(s), or Preferred Term.
         exact = candidate_to_canonical.get(query)
         if exact:
             return [exact]
-
-        # Conservative: avoid fuzzy suggestions for short / code-like values (e.g., TESTCD variables).
         if (
             self._looks_like_code_value(query_text)
             or len(query_text) < FUZZY_SUGGEST_MIN_LENGTH
         ):
             return []
-
         if not candidate_to_canonical:
             return []
-
         candidates = list(candidate_to_canonical.keys())
-
-        # Low-confidence fuzzy match (used only for longer, non-code-like free-text).
         matches = get_close_matches(query, candidates, n=limit * 3, cutoff=0.85)
         suggestions: list[str] = []
         seen: set[str] = set()
@@ -171,20 +142,12 @@ class ControlledTerminology:
     def suggest_submission_values(
         self, raw_value: object, *, limit: int = 3
     ) -> list[str]:
-        """Suggest canonical CDISC Submission Value(s) for a raw value.
-
-        Uses CT content (Submission Value + Synonym(s) + Preferred Term) to suggest
-        the most likely canonical Submission Value.
-        """
         query_text = self._normalize_query_text(raw_value)
         if query_text is None:
             return []
-
         candidate_to_canonical = self._build_candidate_index()
         return self._suggest_from_candidates(
-            query_text,
-            candidate_to_canonical,
-            limit=limit,
+            query_text, candidate_to_canonical, limit=limit
         )
 
     def normalize(self, raw_value: object) -> str:
@@ -207,9 +170,7 @@ class ControlledTerminology:
 
     def invalid_values(self, series: object) -> set[str]:
         invalid: set[str] = set()
-
         series_values = ensure_series(series)
-
         for raw_value in series_values.dropna().unique():
             normalized = self.normalize(raw_value)
             if not normalized:

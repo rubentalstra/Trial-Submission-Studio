@@ -1,11 +1,3 @@
-"""Infrastructure adapter for output directory preparation.
-
-This adapter performs filesystem I/O needed to create the output layout for a
-study run (directories and a placeholder ACRF PDF used by Define-XML).
-
-It implements the application port OutputPreparerPort.
-"""
-
 from typing import TYPE_CHECKING, override
 
 from ...application.ports.services import OutputPreparerPort
@@ -15,19 +7,13 @@ if TYPE_CHECKING:
 
 
 def _ensure_acrf_pdf(path: Path) -> None:
-    """Create a minimal, valid PDF at path if one is not already present."""
     if path.exists():
         return
-
     path.parent.mkdir(parents=True, exist_ok=True)
-
     obj_bodies: dict[int, str] = {
         1: "<< /Type /Catalog /Pages 2 0 R >>",
         2: "<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
-        3: (
-            "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
-            "/Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>"
-        ),
+        3: "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>",
     }
     stream_text = "Annotated CRF placeholder"
     stream_content = f"BT /F1 12 Tf 72 720 Td ({stream_text}) Tj ET".encode("latin-1")
@@ -37,13 +23,11 @@ def _ensure_acrf_pdf(path: Path) -> None:
         + "\nendstream"
     )
     obj_bodies[5] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>"
-
     parts: list[str] = ["%PDF-1.4\n"]
     offsets: dict[int, int] = {}
     for obj_num in sorted(obj_bodies):
         offsets[obj_num] = sum(len(p.encode("latin-1")) for p in parts)
         parts.append(f"{obj_num} 0 obj\n{obj_bodies[obj_num]}\nendobj\n")
-
     xref_start = sum(len(p.encode("latin-1")) for p in parts)
     size = max(obj_bodies) + 1
     xref_lines = ["xref", f"0 {size}", "0000000000 65535 f "]
@@ -56,13 +40,12 @@ def _ensure_acrf_pdf(path: Path) -> None:
     )
     parts.append(xref_section)
     parts.append(trailer)
-
     pdf_bytes = "".join(parts).encode("latin-1")
     path.write_bytes(pdf_bytes)
 
 
 class OutputPreparer(OutputPreparerPort):
-    """Filesystem-based output preparation."""
+    pass
 
     @staticmethod
     def _remove_matching_files(directory: Path, pattern: str) -> None:
@@ -82,29 +65,18 @@ class OutputPreparer(OutputPreparerPort):
         generate_define_xml: bool,
     ) -> None:
         output_dir.mkdir(parents=True, exist_ok=True)
-
-        # Make output deterministic across repeated runs into the same folder.
-        # This prevents stale artifacts (e.g., RELSUB outputs from a previous run)
-        # from lingering when they are not produced in the current run.
         self._remove_matching_files(output_dir / "xpt", "*.xpt")
-        # Split-domain outputs live under xpt/split; clean them too so validators
-        # (e.g., Pinnacle 21) don't see leftover split datasets that aren't
-        # referenced in the current Define-XML.
         self._remove_matching_files(output_dir / "xpt" / "split", "*.xpt")
         self._remove_matching_files(output_dir / "dataset-xml", "*.xml")
         self._remove_matching_files(output_dir / "sas", "*.sas")
         define_path = output_dir / "define.xml"
         if define_path.exists() and define_path.is_file():
             define_path.unlink()
-
         if "xpt" in output_formats:
             (output_dir / "xpt").mkdir(parents=True, exist_ok=True)
-
         if "xml" in output_formats:
             (output_dir / "dataset-xml").mkdir(parents=True, exist_ok=True)
-
         if generate_sas:
             (output_dir / "sas").mkdir(parents=True, exist_ok=True)
-
         if generate_define_xml:
             _ensure_acrf_pdf(output_dir / "acrf.pdf")

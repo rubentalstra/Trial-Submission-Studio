@@ -1,26 +1,15 @@
-"""Shared utilities for XML generation.
-
-Common helpers used by Dataset-XML and Define-XML writers.
-
-These are intentionally tiny primitives to avoid repeating namespace handling
-logic across modules.
-"""
-
 from pathlib import Path
 
 
 def tag(namespace: str, name: str) -> str:
-    """Create a namespaced XML tag string."""
     return f"{{{namespace}}}{name}"
 
 
 def attr(namespace: str, name: str) -> str:
-    """Create a namespaced XML attribute string."""
     return f"{{{namespace}}}{name}"
 
 
 def safe_href(href: str) -> str:
-    """Sanitize dataset href to comply with SAS naming constraints."""
     if not href:
         return href
     path = Path(href)

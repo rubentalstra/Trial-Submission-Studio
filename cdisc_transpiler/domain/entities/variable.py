@@ -1,5 +1,3 @@
-"""Variable construction from CSV metadata."""
-
 from typing import TYPE_CHECKING
 
 from .sdtm_classes import GENERAL_OBSERVATION_CLASSES, normalize_general_class
@@ -7,8 +5,6 @@ from .sdtm_domain import SDTMVariable
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
-
-# Import constants directly to avoid circular import
 DEFAULT_CHAR_LENGTH = 200
 DEFAULT_NUM_LENGTH = 8
 
@@ -27,13 +23,6 @@ def _parse_int(value: str | None) -> int | None:
 
 
 def extract_variable_length(row: Mapping[str, str]) -> int | None:
-    """Extract variable length from CSV metadata when available.
-
-    SDTMIG v3.4 Variables.csv (as shipped in this repo) does not include a
-    dedicated Length column. However, other structured sources (or future
-    versions) may include one. This extractor is defensive and returns None
-    when no length can be found.
-    """
     for key in (
         "Length",
         "Variable Length",
@@ -49,13 +38,11 @@ def extract_variable_length(row: Mapping[str, str]) -> int | None:
 
 
 def clean_codelist(raw: str | None) -> str | None:
-    """Normalize codelist strings from CSV to a single CDISC CT code."""
     if not raw:
         return None
     text = raw.strip()
     if not text:
         return None
-    # Some cells may contain multiple codes separated by delimiters; take the first.
     for sep in [";", ",", " "]:
         if sep in text:
             parts = [p for p in (part.strip() for part in text.split(sep)) if p]
@@ -65,7 +52,6 @@ def clean_codelist(raw: str | None) -> str | None:
 
 
 def normalize_type(raw: str | None) -> str:
-    """Map CSV type strings to SDTM types."""
     if not raw:
         return "Char"
     lower = raw.strip().lower()
@@ -75,7 +61,6 @@ def normalize_type(raw: str | None) -> str:
 def infer_implements(
     var_name: str, domain_code: str, class_name: str, role: str | None
 ) -> str | None:
-    """Return generalized placeholder (e.g., --SEQ) for Identifier/Timing variables."""
     general_class = normalize_general_class(class_name)
     if general_class not in GENERAL_OBSERVATION_CLASSES:
         return None
@@ -91,7 +76,6 @@ def infer_implements(
 
 
 def extract_variable_order(row: Mapping[str, str]) -> int | None:
-    """Extract variable order from CSV row."""
     try:
         return int((row.get("Variable Order") or "").strip())
     except ValueError:
@@ -99,24 +83,20 @@ def extract_variable_order(row: Mapping[str, str]) -> int | None:
 
 
 def extract_variable_name(row: Mapping[str, str]) -> str:
-    """Extract and normalize variable name from CSV row."""
     return (row.get("Variable Name") or "").strip().upper()
 
 
 def extract_variable_label(row: Mapping[str, str], name: str) -> str:
-    """Extract variable label from CSV row, defaulting to name."""
     return (row.get("Variable Label") or name).strip()
 
 
 def extract_codelist_code(row: Mapping[str, str]) -> str | None:
-    """Extract codelist code from CSV row."""
     return clean_codelist(
         row.get("CDISC CT Codelist Code(s)") or row.get("Variable C-Code")
     )
 
 
 def extract_described_value_domain(row: Mapping[str, str]) -> str | None:
-    """Extract described value domain from CSV row."""
     value = (
         row.get("Described Value Domain(s)") or row.get("Described Value Domain") or ""
     ).strip()
@@ -124,23 +104,19 @@ def extract_described_value_domain(row: Mapping[str, str]) -> str | None:
 
 
 def extract_core_value(row: Mapping[str, str]) -> str | None:
-    """Extract core value from CSV row."""
     core_raw = (row.get("Core") or "").strip()
     return core_raw or None
 
 
 def extract_role(row: Mapping[str, str]) -> str | None:
-    """Extract role from CSV row."""
     return (row.get("Role") or "").strip() or None
 
 
 def extract_source_version(row: Mapping[str, str]) -> str | None:
-    """Extract source version from CSV row."""
     return (row.get("Version") or "").strip() or None
 
 
 def determine_length(name: str, vtype: str) -> int:
-    """Determine variable length based on type and name."""
     if name in {"DOMAIN", "RDOMAIN"}:
         return 2
     return DEFAULT_NUM_LENGTH if vtype == "Num" else DEFAULT_CHAR_LENGTH
@@ -149,20 +125,6 @@ def determine_length(name: str, vtype: str) -> int:
 def variable_from_row(
     row: Mapping[str, str], code: str, class_name: str
 ) -> SDTMVariable:
-    """Create an SDTMVariable from a CSV row.
-
-    This function extracts metadata from a CSV row and constructs a standardized
-    SDTMVariable object. It handles various CSV field variations and applies
-    SDTM conventions.
-
-    Args:
-        row: Dictionary containing CSV metadata fields (Variable Name, Type, Label, etc.)
-        code: Domain code (e.g., 'DM', 'AE') used for the source dataset
-        class_name: SDTM class name (e.g., 'FINDINGS', 'EVENTS') for the domain
-
-    Returns:
-        SDTMVariable: Fully constructed variable definition with metadata
-    """
     name = extract_variable_name(row)
     label = extract_variable_label(row, name)
     vtype = normalize_type(row.get("Type"))
@@ -173,7 +135,6 @@ def variable_from_row(
     source_version = extract_source_version(row)
     role = extract_role(row)
     implements = infer_implements(name, code, class_name, role)
-
     return SDTMVariable(
         name=name,
         label=label,

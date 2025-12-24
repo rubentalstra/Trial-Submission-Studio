@@ -1,9 +1,3 @@
-"""Domain definition repository adapter.
-
-Provides SDTMDomain definitions via an application-facing port, while keeping
-spec-loading mechanics (wrapper modules) in the infrastructure layer.
-"""
-
 from typing import TYPE_CHECKING, override
 
 from ...application.ports.repositories import DomainDefinitionRepositoryPort
@@ -14,7 +8,7 @@ if TYPE_CHECKING:
 
 
 class DomainDefinitionRepository(DomainDefinitionRepositoryPort):
-    """Infrastructure adapter for looking up SDTM domain definitions."""
+    pass
 
     @override
     def list_domains(self) -> list[str]:

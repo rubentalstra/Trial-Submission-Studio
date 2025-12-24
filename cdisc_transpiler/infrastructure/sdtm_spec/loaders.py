@@ -1,5 +1,3 @@
-"""CSV loaders for SDTM metadata."""
-
 import csv
 from typing import TYPE_CHECKING, Any
 
@@ -10,7 +8,6 @@ if TYPE_CHECKING:
 def load_csv_rows(
     path: Path, dataset_field: str = "Dataset Name"
 ) -> dict[str, list[dict[str, Any]]]:
-    """Load SDTM metadata rows keyed by dataset/domain code."""
     if not path.exists():
         return {}
     data: dict[str, list[dict[str, Any]]] = {}
@@ -26,11 +23,9 @@ def load_csv_rows(
 
 
 def load_dataset_attributes(path: Path) -> dict[str, dict[str, str]]:
-    """Load dataset-level attributes (class/label/structure) from Datasets.csv."""
     if not path.exists():
         return {}
     attributes: dict[str, dict[str, str]] = {}
-
     with path.open(newline="", encoding="utf-8") as handle:
         reader = csv.DictReader(handle)
         for row in reader:

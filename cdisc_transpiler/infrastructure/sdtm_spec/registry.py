@@ -1,8 +1,3 @@
-"""SDTM domain registry and lookup (infrastructure).
-
-This replaces the former `domains_module.registry` package.
-"""
-
 from functools import cache, lru_cache
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -16,29 +11,23 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from cdisc_transpiler.domain.entities.sdtm_domain import SDTMDomain
-
 SUPP_DOMAIN_CODE_LENGTH = 6
 
 
 def _get_spec_paths() -> tuple[Path, Path, Path]:
     config = TranspilerConfig()
     spec_dir = config.sdtm_spec_dir
-
     if not spec_dir.is_absolute():
-        # In-repo runs (tests/CLI) typically use repo-relative paths like
-        # docs/SDTMIG_v3.4. Resolve relative to CWD first, then fall back to
-        # the repository root (one level above the package directory).
         cwd_candidate = Path.cwd() / spec_dir
         if cwd_candidate.exists():
             spec_dir = cwd_candidate
         else:
             repo_root = Path(__file__).resolve().parents[3]
             spec_dir = repo_root / spec_dir
-
     sdtmig_path = spec_dir / "Variables.csv"
     datasets_path = spec_dir / "Datasets.csv"
     sdtm_v2_path = spec_dir.parent / "SDTM_v2.0" / "Variables.csv"
-    return sdtmig_path, sdtm_v2_path, datasets_path
+    return (sdtmig_path, sdtm_v2_path, datasets_path)
 
 
 @lru_cache(maxsize=1)
@@ -68,29 +57,23 @@ def _register(domain: SDTMDomain) -> None:
 
 def _build_domain_from_cache(code: str) -> SDTMDomain | None:
     attrs = _dataset_attrs()
-
     rows = _sdtmig_cache().get(code)
     if rows:
         return build_domain_from_rows(code, rows, "SDTMIG v3.4", attrs)
-
     rows = _sdtm_v2_cache().get(code)
     if rows:
         return build_domain_from_rows(code, rows, "SDTM v2.0", attrs)
-
     return None
 
 
 def _ensure_registry_built() -> None:
     if _DOMAIN_DEFINITIONS:
         return
-
     attrs = _dataset_attrs()
-
     for code, rows in sorted(_sdtm_v2_cache().items()):
         domain = build_domain_from_rows(code, rows, "SDTM v2.0", attrs)
         if domain:
             _register(domain)
-
     for code, rows in sorted(_sdtmig_cache().items()):
         domain = build_domain_from_rows(code, rows, "SDTMIG v3.4", attrs)
         if domain:
@@ -100,11 +83,9 @@ def _ensure_registry_built() -> None:
 @cache
 def get_domain(code: str) -> SDTMDomain:
     _ensure_registry_built()
-
     key = code.upper()
     if key in _DOMAIN_DEFINITIONS:
         return _DOMAIN_DEFINITIONS[key]
-
     if key.startswith("SUPP") and len(key) == SUPP_DOMAIN_CODE_LENGTH:
         suppqual_base = _DOMAIN_DEFINITIONS.get("SUPPQUAL") or _build_domain_from_cache(
             "SUPPQUAL"
@@ -112,12 +93,10 @@ def get_domain(code: str) -> SDTMDomain:
         supp = build_supp_domain(key, suppqual_base)
         _register(supp)
         return supp
-
     domain = _build_domain_from_cache(key)
     if domain:
         _register(domain)
         return domain
-
     raise KeyError(f"Unknown SDTM domain '{code}'")
 
 
@@ -131,11 +110,9 @@ def generalized_identifiers(domain_code: str) -> dict[str, str]:
 
 
 def get_domain_class(domain_code: str) -> str:
-    """Return the SDTM class for a domain via the registry."""
     code = domain_code.upper()
     if code.startswith("SUPP"):
         return "Supplemental Qualifiers"
-
     try:
         domain = get_domain(code)
         return domain.class_name or "Unknown"

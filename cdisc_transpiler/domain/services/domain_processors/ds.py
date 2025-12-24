@@ -1,5 +1,3 @@
-"""Domain processor for Disposition (DS) domain."""
-
 from typing import override
 
 import pandas as pd
@@ -10,18 +8,10 @@ from .base import BaseDomainProcessor
 
 
 class DSProcessor(BaseDomainProcessor):
-    """Disposition domain processor.
-
-    Handles domain-specific processing for the DS domain.
-    """
+    pass
 
     @override
     def process(self, frame: pd.DataFrame) -> None:
-        """Process DS domain DataFrame.
-
-        Args:
-            frame: Domain DataFrame to process in-place
-        """
         self._drop_placeholder_rows(frame)
         self._normalize_core_fields(frame)
         self._cleanup_site_payload(frame)
@@ -43,7 +33,6 @@ class DSProcessor(BaseDomainProcessor):
     def _cleanup_site_payload(frame: pd.DataFrame) -> None:
         if not {"USUBJID", "DSDECOD", "DSTERM"}.issubset(frame.columns):
             return
-
         usubjid = frame["USUBJID"].astype("string").fillna("").str.strip()
         site_token = usubjid.str.split("-", expand=False).str[-2].fillna("")
         site_upper = site_token.astype("string").str.upper().str.strip()
@@ -53,17 +42,13 @@ class DSProcessor(BaseDomainProcessor):
         dsterm_upper = (
             frame["DSTERM"].astype("string").fillna("").str.upper().str.strip()
         )
-
         is_site_payload = (site_upper != "") & (dsdecod_upper == site_upper)
         screen_failure = is_site_payload & dsterm_upper.str.contains(
-            r"SCREEN\s+FAILURE|FAILURE\s+TO\s+MEET",
-            regex=True,
-            na=False,
+            "SCREEN\\s+FAILURE|FAILURE\\s+TO\\s+MEET", regex=True, na=False
         )
         if bool(screen_failure.any()):
             frame.loc[screen_failure, "DSDECOD"] = "SCREEN FAILURE"
             frame.loc[screen_failure, "DSTERM"] = "SCREEN FAILURE"
-
         junk_site_rows = is_site_payload & ~screen_failure
         if bool(junk_site_rows.any()):
             frame.loc[junk_site_rows, "DSDECOD"] = ""
@@ -72,12 +57,10 @@ class DSProcessor(BaseDomainProcessor):
     def _fix_mismapped_dscat(self, frame: pd.DataFrame) -> None:
         if not {"DSCAT", "DSTERM"}.issubset(frame.columns):
             return
-
         dscat_raw = frame["DSCAT"].astype("string").fillna("").str.strip()
         dsterm_raw = frame["DSTERM"].astype("string").fillna("").str.strip()
         dsterm_upper = dsterm_raw.str.upper().str.strip()
-        looks_like_site = dsterm_upper.str.contains(r"\bSITE\b", regex=True, na=False)
-
+        looks_like_site = dsterm_upper.str.contains("\\bSITE\\b", regex=True, na=False)
         ct_dscat = self._get_controlled_terminology(variable="DSCAT")
         if ct_dscat:
             dscat_norm = dscat_raw.apply(ct_dscat.normalize).astype("string").fillna("")
@@ -86,10 +69,8 @@ class DSProcessor(BaseDomainProcessor):
             invalid = (dscat_raw != "") & ~is_valid
         else:
             invalid = dscat_raw != ""
-
         if not bool(invalid.any()):
             return
-
         move_reason = invalid & ((dsterm_raw == "") | looks_like_site)
         if bool(move_reason.any()):
             frame.loc[move_reason, "DSTERM"] = dscat_raw.loc[move_reason]
@@ -103,29 +84,19 @@ class DSProcessor(BaseDomainProcessor):
         missing = dsdecod_raw == ""
         if not bool(missing.any()):
             return
-
         term_upper = frame["DSTERM"].astype("string").fillna("").str.upper().str.strip()
         screen_failure = term_upper.str.contains(
-            r"SCREEN\s+FAILURE|FAILURE\s+TO\s+MEET",
-            regex=True,
-            na=False,
+            "SCREEN\\s+FAILURE|FAILURE\\s+TO\\s+MEET", regex=True, na=False
         )
         withdrawal_consent = term_upper.str.contains(
-            r"WITHDRAW.*CONSENT|WITHDRAWAL\s+OF\s+CONSENT",
-            regex=True,
-            na=False,
+            "WITHDRAW.*CONSENT|WITHDRAWAL\\s+OF\\s+CONSENT", regex=True, na=False
         )
         withdrawal_subject = term_upper.str.contains(
-            r"WITHDRAW.*SUBJECT|SUBJECT\s+WITHDRAW",
-            regex=True,
-            na=False,
+            "WITHDRAW.*SUBJECT|SUBJECT\\s+WITHDRAW", regex=True, na=False
         )
         lost_follow = term_upper.str.contains(
-            r"LOST\s+TO\s+FOLLOW",
-            regex=True,
-            na=False,
+            "LOST\\s+TO\\s+FOLLOW", regex=True, na=False
         )
-
         frame.loc[missing & screen_failure, "DSDECOD"] = "SCREEN FAILURE"
         frame.loc[missing & withdrawal_consent, "DSDECOD"] = "WITHDRAWAL OF CONSENT"
         frame.loc[missing & withdrawal_subject, "DSDECOD"] = "WITHDRAWAL BY SUBJECT"
@@ -137,7 +108,7 @@ class DSProcessor(BaseDomainProcessor):
             return
         dsterm = frame["DSTERM"].astype("string").fillna("").str.strip()
         dsdecod = frame["DSDECOD"].astype("string").fillna("").str.strip()
-        looks_like_site = dsterm.str.contains(r"\bSITE\b", regex=True, na=False)
+        looks_like_site = dsterm.str.contains("\\bSITE\\b", regex=True, na=False)
         replace = looks_like_site & (dsdecod != "")
         if bool(replace.any()):
             frame.loc[replace, "DSTERM"] = dsdecod.loc[replace]
@@ -146,7 +117,6 @@ class DSProcessor(BaseDomainProcessor):
         ct_dsdecod = self._get_controlled_terminology(variable="DSDECOD")
         if not ct_dsdecod or "DSDECOD" not in frame.columns:
             return
-
         raw = frame["DSDECOD"].astype("string").fillna("").str.strip()
         canonical = raw.apply(ct_dsdecod.normalize).astype("string").fillna("")
         yn_map = {
@@ -161,10 +131,8 @@ class DSProcessor(BaseDomainProcessor):
         )
         canonical = canonical.astype("string").fillna("").str.upper().str.strip()
         frame.loc[:, "DSDECOD"] = canonical
-
         if "DSTERM" not in frame.columns:
             return
-
         dsterm_raw = frame["DSTERM"].astype("string").fillna("").str.strip()
         dsterm_code = dsterm_raw.apply(ct_dsdecod.normalize).astype("string").fillna("")
         dsterm_code = dsterm_code.astype("string").fillna("").str.upper().str.strip()
@@ -181,7 +149,6 @@ class DSProcessor(BaseDomainProcessor):
             )
         if "DSDTC" in frame.columns:
             frame.loc[:, "DSDTC"] = frame["DSDTC"].apply(DateTransformer.coerce_iso8601)
-
         if "DSSTDTC" in frame.columns and "DSSTDY" in frame.columns:
             DateTransformer.compute_study_day(
                 frame,
@@ -190,7 +157,6 @@ class DSProcessor(BaseDomainProcessor):
                 reference_starts=self.reference_starts,
                 ref="RFSTDTC",
             )
-
         if "DSDTC" in frame.columns and "DSDY" in frame.columns:
             DateTransformer.compute_study_day(
                 frame,

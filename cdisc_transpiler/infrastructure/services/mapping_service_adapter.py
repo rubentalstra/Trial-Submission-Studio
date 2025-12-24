@@ -1,10 +1,3 @@
-"""Infrastructure adapter for the mapping port.
-
-Today the mapping engines are pure domain services.
-This adapter exists so the application layer depends on a port, not on the
-concrete mapping implementation.
-"""
-
 from typing import TYPE_CHECKING, override
 
 from ...application.ports.services import MappingPort
@@ -20,6 +13,8 @@ if TYPE_CHECKING:
 
 
 class MappingServiceAdapter(MappingPort):
+    pass
+
     def __init__(
         self, *, domain_definition_repository: DomainDefinitionRepositoryPort
     ) -> None:

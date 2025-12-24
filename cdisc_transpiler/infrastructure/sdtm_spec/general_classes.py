@@ -1,9 +1,3 @@
-"""General Observation Class variable management (infrastructure).
-
-This builds Identifier/Timing templates grouped by the three General
-Observation Classes, using SDTMIG/SDTM v2 CSV metadata.
-"""
-
 from typing import TYPE_CHECKING, Any
 
 from ...domain.entities.sdtm_classes import GENERAL_OBSERVATION_CLASSES
@@ -23,8 +17,8 @@ def is_preferred_variable(
     exist_rank = core_priority(existing.core)
     if cand_rank != exist_rank:
         return cand_rank > exist_rank
-    cand_order = candidate.variable_order or 1_000_000
-    exist_order = existing.variable_order or 1_000_000
+    cand_order = candidate.variable_order or 1000000
+    exist_order = existing.variable_order or 1000000
     if cand_order != exist_order:
         return cand_order < exist_order
     return True
@@ -34,12 +28,9 @@ def build_general_class_variables(
     sdtmig_cache: dict[str, list[dict[str, Any]]],
     sdtm_v2_cache: dict[str, list[dict[str, Any]]],
 ) -> tuple[dict[str, dict[str, SDTMVariable]], dict[str, dict[str, set[str]]]]:
-    """Collect Identifier/Timing templates grouped by General Observation Class."""
     registry: dict[str, dict[str, SDTMVariable]] = {}
     usage: dict[str, dict[str, set[str]]] = {}
-
     caches = [sdtm_v2_cache, sdtmig_cache]
-
     for cache in caches:
         for code, rows in cache.items():
             if not rows:
@@ -62,8 +53,7 @@ def build_general_class_variables(
                 existing = registry.setdefault(general_class, {}).get(implements)
                 if is_preferred_variable(variable, existing):
                     registry[general_class][implements] = variable
-
-    return registry, usage
+    return (registry, usage)
 
 
 __all__ = ["build_general_class_variables", "is_preferred_variable"]

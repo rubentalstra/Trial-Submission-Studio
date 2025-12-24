@@ -1,9 +1,3 @@
-"""Infrastructure adapter for writing conformance reports.
-
-This adapter implements the application-level ConformanceReportWriterPort and
-performs filesystem I/O (JSON persistence).
-"""
-
 from datetime import UTC, datetime
 import json
 from typing import TYPE_CHECKING, override
@@ -18,6 +12,8 @@ if TYPE_CHECKING:
 
 
 class ConformanceReportWriterAdapter(ConformanceReportWriterPort):
+    pass
+
     @override
     def write_json(
         self,
@@ -29,7 +25,6 @@ class ConformanceReportWriterAdapter(ConformanceReportWriterPort):
     ) -> Path:
         output_dir.mkdir(parents=True, exist_ok=True)
         output_path = output_dir / filename
-
         now = datetime.now(UTC).isoformat()
         payload = {
             "schema": "cdisc-transpiler.conformance-report",
@@ -38,7 +33,6 @@ class ConformanceReportWriterAdapter(ConformanceReportWriterPort):
             "study_id": study_id,
             "reports": [report.to_dict() for report in reports],
         }
-
         output_path.write_text(
             json.dumps(payload, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
             encoding="utf-8",

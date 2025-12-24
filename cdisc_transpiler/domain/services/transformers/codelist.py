@@ -1,5 +1,3 @@
-"""Codelist and controlled terminology transformation utilities."""
-
 from typing import TYPE_CHECKING, Any, Protocol, cast
 
 import pandas as pd
@@ -15,13 +13,15 @@ if TYPE_CHECKING:
 
 
 class CTResolver(Protocol):
+    pass
+
     def __call__(
         self, *, codelist_code: str | None = None, variable: str | None = None
     ) -> ControlledTerminology | None: ...
 
 
 class CodelistTransformer:
-    """Transforms and validates controlled terminology values for SDTM compliance."""
+    pass
 
     def __init__(
         self,
@@ -43,27 +43,20 @@ class CodelistTransformer:
     ) -> pd.Series:
         if not self.metadata:
             return ensure_series(source_data)
-
         codelist = self.metadata.get_codelist(codelist_name)
         if not codelist:
             return ensure_series(source_data)
-
         index: pd.Index | None = None
         if isinstance(source_data, (pd.Series, pd.DataFrame)):
             index = source_data.index
-
         if code_column and source_frame is not None:
             code_col = code_column
             if code_col not in source_frame.columns and unquote_func:
                 alt = unquote_func(code_col)
                 if alt in source_frame.columns:
                     code_col = alt
-
             if code_col in source_frame.columns:
-                code_values = ensure_series(
-                    source_frame[code_col],
-                    index=index,
-                )
+                code_values = ensure_series(source_frame[code_col], index=index)
 
                 def transform(code_val: object) -> object:
                     if is_missing_scalar(code_val):
@@ -97,7 +90,6 @@ class CodelistTransformer:
             if var.codelist_code and var.name in frame.columns:
                 if var.name == "TSVCDREF":
                     continue
-
                 resolver = ct_resolver
                 ct_lookup = None
                 if resolver is not None:
@@ -107,7 +99,6 @@ class CodelistTransformer:
                 if ct_lookup is None:
                     continue
                 normalizer = ct_lookup.normalize
-
                 series = ensure_series(frame[var.name]).astype("string")
                 trimmed = series.str.strip()
                 mask = trimmed.notna() & (trimmed != "")
@@ -119,9 +110,6 @@ class CodelistTransformer:
                     return normalized or value
 
                 normalized = series.copy()
-                # Explicitly cast the result of apply to Series[str] via ensure_series if needed,
-                # but here we are assigning to a slice.
-                # To help pyright, we can extract the series to apply on.
                 to_normalize = ensure_series(trimmed.loc[mask])
                 normalized.loc[mask] = to_normalize.map(_normalize_ct_value)
                 frame[var.name] = normalized.astype("string")
@@ -158,7 +146,6 @@ class CodelistTransformer:
             ("QSTEST", "QSTESTCD"),
             ("MHDECOD", "MHTERM"),
         ]
-
         for left, right in pairs:
             if left not in frame.columns or right not in frame.columns:
                 continue
@@ -179,7 +166,6 @@ class CodelistTransformer:
             frame["AEDECOD"] = decod.where(decod.str.strip() != "", aetext)
         else:
             frame["AEDECOD"] = aetext
-
         for soc_var, term in {
             "AEBODSYS": "GENERAL DISORDERS",
             "AESOC": "GENERAL DISORDERS",
@@ -195,7 +181,6 @@ class CodelistTransformer:
                 frame[soc_var] = s
             else:
                 frame[soc_var] = term
-
         for code_var in (
             "AEPTCD",
             "AEHLGTCD",

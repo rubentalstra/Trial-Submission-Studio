@@ -1,11 +1,3 @@
-"""Controlled terminology loader (infrastructure).
-
-This module loads CDISC Controlled Terminology (CT) from CT CSV files on disk.
-
-It intentionally lives in the infrastructure layer because it performs
-filesystem I/O and depends on the CT CSV file layout.
-"""
-
 import math
 from typing import TYPE_CHECKING, Any, cast
 
@@ -43,7 +35,6 @@ def _clean_value(raw: object) -> str:
         if raw.empty:
             return ""
         raw_value = raw.iloc[0, 0]
-
     if isinstance(raw_value, float) and math.isnan(raw_value):
         return ""
     try:
@@ -51,7 +42,6 @@ def _clean_value(raw: object) -> str:
             return ""
     except (TypeError, ValueError):
         pass
-
     return raw_value.strip() if isinstance(raw_value, str) else str(raw_value).strip()
 
 
@@ -90,7 +80,6 @@ def _merge_ct(
     base: ControlledTerminology, other: ControlledTerminology
 ) -> ControlledTerminology:
     merged_submission = base.submission_values | other.submission_values
-
     merged_synonyms: dict[str, str] | None = None
     if base.synonyms or other.synonyms:
         merged_synonyms = {}
@@ -98,11 +87,9 @@ def _merge_ct(
             merged_synonyms.update(other.synonyms)
         if base.synonyms:
             merged_synonyms.update(base.synonyms)
-
     merged_nci = {**other.nci_codes, **base.nci_codes}
     merged_definitions = {**other.definitions, **base.definitions}
     merged_pref = {**other.preferred_terms, **base.preferred_terms}
-
     merged_synonyms_by_submission: dict[str, tuple[str, ...]] = {}
     if base.submission_value_synonyms or other.submission_value_synonyms:
         all_keys = set(base.submission_value_synonyms.keys()) | set(
@@ -118,7 +105,6 @@ def _merge_ct(
     standards = set(base.standards) | set(other.standards)
     sources = set(base.sources) | set(other.sources)
     codelist_name = base.codelist_name or other.codelist_name
-
     return ControlledTerminology(
         codelist_code=base.codelist_code or other.codelist_code,
         codelist_name=codelist_name,
@@ -138,23 +124,18 @@ def _merge_ct(
 def build_registry(
     ct_dir: Path,
 ) -> tuple[dict[str, ControlledTerminology], dict[str, ControlledTerminology]]:
-    """Build registries keyed by codelist code and by codelist name."""
-
     registry_by_code: dict[str, ControlledTerminology] = {}
     registry_by_name: dict[str, ControlledTerminology] = {}
     grouped = _load_ct_rows(ct_dir)
-
     for code, rows in grouped.items():
         if not rows:
             continue
-
         submission_values: set[str] = set()
         synonyms: dict[str, str] = {}
         synonyms_by_submission: dict[str, set[str]] = {}
         nci_codes: dict[str, str] = {}
         definitions: dict[str, str] = {}
         preferred_terms: dict[str, str] = {}
-
         extensible = (
             _clean_value(rows[0].get("Codelist Extensible (Yes/No)")).lower() == "yes"
         )
@@ -162,41 +143,33 @@ def build_registry(
         name_key = name_raw.upper()
         standard = _clean_value(rows[0].get("Standard and Date"))
         source_file = _clean_value(rows[0].get("_source_file"))
-
         for row in rows:
             submission = _clean_value(row.get("CDISC Submission Value"))
             if not submission:
                 continue
             canonical_value = submission
             submission_values.add(canonical_value)
-
             synonyms_by_submission.setdefault(canonical_value, set())
-
             nci = _clean_value(row.get("Code"))
             if nci:
                 nci_codes[canonical_value] = nci
                 nci_codes[canonical_value.upper()] = nci
-
             definition = _clean_value(row.get("CDISC Definition"))
             if definition:
                 definitions[canonical_value] = definition
-
             pref_term = _clean_value(row.get("NCI Preferred Term"))
             if pref_term:
                 preferred_terms[canonical_value] = pref_term
-
             synonyms[canonical_value.upper()] = canonical_value
             for syn in _split_synonyms(_clean_value(row.get("CDISC Synonym(s)"))):
                 synonyms[syn.upper()] = canonical_value
                 if syn.strip().upper() != canonical_value.strip().upper():
                     synonyms_by_submission.setdefault(canonical_value, set()).add(syn)
-
         submission_value_synonyms = {
             canonical: tuple(sorted(values))
             for canonical, values in synonyms_by_submission.items()
             if values
         }
-
         ct = ControlledTerminology(
             codelist_name=name_raw,
             codelist_code=code,
@@ -211,15 +184,12 @@ def build_registry(
             preferred_terms=preferred_terms,
             variable=name_key,
         )
-
         if code in registry_by_code:
             ct = _merge_ct(registry_by_code[code], ct)
         registry_by_code[code] = ct
-
         existing = registry_by_name.get(name_key)
         if existing:
             registry_by_name[name_key] = _merge_ct(existing, ct)
         else:
             registry_by_name[name_key] = ct
-
-    return registry_by_code, registry_by_name
+    return (registry_by_code, registry_by_name)

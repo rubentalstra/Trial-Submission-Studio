@@ -1,5 +1,3 @@
-"""Domain processor for Questionnaires (QS) domain."""
-
 from typing import override
 
 import pandas as pd
@@ -13,27 +11,17 @@ USUBJID_SITE_PARTS_MIN = 2
 
 
 class QSProcessor(BaseDomainProcessor):
-    """Questionnaires domain processor.
-
-    Handles domain-specific processing for the QS domain.
-    """
+    pass
 
     @override
     def process(self, frame: pd.DataFrame) -> None:
-        """Process QS domain DataFrame.
-
-        Args:
-            frame: Domain DataFrame to process in-place
-        """
         self._drop_placeholder_rows(frame)
         self._assign_sequence(frame)
         self._normalize_string_columns(frame)
         source_score, score_from_qsgrpid = self._extract_pga_score(frame)
         if source_score is not None:
             self._apply_pga_defaults(
-                frame,
-                source_score=source_score,
-                score_from_qsgrpid=score_from_qsgrpid,
+                frame, source_score=source_score, score_from_qsgrpid=score_from_qsgrpid
             )
         self._sync_qsstresc(frame)
         self._normalize_qslobxfl(frame)
@@ -62,36 +50,28 @@ class QSProcessor(BaseDomainProcessor):
                 frame.loc[:, col] = frame[col].astype("string").fillna("").str.strip()
 
     @staticmethod
-    def _extract_pga_score(
-        frame: pd.DataFrame,
-    ) -> tuple[pd.Series | None, bool]:
+    def _extract_pga_score(frame: pd.DataFrame) -> tuple[pd.Series | None, bool]:
         if "QSPGARS" in frame.columns:
-            return ensure_series(frame["QSPGARS"], index=frame.index), False
+            return (ensure_series(frame["QSPGARS"], index=frame.index), False)
         if "QSPGARSCD" in frame.columns:
-            return ensure_series(frame["QSPGARSCD"], index=frame.index), False
+            return (ensure_series(frame["QSPGARSCD"], index=frame.index), False)
         if "QSGRPID" in frame.columns and "QSORRES" in frame.columns:
             qsorres = frame["QSORRES"].astype("string").fillna("").str.strip()
             qsgrpid = frame["QSGRPID"].astype("string").fillna("").str.strip()
             if bool((qsorres == "").all()) and bool((qsgrpid != "").any()):
-                return ensure_series(frame["QSGRPID"], index=frame.index), True
-        return None, False
+                return (ensure_series(frame["QSGRPID"], index=frame.index), True)
+        return (None, False)
 
     def _apply_pga_defaults(
-        self,
-        frame: pd.DataFrame,
-        *,
-        source_score: pd.Series,
-        score_from_qsgrpid: bool,
+        self, frame: pd.DataFrame, *, source_score: pd.Series, score_from_qsgrpid: bool
     ) -> None:
         if "QSORRES" in frame.columns:
             empty_orres = frame["QSORRES"].astype("string").fillna("").str.strip() == ""
             frame.loc[empty_orres, "QSORRES"] = source_score.astype("string").fillna("")
         else:
             frame.loc[:, "QSORRES"] = source_score.astype("string").fillna("")
-
         if score_from_qsgrpid and "QSGRPID" in frame.columns:
             frame.loc[:, "QSGRPID"] = ""
-
         self._ensure_pga_testcd(frame)
         self._ensure_pga_test(frame)
         self._ensure_pga_cat(frame)

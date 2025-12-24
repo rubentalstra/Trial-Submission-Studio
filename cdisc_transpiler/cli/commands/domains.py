@@ -1,5 +1,3 @@
-"""Domains command - List all supported SDTM domains."""
-
 import click
 from rich.console import Console
 from rich.table import Table
@@ -14,7 +12,6 @@ console = Console()
 
 @click.command()
 def list_domains_command() -> None:
-    """List all supported SDTM domains."""
     table = Table(title="Supported SDTM Domains")
     table.add_column("Code", style="cyan")
     table.add_column("Description")

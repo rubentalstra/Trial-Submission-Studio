@@ -1,5 +1,3 @@
-"""Date, time, and duration transformation utilities for SDTM domains."""
-
 from typing import TYPE_CHECKING
 
 import pandas as pd
@@ -14,7 +12,7 @@ if TYPE_CHECKING:
 
 
 class DateTransformer:
-    """Transforms date, time, and duration values for SDTM compliance."""
+    pass
 
     @staticmethod
     def normalize_dates(
@@ -24,7 +22,7 @@ class DateTransformer:
             if (
                 var.type in ("Char", "Num")
                 and "DTC" in var.name
-                and var.name in frame.columns
+                and (var.name in frame.columns)
             ):
                 source = ensure_series(frame[var.name], index=frame.index).astype(
                     "string"
@@ -39,7 +37,7 @@ class DateTransformer:
         frame: pd.DataFrame, domain_variables: Sequence[SDTMVariable]
     ) -> None:
         for var in domain_variables:
-            if var.type == "Char" and "DUR" in var.name and var.name in frame.columns:
+            if var.type == "Char" and "DUR" in var.name and (var.name in frame.columns):
                 source = ensure_series(frame[var.name], index=frame.index).astype(
                     "string"
                 )
@@ -56,7 +54,6 @@ class DateTransformer:
     ) -> None:
         if not reference_starts:
             return
-
         for var in domain_variables:
             if var.name.endswith("DY") and var.name[:-2] + "DTC" in frame.columns:
                 dtc_col = var.name[:-2] + "DTC"
@@ -72,16 +69,11 @@ class DateTransformer:
                                 reference_starts,
                             )
                         )
-                    # Use a plain numeric series (float with NaN for missing) to avoid
-                    # dtype-churn warnings *and* keep downstream writers (e.g., XPT)
-                    # compatible with the produced dtypes.
                     frame.loc[:, var.name] = pd.to_numeric(dy_values, errors="coerce")
 
     @staticmethod
     def _compute_dy_for_row(
-        usubjid: str,
-        dtc: str | None,
-        reference_starts: dict[str, str],
+        usubjid: str, dtc: str | None, reference_starts: dict[str, str]
     ) -> int | None:
         if not dtc or not usubjid or usubjid not in reference_starts:
             return None
@@ -90,8 +82,6 @@ class DateTransformer:
             obs_date = pd.to_datetime(dtc, errors="coerce")
             if pd.isna(start_date) or pd.isna(obs_date):
                 return None
-            # SDTMIG v3.4 4.4.4: compare the *date portion* of DTC to the
-            # date portion of RFSTDTC (reference start) when calculating study day.
             delta = (obs_date.date() - start_date.date()).days
             return delta + 1 if delta >= 0 else delta
         except (ValueError, TypeError):
@@ -107,21 +97,14 @@ class DateTransformer:
     ) -> None:
         if dtc_var not in frame.columns:
             return
-
-        # Some metadata extracts omit DY variables (e.g., AESTDY/CMSTDY).
-        # Pinnacle 21 expects them when the corresponding DTC is present.
         if dy_var not in frame.columns:
             frame.loc[:, dy_var] = pd.NA
-
-        # SDTMIG v3.4 4.4.4: study day is calculated using the date portion.
         dates = pd.to_datetime(frame[dtc_var], errors="coerce").dt.normalize()
-
         baseline: pd.Series | None = None
         if reference_starts and "USUBJID" in frame.columns:
             baseline_series = ensure_series(frame["USUBJID"])
             baseline = baseline_series.map(reference_starts.get)
             baseline = pd.to_datetime(baseline, errors="coerce").dt.normalize()
-
         if baseline is None:
             if ref and ref in frame.columns:
                 baseline = pd.to_datetime(frame[ref], errors="coerce").dt.normalize()
@@ -132,16 +115,13 @@ class DateTransformer:
                 baseline = pd.to_datetime(frame[ref], errors="coerce").dt.normalize()
             else:
                 return
-
         baseline = ensure_series(baseline.bfill().ffill())
-        # dates - baseline results in a Series of Timedeltas. .dt.days extracts the integer days.
         diff = dates - baseline
         deltas = ensure_series(diff.dt.days)
 
         def adjust_study_day(x: object) -> object:
             if is_missing_scalar(x):
                 return x
-            # SDTM rule: no day 0. If delta >= 0, it's day 1+. If delta < 0, it's day -1-.
             if isinstance(x, (int, float)):
                 return x + 1 if x >= 0 else x
             return x

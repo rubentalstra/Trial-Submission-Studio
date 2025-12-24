@@ -1,15 +1,3 @@
-"""Domain DataFrame builder service.
-
-This module provides the core business logic for constructing SDTM-compliant
-DataFrames from source data and mapping configurations. This is domain logic
-that belongs in the domain layer, not in output-generation infrastructure.
-
-SDTM Reference:
-    SDTMIG v3.4 Section 4.1 defines the general structure of SDTM datasets.
-    Variables follow the General Observation Classes (Interventions, Events,
-    Findings) and include Identifier, Topic, Timing, and Qualifier roles.
-"""
-
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol, TypedDict
 
@@ -29,10 +17,12 @@ if TYPE_CHECKING:
 
 
 class DomainFrameBuildError(RuntimeError):
-    """Raised when domain DataFrame construction fails."""
+    pass
 
 
 class DateTransformerPort(Protocol):
+    pass
+
     @staticmethod
     def normalize_dates(
         frame: pd.DataFrame, domain_variables: Sequence[SDTMVariable]
@@ -52,11 +42,15 @@ class DateTransformerPort(Protocol):
 
 
 class NumericTransformerPort(Protocol):
+    pass
+
     @staticmethod
     def populate_stresc_from_orres(frame: pd.DataFrame, domain_code: str) -> None: ...
 
 
 class CodelistTransformerPort(Protocol):
+    pass
+
     def apply_codelist_transformation(
         self,
         source_data: object,
@@ -76,6 +70,8 @@ class CodelistTransformerPort(Protocol):
 
 
 class CodelistTransformerFactory(Protocol):
+    pass
+
     def __call__(
         self, metadata: StudyMetadata | None = None
     ) -> CodelistTransformerPort: ...
@@ -90,6 +86,8 @@ class CodelistTransformerFactory(Protocol):
 
 
 class DomainFrameValidatorPort(Protocol):
+    pass
+
     def drop_empty_optional_columns(
         self, frame: pd.DataFrame, domain_variables: Sequence[SDTMVariable]
     ) -> None: ...
@@ -136,48 +134,14 @@ class DomainFrameBuildRequest:
 
 
 def build_domain_dataframe(request: DomainFrameBuildRequest) -> pd.DataFrame:
-    """Build an SDTM-compliant domain DataFrame from source data.
-
-    This is the main entry point for domain DataFrame construction. It orchestrates
-    the full pipeline of creating, mapping, transforming, and validating domain data.
-
-    Args:
-        request: Domain frame build request with configuration and options
-
-    Returns:
-        DataFrame with columns matching the SDTM domain layout
-
-    Example:
-        >>> from cdisc_transpiler.infrastructure.sdtm_spec.registry import get_domain
-        >>> domain = get_domain("DM")
-        >>> request = DomainFrameBuildRequest(frame=source_df, config=config, domain=domain)
-        >>> result = build_domain_dataframe(request)
-    """
-    builder = DomainFrameBuilder(
-        request,
-    )
+    builder = DomainFrameBuilder(request)
     return builder.build()
 
 
 class DomainFrameBuilder:
-    """Builds SDTM-compliant DataFrames from source data.
-
-    This class orchestrates the construction of domain DataFrames by:
-    1. Creating a blank DataFrame with domain variables
-    2. Applying column mappings from source to target
-    3. Performing transformations (dates, codelists, numeric)
-    4. Validating and enforcing SDTM requirements
-    5. Reordering columns to match domain specification
-
-    This is core SDTM domain logic that belongs in the domain layer.
-    """
+    pass
 
     def __init__(self, request: DomainFrameBuildRequest) -> None:
-        """Initialize the builder.
-
-        Args:
-            request: Domain frame build request
-        """
         super().__init__()
         self.frame = request.frame.reset_index(drop=True)
         self.config = request.config
@@ -190,8 +154,6 @@ class DomainFrameBuilder:
         self._domain_processor_factory = request.domain_processor_factory
         self._transformers: TransformerRegistry = request.transformers or {}
         self._validators: ValidatorRegistry = request.validators or {}
-
-        # Initialize codelist transformer if provided
         codelist_transformer_cls = self._transformers.get("codelist")
         self.codelist_transformer: CodelistTransformerPort | None = (
             codelist_transformer_cls(request.metadata)
@@ -200,48 +162,24 @@ class DomainFrameBuilder:
         )
 
     def build(self) -> pd.DataFrame:
-        """Build the domain DataFrame using transformers and validators.
-
-        Returns:
-            Complete SDTM-compliant DataFrame
-        """
-        # Create a blank DataFrame with all domain variables
         result = pd.DataFrame(
             {var.name: self._default_column(var) for var in self.domain.variables}
         )
-
-        # Apply mappings
         if self.config and self.config.mappings:
             for mapping in self.config.mappings:
                 self._apply_mapping(result, mapping)
         else:
-            # No mapping provided, assume frame is already structured correctly
             for col in self.frame.columns:
                 if col in result.columns:
                     result[col] = self.frame[col]
-
-        # Fill in STUDYID and DOMAIN
         if self.config and self.config.study_id:
             result["STUDYID"] = self.config.study_id
         if "DOMAIN" in result.columns:
             result["DOMAIN"] = self.domain.code
-
-        # Apply transformations
         self._apply_transformations(result)
-
-        # Apply lightweight, domain-agnostic normalizations that are required
-        # for downstream processing (e.g., SUPPQUAL joins) even when no
-        # domain-specific processor factory is provided.
         self._apply_common_normalizations(result)
-
-        # Domain-specific processing
         self._post_process_domain(result)
-
-        # Validation and cleanup
         self._validate_and_cleanup(result)
-
-        # SDTMIG v3.4 4.1.4: ensure variable order is deterministic and
-        # consistent across outputs (Define-XML must match dataset order).
         return self._reorder_columns_for_domain(result)
 
     def _reorder_columns_for_domain(self, result: pd.DataFrame) -> pd.DataFrame:
@@ -251,14 +189,6 @@ class DomainFrameBuilder:
         return result.loc[:, ordered]
 
     def _apply_common_normalizations(self, result: pd.DataFrame) -> None:
-        """Apply minimal normalizations needed for SDTM compliance.
-
-        This intentionally stays small and non-invasive:
-        - Normalizes DM.SEX to common SDTM CT tokens (M/F/U/UNDIFFERENTIATED)
-        - Populates *SEQ variables when the entire column is missing
-          (common when mappings don't provide sequence values)
-        """
-        # DM.SEX controlled terminology normalization
         if self.domain.code.upper() == "DM" and "SEX" in result.columns:
             normalized = (
                 result["SEX"].astype("string").fillna("").str.strip().str.upper()
@@ -277,15 +207,11 @@ class DomainFrameBuilder:
                     "UNDIFFERENTIATED": "UNDIFFERENTIATED",
                 }
             )
-
-        # Derive USUBJID when mappings missed it but the raw source has
-        # a subject identifier column (common in EDC exports).
         if "USUBJID" in result.columns:
             usubjid = result["USUBJID"].astype("string").fillna("").str.strip()
             needs_usubjid = usubjid.str.upper().isin(
                 {"", "NAN", "<NA>", "NONE", "NULL"}
             )
-
             if needs_usubjid.any():
                 subject_source = None
                 for candidate in (
@@ -298,15 +224,12 @@ class DomainFrameBuilder:
                     if candidate in self.frame.columns:
                         subject_source = self.frame[candidate]
                         break
-
                 if subject_source is not None:
                     subj = subject_source.astype("string").fillna("").str.strip()
-                    # Avoid placeholder/header rows (e.g., "SubjectId").
                     subj = subj.where(
                         ~subj.str.upper().isin({"SUBJECTID", "SUBJECT ID", "SUBJID"}),
                         "",
                     )
-
                     study_id = (
                         ""
                         if not (self.config and self.config.study_id)
@@ -320,38 +243,25 @@ class DomainFrameBuilder:
                         derived = subj.where(already_prefixed, prefixed)
                     else:
                         derived = subj
-
                     usubjid = usubjid.where(~needs_usubjid, derived)
                     result.loc[:, "USUBJID"] = usubjid
-
-        # Populate sequence columns when missing entirely
         if "USUBJID" not in result.columns:
             return
-
         usubjid = result["USUBJID"].astype("string").fillna("").str.strip()
         for col in result.columns:
             if not col.upper().endswith("SEQ"):
                 continue
-
             series = result[col]
-
-            # Only populate when sequences are effectively absent.
-            # We treat "all missing" and "constant/near-constant" as absent.
             numeric = pd.to_numeric(series, errors="coerce")
             if numeric.isna().all() or numeric.nunique(dropna=True) <= 1:
                 result.loc[:, col] = result.groupby(usubjid).cumcount() + 1
 
     def _apply_mapping(self, result: pd.DataFrame, mapping: ColumnMapping) -> None:
-        """Apply a single column mapping to the result DataFrame."""
         if mapping.target_variable not in self.variable_lookup:
             return
-
         source_column = mapping.source_column
         raw_source = unquote_column_name(source_column)
-
         if mapping.transformation:
-            # Minimal support: treat transformation as an alternate source column
-            # reference (not a full expression language).
             expr = mapping.transformation
             raw_expr = unquote_column_name(expr)
             if expr in self.frame.columns:
@@ -359,19 +269,16 @@ class DomainFrameBuilder:
             elif raw_expr in self.frame.columns:
                 result[mapping.target_variable] = self.frame[raw_expr].copy()
             return
-        # Get the source data
         if source_column in self.frame.columns:
             source_data = self.frame[source_column].copy()
         elif raw_source in self.frame.columns:
             source_data = self.frame[raw_source].copy()
         else:
             return
-
-        # Apply codelist transformation if specified
         if (
             mapping.codelist_name
             and self.metadata
-            and mapping.target_variable != "TSVCDREF"
+            and (mapping.target_variable != "TSVCDREF")
             and self.codelist_transformer
         ):
             code_column = mapping.use_code_column
@@ -383,55 +290,40 @@ class DomainFrameBuilder:
                 self.frame,
                 unquote_column_name,
             )
-
         result[mapping.target_variable] = source_data
 
     def _default_column(self, variable: SDTMVariable) -> pd.Series:
-        """Return a default column series for a given variable."""
         dtype = variable.pandas_dtype()
         return pd.Series([None] * self.length, dtype=dtype)
 
     def _apply_transformations(self, result: pd.DataFrame) -> None:
-        """Apply date, codelist, and numeric transformations."""
         date_transformer = self._transformers.get("date")
         codelist_transformer = self._transformers.get("codelist")
         numeric_transformer = self._transformers.get("numeric")
-
         if date_transformer:
             date_transformer.normalize_dates(result, self.domain.variables)
             date_transformer.calculate_dy(
                 result, self.domain.variables, self.reference_starts
             )
             date_transformer.normalize_durations(result, self.domain.variables)
-
         if codelist_transformer:
             codelist_transformer.apply_codelist_validations(
                 result, self.domain.variables
             )
-
         if numeric_transformer:
             numeric_transformer.populate_stresc_from_orres(result, self.domain.code)
 
     def _post_process_domain(self, result: pd.DataFrame) -> None:
-        """Perform domain-specific post-processing.
-
-        Uses the domain processor system for domain-specific logic.
-        """
         if not self._domain_processor_factory:
             return
-
         processor = self._domain_processor_factory(
-            self.domain,
-            self.reference_starts,
-            self.metadata,
+            self.domain, self.reference_starts, self.metadata
         )
         processor.config = self.config
         processor.process(result)
 
     def _validate_and_cleanup(self, result: pd.DataFrame) -> None:
-        """Apply validation and cleanup using validators."""
         xpt_validator = self._validators.get("xpt")
-
         if xpt_validator:
             xpt_validator.drop_empty_optional_columns(result, self.domain.variables)
             xpt_validator.enforce_required_values(

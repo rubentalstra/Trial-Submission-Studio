@@ -1,5 +1,3 @@
-"""Domain processor for Adverse Events (AE) domain."""
-
 from typing import override
 
 import pandas as pd
@@ -11,18 +9,10 @@ from .base import BaseDomainProcessor
 
 
 class AEProcessor(BaseDomainProcessor):
-    """Adverse Events domain processor.
-
-    Handles domain-specific processing for the AE domain.
-    """
+    pass
 
     @override
     def process(self, frame: pd.DataFrame) -> None:
-        """Process AE domain DataFrame.
-
-        Args:
-            frame: Domain DataFrame to process in-place
-        """
         self._drop_placeholder_rows(frame)
         self._normalize_duration(frame)
         self._normalize_visits(frame)
@@ -83,14 +73,7 @@ class AEProcessor(BaseDomainProcessor):
         self._normalize_with_map(
             frame,
             "AESER",
-            {
-                "YES": "Y",
-                "NO": "N",
-                "1": "Y",
-                "0": "N",
-                "TRUE": "Y",
-                "FALSE": "N",
-            },
+            {"YES": "Y", "NO": "N", "1": "Y", "0": "N", "TRUE": "Y", "FALSE": "N"},
         )
         self._normalize_with_map(
             frame,
@@ -145,9 +128,7 @@ class AEProcessor(BaseDomainProcessor):
 
     @staticmethod
     def _normalize_with_map(
-        frame: pd.DataFrame,
-        column: str,
-        mapping: dict[str, str],
+        frame: pd.DataFrame, column: str, mapping: dict[str, str]
     ) -> None:
         if column not in frame.columns:
             return

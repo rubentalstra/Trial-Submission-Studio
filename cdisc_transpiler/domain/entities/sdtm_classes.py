@@ -1,16 +1,4 @@
-"""General Observation Class helpers.
-
-These are domain-level concepts used to relate domain-specific variable names
-(e.g., AESTDTC) to generalized placeholders (e.g., --STDTC).
-
-Kept in the domain layer because this is pure business logic.
-"""
-
-# General Observation Classes (SDTM v2.0 Section 3.2)
 GENERAL_OBSERVATION_CLASSES = {"INTERVENTIONS", "EVENTS", "FINDINGS"}
-
-# Aliases for class names that map to General Observation Classes.
-# "FINDINGS ABOUT" domains (FA) are treated as FINDINGS class.
 GENERAL_CLASS_ALIASES = {"FINDINGS ABOUT": "FINDINGS"}
 
 

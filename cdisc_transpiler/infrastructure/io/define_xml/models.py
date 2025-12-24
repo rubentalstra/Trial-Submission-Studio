@@ -1,9 +1,3 @@
-"""Data models for Define-XML 2.1 elements.
-
-This module contains all dataclass definitions used in Define-XML generation.
-These are pure data containers with no business logic.
-"""
-
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -16,28 +10,24 @@ if TYPE_CHECKING:
 
 
 class DefineGenerationError(RuntimeError):
-    """Raised when Define-XML export fails."""
+    pass
 
 
 @dataclass(frozen=True, slots=True)
 class StandardDefinition:
-    """Represents a def:Standard element in Define-XML 2.1."""
-
     oid: str
     name: str
-    type: str  # IG, CT
+    type: str
     version: str
     status: str = "Final"
-    publishing_set: str | None = None  # For CT: SDTM, ADaM, SEND, etc.
+    publishing_set: str | None = None
     comment_oid: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class OriginDefinition:
-    """Represents def:Origin metadata for a variable."""
-
-    type: str  # Collected, Derived, Assigned, Protocol, Predecessor
-    source: str | None = None  # Sponsor, Investigator, Vendor, Subject
+    type: str
+    source: str | None = None
     description: str | None = None
     document_ref: str | None = None
     page_refs: str | None = None
@@ -45,59 +35,47 @@ class OriginDefinition:
 
 @dataclass(frozen=True, slots=True)
 class MethodDefinition:
-    """Represents a MethodDef element for derivation algorithms."""
-
     oid: str
     name: str
-    type: str  # Computation, Imputation, etc.
+    type: str
     description: str
     document_refs: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
 class CommentDefinition:
-    """Represents a def:CommentDef element."""
-
     oid: str
     text: str
 
 
 @dataclass(frozen=True, slots=True)
 class WhereClauseDefinition:
-    """Represents a def:WhereClauseDef for value-level metadata."""
-
     oid: str
     dataset_name: str
     variable_name: str
     variable_oid: str
-    comparator: str  # EQ, NE, LT, LE, GT, GE, IN, NOTIN
+    comparator: str
     check_values: tuple[str, ...]
     comment_oid: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class ValueListItemDefinition:
-    """Represents a single item in a value list (def:ItemRef within def:ValueListDef)."""
-
     item_oid: str
     where_clause_oid: str | None = None
     order_number: int | None = None
-    mandatory: str | None = None  # Yes/No
+    mandatory: str | None = None
     method_oid: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class ValueListDefinition:
-    """Represents a def:ValueListDef for value-level metadata."""
-
     oid: str
     items: tuple[ValueListItemDefinition, ...]
 
 
 @dataclass(frozen=True, slots=True)
 class StudyDataset:
-    """Represents a single dataset with its metadata and data."""
-
     domain_code: str
     dataframe: pd.DataFrame
     config: MappingConfig

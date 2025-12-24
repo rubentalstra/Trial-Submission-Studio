@@ -1,21 +1,18 @@
-"""Custom exceptions for infrastructure layer."""
-
-
 class TranspilerInfrastructureError(Exception):
-    """Base exception for infrastructure layer errors."""
+    pass
 
 
 class DataSourceError(TranspilerInfrastructureError):
-    """Base exception for data source errors."""
+    pass
 
 
 class DataSourceNotFoundError(DataSourceError):
-    """Raised when a data source file is not found."""
+    pass
 
 
 class DataParseError(DataSourceError):
-    """Raised when data cannot be parsed."""
+    pass
 
 
 class DataValidationError(DataSourceError):
-    """Raised when data fails validation."""
+    pass

@@ -1,9 +1,3 @@
-"""Null logger for testing.
-
-This module provides a silent logger implementation that discards
-all log messages. Useful for testing without console output.
-"""
-
 from typing import TYPE_CHECKING, override
 
 from ...application.ports.services import LoggerPort
@@ -15,69 +9,30 @@ if TYPE_CHECKING:
 
 
 class NullLogger(LoggerPort):
-    """Silent logger that discards all messages.
-
-    This logger implements the LoggerPort protocol but produces no output.
-    Useful for testing services without cluttering test output.
-
-    Example:
-        >>> logger = NullLogger()
-        >>> logger.info("This message is discarded")
-        >>> logger.error("This too")
-    """
+    pass
 
     @override
     def info(self, message: str) -> None:
-        """Log an informational message (discarded).
-
-        Args:
-            message: The message to log (ignored)
-        """
         return
 
     @override
     def success(self, message: str) -> None:
-        """Log a success message (discarded).
-
-        Args:
-            message: The message to log (ignored)
-        """
         return
 
     @override
     def warning(self, message: str) -> None:
-        """Log a warning message (discarded).
-
-        Args:
-            message: The message to log (ignored)
-        """
         return
 
     @override
     def error(self, message: str) -> None:
-        """Log an error message (discarded).
-
-        Args:
-            message: The message to log (ignored)
-        """
         return
 
     @override
     def debug(self, message: str) -> None:
-        """Log a debug message (discarded).
-
-        Args:
-            message: The message to log (ignored)
-        """
         return
 
     @override
     def verbose(self, message: str) -> None:
-        """Log a verbose message (discarded).
-
-        Args:
-            message: The message to log (ignored)
-        """
         return
 
     @override
@@ -92,18 +47,12 @@ class NullLogger(LoggerPort):
 
     @override
     def log_metadata_loaded(
-        self,
-        *,
-        items_count: int | None,
-        codelists_count: int | None,
+        self, *, items_count: int | None, codelists_count: int | None
     ) -> None:
         return None
 
     @override
-    def log_processing_summary(
-        self,
-        summary: ProcessingSummary,
-    ) -> None:
+    def log_processing_summary(self, summary: ProcessingSummary) -> None:
         return None
 
     @override
@@ -130,10 +79,7 @@ class NullLogger(LoggerPort):
 
     @override
     def log_file_loaded(
-        self,
-        filename: str,
-        row_count: int,
-        column_count: int | None = None,
+        self, filename: str, row_count: int, column_count: int | None = None
     ) -> None:
         return None
 
