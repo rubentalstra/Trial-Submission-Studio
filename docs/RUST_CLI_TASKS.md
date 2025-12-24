@@ -190,7 +190,7 @@ Exit criteria:
 
 Goal: generate files with the same layout and constraints as Python.
 
-- [ ] Write XPT files (8-char dataset names, labels, type coercion)
+- [x] Write XPT files (8-char dataset names, labels, type coercion)
 - [ ] Write Dataset-XML v1.0 (deterministic order, streaming option)
 - [ ] Generate Define-XML v2.1 from dataset metadata
 - [ ] Generate SAS scripts (deterministic)

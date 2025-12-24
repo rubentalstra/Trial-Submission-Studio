@@ -2390,6 +2390,13 @@ dependencies = [
 [[package]]
 name = "sdtm-report"
 version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "polars",
+ "sdtm-core",
+ "sdtm-model",
+ "sdtm-xpt",
+]
 
 [[package]]
 name = "sdtm-standards"
@@ -2411,6 +2418,13 @@ dependencies = [
  "sdtm-standards",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "sdtm-xpt"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
 ]
 
 [[package]]

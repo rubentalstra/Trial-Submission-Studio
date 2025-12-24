@@ -3,3 +3,10 @@ name = "sdtm-report"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+
+[dependencies]
+anyhow.workspace = true
+polars.workspace = true
+sdtm-core = { path = "../sdtm-core" }
+sdtm-model = { path = "../sdtm-model" }
+sdtm-xpt = { path = "../sdtm-xpt" }
