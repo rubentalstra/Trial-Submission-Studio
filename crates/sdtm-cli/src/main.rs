@@ -129,10 +129,6 @@ fn main() -> anyhow::Result<()> {
                 println!("  SDTM: {}", summary.manifest_pins.sdtm);
                 println!("  SDTMIG: {}", summary.manifest_pins.sdtmig);
                 println!("  CT: {}", summary.manifest_pins.ct);
-                println!(
-                    "  Conformance rules: {}",
-                    summary.manifest_pins.conformance_rules
-                );
                 println!();
                 println!("Counts:");
                 println!("  files: {}", summary.file_count);

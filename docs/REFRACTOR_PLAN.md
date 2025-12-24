@@ -23,7 +23,7 @@
   bridges, no “call Python from Rust”.
 - **Offline runtime**: no network access, no runtime fetching of CT/standards.
   All standards + CT + assets are committed.
-- **Standards-driven**: SDTM v2.0 + SDTMIG v3.4 + Conformance Rules v2.0 +
+- **Standards-driven**: SDTM v2.0 + SDTMIG v3.4 + Pinnacle 21 `Rules.csv` +
   Define-XML 2.1 + Dataset-XML 1.0.
 - **Output correctness**:
   - deterministic mapping
@@ -33,6 +33,9 @@
   - mapping and validation must be unit-testable
   - writers contain **no mapping logic**
   - dependencies must be justified
+
+**Note (2025-12):** The earlier `standards/conformance_rules/**` TOML corpus was
+removed; validation is now driven by pinned standards + Pinnacle 21 `Rules.csv`.
 
 ### Non-goals (explicit)
 
@@ -372,6 +375,8 @@ flowchart LR
 ```text
 standards/
   manifest.toml
+  Pinnacle21/
+    Rules.csv
   sdtm/
     v2_0/
       Datasets.csv
@@ -381,10 +386,6 @@ standards/
     v3_4/
       Datasets.csv
       Variables.csv
-      README.md
-  conformance_rules/
-    v2_0/
-      ...
       README.md
   ct/
     2024-03-29/
@@ -426,9 +427,6 @@ examples/
 - Move XSL stylesheets:
   - from docs/Define-XML_2.1/stylesheets (and any known-good XSLs) →
     standards/xsl
-- Add conformance rules:
-  - create standards/conformance_rules/v2_0 with a locally-encoded
-    representation (see next section)
 - Add examples:
   - curate outputs from mockdata runs into examples/ as golden fixtures
 
@@ -436,7 +434,7 @@ examples/
 
 Create standards/manifest.toml as the single source of truth for:
 
-- versions in use (SDTM v2.0, SDTMIG v3.4, conformance rules v2.0, CT date)
+- versions in use (SDTM v2.0, SDTMIG v3.4, CT date, Pinnacle 21 rules catalog)
 - file inventory (paths) and sha256 checksums
 - human notes on provenance and any known deviations
 
@@ -450,7 +448,6 @@ schema_version = 1
 [pins]
 sdtm = "v2_0"
 sdtmig = "v3_4"
-conformance_rules = "v2_0"
 ct = "2025-09-26"
 
 [[files]]
@@ -497,7 +494,6 @@ summary = "Offline standards registry for CDISC transpiler"
 [pins]
 sdtm = "v2_0"
 sdtmig = "v3_4"
-conformance_rules = "v2_0"
 ct = "2025-09-26"
 
 # Optional: policy knobs that affect deterministic behavior
@@ -538,12 +534,6 @@ kind = "csv"
 role = "ct_sdtm"
 
 [[files]]
-path = "conformance_rules/v2_0/catalog.toml"
-sha256 = "<64 lowercase hex chars>"
-kind = "toml"
-role = "conformance_rules_catalog"
-
-[[files]]
 path = "xsl/define2-1.xsl"
 sha256 = "<64 lowercase hex chars>"
 kind = "xsl"
@@ -565,7 +555,6 @@ manifest or the file is unreadable:
 - sdtm_variables
 - sdtmig_datasets
 - sdtmig_variables
-- conformance_rules_catalog
 - define_xsl_2_1
 - define_xsl_2_0
 
@@ -599,7 +588,7 @@ can be used by later features):
 - SDTM v2.0 datasets + variables
 - SDTMIG v3.4 datasets + variables
 - CT CSVs for the pinned CT date
-- Conformance rules corpus v2.0
+- Pinnacle 21 rules catalog (Rules.csv)
 - XSL assets metadata (paths + checksums)
 
 ### Parsing and indices
@@ -646,181 +635,17 @@ Provenance record includes:
 
 ---
 
-## Conformance Rules v2.0 (Local Representation + Engine)
+## Pinnacle 21 Rules (Rules.csv)
 
-### Representation requirements
+The earlier local `standards/conformance_rules/**` TOML corpus was removed.
 
-- Must be committed under standards/conformance_rules/v2_0.
-- Must be stable, reviewable, and diff-friendly.
+Current approach:
 
-Recommended structure:
-
-- catalog.toml (or JSON) containing:
-  - rule_id
-  - title
-  - category
-  - severity (error/warning)
-  - applicability scope (domain(s), variable(s), class)
-  - predicate definition (data checks)
-  - message template
-
-### Conformance rules folder layout (exact)
-
-Target location:
-[standards/conformance_rules/v2_0](../standards/conformance_rules/v2_0)
-
-```text
-standards/conformance_rules/v2_0/
-  README.md
-  catalog.toml
-  predicates/
-    builtin.toml
-    sdtm_core.toml
-    sdtmig_tabulation.toml
-```
-
-Rationale: split the catalog (rule metadata + stable IDs) from the predicate
-library (reusable checks), so you can update rule mappings without rewriting
-evaluation code.
-
-### catalog.toml schema (exact)
-
-File:
-[standards/conformance_rules/v2_0/catalog.toml](../standards/conformance_rules/v2_0/catalog.toml)
-
-```toml
-[catalog]
-schema = "cdisc-transpiler.conformance-rules"
-schema_version = 1
-ruleset = "sdtm-sdtmig-conformance"
-ruleset_version = "v2_0"
-
-[[rule]]
-id = "CR-REQ-0001"                # stable rule ID (never renumber once shipped)
-title = "Required variable must be present"
-category = "requiredness"
-severity = "error"               # allowed: "error" | "warning"
-
-# Applicability determines which datasets/variables the rule is evaluated against.
-[rule.scope]
-domains = ["DM", "AE"]            # empty or omitted means "all"
-variables = ["USUBJID"]           # empty or omitted means "all"
-classes = []                       # optional SDTM class filters
-
-# Predicate references a named predicate and supplies parameters.
-[rule.predicate]
-name = "column_present"
-params = { column = "${var}" }    # ${var} means "the variable currently in scope"
-
-message = "Missing required variable ${var}"
-
-[[rule]]
-id = "CR-CT-0001"
-title = "CT values must exist (non-extensible)"
-category = "controlled-terminology"
-severity = "error"
-
-[rule.scope]
-domains = ["*"]                   # '*' means "all domains"
-variables = ["*"]                 # '*' means "all variables"
-
-[rule.predicate]
-name = "ct_membership"
-params = { codelist = "${codelist_code}", extensible_ok = false }
-
-message = "Invalid CT value(s) for ${var} (codelist ${codelist_code})"
-```
-
-### Predicate library schema (exact)
-
-Predicate definitions live under predicates/*.toml. Each predicate has a name, a
-type, and a typed params contract.
-
-Example:
-[standards/conformance_rules/v2_0/predicates/builtin.toml](../standards/conformance_rules/v2_0/predicates/builtin.toml)
-
-```toml
-[predicates]
-schema = "cdisc-transpiler.conformance-predicates"
-schema_version = 1
-
-[[predicate]]
-name = "column_present"
-kind = "table"                    # allowed: "table" | "row" | "cross_table"
-params = { column = "string" }
-
-[[predicate]]
-name = "non_missing"
-kind = "row"
-params = { column = "string" }
-
-[[predicate]]
-name = "regex_match"
-kind = "row"
-params = { column = "string", pattern = "string" }
-
-[[predicate]]
-name = "unique_key"
-kind = "table"
-params = { columns = "string[]" }
-
-[[predicate]]
-name = "ct_membership"
-kind = "row"
-params = { codelist = "string", extensible_ok = "bool" }
-```
-
-### Findings schema (output contract)
-
-The validation stage MUST produce machine JSON where each finding includes
-stable IDs and traceable row references.
-
-```json
-{
-    "schema": "cdisc-transpiler.validation-report",
-    "schema_version": 1,
-    "generated_at": "2025-12-24T12:00:00Z",
-    "study_id": "...",
-    "standards_provenance": { "manifest_sha256": "...", "git_commit": "..." },
-    "summary": { "errors": 12, "warnings": 5 },
-    "findings": [
-        {
-            "severity": "error",
-            "rule_id": "CR-REQ-0001",
-            "category": "requiredness",
-            "domain": "DM",
-            "variable": "USUBJID",
-            "message": "Missing required variable USUBJID",
-            "count": 1,
-            "examples": [
-                {
-                    "row_ref": { "dataset": "DM", "row_id": "dm:000042" },
-                    "source_refs": [
-                        { "path": "inputs/dm.csv", "row": 43, "column": "subj" }
-                    ]
-                }
-            ]
-        }
-    ]
-}
-```
-
-### Engine abstraction
-
-`cdisc-validation` provides:
-
-- a rule runner interface:
-  - input: SDTM datasets + registry
-  - output: validation findings (with rule_id, domain, variable, row refs)
-- pluggable backends:
-  - “table rules” (column presence, type/length, uniqueness)
-  - “cross-domain rules” (RELREC, SUPP--)
-  - “CT rules” (value sets with extensibility)
-
-### FAIL conditions
-
-- Any “error” finding fails the run and fails CI.
-- Warnings are reported; optionally fail in “strict” mode.
+- Pinnacle 21 rules metadata is sourced from `standards/Pinnacle21/Rules.csv`.
+- The validator emits Pinnacle 21 rule IDs (e.g. SD0004) and looks up the
+  canonical rule message text from the pinned CSV.
+- Any additional validation logic is implemented in Rust, but the rule catalog
+  remains the authoritative source for IDs/messages.
 
 ---
 
@@ -1370,10 +1195,9 @@ Top risks and mitigations:
   database extracts)?
   - Discover by cataloging sponsor/source systems and existing mockdata
     patterns.
-- What is the authoritative local form of “SDTM/SDTMIG Conformance Rules v2.0”
-  for this project?
-  - Discover by deciding the local rule corpus format and collecting the rules
-    into standards/conformance_rules/v2_0.
+- Which Pinnacle 21 rules should be implemented first for the MVP scope?
+  - Discover by ranking `standards/Pinnacle21/Rules.csv` by impact and
+    implementability, then adding focused fixtures + tests per rule.
 - Are XML XSD schemas already available in this repo (or can they be committed)?
   - Discover by inventorying current docs/Define-XML_2.1/schema and
     docs/Dataset-XML_1-0/schema and deciding which to commit under standards/.

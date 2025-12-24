@@ -80,16 +80,7 @@ SD0002;;Null value in variable marked as Required;Required variables (where Core
 "#,
     );
 
-    // Conformance rules + XSL
-    write(
-        &standards_dir.join("conformance_rules/v2_0/catalog.toml"),
-        br#"[catalog]
-schema = "cdisc-transpiler.conformance-rules"
-schema_version = 1
-ruleset = "sdtm-sdtmig-conformance"
-ruleset_version = "v2_0"
-"#,
-    );
+    // XSL
     write(
         &standards_dir.join("xsl/define2-1.xsl"),
         b"<xsl:stylesheet version=\"1.0\"></xsl:stylesheet>",
@@ -107,7 +98,6 @@ schema_version = 1
 [pins]
 sdtm = "v2_0"
 sdtmig = "v3_4"
-conformance_rules = "v2_0"
 ct = "2024-03-29"
 
 [policy]
@@ -150,12 +140,6 @@ kind = "csv"
 role = "pinnacle21_rules"
 
 [[files]]
-path = "conformance_rules/v2_0/catalog.toml"
-sha256 = "{}"
-kind = "toml"
-role = "conformance_rules_catalog"
-
-[[files]]
 path = "xsl/define2-1.xsl"
 sha256 = "{}"
 kind = "xsl"
@@ -173,7 +157,6 @@ role = "define_xsl_2_0"
         sha(&standards_dir.join("sdtmig/v3_4/Variables.csv")),
         sha(&standards_dir.join("ct/2024-03-29/SDTM_CT_2024-03-29.csv")),
         sha(&standards_dir.join("Pinnacle21/Rules.csv")),
-        sha(&standards_dir.join("conformance_rules/v2_0/catalog.toml")),
         sha(&standards_dir.join("xsl/define2-1.xsl")),
         sha(&standards_dir.join("xsl/define2-0-0.xsl")),
     );

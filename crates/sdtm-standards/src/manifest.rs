@@ -28,7 +28,6 @@ pub struct ManifestNotes {
 pub struct Pins {
     pub sdtm: String,
     pub sdtmig: String,
-    pub conformance_rules: String,
     pub ct: String,
 }
 

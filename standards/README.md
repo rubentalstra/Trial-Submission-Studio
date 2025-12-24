@@ -15,5 +15,4 @@ Rust SDTM transpiler.
 - `sdtm/` — SDTM model metadata (CSV)
 - `sdtmig/` — SDTMIG implementation guidance metadata (CSV + optional PDF)
 - `ct/` — Controlled Terminology (CSV), by date
-- `conformance_rules/` — local conformance rule corpus (Phase 0 scaffolding)
 - `xsl/` — XSL stylesheets used for Define-XML rendering (later)

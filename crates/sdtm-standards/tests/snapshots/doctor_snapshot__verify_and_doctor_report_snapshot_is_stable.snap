@@ -23,7 +23,7 @@ expression: "serde_json::to_value(report).unwrap()"
   ],
   "counts": {
     "ct_codelists": 1,
-    "files": 9,
+    "files": 8,
     "sdtm_domains": 1,
     "sdtm_variables": 1,
     "sdtmig_domains": 1,
@@ -36,13 +36,6 @@ expression: "serde_json::to_value(report).unwrap()"
       "path": "Pinnacle21/Rules.csv",
       "role": "pinnacle21_rules",
       "sha256": "5e79c5604f730c51d18772d301fa906b37936c73a36d4185681a58738fd0413b"
-    },
-    {
-      "kind": "toml",
-      "notes": null,
-      "path": "conformance_rules/v2_0/catalog.toml",
-      "role": "conformance_rules_catalog",
-      "sha256": "44be499b0cc296762dd93e2de6b2572096c1dedb4056be0af3fe898d9b83c0b7"
     },
     {
       "kind": "csv",
@@ -95,7 +88,6 @@ expression: "serde_json::to_value(report).unwrap()"
     }
   ],
   "pins": {
-    "conformance_rules": "v2_0",
     "ct": "2024-03-29",
     "sdtm": "v2_0",
     "sdtmig": "v3_4"

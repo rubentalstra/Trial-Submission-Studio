@@ -8,7 +8,6 @@ summary = "Offline standards registry for SDTM transpiler (Phase 0)"
 [pins]
 sdtm = "v2_0"
 sdtmig = "v3_4"
-conformance_rules = "v2_0"
 ct = "2024-03-29"
 
 [policy]
@@ -55,18 +54,6 @@ path = "Pinnacle21/Rules.csv"
 sha256 = "92bd7f9ff71e91b850640be743bc8d4a7882f5729a24fff2f07d2568d3675ba3"
 kind = "csv"
 role = "pinnacle21_rules"
-
-[[files]]
-path = "conformance_rules/v2_0/catalog.toml"
-sha256 = "6579598ae922b67bfe8332e75296f45288913400e9b60e5ff267860b0ac528e6"
-kind = "toml"
-role = "conformance_rules_catalog"
-
-[[files]]
-path = "conformance_rules/v2_0/predicates/builtin.toml"
-sha256 = "08e1a2698d4e83c1779f53602add0087e62c6689aa541bae32cdf263a38ce820"
-kind = "toml"
-role = "conformance_rules_predicates"
 
 [[files]]
 path = "xsl/define2-1.xsl"

@@ -18,7 +18,6 @@ const REQUIRED_ROLES: &[&str] = &[
     "sdtmig_variables",
     "ct_sdtm",
     "pinnacle21_rules",
-    "conformance_rules_catalog",
     "define_xsl_2_1",
     "define_xsl_2_0",
 ];
