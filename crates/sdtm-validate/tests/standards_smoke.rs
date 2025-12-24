@@ -19,6 +19,23 @@ fn required_vars_for(registry: &StandardsRegistry, domain: &str) -> BTreeSet<Str
     out
 }
 
+fn expected_vars_for(registry: &StandardsRegistry, domain: &str) -> BTreeSet<String> {
+    let mut out = BTreeSet::new();
+    for key in ["*", domain] {
+        if let Some(vars) = registry.variables_by_domain.get(key) {
+            for v in vars {
+                if v.core
+                    .as_deref()
+                    .is_some_and(|c| c.eq_ignore_ascii_case("exp"))
+                {
+                    out.insert(v.var.clone());
+                }
+            }
+        }
+    }
+    out
+}
+
 #[test]
 fn dm_smoke_required_and_unknown_columns() -> anyhow::Result<()> {
     let standards_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../standards");
@@ -26,6 +43,7 @@ fn dm_smoke_required_and_unknown_columns() -> anyhow::Result<()> {
 
     let domain = "DM";
     let required = required_vars_for(&registry, domain);
+    let expected = expected_vars_for(&registry, domain);
     assert!(
         !required.is_empty(),
         "expected at least one required variable"
@@ -33,9 +51,10 @@ fn dm_smoke_required_and_unknown_columns() -> anyhow::Result<()> {
 
     let domain_code = DomainCode::new(domain)?;
 
-    // Build a table with all required columns plus a clearly-unknown extra column.
+    // Build a table with all required + expected columns plus a clearly-unknown extra column.
     let mut columns: Vec<VarName> = required
         .iter()
+        .chain(expected.iter())
         .map(|c| VarName::new(c.clone()))
         .collect::<Result<Vec<_>, _>>()?;
     columns.push(VarName::new("ZZZ")?);

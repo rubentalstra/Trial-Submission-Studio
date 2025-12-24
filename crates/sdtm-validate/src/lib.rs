@@ -58,7 +58,8 @@ pub fn validate_table_against_standards(
             domain: domain.clone(),
             var: None,
             row_id: None,
-            message: p21_message(registry, "SD9999").unwrap_or_else(|| "unknown SDTM domain".to_string()),
+            message: p21_message(registry, "SD9999")
+                .unwrap_or_else(|| "unknown SDTM domain".to_string()),
         });
         report.errors += 1;
         return report;
@@ -82,6 +83,7 @@ pub fn validate_table_against_standards(
     }
 
     let required = required_vars_for_domain(registry, &domain);
+    let expected = expected_vars_for_domain(registry, &domain);
     let allowed = allowed_vars_for_domain(registry, &domain);
 
     let present: BTreeSet<String> = table
@@ -102,6 +104,22 @@ pub fn validate_table_against_standards(
                     .unwrap_or_else(|| "missing required variable".to_string()),
             });
             report.errors += 1;
+        }
+    }
+
+    // SD0057: SDTM Expected variable not found.
+    for exp in &expected {
+        if !present.contains(exp) {
+            report.issues.push(ValidationIssue {
+                severity: Severity::Warning,
+                p21_rule_id: Some("SD0057".to_string()),
+                domain: domain.clone(),
+                var: Some(exp.clone()),
+                row_id: None,
+                message: p21_message(registry, "SD0057")
+                    .unwrap_or_else(|| "expected variable not found".to_string()),
+            });
+            report.warnings += 1;
         }
     }
 
@@ -169,8 +187,10 @@ pub fn validate_table_against_standards(
             };
 
             // group_key -> seq_value -> first_row_id_hex
-            let mut seen: std::collections::BTreeMap<String, std::collections::BTreeMap<String, String>> =
-                std::collections::BTreeMap::new();
+            let mut seen: std::collections::BTreeMap<
+                String,
+                std::collections::BTreeMap<String, String>,
+            > = std::collections::BTreeMap::new();
 
             for row in &table.rows {
                 let seq_value = match row.cells.get(&seq_name) {
@@ -234,6 +254,46 @@ pub fn validate_table_against_standards(
                     row_id: Some(row.id.to_hex()),
                     message: p21_message(registry, "SD0002")
                         .unwrap_or_else(|| "required variable is missing".to_string()),
+                });
+                report.errors += 1;
+            }
+        }
+    }
+
+    // SD0003: Invalid ISO 8601 value for variable.
+    // Applies to all present *DTC variables.
+    for col in &present {
+        if !col.ends_with("DTC") {
+            continue;
+        }
+
+        let Ok(var_name) = VarName::new(col.to_string()) else {
+            continue;
+        };
+
+        for row in &table.rows {
+            let Some(cell) = row.cells.get(&var_name) else {
+                continue;
+            };
+
+            let value = match cell {
+                sdtm_model::CellValue::Text(v) => v.trim(),
+                sdtm_model::CellValue::Missing => continue,
+            };
+
+            if value.is_empty() {
+                continue;
+            }
+
+            if !is_iso8601_datetime(value) {
+                report.issues.push(ValidationIssue {
+                    severity: Severity::Error,
+                    p21_rule_id: Some("SD0003".to_string()),
+                    domain: domain.clone(),
+                    var: Some(col.clone()),
+                    row_id: Some(row.id.to_hex()),
+                    message: p21_message(registry, "SD0003")
+                        .unwrap_or_else(|| "invalid ISO 8601 value for variable".to_string()),
                 });
                 report.errors += 1;
             }
@@ -397,6 +457,189 @@ fn required_vars_for_domain(registry: &StandardsRegistry, domain: &str) -> BTree
     }
 
     out
+}
+
+fn expected_vars_for_domain(registry: &StandardsRegistry, domain: &str) -> BTreeSet<String> {
+    let mut out: BTreeSet<String> = BTreeSet::new();
+
+    // SD0057 refers to variables described as Expected in SDTM IG.
+    // We infer Expected from Core == "Exp" (case-insensitive).
+    // Prefer domain-specific, but also consider global (*) if present.
+    for key in ["*", domain] {
+        if let Some(vars) = registry.variables_by_domain.get(key) {
+            for v in vars {
+                if v.core
+                    .as_deref()
+                    .is_some_and(|c| c.eq_ignore_ascii_case("exp"))
+                {
+                    out.insert(v.var.clone());
+                }
+            }
+        }
+    }
+
+    out
+}
+
+fn is_iso8601_datetime(value: &str) -> bool {
+    // Accept a pragmatic ISO 8601 subset commonly used in SDTM *DTC variables:
+    // - Date only: YYYY | YYYY-MM | YYYY-MM-DD
+    // - Date-time: YYYY-MM-DDThh | YYYY-MM-DDThh:mm | YYYY-MM-DDThh:mm:ss[.frac][Z|±hh:mm]
+    let s = value.trim();
+    if s.is_empty() {
+        return false;
+    }
+
+    let (date_part, time_part_opt) = match s.split_once('T') {
+        Some((a, b)) => (a, Some(b)),
+        None => (s, None),
+    };
+
+    if !is_iso8601_date(date_part) {
+        return false;
+    }
+
+    let Some(time_part) = time_part_opt else {
+        return true;
+    };
+
+    is_iso8601_time_and_zone(time_part)
+}
+
+fn is_iso8601_date(date_part: &str) -> bool {
+    let parts: Vec<&str> = date_part.split('-').collect();
+    match parts.as_slice() {
+        [yyyy] => is_n_digits(yyyy, 4),
+        [yyyy, mm] => is_n_digits(yyyy, 4) && is_month(mm),
+        [yyyy, mm, dd] => is_n_digits(yyyy, 4) && is_month(mm) && is_day(dd),
+        _ => false,
+    }
+}
+
+fn is_iso8601_time_and_zone(time_part: &str) -> bool {
+    // Split timezone suffix.
+    // - Z
+    // - ±hh:mm
+    let (time_only, zone_ok) = if let Some(rest) = time_part.strip_suffix('Z') {
+        (rest, true)
+    } else if let Some((time_only, zone)) = split_zone(time_part) {
+        (time_only, is_zone(zone))
+    } else {
+        (time_part, true)
+    };
+
+    if !zone_ok {
+        return false;
+    }
+
+    is_time_hms_with_optional_fraction(time_only)
+}
+
+fn split_zone(s: &str) -> Option<(&str, &str)> {
+    // Find a '+' or '-' that starts the zone offset. We search from the end to
+    // avoid catching the date part (which is already split off).
+    let bytes = s.as_bytes();
+    for i in (0..bytes.len()).rev() {
+        match bytes[i] {
+            b'+' | b'-' => {
+                if i == 0 {
+                    return None;
+                }
+                return Some((&s[..i], &s[i..]));
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+fn is_zone(zone: &str) -> bool {
+    // ±hh:mm
+    if zone.len() != 6 {
+        return false;
+    }
+    let sign = &zone[0..1];
+    if sign != "+" && sign != "-" {
+        return false;
+    }
+    let hh = &zone[1..3];
+    let colon = &zone[3..4];
+    let mm = &zone[4..6];
+    colon == ":" && is_hour(hh) && is_minute(mm)
+}
+
+fn is_time_hms_with_optional_fraction(time_only: &str) -> bool {
+    // hh | hh:mm | hh:mm:ss, optionally with fractional seconds.
+    // Note: we only allow fractional seconds on the seconds component.
+    let (base, frac_opt) = match time_only.split_once('.') {
+        Some((a, b)) => (a, Some(b)),
+        None => (time_only, None),
+    };
+
+    let parts: Vec<&str> = base.split(':').collect();
+    let ok = match parts.as_slice() {
+        [hh] => is_hour(hh),
+        [hh, mm] => is_hour(hh) && is_minute(mm),
+        [hh, mm, ss] => is_hour(hh) && is_minute(mm) && is_second(ss),
+        _ => false,
+    };
+
+    if !ok {
+        return false;
+    }
+
+    if let Some(frac) = frac_opt {
+        // Fractional seconds must be 1+ digits.
+        return !frac.is_empty() && frac.chars().all(|c| c.is_ascii_digit());
+    }
+
+    true
+}
+
+fn is_n_digits(s: &str, n: usize) -> bool {
+    s.len() == n && s.chars().all(|c| c.is_ascii_digit())
+}
+
+fn is_month(mm: &str) -> bool {
+    if !is_n_digits(mm, 2) {
+        return false;
+    }
+    matches!(
+        mm,
+        "01" | "02" | "03" | "04" | "05" | "06" | "07" | "08" | "09" | "10" | "11" | "12"
+    )
+}
+
+fn is_day(dd: &str) -> bool {
+    if !is_n_digits(dd, 2) {
+        return false;
+    }
+    let v: u8 = dd.parse().unwrap_or(0);
+    (1..=31).contains(&v)
+}
+
+fn is_hour(hh: &str) -> bool {
+    if !is_n_digits(hh, 2) {
+        return false;
+    }
+    let v: u8 = hh.parse().unwrap_or(255);
+    v <= 23
+}
+
+fn is_minute(mm: &str) -> bool {
+    if !is_n_digits(mm, 2) {
+        return false;
+    }
+    let v: u8 = mm.parse().unwrap_or(255);
+    v <= 59
+}
+
+fn is_second(ss: &str) -> bool {
+    if !is_n_digits(ss, 2) {
+        return false;
+    }
+    let v: u8 = ss.parse().unwrap_or(255);
+    v <= 59
 }
 
 fn allowed_vars_for_domain(registry: &StandardsRegistry, domain: &str) -> BTreeSet<String> {
