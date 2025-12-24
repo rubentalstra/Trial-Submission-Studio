@@ -431,7 +431,10 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "sdtm-ingest",
+ "sdtm-model",
  "sdtm-standards",
+ "sdtm-validate",
  "serde_json",
  "tracing",
  "tracing-subscriber",
@@ -496,6 +499,7 @@ dependencies = [
  "sdtm-core",
  "sdtm-model",
  "sdtm-standards",
+ "serde",
  "thiserror",
 ]
 

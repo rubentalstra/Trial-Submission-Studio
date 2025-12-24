@@ -9,4 +9,5 @@ anyhow.workspace = true
 sdtm-core = { path = "../sdtm-core" }
 sdtm-model = { path = "../sdtm-model" }
 sdtm-standards = { path = "../sdtm-standards" }
+serde.workspace = true
 thiserror.workspace = true

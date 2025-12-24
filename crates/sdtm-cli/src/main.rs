@@ -21,6 +21,10 @@ enum Command {
         #[command(subcommand)]
         command: StandardsCommand,
     },
+    Validate {
+        #[command(subcommand)]
+        command: ValidateCommand,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -31,6 +35,28 @@ enum StandardsCommand {
         /// Write machine-readable JSON report to this path. Use '-' for stdout.
         #[arg(long, value_name = "PATH")]
         json: String,
+    },
+}
+
+#[derive(Debug, Subcommand)]
+enum ValidateCommand {
+    Csv {
+        /// SDTM domain code (e.g. DM, AE).
+        #[arg(long)]
+        domain: String,
+
+        /// Input CSV file.
+        #[arg(long, value_name = "PATH")]
+        input: PathBuf,
+
+        /// Stable source identifier used for deterministic RowId derivation.
+        /// Defaults to the input path string.
+        #[arg(long)]
+        source_id: Option<String>,
+
+        /// Write machine-readable JSON report to this path. Use '-' for stdout.
+        #[arg(long, value_name = "PATH")]
+        json: Option<String>,
     },
 }
 
@@ -102,6 +128,47 @@ fn main() -> anyhow::Result<()> {
                 } else {
                     std::fs::write(&json, out)?;
                     println!("wrote {}", json);
+                }
+                Ok(())
+            }
+        },
+        Command::Validate { command } => match command {
+            ValidateCommand::Csv {
+                domain,
+                input,
+                source_id,
+                json,
+            } => {
+                let domain_code = sdtm_model::DomainCode::new(domain.clone())?;
+                let source_id = source_id.unwrap_or_else(|| input.to_string_lossy().to_string());
+
+                let table = sdtm_ingest::csv_ingest::ingest_csv_file(
+                    domain_code,
+                    &input,
+                    sdtm_ingest::csv_ingest::CsvIngestOptions::new(source_id),
+                )?;
+
+                let validator =
+                    sdtm_validate::StandardsValidator::from_standards_dir(&cli.standards_dir)?;
+                let report = validator.validate_with_report(&[table]);
+
+                if let Some(json) = json {
+                    let out = serde_json::to_string_pretty(&report)?;
+                    if json == "-" {
+                        println!("{}", out);
+                    } else {
+                        std::fs::write(&json, out)?;
+                        println!("wrote {}", json);
+                    }
+                } else {
+                    println!(
+                        "{}: conformance issues (errors={}, warnings={})",
+                        domain, report.errors, report.warnings
+                    );
+                }
+
+                if report.errors > 0 {
+                    return Err(anyhow::anyhow!("validation failed"));
                 }
                 Ok(())
             }
