@@ -7,7 +7,7 @@ use comfy_table::presets::UTF8_FULL_CONDENSED;
 use comfy_table::{
     Attribute, Cell, CellAlignment, Color, ColumnConstraint, ContentArrangement, Table, Width,
 };
-use polars::prelude::DataFrame;
+use polars::prelude::{AnyValue, DataFrame, NamedFrom};
 
 use sdtm_cli::logging::init_logging;
 use sdtm_core::{
@@ -223,20 +223,58 @@ fn run_study(args: &StudyArgs) -> Result<StudyResult> {
                     continue;
                 }
             };
-            let hints = build_column_hints(&table);
-            let engine = MappingEngine::new((*domain).clone(), 0.5, hints);
-            let result = engine.suggest(&table.headers);
-            let mapping_config = engine.to_config(&study_id, result);
-            domain_mappings.push(mapping_config.clone());
-
-            let mut mapped =
-                match build_domain_frame_with_mapping(&table, domain, Some(&mapping_config)) {
-                    Ok(frame) => frame,
+            let (mapping_config, mut mapped, used) = if domain.code.eq_ignore_ascii_case("LB") {
+                match build_lb_wide_frame(&table, domain, &study_id) {
+                    Ok(Some(result)) => result,
+                    Ok(None) => {
+                        let hints = build_column_hints(&table);
+                        let engine = MappingEngine::new((*domain).clone(), 0.5, hints);
+                        let result = engine.suggest(&table.headers);
+                        let mapping_config = engine.to_config(&study_id, result);
+                        let used: BTreeSet<String> = mapping_config
+                            .mappings
+                            .iter()
+                            .map(|mapping| mapping.source_column.clone())
+                            .collect();
+                        let mapped = match build_domain_frame_with_mapping(
+                            &table,
+                            domain,
+                            Some(&mapping_config),
+                        ) {
+                            Ok(frame) => frame,
+                            Err(error) => {
+                                errors.push(format!("{}: {error}", path.display()));
+                                continue;
+                            }
+                        };
+                        (mapping_config, mapped, used)
+                    }
                     Err(error) => {
                         errors.push(format!("{}: {error}", path.display()));
                         continue;
                     }
-                };
+                }
+            } else {
+                let hints = build_column_hints(&table);
+                let engine = MappingEngine::new((*domain).clone(), 0.5, hints);
+                let result = engine.suggest(&table.headers);
+                let mapping_config = engine.to_config(&study_id, result);
+                let used: BTreeSet<String> = mapping_config
+                    .mappings
+                    .iter()
+                    .map(|mapping| mapping.source_column.clone())
+                    .collect();
+                let mapped =
+                    match build_domain_frame_with_mapping(&table, domain, Some(&mapping_config)) {
+                        Ok(frame) => frame,
+                        Err(error) => {
+                            errors.push(format!("{}: {error}", path.display()));
+                            continue;
+                        }
+                    };
+                (mapping_config, mapped, used)
+            };
+            domain_mappings.push(mapping_config.clone());
             if let Err(error) = process_domain_with_context(domain, &mut mapped.data, &ctx) {
                 errors.push(format!("{}: {error}", path.display()));
                 continue;
@@ -250,11 +288,6 @@ fn run_study(args: &StudyArgs) -> Result<StudyResult> {
                 combined = Some(mapped.data.clone());
             }
 
-            let used: BTreeSet<String> = mapping_config
-                .mappings
-                .iter()
-                .map(|mapping| mapping.source_column.clone())
-                .collect();
             let source = match build_domain_frame(&table, domain_code) {
                 Ok(frame) => frame,
                 Err(error) => {
@@ -846,4 +879,383 @@ fn example_cell(value: String) -> Cell {
 
 fn dim_cell<T: ToString>(value: T) -> Cell {
     Cell::new(value).fg(Color::DarkGrey)
+}
+
+#[derive(Debug, Default, Clone)]
+struct LbWideGroup {
+    key: String,
+    test_col: Option<usize>,
+    orres_col: Option<usize>,
+    orresu_col: Option<usize>,
+    orresu_alt_col: Option<usize>,
+    ornr_range_col: Option<usize>,
+    ornr_lower_col: Option<usize>,
+    ornr_upper_col: Option<usize>,
+    range_col: Option<usize>,
+    clsig_col: Option<usize>,
+    extra_cols: Vec<usize>,
+}
+
+fn build_lb_wide_frame(
+    table: &sdtm_ingest::CsvTable,
+    domain: &Domain,
+    study_id: &str,
+) -> Result<Option<(MappingConfig, DomainFrame, BTreeSet<String>)>> {
+    let (groups, wide_columns) = detect_lb_wide_groups(&table.headers);
+    if groups.is_empty() {
+        return Ok(None);
+    }
+    let base_table = filter_table_columns(table, &wide_columns, false);
+    let hints = build_column_hints(&base_table);
+    let engine = MappingEngine::new((*domain).clone(), 0.5, hints);
+    let result = engine.suggest(&base_table.headers);
+    let mapping_config = engine.to_config(study_id, result);
+    let base_frame = build_domain_frame_with_mapping(&base_table, domain, Some(&mapping_config))?;
+    let date_idx = find_lb_date_column(&table.headers);
+    let time_idx = find_lb_time_column(&table.headers);
+    let (expanded, used_wide) =
+        expand_lb_wide(table, &base_frame.data, domain, &groups, date_idx, time_idx)?;
+    let mut used: BTreeSet<String> = mapping_config
+        .mappings
+        .iter()
+        .map(|mapping| mapping.source_column.clone())
+        .collect();
+    used.extend(used_wide);
+    Ok(Some((
+        mapping_config,
+        DomainFrame {
+            domain_code: domain.code.clone(),
+            data: expanded,
+        },
+        used,
+    )))
+}
+
+fn detect_lb_wide_groups(headers: &[String]) -> (BTreeMap<String, LbWideGroup>, BTreeSet<String>) {
+    let mut groups: BTreeMap<String, LbWideGroup> = BTreeMap::new();
+    let mut wide_columns = BTreeSet::new();
+    for (idx, header) in headers.iter().enumerate() {
+        let upper = header.to_uppercase();
+        let mut matched = false;
+        for prefix in [
+            "TEST", "ORRES", "ORRESU", "ORRESUO", "ORNR", "RANGE", "CLSIG",
+        ] {
+            let prefix_tag = format!("{prefix}_");
+            if !upper.starts_with(&prefix_tag) {
+                continue;
+            }
+            matched = true;
+            let rest = &upper[prefix_tag.len()..];
+            let (mut key, attr) = if prefix == "ORNR" {
+                if let Some(stripped) = rest.strip_suffix("_LOWER") {
+                    (stripped.to_string(), Some("LOWER"))
+                } else if let Some(stripped) = rest.strip_suffix("_UPPER") {
+                    (stripped.to_string(), Some("UPPER"))
+                } else {
+                    (rest.to_string(), Some("RANGE"))
+                }
+            } else {
+                (rest.to_string(), None)
+            };
+            let mut is_code = false;
+            if key.len() > 2 && key.ends_with("CD") {
+                key.truncate(key.len() - 2);
+                is_code = true;
+            }
+            let entry = groups.entry(key.clone()).or_insert_with(|| LbWideGroup {
+                key,
+                ..LbWideGroup::default()
+            });
+            if is_code {
+                entry.extra_cols.push(idx);
+                break;
+            }
+            match prefix {
+                "TEST" => entry.test_col = Some(idx),
+                "ORRES" => entry.orres_col = Some(idx),
+                "ORRESU" => entry.orresu_col = Some(idx),
+                "ORRESUO" => entry.orresu_alt_col = Some(idx),
+                "ORNR" => match attr {
+                    Some("RANGE") => entry.ornr_range_col = Some(idx),
+                    Some("LOWER") => entry.ornr_lower_col = Some(idx),
+                    Some("UPPER") => entry.ornr_upper_col = Some(idx),
+                    _ => {}
+                },
+                "RANGE" => entry.range_col = Some(idx),
+                "CLSIG" => entry.clsig_col = Some(idx),
+                _ => {}
+            }
+            break;
+        }
+        if matched {
+            wide_columns.insert(upper);
+        }
+    }
+    (groups, wide_columns)
+}
+
+fn filter_table_columns(
+    table: &sdtm_ingest::CsvTable,
+    columns: &BTreeSet<String>,
+    include: bool,
+) -> sdtm_ingest::CsvTable {
+    let mut indices = Vec::new();
+    let mut headers = Vec::new();
+    let mut labels = table.labels.as_ref().map(|_| Vec::new());
+    for (idx, header) in table.headers.iter().enumerate() {
+        let has = columns.contains(&header.to_uppercase());
+        if has == include {
+            indices.push(idx);
+            headers.push(header.clone());
+            if let Some(label_vec) = table.labels.as_ref() {
+                if let Some(labels_mut) = labels.as_mut() {
+                    labels_mut.push(label_vec.get(idx).cloned().unwrap_or_default());
+                }
+            }
+        }
+    }
+    let mut rows = Vec::with_capacity(table.rows.len());
+    for row in &table.rows {
+        let mut next = Vec::with_capacity(indices.len());
+        for &idx in &indices {
+            next.push(row.get(idx).cloned().unwrap_or_default());
+        }
+        rows.push(next);
+    }
+    sdtm_ingest::CsvTable {
+        headers,
+        rows,
+        labels,
+    }
+}
+
+fn find_lb_date_column(headers: &[String]) -> Option<usize> {
+    for (idx, header) in headers.iter().enumerate() {
+        let upper = header.to_uppercase();
+        if upper.ends_with("DAT") && !upper.contains("EVENT") {
+            return Some(idx);
+        }
+    }
+    None
+}
+
+fn find_lb_time_column(headers: &[String]) -> Option<usize> {
+    for (idx, header) in headers.iter().enumerate() {
+        let upper = header.to_uppercase();
+        if upper.ends_with("TIM") && !upper.contains("EVENT") {
+            return Some(idx);
+        }
+    }
+    None
+}
+
+fn expand_lb_wide(
+    table: &sdtm_ingest::CsvTable,
+    base_df: &DataFrame,
+    domain: &Domain,
+    groups: &BTreeMap<String, LbWideGroup>,
+    date_idx: Option<usize>,
+    time_idx: Option<usize>,
+) -> Result<(DataFrame, BTreeSet<String>)> {
+    let mut values: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for variable in &domain.variables {
+        values.insert(variable.name.clone(), Vec::new());
+    }
+    let mut used = BTreeSet::new();
+    for group in groups.values() {
+        for idx in [
+            group.test_col,
+            group.orres_col,
+            group.orresu_col,
+            group.orresu_alt_col,
+            group.ornr_range_col,
+            group.ornr_lower_col,
+            group.ornr_upper_col,
+            group.range_col,
+            group.clsig_col,
+        ] {
+            if let Some(idx) = idx {
+                if let Some(name) = table.headers.get(idx) {
+                    used.insert(name.clone());
+                }
+            }
+        }
+        for idx in &group.extra_cols {
+            if let Some(name) = table.headers.get(*idx) {
+                used.insert(name.clone());
+            }
+        }
+    }
+    if let Some(idx) = date_idx {
+        if let Some(name) = table.headers.get(idx) {
+            used.insert(name.clone());
+        }
+    }
+    if let Some(idx) = time_idx {
+        if let Some(name) = table.headers.get(idx) {
+            used.insert(name.clone());
+        }
+    }
+    let mut total_rows = 0usize;
+    for row_idx in 0..table.rows.len() {
+        let date_value = date_idx
+            .and_then(|idx| table.rows[row_idx].get(idx))
+            .cloned()
+            .unwrap_or_default();
+        let time_value = time_idx
+            .and_then(|idx| table.rows[row_idx].get(idx))
+            .cloned()
+            .unwrap_or_default();
+        for group in groups.values() {
+            let test_value = group
+                .test_col
+                .and_then(|idx| table.rows[row_idx].get(idx))
+                .cloned()
+                .unwrap_or_default();
+            let orres_value = group
+                .orres_col
+                .and_then(|idx| table.rows[row_idx].get(idx))
+                .cloned()
+                .unwrap_or_default();
+            let orresu_value = group
+                .orresu_col
+                .and_then(|idx| table.rows[row_idx].get(idx))
+                .cloned()
+                .unwrap_or_default();
+            let orresu_alt_value = group
+                .orresu_alt_col
+                .and_then(|idx| table.rows[row_idx].get(idx))
+                .cloned()
+                .unwrap_or_default();
+            let ornr_lower_value = group
+                .ornr_lower_col
+                .and_then(|idx| table.rows[row_idx].get(idx))
+                .cloned()
+                .unwrap_or_default();
+            let ornr_upper_value = group
+                .ornr_upper_col
+                .and_then(|idx| table.rows[row_idx].get(idx))
+                .cloned()
+                .unwrap_or_default();
+            let clsig_value = group
+                .clsig_col
+                .and_then(|idx| table.rows[row_idx].get(idx))
+                .cloned()
+                .unwrap_or_default();
+
+            if test_value.trim().is_empty()
+                && orres_value.trim().is_empty()
+                && orresu_value.trim().is_empty()
+                && ornr_lower_value.trim().is_empty()
+                && ornr_upper_value.trim().is_empty()
+                && clsig_value.trim().is_empty()
+            {
+                continue;
+            }
+
+            total_rows += 1;
+            let test_code = sanitize_lbtestcd(&group.key);
+            let mut base_values: BTreeMap<String, String> = BTreeMap::new();
+            for variable in &domain.variables {
+                let val = column_value_string(base_df, &variable.name, row_idx);
+                base_values.insert(variable.name.clone(), val);
+            }
+            if let Some(value) = base_values.get_mut("LBTESTCD") {
+                *value = test_code.clone();
+            }
+            if let Some(value) = base_values.get_mut("LBTEST") {
+                if !test_value.trim().is_empty() {
+                    *value = test_value.clone();
+                } else {
+                    *value = test_code.clone();
+                }
+            }
+            if let Some(value) = base_values.get_mut("LBORRES") {
+                *value = orres_value.clone();
+            }
+            if let Some(value) = base_values.get_mut("LBORRESU") {
+                if !orresu_value.trim().is_empty() {
+                    *value = orresu_value.clone();
+                } else {
+                    *value = orresu_alt_value.clone();
+                }
+            }
+            if let Some(value) = base_values.get_mut("LBORNRLO") {
+                *value = ornr_lower_value.clone();
+            }
+            if let Some(value) = base_values.get_mut("LBORNRHI") {
+                *value = ornr_upper_value.clone();
+            }
+            if let Some(value) = base_values.get_mut("LBCLSIG") {
+                *value = clsig_value.clone();
+            }
+            if let Some(value) = base_values.get_mut("LBDTC") {
+                if !date_value.trim().is_empty() {
+                    if !time_value.trim().is_empty() && !date_value.contains('T') {
+                        *value = format!("{}T{}", date_value.trim(), time_value.trim());
+                    } else {
+                        *value = date_value.clone();
+                    }
+                }
+            }
+
+            for (name, list) in values.iter_mut() {
+                let value = base_values.get(name).cloned().unwrap_or_default();
+                list.push(value);
+            }
+        }
+    }
+    if total_rows == 0 {
+        return Ok((base_df.clone(), used));
+    }
+    let mut columns = Vec::with_capacity(domain.variables.len());
+    for variable in &domain.variables {
+        let vals = values.remove(&variable.name).unwrap_or_default();
+        let column = match variable.data_type {
+            sdtm_model::VariableType::Num => {
+                let numeric: Vec<Option<f64>> = vals
+                    .iter()
+                    .map(|value| value.trim().parse::<f64>().ok())
+                    .collect();
+                polars::prelude::Series::new(variable.name.as_str().into(), numeric).into()
+            }
+            sdtm_model::VariableType::Char => {
+                polars::prelude::Series::new(variable.name.as_str().into(), vals).into()
+            }
+        };
+        columns.push(column);
+    }
+    let data = DataFrame::new(columns)?;
+    Ok((data, used))
+}
+
+fn sanitize_lbtestcd(raw: &str) -> String {
+    let mut safe = String::new();
+    for ch in raw.chars() {
+        if ch.is_ascii_alphanumeric() {
+            safe.push(ch.to_ascii_uppercase());
+        } else {
+            safe.push('_');
+        }
+    }
+    if safe.is_empty() {
+        safe = "TEST".to_string();
+    }
+    safe.chars().take(8).collect()
+}
+
+fn column_value_string(df: &DataFrame, name: &str, idx: usize) -> String {
+    match df.column(name) {
+        Ok(series) => any_to_string(series.get(idx).unwrap_or(AnyValue::Null)),
+        Err(_) => String::new(),
+    }
+}
+
+fn any_to_string(value: AnyValue) -> String {
+    match value {
+        AnyValue::String(value) => value.to_string(),
+        AnyValue::StringOwned(value) => value.to_string(),
+        AnyValue::Null => String::new(),
+        _ => value.to_string(),
+    }
 }
