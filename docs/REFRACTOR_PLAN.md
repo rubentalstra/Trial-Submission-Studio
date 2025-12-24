@@ -103,8 +103,8 @@ flavor.
 
 **Gaps vs requirements**
 
-- No explicit engine for **SDTM/SDTMIG Conformance Rules v2.0** with rule IDs,
-  categories, and a structured rule set representation.
+- Pinnacle 21 validation coverage is incomplete (only a subset of rules are
+  implemented so far; cross-domain rules and nuances are still pending).
 - No schema validation gate for Define-XML/Dataset-XML using XSD (current tests
   only check “well-formedness”).
 
@@ -134,8 +134,11 @@ flavor.
 
 ### Rust status
 
-- No Rust code exists yet (no .rs files were found). This plan covers a full
-  Rust rewrite.
+- A Rust workspace exists under `crates/` (current crates are `sdtm-*`) on the
+  refactor branch. The Rust implementation is still incomplete (writers, full
+  validation coverage, and cutover from Python are pending), but the foundation
+  for offline standards verification + ingestion + mapping + validation is in
+  place.
 
 ---
 
@@ -156,7 +159,8 @@ flavor.
    - Derivations are explicit, typed, and recorded as provenance steps.
    - Outputs a canonical “SDTM dataset set” (domains → tables).
 4. **Validation**
-   - Conformance Rules v2.0 engine (local rule corpus).
+   - Pinnacle 21 rules-driven validation (IDs/messages sourced from pinned
+     `Rules.csv`, logic implemented in Rust).
    - SDTM v2.0 + SDTMIG v3.4 structural constraints.
    - CT checks from local CT CSVs.
    - Schema validation for Define-XML 2.1 and Dataset-XML 1.0 (when XSDs are
@@ -230,45 +234,28 @@ SDTM + SDTMIG + CT + rules] --> B
 .
 ├─ Cargo.toml
 ├─ crates/
-│  ├─ cdisc-cli/                 # clap CLI + comfy-table rendering (presentation only)
-│  ├─ cdisc-config/              # figment config loading + config provenance
-│  ├─ cdisc-standards/           # standards registry: manifest + loaders + indices
-│  ├─ cdisc-ingest/              # input readers + normalization
-│  ├─ cdisc-model/               # canonical clinical model + typed SDTM table types
-│  ├─ cdisc-mapping/             # mapping rules engine + derivations + provenance
-│  ├─ cdisc-validation/          # conformance rules engine + CT + schema gates
-│  ├─ cdisc-writer-xpt/           # XPT v5 writer (write) + xpttools read (optional)
-│  ├─ cdisc-writer-define-xml/    # Define-XML v2.1 writer (quick-xml)
-│  ├─ cdisc-writer-dataset-xml/   # Dataset-XML v1.0 writer (quick-xml)
-│  ├─ cdisc-report/              # JSON + Markdown/HTML report generators
-│  ├─ cdisc-xslt/                # OPTIONAL: Define HTML rendition via libxslt
-│  └─ cdisc-core/                # pipeline orchestration; no IO besides registry/config
+│  ├─ sdtm-cli/                   # clap CLI
+│  ├─ sdtm-core/                  # pipeline traits + orchestration helpers
+│  ├─ sdtm-standards/             # standards registry: manifest + loaders + indices
+│  ├─ sdtm-ingest/                # input readers + normalization (CSV first)
+│  ├─ sdtm-model/                 # canonical SDTM model types
+│  ├─ sdtm-map/                   # mapping logic (incremental)
+│  ├─ sdtm-validate/              # validation (CT + structural + Pinnacle 21 IDs/messages)
+│  └─ sdtm-report/                # JSON report DTOs (incremental)
 ├─ standards/                    # required offline standards layout (see next section)
 ├─ examples/                     # required golden fixtures layout
 └─ docs/
-   └─ REFRACTOR_PLAN.md
+  └─ REFRACTOR_PLAN.md
 ```
 
 ### Dependency direction (strict)
 
-- `cdisc-cli` depends on `cdisc-core` and `cdisc-config` only.
-- `cdisc-core` depends on:
-  - `cdisc-standards`
-  - `cdisc-ingest`
-  - `cdisc-model`
-  - `cdisc-mapping`
-  - `cdisc-validation`
-  - writers + report crates
-- Writers depend only on:
-  - `cdisc-model`
-  - `cdisc-standards` (for metadata needed to render outputs)
-  - `quick-xml` / XPT writer crate
-- Mapping depends on:
-  - `cdisc-model`
-  - `cdisc-standards`
-- Validation depends on:
-  - `cdisc-model`
-  - `cdisc-standards`
+- `sdtm-cli` depends on `sdtm-standards`, `sdtm-ingest`, `sdtm-map`,
+  `sdtm-validate`.
+- Writers (to be added) should depend only on `sdtm-model` (+ `sdtm-standards`
+  for metadata).
+- Mapping depends on `sdtm-model` + `sdtm-standards`.
+- Validation depends on `sdtm-model` + `sdtm-standards`.
 
 This prevents “writers contain mapping logic” and keeps validation independently
 runnable.
@@ -278,36 +265,36 @@ runnable.
 This diagram is the _architecture contract_ for dependency direction. If a crate
 needs data from “later” in the pipeline, it must be passed as values (e.g.,
 DTOs) rather than introducing a reverse dependency. CLI presentation (tables,
-colors, formatting, progress bars/spinners) stays in `cdisc-cli`.
+colors, formatting, progress bars/spinners) stays in `sdtm-cli`.
 
 ```mermaid
 flowchart LR
   subgraph CLI
-    cli[cdisc-cli]
+    cli[sdtm-cli]
   end
 
   subgraph Orchestration
-    core[cdisc-core]
-    cfg[cdisc-config]
+    core[sdtm-core]
+    cfg[sdtm-config (future)]
   end
 
   subgraph Foundations
-    stds[cdisc-standards]
-    ingest[cdisc-ingest]
-    model[cdisc-model]
+    stds[sdtm-standards]
+    ingest[sdtm-ingest]
+    model[sdtm-model]
   end
 
   subgraph Pipeline
-    map[cdisc-mapping]
-    val[cdisc-validation]
-    rpt[cdisc-report]
+    map[sdtm-map]
+    val[sdtm-validate]
+    rpt[sdtm-report]
   end
 
   subgraph Outputs
-    wxpt[cdisc-writer-xpt]
-    wdx[cdisc-writer-dataset-xml]
-    wdef[cdisc-writer-define-xml]
-    xslt[cdisc-xslt (feature: xslt)]
+    wxpt[sdtm-writer-xpt (future)]
+    wdx[sdtm-writer-dataset-xml (future)]
+    wdef[sdtm-writer-define-xml (future)]
+    xslt[sdtm-xslt (future, feature: xslt)]
   end
 
   cli --> core
@@ -350,8 +337,8 @@ flowchart LR
 ### Preferred crates (and how they map)
 
 - CLI: `clap`
-- CLI tables: `comfy-table` (keep this dependency in `cdisc-cli` only)
-- CLI progress: `indicatif` (keep this dependency in `cdisc-cli` only)
+- CLI tables: `comfy-table` (keep this dependency in `sdtm-cli` only)
+- CLI progress: `indicatif` (keep this dependency in `sdtm-cli` only)
 - Config: `figment` (include config provenance in reports)
 - Serialization: `serde`, `serde_json`, `toml`
 - Errors: `thiserror` (libs), `anyhow` (app)
@@ -360,10 +347,10 @@ flowchart LR
   deterministic
 - XML read/write: `quick-xml`
 - XML schema validation gate: libxml2 bindings (threading caveats; isolate)
-- XSLT: choose **libxslt bindings** in `cdisc-xslt` (feature-gated)
+- XSLT: choose **libxslt bindings** in `sdtm-xslt` (feature-gated)
 - XPT:
   - Read: `xpttools` / `xpt.rs` (crate selection during implementation)
-  - Write: custom Rust implementation in `cdisc-writer-xpt`
+  - Write: custom Rust implementation in `sdtm-writer-xpt`
 - Testing: `cargo-nextest`, `insta`, `proptest`, `criterion`
 
 ---
@@ -583,7 +570,7 @@ can be used by later features):
 
 ### Responsibilities
 
-`cdisc-standards` loads everything under standards/ and offers typed APIs:
+`sdtm-standards` loads everything under standards/ and offers typed APIs:
 
 - SDTM v2.0 datasets + variables
 - SDTMIG v3.4 datasets + variables
@@ -798,7 +785,7 @@ Justification:
 
 ### Design
 
-- Crate: cdisc-xslt
+- Crate: sdtm-xslt
 - Feature flag: xslt
 - Inputs:
   - define.xml
@@ -821,7 +808,8 @@ Validation stage must produce machine-readable and human-readable output.
 
 ### Gates (must fail CI)
 
-- Conformance rules v2.0 violations (severity=error)
+- Validation rule violations with severity=error (including Pinnacle 21 rule
+  IDs)
 - CT violations using local CT CSVs (non-extensible → error)
 - Define/Dataset-XML schema validation failures (when schemas present locally)
 - XPT writer compliance checks (format constraints + round-trip)
@@ -907,8 +895,9 @@ operational; then cut over to Rust-only and remove Python.
 
 1. **Commit 1: Add Rust workspace skeleton**
    - Add top-level Cargo.toml workspace
-   - Add crates/cdisc-cli with clap “hello” command
-   - Add CI jobs for cargo fmt/clippy/nextest
+
+- Add crates/sdtm-cli with clap “hello” command
+- Add CI jobs for cargo fmt/clippy/nextest
 
 2. **Commit 2: Add standards/ and examples/ directories + move assets**
    - Create standards/ tree per required layout
@@ -918,9 +907,9 @@ operational; then cut over to Rust-only and remove Python.
    - Add standards/xsl and move XSLs
 
 3. **Commit 3: Add standards/manifest.toml + checksum verifier**
-   - Implement cdisc-standards manifest loader
-   - Implement sha256 verification gate and a small CLI command:
-     `standards verify`
+
+- Implement sdtm-standards manifest loader
+- Implement sha256 verification gate and a small CLI command: `standards verify`
 
 4. **Commit 4: Implement Standards Registry (typed) + indices**
    - Parse SDTM/SDTMIG Datasets.csv + Variables.csv
@@ -964,7 +953,7 @@ operational; then cut over to Rust-only and remove Python.
 
 12. **Commit 12: Add optional XSLT HTML rendition feature**
 
-- cdisc-xslt crate behind feature flag
+- sdtm-xslt crate behind feature flag
 - insta snapshot tests for HTML
 
 13. **Commit 13: Cutover and remove Python**
@@ -991,7 +980,7 @@ operational; then cut over to Rust-only and remove Python.
 
 ### Milestone C: Full validation gates
 
-- Conformance rules v2.0 engine runs and fails CI on errors
+- Validation runs and fails CI on errors (Pinnacle 21 IDs/messages surfaced)
 - CT enforcement is pinned and reported
 - XML schema validation gate present (when schemas are committed)
 
@@ -1012,7 +1001,7 @@ Checklist:
 - [ ] Deterministic outputs given same inputs/config/manifest/tool version
 - [ ] Every SDTM value has traceability to source row/field + derivation rule
 - [ ] Validation stage exists and is CI-gating:
-  - [ ] Conformance rules v2.0 errors fail
+  - [ ] Pinnacle 21 severity=error findings fail
   - [ ] CT non-extensible violations fail
   - [ ] Define/Dataset XML schema violations fail when schemas present
   - [ ] XPT compliance checks fail on violations
@@ -1054,10 +1043,10 @@ acceptance criteria.
 
 ### 3) Standards & Compliance Agent
 
-- Mission: encode SDTM/SDTMIG rules and conformance rules v2.0 locally; define
-  validation semantics.
-- Inputs: standards CSVs, conformance rule corpus (local representation),
-  Define/Dataset constraints, XPT constraints.
+- Mission: encode SDTM/SDTMIG validation checks and Pinnacle 21 rule coverage;
+  define validation semantics.
+- Inputs: standards CSVs, Pinnacle 21 `Rules.csv`, Define/Dataset constraints,
+  XPT constraints.
 - Outputs:
   - rule representation spec
   - mapping of rule IDs → checks
@@ -1172,9 +1161,9 @@ acceptance criteria.
 
 Top risks and mitigations:
 
-1. **Conformance Rules v2.0 representation complexity**
-   - Mitigation: start with a minimal but extensible rule schema; implement top
-     critical rules first.
+1. **Pinnacle 21 rule coverage & interpretation complexity**
+   - Mitigation: implement highest-impact rules first with tight tests and use
+     pinned `Rules.csv` for IDs/messages.
 2. **XML schema validation + FFI complexity**
    - Mitigation: isolate libxml2 usage; feature-gate; run single-threaded.
 3. **XPT writer correctness**
