@@ -1,8 +1,8 @@
 # CDISC Transpiler (Rust)
 
-A Rust-first CLI tool for transpiling clinical trial source data into CDISC
-SDTM outputs (XPT, Dataset-XML, Define-XML; SAS scripts deferred in v1) with
-strict, offline validation.
+A Rust-first CLI tool for transpiling clinical trial source data into CDISC SDTM
+outputs (XPT, Dataset-XML, Define-XML; SAS scripts deferred in v1) with strict,
+offline validation.
 
 ## Status
 
@@ -55,3 +55,9 @@ cdisc-transpiler domains
 - Strategy and architecture: `docs/REFRACTOR_PLAN.md`
 - Task tracker: `docs/RUST_CLI_TASKS.md`
 - Standards assets: `standards/` (offline, committed source of truth)
+
+## References
+
+Record Layout of a SAS® Version 5 or 6 Data Set in SAS® Transport (Xport) Format
+
+- https://support.sas.com/content/dam/SAS/support/en/technical-papers/record-layout-of-a-sas-version-5-or-6-data-set-in-sas-transport-xport-format.pdf
