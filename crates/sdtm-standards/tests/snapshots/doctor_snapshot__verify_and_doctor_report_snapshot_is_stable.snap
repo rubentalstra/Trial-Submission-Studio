@@ -23,13 +23,20 @@ expression: "serde_json::to_value(report).unwrap()"
   ],
   "counts": {
     "ct_codelists": 1,
-    "files": 8,
+    "files": 9,
     "sdtm_domains": 1,
     "sdtm_variables": 1,
     "sdtmig_domains": 1,
     "sdtmig_variables": 1
   },
   "files": [
+    {
+      "kind": "csv",
+      "notes": null,
+      "path": "Pinnacle21/Rules.csv",
+      "role": "pinnacle21_rules",
+      "sha256": "5e79c5604f730c51d18772d301fa906b37936c73a36d4185681a58738fd0413b"
+    },
     {
       "kind": "toml",
       "notes": null,

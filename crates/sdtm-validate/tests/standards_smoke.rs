@@ -43,7 +43,7 @@ fn dm_smoke_required_and_unknown_columns() -> anyhow::Result<()> {
     let table = Table::new(domain_code.clone(), columns);
     let report = validate_table_against_standards(&registry, &table);
     assert_eq!(report.errors, 0);
-    assert_eq!(report.warnings, 1);
+    assert_eq!(report.warnings, 2);
 
     // Now remove one required variable and ensure we get exactly one error.
     let missing = required.iter().next().unwrap().clone();

@@ -71,6 +71,15 @@ fn verify_and_doctor_report_snapshot_is_stable() {
 "#,
     );
 
+    // Minimal Pinnacle 21 rules (semicolon-delimited)
+    write(
+        &standards_dir.join("Pinnacle21/Rules.csv"),
+        br#"Pinnacle 21 ID;Publisher ID;Message;Description;Category;Severity
+CT2001;;Variable value not found in non-extensible codelist;Variable must be populated with terms from its CDISC controlled terminology codelist. New terms cannot be added into non-extensible codelists.;Terminology;
+SD0002;;Null value in variable marked as Required;Required variables (where Core attribute is 'Req') cannot be null for any records.;Presence;
+"#,
+    );
+
     // Conformance rules + XSL
     write(
         &standards_dir.join("conformance_rules/v2_0/catalog.toml"),
@@ -135,6 +144,12 @@ kind = "csv"
 role = "ct_sdtm"
 
 [[files]]
+path = "Pinnacle21/Rules.csv"
+sha256 = "{}"
+kind = "csv"
+role = "pinnacle21_rules"
+
+[[files]]
 path = "conformance_rules/v2_0/catalog.toml"
 sha256 = "{}"
 kind = "toml"
@@ -157,6 +172,7 @@ role = "define_xsl_2_0"
         sha(&standards_dir.join("sdtmig/v3_4/Datasets.csv")),
         sha(&standards_dir.join("sdtmig/v3_4/Variables.csv")),
         sha(&standards_dir.join("ct/2024-03-29/SDTM_CT_2024-03-29.csv")),
+        sha(&standards_dir.join("Pinnacle21/Rules.csv")),
         sha(&standards_dir.join("conformance_rules/v2_0/catalog.toml")),
         sha(&standards_dir.join("xsl/define2-1.xsl")),
         sha(&standards_dir.join("xsl/define2-0-0.xsl")),

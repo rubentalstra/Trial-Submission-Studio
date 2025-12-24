@@ -28,6 +28,8 @@ pub enum Severity {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ValidationIssue {
     pub severity: Severity,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub p21_rule_id: Option<String>,
     pub domain: String,
     pub var: Option<String>,
     pub row_id: Option<String>,
@@ -52,13 +54,31 @@ pub fn validate_table_against_standards(
     if !registry.datasets_by_domain.contains_key(&domain) {
         report.issues.push(ValidationIssue {
             severity: Severity::Error,
+            p21_rule_id: Some("SD9999".to_string()),
             domain: domain.clone(),
             var: None,
             row_id: None,
-            message: "unknown SDTM domain".to_string(),
+            message: p21_message(registry, "SD9999").unwrap_or_else(|| "unknown SDTM domain".to_string()),
         });
         report.errors += 1;
         return report;
+    }
+
+    // SD0001: No records in data source.
+    // Note: The validator is used both for structural checks and ingested data.
+    // Emit as a warning so structural-only tables (no rows) still work, while
+    // callers validating real data can surface it.
+    if table.rows.is_empty() {
+        report.issues.push(ValidationIssue {
+            severity: Severity::Warning,
+            p21_rule_id: Some("SD0001".to_string()),
+            domain: domain.clone(),
+            var: None,
+            row_id: None,
+            message: p21_message(registry, "SD0001")
+                .unwrap_or_else(|| "no records in data source".to_string()),
+        });
+        report.warnings += 1;
     }
 
     let required = required_vars_for_domain(registry, &domain);
@@ -74,10 +94,12 @@ pub fn validate_table_against_standards(
         if !present.contains(req) {
             report.issues.push(ValidationIssue {
                 severity: Severity::Error,
+                p21_rule_id: Some("SD0056".to_string()),
                 domain: domain.clone(),
                 var: Some(req.clone()),
                 row_id: None,
-                message: "missing required variable".to_string(),
+                message: p21_message(registry, "SD0056")
+                    .unwrap_or_else(|| "missing required variable".to_string()),
             });
             report.errors += 1;
         }
@@ -87,12 +109,134 @@ pub fn validate_table_against_standards(
         if !allowed.contains(col) {
             report.issues.push(ValidationIssue {
                 severity: Severity::Warning,
+                p21_rule_id: Some("SD0058".to_string()),
                 domain: domain.clone(),
                 var: Some(col.clone()),
                 row_id: None,
-                message: "unknown variable for domain".to_string(),
+                message: p21_message(registry, "SD0058")
+                    .unwrap_or_else(|| "unknown variable for domain".to_string()),
             });
             report.warnings += 1;
+        }
+    }
+
+    // SD0004: Inconsistent value for DOMAIN.
+    // Only applies when the DOMAIN column is present.
+    if present.contains("DOMAIN") {
+        let var_name = VarName::new("DOMAIN")
+            .expect("validated VarName from standards registry and table headers");
+        for row in &table.rows {
+            let value = match row.cells.get(&var_name) {
+                Some(sdtm_model::CellValue::Text(v)) => v.trim(),
+                _ => continue,
+            };
+            if value.is_empty() {
+                continue;
+            }
+            if value != domain {
+                report.issues.push(ValidationIssue {
+                    severity: Severity::Error,
+                    p21_rule_id: Some("SD0004".to_string()),
+                    domain: domain.clone(),
+                    var: Some("DOMAIN".to_string()),
+                    row_id: Some(row.id.to_hex()),
+                    message: p21_message(registry, "SD0004")
+                        .unwrap_or_else(|| "inconsistent value for DOMAIN".to_string()),
+                });
+                report.errors += 1;
+            }
+        }
+    }
+
+    // SD0005: Duplicate value for --SEQ variable.
+    // Exclusions: DE, DO, DT, DU, DX.
+    if !matches!(domain.as_str(), "DE" | "DO" | "DT" | "DU" | "DX") {
+        let seq_var = format!("{domain}SEQ");
+        if present.contains(&seq_var) {
+            let seq_name = VarName::new(seq_var.clone())
+                .expect("validated VarName from standards registry and table headers");
+            let usubjid_name = VarName::new("USUBJID")
+                .expect("validated VarName from standards registry and table headers");
+            let poolid_name = VarName::new("POOLID")
+                .expect("validated VarName from standards registry and table headers");
+
+            let group_by = if present.contains("USUBJID") {
+                Some(usubjid_name)
+            } else if present.contains("POOLID") {
+                Some(poolid_name)
+            } else {
+                None
+            };
+
+            // group_key -> seq_value -> first_row_id_hex
+            let mut seen: std::collections::BTreeMap<String, std::collections::BTreeMap<String, String>> =
+                std::collections::BTreeMap::new();
+
+            for row in &table.rows {
+                let seq_value = match row.cells.get(&seq_name) {
+                    Some(sdtm_model::CellValue::Text(v)) => v.trim(),
+                    _ => continue,
+                };
+                if seq_value.is_empty() {
+                    continue;
+                }
+
+                let group_key = if let Some(ref g) = group_by {
+                    match row.cells.get(g) {
+                        Some(sdtm_model::CellValue::Text(v)) => v.trim().to_string(),
+                        _ => String::new(),
+                    }
+                } else {
+                    String::new()
+                };
+
+                let group = seen.entry(group_key).or_default();
+                if group.contains_key(seq_value) {
+                    report.issues.push(ValidationIssue {
+                        severity: Severity::Error,
+                        p21_rule_id: Some("SD0005".to_string()),
+                        domain: domain.clone(),
+                        var: Some(seq_var.clone()),
+                        row_id: Some(row.id.to_hex()),
+                        message: p21_message(registry, "SD0005")
+                            .unwrap_or_else(|| "duplicate value for --SEQ variable".to_string()),
+                    });
+                    report.errors += 1;
+                } else {
+                    group.insert(seq_value.to_string(), row.id.to_hex());
+                }
+            }
+        }
+    }
+
+    // SD0002: Null value in variable marked as Required (row-level enforcement).
+    // Only applies when the variable exists as a column.
+    for req in &required {
+        if !present.contains(req) {
+            continue;
+        }
+        let var_name = VarName::new(req.to_string())
+            .expect("validated VarName from standards registry and table headers");
+        for row in &table.rows {
+            let cell = row.cells.get(&var_name);
+            let is_missing = match cell {
+                None => true,
+                Some(sdtm_model::CellValue::Missing) => true,
+                Some(sdtm_model::CellValue::Text(v)) => v.trim().is_empty(),
+            };
+
+            if is_missing {
+                report.issues.push(ValidationIssue {
+                    severity: Severity::Error,
+                    p21_rule_id: Some("SD0002".to_string()),
+                    domain: domain.clone(),
+                    var: Some(req.clone()),
+                    row_id: Some(row.id.to_hex()),
+                    message: p21_message(registry, "SD0002")
+                        .unwrap_or_else(|| "required variable is missing".to_string()),
+                });
+                report.errors += 1;
+            }
         }
     }
 
@@ -125,15 +269,23 @@ pub fn validate_table_against_standards(
             }
 
             if !constraint.allowed_values.contains(value) {
+                let p21_id = if constraint.invalid_severity == Severity::Error {
+                    "CT2001"
+                } else {
+                    "CT2002"
+                };
                 report.issues.push(ValidationIssue {
                     severity: constraint.invalid_severity,
+                    p21_rule_id: Some(p21_id.to_string()),
                     domain: domain.clone(),
                     var: Some(col.clone()),
                     row_id: Some(row.id.to_hex()),
-                    message: format!(
-                        "invalid controlled terminology (codelists: {})",
-                        constraint.codelist_codes.join(",")
-                    ),
+                    message: p21_message(registry, p21_id).unwrap_or_else(|| {
+                        format!(
+                            "invalid controlled terminology (codelists: {})",
+                            constraint.codelist_codes.join(",")
+                        )
+                    }),
                 });
                 match constraint.invalid_severity {
                     Severity::Error => report.errors += 1,
@@ -146,6 +298,7 @@ pub fn validate_table_against_standards(
     report.issues.sort_by(|a, b| {
         a.severity
             .cmp(&b.severity)
+            .then_with(|| a.p21_rule_id.cmp(&b.p21_rule_id))
             .then_with(|| a.domain.cmp(&b.domain))
             .then_with(|| a.var.cmp(&b.var))
             .then_with(|| a.row_id.cmp(&b.row_id))
@@ -153,6 +306,10 @@ pub fn validate_table_against_standards(
     });
 
     report
+}
+
+fn p21_message(registry: &StandardsRegistry, p21_id: &str) -> Option<String> {
+    registry.p21_rules.get(p21_id).map(|m| m.message.clone())
 }
 
 #[derive(Debug, Clone)]

@@ -5,6 +5,7 @@ use std::path::{Path, PathBuf};
 
 use crate::csv::ct::{CtIndex, parse_ct_csv};
 use crate::csv::datasets::{DatasetMeta, parse_datasets_csv};
+use crate::csv::pinnacle21_rules::{P21RulesIndex, parse_pinnacle21_rules_csv};
 use crate::csv::variables::{VariableKey, VariableMeta, parse_variables_csv};
 use crate::error::StandardsError;
 use crate::hash::sha256_hex;
@@ -15,6 +16,8 @@ const REQUIRED_ROLES: &[&str] = &[
     "sdtm_variables",
     "sdtmig_datasets",
     "sdtmig_variables",
+    "ct_sdtm",
+    "pinnacle21_rules",
     "conformance_rules_catalog",
     "define_xsl_2_1",
     "define_xsl_2_0",
@@ -52,6 +55,7 @@ pub struct StandardsRegistry {
     pub sdtm_variables: Vec<VariableMeta>,
     pub sdtmig_variables: Vec<VariableMeta>,
     pub ct_sdtm: CtIndex,
+    pub p21_rules: P21RulesIndex,
     pub conflicts: Vec<Conflict>,
     pub datasets_by_domain: BTreeMap<String, DatasetMeta>,
     pub variables_by_domain: BTreeMap<String, Vec<VariableMeta>>,
@@ -90,6 +94,12 @@ impl StandardsRegistry {
 
         let ct_sdtm = parse_ct_csv(&resolve_role_path(standards_dir, &files, "ct_sdtm")?)?;
 
+        let p21_rules = parse_pinnacle21_rules_csv(&resolve_role_path(
+            standards_dir,
+            &files,
+            "pinnacle21_rules",
+        )?)?;
+
         let conflicts = detect_conflicts(
             &sdtm_datasets,
             &sdtmig_datasets,
@@ -121,6 +131,7 @@ impl StandardsRegistry {
                 sdtm_variables,
                 sdtmig_variables,
                 ct_sdtm,
+                p21_rules,
                 conflicts,
                 datasets_by_domain,
                 variables_by_domain,

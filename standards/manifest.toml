@@ -51,14 +51,20 @@ kind = "csv"
 role = "ct_sdtm"
 
 [[files]]
+path = "Pinnacle21/Rules.csv"
+sha256 = "92bd7f9ff71e91b850640be743bc8d4a7882f5729a24fff2f07d2568d3675ba3"
+kind = "csv"
+role = "pinnacle21_rules"
+
+[[files]]
 path = "conformance_rules/v2_0/catalog.toml"
-sha256 = "108dbc9e69dd911baa7eed0ff18665da4f6f60973029ce3ca4f2c66577e4c46a"
+sha256 = "6579598ae922b67bfe8332e75296f45288913400e9b60e5ff267860b0ac528e6"
 kind = "toml"
 role = "conformance_rules_catalog"
 
 [[files]]
 path = "conformance_rules/v2_0/predicates/builtin.toml"
-sha256 = "d2ef460e1f21c7e5d175cc38d8172a96651d22dadd6a7a98ac362ed55ac43f98"
+sha256 = "08e1a2698d4e83c1779f53602add0087e62c6689aa541bae32cdf263a38ce820"
 kind = "toml"
 role = "conformance_rules_predicates"
 
