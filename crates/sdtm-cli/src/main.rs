@@ -20,7 +20,8 @@ use sdtm_ingest::{
 };
 use sdtm_map::MappingEngine;
 use sdtm_model::{
-    ConformanceReport, Domain, IssueSeverity, MappingConfig, MappingSuggestion, OutputFormat,
+    ConformanceReport, ControlledTerminology, Domain, IssueSeverity, MappingConfig,
+    MappingSuggestion, OutputFormat,
 };
 use sdtm_report::{
     DefineXmlOptions, SasProgramOptions, write_dataset_xml_outputs, write_define_xml,
@@ -308,6 +309,12 @@ fn run_study(args: &StudyArgs) -> Result<StudyResult> {
                     };
                 (mapping_config, mapped, used)
             };
+            if let Err(error) =
+                fill_missing_test_fields(domain, &mapping_config, &table, &mut mapped.data, &ctx)
+            {
+                errors.push(format!("{}: {error}", path.display()));
+                continue;
+            }
             domain_mappings.push(mapping_config.clone());
             if let Err(error) = process_domain_with_context(domain, &mut mapped.data, &ctx) {
                 errors.push(format!("{}: {error}", path.display()));
@@ -606,6 +613,369 @@ fn insert_frame(map: &mut BTreeMap<String, DomainFrame>, frame: DomainFrame) -> 
                 data: frame.data,
             },
         );
+    }
+    Ok(())
+}
+
+fn table_label(table: &sdtm_ingest::CsvTable, column: &str) -> Option<String> {
+    let labels = table.labels.as_ref()?;
+    let idx = table
+        .headers
+        .iter()
+        .position(|header| header.eq_ignore_ascii_case(column))?;
+    let label = labels.get(idx)?.trim();
+    if label.is_empty() {
+        None
+    } else {
+        Some(label.to_string())
+    }
+}
+
+fn column_hint_for_domain(
+    table: &sdtm_ingest::CsvTable,
+    domain: &Domain,
+    column: &str,
+) -> Option<(String, bool)> {
+    let idx = table
+        .headers
+        .iter()
+        .position(|header| header.eq_ignore_ascii_case(column))?;
+    if let Some(labels) = table.labels.as_ref() {
+        if let Some(label) = labels.get(idx) {
+            let trimmed = label.trim();
+            if !trimmed.is_empty() {
+                return Some((trimmed.to_string(), true));
+            }
+        }
+    }
+    let header = table.headers.get(idx)?.clone();
+    let is_standard = domain
+        .variables
+        .iter()
+        .any(|var| var.name.eq_ignore_ascii_case(&header));
+    if is_standard {
+        None
+    } else {
+        Some((header, false))
+    }
+}
+
+fn table_column_values(table: &sdtm_ingest::CsvTable, column: &str) -> Option<Vec<String>> {
+    let idx = table
+        .headers
+        .iter()
+        .position(|header| header.eq_ignore_ascii_case(column))?;
+    let mut values = Vec::with_capacity(table.rows.len());
+    for row in &table.rows {
+        values.push(row.get(idx).cloned().unwrap_or_default());
+    }
+    Some(values)
+}
+
+fn mapping_source_for_target(mapping: &MappingConfig, target: &str) -> Option<String> {
+    mapping
+        .mappings
+        .iter()
+        .find(|entry| entry.target_variable.eq_ignore_ascii_case(target))
+        .map(|entry| entry.source_column.clone())
+}
+
+fn fill_string_column(df: &mut DataFrame, name: &str, fill: &str) -> Result<()> {
+    if fill.is_empty() {
+        return Ok(());
+    }
+    let mut values = if let Ok(series) = df.column(name) {
+        (0..df.height())
+            .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
+            .collect::<Vec<_>>()
+    } else {
+        vec![String::new(); df.height()]
+    };
+    for value in &mut values {
+        if value.trim().is_empty() {
+            *value = fill.to_string();
+        }
+    }
+    let series = Series::new(name.into(), values);
+    df.with_column(series)?;
+    Ok(())
+}
+
+fn compact_key(value: &str) -> String {
+    value
+        .chars()
+        .filter(|ch| ch.is_ascii_alphanumeric())
+        .map(|ch| ch.to_ascii_uppercase())
+        .collect()
+}
+
+fn resolve_ct_submission_value(ct: &ControlledTerminology, raw: &str) -> Option<String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    let key = trimmed.to_uppercase();
+    if let Some(mapped) = ct.synonyms.get(&key) {
+        return Some(mapped.clone());
+    }
+    if ct.submission_values.iter().any(|val| val == trimmed) {
+        return Some(trimmed.to_string());
+    }
+    for submission in &ct.submission_values {
+        if compact_key(submission) == compact_key(trimmed) {
+            return Some(submission.clone());
+        }
+    }
+    for (submission, preferred) in &ct.preferred_terms {
+        if compact_key(preferred) == compact_key(trimmed) {
+            return Some(submission.clone());
+        }
+    }
+    None
+}
+
+fn resolve_ct_value_from_hint(ct: &ControlledTerminology, hint: &str) -> Option<String> {
+    if let Some(value) = resolve_ct_submission_value(ct, hint) {
+        return Some(value);
+    }
+    let hint_compact = compact_key(hint);
+    if hint_compact.len() < 3 {
+        return None;
+    }
+    let mut matches: Vec<String> = Vec::new();
+    for submission in &ct.submission_values {
+        let compact = compact_key(submission);
+        if compact.len() >= 3
+            && (hint_compact.contains(&compact) || compact.contains(&hint_compact))
+        {
+            matches.push(submission.clone());
+        }
+    }
+    for (submission, preferred) in &ct.preferred_terms {
+        let compact = compact_key(preferred);
+        if compact.len() >= 3
+            && (hint_compact.contains(&compact) || compact.contains(&hint_compact))
+        {
+            matches.push(submission.clone());
+        }
+    }
+    for (synonym, submission) in &ct.synonyms {
+        let compact = compact_key(synonym);
+        if compact.len() >= 3
+            && (hint_compact.contains(&compact) || compact.contains(&hint_compact))
+        {
+            matches.push(submission.clone());
+        }
+    }
+    matches.sort();
+    matches.dedup();
+    if matches.len() == 1 {
+        Some(matches.remove(0))
+    } else {
+        None
+    }
+}
+
+fn resolve_ct_for_variable(
+    ctx: &ProcessingContext,
+    domain: &Domain,
+    variable: &str,
+    hint: &str,
+    allow_raw: bool,
+) -> Option<String> {
+    let ct = ctx.resolve_ct(domain, variable)?;
+    if let Some(value) = resolve_ct_value_from_hint(ct, hint) {
+        return Some(value);
+    }
+    if allow_raw && ct.extensible {
+        let trimmed = hint.trim();
+        if !trimmed.is_empty() {
+            return Some(trimmed.to_string());
+        }
+    }
+    None
+}
+
+fn fill_missing_test_fields(
+    domain: &Domain,
+    mapping: &MappingConfig,
+    table: &sdtm_ingest::CsvTable,
+    df: &mut DataFrame,
+    ctx: &ProcessingContext,
+) -> Result<()> {
+    let code = domain.code.to_uppercase();
+    if code == "QS" {
+        let orres_source = mapping_source_for_target(mapping, "QSORRES")
+            .or_else(|| mapping_source_for_target(mapping, "QSSTRESC"));
+        let label_hint = orres_source
+            .as_deref()
+            .and_then(|col| column_hint_for_domain(table, domain, col))
+            .or_else(|| column_hint_for_domain(table, domain, "QSPGARS"))
+            .or_else(|| column_hint_for_domain(table, domain, "QSPGARSCD"));
+        if let Some((label, allow_raw)) = label_hint {
+            let test_code = sanitize_vstestcd(&label);
+            fill_string_column(df, "QSTEST", &label)?;
+            fill_string_column(df, "QSTESTCD", &test_code)?;
+            if let Some(qscat) = resolve_ct_for_variable(ctx, domain, "QSCAT", &label, allow_raw) {
+                fill_string_column(df, "QSCAT", &qscat)?;
+            }
+        }
+    } else if code == "PE" {
+        let orres_source = mapping_source_for_target(mapping, "PEORRES")
+            .or_else(|| mapping_source_for_target(mapping, "PEORRESSP"));
+        let label_hint = orres_source
+            .as_deref()
+            .and_then(|col| column_hint_for_domain(table, domain, col))
+            .or_else(|| column_hint_for_domain(table, domain, "PEORRES"))
+            .or_else(|| column_hint_for_domain(table, domain, "PEORRESSP"));
+        if let Some((label, _allow_raw)) = label_hint {
+            let test_code = sanitize_vstestcd(&label);
+            fill_string_column(df, "PETEST", &label)?;
+            fill_string_column(df, "PETESTCD", &test_code)?;
+        }
+    } else if code == "DA" {
+        let mut candidates: Vec<(Option<String>, Option<String>, Vec<String>)> = Vec::new();
+        for header in &table.headers {
+            let upper = header.to_uppercase();
+            if let Some(prefix) = upper.strip_suffix("_DAORRES") {
+                if let Some(values) = table_column_values(table, header) {
+                    let label = table_label(table, header);
+                    let hint = label.clone().unwrap_or_else(|| prefix.to_string());
+                    let allow_raw = label.is_some();
+                    let test_name =
+                        resolve_ct_for_variable(ctx, domain, "DATEST", &hint, allow_raw);
+                    let test_code = resolve_ct_for_variable(ctx, domain, "DATESTCD", &hint, false)
+                        .or_else(|| allow_raw.then(|| sanitize_vstestcd(&hint)));
+                    candidates.push((test_name, test_code, values));
+                }
+            }
+        }
+        if !candidates.is_empty() {
+            let mut daorres_vals = if let Ok(series) = df.column("DAORRES") {
+                (0..df.height())
+                    .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
+                    .collect::<Vec<_>>()
+            } else {
+                vec![String::new(); df.height()]
+            };
+            let mut datest_vals = if let Ok(series) = df.column("DATEST") {
+                (0..df.height())
+                    .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
+                    .collect::<Vec<_>>()
+            } else {
+                vec![String::new(); df.height()]
+            };
+            let mut datestcd_vals = if let Ok(series) = df.column("DATESTCD") {
+                (0..df.height())
+                    .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
+                    .collect::<Vec<_>>()
+            } else {
+                vec![String::new(); df.height()]
+            };
+            for idx in 0..df.height() {
+                let needs_orres = daorres_vals[idx].trim().is_empty();
+                let needs_test = datest_vals[idx].trim().is_empty();
+                let needs_testcd = datestcd_vals[idx].trim().is_empty();
+                if !needs_orres && !needs_test && !needs_testcd {
+                    continue;
+                }
+                for (test_name, test_code, values) in &candidates {
+                    let value = values.get(idx).map(|v| v.trim()).unwrap_or("");
+                    if value.is_empty() {
+                        continue;
+                    }
+                    if needs_test && test_name.is_none() {
+                        continue;
+                    }
+                    if needs_testcd && test_code.is_none() {
+                        continue;
+                    }
+                    if needs_orres {
+                        daorres_vals[idx] = value.to_string();
+                    }
+                    if needs_test {
+                        if let Some(name) = test_name {
+                            datest_vals[idx] = name.clone();
+                        }
+                    }
+                    if needs_testcd {
+                        if let Some(code) = test_code {
+                            datestcd_vals[idx] = code.clone();
+                        }
+                    }
+                    break;
+                }
+            }
+            df.with_column(Series::new("DAORRES".into(), daorres_vals))?;
+            df.with_column(Series::new("DATEST".into(), datest_vals))?;
+            df.with_column(Series::new("DATESTCD".into(), datestcd_vals))?;
+        }
+    } else if code == "IE" {
+        let mut candidates: Vec<(String, Vec<String>, String)> = Vec::new();
+        let ct_cat = ctx.resolve_ct(domain, "IECAT");
+        for header in &table.headers {
+            let upper = header.to_uppercase();
+            if !upper.starts_with("IE") {
+                continue;
+            }
+            let label = table_label(table, header).unwrap_or_else(|| header.clone());
+            let category = ct_cat.and_then(|ct| resolve_ct_value_from_hint(ct, &label));
+            if let Some(category) = category {
+                if let Some(values) = table_column_values(table, header) {
+                    candidates.push((label, values, category));
+                }
+            }
+        }
+        if !candidates.is_empty() {
+            let mut ietest_vals = if let Ok(series) = df.column("IETEST") {
+                (0..df.height())
+                    .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
+                    .collect::<Vec<_>>()
+            } else {
+                vec![String::new(); df.height()]
+            };
+            let mut ietestcd_vals = if let Ok(series) = df.column("IETESTCD") {
+                (0..df.height())
+                    .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
+                    .collect::<Vec<_>>()
+            } else {
+                vec![String::new(); df.height()]
+            };
+            let mut iecat_vals = if let Ok(series) = df.column("IECAT") {
+                (0..df.height())
+                    .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
+                    .collect::<Vec<_>>()
+            } else {
+                vec![String::new(); df.height()]
+            };
+            for idx in 0..df.height() {
+                let needs_test = ietest_vals[idx].trim().is_empty();
+                let needs_testcd = ietestcd_vals[idx].trim().is_empty();
+                let needs_cat = iecat_vals[idx].trim().is_empty();
+                if !needs_test && !needs_cat && !needs_testcd {
+                    continue;
+                }
+                for (label, values, category) in &candidates {
+                    let value = values.get(idx).map(|v| v.trim()).unwrap_or("");
+                    if value.is_empty() {
+                        continue;
+                    }
+                    if needs_test {
+                        ietest_vals[idx] = label.clone();
+                    }
+                    if needs_testcd {
+                        ietestcd_vals[idx] = sanitize_vstestcd(label);
+                    }
+                    if needs_cat {
+                        iecat_vals[idx] = category.clone();
+                    }
+                    break;
+                }
+            }
+            df.with_column(Series::new("IETEST".into(), ietest_vals))?;
+            df.with_column(Series::new("IETESTCD".into(), ietestcd_vals))?;
+            df.with_column(Series::new("IECAT".into(), iecat_vals))?;
+        }
     }
     Ok(())
 }

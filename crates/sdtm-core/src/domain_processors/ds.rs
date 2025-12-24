@@ -153,11 +153,26 @@ pub(super) fn process_ds(
                 let mut decod_vals = string_column(df, &dsdecod, Trim::Both)?;
                 for idx in 0..df.height() {
                     let canonical = normalize_ct_value(ct, &decod_vals[idx]);
-                    let mapped = match canonical.to_uppercase().as_str() {
+                    let mut mapped = match canonical.to_uppercase().as_str() {
                         "Y" | "YES" => "COMPLETED".to_string(),
                         "N" | "NO" => "SCREENING NOT COMPLETED".to_string(),
                         _ => canonical.to_uppercase(),
                     };
+                    if !ct.submission_values.iter().any(|val| val == &mapped) {
+                        let compact: String = mapped
+                            .chars()
+                            .filter(|ch| ch.is_ascii_alphanumeric())
+                            .collect();
+                        if compact.contains("FAILURETOMEET") || compact.contains("SCREENFAILURE") {
+                            mapped = "SCREEN FAILURE".to_string();
+                        } else if mapped.contains("WITHDRAW") && mapped.contains("CONSENT") {
+                            mapped = "WITHDRAWAL OF CONSENT".to_string();
+                        } else if mapped.contains("WITHDRAW") && mapped.contains("SUBJECT") {
+                            mapped = "WITHDRAWAL BY SUBJECT".to_string();
+                        } else if mapped.contains("LOST") && mapped.contains("FOLLOW") {
+                            mapped = "LOST TO FOLLOW-UP".to_string();
+                        }
+                    }
                     decod_vals[idx] = mapped;
                 }
                 if let Some(dsterm) = col(domain, "DSTERM") {
