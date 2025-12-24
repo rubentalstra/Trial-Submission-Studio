@@ -21,12 +21,11 @@ pub fn write_xpt_outputs(
         domain_map.insert(domain.code.to_uppercase(), domain);
     }
 
-    let mut frames_sorted = frames.to_vec();
+    let mut frames_sorted: Vec<&DomainFrame> = frames.iter().collect();
     frames_sorted.sort_by(|a, b| a.domain_code.cmp(&b.domain_code));
 
     let xpt_dir = output_dir.join("xpt");
-    std::fs::create_dir_all(&xpt_dir)
-        .with_context(|| format!("create {}", xpt_dir.display()))?;
+    std::fs::create_dir_all(&xpt_dir).with_context(|| format!("create {}", xpt_dir.display()))?;
 
     let mut outputs = Vec::new();
     for frame in frames_sorted {
@@ -34,7 +33,7 @@ pub fn write_xpt_outputs(
         let domain = domain_map
             .get(&code)
             .ok_or_else(|| anyhow!("missing domain definition for {code}"))?;
-        let dataset = build_xpt_dataset(domain, &frame)?;
+        let dataset = build_xpt_dataset(domain, frame)?;
         let filename = format!("{code}.xpt");
         let path = xpt_dir.join(filename);
         write_xpt(&path, &dataset, options)?;

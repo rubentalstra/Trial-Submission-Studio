@@ -16,8 +16,8 @@ fn temp_file(name: &str) -> PathBuf {
 
 #[test]
 fn reads_dm_xpt() {
-    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("../../tests/validation/data/xpt/dm.xpt");
+    let path =
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/validation/data/xpt/dm.xpt");
     let dataset = read_xpt(&path).expect("read dm");
     assert_eq!(dataset.name, "DM");
     assert_eq!(dataset.label.as_deref(), Some("Demographics"));
@@ -40,10 +40,7 @@ fn reads_dm_xpt() {
         .iter()
         .position(|col| col.name == "AGE")
         .expect("AGE");
-    assert_eq!(
-        first[study_idx],
-        XptValue::Char("CDISCPILOT01".to_string())
-    );
+    assert_eq!(first[study_idx], XptValue::Char("CDISCPILOT01".to_string()));
     assert_eq!(first[age_idx], XptValue::Num(Some(84.0)));
 }
 
@@ -72,10 +69,7 @@ fn writes_and_reads_roundtrip() {
                 XptValue::Char("SUBJ001".to_string()),
                 XptValue::Num(Some(12.5)),
             ],
-            vec![
-                XptValue::Char("SUBJ002".to_string()),
-                XptValue::Num(None),
-            ],
+            vec![XptValue::Char("SUBJ002".to_string()), XptValue::Num(None)],
         ],
     };
     let mut options = XptWriterOptions::default();

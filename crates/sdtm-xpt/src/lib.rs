@@ -361,7 +361,11 @@ fn parse_namestr_records(
         columns.push(XptColumn {
             name,
             label: if label.is_empty() { None } else { Some(label) },
-            data_type: if ntype == 1 { XptType::Num } else { XptType::Char },
+            data_type: if ntype == 1 {
+                XptType::Num
+            } else {
+                XptType::Char
+            },
             length,
         });
     }
@@ -433,11 +437,7 @@ fn parse_member_dataset_label(record: &[u8]) -> Option<String> {
         return None;
     }
     let label = read_string(record, 32, 40);
-    if label.is_empty() {
-        None
-    } else {
-        Some(label)
-    }
+    if label.is_empty() { None } else { Some(label) }
 }
 
 fn parse_namestr_len(record: &[u8]) -> Result<usize> {
@@ -543,11 +543,7 @@ fn decode_char(bytes: &[u8]) -> String {
     text.trim_end().to_string()
 }
 
-fn encode_numeric(
-    value: Option<f64>,
-    len: u16,
-    missing: MissingNumeric,
-) -> Vec<u8> {
+fn encode_numeric(value: Option<f64>, len: u16, missing: MissingNumeric) -> Vec<u8> {
     let mut bytes = [0u8; 8];
     match value {
         None => {
