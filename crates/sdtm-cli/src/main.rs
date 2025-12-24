@@ -14,7 +14,9 @@ use sdtm_core::{
     DomainFrame, ProcessingContext, build_domain_frame, build_domain_frame_with_mapping,
     build_relationship_frames, build_suppqual, process_domain_with_context,
 };
-use sdtm_ingest::{build_column_hints, discover_domain_files, list_csv_files, read_csv_table};
+use sdtm_ingest::{
+    build_column_hints, discover_domain_files, list_csv_files, read_csv_schema, read_csv_table,
+};
 use sdtm_map::MappingEngine;
 use sdtm_model::{
     ConformanceReport, Domain, IssueSeverity, MappingConfig, MappingSuggestion, OutputFormat,
@@ -160,12 +162,50 @@ fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     let mut mapping_configs: BTreeMap<String, Vec<MappingConfig>> = BTreeMap::new();
     let mut errors = Vec::new();
 
+    let mut standard_variables = BTreeSet::new();
+    for domain in &standards {
+        for variable in &domain.variables {
+            standard_variables.insert(variable.name.to_uppercase());
+        }
+    }
+    let mut column_counts: BTreeMap<String, usize> = BTreeMap::new();
+    let mut total_files = 0usize;
+    for files in discovered.values() {
+        for (path, _variant) in files {
+            total_files += 1;
+            let schema = match read_csv_schema(path) {
+                Ok(schema) => schema,
+                Err(error) => {
+                    errors.push(format!("{}: {error}", path.display()));
+                    continue;
+                }
+            };
+            let mut unique = BTreeSet::new();
+            for header in schema.headers {
+                unique.insert(header.to_uppercase());
+            }
+            for header in unique {
+                *column_counts.entry(header).or_insert(0) += 1;
+            }
+        }
+    }
+    let global_suppqual_exclusions = if total_files >= 3 {
+        let threshold = ((total_files as f64) * 0.6).ceil() as usize;
+        column_counts
+            .into_iter()
+            .filter(|(name, count)| *count >= threshold && !standard_variables.contains(name))
+            .map(|(name, _)| name)
+            .collect::<BTreeSet<String>>()
+    } else {
+        BTreeSet::new()
+    };
+
     let ctx = ProcessingContext::new(&study_id).with_ct_registry(&ct_registry);
     let suppqual_domain = standards_map
         .get("SUPPQUAL")
         .ok_or_else(|| anyhow!("missing SUPPQUAL metadata"))?;
 
-    for (domain_code, files) in discovered {
+    for (domain_code, files) in &discovered {
         let domain = match standards_map.get(&domain_code.to_uppercase()) {
             Some(domain) => domain,
             None => {
@@ -215,7 +255,7 @@ fn run_study(args: &StudyArgs) -> Result<StudyResult> {
                 .iter()
                 .map(|mapping| mapping.source_column.clone())
                 .collect();
-            let source = match build_domain_frame(&table, &domain_code) {
+            let source = match build_domain_frame(&table, domain_code) {
                 Ok(frame) => frame,
                 Err(error) => {
                     errors.push(format!("{}: {error}", path.display()));
@@ -229,6 +269,7 @@ fn run_study(args: &StudyArgs) -> Result<StudyResult> {
                 Some(&mapped.data),
                 &used,
                 &study_id,
+                Some(&global_suppqual_exclusions),
             ) {
                 Ok(Some(result)) => {
                     suppqual_frames.push(DomainFrame {

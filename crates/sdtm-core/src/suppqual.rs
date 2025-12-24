@@ -130,6 +130,7 @@ pub fn build_suppqual(
     mapped_df: Option<&DataFrame>,
     used_source_columns: &BTreeSet<String>,
     study_id: &str,
+    exclusion_columns: Option<&BTreeSet<String>>,
 ) -> Result<Option<SuppqualResult>> {
     let parent_domain_code = parent_domain.code.to_uppercase();
     let ordered_columns = ordered_variable_names(suppqual_domain);
@@ -151,6 +152,11 @@ pub fn build_suppqual(
         }
         if is_duplicate_of_mapped(&name, &populated) {
             continue;
+        }
+        if let Some(exclusions) = exclusion_columns {
+            if exclusions.contains(&name.to_uppercase()) {
+                continue;
+            }
         }
         extra_cols.push(name);
     }

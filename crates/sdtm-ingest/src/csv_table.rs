@@ -13,6 +13,12 @@ pub struct CsvTable {
     pub labels: Option<Vec<String>>,
 }
 
+#[derive(Debug, Clone)]
+pub struct CsvSchema {
+    pub headers: Vec<String>,
+    pub labels: Option<Vec<String>>,
+}
+
 fn normalize_header(raw: &str) -> String {
     let trimmed = raw.trim().trim_matches('\u{feff}');
     let mut parts = trimmed.split_whitespace();
@@ -137,7 +143,7 @@ fn detect_header_row(rows: &[Vec<String>]) -> usize {
         return 0;
     }
     // Heuristic: pick the last header-like row before data starts, prefer identifier-style headers.
-    let probe = rows.len().min(5);
+    let probe = rows.len().min(10);
     let stats: Vec<RowStats> = rows.iter().take(probe).map(|row| row_stats(row)).collect();
     let mut data_index = None;
     for (idx, stat) in stats.iter().enumerate() {
@@ -159,6 +165,54 @@ fn detect_header_row(rows: &[Vec<String>]) -> usize {
         }
     }
     candidate
+}
+
+pub fn read_csv_schema(path: &Path) -> Result<CsvSchema> {
+    let mut reader = ReaderBuilder::new()
+        .has_headers(false)
+        .flexible(true)
+        .from_path(path)
+        .with_context(|| format!("read csv: {}", path.display()))?;
+    let mut raw_rows: Vec<Vec<String>> = Vec::new();
+    for record in reader.records() {
+        let record = record.with_context(|| format!("read record: {}", path.display()))?;
+        let row: Vec<String> = record.iter().map(normalize_cell).collect();
+        if row.iter().all(|value| value.trim().is_empty()) {
+            continue;
+        }
+        raw_rows.push(row);
+        if raw_rows.len() >= 12 {
+            break;
+        }
+    }
+    if raw_rows.is_empty() {
+        return Ok(CsvSchema {
+            headers: Vec::new(),
+            labels: None,
+        });
+    }
+    let header_index = detect_header_row(&raw_rows);
+    let labels = if header_index > 0 {
+        let candidate = &raw_rows[header_index - 1];
+        let stats = row_stats(candidate);
+        if is_header_like(stats) && !is_identifier_row(stats) {
+            Some(
+                candidate
+                    .iter()
+                    .map(|value| normalize_header(value))
+                    .collect(),
+            )
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+    let headers: Vec<String> = raw_rows[header_index]
+        .iter()
+        .map(|value| normalize_header(value))
+        .collect();
+    Ok(CsvSchema { headers, labels })
 }
 
 pub fn read_csv_table(path: &Path) -> Result<CsvTable> {

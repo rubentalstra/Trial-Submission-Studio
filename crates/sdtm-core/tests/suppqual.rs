@@ -29,7 +29,7 @@ fn builds_suppqual_for_any_domain() {
 
     let used = BTreeSet::new();
 
-    let result = build_suppqual(parent, suppqual, &df, None, &used, "STUDY1")
+    let result = build_suppqual(parent, suppqual, &df, None, &used, "STUDY1", None)
         .expect("suppqual")
         .expect("suppqual rows");
 
