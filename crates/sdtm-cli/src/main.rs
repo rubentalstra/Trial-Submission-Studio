@@ -1,11 +1,16 @@
 #![deny(unsafe_code)]
 
 use clap::{Parser, Subcommand};
+use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
 #[command(name = "sdtm")]
 #[command(about = "Offline SDTM transpiler (Phase 0 bootstrap)")]
 struct Cli {
+    /// Path to the offline standards directory.
+    #[arg(long, default_value = "standards")]
+    standards_dir: PathBuf,
+
     #[command(subcommand)]
     command: Command,
 }
@@ -39,22 +44,63 @@ fn main() -> anyhow::Result<()> {
     match cli.command {
         Command::Standards { command } => match command {
             StandardsCommand::Verify => {
-                println!("standards verify: not implemented yet");
+                let (_registry, summary) =
+                    sdtm_standards::StandardsRegistry::verify_and_load(&cli.standards_dir)
+                        .map_err(|e| anyhow::anyhow!(e))?;
+
+                println!(
+                    "OK: verified {} files (SDTM domains={}, SDTMIG domains={}, CT codelists={}, conflicts={})",
+                    summary.file_count,
+                    summary.domain_count_sdtm,
+                    summary.domain_count_sdtmig,
+                    summary.codelist_count,
+                    summary.conflict_count
+                );
                 Ok(())
             }
             StandardsCommand::Summary => {
-                println!("standards summary: not implemented yet");
+                let (registry, summary) =
+                    sdtm_standards::StandardsRegistry::verify_and_load(&cli.standards_dir)
+                        .map_err(|e| anyhow::anyhow!(e))?;
+
+                println!("Pins:");
+                println!("  SDTM: {}", summary.manifest_pins.sdtm);
+                println!("  SDTMIG: {}", summary.manifest_pins.sdtmig);
+                println!("  CT: {}", summary.manifest_pins.ct);
+                println!(
+                    "  Conformance rules: {}",
+                    summary.manifest_pins.conformance_rules
+                );
+                println!();
+                println!("Counts:");
+                println!("  files: {}", summary.file_count);
+                println!("  sdtm domains: {}", summary.domain_count_sdtm);
+                println!("  sdtmig domains: {}", summary.domain_count_sdtmig);
+                println!("  sdtm variables: {}", summary.variable_count_sdtm);
+                println!("  sdtmig variables: {}", summary.variable_count_sdtmig);
+                println!("  ct codelists: {}", summary.codelist_count);
+                println!();
+                println!("Conflicts:");
+                println!("  count: {}", registry.conflicts.len());
                 Ok(())
             }
             StandardsCommand::Doctor { json } => {
-                let out = serde_json::json!({
-                    "schema": "sdtm.doctor.phase0",
-                    "json": json,
-                });
+                let (registry, summary) =
+                    sdtm_standards::StandardsRegistry::verify_and_load(&cli.standards_dir)
+                        .map_err(|e| anyhow::anyhow!(e))?;
+
+                let report = sdtm_standards::DoctorReport::from_verify_summary(
+                    &summary,
+                    registry.manifest.policy.clone(),
+                    registry.files.clone(),
+                    registry.conflicts.clone(),
+                );
+
+                let out = serde_json::to_string_pretty(&report)?;
                 if json == "-" {
-                    println!("{}", serde_json::to_string_pretty(&out)?);
+                    println!("{}", out);
                 } else {
-                    std::fs::write(&json, serde_json::to_string_pretty(&out)?)?;
+                    std::fs::write(&json, out)?;
                     println!("wrote {}", json);
                 }
                 Ok(())
