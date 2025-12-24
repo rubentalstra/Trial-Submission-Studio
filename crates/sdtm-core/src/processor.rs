@@ -1,12 +1,14 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use anyhow::{Result, anyhow};
 use polars::prelude::{AnyValue, DataFrame, NamedFrom, Series};
 
 use sdtm_model::Domain;
 
+use crate::domain_processors;
 use crate::domain_utils::{infer_seq_column, standard_columns};
 use crate::frame::DomainFrame;
+use crate::processing_context::ProcessingContext;
 fn any_to_string(value: AnyValue) -> String {
     match value {
         AnyValue::String(value) => value.to_string(),
@@ -53,18 +55,30 @@ pub fn apply_base_rules(domain: &Domain, df: &mut DataFrame, study_id: &str) -> 
 }
 
 pub fn process_domain(domain: &Domain, df: &mut DataFrame, study_id: &str) -> Result<()> {
-    apply_base_rules(domain, df, study_id)?;
+    let ctx = ProcessingContext::new(study_id);
+    process_domain_with_context(domain, df, &ctx)
+}
+
+pub fn process_domain_with_context(
+    domain: &Domain,
+    df: &mut DataFrame,
+    ctx: &ProcessingContext,
+) -> Result<()> {
+    apply_base_rules(domain, df, ctx.study_id)?;
+    domain_processors::process_domain(domain, df, ctx)?;
     let columns = standard_columns(domain);
     if let (Some(seq_col), Some(usubjid_col)) = (infer_seq_column(domain), columns.usubjid) {
-        assign_sequence(df, &seq_col, &usubjid_col)?;
+        if needs_sequence_assignment(df, &seq_col)? {
+            assign_sequence(df, &seq_col, &usubjid_col)?;
+        }
     }
     Ok(())
 }
 
-pub fn process_domains(
+pub fn process_domains_with_context(
     domains: &[Domain],
     frames: &mut [DomainFrame],
-    study_id: &str,
+    ctx: &ProcessingContext,
 ) -> Result<()> {
     let mut domain_map: BTreeMap<String, &Domain> = BTreeMap::new();
     for domain in domains {
@@ -76,9 +90,18 @@ pub fn process_domains(
         let domain = domain_map
             .get(&key)
             .ok_or_else(|| anyhow!("missing standards metadata for domain {}", key))?;
-        process_domain(domain, &mut frame.data, study_id)?;
+        process_domain_with_context(domain, &mut frame.data, ctx)?;
     }
     Ok(())
+}
+
+pub fn process_domains(
+    domains: &[Domain],
+    frames: &mut [DomainFrame],
+    study_id: &str,
+) -> Result<()> {
+    let ctx = ProcessingContext::new(study_id);
+    process_domains_with_context(domains, frames, &ctx)
 }
 
 fn assign_sequence(df: &mut DataFrame, seq_column: &str, group_column: &str) -> Result<()> {
@@ -104,4 +127,40 @@ fn assign_sequence(df: &mut DataFrame, seq_column: &str, group_column: &str) -> 
     let series = Series::new(seq_column.into(), values);
     df.with_column(series)?;
     Ok(())
+}
+
+fn needs_sequence_assignment(df: &DataFrame, seq_column: &str) -> Result<bool> {
+    let series = match df.column(seq_column) {
+        Ok(series) => series,
+        Err(_) => return Ok(true),
+    };
+    let mut unique = BTreeSet::new();
+    let mut has_value = false;
+    for idx in 0..df.height() {
+        let value = series.get(idx).unwrap_or(AnyValue::Null);
+        if let Some(parsed) = any_to_i64(value) {
+            has_value = true;
+            unique.insert(parsed);
+        }
+    }
+    Ok(!has_value || unique.len() <= 1)
+}
+
+fn any_to_i64(value: AnyValue) -> Option<i64> {
+    match value {
+        AnyValue::Null => None,
+        AnyValue::Int8(value) => Some(value as i64),
+        AnyValue::Int16(value) => Some(value as i64),
+        AnyValue::Int32(value) => Some(value as i64),
+        AnyValue::Int64(value) => Some(value),
+        AnyValue::UInt8(value) => Some(value as i64),
+        AnyValue::UInt16(value) => Some(value as i64),
+        AnyValue::UInt32(value) => Some(value as i64),
+        AnyValue::UInt64(value) => Some(value as i64),
+        AnyValue::Float32(value) => Some(value as i64),
+        AnyValue::Float64(value) => Some(value as i64),
+        AnyValue::String(value) => value.trim().parse::<i64>().ok(),
+        AnyValue::StringOwned(value) => value.trim().parse::<i64>().ok(),
+        _ => None,
+    }
 }

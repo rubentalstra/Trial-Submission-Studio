@@ -12,4 +12,5 @@ sdtm-ingest = { path = "../sdtm-ingest" }
 sdtm-model = { path = "../sdtm-model" }
 
 [dev-dependencies]
+sdtm-map = { path = "../sdtm-map" }
 sdtm-standards = { path = "../sdtm-standards" }

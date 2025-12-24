@@ -61,7 +61,8 @@ fn builds_relrec_from_domain_frames() {
         .expect("relrec data");
 
     assert_eq!(relrec_frame.data.height(), 2);
-    let rdomain = relrec_frame.data.column("RDOMAIN").expect("RDOMAIN");
+    let rdomain_col = column_name(relrec, "RDOMAIN").expect("RDOMAIN");
+    let rdomain = relrec_frame.data.column(&rdomain_col).expect("RDOMAIN");
     let values: BTreeSet<String> = (0..relrec_frame.data.height())
         .map(|idx| any_to_string(rdomain.get(idx).unwrap_or(AnyValue::Null)))
         .collect();
@@ -104,23 +105,58 @@ fn builds_relspec_from_refid_columns() {
         .expect("relspec data");
 
     assert_eq!(relspec_frame.data.height(), 1);
-    let refid = relspec_frame.data.column("REFID").expect("REFID");
+    let refid_col = column_name(relspec, "REFID").expect("REFID");
+    let refid = relspec_frame.data.column(&refid_col).expect("REFID");
     let value = any_to_string(refid.get(0).unwrap_or(AnyValue::Null));
     assert_eq!(value, "REF001");
 }
 
 #[test]
-fn builds_relsub_empty_frame() {
+fn skips_relsub_when_no_inputs_support_it() {
     let standards = load_default_sdtm_ig_domains().expect("standards");
     let relsub = standards
         .iter()
         .find(|domain| domain.code == "RELSUB")
         .expect("RELSUB domain");
 
-    let frame = build_relsub(relsub).expect("relsub");
+    let frame = build_relsub(&[], relsub, "STUDY1").expect("relsub");
 
-    assert_eq!(frame.data.height(), 0);
-    let cols: Vec<String> = frame
+    assert!(frame.is_none());
+}
+
+#[test]
+fn builds_relsub_from_matching_rows() {
+    let standards = load_default_sdtm_ig_domains().expect("standards");
+    let relsub = standards
+        .iter()
+        .find(|domain| domain.code == "RELSUB")
+        .expect("RELSUB domain");
+    let study_col = column_name(relsub, "STUDYID").expect("STUDYID");
+    let usubjid_col = column_name(relsub, "USUBJID").expect("USUBJID");
+    let rsubjid_col = column_name(relsub, "RSUBJID").expect("RSUBJID");
+    let srel_col = column_name(relsub, "SREL").expect("SREL");
+
+    let df = DataFrame::new(vec![
+        Column::new(study_col.clone().into(), ["STUDY1"]),
+        Column::new(usubjid_col.clone().into(), ["SUBJ1"]),
+        Column::new(rsubjid_col.clone().into(), ["SUBJ2"]),
+        Column::new(srel_col.clone().into(), ["TWIN"]),
+    ])
+    .expect("df");
+
+    let frame = build_relsub(
+        &[DomainFrame {
+            domain_code: "RELSUB".to_string(),
+            data: df,
+        }],
+        relsub,
+        "STUDY1",
+    )
+    .expect("relsub")
+    .expect("relsub data");
+
+    assert_eq!(frame.data.height(), 1);
+    let columns: Vec<String> = frame
         .data
         .get_columns()
         .iter()
@@ -131,5 +167,5 @@ fn builds_relsub_empty_frame() {
         .iter()
         .map(|var| var.name.clone())
         .collect();
-    assert_eq!(cols, expected);
+    assert_eq!(columns, expected);
 }

@@ -134,6 +134,31 @@ pub fn build_relrec(
     }))
 }
 
+pub fn build_relationship_frames(
+    domain_frames: &[DomainFrame],
+    domains: &[Domain],
+    study_id: &str,
+) -> Result<Vec<DomainFrame>> {
+    let domain_map = build_domain_map(domains);
+    let mut frames = Vec::new();
+    if let Some(relrec_domain) = domain_map.get("RELREC") {
+        if let Some(frame) = build_relrec(domain_frames, domains, relrec_domain, study_id)? {
+            frames.push(frame);
+        }
+    }
+    if let Some(relspec_domain) = domain_map.get("RELSPEC") {
+        if let Some(frame) = build_relspec(domain_frames, domains, relspec_domain, study_id)? {
+            frames.push(frame);
+        }
+    }
+    if let Some(relsub_domain) = domain_map.get("RELSUB") {
+        if let Some(frame) = build_relsub(domain_frames, relsub_domain, study_id)? {
+            frames.push(frame);
+        }
+    }
+    Ok(frames)
+}
+
 pub fn build_relspec(
     domain_frames: &[DomainFrame],
     domains: &[Domain],
@@ -189,12 +214,52 @@ pub fn build_relspec(
     }))
 }
 
-pub fn build_relsub(relsub_domain: &Domain) -> Result<DomainFrame> {
-    let data = build_domain_frame(relsub_domain, &[])?;
-    Ok(DomainFrame {
+pub fn build_relsub(
+    domain_frames: &[DomainFrame],
+    relsub_domain: &Domain,
+    study_id: &str,
+) -> Result<Option<DomainFrame>> {
+    let required = required_data_columns(relsub_domain);
+    let mut records: Vec<BTreeMap<String, String>> = Vec::new();
+    for frame in domain_frames {
+        if frame.data.height() == 0 {
+            continue;
+        }
+        let lookup = frame_column_lookup(&frame.data);
+        if !required.iter().all(|name| lookup.contains_key(name)) {
+            continue;
+        }
+        for idx in 0..frame.data.height() {
+            if !row_has_required(&frame.data, &lookup, &required, idx) {
+                continue;
+            }
+            if !row_has_subject_reference(&frame.data, &lookup, idx) {
+                continue;
+            }
+            let mut record = BTreeMap::new();
+            for variable in &relsub_domain.variables {
+                let value = resolve_column(&lookup, &variable.name)
+                    .map(|name| column_value(&frame.data, name, idx))
+                    .unwrap_or_default();
+                let final_value =
+                    if variable.name.eq_ignore_ascii_case("STUDYID") && value.trim().is_empty() {
+                        study_id.to_string()
+                    } else {
+                        value
+                    };
+                record.insert(variable.name.clone(), final_value);
+            }
+            records.push(record);
+        }
+    }
+    if records.is_empty() {
+        return Ok(None);
+    }
+    let data = build_domain_frame(relsub_domain, &records)?;
+    Ok(Some(DomainFrame {
         domain_code: relsub_domain.code.clone(),
         data,
-    })
+    }))
 }
 
 fn infer_idvar(domain: &Domain, df: &DataFrame) -> Option<String> {
@@ -391,6 +456,59 @@ fn build_domain_frame(domain: &Domain, records: &[BTreeMap<String, String>]) -> 
     }
     let data = DataFrame::new(columns)?;
     Ok(data)
+}
+
+fn required_data_columns(domain: &Domain) -> Vec<String> {
+    domain
+        .variables
+        .iter()
+        .filter(|var| {
+            var.core
+                .as_deref()
+                .map(|core| core.eq_ignore_ascii_case("Req"))
+                .unwrap_or(false)
+        })
+        .map(|var| var.name.to_uppercase())
+        .filter(|name| name != "STUDYID")
+        .collect()
+}
+
+fn frame_column_lookup(df: &DataFrame) -> BTreeMap<String, String> {
+    df.get_column_names_owned()
+        .into_iter()
+        .map(|name| (name.to_uppercase(), name.to_string()))
+        .collect()
+}
+
+fn resolve_column<'a>(lookup: &'a BTreeMap<String, String>, name: &str) -> Option<&'a String> {
+    lookup.get(&name.to_uppercase())
+}
+
+fn row_has_required(
+    df: &DataFrame,
+    lookup: &BTreeMap<String, String>,
+    required: &[String],
+    idx: usize,
+) -> bool {
+    required.iter().all(|name| {
+        resolve_column(lookup, name)
+            .map(|col| !column_value(df, col, idx).trim().is_empty())
+            .unwrap_or(false)
+    })
+}
+
+fn row_has_subject_reference(
+    df: &DataFrame,
+    lookup: &BTreeMap<String, String>,
+    idx: usize,
+) -> bool {
+    let usubjid = resolve_column(lookup, "USUBJID")
+        .map(|col| column_value(df, col, idx))
+        .unwrap_or_default();
+    let poolid = resolve_column(lookup, "POOLID")
+        .map(|col| column_value(df, col, idx))
+        .unwrap_or_default();
+    !(usubjid.trim().is_empty() && poolid.trim().is_empty())
 }
 
 #[derive(Debug, Clone)]

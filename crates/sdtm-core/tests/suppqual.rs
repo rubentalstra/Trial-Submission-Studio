@@ -35,9 +35,10 @@ fn builds_suppqual_for_any_domain() {
 
     assert_eq!(result.domain_code, suppqual_domain_code("LB"));
     assert_eq!(result.data.height(), 1);
+    let qnam_col = column_name(suppqual, "QNAM").expect("QNAM");
     let qnam = result
         .data
-        .column("QNAM")
+        .column(&qnam_col)
         .expect("qnam")
         .get(0)
         .unwrap_or(AnyValue::Null);

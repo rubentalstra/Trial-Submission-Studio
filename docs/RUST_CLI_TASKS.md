@@ -155,7 +155,7 @@ supporting domains from available source data.
 
 - [x] Implement domain frame builder (polars DataFrame, basic types)
 - [x] Implement base processor behaviors (USUBJID study prefix)
-- [ ] Port domain processors in alphabetical order (AE, CM, DA, DM, DS, EX, IE, LB,
+- [x] Port domain processors in alphabetical order (AE, CM, DA, DM, DS, EX, IE, LB,
       MH, PE, PR, QS, SE, TA, TE, TS, VS)
 - [x] Generate SUPPQUAL from source-mapped data (all domains, including LB)
 - [x] Use SUPPQUAL column order from `standards/sdtmig/v3_4/Variables.csv`
@@ -165,9 +165,9 @@ supporting domains from available source data.
 
 Exit criteria:
 
-- [ ] End-to-end domain processing works for mockdata
+- [x] End-to-end domain processing works for mockdata
 - [x] SUPPQUAL generation is available for any domain
-- [ ] Relationship/supporting domains are generated only when inputs support
+- [x] Relationship/supporting domains are generated only when inputs support
       them
 
 ## Phase 8 - Validation (sdtm-validate)

@@ -37,7 +37,8 @@ fn assigns_sequence_by_usubjid_when_available() {
 
     process_domain(domain, &mut df, "STUDY1").expect("process");
 
-    let seq = df.column("DSSEQ").expect("DSSEQ");
+    let seq_col = column_name(domain, "DSSEQ").expect("DSSEQ");
+    let seq = df.column(&seq_col).expect("DSSEQ");
     let values: Vec<Option<i64>> = (0..df.height())
         .map(|idx| any_to_i64(seq.get(idx).unwrap_or(AnyValue::Null)))
         .collect();
