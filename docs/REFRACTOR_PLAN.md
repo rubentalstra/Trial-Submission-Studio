@@ -34,7 +34,7 @@ supersede. Key behaviors and expectations:
   - Mapping engine uses fuzzy matching (RapidFuzz) + alias patterns
   - Domain frame builder enforces spec order and lengths
   - Domain processors apply domain-specific transforms
-  - SUPPQUAL generation for non-LB domains
+  - SUPPQUAL generation for any domain (including LB)
   - Special cases: LB de-duplication, TS parameter label fill
 - Relationship generation pass (if missing): RELREC, RELSUB, RELSPEC derived from source data
 - No fabricated records; generated domains must be derived from available source data
@@ -168,7 +168,7 @@ Phase 2 - Ingest and Mapping
 Phase 3 - Domain Processing
 
 - Implement domain processors and transformations
-- SUPPQUAL generation
+- SUPPQUAL generation for any domain
 - Generate RELREC/RELSUB/RELSPEC from available data
 
 Phase 4 - Validation and Outputs

@@ -153,11 +153,12 @@ Goal: transform input data into SDTM frames per domain.
 Principle: never synthesize data; only generate derived relationship and
 supporting domains from available source data.
 
-- [ ] Implement domain frame builder (types, ordering, lengths)
-- [ ] Implement base processor behaviors (USUBJID handling, study prefix)
+- [x] Implement domain frame builder (polars DataFrame, basic types)
+- [x] Implement base processor behaviors (USUBJID study prefix)
 - [ ] Port domain processors in priority order (DM, AE, CM, DS, EX, LB, MH, PR,
       QS, SE, TA, TE, TS, VS, DA, IE, PE)
-- [ ] Generate SUPPQUAL from source-mapped data (non-LB domains)
+- [x] Generate SUPPQUAL from source-mapped data (all domains, including LB)
+- [x] Use SUPPQUAL column order from `standards/sdtmig/v3_4/Variables.csv`
 - [ ] Generate relationship domains (RELREC, RELSPEC, RELSUB) from available
       data
 - [ ] Add regression tests for domain-specific transforms
@@ -165,6 +166,7 @@ supporting domains from available source data.
 Exit criteria:
 
 - [ ] End-to-end domain processing works for mockdata
+- [x] SUPPQUAL generation is available for any domain
 - [ ] Relationship/supporting domains are generated only when inputs support
       them
 
