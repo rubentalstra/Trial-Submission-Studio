@@ -33,6 +33,7 @@ Goal: lock the v1 surface area and inputs so implementation is deterministic.
   - chunk_size = 1000
   - sdtm_version = 2.0
   - sdtmig_version = 3.4
+  - ct_version = 2024-03-29
   - dataset_xml_version = 1.0
   - define_xml_version = 2.1
 
@@ -103,17 +104,17 @@ Exit criteria:
 
 Goal: deterministic loading of SDTM/SDTMIG/CT/P21 assets from `standards/`.
 
-- [ ] Load SDTMIG datasets and variables from `standards/sdtmig/v3_4/`
-- [ ] Load SDTM datasets/metadata from `standards/sdtm/`
-- [ ] Load Controlled Terminology from `standards/ct/`
-- [ ] Load Pinnacle 21 rules from `standards/p21/Rules.csv`
-- [ ] Wire optional XSL assets from `standards/xsl/` for Define-XML
-- [ ] Add unit tests for each loader and registry lookup behavior
+- [x] Load SDTMIG datasets and variables from `standards/sdtmig/v3_4/`
+- [x] Load SDTM datasets/metadata from `standards/sdtm/`
+- [x] Load Controlled Terminology from `standards/ct/`
+- [x] Load Pinnacle 21 rules from `standards/p21/Rules.csv`
+- [x] Wire optional XSL assets from `standards/xsl/` for Define-XML
+- [x] Add unit tests for each loader and registry lookup behavior
 
 Exit criteria:
 
-- [ ] All standards loaders return deterministic, sorted outputs
-- [ ] Missing files fail fast with clear errors
+- [x] All standards loaders return deterministic, sorted outputs
+- [x] Missing files fail fast with clear errors
 
 ## Phase 5 - Ingest and Discovery (sdtm-ingest)
 
