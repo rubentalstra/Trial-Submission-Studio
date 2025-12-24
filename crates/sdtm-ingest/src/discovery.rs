@@ -75,17 +75,14 @@ fn match_domain(
     {
         return Some((domain.clone(), domain.clone()));
     }
+    let mut domains_by_len: Vec<&String> = supported_domains.iter().collect();
+    domains_by_len.sort_by_key(|domain| std::cmp::Reverse(domain.len()));
     let parts: Vec<&str> = filename.split('_').collect();
-    if let Some(prefix) = parts.first() {
-        for domain in supported_domains {
-            if prefix.starts_with(domain) {
-                return Some((domain.clone(), prefix.to_string()));
+    for part in parts {
+        for domain in &domains_by_len {
+            if part.starts_with(domain.as_str()) {
+                return Some(((*domain).clone(), part.to_string()));
             }
-        }
-    }
-    for domain in supported_domains {
-        if filename.starts_with(domain) {
-            return Some((domain.clone(), filename.to_string()));
         }
     }
     None
@@ -121,17 +118,32 @@ mod tests {
         let _ = touch(&dir, "AEVAR.csv");
         let _ = touch(&dir, "foo_AE_bar.csv");
         let _ = touch(&dir, "DM_LC.csv");
+        let _ = touch(&dir, "LB_PREG.csv");
+        let _ = touch(&dir, "LBCC.csv");
+        let _ = touch(&dir, "LBHM.csv");
+        let _ = touch(&dir, "LBSA.csv");
+        let _ = touch(&dir, "LBUR.csv");
+        let _ = touch(&dir, "DS_EOT.csv");
         let _ = touch(&dir, "README.csv");
         let _ = touch(&dir, "CODELISTS.csv");
 
         let files = list_csv_files(&dir).expect("list csv");
-        let supported = vec!["AE".to_string(), "DM".to_string()];
+        let supported = vec![
+            "AE".to_string(),
+            "DM".to_string(),
+            "LB".to_string(),
+            "DS".to_string(),
+        ];
         let discovered = discover_domain_files(&files, &supported);
 
         let ae = discovered.get("AE").expect("AE matches");
         assert_eq!(ae.len(), 3);
         let dm = discovered.get("DM").expect("DM matches");
         assert_eq!(dm.len(), 1);
+        let lb = discovered.get("LB").expect("LB matches");
+        assert_eq!(lb.len(), 5);
+        let ds = discovered.get("DS").expect("DS matches");
+        assert_eq!(ds.len(), 1);
 
         fs::remove_dir_all(&dir).expect("cleanup");
     }
