@@ -87,17 +87,17 @@ Exit criteria:
 
 Goal: define the types used by every other crate.
 
-- [ ] Define `Domain`, `Variable`, `DatasetMetadata`
-- [ ] Define `ControlledTerminology` and registry types
-- [ ] Define `MappingConfig`, `MappingSuggestion`, `ColumnHint`
-- [ ] Define `ConformanceIssue` and `ConformanceReport`
-- [ ] Define `ProcessStudyRequest/Response` and per-domain results
-- [ ] Add serde derives for structured outputs
+- [x] Define `Domain`, `Variable`, `DatasetMetadata`
+- [x] Define `ControlledTerminology` and registry types
+- [x] Define `MappingConfig`, `MappingSuggestion`, `ColumnHint`
+- [x] Define `ConformanceIssue` and `ConformanceReport`
+- [x] Define `ProcessStudyRequest/Response` and per-domain results
+- [x] Add serde derives for structured outputs
 
 Exit criteria:
 
-- [ ] Types compile and are used by downstream crates
-- [ ] Unit tests cover serialization and basic invariants
+- [x] Types compile and are used by downstream crates
+- [x] Unit tests cover serialization and basic invariants
 
 ## Phase 4 - Standards Loading (sdtm-standards)
 
