@@ -7,7 +7,7 @@ use comfy_table::presets::UTF8_FULL_CONDENSED;
 use comfy_table::{
     Attribute, Cell, CellAlignment, Color, ColumnConstraint, ContentArrangement, Table, Width,
 };
-use polars::prelude::{AnyValue, DataFrame, NamedFrom, Series};
+use polars::prelude::{AnyValue, BooleanChunked, DataFrame, NamedFrom, NewChunkedArray, Series};
 
 use sdtm_cli::logging::init_logging;
 use sdtm_core::{
@@ -403,6 +403,7 @@ fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     }
 
     let mut frame_list: Vec<DomainFrame> = frames.into_values().collect();
+    dedupe_frames_by_identifiers(&mut frame_list, &standards_map, suppqual_domain)?;
     frame_list.sort_by(|a, b| a.domain_code.cmp(&b.domain_code));
 
     let report_domains = build_report_domains(&standards, &frame_list)?;
@@ -614,6 +615,81 @@ fn insert_frame(map: &mut BTreeMap<String, DomainFrame>, frame: DomainFrame) -> 
             },
         );
     }
+    Ok(())
+}
+
+fn identifier_columns(domain: &Domain) -> Vec<String> {
+    let mut columns: Vec<String> = domain
+        .variables
+        .iter()
+        .filter_map(|var| {
+            let role = var.role.as_deref()?.trim();
+            if role.eq_ignore_ascii_case("Identifier") || role.to_uppercase().contains("IDENTIFIER")
+            {
+                Some(var.name.clone())
+            } else {
+                None
+            }
+        })
+        .collect();
+    columns.sort_by(|a, b| a.to_uppercase().cmp(&b.to_uppercase()));
+    columns
+}
+
+fn dedupe_frames_by_identifiers(
+    frames: &mut [DomainFrame],
+    standards_map: &BTreeMap<String, &Domain>,
+    suppqual_domain: &Domain,
+) -> Result<()> {
+    for frame in frames.iter_mut() {
+        let code = frame.domain_code.to_uppercase();
+        let domain = if let Some(domain) = standards_map.get(&code) {
+            *domain
+        } else if code.starts_with("SUPP") {
+            suppqual_domain
+        } else {
+            continue;
+        };
+        let keys = identifier_columns(domain);
+        if keys.is_empty() {
+            continue;
+        }
+        dedupe_frame_by_keys(&mut frame.data, &keys)?;
+    }
+    Ok(())
+}
+
+fn dedupe_frame_by_keys(df: &mut DataFrame, keys: &[String]) -> Result<()> {
+    if df.height() == 0 {
+        return Ok(());
+    }
+    let mut key_columns = Vec::new();
+    for key in keys {
+        if df.column(key).is_ok() {
+            key_columns.push(key.clone());
+        }
+    }
+    if key_columns.is_empty() {
+        return Ok(());
+    }
+    let mut seen = BTreeSet::new();
+    let mut keep = Vec::with_capacity(df.height());
+    for idx in 0..df.height() {
+        let mut composite = String::new();
+        for (pos, name) in key_columns.iter().enumerate() {
+            if pos > 0 {
+                composite.push('|');
+            }
+            composite.push_str(column_value_string(df, name, idx).trim());
+        }
+        if composite.trim().is_empty() {
+            keep.push(true);
+            continue;
+        }
+        keep.push(seen.insert(composite));
+    }
+    let mask = BooleanChunked::from_slice("dedupe".into(), &keep);
+    *df = df.filter(&mask)?;
     Ok(())
 }
 
@@ -1006,15 +1082,13 @@ fn fill_missing_test_fields(
                 }
             }
         }
-        if decod_vals.iter().all(|value| value.trim().is_empty()) {
-            if let Some((values, label)) = completion_column(table, domain) {
-                for idx in 0..df.height().min(values.len()) {
-                    if decod_vals[idx].trim().is_empty() && !values[idx].trim().is_empty() {
-                        decod_vals[idx] = values[idx].trim().to_string();
-                    }
-                    if term_vals[idx].trim().is_empty() && !label.trim().is_empty() {
-                        term_vals[idx] = label.clone();
-                    }
+        if let Some((values, label)) = completion_column(table, domain) {
+            for idx in 0..df.height().min(values.len()) {
+                if decod_vals[idx].trim().is_empty() && !values[idx].trim().is_empty() {
+                    decod_vals[idx] = values[idx].trim().to_string();
+                }
+                if term_vals[idx].trim().is_empty() && !label.trim().is_empty() {
+                    term_vals[idx] = label.clone();
                 }
             }
         }
@@ -1028,52 +1102,61 @@ fn fill_missing_test_fields(
         let datestcd_extensible = ctdatestcd.map(|ct| ct.extensible).unwrap_or(false);
         let mut candidates: Vec<(Option<String>, Option<String>, Option<String>, Vec<String>)> =
             Vec::new();
-        for header in &table.headers {
-            let upper = header.to_uppercase();
-            if let Some(prefix) = upper.strip_suffix("_DAORRES") {
-                if let Some(values) = table_column_values(table, header) {
-                    let label = table_label(table, header);
-                    let hint = label.clone().unwrap_or_else(|| prefix.to_string());
-                    let mut test_code = ctdatestcd
-                        .and_then(|ct| resolve_ct_value_from_hint(ct, prefix))
-                        .or_else(|| {
-                            label.as_deref().and_then(|text| {
-                                ctdatestcd.and_then(|ct| resolve_ct_value_from_hint(ct, text))
-                            })
-                        })
-                        .or_else(|| {
-                            ctdatestcd.and_then(|ct| resolve_ct_value_from_hint(ct, &hint))
-                        });
-                    let mut test_name = ctdatest
-                        .and_then(|ct| resolve_ct_value_from_hint(ct, prefix))
-                        .or_else(|| {
-                            label.as_deref().and_then(|text| {
-                                ctdatest.and_then(|ct| resolve_ct_value_from_hint(ct, text))
-                            })
-                        })
-                        .or_else(|| ctdatest.and_then(|ct| resolve_ct_value_from_hint(ct, &hint)));
-                    if test_name.is_none() {
-                        if let (Some(ct), Some(code)) = (ctdatestcd, test_code.as_ref()) {
-                            test_name = ct.preferred_terms.get(code).cloned();
-                        }
-                    }
-                    if test_name.is_none() && datest_extensible {
-                        test_name = label.clone().or_else(|| Some(prefix.to_string()));
-                    }
-                    if test_code.is_none() && datestcd_extensible {
-                        let raw = label.clone().unwrap_or_else(|| prefix.to_string());
-                        test_code = Some(sanitize_vstestcd(&raw));
-                    }
-                    let unit = ct_units
-                        .and_then(|ct| resolve_ct_value_from_hint(ct, &hint))
-                        .or_else(|| {
-                            label.as_deref().and_then(|text| {
-                                ct_units.and_then(|ct| resolve_ct_value_from_hint(ct, text))
-                            })
-                        })
-                        .or_else(|| ct_units.and_then(|ct| resolve_ct_value_from_hint(ct, prefix)));
-                    candidates.push((test_name, test_code, unit, values));
+        let mut candidate_headers: Vec<String> = Vec::new();
+        if let Some(preferred) = mapping_source_for_target(mapping, "DAORRES") {
+            candidate_headers.push(preferred);
+        } else {
+            for header in &table.headers {
+                if header.to_uppercase().ends_with("_DAORRES") {
+                    candidate_headers.push(header.clone());
                 }
+            }
+        }
+        candidate_headers.sort();
+        candidate_headers.dedup();
+        for header in candidate_headers {
+            let upper = header.to_uppercase();
+            let prefix = upper.strip_suffix("_DAORRES").unwrap_or(&upper);
+            if let Some(values) = table_column_values(table, &header) {
+                let label = table_label(table, &header);
+                let hint = label.clone().unwrap_or_else(|| prefix.to_string());
+                let mut test_code = ctdatestcd
+                    .and_then(|ct| resolve_ct_value_from_hint(ct, prefix))
+                    .or_else(|| {
+                        label.as_deref().and_then(|text| {
+                            ctdatestcd.and_then(|ct| resolve_ct_value_from_hint(ct, text))
+                        })
+                    })
+                    .or_else(|| ctdatestcd.and_then(|ct| resolve_ct_value_from_hint(ct, &hint)));
+                let mut test_name = ctdatest
+                    .and_then(|ct| resolve_ct_value_from_hint(ct, prefix))
+                    .or_else(|| {
+                        label.as_deref().and_then(|text| {
+                            ctdatest.and_then(|ct| resolve_ct_value_from_hint(ct, text))
+                        })
+                    })
+                    .or_else(|| ctdatest.and_then(|ct| resolve_ct_value_from_hint(ct, &hint)));
+                if test_name.is_none() {
+                    if let (Some(ct), Some(code)) = (ctdatestcd, test_code.as_ref()) {
+                        test_name = ct.preferred_terms.get(code).cloned();
+                    }
+                }
+                if test_name.is_none() && datest_extensible {
+                    test_name = label.clone().or_else(|| Some(prefix.to_string()));
+                }
+                if test_code.is_none() && datestcd_extensible {
+                    let raw = label.clone().unwrap_or_else(|| prefix.to_string());
+                    test_code = Some(sanitize_vstestcd(&raw));
+                }
+                let unit = ct_units
+                    .and_then(|ct| resolve_ct_value_from_hint(ct, &hint))
+                    .or_else(|| {
+                        label.as_deref().and_then(|text| {
+                            ct_units.and_then(|ct| resolve_ct_value_from_hint(ct, text))
+                        })
+                    })
+                    .or_else(|| ct_units.and_then(|ct| resolve_ct_value_from_hint(ct, prefix)));
+                candidates.push((test_name, test_code, unit, values));
             }
         }
         if !candidates.is_empty() {
