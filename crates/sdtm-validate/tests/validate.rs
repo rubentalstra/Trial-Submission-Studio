@@ -40,7 +40,7 @@ fn missing_required_column_emits_error() {
         report
             .issues
             .iter()
-            .any(|issue| issue.code == "REQ_MISSING_COLUMN"
+            .any(|issue| issue.code == "SD0056"
                 && issue.variable.as_deref() == Some(&required.name))
     );
 }
@@ -63,7 +63,7 @@ fn missing_required_values_emits_error() {
     let issue = report
         .issues
         .iter()
-        .find(|issue| issue.code == "REQ_MISSING_VALUE")
+        .find(|issue| issue.code == "SD0002")
         .expect("missing value issue");
     assert_eq!(issue.count, Some(2));
 }
@@ -89,7 +89,7 @@ fn numeric_type_issue_emits_error() {
     let issue = report
         .issues
         .iter()
-        .find(|issue| issue.code == "TYPE_INVALID_NUMERIC")
+        .find(|issue| issue.code == "SD1230")
         .expect("type issue");
     assert_eq!(issue.count, Some(1));
 }
@@ -120,7 +120,7 @@ fn ct_invalid_value_emits_issue() {
     let issue = report
         .issues
         .iter()
-        .find(|issue| issue.code == "CT_INVALID")
+        .find(|issue| issue.code == "CT2001" || issue.code == "CT2002")
         .expect("ct issue");
     let ct_code = variable.codelist_code.as_deref().unwrap_or("");
     let ct = ct_registry
@@ -133,6 +133,8 @@ fn ct_invalid_value_emits_issue() {
     } else {
         IssueSeverity::Error
     };
+    let expected_code = if ct.extensible { "CT2002" } else { "CT2001" };
+    assert_eq!(issue.code, expected_code);
     assert_eq!(issue.severity, expected);
     assert_eq!(
         issue.codelist_code.as_deref(),
@@ -159,7 +161,7 @@ fn strict_output_gate_blocks_on_errors() {
     let report = ConformanceReport {
         domain_code: "AE".to_string(),
         issues: vec![ConformanceIssue {
-            code: "REQ_MISSING_VALUE".to_string(),
+            code: "SD0002".to_string(),
             message: "missing".to_string(),
             severity: IssueSeverity::Error,
             variable: Some("AETERM".to_string()),
@@ -179,7 +181,7 @@ fn strict_output_gate_ignored_without_strict_formats() {
     let report = ConformanceReport {
         domain_code: "AE".to_string(),
         issues: vec![ConformanceIssue {
-            code: "REQ_MISSING_VALUE".to_string(),
+            code: "SD0002".to_string(),
             message: "missing".to_string(),
             severity: IssueSeverity::Error,
             variable: Some("AETERM".to_string()),

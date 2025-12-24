@@ -101,6 +101,13 @@ pub struct ConformanceIssueJson {
 
 const REPORT_SCHEMA: &str = "cdisc-transpiler.conformance-report";
 const REPORT_SCHEMA_VERSION: u32 = 1;
+const RULE_REQUIRED_VAR_MISSING: &str = "SD0056";
+const RULE_EXPECTED_VAR_MISSING: &str = "SD0057";
+const RULE_REQUIRED_VALUE_MISSING: &str = "SD0002";
+const RULE_DATATYPE_MISMATCH: &str = "SD1230";
+const RULE_LENGTH_EXCEEDED: &str = "SD1231";
+const RULE_CT_NON_EXTENSIBLE: &str = "CT2001";
+const RULE_CT_EXTENSIBLE: &str = "CT2002";
 
 pub fn validate_domain(
     domain: &Domain,
@@ -113,17 +120,17 @@ pub fn validate_domain(
     for variable in &domain.variables {
         let column = column_lookup.get(&variable.name.to_uppercase());
         if column.is_none() {
-            issues.extend(missing_column_issues(domain, variable));
+            issues.extend(missing_column_issues(domain, variable, &p21_lookup));
             continue;
         }
         let column = column.expect("column lookup");
-        if let Some(issue) = missing_value_issue(domain, variable, df, column) {
+        if let Some(issue) = missing_value_issue(domain, variable, df, column, &p21_lookup) {
             issues.push(issue);
         }
-        if let Some(issue) = type_issue(domain, variable, df, column) {
+        if let Some(issue) = type_issue(domain, variable, df, column, &p21_lookup) {
             issues.push(issue);
         }
-        if let Some(issue) = length_issue(domain, variable, df, column) {
+        if let Some(issue) = length_issue(domain, variable, df, column, &p21_lookup) {
             issues.push(issue);
         }
         if let Some(ct_registry) = ctx.ct_registry {
@@ -226,30 +233,38 @@ fn build_column_lookup(df: &DataFrame) -> BTreeMap<String, String> {
         .collect()
 }
 
-fn missing_column_issues(_domain: &Domain, variable: &Variable) -> Vec<ConformanceIssue> {
+fn missing_column_issues(
+    _domain: &Domain,
+    variable: &Variable,
+    p21_lookup: &BTreeMap<String, &P21Rule>,
+) -> Vec<ConformanceIssue> {
     if is_required(variable.core.as_deref()) {
-        return vec![ConformanceIssue {
-            code: "REQ_MISSING_COLUMN".to_string(),
-            message: format!("Missing required column {}", variable.name),
-            severity: IssueSeverity::Error,
-            variable: Some(variable.name.clone()),
-            count: None,
-            rule_id: None,
-            category: None,
-            codelist_code: None,
-        }];
+        let rule = p21_lookup.get(RULE_REQUIRED_VAR_MISSING);
+        let base = rule_base_message(rule, "SDTM Required variable not found");
+        let message = format!("{base}: {}", variable.name);
+        return vec![issue_from_rule(
+            RULE_REQUIRED_VAR_MISSING,
+            p21_lookup,
+            IssueSeverity::Error,
+            message,
+            Some(variable.name.clone()),
+            None,
+            None,
+        )];
     }
     if is_expected(variable.core.as_deref()) {
-        return vec![ConformanceIssue {
-            code: "EXP_MISSING_COLUMN".to_string(),
-            message: format!("Missing expected column {}", variable.name),
-            severity: IssueSeverity::Warning,
-            variable: Some(variable.name.clone()),
-            count: None,
-            rule_id: None,
-            category: None,
-            codelist_code: None,
-        }];
+        let rule = p21_lookup.get(RULE_EXPECTED_VAR_MISSING);
+        let base = rule_base_message(rule, "SDTM Expected variable not found");
+        let message = format!("{base}: {}", variable.name);
+        return vec![issue_from_rule(
+            RULE_EXPECTED_VAR_MISSING,
+            p21_lookup,
+            IssueSeverity::Warning,
+            message,
+            Some(variable.name.clone()),
+            None,
+            None,
+        )];
     }
     Vec::new()
 }
@@ -259,6 +274,7 @@ fn missing_value_issue(
     variable: &Variable,
     df: &DataFrame,
     column: &str,
+    p21_lookup: &BTreeMap<String, &P21Rule>,
 ) -> Option<ConformanceIssue> {
     if !is_required(variable.core.as_deref()) {
         return None;
@@ -274,19 +290,21 @@ fn missing_value_issue(
     if missing == 0 {
         return None;
     }
-    Some(ConformanceIssue {
-        code: "REQ_MISSING_VALUE".to_string(),
-        message: format!(
-            "Required variable {} has {} missing/blank values",
-            variable.name, missing
-        ),
-        severity: IssueSeverity::Error,
-        variable: Some(variable.name.clone()),
-        count: Some(missing),
-        rule_id: None,
-        category: None,
-        codelist_code: None,
-    })
+    let rule = p21_lookup.get(RULE_REQUIRED_VALUE_MISSING);
+    let base = rule_base_message(rule, "Null value in variable marked as Required");
+    let message = format!(
+        "{base}: {} has {} missing/blank value(s)",
+        variable.name, missing
+    );
+    Some(issue_from_rule(
+        RULE_REQUIRED_VALUE_MISSING,
+        p21_lookup,
+        IssueSeverity::Error,
+        message,
+        Some(variable.name.clone()),
+        Some(missing),
+        None,
+    ))
 }
 
 fn type_issue(
@@ -294,6 +312,7 @@ fn type_issue(
     variable: &Variable,
     df: &DataFrame,
     column: &str,
+    p21_lookup: &BTreeMap<String, &P21Rule>,
 ) -> Option<ConformanceIssue> {
     if variable.data_type != VariableType::Num {
         return None;
@@ -319,19 +338,24 @@ fn type_issue(
     if invalid == 0 {
         return None;
     }
-    Some(ConformanceIssue {
-        code: "TYPE_INVALID_NUMERIC".to_string(),
-        message: format!(
-            "Numeric variable {} has {} non-numeric value(s)",
-            variable.name, invalid
-        ),
-        severity: IssueSeverity::Error,
-        variable: Some(variable.name.clone()),
-        count: Some(invalid),
-        rule_id: None,
-        category: None,
-        codelist_code: None,
-    })
+    let rule = p21_lookup.get(RULE_DATATYPE_MISMATCH);
+    let base = rule_base_message(
+        rule,
+        "Variable datatype is not the expected SDTM datatype",
+    );
+    let message = format!(
+        "{base}: {} has {} non-numeric value(s)",
+        variable.name, invalid
+    );
+    Some(issue_from_rule(
+        RULE_DATATYPE_MISMATCH,
+        p21_lookup,
+        IssueSeverity::Error,
+        message,
+        Some(variable.name.clone()),
+        Some(invalid),
+        None,
+    ))
 }
 
 fn length_issue(
@@ -339,6 +363,7 @@ fn length_issue(
     variable: &Variable,
     df: &DataFrame,
     column: &str,
+    p21_lookup: &BTreeMap<String, &P21Rule>,
 ) -> Option<ConformanceIssue> {
     let Some(limit) = variable.length else {
         return None;
@@ -360,19 +385,21 @@ fn length_issue(
     if over == 0 {
         return None;
     }
-    Some(ConformanceIssue {
-        code: "LENGTH_EXCEEDED".to_string(),
-        message: format!(
-            "Variable {} exceeds length {} in {} value(s)",
-            variable.name, limit, over
-        ),
-        severity: IssueSeverity::Error,
-        variable: Some(variable.name.clone()),
-        count: Some(over),
-        rule_id: None,
-        category: None,
-        codelist_code: None,
-    })
+    let rule = p21_lookup.get(RULE_LENGTH_EXCEEDED);
+    let base = rule_base_message(rule, "Variable value is longer than defined max length");
+    let message = format!(
+        "{base}: {} exceeds length {} in {} value(s)",
+        variable.name, limit, over
+    );
+    Some(issue_from_rule(
+        RULE_LENGTH_EXCEEDED,
+        p21_lookup,
+        IssueSeverity::Error,
+        message,
+        Some(variable.name.clone()),
+        Some(over),
+        None,
+    ))
 }
 
 fn ct_issue(
@@ -389,21 +416,15 @@ fn ct_issue(
         return None;
     }
     let (rule_id, default_severity) = if ct.extensible {
-        ("CT2002", IssueSeverity::Warning)
+        (RULE_CT_EXTENSIBLE, IssueSeverity::Warning)
     } else {
-        ("CT2001", IssueSeverity::Error)
+        (RULE_CT_NON_EXTENSIBLE, IssueSeverity::Error)
     };
     let rule = p21_lookup.get(rule_id);
-    let severity = rule
-        .and_then(|rule| parse_severity(rule))
-        .unwrap_or(default_severity);
     let mut examples = invalid.iter().take(5).cloned().collect::<Vec<_>>();
     examples.sort();
     let examples = examples.join(", ");
-    let base = rule
-        .map(|rule| rule.message.as_str())
-        .and_then(|text| if text.is_empty() { None } else { Some(text) })
-        .unwrap_or("Variable value not found in codelist");
+    let base = rule_base_message(rule, "Variable value not found in codelist");
     let mut message = format!(
         "{}. {} contains {} value(s) not found in CT for {} ({}).",
         base,
@@ -415,16 +436,15 @@ fn ct_issue(
     if !examples.is_empty() {
         message.push_str(&format!(" examples: {}", examples));
     }
-    Some(ConformanceIssue {
-        code: "CT_INVALID".to_string(),
+    Some(issue_from_rule(
+        rule_id,
+        p21_lookup,
+        default_severity,
         message,
-        severity,
-        variable: Some(variable.name.clone()),
-        count: Some(invalid.len() as u64),
-        rule_id: rule.map(|rule| rule.rule_id.clone()),
-        category: rule.and_then(|rule| rule.category.clone()),
-        codelist_code: Some(ct.codelist_code.clone()),
-    })
+        Some(variable.name.clone()),
+        Some(invalid.len() as u64),
+        Some(ct.codelist_code.clone()),
+    ))
 }
 
 fn build_p21_lookup<'a>(rules: Option<&'a [P21Rule]>) -> BTreeMap<String, &'a P21Rule> {
@@ -444,6 +464,49 @@ fn parse_severity(rule: &P21Rule) -> Option<IssueSeverity> {
         "error" => Some(IssueSeverity::Error),
         "warning" => Some(IssueSeverity::Warning),
         _ => None,
+    }
+}
+
+fn rule_severity(rule: Option<&P21Rule>, fallback: IssueSeverity) -> IssueSeverity {
+    rule.and_then(parse_severity).unwrap_or(fallback)
+}
+
+fn rule_base_message(rule: Option<&P21Rule>, fallback: &str) -> String {
+    if let Some(rule) = rule {
+        if !rule.message.trim().is_empty() {
+            return rule.message.clone();
+        }
+        if !rule.description.trim().is_empty() {
+            return rule.description.clone();
+        }
+    }
+    fallback.to_string()
+}
+
+fn issue_from_rule(
+    rule_id: &str,
+    p21_lookup: &BTreeMap<String, &P21Rule>,
+    fallback_severity: IssueSeverity,
+    message: String,
+    variable: Option<String>,
+    count: Option<u64>,
+    codelist_code: Option<String>,
+) -> ConformanceIssue {
+    let rule = p21_lookup.get(&rule_id.to_uppercase());
+    let severity = rule_severity(rule, fallback_severity);
+    let category = rule.and_then(|rule| rule.category.clone());
+    let resolved_id = rule
+        .map(|rule| rule.rule_id.clone())
+        .unwrap_or_else(|| rule_id.to_string());
+    ConformanceIssue {
+        code: resolved_id.clone(),
+        message,
+        severity,
+        variable,
+        count,
+        rule_id: Some(resolved_id),
+        category,
+        codelist_code,
     }
 }
 
@@ -478,7 +541,7 @@ fn apply_missing_dataset_rejects(
             continue;
         }
         let issue = ConformanceIssue {
-            code: "P21_MISSING_DATASET".to_string(),
+            code: rule.rule_id.clone(),
             message: rule_message(rule, None),
             severity: IssueSeverity::Reject,
             variable: None,
@@ -552,7 +615,7 @@ fn apply_ts_sstdtc_rejects(
     if sstdtc_rows == 0 {
         if let Some(rule) = reject_rule(p21_lookup, "SD2232") {
             let issue = ConformanceIssue {
-                code: "P21_TS_SSTDTC_MISSING".to_string(),
+                code: rule.rule_id.clone(),
                 message: rule_message(rule, None),
                 severity: IssueSeverity::Reject,
                 variable: Some(tsp_var.clone()),
@@ -569,7 +632,7 @@ fn apply_ts_sstdtc_rejects(
     if invalid_format > 0 {
         if let Some(rule) = reject_rule(p21_lookup, "SD2247") {
             let issue = ConformanceIssue {
-                code: "P21_TS_SSTDTC_INVALID".to_string(),
+                code: rule.rule_id.clone(),
                 message: rule_message(rule, Some(invalid_format)),
                 severity: IssueSeverity::Reject,
                 variable: Some(tsval_var.clone()),
@@ -585,7 +648,7 @@ fn apply_ts_sstdtc_rejects(
     if incomplete_date > 0 {
         if let Some(rule) = reject_rule(p21_lookup, "SD2247A") {
             let issue = ConformanceIssue {
-                code: "P21_TS_SSTDTC_INCOMPLETE".to_string(),
+                code: rule.rule_id.clone(),
                 message: rule_message(rule, Some(incomplete_date)),
                 severity: IssueSeverity::Reject,
                 variable: Some(tsval_var.clone()),

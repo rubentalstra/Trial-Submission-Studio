@@ -24,7 +24,7 @@ mod tests {
             domain_code: "AE".to_string(),
             issues: vec![
                 ConformanceIssue {
-                    code: "AE001".to_string(),
+                    code: "SD0002".to_string(),
                     message: "Missing AE term".to_string(),
                     severity: IssueSeverity::Error,
                     variable: Some("AETERM".to_string()),
@@ -34,7 +34,7 @@ mod tests {
                     codelist_code: None,
                 },
                 ConformanceIssue {
-                    code: "AE002".to_string(),
+                    code: "SD0057".to_string(),
                     message: "Unexpected value".to_string(),
                     severity: IssueSeverity::Warning,
                     variable: Some("AESEV".to_string()),
