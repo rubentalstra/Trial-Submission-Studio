@@ -492,7 +492,10 @@ dependencies = [
 name = "sdtm-validate"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "sdtm-core",
+ "sdtm-model",
+ "sdtm-standards",
  "thiserror",
 ]
 
