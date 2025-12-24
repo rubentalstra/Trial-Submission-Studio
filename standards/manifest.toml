@@ -1,0 +1,75 @@
+[manifest]
+schema = "cdisc-transpiler.standards-manifest"
+schema_version = 1
+
+[notes]
+summary = "Offline standards registry for SDTM transpiler (Phase 0)"
+
+[pins]
+sdtm = "v2_0"
+sdtmig = "v3_4"
+conformance_rules = "v2_0"
+ct = "2024-03-29"
+
+[policy]
+precedence = "sdtm_then_sdtmig"
+
+[[files]]
+path = "sdtm/v2_0/Datasets.csv"
+sha256 = "3e0fa7a4d4d0ab2d46885a2a694d5a20de5c4b1d876704fbbde4eb651b4f3e4a"
+kind = "csv"
+role = "sdtm_datasets"
+
+[[files]]
+path = "sdtm/v2_0/Variables.csv"
+sha256 = "ddc98d606fd878f3b3a49dfa475052691c19e22b7377735f91898fb6cd7e4015"
+kind = "csv"
+role = "sdtm_variables"
+
+[[files]]
+path = "sdtmig/v3_4/Datasets.csv"
+sha256 = "3665c3c33af2354428d13bb605b440041e2745b9bf88f0419bd6870d17d0caa4"
+kind = "csv"
+role = "sdtmig_datasets"
+
+[[files]]
+path = "sdtmig/v3_4/Variables.csv"
+sha256 = "0590595bb806e3c0bdac8db80e308c920d81da9425c24e2afa31b55222d4d445"
+kind = "csv"
+role = "sdtmig_variables"
+
+[[files]]
+path = "sdtmig/v3_4/SDTMIG_v3.4.pdf"
+sha256 = "ea4ddbba4a3e10a55bb2f36d5e28d9cfc191090717c2426475279750a7f57021"
+kind = "pdf"
+role = "sdtmig_pdf"
+
+[[files]]
+path = "ct/2024-03-29/SDTM_CT_2024-03-29.csv"
+sha256 = "58d77d63c0788c44b520868409b529f53860aec22470b9e9f20b10eb7f713d2f"
+kind = "csv"
+role = "ct_sdtm"
+
+[[files]]
+path = "conformance_rules/v2_0/catalog.toml"
+sha256 = "108dbc9e69dd911baa7eed0ff18665da4f6f60973029ce3ca4f2c66577e4c46a"
+kind = "toml"
+role = "conformance_rules_catalog"
+
+[[files]]
+path = "conformance_rules/v2_0/predicates/builtin.toml"
+sha256 = "d2ef460e1f21c7e5d175cc38d8172a96651d22dadd6a7a98ac362ed55ac43f98"
+kind = "toml"
+role = "conformance_rules_predicates"
+
+[[files]]
+path = "xsl/define2-1.xsl"
+sha256 = "d288f0ad2dd4d536b6258932027013936f0e047dc586cce840aef9c0d7ced23d"
+kind = "xsl"
+role = "define_xsl_2_1"
+
+[[files]]
+path = "xsl/define2-0-0.xsl"
+sha256 = "00e5cb8144ff04beb124e8c2715fb18766f948b0a2f277107264be2962c89f42"
+kind = "xsl"
+role = "define_xsl_2_0"

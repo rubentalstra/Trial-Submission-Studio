@@ -1,0 +1,5 @@
+[predicates]
+schema = "cdisc-transpiler.conformance-predicates"
+schema_version = 1
+
+# Phase 0: predicate contracts placeholder.

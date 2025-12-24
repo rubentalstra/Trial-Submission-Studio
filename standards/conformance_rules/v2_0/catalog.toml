@@ -1,0 +1,8 @@
+[catalog]
+schema = "cdisc-transpiler.conformance-rules"
+schema_version = 1
+ruleset = "sdtm-sdtmig-conformance"
+ruleset_version = "v2_0"
+
+# Phase 0: no rules shipped yet. This file exists so the manifest can pin it
+# and CI can verify integrity. Rules will be added in a later phase.
