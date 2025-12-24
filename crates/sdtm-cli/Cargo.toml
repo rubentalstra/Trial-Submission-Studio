@@ -11,11 +11,14 @@ path = "src/main.rs"
 [dependencies]
 anyhow.workspace = true
 clap.workspace = true
+serde.workspace = true
 serde_json.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 
+sdtm-core = { path = "../sdtm-core" }
 sdtm-standards = { path = "../sdtm-standards" }
 sdtm-ingest = { path = "../sdtm-ingest" }
+sdtm-map = { path = "../sdtm-map" }
 sdtm-model = { path = "../sdtm-model" }
 sdtm-validate = { path = "../sdtm-validate" }

@@ -21,6 +21,10 @@ enum Command {
         #[command(subcommand)]
         command: StandardsCommand,
     },
+    Run {
+        #[command(subcommand)]
+        command: RunCommand,
+    },
     Validate {
         #[command(subcommand)]
         command: ValidateCommand,
@@ -58,6 +62,38 @@ enum ValidateCommand {
         #[arg(long, value_name = "PATH")]
         json: Option<String>,
     },
+}
+
+#[derive(Debug, Subcommand)]
+enum RunCommand {
+    Csv {
+        /// SDTM domain code (e.g. DM, AE).
+        #[arg(long)]
+        domain: String,
+
+        /// Input CSV file.
+        #[arg(long, value_name = "PATH")]
+        input: PathBuf,
+
+        /// Stable source identifier used for deterministic RowId derivation.
+        /// Defaults to the input path string.
+        #[arg(long)]
+        source_id: Option<String>,
+
+        /// Write machine-readable JSON report to this path. Use '-' for stdout.
+        #[arg(long, value_name = "PATH")]
+        json: Option<String>,
+    },
+}
+
+#[derive(Debug, serde::Serialize)]
+struct RunReport {
+    domain: String,
+    input: String,
+    ingested_rows: usize,
+    ingested_columns: usize,
+    mapped_tables: usize,
+    validation: sdtm_validate::ValidationReport,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -128,6 +164,67 @@ fn main() -> anyhow::Result<()> {
                 } else {
                     std::fs::write(&json, out)?;
                     println!("wrote {}", json);
+                }
+                Ok(())
+            }
+        },
+        Command::Run { command } => match command {
+            RunCommand::Csv {
+                domain,
+                input,
+                source_id,
+                json,
+            } => {
+                let domain_code = sdtm_model::DomainCode::new(domain.clone())?;
+                let source_id = source_id.unwrap_or_else(|| input.to_string_lossy().to_string());
+
+                let table = sdtm_ingest::csv_ingest::ingest_csv_file(
+                    domain_code,
+                    &input,
+                    sdtm_ingest::csv_ingest::CsvIngestOptions::new(source_id),
+                )?;
+
+                let ingested_rows = table.rows.len();
+                let ingested_columns = table.columns.len();
+
+                let mapper = sdtm_map::SimpleMapper::new();
+                let mapped = sdtm_core::pipeline::Mapper::map(&mapper, table)?;
+
+                let validator =
+                    sdtm_validate::StandardsValidator::from_standards_dir(&cli.standards_dir)?;
+                let validation = validator.validate_with_report(&mapped);
+
+                let report = RunReport {
+                    domain: domain.clone(),
+                    input: input.to_string_lossy().to_string(),
+                    ingested_rows,
+                    ingested_columns,
+                    mapped_tables: mapped.len(),
+                    validation: validation.clone(),
+                };
+
+                if let Some(json) = json {
+                    let out = serde_json::to_string_pretty(&report)?;
+                    if json == "-" {
+                        println!("{}", out);
+                    } else {
+                        std::fs::write(&json, out)?;
+                        println!("wrote {}", json);
+                    }
+                } else {
+                    println!(
+                        "{}: pipeline (rows={}, cols={}, mapped_tables={}, errors={}, warnings={})",
+                        domain,
+                        report.ingested_rows,
+                        report.ingested_columns,
+                        report.mapped_tables,
+                        report.validation.errors,
+                        report.validation.warnings
+                    );
+                }
+
+                if report.validation.errors > 0 {
+                    return Err(anyhow::anyhow!("validation failed"));
                 }
                 Ok(())
             }
