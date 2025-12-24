@@ -3,6 +3,7 @@ members = [
     "crates/sdtm-cli",
     "crates/sdtm-core",
     "crates/sdtm-ingest",
+    "crates/sdtm-map",
     "crates/sdtm-model",
     "crates/sdtm-report",
     "crates/sdtm-standards",

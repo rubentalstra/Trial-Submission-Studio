@@ -461,6 +461,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "sdtm-map"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "sdtm-core",
+ "sdtm-model",
+]
+
+[[package]]
 name = "sdtm-model"
 version = "0.1.0"
 dependencies = [
