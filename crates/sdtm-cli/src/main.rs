@@ -848,7 +848,7 @@ fn ct_column_match(
                 continue;
             }
             non_empty += 1;
-            if let Some(ct_value) = resolve_ct_submission_value(ct, trimmed) {
+            if let Some(ct_value) = resolve_ct_value_from_hint(ct, trimmed) {
                 matches += 1;
                 mapped.push(Some(ct_value));
             } else {
@@ -873,6 +873,51 @@ fn ct_column_match(
         }
     }
     best.map(|(header, mapped, values, _ratio, _matches)| (header, mapped, values))
+}
+
+fn is_yes_no(value: &str) -> bool {
+    matches!(
+        value.trim().to_uppercase().as_str(),
+        "Y" | "YES" | "N" | "NO"
+    )
+}
+
+fn completion_column(
+    table: &sdtm_ingest::CsvTable,
+    domain: &Domain,
+) -> Option<(Vec<String>, String)> {
+    let mut standard_vars = BTreeSet::new();
+    for variable in &domain.variables {
+        standard_vars.insert(variable.name.to_uppercase());
+    }
+    for header in &table.headers {
+        if standard_vars.contains(&header.to_uppercase()) {
+            continue;
+        }
+        let label = table_label(table, header).unwrap_or_else(|| header.clone());
+        let label_upper = label.to_uppercase();
+        if !label_upper.contains("COMPLETE") && !label_upper.contains("COMPLETION") {
+            continue;
+        }
+        let Some(values) = table_column_values(table, header) else {
+            continue;
+        };
+        let mut non_empty = 0usize;
+        let mut yes_no = 0usize;
+        for value in &values {
+            if value.trim().is_empty() {
+                continue;
+            }
+            non_empty += 1;
+            if is_yes_no(value) {
+                yes_no += 1;
+            }
+        }
+        if non_empty > 0 && (yes_no as f64 / non_empty as f64) >= 0.6 {
+            return Some((values, label));
+        }
+    }
+    None
 }
 
 fn resolve_ct_for_variable(
@@ -933,22 +978,22 @@ fn fill_missing_test_fields(
             fill_string_column(df, "PETESTCD", &test_code)?;
         }
     } else if code == "DS" {
+        let mut decod_vals = if let Ok(series) = df.column("DSDECOD") {
+            (0..df.height())
+                .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
+                .collect::<Vec<_>>()
+        } else {
+            vec![String::new(); df.height()]
+        };
+        let mut term_vals = if let Ok(series) = df.column("DSTERM") {
+            (0..df.height())
+                .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
+                .collect::<Vec<_>>()
+        } else {
+            vec![String::new(); df.height()]
+        };
         if let Some(ct) = ctx.resolve_ct(domain, "DSDECOD") {
             if let Some((_header, mapped, raw)) = ct_column_match(table, domain, ct) {
-                let mut decod_vals = if let Ok(series) = df.column("DSDECOD") {
-                    (0..df.height())
-                        .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
-                        .collect::<Vec<_>>()
-                } else {
-                    vec![String::new(); df.height()]
-                };
-                let mut term_vals = if let Ok(series) = df.column("DSTERM") {
-                    (0..df.height())
-                        .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
-                        .collect::<Vec<_>>()
-                } else {
-                    vec![String::new(); df.height()]
-                };
                 for idx in 0..df.height().min(mapped.len()).min(raw.len()) {
                     if decod_vals[idx].trim().is_empty() {
                         if let Some(ct_value) = &mapped[idx] {
@@ -959,13 +1004,27 @@ fn fill_missing_test_fields(
                         term_vals[idx] = raw[idx].trim().to_string();
                     }
                 }
-                df.with_column(Series::new("DSDECOD".into(), decod_vals))?;
-                df.with_column(Series::new("DSTERM".into(), term_vals))?;
             }
         }
+        if decod_vals.iter().all(|value| value.trim().is_empty()) {
+            if let Some((values, label)) = completion_column(table, domain) {
+                for idx in 0..df.height().min(values.len()) {
+                    if decod_vals[idx].trim().is_empty() && !values[idx].trim().is_empty() {
+                        decod_vals[idx] = values[idx].trim().to_string();
+                    }
+                    if term_vals[idx].trim().is_empty() && !label.trim().is_empty() {
+                        term_vals[idx] = label.clone();
+                    }
+                }
+            }
+        }
+        df.with_column(Series::new("DSDECOD".into(), decod_vals))?;
+        df.with_column(Series::new("DSTERM".into(), term_vals))?;
     } else if code == "DA" {
         let ctdatest = ctx.resolve_ct(domain, "DATEST");
         let ctdatestcd = ctx.resolve_ct(domain, "DATESTCD");
+        let datest_extensible = ctdatest.map(|ct| ct.extensible).unwrap_or(false);
+        let datestcd_extensible = ctdatestcd.map(|ct| ct.extensible).unwrap_or(false);
         let mut candidates: Vec<(Option<String>, Option<String>, Vec<String>)> = Vec::new();
         for header in &table.headers {
             let upper = header.to_uppercase();
@@ -973,18 +1032,35 @@ fn fill_missing_test_fields(
                 if let Some(values) = table_column_values(table, header) {
                     let label = table_label(table, header);
                     let hint = label.clone().unwrap_or_else(|| prefix.to_string());
-                    let test_code = ctdatestcd
-                        .and_then(|ct| resolve_ct_value_from_hint(ct, &hint))
+                    let mut test_code = ctdatestcd
+                        .and_then(|ct| resolve_ct_value_from_hint(ct, prefix))
                         .or_else(|| {
-                            ctdatestcd.and_then(|ct| resolve_ct_value_from_hint(ct, prefix))
+                            label.as_deref().and_then(|text| {
+                                ctdatestcd.and_then(|ct| resolve_ct_value_from_hint(ct, text))
+                            })
+                        })
+                        .or_else(|| {
+                            ctdatestcd.and_then(|ct| resolve_ct_value_from_hint(ct, &hint))
                         });
                     let mut test_name = ctdatest
-                        .and_then(|ct| resolve_ct_value_from_hint(ct, &hint))
-                        .or_else(|| ctdatest.and_then(|ct| resolve_ct_value_from_hint(ct, prefix)));
+                        .and_then(|ct| resolve_ct_value_from_hint(ct, prefix))
+                        .or_else(|| {
+                            label.as_deref().and_then(|text| {
+                                ctdatest.and_then(|ct| resolve_ct_value_from_hint(ct, text))
+                            })
+                        })
+                        .or_else(|| ctdatest.and_then(|ct| resolve_ct_value_from_hint(ct, &hint)));
                     if test_name.is_none() {
                         if let (Some(ct), Some(code)) = (ctdatestcd, test_code.as_ref()) {
                             test_name = ct.preferred_terms.get(code).cloned();
                         }
+                    }
+                    if test_name.is_none() && datest_extensible {
+                        test_name = label.clone().or_else(|| Some(prefix.to_string()));
+                    }
+                    if test_code.is_none() && datestcd_extensible {
+                        let raw = label.clone().unwrap_or_else(|| prefix.to_string());
+                        test_code = Some(sanitize_vstestcd(&raw));
                     }
                     candidates.push((test_name, test_code, values));
                 }
