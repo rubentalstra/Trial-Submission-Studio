@@ -102,18 +102,6 @@ pub(super) fn process_dm(
             }
         }
     }
-    if let (Some(rfstdtc), Some(rficdtc)) = (col(domain, "RFSTDTC"), col(domain, "RFICDTC")) {
-        if has_column(df, &rfstdtc) && has_column(df, &rficdtc) {
-            let mut rfstd_vals = string_column(df, &rfstdtc, Trim::Both)?;
-            let rfic_vals = string_column(df, &rficdtc, Trim::Both)?;
-            for idx in 0..df.height() {
-                if rfstd_vals[idx].is_empty() && !rfic_vals[idx].is_empty() {
-                    rfstd_vals[idx] = rfic_vals[idx].clone();
-                }
-            }
-            set_string_column(df, &rfstdtc, rfstd_vals)?;
-        }
-    }
     if let (Some(dmdtc), Some(dmdy), Some(rfstdtc)) = (
         col(domain, "DMDTC"),
         col(domain, "DMDY"),

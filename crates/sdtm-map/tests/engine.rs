@@ -21,6 +21,7 @@ fn suggests_mappings_and_unmapped() {
             is_numeric: true,
             unique_ratio: 1.0,
             null_ratio: 0.0,
+            label: None,
         },
     );
     let engine = MappingEngine::new(domain, 0.95, hints);

@@ -27,6 +27,7 @@ fn reads_table_and_builds_hints() {
     assert!(a.is_numeric);
     assert!((a.unique_ratio - 1.0).abs() < 1e-6);
     assert!((a.null_ratio - 0.0).abs() < 1e-6);
+    assert!(a.label.is_none());
 
     let b = hints.get("B").expect("B hint");
     assert!(!b.is_numeric);
@@ -49,6 +50,14 @@ fn reads_table_with_multiple_headers() {
     assert_eq!(table.rows.len(), 2);
     assert_eq!(table.rows[0], vec!["1", "x", ""]);
     assert_eq!(table.rows[1], vec!["2", "y", "z"]);
+    assert_eq!(
+        table.labels,
+        Some(vec![
+            "Label A".to_string(),
+            "Label B".to_string(),
+            "Label C".to_string()
+        ])
+    );
 
     let _ = fs::remove_file(&path);
     let _ = fs::remove_dir_all(path.parent().unwrap());

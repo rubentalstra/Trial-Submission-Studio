@@ -10,6 +10,7 @@ use sdtm_model::ColumnHint;
 pub struct CsvTable {
     pub headers: Vec<String>,
     pub rows: Vec<Vec<String>>,
+    pub labels: Option<Vec<String>>,
 }
 
 fn normalize_header(raw: &str) -> String {
@@ -179,9 +180,26 @@ pub fn read_csv_table(path: &Path) -> Result<CsvTable> {
         return Ok(CsvTable {
             headers: Vec::new(),
             rows: Vec::new(),
+            labels: None,
         });
     }
     let header_index = detect_header_row(&raw_rows);
+    let labels = if header_index > 0 {
+        let candidate = &raw_rows[header_index - 1];
+        let stats = row_stats(candidate);
+        if is_header_like(stats) && !is_identifier_row(stats) {
+            Some(
+                candidate
+                    .iter()
+                    .map(|value| normalize_header(value))
+                    .collect(),
+            )
+        } else {
+            None
+        }
+    } else {
+        None
+    };
     let headers: Vec<String> = raw_rows[header_index]
         .iter()
         .map(|value| normalize_header(value))
@@ -195,13 +213,22 @@ pub fn read_csv_table(path: &Path) -> Result<CsvTable> {
         }
         rows.push(row);
     }
-    Ok(CsvTable { headers, rows })
+    Ok(CsvTable {
+        headers,
+        rows,
+        labels,
+    })
 }
 
 pub fn build_column_hints(table: &CsvTable) -> BTreeMap<String, ColumnHint> {
     let mut hints = BTreeMap::new();
     let row_count = table.rows.len();
     for (col_idx, header) in table.headers.iter().enumerate() {
+        let label = table
+            .labels
+            .as_ref()
+            .and_then(|labels| labels.get(col_idx))
+            .cloned();
         let mut non_null = 0usize;
         let mut numeric = 0usize;
         let mut uniques = BTreeSet::new();
@@ -234,6 +261,7 @@ pub fn build_column_hints(table: &CsvTable) -> BTreeMap<String, ColumnHint> {
                 is_numeric,
                 unique_ratio,
                 null_ratio,
+                label,
             },
         );
     }
