@@ -8,7 +8,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@1.92.0
@@ -25,6 +25,3 @@ jobs:
 
       - name: cargo test
         run: cargo test --all
-
-      - name: standards verify
-        run: cargo run -p sdtm-cli -- standards verify

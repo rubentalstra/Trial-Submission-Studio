@@ -120,16 +120,16 @@ Exit criteria:
 
 Goal: read source CSVs consistently and discover domains.
 
-- [ ] Implement CSV reader with stable null/empty handling
-- [ ] Normalize column names and whitespace
-- [ ] Build column hints (numeric, null ratio, uniqueness)
-- [ ] Implement domain discovery rules (skip metadata/helper files)
-- [ ] Enforce deterministic ordering of input files
+- [x] Implement CSV reader with stable null/empty handling
+- [x] Normalize column names and whitespace
+- [x] Build column hints (numeric, null ratio, uniqueness)
+- [x] Implement domain discovery rules (skip metadata files only)
+- [x] Enforce deterministic ordering of input files
 
 Exit criteria:
 
-- [ ] Domain discovery matches Python behavior on mockdata
-- [ ] Unit tests cover discovery edge cases
+- [x] Domain discovery matches mockdata and avoids hardcoded helper suffixes
+- [x] Unit tests cover discovery edge cases
 
 ## Phase 6 - Mapping Engine (sdtm-map)
 

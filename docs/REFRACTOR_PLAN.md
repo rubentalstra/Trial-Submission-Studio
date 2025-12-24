@@ -26,8 +26,8 @@ supersede. Key behaviors and expectations:
   - No config file in Rust v1; defaults are compiled and stable.
 - Domain discovery:
   - Scans `*.csv` in study folder
-  - Skips metadata and helper files (`CODELISTS`, `README`, `_LC`, etc)
-  - Matches domain by exact token or prefix variant (e.g., `AE`, `AE_1`, `LB*`)
+  - Skips metadata files (`CODELISTS`, `README`, `METADATA`, etc)
+  - No helper suffix hardcoding; resolve domain by filename tokens/prefix
 - Domain processing pipeline (per domain, DM first):
   - Read CSV
   - Build column hints (numeric, null ratio, uniqueness)
