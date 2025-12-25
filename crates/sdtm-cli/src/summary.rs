@@ -8,7 +8,7 @@ use comfy_table::{
 
 use sdtm_model::IssueSeverity;
 
-use crate::{DomainSummary, StudyResult};
+use crate::types::{DomainSummary, StudyResult};
 
 pub fn print_summary(result: &StudyResult) {
     println!("Study: {}", result.study_id);

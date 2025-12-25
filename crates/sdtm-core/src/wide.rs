@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use anyhow::Result;
 use polars::prelude::{DataFrame, NamedFrom, Series};
 
-use sdtm_core::{DomainFrame, build_domain_frame_with_mapping};
+use crate::{DomainFrame, build_domain_frame_with_mapping};
 use sdtm_ingest::{CsvTable, build_column_hints};
 use sdtm_map::MappingEngine;
 use sdtm_model::{Domain, MappingConfig, VariableType};

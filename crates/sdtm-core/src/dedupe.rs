@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use anyhow::Result;
 use polars::prelude::{BooleanChunked, DataFrame, NewChunkedArray};
 
-use sdtm_core::DomainFrame;
+use crate::DomainFrame;
 use sdtm_model::Domain;
 
 use crate::data_utils::column_value_string;

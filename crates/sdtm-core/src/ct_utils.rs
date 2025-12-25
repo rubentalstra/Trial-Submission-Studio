@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use sdtm_core::ProcessingContext;
+use crate::ProcessingContext;
 use sdtm_model::{ControlledTerminology, Domain};
 
 use crate::data_utils::{table_column_values, table_label};

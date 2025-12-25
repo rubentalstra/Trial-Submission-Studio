@@ -10,7 +10,7 @@ chrono.workspace = true
 polars.workspace = true
 sdtm-ingest = { path = "../sdtm-ingest" }
 sdtm-model = { path = "../sdtm-model" }
+sdtm-map = { path = "../sdtm-map" }
 
 [dev-dependencies]
-sdtm-map = { path = "../sdtm-map" }
 sdtm-standards = { path = "../sdtm-standards" }
