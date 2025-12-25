@@ -53,7 +53,7 @@ struct IeWideGroup {
     testcd_col: Option<usize>,
 }
 
-pub fn build_lb_wide_frame(
+pub(crate) fn build_lb_wide_frame(
     table: &CsvTable,
     domain: &Domain,
     study_id: &str,
@@ -88,7 +88,7 @@ pub fn build_lb_wide_frame(
     )))
 }
 
-pub fn build_vs_wide_frame(
+pub(crate) fn build_vs_wide_frame(
     table: &CsvTable,
     domain: &Domain,
     study_id: &str,
@@ -131,7 +131,7 @@ pub fn build_vs_wide_frame(
     )))
 }
 
-pub fn build_ie_wide_frame(
+pub(crate) fn build_ie_wide_frame(
     table: &CsvTable,
     domain: &Domain,
     study_id: &str,
@@ -246,13 +246,13 @@ fn detect_lb_wide_groups(headers: &[String]) -> (BTreeMap<String, LbWideGroup>, 
         if wide_columns.contains(&upper) || upper.contains('_') {
             continue;
         }
-            if let Some(stripped) = upper.strip_suffix("CD") {
-                if let Some((key, kind)) = parse_lb_suffix(stripped) {
-                    let base_key = lb_base_key(&key, &base_candidates);
-                    let entry = groups.entry(key.clone()).or_insert_with(|| LbWideGroup {
-                        base_key,
-                        ..LbWideGroup::default()
-                    });
+        if let Some(stripped) = upper.strip_suffix("CD") {
+            if let Some((key, kind)) = parse_lb_suffix(stripped) {
+                let base_key = lb_base_key(&key, &base_candidates);
+                let entry = groups.entry(key.clone()).or_insert_with(|| LbWideGroup {
+                    base_key,
+                    ..LbWideGroup::default()
+                });
                 match kind {
                     LbSuffixKind::TestCd
                     | LbSuffixKind::Test

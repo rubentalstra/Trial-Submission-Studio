@@ -1,11 +1,23 @@
+use std::collections::BTreeSet;
+
 use anyhow::{Context, Result};
 use polars::prelude::{Column, DataFrame, NamedFrom, Series};
 
 use sdtm_ingest::CsvTable;
+use sdtm_ingest::build_column_hints;
+use sdtm_map::MappingEngine;
 use sdtm_model::{Domain, MappingConfig, VariableType};
 
 use crate::domain_utils::standard_columns;
 use crate::frame::DomainFrame;
+use crate::wide::{build_ie_wide_frame, build_lb_wide_frame, build_vs_wide_frame};
+
+#[derive(Debug)]
+pub struct MappedDomainFrame {
+    pub mapping: MappingConfig,
+    pub frame: DomainFrame,
+    pub used_columns: BTreeSet<String>,
+}
 
 pub fn build_domain_frame(table: &CsvTable, domain_code: &str) -> Result<DomainFrame> {
     let headers = dedupe_headers(&table.headers);
@@ -125,5 +137,42 @@ pub fn build_domain_frame_with_mapping(
     Ok(DomainFrame {
         domain_code: domain.code.clone(),
         data,
+    })
+}
+
+pub fn build_mapped_domain_frame(
+    table: &CsvTable,
+    domain: &Domain,
+    study_id: &str,
+) -> Result<MappedDomainFrame> {
+    let domain_code = domain.code.to_uppercase();
+    let wide_result = match domain_code.as_str() {
+        "LB" => build_lb_wide_frame(table, domain, study_id)?,
+        "VS" => build_vs_wide_frame(table, domain, study_id)?,
+        "IE" => build_ie_wide_frame(table, domain, study_id)?,
+        _ => None,
+    };
+    if let Some((mapping, frame, used_columns)) = wide_result {
+        return Ok(MappedDomainFrame {
+            mapping,
+            frame,
+            used_columns,
+        });
+    }
+
+    let hints = build_column_hints(table);
+    let engine = MappingEngine::new((*domain).clone(), 0.5, hints);
+    let mapping_result = engine.suggest(&table.headers);
+    let mapping = engine.to_config(study_id, mapping_result);
+    let frame = build_domain_frame_with_mapping(table, domain, Some(&mapping))?;
+    let used_columns = mapping
+        .mappings
+        .iter()
+        .map(|item| item.source_column.clone())
+        .collect::<BTreeSet<String>>();
+    Ok(MappedDomainFrame {
+        mapping,
+        frame,
+        used_columns,
     })
 }

@@ -6,16 +6,16 @@ use comfy_table::Table;
 use polars::prelude::DataFrame;
 
 use sdtm_core::{
-    DomainFrame, ProcessingContext, build_domain_frame, build_domain_frame_with_mapping,
-    build_ie_wide_frame, build_lb_wide_frame, build_relationship_frames, build_report_domains,
-    build_suppqual, build_vs_wide_frame, dedupe_frames_by_identifiers, fill_missing_test_fields,
-    insert_frame, is_supporting_domain, process_domain_with_context_and_tracker,
+    DomainFrame, ProcessingContext, build_domain_frame, build_mapped_domain_frame,
+    build_relationship_frames, build_report_domains, build_suppqual, dedupe_frames_by_identifiers,
+    fill_missing_test_fields, insert_frame, is_supporting_domain,
+    process_domain_with_context_and_tracker,
 };
 use sdtm_ingest::{
-    AppliedStudyMetadata, StudyMetadata, apply_study_metadata, build_column_hints,
-    discover_domain_files, list_csv_files, load_study_metadata, read_csv_schema, read_csv_table,
+    AppliedStudyMetadata, StudyMetadata, apply_study_metadata, discover_domain_files,
+    list_csv_files, load_study_metadata, read_csv_schema, read_csv_table,
 };
-use sdtm_map::{MappingEngine, merge_mappings};
+use sdtm_map::merge_mappings;
 use sdtm_model::{ConformanceReport, MappingConfig, OutputFormat};
 use sdtm_report::{
     DefineXmlOptions, SasProgramOptions, write_dataset_xml_outputs, write_define_xml,
@@ -170,110 +170,16 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
             } else {
                 apply_study_metadata(raw_table, &study_metadata)
             };
-            let hints = build_column_hints(&table);
-            let engine = MappingEngine::new((*domain).clone(), 0.5, hints);
-            let mapping_result = engine.suggest(&table.headers);
-            let mapping_config = engine.to_config(&study_id, mapping_result);
-
-            let (mapping_config, mapped, mut used) = match domain_code.as_str() {
-                "LB" => match build_lb_wide_frame(&table, domain, &study_id) {
-                    Ok(Some((config, frame, used))) => (config, frame, used),
-                    Ok(None) => {
-                        let mapped = match build_domain_frame_with_mapping(
-                            &table,
-                            domain,
-                            Some(&mapping_config),
-                        ) {
-                            Ok(frame) => frame,
-                            Err(error) => {
-                                errors.push(format!("{}: {error}", path.display()));
-                                continue;
-                            }
-                        };
-                        let used = mapping_config
-                            .mappings
-                            .iter()
-                            .map(|mapping| mapping.source_column.clone())
-                            .collect::<BTreeSet<String>>();
-                        (mapping_config, mapped, used)
-                    }
-                    Err(error) => {
-                        errors.push(format!("{}: {error}", path.display()));
-                        continue;
-                    }
-                },
-                "VS" => match build_vs_wide_frame(&table, domain, &study_id) {
-                    Ok(Some((config, frame, used))) => (config, frame, used),
-                    Ok(None) => {
-                        let mapped = match build_domain_frame_with_mapping(
-                            &table,
-                            domain,
-                            Some(&mapping_config),
-                        ) {
-                            Ok(frame) => frame,
-                            Err(error) => {
-                                errors.push(format!("{}: {error}", path.display()));
-                                continue;
-                            }
-                        };
-                        let used = mapping_config
-                            .mappings
-                            .iter()
-                            .map(|mapping| mapping.source_column.clone())
-                            .collect::<BTreeSet<String>>();
-                        (mapping_config, mapped, used)
-                    }
-                    Err(error) => {
-                        errors.push(format!("{}: {error}", path.display()));
-                        continue;
-                    }
-                },
-                "IE" => match build_ie_wide_frame(&table, domain, &study_id) {
-                    Ok(Some((config, frame, used))) => (config, frame, used),
-                    Ok(None) => {
-                        let mapped = match build_domain_frame_with_mapping(
-                            &table,
-                            domain,
-                            Some(&mapping_config),
-                        ) {
-                            Ok(frame) => frame,
-                            Err(error) => {
-                                errors.push(format!("{}: {error}", path.display()));
-                                continue;
-                            }
-                        };
-                        let used = mapping_config
-                            .mappings
-                            .iter()
-                            .map(|mapping| mapping.source_column.clone())
-                            .collect::<BTreeSet<String>>();
-                        (mapping_config, mapped, used)
-                    }
-                    Err(error) => {
-                        errors.push(format!("{}: {error}", path.display()));
-                        continue;
-                    }
-                },
-                _ => {
-                    let mapped = match build_domain_frame_with_mapping(
-                        &table,
-                        domain,
-                        Some(&mapping_config),
-                    ) {
-                        Ok(frame) => frame,
-                        Err(error) => {
-                            errors.push(format!("{}: {error}", path.display()));
-                            continue;
-                        }
-                    };
-                    let used = mapping_config
-                        .mappings
-                        .iter()
-                        .map(|mapping| mapping.source_column.clone())
-                        .collect::<BTreeSet<String>>();
-                    (mapping_config, mapped, used)
+            let mapped_result = match build_mapped_domain_frame(&table, domain, &study_id) {
+                Ok(result) => result,
+                Err(error) => {
+                    errors.push(format!("{}: {error}", path.display()));
+                    continue;
                 }
             };
+            let mapping_config = mapped_result.mapping;
+            let mut mapped = mapped_result.frame;
+            let mut used = mapped_result.used_columns;
             if !code_to_base.is_empty() {
                 let used_upper: BTreeSet<String> =
                     used.iter().map(|name| name.to_uppercase()).collect();
@@ -283,8 +189,6 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
                     }
                 }
             }
-
-            let mut mapped = mapped;
             if let Err(error) =
                 fill_missing_test_fields(domain, &mapping_config, &table, &mut mapped.data, &ctx)
             {

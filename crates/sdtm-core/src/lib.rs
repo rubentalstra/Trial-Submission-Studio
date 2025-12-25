@@ -12,7 +12,7 @@ pub mod processing_context;
 pub mod processor;
 pub mod relationships;
 pub mod suppqual;
-pub mod wide;
+mod wide;
 
 pub use ct_utils::{
     completion_column, ct_column_match, is_yes_no_token, resolve_ct_for_variable,
@@ -26,7 +26,10 @@ pub use dedupe::dedupe_frames_by_identifiers;
 pub use domain_sets::{build_report_domains, domain_map_by_code, is_supporting_domain};
 pub use domain_utils::{column_map, column_name, infer_seq_column, standard_columns};
 pub use frame::DomainFrame;
-pub use frame_builder::{build_domain_frame, build_domain_frame_with_mapping};
+pub use frame_builder::{
+    MappedDomainFrame, build_domain_frame, build_domain_frame_with_mapping,
+    build_mapped_domain_frame,
+};
 pub use frame_utils::{apply_sequence_offsets, insert_frame};
 pub use preprocess::fill_missing_test_fields;
 pub use processing_context::ProcessingContext;
@@ -36,4 +39,3 @@ pub use processor::{
 };
 pub use relationships::{build_relationship_frames, build_relrec, build_relspec, build_relsub};
 pub use suppqual::{SuppqualResult, build_suppqual, suppqual_domain_code};
-pub use wide::{build_ie_wide_frame, build_lb_wide_frame, build_vs_wide_frame};
