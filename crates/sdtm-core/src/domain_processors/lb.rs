@@ -2,7 +2,7 @@ use anyhow::Result;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
 
-use crate::processing_context::ProcessingContext;
+use crate::{ProcessingContext, is_yes_no_token};
 
 use super::common::*;
 
@@ -179,6 +179,17 @@ pub(super) fn process_lb(
                     set_string_column(df, &name, values)?;
                 }
             }
+        }
+    }
+    if let Some(lbcolsrt) = col(domain, "LBCOLSRT") {
+        if has_column(df, &lbcolsrt) {
+            let mut values = string_column(df, &lbcolsrt, Trim::Both)?;
+            for value in &mut values {
+                if is_yes_no_token(value) {
+                    value.clear();
+                }
+            }
+            set_string_column(df, &lbcolsrt, values)?;
         }
     }
     if let (Some(lborres), Some(lborresu)) = (col(domain, "LBORRES"), col(domain, "LBORRESU")) {

@@ -48,6 +48,20 @@ pub(super) fn process_ie(
             set_string_column(df, &iestresc, stresc)?;
         }
     }
+    if let (Some(iecat), Some(iestresc)) = (col(domain, "IECAT"), col(domain, "IESTRESC")) {
+        if has_column(df, &iecat) && has_column(df, &iestresc) {
+            let cat_vals = string_column(df, &iecat, Trim::Both)?;
+            let mut stresc_vals = string_column(df, &iestresc, Trim::Both)?;
+            for idx in 0..df.height() {
+                if cat_vals[idx].eq_ignore_ascii_case("EXCLUSION")
+                    && !stresc_vals[idx].eq_ignore_ascii_case("Y")
+                {
+                    stresc_vals[idx] = "Y".to_string();
+                }
+            }
+            set_string_column(df, &iestresc, stresc_vals)?;
+        }
+    }
     if let (Some(iedtc), Some(iedy)) = (col(domain, "IEDTC"), col(domain, "IEDY")) {
         if has_column(df, &iedtc) {
             let values = string_column(df, &iedtc, Trim::Both)?;

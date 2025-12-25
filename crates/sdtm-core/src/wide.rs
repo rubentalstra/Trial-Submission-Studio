@@ -201,6 +201,9 @@ fn detect_lb_wide_groups(headers: &[String]) -> (BTreeMap<String, LbWideGroup>, 
             } else {
                 (rest.to_string(), None)
             };
+            if matches!(prefix, "ORNR" | "RANGE") {
+                key = normalize_lb_key(&key);
+            }
             let mut is_code = false;
             if key.len() > 2 && key.ends_with("CD") {
                 key.truncate(key.len() - 2);
@@ -494,6 +497,21 @@ fn detect_ie_wide_groups(headers: &[String]) -> (BTreeMap<String, IeWideGroup>, 
     (groups, wide_columns)
 }
 
+fn normalize_lb_key(value: &str) -> String {
+    let upper = value.to_uppercase();
+    if let Some((base, suffix)) = upper.rsplit_once('_') {
+        let suffix = suffix.trim();
+        if matches!(
+            suffix,
+            "LOWER" | "UPPER" | "LOW" | "HIGH" | "HI" | "LO" | "COMPARATOR" | "COMP" | "CMP"
+                | "RANGE" | "IND" | "FLAG"
+        ) {
+            return base.to_string();
+        }
+    }
+    value.to_string()
+}
+
 fn source_is_ie_test(source: &Option<String>) -> bool {
     let Some(source) = source else {
         return false;
@@ -706,6 +724,18 @@ fn expand_ie_wide(
     }
     let data = DataFrame::new(columns)?;
     Ok((data, used))
+}
+
+fn normalize_numeric(value: &str) -> String {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+    if trimmed.parse::<f64>().is_ok() {
+        trimmed.to_string()
+    } else {
+        String::new()
+    }
 }
 
 fn find_vs_date_column(headers: &[String]) -> Option<usize> {
@@ -1031,7 +1061,7 @@ fn expand_lb_wide(
                 .and_then(|idx| table.rows[row_idx].get(idx))
                 .cloned()
                 .unwrap_or_default();
-            let ornr_range_value = group
+            let _ornr_range_value = group
                 .ornr_range_col
                 .and_then(|idx| table.rows[row_idx].get(idx))
                 .cloned()
@@ -1046,7 +1076,7 @@ fn expand_lb_wide(
                 .and_then(|idx| table.rows[row_idx].get(idx))
                 .cloned()
                 .unwrap_or_default();
-            let range_value = group
+            let _range_value = group
                 .range_col
                 .and_then(|idx| table.rows[row_idx].get(idx))
                 .cloned()
@@ -1056,16 +1086,12 @@ fn expand_lb_wide(
                 .and_then(|idx| table.rows[row_idx].get(idx))
                 .cloned()
                 .unwrap_or_default();
-            if test_value.trim().is_empty()
-                && testcd_value.trim().is_empty()
-                && orres_value.trim().is_empty()
-                && orresu_value.trim().is_empty()
-                && ornr_range_value.trim().is_empty()
-                && ornr_lower_value.trim().is_empty()
-                && ornr_upper_value.trim().is_empty()
-                && range_value.trim().is_empty()
-                && clsig_value.trim().is_empty()
-            {
+            let has_result = !test_value.trim().is_empty()
+                || !testcd_value.trim().is_empty()
+                || !orres_value.trim().is_empty()
+                || !orresu_value.trim().is_empty()
+                || !orresu_alt_value.trim().is_empty();
+            if !has_result {
                 continue;
             }
 
@@ -1104,30 +1130,10 @@ fn expand_lb_wide(
                 }
             }
             if let Some(value) = base_values.get_mut("LBORNRLO") {
-                *value = ornr_lower_value.clone();
+                *value = normalize_numeric(&ornr_lower_value);
             }
             if let Some(value) = base_values.get_mut("LBORNRHI") {
-                *value = ornr_upper_value.clone();
-            }
-            if let Some(value) = base_values.get_mut("LBORNRHI") {
-                if value.trim().is_empty() && !ornr_range_value.trim().is_empty() {
-                    *value = ornr_range_value.clone();
-                }
-            }
-            if let Some(value) = base_values.get_mut("LBORNRLO") {
-                if value.trim().is_empty() && !ornr_range_value.trim().is_empty() {
-                    *value = ornr_range_value.clone();
-                }
-            }
-            if let Some(value) = base_values.get_mut("LBORNRLO") {
-                if value.trim().is_empty() && !range_value.trim().is_empty() {
-                    *value = range_value.clone();
-                }
-            }
-            if let Some(value) = base_values.get_mut("LBORNRHI") {
-                if value.trim().is_empty() && !range_value.trim().is_empty() {
-                    *value = range_value.clone();
-                }
+                *value = normalize_numeric(&ornr_upper_value);
             }
             if let Some(value) = base_values.get_mut("LBCLSIG") {
                 *value = clsig_value.clone();
