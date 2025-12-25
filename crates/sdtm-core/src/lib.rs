@@ -36,4 +36,4 @@ pub use processor::{
 };
 pub use relationships::{build_relationship_frames, build_relrec, build_relspec, build_relsub};
 pub use suppqual::{SuppqualResult, build_suppqual, suppqual_domain_code};
-pub use wide::{build_lb_wide_frame, build_vs_wide_frame};
+pub use wide::{build_ie_wide_frame, build_lb_wide_frame, build_vs_wide_frame};

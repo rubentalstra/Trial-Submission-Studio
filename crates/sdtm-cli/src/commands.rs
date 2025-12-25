@@ -7,9 +7,9 @@ use polars::prelude::DataFrame;
 
 use sdtm_core::{
     DomainFrame, ProcessingContext, build_domain_frame, build_domain_frame_with_mapping,
-    build_lb_wide_frame, build_relationship_frames, build_report_domains, build_suppqual,
-    build_vs_wide_frame, dedupe_frames_by_identifiers, fill_missing_test_fields, insert_frame,
-    is_supporting_domain, process_domain_with_context_and_tracker,
+    build_ie_wide_frame, build_lb_wide_frame, build_relationship_frames, build_report_domains,
+    build_suppqual, build_vs_wide_frame, dedupe_frames_by_identifiers, fill_missing_test_fields,
+    insert_frame, is_supporting_domain, process_domain_with_context_and_tracker,
 };
 use sdtm_ingest::{
     build_column_hints, discover_domain_files, list_csv_files, read_csv_schema, read_csv_table,
@@ -24,7 +24,7 @@ use sdtm_standards::{
     load_default_ct_registry, load_default_p21_rules, load_default_sdtm_ig_domains,
 };
 use sdtm_validate::{ValidationContext, validate_domains, write_conformance_report_json};
-use sdtm_xpt::{read_xpt, XptWriterOptions};
+use sdtm_xpt::{XptWriterOptions, read_xpt};
 
 use crate::cli::{OutputFormatArg, StudyArgs};
 use crate::summary::apply_table_style;
@@ -180,6 +180,32 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
                     }
                 },
                 "VS" => match build_vs_wide_frame(&table, domain, &study_id) {
+                    Ok(Some((config, frame, used))) => (config, frame, used),
+                    Ok(None) => {
+                        let mapped = match build_domain_frame_with_mapping(
+                            &table,
+                            domain,
+                            Some(&mapping_config),
+                        ) {
+                            Ok(frame) => frame,
+                            Err(error) => {
+                                errors.push(format!("{}: {error}", path.display()));
+                                continue;
+                            }
+                        };
+                        let used = mapping_config
+                            .mappings
+                            .iter()
+                            .map(|mapping| mapping.source_column.clone())
+                            .collect::<BTreeSet<String>>();
+                        (mapping_config, mapped, used)
+                    }
+                    Err(error) => {
+                        errors.push(format!("{}: {error}", path.display()));
+                        continue;
+                    }
+                },
+                "IE" => match build_ie_wide_frame(&table, domain, &study_id) {
                     Ok(Some((config, frame, used))) => (config, frame, used),
                     Ok(None) => {
                         let mapped = match build_domain_frame_with_mapping(

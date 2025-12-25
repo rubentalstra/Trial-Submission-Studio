@@ -8,7 +8,9 @@ use sdtm_ingest::{CsvTable, build_column_hints};
 use sdtm_map::MappingEngine;
 use sdtm_model::{Domain, MappingConfig, VariableType};
 
-use crate::data_utils::{column_value_string, sanitize_test_code};
+use crate::data_utils::{
+    column_value_string, mapping_source_for_target, sanitize_test_code, table_label,
+};
 
 #[derive(Debug, Default, Clone)]
 struct LbWideGroup {
@@ -42,6 +44,13 @@ struct VsWideGroup {
 struct VsWideShared {
     orresu_bp: Option<usize>,
     pos_bp: Option<usize>,
+}
+
+#[derive(Debug, Default, Clone)]
+struct IeWideGroup {
+    category: String,
+    test_col: Option<usize>,
+    testcd_col: Option<usize>,
 }
 
 pub fn build_lb_wide_frame(
@@ -105,6 +114,50 @@ pub fn build_vs_wide_frame(
         &shared,
         date_idx,
         time_idx,
+    )?;
+    let mut used: BTreeSet<String> = mapping_config
+        .mappings
+        .iter()
+        .map(|mapping| mapping.source_column.clone())
+        .collect();
+    used.extend(used_wide);
+    Ok(Some((
+        mapping_config,
+        DomainFrame {
+            domain_code: domain.code.clone(),
+            data: expanded,
+        },
+        used,
+    )))
+}
+
+pub fn build_ie_wide_frame(
+    table: &CsvTable,
+    domain: &Domain,
+    study_id: &str,
+) -> Result<Option<(MappingConfig, DomainFrame, BTreeSet<String>)>> {
+    let (groups, wide_columns) = detect_ie_wide_groups(&table.headers);
+    if groups.is_empty() {
+        return Ok(None);
+    }
+    let base_table = filter_table_columns(table, &wide_columns, false);
+    let hints = build_column_hints(&base_table);
+    let engine = MappingEngine::new((*domain).clone(), 0.5, hints);
+    let result = engine.suggest(&base_table.headers);
+    let mapping_config = engine.to_config(study_id, result);
+    let base_frame = build_domain_frame_with_mapping(&base_table, domain, Some(&mapping_config))?;
+    let test_source = mapping_source_for_target(&mapping_config, "IETEST");
+    let testcd_source = mapping_source_for_target(&mapping_config, "IETESTCD");
+    let cat_source = mapping_source_for_target(&mapping_config, "IECAT");
+    let allow_base_test = source_is_ie_test(&test_source) || source_is_ie_test(&testcd_source);
+    let allow_base_cat = source_is_ie_cat(&cat_source);
+    let (expanded, used_wide) = expand_ie_wide(
+        table,
+        &base_frame.data,
+        domain,
+        &groups,
+        allow_base_test,
+        allow_base_cat,
     )?;
     let mut used: BTreeSet<String> = mapping_config
         .mappings
@@ -399,6 +452,63 @@ fn detect_vs_wide_groups(
     (groups, shared, wide_columns)
 }
 
+fn detect_ie_wide_groups(headers: &[String]) -> (BTreeMap<String, IeWideGroup>, BTreeSet<String>) {
+    let mut groups: BTreeMap<String, IeWideGroup> = BTreeMap::new();
+    let mut wide_columns = BTreeSet::new();
+    for (idx, header) in headers.iter().enumerate() {
+        let upper = header.to_uppercase();
+        let (category, rest) = if let Some(rest) = upper.strip_prefix("IEINTESTCD") {
+            ("INCLUSION", rest)
+        } else if let Some(rest) = upper.strip_prefix("IEEXTESTCD") {
+            ("EXCLUSION", rest)
+        } else {
+            continue;
+        };
+        if rest.is_empty() {
+            continue;
+        }
+        let (number, is_code) = if rest.ends_with("CD") && rest.len() > 2 {
+            (&rest[..rest.len() - 2], true)
+        } else {
+            (rest, false)
+        };
+        if number.is_empty() {
+            continue;
+        }
+        let key = format!(
+            "{}{}",
+            if category == "INCLUSION" { "IN" } else { "EX" },
+            number
+        );
+        let entry = groups.entry(key).or_insert_with(|| IeWideGroup {
+            category: category.to_string(),
+            ..IeWideGroup::default()
+        });
+        if is_code {
+            entry.testcd_col = Some(idx);
+        } else {
+            entry.test_col = Some(idx);
+        }
+        wide_columns.insert(upper);
+    }
+    (groups, wide_columns)
+}
+
+fn source_is_ie_test(source: &Option<String>) -> bool {
+    let Some(source) = source else {
+        return false;
+    };
+    let upper = source.to_uppercase();
+    upper.contains("IETEST") || upper.contains("IEINTEST") || upper.contains("IEEXTEST")
+}
+
+fn source_is_ie_cat(source: &Option<String>) -> bool {
+    let Some(source) = source else {
+        return false;
+    };
+    source.to_uppercase().contains("IECAT")
+}
+
 fn filter_table_columns(table: &CsvTable, columns: &BTreeSet<String>, include: bool) -> CsvTable {
     let mut indices = Vec::new();
     let mut headers = Vec::new();
@@ -428,6 +538,174 @@ fn filter_table_columns(table: &CsvTable, columns: &BTreeSet<String>, include: b
         rows,
         labels,
     }
+}
+
+fn expand_ie_wide(
+    table: &CsvTable,
+    base_df: &DataFrame,
+    domain: &Domain,
+    groups: &BTreeMap<String, IeWideGroup>,
+    allow_base_test: bool,
+    allow_base_cat: bool,
+) -> Result<(DataFrame, BTreeSet<String>)> {
+    let mut values: BTreeMap<String, Vec<String>> = BTreeMap::new();
+    for variable in &domain.variables {
+        values.insert(variable.name.clone(), Vec::new());
+    }
+    let mut used = BTreeSet::new();
+    for group in groups.values() {
+        for idx in [group.test_col, group.testcd_col] {
+            if let Some(idx) = idx {
+                if let Some(name) = table.headers.get(idx) {
+                    used.insert(name.clone());
+                }
+            }
+        }
+    }
+    let test_col = crate::domain_utils::column_name(domain, "IETEST");
+    let testcd_col = crate::domain_utils::column_name(domain, "IETESTCD");
+    let cat_col = crate::domain_utils::column_name(domain, "IECAT");
+    let mut total_rows = 0usize;
+    for row_idx in 0..table.rows.len() {
+        let base_test = if allow_base_test {
+            test_col
+                .as_deref()
+                .map(|name| column_value_string(base_df, name, row_idx))
+                .unwrap_or_default()
+        } else {
+            String::new()
+        };
+        let base_testcd = if allow_base_test {
+            testcd_col
+                .as_deref()
+                .map(|name| column_value_string(base_df, name, row_idx))
+                .unwrap_or_default()
+        } else {
+            String::new()
+        };
+        let base_cat = if allow_base_cat {
+            cat_col
+                .as_deref()
+                .map(|name| column_value_string(base_df, name, row_idx))
+                .unwrap_or_default()
+        } else {
+            String::new()
+        };
+        let mut added = false;
+        for group in groups.values() {
+            let test_value = group
+                .test_col
+                .and_then(|idx| table.rows[row_idx].get(idx))
+                .cloned()
+                .unwrap_or_default();
+            let testcd_value = group
+                .testcd_col
+                .and_then(|idx| table.rows[row_idx].get(idx))
+                .cloned()
+                .unwrap_or_default();
+            if test_value.trim().is_empty() && testcd_value.trim().is_empty() {
+                continue;
+            }
+            let label = group
+                .test_col
+                .and_then(|idx| table.headers.get(idx))
+                .and_then(|name| table_label(table, name))
+                .unwrap_or_default();
+            let mut test_label = if !test_value.trim().is_empty() {
+                test_value.clone()
+            } else if !label.is_empty() {
+                label.clone()
+            } else {
+                String::new()
+            };
+            let mut test_code = if !testcd_value.trim().is_empty() {
+                testcd_value.clone()
+            } else if !test_value.trim().is_empty() {
+                test_value.clone()
+            } else if !label.is_empty() {
+                label.clone()
+            } else {
+                String::new()
+            };
+            if test_code
+                .chars()
+                .next()
+                .map(|ch| ch.is_ascii_digit())
+                .unwrap_or(false)
+            {
+                test_code = format!("IE{}", test_code);
+            }
+            test_code = sanitize_test_code(&test_code);
+            if test_label.trim().is_empty() {
+                test_label = test_code.clone();
+            }
+
+            let mut base_values: BTreeMap<String, String> = BTreeMap::new();
+            for variable in &domain.variables {
+                let val = column_value_string(base_df, &variable.name, row_idx);
+                base_values.insert(variable.name.clone(), val);
+            }
+            if let Some(name) = testcd_col.as_ref() {
+                if !test_code.trim().is_empty() {
+                    base_values.insert(name.clone(), test_code);
+                }
+            }
+            if let Some(name) = test_col.as_ref() {
+                if !test_label.trim().is_empty() {
+                    base_values.insert(name.clone(), test_label);
+                }
+            }
+            if let Some(name) = cat_col.as_ref() {
+                let current = base_values.get(name).cloned().unwrap_or_default();
+                if current.trim().is_empty() {
+                    base_values.insert(name.clone(), group.category.clone());
+                }
+            }
+            for (name, list) in values.iter_mut() {
+                let value = base_values.get(name).cloned().unwrap_or_default();
+                list.push(value);
+            }
+            total_rows += 1;
+            added = true;
+        }
+        if !added {
+            let base_has = !base_test.trim().is_empty()
+                || !base_testcd.trim().is_empty()
+                || !base_cat.trim().is_empty();
+            if base_has {
+                let mut base_values: BTreeMap<String, String> = BTreeMap::new();
+                for variable in &domain.variables {
+                    let val = column_value_string(base_df, &variable.name, row_idx);
+                    base_values.insert(variable.name.clone(), val);
+                }
+                for (name, list) in values.iter_mut() {
+                    let value = base_values.get(name).cloned().unwrap_or_default();
+                    list.push(value);
+                }
+                total_rows += 1;
+            }
+        }
+    }
+    if total_rows == 0 {
+        return Ok((base_df.clone(), used));
+    }
+    let mut columns = Vec::with_capacity(domain.variables.len());
+    for variable in &domain.variables {
+        let vals = values.remove(&variable.name).unwrap_or_default();
+        let column = match variable.data_type {
+            VariableType::Num => {
+                let numeric: Vec<Option<f64>> = vals
+                    .iter()
+                    .map(|value| value.trim().parse::<f64>().ok())
+                    .collect();
+                Series::new(variable.name.as_str().into(), numeric).into()
+            }
+            VariableType::Char => Series::new(variable.name.as_str().into(), vals).into(),
+        };
+        columns.push(column);
+    }
+    let data = DataFrame::new(columns)?;
+    Ok((data, used))
 }
 
 fn find_vs_date_column(headers: &[String]) -> Option<usize> {
