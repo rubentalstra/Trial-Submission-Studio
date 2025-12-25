@@ -31,7 +31,7 @@ pub fn print_summary(result: &StudyResult) {
         header_cell("Errors"),
         header_cell("Warnings"),
     ]);
-    apply_table_style(&mut table);
+    apply_summary_table_style(&mut table);
     align_column(&mut table, 2, CellAlignment::Right);
     align_column(&mut table, 3, CellAlignment::Center);
     align_column(&mut table, 4, CellAlignment::Center);
@@ -54,9 +54,12 @@ pub fn print_summary(result: &StudyResult) {
         if let Some(count) = warnings {
             total_warnings += count;
         }
+        let domain_cell = domain_cell(&summary.domain_code);
+        let description_cell =
+            description_cell(&summary.description, is_supp_domain(&summary.domain_code));
         table.add_row(vec![
-            Cell::new(summary.domain_code.clone()),
-            Cell::new(summary.description.clone()),
+            domain_cell,
+            description_cell,
             Cell::new(summary.records),
             output_cell(summary.outputs.xpt.as_ref()),
             output_cell(summary.outputs.dataset_xml.as_ref()),
@@ -66,8 +69,12 @@ pub fn print_summary(result: &StudyResult) {
         ]);
     }
     table.add_row(vec![
-        Cell::new("TOTAL").add_attribute(Attribute::Bold),
-        Cell::new("All domains").add_attribute(Attribute::Bold),
+        Cell::new("TOTAL")
+            .fg(Color::Cyan)
+            .add_attribute(Attribute::Bold),
+        Cell::new("All domains")
+            .fg(Color::Cyan)
+            .add_attribute(Attribute::Bold),
         Cell::new(total_records).add_attribute(Attribute::Bold),
         dim_cell("-"),
         dim_cell("-"),
@@ -122,12 +129,15 @@ fn print_issue_table(result: &StudyResult) {
         header_cell("Examples"),
     ]);
     apply_issue_table_style(&mut table);
+    align_column(&mut table, 1, CellAlignment::Center);
+    align_column(&mut table, 3, CellAlignment::Center);
     align_column(&mut table, 4, CellAlignment::Right);
     for (domain, issue) in issues {
         let (message, examples) = split_examples(&issue.message);
         let count_cell = issue_count_cell(issue.count, issue.severity);
+        let domain_cell = domain_cell(&domain);
         table.add_row(vec![
-            Cell::new(domain).fg(Color::Blue),
+            domain_cell,
             severity_cell(issue.severity),
             Cell::new(issue.variable.clone().unwrap_or_else(|| "-".to_string())),
             Cell::new(issue.code.clone()),
@@ -145,14 +155,17 @@ fn print_issue_table(result: &StudyResult) {
 
 fn output_cell(path: Option<&PathBuf>) -> Cell {
     match path {
-        Some(_) => Cell::new("✓").fg(Color::Green),
+        Some(_) => Cell::new("✓")
+            .fg(Color::Green)
+            .add_attribute(Attribute::Bold),
         None => dim_cell("-"),
     }
 }
 
 fn count_cell(count: Option<usize>, color: Color) -> Cell {
     match count {
-        Some(value) => Cell::new(value).fg(color),
+        Some(value) if value > 0 => Cell::new(value).fg(color).add_attribute(Attribute::Bold),
+        Some(value) => dim_cell(value),
         None => dim_cell("-"),
     }
 }
@@ -177,13 +190,34 @@ pub fn apply_table_style(table: &mut Table) {
     }
 }
 
+fn apply_summary_table_style(table: &mut Table) {
+    table
+        .load_preset(UTF8_FULL)
+        .apply_modifier(UTF8_ROUND_CORNERS)
+        .apply_modifier(UTF8_SOLID_INNER_BORDERS)
+        .set_content_arrangement(ContentArrangement::DynamicFullWidth)
+        .set_width(165);
+    if table.column_count() >= 8 {
+        table.set_constraints(vec![
+            ColumnConstraint::UpperBoundary(Width::Fixed(10)),
+            ColumnConstraint::UpperBoundary(Width::Percentage(45)),
+            ColumnConstraint::LowerBoundary(Width::Fixed(7)),
+            ColumnConstraint::LowerBoundary(Width::Fixed(5)),
+            ColumnConstraint::LowerBoundary(Width::Fixed(5)),
+            ColumnConstraint::LowerBoundary(Width::Fixed(5)),
+            ColumnConstraint::LowerBoundary(Width::Fixed(7)),
+            ColumnConstraint::LowerBoundary(Width::Fixed(9)),
+        ]);
+    }
+}
+
 fn apply_issue_table_style(table: &mut Table) {
     table
         .load_preset(UTF8_FULL)
         .apply_modifier(UTF8_ROUND_CORNERS)
         .apply_modifier(UTF8_SOLID_INNER_BORDERS)
         .set_content_arrangement(ContentArrangement::DynamicFullWidth)
-        .set_width(180);
+        .set_width(200);
     if table.column_count() >= 9 {
         table.set_constraints(vec![
             ColumnConstraint::UpperBoundary(Width::Fixed(10)),
@@ -193,8 +227,8 @@ fn apply_issue_table_style(table: &mut Table) {
             ColumnConstraint::LowerBoundary(Width::Fixed(5)),
             ColumnConstraint::UpperBoundary(Width::Fixed(10)),
             ColumnConstraint::UpperBoundary(Width::Fixed(12)),
-            ColumnConstraint::UpperBoundary(Width::Percentage(40)),
-            ColumnConstraint::UpperBoundary(Width::Percentage(25)),
+            ColumnConstraint::UpperBoundary(Width::Percentage(45)),
+            ColumnConstraint::UpperBoundary(Width::Percentage(30)),
         ]);
     }
 }
@@ -224,11 +258,11 @@ fn summary_sort_key(code: &str) -> (String, u8, String) {
 
 fn severity_cell(severity: IssueSeverity) -> Cell {
     match severity {
-        IssueSeverity::Reject => Cell::new("reject")
+        IssueSeverity::Reject => Cell::new("REJECT")
             .fg(Color::Red)
             .add_attribute(Attribute::Bold),
-        IssueSeverity::Error => Cell::new("error").fg(Color::Red),
-        IssueSeverity::Warning => Cell::new("warning").fg(Color::Yellow),
+        IssueSeverity::Error => Cell::new("ERROR").fg(Color::Red),
+        IssueSeverity::Warning => Cell::new("WARN").fg(Color::Yellow),
     }
 }
 
@@ -259,6 +293,29 @@ fn header_cell(label: &str) -> Cell {
     Cell::new(label)
         .fg(Color::Cyan)
         .add_attribute(Attribute::Bold)
+}
+
+fn is_supp_domain(code: &str) -> bool {
+    let upper = code.to_uppercase();
+    upper.starts_with("SUPP") && upper.len() > 4
+}
+
+fn domain_cell(code: &str) -> Cell {
+    if is_supp_domain(code) {
+        Cell::new(format!("  -> {}", code)).fg(Color::DarkGrey)
+    } else {
+        Cell::new(code)
+            .fg(Color::Blue)
+            .add_attribute(Attribute::Bold)
+    }
+}
+
+fn description_cell(description: &str, is_supp: bool) -> Cell {
+    if is_supp {
+        Cell::new(description).fg(Color::DarkGrey)
+    } else {
+        Cell::new(description)
+    }
 }
 
 fn split_examples(message: &str) -> (String, String) {
