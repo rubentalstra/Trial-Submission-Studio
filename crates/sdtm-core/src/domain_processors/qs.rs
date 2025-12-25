@@ -12,9 +12,6 @@ pub(super) fn process_qs(
     ctx: &ProcessingContext,
 ) -> Result<()> {
     drop_placeholder_rows(domain, df, ctx)?;
-    if let (Some(qsseq), Some(usubjid)) = (col(domain, "QSSEQ"), col(domain, "USUBJID")) {
-        assign_sequence(df, &qsseq, &usubjid)?;
-    }
     for col_name in [
         "QSTESTCD", "QSTEST", "QSCAT", "QSSCAT", "QSORRES", "QSSTRESC", "QSLOBXFL", "VISIT",
         "EPOCH",
@@ -159,7 +156,7 @@ pub(super) fn process_qs(
         if has_column(df, &qsdtc) {
             let values = string_column(df, &qsdtc, Trim::Both)?
                 .into_iter()
-                .map(|value| coerce_iso8601(&value))
+                .map(|value| normalize_iso8601_value(&value))
                 .collect();
             set_string_column(df, &qsdtc, values)?;
             if let Some(qsdy) = col(domain, "QSDY") {

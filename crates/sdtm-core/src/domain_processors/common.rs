@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 
 use anyhow::Result;
 use chrono::{DateTime, NaiveDate, NaiveDateTime};
@@ -142,26 +142,6 @@ pub(super) fn deduplicate<S: AsRef<str>>(df: &mut DataFrame, keys: &[S]) -> Resu
         }
     }
     filter_rows(df, &keep)?;
-    Ok(())
-}
-
-pub(super) fn assign_sequence(df: &mut DataFrame, seq_col: &str, group_col: &str) -> Result<()> {
-    if !has_column(df, group_col) {
-        return Ok(());
-    }
-    let group_vals = string_column(df, group_col, Trim::Both)?;
-    let mut counters: BTreeMap<String, i64> = BTreeMap::new();
-    let mut seq_vals: Vec<Option<i64>> = Vec::with_capacity(df.height());
-    for value in group_vals {
-        if value.trim().is_empty() {
-            seq_vals.push(None);
-            continue;
-        }
-        let entry = counters.entry(value).or_insert(0);
-        *entry += 1;
-        seq_vals.push(Some(*entry));
-    }
-    set_i64_column(df, seq_col, seq_vals)?;
     Ok(())
 }
 
@@ -459,40 +439,8 @@ fn is_missing_usubjid(value: &str) -> bool {
     )
 }
 
-pub(super) fn coerce_iso8601(raw_value: &str) -> String {
-    let normalized = normalize_iso8601(raw_value);
-    if normalized.is_empty() {
-        return String::new();
-    }
-    let fixed = normalized
-        .replace("NK", "01")
-        .replace("nk", "01")
-        .replace("Unk", "01")
-        .replace("UNK", "01");
-    parse_date(&fixed)
-        .map(|date| date.format("%Y-%m-%d").to_string())
-        .unwrap_or_default()
-}
-
-fn normalize_iso8601(raw_value: &str) -> String {
-    let trimmed = raw_value.trim();
-    if trimmed.is_empty() {
-        return String::new();
-    }
-    let upper = trimmed.to_uppercase();
-    if upper.contains("NK") || upper.contains("UN") || upper.contains("UNK") {
-        let cleaned = trimmed
-            .replace("-NK", "")
-            .replace("-UN", "")
-            .replace("-UNK", "")
-            .trim_end_matches('-')
-            .to_string();
-        return cleaned;
-    }
-    if let Some(date) = parse_datetime(trimmed) {
-        return date.to_rfc3339();
-    }
-    trimmed.to_string()
+pub(super) fn normalize_iso8601_value(raw_value: &str) -> String {
+    raw_value.trim().to_string()
 }
 
 fn parse_date(raw: &str) -> Option<NaiveDate> {
@@ -506,14 +454,13 @@ fn parse_date(raw: &str) -> Option<NaiveDate> {
     if let Ok(dt) = NaiveDateTime::parse_from_str(trimmed, "%Y-%m-%dT%H:%M:%S") {
         return Some(dt.date());
     }
+    if let Ok(dt) = NaiveDateTime::parse_from_str(trimmed, "%Y-%m-%dT%H:%M") {
+        return Some(dt.date());
+    }
     if let Ok(dt) = DateTime::parse_from_rfc3339(trimmed) {
         return Some(dt.date_naive());
     }
     None
-}
-
-fn parse_datetime(raw: &str) -> Option<DateTime<chrono::FixedOffset>> {
-    DateTime::parse_from_rfc3339(raw).ok()
 }
 
 pub(super) fn ensure_date_pair_order(
@@ -526,18 +473,25 @@ pub(super) fn ensure_date_pair_order(
     }
     let start_vals = string_column(df, start_col, Trim::Both)?
         .into_iter()
-        .map(|value| coerce_iso8601(&value))
+        .map(|value| normalize_iso8601_value(&value))
         .collect::<Vec<_>>();
     set_string_column(df, start_col, start_vals.clone())?;
     if let Some(end_col) = end_col {
         if has_column(df, end_col) {
             let mut end_vals = string_column(df, end_col, Trim::Both)?
                 .into_iter()
-                .map(|value| coerce_iso8601(&value))
+                .map(|value| normalize_iso8601_value(&value))
                 .collect::<Vec<_>>();
             for idx in 0..df.height() {
-                if end_vals[idx].is_empty() || (end_vals[idx] < start_vals[idx]) {
-                    end_vals[idx] = start_vals[idx].clone();
+                if end_vals[idx].is_empty() {
+                    continue;
+                }
+                let start_date = parse_date(&start_vals[idx]);
+                let end_date = parse_date(&end_vals[idx]);
+                if let (Some(start), Some(end)) = (start_date, end_date) {
+                    if end < start {
+                        end_vals[idx] = start_vals[idx].clone();
+                    }
                 }
             }
             set_string_column(df, end_col, end_vals)?;

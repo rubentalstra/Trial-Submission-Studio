@@ -289,7 +289,7 @@ pub(super) fn process_ds(
         if has_column(df, &dsstdtc) {
             let values = string_column(df, &dsstdtc, Trim::Both)?
                 .into_iter()
-                .map(|value| coerce_iso8601(&value))
+                .map(|value| normalize_iso8601_value(&value))
                 .collect();
             set_string_column(df, &dsstdtc, values)?;
             if let Some(dsstudy) = col(domain, "DSSTDY") {
@@ -301,16 +301,13 @@ pub(super) fn process_ds(
         if has_column(df, &dsdtc) {
             let values = string_column(df, &dsdtc, Trim::Both)?
                 .into_iter()
-                .map(|value| coerce_iso8601(&value))
+                .map(|value| normalize_iso8601_value(&value))
                 .collect();
             set_string_column(df, &dsdtc, values)?;
             if let Some(dsdy) = col(domain, "DSDY") {
                 compute_study_day(domain, df, &dsdtc, &dsdy, ctx, "RFSTDTC")?;
             }
         }
-    }
-    if let (Some(dsseq), Some(usubjid)) = (col(domain, "DSSEQ"), col(domain, "USUBJID")) {
-        assign_sequence(df, &dsseq, &usubjid)?;
     }
     let dedup_keys = ["USUBJID", "DSDECOD", "DSTERM", "DSCAT", "DSSTDTC"]
         .into_iter()

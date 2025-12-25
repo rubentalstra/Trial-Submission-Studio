@@ -115,5 +115,13 @@ pub fn sanitize_test_code(raw: &str) -> String {
     if safe.is_empty() {
         safe = "TEST".to_string();
     }
+    if safe
+        .chars()
+        .next()
+        .map(|c| c.is_ascii_digit())
+        .unwrap_or(false)
+    {
+        safe.insert(0, 'T');
+    }
     safe.chars().take(8).collect()
 }

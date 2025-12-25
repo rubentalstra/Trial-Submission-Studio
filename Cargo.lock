@@ -2477,6 +2477,7 @@ dependencies = [
  "sdtm-map",
  "sdtm-model",
  "sdtm-standards",
+ "tracing",
 ]
 
 [[package]]

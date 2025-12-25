@@ -12,9 +12,6 @@ pub(super) fn process_da(
     ctx: &ProcessingContext,
 ) -> Result<()> {
     drop_placeholder_rows(domain, df, ctx)?;
-    if let (Some(daseq), Some(usubjid)) = (col(domain, "DASEQ"), col(domain, "USUBJID")) {
-        assign_sequence(df, &daseq, &usubjid)?;
-    }
     if let Some(dastat) = col(domain, "DASTAT") {
         let stat_map = map_values([
             ("NOT DONE", "NOT DONE"),

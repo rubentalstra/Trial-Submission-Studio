@@ -32,7 +32,7 @@ pub use frame_builder::{
 };
 pub use frame_utils::{apply_sequence_offsets, insert_frame};
 pub use preprocess::fill_missing_test_fields;
-pub use processing_context::ProcessingContext;
+pub use processing_context::{ProcessingContext, ProcessingOptions};
 pub use processor::{
     apply_base_rules, process_domain, process_domain_with_context,
     process_domain_with_context_and_tracker, process_domains, process_domains_with_context,

@@ -80,6 +80,8 @@ fn processes_mockdata_end_to_end() {
                 &used,
                 study_id,
                 None,
+                None,
+                None,
             )
             .expect("suppqual")
             {

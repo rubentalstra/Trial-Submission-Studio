@@ -12,10 +12,11 @@ pub(super) fn process_mh(
     ctx: &ProcessingContext,
 ) -> Result<()> {
     drop_placeholder_rows(domain, df, ctx)?;
-    if let (Some(mhseq), Some(usubjid)) = (col(domain, "MHSEQ"), col(domain, "USUBJID")) {
-        assign_sequence(df, &mhseq, &usubjid)?;
-        let values = numeric_column_f64(df, &mhseq)?;
-        set_f64_column(df, &mhseq, values)?;
+    if let Some(mhseq) = col(domain, "MHSEQ") {
+        if has_column(df, &mhseq) {
+            let values = numeric_column_f64(df, &mhseq)?;
+            set_f64_column(df, &mhseq, values)?;
+        }
     }
     if let Some(mhterm) = col(domain, "MHTERM") {
         if has_column(df, &mhterm) {
@@ -40,7 +41,7 @@ pub(super) fn process_mh(
             if has_column(df, &name) {
                 let values = string_column(df, &name, Trim::Both)?
                     .into_iter()
-                    .map(|value| coerce_iso8601(&value))
+                    .map(|value| normalize_iso8601_value(&value))
                     .collect();
                 set_string_column(df, &name, values)?;
             }
@@ -72,9 +73,6 @@ pub(super) fn process_mh(
             let values = numeric_column_f64(df, &mhdy)?;
             set_f64_column(df, &mhdy, values)?;
         }
-    }
-    if let (Some(mhseq), Some(usubjid)) = (col(domain, "MHSEQ"), col(domain, "USUBJID")) {
-        assign_sequence(df, &mhseq, &usubjid)?;
     }
     Ok(())
 }

@@ -12,9 +12,6 @@ pub(super) fn process_pe(
     ctx: &ProcessingContext,
 ) -> Result<()> {
     drop_placeholder_rows(domain, df, ctx)?;
-    if let (Some(peseq), Some(usubjid)) = (col(domain, "PESEQ"), col(domain, "USUBJID")) {
-        assign_sequence(df, &peseq, &usubjid)?;
-    }
     if let Some(pestat) = col(domain, "PESTAT") {
         let stat_map = map_values([
             ("NOT DONE", "NOT DONE"),

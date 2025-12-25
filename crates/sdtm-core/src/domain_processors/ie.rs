@@ -71,8 +71,5 @@ pub(super) fn process_ie(
             set_f64_column(df, &iedy, numeric)?;
         }
     }
-    if let (Some(ieseq), Some(usubjid)) = (col(domain, "IESEQ"), col(domain, "USUBJID")) {
-        assign_sequence(df, &ieseq, &usubjid)?;
-    }
     Ok(())
 }

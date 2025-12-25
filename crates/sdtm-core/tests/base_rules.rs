@@ -1,6 +1,6 @@
 use polars::prelude::{AnyValue, Column, DataFrame};
 
-use sdtm_core::{apply_base_rules, column_name};
+use sdtm_core::{ProcessingContext, apply_base_rules, column_name};
 use sdtm_standards::load_default_sdtm_ig_domains;
 
 #[test]
@@ -18,7 +18,8 @@ fn prefixes_usubjid_with_studyid() {
     ])
     .expect("df");
 
-    apply_base_rules(domain, &mut df, "STUDY").expect("base rules");
+    let ctx = ProcessingContext::new("STUDY");
+    apply_base_rules(domain, &mut df, &ctx).expect("base rules");
 
     let usubjid = df.column(&usubjid_col).expect("usubjid");
     let first = usubjid.get(0).unwrap_or(AnyValue::Null);

@@ -33,8 +33,5 @@ pub(super) fn process_se(
             compute_study_day(domain, df, &seendtc, &seendy, ctx, "RFSTDTC")?;
         }
     }
-    if let (Some(seseq), Some(usubjid)) = (col(domain, "SESEQ"), col(domain, "USUBJID")) {
-        assign_sequence(df, &seseq, &usubjid)?;
-    }
     Ok(())
 }

@@ -15,6 +15,8 @@ pub struct Variable {
     pub role: Option<String>,
     pub core: Option<String>,
     pub codelist_code: Option<String>,
+    #[serde(default)]
+    pub order: Option<u32>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

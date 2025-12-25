@@ -5,34 +5,34 @@ worded as actionable tasks with file-level pointers.
 
 ## Open Items
 
-- [ ] Preserve ISO 8601 precision and partial dates.
+- [x] Preserve ISO 8601 precision and partial dates.
   - Avoid coercing partials to full dates or dropping time components.
   - Files: `crates/sdtm-core/src/domain_processors/common.rs`,
     `crates/sdtm-core/src/domain_processors/dm.rs`
 
-- [ ] Make USUBJID prefixing and auto `--SEQ` assignment optional.
+- [x] Make USUBJID prefixing and auto `--SEQ` assignment optional.
   - Gate behavior behind config flags and emit warnings when rewrites occur.
   - Files: `crates/sdtm-core/src/processor.rs`
 
-- [ ] Enforce SDTM variable ordering from `Variables.csv`.
+- [x] Enforce SDTM variable ordering from `Variables.csv`.
   - Preserve `Variable Order` during standards load and use it for output order.
   - Files: `crates/sdtm-standards/src/loaders.rs`,
     `crates/sdtm-model/src/domain.rs`,
     `crates/sdtm-report/src/lib.rs`
 
-- [ ] Tighten `--TESTCD` and `QNAM` compliance.
+- [x] Tighten `--TESTCD` and `QNAM` compliance.
   - Disallow leading digits and invalid characters; ensure 8-char max.
   - Files: `crates/sdtm-core/src/data_utils.rs`,
     `crates/sdtm-validate/src/lib.rs`
 
-- [ ] Improve SUPP-- generation metadata.
+- [x] Improve SUPP-- generation metadata.
   - Use source column labels for `QLABEL` when available.
   - Set `QORIG` based on mapped vs derived data (not always `CRF`).
   - Use `SQ` prefix for long `SUPP` dataset names (SDTMIG 8.4.2).
   - Files: `crates/sdtm-core/src/suppqual.rs`,
     `crates/sdtm-core/src/domain_sets.rs`
 
-- [ ] Refine RELREC generation rules.
+- [x] Refine RELREC generation rules.
   - Avoid cross-domain `--SEQ` as merge keys; prefer `--LNKID/--GRPID`.
   - Populate `RELTYPE` only when relationship type is determinable.
   - Files: `crates/sdtm-core/src/relationships.rs`

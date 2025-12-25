@@ -84,6 +84,7 @@ impl CodeList {
 pub struct AppliedStudyMetadata {
     pub table: CsvTable,
     pub code_to_base: BTreeMap<String, String>,
+    pub derived_columns: BTreeSet<String>,
 }
 
 impl AppliedStudyMetadata {
@@ -91,6 +92,7 @@ impl AppliedStudyMetadata {
         Self {
             table,
             code_to_base: BTreeMap::new(),
+            derived_columns: BTreeSet::new(),
         }
     }
 }
@@ -162,6 +164,7 @@ pub fn apply_study_metadata(table: CsvTable, metadata: &StudyMetadata) -> Applie
     let mut new_columns: BTreeMap<String, Vec<String>> = BTreeMap::new();
     let mut new_labels: BTreeMap<String, String> = BTreeMap::new();
     let mut new_upper: BTreeSet<String> = BTreeSet::new();
+    let mut derived_columns: BTreeSet<String> = BTreeSet::new();
 
     for item in metadata.items.values() {
         let id_upper = item.id.to_uppercase();
@@ -228,6 +231,7 @@ pub fn apply_study_metadata(table: CsvTable, metadata: &StudyMetadata) -> Applie
             if any_value {
                 new_upper.insert(base_upper.clone());
                 new_columns.insert(base_name.clone(), decoded_values);
+                derived_columns.insert(base_name.to_uppercase());
                 let base_label = strip_code_label(&item.label);
                 if !base_label.trim().is_empty() {
                     new_labels.insert(base_name.clone(), base_label);
@@ -261,6 +265,7 @@ pub fn apply_study_metadata(table: CsvTable, metadata: &StudyMetadata) -> Applie
     AppliedStudyMetadata {
         table,
         code_to_base,
+        derived_columns,
     }
 }
 

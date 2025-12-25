@@ -38,7 +38,7 @@ pub(super) fn process_ex(
             if has_column(df, &name) {
                 let values = string_column(df, &name, Trim::Both)?
                     .into_iter()
-                    .map(|value| coerce_iso8601(&value))
+                    .map(|value| normalize_iso8601_value(&value))
                     .collect();
                 set_string_column(df, &name, values)?;
             }
@@ -66,9 +66,6 @@ pub(super) fn process_ex(
                 set_string_column(df, &name, values)?;
             }
         }
-    }
-    if let (Some(exseq), Some(usubjid)) = (col(domain, "EXSEQ"), col(domain, "USUBJID")) {
-        assign_sequence(df, &exseq, &usubjid)?;
     }
     for col_name in ["EXSTDY", "EXENDY"] {
         if let Some(name) = col(domain, col_name) {

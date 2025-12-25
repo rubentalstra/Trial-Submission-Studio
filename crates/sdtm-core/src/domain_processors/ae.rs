@@ -146,10 +146,6 @@ pub(super) fn process_ae(
         }
     }
 
-    if let (Some(seq), Some(usubjid)) = (col(domain, "AESEQ"), col(domain, "USUBJID")) {
-        assign_sequence(df, &seq, &usubjid)?;
-    }
-
     if let Some(aesintv) = col(domain, "AESINTV") {
         if has_column(df, &aesintv) {
             let yn_map = map_values([

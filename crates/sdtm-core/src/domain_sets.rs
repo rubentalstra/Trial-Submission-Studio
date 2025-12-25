@@ -30,7 +30,10 @@ pub fn build_report_domains(standards: &[Domain], frames: &[DomainFrame]) -> Res
         if known.contains(&code) {
             continue;
         }
-        if let Some(parent) = code.strip_prefix("SUPP") {
+        if let Some(parent) = code
+            .strip_prefix("SUPP")
+            .or_else(|| code.strip_prefix("SQ"))
+        {
             if parent.is_empty() {
                 continue;
             }
@@ -50,5 +53,7 @@ pub fn build_report_domains(standards: &[Domain], frames: &[DomainFrame]) -> Res
 
 pub fn is_supporting_domain(code: &str) -> bool {
     let upper = code.to_uppercase();
-    upper.starts_with("SUPP") || matches!(upper.as_str(), "RELREC" | "RELSPEC" | "RELSUB")
+    upper.starts_with("SUPP")
+        || upper.starts_with("SQ")
+        || matches!(upper.as_str(), "RELREC" | "RELSPEC" | "RELSUB")
 }

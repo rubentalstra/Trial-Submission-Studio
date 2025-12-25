@@ -29,9 +29,11 @@ fn builds_suppqual_for_any_domain() {
 
     let used = BTreeSet::new();
 
-    let result = build_suppqual(parent, suppqual, &df, None, &used, "STUDY1", None)
-        .expect("suppqual")
-        .expect("suppqual rows");
+    let result = build_suppqual(
+        parent, suppqual, &df, None, &used, "STUDY1", None, None, None,
+    )
+    .expect("suppqual")
+    .expect("suppqual rows");
 
     assert_eq!(result.domain_code, suppqual_domain_code("LB"));
     assert_eq!(result.data.height(), 1);

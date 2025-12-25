@@ -221,8 +221,5 @@ pub(super) fn process_lb(
             set_string_column(df, &lbstresu, stresu)?;
         }
     }
-    if let (Some(lbseq), Some(usubjid)) = (col(domain, "LBSEQ"), col(domain, "USUBJID")) {
-        assign_sequence(df, &lbseq, &usubjid)?;
-    }
     Ok(())
 }

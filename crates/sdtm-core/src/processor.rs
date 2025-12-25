@@ -1,21 +1,16 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use anyhow::{Result, anyhow};
-use polars::prelude::{AnyValue, DataFrame, NamedFrom, Series};
+use polars::prelude::{AnyValue, Column, DataFrame, NamedFrom, Series};
+use tracing::warn;
 
 use sdtm_model::{ControlledTerminology, Domain, VariableType};
 
+use crate::data_utils::any_to_string;
 use crate::domain_processors;
 use crate::domain_utils::{infer_seq_column, standard_columns};
 use crate::frame::DomainFrame;
 use crate::processing_context::ProcessingContext;
-fn any_to_string(value: AnyValue) -> String {
-    match value {
-        AnyValue::String(value) => value.to_string(),
-        AnyValue::Null => String::new(),
-        _ => value.to_string(),
-    }
-}
 
 fn sanitize_identifier(raw: &str) -> String {
     let trimmed = raw.trim();
@@ -179,7 +174,14 @@ fn normalize_ct_columns(
     Ok(())
 }
 
-pub fn apply_base_rules(domain: &Domain, df: &mut DataFrame, study_id: &str) -> Result<()> {
+pub fn apply_base_rules(
+    domain: &Domain,
+    df: &mut DataFrame,
+    ctx: &ProcessingContext,
+) -> Result<()> {
+    if !ctx.options.prefix_usubjid {
+        return Ok(());
+    }
     let columns = standard_columns(domain);
     let usubjid_col = match columns.usubjid.as_ref() {
         Some(name) => name.clone(),
@@ -195,6 +197,7 @@ pub fn apply_base_rules(domain: &Domain, df: &mut DataFrame, study_id: &str) -> 
         .and_then(|name| df.column(name).ok())
         .cloned();
     let mut updated = Vec::with_capacity(df.height());
+    let mut changed = false;
 
     for idx in 0..df.height() {
         let raw_usubjid = any_to_string(usubjid_series.get(idx).unwrap_or(AnyValue::Null));
@@ -202,7 +205,7 @@ pub fn apply_base_rules(domain: &Domain, df: &mut DataFrame, study_id: &str) -> 
         let study_value = study_series
             .as_ref()
             .map(|series| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
-            .unwrap_or_else(|| study_id.to_string());
+            .unwrap_or_else(|| ctx.study_id.to_string());
         let study_value = sanitize_identifier(&study_value);
         if !study_value.is_empty() && !usubjid.is_empty() {
             let prefix = format!("{study_value}-");
@@ -210,11 +213,20 @@ pub fn apply_base_rules(domain: &Domain, df: &mut DataFrame, study_id: &str) -> 
                 usubjid = format!("{prefix}{usubjid}");
             }
         }
+        if usubjid != raw_usubjid {
+            changed = true;
+        }
         updated.push(usubjid);
     }
 
     let new_series = Series::new(usubjid_col.into(), updated);
     df.with_column(new_series)?;
+    if changed && ctx.options.warn_on_rewrite {
+        warn!(
+            domain = %domain.code,
+            "USUBJID values updated with study prefix"
+        );
+    }
     Ok(())
 }
 
@@ -228,15 +240,10 @@ pub fn process_domain_with_context(
     df: &mut DataFrame,
     ctx: &ProcessingContext,
 ) -> Result<()> {
-    apply_base_rules(domain, df, ctx.study_id)?;
+    apply_base_rules(domain, df, ctx)?;
     domain_processors::process_domain(domain, df, ctx)?;
     normalize_ct_columns(domain, df, ctx)?;
-    let columns = standard_columns(domain);
-    if let (Some(seq_col), Some(usubjid_col)) = (infer_seq_column(domain), columns.usubjid) {
-        if needs_sequence_assignment(df, &seq_col, &usubjid_col)? {
-            assign_sequence(df, &seq_col, &usubjid_col)?;
-        }
-    }
+    maybe_assign_sequence(domain, df, ctx, None)?;
     Ok(())
 }
 
@@ -246,17 +253,10 @@ pub fn process_domain_with_context_and_tracker(
     ctx: &ProcessingContext,
     seq_tracker: Option<&mut BTreeMap<String, i64>>,
 ) -> Result<()> {
-    apply_base_rules(domain, df, ctx.study_id)?;
+    apply_base_rules(domain, df, ctx)?;
     domain_processors::process_domain(domain, df, ctx)?;
     normalize_ct_columns(domain, df, ctx)?;
-    let columns = standard_columns(domain);
-    if let (Some(seq_col), Some(usubjid_col)) = (infer_seq_column(domain), columns.usubjid) {
-        if let Some(tracker) = seq_tracker {
-            assign_sequence_with_tracker(df, &seq_col, &usubjid_col, tracker)?;
-        } else if needs_sequence_assignment(df, &seq_col, &usubjid_col)? {
-            assign_sequence(df, &seq_col, &usubjid_col)?;
-        }
-    }
+    maybe_assign_sequence(domain, df, ctx, seq_tracker)?;
     Ok(())
 }
 
@@ -289,11 +289,42 @@ pub fn process_domains(
     process_domains_with_context(domains, frames, &ctx)
 }
 
-fn assign_sequence(df: &mut DataFrame, seq_column: &str, group_column: &str) -> Result<()> {
+fn maybe_assign_sequence(
+    domain: &Domain,
+    df: &mut DataFrame,
+    ctx: &ProcessingContext,
+    seq_tracker: Option<&mut BTreeMap<String, i64>>,
+) -> Result<()> {
+    if !ctx.options.assign_sequence {
+        return Ok(());
+    }
+    let columns = standard_columns(domain);
+    let (Some(seq_col), Some(usubjid_col)) = (infer_seq_column(domain), columns.usubjid) else {
+        return Ok(());
+    };
+    if !needs_sequence_assignment(df, &seq_col, &usubjid_col)? {
+        return Ok(());
+    }
+    if let Some(tracker) = seq_tracker {
+        assign_sequence_with_tracker(domain, df, &seq_col, &usubjid_col, tracker, ctx)?;
+    } else {
+        assign_sequence(domain, df, &seq_col, &usubjid_col, ctx)?;
+    }
+    Ok(())
+}
+
+fn assign_sequence(
+    domain: &Domain,
+    df: &mut DataFrame,
+    seq_column: &str,
+    group_column: &str,
+    ctx: &ProcessingContext,
+) -> Result<()> {
     let group_series = match df.column(group_column) {
         Ok(series) => series.clone(),
         Err(_) => return Ok(()),
     };
+    let had_existing = has_existing_sequence(df, seq_column);
     let mut counters: BTreeMap<String, i64> = BTreeMap::new();
     let mut values: Vec<Option<i64>> = Vec::with_capacity(df.height());
 
@@ -311,14 +342,23 @@ fn assign_sequence(df: &mut DataFrame, seq_column: &str, group_column: &str) -> 
 
     let series = Series::new(seq_column.into(), values);
     df.with_column(series)?;
+    if had_existing && ctx.options.warn_on_rewrite {
+        warn!(
+            domain = %domain.code,
+            sequence = %seq_column,
+            "Sequence values recalculated"
+        );
+    }
     Ok(())
 }
 
 fn assign_sequence_with_tracker(
+    domain: &Domain,
     df: &mut DataFrame,
     seq_column: &str,
     group_column: &str,
     tracker: &mut BTreeMap<String, i64>,
+    ctx: &ProcessingContext,
 ) -> Result<()> {
     if df.height() == 0 {
         return Ok(());
@@ -328,6 +368,10 @@ fn assign_sequence_with_tracker(
         Err(_) => return Ok(()),
     };
     let seq_series = df.column(seq_column).ok().cloned();
+    let had_existing = seq_series
+        .as_ref()
+        .map(|series| column_has_values(series))
+        .unwrap_or(false);
     let mut values: Vec<Option<i64>> = Vec::with_capacity(df.height());
     for idx in 0..df.height() {
         let key = any_to_string(group_series.get(idx).unwrap_or(AnyValue::Null));
@@ -356,6 +400,13 @@ fn assign_sequence_with_tracker(
     }
     let series = Series::new(seq_column.into(), values);
     df.with_column(series)?;
+    if had_existing && ctx.options.warn_on_rewrite {
+        warn!(
+            domain = %domain.code,
+            sequence = %seq_column,
+            "Sequence values recalculated with tracker"
+        );
+    }
     Ok(())
 }
 
@@ -394,4 +445,21 @@ fn needs_sequence_assignment(df: &DataFrame, seq_column: &str, group_column: &st
         }
     }
     Ok(!has_value)
+}
+
+fn has_existing_sequence(df: &DataFrame, seq_column: &str) -> bool {
+    let Ok(series) = df.column(seq_column) else {
+        return false;
+    };
+    column_has_values(series)
+}
+
+fn column_has_values(series: &Column) -> bool {
+    for idx in 0..series.len() {
+        let value = any_to_string(series.get(idx).unwrap_or(AnyValue::Null));
+        if !value.trim().is_empty() {
+            return true;
+        }
+    }
+    false
 }

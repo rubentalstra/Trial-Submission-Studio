@@ -108,6 +108,7 @@ const RULE_DATATYPE_MISMATCH: &str = "SD1230";
 const RULE_LENGTH_EXCEEDED: &str = "SD1231";
 const RULE_CT_NON_EXTENSIBLE: &str = "CT2001";
 const RULE_CT_EXTENSIBLE: &str = "CT2002";
+const RULE_TESTCD_INVALID: &str = "SDTMIG_TESTCD";
 
 pub fn validate_domain(
     domain: &Domain,
@@ -131,6 +132,9 @@ pub fn validate_domain(
             issues.push(issue);
         }
         if let Some(issue) = length_issue(domain, variable, df, column, &p21_lookup) {
+            issues.push(issue);
+        }
+        if let Some(issue) = test_code_issue(domain, variable, df, column, &p21_lookup) {
             issues.push(issue);
         }
         if let Some(ct_registry) = ctx.ct_registry {
@@ -398,6 +402,78 @@ fn length_issue(
         Some(over),
         None,
     ))
+}
+
+fn test_code_issue(
+    _domain: &Domain,
+    variable: &Variable,
+    df: &DataFrame,
+    column: &str,
+    p21_lookup: &BTreeMap<String, &P21Rule>,
+) -> Option<ConformanceIssue> {
+    if !is_testcd_variable(&variable.name) {
+        return None;
+    }
+    let series = df.column(column).ok()?;
+    let mut invalid = 0u64;
+    let mut examples = BTreeSet::new();
+    for idx in 0..df.height() {
+        let value = any_to_string(series.get(idx).unwrap_or(AnyValue::Null));
+        let trimmed = value.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if is_valid_test_code(trimmed) {
+            continue;
+        }
+        invalid += 1;
+        if examples.len() < 5 {
+            examples.insert(trimmed.to_string());
+        }
+    }
+    if invalid == 0 {
+        return None;
+    }
+    let mut example_list: Vec<String> = examples.into_iter().collect();
+    example_list.sort();
+    let examples = example_list.join(", ");
+    let base = "Invalid TESTCD/QNAM value (must be <=8 chars, start with a letter or underscore, and contain only letters, numbers, or underscores)";
+    let mut message = format!("{base}: {} has {invalid} invalid value(s)", variable.name);
+    if !examples.is_empty() {
+        message.push_str(&format!(" examples: {}", examples));
+    }
+    Some(issue_from_rule(
+        RULE_TESTCD_INVALID,
+        p21_lookup,
+        IssueSeverity::Error,
+        message,
+        Some(variable.name.clone()),
+        Some(invalid),
+        None,
+    ))
+}
+
+fn is_testcd_variable(name: &str) -> bool {
+    let upper = name.to_uppercase();
+    upper == "QNAM" || upper.ends_with("TESTCD")
+}
+
+fn is_valid_test_code(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.is_empty() || trimmed.chars().count() > 8 {
+        return false;
+    }
+    let mut chars = trimmed.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    if first.is_ascii_digit() {
+        return false;
+    }
+    if !first.is_ascii_alphanumeric() && first != '_' {
+        return false;
+    }
+    chars.all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
 }
 
 fn ct_issue(

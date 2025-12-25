@@ -37,9 +37,6 @@ pub(super) fn process_cm(
     } else {
         deduplicate(df, &df.get_column_names_owned())?;
     }
-    if let (Some(cmseq), Some(usubjid)) = (col(domain, "CMSEQ"), col(domain, "USUBJID")) {
-        assign_sequence(df, &cmseq, &usubjid)?;
-    }
     if let Some(cmdostxt) = col(domain, "CMDOSTXT") {
         if has_column(df, &cmdostxt) {
             let values = string_column(df, &cmdostxt, Trim::Both)?
@@ -136,8 +133,5 @@ pub(super) fn process_cm(
         }
     }
     deduplicate(df, &df.get_column_names_owned())?;
-    if let (Some(cmseq), Some(usubjid)) = (col(domain, "CMSEQ"), col(domain, "USUBJID")) {
-        assign_sequence(df, &cmseq, &usubjid)?;
-    }
     Ok(())
 }

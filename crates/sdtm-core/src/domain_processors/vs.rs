@@ -219,9 +219,6 @@ pub(super) fn process_vs(
             set_f64_column(df, &vsstresn, numeric_vals)?;
         }
     }
-    if let (Some(vsseq), Some(usubjid)) = (col(domain, "VSSEQ"), col(domain, "USUBJID")) {
-        assign_sequence(df, &vsseq, &usubjid)?;
-    }
     if let Some(vslobxfl) = col(domain, "VSLOBXFL") {
         if let (Some(usubjid), Some(vstestcd)) = (col(domain, "USUBJID"), col(domain, "VSTESTCD")) {
             if has_column(df, &vslobxfl) && has_column(df, &usubjid) && has_column(df, &vstestcd) {

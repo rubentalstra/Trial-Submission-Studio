@@ -94,10 +94,7 @@ pub(super) fn process_dm(
     ] {
         if let Some(name) = col(domain, date_col) {
             if has_column(df, &name) {
-                let values = string_column(df, &name, Trim::Both)?
-                    .into_iter()
-                    .map(|value| value.split('T').next().unwrap_or("").to_string())
-                    .collect();
+                let values = string_column(df, &name, Trim::Both)?;
                 set_string_column(df, &name, values)?;
             }
         }

@@ -6,13 +6,13 @@ use comfy_table::Table;
 use polars::prelude::DataFrame;
 
 use sdtm_core::{
-    DomainFrame, ProcessingContext, build_domain_frame, build_mapped_domain_frame,
-    build_relationship_frames, build_report_domains, build_suppqual, dedupe_frames_by_identifiers,
-    fill_missing_test_fields, insert_frame, is_supporting_domain,
+    DomainFrame, ProcessingContext, ProcessingOptions, build_domain_frame,
+    build_mapped_domain_frame, build_relationship_frames, build_report_domains, build_suppqual,
+    dedupe_frames_by_identifiers, fill_missing_test_fields, insert_frame, is_supporting_domain,
     process_domain_with_context_and_tracker,
 };
 use sdtm_ingest::{
-    AppliedStudyMetadata, StudyMetadata, apply_study_metadata, discover_domain_files,
+    AppliedStudyMetadata, CsvTable, StudyMetadata, apply_study_metadata, discover_domain_files,
     list_csv_files, load_study_metadata, read_csv_schema, read_csv_table,
 };
 use sdtm_map::merge_mappings;
@@ -128,7 +128,14 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
         BTreeSet::new()
     };
 
-    let ctx = ProcessingContext::new(&study_id).with_ct_registry(&ct_registry);
+    let options = ProcessingOptions {
+        prefix_usubjid: !args.no_usubjid_prefix,
+        assign_sequence: !args.no_auto_seq,
+        warn_on_rewrite: true,
+    };
+    let ctx = ProcessingContext::new(&study_id)
+        .with_ct_registry(&ct_registry)
+        .with_options(options);
     let suppqual_domain = standards_map
         .get("SUPPQUAL")
         .ok_or_else(|| anyhow!("missing SUPPQUAL metadata"))?;
@@ -155,20 +162,32 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
                 }
             };
             *input_counts.entry(domain_key.clone()).or_insert(0) += raw_table.rows.len();
-            let source = match build_domain_frame(&raw_table, domain_code) {
+            let AppliedStudyMetadata {
+                table,
+                code_to_base,
+                derived_columns,
+            } = if study_metadata.is_empty() {
+                AppliedStudyMetadata::new(raw_table)
+            } else {
+                apply_study_metadata(raw_table, &study_metadata)
+            };
+            let source = match build_domain_frame(&table, domain_code) {
                 Ok(frame) => frame,
                 Err(error) => {
                     errors.push(format!("{}: {error}", path.display()));
                     continue;
                 }
             };
-            let AppliedStudyMetadata {
-                table,
-                code_to_base,
-            } = if study_metadata.is_empty() {
-                AppliedStudyMetadata::new(raw_table)
+            let label_map = column_label_map(&table);
+            let label_map_ref = if label_map.is_empty() {
+                None
             } else {
-                apply_study_metadata(raw_table, &study_metadata)
+                Some(&label_map)
+            };
+            let derived_ref = if derived_columns.is_empty() {
+                None
+            } else {
+                Some(&derived_columns)
             };
             let mapped_result = match build_mapped_domain_frame(&table, domain, &study_id) {
                 Ok(result) => result,
@@ -210,6 +229,8 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
                 &used,
                 &study_id,
                 Some(&global_suppqual_exclusions),
+                label_map_ref,
+                derived_ref,
             ) {
                 Ok(Some(result)) => {
                     suppqual_frames.push(DomainFrame {
@@ -489,6 +510,21 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
         define_xml,
         has_errors,
     })
+}
+
+fn column_label_map(table: &CsvTable) -> BTreeMap<String, String> {
+    let mut labels = BTreeMap::new();
+    let Some(label_row) = table.labels.as_ref() else {
+        return labels;
+    };
+    for (header, label) in table.headers.iter().zip(label_row.iter()) {
+        let trimmed = label.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        labels.insert(header.to_uppercase(), trimmed.to_string());
+    }
+    labels
 }
 
 fn format_outputs(format: OutputFormatArg) -> Vec<OutputFormat> {

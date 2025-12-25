@@ -12,7 +12,16 @@ pub struct SuppqualResult {
 }
 
 pub fn suppqual_domain_code(parent_domain: &str) -> String {
-    format!("SUPP{}", parent_domain.to_uppercase())
+    let parent = parent_domain.to_uppercase();
+    let candidate = format!("SUPP{parent}");
+    if candidate.len() <= 8 {
+        return candidate;
+    }
+    let short = format!("SQ{parent}");
+    if short.len() <= 8 {
+        return short;
+    }
+    short.chars().take(8).collect()
 }
 
 fn ordered_variable_names(domain: &Domain) -> Vec<String> {
@@ -165,6 +174,8 @@ pub fn build_suppqual(
     used_source_columns: &BTreeSet<String>,
     study_id: &str,
     exclusion_columns: Option<&BTreeSet<String>>,
+    source_labels: Option<&BTreeMap<String, String>>,
+    derived_columns: Option<&BTreeSet<String>>,
 ) -> Result<Option<SuppqualResult>> {
     let parent_domain_code = parent_domain.code.to_uppercase();
     let ordered_columns = ordered_variable_names(suppqual_domain);
@@ -267,6 +278,8 @@ pub fn build_suppqual(
             .get(col)
             .cloned()
             .unwrap_or_else(|| sanitize_qnam(col));
+        let qlabel = qlabel_for_column(col, source_labels);
+        let qorig = qorig_for_column(col, derived_columns);
         for idx in 0..row_count {
             let raw_val = strip_wrapping_quotes(&column_value(source_df, col, idx));
             if raw_val.is_empty() {
@@ -329,9 +342,9 @@ pub fn build_suppqual(
             push_value(suppqual_cols.idvar.as_deref(), idvar_value);
             push_value(suppqual_cols.idvarval.as_deref(), idvarval);
             push_value(suppqual_cols.qnam.as_deref(), qnam.clone());
-            push_value(suppqual_cols.qlabel.as_deref(), qnam.clone());
+            push_value(suppqual_cols.qlabel.as_deref(), qlabel.clone());
             push_value(suppqual_cols.qval.as_deref(), raw_val);
-            push_value(suppqual_cols.qorig.as_deref(), "CRF".to_string());
+            push_value(suppqual_cols.qorig.as_deref(), qorig.clone());
             push_value(suppqual_cols.qeval.as_deref(), String::new());
         }
     }
@@ -363,4 +376,25 @@ pub fn build_suppqual(
         data,
         used_columns: extra_cols,
     }))
+}
+
+fn qlabel_for_column(name: &str, labels: Option<&BTreeMap<String, String>>) -> String {
+    let label = labels
+        .and_then(|map| map.get(&name.to_uppercase()))
+        .map(|value| value.trim())
+        .filter(|value| !value.is_empty())
+        .map(|value| value.to_string())
+        .unwrap_or_else(|| name.to_string());
+    label.chars().take(40).collect()
+}
+
+fn qorig_for_column(name: &str, derived_columns: Option<&BTreeSet<String>>) -> String {
+    if derived_columns
+        .map(|set| set.contains(&name.to_uppercase()))
+        .unwrap_or(false)
+    {
+        "Derived".to_string()
+    } else {
+        "CRF".to_string()
+    }
 }

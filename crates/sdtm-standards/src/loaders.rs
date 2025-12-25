@@ -148,6 +148,9 @@ fn build_domains(
         if dataset.is_empty() || var_name.is_empty() {
             continue;
         }
+        let order = row
+            .get("Variable Order")
+            .and_then(|value| value.trim().parse::<u32>().ok());
         let variable = Variable {
             name: var_name,
             label: row.get("Variable Label").filter(|v| !v.is_empty()).cloned(),
@@ -159,13 +162,15 @@ fn build_domains(
                 .get("CDISC CT Codelist Code(s)")
                 .filter(|v| !v.is_empty())
                 .cloned(),
+            order,
         };
         grouped.entry(dataset).or_default().push(variable);
     }
 
     let mut domains = Vec::new();
-    for (code, vars) in grouped {
+    for (code, mut vars) in grouped {
         let metadata = meta.get(&code);
+        vars.sort_by(|left, right| compare_variable_order(left, right));
         domains.push(Domain {
             code: code.clone(),
             description: metadata.and_then(|m| m.label.clone()),
@@ -178,6 +183,15 @@ fn build_domains(
     }
     domains.sort_by(|a, b| a.code.cmp(&b.code));
     Ok(domains)
+}
+
+fn compare_variable_order(left: &Variable, right: &Variable) -> std::cmp::Ordering {
+    match (left.order, right.order) {
+        (Some(a), Some(b)) => a.cmp(&b),
+        (Some(_), None) => std::cmp::Ordering::Less,
+        (None, Some(_)) => std::cmp::Ordering::Greater,
+        (None, None) => left.name.to_uppercase().cmp(&right.name.to_uppercase()),
+    }
 }
 
 pub fn load_ct_registry(ct_dir: &Path) -> Result<CtRegistry> {

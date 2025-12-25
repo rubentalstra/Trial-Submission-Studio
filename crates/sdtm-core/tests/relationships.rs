@@ -30,18 +30,18 @@ fn builds_relrec_from_domain_frames() {
         .find(|domain| domain.code == "LB")
         .expect("LB domain");
     let ds_usubjid = column_name(ds_domain, "USUBJID").expect("DS USUBJID");
-    let ds_seq = column_name(ds_domain, "DSSEQ").expect("DSSEQ");
+    let ds_grpid = column_name(ds_domain, "DSGRPID").expect("DSGRPID");
     let lb_usubjid = column_name(lb_domain, "USUBJID").expect("LB USUBJID");
-    let lb_seq = column_name(lb_domain, "LBSEQ").expect("LBSEQ");
+    let lb_grpid = column_name(lb_domain, "LBGRPID").expect("LBGRPID");
 
     let ds = DataFrame::new(vec![
         Column::new(ds_usubjid.clone().into(), ["SUBJ1", "SUBJ1"]),
-        Column::new(ds_seq.clone().into(), [1_i64, 2_i64]),
+        Column::new(ds_grpid.clone().into(), ["GRP1", "GRP1"]),
     ])
     .expect("ds");
     let lb = DataFrame::new(vec![
         Column::new(lb_usubjid.clone().into(), ["SUBJ1"]),
-        Column::new(lb_seq.clone().into(), [5_i64]),
+        Column::new(lb_grpid.clone().into(), ["GRP1"]),
     ])
     .expect("lb");
 
@@ -60,13 +60,21 @@ fn builds_relrec_from_domain_frames() {
         .expect("relrec")
         .expect("relrec data");
 
-    assert_eq!(relrec_frame.data.height(), 2);
+    assert_eq!(relrec_frame.data.height(), 3);
     let rdomain_col = column_name(relrec, "RDOMAIN").expect("RDOMAIN");
     let rdomain = relrec_frame.data.column(&rdomain_col).expect("RDOMAIN");
     let values: BTreeSet<String> = (0..relrec_frame.data.height())
         .map(|idx| any_to_string(rdomain.get(idx).unwrap_or(AnyValue::Null)))
         .collect();
     assert_eq!(values, BTreeSet::from(["DS".to_string(), "LB".to_string()]));
+
+    let reltype_col = column_name(relrec, "RELTYPE").expect("RELTYPE");
+    let reltype = relrec_frame.data.column(&reltype_col).expect("RELTYPE");
+    let reltypes: Vec<String> = (0..relrec_frame.data.height())
+        .map(|idx| any_to_string(reltype.get(idx).unwrap_or(AnyValue::Null)))
+        .collect();
+    assert!(reltypes.iter().any(|value| value == "ONE"));
+    assert!(reltypes.iter().any(|value| value == "MANY"));
 }
 
 #[test]

@@ -12,9 +12,6 @@ pub(super) fn process_pr(
     ctx: &ProcessingContext,
 ) -> Result<()> {
     drop_placeholder_rows(domain, df, ctx)?;
-    if let (Some(prseq), Some(usubjid)) = (col(domain, "PRSEQ"), col(domain, "USUBJID")) {
-        assign_sequence(df, &prseq, &usubjid)?;
-    }
     for visit_col in ["VISIT", "VISITNUM"] {
         if let Some(name) = col(domain, visit_col) {
             if has_column(df, &name) {

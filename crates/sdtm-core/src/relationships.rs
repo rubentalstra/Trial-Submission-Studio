@@ -5,15 +5,45 @@ use polars::prelude::{AnyValue, Column, DataFrame, NamedFrom, Series};
 
 use sdtm_model::{Domain, VariableType};
 
-use crate::domain_utils::{StandardColumns, infer_seq_column, refid_candidates, standard_columns};
+use crate::domain_utils::{StandardColumns, refid_candidates, standard_columns};
 use crate::frame::DomainFrame;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+enum LinkKind {
+    LnkId,
+    LnkGrp,
+    GrpId,
+}
+
+impl LinkKind {
+    fn suffix(self) -> &'static str {
+        match self {
+            LinkKind::LnkId => "LNKID",
+            LinkKind::LnkGrp => "LNKGRP",
+            LinkKind::GrpId => "GRPID",
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
-struct EligibleDomain<'a> {
-    code: String,
-    data: &'a DataFrame,
+struct LinkIdentifier {
+    name: String,
+    kind: LinkKind,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+struct RelrecKey {
+    kind: LinkKind,
+    usubjid: String,
+    idvarval: String,
+}
+
+#[derive(Debug, Clone)]
+struct RelrecMember {
+    domain_code: String,
+    usubjid: String,
     idvar: String,
-    usubjid_col: String,
+    idvarval: String,
 }
 
 pub fn build_relrec(
@@ -23,7 +53,7 @@ pub fn build_relrec(
     study_id: &str,
 ) -> Result<Option<DomainFrame>> {
     let domain_map = build_domain_map(domains);
-    let mut eligible: Vec<EligibleDomain<'_>> = Vec::new();
+    let mut groups: BTreeMap<RelrecKey, Vec<RelrecMember>> = BTreeMap::new();
     for frame in domain_frames {
         if frame.data.height() == 0 {
             continue;
@@ -45,80 +75,57 @@ pub fn build_relrec(
         if frame.data.column(&usubjid_col).is_err() {
             continue;
         }
-        if let Some(idvar) = infer_idvar(domain_def, &frame.data) {
-            eligible.push(EligibleDomain {
-                code: frame.domain_code.to_uppercase(),
-                data: &frame.data,
-                idvar,
-                usubjid_col,
+        let Some(link) = infer_link_idvar(domain_def, &frame.data) else {
+            continue;
+        };
+        for idx in 0..frame.data.height() {
+            let usubjid = column_value(&frame.data, &usubjid_col, idx)
+                .trim()
+                .to_string();
+            let idvarval = column_value(&frame.data, &link.name, idx)
+                .trim()
+                .to_string();
+            if idvarval.is_empty() {
+                continue;
+            }
+            let key = RelrecKey {
+                kind: link.kind,
+                usubjid: usubjid.clone(),
+                idvarval: idvarval.clone(),
+            };
+            groups.entry(key).or_default().push(RelrecMember {
+                domain_code: frame.domain_code.to_uppercase(),
+                usubjid,
+                idvar: link.name.clone(),
+                idvarval,
             });
         }
     }
 
-    if eligible.is_empty() {
-        return Ok(None);
-    }
-
-    let reference_code = pick_reference_domain(&eligible);
-    let reference = eligible
-        .iter()
-        .find(|entry| entry.code == reference_code)
-        .expect("reference domain");
-    let ref_seq_map = build_seq_map(reference.data, &reference.usubjid_col, &reference.idvar);
-
     let mut records: Vec<BTreeMap<String, String>> = Vec::new();
-    for entry in &eligible {
-        if entry.code == reference_code {
+    let mut rel_counter = 0usize;
+    for (_key, members) in groups {
+        let mut domain_counts: BTreeMap<String, usize> = BTreeMap::new();
+        for member in &members {
+            *domain_counts.entry(member.domain_code.clone()).or_insert(0) += 1;
+        }
+        if domain_counts.len() < 2 {
             continue;
         }
-        for idx in 0..entry.data.height() {
-            let usubjid = column_value(entry.data, &entry.usubjid_col, idx)
-                .trim()
-                .to_string();
-            if usubjid.is_empty() {
-                continue;
-            }
-            let idvarval = match entry.data.column(&entry.idvar) {
-                Ok(series) => {
-                    stringify_idvarval(series.get(idx).unwrap_or(AnyValue::Null), idx + 1)
-                }
-                Err(_) => stringify_idvarval(AnyValue::Null, idx + 1),
-            };
-            let relid = format!("{}_{}_{}_{}", entry.code, reference_code, usubjid, idvarval);
+        rel_counter += 1;
+        let relid = format!("REL{:05}", rel_counter);
+        for member in members {
+            let count = domain_counts.get(&member.domain_code).copied().unwrap_or(1);
+            let reltype = if count > 1 { Some("MANY") } else { Some("ONE") };
             records.push(relrec_record(
                 relrec_domain,
                 study_id,
-                &entry.code,
-                &usubjid,
-                &entry.idvar,
-                &idvarval,
+                &member.domain_code,
+                &member.usubjid,
+                &member.idvar,
+                &member.idvarval,
                 &relid,
-            ));
-            if let Some(seq) = ref_seq_map.get(&usubjid) {
-                records.push(relrec_record(
-                    relrec_domain,
-                    study_id,
-                    &reference.code,
-                    &usubjid,
-                    &reference.idvar,
-                    seq,
-                    &relid,
-                ));
-            }
-        }
-    }
-
-    if records.is_empty() {
-        for (usubjid, seq) in ref_seq_map {
-            let relid = format!("{}_ONLY_{}", reference_code, usubjid);
-            records.push(relrec_record(
-                relrec_domain,
-                study_id,
-                &reference.code,
-                &usubjid,
-                &reference.idvar,
-                &seq,
-                &relid,
+                reltype,
             ));
         }
     }
@@ -132,6 +139,45 @@ pub fn build_relrec(
         domain_code: relrec_domain.code.clone(),
         data,
     }))
+}
+
+fn infer_link_idvar(domain: &Domain, df: &DataFrame) -> Option<LinkIdentifier> {
+    for kind in [LinkKind::LnkId, LinkKind::LnkGrp, LinkKind::GrpId] {
+        if let Some(name) = find_suffix_column(domain, df, kind.suffix()) {
+            return Some(LinkIdentifier { name, kind });
+        }
+    }
+    None
+}
+
+fn find_suffix_column(domain: &Domain, df: &DataFrame, suffix: &str) -> Option<String> {
+    let mut candidates: Vec<String> = domain
+        .variables
+        .iter()
+        .map(|var| var.name.clone())
+        .filter(|name| name.to_uppercase().ends_with(suffix))
+        .filter(|name| df.column(name).is_ok())
+        .collect();
+    candidates.sort_by(|a, b| a.to_uppercase().cmp(&b.to_uppercase()));
+    for name in candidates {
+        if column_has_values(df, &name) {
+            return Some(name);
+        }
+    }
+    None
+}
+
+fn column_has_values(df: &DataFrame, name: &str) -> bool {
+    let Ok(series) = df.column(name) else {
+        return false;
+    };
+    for idx in 0..df.height() {
+        let value = any_to_string(series.get(idx).unwrap_or(AnyValue::Null));
+        if !value.trim().is_empty() {
+            return true;
+        }
+    }
+    false
 }
 
 pub fn build_relationship_frames(
@@ -262,81 +308,6 @@ pub fn build_relsub(
     }))
 }
 
-fn infer_idvar(domain: &Domain, df: &DataFrame) -> Option<String> {
-    if let Some(seq_col) = infer_seq_column(domain) {
-        if df.column(&seq_col).is_ok() {
-            return Some(seq_col);
-        }
-    }
-    let mut candidates: Vec<String> = domain
-        .variables
-        .iter()
-        .map(|var| var.name.clone())
-        .filter(|name| {
-            let upper = name.to_uppercase();
-            upper.ends_with("SEQ") && upper != "SEQ"
-        })
-        .filter(|name| df.column(name).is_ok())
-        .collect();
-    candidates.sort_by(|a, b| a.to_uppercase().cmp(&b.to_uppercase()));
-    if let Some(name) = candidates.first() {
-        return Some(name.clone());
-    }
-    let mut grp_candidates: Vec<String> = domain
-        .variables
-        .iter()
-        .map(|var| var.name.clone())
-        .filter(|name| {
-            let upper = name.to_uppercase();
-            upper.ends_with("GRPID") && upper != "GRPID"
-        })
-        .filter(|name| df.column(name).is_ok())
-        .collect();
-    grp_candidates.sort_by(|a, b| a.to_uppercase().cmp(&b.to_uppercase()));
-    grp_candidates.first().cloned()
-}
-
-fn pick_reference_domain(eligible: &[EligibleDomain<'_>]) -> String {
-    let mut scores: Vec<(usize, String)> = Vec::new();
-    for entry in eligible {
-        let subject_map = build_seq_map(entry.data, &entry.usubjid_col, &entry.idvar);
-        scores.push((subject_map.len(), entry.code.clone()));
-    }
-    scores.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.cmp(&b.1)));
-    scores
-        .first()
-        .map(|(_, code)| code.clone())
-        .unwrap_or_else(|| "RELREC".to_string())
-}
-
-fn build_seq_map(df: &DataFrame, usubjid_col: &str, seq_col: &str) -> BTreeMap<String, String> {
-    if df.column(seq_col).is_err() || df.column(usubjid_col).is_err() {
-        return BTreeMap::new();
-    }
-    let mut map: BTreeMap<String, f64> = BTreeMap::new();
-    for idx in 0..df.height() {
-        let usubjid = column_value(df, usubjid_col, idx).trim().to_string();
-        if usubjid.is_empty() {
-            continue;
-        }
-        let raw = match df.column(seq_col) {
-            Ok(series) => series.get(idx).unwrap_or(AnyValue::Null),
-            Err(_) => AnyValue::Null,
-        };
-        let value = match any_to_f64(raw) {
-            Some(value) => value,
-            None => continue,
-        };
-        let entry = map.entry(usubjid).or_insert(value);
-        if value < *entry {
-            *entry = value;
-        }
-    }
-    map.into_iter()
-        .map(|(key, value)| (key, format_numeric(value)))
-        .collect()
-}
-
 fn relrec_record(
     relrec_domain: &Domain,
     study_id: &str,
@@ -345,6 +316,7 @@ fn relrec_record(
     idvar: &str,
     idvarval: &str,
     relid: &str,
+    reltype: Option<&str>,
 ) -> BTreeMap<String, String> {
     let mut record = BTreeMap::new();
     let columns = standard_columns(relrec_domain);
@@ -364,53 +336,12 @@ fn relrec_record(
         record.insert(name, idvarval.to_string());
     }
     if let Some(name) = columns.reltype {
-        record.insert(name, String::new());
+        record.insert(name, reltype.unwrap_or("").to_string());
     }
     if let Some(name) = columns.relid {
         record.insert(name, relid.to_string());
     }
     record
-}
-
-fn stringify_idvarval(value: AnyValue, fallback_index: usize) -> String {
-    if let Some(num) = any_to_f64(value.clone()) {
-        return format_numeric(num);
-    }
-    match value {
-        AnyValue::Null => fallback_index.to_string(),
-        AnyValue::String(value) => value.to_string(),
-        AnyValue::StringOwned(value) => value.to_string(),
-        _ => value.to_string(),
-    }
-}
-
-fn any_to_f64(value: AnyValue) -> Option<f64> {
-    match value {
-        AnyValue::Null => None,
-        AnyValue::Float32(value) => Some(value as f64),
-        AnyValue::Float64(value) => Some(value),
-        AnyValue::Int8(value) => Some(value as f64),
-        AnyValue::Int16(value) => Some(value as f64),
-        AnyValue::Int32(value) => Some(value as f64),
-        AnyValue::Int64(value) => Some(value as f64),
-        AnyValue::UInt8(value) => Some(value as f64),
-        AnyValue::UInt16(value) => Some(value as f64),
-        AnyValue::UInt32(value) => Some(value as f64),
-        AnyValue::UInt64(value) => Some(value as f64),
-        AnyValue::String(value) => value.trim().parse::<f64>().ok(),
-        AnyValue::StringOwned(value) => value.trim().parse::<f64>().ok(),
-        _ => None,
-    }
-}
-
-fn format_numeric(value: f64) -> String {
-    if value.is_nan() {
-        return String::new();
-    }
-    if value.fract() == 0.0 {
-        return format!("{}", value as i64);
-    }
-    value.to_string()
 }
 
 fn any_to_string(value: AnyValue) -> String {

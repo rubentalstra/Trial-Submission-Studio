@@ -31,6 +31,12 @@ pub struct StudyArgs {
 
     #[arg(long = "dry-run", default_value_t = false)]
     pub dry_run: bool,
+
+    #[arg(long = "no-usubjid-prefix", default_value_t = false)]
+    pub no_usubjid_prefix: bool,
+
+    #[arg(long = "no-auto-seq", default_value_t = false)]
+    pub no_auto_seq: bool,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
