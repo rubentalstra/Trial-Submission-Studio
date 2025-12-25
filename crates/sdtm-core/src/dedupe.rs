@@ -26,6 +26,13 @@ fn identifier_columns(domain: &Domain) -> Vec<String> {
     columns
 }
 
+fn is_generic_identifier(name: &str) -> bool {
+    matches!(
+        name.to_uppercase().as_str(),
+        "STUDYID" | "DOMAIN" | "RDOMAIN" | "USUBJID"
+    )
+}
+
 pub fn dedupe_frames_by_identifiers(
     frames: &mut [DomainFrame],
     standards_map: &BTreeMap<String, &Domain>,
@@ -44,9 +51,24 @@ pub fn dedupe_frames_by_identifiers(
         if keys.is_empty() {
             continue;
         }
+        if !should_dedupe(&frame.data, &keys) {
+            continue;
+        }
         dedupe_frame_by_keys(&mut frame.data, &keys)?;
     }
     Ok(())
+}
+
+fn should_dedupe(df: &DataFrame, keys: &[String]) -> bool {
+    let present: Vec<String> = keys
+        .iter()
+        .filter(|key| df.column(*key).is_ok())
+        .cloned()
+        .collect();
+    if present.is_empty() {
+        return false;
+    }
+    present.iter().any(|name| !is_generic_identifier(name))
 }
 
 fn dedupe_frame_by_keys(df: &mut DataFrame, keys: &[String]) -> Result<()> {
