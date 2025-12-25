@@ -54,7 +54,7 @@ pub(super) fn process_ie(
             let mut stresc_vals = string_column(df, &iestresc, Trim::Both)?;
             for idx in 0..df.height() {
                 if cat_vals[idx].eq_ignore_ascii_case("EXCLUSION")
-                    && !stresc_vals[idx].eq_ignore_ascii_case("Y")
+                    && stresc_vals[idx].trim().is_empty()
                 {
                     stresc_vals[idx] = "Y".to_string();
                 }

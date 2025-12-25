@@ -14,7 +14,7 @@ use crate::data_utils::{
 
 #[derive(Debug, Default, Clone)]
 struct LbWideGroup {
-    key: String,
+    base_key: String,
     test_col: Option<usize>,
     testcd_col: Option<usize>,
     orres_col: Option<usize>,
@@ -176,6 +176,7 @@ pub fn build_ie_wide_frame(
 }
 
 fn detect_lb_wide_groups(headers: &[String]) -> (BTreeMap<String, LbWideGroup>, BTreeSet<String>) {
+    let base_candidates = lb_base_candidates(headers);
     let mut groups: BTreeMap<String, LbWideGroup> = BTreeMap::new();
     let mut wide_columns = BTreeSet::new();
     for (idx, header) in headers.iter().enumerate() {
@@ -209,8 +210,9 @@ fn detect_lb_wide_groups(headers: &[String]) -> (BTreeMap<String, LbWideGroup>, 
                 key.truncate(key.len() - 2);
                 is_code = true;
             }
+            let base_key = lb_base_key(&key, &base_candidates);
             let entry = groups.entry(key.clone()).or_insert_with(|| LbWideGroup {
-                key,
+                base_key,
                 ..LbWideGroup::default()
             });
             if is_code {
@@ -244,12 +246,13 @@ fn detect_lb_wide_groups(headers: &[String]) -> (BTreeMap<String, LbWideGroup>, 
         if wide_columns.contains(&upper) || upper.contains('_') {
             continue;
         }
-        if let Some(stripped) = upper.strip_suffix("CD") {
-            if let Some((key, kind)) = parse_lb_suffix(stripped) {
-                let entry = groups.entry(key.clone()).or_insert_with(|| LbWideGroup {
-                    key,
-                    ..LbWideGroup::default()
-                });
+            if let Some(stripped) = upper.strip_suffix("CD") {
+                if let Some((key, kind)) = parse_lb_suffix(stripped) {
+                    let base_key = lb_base_key(&key, &base_candidates);
+                    let entry = groups.entry(key.clone()).or_insert_with(|| LbWideGroup {
+                        base_key,
+                        ..LbWideGroup::default()
+                    });
                 match kind {
                     LbSuffixKind::TestCd
                     | LbSuffixKind::Test
@@ -269,8 +272,9 @@ fn detect_lb_wide_groups(headers: &[String]) -> (BTreeMap<String, LbWideGroup>, 
             }
         }
         if let Some((key, kind)) = parse_lb_suffix(&upper) {
+            let base_key = lb_base_key(&key, &base_candidates);
             let entry = groups.entry(key.clone()).or_insert_with(|| LbWideGroup {
-                key,
+                base_key,
                 ..LbWideGroup::default()
             });
             match kind {
@@ -520,6 +524,75 @@ fn normalize_lb_key(value: &str) -> String {
         }
     }
     value.to_string()
+}
+
+fn strip_trailing_digits(value: &str) -> String {
+    let mut trimmed = value.to_string();
+    while trimmed
+        .chars()
+        .last()
+        .map(|ch| ch.is_ascii_digit())
+        .unwrap_or(false)
+    {
+        trimmed.pop();
+    }
+    if trimmed.is_empty() {
+        value.to_string()
+    } else {
+        trimmed
+    }
+}
+
+fn lb_base_candidates(headers: &[String]) -> BTreeSet<String> {
+    let mut bases = BTreeSet::new();
+    for header in headers {
+        let upper = header.to_uppercase();
+        for prefix in [
+            "TEST", "ORRES", "ORRESU", "ORRESUO", "ORNR", "RANGE", "CLSIG",
+        ] {
+            let prefix_tag = format!("{prefix}_");
+            if !upper.starts_with(&prefix_tag) {
+                continue;
+            }
+            let rest = &upper[prefix_tag.len()..];
+            let mut key = if prefix == "ORNR" {
+                if let Some(stripped) = rest.strip_suffix("_LOWER") {
+                    stripped.to_string()
+                } else if let Some(stripped) = rest.strip_suffix("_UPPER") {
+                    stripped.to_string()
+                } else {
+                    rest.to_string()
+                }
+            } else {
+                rest.to_string()
+            };
+            if matches!(prefix, "ORNR" | "RANGE") {
+                key = normalize_lb_key(&key);
+            }
+            if key.len() > 2 && key.ends_with("CD") {
+                key.truncate(key.len() - 2);
+            }
+            let base = strip_trailing_digits(&key);
+            bases.insert(base);
+            break;
+        }
+    }
+    bases
+}
+
+fn lb_base_key(value: &str, bases: &BTreeSet<String>) -> String {
+    let mut base = strip_trailing_digits(value);
+    if base.ends_with("OT") && base.len() > 2 {
+        let without_ot = base[..base.len() - 2].to_string();
+        if bases.contains(&without_ot) {
+            base = without_ot;
+        }
+    }
+    if base.is_empty() {
+        value.to_string()
+    } else {
+        base
+    }
 }
 
 fn source_is_ie_test(source: &Option<String>) -> bool {
@@ -1106,17 +1179,32 @@ fn expand_lb_wide(
             }
 
             total_rows += 1;
+            let label = group
+                .test_col
+                .and_then(|idx| table.headers.get(idx))
+                .and_then(|name| table_label(table, name))
+                .or_else(|| {
+                    group
+                        .orres_col
+                        .and_then(|idx| table.headers.get(idx))
+                        .and_then(|name| table_label(table, name))
+                })
+                .unwrap_or_default();
             let test_code = if !testcd_value.trim().is_empty() {
                 sanitize_test_code(testcd_value.trim())
             } else if !test_value.trim().is_empty() {
                 sanitize_test_code(test_value.trim())
+            } else if !label.trim().is_empty() {
+                sanitize_test_code(label.trim())
             } else {
-                sanitize_test_code(&group.key)
+                sanitize_test_code(&group.base_key)
             };
             let test_label = if !test_value.trim().is_empty() {
                 test_value.clone()
+            } else if !label.trim().is_empty() {
+                label.clone()
             } else {
-                group.key.clone()
+                group.base_key.clone()
             };
             let mut base_values: BTreeMap<String, String> = BTreeMap::new();
             for variable in &domain.variables {
