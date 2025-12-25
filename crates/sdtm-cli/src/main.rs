@@ -785,6 +785,13 @@ fn compact_key(value: &str) -> String {
         .collect()
 }
 
+fn is_yes_no_token(value: &str) -> bool {
+    matches!(
+        value.trim().to_uppercase().as_str(),
+        "Y" | "N" | "YES" | "NO" | "TRUE" | "FALSE" | "1" | "0"
+    )
+}
+
 fn resolve_ct_submission_value(ct: &ControlledTerminology, raw: &str) -> Option<String> {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
@@ -1094,6 +1101,71 @@ fn fill_missing_test_fields(
         }
         df.with_column(Series::new("DSDECOD".into(), decod_vals))?;
         df.with_column(Series::new("DSTERM".into(), term_vals))?;
+    } else if code == "EX" {
+        let mut extrt_vals = if let Ok(series) = df.column("EXTRT") {
+            (0..df.height())
+                .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
+                .collect::<Vec<_>>()
+        } else {
+            vec![String::new(); df.height()]
+        };
+        let mut standard_vars = BTreeSet::new();
+        for variable in &domain.variables {
+            standard_vars.insert(variable.name.to_uppercase());
+        }
+        let mut candidate_headers: Vec<String> = Vec::new();
+        if let Some(preferred) = mapping_source_for_target(mapping, "EXTRT") {
+            candidate_headers.push(preferred);
+        }
+        let keywords = ["TREAT", "DRUG", "THERAP", "INTERVENT"];
+        for header in &table.headers {
+            if standard_vars.contains(&header.to_uppercase()) {
+                continue;
+            }
+            let label = table_label(table, header).unwrap_or_default();
+            let mut hay = header.to_uppercase();
+            if !label.is_empty() {
+                hay.push(' ');
+                hay.push_str(&label.to_uppercase());
+            }
+            if keywords.iter().any(|kw| hay.contains(kw)) {
+                candidate_headers.push(header.clone());
+            }
+        }
+        for fallback in ["EventName", "ActivityName"] {
+            if table
+                .headers
+                .iter()
+                .any(|header| header.eq_ignore_ascii_case(fallback))
+            {
+                candidate_headers.push(fallback.to_string());
+            }
+        }
+        candidate_headers.sort();
+        candidate_headers.dedup();
+        let mut candidates: Vec<Vec<String>> = Vec::new();
+        for header in candidate_headers {
+            if let Some(values) = table_column_values(table, &header) {
+                if values.iter().any(|value| !value.trim().is_empty()) {
+                    candidates.push(values);
+                }
+            }
+        }
+        if !candidates.is_empty() {
+            for idx in 0..df.height() {
+                if !extrt_vals[idx].trim().is_empty() {
+                    continue;
+                }
+                for values in &candidates {
+                    let value = values.get(idx).map(|v| v.trim()).unwrap_or("");
+                    if !value.is_empty() {
+                        extrt_vals[idx] = value.to_string();
+                        break;
+                    }
+                }
+            }
+            df.with_column(Series::new("EXTRT".into(), extrt_vals))?;
+        }
     } else if code == "DA" {
         let ctdatest = ctx.resolve_ct(domain, "DATEST");
         let ctdatestcd = ctx.resolve_ct(domain, "DATESTCD");
@@ -1111,6 +1183,23 @@ fn fill_missing_test_fields(
                     candidate_headers.push(header.clone());
                 }
             }
+        }
+        let mut standard_vars = BTreeSet::new();
+        for variable in &domain.variables {
+            standard_vars.insert(variable.name.to_uppercase());
+        }
+        for header in &table.headers {
+            let upper = header.to_uppercase();
+            if !upper.starts_with("DA") {
+                continue;
+            }
+            if upper.ends_with("CD") {
+                continue;
+            }
+            if standard_vars.contains(&upper) {
+                continue;
+            }
+            candidate_headers.push(header.clone());
         }
         candidate_headers.sort();
         candidate_headers.dedup();
@@ -1285,9 +1374,20 @@ fn fill_missing_test_fields(
             } else {
                 vec![String::new(); df.height()]
             };
+            let orres_vals = if let Ok(series) = df.column("IEORRES") {
+                (0..df.height())
+                    .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
+                    .collect::<Vec<_>>()
+            } else {
+                vec![String::new(); df.height()]
+            };
             for idx in 0..df.height() {
+                let testcd_raw = ietestcd_vals[idx].trim();
+                let orres_raw = orres_vals.get(idx).map(|val| val.trim()).unwrap_or("");
                 let needs_test = ietest_vals[idx].trim().is_empty();
-                let needs_testcd = ietestcd_vals[idx].trim().is_empty();
+                let needs_testcd = testcd_raw.is_empty()
+                    || is_yes_no_token(testcd_raw)
+                    || (!orres_raw.is_empty() && testcd_raw.eq_ignore_ascii_case(orres_raw));
                 let needs_cat = iecat_vals[idx].trim().is_empty();
                 if !needs_test && !needs_cat && !needs_testcd {
                     continue;

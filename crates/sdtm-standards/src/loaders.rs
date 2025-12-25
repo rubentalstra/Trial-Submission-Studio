@@ -189,22 +189,55 @@ pub fn load_ct_registry(ct_dir: &Path) -> Result<CtRegistry> {
     for path in files {
         let rows = read_csv_rows(&path)?;
         for row in rows {
+            let code = row.get("Code").cloned().unwrap_or_default().to_uppercase();
             let codelist_code = row
                 .get("Codelist Code")
                 .cloned()
                 .unwrap_or_default()
                 .to_uppercase();
-            if codelist_code.is_empty() {
-                continue;
-            }
-            let codelist_name = row
-                .get("Codelist Name")
-                .cloned()
-                .unwrap_or_else(|| codelist_code.clone());
+            let codelist_name = row.get("Codelist Name").cloned().unwrap_or_else(|| {
+                if codelist_code.is_empty() {
+                    code.clone()
+                } else {
+                    codelist_code.clone()
+                }
+            });
             let extensible = row
                 .get("Codelist Extensible (Yes/No)")
                 .map(|v| v.eq_ignore_ascii_case("yes"))
                 .unwrap_or(false);
+            if codelist_code.is_empty() {
+                if code.is_empty() {
+                    continue;
+                }
+                let mut entry = by_code.remove(&code).unwrap_or(ControlledTerminology {
+                    codelist_code: code.clone(),
+                    codelist_name: codelist_name.clone(),
+                    extensible,
+                    submission_values: Vec::new(),
+                    synonyms: BTreeMap::new(),
+                    submission_value_synonyms: BTreeMap::new(),
+                    nci_codes: BTreeMap::new(),
+                    definitions: BTreeMap::new(),
+                    preferred_terms: BTreeMap::new(),
+                    standards: Vec::new(),
+                    sources: Vec::new(),
+                });
+                entry.codelist_name = codelist_name.clone();
+                entry.extensible |= extensible;
+                if let Some(standard) = row.get("Standard and Date").filter(|v| !v.is_empty()) {
+                    if !entry.standards.contains(standard) {
+                        entry.standards.push(standard.clone());
+                    }
+                }
+                if let Some(source) = path.file_name().and_then(|v| v.to_str()) {
+                    if !entry.sources.contains(&source.to_string()) {
+                        entry.sources.push(source.to_string());
+                    }
+                }
+                by_code.insert(code.clone(), entry);
+                continue;
+            }
             let submission_value = row
                 .get("CDISC Submission Value")
                 .cloned()

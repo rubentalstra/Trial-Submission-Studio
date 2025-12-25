@@ -57,6 +57,16 @@ pub(super) fn process_ie(
             set_f64_column(df, &iedy, numeric)?;
         }
     }
+    if let Some(ietest) = col(domain, "IETEST") {
+        if has_column(df, &ietest) {
+            let test_vals = string_column(df, &ietest, Trim::Both)?;
+            let mut keep = Vec::with_capacity(df.height());
+            for idx in 0..df.height() {
+                keep.push(!test_vals[idx].is_empty());
+            }
+            filter_rows(df, &keep)?;
+        }
+    }
     if let (Some(ieseq), Some(usubjid)) = (col(domain, "IESEQ"), col(domain, "USUBJID")) {
         assign_sequence(df, &ieseq, &usubjid)?;
     }

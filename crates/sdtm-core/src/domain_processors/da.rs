@@ -26,6 +26,18 @@ pub(super) fn process_da(
         ]);
         apply_map_upper(df, Some(&dastat), &stat_map)?;
     }
+    if let (Some(dastat), Some(dareasnd)) = (col(domain, "DASTAT"), col(domain, "DAREASND")) {
+        if has_column(df, &dastat) && has_column(df, &dareasnd) {
+            let reason_vals = string_column(df, &dareasnd, Trim::Both)?;
+            let mut stat_vals = string_column(df, &dastat, Trim::Both)?;
+            for idx in 0..df.height() {
+                if stat_vals[idx].is_empty() && !reason_vals[idx].is_empty() {
+                    stat_vals[idx] = "NOT DONE".to_string();
+                }
+            }
+            set_string_column(df, &dastat, stat_vals)?;
+        }
+    }
     if let (Some(daorresu), Some(daorres)) = (col(domain, "DAORRESU"), col(domain, "DAORRES")) {
         if has_column(df, &daorresu) && has_column(df, &daorres) {
             let orres = string_column(df, &daorres, Trim::Both)?;
