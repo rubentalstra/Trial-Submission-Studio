@@ -9,7 +9,7 @@ use comfy_table::{
 
 use sdtm_model::IssueSeverity;
 
-use crate::types::{DomainSummary, StudyResult};
+use crate::types::{DomainDataCheck, DomainSummary, StudyResult};
 
 pub fn print_summary(result: &StudyResult) {
     println!("Study: {}", result.study_id);
@@ -83,6 +83,7 @@ pub fn print_summary(result: &StudyResult) {
         count_cell(Some(total_warnings), Color::Yellow).add_attribute(Attribute::Bold),
     ]);
     println!("{table}");
+    print_data_checks(result);
     print_issue_table(result);
     if !result.errors.is_empty() {
         eprintln!("Errors:");
@@ -151,6 +152,55 @@ fn print_issue_table(result: &StudyResult) {
     println!();
     println!("Issues:");
     println!("{table}");
+}
+
+fn print_data_checks(result: &StudyResult) {
+    if result.data_checks.is_empty() {
+        return;
+    }
+    let mut table = Table::new();
+    table.set_header(vec![
+        header_cell("Domain"),
+        header_cell("CSV Rows"),
+        header_cell("XPT Rows"),
+        header_cell("Delta"),
+    ]);
+    apply_data_check_table_style(&mut table);
+    align_column(&mut table, 1, CellAlignment::Right);
+    align_column(&mut table, 2, CellAlignment::Right);
+    align_column(&mut table, 3, CellAlignment::Right);
+    for check in ordered_data_checks(&result.data_checks) {
+        table.add_row(vec![
+            domain_cell(&check.domain_code),
+            Cell::new(check.csv_rows),
+            xpt_count_cell(check.xpt_rows),
+            delta_cell(check.csv_rows, check.xpt_rows),
+        ]);
+    }
+    println!();
+    println!("Data Check:");
+    println!("{table}");
+}
+
+fn xpt_count_cell(count: Option<usize>) -> Cell {
+    match count {
+        Some(value) => Cell::new(value),
+        None => dim_cell("-"),
+    }
+}
+
+fn delta_cell(csv_rows: usize, xpt_rows: Option<usize>) -> Cell {
+    let Some(xpt_rows) = xpt_rows else {
+        return dim_cell("-");
+    };
+    let delta = xpt_rows as isize - csv_rows as isize;
+    if delta > 0 {
+        Cell::new(format!("+{delta}")).fg(Color::Green)
+    } else if delta < 0 {
+        Cell::new(delta).fg(Color::Red)
+    } else {
+        dim_cell(0)
+    }
 }
 
 fn output_cell(path: Option<&PathBuf>) -> Cell {
@@ -233,6 +283,23 @@ fn apply_issue_table_style(table: &mut Table) {
     }
 }
 
+fn apply_data_check_table_style(table: &mut Table) {
+    table
+        .load_preset(UTF8_FULL)
+        .apply_modifier(UTF8_ROUND_CORNERS)
+        .apply_modifier(UTF8_SOLID_INNER_BORDERS)
+        .set_content_arrangement(ContentArrangement::DynamicFullWidth)
+        .set_width(80);
+    if table.column_count() >= 4 {
+        table.set_constraints(vec![
+            ColumnConstraint::UpperBoundary(Width::Fixed(10)),
+            ColumnConstraint::LowerBoundary(Width::Fixed(9)),
+            ColumnConstraint::LowerBoundary(Width::Fixed(9)),
+            ColumnConstraint::LowerBoundary(Width::Fixed(8)),
+        ]);
+    }
+}
+
 fn align_column(table: &mut Table, index: usize, alignment: CellAlignment) {
     if let Some(column) = table.column_mut(index) {
         column.set_cell_alignment(alignment);
@@ -241,6 +308,12 @@ fn align_column(table: &mut Table, index: usize, alignment: CellAlignment) {
 
 fn ordered_summaries<'a>(summaries: &'a [DomainSummary]) -> Vec<&'a DomainSummary> {
     let mut ordered: Vec<&DomainSummary> = summaries.iter().collect();
+    ordered.sort_by(|a, b| summary_sort_key(&a.domain_code).cmp(&summary_sort_key(&b.domain_code)));
+    ordered
+}
+
+fn ordered_data_checks<'a>(checks: &'a [DomainDataCheck]) -> Vec<&'a DomainDataCheck> {
+    let mut ordered: Vec<&DomainDataCheck> = checks.iter().collect();
     ordered.sort_by(|a, b| summary_sort_key(&a.domain_code).cmp(&summary_sort_key(&b.domain_code)));
     ordered
 }

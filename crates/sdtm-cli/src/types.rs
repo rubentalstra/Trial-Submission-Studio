@@ -7,6 +7,7 @@ pub struct StudyResult {
     pub study_id: String,
     pub output_dir: PathBuf,
     pub domains: Vec<DomainSummary>,
+    pub data_checks: Vec<DomainDataCheck>,
     pub errors: Vec<String>,
     pub conformance_report: Option<PathBuf>,
     pub define_xml: Option<PathBuf>,
@@ -20,4 +21,11 @@ pub struct DomainSummary {
     pub records: usize,
     pub outputs: sdtm_model::OutputPaths,
     pub conformance: Option<ConformanceReport>,
+}
+
+#[derive(Debug, Clone)]
+pub struct DomainDataCheck {
+    pub domain_code: String,
+    pub csv_rows: usize,
+    pub xpt_rows: Option<usize>,
 }

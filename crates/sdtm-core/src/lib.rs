@@ -31,8 +31,8 @@ pub use frame_utils::{apply_sequence_offsets, insert_frame};
 pub use preprocess::fill_missing_test_fields;
 pub use processing_context::ProcessingContext;
 pub use processor::{
-    apply_base_rules, process_domain, process_domain_with_context, process_domains,
-    process_domains_with_context,
+    apply_base_rules, process_domain, process_domain_with_context,
+    process_domain_with_context_and_tracker, process_domains, process_domains_with_context,
 };
 pub use relationships::{build_relationship_frames, build_relrec, build_relspec, build_relsub};
 pub use suppqual::{SuppqualResult, build_suppqual, suppqual_domain_code};

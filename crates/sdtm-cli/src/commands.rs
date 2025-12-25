@@ -9,7 +9,7 @@ use sdtm_core::{
     DomainFrame, ProcessingContext, build_domain_frame, build_domain_frame_with_mapping,
     build_lb_wide_frame, build_relationship_frames, build_report_domains, build_suppqual,
     build_vs_wide_frame, dedupe_frames_by_identifiers, fill_missing_test_fields, insert_frame,
-    is_supporting_domain,
+    is_supporting_domain, process_domain_with_context_and_tracker,
 };
 use sdtm_ingest::{
     build_column_hints, discover_domain_files, list_csv_files, read_csv_schema, read_csv_table,
@@ -24,11 +24,11 @@ use sdtm_standards::{
     load_default_ct_registry, load_default_p21_rules, load_default_sdtm_ig_domains,
 };
 use sdtm_validate::{ValidationContext, validate_domains, write_conformance_report_json};
-use sdtm_xpt::XptWriterOptions;
+use sdtm_xpt::{read_xpt, XptWriterOptions};
 
 use crate::cli::{OutputFormatArg, StudyArgs};
 use crate::summary::apply_table_style;
-use crate::types::{DomainSummary, StudyResult};
+use crate::types::{DomainDataCheck, DomainSummary, StudyResult};
 
 pub fn run_domains() -> Result<()> {
     let mut domains = load_default_sdtm_ig_domains().context("load standards")?;
@@ -79,6 +79,8 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     let mut suppqual_frames: Vec<DomainFrame> = Vec::new();
     let mut mapping_configs: BTreeMap<String, Vec<MappingConfig>> = BTreeMap::new();
     let mut errors = Vec::new();
+    let mut input_counts: BTreeMap<String, usize> = BTreeMap::new();
+    let mut seq_trackers: BTreeMap<String, BTreeMap<String, i64>> = BTreeMap::new();
 
     let mut standard_variables = BTreeSet::new();
     for domain in &standards {
@@ -125,13 +127,15 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
 
     for (domain_code, files) in &discovered {
         let multi_source = files.len() > 1;
-        let domain = match standards_map.get(&domain_code.to_uppercase()) {
+        let domain_key = domain_code.to_uppercase();
+        let domain = match standards_map.get(&domain_key) {
             Some(domain) => domain,
             None => {
                 errors.push(format!("missing standards metadata for {domain_code}"));
                 continue;
             }
         };
+        let domain_tracker = seq_trackers.entry(domain_key.clone()).or_default();
         let mut combined: Option<DataFrame> = None;
         let mut domain_mappings = Vec::new();
         for (path, _variant) in files {
@@ -142,6 +146,7 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
                     continue;
                 }
             };
+            *input_counts.entry(domain_key.clone()).or_insert(0) += table.rows.len();
             let hints = build_column_hints(&table);
             let engine = MappingEngine::new((*domain).clone(), 0.5, hints);
             let mapping_result = engine.suggest(&table.headers);
@@ -233,6 +238,14 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
             if let Err(error) =
                 fill_missing_test_fields(domain, &mapping_config, &table, &mut mapped.data, &ctx)
             {
+                errors.push(format!("{}: {error}", path.display()));
+            }
+            if let Err(error) = process_domain_with_context_and_tracker(
+                domain,
+                &mut mapped.data,
+                &ctx,
+                Some(domain_tracker),
+            ) {
                 errors.push(format!("{}: {error}", path.display()));
             }
             match build_suppqual(
@@ -440,6 +453,36 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
         }
     }
 
+    let mut xpt_counts: BTreeMap<String, usize> = BTreeMap::new();
+    if want_xpt && !args.dry_run {
+        for (code, paths) in &output_paths {
+            if let Some(path) = &paths.xpt {
+                match read_xpt(path) {
+                    Ok(dataset) => {
+                        xpt_counts.insert(code.to_uppercase(), dataset.rows.len());
+                    }
+                    Err(error) => {
+                        errors.push(format!("xpt read {}: {error}", path.display()));
+                    }
+                }
+            }
+        }
+    }
+
+    let mut data_checks = Vec::new();
+    if !xpt_counts.is_empty() {
+        let mut check_keys: BTreeSet<String> = BTreeSet::new();
+        check_keys.extend(input_counts.keys().cloned());
+        check_keys.extend(xpt_counts.keys().cloned());
+        for key in check_keys {
+            data_checks.push(DomainDataCheck {
+                domain_code: key.clone(),
+                csv_rows: input_counts.get(&key).copied().unwrap_or(0),
+                xpt_rows: xpt_counts.get(&key).copied(),
+            });
+        }
+    }
+
     let mut summaries = Vec::new();
     for frame in &frame_list {
         let code = frame.domain_code.to_uppercase();
@@ -486,6 +529,7 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
         study_id,
         output_dir,
         domains: summaries,
+        data_checks,
         errors,
         conformance_report,
         define_xml,

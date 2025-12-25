@@ -240,6 +240,26 @@ pub fn process_domain_with_context(
     Ok(())
 }
 
+pub fn process_domain_with_context_and_tracker(
+    domain: &Domain,
+    df: &mut DataFrame,
+    ctx: &ProcessingContext,
+    seq_tracker: Option<&mut BTreeMap<String, i64>>,
+) -> Result<()> {
+    apply_base_rules(domain, df, ctx.study_id)?;
+    domain_processors::process_domain(domain, df, ctx)?;
+    normalize_ct_columns(domain, df, ctx)?;
+    let columns = standard_columns(domain);
+    if let (Some(seq_col), Some(usubjid_col)) = (infer_seq_column(domain), columns.usubjid) {
+        if let Some(tracker) = seq_tracker {
+            assign_sequence_with_tracker(df, &seq_col, &usubjid_col, tracker)?;
+        } else if needs_sequence_assignment(df, &seq_col, &usubjid_col)? {
+            assign_sequence(df, &seq_col, &usubjid_col)?;
+        }
+    }
+    Ok(())
+}
+
 pub fn process_domains_with_context(
     domains: &[Domain],
     frames: &mut [DomainFrame],
@@ -289,6 +309,51 @@ fn assign_sequence(df: &mut DataFrame, seq_column: &str, group_column: &str) -> 
         values.push(Some(*entry));
     }
 
+    let series = Series::new(seq_column.into(), values);
+    df.with_column(series)?;
+    Ok(())
+}
+
+fn assign_sequence_with_tracker(
+    df: &mut DataFrame,
+    seq_column: &str,
+    group_column: &str,
+    tracker: &mut BTreeMap<String, i64>,
+) -> Result<()> {
+    if df.height() == 0 {
+        return Ok(());
+    }
+    let group_series = match df.column(group_column) {
+        Ok(series) => series.clone(),
+        Err(_) => return Ok(()),
+    };
+    let seq_series = df.column(seq_column).ok().cloned();
+    let mut values: Vec<Option<i64>> = Vec::with_capacity(df.height());
+    for idx in 0..df.height() {
+        let key = any_to_string(group_series.get(idx).unwrap_or(AnyValue::Null));
+        let key = key.trim();
+        if key.is_empty() {
+            values.push(None);
+            continue;
+        }
+        let entry = tracker.entry(key.to_string()).or_insert(0);
+        let existing = seq_series
+            .as_ref()
+            .map(|series| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
+            .unwrap_or_default();
+        let parsed = existing.trim().parse::<i64>().ok();
+        let value = match parsed {
+            Some(seq) if seq > *entry => {
+                *entry = seq;
+                seq
+            }
+            _ => {
+                *entry += 1;
+                *entry
+            }
+        };
+        values.push(Some(value));
+    }
     let series = Series::new(seq_column.into(), values);
     df.with_column(series)?;
     Ok(())
