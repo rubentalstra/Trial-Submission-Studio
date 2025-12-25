@@ -2,6 +2,7 @@ use anyhow::Result;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
 
+use crate::ct_utils::resolve_ct_value_from_hint;
 use crate::{ProcessingContext, is_yes_no_token};
 
 use super::common::*;
@@ -63,6 +64,8 @@ pub(super) fn process_lb(
                     }
                     if let Some(mapped) = resolve_ct_submission_value(ct, &test_vals[idx]) {
                         testcd_vals[idx] = mapped;
+                    } else if let Some(mapped) = resolve_ct_value_from_hint(ct, &test_vals[idx]) {
+                        testcd_vals[idx] = mapped;
                     }
                 }
                 set_string_column(df, &lbtestcd, testcd_vals)?;
@@ -90,8 +93,10 @@ pub(super) fn process_lb(
                     if testcd_vals[idx].is_empty() {
                         continue;
                     }
+                    let test_in_ct = resolve_ct_submission_value(ct, &test_vals[idx]).is_some();
                     let needs_label = test_vals[idx].is_empty()
-                        || test_vals[idx].eq_ignore_ascii_case(&testcd_vals[idx]);
+                        || test_vals[idx].eq_ignore_ascii_case(&testcd_vals[idx])
+                        || !test_in_ct;
                     if !needs_label {
                         continue;
                     }

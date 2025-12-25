@@ -12,7 +12,8 @@ use sdtm_core::{
     insert_frame, is_supporting_domain, process_domain_with_context_and_tracker,
 };
 use sdtm_ingest::{
-    build_column_hints, discover_domain_files, list_csv_files, read_csv_schema, read_csv_table,
+    AppliedStudyMetadata, StudyMetadata, apply_study_metadata, build_column_hints,
+    discover_domain_files, list_csv_files, load_study_metadata, read_csv_schema, read_csv_table,
 };
 use sdtm_map::{MappingEngine, merge_mappings};
 use sdtm_model::{ConformanceReport, MappingConfig, OutputFormat};
@@ -79,6 +80,13 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     let mut suppqual_frames: Vec<DomainFrame> = Vec::new();
     let mut mapping_configs: BTreeMap<String, Vec<MappingConfig>> = BTreeMap::new();
     let mut errors = Vec::new();
+    let study_metadata = match load_study_metadata(study_folder) {
+        Ok(metadata) => metadata,
+        Err(error) => {
+            errors.push(format!("metadata: {error}"));
+            StudyMetadata::default()
+        }
+    };
     let mut input_counts: BTreeMap<String, usize> = BTreeMap::new();
     let mut seq_trackers: BTreeMap<String, BTreeMap<String, i64>> = BTreeMap::new();
 
@@ -139,20 +147,35 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
         let mut combined: Option<DataFrame> = None;
         let mut domain_mappings = Vec::new();
         for (path, _variant) in files {
-            let table = match read_csv_table(&path) {
+            let raw_table = match read_csv_table(&path) {
                 Ok(table) => table,
                 Err(error) => {
                     errors.push(format!("{}: {error}", path.display()));
                     continue;
                 }
             };
-            *input_counts.entry(domain_key.clone()).or_insert(0) += table.rows.len();
+            *input_counts.entry(domain_key.clone()).or_insert(0) += raw_table.rows.len();
+            let source = match build_domain_frame(&raw_table, domain_code) {
+                Ok(frame) => frame,
+                Err(error) => {
+                    errors.push(format!("{}: {error}", path.display()));
+                    continue;
+                }
+            };
+            let AppliedStudyMetadata {
+                table,
+                code_to_base,
+            } = if study_metadata.is_empty() {
+                AppliedStudyMetadata::new(raw_table)
+            } else {
+                apply_study_metadata(raw_table, &study_metadata)
+            };
             let hints = build_column_hints(&table);
             let engine = MappingEngine::new((*domain).clone(), 0.5, hints);
             let mapping_result = engine.suggest(&table.headers);
             let mapping_config = engine.to_config(&study_id, mapping_result);
 
-            let (mapping_config, mapped, used) = match domain_code.as_str() {
+            let (mapping_config, mapped, mut used) = match domain_code.as_str() {
                 "LB" => match build_lb_wide_frame(&table, domain, &study_id) {
                     Ok(Some((config, frame, used))) => (config, frame, used),
                     Ok(None) => {
@@ -251,14 +274,15 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
                     (mapping_config, mapped, used)
                 }
             };
-
-            let source = match build_domain_frame(&table, domain_code) {
-                Ok(frame) => frame,
-                Err(error) => {
-                    errors.push(format!("{}: {error}", path.display()));
-                    continue;
+            if !code_to_base.is_empty() {
+                let used_upper: BTreeSet<String> =
+                    used.iter().map(|name| name.to_uppercase()).collect();
+                for (code_col, base_col) in code_to_base {
+                    if used_upper.contains(&base_col.to_uppercase()) {
+                        used.insert(code_col);
+                    }
                 }
-            };
+            }
 
             let mut mapped = mapped;
             if let Err(error) =

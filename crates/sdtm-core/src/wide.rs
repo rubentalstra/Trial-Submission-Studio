@@ -503,8 +503,18 @@ fn normalize_lb_key(value: &str) -> String {
         let suffix = suffix.trim();
         if matches!(
             suffix,
-            "LOWER" | "UPPER" | "LOW" | "HIGH" | "HI" | "LO" | "COMPARATOR" | "COMP" | "CMP"
-                | "RANGE" | "IND" | "FLAG"
+            "LOWER"
+                | "UPPER"
+                | "LOW"
+                | "HIGH"
+                | "HI"
+                | "LO"
+                | "COMPARATOR"
+                | "COMP"
+                | "CMP"
+                | "RANGE"
+                | "IND"
+                | "FLAG"
         ) {
             return base.to_string();
         }
