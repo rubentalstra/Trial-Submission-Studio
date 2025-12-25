@@ -1,7 +1,8 @@
 use std::cmp::Ordering;
 use std::path::PathBuf;
 
-use comfy_table::presets::UTF8_FULL_CONDENSED;
+use comfy_table::modifiers::{UTF8_ROUND_CORNERS, UTF8_SOLID_INNER_BORDERS};
+use comfy_table::presets::{UTF8_FULL, UTF8_FULL_CONDENSED};
 use comfy_table::{
     Attribute, Cell, CellAlignment, Color, ColumnConstraint, ContentArrangement, Table, Width,
 };
@@ -21,14 +22,14 @@ pub fn print_summary(result: &StudyResult) {
     }
     let mut table = Table::new();
     table.set_header(vec![
-        "Domain",
-        "Description",
-        "Records",
-        "XPT",
-        "XML",
-        "SAS",
-        "Errors",
-        "Warnings",
+        header_cell("Domain"),
+        header_cell("Description"),
+        header_cell("Records"),
+        header_cell("XPT"),
+        header_cell("XML"),
+        header_cell("SAS"),
+        header_cell("Errors"),
+        header_cell("Warnings"),
     ]);
     apply_table_style(&mut table);
     align_column(&mut table, 2, CellAlignment::Right);
@@ -110,24 +111,27 @@ fn print_issue_table(result: &StudyResult) {
     });
     let mut table = Table::new();
     table.set_header(vec![
-        "Domain", "Severity", "Variable", "Code", "Count", "Rule", "Category", "Message",
-        "Examples",
+        header_cell("Domain"),
+        header_cell("Severity"),
+        header_cell("Variable"),
+        header_cell("Code"),
+        header_cell("Count"),
+        header_cell("Rule"),
+        header_cell("Category"),
+        header_cell("Message"),
+        header_cell("Examples"),
     ]);
-    apply_table_style(&mut table);
+    apply_issue_table_style(&mut table);
     align_column(&mut table, 4, CellAlignment::Right);
     for (domain, issue) in issues {
         let (message, examples) = split_examples(&issue.message);
+        let count_cell = issue_count_cell(issue.count, issue.severity);
         table.add_row(vec![
-            Cell::new(domain),
+            Cell::new(domain).fg(Color::Blue),
             severity_cell(issue.severity),
             Cell::new(issue.variable.clone().unwrap_or_else(|| "-".to_string())),
             Cell::new(issue.code.clone()),
-            Cell::new(
-                issue
-                    .count
-                    .map(|v| v.to_string())
-                    .unwrap_or("-".to_string()),
-            ),
+            count_cell,
             Cell::new(issue.rule_id.clone().unwrap_or_else(|| "-".to_string())),
             Cell::new(issue.category.clone().unwrap_or_else(|| "-".to_string())),
             Cell::new(message),
@@ -141,7 +145,7 @@ fn print_issue_table(result: &StudyResult) {
 
 fn output_cell(path: Option<&PathBuf>) -> Cell {
     match path {
-        Some(_) => Cell::new("yes").fg(Color::Green),
+        Some(_) => Cell::new("✓").fg(Color::Green),
         None => dim_cell("-"),
     }
 }
@@ -156,6 +160,7 @@ fn count_cell(count: Option<usize>, color: Color) -> Cell {
 pub fn apply_table_style(table: &mut Table) {
     table
         .load_preset(UTF8_FULL_CONDENSED)
+        .apply_modifier(UTF8_ROUND_CORNERS)
         .set_content_arrangement(ContentArrangement::Dynamic)
         .set_width(120);
     if table.column_count() >= 8 {
@@ -168,6 +173,28 @@ pub fn apply_table_style(table: &mut Table) {
             ColumnConstraint::LowerBoundary(Width::Fixed(5)),
             ColumnConstraint::LowerBoundary(Width::Fixed(6)),
             ColumnConstraint::LowerBoundary(Width::Fixed(8)),
+        ]);
+    }
+}
+
+fn apply_issue_table_style(table: &mut Table) {
+    table
+        .load_preset(UTF8_FULL)
+        .apply_modifier(UTF8_ROUND_CORNERS)
+        .apply_modifier(UTF8_SOLID_INNER_BORDERS)
+        .set_content_arrangement(ContentArrangement::DynamicFullWidth)
+        .set_width(180);
+    if table.column_count() >= 9 {
+        table.set_constraints(vec![
+            ColumnConstraint::UpperBoundary(Width::Fixed(10)),
+            ColumnConstraint::UpperBoundary(Width::Fixed(9)),
+            ColumnConstraint::UpperBoundary(Width::Fixed(12)),
+            ColumnConstraint::UpperBoundary(Width::Fixed(10)),
+            ColumnConstraint::LowerBoundary(Width::Fixed(5)),
+            ColumnConstraint::UpperBoundary(Width::Fixed(10)),
+            ColumnConstraint::UpperBoundary(Width::Fixed(12)),
+            ColumnConstraint::UpperBoundary(Width::Percentage(40)),
+            ColumnConstraint::UpperBoundary(Width::Percentage(25)),
         ]);
     }
 }
@@ -205,12 +232,33 @@ fn severity_cell(severity: IssueSeverity) -> Cell {
     }
 }
 
+fn issue_count_cell(count: Option<u64>, severity: IssueSeverity) -> Cell {
+    match count {
+        Some(value) => Cell::new(value).fg(severity_color(severity)),
+        None => dim_cell("-"),
+    }
+}
+
 fn severity_rank(severity: IssueSeverity) -> u8 {
     match severity {
         IssueSeverity::Reject => 3,
         IssueSeverity::Error => 2,
         IssueSeverity::Warning => 1,
     }
+}
+
+fn severity_color(severity: IssueSeverity) -> Color {
+    match severity {
+        IssueSeverity::Reject => Color::Red,
+        IssueSeverity::Error => Color::Red,
+        IssueSeverity::Warning => Color::Yellow,
+    }
+}
+
+fn header_cell(label: &str) -> Cell {
+    Cell::new(label)
+        .fg(Color::Cyan)
+        .add_attribute(Attribute::Bold)
 }
 
 fn split_examples(message: &str) -> (String, String) {
