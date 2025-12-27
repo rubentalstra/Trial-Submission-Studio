@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
@@ -288,11 +288,13 @@ pub fn load_ct_registry(ct_dir: &Path) -> Result<CtRegistry> {
                 entry
                     .preferred_terms
                     .insert(submission_value.clone(), pref.clone());
+                insert_ct_alias(&mut entry, &submission_value, pref);
             }
             if let Some(code) = row.get("Code").filter(|v| !v.is_empty()) {
                 entry
                     .nci_codes
                     .insert(submission_value.clone(), code.clone());
+                insert_ct_alias(&mut entry, &submission_value, code);
             }
             if let Some(standard) = row.get("Standard and Date").filter(|v| !v.is_empty()) {
                 if !entry.standards.contains(standard) {
@@ -305,29 +307,8 @@ pub fn load_ct_registry(ct_dir: &Path) -> Result<CtRegistry> {
                 }
             }
             if let Some(synonyms_raw) = row.get("CDISC Synonym(s)").filter(|v| !v.is_empty()) {
-                let mut syns = BTreeSet::new();
-                if synonyms_raw.contains(';') {
-                    for syn in synonyms_raw.split(';') {
-                        syns.insert(syn.trim().to_string());
-                    }
-                } else if synonyms_raw.contains(',') {
-                    for syn in synonyms_raw.split(',') {
-                        syns.insert(syn.trim().to_string());
-                    }
-                } else {
-                    syns.insert(synonyms_raw.trim().to_string());
-                }
-                if !syns.is_empty() {
-                    entry
-                        .submission_value_synonyms
-                        .entry(submission_value.clone())
-                        .or_insert_with(Vec::new)
-                        .extend(syns.iter().cloned());
-                    for syn in syns {
-                        entry
-                            .synonyms
-                            .insert(syn.to_uppercase(), submission_value.clone());
-                    }
+                for syn in split_synonyms(synonyms_raw) {
+                    insert_ct_alias(&mut entry, &submission_value, &syn);
                 }
             }
 
@@ -341,6 +322,46 @@ pub fn load_ct_registry(ct_dir: &Path) -> Result<CtRegistry> {
     }
 
     Ok(CtRegistry { by_code, by_name })
+}
+
+fn split_synonyms(raw: &str) -> Vec<String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Vec::new();
+    }
+    let mut values = Vec::new();
+    for sep in [';', ','] {
+        if trimmed.contains(sep) {
+            for part in trimmed.split(sep) {
+                let item = part.trim();
+                if !item.is_empty() {
+                    values.push(item.to_string());
+                }
+            }
+            return values;
+        }
+    }
+    values.push(trimmed.to_string());
+    values
+}
+
+fn insert_ct_alias(entry: &mut ControlledTerminology, submission_value: &str, alias: &str) {
+    let trimmed = alias.trim();
+    if trimmed.is_empty() {
+        return;
+    }
+    if trimmed.eq_ignore_ascii_case(submission_value) {
+        return;
+    }
+    let key = trimmed.to_uppercase();
+    entry.synonyms.insert(key, submission_value.to_string());
+    let list = entry
+        .submission_value_synonyms
+        .entry(submission_value.to_string())
+        .or_insert_with(Vec::new);
+    if !list.iter().any(|value| value.eq_ignore_ascii_case(trimmed)) {
+        list.push(trimmed.to_string());
+    }
 }
 
 pub fn load_p21_rules(path: &Path) -> Result<Vec<P21Rule>> {
