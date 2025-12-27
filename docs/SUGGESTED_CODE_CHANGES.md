@@ -414,32 +414,75 @@ are noted where applicable.
 
 ## 1.1 Temporal and ISO 8601 Rules (Chapter 4)
 
-- [ ] **1.1.1** Implement strict ISO 8601 parser/validator in the shared date
+- [x] **1.1.1** Implement strict ISO 8601 parser/validator in the shared date
       module for `--DTC`, `--STDTC`, `--ENDTC`, and `--DUR`. Support extended
       format, partials, and intervals. Error on basic format.
+      **Implementation notes**: - Strict extended format parser in
+      `sdtm-core/src/datetime.rs` with `parse_iso8601_datetime()` -
+      `looks_like_basic_format()` rejects basic format (20231215 vs 2023-12-15)
+      - Duration parsing via `parse_iso8601_duration()` with PnYnMnDTnHnMnS and
+      PnW formats - Interval parsing via `parse_iso8601_interval()` for date
+      ranges - Partial dates supported via right-truncation (YYYY, YYYY-MM) -
+      `validate_iso8601()` returns detailed `DateTimeError` types
 
-- [ ] **1.1.2** Stop mutating end dates in `ensure_date_pair_order`. Emit hard
+- [x] **1.1.2** Stop mutating end dates in `ensure_date_pair_order`. Emit hard
       validation error when end < start.
+      **Implementation notes**: - `ensure_date_pair_order()` in
+      `domain_processors/common.rs` does NOT mutate values - Only normalizes
+      whitespace and validates - Added `generate_date_pair_order_rules()` in
+      `sdtm-standards/src/assumptions/generator.rs` - Rule SD0009 emits Error
+      severity when end < start - `check_date_pair_order()` handler in
+      `sdtm-validate/src/engine.rs`
 
-- [ ] **1.1.3** Compute `--DY` only when full dates are available. Document
+- [x] **1.1.3** Compute `--DY` only when full dates are available. Document
       standard formula relative to RFSTDTC. Flag partial dates when `--DY` is
       present.
+      **Implementation notes**: - `compute_study_day()` in
+      `domain_processors/common.rs` requires complete dates - `parse_date()`
+      returns None for partial dates - Added `generate_study_day_rules()` (Rule
+      SD0010) warning for partial dates - Formula documented: `--DY = (--DTC) -
+      (RFSTDTC) + 1` (no day 0) - Logs warnings for partial_date_count and
+      missing_reference_count
 
-- [ ] **1.1.4** Enforce Findings date/time rules: require `--DTC` for collection
+- [x] **1.1.4** Enforce Findings date/time rules: require `--DTC` for collection
       timing, disallow `--STDTC` in Findings, allow `--ENDTC` only for interval
       collections (Section 4.4.8).
+      **Implementation notes**: - Enhanced `generate_findings_timing_rules()` in
+      generator.rs - Rule SD4408 (Error): --STDTC should not be used in Findings
+      class - Rule SD4408B (Warning): --DTC should be present in Findings class
+      - `check_findings_timing_variable()` handler in engine.rs - SDTMIG 4.4.8
+      table documented: Single-point uses --DTC only, Interval uses
+      --DTC/--ENDTC
 
-- [ ] **1.1.5** Enforce relative timing variables: validate `--STRF/--ENRF` and
+- [x] **1.1.5** Enforce relative timing variables: validate `--STRF/--ENRF` and
       `--STRTPT/--ENRTPT` allowed values, require `--STTPT/--ENTPT` anchors,
       avoid derived `--STRF/--ENRF` when dates are collected.
+      **Implementation notes**: - Added `RelativeTimingVariable` rule context -
+      `generate_relative_timing_rules()` creates rules SD4407A-D - SD4407A/B:
+      Anchor variable requirements (--STTPT/--ENTPT) - SD4407C/D: Warns when
+      --STRF/--ENRF derived alongside collected dates - Allowed values: BEFORE,
+      DURING, AFTER, ONGOING, CONTINUING, U - `check_relative_timing_variable()`
+      handler validates data
 
-- [ ] **1.1.6** Validate ISO 8601 `--DUR` values. Only allow `--DUR` when
+- [x] **1.1.6** Validate ISO 8601 `--DUR` values. Only allow `--DUR` when
       start/end dates are not collected. Document collected vs derived
       durations.
+      **Implementation notes**: - Added `DurationUsage` rule context -
+      `generate_duration_usage_rules()` creates rule SD4403 - Warning when --DUR
+      populated alongside both --STDTC and --ENDTC - `check_duration_usage()`
+      handler counts records with all three populated - SDTMIG 4.4.3: Duration
+      can be calculated from STDTC/ENDTC, need not be in submission
 
-- [ ] **1.1.7** Derive EPOCH from `--DTC` (Findings) or `--STDTC`
+- [x] **1.1.7** Derive EPOCH from `--DTC` (Findings) or `--STDTC`
       (Events/Interventions) using TA/SE reference periods. Never impute. Leave
       null for pre-study records.
+      **Implementation notes**: - Added `EpochPeriod` struct in
+      `processing_context.rs` for SE period data - Added `epoch_periods` to
+      `ProcessingContext` with `with_epoch_periods()` builder - `derive_epoch()`
+      function in `domain_processors/common.rs` - Compares observation date
+      against SE periods to find matching EPOCH - Never overwrites existing
+      EPOCH values (no imputation) - Returns empty string for pre-study records
+      - Records provenance with `DerivationMethod::Custom`
 
 ## 1.2 Identifier and Sequence Rules
 
@@ -864,9 +907,9 @@ are noted where applicable.
 
 | Phase     | Total   | Completed | Remaining |
 | --------- | ------- | --------- | --------- |
-| 0         | 35      | 18        | 17        |
-| 1         | 67      | 0         | 67        |
+| 0         | 35      | 35        | 0         |
+| 1         | 67      | 7         | 60        |
 | 2         | 32      | 0         | 32        |
 | 3         | 8       | 0         | 8         |
 | 4         | 8       | 0         | 8         |
-| **Total** | **150** | **18**    | **132**   |
+| **Total** | **150** | **42**    | **108**   |
