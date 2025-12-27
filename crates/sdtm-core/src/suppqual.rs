@@ -22,10 +22,43 @@ pub struct SuppqualInput<'a> {
     pub exclusion_columns: Option<&'a BTreeSet<String>>,
     pub source_labels: Option<&'a BTreeMap<String, String>>,
     pub derived_columns: Option<&'a BTreeSet<String>>,
+    /// Optional dataset name for split domains (e.g., "LBCH" for LB split).
+    /// Per SDTMIG 8.4.2, SUPP dataset names should use the parent dataset name,
+    /// not just the domain code.
+    pub dataset_name: Option<&'a str>,
 }
 
-pub fn suppqual_domain_code(parent_domain: &str) -> String {
-    let parent = parent_domain.to_uppercase();
+/// Generate a SUPPQUAL dataset code from a parent domain or dataset name.
+///
+/// Per SDTMIG v3.4 Section 8.4.2:
+/// - For split datasets (e.g., LBCH, LBHE), the SUPP dataset should be named
+///   after the parent dataset, not just the domain code.
+/// - If SUPP{name} exceeds 8 characters, fall back to SQ{name}.
+/// - If still > 8 characters, truncate to 8.
+///
+/// # Arguments
+/// * `parent_domain` - The domain code (e.g., "LB", "AE")
+/// * `dataset_name` - Optional dataset name for split domains (e.g., "LBCH")
+///
+/// # Returns
+/// A SUPP dataset code (e.g., "SUPPLB", "SUPPLBCH", "SQLBCH")
+///
+/// # Examples
+/// ```
+/// use sdtm_core::suppqual_dataset_code;
+///
+/// // Simple domain
+/// assert_eq!(suppqual_dataset_code("LB", None), "SUPPLB");
+///
+/// // Split dataset
+/// assert_eq!(suppqual_dataset_code("LB", Some("LBCH")), "SUPPLBCH");
+///
+/// // Long name falls back to SQ prefix
+/// assert_eq!(suppqual_dataset_code("FAMRSK", None), "SQFAMRSK");
+/// ```
+pub fn suppqual_dataset_code(parent_domain: &str, dataset_name: Option<&str>) -> String {
+    // Use dataset_name if provided, otherwise use parent_domain
+    let parent = dataset_name.unwrap_or(parent_domain).to_uppercase();
     let candidate = format!("SUPP{parent}");
     if candidate.len() <= 8 {
         return candidate;
@@ -236,17 +269,28 @@ pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<SuppqualResult>
         row_count = row_count.min(mapped.height());
     }
 
-    let idvar = infer_seq_column(input.parent_domain).and_then(|seq_var| {
-        if input
-            .mapped_df
-            .and_then(|df| df.column(&seq_var).ok())
-            .is_some()
-        {
-            Some(seq_var)
-        } else {
-            None
-        }
-    });
+    // Per SDTMIG 8.4.1: For DM, IDVAR and IDVARVAL should be blank because
+    // DM has no --SEQ (the only domain without a sequence number).
+    // For all other domains, use the --SEQ column as IDVAR.
+    let is_dm_domain = parent_domain_code == "DM";
+
+    let idvar = if is_dm_domain {
+        // DM domain: IDVAR should be blank per SDTMIG 8.4.1
+        None
+    } else {
+        // Non-DM domains: try to infer the sequence column
+        infer_seq_column(input.parent_domain).and_then(|seq_var| {
+            if input
+                .mapped_df
+                .and_then(|df| df.column(&seq_var).ok())
+                .is_some()
+            {
+                Some(seq_var)
+            } else {
+                None
+            }
+        })
+    };
 
     let mut values: BTreeMap<String, Vec<String>> = BTreeMap::new();
     for key in &ordered_columns {
@@ -368,8 +412,10 @@ pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<SuppqualResult>
         .collect();
     let data = DataFrame::new(columns)?;
 
+    // Per SDTMIG 8.4.2: Use dataset_name for SUPP naming if provided
+    // (for split datasets like LBCH -> SUPPLBCH)
     Ok(Some(SuppqualResult {
-        domain_code: suppqual_domain_code(&parent_domain_code),
+        domain_code: suppqual_dataset_code(&parent_domain_code, input.dataset_name),
         data,
         used_columns: extra_cols,
     }))

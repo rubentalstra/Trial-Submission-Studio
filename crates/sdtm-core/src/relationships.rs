@@ -10,10 +10,25 @@ use crate::domain_utils::{StandardColumns, refid_candidates, standard_columns};
 use crate::frame::DomainFrame;
 use sdtm_ingest::{any_to_string, parse_f64};
 
+/// Configuration options for relationship generation.
+#[derive(Debug, Clone, Default)]
+pub struct RelationshipConfig {
+    /// If true, skip automatic RELREC generation.
+    /// Per SDTMIG 8.2, RELREC should only be generated from explicit relationship keys.
+    pub disable_auto_relrec: bool,
+    /// If true, include GRPID in RELREC generation (not recommended per SDTMIG).
+    /// Per SDTMIG 8.1, --GRPID is for grouping records within a domain,
+    /// not for cross-domain relationships.
+    pub include_grpid_in_relrec: bool,
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum LinkKind {
+    /// --LNKID: Explicit cross-domain link identifier
     LnkId,
+    /// --LNKGRP: Cross-domain link group identifier
     LnkGrp,
+    /// --GRPID: Within-domain grouping (should NOT be used for RELREC per SDTMIG 8.1)
     GrpId,
 }
 
@@ -67,12 +82,39 @@ struct RelspecSource<'a> {
     parent_col: Option<&'a str>,
 }
 
+/// Build RELREC dataset from domain frames.
+///
+/// Per SDTMIG v3.4 Section 8.2:
+/// - RELREC represents relationships between records across domains
+/// - Only explicit relationship keys (--LNKID, --LNKGRP) should be used
+/// - --GRPID is for within-domain grouping and should NOT be used for RELREC
+///
+/// Per SDTMIG v3.4 Section 8.3:
+/// - RELTYPE should only be set for dataset-level relationships
+/// - For record-level links (with IDVAR/IDVARVAL), RELTYPE should be blank
+///
+/// # Arguments
+/// * `domain_frames` - The domain frames to process for relationships
+/// * `domains` - The domain definitions from standards
+/// * `relrec_domain` - The RELREC domain definition
+/// * `study_id` - The study identifier
+/// * `config` - Configuration options for RELREC generation
+///
+/// # Configuration
+/// * `disable_auto_relrec` - If true, skip RELREC generation entirely
+/// * `include_grpid_in_relrec` - If true, include GRPID (not recommended per SDTMIG)
 pub fn build_relrec(
     domain_frames: &[DomainFrame],
     domains: &[Domain],
     relrec_domain: &Domain,
     study_id: &str,
+    config: &RelationshipConfig,
 ) -> Result<Option<DomainFrame>> {
+    // Check if auto RELREC is disabled
+    if config.disable_auto_relrec {
+        return Ok(None);
+    }
+
     let domain_map = build_domain_map(domains);
     let mut groups: BTreeMap<RelrecKey, Vec<RelrecMember>> = BTreeMap::new();
     for frame in domain_frames {
@@ -96,7 +138,7 @@ pub fn build_relrec(
         if frame.data.column(&usubjid_col).is_err() {
             continue;
         }
-        let Some(link) = infer_link_idvar(domain_def, &frame.data) else {
+        let Some(link) = infer_link_idvar_for_relrec(domain_def, &frame.data, config) else {
             continue;
         };
         for idx in 0..frame.data.height() {
@@ -136,8 +178,11 @@ pub fn build_relrec(
         rel_counter += 1;
         let relid = format!("REL{:05}", rel_counter);
         for member in members {
-            let count = domain_counts.get(&member.domain_code).copied().unwrap_or(1);
-            let reltype = if count > 1 { Some("MANY") } else { Some("ONE") };
+            // Per SDTMIG 8.3: RELTYPE is only used for dataset-level relationships
+            // (where IDVAR and IDVARVAL are empty). For record-level relationships,
+            // RELTYPE should be blank.
+            // Since we have IDVAR/IDVARVAL populated (record-level), leave RELTYPE blank.
+            let reltype: Option<&str> = None;
             records.push(relrec_record(
                 relrec_domain,
                 study_id,
@@ -165,12 +210,32 @@ pub fn build_relrec(
     }))
 }
 
-fn infer_link_idvar(domain: &Domain, df: &DataFrame) -> Option<LinkIdentifier> {
-    for kind in [LinkKind::LnkId, LinkKind::LnkGrp, LinkKind::GrpId] {
+/// Infer link identifier variable for RELREC generation.
+///
+/// Per SDTMIG 8.1: --GRPID is for within-domain grouping only.
+/// Only --LNKID and --LNKGRP should be used for cross-domain RELREC.
+fn infer_link_idvar_for_relrec(
+    domain: &Domain,
+    df: &DataFrame,
+    config: &RelationshipConfig,
+) -> Option<LinkIdentifier> {
+    // First, try explicit cross-domain link identifiers (LNKID, LNKGRP)
+    for kind in [LinkKind::LnkId, LinkKind::LnkGrp] {
         if let Some(name) = find_suffix_column(domain, df, kind.suffix()) {
             return Some(LinkIdentifier { name, kind });
         }
     }
+
+    // Only include GRPID if explicitly configured (not recommended per SDTMIG)
+    if config.include_grpid_in_relrec
+        && let Some(name) = find_suffix_column(domain, df, LinkKind::GrpId.suffix())
+    {
+        return Some(LinkIdentifier {
+            name,
+            kind: LinkKind::GrpId,
+        });
+    }
+
     None
 }
 
@@ -208,8 +273,9 @@ pub fn build_relationship_frames(
 ) -> Result<Vec<DomainFrame>> {
     let domain_map = build_domain_map(domains);
     let mut frames = Vec::new();
+    let config = RelationshipConfig::default();
     if let Some(relrec_domain) = domain_map.get("RELREC")
-        && let Some(frame) = build_relrec(domain_frames, domains, relrec_domain, study_id)?
+        && let Some(frame) = build_relrec(domain_frames, domains, relrec_domain, study_id, &config)?
     {
         frames.push(frame);
     }

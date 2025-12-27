@@ -2,7 +2,7 @@ use std::collections::BTreeSet;
 use std::path::Path;
 
 use sdtm_core::{
-    DomainFrame, ProcessingContext, SuppqualInput, build_domain_frame,
+    DomainFrame, ProcessingContext, RelationshipConfig, SuppqualInput, build_domain_frame,
     build_domain_frame_with_mapping, build_relrec, build_relspec, build_relsub, build_suppqual,
     process_domain_with_context,
 };
@@ -83,6 +83,7 @@ fn processes_mockdata_end_to_end() {
                 exclusion_columns: None,
                 source_labels: None,
                 derived_columns: None,
+                dataset_name: None,
             })
             .expect("suppqual")
             {
@@ -109,7 +110,8 @@ fn processes_mockdata_end_to_end() {
             .any(|frame| frame.domain_code.eq_ignore_ascii_case("DM"))
     );
 
-    let _ = build_relrec(&processed_frames, &standards, relrec, study_id).expect("relrec");
+    let config = RelationshipConfig::default();
+    let _ = build_relrec(&processed_frames, &standards, relrec, study_id, &config).expect("relrec");
     let _ = build_relspec(&processed_frames, &standards, relspec, study_id).expect("relspec");
     let _ = build_relsub(&processed_frames, relsub, study_id).expect("relsub");
     let _ = suppqual_frames;

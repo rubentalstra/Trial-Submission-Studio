@@ -1,7 +1,7 @@
 use polars::prelude::{AnyValue, Column, DataFrame};
 use std::collections::BTreeSet;
 
-use sdtm_core::{SuppqualInput, build_suppqual, column_name, suppqual_domain_code};
+use sdtm_core::{SuppqualInput, build_suppqual, column_name, suppqual_dataset_code};
 use sdtm_standards::load_default_sdtm_ig_domains;
 
 #[test]
@@ -39,11 +39,12 @@ fn builds_suppqual_for_any_domain() {
         exclusion_columns: None,
         source_labels: None,
         derived_columns: None,
+        dataset_name: None,
     })
     .expect("suppqual")
     .expect("suppqual rows");
 
-    assert_eq!(result.domain_code, suppqual_domain_code("LB"));
+    assert_eq!(result.domain_code, suppqual_dataset_code("LB", None));
     assert_eq!(result.data.height(), 1);
     let qnam_col = column_name(suppqual, "QNAM").expect("QNAM");
     let qnam = result

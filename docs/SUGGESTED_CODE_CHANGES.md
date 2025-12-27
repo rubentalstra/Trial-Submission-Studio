@@ -553,17 +553,33 @@ are noted where applicable.
 
 ## 1.4 SUPPQUAL and Relationship Rules (Chapter 8)
 
-- [ ] **1.4.1** Generate SUPP names from dataset name with SQ fallback when >8
-      chars (Section 8.4.2).
+- [x] **1.4.1** Generate SUPP names from dataset name with SQ fallback when >8
+      chars (Section 8.4.2). **Implementation notes**: Added `dataset_name`
+      field to `SuppqualInput` struct. Created `suppqual_dataset_code()`
+      function that uses dataset name (for split domains like LBCH) when
+      generating SUPP codes. SUPP naming follows SDTMIG: SUPP{name} if ≤8
+      chars, SQ{name} if >8 chars.
 
-- [ ] **1.4.2** Set blank IDVAR/IDVARVAL for DM SUPP records. Validate
-      accordingly.
+- [x] **1.4.2** Set blank IDVAR/IDVARVAL for DM SUPP records. Validate
+      accordingly. **Implementation notes**: Updated `build_suppqual()` in
+      `suppqual.rs` to detect DM domain and set IDVAR/IDVARVAL to empty
+      strings. Per SDTMIG 8.4.1, DM has no --SEQ so SUPPQUAL records cannot
+      reference specific parent records.
 
-- [ ] **1.4.3** Generate RELREC only from explicit relationship keys. Add
-      configuration to disable auto RELREC.
+- [x] **1.4.3** Generate RELREC only from explicit relationship keys. Add
+      configuration to disable auto RELREC. **Implementation notes**: Added
+      `RelationshipConfig` struct with `disable_auto_relrec` and
+      `include_grpid_in_relrec` flags. Updated `build_relrec()` to accept a
+      config parameter. Per SDTMIG 8.1, --GRPID is for within-domain grouping
+      and should NOT be used for cross-domain RELREC. Now only --LNKID and
+      --LNKGRP are used for RELREC generation by default.
 
-- [ ] **1.4.4** Set RELTYPE only for dataset-level relationships (Section 8.3).
-      Leave blank for record-level links.
+- [x] **1.4.4** Set RELTYPE only for dataset-level relationships (Section 8.3).
+      Leave blank for record-level links. **Implementation notes**: Updated
+      `build_relrec()` to leave RELTYPE blank for record-level relationships
+      (where IDVAR/IDVARVAL are populated). Per SDTMIG 8.3, RELTYPE (ONE/MANY)
+      is only meaningful for dataset-level relationships where IDVAR and
+      IDVARVAL are empty.
 
 - [ ] **1.4.5** Implement and validate RELSPEC (Related Specimens) per Chapter
       8.

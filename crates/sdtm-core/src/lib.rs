@@ -70,9 +70,11 @@ pub use processor::{
 pub use provenance::{
     DerivationMethod, OriginSource, OriginType, ProvenanceRecord, ProvenanceTracker,
 };
-pub use relationships::{build_relationship_frames, build_relrec, build_relspec, build_relsub};
+pub use relationships::{
+    RelationshipConfig, build_relationship_frames, build_relrec, build_relspec, build_relsub,
+};
 pub use study_pipeline_context::StudyPipelineContext;
-pub use suppqual::{SuppqualInput, SuppqualResult, build_suppqual, suppqual_domain_code};
+pub use suppqual::{SuppqualInput, SuppqualResult, build_suppqual, suppqual_dataset_code};
 pub use text_utils::{
     QLABEL_MAX_LENGTH, SAS_V5_MAX_LENGTH, SuppSplitRecord, TEST_EXCEPTION_MAX_LENGTH,
     TEST_MAX_LENGTH, TESTCD_MAX_LENGTH, TextSplitResult, exceeds_qlabel_max, exceeds_sas_v5_max,

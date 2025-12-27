@@ -2,7 +2,9 @@ use std::collections::BTreeSet;
 
 use polars::prelude::{AnyValue, Column, DataFrame};
 
-use sdtm_core::{DomainFrame, build_relrec, build_relspec, build_relsub, column_name};
+use sdtm_core::{
+    DomainFrame, RelationshipConfig, build_relrec, build_relspec, build_relsub, column_name,
+};
 use sdtm_ingest::any_to_string;
 use sdtm_standards::load_default_sdtm_ig_domains;
 
@@ -50,7 +52,14 @@ fn builds_relrec_from_domain_frames() {
         },
     ];
 
-    let relrec_frame = build_relrec(&frames, &standards, relrec, "STUDY1")
+    // Note: GRPID is for within-domain grouping per SDTMIG 8.1.
+    // We need to explicitly enable include_grpid_in_relrec to use GRPID for RELREC.
+    let config = RelationshipConfig {
+        disable_auto_relrec: false,
+        include_grpid_in_relrec: true,
+    };
+
+    let relrec_frame = build_relrec(&frames, &standards, relrec, "STUDY1", &config)
         .expect("relrec")
         .expect("relrec data");
 
@@ -62,13 +71,15 @@ fn builds_relrec_from_domain_frames() {
         .collect();
     assert_eq!(values, BTreeSet::from(["DS".to_string(), "LB".to_string()]));
 
+    // Per SDTMIG 8.3: RELTYPE is only for dataset-level relationships.
+    // For record-level links (with IDVAR/IDVARVAL populated), RELTYPE should be blank.
     let reltype_col = column_name(relrec, "RELTYPE").expect("RELTYPE");
     let reltype = relrec_frame.data.column(&reltype_col).expect("RELTYPE");
     let reltypes: Vec<String> = (0..relrec_frame.data.height())
         .map(|idx| any_to_string(reltype.get(idx).unwrap_or(AnyValue::Null)))
         .collect();
-    assert!(reltypes.iter().any(|value| value == "ONE"));
-    assert!(reltypes.iter().any(|value| value == "MANY"));
+    // All RELTYPE values should be empty for record-level relationships
+    assert!(reltypes.iter().all(|value| value.is_empty()));
 }
 
 #[test]
