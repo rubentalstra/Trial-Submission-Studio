@@ -180,7 +180,6 @@ pub fn validate_domains(
         }
     }
     if let Some(p21_rules) = ctx.p21_rules {
-        apply_reject_rules(&domain_map, &frame_map, p21_rules, &mut report_map);
         apply_missing_dataset_issues(&domain_map, &frame_map, p21_rules, &mut report_map);
     }
     report_map.into_values().collect()
@@ -589,17 +588,6 @@ fn issue_from_rule(
     }
 }
 
-fn apply_reject_rules(
-    domain_map: &BTreeMap<String, &Domain>,
-    frame_map: &BTreeMap<String, &DataFrame>,
-    p21_rules: &[P21Rule],
-    report_map: &mut BTreeMap<String, ConformanceReport>,
-) {
-    let p21_lookup = build_p21_lookup(Some(p21_rules));
-    apply_missing_dataset_rejects(domain_map, frame_map, p21_rules, report_map);
-    apply_ts_sstdtc_rejects(domain_map, frame_map, &p21_lookup, report_map);
-}
-
 fn apply_missing_dataset_issues(
     domain_map: &BTreeMap<String, &Domain>,
     frame_map: &BTreeMap<String, &DataFrame>,
@@ -607,9 +595,6 @@ fn apply_missing_dataset_issues(
     report_map: &mut BTreeMap<String, ConformanceReport>,
 ) {
     for rule in p21_rules {
-        if parse_severity(rule) == Some(IssueSeverity::Reject) {
-            continue;
-        }
         let Some(code) = missing_dataset_code(&rule.message) else {
             continue;
         };
@@ -619,10 +604,14 @@ fn apply_missing_dataset_issues(
         if frame_map.contains_key(&code) {
             continue;
         }
+        let severity = match parse_severity(rule) {
+            Some(IssueSeverity::Warning) => IssueSeverity::Warning,
+            _ => IssueSeverity::Error,
+        };
         let issue = ConformanceIssue {
             code: rule.rule_id.clone(),
             message: rule_message(rule, None),
-            severity: rule_severity(Some(rule), IssueSeverity::Error),
+            severity,
             variable: None,
             count: Some(1),
             rule_id: Some(rule.rule_id.clone()),
@@ -631,151 +620,6 @@ fn apply_missing_dataset_issues(
             ct_source: None,
         };
         add_report_issue(report_map, &code, issue);
-    }
-}
-
-fn apply_missing_dataset_rejects(
-    domain_map: &BTreeMap<String, &Domain>,
-    frame_map: &BTreeMap<String, &DataFrame>,
-    p21_rules: &[P21Rule],
-    report_map: &mut BTreeMap<String, ConformanceReport>,
-) {
-    for rule in p21_rules {
-        if parse_severity(rule) != Some(IssueSeverity::Reject) {
-            continue;
-        }
-        let Some(code) = missing_dataset_code(&rule.message) else {
-            continue;
-        };
-        if !domain_map.contains_key(&code) {
-            continue;
-        }
-        if frame_map.contains_key(&code) {
-            continue;
-        }
-        let issue = ConformanceIssue {
-            code: rule.rule_id.clone(),
-            message: rule_message(rule, None),
-            severity: IssueSeverity::Reject,
-            variable: None,
-            count: None,
-            rule_id: Some(rule.rule_id.clone()),
-            category: rule.category.clone(),
-            codelist_code: None,
-            ct_source: None,
-        };
-        add_report_issue(report_map, &code, issue);
-    }
-}
-
-fn apply_ts_sstdtc_rejects(
-    domain_map: &BTreeMap<String, &Domain>,
-    frame_map: &BTreeMap<String, &DataFrame>,
-    p21_lookup: &BTreeMap<String, &P21Rule>,
-    report_map: &mut BTreeMap<String, ConformanceReport>,
-) {
-    let ts_domain = match domain_map.get("TS") {
-        Some(domain) => *domain,
-        None => return,
-    };
-    let df = match frame_map.get("TS") {
-        Some(df) => *df,
-        None => return,
-    };
-    let tsp_var = match standard_variable_name(ts_domain, "TSPARMCD") {
-        Some(name) => name,
-        None => return,
-    };
-    let tsval_var = match standard_variable_name(ts_domain, "TSVAL") {
-        Some(name) => name,
-        None => return,
-    };
-    let column_lookup = build_column_lookup(df);
-    let tsp_col = match column_lookup.get(&tsp_var.to_uppercase()) {
-        Some(name) => name.as_str(),
-        None => return,
-    };
-    let tsval_col = match column_lookup.get(&tsval_var.to_uppercase()) {
-        Some(name) => name.as_str(),
-        None => return,
-    };
-    let tsp_series = match df.column(tsp_col) {
-        Ok(series) => series,
-        Err(_) => return,
-    };
-    let tsval_series = match df.column(tsval_col) {
-        Ok(series) => series,
-        Err(_) => return,
-    };
-
-    let mut sstdtc_rows = 0usize;
-    let mut invalid_format = 0usize;
-    let mut incomplete_date = 0usize;
-
-    for idx in 0..df.height() {
-        let tsp_value = any_to_string(tsp_series.get(idx).unwrap_or(AnyValue::Null));
-        if tsp_value.trim().eq_ignore_ascii_case("SSTDTC") {
-            sstdtc_rows += 1;
-            let tsval = any_to_string(tsval_series.get(idx).unwrap_or(AnyValue::Null));
-            let status = sstdtc_status(&tsval);
-            if !status.iso_valid {
-                invalid_format += 1;
-            } else if !status.full_date {
-                incomplete_date += 1;
-            }
-        }
-    }
-
-    if sstdtc_rows == 0 {
-        if let Some(rule) = reject_rule(p21_lookup, "SD2232") {
-            let issue = ConformanceIssue {
-                code: rule.rule_id.clone(),
-                message: rule_message(rule, None),
-                severity: IssueSeverity::Reject,
-                variable: Some(tsp_var.clone()),
-                count: None,
-                rule_id: Some(rule.rule_id.clone()),
-                category: rule.category.clone(),
-                codelist_code: None,
-                ct_source: None,
-            };
-            add_report_issue(report_map, "TS", issue);
-        }
-        return;
-    }
-
-    if invalid_format > 0 {
-        if let Some(rule) = reject_rule(p21_lookup, "SD2247") {
-            let issue = ConformanceIssue {
-                code: rule.rule_id.clone(),
-                message: rule_message(rule, Some(invalid_format)),
-                severity: IssueSeverity::Reject,
-                variable: Some(tsval_var.clone()),
-                count: Some(invalid_format as u64),
-                rule_id: Some(rule.rule_id.clone()),
-                category: rule.category.clone(),
-                codelist_code: None,
-                ct_source: None,
-            };
-            add_report_issue(report_map, "TS", issue);
-        }
-    }
-
-    if incomplete_date > 0 {
-        if let Some(rule) = reject_rule(p21_lookup, "SD2247A") {
-            let issue = ConformanceIssue {
-                code: rule.rule_id.clone(),
-                message: rule_message(rule, Some(incomplete_date)),
-                severity: IssueSeverity::Reject,
-                variable: Some(tsval_var.clone()),
-                count: Some(incomplete_date as u64),
-                rule_id: Some(rule.rule_id.clone()),
-                category: rule.category.clone(),
-                codelist_code: None,
-                ct_source: None,
-            };
-            add_report_issue(report_map, "TS", issue);
-        }
     }
 }
 
@@ -791,18 +635,6 @@ fn missing_dataset_code(message: &str) -> Option<String> {
         return None;
     }
     Some(raw.to_uppercase())
-}
-
-fn reject_rule<'a>(
-    p21_lookup: &'a BTreeMap<String, &'a P21Rule>,
-    rule_id: &str,
-) -> Option<&'a P21Rule> {
-    let rule = p21_lookup.get(&rule_id.to_uppercase())?;
-    if parse_severity(rule) == Some(IssueSeverity::Reject) {
-        Some(*rule)
-    } else {
-        None
-    }
 }
 
 fn add_report_issue(
@@ -830,66 +662,6 @@ fn rule_message(rule: &P21Rule, count: Option<usize>) -> String {
         Some(value) => format!("{base} ({value} value(s))"),
         None => base,
     }
-}
-
-fn standard_variable_name(domain: &Domain, target: &str) -> Option<String> {
-    domain
-        .variables
-        .iter()
-        .find(|var| var.name.eq_ignore_ascii_case(target))
-        .map(|var| var.name.clone())
-}
-
-struct SstdtcStatus {
-    iso_valid: bool,
-    full_date: bool,
-}
-
-fn sstdtc_status(value: &str) -> SstdtcStatus {
-    let trimmed = value.trim();
-    if trimmed.is_empty() {
-        return SstdtcStatus {
-            iso_valid: false,
-            full_date: false,
-        };
-    }
-    let date_part = trimmed
-        .split('T')
-        .next()
-        .unwrap_or(trimmed)
-        .split_whitespace()
-        .next()
-        .unwrap_or(trimmed);
-    let parts: Vec<&str> = date_part.split('-').collect();
-    match parts.len() {
-        1 => SstdtcStatus {
-            iso_valid: is_year(parts[0]),
-            full_date: false,
-        },
-        2 => SstdtcStatus {
-            iso_valid: is_year(parts[0]) && is_two_digit(parts[1]),
-            full_date: false,
-        },
-        3 => {
-            let iso_valid = is_year(parts[0]) && is_two_digit(parts[1]) && is_two_digit(parts[2]);
-            SstdtcStatus {
-                iso_valid,
-                full_date: iso_valid,
-            }
-        }
-        _ => SstdtcStatus {
-            iso_valid: false,
-            full_date: false,
-        },
-    }
-}
-
-fn is_year(value: &str) -> bool {
-    value.len() == 4 && value.chars().all(|c| c.is_ascii_digit())
-}
-
-fn is_two_digit(value: &str) -> bool {
-    value.len() == 2 && value.chars().all(|c| c.is_ascii_digit())
 }
 
 fn collect_invalid_ct_values(

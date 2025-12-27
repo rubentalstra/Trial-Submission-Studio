@@ -125,7 +125,7 @@ fn print_issue_table(result: &StudyResult) {
         header_cell("Variable"),
         header_cell("CT"),
         header_cell("Code"),
-        header_cell("Rule"),
+        header_cell("P21 Rule"),
         header_cell("Category"),
         header_cell("Message"),
         header_cell("Values"),
