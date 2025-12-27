@@ -97,11 +97,13 @@ are noted where applicable.
       `dataset_name`, `source_files`, `split_variant`, `base_domain_code`.
       Propagate into outputs and reports.
 
-- [ ] **0.2.3** Refactor `run_study` in `sdtm-cli/src/commands.rs` into explicit
+- [x] **0.2.3** Refactor `run_study` in `sdtm-cli/src/commands.rs` into explicit
       pipeline stages:
       `ingest -> map -> preprocess -> domain_rules ->
       validate -> output`.
-      Use typed input/output structs between stages.
+      Use typed input/output structs between stages. (Created `pipeline.rs`
+      module with `ingest()`, `process_file()`, `validate()`, `output()` stage
+      functions.)
 
 - [ ] **0.2.4** Replace hard-coded domain processor match in
       `domain_processors/mod.rs` with a registry map

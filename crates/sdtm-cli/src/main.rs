@@ -3,6 +3,7 @@ use sdtm_cli::logging::init_logging;
 
 mod cli;
 mod commands;
+mod pipeline;
 mod summary;
 mod types;
 
