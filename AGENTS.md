@@ -16,6 +16,24 @@ provenance. Output must match SDTMIG and MSG conventions exactly.
 - Dataset-XML spec: `docs/Dataset-XML_1-0/`
 - MSG v2.0 golden standard: `docs/SDTM-MSG_v2.0_Sample_Submission_Package/`
 
+### SDTMIG v3.4 Chapter Reference
+
+The full SDTMIG v3.4 specification is available in Markdown format:
+
+- `chapter_02_fundamentals-of-the-sdtm.md` - Core concepts
+- `chapter_03_submitting-data-in-standard-format.md` - Submission metadata
+- `chapter_04_assumptions-for-domain-models.md` - Variable rules, timing, text
+- `chapter_05_models-for-special-purpose-domains.md` - DM, SE, SV, CO
+- `chapter_06_domain-models-based-on-the-general-observation-classes.md` -
+  Findings, Events, Interventions
+- `chapter_07_trial-design-model-datasets.md` - TA, TE, TV, TI, TS, TD, TM
+- `chapter_08_representing-relationships-and-data.md` - RELREC, RELSPEC, RELSUB,
+  SUPPQUAL
+- `chapter_09_study-references.md` - DI, OI
+- `chapter_10_appendices.md` - CT, naming fragments, QNAM codes
+
+**Always verify rules against these chapters before implementing.**
+
 ## Build and test commands
 
 - Run from repo root to use workspace settings.
@@ -41,6 +59,9 @@ provenance. Output must match SDTMIG and MSG conventions exactly.
 
 ## Non-negotiable rules
 
+- **Never fabricate SDTM rules**: always verify against
+  `standards/sdtmig/v3_4/chapters/` before implementing any rule or validation.
+- **Cite chapter/section** in code comments when implementing SDTMIG rules.
 - Strict mode only: missing Required/Expected data must error, not auto-fill.
 - No imputation or heuristic fills without explicit mapping/derivation rules.
 - CT normalization must be exact or explicit synonym mapping; record dictionary
@@ -53,6 +74,8 @@ provenance. Output must match SDTMIG and MSG conventions exactly.
   errors and preserve raw values.
 - Required identifiers (STUDYID/USUBJID/DOMAIN/--SEQ) must be present for GO
   domains; do not fabricate.
+- Do not invent variable constraints, CT values, or domain rules not explicitly
+  documented in the standards.
 
 ## Determinism and output parity
 
@@ -121,6 +144,10 @@ provenance. Output must match SDTMIG and MSG conventions exactly.
 ## Working practices
 
 - Prefer `rg` for file and text search.
-- Always check the task scope and status in `docs/SUGGESTED_CODE_CHANGES.md` before starting work.
+- Always check the task scope and status in `docs/SUGGESTED_CODE_CHANGES.md`
+  before starting work.
 - Mark completed tasks with `[x]` in `docs/SUGGESTED_CODE_CHANGES.md`.
 - If requirements change, update `docs/SUGGESTED_CODE_CHANGES.md`.
+- Before implementing any SDTM rule, read the relevant section in
+  `standards/sdtmig/v3_4/chapters/` to verify the requirement.
+- When in doubt about SDTM behavior, consult the chapter documentation first.
