@@ -326,7 +326,7 @@ fn assign_sequence(
     };
     let had_existing = has_existing_sequence(df, seq_column);
     let mut counters: BTreeMap<String, i64> = BTreeMap::new();
-    let mut values: Vec<Option<i64>> = Vec::with_capacity(df.height());
+    let mut values: Vec<Option<f64>> = Vec::with_capacity(df.height());
 
     for idx in 0..df.height() {
         let key = any_to_string(group_series.get(idx).unwrap_or(AnyValue::Null));
@@ -337,7 +337,7 @@ fn assign_sequence(
         }
         let entry = counters.entry(key.to_string()).or_insert(0);
         *entry += 1;
-        values.push(Some(*entry));
+        values.push(Some(*entry as f64));
     }
 
     let series = Series::new(seq_column.into(), values);
@@ -372,7 +372,7 @@ fn assign_sequence_with_tracker(
         .as_ref()
         .map(|series| column_has_values(series))
         .unwrap_or(false);
-    let mut values: Vec<Option<i64>> = Vec::with_capacity(df.height());
+    let mut values: Vec<Option<f64>> = Vec::with_capacity(df.height());
     for idx in 0..df.height() {
         let key = any_to_string(group_series.get(idx).unwrap_or(AnyValue::Null));
         let key = key.trim();
@@ -385,7 +385,7 @@ fn assign_sequence_with_tracker(
             .as_ref()
             .map(|series| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
             .unwrap_or_default();
-        let parsed = existing.trim().parse::<i64>().ok();
+        let parsed = parse_sequence_value(existing.trim());
         let value = match parsed {
             Some(seq) if seq > *entry => {
                 *entry = seq;
@@ -396,7 +396,7 @@ fn assign_sequence_with_tracker(
                 *entry
             }
         };
-        values.push(Some(value));
+        values.push(Some(value as f64));
     }
     let series = Series::new(seq_column.into(), values);
     df.with_column(series)?;
@@ -433,7 +433,7 @@ fn needs_sequence_assignment(df: &DataFrame, seq_column: &str, group_column: &st
         if trimmed.is_empty() {
             continue;
         }
-        if let Ok(parsed) = trimmed.parse::<i64>() {
+        if let Some(parsed) = parse_sequence_value(trimmed) {
             has_value = true;
             let entry = groups.entry(group).or_default();
             if entry.contains(&parsed) {
@@ -445,6 +445,27 @@ fn needs_sequence_assignment(df: &DataFrame, seq_column: &str, group_column: &st
         }
     }
     Ok(!has_value)
+}
+
+fn parse_sequence_value(text: &str) -> Option<i64> {
+    let trimmed = text.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    if let Ok(value) = trimmed.parse::<i64>() {
+        return Some(value);
+    }
+    if let Ok(value) = trimmed.parse::<f64>() {
+        if value.is_finite() {
+            let rounded = value.round();
+            if (value - rounded).abs() <= f64::EPSILON {
+                if rounded >= 0.0 && rounded <= i64::MAX as f64 {
+                    return Some(rounded as i64);
+                }
+            }
+        }
+    }
+    None
 }
 
 fn has_existing_sequence(df: &DataFrame, seq_column: &str) -> bool {

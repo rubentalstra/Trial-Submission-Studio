@@ -43,7 +43,7 @@ pub fn apply_sequence_offsets(
         Ok(series) => series.clone(),
         Err(_) => return Ok(()),
     };
-    let mut values: Vec<Option<i64>> = Vec::with_capacity(df.height());
+    let mut values: Vec<Option<f64>> = Vec::with_capacity(df.height());
     for idx in 0..df.height() {
         let usubjid = any_to_string(usubjid_series.get(idx).unwrap_or(AnyValue::Null));
         let key = usubjid.trim();
@@ -53,7 +53,7 @@ pub fn apply_sequence_offsets(
         }
         let entry = tracker.entry(key.to_string()).or_insert(0);
         *entry += 1;
-        values.push(Some(*entry));
+        values.push(Some(*entry as f64));
     }
     let series = Series::new(seq_col.into(), values);
     df.with_column(series)?;
