@@ -105,11 +105,14 @@ are noted where applicable.
       module with `ingest()`, `process_file()`, `validate()`, `output()` stage
       functions.)
 
-- [ ] **0.2.4** Replace hard-coded domain processor match in
+- [x] **0.2.4** Replace hard-coded domain processor match in
       `domain_processors/mod.rs` with a registry map
       (`HashMap<String,
       Box<dyn DomainProcessor>>`). Allow processors to
-      be added/disabled via config.
+      be added/disabled via config. (Created `DomainProcessor` trait,
+      `DomainProcessorRegistry` with register/disable/enable methods,
+      `build_default_registry()` function, and `process_domain_with_registry()`
+      for custom configurations.)
 
 - [ ] **0.2.5** Define ordered per-domain step lists and run them through a
       single pipeline executor. Remove nested helper chains.
@@ -672,9 +675,9 @@ are noted where applicable.
 
 | Phase     | Total   | Completed | Remaining |
 | --------- | ------- | --------- | --------- |
-| 0         | 35      | 4         | 31        |
+| 0         | 35      | 9         | 26        |
 | 1         | 67      | 0         | 67        |
 | 2         | 32      | 0         | 32        |
 | 3         | 8       | 0         | 8         |
 | 4         | 8       | 0         | 8         |
-| **Total** | **150** | **4**     | **146**   |
+| **Total** | **150** | **9**     | **141**   |

@@ -32,6 +32,9 @@ pub use datetime::{
     parse_date, parse_iso8601_datetime, parse_iso8601_duration, validate_iso8601,
 };
 pub use dedupe::dedupe_frames_by_identifiers;
+pub use domain_processors::{
+    DomainProcessor, DomainProcessorRegistry, build_default_registry, process_domain_with_registry,
+};
 pub use domain_sets::{build_report_domains, domain_map_by_code, is_supporting_domain};
 pub use domain_utils::{column_map, column_name, infer_seq_column, standard_columns};
 pub use frame::{DomainFrame, DomainFrameMeta};
