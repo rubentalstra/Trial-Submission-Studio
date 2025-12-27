@@ -195,6 +195,12 @@ are noted where applicable.
       `--log-data` flag for PHI values. Document PHI-safe logging rules in
       README.
 
+- [x] **0.4.6** Adopt `clap-verbosity-flag` for `-v/-q` handling and ensure CLI
+      verbosity/log-level overrides `RUST_LOG`.
+
+- [x] **0.4.7** Provide a human-friendly log formatter with colored levels and
+      concise context/detail output.
+
 ## 0.5 Strictness and Non-Fabrication Policy
 
 - [ ] **0.5.1** Make strict mode mandatory. Block outputs when strict validation

@@ -375,6 +375,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "clap-verbosity-flag"
+version = "3.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9d92b1fab272fe943881b77cc6e920d6543e5b1bfadbd5ed81c7c5a755742394"
+dependencies = [
+ "clap",
+ "tracing-core",
+]
+
+[[package]]
 name = "clap_builder"
 version = "4.5.53"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -409,6 +419,16 @@ name = "colorchoice"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b05b61dc5112cbb17e4b6cd61790d9845d13888356391624cbe7e41efeac1e75"
+
+[[package]]
+name = "colorchoice-clap"
+version = "1.0.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0ff31f4fe290e780fe3bbec6b2eb9dbfdccd1630e79a104c221d99243de81493"
+dependencies = [
+ "clap",
+ "colorchoice",
+]
 
 [[package]]
 name = "comfy-table"
@@ -2508,6 +2528,8 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "clap",
+ "clap-verbosity-flag",
+ "colorchoice-clap",
  "comfy-table",
  "polars",
  "sdtm-core",

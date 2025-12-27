@@ -1,6 +1,7 @@
-use clap::Parser;
+use clap::{ColorChoice, Parser};
 use sdtm_cli::logging::{LogConfig, LogFormat, init_logging};
-use tracing::Level;
+use std::io::{self, IsTerminal};
+use tracing::level_filters::LevelFilter;
 
 mod cli;
 mod commands;
@@ -14,6 +15,7 @@ use crate::summary::print_summary;
 
 fn main() {
     let cli = Cli::parse();
+    cli.color.write_global();
     let log_config = log_config_from_cli(&cli);
     if let Err(error) = init_logging(&log_config) {
         eprintln!("error: failed to initialize logging: {error}");
@@ -43,17 +45,18 @@ fn main() {
 
 /// Build logging configuration from CLI flags with consistent precedence.
 fn log_config_from_cli(cli: &Cli) -> LogConfig {
-    let mut config = LogConfig::from_verbosity(cli.verbose);
-    if cli.quiet {
-        config.level = Level::ERROR;
-    }
+    let mut config = LogConfig {
+        level_filter: cli.verbosity.tracing_level_filter(),
+        ..LogConfig::default()
+    };
+    config.use_env_filter = !(cli.verbosity.is_present() || cli.log_level.is_some());
     if let Some(level) = cli.log_level {
-        config.level = match level {
-            LogLevelArg::Error => Level::ERROR,
-            LogLevelArg::Warn => Level::WARN,
-            LogLevelArg::Info => Level::INFO,
-            LogLevelArg::Debug => Level::DEBUG,
-            LogLevelArg::Trace => Level::TRACE,
+        config.level_filter = match level {
+            LogLevelArg::Error => LevelFilter::ERROR,
+            LogLevelArg::Warn => LevelFilter::WARN,
+            LogLevelArg::Info => LevelFilter::INFO,
+            LogLevelArg::Debug => LevelFilter::DEBUG,
+            LogLevelArg::Trace => LevelFilter::TRACE,
         };
     }
     config.format = match cli.log_format {
@@ -63,8 +66,10 @@ fn log_config_from_cli(cli: &Cli) -> LogConfig {
     };
     config.log_file = cli.log_file.clone();
     config.log_data = cli.log_data;
-    if config.log_file.is_some() {
-        config.with_ansi = false;
-    }
+    config.with_ansi = match cli.color.color {
+        ColorChoice::Always => true,
+        ColorChoice::Never => false,
+        ColorChoice::Auto => cli.log_file.is_none() && io::stderr().is_terminal(),
+    };
     config
 }

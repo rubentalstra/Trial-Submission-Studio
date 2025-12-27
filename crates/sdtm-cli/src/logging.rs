@@ -20,16 +20,25 @@
 //! init_logging(&config).expect("init logging");
 //! ```
 
+use std::collections::BTreeMap;
+use std::fmt as std_fmt;
 use std::fs::OpenOptions;
 use std::io::{self, Write};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
-use tracing::Level;
+use tracing::field::{Field, Visit};
+use tracing::level_filters::LevelFilter;
+use tracing::{Event, Level};
 use tracing_subscriber::{
     EnvFilter,
-    fmt::{self, MakeWriter},
+    fmt::{
+        self, FmtContext, MakeWriter,
+        format::{FormatEvent, FormatFields, Writer},
+        time::{FormatTime, SystemTime},
+    },
     layer::SubscriberExt,
+    registry::LookupSpan,
     util::SubscriberInitExt,
 };
 
@@ -55,8 +64,10 @@ pub fn redact_value(value: &str) -> &str {
 /// Configuration for logging behavior.
 #[derive(Debug, Clone)]
 pub struct LogConfig {
-    /// Log level filter (error, warn, info, debug, trace).
-    pub level: Level,
+    /// Log level filter (off, error, warn, info, debug, trace).
+    pub level_filter: LevelFilter,
+    /// Whether to allow RUST_LOG to override CLI verbosity.
+    pub use_env_filter: bool,
     /// Whether to include timestamps in log output.
     pub with_timestamps: bool,
     /// Whether to include target (module path) in log output.
@@ -88,7 +99,8 @@ pub enum LogFormat {
 impl Default for LogConfig {
     fn default() -> Self {
         Self {
-            level: Level::INFO,
+            level_filter: LevelFilter::INFO,
+            use_env_filter: true,
             with_timestamps: false,
             with_target: false,
             with_spans: true,
@@ -108,21 +120,21 @@ impl LogConfig {
     /// - 2+ (`-vv`): trace level
     #[must_use]
     pub fn from_verbosity(verbosity: u8) -> Self {
-        let level = match verbosity {
-            0 => Level::INFO,
-            1 => Level::DEBUG,
-            _ => Level::TRACE,
+        let level_filter = match verbosity {
+            0 => LevelFilter::INFO,
+            1 => LevelFilter::DEBUG,
+            _ => LevelFilter::TRACE,
         };
         Self {
-            level,
+            level_filter,
             ..Default::default()
         }
     }
 
     /// Set log level directly.
     #[must_use]
-    pub fn with_level(mut self, level: Level) -> Self {
-        self.level = level;
+    pub fn with_level_filter(mut self, level_filter: LevelFilter) -> Self {
+        self.level_filter = level_filter;
         self
     }
 
@@ -196,7 +208,7 @@ where
     W: for<'writer> MakeWriter<'writer> + Send + Sync + 'static,
 {
     LOG_DATA_ENABLED.store(config.log_data, Ordering::Release);
-    let filter = build_env_filter(config.level);
+    let filter = build_env_filter(config.level_filter, config.use_env_filter);
 
     match config.format {
         LogFormat::Json => {
@@ -236,22 +248,257 @@ where
         }
         LogFormat::Pretty => {
             let layer = fmt::layer()
+                .event_format(HumanFormatter::new(config.with_timestamps))
                 .with_writer(writer)
-                .with_ansi(config.with_ansi)
-                .with_target(config.with_target);
+                .with_ansi(config.with_ansi);
 
-            if config.with_timestamps {
-                tracing_subscriber::registry()
-                    .with(filter)
-                    .with(layer)
-                    .init();
-            } else {
-                tracing_subscriber::registry()
-                    .with(filter)
-                    .with(layer.without_time())
-                    .init();
-            }
+            tracing_subscriber::registry()
+                .with(filter)
+                .with(layer)
+                .init();
         }
+    }
+}
+
+/// Formats tracing events into a concise, human-friendly log line.
+#[derive(Debug)]
+struct HumanFormatter {
+    timer: SystemTime,
+    with_timestamps: bool,
+}
+
+impl HumanFormatter {
+    /// Create a formatter that optionally includes timestamps.
+    fn new(with_timestamps: bool) -> Self {
+        Self {
+            timer: SystemTime,
+            with_timestamps,
+        }
+    }
+}
+
+impl<S, N> FormatEvent<S, N> for HumanFormatter
+where
+    S: tracing::Subscriber + for<'a> LookupSpan<'a>,
+    N: for<'writer> FormatFields<'writer> + 'static,
+{
+    fn format_event(
+        &self,
+        _ctx: &FmtContext<'_, S, N>,
+        mut writer: Writer<'_>,
+        event: &Event<'_>,
+    ) -> std_fmt::Result {
+        if self.with_timestamps {
+            self.timer.format_time(&mut writer)?;
+            write!(writer, " ")?;
+        }
+
+        write_level(&mut writer, event.metadata().level())?;
+        write!(writer, " ")?;
+
+        let mut visitor = HumanFieldVisitor::default();
+        event.record(&mut visitor);
+
+        let message = visitor
+            .take_message()
+            .unwrap_or_else(|| event.metadata().name().to_string());
+        let context = format_context(&mut visitor);
+        if !context.is_empty() {
+            write!(writer, "{context} ")?;
+        }
+
+        write!(writer, "{message}")?;
+
+        let details = format_details(&mut visitor);
+        if !details.is_empty() {
+            write!(writer, " ({})", details.join(", "))?;
+        }
+
+        writeln!(writer)
+    }
+}
+
+/// Collects tracing event fields for human-friendly formatting.
+#[derive(Debug, Default)]
+struct HumanFieldVisitor {
+    fields: BTreeMap<String, String>,
+    message: Option<String>,
+}
+
+impl HumanFieldVisitor {
+    /// Store a field value, extracting the message when present.
+    fn record_value(&mut self, field: &Field, value: String) {
+        if field.name() == "message" {
+            self.message = Some(value);
+        } else {
+            self.fields.insert(field.name().to_string(), value);
+        }
+    }
+
+    /// Take the stored log message, if any.
+    fn take_message(&mut self) -> Option<String> {
+        self.message.take()
+    }
+
+    /// Remove a field by name, returning its value.
+    fn take_field(&mut self, name: &str) -> Option<String> {
+        self.fields.remove(name)
+    }
+}
+
+impl Visit for HumanFieldVisitor {
+    fn record_str(&mut self, field: &Field, value: &str) {
+        self.record_value(field, value.to_string());
+    }
+
+    fn record_bool(&mut self, field: &Field, value: bool) {
+        self.record_value(field, value.to_string());
+    }
+
+    fn record_i64(&mut self, field: &Field, value: i64) {
+        self.record_value(field, value.to_string());
+    }
+
+    fn record_u64(&mut self, field: &Field, value: u64) {
+        self.record_value(field, value.to_string());
+    }
+
+    fn record_f64(&mut self, field: &Field, value: f64) {
+        self.record_value(field, value.to_string());
+    }
+
+    fn record_debug(&mut self, field: &Field, value: &dyn std_fmt::Debug) {
+        self.record_value(field, format!("{value:?}"));
+    }
+}
+
+/// Format core context (study/domain/dataset) into a compact prefix.
+fn format_context(fields: &mut HumanFieldVisitor) -> String {
+    let study_id = fields.take_field("study_id");
+    let dataset_name = fields.take_field("dataset_name");
+    let mut domain = fields
+        .take_field("domain_code")
+        .or_else(|| fields.take_field("domain"));
+
+    if let Some(dataset_name) = dataset_name {
+        match &domain {
+            Some(domain_code) if dataset_name != *domain_code => {
+                domain = Some(format!("{domain_code}/{dataset_name}"));
+            }
+            Some(_) => {}
+            None => domain = Some(dataset_name),
+        }
+    }
+
+    let mut parts = Vec::new();
+    if let Some(study_id) = study_id {
+        parts.push(study_id);
+    }
+    if let Some(domain) = domain {
+        parts.push(domain);
+    }
+
+    if parts.is_empty() {
+        String::new()
+    } else {
+        format!("[{}]", parts.join(" | "))
+    }
+}
+
+/// Format detail fields into a readable suffix.
+fn format_details(fields: &mut HumanFieldVisitor) -> Vec<String> {
+    let mut details = Vec::new();
+
+    let input_rows = fields.take_field("input_rows");
+    let output_rows = fields.take_field("output_rows");
+    let record_count = fields.take_field("record_count");
+    let domain_count = fields.take_field("domain_count");
+    let file_count = fields.take_field("file_count");
+    let error_count = fields.take_field("error_count");
+    let warning_count = fields.take_field("warning_count");
+    let xpt_count = fields.take_field("xpt_count");
+    let dataset_xml_count = fields.take_field("dataset_xml_count");
+    let sas_count = fields.take_field("sas_count");
+    let define_xml = fields.take_field("define_xml");
+    let source_file = fields.take_field("source_file");
+    let duration_ms = fields.take_field("duration_ms");
+
+    if let (Some(input_rows), Some(output_rows)) = (input_rows.as_ref(), output_rows.as_ref()) {
+        if input_rows == output_rows {
+            details.push(format!("rows={input_rows}"));
+        } else {
+            details.push(format!("rows={input_rows}->{output_rows}"));
+        }
+    } else if let Some(output_rows) = output_rows.as_ref() {
+        details.push(format!("rows={output_rows}"));
+    } else if let Some(record_count) = record_count.as_ref() {
+        details.push(format!("rows={record_count}"));
+    }
+
+    if let Some(domain_count) = domain_count {
+        details.push(format!("domains={domain_count}"));
+    }
+    if let Some(file_count) = file_count {
+        details.push(format!("files={file_count}"));
+    }
+
+    if let Some(error_count) = error_count {
+        details.push(format!("errors={error_count}"));
+    }
+    if let Some(warning_count) = warning_count {
+        details.push(format!("warnings={warning_count}"));
+    }
+
+    if let Some(xpt_count) = xpt_count {
+        details.push(format!("xpt={xpt_count}"));
+    }
+    if let Some(dataset_xml_count) = dataset_xml_count {
+        details.push(format!("xml={dataset_xml_count}"));
+    }
+    if let Some(sas_count) = sas_count {
+        details.push(format!("sas={sas_count}"));
+    }
+    if let Some(define_xml) = define_xml {
+        details.push(format!("define={define_xml}"));
+    }
+
+    if let Some(source_file) = source_file {
+        details.push(format!("file={source_file}"));
+    }
+    if let Some(duration_ms) = duration_ms {
+        details.push(format!("duration={}", format_duration(&duration_ms)));
+    }
+
+    details
+}
+
+/// Render durations in milliseconds as ms or s for readability.
+fn format_duration(duration_ms: &str) -> String {
+    let Ok(value) = duration_ms.parse::<u128>() else {
+        return format!("{duration_ms}ms");
+    };
+    if value >= 1000 {
+        let seconds = (value as f64) / 1000.0;
+        format!("{seconds:.1}s")
+    } else {
+        format!("{value}ms")
+    }
+}
+
+/// Write the log level with optional ANSI coloring.
+fn write_level(writer: &mut Writer<'_>, level: &Level) -> std_fmt::Result {
+    let label = format!("{level:<5}");
+    if writer.has_ansi_escapes() {
+        let color = match *level {
+            Level::ERROR => "\x1b[31m",
+            Level::WARN => "\x1b[33m",
+            Level::INFO => "\x1b[32m",
+            Level::DEBUG => "\x1b[34m",
+            Level::TRACE => "\x1b[36m",
+        };
+        write!(writer, "{color}{label}\x1b[0m")
+    } else {
+        write!(writer, "{label}")
     }
 }
 
@@ -300,19 +547,24 @@ impl<'a> MakeWriter<'a> for SharedFileWriter {
     }
 }
 
-/// Build an `EnvFilter` from the given level, respecting `RUST_LOG` env var.
-fn build_env_filter(level: Level) -> EnvFilter {
-    // Allow RUST_LOG to override the configured level
-    let level_str = level.as_str().to_lowercase();
-
-    EnvFilter::try_from_default_env().unwrap_or_else(|_| {
-        // Set default filter for our crates at the specified level
-        // External crates stay at warn level to reduce noise
+/// Build an `EnvFilter` from the given level, optionally honoring `RUST_LOG`.
+fn build_env_filter(level_filter: LevelFilter, use_env_filter: bool) -> EnvFilter {
+    // Allow RUST_LOG to override the configured level when enabled.
+    let level_str = level_filter.to_string();
+    let default_filter = || {
+        // Set default filter for our crates at the specified level.
+        // External crates stay at warn level to reduce noise.
         EnvFilter::new(format!(
             "{level},sdtm_cli={level},sdtm_core={level},sdtm_ingest={level},\
              sdtm_map={level},sdtm_model={level},sdtm_report={level},\
              sdtm_standards={level},sdtm_validate={level},sdtm_xpt={level}",
             level = level_str
         ))
-    })
+    };
+
+    if use_env_filter {
+        EnvFilter::try_from_default_env().unwrap_or_else(|_| default_filter())
+    } else {
+        default_filter()
+    }
 }

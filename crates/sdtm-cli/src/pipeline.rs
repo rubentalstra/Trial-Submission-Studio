@@ -16,7 +16,7 @@ use std::time::Instant;
 
 use anyhow::{Context, Result};
 use polars::prelude::{AnyValue, DataFrame};
-use tracing::{info, info_span};
+use tracing::{debug, info, info_span};
 
 use sdtm_core::{
     DomainFrame, DomainFrameMeta, StudyPipelineContext, SuppqualInput, any_to_string,
@@ -197,7 +197,7 @@ pub fn process_file(input: ProcessFileInput<'_>) -> Result<ProcessedFile> {
         let start = Instant::now();
         let result = build_mapped_domain_frame(&table, input.domain, input.study_id)
             .with_context(|| format!("map {} columns", input.domain.code))?;
-        info!(
+        debug!(
             study_id = %input.study_id,
             domain_code = %domain_code,
             dataset_name = %dataset_name,
@@ -236,7 +236,7 @@ pub fn process_file(input: ProcessFileInput<'_>) -> Result<ProcessedFile> {
             &ctx,
         )
         .with_context(|| format!("preprocess {}", input.domain.code))?;
-        info!(
+        debug!(
             study_id = %input.study_id,
             domain_code = %domain_code,
             dataset_name = %dataset_name,
@@ -258,7 +258,7 @@ pub fn process_file(input: ProcessFileInput<'_>) -> Result<ProcessedFile> {
             Some(input.seq_tracker),
         )
         .with_context(|| format!("domain rules for {}", input.domain.code))?;
-        info!(
+        debug!(
             study_id = %input.study_id,
             domain_code = %domain_code,
             dataset_name = %dataset_name,
@@ -300,7 +300,7 @@ pub fn process_file(input: ProcessFileInput<'_>) -> Result<ProcessedFile> {
             .with_context(|| format!("SUPPQUAL for {}", input.domain.code))?;
             match &result {
                 Some(frame) => {
-                    info!(
+                    debug!(
                         study_id = %input.study_id,
                         domain_code = %domain_code,
                         dataset_name = %dataset_name,
@@ -311,7 +311,7 @@ pub fn process_file(input: ProcessFileInput<'_>) -> Result<ProcessedFile> {
                     );
                 }
                 None => {
-                    info!(
+                    debug!(
                         study_id = %input.study_id,
                         domain_code = %domain_code,
                         dataset_name = %dataset_name,
@@ -340,7 +340,7 @@ pub fn process_file(input: ProcessFileInput<'_>) -> Result<ProcessedFile> {
         data: mapped.data,
         meta: Some(frame_meta),
     };
-    info!(
+    debug!(
         study_id = %input.study_id,
         domain_code = %domain_code,
         dataset_name = %dataset_name,
@@ -427,7 +427,7 @@ pub fn validate(
                     .first()
                     .map(|path| path.display().to_string())
                     .unwrap_or_else(|| "unknown".to_string());
-                info!(
+                debug!(
                     study_id = %study_id,
                     domain_code = %report.domain_code,
                     dataset_name = %dataset_name,
@@ -633,7 +633,7 @@ pub fn output(config: OutputConfig<'_>) -> Result<OutputResult> {
             .first()
             .map(|path| path.display().to_string())
             .unwrap_or_else(|| "unknown".to_string());
-        info!(
+        debug!(
             study_id = %config.study_id,
             domain_code = %frame.domain_code,
             dataset_name = %dataset_name,

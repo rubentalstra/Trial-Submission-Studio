@@ -142,6 +142,12 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
         };
         let multi_source = files.len() > 1;
         let domain_key = domain_code.to_uppercase();
+        info!(
+            study_id = %study_id,
+            domain_code = %domain_key,
+            file_count = files.len(),
+            "processing domain"
+        );
         let domain = match pipeline.get_domain(&domain_key).cloned() {
             Some(domain) => domain,
             None => {

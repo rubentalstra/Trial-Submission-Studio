@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 
 use clap::{ArgAction, Parser, Subcommand, ValueEnum};
+use clap_verbosity_flag::{Verbosity, WarnLevel};
+use colorchoice_clap::Color;
 
 #[derive(Parser)]
 #[command(name = "cdisc-transpiler", version, about = "CDISC Transpiler CLI")]
@@ -8,12 +10,13 @@ pub struct Cli {
     #[command(subcommand)]
     pub command: Command,
 
-    #[arg(short = 'v', long = "verbose", action = ArgAction::Count, global = true)]
-    pub verbose: u8,
+    /// Adjust log verbosity (-v, -vv, -q, -qq).
+    #[command(flatten)]
+    pub verbosity: Verbosity<WarnLevel>,
 
-    /// Reduce log output to errors only.
-    #[arg(short = 'q', long = "quiet", action = ArgAction::SetTrue, global = true)]
-    pub quiet: bool,
+    /// Control ANSI color output (auto, always, never).
+    #[command(flatten)]
+    pub color: Color,
 
     /// Explicit log level (overrides verbosity/quiet).
     #[arg(long = "log-level", value_enum, global = true)]
