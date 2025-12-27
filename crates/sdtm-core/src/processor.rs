@@ -4,8 +4,9 @@ use anyhow::{Result, anyhow};
 use polars::prelude::{AnyValue, Column, DataFrame, NamedFrom, Series};
 use tracing::warn;
 
-use sdtm_model::{CaseInsensitiveLookup, ControlledTerminology, Domain, VariableType};
+use sdtm_model::{CaseInsensitiveLookup, Domain, VariableType};
 
+use crate::ct_utils::normalize_ct_value_safe;
 use crate::data_utils::any_to_string;
 use crate::domain_processors;
 use crate::domain_utils::{infer_seq_column, standard_columns};
@@ -18,120 +19,6 @@ fn sanitize_identifier(raw: &str) -> String {
         return trimmed.to_string();
     }
     trimmed.chars().filter(|ch| *ch != '"').collect()
-}
-
-fn compact_key(value: &str) -> String {
-    value
-        .chars()
-        .filter(|ch| ch.is_ascii_alphanumeric())
-        .map(|ch| ch.to_ascii_uppercase())
-        .collect()
-}
-
-fn edit_distance(a: &str, b: &str) -> usize {
-    if a == b {
-        return 0;
-    }
-    let a_len = a.len();
-    let b_len = b.len();
-    if a_len == 0 {
-        return b_len;
-    }
-    if b_len == 0 {
-        return a_len;
-    }
-    let mut prev: Vec<usize> = (0..=b_len).collect();
-    let mut curr = vec![0usize; b_len + 1];
-    for (i, a_ch) in a.chars().enumerate() {
-        curr[0] = i + 1;
-        for (j, b_ch) in b.chars().enumerate() {
-            let cost = if a_ch == b_ch { 0 } else { 1 };
-            let insert = curr[j] + 1;
-            let delete = prev[j + 1] + 1;
-            let replace = prev[j] + cost;
-            curr[j + 1] = insert.min(delete).min(replace);
-        }
-        prev.clone_from_slice(&curr);
-    }
-    prev[b_len]
-}
-
-fn resolve_ct_value_fuzzy(ct: &ControlledTerminology, raw: &str) -> Option<String> {
-    let trimmed = raw.trim();
-    if trimmed.is_empty() {
-        return None;
-    }
-    let key = trimmed.to_uppercase();
-    if let Some(mapped) = ct.synonyms.get(&key) {
-        return Some(mapped.clone());
-    }
-    if ct.submission_values.iter().any(|val| val == trimmed) {
-        return Some(trimmed.to_string());
-    }
-    let hint_compact = compact_key(trimmed);
-    if hint_compact.len() >= 3 {
-        let mut matches: Vec<String> = Vec::new();
-        for submission in &ct.submission_values {
-            let compact = compact_key(submission);
-            if compact.len() >= 3
-                && (hint_compact.contains(&compact) || compact.contains(&hint_compact))
-            {
-                matches.push(submission.clone());
-            }
-        }
-        for (submission, preferred) in &ct.preferred_terms {
-            let compact = compact_key(preferred);
-            if compact.len() >= 3
-                && (hint_compact.contains(&compact) || compact.contains(&hint_compact))
-            {
-                matches.push(submission.clone());
-            }
-        }
-        for (synonym, submission) in &ct.synonyms {
-            let compact = compact_key(synonym);
-            if compact.len() >= 3
-                && (hint_compact.contains(&compact) || compact.contains(&hint_compact))
-            {
-                matches.push(submission.clone());
-            }
-        }
-        matches.sort();
-        matches.dedup();
-        if matches.len() == 1 {
-            return Some(matches.remove(0));
-        }
-    }
-    let mut best_dist = usize::MAX;
-    let mut best_val: Option<String> = None;
-    let mut best_count = 0usize;
-    for submission in &ct.submission_values {
-        let dist = edit_distance(&hint_compact, &compact_key(submission));
-        if dist < best_dist {
-            best_dist = dist;
-            best_val = Some(submission.clone());
-            best_count = 1;
-        } else if dist == best_dist {
-            best_count += 1;
-        }
-    }
-    if best_dist <= 1 && best_count == 1 {
-        best_val
-    } else {
-        None
-    }
-}
-
-fn normalize_ct_value_keep(ct: &ControlledTerminology, raw: &str) -> String {
-    let text = raw.trim();
-    if text.is_empty() {
-        return String::new();
-    }
-    let canonical = resolve_ct_value_fuzzy(ct, text).unwrap_or_else(|| text.to_string());
-    if ct.submission_values.iter().any(|val| val == &canonical) {
-        canonical
-    } else {
-        text.to_string()
-    }
 }
 
 fn normalize_ct_columns(
@@ -164,7 +51,7 @@ fn normalize_ct_columns(
                 values.push(raw);
                 continue;
             }
-            let normalized = normalize_ct_value_keep(ct, &raw);
+            let normalized = normalize_ct_value_safe(ct, &raw);
             if normalized != raw {
                 changed = true;
             }

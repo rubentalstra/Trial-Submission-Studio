@@ -16,8 +16,10 @@ pub mod suppqual;
 mod wide;
 
 pub use ct_utils::{
-    completion_column, ct_column_match, is_yes_no_token, resolve_ct_for_variable,
-    resolve_ct_value_from_hint,
+    CtResolution, compact_key, completion_column, ct_column_match, is_valid_ct_value,
+    is_valid_submission_value, is_yes_no_token, nci_code_for, normalize_ct_value,
+    normalize_ct_value_safe, preferred_term_for, resolve_ct_for_variable, resolve_ct_lenient,
+    resolve_ct_strict, resolve_ct_value, resolve_ct_value_from_hint,
 };
 pub use data_utils::{
     any_to_string, column_hint_for_domain, column_value_string, fill_string_column,

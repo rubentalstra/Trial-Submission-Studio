@@ -190,13 +190,13 @@ pub(super) fn process_ae(
                     continue;
                 }
                 let dev_valid = ct_dev
-                    .and_then(|ct| resolve_ct_submission_value(ct, &dev_vals[idx]))
+                    .and_then(|ct| resolve_ct_lenient(ct, &dev_vals[idx]))
                     .is_some();
                 if dev_valid {
                     continue;
                 }
                 let moved_to_acn = ct_acn
-                    .and_then(|ct| resolve_ct_submission_value(ct, &dev_vals[idx]))
+                    .and_then(|ct| resolve_ct_lenient(ct, &dev_vals[idx]))
                     .map(|_| {
                         if acn_vals[idx].trim().is_empty() {
                             acn_vals[idx] = dev_vals[idx].clone();

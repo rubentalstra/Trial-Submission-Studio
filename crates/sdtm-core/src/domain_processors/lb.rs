@@ -46,7 +46,7 @@ pub(super) fn process_lb(
             .collect::<Vec<_>>();
         if let Some(ct) = ctx.resolve_ct(domain, "LBTESTCD") {
             for value in &mut values {
-                *value = normalize_ct_value_keep(ct, value);
+                *value = normalize_ct_value_safe(ct, value);
             }
         }
         set_string_column(df, &lbtestcd, values)?;
@@ -65,7 +65,7 @@ pub(super) fn process_lb(
             if valid {
                 continue;
             }
-            if let Some(mapped) = resolve_ct_submission_value(ct, test) {
+            if let Some(mapped) = resolve_ct_lenient(ct, test) {
                 *testcd = mapped;
             } else if let Some(mapped) = resolve_ct_value_from_hint(ct, test) {
                 *testcd = mapped;
@@ -97,7 +97,7 @@ pub(super) fn process_lb(
             if testcd.is_empty() {
                 continue;
             }
-            let test_in_ct = resolve_ct_submission_value(ct, test).is_some();
+            let test_in_ct = resolve_ct_lenient(ct, test).is_some();
             let needs_label = test.is_empty() || test.eq_ignore_ascii_case(testcd) || !test_in_ct;
             if !needs_label {
                 continue;
@@ -181,7 +181,7 @@ pub(super) fn process_lb(
             {
                 let mut values = string_column(df, &name, Trim::Both)?;
                 for value in &mut values {
-                    *value = normalize_ct_value_keep(ct, value);
+                    *value = normalize_ct_value_safe(ct, value);
                 }
                 set_string_column(df, &name, values)?;
             }

@@ -1,12 +1,85 @@
+//! Controlled Terminology (CT) utilities for SDTM conformance.
+//!
+//! This module provides a unified API for CT normalization, resolution, and validation.
+//!
+//! # SDTMIG v3.4 Chapter 10 Reference
+//!
+//! Per Section 10.1, CDISC Controlled Terminology defines permissible values for
+//! SDTM variables. CT normalization must:
+//! - Use exact submission values from the codelist
+//! - Apply synonym mappings when defined in the CT package
+//! - For extensible codelists, allow non-standard values with proper documentation
+//!
+//! # Normalization Modes
+//!
+//! - **Strict**: Only exact matches or defined synonym mappings are allowed.
+//!   Values not in CT return `None`, triggering validation errors.
+//! - **Lenient**: Falls back to fuzzy matching for better data ingestion.
+//!   Use only during mapping/preview, not for final outputs.
+
 use std::collections::BTreeSet;
 
-use crate::ProcessingContext;
 use sdtm_model::{ControlledTerminology, Domain};
 
 use crate::data_utils::{table_column_values, table_label};
+use crate::processing_context::ProcessingContext;
 
-type CtColumnMatchScore = (String, Vec<Option<String>>, Vec<String>, f64, usize);
+// =============================================================================
+// Core Types
+// =============================================================================
 
+/// Result of CT resolution with provenance information.
+#[derive(Debug, Clone, PartialEq)]
+pub enum CtResolution {
+    /// Exact match to a submission value in the codelist.
+    ExactMatch(String),
+    /// Matched via a defined synonym mapping.
+    SynonymMatch {
+        submission_value: String,
+        matched_synonym: String,
+    },
+    /// Matched via compact key comparison (alphanumeric normalization).
+    CompactMatch(String),
+    /// No match found - value is not in CT.
+    NoMatch,
+    /// Empty input value.
+    Empty,
+}
+
+impl CtResolution {
+    /// Returns the resolved submission value if found.
+    pub fn submission_value(&self) -> Option<&str> {
+        match self {
+            Self::ExactMatch(v) => Some(v),
+            Self::SynonymMatch {
+                submission_value, ..
+            } => Some(submission_value),
+            Self::CompactMatch(v) => Some(v),
+            Self::NoMatch | Self::Empty => None,
+        }
+    }
+
+    /// Returns true if a valid CT value was resolved.
+    pub fn is_match(&self) -> bool {
+        matches!(
+            self,
+            Self::ExactMatch(_) | Self::SynonymMatch { .. } | Self::CompactMatch(_)
+        )
+    }
+
+    /// Returns true if this was a strict (exact or synonym) match.
+    pub fn is_strict_match(&self) -> bool {
+        matches!(self, Self::ExactMatch(_) | Self::SynonymMatch { .. })
+    }
+}
+
+// =============================================================================
+// Core Resolution Functions
+// =============================================================================
+
+/// Creates a compact key from a string by keeping only uppercase alphanumeric characters.
+///
+/// This is used for fuzzy matching when exact matching fails.
 pub fn compact_key(value: &str) -> String {
     value
         .chars()
@@ -15,6 +88,168 @@ pub fn compact_key(value: &str) -> String {
         .collect()
 }
 
+/// Resolves a raw value against a controlled terminology codelist.
+///
+/// This is the primary CT resolution function. It attempts to match the input
+/// in the following order:
+///
+/// 1. Synonym lookup (uppercase key in synonyms map)
+/// 2. Exact submission value match
+/// 3. Compact key match against submission values
+/// 4. Compact key match against preferred terms
+///
+/// # Arguments
+///
+/// * `ct` - The controlled terminology codelist to match against
+/// * `raw` - The raw input value to resolve
+///
+/// # Returns
+///
+/// A `CtResolution` indicating the match type and resolved value.
+pub fn resolve_ct_value(ct: &ControlledTerminology, raw: &str) -> CtResolution {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return CtResolution::Empty;
+    }
+
+    let key = trimmed.to_uppercase();
+
+    // 1. Check synonym mapping (most specific)
+    if let Some(submission) = ct.synonyms.get(&key) {
+        return CtResolution::SynonymMatch {
+            submission_value: submission.clone(),
+            matched_synonym: trimmed.to_string(),
+        };
+    }
+
+    // 2. Check exact submission value match
+    if ct.submission_values.iter().any(|v| v == trimmed) {
+        return CtResolution::ExactMatch(trimmed.to_string());
+    }
+
+    // 3. Check compact key match against submission values
+    let input_compact = compact_key(trimmed);
+    for submission in &ct.submission_values {
+        if compact_key(submission) == input_compact {
+            return CtResolution::CompactMatch(submission.clone());
+        }
+    }
+
+    // 4. Check compact key match against preferred terms
+    for (submission, preferred) in &ct.preferred_terms {
+        if compact_key(preferred) == input_compact {
+            return CtResolution::CompactMatch(submission.clone());
+        }
+    }
+
+    CtResolution::NoMatch
+}
+
+/// Resolves a CT value in strict mode (exact or synonym match only).
+///
+/// Returns `Some(submission_value)` only for exact matches or defined synonyms.
+/// This is the preferred function for validation and final output generation.
+pub fn resolve_ct_strict(ct: &ControlledTerminology, raw: &str) -> Option<String> {
+    match resolve_ct_value(ct, raw) {
+        CtResolution::ExactMatch(v)
+        | CtResolution::SynonymMatch {
+            submission_value: v,
+            ..
+        } => Some(v),
+        _ => None,
+    }
+}
+
+/// Resolves a CT value with lenient matching (includes compact key matching).
+///
+/// Returns `Some(submission_value)` for any successful match including fuzzy matches.
+/// Use this for data ingestion and mapping suggestions, not for final outputs.
+pub fn resolve_ct_lenient(ct: &ControlledTerminology, raw: &str) -> Option<String> {
+    resolve_ct_value(ct, raw)
+        .submission_value()
+        .map(String::from)
+}
+
+// =============================================================================
+// Normalization Functions
+// =============================================================================
+
+/// Normalizes a value against CT, returning the original if no match found.
+///
+/// This function:
+/// 1. Attempts to resolve the value against CT
+/// 2. If matched (strict), returns the submission value
+/// 3. If no match, returns the original trimmed value
+///
+/// Use this when you want to normalize known values but preserve unknown ones.
+pub fn normalize_ct_value(ct: &ControlledTerminology, raw: &str) -> String {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+
+    // Use strict matching for normalization
+    resolve_ct_strict(ct, trimmed).unwrap_or_else(|| trimmed.to_string())
+}
+
+/// Normalizes a value against CT, only returning normalized value if it's in CT.
+///
+/// This function:
+/// 1. Attempts to resolve the value against CT (lenient)
+/// 2. If the resolved value is a valid submission value, returns it
+/// 3. Otherwise, returns the original trimmed value
+///
+/// This prevents normalizing to invalid values.
+pub fn normalize_ct_value_safe(ct: &ControlledTerminology, raw: &str) -> String {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+
+    match resolve_ct_value(ct, trimmed) {
+        CtResolution::ExactMatch(v)
+        | CtResolution::SynonymMatch {
+            submission_value: v,
+            ..
+        }
+        | CtResolution::CompactMatch(v)
+            if ct.submission_values.contains(&v) =>
+        {
+            v
+        }
+        _ => trimmed.to_string(),
+    }
+}
+
+// =============================================================================
+// Lookup Functions
+// =============================================================================
+
+/// Gets the preferred term for a submission value.
+pub fn preferred_term_for(ct: &ControlledTerminology, submission: &str) -> Option<String> {
+    ct.preferred_terms.get(submission).cloned()
+}
+
+/// Gets the NCI code for a submission value.
+pub fn nci_code_for(ct: &ControlledTerminology, submission: &str) -> Option<String> {
+    ct.nci_codes.get(submission).cloned()
+}
+
+/// Checks if a value is a valid submission value in the codelist.
+pub fn is_valid_submission_value(ct: &ControlledTerminology, value: &str) -> bool {
+    ct.submission_values.iter().any(|v| v == value.trim())
+}
+
+/// Checks if a value can be resolved to a valid CT value (strict mode).
+pub fn is_valid_ct_value(ct: &ControlledTerminology, raw: &str) -> bool {
+    resolve_ct_strict(ct, raw).is_some()
+}
+
+// =============================================================================
+// Helper Functions
+// =============================================================================
+
+/// Checks if a value appears to be a yes/no token.
 pub fn is_yes_no_token(value: &str) -> bool {
     matches!(
         value.trim().to_uppercase().as_str(),
@@ -22,90 +257,11 @@ pub fn is_yes_no_token(value: &str) -> bool {
     )
 }
 
-pub fn resolve_ct_submission_value(ct: &ControlledTerminology, raw: &str) -> Option<String> {
-    let trimmed = raw.trim();
-    if trimmed.is_empty() {
-        return None;
-    }
-    let key = trimmed.to_uppercase();
-    if let Some(mapped) = ct.synonyms.get(&key) {
-        return Some(mapped.clone());
-    }
-    if ct.submission_values.iter().any(|val| val == trimmed) {
-        return Some(trimmed.to_string());
-    }
-    for submission in &ct.submission_values {
-        if compact_key(submission) == compact_key(trimmed) {
-            return Some(submission.clone());
-        }
-    }
-    for (submission, preferred) in &ct.preferred_terms {
-        if compact_key(preferred) == compact_key(trimmed) {
-            return Some(submission.clone());
-        }
-    }
-    None
-}
+// =============================================================================
+// Fuzzy Matching (for mapping suggestions only)
+// =============================================================================
 
-pub fn resolve_ct_value_from_hint(ct: &ControlledTerminology, hint: &str) -> Option<String> {
-    if let Some(value) = resolve_ct_submission_value(ct, hint) {
-        return Some(value);
-    }
-    let hint_compact = compact_key(hint);
-    if hint_compact.len() < 3 {
-        return None;
-    }
-    let mut matches: Vec<String> = Vec::new();
-    for submission in &ct.submission_values {
-        let compact = compact_key(submission);
-        if compact.len() >= 3
-            && (hint_compact.contains(&compact) || compact.contains(&hint_compact))
-        {
-            matches.push(submission.clone());
-        }
-    }
-    for (submission, preferred) in &ct.preferred_terms {
-        let compact = compact_key(preferred);
-        if compact.len() >= 3
-            && (hint_compact.contains(&compact) || compact.contains(&hint_compact))
-        {
-            matches.push(submission.clone());
-        }
-    }
-    for (synonym, submission) in &ct.synonyms {
-        let compact = compact_key(synonym);
-        if compact.len() >= 3
-            && (hint_compact.contains(&compact) || compact.contains(&hint_compact))
-        {
-            matches.push(submission.clone());
-        }
-    }
-    matches.sort();
-    matches.dedup();
-    if matches.len() == 1 {
-        Some(matches.remove(0))
-    } else {
-        let mut best_dist = usize::MAX;
-        let mut best_val: Option<String> = None;
-        let mut best_count = 0usize;
-        for submission in &ct.submission_values {
-            let dist = edit_distance(&hint_compact, &compact_key(submission));
-            if dist < best_dist {
-                best_dist = dist;
-                best_val = Some(submission.clone());
-                best_count = 1;
-            } else if dist == best_dist {
-                best_count += 1;
-            }
-        }
-        if best_dist <= 1 && best_count == 1 {
-            best_val
-        } else {
-            None
-        }
-    }
-}
-
+/// Computes the Levenshtein edit distance between two strings.
 fn edit_distance(a: &str, b: &str) -> usize {
     if a == b {
         return 0;
@@ -134,6 +290,129 @@ fn edit_distance(a: &str, b: &str) -> usize {
     prev[b_len]
 }
 
+/// Resolves a CT value from a hint using fuzzy matching.
+///
+/// This function is intended for mapping suggestions and column matching,
+/// NOT for final CT normalization. It uses:
+/// 1. Standard resolution (exact/synonym/compact)
+/// 2. Substring matching
+/// 3. Edit distance matching (threshold: 1)
+///
+/// # Warning
+///
+/// Do not use this for final output generation. Use `resolve_ct_strict` instead.
+pub fn resolve_ct_value_from_hint(ct: &ControlledTerminology, hint: &str) -> Option<String> {
+    // First try standard resolution
+    if let Some(value) = resolve_ct_lenient(ct, hint) {
+        return Some(value);
+    }
+
+    let hint_compact = compact_key(hint);
+    if hint_compact.len() < 3 {
+        return None;
+    }
+
+    // Try substring matching
+    let mut matches: Vec<String> = Vec::new();
+    for submission in &ct.submission_values {
+        let compact = compact_key(submission);
+        if compact.len() >= 3
+            && (hint_compact.contains(&compact) || compact.contains(&hint_compact))
+        {
+            matches.push(submission.clone());
+        }
+    }
+    for (submission, preferred) in &ct.preferred_terms {
+        let compact = compact_key(preferred);
+        if compact.len() >= 3
+            && (hint_compact.contains(&compact) || compact.contains(&hint_compact))
+        {
+            matches.push(submission.clone());
+        }
+    }
+    for (synonym, submission) in &ct.synonyms {
+        let compact = compact_key(synonym);
+        if compact.len() >= 3
+            && (hint_compact.contains(&compact) || compact.contains(&hint_compact))
+        {
+            matches.push(submission.clone());
+        }
+    }
+
+    matches.sort();
+    matches.dedup();
+    if matches.len() == 1 {
+        return Some(matches.remove(0));
+    }
+
+    // Try edit distance as last resort
+    let mut best_dist = usize::MAX;
+    let mut best_val: Option<String> = None;
+    let mut best_count = 0usize;
+    for submission in &ct.submission_values {
+        let dist = edit_distance(&hint_compact, &compact_key(submission));
+        if dist < best_dist {
+            best_dist = dist;
+            best_val = Some(submission.clone());
+            best_count = 1;
+        } else if dist == best_dist {
+            best_count += 1;
+        }
+    }
+    if best_dist <= 1 && best_count == 1 {
+        best_val
+    } else {
+        None
+    }
+}
+
+// =============================================================================
+// Context-Aware Resolution
+// =============================================================================
+
+/// Resolves a CT value for a specific variable using the processing context.
+///
+/// # Arguments
+///
+/// * `ctx` - Processing context with CT registry
+/// * `domain` - The domain definition
+/// * `variable` - Variable name to look up CT for
+/// * `hint` - The value to resolve
+/// * `allow_raw` - If true and codelist is extensible, allow non-CT values
+pub fn resolve_ct_for_variable(
+    ctx: &ProcessingContext,
+    domain: &Domain,
+    variable: &str,
+    hint: &str,
+    allow_raw: bool,
+) -> Option<String> {
+    let ct = ctx.resolve_ct(domain, variable)?;
+
+    // Try standard resolution
+    if let Some(value) = resolve_ct_lenient(ct, hint) {
+        return Some(value);
+    }
+
+    // For extensible codelists, allow raw values
+    if allow_raw && ct.extensible {
+        let trimmed = hint.trim();
+        if !trimmed.is_empty() {
+            return Some(trimmed.to_string());
+        }
+    }
+
+    None
+}
+
+// =============================================================================
+// Column Matching Utilities (for mapping engine)
+// =============================================================================
+
+type CtColumnMatchScore = (String, Vec<Option<String>>, Vec<String>, f64, usize);
+
+/// Finds the best matching column for a CT codelist in a CSV table.
+///
+/// This is used by the mapping engine to suggest column mappings.
 pub fn ct_column_match(
     table: &sdtm_ingest::CsvTable,
     domain: &Domain,
@@ -143,6 +422,7 @@ pub fn ct_column_match(
     for variable in &domain.variables {
         standard_vars.insert(variable.name.to_uppercase());
     }
+
     let mut best: Option<CtColumnMatchScore> = None;
     for header in &table.headers {
         if standard_vars.contains(&header.to_uppercase()) {
@@ -195,6 +475,7 @@ fn is_yes_no(value: &str) -> bool {
     )
 }
 
+/// Finds a completion column in a CSV table.
 pub fn completion_column(
     table: &sdtm_ingest::CsvTable,
     domain: &Domain,
@@ -228,26 +509,6 @@ pub fn completion_column(
         }
         if non_empty > 0 && (yes_no as f64 / non_empty as f64) >= 0.6 {
             return Some((values, label));
-        }
-    }
-    None
-}
-
-pub fn resolve_ct_for_variable(
-    ctx: &ProcessingContext,
-    domain: &Domain,
-    variable: &str,
-    hint: &str,
-    allow_raw: bool,
-) -> Option<String> {
-    let ct = ctx.resolve_ct(domain, variable)?;
-    if let Some(value) = resolve_ct_value_from_hint(ct, hint) {
-        return Some(value);
-    }
-    if allow_raw && ct.extensible {
-        let trimmed = hint.trim();
-        if !trimmed.is_empty() {
-            return Some(trimmed.to_string());
         }
     }
     None

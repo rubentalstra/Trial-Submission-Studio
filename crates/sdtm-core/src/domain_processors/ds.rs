@@ -41,7 +41,7 @@ fn resolve_dsdecod_codelist<'a>(
     let registry = ctx.ct_registry?;
     for code in codes {
         if let Some(resolved) = registry.resolve_by_code(code, None)
-            && resolve_ct_submission_value(resolved.ct, value).is_some()
+            && resolve_ct_lenient(resolved.ct, value).is_some()
         {
             return Some(resolved.ct);
         }
@@ -61,7 +61,7 @@ fn dscat_value_for_codelist(
     } else {
         "DISPOSITION EVENT"
     };
-    resolve_ct_submission_value(dscat_ct, hint).or_else(|| {
+    resolve_ct_lenient(dscat_ct, hint).or_else(|| {
         let upper = hint.to_uppercase();
         dscat_ct
             .submission_values
@@ -294,7 +294,7 @@ pub(super) fn process_ds(
     {
         let values = string_column(df, &dsstdtc, Trim::Both)?
             .into_iter()
-            .map(|value| normalize_iso8601_value(&value))
+            .map(|value| normalize_iso8601(&value))
             .collect();
         set_string_column(df, &dsstdtc, values)?;
         if let Some(dsstudy) = col(domain, "DSSTDY") {
@@ -306,7 +306,7 @@ pub(super) fn process_ds(
     {
         let values = string_column(df, &dsdtc, Trim::Both)?
             .into_iter()
-            .map(|value| normalize_iso8601_value(&value))
+            .map(|value| normalize_iso8601(&value))
             .collect();
         set_string_column(df, &dsdtc, values)?;
         if let Some(dsdy) = col(domain, "DSDY") {

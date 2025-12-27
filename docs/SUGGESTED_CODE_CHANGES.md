@@ -78,7 +78,7 @@ are noted where applicable.
       parsing, validation, and normalization. Remove duplicate date logic from
       domain processors.
 
-- [ ] **0.1.5** Standardize CT normalization via a single API in
+- [x] **0.1.5** Standardize CT normalization via a single API in
       `sdtm-core/src/ct_utils.rs` with strict and explicit modes. Remove
       inconsistent CT resolution algorithms.
 

@@ -32,7 +32,7 @@ pub(super) fn process_ts(
     {
         let mut values = string_column(df, &tsparmcd, Trim::Both)?;
         for value in &mut values {
-            *value = normalize_ct_value_keep(ct, value);
+            *value = normalize_ct_value_safe(ct, value);
         }
         set_string_column(df, &tsparmcd, values)?;
     }
@@ -42,7 +42,7 @@ pub(super) fn process_ts(
     {
         let mut values = string_column(df, &tsparm, Trim::Both)?;
         for value in &mut values {
-            *value = normalize_ct_value_keep(ct, value);
+            *value = normalize_ct_value_safe(ct, value);
         }
         set_string_column(df, &tsparm, values)?;
     }
@@ -52,7 +52,7 @@ pub(super) fn process_ts(
     {
         let mut values = string_column(df, &tsvcdref, Trim::Both)?;
         for value in &mut values {
-            *value = normalize_ct_value_keep(ct, value);
+            *value = normalize_ct_value_safe(ct, value);
         }
         set_string_column(df, &tsvcdref, values)?;
     }

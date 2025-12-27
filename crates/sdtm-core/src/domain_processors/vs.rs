@@ -100,7 +100,7 @@ pub(super) fn process_vs(
             if valid {
                 continue;
             }
-            if let Some(mapped) = resolve_ct_submission_value(ct, test) {
+            if let Some(mapped) = resolve_ct_lenient(ct, test) {
                 *testcd = mapped;
             }
         }
@@ -113,7 +113,7 @@ pub(super) fn process_vs(
             {
                 let mut values = string_column(df, &name, Trim::Both)?;
                 for value in &mut values {
-                    *value = normalize_ct_value_keep(ct, value);
+                    *value = normalize_ct_value_safe(ct, value);
                 }
                 set_string_column(df, &name, values)?;
             }
@@ -125,7 +125,7 @@ pub(super) fn process_vs(
     {
         let mut values = string_column(df, &vstestcd, Trim::Both)?;
         for value in &mut values {
-            *value = normalize_ct_value_keep(ct, value);
+            *value = normalize_ct_value_safe(ct, value);
         }
         set_string_column(df, &vstestcd, values)?;
     }
@@ -135,7 +135,7 @@ pub(super) fn process_vs(
     {
         let mut values = string_column(df, &vstest, Trim::Both)?;
         for value in &mut values {
-            *value = normalize_ct_value_keep(ct, value);
+            *value = normalize_ct_value_safe(ct, value);
         }
         set_string_column(df, &vstest, values)?;
     }

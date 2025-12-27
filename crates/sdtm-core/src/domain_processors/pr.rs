@@ -74,7 +74,7 @@ pub(super) fn process_pr(
         if let Some(ct) = ctx.resolve_ct(domain, "PRDECOD") {
             let values = string_column(df, &prdecod, Trim::Both)?
                 .into_iter()
-                .map(|value| normalize_ct_value_keep(ct, &value))
+                .map(|value| normalize_ct_value_safe(ct, &value))
                 .collect::<Vec<_>>();
             set_string_column(df, &prdecod, values)?;
         }

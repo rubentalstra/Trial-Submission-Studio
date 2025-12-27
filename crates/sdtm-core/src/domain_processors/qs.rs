@@ -156,7 +156,7 @@ pub(super) fn process_qs(
     {
         let values = string_column(df, &qsdtc, Trim::Both)?
             .into_iter()
-            .map(|value| normalize_iso8601_value(&value))
+            .map(|value| normalize_iso8601(&value))
             .collect();
         set_string_column(df, &qsdtc, values)?;
         if let Some(qsdy) = col(domain, "QSDY") {

@@ -42,7 +42,7 @@ pub(super) fn process_mh(
         {
             let values = string_column(df, &name, Trim::Both)?
                 .into_iter()
-                .map(|value| normalize_iso8601_value(&value))
+                .map(|value| normalize_iso8601(&value))
                 .collect();
             set_string_column(df, &name, values)?;
         }
