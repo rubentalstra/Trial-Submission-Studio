@@ -177,29 +177,70 @@ are noted where applicable.
 
 ## 0.4 Observability and Logging
 
-- [ ] **0.4.1** Adopt `tracing` with a shared `tracing-subscriber` init in
+- [x] **0.4.1** Adopt `tracing` with a shared `tracing-subscriber` init in
       `sdtm-cli/src/logging.rs`. Route all logs through structured spans.
+      **Implementation notes**: - Created comprehensive `logging.rs` module
+      (760+ lines) with `LogConfig` struct supporting verbosity, log level,
+      format, file output, and PHI redaction - Three output formats: `Pretty`
+      (human-friendly colored), `Compact` (single-line), `Json` (machine
+      parsing) - Custom `HumanFormatter` provides clean, readable log lines with
+      `[domain][dataset]` context prefixes - `FieldCaptureLayer` captures span
+      fields for propagation to log output - `EnvFilter` respects `RUST_LOG` env
+      var with fallback to CLI-configured levels - PHI/PII protection: global
+      `LOG_DATA_ENABLED` flag, `redact_value()` helper, `--log-data` CLI flag -
+      Example output:
+      `INFO  [LB][LBCC] rules: USUBJID values updated | file=LBCC.csv | seq=LBSEQ`
 
-- [ ] **0.4.2** Instrument pipeline stages (ingest, mapping, preprocess,
+- [x] **0.4.2** Instrument pipeline stages (ingest, mapping, preprocess,
       validation, output) with spans that log row counts, domain counts, and
-      durations.
+      durations. **Implementation notes**: - Already instrumented in
+      `commands.rs` and `pipeline.rs` with tracing spans - Stage summary logs:
+      `ingest complete | domains=13 | files=18 | time=13ms` -
+      `domain processing complete | rows=294 | domains=23 | time=945ms` -
+      `validation complete | domains=17 | errors=5 | warnings=8 | time=19ms` -
+      `output complete | domains=23 | xpt=23 | xml=23 | sas=13 | time=1.4s`
 
-- [ ] **0.4.3** Include `domain_code`, `dataset_name`, and source file path in
-      log fields. Propagate context through the pipeline.
+- [x] **0.4.3** Include `domain_code`, `dataset_name`, and source file path in
+      log fields. Propagate context through the pipeline. **Implementation
+      notes**: - `format_context()` extracts `domain_code`/`domain` and
+      `dataset_name` into `[DM][SUPPDM]` prefixes - `format_details()` renders
+      `source_file` as `file=filename.csv` suffix - Fields propagated via
+      `FieldCaptureLayer` and `enrich_from_spans()` - Paths shortened via
+      `format_path_tail()` for readability
 
-- [ ] **0.4.4** Add CLI flags: `--verbose`, `--quiet`, `--log-level`,
+- [x] **0.4.4** Add CLI flags: `--verbose`, `--quiet`, `--log-level`,
       `--log-format`, `--log-file`. Ensure consistent behavior across
-      subcommands.
+      subcommands. **Implementation notes**: - CLI flags implemented in
+      `cli.rs`: `-v/--verbose`, `-q/--quiet` (via `clap-verbosity-flag`),
+      `--log-level`, `--log-format`, `--log-file`, `--log-data`, `--color` - All
+      flags marked `global = true` for subcommand inheritance - Precedence:
+      `--log-level` > `-v/-q` flags > `RUST_LOG` env var - Color auto-detection
+      via `colorchoice-clap` with terminal check
 
-- [ ] **0.4.5** Default to redacted logging for row-level data. Require explicit
+- [x] **0.4.5** Default to redacted logging for row-level data. Require explicit
       `--log-data` flag for PHI values. Document PHI-safe logging rules in
-      README.
+      README. **Implementation notes**: - `LOG_DATA_ENABLED` atomic bool
+      defaults to `false` - `log_data_enabled()` and `redact_value()` helpers
+      for conditional PHI logging - `--log-data` CLI flag enables row-level
+      logging with caution warning in help text - `REDACTED_VALUE` constant
+      `"[REDACTED]"` used as placeholder
 
-- [ ] **0.4.6** Adopt `clap-verbosity-flag` for `-v/-q` handling and ensure CLI
-      verbosity/log-level overrides `RUST_LOG`.
+- [x] **0.4.6** Adopt `clap-verbosity-flag` for `-v/-q` handling and ensure CLI
+      verbosity/log-level overrides `RUST_LOG`. **Implementation notes**: -
+      Using `clap-verbosity-flag` crate with `Verbosity<WarnLevel>` - Default
+      level: warn; `-v` → info → debug → trace; `-q` → error → off -
+      `log_config_from_cli()` converts verbosity to `LevelFilter` - When
+      `-v`/`-q` or `--log-level` present, `use_env_filter=false` to override
+      `RUST_LOG`
 
-- [ ] **0.4.7** Provide a human-friendly log formatter with colored levels and
-      concise context/detail output.
+- [x] **0.4.7** Provide a human-friendly log formatter with colored levels and
+      concise context/detail output. **Implementation notes**: -
+      `HumanFormatter` implements `FormatEvent` trait for custom formatting -
+      Colored log levels: ERROR (red), WARN (yellow), INFO (green), DEBUG
+      (blue), TRACE (cyan) - Detail values colored: errors (red), warnings
+      (yellow), counts (cyan) - Duration formatting: `945ms` or `1.4s` for
+      >1000ms - `normalize_message()` cleans up repetitive stage prefixes - ANSI
+      colors disabled when `--color=never` or writing to file
 
 ## 0.5 Strictness and Non-Fabrication Policy
 

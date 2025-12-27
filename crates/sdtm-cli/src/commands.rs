@@ -5,7 +5,7 @@ use std::time::Instant;
 use anyhow::{Context, Result, anyhow};
 use comfy_table::Table;
 use polars::prelude::DataFrame;
-use tracing::{info, info_span};
+use tracing::{debug, info, info_span};
 
 use sdtm_core::{
     DomainFrame, ProcessingOptions, StudyPipelineContext, build_relationship_frames,
@@ -142,12 +142,28 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
         };
         let multi_source = files.len() > 1;
         let domain_key = domain_code.to_uppercase();
-        info!(
-            study_id = %study_id,
-            domain_code = %domain_key,
-            file_count = files.len(),
-            "processing domain"
-        );
+
+        // Log what we're processing - filename for single file, count for multiple
+        if multi_source {
+            info!(
+                study_id = %study_id,
+                domain_code = %domain_key,
+                file_count = files.len(),
+                "processing domain"
+            );
+        } else if let Some((path, _)) = files.first() {
+            let filename = path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("unknown");
+            info!(
+                study_id = %study_id,
+                domain_code = %domain_key,
+                source_filename = %filename,
+                "processing domain"
+            );
+        }
+
         let domain = match pipeline.get_domain(&domain_key).cloned() {
             Some(domain) => domain,
             None => {
@@ -160,6 +176,20 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
         let mut domain_mappings = Vec::new();
 
         for (path, variant) in files {
+            // Log each file when processing multiple files for a domain
+            if multi_source {
+                let filename = path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("unknown");
+                debug!(
+                    study_id = %study_id,
+                    domain_code = %domain_key,
+                    source_filename = %filename,
+                    "processing file"
+                );
+            }
+
             // Use pipeline stage function to process each file
             let result = process_file(ProcessFileInput {
                 path,

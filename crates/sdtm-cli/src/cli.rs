@@ -1,3 +1,5 @@
+//! CLI argument definitions for the SDTM transpiler.
+
 use std::path::PathBuf;
 
 use clap::{ArgAction, Parser, Subcommand, ValueEnum};
@@ -5,12 +7,19 @@ use clap_verbosity_flag::{Verbosity, WarnLevel};
 use colorchoice_clap::Color;
 
 #[derive(Parser)]
-#[command(name = "cdisc-transpiler", version, about = "CDISC Transpiler CLI")]
+#[command(
+    name = "cdisc-transpiler",
+    version,
+    about = "CDISC SDTM Transpiler - Convert clinical data to SDTM format",
+    long_about = "Convert clinical study data to CDISC SDTM format.\n\n\
+                  Supports XPT (SAS Transport), Dataset-XML, and Define-XML outputs.\n\
+                  Validates data against SDTMIG v3.4 and Controlled Terminology."
+)]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Command,
 
-    /// Adjust log verbosity (-v, -vv, -q, -qq).
+    /// Adjust log verbosity (-v for debug, -vv for trace, -q for errors only).
     #[command(flatten)]
     pub verbosity: Verbosity<WarnLevel>,
 
@@ -18,11 +27,11 @@ pub struct Cli {
     #[command(flatten)]
     pub color: Color,
 
-    /// Explicit log level (overrides verbosity/quiet).
+    /// Explicit log level (overrides -v/-q flags).
     #[arg(long = "log-level", value_enum, global = true)]
     pub log_level: Option<LogLevelArg>,
 
-    /// Log output format.
+    /// Log output format (pretty for human, json for machine parsing).
     #[arg(
         long = "log-format",
         value_enum,
@@ -31,39 +40,48 @@ pub struct Cli {
     )]
     pub log_format: LogFormatArg,
 
-    /// Write logs to the specified file instead of stderr.
-    #[arg(long = "log-file", global = true)]
+    /// Write logs to a file instead of stderr.
+    #[arg(long = "log-file", value_name = "PATH", global = true)]
     pub log_file: Option<PathBuf>,
 
-    /// Allow logging of row-level PHI/PII values.
+    /// Allow logging of row-level PHI/PII values (use with caution).
     #[arg(long = "log-data", action = ArgAction::SetTrue, global = true)]
     pub log_data: bool,
 }
 
 #[derive(Subcommand)]
 pub enum Command {
+    /// Process a study folder and generate SDTM outputs.
     Study(StudyArgs),
+
+    /// List all supported SDTM domains.
     Domains,
 }
 
 #[derive(Parser)]
 pub struct StudyArgs {
+    /// Path to the study data folder containing CSV files.
     #[arg(value_name = "STUDY_FOLDER")]
     pub study_folder: PathBuf,
 
-    #[arg(long = "output-dir")]
+    /// Output directory for generated files (default: <STUDY_FOLDER>/output).
+    #[arg(long = "output-dir", value_name = "DIR")]
     pub output_dir: Option<PathBuf>,
 
+    /// Output format to generate.
     #[arg(long = "format", value_enum, default_value = "both")]
     pub format: OutputFormatArg,
 
-    #[arg(long = "dry-run", default_value_t = false)]
+    /// Validate and report without writing output files.
+    #[arg(long = "dry-run")]
     pub dry_run: bool,
 
-    #[arg(long = "no-usubjid-prefix", default_value_t = false)]
+    /// Skip adding STUDYID prefix to USUBJID values.
+    #[arg(long = "no-usubjid-prefix")]
     pub no_usubjid_prefix: bool,
 
-    #[arg(long = "no-auto-seq", default_value_t = false)]
+    /// Skip automatic sequence number generation.
+    #[arg(long = "no-auto-seq")]
     pub no_auto_seq: bool,
 }
 

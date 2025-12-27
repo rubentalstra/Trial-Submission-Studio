@@ -366,8 +366,8 @@ where
             write!(writer, " ")?;
         }
 
-        write_level(&mut writer, event.metadata().level())?;
-        write!(writer, " ")?;
+        let level = event.metadata().level();
+        let has_ansi = writer.has_ansi_escapes();
 
         let mut visitor = HumanFieldVisitor::default();
         let stage = enrich_from_spans(ctx, &mut visitor);
@@ -376,21 +376,146 @@ where
         let message = visitor
             .take_message()
             .unwrap_or_else(|| event.metadata().name().to_string());
-        let message = normalize_message(&message, stage);
+
+        // Check if this is a summary/milestone message
+        let is_milestone = is_milestone_message(&message);
+
+        // Write the level indicator (icon or text)
+        write_level_indicator(&mut writer, level, has_ansi, is_milestone)?;
+        write!(writer, " ")?;
+
+        // Format context (domain/dataset)
         let context = format_context(&mut visitor);
         if !context.is_empty() {
-            write!(writer, "{context} ")?;
+            write_context(&mut writer, &context, has_ansi)?;
+            write!(writer, " ")?;
         }
 
-        write!(writer, "{message}")?;
+        // Format and write message
+        let message = normalize_message(&message, stage);
+        write_message(&mut writer, &message, level, has_ansi)?;
 
+        // Format details
         let details = format_details(&mut visitor);
         if !details.is_empty() {
-            write!(writer, " | ")?;
-            write_details(&mut writer, &details)?;
+            write_details_section(&mut writer, &details, has_ansi)?;
         }
 
         writeln!(writer)
+    }
+}
+
+/// Check if this is a milestone/summary message that deserves special formatting.
+fn is_milestone_message(message: &str) -> bool {
+    matches!(
+        message,
+        "ingest complete"
+            | "domain processing complete"
+            | "validation complete"
+            | "output complete"
+    )
+}
+
+/// Write level indicator with standard text labels.
+fn write_level_indicator(
+    writer: &mut Writer<'_>,
+    level: &Level,
+    has_ansi: bool,
+    _is_milestone: bool,
+) -> std_fmt::Result {
+    let label = match *level {
+        Level::ERROR => "ERROR",
+        Level::WARN => "WARN ",
+        Level::INFO => "INFO ",
+        Level::DEBUG => "DEBUG",
+        Level::TRACE => "TRACE",
+    };
+
+    if has_ansi {
+        let color = match *level {
+            Level::ERROR => "\x1b[1;31m", // Bold red
+            Level::WARN => "\x1b[33m",    // Yellow
+            Level::INFO => "\x1b[32m",    // Green
+            Level::DEBUG => "\x1b[34m",   // Blue
+            Level::TRACE => "\x1b[90m",   // Dim gray
+        };
+        write!(writer, "{color}{label}\x1b[0m")
+    } else {
+        write!(writer, "{label}")
+    }
+}
+
+/// Write context (domain/dataset) with subtle styling.
+fn write_context(writer: &mut Writer<'_>, context: &str, has_ansi: bool) -> std_fmt::Result {
+    if has_ansi {
+        write!(writer, "\x1b[1;36m{context}\x1b[0m") // Bold cyan
+    } else {
+        write!(writer, "{context}")
+    }
+}
+
+/// Write message with appropriate styling based on level.
+fn write_message(
+    writer: &mut Writer<'_>,
+    message: &str,
+    level: &Level,
+    has_ansi: bool,
+) -> std_fmt::Result {
+    if has_ansi && *level == Level::ERROR {
+        write!(writer, "\x1b[1;31m{message}\x1b[0m") // Bold red for errors
+    } else if has_ansi && *level == Level::WARN {
+        write!(writer, "\x1b[33m{message}\x1b[0m") // Yellow for warnings
+    } else {
+        write!(writer, "{message}")
+    }
+}
+
+/// Write details section with clean formatting.
+fn write_details_section(
+    writer: &mut Writer<'_>,
+    details: &[String],
+    has_ansi: bool,
+) -> std_fmt::Result {
+    if has_ansi {
+        write!(writer, " \x1b[90m(")?; // Dim gray parenthesis
+    } else {
+        write!(writer, " (")?;
+    }
+
+    for (idx, detail) in details.iter().enumerate() {
+        if idx > 0 {
+            if has_ansi {
+                write!(writer, "\x1b[90m, \x1b[0m")?;
+            } else {
+                write!(writer, ", ")?;
+            }
+        }
+        write_detail_item(writer, detail, has_ansi)?;
+    }
+
+    if has_ansi {
+        write!(writer, "\x1b[90m)\x1b[0m")
+    } else {
+        write!(writer, ")")
+    }
+}
+
+/// Write a single detail item with styling.
+fn write_detail_item(writer: &mut Writer<'_>, detail: &str, has_ansi: bool) -> std_fmt::Result {
+    if let Some((label, value)) = detail.split_once('=') {
+        if has_ansi {
+            let value_color = value_color_for_label(label);
+            write!(writer, "\x1b[90m{label}=\x1b[0m")?; // Dim label
+            if let Some(color) = value_color {
+                write!(writer, "{color}{value}\x1b[0m")
+            } else {
+                write!(writer, "{value}")
+            }
+        } else {
+            write!(writer, "{label}={value}")
+        }
+    } else {
+        write!(writer, "{detail}")
     }
 }
 
@@ -464,7 +589,7 @@ fn format_context(fields: &mut HumanFieldVisitor) -> String {
 
     match (domain, dataset) {
         (Some(domain), Some(dataset)) if dataset != domain => {
-            format!("[{domain}][{dataset}]")
+            format!("[{domain}/{dataset}]")
         }
         (Some(domain), _) => format!("[{domain}]"),
         (None, Some(dataset)) => format!("[{dataset}]"),
@@ -487,59 +612,81 @@ fn format_details(fields: &mut HumanFieldVisitor) -> Vec<String> {
     let dataset_xml_count = fields.take_field("dataset_xml_count");
     let sas_count = fields.take_field("sas_count");
     let define_xml = fields.take_field("define_xml");
-    let source_file = fields.take_field("source_file");
+    // Consume source_file from fields but don't display it per-line (shown at start of file processing)
+    let _ = fields.take_field("source_file");
+    // source_filename is the short filename shown in "Processing" messages
+    let source_filename = fields.take_field("source_filename");
     let duration_ms = fields.take_field("duration_ms");
     let sequence = fields.take_field("sequence");
 
+    // Source filename first - for "Processing X.csv" messages
+    if let Some(filename) = source_filename {
+        details.push(filename);
+    }
+
+    // Row counts - most important metric
     if let (Some(input_rows), Some(output_rows)) = (input_rows.as_ref(), output_rows.as_ref()) {
         if input_rows == output_rows {
-            details.push(format!("rows={input_rows}"));
+            details.push(format!("{input_rows} rows"));
         } else {
-            details.push(format!("rows={input_rows}->{output_rows}"));
+            details.push(format!("{input_rows}→{output_rows} rows"));
         }
     } else if let Some(output_rows) = output_rows.as_ref() {
-        details.push(format!("rows={output_rows}"));
+        details.push(format!("{output_rows} rows"));
     } else if let Some(record_count) = record_count.as_ref() {
-        details.push(format!("rows={record_count}"));
+        details.push(format!("{record_count} rows"));
     }
 
+    // Counts
     if let Some(domain_count) = domain_count {
-        details.push(format!("domains={domain_count}"));
+        details.push(format!("{domain_count} domains"));
     }
     if let Some(file_count) = file_count {
-        details.push(format!("files={file_count}"));
+        details.push(format!("{file_count} files"));
     }
 
+    // Validation results
     if let Some(error_count) = error_count {
-        details.push(format!("errors={error_count}"));
+        let count: u32 = error_count.parse().unwrap_or(0);
+        if count > 0 {
+            details.push(format!("{error_count} errors"));
+        }
     }
     if let Some(warning_count) = warning_count {
-        details.push(format!("warnings={warning_count}"));
+        let count: u32 = warning_count.parse().unwrap_or(0);
+        if count > 0 {
+            details.push(format!("{warning_count} warnings"));
+        }
     }
 
+    // Output counts
+    let mut outputs = Vec::new();
     if let Some(xpt_count) = xpt_count {
-        details.push(format!("xpt={xpt_count}"));
+        outputs.push(format!("{xpt_count} XPT"));
     }
     if let Some(dataset_xml_count) = dataset_xml_count {
-        details.push(format!("xml={dataset_xml_count}"));
+        outputs.push(format!("{dataset_xml_count} XML"));
     }
     if let Some(sas_count) = sas_count {
-        details.push(format!("sas={sas_count}"));
+        outputs.push(format!("{sas_count} SAS"));
     }
-    if let Some(define_xml) = define_xml {
-        details.push(format!("define={}", format_path_tail(&define_xml, 2)));
+    if !outputs.is_empty() {
+        details.push(outputs.join(", "));
     }
 
-    if let Some(source_file) = source_file
-        && source_file != "unknown"
-    {
-        details.push(format!("file={}", format_path_tail(&source_file, 1)));
+    // Define-XML path
+    if let Some(define_xml) = define_xml {
+        details.push(format_path_tail(&define_xml, 2));
     }
+
+    // Duration - always last
     if let Some(duration_ms) = duration_ms {
-        details.push(format!("time={}", format_duration(&duration_ms)));
+        details.push(format_duration(&duration_ms));
     }
+
+    // Sequence info for warnings
     if let Some(sequence) = sequence {
-        details.push(format!("seq={sequence}"));
+        details.push(sequence);
     }
 
     details
@@ -595,26 +742,43 @@ fn stage_from_span(name: &str) -> Option<&'static str> {
     }
 }
 
-/// Normalize known messages and add stage context when helpful.
+/// Normalize known messages for cleaner, more readable output.
 fn normalize_message(message: &str, stage: Option<&str>) -> String {
+    // Clean up verbose internal messages
     match message {
-        "mapping complete" => "map".to_string(),
-        "preprocess complete" => "preprocess".to_string(),
-        "domain rules complete" => "rules".to_string(),
-        "suppqual complete" => "suppqual".to_string(),
-        "suppqual skipped" => "suppqual skipped".to_string(),
-        "file processed" => "file".to_string(),
-        "validation summary" => "validate summary".to_string(),
-        "output prepared" => "output prepared".to_string(),
-        "ingest complete"
-        | "domain processing complete"
-        | "validation complete"
-        | "output complete" => message.to_string(),
-        _ => match stage {
-            Some(stage) if message.starts_with(stage) => message.to_string(),
-            Some(stage) => format!("{stage}: {message}"),
-            None => message.to_string(),
-        },
+        // Stage completion messages - make them clean summaries
+        "ingest complete" => "Loaded study data".to_string(),
+        "domain processing complete" => "Processed all domains".to_string(),
+        "validation complete" => "Validation finished".to_string(),
+        "output complete" => "Generated output files".to_string(),
+
+        // Processing messages
+        "mapping complete" => "Mapped columns".to_string(),
+        "preprocess complete" => "Preprocessed data".to_string(),
+        "domain rules complete" => "Applied domain rules".to_string(),
+        "suppqual complete" => "Generated SUPPQUAL".to_string(),
+        "suppqual skipped" => "No SUPPQUAL needed".to_string(),
+        "file processed" => "Processed file".to_string(),
+        "validation summary" => "Validation summary".to_string(),
+        "output prepared" => "Prepared output".to_string(),
+        "processing domain" => "Processing".to_string(),
+        "processing file" => "Processing".to_string(),
+
+        // Common warning messages - simplify
+        "USUBJID values updated with study prefix" => "Added STUDYID prefix to USUBJID".to_string(),
+        "Sequence values recalculated with tracker" => "Recalculated sequence numbers".to_string(),
+
+        // Default handling
+        _ => {
+            // Remove redundant stage prefix if present
+            if let Some(stage) = stage {
+                let prefix = format!("{stage}: ");
+                if message.starts_with(&prefix) {
+                    return message[prefix.len()..].to_string();
+                }
+            }
+            message.to_string()
+        }
     }
 }
 
@@ -639,58 +803,26 @@ fn format_path_tail(path: &str, segments: usize) -> String {
     components[start..].join(&sep)
 }
 
-/// Write details separated with pipes and color key numeric values.
-fn write_details(writer: &mut Writer<'_>, details: &[String]) -> std_fmt::Result {
-    for (idx, detail) in details.iter().enumerate() {
-        if idx > 0 {
-            write!(writer, " | ")?;
-        }
-        write_detail(writer, detail)?;
-    }
-    Ok(())
-}
-
-/// Write a single detail token with optional ANSI coloring.
-fn write_detail(writer: &mut Writer<'_>, detail: &str) -> std_fmt::Result {
-    if let Some((label, value)) = detail.split_once('=') {
-        write!(writer, "{label}=")?;
-        if writer.has_ansi_escapes()
-            && let Some(color) = value_color_for_label(label)
-        {
-            write!(writer, "{color}{value}\x1b[0m")?;
-            return Ok(());
-        }
-        write!(writer, "{value}")
-    } else {
-        write!(writer, "{detail}")
-    }
-}
-
-/// Pick ANSI colors for key numeric detail values.
+/// Pick ANSI colors for key detail values.
 fn value_color_for_label(label: &str) -> Option<&'static str> {
-    match label {
-        "errors" => Some("\x1b[31m"),
-        "warnings" => Some("\x1b[33m"),
-        "rows" | "domains" | "files" | "xpt" | "xml" | "sas" | "time" | "seq" => Some("\x1b[36m"),
-        _ => None,
+    // Check if this looks like an error/warning count
+    if label.contains("error") {
+        return Some("\x1b[1;31m"); // Bold red
     }
-}
-
-/// Write the log level with optional ANSI coloring.
-fn write_level(writer: &mut Writer<'_>, level: &Level) -> std_fmt::Result {
-    let label = format!("{level:<5}");
-    if writer.has_ansi_escapes() {
-        let color = match *level {
-            Level::ERROR => "\x1b[31m",
-            Level::WARN => "\x1b[33m",
-            Level::INFO => "\x1b[32m",
-            Level::DEBUG => "\x1b[34m",
-            Level::TRACE => "\x1b[36m",
-        };
-        write!(writer, "{color}{label}\x1b[0m")
-    } else {
-        write!(writer, "{label}")
+    if label.contains("warning") {
+        return Some("\x1b[33m"); // Yellow
     }
+    // Numbers get cyan
+    if label.contains("rows")
+        || label.contains("domain")
+        || label.contains("file")
+        || label.contains("XPT")
+        || label.contains("XML")
+        || label.contains("SAS")
+    {
+        return Some("\x1b[36m"); // Cyan
+    }
+    None
 }
 
 #[derive(Clone)]
