@@ -491,6 +491,10 @@ pub struct OutputConfig<'a> {
     pub mapping_configs: &'a BTreeMap<String, Vec<MappingConfig>>,
     pub formats: &'a [OutputFormat],
     pub dry_run: bool,
+    /// Skip Define-XML generation.
+    pub skip_define_xml: bool,
+    /// Skip SAS program generation.
+    pub skip_sas: bool,
 }
 
 /// Write output files (XPT, Dataset-XML, Define-XML, SAS).
@@ -511,7 +515,7 @@ pub fn output(config: OutputConfig<'_>) -> Result<OutputResult> {
         .any(|f| matches!(f, OutputFormat::Xml));
 
     // Write Define-XML
-    let define_xml = if config.dry_run {
+    let define_xml = if config.dry_run || config.skip_define_xml {
         None
     } else {
         let options = DefineXmlOptions::new("3.4", "Submission");
@@ -596,7 +600,7 @@ pub fn output(config: OutputConfig<'_>) -> Result<OutputResult> {
 
     // Write SAS programs
     let merged_mappings = merge_mappings(config.mapping_configs, config.study_id);
-    if !merged_mappings.is_empty() {
+    if !config.skip_sas && !merged_mappings.is_empty() {
         let mut sas_frames: Vec<DomainFrame> = config
             .frames
             .iter()

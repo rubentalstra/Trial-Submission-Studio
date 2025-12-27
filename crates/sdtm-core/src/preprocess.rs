@@ -18,6 +18,35 @@ use crate::data_utils::{
 
 type DaOrresCandidate = (Option<String>, Option<String>, Option<String>, Vec<String>);
 
+/// Fill missing test fields based on source data and column hints.
+///
+/// This function performs heuristic inference to populate missing SDTM variables
+/// from source column headers and labels. The inference is gated by the
+/// `allow_heuristic_inference` option in `ProcessingOptions`.
+///
+/// # SDTMIG References
+///
+/// While this function helps populate common test-related variables, the
+/// derivations are based on heuristics rather than explicit SDTMIG rules.
+/// Sponsors should validate the inferred values against their study metadata.
+///
+/// # Domains Handled
+///
+/// - **QS**: QSTEST, QSTESTCD, QSCAT from ORRES column hints
+/// - **PE**: PETEST, PETESTCD from ORRES column hints
+/// - **DS**: DSDECOD, DSTERM from CT matches and completion columns
+/// - **EX**: EXTRT from treatment-related column hints
+/// - **DA**: DAORRES, DATEST, DATESTCD, DAORRESU from column patterns
+/// - **LB**: LBORRES, LBTEST, LBTESTCD, LBORRESU from column patterns
+/// - **VS**: VSORRES, VSTEST, VSTESTCD, VSORRESU from column patterns
+///
+/// # Arguments
+///
+/// * `domain` - The domain metadata
+/// * `mapping` - The mapping configuration used for this domain
+/// * `table` - The source CSV table
+/// * `df` - The DataFrame to update
+/// * `ctx` - The processing context (contains options)
 pub fn fill_missing_test_fields(
     domain: &Domain,
     mapping: &MappingConfig,
@@ -25,6 +54,12 @@ pub fn fill_missing_test_fields(
     df: &mut DataFrame,
     ctx: &ProcessingContext,
 ) -> Result<()> {
+    // Gate heuristic inference behind the option
+    // When disabled, only explicit mappings from the mapping config are used
+    if !ctx.options.allow_heuristic_inference {
+        return Ok(());
+    }
+
     let code = domain.code.to_uppercase();
     let column_lookup = CaseInsensitiveLookup::new(df.get_column_names_owned());
     let column_name = |name: &str| {

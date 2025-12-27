@@ -5,6 +5,7 @@ use chrono::NaiveDate;
 use polars::prelude::{
     AnyValue, BooleanChunked, DataFrame, NamedFrom, NewChunkedArray, Series, UInt32Chunked,
 };
+use tracing::warn;
 
 use sdtm_model::Domain;
 
@@ -188,6 +189,27 @@ pub(super) fn is_numeric_string(value: &str) -> bool {
     parse_f64(value).is_some()
 }
 
+/// Drop placeholder/header rows that have missing or invalid USUBJID values.
+///
+/// # SDTMIG Reference (Section 4.1.2)
+///
+/// USUBJID is a required identifier for all General Observation class records.
+/// It must be "a unique identifier for each subject in the study" and is
+/// "a concatenation of STUDYID and a subject identifier unique within that study."
+///
+/// This function:
+/// 1. First attempts to derive USUBJID from STUDYID + SUBJID if USUBJID is missing
+///    (SDTMIG-approved derivation per Section 4.1.2)
+/// 2. Drops rows that still have invalid USUBJID values (placeholder/header rows)
+/// 3. Logs a warning when rows are dropped so the user is aware
+///
+/// Placeholder values that are dropped: empty string, "NaN", "<NA>", "NONE", "NULL"
+///
+/// # Arguments
+///
+/// * `domain` - Domain metadata
+/// * `df` - DataFrame to process (modified in place)
+/// * `ctx` - Processing context
 pub(super) fn drop_placeholder_rows(
     domain: &Domain,
     df: &mut DataFrame,
@@ -244,8 +266,18 @@ pub(super) fn drop_placeholder_rows(
     }
 
     if missing.iter().any(|value| *value) {
+        let drop_count = missing.iter().filter(|v| **v).count();
         let keep = missing.iter().map(|value| !*value).collect::<Vec<_>>();
         set_string_column(df, &usubjid_col, usubjid_vals)?;
+
+        // Log dropped rows - these are placeholder/header rows with invalid USUBJID
+        // SDTMIG 4.1.2: USUBJID is required for all General Observation records
+        warn!(
+            domain_code = %domain.code,
+            dropped_count = drop_count,
+            "Dropped rows with missing/invalid USUBJID (placeholder/header rows)"
+        );
+
         filter_rows(df, &keep)?;
     } else {
         set_string_column(df, &usubjid_col, usubjid_vals.clone())?;

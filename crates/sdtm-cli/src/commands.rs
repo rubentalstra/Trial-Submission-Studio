@@ -5,7 +5,7 @@ use std::time::Instant;
 use anyhow::{Context, Result, anyhow};
 use comfy_table::Table;
 use polars::prelude::DataFrame;
-use tracing::{debug, info, info_span};
+use tracing::{debug, info, info_span, warn};
 
 use sdtm_core::{
     DomainFrame, ProcessingOptions, StudyPipelineContext, build_relationship_frames,
@@ -15,6 +15,7 @@ use sdtm_model::{MappingConfig, OutputFormat};
 use sdtm_standards::{
     load_default_ct_registry, load_default_p21_rules, load_default_sdtm_ig_domains,
 };
+use sdtm_validate::gate_strict_outputs;
 
 use crate::cli::{OutputFormatArg, StudyArgs};
 use crate::pipeline::{
@@ -63,10 +64,19 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     let ct_registry = load_default_ct_registry().context("load ct registry")?;
     let p21_rules = load_default_p21_rules().context("load p21 rules")?;
 
-    let options = ProcessingOptions {
-        prefix_usubjid: !args.no_usubjid_prefix,
-        assign_sequence: !args.no_auto_seq,
-        warn_on_rewrite: true,
+    // Build processing options based on CLI flags
+    // --strict enables all strict mode options
+    // Individual flags can also be set independently
+    let options = if args.strict {
+        ProcessingOptions::strict()
+    } else {
+        ProcessingOptions {
+            prefix_usubjid: !args.no_usubjid_prefix,
+            assign_sequence: !args.no_auto_seq,
+            warn_on_rewrite: true,
+            allow_heuristic_inference: !args.no_heuristic_inference,
+            allow_lenient_ct_matching: !args.no_lenient_ct,
+        }
     };
     let mut pipeline = StudyPipelineContext::new(&study_id)
         .with_standards(standards.clone())
@@ -306,16 +316,53 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     let conformance_report = validation_result.report_path;
 
     // =========================================================================
+    // Stage 5.5: Gate outputs - Block strict outputs if validation fails
+    // =========================================================================
+    let fail_on_conformance_errors = !args.no_fail_on_conformance_errors;
+    let conformance_reports: Vec<_> = report_map.values().cloned().collect();
+    let gating = gate_strict_outputs(
+        &output_formats,
+        fail_on_conformance_errors,
+        &conformance_reports,
+    );
+
+    if gating.block_strict_outputs {
+        warn!(
+            study_id = %study_id,
+            blocked_domains = ?gating.blocking_domains,
+            "strict output blocked due to conformance errors"
+        );
+        errors.push(format!(
+            "Output blocked: conformance errors in domains: {}. Use --no-fail-on-conformance-errors to override.",
+            gating.blocking_domains.join(", ")
+        ));
+    }
+
+    // =========================================================================
     // Stage 6: Output - Write XPT, Dataset-XML, Define-XML, SAS
     // =========================================================================
+    // Filter formats based on gating decision
+    let gated_formats: Vec<OutputFormat> = if gating.block_strict_outputs {
+        // Block XPT output when conformance errors exist
+        output_formats
+            .iter()
+            .filter(|f| !matches!(f, OutputFormat::Xpt))
+            .cloned()
+            .collect()
+    } else {
+        output_formats.clone()
+    };
+
     let output_result = output(OutputConfig {
         output_dir: &output_dir,
         study_id: &study_id,
         report_domains: &report_domains,
         frames: &frame_list,
         mapping_configs: &mapping_configs,
-        formats: &output_formats,
+        formats: &gated_formats,
         dry_run: args.dry_run,
+        skip_define_xml: args.no_define_xml,
+        skip_sas: args.no_sas,
     })?;
     let mut output_paths = output_result.paths;
     let define_xml = output_result.define_xml;
@@ -325,7 +372,8 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     // Post-processing: Verify XPT counts and build summaries
     // =========================================================================
     let mut data_checks = Vec::new();
-    if want_xpt && !args.dry_run {
+    let want_xpt_and_not_blocked = want_xpt && !gating.block_strict_outputs;
+    if want_xpt_and_not_blocked && !args.dry_run {
         let (xpt_counts, xpt_errors) = verify_xpt_counts(&output_paths, &input_counts);
         errors.extend(xpt_errors);
 

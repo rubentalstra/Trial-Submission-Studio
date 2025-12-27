@@ -83,6 +83,48 @@ pub struct StudyArgs {
     /// Skip automatic sequence number generation.
     #[arg(long = "no-auto-seq")]
     pub no_auto_seq: bool,
+
+    /// Continue writing outputs even if conformance errors are detected.
+    ///
+    /// By default, the transpiler blocks XPT output generation when conformance
+    /// errors are found. Use this flag to override that behavior and write
+    /// outputs regardless of validation results.
+    ///
+    /// WARNING: Outputs generated with this flag may not be conformant.
+    #[arg(long = "no-fail-on-conformance-errors")]
+    pub no_fail_on_conformance_errors: bool,
+
+    /// Skip Define-XML generation.
+    #[arg(long = "no-define-xml")]
+    pub no_define_xml: bool,
+
+    /// Skip SAS program generation.
+    #[arg(long = "no-sas")]
+    pub no_sas: bool,
+
+    /// Enable strict SDTMIG-conformant processing.
+    ///
+    /// Disables heuristic inference and lenient CT matching. Only explicitly
+    /// documented SDTMIG derivations (USUBJID prefixing, sequence assignment)
+    /// are performed.
+    ///
+    /// Use this mode for production submissions requiring strict conformance.
+    #[arg(long = "strict")]
+    pub strict: bool,
+
+    /// Disable heuristic field inference from source columns.
+    ///
+    /// When set, test names, codes, and categories are not inferred from
+    /// source column headers and labels. Only explicit mappings are used.
+    #[arg(long = "no-heuristic-inference")]
+    pub no_heuristic_inference: bool,
+
+    /// Disable lenient CT matching.
+    ///
+    /// When set, only exact matches and defined synonyms are allowed for
+    /// controlled terminology normalization.
+    #[arg(long = "no-lenient-ct")]
+    pub no_lenient_ct: bool,
 }
 
 #[derive(Clone, Copy, ValueEnum)]

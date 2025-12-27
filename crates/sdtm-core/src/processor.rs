@@ -6,7 +6,7 @@ use tracing::warn;
 
 use sdtm_model::{CaseInsensitiveLookup, Domain, VariableType};
 
-use crate::ct_utils::normalize_ct_value_safe;
+use crate::ct_utils::{normalize_ct_value_safe, normalize_ct_value_strict};
 use crate::data_utils::any_to_string;
 use crate::domain_processors;
 use crate::domain_utils::{infer_seq_column, standard_columns};
@@ -25,6 +25,10 @@ fn sanitize_identifier(raw: &str) -> String {
 ///
 /// This function iterates through columns with CT constraints and normalizes
 /// values to their preferred terms.
+///
+/// When `allow_lenient_ct_matching` is enabled in options, lenient matching
+/// (including compact key matching) is used. When disabled, only exact matches
+/// and defined synonyms are normalized.
 pub fn normalize_ct_columns(
     domain: &Domain,
     df: &mut DataFrame,
@@ -34,6 +38,8 @@ pub fn normalize_ct_columns(
         return Ok(());
     }
     let column_lookup = CaseInsensitiveLookup::new(df.get_column_names_owned());
+    let use_strict = !ctx.options.allow_lenient_ct_matching;
+
     for variable in &domain.variables {
         if !matches!(variable.data_type, VariableType::Char) {
             continue;
@@ -55,7 +61,12 @@ pub fn normalize_ct_columns(
                 values.push(raw);
                 continue;
             }
-            let normalized = normalize_ct_value_safe(ct, &raw);
+            // Use strict or lenient matching based on options
+            let normalized = if use_strict {
+                normalize_ct_value_strict(ct, &raw)
+            } else {
+                normalize_ct_value_safe(ct, &raw)
+            };
             if normalized != raw {
                 changed = true;
             }

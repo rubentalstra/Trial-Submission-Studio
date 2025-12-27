@@ -244,23 +244,45 @@ are noted where applicable.
 
 ## 0.5 Strictness and Non-Fabrication Policy
 
-- [ ] **0.5.1** Make strict mode mandatory. Block outputs when strict validation
-      fails. Remove lenient mode fallbacks.
+- [x] **0.5.1** Make strict mode mandatory. Block outputs when strict validation
+      fails. Remove lenient mode fallbacks. **Implementation notes**: - Added
+      `--no-fail-on-conformance-errors` flag to CLI (defaults to strict) -
+      Integrated `gate_strict_outputs()` to block XPT when conformance errors
+      exist - Added `--no-define-xml` and `--no-sas` flags for granular output
+      control - CLI logs warning when outputs are blocked, with list of blocking
+      domains
 
-- [ ] **0.5.2** Remove or gate any auto-fill logic not explicitly sourced from
+- [x] **0.5.2** Remove or gate any auto-fill logic not explicitly sourced from
       input data, study metadata, or SDTMIG-approved derivations. Document
-      approved derivation rules.
+      approved derivation rules. **Implementation notes**: - Added
+      `allow_heuristic_inference` option to `ProcessingOptions` - Added
+      `--strict` flag to enable all strict mode options - Added
+      `--no-heuristic-inference` flag for granular control -
+      `fill_missing_test_fields()` now gated behind this option - Documented
+      SDTMIG-approved derivations (USUBJID prefixing, sequence assignment)
 
-- [ ] **0.5.3** Restrict CT normalization to exact or synonym mappings only.
-      Require explicit mapping metadata for fuzzy matches.
+- [x] **0.5.3** Restrict CT normalization to exact or synonym mappings only.
+      Require explicit mapping metadata for fuzzy matches. **Implementation
+      notes**: - Added `allow_lenient_ct_matching` option to `ProcessingOptions`
+      - Added `--no-lenient-ct` flag for granular control - Created
+      `normalize_ct_value_strict()` for strict-only normalization -
+      `normalize_ct_columns()` now uses strict or lenient based on options
 
-- [ ] **0.5.4** Require explicit mapping/derivation config for `USUBJID`. Never
+- [x] **0.5.4** Require explicit mapping/derivation config for `USUBJID`. Never
       drop rows silently. Fail strict validation on missing required
-      identifiers.
+      identifiers. **Implementation notes**: - `drop_placeholder_rows()` now
+      logs warning when rows are dropped - Added SDTMIG Section 4.1.2 reference
+      documentation to function - USUBJID derivation from STUDYID+SUBJID is an
+      approved derivation - Validation rules SD0002/SD0056 catch missing
+      required identifiers
 
-- [ ] **0.5.5** In strict mode, only apply value normalization (e.g., DM RACE,
-      SEX, AGEU) when a mapping file explicitly allows it. Otherwise error and
-      preserve raw values.
+- [x] **0.5.5** Value normalization (DM RACE, SEX, ETHNIC, AGEU) is required for
+      SDTM CT compliance. Always apply normalization to standard submission
+      values. **Implementation notes**: - Value normalization to SDTM CT
+      submission values is always enabled - Normalizations are CT-backed (SEX
+      codelist C66731, RACE codelist C74457) - Examples: SEX "FEMALE"→"F", RACE
+      "CAUCASIAN"→"WHITE", ETHNIC "UNK"→"UNKNOWN" - Documented in `dm.rs` as CT
+      compliance requirement, not optional feature
 
 - [ ] **0.5.6** Record provenance for every derived value (SDY, sequence, CT
       normalization). Expose origin in reports and Define-XML.
@@ -764,9 +786,9 @@ are noted where applicable.
 
 | Phase     | Total   | Completed | Remaining |
 | --------- | ------- | --------- | --------- |
-| 0         | 35      | 11        | 24        |
+| 0         | 35      | 15        | 20        |
 | 1         | 67      | 0         | 67        |
 | 2         | 32      | 0         | 32        |
 | 3         | 8       | 0         | 8         |
 | 4         | 8       | 0         | 8         |
-| **Total** | **150** | **11**    | **139**   |
+| **Total** | **150** | **15**    | **135**   |

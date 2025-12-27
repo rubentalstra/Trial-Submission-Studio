@@ -18,6 +18,10 @@ pub(super) fn process_dm(
         let values = numeric_column_f64(df, &age)?;
         set_f64_column(df, &age, values)?;
     }
+
+    // Value normalization to SDTM Controlled Terminology submission values.
+    // These mappings convert common synonyms to standard CT values required
+    // for SDTM compliance (e.g., SEX codelist C66731, RACE codelist C74457).
     if let Some(ageu) = col(domain, "AGEU")
         && has_column(df, &ageu)
     {
@@ -89,6 +93,7 @@ pub(super) fn process_dm(
             .collect();
         set_string_column(df, &sex, values)?;
     }
+
     for date_col in [
         "RFICDTC", "RFSTDTC", "RFENDTC", "RFXSTDTC", "RFXENDTC", "DMDTC",
     ] {

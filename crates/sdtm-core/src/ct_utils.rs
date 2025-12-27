@@ -194,12 +194,13 @@ pub fn normalize_ct_value(ct: &ControlledTerminology, raw: &str) -> String {
 
 /// Normalizes a value against CT, only returning normalized value if it's in CT.
 ///
-/// This function:
-/// 1. Attempts to resolve the value against CT (lenient)
+/// This function uses LENIENT matching:
+/// 1. Attempts to resolve the value against CT (lenient - includes compact key matching)
 /// 2. If the resolved value is a valid submission value, returns it
 /// 3. Otherwise, returns the original trimmed value
 ///
-/// This prevents normalizing to invalid values.
+/// This prevents normalizing to invalid values but allows fuzzy matching.
+/// For strict-mode processing, use `normalize_ct_value_strict` instead.
 pub fn normalize_ct_value_safe(ct: &ControlledTerminology, raw: &str) -> String {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
@@ -219,6 +220,24 @@ pub fn normalize_ct_value_safe(ct: &ControlledTerminology, raw: &str) -> String 
         }
         _ => trimmed.to_string(),
     }
+}
+
+/// Normalizes a value against CT using STRICT matching only.
+///
+/// This function:
+/// 1. Attempts to resolve the value against CT (strict - exact or synonym match only)
+/// 2. If matched, returns the submission value
+/// 3. Otherwise, returns the original trimmed value
+///
+/// Use this in strict mode when only exact matches or defined synonyms should
+/// be normalized. Fuzzy/compact key matching is not used.
+pub fn normalize_ct_value_strict(ct: &ControlledTerminology, raw: &str) -> String {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+
+    resolve_ct_strict(ct, trimmed).unwrap_or_else(|| trimmed.to_string())
 }
 
 // =============================================================================
