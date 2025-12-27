@@ -395,15 +395,17 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     // Build domain summaries
     let mut summaries = Vec::new();
     for frame in &frame_list {
-        let code = frame.domain_code.to_uppercase();
-        let domain = report_domain_map.get(&code);
+        // Use dataset_name() to get the correct name for split domains (e.g., LBCH vs LB)
+        let dataset_name = frame.dataset_name();
+        let base_code = frame.domain_code.to_uppercase();
+        let domain = report_domain_map.get(&base_code);
         let description = domain
             .and_then(|d| d.description.clone().or(d.label.clone()))
             .unwrap_or_default();
-        let outputs = output_paths.remove(&code).unwrap_or_default();
-        let conformance = report_map.remove(&code);
+        let outputs = output_paths.remove(&dataset_name).unwrap_or_default();
+        let conformance = report_map.remove(&dataset_name);
         summaries.push(DomainSummary {
-            domain_code: code,
+            domain_code: dataset_name,
             description,
             records: frame.record_count(),
             outputs,

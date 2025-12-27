@@ -486,18 +486,38 @@ are noted where applicable.
 
 ## 1.2 Identifier and Sequence Rules
 
-- [ ] **1.2.1** Enforce `--SEQ` uniqueness across split datasets. Check
+- [x] **1.2.1** Enforce `--SEQ` uniqueness across split datasets. Check
       collisions across input files. Either renumber with tracking or emit hard
       error.
+      **Implementation notes**:
+      - `validate_seq_across_splits()` in `cross_domain.rs` detects --SEQ collisions
+      - Split mappings passed via `CrossDomainValidationInput`
+      - Rule SD0046 emits REJECT for violations with duplicate values listed
 
-- [ ] **1.2.2** Validate General Observation identifiers: `STUDYID`, `DOMAIN`,
+- [x] **1.2.2** Validate General Observation identifiers: `STUDYID`, `DOMAIN`,
       `USUBJID`, and `--SEQ` for GO domains (except DM) across all records.
+      **Implementation notes**:
+      - `generate_go_identifier_rules()` in `generator.rs` creates rules for GO class domains
+      - Rule SD0041 validates STUDYID, DOMAIN, USUBJID, and --SEQ presence
+      - Excludes DM domain (which has different identifier requirements)
 
-- [ ] **1.2.3** Validate variable prefixes follow base `DOMAIN` code, not
+- [x] **1.2.3** Validate variable prefixes follow base `DOMAIN` code, not
       dataset name, for split datasets.
+      **Implementation notes**:
+      - `validate_variable_prefixes()` in `cross_domain.rs` checks column name prefixes
+      - For split datasets (e.g., LBCH), variables must use base domain prefix (LB)
+      - Rule SD0047 emits REJECT with invalid column names listed
 
-- [ ] **1.2.4** Propagate `variant` from `sdtm-ingest/src/discovery.rs` into
+- [x] **1.2.4** Propagate `variant` from `sdtm-ingest/src/discovery.rs` into
       outputs and reports for split dataset names.
+      **Implementation notes**:
+      - `DomainFrame.dataset_name()` returns metadata-based name for split domains
+      - Updated `write_xpt_outputs()`, `write_dataset_xml_outputs()`, `write_sas_outputs()`
+        in `sdtm-report` to use `frame.dataset_name()` for output file naming
+      - Updated `write_define_xml()` to use dataset names for OIDs (IG.LBCH, IT.LBCH.*)
+        while preserving base domain in Domain attribute
+      - Updated CLI summary to display dataset names (LBCH vs LB)
+      - Validation reports keyed by dataset name for proper cross-referencing
 
 ## 1.3 Length and Text Rules
 
@@ -908,8 +928,8 @@ are noted where applicable.
 | Phase     | Total   | Completed | Remaining |
 | --------- | ------- | --------- | --------- |
 | 0         | 35      | 35        | 0         |
-| 1         | 67      | 7         | 60        |
+| 1         | 67      | 11        | 56        |
 | 2         | 32      | 0         | 32        |
 | 3         | 8       | 0         | 8         |
 | 4         | 8       | 0         | 8         |
-| **Total** | **150** | **42**    | **108**   |
+| **Total** | **150** | **46**    | **104**   |

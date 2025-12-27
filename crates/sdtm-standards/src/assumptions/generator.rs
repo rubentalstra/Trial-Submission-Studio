@@ -176,6 +176,111 @@ impl RuleGenerator {
         // Generate duration usage rules per SDTMIG 4.4.3
         rules.extend(self.generate_duration_usage_rules(domain));
 
+        // Generate General Observation identifier rules per SDTMIG 4.1
+        rules.extend(self.generate_go_identifier_rules(domain));
+
+        rules
+    }
+
+    /// Generate General Observation class identifier rules per SDTMIG v3.4 Section 4.1.
+    ///
+    /// Per SDTMIG 4.1: All General Observation class domains (Findings, Events,
+    /// Interventions) require the following identifier variables:
+    /// - STUDYID: Study identifier (required in all domains)
+    /// - DOMAIN: Domain code (required in all domains)
+    /// - USUBJID: Unique subject identifier (required in all domains)
+    /// - --SEQ: Sequence number unique within USUBJID (required in GO domains except DM)
+    ///
+    /// DM is a Special Purpose domain with different identifier requirements.
+    fn generate_go_identifier_rules(&self, domain: &Domain) -> Vec<GeneratedRule> {
+        let mut rules = Vec::new();
+
+        // Only apply to General Observation class domains
+        let class = domain.dataset_class.as_ref();
+        let is_go_class = matches!(
+            class,
+            Some(
+                sdtm_model::DatasetClass::Findings
+                    | sdtm_model::DatasetClass::FindingsAbout
+                    | sdtm_model::DatasetClass::Events
+                    | sdtm_model::DatasetClass::Interventions
+            )
+        );
+
+        if !is_go_class {
+            return rules;
+        }
+
+        // Build the domain-specific variable prefix
+        let prefix = if domain.code.len() >= 2 {
+            &domain.code[..2]
+        } else {
+            &domain.code
+        };
+
+        // Required GO identifiers per SDTMIG 4.1
+        let go_identifiers = [
+            ("STUDYID", "Study Identifier"),
+            ("DOMAIN", "Domain Abbreviation"),
+            ("USUBJID", "Unique Subject Identifier"),
+        ];
+
+        for (var_name, var_label) in go_identifiers {
+            let has_var = domain
+                .variables
+                .iter()
+                .any(|v| v.name.eq_ignore_ascii_case(var_name));
+
+            if !has_var {
+                rules.push(GeneratedRule {
+                    rule_id: "SD0041".to_string(), // GO identifier presence
+                    domain: domain.code.clone(),
+                    variable: var_name.to_string(),
+                    category: "Identifier".to_string(),
+                    severity: RuleSeverity::Error,
+                    message: format!(
+                        "{} ({}) is required in General Observation class domain {} per SDTMIG 4.1",
+                        var_name, var_label, domain.code
+                    ),
+                    description: format!(
+                        "Per SDTMIG v3.4 Section 4.1, {} is a required identifier variable \
+                         for all General Observation class domains (Findings, Events, \
+                         Interventions).",
+                        var_name
+                    ),
+                    context: RuleContext::RequiredPresence,
+                });
+            }
+        }
+
+        // Check for --SEQ variable
+        let seq_var = format!("{}SEQ", prefix);
+        let has_seq = domain
+            .variables
+            .iter()
+            .any(|v| v.name.eq_ignore_ascii_case(&seq_var));
+
+        if !has_seq {
+            rules.push(GeneratedRule {
+                rule_id: "SD0041".to_string(),
+                domain: domain.code.clone(),
+                variable: seq_var.clone(),
+                category: "Identifier".to_string(),
+                severity: RuleSeverity::Error,
+                message: format!(
+                    "{} (Sequence Number) is required in General Observation class domain {} per SDTMIG 4.1",
+                    seq_var, domain.code
+                ),
+                description: format!(
+                    "Per SDTMIG v3.4 Section 4.1.5, {} is a required identifier variable \
+                     that provides a unique sequence number for each record within a domain \
+                     and USUBJID.",
+                    seq_var
+                ),
+                context: RuleContext::RequiredPresence,
+            });
+        }
+
         rules
     }
 

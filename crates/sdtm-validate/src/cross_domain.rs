@@ -29,6 +29,7 @@ const RULE_SUPP_QVAL_EMPTY: &str = "SD0043";
 const RULE_RELREC_INTEGRITY: &str = "SD0044";
 const RULE_RELSPEC_INTEGRITY: &str = "SD0045";
 const RULE_RELSUB_INTEGRITY: &str = "SD0046";
+const RULE_VARIABLE_PREFIX: &str = "SD0047";
 
 /// Input for cross-domain validation.
 pub struct CrossDomainValidationInput<'a> {
@@ -49,6 +50,7 @@ pub struct CrossDomainValidationResult {
     pub qnam_violations: u64,
     pub qval_violations: u64,
     pub relrec_violations: u64,
+    pub prefix_violations: u64,
 }
 
 impl CrossDomainValidationResult {
@@ -139,7 +141,126 @@ pub fn validate_cross_domain(input: CrossDomainValidationInput<'_>) -> CrossDoma
             .extend(issues);
     }
 
+    // 5. Validate variable prefixes follow base domain code for split datasets
+    let prefix_result = validate_variable_prefixes(&input);
+    result.prefix_violations = prefix_result.violation_count;
+    for (domain, issues) in prefix_result.issues {
+        result
+            .issues_by_domain
+            .entry(domain)
+            .or_default()
+            .extend(issues);
+    }
+
     result
+}
+
+// ============================================================================
+// Variable Prefix Validation for Split Datasets
+// ============================================================================
+
+struct PrefixValidationResult {
+    issues: BTreeMap<String, Vec<ConformanceIssue>>,
+    violation_count: u64,
+}
+
+/// Validate that variable prefixes follow the base DOMAIN code for split datasets.
+///
+/// Per SDTMIG v3.4 Section 4.1.7: When a domain is split across multiple datasets
+/// (e.g., LB split into LBCH, LBHE), variable prefixes must use the base domain
+/// code (LB), not the dataset name (LBCH, LBHE).
+///
+/// Valid: LBSEQ, LBDTC, LBORRES in dataset LBCH
+/// Invalid: LBCHSEQ, LBCHDTC (would use dataset name as prefix)
+fn validate_variable_prefixes(input: &CrossDomainValidationInput<'_>) -> PrefixValidationResult {
+    let mut issues: BTreeMap<String, Vec<ConformanceIssue>> = BTreeMap::new();
+    let mut violation_count = 0u64;
+
+    // Get split mappings to identify split datasets
+    let Some(split_mappings) = input.split_mappings else {
+        return PrefixValidationResult {
+            issues,
+            violation_count,
+        };
+    };
+
+    // Check each dataset for incorrect variable prefixes
+    for (dataset_name, df) in input.frames {
+        // Get the base domain for this dataset
+        let base_domain = split_mappings
+            .get(dataset_name)
+            .cloned()
+            .unwrap_or_else(|| infer_base_domain(dataset_name));
+
+        // Skip if not a split dataset (dataset_name == base_domain)
+        if dataset_name.eq_ignore_ascii_case(&base_domain) {
+            continue;
+        }
+
+        // Get column names
+        let columns = df.get_column_names_owned();
+
+        // Check for columns that incorrectly use the dataset name as prefix
+        let mut invalid_columns: Vec<String> = Vec::new();
+
+        for col in &columns {
+            let col_upper = col.to_uppercase();
+
+            // Skip standard identifier columns that don't use domain prefix
+            if matches!(
+                col_upper.as_str(),
+                "STUDYID" | "DOMAIN" | "USUBJID" | "SUBJID" | "VISIT" | "VISITNUM" | "EPOCH"
+            ) {
+                continue;
+            }
+
+            // Check if column uses the full dataset name as prefix
+            // E.g., for dataset LBCH, check if column starts with "LBCH"
+            if col_upper.starts_with(&dataset_name.to_uppercase())
+                && col_upper.len() > dataset_name.len()
+            {
+                // This column incorrectly uses dataset name as prefix
+                // It should use base domain (e.g., LB instead of LBCH)
+                invalid_columns.push(col.to_string());
+            }
+        }
+
+        if !invalid_columns.is_empty() {
+            violation_count += invalid_columns.len() as u64;
+
+            let sample_count = invalid_columns.len().min(5);
+            let samples: Vec<String> = invalid_columns.iter().take(sample_count).cloned().collect();
+
+            issues
+                .entry(dataset_name.clone())
+                .or_default()
+                .push(ConformanceIssue {
+                    code: RULE_VARIABLE_PREFIX.to_string(),
+                    message: format!(
+                        "Split dataset {} contains {} variable(s) using dataset name as prefix instead of base domain {}. \
+                         Variables should use prefix '{}', not '{}'. Invalid columns: {}",
+                        dataset_name,
+                        invalid_columns.len(),
+                        base_domain,
+                        base_domain,
+                        dataset_name,
+                        samples.join(", ")
+                    ),
+                    severity: IssueSeverity::Error,
+                    variable: None,
+                    count: Some(invalid_columns.len() as u64),
+                    rule_id: Some(RULE_VARIABLE_PREFIX.to_string()),
+                    category: Some("Naming".to_string()),
+                    codelist_code: None,
+                    ct_source: None,
+                });
+        }
+    }
+
+    PrefixValidationResult {
+        issues,
+        violation_count,
+    }
 }
 
 // ============================================================================

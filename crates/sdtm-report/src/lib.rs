@@ -74,8 +74,10 @@ pub fn write_xpt_outputs(
         let domain = domain_map
             .get(&code)
             .ok_or_else(|| anyhow!("missing domain definition for {code}"))?;
-        let dataset = build_xpt_dataset(domain, frame)?;
-        let disk_name = dataset.name.to_lowercase();
+        // Use frame's dataset name (from metadata) for split domains, falling back to domain.code
+        let output_dataset_name = frame.dataset_name();
+        let dataset = build_xpt_dataset_with_name(domain, frame, &output_dataset_name)?;
+        let disk_name = output_dataset_name.to_lowercase();
         let filename = format!("{disk_name}.xpt");
         let path = xpt_dir.join(filename);
         write_xpt(&path, &dataset, options)?;
@@ -104,10 +106,15 @@ pub fn write_dataset_xml_outputs(
         let domain = domain_map
             .get(&code)
             .ok_or_else(|| anyhow!("missing domain definition for {code}"))?;
-        let dataset_name = dataset_name(domain);
-        let disk_name = dataset_name.to_lowercase();
+        // Use frame's dataset name (from metadata) for split domains
+        let output_dataset_name = frame.dataset_name();
+        let disk_name = output_dataset_name.to_lowercase();
         let path = xml_dir.join(format!("{disk_name}.xml"));
-        write_dataset_xml(&path, domain, frame, study_id, sdtm_ig_version, None)?;
+        let options = DatasetXmlOptions {
+            dataset_name: Some(output_dataset_name),
+            ..Default::default()
+        };
+        write_dataset_xml(&path, domain, frame, study_id, sdtm_ig_version, Some(&options))?;
         outputs.push(path);
     }
     Ok(outputs)
@@ -232,8 +239,10 @@ pub fn write_define_xml(
     let mut ct_standards: BTreeMap<String, CtStandard> = BTreeMap::new();
 
     for (domain, frame) in &entries {
+        // Use frame's dataset name for split domains in OIDs
+        let output_dataset_name = frame.dataset_name();
         for variable in &domain.variables {
-            let oid = format!("IT.{}.{}", domain.code, variable.name);
+            let oid = format!("IT.{}.{}", output_dataset_name, variable.name);
             let length = match variable.data_type {
                 VariableType::Char => Some(variable_length(variable, &frame.data)?),
                 VariableType::Num => None,
@@ -322,14 +331,17 @@ pub fn write_define_xml(
         xml.write_event(Event::End(BytesEnd::new("def:Standards")))?;
     }
 
-    for (domain, _frame) in &entries {
+    for (domain, frame) in &entries {
+        // Use frame's dataset name for split domains (e.g., LBCH, FAAE)
+        let output_dataset_name = frame.dataset_name();
+        let base_domain_code = frame.base_domain_code();
         let mut ig = BytesStart::new("ItemGroupDef");
-        let ig_oid = format!("IG.{}", domain.code);
-        let sas_dataset_name = domain.code.chars().take(8).collect::<String>();
+        let ig_oid = format!("IG.{}", output_dataset_name);
+        let sas_dataset_name: String = output_dataset_name.chars().take(8).collect();
         ig.push_attribute(("OID", ig_oid.as_str()));
-        ig.push_attribute(("Name", domain.code.as_str()));
+        ig.push_attribute(("Name", output_dataset_name.as_str()));
         ig.push_attribute(("Repeating", "Yes"));
-        ig.push_attribute(("Domain", domain.code.as_str()));
+        ig.push_attribute(("Domain", base_domain_code));
         ig.push_attribute(("SASDatasetName", sas_dataset_name.as_str()));
         if let Some(label) = domain.label.as_ref() {
             ig.push_attribute(("def:Label", label.as_str()));
@@ -347,7 +359,8 @@ pub fn write_define_xml(
         let mut key_sequence = 1usize;
         for (idx, variable) in domain.variables.iter().enumerate() {
             let mut item_ref = BytesStart::new("ItemRef");
-            let item_oid = format!("IT.{}.{}", domain.code, variable.name);
+            // Use dataset name for ItemOID reference to match ItemDef OIDs
+            let item_oid = format!("IT.{}.{}", output_dataset_name, variable.name);
             let order_number = format!("{}", idx + 1);
             item_ref.push_attribute(("ItemOID", item_oid.as_str()));
             item_ref.push_attribute(("OrderNumber", order_number.as_str()));
@@ -437,10 +450,15 @@ pub fn write_sas_outputs(
         let mapping = mappings
             .get(&code)
             .ok_or_else(|| anyhow!("missing mapping config for {code}"))?;
-        let dataset_name = dataset_name(domain);
-        let disk_name = dataset_name.to_lowercase();
+        // Use frame's dataset name (from metadata) for split domains
+        let output_dataset_name = frame.dataset_name();
+        let disk_name = output_dataset_name.to_lowercase();
         let path = sas_dir.join(format!("{disk_name}.sas"));
-        let program = generate_sas_program(domain, frame, mapping, options)?;
+        let sas_options = SasProgramOptions {
+            output_dataset: Some(format!("sdtm.{}", disk_name)),
+            ..options.clone()
+        };
+        let program = generate_sas_program(domain, frame, mapping, &sas_options)?;
         std::fs::write(&path, program).with_context(|| format!("write {}", path.display()))?;
         outputs.push(path);
     }
@@ -507,16 +525,27 @@ pub fn generate_sas_program(
     Ok(lines.join("\n"))
 }
 
+/// Build XPT dataset using the frame's metadata for naming.
 pub fn build_xpt_dataset(domain: &Domain, frame: &DomainFrame) -> Result<XptDataset> {
+    let dataset_name = frame.dataset_name();
+    build_xpt_dataset_with_name(domain, frame, &dataset_name)
+}
+
+/// Build XPT dataset with an explicit dataset name.
+///
+/// This variant allows specifying the dataset name directly, useful for:
+/// - Split domains (e.g., LBCH, FAAE) where the name comes from frame metadata
+/// - Custom output naming requirements
+pub fn build_xpt_dataset_with_name(
+    domain: &Domain,
+    frame: &DomainFrame,
+    dataset_name: &str,
+) -> Result<XptDataset> {
     let df = &frame.data;
     let columns = build_xpt_columns(domain, df)?;
     let rows = build_xpt_rows(domain, df)?;
     Ok(XptDataset {
-        name: domain
-            .dataset_name
-            .clone()
-            .unwrap_or_else(|| domain.code.clone())
-            .to_uppercase(),
+        name: dataset_name.to_uppercase(),
         label: domain.label.clone(),
         columns,
         rows,

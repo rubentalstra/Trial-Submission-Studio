@@ -393,12 +393,15 @@ pub fn validate(
         .with_ct_registry(&pipeline.ct_registry)
         .with_p21_rules(&pipeline.p21_rules);
 
+    // Use dataset names for validation keys (handles split domains like LBCH)
+    let dataset_names: Vec<String> = frames.iter().map(|f| f.dataset_name()).collect();
     let frame_refs: Vec<(&str, &DataFrame)> = frames
         .iter()
-        .map(|frame| (frame.domain_code.as_str(), &frame.data))
+        .zip(dataset_names.iter())
+        .map(|(frame, name)| (name.as_str(), &frame.data))
         .collect();
 
-    // Per-domain validation
+    // Per-domain validation - pass dataset names instead of domain codes
     let reports = validate_domains(&pipeline.standards, &frame_refs, &validation_ctx);
     let mut report_map = BTreeMap::new();
     for report in reports {
@@ -406,9 +409,10 @@ pub fn validate(
     }
 
     // Cross-domain validation (SEQ uniqueness across splits, SUPPQUAL, relationships)
+    // Use dataset names as keys to properly identify split datasets
     let frame_map: BTreeMap<String, &DataFrame> = frames
         .iter()
-        .map(|frame| (frame.domain_code.to_uppercase(), &frame.data))
+        .map(|frame| (frame.dataset_name().to_uppercase(), &frame.data))
         .collect();
 
     // Build split mappings from frame metadata (dataset_name -> base domain)
