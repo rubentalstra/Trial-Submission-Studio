@@ -6,8 +6,53 @@
 //! - P21 Rules.csv (Rule templates with IDs and severity)
 //!
 //! This eliminates manual rule coding and ensures rules stay in sync with standards.
+//!
+//! # Rule ID Architecture
+//!
+//! This module uses two types of rule IDs:
+//!
+//! 1. **P21 Rule IDs** (e.g., "SD0002", "CT2001"): Official Pinnacle 21 rules from
+//!    `standards/p21/Rules.csv`. These are only used when our validation matches
+//!    the P21 rule's definition exactly.
+//!
+//! 2. **Internal Rule IDs** (e.g., "TRANS0008"): Validations based on SDTMIG guidance
+//!    that don't have direct P21 equivalents. These use the "TRANS_" prefix to
+//!    clearly indicate they are not official P21 rules.
+//!
+//! **Important**: Never invent fake P21 rule IDs! If a validation doesn't map to
+//! a real P21 rule, use a TRANS_* internal rule ID instead.
 
 use std::collections::{BTreeMap, HashMap};
+
+// ============================================================================
+// Internal Rule IDs - For SDTMIG-based validations without P21 equivalents
+// ============================================================================
+// These constants mirror those in sdtm-validate/src/rule_mapping.rs
+// We duplicate them here to avoid circular dependencies.
+
+/// Internal: Date pair order validation (end date before start date)
+/// SDTMIG 4.4 guidance-based, not a specific P21 rule.
+const TRANS_DATE_PAIR_ORDER: &str = "TRANS0008";
+
+/// Internal: Study day calculation requires complete date
+/// SDTMIG 4.4.4 guidance-based validation for SDY derivation.
+const TRANS_STUDY_DAY_INCOMPLETE: &str = "TRANS0009";
+
+/// Internal: Relative timing variable validation
+/// SDTMIG 4.4.7 guidance, not a specific P21 rule.
+const TRANS_RELATIVE_TIMING: &str = "TRANS0010";
+
+/// Internal: Duration variable usage validation
+/// SDTMIG 4.4.3 guidance, not a specific P21 rule.
+const TRANS_DURATION_USAGE: &str = "TRANS0011";
+
+/// Internal: Findings class timing variable validation
+/// SDTMIG 4.4.8 guidance for Findings class domains.
+const TRANS_FINDINGS_TIMING: &str = "TRANS0012";
+
+/// Internal: General Observation identifier presence
+/// SDTMIG 4.1 guidance for GO class domains (STUDYID, DOMAIN, USUBJID, --SEQ).
+const TRANS_GO_IDENTIFIERS: &str = "TRANS0013";
 
 use sdtm_model::{CtRegistry, Domain, Variable};
 
@@ -233,7 +278,7 @@ impl RuleGenerator {
 
             if !has_var {
                 rules.push(GeneratedRule {
-                    rule_id: "SD0041".to_string(), // GO identifier presence
+                    rule_id: TRANS_GO_IDENTIFIERS.to_string(),
                     domain: domain.code.clone(),
                     variable: var_name.to_string(),
                     category: "Identifier".to_string(),
@@ -262,7 +307,7 @@ impl RuleGenerator {
 
         if !has_seq {
             rules.push(GeneratedRule {
-                rule_id: "SD0041".to_string(),
+                rule_id: TRANS_GO_IDENTIFIERS.to_string(),
                 domain: domain.code.clone(),
                 variable: seq_var.clone(),
                 category: "Identifier".to_string(),
@@ -585,7 +630,7 @@ impl RuleGenerator {
         // Rule: --STDTC should not be used in Findings class domains
         if has_stdtc {
             rules.push(GeneratedRule {
-                rule_id: "SD4408".to_string(), // Custom rule ID for SDTMIG 4.4.8
+                rule_id: TRANS_FINDINGS_TIMING.to_string(),
                 domain: domain.code.clone(),
                 variable: stdtc_var.clone(),
                 category: "Timing".to_string(),
@@ -608,7 +653,7 @@ impl RuleGenerator {
         // Rule: --DTC should be present in Findings class domains for collection timing
         if !has_dtc {
             rules.push(GeneratedRule {
-                rule_id: "SD4408B".to_string(), // Supplementary rule for SDTMIG 4.4.8
+                rule_id: TRANS_FINDINGS_TIMING.to_string(),
                 domain: domain.code.clone(),
                 variable: dtc_var.clone(),
                 category: "Timing".to_string(),
@@ -665,7 +710,7 @@ impl RuleGenerator {
         // Generate rule: End date must not precede start date
         // Per SDTMIG 4.4: This is a conformance error, not a warning
         rules.push(GeneratedRule {
-            rule_id: "SD0009".to_string(), // P21 rule for date ordering
+            rule_id: TRANS_DATE_PAIR_ORDER.to_string(),
             domain: domain.code.clone(),
             variable: endtc_var.clone(),
             category: "Timing".to_string(),
@@ -724,7 +769,7 @@ impl RuleGenerator {
 
             if has_dtc && has_dy {
                 rules.push(GeneratedRule {
-                    rule_id: "SD0010".to_string(), // Custom rule ID for study day completeness
+                    rule_id: TRANS_STUDY_DAY_INCOMPLETE.to_string(),
                     domain: domain.code.clone(),
                     variable: dy_var.clone(),
                     category: "Timing".to_string(),
@@ -809,7 +854,7 @@ impl RuleGenerator {
             let strf_var = format!("{}STRF", prefix);
             let sttpt_var = format!("{}STTPT", prefix);
             rules.push(GeneratedRule {
-                rule_id: "SD4407A".to_string(),
+                rule_id: TRANS_RELATIVE_TIMING.to_string(),
                 domain: domain.code.clone(),
                 variable: strf_var.clone(),
                 category: "Timing".to_string(),
@@ -835,7 +880,7 @@ impl RuleGenerator {
             let enrf_var = format!("{}ENRF", prefix);
             let entpt_var = format!("{}ENTPT", prefix);
             rules.push(GeneratedRule {
-                rule_id: "SD4407B".to_string(),
+                rule_id: TRANS_RELATIVE_TIMING.to_string(),
                 domain: domain.code.clone(),
                 variable: enrf_var.clone(),
                 category: "Timing".to_string(),
@@ -861,7 +906,7 @@ impl RuleGenerator {
             let strf_var = format!("{}STRF", prefix);
             let stdtc_var = format!("{}STDTC", prefix);
             rules.push(GeneratedRule {
-                rule_id: "SD4407C".to_string(),
+                rule_id: TRANS_RELATIVE_TIMING.to_string(),
                 domain: domain.code.clone(),
                 variable: strf_var.clone(),
                 category: "Timing".to_string(),
@@ -888,7 +933,7 @@ impl RuleGenerator {
             let enrf_var = format!("{}ENRF", prefix);
             let endtc_var = format!("{}ENDTC", prefix);
             rules.push(GeneratedRule {
-                rule_id: "SD4407D".to_string(),
+                rule_id: TRANS_RELATIVE_TIMING.to_string(),
                 domain: domain.code.clone(),
                 variable: enrf_var.clone(),
                 category: "Timing".to_string(),
@@ -951,7 +996,7 @@ impl RuleGenerator {
             let endtc_var = format!("{}ENDTC", prefix);
 
             rules.push(GeneratedRule {
-                rule_id: "SD4403".to_string(),
+                rule_id: TRANS_DURATION_USAGE.to_string(),
                 domain: domain.code.clone(),
                 variable: dur_var.clone(),
                 category: "Timing".to_string(),

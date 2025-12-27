@@ -1,10 +1,12 @@
 mod cross_domain;
 mod engine;
+pub mod rule_mapping;
 
 pub use cross_domain::{
     CrossDomainValidationInput, CrossDomainValidationResult, validate_cross_domain,
 };
 pub use engine::RuleEngine;
+pub use rule_mapping::{RuleResolver, InternalRuleInfo};
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -136,8 +138,7 @@ pub fn validate_domains_with_rules(
     reports
 }
 
-/// Rule ID for undocumented derivation warning.
-const RULE_UNDOCUMENTED_DERIVATION: &str = "SD_PROV";
+// Note: TRANS_UNDOCUMENTED_DERIVATION is imported from rule_mapping module
 
 /// Known derived variable patterns (typically have Origin="Derived" in Define-XML).
 /// These variables should have provenance tracking if they contain values.
@@ -232,7 +233,7 @@ pub fn validate_provenance(
                      populated.",
                     variable.name
                 ),
-                rule_id: Some(RULE_UNDOCUMENTED_DERIVATION.to_string()),
+                rule_id: Some(TRANS_UNDOCUMENTED_DERIVATION.to_string()),
                 category: Some("Provenance".to_string()),
                 count: None,
                 codelist_code: None,
@@ -305,14 +306,20 @@ pub struct ConformanceIssueJson {
 
 const REPORT_SCHEMA: &str = "cdisc-transpiler.conformance-report";
 const REPORT_SCHEMA_VERSION: u32 = 1;
-const RULE_REQUIRED_VAR_MISSING: &str = "SD0056";
-const RULE_EXPECTED_VAR_MISSING: &str = "SD0057";
-const RULE_REQUIRED_VALUE_MISSING: &str = "SD0002";
-const RULE_DATATYPE_MISMATCH: &str = "SD1230";
-const RULE_LENGTH_EXCEEDED: &str = "SD1231";
-const RULE_CT_NON_EXTENSIBLE: &str = "CT2001";
-const RULE_CT_EXTENSIBLE: &str = "CT2002";
-const RULE_TESTCD_INVALID: &str = "SDTMIG_TESTCD";
+
+// Import P21 rule IDs from central rule_mapping module
+// These IDs match the official Pinnacle 21 Rules.csv exactly
+use rule_mapping::{
+    P21_CT_EXTENSIBLE,         // CT2002 - extensible codelist
+    P21_CT_NON_EXTENSIBLE,     // CT2001 - non-extensible codelist
+    P21_DATATYPE_MISMATCH,     // SD1230 - datatype validation
+    P21_EXPECTED_VAR_MISSING,  // SD0057 - expected variable missing
+    P21_LENGTH_EXCEEDED,       // SD1231 - length exceeded
+    P21_QNAM_INVALID,          // SD1022 - QNAM/TESTCD format validation
+    P21_REQUIRED_VALUE_MISSING, // SD0002 - required value null
+    P21_REQUIRED_VAR_MISSING,  // SD0056 - required variable missing
+    TRANS_UNDOCUMENTED_DERIVATION, // Internal - provenance tracking
+};
 
 pub fn validate_domain(
     domain: &Domain,
@@ -436,11 +443,11 @@ fn missing_column_issues(
     p21_lookup: &BTreeMap<String, &P21Rule>,
 ) -> Vec<ConformanceIssue> {
     if is_required(variable.core.as_deref()) {
-        let rule = p21_lookup.get(RULE_REQUIRED_VAR_MISSING).copied();
+        let rule = p21_lookup.get(P21_REQUIRED_VAR_MISSING).copied();
         let base = rule_base_message(rule, "SDTM Required variable not found");
         let message = format!("{base}: {}", variable.name);
         return vec![issue_from_rule(
-            RULE_REQUIRED_VAR_MISSING,
+            P21_REQUIRED_VAR_MISSING,
             p21_lookup,
             IssueSeverity::Error,
             message,
@@ -450,11 +457,11 @@ fn missing_column_issues(
         )];
     }
     if is_expected(variable.core.as_deref()) {
-        let rule = p21_lookup.get(RULE_EXPECTED_VAR_MISSING).copied();
+        let rule = p21_lookup.get(P21_EXPECTED_VAR_MISSING).copied();
         let base = rule_base_message(rule, "SDTM Expected variable not found");
         let message = format!("{base}: {}", variable.name);
         return vec![issue_from_rule(
-            RULE_EXPECTED_VAR_MISSING,
+            P21_EXPECTED_VAR_MISSING,
             p21_lookup,
             IssueSeverity::Warning,
             message,
@@ -487,14 +494,14 @@ fn missing_value_issue(
     if missing == 0 {
         return None;
     }
-    let rule = p21_lookup.get(RULE_REQUIRED_VALUE_MISSING).copied();
+    let rule = p21_lookup.get(P21_REQUIRED_VALUE_MISSING).copied();
     let base = rule_base_message(rule, "Null value in variable marked as Required");
     let message = format!(
         "{base}: {} has {} missing/blank value(s)",
         variable.name, missing
     );
     Some(issue_from_rule(
-        RULE_REQUIRED_VALUE_MISSING,
+        P21_REQUIRED_VALUE_MISSING,
         p21_lookup,
         IssueSeverity::Error,
         message,
@@ -535,14 +542,14 @@ fn type_issue(
     if invalid == 0 {
         return None;
     }
-    let rule = p21_lookup.get(RULE_DATATYPE_MISMATCH).copied();
+    let rule = p21_lookup.get(P21_DATATYPE_MISMATCH).copied();
     let base = rule_base_message(rule, "Variable datatype is not the expected SDTM datatype");
     let message = format!(
         "{base}: {} has {} non-numeric value(s)",
         variable.name, invalid
     );
     Some(issue_from_rule(
-        RULE_DATATYPE_MISMATCH,
+        P21_DATATYPE_MISMATCH,
         p21_lookup,
         IssueSeverity::Error,
         message,
@@ -577,14 +584,14 @@ fn length_issue(
     if over == 0 {
         return None;
     }
-    let rule = p21_lookup.get(RULE_LENGTH_EXCEEDED).copied();
+    let rule = p21_lookup.get(P21_LENGTH_EXCEEDED).copied();
     let base = rule_base_message(rule, "Variable value is longer than defined max length");
     let message = format!(
         "{base}: {} exceeds length {} in {} value(s)",
         variable.name, limit, over
     );
     Some(issue_from_rule(
-        RULE_LENGTH_EXCEEDED,
+        P21_LENGTH_EXCEEDED,
         p21_lookup,
         IssueSeverity::Error,
         message,
@@ -633,7 +640,7 @@ fn test_code_issue(
         message.push_str(&format!(" values: {}", examples));
     }
     Some(issue_from_rule(
-        RULE_TESTCD_INVALID,
+        P21_QNAM_INVALID,
         p21_lookup,
         IssueSeverity::Error,
         message,
@@ -679,9 +686,9 @@ fn ct_issue(
         return None;
     }
     let (rule_id, default_severity) = if ct.extensible {
-        (RULE_CT_EXTENSIBLE, IssueSeverity::Warning)
+        (P21_CT_EXTENSIBLE, IssueSeverity::Warning)
     } else {
-        (RULE_CT_NON_EXTENSIBLE, IssueSeverity::Error)
+        (P21_CT_NON_EXTENSIBLE, IssueSeverity::Error)
     };
     let mut examples = invalid.iter().take(5).cloned().collect::<Vec<_>>();
     examples.sort();
