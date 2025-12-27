@@ -146,16 +146,8 @@ pub fn validate_domain(
             issues.push(issue);
         }
         if let Some(ct_registry) = ctx.ct_registry {
-            if let Some(resolved) =
-                resolve_ct(ct_registry, variable, ctx.ct_catalogs.as_deref())
-            {
-                if let Some(issue) = ct_issue(
-                    variable,
-                    df,
-                    column,
-                    &resolved,
-                    &p21_lookup,
-                ) {
+            if let Some(resolved) = resolve_ct(ct_registry, variable, ctx.ct_catalogs.as_deref()) {
+                if let Some(issue) = ct_issue(variable, df, column, &resolved, &p21_lookup) {
                     issues.push(issue);
                 }
             }
@@ -449,7 +441,7 @@ fn test_code_issue(
     let base = "Invalid TESTCD/QNAM value (must be <=8 chars, start with a letter or underscore, and contain only letters, numbers, or underscores)";
     let mut message = format!("{base}: {} has {invalid} invalid value(s)", variable.name);
     if !examples.is_empty() {
-        message.push_str(&format!(" examples: {}", examples));
+        message.push_str(&format!(" values: {}", examples));
     }
     Some(issue_from_rule(
         RULE_TESTCD_INVALID,
@@ -517,7 +509,7 @@ fn ct_issue(
         ct.codelist_code
     );
     if !examples.is_empty() {
-        message.push_str(&format!(" examples: {}", examples));
+        message.push_str(&format!(" values: {}", examples));
     }
     let rule = p21_lookup.get(rule_id).copied();
     Some(ConformanceIssue {

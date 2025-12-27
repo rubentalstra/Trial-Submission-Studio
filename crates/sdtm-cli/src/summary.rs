@@ -1,4 +1,5 @@
 use std::cmp::Ordering;
+use std::io::{self, IsTerminal};
 use std::path::PathBuf;
 
 use comfy_table::modifiers::{UTF8_ROUND_CORNERS, UTF8_SOLID_INNER_BORDERS};
@@ -124,20 +125,18 @@ fn print_issue_table(result: &StudyResult) {
         header_cell("Variable"),
         header_cell("CT"),
         header_cell("Code"),
-        header_cell("Count"),
         header_cell("Rule"),
         header_cell("Category"),
         header_cell("Message"),
-        header_cell("Examples"),
+        header_cell("Values"),
     ]);
     apply_issue_table_style(&mut table);
     align_column(&mut table, 1, CellAlignment::Center);
     align_column(&mut table, 3, CellAlignment::Center);
     align_column(&mut table, 4, CellAlignment::Center);
-    align_column(&mut table, 5, CellAlignment::Right);
     for (domain, issue) in issues {
-        let (message, examples) = split_examples(&issue.message);
-        let count_cell = issue_count_cell(issue.count, issue.severity);
+        let (message, values) = split_values(&issue.message);
+        let message = highlight_count_in_message(message, issue.count, issue.severity);
         let domain_cell = domain_cell(&domain);
         table.add_row(vec![
             domain_cell,
@@ -145,11 +144,10 @@ fn print_issue_table(result: &StudyResult) {
             Cell::new(issue.variable.clone().unwrap_or_else(|| "-".to_string())),
             Cell::new(issue.ct_source.clone().unwrap_or_else(|| "-".to_string())),
             Cell::new(issue.code.clone()),
-            count_cell,
             Cell::new(issue.rule_id.clone().unwrap_or_else(|| "-".to_string())),
             Cell::new(issue.category.clone().unwrap_or_else(|| "-".to_string())),
             Cell::new(message),
-            example_cell(examples),
+            values_cell(values),
         ]);
     }
     println!();
@@ -271,14 +269,13 @@ fn apply_issue_table_style(table: &mut Table) {
         .apply_modifier(UTF8_SOLID_INNER_BORDERS)
         .set_content_arrangement(ContentArrangement::DynamicFullWidth)
         .set_width(200);
-    if table.column_count() >= 10 {
+    if table.column_count() >= 9 {
         table.set_constraints(vec![
             ColumnConstraint::UpperBoundary(Width::Fixed(10)),
             ColumnConstraint::UpperBoundary(Width::Fixed(9)),
             ColumnConstraint::UpperBoundary(Width::Fixed(12)),
             ColumnConstraint::UpperBoundary(Width::Fixed(10)),
             ColumnConstraint::UpperBoundary(Width::Fixed(10)),
-            ColumnConstraint::LowerBoundary(Width::Fixed(5)),
             ColumnConstraint::UpperBoundary(Width::Fixed(10)),
             ColumnConstraint::UpperBoundary(Width::Fixed(12)),
             ColumnConstraint::UpperBoundary(Width::Percentage(45)),
@@ -343,26 +340,11 @@ fn severity_cell(severity: IssueSeverity) -> Cell {
     }
 }
 
-fn issue_count_cell(count: Option<u64>, severity: IssueSeverity) -> Cell {
-    match count {
-        Some(value) => Cell::new(value).fg(severity_color(severity)),
-        None => dim_cell("-"),
-    }
-}
-
 fn severity_rank(severity: IssueSeverity) -> u8 {
     match severity {
         IssueSeverity::Reject => 3,
         IssueSeverity::Error => 2,
         IssueSeverity::Warning => 1,
-    }
-}
-
-fn severity_color(severity: IssueSeverity) -> Color {
-    match severity {
-        IssueSeverity::Reject => Color::Red,
-        IssueSeverity::Error => Color::Red,
-        IssueSeverity::Warning => Color::Yellow,
     }
 }
 
@@ -395,20 +377,78 @@ fn description_cell(description: &str, is_supp: bool) -> Cell {
     }
 }
 
-fn split_examples(message: &str) -> (String, String) {
-    match message.rsplit_once(" examples: ") {
+fn split_values(message: &str) -> (String, String) {
+    match message.rsplit_once(" values: ") {
         Some((head, tail)) => (head.to_string(), tail.to_string()),
         None => (message.to_string(), "-".to_string()),
     }
 }
 
-fn example_cell(value: String) -> Cell {
+fn values_cell(value: String) -> Cell {
     if value == "-" {
         dim_cell(value)
     } else {
         Cell::new(value)
     }
 }
+
+fn highlight_count_in_message(
+    message: String,
+    count: Option<u64>,
+    severity: IssueSeverity,
+) -> String {
+    let Some(count) = count else {
+        return message;
+    };
+    if !io::stdout().is_terminal() {
+        return message;
+    }
+    let count_str = count.to_string();
+    let replacement = format!(
+        "{}{}{}",
+        ansi_severity_color(severity),
+        count_str,
+        ANSI_RESET
+    );
+    replace_first_count(&message, &count_str, &replacement).unwrap_or(message)
+}
+
+fn replace_first_count(message: &str, count: &str, replacement: &str) -> Option<String> {
+    for (idx, _) in message.match_indices(count) {
+        let end = idx + count.len();
+        let left_ok = idx == 0
+            || message[..idx]
+                .chars()
+                .last()
+                .map(|ch| !ch.is_ascii_digit())
+                .unwrap_or(true);
+        let right_ok = end == message.len()
+            || message[end..]
+                .chars()
+                .next()
+                .map(|ch| !ch.is_ascii_digit())
+                .unwrap_or(true);
+        if left_ok && right_ok {
+            let mut updated = String::new();
+            updated.push_str(&message[..idx]);
+            updated.push_str(replacement);
+            updated.push_str(&message[end..]);
+            return Some(updated);
+        }
+    }
+    None
+}
+
+fn ansi_severity_color(severity: IssueSeverity) -> &'static str {
+    match severity {
+        IssueSeverity::Reject | IssueSeverity::Error => ANSI_RED,
+        IssueSeverity::Warning => ANSI_YELLOW,
+    }
+}
+
+const ANSI_RED: &str = "\x1b[31m";
+const ANSI_YELLOW: &str = "\x1b[33m";
+const ANSI_RESET: &str = "\x1b[0m";
 
 fn dim_cell<T: ToString>(value: T) -> Cell {
     Cell::new(value).fg(Color::DarkGrey)

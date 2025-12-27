@@ -112,7 +112,8 @@ fn catalogs_in_order<'a>(
         return ordered;
     }
     let mut values: Vec<&CtCatalog> = catalogs.values().collect();
-    values.sort_by(|left, right| catalog_sort_key(&left.label).cmp(&catalog_sort_key(&right.label)));
+    values
+        .sort_by(|left, right| catalog_sort_key(&left.label).cmp(&catalog_sort_key(&right.label)));
     values
 }
 

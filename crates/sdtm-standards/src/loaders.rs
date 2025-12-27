@@ -376,7 +376,10 @@ fn collect_ct_files(ct_dirs: &[PathBuf]) -> Result<Vec<PathBuf>> {
 }
 
 fn ct_label_from_filename(path: &Path) -> String {
-    let stem = path.file_stem().and_then(|value| value.to_str()).unwrap_or("");
+    let stem = path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or("");
     if let Some((prefix, _)) = stem.split_once("_CT_") {
         format!("{} CT", prefix)
     } else {
