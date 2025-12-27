@@ -12,9 +12,11 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
+use std::time::Instant;
 
 use anyhow::{Context, Result};
 use polars::prelude::{AnyValue, DataFrame};
+use tracing::{info, info_span};
 
 use sdtm_core::{
     DomainFrame, DomainFrameMeta, StudyPipelineContext, SuppqualInput, any_to_string,
@@ -139,6 +141,8 @@ pub struct ProcessedFile {
 pub struct ProcessFileInput<'a> {
     pub path: &'a Path,
     pub domain: &'a Domain,
+    /// Dataset name for logging and metadata (e.g., "LB" or "LBCH").
+    pub dataset_name: &'a str,
     pub study_id: &'a str,
     pub study_metadata: &'a StudyMetadata,
     pub suppqual_domain: &'a Domain,
@@ -157,6 +161,19 @@ pub struct ProcessFileInput<'a> {
 /// 5. Applies domain-specific rules
 /// 6. Builds SUPPQUAL for non-standard columns
 pub fn process_file(input: ProcessFileInput<'_>) -> Result<ProcessedFile> {
+    let domain_code = input.domain.code.to_uppercase();
+    let dataset_name = input.dataset_name.to_uppercase();
+    let source_file = input.path.display().to_string();
+    let process_span = info_span!(
+        "process_file",
+        study_id = %input.study_id,
+        domain_code = %domain_code,
+        dataset_name = %dataset_name,
+        source_file = %source_file
+    );
+    let _process_guard = process_span.enter();
+    let process_start = Instant::now();
+
     let raw_table =
         read_csv_table(input.path).with_context(|| format!("read {}", input.path.display()))?;
     let input_count = raw_table.rows.len();
@@ -176,8 +193,22 @@ pub fn process_file(input: ProcessFileInput<'_>) -> Result<ProcessedFile> {
         .with_context(|| format!("build source frame for {}", input.domain.code))?;
 
     // Build mapped frame
-    let mapped_result = build_mapped_domain_frame(&table, input.domain, input.study_id)
-        .with_context(|| format!("map {} columns", input.domain.code))?;
+    let mapped_result = info_span!("map").in_scope(|| -> Result<_> {
+        let start = Instant::now();
+        let result = build_mapped_domain_frame(&table, input.domain, input.study_id)
+            .with_context(|| format!("map {} columns", input.domain.code))?;
+        info!(
+            study_id = %input.study_id,
+            domain_code = %domain_code,
+            dataset_name = %dataset_name,
+            source_file = %source_file,
+            input_rows = input_count,
+            output_rows = result.frame.data.height(),
+            duration_ms = start.elapsed().as_millis(),
+            "mapping complete"
+        );
+        Ok(result)
+    })?;
 
     let mapping_config = mapped_result.mapping;
     let mut mapped = mapped_result.frame;
@@ -193,25 +224,51 @@ pub fn process_file(input: ProcessFileInput<'_>) -> Result<ProcessedFile> {
         }
     }
 
-    // Preprocess: fill missing test fields
     let ctx = input.pipeline.processing_context();
-    fill_missing_test_fields(
-        input.domain,
-        &mapping_config,
-        &table,
-        &mut mapped.data,
-        &ctx,
-    )
-    .with_context(|| format!("preprocess {}", input.domain.code))?;
+    // Preprocess: fill missing test fields
+    info_span!("preprocess").in_scope(|| -> Result<()> {
+        let start = Instant::now();
+        fill_missing_test_fields(
+            input.domain,
+            &mapping_config,
+            &table,
+            &mut mapped.data,
+            &ctx,
+        )
+        .with_context(|| format!("preprocess {}", input.domain.code))?;
+        info!(
+            study_id = %input.study_id,
+            domain_code = %domain_code,
+            dataset_name = %dataset_name,
+            source_file = %source_file,
+            record_count = mapped.data.height(),
+            duration_ms = start.elapsed().as_millis(),
+            "preprocess complete"
+        );
+        Ok(())
+    })?;
 
     // Apply domain rules
-    process_domain_with_context_and_tracker(
-        input.domain,
-        &mut mapped.data,
-        &ctx,
-        Some(input.seq_tracker),
-    )
-    .with_context(|| format!("domain rules for {}", input.domain.code))?;
+    info_span!("domain_rules").in_scope(|| -> Result<()> {
+        let start = Instant::now();
+        process_domain_with_context_and_tracker(
+            input.domain,
+            &mut mapped.data,
+            &ctx,
+            Some(input.seq_tracker),
+        )
+        .with_context(|| format!("domain rules for {}", input.domain.code))?;
+        info!(
+            study_id = %input.study_id,
+            domain_code = %domain_code,
+            dataset_name = %dataset_name,
+            source_file = %source_file,
+            record_count = mapped.data.height(),
+            duration_ms = start.elapsed().as_millis(),
+            "domain rules complete"
+        );
+        Ok(())
+    })?;
 
     // Build SUPPQUAL
     let label_map = column_label_map(&table);
@@ -226,30 +283,72 @@ pub fn process_file(input: ProcessFileInput<'_>) -> Result<ProcessedFile> {
         Some(&derived_columns)
     };
 
-    let suppqual = build_suppqual(SuppqualInput {
-        parent_domain: input.domain,
-        suppqual_domain: input.suppqual_domain,
-        source_df: &source.data,
-        mapped_df: Some(&mapped.data),
-        used_source_columns: &used,
-        study_id: input.study_id,
-        exclusion_columns: Some(input.suppqual_exclusions),
-        source_labels: label_map_ref,
-        derived_columns: derived_ref,
-    })
-    .with_context(|| format!("SUPPQUAL for {}", input.domain.code))?
-    .map(|result| DomainFrame {
-        domain_code: result.domain_code,
-        data: result.data,
-        meta: Some(DomainFrameMeta::new().with_source_file(input.path.to_path_buf())),
-    });
+    let suppqual = info_span!("suppqual")
+        .in_scope(|| -> Result<_> {
+            let start = Instant::now();
+            let result = build_suppqual(SuppqualInput {
+                parent_domain: input.domain,
+                suppqual_domain: input.suppqual_domain,
+                source_df: &source.data,
+                mapped_df: Some(&mapped.data),
+                used_source_columns: &used,
+                study_id: input.study_id,
+                exclusion_columns: Some(input.suppqual_exclusions),
+                source_labels: label_map_ref,
+                derived_columns: derived_ref,
+            })
+            .with_context(|| format!("SUPPQUAL for {}", input.domain.code))?;
+            match &result {
+                Some(frame) => {
+                    info!(
+                        study_id = %input.study_id,
+                        domain_code = %domain_code,
+                        dataset_name = %dataset_name,
+                        source_file = %source_file,
+                        record_count = frame.data.height(),
+                        duration_ms = start.elapsed().as_millis(),
+                        "suppqual complete"
+                    );
+                }
+                None => {
+                    info!(
+                        study_id = %input.study_id,
+                        domain_code = %domain_code,
+                        dataset_name = %dataset_name,
+                        source_file = %source_file,
+                        duration_ms = start.elapsed().as_millis(),
+                        "suppqual skipped"
+                    );
+                }
+            }
+            Ok(result)
+        })?
+        .map(|result| DomainFrame {
+            domain_code: result.domain_code.clone(),
+            data: result.data,
+            meta: Some(build_frame_meta(
+                &result.domain_code,
+                &result.domain_code,
+                input.path,
+            )),
+        });
 
-    // Add source file to frame metadata
+    // Add source file and dataset naming metadata
+    let frame_meta = build_frame_meta(&domain_code, &dataset_name, input.path);
     let frame = DomainFrame {
-        domain_code: input.domain.code.to_uppercase(),
+        domain_code: domain_code.clone(),
         data: mapped.data,
-        meta: Some(DomainFrameMeta::new().with_source_file(input.path.to_path_buf())),
+        meta: Some(frame_meta),
     };
+    info!(
+        study_id = %input.study_id,
+        domain_code = %domain_code,
+        dataset_name = %dataset_name,
+        source_file = %source_file,
+        output_rows = frame.record_count(),
+        duration_ms = process_start.elapsed().as_millis(),
+        "file processed"
+    );
 
     Ok(ProcessedFile {
         frame,
@@ -282,6 +381,9 @@ pub fn validate(
     study_id: &str,
     dry_run: bool,
 ) -> Result<ValidationResult> {
+    let validation_span = info_span!("validate", study_id = %study_id);
+    let _validation_guard = validation_span.enter();
+    let validation_start = Instant::now();
     let mut errors = Vec::new();
 
     let validation_ctx = ValidationContext::new()
@@ -311,6 +413,52 @@ pub fn validate(
             }
         }
     };
+
+    if !report_map.is_empty() {
+        let mut frame_lookup: BTreeMap<String, &DomainFrame> = BTreeMap::new();
+        for frame in frames {
+            frame_lookup.insert(frame.domain_code.to_uppercase(), frame);
+        }
+        for report in report_map.values() {
+            if let Some(frame) = frame_lookup.get(&report.domain_code.to_uppercase()) {
+                let dataset_name = frame.dataset_name();
+                let source_file = frame
+                    .source_files()
+                    .first()
+                    .map(|path| path.display().to_string())
+                    .unwrap_or_else(|| "unknown".to_string());
+                info!(
+                    study_id = %study_id,
+                    domain_code = %report.domain_code,
+                    dataset_name = %dataset_name,
+                    source_file = %source_file,
+                    error_count = report.error_count(),
+                    warning_count = report.warning_count(),
+                    "validation summary"
+                );
+            }
+        }
+        let total_errors: usize = report_map.values().map(|report| report.error_count()).sum();
+        let total_warnings: usize = report_map
+            .values()
+            .map(|report| report.warning_count())
+            .sum();
+        info!(
+            study_id = %study_id,
+            domain_count = report_map.len(),
+            error_count = total_errors,
+            warning_count = total_warnings,
+            duration_ms = validation_start.elapsed().as_millis(),
+            "validation complete"
+        );
+    } else {
+        info!(
+            study_id = %study_id,
+            domain_count = 0,
+            duration_ms = validation_start.elapsed().as_millis(),
+            "validation complete"
+        );
+    }
 
     Ok(ValidationResult {
         reports: report_map,
@@ -347,6 +495,9 @@ pub struct OutputConfig<'a> {
 
 /// Write output files (XPT, Dataset-XML, Define-XML, SAS).
 pub fn output(config: OutputConfig<'_>) -> Result<OutputResult> {
+    let output_span = info_span!("output", study_id = %config.study_id);
+    let _output_guard = output_span.enter();
+    let output_start = Instant::now();
     let mut errors = Vec::new();
     let mut paths: BTreeMap<String, sdtm_model::OutputPaths> = BTreeMap::new();
 
@@ -380,6 +531,12 @@ pub fn output(config: OutputConfig<'_>) -> Result<OutputResult> {
     };
 
     if config.dry_run {
+        info!(
+            study_id = %config.study_id,
+            domain_count = config.frames.len(),
+            duration_ms = output_start.elapsed().as_millis(),
+            "output skipped (dry run)"
+        );
         return Ok(OutputResult {
             paths,
             define_xml,
@@ -469,6 +626,44 @@ pub fn output(config: OutputConfig<'_>) -> Result<OutputResult> {
         }
     }
 
+    for frame in config.frames {
+        let dataset_name = frame.dataset_name();
+        let source_file = frame
+            .source_files()
+            .first()
+            .map(|path| path.display().to_string())
+            .unwrap_or_else(|| "unknown".to_string());
+        info!(
+            study_id = %config.study_id,
+            domain_code = %frame.domain_code,
+            dataset_name = %dataset_name,
+            source_file = %source_file,
+            record_count = frame.record_count(),
+            "output prepared"
+        );
+    }
+
+    let xpt_count = paths.values().filter(|path| path.xpt.is_some()).count();
+    let dataset_xml_count = paths
+        .values()
+        .filter(|path| path.dataset_xml.is_some())
+        .count();
+    let sas_count = paths.values().filter(|path| path.sas.is_some()).count();
+    let define_xml_path = define_xml
+        .as_ref()
+        .map(|path| path.display().to_string())
+        .unwrap_or_else(|| "none".to_string());
+    info!(
+        study_id = %config.study_id,
+        domain_count = config.frames.len(),
+        xpt_count,
+        dataset_xml_count,
+        sas_count,
+        define_xml = %define_xml_path,
+        duration_ms = output_start.elapsed().as_millis(),
+        "output complete"
+    );
+
     Ok(OutputResult {
         paths,
         define_xml,
@@ -524,6 +719,29 @@ fn column_label_map(table: &CsvTable) -> BTreeMap<String, String> {
         labels.insert(header.to_uppercase(), trimmed.to_string());
     }
     labels
+}
+
+/// Build frame metadata with dataset naming and source provenance details.
+fn build_frame_meta(domain_code: &str, dataset_name: &str, source_file: &Path) -> DomainFrameMeta {
+    let mut meta = DomainFrameMeta::new()
+        .with_dataset_name(dataset_name.to_string())
+        .with_source_file(source_file.to_path_buf())
+        .with_base_domain_code(domain_code.to_string());
+    if let Some(variant) = split_variant_suffix(domain_code, dataset_name) {
+        meta = meta.with_split_variant(variant);
+    }
+    meta
+}
+
+/// Derive the split suffix when the dataset name extends the base domain code.
+fn split_variant_suffix(base_domain: &str, dataset_name: &str) -> Option<String> {
+    if dataset_name == base_domain {
+        return None;
+    }
+    dataset_name
+        .strip_prefix(base_domain)
+        .filter(|suffix| !suffix.is_empty())
+        .map(|suffix| suffix.to_string())
 }
 
 /// Verify XPT output counts match input counts.

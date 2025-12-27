@@ -10,6 +10,31 @@ pub struct Cli {
 
     #[arg(short = 'v', long = "verbose", action = ArgAction::Count, global = true)]
     pub verbose: u8,
+
+    /// Reduce log output to errors only.
+    #[arg(short = 'q', long = "quiet", action = ArgAction::SetTrue, global = true)]
+    pub quiet: bool,
+
+    /// Explicit log level (overrides verbosity/quiet).
+    #[arg(long = "log-level", value_enum, global = true)]
+    pub log_level: Option<LogLevelArg>,
+
+    /// Log output format.
+    #[arg(
+        long = "log-format",
+        value_enum,
+        default_value = "pretty",
+        global = true
+    )]
+    pub log_format: LogFormatArg,
+
+    /// Write logs to the specified file instead of stderr.
+    #[arg(long = "log-file", global = true)]
+    pub log_file: Option<PathBuf>,
+
+    /// Allow logging of row-level PHI/PII values.
+    #[arg(long = "log-data", action = ArgAction::SetTrue, global = true)]
+    pub log_data: bool,
 }
 
 #[derive(Subcommand)]
@@ -44,4 +69,22 @@ pub enum OutputFormatArg {
     Xpt,
     Xml,
     Both,
+}
+
+/// CLI log level choices.
+#[derive(Clone, Copy, ValueEnum)]
+pub enum LogLevelArg {
+    Error,
+    Warn,
+    Info,
+    Debug,
+    Trace,
+}
+
+/// CLI log format choices.
+#[derive(Clone, Copy, ValueEnum)]
+pub enum LogFormatArg {
+    Pretty,
+    Compact,
+    Json,
 }

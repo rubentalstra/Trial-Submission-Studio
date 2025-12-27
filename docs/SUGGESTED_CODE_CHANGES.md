@@ -177,21 +177,21 @@ are noted where applicable.
 
 ## 0.4 Observability and Logging
 
-- [ ] **0.4.1** Adopt `tracing` with a shared `tracing-subscriber` init in
+- [x] **0.4.1** Adopt `tracing` with a shared `tracing-subscriber` init in
       `sdtm-cli/src/logging.rs`. Route all logs through structured spans.
 
-- [ ] **0.4.2** Instrument pipeline stages (ingest, mapping, preprocess,
+- [x] **0.4.2** Instrument pipeline stages (ingest, mapping, preprocess,
       validation, output) with spans that log row counts, domain counts, and
       durations.
 
-- [ ] **0.4.3** Include `study_id`, `domain_code`, `dataset_name`, and source
+- [x] **0.4.3** Include `study_id`, `domain_code`, `dataset_name`, and source
       file path in log fields. Propagate context through the pipeline.
 
-- [ ] **0.4.4** Add CLI flags: `--verbose`, `--quiet`, `--log-level`,
+- [x] **0.4.4** Add CLI flags: `--verbose`, `--quiet`, `--log-level`,
       `--log-format`, `--log-file`. Ensure consistent behavior across
       subcommands.
 
-- [ ] **0.4.5** Default to redacted logging for row-level data. Require explicit
+- [x] **0.4.5** Default to redacted logging for row-level data. Require explicit
       `--log-data` flag for PHI values. Document PHI-safe logging rules in
       README.
 

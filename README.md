@@ -30,8 +30,20 @@ Minimal options (v1):
 - `--output-dir`
 - `--format [xpt|xml|both]`
 - `-v` / `-vv` verbosity
+- `--quiet`
+- `--log-level [error|warn|info|debug|trace]`
+- `--log-format [pretty|compact|json]`
+- `--log-file <path>`
+- `--log-data` (explicitly allow row-level logging)
 
 No config file in v1; defaults are compiled.
+
+## Logging and PHI
+
+- Row-level values are redacted by default; only counts and metadata are logged.
+- Use `--log-data` to allow row-level logging when you have PHI-safe handling.
+- Prefer `--log-level` (or `-v`/`-vv`) for verbosity control; `--quiet` limits logs to errors.
+- Use `--log-format` for JSON/compact output and `--log-file` to persist logs.
 
 ## Legacy Python CLI (Current Implementation)
 

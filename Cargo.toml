@@ -33,7 +33,7 @@ sha2 = "0.10.9"
 thiserror = "2.0.17"
 tracing = "0.1.44"
 indicatif = "0.18.3"
-tracing-subscriber = { version = "0.3.22", features = ["env-filter"] }
+tracing-subscriber = { version = "0.3.22", features = ["env-filter", "json"] }
 
 [profile.dev]
 debug = 1

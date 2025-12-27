@@ -1,9 +1,11 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
+use std::time::Instant;
 
 use anyhow::{Context, Result, anyhow};
 use comfy_table::Table;
 use polars::prelude::DataFrame;
+use tracing::{info, info_span};
 
 use sdtm_core::{
     DomainFrame, ProcessingOptions, StudyPipelineContext, build_relationship_frames,
@@ -43,6 +45,8 @@ pub fn run_domains() -> Result<()> {
 pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     let study_folder = &args.study_folder;
     let study_id = derive_study_id(study_folder);
+    let study_span = info_span!("study", study_id = %study_id);
+    let _study_guard = study_span.enter();
     let output_dir = args
         .output_dir
         .clone()
@@ -82,12 +86,26 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     // Stage 1: Ingest - Discover files, load metadata, compute exclusions
     // =========================================================================
     let domain_codes = pipeline.domain_codes();
+    let ingest_span = info_span!(
+        "ingest",
+        study_id = %study_id,
+        study_folder = %study_folder.display()
+    );
+    let ingest_start = Instant::now();
     let IngestResult {
         discovered,
         study_metadata,
         suppqual_exclusions,
         errors: ingest_errors,
-    } = ingest(study_folder, &domain_codes, &standard_variables)?;
+    } = ingest_span.in_scope(|| ingest(study_folder, &domain_codes, &standard_variables))?;
+    let file_count: usize = discovered.values().map(|files| files.len()).sum();
+    info!(
+        study_id = %study_id,
+        domain_count = discovered.len(),
+        file_count,
+        duration_ms = ingest_start.elapsed().as_millis(),
+        "ingest complete"
+    );
 
     let mut errors = ingest_errors;
 
@@ -117,6 +135,7 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
         }
     });
 
+    let process_start = Instant::now();
     for domain_code in ordered_domains {
         let Some(files) = discovered.get(&domain_code) else {
             continue;
@@ -134,11 +153,12 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
         let mut combined: Option<DataFrame> = None;
         let mut domain_mappings = Vec::new();
 
-        for (path, _variant) in files {
+        for (path, variant) in files {
             // Use pipeline stage function to process each file
             let result = process_file(ProcessFileInput {
                 path,
                 domain: &domain,
+                dataset_name: variant.as_str(),
                 study_id: &study_id,
                 study_metadata: &study_metadata,
                 suppqual_domain: &suppqual_domain,
@@ -228,6 +248,14 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     let mut frame_list: Vec<DomainFrame> = frames.into_values().collect();
     dedupe_frames_by_identifiers(&mut frame_list, &pipeline.standards_map, &suppqual_domain)?;
     frame_list.sort_by(|a, b| a.domain_code.cmp(&b.domain_code));
+    let total_records: usize = frame_list.iter().map(|frame| frame.record_count()).sum();
+    info!(
+        study_id = %study_id,
+        domain_count = frame_list.len(),
+        record_count = total_records,
+        duration_ms = process_start.elapsed().as_millis(),
+        "domain processing complete"
+    );
 
     // Build report domains for output
     let report_domains = build_report_domains(&pipeline.standards, &frame_list)?;
