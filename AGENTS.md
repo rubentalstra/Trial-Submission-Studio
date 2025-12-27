@@ -119,4 +119,6 @@ provenance. Output must match SDTMIG and MSG conventions exactly.
 ## Working practices
 
 - Prefer `rg` for file and text search.
+- Always check the task scope and status in `docs/SUGGESTED_CODE_CHANGES.md` before starting work.
+- Mark completed tasks with `[x]` in `docs/SUGGESTED_CODE_CHANGES.md`.
 - If requirements change, update `docs/SUGGESTED_CODE_CHANGES.md`.

@@ -8,8 +8,11 @@ use polars::prelude::{
 
 use sdtm_model::{ControlledTerminology, Domain};
 
+use crate::data_utils::{any_to_f64, any_to_i64, any_to_string};
 use crate::domain_utils::column_name;
 use crate::processing_context::ProcessingContext;
+
+pub(super) use crate::data_utils::parse_f64;
 
 pub(super) fn col(domain: &Domain, name: &str) -> Option<String> {
     column_name(domain, name)
@@ -18,16 +21,6 @@ pub(super) fn col(domain: &Domain, name: &str) -> Option<String> {
 pub(super) fn has_column(df: &DataFrame, name: &str) -> bool {
     df.column(name).is_ok()
 }
-
-fn any_to_string(value: AnyValue) -> String {
-    match value {
-        AnyValue::String(value) => value.to_string(),
-        AnyValue::StringOwned(value) => value.to_string(),
-        AnyValue::Null => String::new(),
-        _ => value.to_string(),
-    }
-}
-
 pub(super) fn string_value(df: &DataFrame, name: &str, idx: usize) -> String {
     match df.column(name) {
         Ok(series) => any_to_string(series.get(idx).unwrap_or(AnyValue::Null)),
@@ -281,58 +274,6 @@ pub(super) fn resolve_ct_submission_value(ct: &ControlledTerminology, raw: &str)
 
 pub(super) fn preferred_term_for(ct: &ControlledTerminology, submission: &str) -> Option<String> {
     ct.preferred_terms.get(submission).cloned()
-}
-
-fn any_to_f64(value: AnyValue) -> Option<f64> {
-    match value {
-        AnyValue::Null => None,
-        AnyValue::Float32(value) => Some(value as f64),
-        AnyValue::Float64(value) => Some(value),
-        AnyValue::Int8(value) => Some(value as f64),
-        AnyValue::Int16(value) => Some(value as f64),
-        AnyValue::Int32(value) => Some(value as f64),
-        AnyValue::Int64(value) => Some(value as f64),
-        AnyValue::UInt8(value) => Some(value as f64),
-        AnyValue::UInt16(value) => Some(value as f64),
-        AnyValue::UInt32(value) => Some(value as f64),
-        AnyValue::UInt64(value) => Some(value as f64),
-        AnyValue::String(value) => parse_f64(value),
-        AnyValue::StringOwned(value) => parse_f64(&value),
-        _ => None,
-    }
-}
-
-fn any_to_i64(value: AnyValue) -> Option<i64> {
-    match value {
-        AnyValue::Null => None,
-        AnyValue::Int8(value) => Some(value as i64),
-        AnyValue::Int16(value) => Some(value as i64),
-        AnyValue::Int32(value) => Some(value as i64),
-        AnyValue::Int64(value) => Some(value),
-        AnyValue::UInt8(value) => Some(value as i64),
-        AnyValue::UInt16(value) => Some(value as i64),
-        AnyValue::UInt32(value) => Some(value as i64),
-        AnyValue::UInt64(value) => Some(value as i64),
-        AnyValue::Float32(value) => Some(value as i64),
-        AnyValue::Float64(value) => Some(value as i64),
-        AnyValue::String(value) => parse_i64(value),
-        AnyValue::StringOwned(value) => parse_i64(&value),
-        _ => None,
-    }
-}
-
-pub(super) fn parse_f64(value: &str) -> Option<f64> {
-    if value.trim().is_empty() {
-        return None;
-    }
-    value.trim().parse::<f64>().ok()
-}
-
-pub(super) fn parse_i64(value: &str) -> Option<i64> {
-    if value.trim().is_empty() {
-        return None;
-    }
-    value.trim().parse::<i64>().ok()
 }
 
 pub(super) fn is_numeric_string(value: &str) -> bool {

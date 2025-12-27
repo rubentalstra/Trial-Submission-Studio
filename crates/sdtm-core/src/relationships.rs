@@ -5,6 +5,7 @@ use polars::prelude::{AnyValue, Column, DataFrame, NamedFrom, Series};
 
 use sdtm_model::{Domain, VariableType};
 
+use crate::data_utils::any_to_string;
 use crate::domain_utils::{StandardColumns, refid_candidates, standard_columns};
 use crate::frame::DomainFrame;
 
@@ -357,15 +358,6 @@ fn relrec_record(
         record.insert(name, input.relid.to_string());
     }
     record
-}
-
-fn any_to_string(value: AnyValue) -> String {
-    match value {
-        AnyValue::String(value) => value.to_string(),
-        AnyValue::StringOwned(value) => value.to_string(),
-        AnyValue::Null => String::new(),
-        _ => value.to_string(),
-    }
 }
 
 fn column_value(df: &DataFrame, name: &str, idx: usize) -> String {

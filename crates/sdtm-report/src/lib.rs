@@ -9,6 +9,7 @@ use polars::prelude::{AnyValue, DataFrame};
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 
+use sdtm_core::data_utils::{any_to_f64_for_output, any_to_string_for_output, format_numeric};
 use sdtm_core::{DomainFrame, standard_columns};
 use sdtm_model::{Domain, MappingConfig, Variable, VariableType};
 use sdtm_standards::load_default_ct_registry;
@@ -529,8 +530,8 @@ fn build_xpt_rows(domain: &Domain, df: &DataFrame) -> Result<Vec<Vec<XptValue>>>
         for (variable, column) in domain.variables.iter().zip(series.iter()) {
             let value = column.get(row_idx).unwrap_or(AnyValue::Null);
             let cell = match variable.data_type {
-                VariableType::Num => XptValue::Num(any_to_f64(value)),
-                VariableType::Char => XptValue::Char(any_to_string(value)),
+                VariableType::Num => XptValue::Num(any_to_f64_for_output(value)),
+                VariableType::Char => XptValue::Char(any_to_string_for_output(value)),
             };
             row.push(cell);
         }
@@ -555,7 +556,7 @@ fn variable_length(variable: &Variable, df: &DataFrame) -> Result<u16> {
             let mut max_len = 0usize;
             for idx in 0..df.height() {
                 let value = series.get(idx).unwrap_or(AnyValue::Null);
-                let text = any_to_string(value);
+                let text = any_to_string_for_output(value);
                 let len = text.trim_end().len();
                 if len > max_len {
                     max_len = len;
@@ -567,60 +568,6 @@ fn variable_length(variable: &Variable, df: &DataFrame) -> Result<u16> {
             }
             Ok(len as u16)
         }
-    }
-}
-
-fn any_to_string(value: AnyValue) -> String {
-    match value {
-        AnyValue::Null => String::new(),
-        AnyValue::String(v) => v.to_string(),
-        AnyValue::StringOwned(v) => v.to_string(),
-        AnyValue::Float64(v) => format_numeric(v),
-        AnyValue::Float32(v) => format_numeric(v as f64),
-        AnyValue::Int64(v) => v.to_string(),
-        AnyValue::Int32(v) => v.to_string(),
-        AnyValue::Int16(v) => v.to_string(),
-        AnyValue::Int8(v) => v.to_string(),
-        AnyValue::UInt64(v) => v.to_string(),
-        AnyValue::UInt32(v) => v.to_string(),
-        AnyValue::UInt16(v) => v.to_string(),
-        AnyValue::UInt8(v) => v.to_string(),
-        AnyValue::Boolean(v) => {
-            if v {
-                "1".to_string()
-            } else {
-                "0".to_string()
-            }
-        }
-        value => value.to_string(),
-    }
-}
-
-fn any_to_f64(value: AnyValue) -> Option<f64> {
-    match value {
-        AnyValue::Null => None,
-        AnyValue::Float64(v) => Some(v),
-        AnyValue::Float32(v) => Some(v as f64),
-        AnyValue::Int64(v) => Some(v as f64),
-        AnyValue::Int32(v) => Some(v as f64),
-        AnyValue::Int16(v) => Some(v as f64),
-        AnyValue::Int8(v) => Some(v as f64),
-        AnyValue::UInt64(v) => Some(v as f64),
-        AnyValue::UInt32(v) => Some(v as f64),
-        AnyValue::UInt16(v) => Some(v as f64),
-        AnyValue::UInt8(v) => Some(v as f64),
-        AnyValue::String(v) => v.trim().parse::<f64>().ok(),
-        AnyValue::StringOwned(v) => v.as_str().trim().parse::<f64>().ok(),
-        AnyValue::Boolean(v) => Some(if v { 1.0 } else { 0.0 }),
-        _ => None,
-    }
-}
-
-fn format_numeric(value: f64) -> String {
-    if value.fract() == 0.0 {
-        format!("{}", value as i64)
-    } else {
-        value.to_string()
     }
 }
 

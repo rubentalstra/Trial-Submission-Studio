@@ -4,6 +4,7 @@ use anyhow::Result;
 use polars::prelude::{AnyValue, Column, DataFrame, NamedFrom, Series};
 use sdtm_model::Domain;
 
+use crate::data_utils::any_to_string;
 use crate::domain_utils::{infer_seq_column, standard_columns};
 pub struct SuppqualResult {
     pub domain_code: String,
@@ -50,14 +51,6 @@ fn variable_name_set(domain: &Domain) -> BTreeSet<String> {
         .iter()
         .map(|variable| variable.name.to_uppercase())
         .collect()
-}
-
-fn any_to_string(value: AnyValue) -> String {
-    match value {
-        AnyValue::String(value) => value.to_string(),
-        AnyValue::Null => String::new(),
-        _ => value.to_string(),
-    }
 }
 
 fn strip_wrapping_quotes(value: &str) -> String {
