@@ -149,17 +149,20 @@ fn is_duplicate_of_mapped(name: &str, populated: &BTreeSet<String>) -> bool {
         }
     }
     if let Some(prefix) = upper.strip_suffix("DATE")
-        && populated.contains(&format!("{prefix}DTC")) {
-            return true;
-        }
+        && populated.contains(&format!("{prefix}DTC"))
+    {
+        return true;
+    }
     if let Some(prefix) = upper.strip_suffix("DAT")
-        && populated.contains(&format!("{prefix}DTC")) {
-            return true;
-        }
+        && populated.contains(&format!("{prefix}DTC"))
+    {
+        return true;
+    }
     if let Some(prefix) = upper.strip_suffix("DT")
-        && populated.contains(&format!("{prefix}DTC")) {
-            return true;
-        }
+        && populated.contains(&format!("{prefix}DTC"))
+    {
+        return true;
+    }
     false
 }
 
@@ -196,9 +199,10 @@ pub fn build_suppqual(
             continue;
         }
         if let Some(exclusions) = exclusion_columns
-            && exclusions.contains(&name.to_uppercase()) {
-                continue;
-            }
+            && exclusions.contains(&name.to_uppercase())
+        {
+            continue;
+        }
         extra_cols.push(name);
     }
 
@@ -218,15 +222,15 @@ pub fn build_suppqual(
         }
     }
     extra_cols.retain(|name| {
-            let upper = name.to_uppercase();
-            if upper.ends_with("CD") && upper.len() > 2 {
-                let base = &upper[..upper.len() - 2];
-                if extra_upper.contains_key(base) && non_empty_upper.contains(base) {
-                    return false;
-                }
+        let upper = name.to_uppercase();
+        if upper.ends_with("CD") && upper.len() > 2 {
+            let base = &upper[..upper.len() - 2];
+            if extra_upper.contains_key(base) && non_empty_upper.contains(base) {
+                return false;
             }
-            true
-        });
+        }
+        true
+    });
 
     if extra_cols.is_empty() {
         return Ok(None);
@@ -252,9 +256,10 @@ pub fn build_suppqual(
 
     let mut push_value = |key: Option<&str>, value: String| {
         if let Some(name) = key
-            && let Some(entry) = values.get_mut(name) {
-                entry.push(value);
-            }
+            && let Some(entry) = values.get_mut(name)
+        {
+            entry.push(value);
+        }
     };
 
     let mut qnam_used: BTreeMap<String, String> = BTreeMap::new();

@@ -247,29 +247,30 @@ fn detect_lb_wide_groups(headers: &[String]) -> (BTreeMap<String, LbWideGroup>, 
             continue;
         }
         if let Some(stripped) = upper.strip_suffix("CD")
-            && let Some((key, kind)) = parse_lb_suffix(stripped) {
-                let base_key = lb_base_key(&key, &base_candidates);
-                let entry = groups.entry(key.clone()).or_insert_with(|| LbWideGroup {
-                    base_key,
-                    ..LbWideGroup::default()
-                });
-                match kind {
-                    LbSuffixKind::TestCd
-                    | LbSuffixKind::Test
-                    | LbSuffixKind::Orres
-                    | LbSuffixKind::Orresu
-                    | LbSuffixKind::OrresuAlt
-                    | LbSuffixKind::OrnrRange
-                    | LbSuffixKind::OrnrLower
-                    | LbSuffixKind::OrnrUpper
-                    | LbSuffixKind::Range
-                    | LbSuffixKind::Clsig => {
-                        entry.extra_cols.push(idx);
-                        wide_columns.insert(upper);
-                    }
+            && let Some((key, kind)) = parse_lb_suffix(stripped)
+        {
+            let base_key = lb_base_key(&key, &base_candidates);
+            let entry = groups.entry(key.clone()).or_insert_with(|| LbWideGroup {
+                base_key,
+                ..LbWideGroup::default()
+            });
+            match kind {
+                LbSuffixKind::TestCd
+                | LbSuffixKind::Test
+                | LbSuffixKind::Orres
+                | LbSuffixKind::Orresu
+                | LbSuffixKind::OrresuAlt
+                | LbSuffixKind::OrnrRange
+                | LbSuffixKind::OrnrLower
+                | LbSuffixKind::OrnrUpper
+                | LbSuffixKind::Range
+                | LbSuffixKind::Clsig => {
+                    entry.extra_cols.push(idx);
+                    wide_columns.insert(upper);
                 }
-                continue;
             }
+            continue;
+        }
         if let Some((key, kind)) = parse_lb_suffix(&upper) {
             let base_key = lb_base_key(&key, &base_candidates);
             let entry = groups.entry(key.clone()).or_insert_with(|| LbWideGroup {
@@ -298,14 +299,15 @@ fn detect_lb_wide_groups(headers: &[String]) -> (BTreeMap<String, LbWideGroup>, 
             continue;
         }
         if let Some((key, is_time)) = parse_lb_time_suffix(&upper)
-            && let Some(entry) = groups.get_mut(&key) {
-                if is_time {
-                    entry.time_col = Some(idx);
-                } else {
-                    entry.date_col = Some(idx);
-                }
-                wide_columns.insert(upper);
+            && let Some(entry) = groups.get_mut(&key)
+        {
+            if is_time {
+                entry.time_col = Some(idx);
+            } else {
+                entry.date_col = Some(idx);
             }
+            wide_columns.insert(upper);
+        }
     }
     (groups, wide_columns)
 }
@@ -394,12 +396,13 @@ fn detect_vs_wide_groups(
             entry.orres_col = Some(idx);
             if entry.label.is_none()
                 && let Some(labels) = labels
-                    && let Some(label) = labels.get(idx) {
-                        let trimmed = label.trim();
-                        if !trimmed.is_empty() {
-                            entry.label = Some(trimmed.to_string());
-                        }
-                    }
+                && let Some(label) = labels.get(idx)
+            {
+                let trimmed = label.trim();
+                if !trimmed.is_empty() {
+                    entry.label = Some(trimmed.to_string());
+                }
+            }
             wide_columns.insert(upper);
             continue;
         }
@@ -616,9 +619,10 @@ fn filter_table_columns(table: &CsvTable, columns: &BTreeSet<String>, include: b
             indices.push(idx);
             headers.push(header.clone());
             if let Some(label_vec) = table.labels.as_ref()
-                && let Some(labels_mut) = labels.as_mut() {
-                    labels_mut.push(label_vec.get(idx).cloned().unwrap_or_default());
-                }
+                && let Some(labels_mut) = labels.as_mut()
+            {
+                labels_mut.push(label_vec.get(idx).cloned().unwrap_or_default());
+            }
         }
     }
     let mut rows = Vec::with_capacity(table.rows.len());
@@ -652,9 +656,10 @@ fn expand_ie_wide(
     for group in groups.values() {
         for idx in [group.test_col, group.testcd_col] {
             if let Some(idx) = idx
-                && let Some(name) = table.headers.get(idx) {
-                    used.insert(name.clone());
-                }
+                && let Some(name) = table.headers.get(idx)
+            {
+                used.insert(name.clone());
+            }
         }
     }
     let test_col = crate::domain_utils::column_name(domain, "IETEST");
@@ -741,13 +746,15 @@ fn expand_ie_wide(
                 base_values.insert(variable.name.clone(), val);
             }
             if let Some(name) = testcd_col.as_ref()
-                && !test_code.trim().is_empty() {
-                    base_values.insert(name.clone(), test_code);
-                }
+                && !test_code.trim().is_empty()
+            {
+                base_values.insert(name.clone(), test_code);
+            }
             if let Some(name) = test_col.as_ref()
-                && !test_label.trim().is_empty() {
-                    base_values.insert(name.clone(), test_label);
-                }
+                && !test_label.trim().is_empty()
+            {
+                base_values.insert(name.clone(), test_label);
+            }
             if let Some(name) = cat_col.as_ref() {
                 let current = base_values.get(name).cloned().unwrap_or_default();
                 if current.trim().is_empty() {
@@ -876,9 +883,10 @@ fn expand_vs_wide(
     for group in groups.values() {
         for idx in [group.orres_col, group.orresu_col, group.pos_col] {
             if let Some(idx) = idx
-                && let Some(name) = table.headers.get(idx) {
-                    used.insert(name.clone());
-                }
+                && let Some(name) = table.headers.get(idx)
+            {
+                used.insert(name.clone());
+            }
         }
         for idx in &group.extra_cols {
             if let Some(name) = table.headers.get(*idx) {
@@ -888,18 +896,21 @@ fn expand_vs_wide(
     }
     for idx in [shared.orresu_bp, shared.pos_bp] {
         if let Some(idx) = idx
-            && let Some(name) = table.headers.get(idx) {
-                used.insert(name.clone());
-            }
+            && let Some(name) = table.headers.get(idx)
+        {
+            used.insert(name.clone());
+        }
     }
     if let Some(idx) = date_idx
-        && let Some(name) = table.headers.get(idx) {
-            used.insert(name.clone());
-        }
+        && let Some(name) = table.headers.get(idx)
+    {
+        used.insert(name.clone());
+    }
     if let Some(idx) = time_idx
-        && let Some(name) = table.headers.get(idx) {
-            used.insert(name.clone());
-        }
+        && let Some(name) = table.headers.get(idx)
+    {
+        used.insert(name.clone());
+    }
     let mut total_rows = 0usize;
     for row_idx in 0..table.rows.len() {
         let base_date_value = date_idx
@@ -1055,9 +1066,10 @@ fn expand_lb_wide(
             group.time_col,
         ] {
             if let Some(idx) = idx
-                && let Some(name) = table.headers.get(idx) {
-                    used.insert(name.clone());
-                }
+                && let Some(name) = table.headers.get(idx)
+            {
+                used.insert(name.clone());
+            }
         }
         for idx in &group.extra_cols {
             if let Some(name) = table.headers.get(*idx) {
@@ -1066,13 +1078,15 @@ fn expand_lb_wide(
         }
     }
     if let Some(idx) = date_idx
-        && let Some(name) = table.headers.get(idx) {
-            used.insert(name.clone());
-        }
+        && let Some(name) = table.headers.get(idx)
+    {
+        used.insert(name.clone());
+    }
     if let Some(idx) = time_idx
-        && let Some(name) = table.headers.get(idx) {
-            used.insert(name.clone());
-        }
+        && let Some(name) = table.headers.get(idx)
+    {
+        used.insert(name.clone());
+    }
     let mut total_rows = 0usize;
     for row_idx in 0..table.rows.len() {
         let base_date_value = date_idx
@@ -1222,13 +1236,14 @@ fn expand_lb_wide(
                 *value = clsig_value.clone();
             }
             if let Some(value) = base_values.get_mut("LBDTC")
-                && !date_value.trim().is_empty() {
-                    if !time_value.trim().is_empty() && !date_value.contains('T') {
-                        *value = format!("{}T{}", date_value.trim(), time_value.trim());
-                    } else {
-                        *value = date_value.clone();
-                    }
+                && !date_value.trim().is_empty()
+            {
+                if !time_value.trim().is_empty() && !date_value.contains('T') {
+                    *value = format!("{}T{}", date_value.trim(), time_value.trim());
+                } else {
+                    *value = date_value.clone();
                 }
+            }
 
             for (name, list) in values.iter_mut() {
                 let value = base_values.get(name).cloned().unwrap_or_default();

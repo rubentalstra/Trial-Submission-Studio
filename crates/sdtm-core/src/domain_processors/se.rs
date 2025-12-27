@@ -16,10 +16,11 @@ pub(super) fn process_se(
         "STUDYID", "DOMAIN", "USUBJID", "ETCD", "ELEMENT", "EPOCH", "SESTDTC", "SEENDTC",
     ] {
         if let Some(name) = col(domain, col_name)
-            && has_column(df, &name) {
-                let values = string_column(df, &name, Trim::Both)?;
-                set_string_column(df, &name, values)?;
-            }
+            && has_column(df, &name)
+        {
+            let values = string_column(df, &name, Trim::Both)?;
+            set_string_column(df, &name, values)?;
+        }
     }
     if let Some(sestdtc) = col(domain, "SESTDTC") {
         ensure_date_pair_order(df, &sestdtc, col(domain, "SEENDTC").as_deref())?;
@@ -28,8 +29,9 @@ pub(super) fn process_se(
         }
     }
     if let Some(seendtc) = col(domain, "SEENDTC")
-        && let Some(seendy) = col(domain, "SEENDY") {
-            compute_study_day(domain, df, &seendtc, &seendy, ctx, "RFSTDTC")?;
-        }
+        && let Some(seendy) = col(domain, "SEENDY")
+    {
+        compute_study_day(domain, df, &seendtc, &seendy, ctx, "RFSTDTC")?;
+    }
     Ok(())
 }

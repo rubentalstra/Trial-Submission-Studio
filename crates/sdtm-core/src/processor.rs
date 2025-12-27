@@ -368,10 +368,7 @@ fn assign_sequence_with_tracker(
         Err(_) => return Ok(()),
     };
     let seq_series = df.column(seq_column).ok().cloned();
-    let had_existing = seq_series
-        .as_ref()
-        .map(column_has_values)
-        .unwrap_or(false);
+    let had_existing = seq_series.as_ref().map(column_has_values).unwrap_or(false);
     let mut values: Vec<Option<f64>> = Vec::with_capacity(df.height());
     for idx in 0..df.height() {
         let key = any_to_string(group_series.get(idx).unwrap_or(AnyValue::Null));
@@ -456,13 +453,13 @@ fn parse_sequence_value(text: &str) -> Option<i64> {
         return Some(value);
     }
     if let Ok(value) = trimmed.parse::<f64>()
-        && value.is_finite() {
-            let rounded = value.round();
-            if (value - rounded).abs() <= f64::EPSILON
-                && rounded >= 0.0 && rounded <= i64::MAX as f64 {
-                    return Some(rounded as i64);
-                }
+        && value.is_finite()
+    {
+        let rounded = value.round();
+        if (value - rounded).abs() <= f64::EPSILON && rounded >= 0.0 && rounded <= i64::MAX as f64 {
+            return Some(rounded as i64);
         }
+    }
     None
 }
 

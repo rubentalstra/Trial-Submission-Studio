@@ -84,17 +84,19 @@ pub fn build_domain_frame_with_mapping(
             if let Some(suggestion) = mapping_lookup.get(&target_upper) {
                 let mut source_name = suggestion.source_column.as_str();
                 if let Some(transformation) = suggestion.transformation.as_deref()
-                    && source_columns.contains_key(transformation) {
-                        source_name = transformation;
-                    }
+                    && source_columns.contains_key(transformation)
+                {
+                    source_name = transformation;
+                }
                 if let Some(source) = source_columns.get(source_name) {
                     values = source.clone();
                 }
             }
         } else if let Some(source_name) = source_upper.get(&target_upper)
-            && let Some(source) = source_columns.get(source_name) {
-                values = source.clone();
-            }
+            && let Some(source) = source_columns.get(source_name)
+        {
+            values = source.clone();
+        }
 
         if values.is_empty() {
             values = vec![String::new(); row_count];
@@ -117,17 +119,19 @@ pub fn build_domain_frame_with_mapping(
     let standard = standard_columns(domain);
     if let Some(config) = mapping
         && let Some(study_col) = standard.study_id.as_ref()
-            && let Ok(series) = data.column(study_col) {
-                let values = vec![config.study_id.clone(); row_count];
-                let new_series = Series::new(series.name().as_str().into(), values);
-                data.with_column(new_series)?;
-            }
+        && let Ok(series) = data.column(study_col)
+    {
+        let values = vec![config.study_id.clone(); row_count];
+        let new_series = Series::new(series.name().as_str().into(), values);
+        data.with_column(new_series)?;
+    }
     if let Some(domain_col) = standard.domain.as_ref()
-        && data.column(domain_col).is_ok() {
-            let values = vec![domain.code.clone(); row_count];
-            let new_series = Series::new(domain_col.as_str().into(), values);
-            data.with_column(new_series)?;
-        }
+        && data.column(domain_col).is_ok()
+    {
+        let values = vec![domain.code.clone(); row_count];
+        let new_series = Series::new(domain_col.as_str().into(), values);
+        data.with_column(new_series)?;
+    }
 
     Ok(DomainFrame {
         domain_code: domain.code.clone(),

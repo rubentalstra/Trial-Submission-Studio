@@ -1,6 +1,6 @@
 # AGENTS.md
 
-## Project intent
+## Project overview
 
 This repo is a strict SDTM transpiler. Treat all data as medical data: never
 invent values, never silently mutate collected data, and always preserve
@@ -15,6 +15,25 @@ provenance. Output must match SDTMIG and MSG conventions exactly.
 - Define-XML spec: `docs/Define-XML_2.1/`
 - Dataset-XML spec: `docs/Dataset-XML_1-0/`
 - MSG v2.0 golden standard: `docs/SDTM-MSG_v2.0_Sample_Submission_Package/`
+
+## Build and test commands
+
+- Run from repo root to use workspace settings.
+- After any code edit, run `cargo fmt` then `cargo clippy` and address warnings.
+- Use `cargo build` for quick compile checks when needed.
+
+## Code style guidelines
+
+- Keep edits ASCII unless a file already uses non-ASCII characters.
+- Prefer explicit, readable transformations over deeply nested helper chains.
+- Use `tracing` for logs; avoid `println!` in production paths.
+- Favor Polars expressions for batch transforms; avoid row-by-row loops when possible.
+
+## Security considerations
+
+- Treat all input data as PHI/PII; do not log raw values by default.
+- Do not copy sample subject data into new files outside `docs/` or `tests/`.
+- Avoid sending data to external services or downloading external assets without approval.
 
 ## Non-negotiable rules
 
@@ -68,16 +87,35 @@ provenance. Output must match SDTMIG and MSG conventions exactly.
   and justified.
 - Run commands from the repo root to ensure workspace settings apply.
 
-## Tests and verification
+## Testing instructions
 
-- After any code edit, run `cargo fmt` then `cargo clippy` and address warnings.
 - Prefer `cargo test` from workspace root for changes.
 - Add parity tests against MSG sample outputs when modifying
   Define-XML/Dataset-XML/XPT.
 - Keep outputs deterministic (timestamps, ordering, lengths).
 
+## Large datasets and fixtures
+
+- MSG sample package and XML/XPT fixtures are large; avoid printing whole files.
+- Use targeted `rg`/`sed` slices and keep new fixtures minimal and deterministic.
+
+## Commit and PR guidelines
+
+- Keep changes focused and explain SDTMIG/MSG rationale in descriptions.
+- Update `docs/SUGGESTED_CODE_CHANGES.md` when requirements or assumptions change.
+- Do not rewrite history or amend unless explicitly requested.
+
+## Deployment and release
+
+- There is no production deploy flow; build releases with `cargo build --release`.
+- CLI entry point lives in `crates/sdtm-cli`; validate outputs against MSG samples.
+
+## Nested AGENTS.md files
+
+- Use nested `AGENTS.md` files inside subdirectories for crate-specific guidance.
+- The nearest `AGENTS.md` takes precedence over parent files.
+
 ## Working practices
 
 - Prefer `rg` for file and text search.
 - If requirements change, update `docs/SUGGESTED_CODE_CHANGES.md`.
-- Keep edits ASCII unless a file already uses non-ASCII characters.

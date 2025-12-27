@@ -147,9 +147,10 @@ pub fn validate_domain(
         }
         if let Some(ct_registry) = ctx.ct_registry
             && let Some(resolved) = resolve_ct(ct_registry, variable, ctx.ct_catalogs.as_deref())
-                && let Some(issue) = ct_issue(variable, df, column, &resolved, &p21_lookup) {
-                    issues.push(issue);
-                }
+            && let Some(issue) = ct_issue(variable, df, column, &resolved, &p21_lookup)
+        {
+            issues.push(issue);
+        }
     }
     ConformanceReport {
         domain_code: domain.code.clone(),

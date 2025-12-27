@@ -188,17 +188,20 @@ pub fn build_relationship_frames(
     let domain_map = build_domain_map(domains);
     let mut frames = Vec::new();
     if let Some(relrec_domain) = domain_map.get("RELREC")
-        && let Some(frame) = build_relrec(domain_frames, domains, relrec_domain, study_id)? {
-            frames.push(frame);
-        }
+        && let Some(frame) = build_relrec(domain_frames, domains, relrec_domain, study_id)?
+    {
+        frames.push(frame);
+    }
     if let Some(relspec_domain) = domain_map.get("RELSPEC")
-        && let Some(frame) = build_relspec(domain_frames, domains, relspec_domain, study_id)? {
-            frames.push(frame);
-        }
+        && let Some(frame) = build_relspec(domain_frames, domains, relspec_domain, study_id)?
+    {
+        frames.push(frame);
+    }
     if let Some(relsub_domain) = domain_map.get("RELSUB")
-        && let Some(frame) = build_relsub(domain_frames, relsub_domain, study_id)? {
-            frames.push(frame);
-        }
+        && let Some(frame) = build_relsub(domain_frames, relsub_domain, study_id)?
+    {
+        frames.push(frame);
+    }
     Ok(frames)
 }
 
@@ -518,19 +521,21 @@ fn collect_relspec_records(
                 .entry(key)
                 .or_insert_with(|| RelspecRecord::new(study_id, &usubjid, &refid, relspec_domain));
             if entry.spec.is_empty()
-                && let Some(spec_col) = spec_col {
-                    let spec = column_value(df, spec_col, idx).trim().to_string();
-                    if !spec.is_empty() {
-                        entry.spec = spec;
-                    }
+                && let Some(spec_col) = spec_col
+            {
+                let spec = column_value(df, spec_col, idx).trim().to_string();
+                if !spec.is_empty() {
+                    entry.spec = spec;
                 }
+            }
             if entry.parent.is_empty()
-                && let Some(parent_col) = parent_col {
-                    let parent = column_value(df, parent_col, idx).trim().to_string();
-                    if !parent.is_empty() {
-                        entry.parent = parent;
-                    }
+                && let Some(parent_col) = parent_col
+            {
+                let parent = column_value(df, parent_col, idx).trim().to_string();
+                if !parent.is_empty() {
+                    entry.parent = parent;
                 }
+            }
         }
     }
 }

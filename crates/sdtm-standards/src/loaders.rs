@@ -264,13 +264,15 @@ pub fn load_ct_catalog(path: &Path) -> Result<CtCatalog> {
             entry.codelist_name = codelist_name.clone();
             entry.extensible |= extensible;
             if let Some(standard) = row.get("Standard and Date").filter(|v| !v.is_empty())
-                && !entry.standards.contains(standard) {
-                    entry.standards.push(standard.clone());
-                }
+                && !entry.standards.contains(standard)
+            {
+                entry.standards.push(standard.clone());
+            }
             if let Some(source) = path.file_name().and_then(|v| v.to_str())
-                && !entry.sources.contains(&source.to_string()) {
-                    entry.sources.push(source.to_string());
-                }
+                && !entry.sources.contains(&source.to_string())
+            {
+                entry.sources.push(source.to_string());
+            }
             by_code.insert(code.clone(), entry);
             continue;
         }
@@ -319,13 +321,15 @@ pub fn load_ct_catalog(path: &Path) -> Result<CtCatalog> {
             insert_ct_alias(&mut entry, &submission_value, code);
         }
         if let Some(standard) = row.get("Standard and Date").filter(|v| !v.is_empty())
-            && !entry.standards.contains(standard) {
-                entry.standards.push(standard.clone());
-            }
+            && !entry.standards.contains(standard)
+        {
+            entry.standards.push(standard.clone());
+        }
         if let Some(source) = path.file_name().and_then(|v| v.to_str())
-            && !entry.sources.contains(&source.to_string()) {
-                entry.sources.push(source.to_string());
-            }
+            && !entry.sources.contains(&source.to_string())
+        {
+            entry.sources.push(source.to_string());
+        }
         if let Some(synonyms_raw) = row.get("CDISC Synonym(s)").filter(|v| !v.is_empty()) {
             for syn in split_synonyms(synonyms_raw) {
                 insert_ct_alias(&mut entry, &submission_value, &syn);

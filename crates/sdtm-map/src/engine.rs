@@ -324,9 +324,10 @@ fn overlap_adjustment(
 fn column_token_set(column: &str, hint: Option<&ColumnHint>) -> BTreeSet<String> {
     let mut tokens = token_set(column);
     if let Some(hint) = hint
-        && let Some(label) = hint.label.as_deref() {
-            tokens.extend(token_set(label));
-        }
+        && let Some(label) = hint.label.as_deref()
+    {
+        tokens.extend(token_set(label));
+    }
     tokens
 }
 
@@ -358,9 +359,10 @@ fn token_set(raw: &str) -> BTreeSet<String> {
         let token = raw_token.to_ascii_lowercase();
         for part in split_suffixes(&token) {
             if let Some(normalized) = normalize_token(&part)
-                && !normalized.is_empty() {
-                    tokens.insert(normalized);
-                }
+                && !normalized.is_empty()
+            {
+                tokens.insert(normalized);
+            }
         }
     }
     tokens

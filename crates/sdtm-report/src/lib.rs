@@ -871,12 +871,13 @@ fn render_assignment(
         .clone()
         .unwrap_or_else(|| mapping.source_column.clone());
     if let Some(var) = variable
-        && var.data_type == VariableType::Char {
-            expr = format!("strip(coalescec({}, ''))", expr);
-            if should_upcase(var) {
-                expr = format!("upcase({expr})");
-            }
+        && var.data_type == VariableType::Char
+    {
+        expr = format!("strip(coalescec({}, ''))", expr);
+        if should_upcase(var) {
+            expr = format!("upcase({expr})");
         }
+    }
     format!("{} = {};", mapping.target_variable, expr)
 }
 

@@ -365,33 +365,34 @@ pub(super) fn drop_placeholder_rows(
 
     if missing.iter().any(|value| *value) {
         if let Some(subjid_col) = col(domain, "SUBJID")
-            && has_column(df, &subjid_col) {
-                let subjid_vals = string_column(df, &subjid_col, Trim::Both)?;
-                let studyid_vals = col(domain, "STUDYID")
-                    .filter(|name| has_column(df, name))
-                    .and_then(|name| string_column(df, &name, Trim::Both).ok())
-                    .unwrap_or_else(|| vec![String::new(); df.height()]);
-                for idx in 0..df.height() {
-                    if !missing[idx] {
-                        continue;
-                    }
-                    let subjid = strip_quotes(&subjid_vals[idx]);
-                    let subjid = subjid.trim();
-                    let placeholder = matches!(
-                        subjid.to_uppercase().as_str(),
-                        "SUBJID" | "SUBJECTID" | "SUBJECT ID"
-                    );
-                    if subjid.is_empty() || placeholder {
-                        continue;
-                    }
-                    let studyid = strip_quotes(studyid_vals[idx].trim());
-                    if studyid.is_empty() {
-                        usubjid_vals[idx] = subjid.to_string();
-                    } else {
-                        usubjid_vals[idx] = format!("{}-{}", studyid, subjid);
-                    }
+            && has_column(df, &subjid_col)
+        {
+            let subjid_vals = string_column(df, &subjid_col, Trim::Both)?;
+            let studyid_vals = col(domain, "STUDYID")
+                .filter(|name| has_column(df, name))
+                .and_then(|name| string_column(df, &name, Trim::Both).ok())
+                .unwrap_or_else(|| vec![String::new(); df.height()]);
+            for idx in 0..df.height() {
+                if !missing[idx] {
+                    continue;
+                }
+                let subjid = strip_quotes(&subjid_vals[idx]);
+                let subjid = subjid.trim();
+                let placeholder = matches!(
+                    subjid.to_uppercase().as_str(),
+                    "SUBJID" | "SUBJECTID" | "SUBJECT ID"
+                );
+                if subjid.is_empty() || placeholder {
+                    continue;
+                }
+                let studyid = strip_quotes(studyid_vals[idx].trim());
+                if studyid.is_empty() {
+                    usubjid_vals[idx] = subjid.to_string();
+                } else {
+                    usubjid_vals[idx] = format!("{}-{}", studyid, subjid);
                 }
             }
+        }
         for idx in 0..df.height() {
             missing[idx] = is_missing_usubjid(&usubjid_vals[idx]);
         }
@@ -407,12 +408,13 @@ pub(super) fn drop_placeholder_rows(
 
     let mut study_id = String::new();
     if let Some(studyid_col) = col(domain, "STUDYID")
-        && has_column(df, &studyid_col) {
-            let study_vals = string_column(df, &studyid_col, Trim::Both)?;
-            if let Some(found) = study_vals.iter().find(|value| !value.is_empty()) {
-                study_id = strip_quotes(found);
-            }
+        && has_column(df, &studyid_col)
+    {
+        let study_vals = string_column(df, &studyid_col, Trim::Both)?;
+        if let Some(found) = study_vals.iter().find(|value| !value.is_empty()) {
+            study_id = strip_quotes(found);
         }
+    }
     if study_id.is_empty() {
         study_id = ctx.study_id.to_string();
     }
@@ -474,24 +476,26 @@ pub(super) fn ensure_date_pair_order(
         .collect::<Vec<_>>();
     set_string_column(df, start_col, start_vals.clone())?;
     if let Some(end_col) = end_col
-        && has_column(df, end_col) {
-            let mut end_vals = string_column(df, end_col, Trim::Both)?
-                .into_iter()
-                .map(|value| normalize_iso8601_value(&value))
-                .collect::<Vec<_>>();
-            for idx in 0..df.height() {
-                if end_vals[idx].is_empty() {
-                    continue;
-                }
-                let start_date = parse_date(&start_vals[idx]);
-                let end_date = parse_date(&end_vals[idx]);
-                if let (Some(start), Some(end)) = (start_date, end_date)
-                    && end < start {
-                        end_vals[idx] = start_vals[idx].clone();
-                    }
+        && has_column(df, end_col)
+    {
+        let mut end_vals = string_column(df, end_col, Trim::Both)?
+            .into_iter()
+            .map(|value| normalize_iso8601_value(&value))
+            .collect::<Vec<_>>();
+        for idx in 0..df.height() {
+            if end_vals[idx].is_empty() {
+                continue;
             }
-            set_string_column(df, end_col, end_vals)?;
+            let start_date = parse_date(&start_vals[idx]);
+            let end_date = parse_date(&end_vals[idx]);
+            if let (Some(start), Some(end)) = (start_date, end_date)
+                && end < start
+            {
+                end_vals[idx] = start_vals[idx].clone();
+            }
         }
+        set_string_column(df, end_col, end_vals)?;
+    }
     Ok(())
 }
 
@@ -510,21 +514,21 @@ pub(super) fn compute_study_day(
     let mut baseline_vals: Vec<Option<NaiveDate>> = vec![None; df.height()];
     if let (Some(reference_starts), Some(usubjid_col)) =
         (ctx.reference_starts, col(domain, "USUBJID"))
-        && has_column(df, &usubjid_col) {
-            let usub_vals = string_column(df, &usubjid_col, Trim::Both)?;
-            for idx in 0..df.height() {
-                if let Some(start) = reference_starts.get(&usub_vals[idx]) {
-                    baseline_vals[idx] = parse_date(start);
-                }
+        && has_column(df, &usubjid_col)
+    {
+        let usub_vals = string_column(df, &usubjid_col, Trim::Both)?;
+        for idx in 0..df.height() {
+            if let Some(start) = reference_starts.get(&usub_vals[idx]) {
+                baseline_vals[idx] = parse_date(start);
             }
         }
-    if baseline_vals.iter().all(|value| value.is_none())
-        && has_column(df, reference_col) {
-            let ref_vals = string_column(df, reference_col, Trim::Both)?;
-            for idx in 0..df.height() {
-                baseline_vals[idx] = parse_date(&ref_vals[idx]);
-            }
+    }
+    if baseline_vals.iter().all(|value| value.is_none()) && has_column(df, reference_col) {
+        let ref_vals = string_column(df, reference_col, Trim::Both)?;
+        for idx in 0..df.height() {
+            baseline_vals[idx] = parse_date(&ref_vals[idx]);
         }
+    }
     if baseline_vals.iter().all(|value| value.is_none()) {
         return Ok(());
     }
