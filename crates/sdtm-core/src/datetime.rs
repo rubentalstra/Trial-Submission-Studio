@@ -9,6 +9,8 @@
 //! - Section 4.4.2: Date/Time Precision
 //! - Section 4.4.3: Intervals of Time and Use of Duration for --DUR Variables
 //! - Section 4.4.4: Use of the Study Day Variables
+//! - Section 4.4.7: Use of Relative Timing Variables --STRF and --ENRF
+//! - Section 4.4.8: Date and Time Reported in a Domain Based on Findings
 //!
 //! # Key Requirements
 //!
@@ -18,6 +20,14 @@
 //!   - The ISO 8601 **basic format** (without delimiters) is NOT allowed
 //! - Partial/incomplete dates are represented by right truncation or hyphens
 //! - Durations use the format `PnYnMnDTnHnMnS` or `PnW`
+//! - Intervals use the format `datetime/datetime` or `datetime/duration`
+//!
+//! # Timing Variable Types
+//!
+//! - `--DTC`: Date/time of collection (Findings) or single time point
+//! - `--STDTC`: Start date/time (Events/Interventions)
+//! - `--ENDTC`: End date/time (Events/Interventions/Interval Findings)
+//! - `--DUR`: Duration (when start/end not collected)
 
 use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 use std::fmt;
@@ -388,6 +398,110 @@ impl DurationValidation {
         }
     }
 }
+
+/// Represents an ISO 8601 interval of time.
+///
+/// Per SDTMIG v3.4 Section 4.4.3.1, intervals can be represented as:
+/// - `datetime/datetime` (start and end)
+/// - `datetime/duration` (start and duration after)
+/// - `duration/datetime` (duration before and end)
+///
+/// Intervals are used to represent uncertainty or elapsed time.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Iso8601Interval {
+    /// Start date/time (if specified)
+    pub start: Option<Iso8601DateTime>,
+    /// End date/time (if specified)
+    pub end: Option<Iso8601DateTime>,
+    /// Duration component (if specified)
+    pub duration: Option<Iso8601Duration>,
+    /// The original string representation
+    pub original: String,
+}
+
+impl Iso8601Interval {
+    /// Returns whether both start and end are complete dates.
+    pub fn has_complete_dates(&self) -> bool {
+        match (&self.start, &self.end) {
+            (Some(s), Some(e)) => s.has_complete_date() && e.has_complete_date(),
+            _ => false,
+        }
+    }
+
+    /// Returns the start date if available and complete.
+    pub fn start_date(&self) -> Option<NaiveDate> {
+        self.start.as_ref().and_then(|s| s.to_naive_date())
+    }
+
+    /// Returns the end date if available and complete.
+    pub fn end_date(&self) -> Option<NaiveDate> {
+        self.end.as_ref().and_then(|e| e.to_naive_date())
+    }
+}
+
+impl fmt::Display for Iso8601Interval {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.original)
+    }
+}
+
+/// Result of validating an ISO 8601 interval value.
+#[derive(Debug, Clone)]
+pub enum IntervalValidation {
+    /// Valid ISO 8601 interval
+    Valid(Box<Iso8601Interval>),
+    /// Empty or null value
+    Empty,
+    /// Invalid format with error description
+    Invalid(IntervalError),
+}
+
+impl IntervalValidation {
+    /// Returns true if the validation result is valid.
+    pub fn is_valid(&self) -> bool {
+        matches!(self, Self::Valid(_))
+    }
+
+    /// Returns the parsed interval if valid.
+    pub fn as_interval(&self) -> Option<&Iso8601Interval> {
+        match self {
+            Self::Valid(int) => Some(int),
+            _ => None,
+        }
+    }
+}
+
+/// Errors that can occur when parsing interval values.
+#[derive(Debug, Clone, PartialEq)]
+pub enum IntervalError {
+    /// Missing solidus separator
+    MissingSolidus,
+    /// Invalid start component
+    InvalidStart(String),
+    /// Invalid end component
+    InvalidEnd(String),
+    /// Invalid duration component
+    InvalidDuration(String),
+    /// Empty interval components
+    EmptyComponents,
+    /// General parse error
+    ParseError(String),
+}
+
+impl fmt::Display for IntervalError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::MissingSolidus => write!(f, "Interval must contain '/' separator"),
+            Self::InvalidStart(msg) => write!(f, "Invalid interval start: {}", msg),
+            Self::InvalidEnd(msg) => write!(f, "Invalid interval end: {}", msg),
+            Self::InvalidDuration(msg) => write!(f, "Invalid interval duration: {}", msg),
+            Self::EmptyComponents => write!(f, "Interval cannot have empty components"),
+            Self::ParseError(msg) => write!(f, "Interval parse error: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for IntervalError {}
 
 /// Errors that can occur when parsing/validating date/time values.
 #[derive(Debug, Clone, PartialEq)]
@@ -1173,4 +1287,557 @@ pub fn compare_iso8601(a: &str, b: &str) -> Option<std::cmp::Ordering> {
     }
 
     Some(std::cmp::Ordering::Equal)
+}
+
+// =============================================================================
+// ISO 8601 Interval Parsing
+// =============================================================================
+
+/// Parses and validates an ISO 8601 interval string per SDTMIG v3.4 requirements.
+///
+/// # SDTMIG Requirements (Chapter 4, Section 4.4.3)
+///
+/// Intervals can be represented in three formats:
+/// - `datetime/datetime` - Start and end date/time
+/// - `datetime/duration` - Start date/time and duration after
+/// - `duration/datetime` - Duration and end date/time
+///
+/// # Examples
+///
+/// ```
+/// use sdtm_core::datetime::parse_iso8601_interval;
+///
+/// // Date/time to date/time interval
+/// let result = parse_iso8601_interval("2003-12-01/2003-12-10");
+/// assert!(result.is_valid());
+///
+/// // Date/time to duration interval
+/// let result = parse_iso8601_interval("2003-12-15T10:00/PT30M");
+/// assert!(result.is_valid());
+/// ```
+pub fn parse_iso8601_interval(value: &str) -> IntervalValidation {
+    let trimmed = value.trim();
+
+    if trimmed.is_empty() {
+        return IntervalValidation::Empty;
+    }
+
+    // Must contain solidus separator
+    let Some(solidus_pos) = trimmed.find('/') else {
+        return IntervalValidation::Invalid(IntervalError::MissingSolidus);
+    };
+
+    let original = trimmed.to_string();
+    let first = &trimmed[..solidus_pos];
+    let second = &trimmed[solidus_pos + 1..];
+
+    if first.is_empty() || second.is_empty() {
+        return IntervalValidation::Invalid(IntervalError::EmptyComponents);
+    }
+
+    // Determine the format based on whether components start with 'P' (duration)
+    let first_is_duration = first.starts_with('P');
+    let second_is_duration = second.starts_with('P');
+
+    match (first_is_duration, second_is_duration) {
+        // datetime/datetime
+        (false, false) => {
+            let start = match parse_iso8601_datetime(first) {
+                DateTimeValidation::Valid(dt) => dt,
+                DateTimeValidation::Invalid(err) => {
+                    return IntervalValidation::Invalid(IntervalError::InvalidStart(
+                        err.to_string(),
+                    ));
+                }
+                DateTimeValidation::Empty => {
+                    return IntervalValidation::Invalid(IntervalError::EmptyComponents);
+                }
+            };
+
+            let end = match parse_iso8601_datetime(second) {
+                DateTimeValidation::Valid(dt) => dt,
+                DateTimeValidation::Invalid(err) => {
+                    return IntervalValidation::Invalid(IntervalError::InvalidEnd(err.to_string()));
+                }
+                DateTimeValidation::Empty => {
+                    return IntervalValidation::Invalid(IntervalError::EmptyComponents);
+                }
+            };
+
+            IntervalValidation::Valid(Box::new(Iso8601Interval {
+                start: Some(start),
+                end: Some(end),
+                duration: None,
+                original,
+            }))
+        }
+
+        // datetime/duration
+        (false, true) => {
+            let start = match parse_iso8601_datetime(first) {
+                DateTimeValidation::Valid(dt) => dt,
+                DateTimeValidation::Invalid(err) => {
+                    return IntervalValidation::Invalid(IntervalError::InvalidStart(
+                        err.to_string(),
+                    ));
+                }
+                DateTimeValidation::Empty => {
+                    return IntervalValidation::Invalid(IntervalError::EmptyComponents);
+                }
+            };
+
+            let duration = match parse_iso8601_duration(second) {
+                DurationValidation::Valid(dur) => dur,
+                DurationValidation::Invalid(err) => {
+                    return IntervalValidation::Invalid(IntervalError::InvalidDuration(
+                        err.to_string(),
+                    ));
+                }
+                DurationValidation::Empty => {
+                    return IntervalValidation::Invalid(IntervalError::EmptyComponents);
+                }
+            };
+
+            IntervalValidation::Valid(Box::new(Iso8601Interval {
+                start: Some(start),
+                end: None,
+                duration: Some(duration),
+                original,
+            }))
+        }
+
+        // duration/datetime
+        (true, false) => {
+            let duration = match parse_iso8601_duration(first) {
+                DurationValidation::Valid(dur) => dur,
+                DurationValidation::Invalid(err) => {
+                    return IntervalValidation::Invalid(IntervalError::InvalidDuration(
+                        err.to_string(),
+                    ));
+                }
+                DurationValidation::Empty => {
+                    return IntervalValidation::Invalid(IntervalError::EmptyComponents);
+                }
+            };
+
+            let end = match parse_iso8601_datetime(second) {
+                DateTimeValidation::Valid(dt) => dt,
+                DateTimeValidation::Invalid(err) => {
+                    return IntervalValidation::Invalid(IntervalError::InvalidEnd(err.to_string()));
+                }
+                DateTimeValidation::Empty => {
+                    return IntervalValidation::Invalid(IntervalError::EmptyComponents);
+                }
+            };
+
+            IntervalValidation::Valid(Box::new(Iso8601Interval {
+                start: None,
+                end: Some(end),
+                duration: Some(duration),
+                original,
+            }))
+        }
+
+        // duration/duration - not valid per ISO 8601
+        (true, true) => IntervalValidation::Invalid(IntervalError::ParseError(
+            "Both interval components cannot be durations".to_string(),
+        )),
+    }
+}
+
+// =============================================================================
+// Timing Variable Validation
+// =============================================================================
+
+/// Type of SDTM timing variable per SDTMIG v3.4 Chapter 4.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum TimingVariableType {
+    /// Collection date/time (--DTC) - used in Findings for specimen collection
+    CollectionDateTime,
+    /// Start date/time (--STDTC) - used in Events/Interventions
+    StartDateTime,
+    /// End date/time (--ENDTC) - used in Events/Interventions and interval collections
+    EndDateTime,
+    /// Duration (--DUR) - used when start/end not collected
+    Duration,
+    /// Reference start date/time (RFSTDTC) - from Demographics
+    ReferenceStartDateTime,
+    /// Reference end date/time (RFENDTC) - from Demographics
+    ReferenceEndDateTime,
+}
+
+impl TimingVariableType {
+    /// Determines the timing variable type from a variable name.
+    pub fn from_variable_name(name: &str) -> Option<Self> {
+        let upper = name.to_uppercase();
+
+        // Exact matches for reference variables
+        if upper == "RFSTDTC" {
+            return Some(Self::ReferenceStartDateTime);
+        }
+        if upper == "RFENDTC" {
+            return Some(Self::ReferenceEndDateTime);
+        }
+
+        // Pattern matches for --DTC, --STDTC, --ENDTC, --DUR
+        if upper.ends_with("DUR") {
+            Some(Self::Duration)
+        } else if upper.ends_with("STDTC") {
+            Some(Self::StartDateTime)
+        } else if upper.ends_with("ENDTC") {
+            Some(Self::EndDateTime)
+        } else if upper.ends_with("DTC") {
+            Some(Self::CollectionDateTime)
+        } else {
+            None
+        }
+    }
+
+    /// Returns whether this variable type should contain a date/time value.
+    pub fn is_datetime(&self) -> bool {
+        !matches!(self, Self::Duration)
+    }
+
+    /// Returns whether this variable type should contain a duration value.
+    pub fn is_duration(&self) -> bool {
+        matches!(self, Self::Duration)
+    }
+}
+
+/// Result of validating a timing variable value.
+#[derive(Debug, Clone)]
+pub struct TimingValidationResult {
+    /// The variable name
+    pub variable: String,
+    /// The variable type
+    pub variable_type: Option<TimingVariableType>,
+    /// Whether the value is valid
+    pub is_valid: bool,
+    /// Error message if invalid
+    pub error: Option<String>,
+    /// Warning message if applicable
+    pub warning: Option<String>,
+    /// The parsed date/time (if applicable and valid)
+    pub datetime: Option<Iso8601DateTime>,
+    /// The parsed duration (if applicable and valid)
+    pub duration: Option<Iso8601Duration>,
+    /// The parsed interval (if applicable and valid)
+    pub interval: Option<Iso8601Interval>,
+}
+
+/// Validates a timing variable value per SDTMIG v3.4 requirements.
+///
+/// # SDTMIG Requirements
+///
+/// - Section 4.4.1: Extended format required (YYYY-MM-DD, not YYYYMMDD)
+/// - Section 4.4.2: Partial dates allowed via right truncation
+/// - Section 4.4.3: Durations must use P-format, intervals use solidus
+/// - Section 4.4.8: Findings use --DTC, not --STDTC
+///
+/// # Arguments
+///
+/// * `variable` - The variable name (e.g., "AESTDTC", "LBDTC")
+/// * `value` - The value to validate
+///
+/// # Examples
+///
+/// ```
+/// use sdtm_core::datetime::validate_timing_variable;
+///
+/// let result = validate_timing_variable("AESTDTC", "2003-12-15");
+/// assert!(result.is_valid);
+///
+/// let result = validate_timing_variable("AEDUR", "P3D");
+/// assert!(result.is_valid);
+/// ```
+pub fn validate_timing_variable(variable: &str, value: &str) -> TimingValidationResult {
+    let trimmed = value.trim();
+    let var_type = TimingVariableType::from_variable_name(variable);
+
+    // Handle empty values
+    if trimmed.is_empty() {
+        return TimingValidationResult {
+            variable: variable.to_string(),
+            variable_type: var_type,
+            is_valid: true, // Empty is valid (may be null)
+            error: None,
+            warning: None,
+            datetime: None,
+            duration: None,
+            interval: None,
+        };
+    }
+
+    // Determine expected type and validate accordingly
+    match var_type {
+        Some(TimingVariableType::Duration) => validate_duration_variable(variable, trimmed),
+        Some(_) => validate_datetime_variable(variable, trimmed, var_type),
+        None => {
+            // Unknown variable type - validate as generic ISO 8601
+            validate_generic_iso8601(variable, trimmed)
+        }
+    }
+}
+
+/// Validates a date/time variable value.
+fn validate_datetime_variable(
+    variable: &str,
+    value: &str,
+    var_type: Option<TimingVariableType>,
+) -> TimingValidationResult {
+    // Check for interval format
+    if value.contains('/') {
+        return validate_interval_value(variable, value, var_type);
+    }
+
+    // Parse as date/time
+    match parse_iso8601_datetime(value) {
+        DateTimeValidation::Valid(dt) => TimingValidationResult {
+            variable: variable.to_string(),
+            variable_type: var_type,
+            is_valid: true,
+            error: None,
+            warning: None,
+            datetime: Some(dt),
+            duration: None,
+            interval: None,
+        },
+        DateTimeValidation::Empty => TimingValidationResult {
+            variable: variable.to_string(),
+            variable_type: var_type,
+            is_valid: true,
+            error: None,
+            warning: None,
+            datetime: None,
+            duration: None,
+            interval: None,
+        },
+        DateTimeValidation::Invalid(err) => TimingValidationResult {
+            variable: variable.to_string(),
+            variable_type: var_type,
+            is_valid: false,
+            error: Some(err.to_string()),
+            warning: None,
+            datetime: None,
+            duration: None,
+            interval: None,
+        },
+    }
+}
+
+/// Validates a duration variable value.
+fn validate_duration_variable(variable: &str, value: &str) -> TimingValidationResult {
+    match parse_iso8601_duration(value) {
+        DurationValidation::Valid(dur) => TimingValidationResult {
+            variable: variable.to_string(),
+            variable_type: Some(TimingVariableType::Duration),
+            is_valid: true,
+            error: None,
+            warning: None,
+            datetime: None,
+            duration: Some(dur),
+            interval: None,
+        },
+        DurationValidation::Empty => TimingValidationResult {
+            variable: variable.to_string(),
+            variable_type: Some(TimingVariableType::Duration),
+            is_valid: true,
+            error: None,
+            warning: None,
+            datetime: None,
+            duration: None,
+            interval: None,
+        },
+        DurationValidation::Invalid(err) => TimingValidationResult {
+            variable: variable.to_string(),
+            variable_type: Some(TimingVariableType::Duration),
+            is_valid: false,
+            error: Some(err.to_string()),
+            warning: None,
+            datetime: None,
+            duration: None,
+            interval: None,
+        },
+    }
+}
+
+/// Validates an interval value in a date/time variable.
+fn validate_interval_value(
+    variable: &str,
+    value: &str,
+    var_type: Option<TimingVariableType>,
+) -> TimingValidationResult {
+    match parse_iso8601_interval(value) {
+        IntervalValidation::Valid(interval) => TimingValidationResult {
+            variable: variable.to_string(),
+            variable_type: var_type,
+            is_valid: true,
+            error: None,
+            warning: None,
+            datetime: None,
+            duration: None,
+            interval: Some(*interval),
+        },
+        IntervalValidation::Empty => TimingValidationResult {
+            variable: variable.to_string(),
+            variable_type: var_type,
+            is_valid: true,
+            error: None,
+            warning: None,
+            datetime: None,
+            duration: None,
+            interval: None,
+        },
+        IntervalValidation::Invalid(err) => TimingValidationResult {
+            variable: variable.to_string(),
+            variable_type: var_type,
+            is_valid: false,
+            error: Some(err.to_string()),
+            warning: None,
+            datetime: None,
+            duration: None,
+            interval: None,
+        },
+    }
+}
+
+/// Validates a value as generic ISO 8601 (unknown variable type).
+fn validate_generic_iso8601(variable: &str, value: &str) -> TimingValidationResult {
+    // Try duration first (if starts with P)
+    if value.starts_with('P') {
+        return validate_duration_variable(variable, value);
+    }
+
+    // Try interval (if contains solidus)
+    if value.contains('/') {
+        return validate_interval_value(variable, value, None);
+    }
+
+    // Try date/time
+    validate_datetime_variable(variable, value, None)
+}
+
+// =============================================================================
+// Date Pair Validation
+// =============================================================================
+
+/// Result of comparing a start/end date pair.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DatePairOrder {
+    /// Both dates are present and end >= start (valid)
+    Valid,
+    /// End date is before start date (invalid)
+    EndBeforeStart,
+    /// Start date is missing
+    StartMissing,
+    /// End date is missing
+    EndMissing,
+    /// Both dates are missing
+    BothMissing,
+    /// Start date is incomplete (partial)
+    StartIncomplete,
+    /// End date is incomplete (partial)
+    EndIncomplete,
+    /// Cannot compare (incompatible precision)
+    IncompatiblePrecision,
+    /// Start date is invalid
+    StartInvalid(String),
+    /// End date is invalid
+    EndInvalid(String),
+}
+
+/// Validates that an end date is not before a start date.
+///
+/// Per SDTMIG v3.4, this function validates the temporal ordering of date pairs
+/// without modifying any values. Returns an error for invalid orderings.
+///
+/// # Arguments
+///
+/// * `start_value` - The start date/time value (--STDTC)
+/// * `end_value` - The end date/time value (--ENDTC)
+///
+/// # Returns
+///
+/// A `DatePairOrder` indicating the validation result.
+///
+/// # Examples
+///
+/// ```
+/// use sdtm_core::datetime::{validate_date_pair, DatePairOrder};
+///
+/// // Valid: end after start
+/// assert_eq!(
+///     validate_date_pair("2003-12-01", "2003-12-15"),
+///     DatePairOrder::Valid
+/// );
+///
+/// // Invalid: end before start
+/// assert_eq!(
+///     validate_date_pair("2003-12-15", "2003-12-01"),
+///     DatePairOrder::EndBeforeStart
+/// );
+///
+/// // Partial dates
+/// assert_eq!(
+///     validate_date_pair("2003-12", "2003-12-15"),
+///     DatePairOrder::StartIncomplete
+/// );
+/// ```
+pub fn validate_date_pair(start_value: &str, end_value: &str) -> DatePairOrder {
+    let start_trimmed = start_value.trim();
+    let end_trimmed = end_value.trim();
+
+    // Handle empty values
+    if start_trimmed.is_empty() && end_trimmed.is_empty() {
+        return DatePairOrder::BothMissing;
+    }
+    if start_trimmed.is_empty() {
+        return DatePairOrder::StartMissing;
+    }
+    if end_trimmed.is_empty() {
+        return DatePairOrder::EndMissing;
+    }
+
+    // Parse both dates
+    let start_result = parse_iso8601_datetime(start_trimmed);
+    let end_result = parse_iso8601_datetime(end_trimmed);
+
+    // Check for parse errors
+    let start_dt = match start_result {
+        DateTimeValidation::Valid(dt) => dt,
+        DateTimeValidation::Invalid(err) => return DatePairOrder::StartInvalid(err.to_string()),
+        DateTimeValidation::Empty => return DatePairOrder::StartMissing,
+    };
+
+    let end_dt = match end_result {
+        DateTimeValidation::Valid(dt) => dt,
+        DateTimeValidation::Invalid(err) => return DatePairOrder::EndInvalid(err.to_string()),
+        DateTimeValidation::Empty => return DatePairOrder::EndMissing,
+    };
+
+    // Check for incomplete dates
+    if !start_dt.has_complete_date() {
+        return DatePairOrder::StartIncomplete;
+    }
+    if !end_dt.has_complete_date() {
+        return DatePairOrder::EndIncomplete;
+    }
+
+    // Compare the dates
+    match compare_iso8601(start_trimmed, end_trimmed) {
+        Some(std::cmp::Ordering::Greater) => DatePairOrder::EndBeforeStart,
+        Some(_) => DatePairOrder::Valid,
+        None => DatePairOrder::IncompatiblePrecision,
+    }
+}
+
+/// Returns whether study day can be computed from the given date value.
+///
+/// Per SDTMIG v3.4 Section 4.4.4, study day requires complete dates.
+/// Partial dates cannot be used for study day calculation.
+pub fn can_compute_study_day(value: &str) -> bool {
+    match parse_iso8601_datetime(value) {
+        DateTimeValidation::Valid(dt) => dt.has_complete_date(),
+        _ => false,
+    }
 }

@@ -5,9 +5,10 @@
 
 use chrono::NaiveDate;
 use sdtm_core::datetime::{
-    DateTimeError, DateTimePrecision, DateTimeValidation, DurationError, DurationValidation,
-    calculate_study_day, compare_iso8601, parse_date, parse_iso8601_datetime,
-    parse_iso8601_duration,
+    DatePairOrder, DateTimeError, DateTimePrecision, DateTimeValidation, DurationError,
+    DurationValidation, IntervalError, IntervalValidation, TimingVariableType, calculate_study_day,
+    can_compute_study_day, compare_iso8601, parse_date, parse_iso8601_datetime,
+    parse_iso8601_duration, parse_iso8601_interval, validate_date_pair, validate_timing_variable,
 };
 
 // =========================================================================
@@ -388,4 +389,367 @@ fn test_parse_date() {
 
     // Partial date (year-month only) returns None - no complete date
     assert_eq!(parse_date("2003-12"), None);
+}
+
+// =========================================================================
+// Interval Parsing Tests (SDTMIG 4.4.3)
+// =========================================================================
+
+#[test]
+fn test_interval_datetime_to_datetime() {
+    // Per SDTMIG 4.4.3: Interval with start and end date/time
+    let result = parse_iso8601_interval("2003-12-01/2003-12-10");
+    assert!(result.is_valid());
+
+    if let IntervalValidation::Valid(int) = result {
+        assert!(int.start.is_some());
+        assert!(int.end.is_some());
+        assert!(int.duration.is_none());
+        assert!(int.has_complete_dates());
+    }
+}
+
+#[test]
+fn test_interval_datetime_to_duration() {
+    // Per SDTMIG 4.4.3.2: Start date/time with duration after
+    let result = parse_iso8601_interval("2003-12-15T10:00/PT30M");
+    assert!(result.is_valid());
+
+    if let IntervalValidation::Valid(int) = result {
+        assert!(int.start.is_some());
+        assert!(int.end.is_none());
+        assert!(int.duration.is_some());
+    }
+}
+
+#[test]
+fn test_interval_duration_to_datetime() {
+    // Per SDTMIG 4.4.3.2: Duration before end date/time
+    let result = parse_iso8601_interval("P3D/2003-12-15");
+    assert!(result.is_valid());
+
+    if let IntervalValidation::Valid(int) = result {
+        assert!(int.start.is_none());
+        assert!(int.end.is_some());
+        assert!(int.duration.is_some());
+    }
+}
+
+#[test]
+fn test_interval_uncertainty_example() {
+    // Per SDTMIG 4.4.2: Representing uncertainty intervals
+    // Between 10:00 and 10:30 on December 15, 2003
+    let result = parse_iso8601_interval("2003-12-15T10:00/2003-12-15T10:30");
+    assert!(result.is_valid());
+}
+
+#[test]
+fn test_interval_first_half_year() {
+    // Per SDTMIG 4.4.2: Sometime in the first half of 2003
+    let result = parse_iso8601_interval("2003-01-01/2003-06-30");
+    assert!(result.is_valid());
+}
+
+#[test]
+fn test_interval_empty() {
+    let result = parse_iso8601_interval("");
+    assert!(matches!(result, IntervalValidation::Empty));
+}
+
+#[test]
+fn test_interval_missing_solidus() {
+    let result = parse_iso8601_interval("2003-12-01");
+    assert!(matches!(
+        result,
+        IntervalValidation::Invalid(IntervalError::MissingSolidus)
+    ));
+}
+
+#[test]
+fn test_interval_empty_components() {
+    let result = parse_iso8601_interval("2003-12-01/");
+    assert!(matches!(
+        result,
+        IntervalValidation::Invalid(IntervalError::EmptyComponents)
+    ));
+}
+
+#[test]
+fn test_interval_invalid_start() {
+    let result = parse_iso8601_interval("20031201/2003-12-10");
+    assert!(matches!(
+        result,
+        IntervalValidation::Invalid(IntervalError::InvalidStart(_))
+    ));
+}
+
+#[test]
+fn test_interval_both_durations() {
+    // Duration/duration is invalid per ISO 8601
+    let result = parse_iso8601_interval("P3D/P5D");
+    assert!(matches!(
+        result,
+        IntervalValidation::Invalid(IntervalError::ParseError(_))
+    ));
+}
+
+// =========================================================================
+// Timing Variable Type Tests
+// =========================================================================
+
+#[test]
+fn test_timing_variable_type_dtc() {
+    assert_eq!(
+        TimingVariableType::from_variable_name("AEDTC"),
+        Some(TimingVariableType::CollectionDateTime)
+    );
+    assert_eq!(
+        TimingVariableType::from_variable_name("LBDTC"),
+        Some(TimingVariableType::CollectionDateTime)
+    );
+    assert_eq!(
+        TimingVariableType::from_variable_name("VSDTC"),
+        Some(TimingVariableType::CollectionDateTime)
+    );
+}
+
+#[test]
+fn test_timing_variable_type_stdtc() {
+    assert_eq!(
+        TimingVariableType::from_variable_name("AESTDTC"),
+        Some(TimingVariableType::StartDateTime)
+    );
+    assert_eq!(
+        TimingVariableType::from_variable_name("CMSTDTC"),
+        Some(TimingVariableType::StartDateTime)
+    );
+    assert_eq!(
+        TimingVariableType::from_variable_name("EXSTDTC"),
+        Some(TimingVariableType::StartDateTime)
+    );
+}
+
+#[test]
+fn test_timing_variable_type_endtc() {
+    assert_eq!(
+        TimingVariableType::from_variable_name("AEENDTC"),
+        Some(TimingVariableType::EndDateTime)
+    );
+    assert_eq!(
+        TimingVariableType::from_variable_name("CMENDTC"),
+        Some(TimingVariableType::EndDateTime)
+    );
+    assert_eq!(
+        TimingVariableType::from_variable_name("LBENDTC"),
+        Some(TimingVariableType::EndDateTime)
+    );
+}
+
+#[test]
+fn test_timing_variable_type_dur() {
+    assert_eq!(
+        TimingVariableType::from_variable_name("AEDUR"),
+        Some(TimingVariableType::Duration)
+    );
+    assert_eq!(
+        TimingVariableType::from_variable_name("CMDUR"),
+        Some(TimingVariableType::Duration)
+    );
+}
+
+#[test]
+fn test_timing_variable_type_reference() {
+    assert_eq!(
+        TimingVariableType::from_variable_name("RFSTDTC"),
+        Some(TimingVariableType::ReferenceStartDateTime)
+    );
+    assert_eq!(
+        TimingVariableType::from_variable_name("RFENDTC"),
+        Some(TimingVariableType::ReferenceEndDateTime)
+    );
+}
+
+#[test]
+fn test_timing_variable_type_unknown() {
+    assert_eq!(TimingVariableType::from_variable_name("USUBJID"), None);
+    assert_eq!(TimingVariableType::from_variable_name("AETERM"), None);
+}
+
+// =========================================================================
+// Timing Variable Validation Tests
+// =========================================================================
+
+#[test]
+fn test_validate_timing_datetime_valid() {
+    let result = validate_timing_variable("AESTDTC", "2003-12-15");
+    assert!(result.is_valid);
+    assert!(result.datetime.is_some());
+    assert!(result.error.is_none());
+}
+
+#[test]
+fn test_validate_timing_datetime_with_time() {
+    let result = validate_timing_variable("AESTDTC", "2003-12-15T13:14:17");
+    assert!(result.is_valid);
+    assert!(result.datetime.is_some());
+}
+
+#[test]
+fn test_validate_timing_datetime_partial() {
+    let result = validate_timing_variable("AESTDTC", "2003-12");
+    assert!(result.is_valid);
+    assert!(result.datetime.is_some());
+}
+
+#[test]
+fn test_validate_timing_datetime_invalid() {
+    let result = validate_timing_variable("AESTDTC", "20031215");
+    assert!(!result.is_valid);
+    assert!(result.error.is_some());
+}
+
+#[test]
+fn test_validate_timing_duration_valid() {
+    let result = validate_timing_variable("AEDUR", "P3D");
+    assert!(result.is_valid);
+    assert!(result.duration.is_some());
+    assert_eq!(result.variable_type, Some(TimingVariableType::Duration));
+}
+
+#[test]
+fn test_validate_timing_duration_complex() {
+    let result = validate_timing_variable("CMDUR", "P2Y3M14D");
+    assert!(result.is_valid);
+    assert!(result.duration.is_some());
+}
+
+#[test]
+fn test_validate_timing_duration_invalid() {
+    let result = validate_timing_variable("AEDUR", "3 days");
+    assert!(!result.is_valid);
+    assert!(result.error.is_some());
+}
+
+#[test]
+fn test_validate_timing_interval() {
+    let result = validate_timing_variable("AESTDTC", "2003-12-01/2003-12-10");
+    assert!(result.is_valid);
+    assert!(result.interval.is_some());
+}
+
+#[test]
+fn test_validate_timing_empty() {
+    let result = validate_timing_variable("AESTDTC", "");
+    assert!(result.is_valid);
+    assert!(result.datetime.is_none());
+}
+
+#[test]
+fn test_validate_timing_whitespace() {
+    let result = validate_timing_variable("AESTDTC", "   ");
+    assert!(result.is_valid);
+}
+
+// =========================================================================
+// Date Pair Validation Tests (SDTMIG 4.4)
+// =========================================================================
+
+#[test]
+fn test_date_pair_valid() {
+    assert_eq!(
+        validate_date_pair("2003-12-01", "2003-12-15"),
+        DatePairOrder::Valid
+    );
+}
+
+#[test]
+fn test_date_pair_same_date() {
+    assert_eq!(
+        validate_date_pair("2003-12-15", "2003-12-15"),
+        DatePairOrder::Valid
+    );
+}
+
+#[test]
+fn test_date_pair_end_before_start() {
+    assert_eq!(
+        validate_date_pair("2003-12-15", "2003-12-01"),
+        DatePairOrder::EndBeforeStart
+    );
+}
+
+#[test]
+fn test_date_pair_start_missing() {
+    assert_eq!(
+        validate_date_pair("", "2003-12-15"),
+        DatePairOrder::StartMissing
+    );
+}
+
+#[test]
+fn test_date_pair_end_missing() {
+    assert_eq!(
+        validate_date_pair("2003-12-15", ""),
+        DatePairOrder::EndMissing
+    );
+}
+
+#[test]
+fn test_date_pair_both_missing() {
+    assert_eq!(validate_date_pair("", ""), DatePairOrder::BothMissing);
+}
+
+#[test]
+fn test_date_pair_start_incomplete() {
+    assert_eq!(
+        validate_date_pair("2003-12", "2003-12-15"),
+        DatePairOrder::StartIncomplete
+    );
+}
+
+#[test]
+fn test_date_pair_end_incomplete() {
+    assert_eq!(
+        validate_date_pair("2003-12-15", "2003-12"),
+        DatePairOrder::EndIncomplete
+    );
+}
+
+#[test]
+fn test_date_pair_start_invalid() {
+    let result = validate_date_pair("invalid", "2003-12-15");
+    assert!(matches!(result, DatePairOrder::StartInvalid(_)));
+}
+
+#[test]
+fn test_date_pair_end_invalid() {
+    let result = validate_date_pair("2003-12-15", "20031215");
+    assert!(matches!(result, DatePairOrder::EndInvalid(_)));
+}
+
+// =========================================================================
+// Study Day Computation Tests
+// =========================================================================
+
+#[test]
+fn test_can_compute_study_day_complete() {
+    assert!(can_compute_study_day("2003-12-15"));
+    assert!(can_compute_study_day("2003-12-15T13:14:17"));
+}
+
+#[test]
+fn test_can_compute_study_day_partial() {
+    assert!(!can_compute_study_day("2003-12"));
+    assert!(!can_compute_study_day("2003"));
+}
+
+#[test]
+fn test_can_compute_study_day_empty() {
+    assert!(!can_compute_study_day(""));
+}
+
+#[test]
+fn test_can_compute_study_day_invalid() {
+    assert!(!can_compute_study_day("invalid"));
+    assert!(!can_compute_study_day("20031215"));
 }

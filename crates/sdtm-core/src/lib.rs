@@ -37,9 +37,12 @@ pub use data_utils::{
     sanitize_test_code, table_column_values, table_label,
 };
 pub use datetime::{
-    DateTimeError, DateTimePrecision, DateTimeValidation, DurationError, DurationValidation,
-    Iso8601DateTime, Iso8601Duration, calculate_study_day, compare_iso8601, normalize_iso8601,
-    parse_date, parse_iso8601_datetime, parse_iso8601_duration, validate_iso8601,
+    DatePairOrder, DateTimeError, DateTimePrecision, DateTimeValidation, DurationError,
+    DurationValidation, IntervalError, IntervalValidation, Iso8601DateTime, Iso8601Duration,
+    Iso8601Interval, TimingValidationResult, TimingVariableType, calculate_study_day,
+    can_compute_study_day, compare_iso8601, normalize_iso8601, parse_date, parse_iso8601_datetime,
+    parse_iso8601_duration, parse_iso8601_interval, validate_date_pair, validate_iso8601,
+    validate_timing_variable,
 };
 pub use dedupe::dedupe_frames_by_identifiers;
 pub use domain_processors::{
@@ -57,7 +60,7 @@ pub use pipeline::{
     BaseRulesStep, CtNormalizationStep, DomainPipeline, DomainProcessorStep, PipelineState,
     ProcessingStep, SequenceAssignmentStep, build_default_pipeline,
 };
-pub use processing_context::{ProcessingContext, ProcessingOptions};
+pub use processing_context::{EpochPeriod, ProcessingContext, ProcessingOptions};
 pub use processor::{
     apply_base_rules, assign_sequence, normalize_ct_columns, process_domain,
     process_domain_with_context, process_domain_with_context_and_tracker, process_domains,

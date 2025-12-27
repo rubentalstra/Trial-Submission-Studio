@@ -10,7 +10,9 @@ use tracing::warn;
 use sdtm_model::Domain;
 
 // Import and re-export Polars utilities for domain processors
+use crate::datetime::DatePairOrder;
 use crate::datetime::parse_date;
+use crate::datetime::validate_date_pair;
 use crate::domain_utils::column_name;
 use crate::processing_context::ProcessingContext;
 pub(super) use sdtm_ingest::{any_to_f64, any_to_i64, any_to_string, parse_f64};
@@ -323,35 +325,90 @@ pub(super) fn ensure_date_pair_order(
     if !has_column(df, start_col) {
         return Ok(());
     }
+
+    // Normalize start dates (trim whitespace only)
     let start_vals = string_column(df, start_col, Trim::Both)?
         .into_iter()
         .map(|value| normalize_iso8601(&value))
         .collect::<Vec<_>>();
     set_string_column(df, start_col, start_vals.clone())?;
+
     if let Some(end_col) = end_col
         && has_column(df, end_col)
     {
-        let mut end_vals = string_column(df, end_col, Trim::Both)?
+        // Normalize end dates (trim whitespace only)
+        let end_vals = string_column(df, end_col, Trim::Both)?
             .into_iter()
             .map(|value| normalize_iso8601(&value))
             .collect::<Vec<_>>();
+        set_string_column(df, end_col, end_vals.clone())?;
+
+        // Validate date pairs without mutating
+        // Per SDTMIG v3.4, we do not auto-correct date order issues
+        // Instead, validation errors should be reported upstream
+        let mut invalid_count = 0;
         for idx in 0..df.height() {
-            if end_vals[idx].is_empty() {
-                continue;
-            }
-            let start_date = parse_date(&start_vals[idx]);
-            let end_date = parse_date(&end_vals[idx]);
-            if let (Some(start), Some(end)) = (start_date, end_date)
-                && end < start
-            {
-                end_vals[idx] = start_vals[idx].clone();
+            let result = validate_date_pair(&start_vals[idx], &end_vals[idx]);
+            if matches!(result, DatePairOrder::EndBeforeStart) {
+                invalid_count += 1;
+                // Log warning for visibility but do not mutate
+                tracing::warn!(
+                    row = idx,
+                    start_col,
+                    end_col,
+                    start_value = %start_vals[idx],
+                    end_value = %end_vals[idx],
+                    "Date pair validation: end date precedes start date"
+                );
             }
         }
-        set_string_column(df, end_col, end_vals)?;
+
+        if invalid_count > 0 {
+            tracing::warn!(
+                start_col,
+                end_col,
+                invalid_count,
+                "Date pair validation complete: {} records have end date before start date",
+                invalid_count
+            );
+        }
     }
     Ok(())
 }
 
+/// Compute study day (--DY) per SDTMIG v3.4 Section 4.4.4.
+///
+/// # SDTMIG v3.4 Reference
+///
+/// Per Section 4.4.4 "Use of the Study Day Variables":
+///
+/// - Study day is computed relative to RFSTDTC (reference start date from DM)
+/// - RFSTDTC is designated as study day 1
+/// - Days after RFSTDTC are incremented by 1 for each subsequent date
+/// - Days before RFSTDTC are decremented by 1 (no day 0)
+///
+/// ## Formula
+///
+/// - `--DY = (date portion of --DTC) - (date portion of RFSTDTC) + 1` if --DTC >= RFSTDTC
+/// - `--DY = (date portion of --DTC) - (date portion of RFSTDTC)` if --DTC < RFSTDTC
+///
+/// ## Requirements
+///
+/// - **Complete dates required**: Both observation date and reference date must
+///   have complete date components (year, month, day). Partial dates cannot be
+///   used for study day calculation.
+/// - **Result type**: All study day values are integers
+/// - **Not for calculations**: Study day is not suited for duration calculations
+///   due to the absence of day 0. Use raw date values instead.
+///
+/// # Arguments
+///
+/// * `domain` - The domain metadata
+/// * `df` - The DataFrame to update
+/// * `dtc_col` - The date/time column (--DTC, --STDTC, or --ENDTC)
+/// * `dy_col` - The study day column to populate (--DY, --STDY, or --ENDY)
+/// * `ctx` - Processing context with reference starts
+/// * `reference_col` - Fallback reference column name (typically "RFSTDTC")
 pub(super) fn compute_study_day(
     domain: &Domain,
     df: &mut DataFrame,
@@ -363,7 +420,10 @@ pub(super) fn compute_study_day(
     if !has_column(df, dtc_col) {
         return Ok(());
     }
+
     let dtc_vals = string_column(df, dtc_col, Trim::Both)?;
+
+    // Build baseline (reference) dates from context or column
     let mut baseline_vals: Vec<Option<NaiveDate>> = vec![None; df.height()];
     if let (Some(reference_starts), Some(usubjid_col)) =
         (ctx.reference_starts, col(domain, "USUBJID"))
@@ -372,34 +432,106 @@ pub(super) fn compute_study_day(
         let usub_vals = string_column(df, &usubjid_col, Trim::Both)?;
         for idx in 0..df.height() {
             if let Some(start) = reference_starts.get(&usub_vals[idx]) {
+                // parse_date returns None for partial dates
                 baseline_vals[idx] = parse_date(start);
             }
         }
     }
+
+    // Fallback to reference column if no context reference starts found
     if baseline_vals.iter().all(|value| value.is_none()) && has_column(df, reference_col) {
         let ref_vals = string_column(df, reference_col, Trim::Both)?;
         for idx in 0..df.height() {
             baseline_vals[idx] = parse_date(&ref_vals[idx]);
         }
     }
+
+    // No reference dates available at all
     if baseline_vals.iter().all(|value| value.is_none()) {
+        tracing::debug!(
+            domain = domain.code.as_str(),
+            dtc_col,
+            dy_col,
+            "Study day derivation skipped: no reference dates available"
+        );
         return Ok(());
     }
+
+    // Compute study day for each record
     let mut dy_vals: Vec<Option<f64>> = Vec::with_capacity(df.height());
     let mut derived_count = 0usize;
+    let mut partial_date_count = 0usize;
+    let mut missing_reference_count = 0usize;
+
     for idx in 0..df.height() {
+        // parse_date returns None for empty or partial dates
+        // Per SDTMIG 4.4.4: requires complete dates for study day calculation
         let obs_date = parse_date(&dtc_vals[idx]);
         let baseline = baseline_vals[idx];
-        if let (Some(obs), Some(base)) = (obs_date, baseline) {
-            let delta = obs.signed_duration_since(base).num_days();
-            let adjusted = if delta >= 0 { delta + 1 } else { delta };
-            dy_vals.push(Some(adjusted as f64));
-            derived_count += 1;
-        } else {
-            dy_vals.push(None);
+
+        match (obs_date, baseline) {
+            (Some(obs), Some(base)) => {
+                // Both dates complete - compute study day
+                let delta = obs.signed_duration_since(base).num_days();
+                // Per SDTMIG: no day 0
+                let adjusted = if delta >= 0 { delta + 1 } else { delta };
+                dy_vals.push(Some(adjusted as f64));
+                derived_count += 1;
+            }
+            (None, Some(_)) => {
+                // Observation date is missing or partial
+                dy_vals.push(None);
+                if !dtc_vals[idx].trim().is_empty() {
+                    partial_date_count += 1;
+                }
+            }
+            (Some(_), None) => {
+                // Reference date is missing - cannot compute
+                dy_vals.push(None);
+                missing_reference_count += 1;
+            }
+            (None, None) => {
+                // Both missing
+                dy_vals.push(None);
+            }
         }
     }
+
     set_f64_column(df, dy_col, dy_vals)?;
+
+    // Log derivation summary
+    if derived_count > 0 {
+        tracing::debug!(
+            domain = domain.code.as_str(),
+            dtc_col,
+            dy_col,
+            derived_count,
+            "Study day values derived"
+        );
+    }
+
+    // Warn about partial dates preventing study day calculation
+    if partial_date_count > 0 {
+        tracing::warn!(
+            domain = domain.code.as_str(),
+            dtc_col,
+            dy_col,
+            partial_date_count,
+            "Study day not computed for {} records with partial/incomplete dates",
+            partial_date_count
+        );
+    }
+
+    if missing_reference_count > 0 {
+        tracing::warn!(
+            domain = domain.code.as_str(),
+            dtc_col,
+            dy_col,
+            missing_reference_count,
+            "Study day not computed for {} records with missing reference dates",
+            missing_reference_count
+        );
+    }
 
     // Record provenance for study day derivation
     if derived_count > 0 {
@@ -442,4 +574,193 @@ pub(super) fn is_valid_time(value: &str) -> bool {
         }
         _ => false,
     }
+}
+
+/// Derive EPOCH values per SDTMIG v3.4 Section 4.1.3.1.
+///
+/// # SDTMIG v3.4 Reference (Section 4.1.3.1)
+///
+/// Per SDTMIG 4.1.3.1 "EPOCH Variable Guidance":
+///
+/// - For Findings class domains: EPOCH should be based on --DTC (collection date)
+/// - For Interventions/Events class domains: EPOCH should be based on --STDTC (start date)
+/// - Sponsors should NOT impute EPOCH values
+/// - EPOCH should be null for records before study participation (pre-screening)
+///
+/// EPOCH is derived by comparing the observation date against the subject's
+/// element periods from the SE (Subject Elements) domain. The SE domain
+/// records the actual elements and epochs experienced by each subject with
+/// their start/end dates (SESTDTC/SEENDTC).
+///
+/// # Arguments
+///
+/// * `domain` - The domain metadata
+/// * `df` - The DataFrame to update
+/// * `dtc_col` - The date/time column to use for epoch assignment (--DTC or --STDTC)
+/// * `ctx` - Processing context with epoch periods from SE
+pub(super) fn derive_epoch(
+    domain: &Domain,
+    df: &mut DataFrame,
+    dtc_col: &str,
+    ctx: &ProcessingContext,
+) -> Result<()> {
+    // Check if EPOCH column exists in domain
+    let Some(epoch_col) = col(domain, "EPOCH") else {
+        return Ok(());
+    };
+
+    // Check if date column exists
+    if !has_column(df, dtc_col) {
+        return Ok(());
+    }
+
+    // Check if we have epoch period data
+    let Some(epoch_periods) = ctx.epoch_periods else {
+        tracing::debug!(
+            domain = domain.code.as_str(),
+            "EPOCH derivation skipped: no SE epoch periods available"
+        );
+        return Ok(());
+    };
+
+    // Get USUBJID column
+    let Some(usubjid_col) = col(domain, "USUBJID") else {
+        return Ok(());
+    };
+    if !has_column(df, &usubjid_col) {
+        return Ok(());
+    }
+
+    let usubjid_vals = string_column(df, &usubjid_col, Trim::Both)?;
+    let dtc_vals = string_column(df, dtc_col, Trim::Both)?;
+
+    // Get existing EPOCH values if column exists (don't overwrite existing values)
+    let existing_epoch = if has_column(df, &epoch_col) {
+        string_column(df, &epoch_col, Trim::Both).ok()
+    } else {
+        None
+    };
+
+    let mut epoch_vals: Vec<String> = Vec::with_capacity(df.height());
+    let mut derived_count = 0usize;
+    let mut no_period_count = 0usize;
+    let mut partial_date_count = 0usize;
+
+    for idx in 0..df.height() {
+        // If existing EPOCH value, preserve it (per SDTMIG: don't impute)
+        if let Some(ref existing) = existing_epoch {
+            if !existing[idx].is_empty() {
+                epoch_vals.push(existing[idx].clone());
+                continue;
+            }
+        }
+
+        let usubjid = &usubjid_vals[idx];
+        let dtc = &dtc_vals[idx];
+
+        // Skip if no date
+        if dtc.trim().is_empty() {
+            epoch_vals.push(String::new());
+            continue;
+        }
+
+        // Parse observation date
+        let obs_date = parse_date(dtc);
+        let Some(obs_date) = obs_date else {
+            // Partial date - cannot determine EPOCH
+            epoch_vals.push(String::new());
+            if !dtc.trim().is_empty() {
+                partial_date_count += 1;
+            }
+            continue;
+        };
+
+        // Look up subject's epoch periods
+        let Some(periods) = epoch_periods.get(usubjid) else {
+            // No SE data for this subject
+            epoch_vals.push(String::new());
+            no_period_count += 1;
+            continue;
+        };
+
+        // Find which epoch the observation date falls into
+        let epoch = find_epoch_for_date(obs_date, periods);
+        if !epoch.is_empty() {
+            derived_count += 1;
+        }
+        epoch_vals.push(epoch);
+    }
+
+    set_string_column(df, &epoch_col, epoch_vals)?;
+
+    // Log derivation summary
+    if derived_count > 0 {
+        tracing::debug!(
+            domain = domain.code.as_str(),
+            dtc_col,
+            derived_count,
+            "EPOCH values derived from SE periods"
+        );
+    }
+
+    if partial_date_count > 0 {
+        tracing::debug!(
+            domain = domain.code.as_str(),
+            partial_date_count,
+            "EPOCH not derived for records with partial dates"
+        );
+    }
+
+    if no_period_count > 0 {
+        tracing::debug!(
+            domain = domain.code.as_str(),
+            no_period_count,
+            "EPOCH not derived for subjects without SE period data"
+        );
+    }
+
+    // Record provenance
+    if derived_count > 0 {
+        ctx.record_provenance(|tracker| {
+            use crate::provenance::{DerivationMethod, OriginSource, OriginType, ProvenanceRecord};
+            tracker.record(ProvenanceRecord {
+                domain_code: domain.code.clone(),
+                variable_name: "EPOCH".to_string(),
+                origin_type: OriginType::Derived,
+                origin_source: OriginSource::Sponsor,
+                method: DerivationMethod::Custom {
+                    description: format!(
+                        "EPOCH derived from SE periods based on {} per SDTMIG 4.1.3.1",
+                        dtc_col
+                    ),
+                },
+                affected_count: derived_count,
+            });
+        });
+    }
+
+    Ok(())
+}
+
+/// Find the EPOCH for a given date by searching the subject's SE periods.
+///
+/// Per SDTMIG: A date falls within an epoch if it is >= start date and <= end date.
+/// If a date is before all periods, EPOCH is null (pre-study).
+fn find_epoch_for_date(date: NaiveDate, periods: &[crate::processing_context::EpochPeriod]) -> String {
+    for period in periods {
+        // Check if date falls within this period
+        let after_start = period
+            .start_date
+            .map(|start| date >= start)
+            .unwrap_or(false);
+        let before_end = period.end_date.map(|end| date <= end).unwrap_or(true);
+
+        if after_start && before_end {
+            return period.epoch.clone();
+        }
+    }
+
+    // Date doesn't fall within any period - could be before study participation
+    // Per SDTMIG 4.1.3.1: EPOCH should be null for pre-study records
+    String::new()
 }

@@ -1,8 +1,26 @@
 use std::collections::BTreeMap;
 
+use chrono::NaiveDate;
 use sdtm_model::{ControlledTerminology, CtRegistry, Domain};
 
 use crate::provenance::ProvenanceTracker;
+
+/// Represents a subject's element period from SE (Subject Elements) domain.
+///
+/// Per SDTMIG v3.4 Chapter 5.3, Subject Elements records the actual elements
+/// and epochs experienced by each subject. This is used to derive EPOCH
+/// for other domain records.
+#[derive(Debug, Clone)]
+pub struct EpochPeriod {
+    /// The epoch name (e.g., "TREATMENT", "FOLLOW-UP")
+    pub epoch: String,
+    /// The element code (ETCD)
+    pub etcd: String,
+    /// Start date of this period (parsed from SESTDTC)
+    pub start_date: Option<NaiveDate>,
+    /// End date of this period (parsed from SEENDTC)
+    pub end_date: Option<NaiveDate>,
+}
 
 /// Options controlling SDTM processing behavior.
 ///
@@ -105,6 +123,11 @@ pub struct ProcessingContext<'a> {
     /// Optional provenance tracker for recording derivation metadata.
     /// Clone is cheap (Arc-based).
     pub provenance: Option<ProvenanceTracker>,
+    /// Epoch periods from SE (Subject Elements) domain, keyed by USUBJID.
+    ///
+    /// Per SDTMIG v3.4 Section 4.1.3.1, EPOCH should be derived from SE
+    /// period data based on the observation date.
+    pub epoch_periods: Option<&'a BTreeMap<String, Vec<EpochPeriod>>>,
 }
 
 impl<'a> ProcessingContext<'a> {
@@ -115,6 +138,7 @@ impl<'a> ProcessingContext<'a> {
             ct_registry: None,
             options: ProcessingOptions::default(),
             provenance: None,
+            epoch_periods: None,
         }
     }
 
@@ -125,6 +149,14 @@ impl<'a> ProcessingContext<'a> {
 
     pub fn with_ct_registry(mut self, ct_registry: &'a CtRegistry) -> Self {
         self.ct_registry = Some(ct_registry);
+        self
+    }
+
+    pub fn with_epoch_periods(
+        mut self,
+        epoch_periods: &'a BTreeMap<String, Vec<EpochPeriod>>,
+    ) -> Self {
+        self.epoch_periods = Some(epoch_periods);
         self
     }
 
