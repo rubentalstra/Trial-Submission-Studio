@@ -14,18 +14,17 @@ pub(super) fn process_lb(
 ) -> Result<()> {
     drop_placeholder_rows(domain, df, ctx)?;
     for col_name in ["LBORRESU", "LBSTRESU"] {
-        if let Some(name) = col(domain, col_name) {
-            if has_column(df, &name) {
+        if let Some(name) = col(domain, col_name)
+            && has_column(df, &name) {
                 let values = string_column(df, &name, Trim::Both)?
                     .into_iter()
                     .map(|value| normalize_empty_tokens(&value))
                     .collect();
                 set_string_column(df, &name, values)?;
             }
-        }
     }
-    if let (Some(lborresu), Some(lbstresu)) = (col(domain, "LBORRESU"), col(domain, "LBSTRESU")) {
-        if has_column(df, &lborresu) && has_column(df, &lbstresu) {
+    if let (Some(lborresu), Some(lbstresu)) = (col(domain, "LBORRESU"), col(domain, "LBSTRESU"))
+        && has_column(df, &lborresu) && has_column(df, &lbstresu) {
             let orresu_vals = string_column(df, &lborresu, Trim::Both)?;
             let mut stresu_vals = string_column(df, &lbstresu, Trim::Both)?;
             for idx in 0..df.height() {
@@ -35,9 +34,8 @@ pub(super) fn process_lb(
             }
             set_string_column(df, &lbstresu, stresu_vals)?;
         }
-    }
-    if let Some(lbtestcd) = col(domain, "LBTESTCD") {
-        if has_column(df, &lbtestcd) {
+    if let Some(lbtestcd) = col(domain, "LBTESTCD")
+        && has_column(df, &lbtestcd) {
             let mut values = string_column(df, &lbtestcd, Trim::Both)?
                 .into_iter()
                 .map(|value| value.to_uppercase())
@@ -49,10 +47,9 @@ pub(super) fn process_lb(
             }
             set_string_column(df, &lbtestcd, values)?;
         }
-    }
-    if let (Some(lbtest), Some(lbtestcd)) = (col(domain, "LBTEST"), col(domain, "LBTESTCD")) {
-        if has_column(df, &lbtest) && has_column(df, &lbtestcd) {
-            if let Some(ct) = ctx.resolve_ct(domain, "LBTESTCD") {
+    if let (Some(lbtest), Some(lbtestcd)) = (col(domain, "LBTEST"), col(domain, "LBTESTCD"))
+        && has_column(df, &lbtest) && has_column(df, &lbtestcd)
+            && let Some(ct) = ctx.resolve_ct(domain, "LBTESTCD") {
                 let test_vals = string_column(df, &lbtest, Trim::Both)?;
                 let mut testcd_vals = string_column(df, &lbtestcd, Trim::Both)?;
                 for idx in 0..df.height() {
@@ -70,10 +67,8 @@ pub(super) fn process_lb(
                 }
                 set_string_column(df, &lbtestcd, testcd_vals)?;
             }
-        }
-    }
-    if let (Some(lbtest), Some(lbtestcd)) = (col(domain, "LBTEST"), col(domain, "LBTESTCD")) {
-        if has_column(df, &lbtest) && has_column(df, &lbtestcd) {
+    if let (Some(lbtest), Some(lbtestcd)) = (col(domain, "LBTEST"), col(domain, "LBTESTCD"))
+        && has_column(df, &lbtest) && has_column(df, &lbtestcd) {
             let mut lbtest_vals = string_column(df, &lbtest, Trim::Both)?;
             let testcd_vals = string_column(df, &lbtestcd, Trim::Both)?;
             for idx in 0..df.height() {
@@ -83,10 +78,9 @@ pub(super) fn process_lb(
             }
             set_string_column(df, &lbtest, lbtest_vals)?;
         }
-    }
-    if let (Some(lbtest), Some(lbtestcd)) = (col(domain, "LBTEST"), col(domain, "LBTESTCD")) {
-        if has_column(df, &lbtest) && has_column(df, &lbtestcd) {
-            if let Some(ct) = ctx.resolve_ct(domain, "LBTESTCD") {
+    if let (Some(lbtest), Some(lbtestcd)) = (col(domain, "LBTEST"), col(domain, "LBTESTCD"))
+        && has_column(df, &lbtest) && has_column(df, &lbtestcd)
+            && let Some(ct) = ctx.resolve_ct(domain, "LBTESTCD") {
                 let mut test_vals = string_column(df, &lbtest, Trim::Both)?;
                 let testcd_vals = string_column(df, &lbtestcd, Trim::Both)?;
                 for idx in 0..df.height() {
@@ -106,20 +100,16 @@ pub(super) fn process_lb(
                 }
                 set_string_column(df, &lbtest, test_vals)?;
             }
-        }
-    }
-    if let Some(lbdtc) = col(domain, "LBDTC") {
-        if let Some(lbdy) = col(domain, "LBDY") {
+    if let Some(lbdtc) = col(domain, "LBDTC")
+        && let Some(lbdy) = col(domain, "LBDY") {
             compute_study_day(domain, df, &lbdtc, &lbdy, ctx, "RFSTDTC")?;
         }
-    }
-    if let Some(lbendtc) = col(domain, "LBENDTC") {
-        if let Some(lbendy) = col(domain, "LBENDY") {
+    if let Some(lbendtc) = col(domain, "LBENDTC")
+        && let Some(lbendy) = col(domain, "LBENDY") {
             compute_study_day(domain, df, &lbendtc, &lbendy, ctx, "RFSTDTC")?;
         }
-    }
-    if let Some(lbstresc) = col(domain, "LBSTRESC") {
-        if has_column(df, &lbstresc) {
+    if let Some(lbstresc) = col(domain, "LBSTRESC")
+        && has_column(df, &lbstresc) {
             let values = string_column(df, &lbstresc, Trim::Both)?
                 .into_iter()
                 .map(|value| match value.as_str() {
@@ -130,9 +120,8 @@ pub(super) fn process_lb(
                 .collect();
             set_string_column(df, &lbstresc, values)?;
         }
-    }
-    if let (Some(lborres), Some(lbstresc)) = (col(domain, "LBORRES"), col(domain, "LBSTRESC")) {
-        if has_column(df, &lborres) && has_column(df, &lbstresc) {
+    if let (Some(lborres), Some(lbstresc)) = (col(domain, "LBORRES"), col(domain, "LBSTRESC"))
+        && has_column(df, &lborres) && has_column(df, &lbstresc) {
             let orres = string_column(df, &lborres, Trim::Both)?
                 .into_iter()
                 .map(|value| normalize_empty_tokens(&value))
@@ -145,9 +134,8 @@ pub(super) fn process_lb(
             }
             set_string_column(df, &lbstresc, stresc)?;
         }
-    }
-    if let (Some(lbstresc), Some(lbstresn)) = (col(domain, "LBSTRESC"), col(domain, "LBSTRESN")) {
-        if has_column(df, &lbstresc) {
+    if let (Some(lbstresc), Some(lbstresn)) = (col(domain, "LBSTRESC"), col(domain, "LBSTRESN"))
+        && has_column(df, &lbstresc) {
             let stresc_vals = string_column(df, &lbstresc, Trim::Both)?;
             let numeric_vals = stresc_vals
                 .iter()
@@ -155,7 +143,6 @@ pub(super) fn process_lb(
                 .collect::<Vec<_>>();
             set_f64_column(df, &lbstresn, numeric_vals)?;
         }
-    }
     if let Some(lbclsig) = col(domain, "LBCLSIG") {
         let yn_map = map_values([
             ("YES", "Y"),
@@ -175,19 +162,18 @@ pub(super) fn process_lb(
     }
     if let Some(ct) = ctx.resolve_ct(domain, "LBORRESU") {
         for col_name in ["LBORRESU", "LBSTRESU"] {
-            if let Some(name) = col(domain, col_name) {
-                if has_column(df, &name) {
+            if let Some(name) = col(domain, col_name)
+                && has_column(df, &name) {
                     let mut values = string_column(df, &name, Trim::Both)?;
                     for idx in 0..values.len() {
                         values[idx] = normalize_ct_value_keep(ct, &values[idx]);
                     }
                     set_string_column(df, &name, values)?;
                 }
-            }
         }
     }
-    if let Some(lbcolsrt) = col(domain, "LBCOLSRT") {
-        if has_column(df, &lbcolsrt) {
+    if let Some(lbcolsrt) = col(domain, "LBCOLSRT")
+        && has_column(df, &lbcolsrt) {
             let mut values = string_column(df, &lbcolsrt, Trim::Both)?;
             for value in &mut values {
                 if is_yes_no_token(value) {
@@ -196,9 +182,8 @@ pub(super) fn process_lb(
             }
             set_string_column(df, &lbcolsrt, values)?;
         }
-    }
-    if let (Some(lborres), Some(lborresu)) = (col(domain, "LBORRES"), col(domain, "LBORRESU")) {
-        if has_column(df, &lborres) && has_column(df, &lborresu) {
+    if let (Some(lborres), Some(lborresu)) = (col(domain, "LBORRES"), col(domain, "LBORRESU"))
+        && has_column(df, &lborres) && has_column(df, &lborresu) {
             let orres = string_column(df, &lborres, Trim::Both)?;
             let mut orresu = string_column(df, &lborresu, Trim::Both)?;
             for idx in 0..df.height() {
@@ -208,9 +193,8 @@ pub(super) fn process_lb(
             }
             set_string_column(df, &lborresu, orresu)?;
         }
-    }
-    if let (Some(lbstresc), Some(lbstresu)) = (col(domain, "LBSTRESC"), col(domain, "LBSTRESU")) {
-        if has_column(df, &lbstresc) && has_column(df, &lbstresu) {
+    if let (Some(lbstresc), Some(lbstresu)) = (col(domain, "LBSTRESC"), col(domain, "LBSTRESU"))
+        && has_column(df, &lbstresc) && has_column(df, &lbstresu) {
             let stresc = string_column(df, &lbstresc, Trim::Both)?;
             let mut stresu = string_column(df, &lbstresu, Trim::Both)?;
             for idx in 0..df.height() {
@@ -220,6 +204,5 @@ pub(super) fn process_lb(
             }
             set_string_column(df, &lbstresu, stresu)?;
         }
-    }
     Ok(())
 }

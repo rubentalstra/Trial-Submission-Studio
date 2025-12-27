@@ -145,13 +145,11 @@ pub fn validate_domain(
         if let Some(issue) = test_code_issue(domain, variable, df, column, &p21_lookup) {
             issues.push(issue);
         }
-        if let Some(ct_registry) = ctx.ct_registry {
-            if let Some(resolved) = resolve_ct(ct_registry, variable, ctx.ct_catalogs.as_deref()) {
-                if let Some(issue) = ct_issue(variable, df, column, &resolved, &p21_lookup) {
+        if let Some(ct_registry) = ctx.ct_registry
+            && let Some(resolved) = resolve_ct(ct_registry, variable, ctx.ct_catalogs.as_deref())
+                && let Some(issue) = ct_issue(variable, df, column, &resolved, &p21_lookup) {
                     issues.push(issue);
                 }
-            }
-        }
     }
     ConformanceReport {
         domain_code: domain.code.clone(),
@@ -524,7 +522,7 @@ fn ct_issue(
     })
 }
 
-fn build_p21_lookup<'a>(rules: Option<&'a [P21Rule]>) -> BTreeMap<String, &'a P21Rule> {
+fn build_p21_lookup(rules: Option<&[P21Rule]>) -> BTreeMap<String, &P21Rule> {
     let mut lookup = BTreeMap::new();
     if let Some(rules) = rules {
         for rule in rules {

@@ -12,44 +12,39 @@ pub(super) fn process_ae(
     ctx: &ProcessingContext,
 ) -> Result<()> {
     drop_placeholder_rows(domain, df, ctx)?;
-    if let Some(aedur) = col(domain, "AEDUR") {
-        if has_column(df, &aedur) {
+    if let Some(aedur) = col(domain, "AEDUR")
+        && has_column(df, &aedur) {
             let values = string_column(df, &aedur, Trim::Both)?;
             set_string_column(df, &aedur, values)?;
         }
-    }
     for visit_col in ["VISIT", "VISITNUM"] {
-        if let Some(name) = col(domain, visit_col) {
-            if has_column(df, &name) {
+        if let Some(name) = col(domain, visit_col)
+            && has_column(df, &name) {
                 let values = string_column(df, &name, Trim::Both)?;
                 set_string_column(df, &name, values)?;
             }
-        }
     }
     if let Some(start) = col(domain, "AESTDTC") {
         ensure_date_pair_order(df, &start, col(domain, "AEENDTC").as_deref())?;
-        if let Some(end) = col(domain, "AEENDTC") {
-            if has_column(df, &end) {
+        if let Some(end) = col(domain, "AEENDTC")
+            && has_column(df, &end) {
                 let end_vals = string_column(df, &end, Trim::Both)?;
                 set_string_column(df, &end, end_vals)?;
             }
-        }
         if let Some(aestdy) = col(domain, "AESTDY") {
             compute_study_day(domain, df, &start, &aestdy, ctx, "RFSTDTC")?;
         }
-        if let Some(aeend) = col(domain, "AEENDTC") {
-            if let Some(aeendy) = col(domain, "AEENDY") {
+        if let Some(aeend) = col(domain, "AEENDTC")
+            && let Some(aeendy) = col(domain, "AEENDY") {
                 compute_study_day(domain, df, &aeend, &aeendy, ctx, "RFSTDTC")?;
             }
-        }
     }
-    if let Some(teae) = col(domain, "TEAE") {
-        if has_column(df, &teae) {
+    if let Some(teae) = col(domain, "TEAE")
+        && has_column(df, &teae) {
             df.drop_in_place(&teae)?;
         }
-    }
-    if let (Some(aedecod), Some(aeterm)) = (col(domain, "AEDECOD"), col(domain, "AETERM")) {
-        if has_column(df, &aedecod) && has_column(df, &aeterm) {
+    if let (Some(aedecod), Some(aeterm)) = (col(domain, "AEDECOD"), col(domain, "AETERM"))
+        && has_column(df, &aedecod) && has_column(df, &aeterm) {
             let mut decod_vals = string_column(df, &aedecod, Trim::Both)?;
             let term_vals = string_column(df, &aeterm, Trim::Both)?;
             for idx in 0..df.height() {
@@ -59,7 +54,6 @@ pub(super) fn process_ae(
             }
             set_string_column(df, &aedecod, decod_vals)?;
         }
-    }
     apply_map_upper(
         df,
         col(domain, "AEACN").as_deref(),
@@ -146,8 +140,8 @@ pub(super) fn process_ae(
         }
     }
 
-    if let Some(aesintv) = col(domain, "AESINTV") {
-        if has_column(df, &aesintv) {
+    if let Some(aesintv) = col(domain, "AESINTV")
+        && has_column(df, &aesintv) {
             let yn_map = map_values([
                 ("Y", "Y"),
                 ("YES", "Y"),
@@ -163,10 +157,9 @@ pub(super) fn process_ae(
             ]);
             apply_map_upper(df, Some(&aesintv), &yn_map)?;
         }
-    }
 
-    if let Some(aeacndev) = col(domain, "AEACNDEV") {
-        if has_column(df, &aeacndev) {
+    if let Some(aeacndev) = col(domain, "AEACNDEV")
+        && has_column(df, &aeacndev) {
             let ct_dev = ctx.resolve_ct(domain, "AEACNDEV");
             let ct_acn = ctx.resolve_ct(domain, "AEACN");
             let aeacn_col = col(domain, "AEACN").filter(|name| has_column(df, name));
@@ -216,14 +209,12 @@ pub(super) fn process_ae(
                 }
             }
         }
-    }
 
     for visit_col in ["VISIT", "VISITNUM"] {
-        if let Some(name) = col(domain, visit_col) {
-            if has_column(df, &name) {
+        if let Some(name) = col(domain, visit_col)
+            && has_column(df, &name) {
                 df.drop_in_place(&name)?;
             }
-        }
     }
     Ok(())
 }

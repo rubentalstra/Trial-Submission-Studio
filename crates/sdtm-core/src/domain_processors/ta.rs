@@ -35,19 +35,17 @@ pub(super) fn process_ta(
         filter_rows(df, &keep)?;
     }
     for col_name in ["EPOCH", "ARMCD", "ARM", "ETCD", "STUDYID", "DOMAIN"] {
-        if let Some(name) = col(domain, col_name) {
-            if has_column(df, &name) {
+        if let Some(name) = col(domain, col_name)
+            && has_column(df, &name) {
                 let values = string_column(df, &name, Trim::Both)?;
                 set_string_column(df, &name, values)?;
             }
-        }
     }
-    if let Some(taetord) = col(domain, "TAETORD") {
-        if has_column(df, &taetord) {
+    if let Some(taetord) = col(domain, "TAETORD")
+        && has_column(df, &taetord) {
             let values = numeric_column_f64(df, &taetord)?;
             set_f64_column(df, &taetord, values)?;
             sort_by_numeric(df, &taetord)?;
         }
-    }
     Ok(())
 }

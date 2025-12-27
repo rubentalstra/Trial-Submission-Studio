@@ -51,11 +51,10 @@ fn read_csv_rows_internal(path: &Path, max_rows: Option<usize>) -> Result<Vec<Ve
             continue;
         }
         rows.push(row);
-        if let Some(limit) = max_rows {
-            if rows.len() >= limit {
+        if let Some(limit) = max_rows
+            && rows.len() >= limit {
                 break;
             }
-        }
     }
     Ok(rows)
 }

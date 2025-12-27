@@ -71,11 +71,10 @@ impl CodeList {
         if let Some(text) = self.values_upper.get(&upper) {
             return Some(text.clone());
         }
-        if let Some(key) = normalize_numeric_key(trimmed) {
-            if let Some(text) = self.values_numeric.get(&key) {
+        if let Some(key) = normalize_numeric_key(trimmed)
+            && let Some(text) = self.values_numeric.get(&key) {
                 return Some(text.clone());
             }
-        }
         None
     }
 }
@@ -202,15 +201,14 @@ pub fn apply_study_metadata(table: CsvTable, metadata: &StudyMetadata) -> Applie
             for row in table.rows.iter_mut() {
                 let code_value = row.get(code_idx).map(String::as_str).unwrap_or("");
                 let decoded = codelist.lookup_text(code_value);
-                if let Some(text) = decoded {
-                    if row
+                if let Some(text) = decoded
+                    && row
                         .get(base_idx)
                         .map(|value| value.trim().is_empty())
                         .unwrap_or(true)
                     {
                         row[base_idx] = text;
                     }
-                }
             }
             code_to_base.insert(
                 table.headers[code_idx].clone(),

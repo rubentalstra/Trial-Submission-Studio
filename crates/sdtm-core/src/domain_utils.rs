@@ -81,7 +81,7 @@ pub fn infer_seq_column(domain: &Domain) -> Option<String> {
             upper.ends_with("SEQ") && upper != "SEQ"
         })
         .collect();
-    candidates.sort_by(|a, b| a.to_uppercase().cmp(&b.to_uppercase()));
+    candidates.sort_by_key(|a| a.to_uppercase());
     if let Some(name) = candidates.first() {
         return Some(name.clone());
     }
@@ -94,7 +94,7 @@ pub fn infer_seq_column(domain: &Domain) -> Option<String> {
             upper.ends_with("GRPID") && upper != "GRPID"
         })
         .collect();
-    grp_candidates.sort_by(|a, b| a.to_uppercase().cmp(&b.to_uppercase()));
+    grp_candidates.sort_by_key(|a| a.to_uppercase());
     grp_candidates.first().cloned()
 }
 

@@ -158,7 +158,7 @@ fn find_suffix_column(domain: &Domain, df: &DataFrame, suffix: &str) -> Option<S
         .filter(|name| name.to_uppercase().ends_with(suffix))
         .filter(|name| df.column(name).is_ok())
         .collect();
-    candidates.sort_by(|a, b| a.to_uppercase().cmp(&b.to_uppercase()));
+    candidates.sort_by_key(|a| a.to_uppercase());
     for name in candidates {
         if column_has_values(df, &name) {
             return Some(name);
@@ -187,21 +187,18 @@ pub fn build_relationship_frames(
 ) -> Result<Vec<DomainFrame>> {
     let domain_map = build_domain_map(domains);
     let mut frames = Vec::new();
-    if let Some(relrec_domain) = domain_map.get("RELREC") {
-        if let Some(frame) = build_relrec(domain_frames, domains, relrec_domain, study_id)? {
+    if let Some(relrec_domain) = domain_map.get("RELREC")
+        && let Some(frame) = build_relrec(domain_frames, domains, relrec_domain, study_id)? {
             frames.push(frame);
         }
-    }
-    if let Some(relspec_domain) = domain_map.get("RELSPEC") {
-        if let Some(frame) = build_relspec(domain_frames, domains, relspec_domain, study_id)? {
+    if let Some(relspec_domain) = domain_map.get("RELSPEC")
+        && let Some(frame) = build_relspec(domain_frames, domains, relspec_domain, study_id)? {
             frames.push(frame);
         }
-    }
-    if let Some(relsub_domain) = domain_map.get("RELSUB") {
-        if let Some(frame) = build_relsub(domain_frames, relsub_domain, study_id)? {
+    if let Some(relsub_domain) = domain_map.get("RELSUB")
+        && let Some(frame) = build_relsub(domain_frames, relsub_domain, study_id)? {
             frames.push(frame);
         }
-    }
     Ok(frames)
 }
 
@@ -512,7 +509,7 @@ fn collect_relspec_records(
     for refid_col in refid_cols {
         for idx in 0..df.height() {
             let usubjid = column_value(df, usubjid_col, idx).trim().to_string();
-            let refid = column_value(df, &refid_col, idx).trim().to_string();
+            let refid = column_value(df, refid_col, idx).trim().to_string();
             if usubjid.is_empty() || refid.is_empty() {
                 continue;
             }
@@ -520,22 +517,20 @@ fn collect_relspec_records(
             let entry = records
                 .entry(key)
                 .or_insert_with(|| RelspecRecord::new(study_id, &usubjid, &refid, relspec_domain));
-            if entry.spec.is_empty() {
-                if let Some(spec_col) = spec_col {
+            if entry.spec.is_empty()
+                && let Some(spec_col) = spec_col {
                     let spec = column_value(df, spec_col, idx).trim().to_string();
                     if !spec.is_empty() {
                         entry.spec = spec;
                     }
                 }
-            }
-            if entry.parent.is_empty() {
-                if let Some(parent_col) = parent_col {
+            if entry.parent.is_empty()
+                && let Some(parent_col) = parent_col {
                     let parent = column_value(df, parent_col, idx).trim().to_string();
                     if !parent.is_empty() {
                         entry.parent = parent;
                     }
                 }
-            }
         }
     }
 }

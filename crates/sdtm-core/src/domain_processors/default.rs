@@ -12,8 +12,8 @@ pub(super) fn process_default(
     ctx: &ProcessingContext,
 ) -> Result<()> {
     drop_placeholder_rows(domain, df, ctx)?;
-    if let Some(epoch_col) = col(domain, "EPOCH") {
-        if has_column(df, &epoch_col) {
+    if let Some(epoch_col) = col(domain, "EPOCH")
+        && has_column(df, &epoch_col) {
             let values = string_column(df, &epoch_col, Trim::Both)?;
             let normalized = values
                 .into_iter()
@@ -21,6 +21,5 @@ pub(super) fn process_default(
                 .collect();
             set_string_column(df, &epoch_col, normalized)?;
         }
-    }
     Ok(())
 }

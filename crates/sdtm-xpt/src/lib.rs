@@ -157,7 +157,7 @@ pub fn read_xpt(path: &Path) -> Result<XptDataset> {
     }
     offset += RECORD_LEN;
 
-    let columns = parse_namestr_records(&namestr_data, var_count, namestr_len)?;
+    let columns = parse_namestr_records(namestr_data, var_count, namestr_len)?;
     let obs_len = observation_length(&columns)?;
     let rows = parse_observations(&data, offset, obs_len, &columns)?;
 
@@ -199,7 +199,7 @@ fn build_fixed_header(prefix: &str) -> Result<Vec<u8>> {
     }
     let mut record = Vec::with_capacity(RECORD_LEN);
     record.extend_from_slice(prefix.as_bytes());
-    record.extend_from_slice(&vec![b'0'; 30]);
+    record.extend_from_slice(&[b'0'; 30]);
     record.extend_from_slice(b"  ");
     Ok(record)
 }
@@ -211,7 +211,7 @@ fn build_library_header_data(options: &XptWriterOptions) -> Result<Vec<u8>> {
     record.extend_from_slice(&pad_ascii("SASLIB", 8));
     record.extend_from_slice(&pad_ascii(&options.sas_version, 8));
     record.extend_from_slice(&pad_ascii(&options.os_name, 8));
-    record.extend_from_slice(&vec![b' '; 24]);
+    record.extend_from_slice(&[b' '; 24]);
     record.extend_from_slice(&pad_ascii(&options.created, 16));
     Ok(record)
 }
@@ -236,7 +236,7 @@ fn build_member_header_data(dataset: &XptDataset, options: &XptWriterOptions) ->
     record.extend_from_slice(&pad_ascii("SASDATA", 8));
     record.extend_from_slice(&pad_ascii(&options.sas_version, 8));
     record.extend_from_slice(&pad_ascii(&options.os_name, 8));
-    record.extend_from_slice(&vec![b' '; 24]);
+    record.extend_from_slice(&[b' '; 24]);
     record.extend_from_slice(&pad_ascii(&options.created, 16));
     Ok(record)
 }
@@ -244,7 +244,7 @@ fn build_member_header_data(dataset: &XptDataset, options: &XptWriterOptions) ->
 fn build_member_header_second(dataset: &XptDataset, options: &XptWriterOptions) -> Result<Vec<u8>> {
     let mut record = Vec::with_capacity(RECORD_LEN);
     record.extend_from_slice(&pad_ascii(&options.modified, 16));
-    record.extend_from_slice(&vec![b' '; 16]);
+    record.extend_from_slice(&[b' '; 16]);
     let label = dataset
         .label
         .clone()
@@ -324,7 +324,7 @@ fn write_observation_records<W: Write>(
                     encode_numeric(parsed, column.length, options.missing_numeric)
                 }
                 (XptValue::Num(value), XptType::Char) => {
-                    let rendered = value.map(|v| format_numeric(v)).unwrap_or_default();
+                    let rendered = value.map(format_numeric).unwrap_or_default();
                     encode_char(&rendered, column.length)
                 }
             };
@@ -460,14 +460,14 @@ fn observation_length(columns: &[XptColumn]) -> Result<usize> {
     Ok(total)
 }
 
-fn read_record<'a>(data: &'a [u8], offset: usize) -> Result<&'a [u8]> {
+fn read_record(data: &[u8], offset: usize) -> Result<&[u8]> {
     let slice = data
         .get(offset..offset + RECORD_LEN)
         .ok_or_else(|| anyhow!("record out of bounds"))?;
     Ok(slice)
 }
 
-fn read_block<'a>(data: &'a [u8], offset: usize, len: usize) -> Result<&'a [u8]> {
+fn read_block(data: &[u8], offset: usize, len: usize) -> Result<&[u8]> {
     let slice = data
         .get(offset..offset + len)
         .ok_or_else(|| anyhow!("block out of bounds"))?;
@@ -475,7 +475,7 @@ fn read_block<'a>(data: &'a [u8], offset: usize, len: usize) -> Result<&'a [u8]>
 }
 
 fn align_to_record(offset: usize) -> usize {
-    if offset % RECORD_LEN == 0 {
+    if offset.is_multiple_of(RECORD_LEN) {
         offset
     } else {
         offset + (RECORD_LEN - (offset % RECORD_LEN))

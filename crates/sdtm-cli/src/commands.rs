@@ -154,7 +154,7 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
         let mut combined: Option<DataFrame> = None;
         let mut domain_mappings = Vec::new();
         for (path, _variant) in files {
-            let raw_table = match read_csv_table(&path) {
+            let raw_table = match read_csv_table(path) {
                 Ok(table) => table,
                 Err(error) => {
                     errors.push(format!("{}: {error}", path.display()));
@@ -254,16 +254,14 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
                 } else {
                     combined = Some(mapped.data);
                 }
-            } else {
-                if let Err(error) = insert_frame(
-                    &mut processed_frames,
-                    DomainFrame {
-                        domain_code: domain_code.to_uppercase(),
-                        data: mapped.data,
-                    },
-                ) {
-                    errors.push(format!("{}: {error}", path.display()));
-                }
+            } else if let Err(error) = insert_frame(
+                &mut processed_frames,
+                DomainFrame {
+                    domain_code: domain_code.to_uppercase(),
+                    data: mapped.data,
+                },
+            ) {
+                errors.push(format!("{}: {error}", path.display()));
             }
         }
 

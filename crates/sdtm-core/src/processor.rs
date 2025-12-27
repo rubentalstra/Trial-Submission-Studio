@@ -370,7 +370,7 @@ fn assign_sequence_with_tracker(
     let seq_series = df.column(seq_column).ok().cloned();
     let had_existing = seq_series
         .as_ref()
-        .map(|series| column_has_values(series))
+        .map(column_has_values)
         .unwrap_or(false);
     let mut values: Vec<Option<f64>> = Vec::with_capacity(df.height());
     for idx in 0..df.height() {
@@ -455,16 +455,14 @@ fn parse_sequence_value(text: &str) -> Option<i64> {
     if let Ok(value) = trimmed.parse::<i64>() {
         return Some(value);
     }
-    if let Ok(value) = trimmed.parse::<f64>() {
-        if value.is_finite() {
+    if let Ok(value) = trimmed.parse::<f64>()
+        && value.is_finite() {
             let rounded = value.round();
-            if (value - rounded).abs() <= f64::EPSILON {
-                if rounded >= 0.0 && rounded <= i64::MAX as f64 {
+            if (value - rounded).abs() <= f64::EPSILON
+                && rounded >= 0.0 && rounded <= i64::MAX as f64 {
                     return Some(rounded as i64);
                 }
-            }
         }
-    }
     None
 }
 

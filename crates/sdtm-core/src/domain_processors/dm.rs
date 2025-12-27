@@ -12,14 +12,13 @@ pub(super) fn process_dm(
     ctx: &ProcessingContext,
 ) -> Result<()> {
     drop_placeholder_rows(domain, df, ctx)?;
-    if let Some(age) = col(domain, "AGE") {
-        if has_column(df, &age) {
+    if let Some(age) = col(domain, "AGE")
+        && has_column(df, &age) {
             let values = numeric_column_f64(df, &age)?;
             set_f64_column(df, &age, values)?;
         }
-    }
-    if let Some(ageu) = col(domain, "AGEU") {
-        if has_column(df, &ageu) {
+    if let Some(ageu) = col(domain, "AGEU")
+        && has_column(df, &ageu) {
             let values = string_column(df, &ageu, Trim::Both)?
                 .into_iter()
                 .map(|value| {
@@ -32,15 +31,13 @@ pub(super) fn process_dm(
                 .collect();
             set_string_column(df, &ageu, values)?;
         }
-    }
-    if let Some(country) = col(domain, "COUNTRY") {
-        if has_column(df, &country) {
+    if let Some(country) = col(domain, "COUNTRY")
+        && has_column(df, &country) {
             let values = string_column(df, &country, Trim::Both)?;
             set_string_column(df, &country, values)?;
         }
-    }
-    if let Some(ethnic) = col(domain, "ETHNIC") {
-        if has_column(df, &ethnic) {
+    if let Some(ethnic) = col(domain, "ETHNIC")
+        && has_column(df, &ethnic) {
             let values = string_column(df, &ethnic, Trim::Both)?
                 .into_iter()
                 .map(|value| {
@@ -54,9 +51,8 @@ pub(super) fn process_dm(
                 .collect();
             set_string_column(df, &ethnic, values)?;
         }
-    }
-    if let Some(race) = col(domain, "RACE") {
-        if has_column(df, &race) {
+    if let Some(race) = col(domain, "RACE")
+        && has_column(df, &race) {
             let values = string_column(df, &race, Trim::Both)?
                 .into_iter()
                 .map(|value| {
@@ -71,9 +67,8 @@ pub(super) fn process_dm(
                 .collect();
             set_string_column(df, &race, values)?;
         }
-    }
-    if let Some(sex) = col(domain, "SEX") {
-        if has_column(df, &sex) {
+    if let Some(sex) = col(domain, "SEX")
+        && has_column(df, &sex) {
             let values = string_column(df, &sex, Trim::Both)?
                 .into_iter()
                 .map(|value| {
@@ -88,25 +83,22 @@ pub(super) fn process_dm(
                 .collect();
             set_string_column(df, &sex, values)?;
         }
-    }
     for date_col in [
         "RFICDTC", "RFSTDTC", "RFENDTC", "RFXSTDTC", "RFXENDTC", "DMDTC",
     ] {
-        if let Some(name) = col(domain, date_col) {
-            if has_column(df, &name) {
+        if let Some(name) = col(domain, date_col)
+            && has_column(df, &name) {
                 let values = string_column(df, &name, Trim::Both)?;
                 set_string_column(df, &name, values)?;
             }
-        }
     }
     if let (Some(dmdtc), Some(dmdy), Some(rfstdtc)) = (
         col(domain, "DMDTC"),
         col(domain, "DMDY"),
         col(domain, "RFSTDTC"),
-    ) {
-        if has_column(df, &dmdtc) && has_column(df, &rfstdtc) {
+    )
+        && has_column(df, &dmdtc) && has_column(df, &rfstdtc) {
             compute_study_day(domain, df, &dmdtc, &dmdy, ctx, "RFSTDTC")?;
         }
-    }
     Ok(())
 }

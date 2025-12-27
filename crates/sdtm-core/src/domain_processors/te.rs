@@ -13,12 +13,11 @@ pub(super) fn process_te(
 ) -> Result<()> {
     drop_placeholder_rows(domain, df, ctx)?;
     for col_name in ["STUDYID", "DOMAIN", "ETCD", "ELEMENT", "TESTRL", "TEENRL"] {
-        if let Some(name) = col(domain, col_name) {
-            if has_column(df, &name) {
+        if let Some(name) = col(domain, col_name)
+            && has_column(df, &name) {
                 let values = string_column(df, &name, Trim::Both)?;
                 set_string_column(df, &name, values)?;
             }
-        }
     }
     Ok(())
 }

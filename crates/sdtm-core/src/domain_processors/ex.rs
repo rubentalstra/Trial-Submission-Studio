@@ -12,14 +12,13 @@ pub(super) fn process_ex(
     ctx: &ProcessingContext,
 ) -> Result<()> {
     drop_placeholder_rows(domain, df, ctx)?;
-    if let Some(extrt) = col(domain, "EXTRT") {
-        if has_column(df, &extrt) {
+    if let Some(extrt) = col(domain, "EXTRT")
+        && has_column(df, &extrt) {
             let values = string_column(df, &extrt, Trim::Both)?;
             set_string_column(df, &extrt, values)?;
         }
-    }
-    if let (Some(extrt), Some(exeltm)) = (col(domain, "EXTRT"), col(domain, "EXELTM")) {
-        if has_column(df, &extrt) && has_column(df, &exeltm) {
+    if let (Some(extrt), Some(exeltm)) = (col(domain, "EXTRT"), col(domain, "EXELTM"))
+        && has_column(df, &extrt) && has_column(df, &exeltm) {
             let mut extrt_vals = string_column(df, &extrt, Trim::Both)?;
             let mut exeltm_vals = string_column(df, &exeltm, Trim::Both)?;
             for idx in 0..df.height() {
@@ -32,17 +31,15 @@ pub(super) fn process_ex(
             set_string_column(df, &extrt, extrt_vals)?;
             set_string_column(df, &exeltm, exeltm_vals)?;
         }
-    }
     for date_col in ["EXSTDTC", "EXENDTC"] {
-        if let Some(name) = col(domain, date_col) {
-            if has_column(df, &name) {
+        if let Some(name) = col(domain, date_col)
+            && has_column(df, &name) {
                 let values = string_column(df, &name, Trim::Both)?
                     .into_iter()
                     .map(|value| normalize_iso8601_value(&value))
                     .collect();
                 set_string_column(df, &name, values)?;
             }
-        }
     }
     if let (Some(exstdtc), Some(exstdy)) = (col(domain, "EXSTDTC"), col(domain, "EXSTDY")) {
         compute_study_day(domain, df, &exstdtc, &exstdy, ctx, "RFSTDTC")?;
@@ -50,30 +47,27 @@ pub(super) fn process_ex(
     if let (Some(exendtc), Some(exendy)) = (col(domain, "EXENDTC"), col(domain, "EXENDY")) {
         compute_study_day(domain, df, &exendtc, &exendy, ctx, "RFSTDTC")?;
     }
-    if let Some(exdose) = col(domain, "EXDOSE") {
-        if has_column(df, &exdose) {
+    if let Some(exdose) = col(domain, "EXDOSE")
+        && has_column(df, &exdose) {
             let values = numeric_column_f64(df, &exdose)?;
             set_f64_column(df, &exdose, values)?;
         }
-    }
     for col_name in [
         "EXDOSFRM", "EXDOSU", "EXDOSFRQ", "EXDUR", "EXSCAT", "EXCAT", "EPOCH", "EXELTM",
         "EXTPTREF", "EXRFTDTC",
     ] {
-        if let Some(name) = col(domain, col_name) {
-            if has_column(df, &name) {
+        if let Some(name) = col(domain, col_name)
+            && has_column(df, &name) {
                 let values = string_column(df, &name, Trim::Both)?;
                 set_string_column(df, &name, values)?;
             }
-        }
     }
     for col_name in ["EXSTDY", "EXENDY"] {
-        if let Some(name) = col(domain, col_name) {
-            if has_column(df, &name) {
+        if let Some(name) = col(domain, col_name)
+            && has_column(df, &name) {
                 let values = numeric_column_f64(df, &name)?;
                 set_f64_column(df, &name, values)?;
             }
-        }
     }
     Ok(())
 }

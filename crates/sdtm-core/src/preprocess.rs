@@ -68,20 +68,18 @@ pub fn fill_missing_test_fields(
         } else {
             vec![String::new(); df.height()]
         };
-        if let Some(ct) = ctx.resolve_ct(domain, "DSDECOD") {
-            if let Some((_header, mapped, raw)) = ct_column_match(table, domain, ct) {
+        if let Some(ct) = ctx.resolve_ct(domain, "DSDECOD")
+            && let Some((_header, mapped, raw)) = ct_column_match(table, domain, ct) {
                 for idx in 0..df.height().min(mapped.len()).min(raw.len()) {
-                    if decod_vals[idx].trim().is_empty() {
-                        if let Some(ct_value) = &mapped[idx] {
+                    if decod_vals[idx].trim().is_empty()
+                        && let Some(ct_value) = &mapped[idx] {
                             decod_vals[idx] = ct_value.clone();
                         }
-                    }
                     if term_vals[idx].trim().is_empty() && !raw[idx].trim().is_empty() {
                         term_vals[idx] = raw[idx].trim().to_string();
                     }
                 }
             }
-        }
         if let Some((values, label)) = completion_column(table, domain) {
             for idx in 0..df.height().min(values.len()) {
                 if decod_vals[idx].trim().is_empty() && !values[idx].trim().is_empty() {
@@ -138,11 +136,10 @@ pub fn fill_missing_test_fields(
         candidate_headers.dedup();
         let mut candidates: Vec<Vec<String>> = Vec::new();
         for header in candidate_headers {
-            if let Some(values) = table_column_values(table, &header) {
-                if values.iter().any(|value| !value.trim().is_empty()) {
+            if let Some(values) = table_column_values(table, &header)
+                && values.iter().any(|value| !value.trim().is_empty()) {
                     candidates.push(values);
                 }
-            }
         }
         if !candidates.is_empty() {
             for idx in 0..df.height() {
@@ -218,11 +215,10 @@ pub fn fill_missing_test_fields(
                         })
                     })
                     .or_else(|| ctdatest.and_then(|ct| resolve_ct_value_from_hint(ct, &hint)));
-                if test_name.is_none() {
-                    if let (Some(ct), Some(code)) = (ctdatestcd, test_code.as_ref()) {
+                if test_name.is_none()
+                    && let (Some(ct), Some(code)) = (ctdatestcd, test_code.as_ref()) {
                         test_name = ct.preferred_terms.get(code).cloned();
                     }
-                }
                 if test_name.is_none() && datest_extensible {
                     test_name = label.clone().or_else(|| Some(prefix.to_string()));
                 }
@@ -300,26 +296,22 @@ pub fn fill_missing_test_fields(
                     if needs_orres {
                         daorres_vals[idx] = value.to_string();
                     }
-                    if needs_test {
-                        if let Some(name) = test_name {
+                    if needs_test
+                        && let Some(name) = test_name {
                             datest_vals[idx] = name.clone();
                         }
-                    }
-                    if needs_testcd {
-                        if let Some(code) = test_code {
+                    if needs_testcd
+                        && let Some(code) = test_code {
                             datestcd_vals[idx] = code.clone();
                         }
-                    }
-                    if needs_orresu {
-                        if let Some(unit) = unit {
+                    if needs_orresu
+                        && let Some(unit) = unit {
                             daorresu_vals[idx] = unit.clone();
                         }
-                    }
-                    if needs_stresu {
-                        if let Some(unit) = unit {
+                    if needs_stresu
+                        && let Some(unit) = unit {
                             dastresu_vals[idx] = unit.clone();
                         }
-                    }
                     break;
                 }
             }
@@ -339,11 +331,10 @@ pub fn fill_missing_test_fields(
             }
             let label = table_label(table, header).unwrap_or_else(|| header.clone());
             let category = ct_cat.and_then(|ct| resolve_ct_value_from_hint(ct, &label));
-            if let Some(category) = category {
-                if let Some(values) = table_column_values(table, header) {
+            if let Some(category) = category
+                && let Some(values) = table_column_values(table, header) {
                     candidates.push((label, values, category));
                 }
-            }
         }
         if !candidates.is_empty() {
             let mut ietest_vals = if let Ok(series) = df.column("IETEST") {

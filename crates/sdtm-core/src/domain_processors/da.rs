@@ -23,8 +23,8 @@ pub(super) fn process_da(
         ]);
         apply_map_upper(df, Some(&dastat), &stat_map)?;
     }
-    if let (Some(dastat), Some(dareasnd)) = (col(domain, "DASTAT"), col(domain, "DAREASND")) {
-        if has_column(df, &dastat) && has_column(df, &dareasnd) {
+    if let (Some(dastat), Some(dareasnd)) = (col(domain, "DASTAT"), col(domain, "DAREASND"))
+        && has_column(df, &dastat) && has_column(df, &dareasnd) {
             let reason_vals = string_column(df, &dareasnd, Trim::Both)?;
             let mut stat_vals = string_column(df, &dastat, Trim::Both)?;
             for idx in 0..df.height() {
@@ -34,9 +34,8 @@ pub(super) fn process_da(
             }
             set_string_column(df, &dastat, stat_vals)?;
         }
-    }
-    if let (Some(daorresu), Some(daorres)) = (col(domain, "DAORRESU"), col(domain, "DAORRES")) {
-        if has_column(df, &daorresu) && has_column(df, &daorres) {
+    if let (Some(daorresu), Some(daorres)) = (col(domain, "DAORRESU"), col(domain, "DAORRES"))
+        && has_column(df, &daorresu) && has_column(df, &daorres) {
             let orres = string_column(df, &daorres, Trim::Both)?;
             let mut orresu = string_column(df, &daorresu, Trim::Both)?;
             for (idx, value) in orres.iter().enumerate() {
@@ -46,9 +45,8 @@ pub(super) fn process_da(
             }
             set_string_column(df, &daorresu, orresu)?;
         }
-    }
-    if let (Some(daorres), Some(dastresc)) = (col(domain, "DAORRES"), col(domain, "DASTRESC")) {
-        if has_column(df, &daorres) && has_column(df, &dastresc) {
+    if let (Some(daorres), Some(dastresc)) = (col(domain, "DAORRES"), col(domain, "DASTRESC"))
+        && has_column(df, &daorres) && has_column(df, &dastresc) {
             let orres = string_column(df, &daorres, Trim::Both)?;
             let mut stresc = string_column(df, &dastresc, Trim::Both)?;
             for (idx, value) in orres.iter().enumerate() {
@@ -58,33 +56,28 @@ pub(super) fn process_da(
             }
             set_string_column(df, &dastresc, stresc)?;
         }
-    }
-    if let (Some(dastresc), Some(dastresn)) = (col(domain, "DASTRESC"), col(domain, "DASTRESN")) {
-        if has_column(df, &dastresc) {
+    if let (Some(dastresc), Some(dastresn)) = (col(domain, "DASTRESC"), col(domain, "DASTRESN"))
+        && has_column(df, &dastresc) {
             let stresc = string_column(df, &dastresc, Trim::Both)?;
             let mut stresn_vals: Vec<Option<f64>> = vec![None; df.height()];
             if has_column(df, &dastresn) {
                 stresn_vals = numeric_column_f64(df, &dastresn)?;
             }
             for (idx, value) in stresc.iter().enumerate() {
-                if stresn_vals[idx].is_none() {
-                    if let Some(parsed) = parse_f64(value) {
+                if stresn_vals[idx].is_none()
+                    && let Some(parsed) = parse_f64(value) {
                         stresn_vals[idx] = Some(parsed);
                     }
-                }
                 if !value.is_empty() && parse_f64(value).is_none() {
                     stresn_vals[idx] = None;
                 }
             }
             set_f64_column(df, &dastresn, stresn_vals)?;
         }
-    }
-    if let Some(dadtc) = col(domain, "DADTC") {
-        if has_column(df, &dadtc) {
-            if let Some(dady) = col(domain, "DADY") {
+    if let Some(dadtc) = col(domain, "DADTC")
+        && has_column(df, &dadtc)
+            && let Some(dady) = col(domain, "DADY") {
                 compute_study_day(domain, df, &dadtc, &dady, ctx, "RFSTDTC")?;
             }
-        }
-    }
     Ok(())
 }

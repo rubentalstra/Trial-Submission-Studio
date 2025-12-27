@@ -148,21 +148,18 @@ fn is_duplicate_of_mapped(name: &str, populated: &BTreeSet<String>) -> bool {
             return true;
         }
     }
-    if let Some(prefix) = upper.strip_suffix("DATE") {
-        if populated.contains(&format!("{prefix}DTC")) {
+    if let Some(prefix) = upper.strip_suffix("DATE")
+        && populated.contains(&format!("{prefix}DTC")) {
             return true;
         }
-    }
-    if let Some(prefix) = upper.strip_suffix("DAT") {
-        if populated.contains(&format!("{prefix}DTC")) {
+    if let Some(prefix) = upper.strip_suffix("DAT")
+        && populated.contains(&format!("{prefix}DTC")) {
             return true;
         }
-    }
-    if let Some(prefix) = upper.strip_suffix("DT") {
-        if populated.contains(&format!("{prefix}DTC")) {
+    if let Some(prefix) = upper.strip_suffix("DT")
+        && populated.contains(&format!("{prefix}DTC")) {
             return true;
         }
-    }
     false
 }
 
@@ -198,11 +195,10 @@ pub fn build_suppqual(
         if is_duplicate_of_mapped(&name, &populated) {
             continue;
         }
-        if let Some(exclusions) = exclusion_columns {
-            if exclusions.contains(&name.to_uppercase()) {
+        if let Some(exclusions) = exclusion_columns
+            && exclusions.contains(&name.to_uppercase()) {
                 continue;
             }
-        }
         extra_cols.push(name);
     }
 
@@ -221,9 +217,7 @@ pub fn build_suppqual(
             }
         }
     }
-    extra_cols = extra_cols
-        .into_iter()
-        .filter(|name| {
+    extra_cols.retain(|name| {
             let upper = name.to_uppercase();
             if upper.ends_with("CD") && upper.len() > 2 {
                 let base = &upper[..upper.len() - 2];
@@ -232,8 +226,7 @@ pub fn build_suppqual(
                 }
             }
             true
-        })
-        .collect();
+        });
 
     if extra_cols.is_empty() {
         return Ok(None);
@@ -258,11 +251,10 @@ pub fn build_suppqual(
     }
 
     let mut push_value = |key: Option<&str>, value: String| {
-        if let Some(name) = key {
-            if let Some(entry) = values.get_mut(name) {
+        if let Some(name) = key
+            && let Some(entry) = values.get_mut(name) {
                 entry.push(value);
             }
-        }
     };
 
     let mut qnam_used: BTreeMap<String, String> = BTreeMap::new();

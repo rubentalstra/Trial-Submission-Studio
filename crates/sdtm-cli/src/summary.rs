@@ -294,13 +294,13 @@ fn align_column(table: &mut Table, index: usize, alignment: CellAlignment) {
     }
 }
 
-fn ordered_summaries<'a>(summaries: &'a [DomainSummary]) -> Vec<&'a DomainSummary> {
+fn ordered_summaries(summaries: &[DomainSummary]) -> Vec<&DomainSummary> {
     let mut ordered: Vec<&DomainSummary> = summaries.iter().collect();
     ordered.sort_by(|a, b| summary_sort_key(&a.domain_code).cmp(&summary_sort_key(&b.domain_code)));
     ordered
 }
 
-fn ordered_data_checks<'a>(checks: &'a [DomainDataCheck]) -> Vec<&'a DomainDataCheck> {
+fn ordered_data_checks(checks: &[DomainDataCheck]) -> Vec<&DomainDataCheck> {
     let mut ordered: Vec<&DomainDataCheck> = checks.iter().collect();
     ordered.sort_by(|a, b| summary_sort_key(&a.domain_code).cmp(&summary_sort_key(&b.domain_code)));
     ordered

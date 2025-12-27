@@ -22,7 +22,7 @@ fn identifier_columns(domain: &Domain) -> Vec<String> {
             }
         })
         .collect();
-    columns.sort_by(|a, b| a.to_uppercase().cmp(&b.to_uppercase()));
+    columns.sort_by_key(|a| a.to_uppercase());
     columns
 }
 
@@ -62,7 +62,7 @@ pub fn dedupe_frames_by_identifiers(
 fn should_dedupe(df: &DataFrame, keys: &[String]) -> bool {
     let present: Vec<String> = keys
         .iter()
-        .filter(|key| df.column(*key).is_ok())
+        .filter(|key| df.column(key).is_ok())
         .cloned()
         .collect();
     if present.is_empty() {

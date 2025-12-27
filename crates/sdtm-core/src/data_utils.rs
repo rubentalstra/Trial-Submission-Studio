@@ -63,14 +63,13 @@ pub fn column_hint_for_domain(
         .headers
         .iter()
         .position(|header| header.eq_ignore_ascii_case(column))?;
-    if let Some(labels) = table.labels.as_ref() {
-        if let Some(label) = labels.get(idx) {
+    if let Some(labels) = table.labels.as_ref()
+        && let Some(label) = labels.get(idx) {
             let trimmed = label.trim();
             if !trimmed.is_empty() {
                 return Some((trimmed.to_string(), true));
             }
         }
-    }
     let header = table.headers.get(idx)?.clone();
     let is_standard = domain
         .variables

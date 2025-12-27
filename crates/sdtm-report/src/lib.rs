@@ -840,7 +840,7 @@ fn resolve_codelist(
 }
 
 fn parse_codelist_codes(raw: &str) -> Vec<String> {
-    raw.split(|ch| ch == ';' || ch == ',')
+    raw.split([';', ','])
         .map(|part| part.trim())
         .filter(|part| !part.is_empty())
         .map(|part| part.to_string())
@@ -870,14 +870,13 @@ fn render_assignment(
         .transformation
         .clone()
         .unwrap_or_else(|| mapping.source_column.clone());
-    if let Some(var) = variable {
-        if var.data_type == VariableType::Char {
+    if let Some(var) = variable
+        && var.data_type == VariableType::Char {
             expr = format!("strip(coalescec({}, ''))", expr);
             if should_upcase(var) {
                 expr = format!("upcase({expr})");
             }
         }
-    }
     format!("{} = {};", mapping.target_variable, expr)
 }
 

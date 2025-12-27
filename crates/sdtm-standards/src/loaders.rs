@@ -176,7 +176,7 @@ fn build_domains(
     let mut domains = Vec::new();
     for (code, mut vars) in grouped {
         let metadata = meta.get(&code);
-        vars.sort_by(|left, right| compare_variable_order(left, right));
+        vars.sort_by(compare_variable_order);
         domains.push(Domain {
             code: code.clone(),
             description: metadata.and_then(|m| m.label.clone()),
@@ -263,16 +263,14 @@ pub fn load_ct_catalog(path: &Path) -> Result<CtCatalog> {
             });
             entry.codelist_name = codelist_name.clone();
             entry.extensible |= extensible;
-            if let Some(standard) = row.get("Standard and Date").filter(|v| !v.is_empty()) {
-                if !entry.standards.contains(standard) {
+            if let Some(standard) = row.get("Standard and Date").filter(|v| !v.is_empty())
+                && !entry.standards.contains(standard) {
                     entry.standards.push(standard.clone());
                 }
-            }
-            if let Some(source) = path.file_name().and_then(|v| v.to_str()) {
-                if !entry.sources.contains(&source.to_string()) {
+            if let Some(source) = path.file_name().and_then(|v| v.to_str())
+                && !entry.sources.contains(&source.to_string()) {
                     entry.sources.push(source.to_string());
                 }
-            }
             by_code.insert(code.clone(), entry);
             continue;
         }
@@ -320,16 +318,14 @@ pub fn load_ct_catalog(path: &Path) -> Result<CtCatalog> {
                 .insert(submission_value.clone(), code.clone());
             insert_ct_alias(&mut entry, &submission_value, code);
         }
-        if let Some(standard) = row.get("Standard and Date").filter(|v| !v.is_empty()) {
-            if !entry.standards.contains(standard) {
+        if let Some(standard) = row.get("Standard and Date").filter(|v| !v.is_empty())
+            && !entry.standards.contains(standard) {
                 entry.standards.push(standard.clone());
             }
-        }
-        if let Some(source) = path.file_name().and_then(|v| v.to_str()) {
-            if !entry.sources.contains(&source.to_string()) {
+        if let Some(source) = path.file_name().and_then(|v| v.to_str())
+            && !entry.sources.contains(&source.to_string()) {
                 entry.sources.push(source.to_string());
             }
-        }
         if let Some(synonyms_raw) = row.get("CDISC Synonym(s)").filter(|v| !v.is_empty()) {
             for syn in split_synonyms(synonyms_raw) {
                 insert_ct_alias(&mut entry, &submission_value, &syn);
@@ -421,7 +417,7 @@ fn insert_ct_alias(entry: &mut ControlledTerminology, submission_value: &str, al
     let list = entry
         .submission_value_synonyms
         .entry(submission_value.to_string())
-        .or_insert_with(Vec::new);
+        .or_default();
     if !list.iter().any(|value| value.eq_ignore_ascii_case(trimmed)) {
         list.push(trimmed.to_string());
     }
