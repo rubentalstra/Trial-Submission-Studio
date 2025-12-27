@@ -123,7 +123,7 @@ are noted where applicable.
 
 ## 0.3 Standards Ingestion and Rule Registry
 
-- [ ] **0.3.1** Extend `sdtm-standards/src/loaders.rs` to capture dataset Class
+- [x] **0.3.1** Extend `sdtm-standards/src/loaders.rs` to capture dataset Class
       from `Datasets.csv`. Map rules by class (General Observation,
       Special-Purpose, Trial Design, Study Reference).
 
@@ -679,9 +679,9 @@ are noted where applicable.
 
 | Phase     | Total   | Completed | Remaining |
 | --------- | ------- | --------- | --------- |
-| 0         | 35      | 10        | 25        |
+| 0         | 35      | 11        | 24        |
 | 1         | 67      | 0         | 67        |
 | 2         | 32      | 0         | 32        |
 | 3         | 8       | 0         | 8         |
 | 4         | 8       | 0         | 8         |
-| **Total** | **150** | **10**    | **140**   |
+| **Total** | **150** | **11**    | **139**   |

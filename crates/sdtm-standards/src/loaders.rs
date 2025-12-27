@@ -5,7 +5,8 @@ use anyhow::{Context, Result};
 use csv::ReaderBuilder;
 
 use sdtm_model::{
-    ControlledTerminology, CtCatalog, CtRegistry, DatasetMetadata, Domain, Variable, VariableType,
+    ControlledTerminology, CtCatalog, CtRegistry, DatasetClass, DatasetMetadata, Domain, Variable,
+    VariableType,
 };
 
 #[derive(Debug, Clone)]
@@ -132,11 +133,17 @@ fn build_domains(
         if name.is_empty() {
             continue;
         }
+        let class_name = row.get("Class").filter(|v| !v.is_empty()).cloned();
+        // Parse the class name into the strongly-typed DatasetClass enum
+        let dataset_class = class_name
+            .as_ref()
+            .and_then(|c| c.parse::<DatasetClass>().ok());
         meta.insert(
             name.to_uppercase(),
             DatasetMetadata {
                 dataset_name: name.to_uppercase(),
-                class_name: row.get("Class").filter(|v| !v.is_empty()).cloned(),
+                class_name,
+                dataset_class,
                 label: row.get("Dataset Label").filter(|v| !v.is_empty()).cloned(),
                 structure: row.get("Structure").filter(|v| !v.is_empty()).cloned(),
             },
@@ -181,6 +188,7 @@ fn build_domains(
             code: code.clone(),
             description: metadata.and_then(|m| m.label.clone()),
             class_name: metadata.and_then(|m| m.class_name.clone()),
+            dataset_class: metadata.and_then(|m| m.dataset_class),
             label: metadata.and_then(|m| m.label.clone()),
             structure: metadata.and_then(|m| m.structure.clone()),
             dataset_name: Some(code.clone()),
@@ -463,4 +471,143 @@ pub fn load_p21_rules(path: &Path) -> Result<Vec<P21Rule>> {
         });
     }
     Ok(rules)
+}
+
+/// A registry of SDTM domains that allows querying by code and class.
+/// Per SDTMIG v3.4 Chapter 2, domains are organized by observation class.
+#[derive(Debug, Clone, Default)]
+pub struct DomainRegistry {
+    /// All domains indexed by uppercase code
+    domains_by_code: BTreeMap<String, Domain>,
+    /// Domain codes grouped by dataset class
+    domains_by_class: BTreeMap<DatasetClass, Vec<String>>,
+}
+
+impl DomainRegistry {
+    /// Create a new registry from a list of domains.
+    pub fn new(domains: Vec<Domain>) -> Self {
+        let mut registry = Self::default();
+        for domain in domains {
+            registry.insert(domain);
+        }
+        registry
+    }
+
+    /// Insert a domain into the registry.
+    pub fn insert(&mut self, domain: Domain) {
+        let code = domain.code.to_uppercase();
+        if let Some(class) = domain.dataset_class {
+            self.domains_by_class
+                .entry(class)
+                .or_default()
+                .push(code.clone());
+        }
+        self.domains_by_code.insert(code, domain);
+    }
+
+    /// Get a domain by its code (case-insensitive).
+    pub fn get(&self, code: &str) -> Option<&Domain> {
+        self.domains_by_code.get(&code.to_uppercase())
+    }
+
+    /// Get all domains of a specific class.
+    pub fn get_by_class(&self, class: DatasetClass) -> Vec<&Domain> {
+        self.domains_by_class
+            .get(&class)
+            .map(|codes| {
+                codes
+                    .iter()
+                    .filter_map(|code| self.domains_by_code.get(code))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    /// Get all General Observation class domains (Interventions, Events, Findings, Findings About).
+    /// Per SDTMIG v3.4 Section 2.1.
+    pub fn get_general_observation_domains(&self) -> Vec<&Domain> {
+        let mut domains = Vec::new();
+        for class in [
+            DatasetClass::Interventions,
+            DatasetClass::Events,
+            DatasetClass::Findings,
+            DatasetClass::FindingsAbout,
+        ] {
+            domains.extend(self.get_by_class(class));
+        }
+        domains
+    }
+
+    /// Get all Special-Purpose domains (CO, DM, SE, SM, SV).
+    /// Per SDTMIG v3.4 Chapter 5.
+    pub fn get_special_purpose_domains(&self) -> Vec<&Domain> {
+        self.get_by_class(DatasetClass::SpecialPurpose)
+    }
+
+    /// Get all Trial Design domains (TA, TD, TE, TI, TM, TS, TV).
+    /// Per SDTMIG v3.4 Chapter 7.
+    pub fn get_trial_design_domains(&self) -> Vec<&Domain> {
+        self.get_by_class(DatasetClass::TrialDesign)
+    }
+
+    /// Get all Relationship datasets (RELREC, RELSPEC, RELSUB, SUPPQUAL).
+    /// Per SDTMIG v3.4 Chapter 8.
+    pub fn get_relationship_domains(&self) -> Vec<&Domain> {
+        self.get_by_class(DatasetClass::Relationship)
+    }
+
+    /// Get all Study Reference domains (OI, DI).
+    /// Per SDTMIG v3.4 Chapter 9.
+    pub fn get_study_reference_domains(&self) -> Vec<&Domain> {
+        self.get_by_class(DatasetClass::StudyReference)
+    }
+
+    /// Get the dataset class for a domain code.
+    pub fn get_class(&self, code: &str) -> Option<DatasetClass> {
+        self.get(code).and_then(|d| d.dataset_class)
+    }
+
+    /// Check if a domain code belongs to a specific class.
+    pub fn is_class(&self, code: &str, class: DatasetClass) -> bool {
+        self.get_class(code) == Some(class)
+    }
+
+    /// Check if a domain is a General Observation domain.
+    pub fn is_general_observation(&self, code: &str) -> bool {
+        self.get(code)
+            .map(|d| d.is_general_observation())
+            .unwrap_or(false)
+    }
+
+    /// Get all domain codes.
+    pub fn codes(&self) -> impl Iterator<Item = &String> {
+        self.domains_by_code.keys()
+    }
+
+    /// Get all domains.
+    pub fn domains(&self) -> impl Iterator<Item = &Domain> {
+        self.domains_by_code.values()
+    }
+
+    /// Get the number of domains in the registry.
+    pub fn len(&self) -> usize {
+        self.domains_by_code.len()
+    }
+
+    /// Check if the registry is empty.
+    pub fn is_empty(&self) -> bool {
+        self.domains_by_code.is_empty()
+    }
+}
+
+/// Load the default SDTMIG domain registry.
+pub fn load_default_domain_registry() -> Result<DomainRegistry> {
+    let domains = load_default_sdtm_ig_domains()?;
+    Ok(DomainRegistry::new(domains))
+}
+
+/// Load a domain registry from a directory.
+pub fn load_domain_registry(base_dir: &Path) -> Result<DomainRegistry> {
+    let domains = load_sdtm_ig_domains(base_dir)?;
+    Ok(DomainRegistry::new(domains))
 }
