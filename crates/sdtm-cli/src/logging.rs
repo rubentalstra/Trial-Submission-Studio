@@ -24,12 +24,13 @@ use std::collections::BTreeMap;
 use std::fmt as std_fmt;
 use std::fs::OpenOptions;
 use std::io::{self, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use tracing::field::{Field, Visit};
 use tracing::level_filters::LevelFilter;
-use tracing::{Event, Level};
+use tracing::span::{Attributes, Id, Record};
+use tracing::{Event, Level, Subscriber};
 use tracing_subscriber::{
     EnvFilter,
     fmt::{
@@ -38,6 +39,7 @@ use tracing_subscriber::{
         time::{FormatTime, SystemTime},
     },
     layer::SubscriberExt,
+    layer::{Context, Layer},
     registry::LookupSpan,
     util::SubscriberInitExt,
 };
@@ -224,6 +226,7 @@ where
 
             tracing_subscriber::registry()
                 .with(filter)
+                .with(FieldCaptureLayer)
                 .with(layer)
                 .init();
         }
@@ -237,11 +240,13 @@ where
             if config.with_timestamps {
                 tracing_subscriber::registry()
                     .with(filter)
+                    .with(FieldCaptureLayer)
                     .with(layer)
                     .init();
             } else {
                 tracing_subscriber::registry()
                     .with(filter)
+                    .with(FieldCaptureLayer)
                     .with(layer.without_time())
                     .init();
             }
@@ -254,8 +259,76 @@ where
 
             tracing_subscriber::registry()
                 .with(filter)
+                .with(FieldCaptureLayer)
                 .with(layer)
                 .init();
+        }
+    }
+}
+
+/// Captures span fields so formatted logs can reuse structured context.
+#[derive(Debug, Default)]
+struct SpanFields {
+    fields: BTreeMap<String, String>,
+}
+
+impl Visit for SpanFields {
+    fn record_str(&mut self, field: &Field, value: &str) {
+        self.fields
+            .insert(field.name().to_string(), value.to_string());
+    }
+
+    fn record_bool(&mut self, field: &Field, value: bool) {
+        self.fields
+            .insert(field.name().to_string(), value.to_string());
+    }
+
+    fn record_i64(&mut self, field: &Field, value: i64) {
+        self.fields
+            .insert(field.name().to_string(), value.to_string());
+    }
+
+    fn record_u64(&mut self, field: &Field, value: u64) {
+        self.fields
+            .insert(field.name().to_string(), value.to_string());
+    }
+
+    fn record_f64(&mut self, field: &Field, value: f64) {
+        self.fields
+            .insert(field.name().to_string(), value.to_string());
+    }
+
+    fn record_debug(&mut self, field: &Field, value: &dyn std_fmt::Debug) {
+        self.fields
+            .insert(field.name().to_string(), format!("{value:?}"));
+    }
+}
+
+/// Stores span fields in extensions for later lookup by the formatter.
+struct FieldCaptureLayer;
+
+impl<S> Layer<S> for FieldCaptureLayer
+where
+    S: Subscriber + for<'a> LookupSpan<'a>,
+{
+    fn on_new_span(&self, attrs: &Attributes<'_>, id: &Id, ctx: Context<'_, S>) {
+        if let Some(span) = ctx.span(id) {
+            let mut fields = SpanFields::default();
+            attrs.record(&mut fields);
+            span.extensions_mut().insert(fields);
+        }
+    }
+
+    fn on_record(&self, id: &Id, values: &Record<'_>, ctx: Context<'_, S>) {
+        if let Some(span) = ctx.span(id) {
+            let mut extensions = span.extensions_mut();
+            if let Some(fields) = extensions.get_mut::<SpanFields>() {
+                values.record(fields);
+            } else {
+                let mut fields = SpanFields::default();
+                values.record(&mut fields);
+                extensions.insert(fields);
+            }
         }
     }
 }
@@ -284,7 +357,7 @@ where
 {
     fn format_event(
         &self,
-        _ctx: &FmtContext<'_, S, N>,
+        ctx: &FmtContext<'_, S, N>,
         mut writer: Writer<'_>,
         event: &Event<'_>,
     ) -> std_fmt::Result {
@@ -297,11 +370,13 @@ where
         write!(writer, " ")?;
 
         let mut visitor = HumanFieldVisitor::default();
+        let stage = enrich_from_spans(ctx, &mut visitor);
         event.record(&mut visitor);
 
         let message = visitor
             .take_message()
             .unwrap_or_else(|| event.metadata().name().to_string());
+        let message = normalize_message(&message, stage);
         let context = format_context(&mut visitor);
         if !context.is_empty() {
             write!(writer, "{context} ")?;
@@ -311,7 +386,8 @@ where
 
         let details = format_details(&mut visitor);
         if !details.is_empty() {
-            write!(writer, " ({})", details.join(", "))?;
+            write!(writer, " | ")?;
+            write_details(&mut writer, &details)?;
         }
 
         writeln!(writer)
@@ -344,6 +420,13 @@ impl HumanFieldVisitor {
     fn take_field(&mut self, name: &str) -> Option<String> {
         self.fields.remove(name)
     }
+
+    /// Merge fields into the current visitor, allowing newer values to override.
+    fn extend_fields(&mut self, fields: &BTreeMap<String, String>) {
+        for (key, value) in fields {
+            self.fields.insert(key.clone(), value.clone());
+        }
+    }
 }
 
 impl Visit for HumanFieldVisitor {
@@ -372,36 +455,20 @@ impl Visit for HumanFieldVisitor {
     }
 }
 
-/// Format core context (study/domain/dataset) into a compact prefix.
+/// Format core context (domain and dataset) into a compact prefix.
 fn format_context(fields: &mut HumanFieldVisitor) -> String {
-    let study_id = fields.take_field("study_id");
-    let dataset_name = fields.take_field("dataset_name");
-    let mut domain = fields
+    let domain = fields
         .take_field("domain_code")
         .or_else(|| fields.take_field("domain"));
+    let dataset = fields.take_field("dataset_name");
 
-    if let Some(dataset_name) = dataset_name {
-        match &domain {
-            Some(domain_code) if dataset_name != *domain_code => {
-                domain = Some(format!("{domain_code}/{dataset_name}"));
-            }
-            Some(_) => {}
-            None => domain = Some(dataset_name),
+    match (domain, dataset) {
+        (Some(domain), Some(dataset)) if dataset != domain => {
+            format!("[{domain}][{dataset}]")
         }
-    }
-
-    let mut parts = Vec::new();
-    if let Some(study_id) = study_id {
-        parts.push(study_id);
-    }
-    if let Some(domain) = domain {
-        parts.push(domain);
-    }
-
-    if parts.is_empty() {
-        String::new()
-    } else {
-        format!("[{}]", parts.join(" | "))
+        (Some(domain), _) => format!("[{domain}]"),
+        (None, Some(dataset)) => format!("[{dataset}]"),
+        (None, None) => String::new(),
     }
 }
 
@@ -422,6 +489,7 @@ fn format_details(fields: &mut HumanFieldVisitor) -> Vec<String> {
     let define_xml = fields.take_field("define_xml");
     let source_file = fields.take_field("source_file");
     let duration_ms = fields.take_field("duration_ms");
+    let sequence = fields.take_field("sequence");
 
     if let (Some(input_rows), Some(output_rows)) = (input_rows.as_ref(), output_rows.as_ref()) {
         if input_rows == output_rows {
@@ -459,14 +527,19 @@ fn format_details(fields: &mut HumanFieldVisitor) -> Vec<String> {
         details.push(format!("sas={sas_count}"));
     }
     if let Some(define_xml) = define_xml {
-        details.push(format!("define={define_xml}"));
+        details.push(format!("define={}", format_path_tail(&define_xml, 2)));
     }
 
-    if let Some(source_file) = source_file {
-        details.push(format!("file={source_file}"));
+    if let Some(source_file) = source_file
+        && source_file != "unknown"
+    {
+        details.push(format!("file={}", format_path_tail(&source_file, 1)));
     }
     if let Some(duration_ms) = duration_ms {
-        details.push(format!("duration={}", format_duration(&duration_ms)));
+        details.push(format!("time={}", format_duration(&duration_ms)));
+    }
+    if let Some(sequence) = sequence {
+        details.push(format!("seq={sequence}"));
     }
 
     details
@@ -482,6 +555,124 @@ fn format_duration(duration_ms: &str) -> String {
         format!("{seconds:.1}s")
     } else {
         format!("{value}ms")
+    }
+}
+
+/// Pick the nearest stage name from span scope, if available.
+fn enrich_from_spans<S, N>(
+    ctx: &FmtContext<'_, S, N>,
+    visitor: &mut HumanFieldVisitor,
+) -> Option<&'static str>
+where
+    S: Subscriber + for<'a> LookupSpan<'a>,
+    N: for<'writer> FormatFields<'writer> + 'static,
+{
+    let mut stage = None;
+    if let Some(scope) = ctx.event_scope() {
+        for span in scope.from_root() {
+            if let Some(fields) = span.extensions().get::<SpanFields>() {
+                visitor.extend_fields(&fields.fields);
+            }
+            if let Some(stage_name) = stage_from_span(span.metadata().name()) {
+                stage = Some(stage_name);
+            }
+        }
+    }
+    stage
+}
+
+/// Map span names to human-friendly stage labels.
+fn stage_from_span(name: &str) -> Option<&'static str> {
+    match name {
+        "ingest" => Some("ingest"),
+        "map" => Some("map"),
+        "preprocess" => Some("preprocess"),
+        "domain_rules" => Some("rules"),
+        "suppqual" => Some("suppqual"),
+        "validate" => Some("validate"),
+        "output" => Some("output"),
+        _ => None,
+    }
+}
+
+/// Normalize known messages and add stage context when helpful.
+fn normalize_message(message: &str, stage: Option<&str>) -> String {
+    match message {
+        "mapping complete" => "map".to_string(),
+        "preprocess complete" => "preprocess".to_string(),
+        "domain rules complete" => "rules".to_string(),
+        "suppqual complete" => "suppqual".to_string(),
+        "suppqual skipped" => "suppqual skipped".to_string(),
+        "file processed" => "file".to_string(),
+        "validation summary" => "validate summary".to_string(),
+        "output prepared" => "output prepared".to_string(),
+        "ingest complete"
+        | "domain processing complete"
+        | "validation complete"
+        | "output complete" => message.to_string(),
+        _ => match stage {
+            Some(stage) if message.starts_with(stage) => message.to_string(),
+            Some(stage) => format!("{stage}: {message}"),
+            None => message.to_string(),
+        },
+    }
+}
+
+/// Render a shortened path tail for log readability.
+fn format_path_tail(path: &str, segments: usize) -> String {
+    if segments == 0 {
+        return path.to_string();
+    }
+    let components: Vec<_> = Path::new(path)
+        .components()
+        .filter_map(|component| match component {
+            std::path::Component::Normal(value) => value.to_str(),
+            _ => None,
+        })
+        .map(str::to_string)
+        .collect();
+    if components.is_empty() {
+        return path.to_string();
+    }
+    let start = components.len().saturating_sub(segments);
+    let sep = std::path::MAIN_SEPARATOR.to_string();
+    components[start..].join(&sep)
+}
+
+/// Write details separated with pipes and color key numeric values.
+fn write_details(writer: &mut Writer<'_>, details: &[String]) -> std_fmt::Result {
+    for (idx, detail) in details.iter().enumerate() {
+        if idx > 0 {
+            write!(writer, " | ")?;
+        }
+        write_detail(writer, detail)?;
+    }
+    Ok(())
+}
+
+/// Write a single detail token with optional ANSI coloring.
+fn write_detail(writer: &mut Writer<'_>, detail: &str) -> std_fmt::Result {
+    if let Some((label, value)) = detail.split_once('=') {
+        write!(writer, "{label}=")?;
+        if writer.has_ansi_escapes()
+            && let Some(color) = value_color_for_label(label)
+        {
+            write!(writer, "{color}{value}\x1b[0m")?;
+            return Ok(());
+        }
+        write!(writer, "{value}")
+    } else {
+        write!(writer, "{detail}")
+    }
+}
+
+/// Pick ANSI colors for key numeric detail values.
+fn value_color_for_label(label: &str) -> Option<&'static str> {
+    match label {
+        "errors" => Some("\x1b[31m"),
+        "warnings" => Some("\x1b[33m"),
+        "rows" | "domains" | "files" | "xpt" | "xml" | "sas" | "time" | "seq" => Some("\x1b[36m"),
+        _ => None,
     }
 }
 

@@ -177,28 +177,28 @@ are noted where applicable.
 
 ## 0.4 Observability and Logging
 
-- [x] **0.4.1** Adopt `tracing` with a shared `tracing-subscriber` init in
+- [ ] **0.4.1** Adopt `tracing` with a shared `tracing-subscriber` init in
       `sdtm-cli/src/logging.rs`. Route all logs through structured spans.
 
-- [x] **0.4.2** Instrument pipeline stages (ingest, mapping, preprocess,
+- [ ] **0.4.2** Instrument pipeline stages (ingest, mapping, preprocess,
       validation, output) with spans that log row counts, domain counts, and
       durations.
 
-- [x] **0.4.3** Include `study_id`, `domain_code`, `dataset_name`, and source
-      file path in log fields. Propagate context through the pipeline.
+- [ ] **0.4.3** Include `domain_code`, `dataset_name`, and source file path in
+      log fields. Propagate context through the pipeline.
 
-- [x] **0.4.4** Add CLI flags: `--verbose`, `--quiet`, `--log-level`,
+- [ ] **0.4.4** Add CLI flags: `--verbose`, `--quiet`, `--log-level`,
       `--log-format`, `--log-file`. Ensure consistent behavior across
       subcommands.
 
-- [x] **0.4.5** Default to redacted logging for row-level data. Require explicit
+- [ ] **0.4.5** Default to redacted logging for row-level data. Require explicit
       `--log-data` flag for PHI values. Document PHI-safe logging rules in
       README.
 
-- [x] **0.4.6** Adopt `clap-verbosity-flag` for `-v/-q` handling and ensure CLI
+- [ ] **0.4.6** Adopt `clap-verbosity-flag` for `-v/-q` handling and ensure CLI
       verbosity/log-level overrides `RUST_LOG`.
 
-- [x] **0.4.7** Provide a human-friendly log formatter with colored levels and
+- [ ] **0.4.7** Provide a human-friendly log formatter with colored levels and
       concise context/detail output.
 
 ## 0.5 Strictness and Non-Fabrication Policy
