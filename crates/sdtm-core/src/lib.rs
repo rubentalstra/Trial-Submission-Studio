@@ -18,6 +18,13 @@ pub mod study_pipeline_context;
 pub mod suppqual;
 mod wide;
 
+// Re-export preprocess module types
+pub use preprocess::{
+    DomainPreprocessor, PreprocessConfig, PreprocessContext, PreprocessRegistry, PreprocessRule,
+    RuleCategory, RuleExecutor, RuleMetadata, build_default_preprocess_registry,
+    fill_missing_test_fields, preprocess_domain,
+};
+
 pub use ct_utils::{
     CtResolution, compact_key, completion_column, ct_column_match, is_valid_ct_value,
     is_valid_submission_value, is_yes_no_token, nci_code_for, normalize_ct_value,
@@ -50,7 +57,6 @@ pub use pipeline::{
     BaseRulesStep, CtNormalizationStep, DomainPipeline, DomainProcessorStep, PipelineState,
     ProcessingStep, SequenceAssignmentStep, build_default_pipeline,
 };
-pub use preprocess::fill_missing_test_fields;
 pub use processing_context::{ProcessingContext, ProcessingOptions};
 pub use processor::{
     apply_base_rules, assign_sequence, normalize_ct_columns, process_domain,

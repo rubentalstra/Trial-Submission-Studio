@@ -125,6 +125,14 @@ pub struct StudyArgs {
     /// controlled terminology normalization.
     #[arg(long = "no-lenient-ct")]
     pub no_lenient_ct: bool,
+
+    /// Require explicit mapping metadata before populating derived values.
+    ///
+    /// When set, preprocessing rules will only populate derived values
+    /// (--TEST, --TESTCD, --ORRES, etc.) if there is explicit mapping metadata
+    /// specifying the source column. This prevents heuristic guessing.
+    #[arg(long = "require-explicit-mapping")]
+    pub require_explicit_mapping: bool,
 }
 
 #[derive(Clone, Copy, ValueEnum)]

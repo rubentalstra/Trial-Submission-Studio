@@ -49,6 +49,16 @@ pub struct ProcessingOptions {
     /// Default: true (for backward compatibility)
     /// Strict mode: should be false
     pub allow_lenient_ct_matching: bool,
+
+    /// Require explicit mapping metadata before populating derived values.
+    ///
+    /// When enabled, preprocessing rules will only populate derived values
+    /// (--TEST, --TESTCD, --ORRES, etc.) if there is explicit mapping metadata
+    /// specifying the source column. This prevents heuristic guessing.
+    ///
+    /// Default: false (for backward compatibility)
+    /// Strict mode: should be true
+    pub require_explicit_mapping: bool,
 }
 
 impl Default for ProcessingOptions {
@@ -61,6 +71,7 @@ impl Default for ProcessingOptions {
             // Strict mode should set these to false
             allow_heuristic_inference: true,
             allow_lenient_ct_matching: true,
+            require_explicit_mapping: false,
         }
     }
 }
@@ -80,6 +91,7 @@ impl ProcessingOptions {
             warn_on_rewrite: true,
             allow_heuristic_inference: false,
             allow_lenient_ct_matching: false,
+            require_explicit_mapping: true,
         }
     }
 }

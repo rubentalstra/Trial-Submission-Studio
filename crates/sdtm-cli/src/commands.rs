@@ -76,6 +76,7 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
             warn_on_rewrite: true,
             allow_heuristic_inference: !args.no_heuristic_inference,
             allow_lenient_ct_matching: !args.no_lenient_ct,
+            require_explicit_mapping: !args.require_explicit_mapping,
         }
     };
     let mut pipeline = StudyPipelineContext::new(&study_id)
