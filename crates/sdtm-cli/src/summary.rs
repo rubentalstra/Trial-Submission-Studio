@@ -267,21 +267,8 @@ fn apply_issue_table_style(table: &mut Table) {
         .load_preset(UTF8_FULL)
         .apply_modifier(UTF8_ROUND_CORNERS)
         .apply_modifier(UTF8_SOLID_INNER_BORDERS)
-        .set_content_arrangement(ContentArrangement::DynamicFullWidth)
+        .set_content_arrangement(ContentArrangement::Dynamic)
         .set_width(200);
-    if table.column_count() >= 9 {
-        table.set_constraints(vec![
-            ColumnConstraint::UpperBoundary(Width::Fixed(10)),
-            ColumnConstraint::UpperBoundary(Width::Fixed(9)),
-            ColumnConstraint::UpperBoundary(Width::Fixed(12)),
-            ColumnConstraint::UpperBoundary(Width::Fixed(10)),
-            ColumnConstraint::UpperBoundary(Width::Fixed(10)),
-            ColumnConstraint::UpperBoundary(Width::Fixed(10)),
-            ColumnConstraint::UpperBoundary(Width::Fixed(12)),
-            ColumnConstraint::UpperBoundary(Width::Percentage(45)),
-            ColumnConstraint::UpperBoundary(Width::Percentage(30)),
-        ]);
-    }
 }
 
 fn apply_data_check_table_style(table: &mut Table) {
