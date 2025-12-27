@@ -132,6 +132,26 @@ pub const TRANS_FINDINGS_TIMING: &str = "TRANS0012";
 /// SDTMIG guidance for GO class domains (STUDYID, DOMAIN, USUBJID, --SEQ).
 pub const TRANS_GO_IDENTIFIERS: &str = "TRANS0013";
 
+/// Internal: --TEST value exceeds 40 characters
+/// Per SDTMIG 4.5.3.1, --TEST is limited to 40 characters (except IE/TI/TS).
+pub const TRANS_TEST_LENGTH: &str = "TRANS0014";
+
+/// Internal: --TESTCD value exceeds 8 characters
+/// Per SDTMIG, --TESTCD is limited to 8 characters.
+pub const TRANS_TESTCD_LENGTH: &str = "TRANS0015";
+
+/// Internal: QNAM value exceeds 8 characters
+/// Per SDTMIG 8.4, QNAM is limited to 8 characters.
+pub const TRANS_QNAM_LENGTH: &str = "TRANS0016";
+
+/// Internal: QLABEL value exceeds 40 characters
+/// Per SDTMIG 4.5.3.1, QLABEL is limited to 40 characters.
+pub const TRANS_QLABEL_LENGTH: &str = "TRANS0017";
+
+/// Internal: Text value exceeds 200 characters (SAS V5 limit)
+/// Per SDTMIG 4.2.1, character variables have max length 200.
+pub const TRANS_TEXT_LENGTH_200: &str = "TRANS0018";
+
 // ============================================================================
 // Rule Resolver
 // ============================================================================
@@ -399,6 +419,69 @@ impl RuleResolver {
             },
         );
 
+        map.insert(
+            TRANS_TEST_LENGTH,
+            InternalRuleInfo {
+                message: "--TEST value exceeds 40 characters",
+                description: "Per SDTMIG v3.4 Section 4.5.3.1, the length of --TEST is \
+                              limited to 40 characters to conform to SAS V5 transport \
+                              file format. IE, TI, and TS domains allow up to 200 characters.",
+                category: "Length",
+                severity: "Error",
+                sdtmig_reference: Some("SDTMIG 4.5.3.1"),
+            },
+        );
+
+        map.insert(
+            TRANS_TESTCD_LENGTH,
+            InternalRuleInfo {
+                message: "--TESTCD value exceeds 8 characters",
+                description: "Per SDTMIG, the value of --TESTCD cannot be longer than \
+                              8 characters, and cannot start with a number.",
+                category: "Length",
+                severity: "Error",
+                sdtmig_reference: Some("SDTMIG 4.2.1"),
+            },
+        );
+
+        map.insert(
+            TRANS_QNAM_LENGTH,
+            InternalRuleInfo {
+                message: "QNAM value exceeds 8 characters",
+                description: "Per SDTMIG v3.4 Section 8.4, QNAM serves the same purpose \
+                              as --TESTCD within supplemental qualifier datasets, and is \
+                              subject to the same constraints: max 8 characters.",
+                category: "Length",
+                severity: "Error",
+                sdtmig_reference: Some("SDTMIG 8.4"),
+            },
+        );
+
+        map.insert(
+            TRANS_QLABEL_LENGTH,
+            InternalRuleInfo {
+                message: "QLABEL value exceeds 40 characters",
+                description: "Per SDTMIG v3.4 Section 4.5.3.1, the QLABEL in SUPPQUAL \
+                              datasets is limited to 40 characters, same as --TEST.",
+                category: "Length",
+                severity: "Error",
+                sdtmig_reference: Some("SDTMIG 4.5.3.1"),
+            },
+        );
+
+        map.insert(
+            TRANS_TEXT_LENGTH_200,
+            InternalRuleInfo {
+                message: "Text value exceeds 200 characters",
+                description: "Per SDTMIG v3.4 Section 4.2.1, the maximum SAS V5 transport \
+                              file character variable length is 200 characters. Values \
+                              exceeding this must be split into SUPP-- records.",
+                category: "Length",
+                severity: "Warning",
+                sdtmig_reference: Some("SDTMIG 4.5.3.2"),
+            },
+        );
+
         map
     }
 }
@@ -415,7 +498,9 @@ mod tests {
 
     #[test]
     fn test_internal_rule_prefix() {
-        assert!(RuleResolver::is_internal_rule(TRANS_UNDOCUMENTED_DERIVATION));
+        assert!(RuleResolver::is_internal_rule(
+            TRANS_UNDOCUMENTED_DERIVATION
+        ));
         assert!(RuleResolver::is_internal_rule(TRANS_SEQ_CROSS_SPLIT));
         assert!(!RuleResolver::is_internal_rule(P21_REQUIRED_VALUE_MISSING));
         assert!(!RuleResolver::is_internal_rule(P21_SEQ_DUPLICATE));

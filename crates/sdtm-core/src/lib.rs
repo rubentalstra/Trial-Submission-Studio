@@ -16,6 +16,7 @@ pub mod provenance;
 pub mod relationships;
 pub mod study_pipeline_context;
 pub mod suppqual;
+pub mod text_utils;
 mod wide;
 
 // Re-export preprocess module types
@@ -72,3 +73,9 @@ pub use provenance::{
 pub use relationships::{build_relationship_frames, build_relrec, build_relspec, build_relsub};
 pub use study_pipeline_context::StudyPipelineContext;
 pub use suppqual::{SuppqualInput, SuppqualResult, build_suppqual, suppqual_domain_code};
+pub use text_utils::{
+    QLABEL_MAX_LENGTH, SAS_V5_MAX_LENGTH, SuppSplitRecord, TEST_EXCEPTION_MAX_LENGTH,
+    TEST_MAX_LENGTH, TESTCD_MAX_LENGTH, TextSplitResult, exceeds_qlabel_max, exceeds_sas_v5_max,
+    exceeds_test_max, exceeds_testcd_max, generate_split_qnams, split_for_supp_records,
+    split_text_at_word_boundary, truncate_at_word_boundary,
+};

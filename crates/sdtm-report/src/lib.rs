@@ -114,7 +114,14 @@ pub fn write_dataset_xml_outputs(
             dataset_name: Some(output_dataset_name),
             ..Default::default()
         };
-        write_dataset_xml(&path, domain, frame, study_id, sdtm_ig_version, Some(&options))?;
+        write_dataset_xml(
+            &path,
+            domain,
+            frame,
+            study_id,
+            sdtm_ig_version,
+            Some(&options),
+        )?;
         outputs.push(path);
     }
     Ok(outputs)

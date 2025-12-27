@@ -113,12 +113,40 @@ impl RuleEngine {
                 variable: _,
                 allowed_values,
                 anchor_variable,
-            } => self.check_relative_timing_variable(rule, df, column_lookup, allowed_values, anchor_variable),
+            } => self.check_relative_timing_variable(
+                rule,
+                df,
+                column_lookup,
+                allowed_values,
+                anchor_variable,
+            ),
             RuleContext::DurationUsage {
                 dur_variable,
                 stdtc_variable,
                 endtc_variable,
-            } => self.check_duration_usage(rule, df, column_lookup, dur_variable, stdtc_variable, endtc_variable),
+            } => self.check_duration_usage(
+                rule,
+                df,
+                column_lookup,
+                dur_variable,
+                stdtc_variable,
+                endtc_variable,
+            ),
+            RuleContext::TestLength { max_length, .. } => {
+                self.check_value_length(rule, df, column_lookup, *max_length)
+            }
+            RuleContext::TestCodeLength { max_length } => {
+                self.check_value_length(rule, df, column_lookup, *max_length)
+            }
+            RuleContext::QnamLength { max_length } => {
+                self.check_value_length(rule, df, column_lookup, *max_length)
+            }
+            RuleContext::QlabelLength { max_length } => {
+                self.check_value_length(rule, df, column_lookup, *max_length)
+            }
+            RuleContext::TextLength200 { .. } => {
+                self.check_value_length(rule, df, column_lookup, 200)
+            }
             RuleContext::Other(_) => Vec::new(),
         }
     }
@@ -472,7 +500,8 @@ impl RuleEngine {
 
         // Check if there are populated values in the relative timing variable
         let mut populated_count = 0u64;
-        let valid_upper: BTreeSet<String> = allowed_values.iter().map(|v| v.to_uppercase()).collect();
+        let valid_upper: BTreeSet<String> =
+            allowed_values.iter().map(|v| v.to_uppercase()).collect();
 
         for idx in 0..df.height() {
             let val = any_to_string(rel_series.get(idx).unwrap_or(AnyValue::Null));
@@ -584,6 +613,85 @@ impl RuleEngine {
         }
 
         vec![self.create_issue(rule, redundant_count, None)]
+    }
+
+    /// Check value length for a column against a maximum.
+    ///
+    /// Per SDTMIG v3.4 Section 4.5.3:
+    /// - --TEST: 40 chars (200 for IE/TI/TS)
+    /// - --TESTCD: 8 chars
+    /// - QNAM: 8 chars
+    /// - QLABEL: 40 chars
+    /// - General text: 200 chars (SAS V5 limit)
+    fn check_value_length(
+        &self,
+        rule: &GeneratedRule,
+        df: &DataFrame,
+        column_lookup: &CaseInsensitiveLookup,
+        max_length: usize,
+    ) -> Vec<ConformanceIssue> {
+        let column = match column_lookup.get(&rule.variable) {
+            Some(col) => col,
+            None => return Vec::new(),
+        };
+
+        let series = match df.column(column) {
+            Ok(s) => s,
+            Err(_) => return Vec::new(),
+        };
+
+        let mut violations_count = 0u64;
+        let mut sample_values: Vec<String> = Vec::new();
+
+        for idx in 0..df.height() {
+            let raw = any_to_string(series.get(idx).unwrap_or(AnyValue::Null));
+            let trimmed = raw.trim();
+
+            if trimmed.is_empty() {
+                continue;
+            }
+
+            // Per SDTMIG, length is measured in bytes of ASCII characters
+            if trimmed.len() > max_length {
+                violations_count += 1;
+                // Collect samples (up to 3) for diagnostic purposes
+                if sample_values.len() < 3 {
+                    // Truncate long values for display
+                    let display_val = if trimmed.len() > 50 {
+                        format!("{}... ({})", &trimmed[..47], trimmed.len())
+                    } else {
+                        format!("{} ({})", trimmed, trimmed.len())
+                    };
+                    sample_values.push(display_val);
+                }
+            }
+        }
+
+        if violations_count == 0 {
+            return Vec::new();
+        }
+
+        // Create issue with sample values in message
+        let samples_display = if sample_values.is_empty() {
+            String::new()
+        } else {
+            format!(". Sample values: {}", sample_values.join("; "))
+        };
+
+        vec![ConformanceIssue {
+            code: rule.rule_id.clone(),
+            message: format!(
+                "{} ({} value(s) exceed {} chars){}",
+                rule.message, violations_count, max_length, samples_display
+            ),
+            severity: convert_severity(rule.severity),
+            variable: Some(rule.variable.clone()),
+            count: Some(violations_count),
+            rule_id: Some(rule.rule_id.clone()),
+            category: Some(rule.category.clone()),
+            codelist_code: None,
+            ct_source: None,
+        }]
     }
 
     /// Create a ConformanceIssue from a GeneratedRule.

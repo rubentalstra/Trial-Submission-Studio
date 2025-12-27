@@ -521,16 +521,35 @@ are noted where applicable.
 
 ## 1.3 Length and Text Rules
 
-- [ ] **1.3.1** Validate SDTMIG/SAS V5 length limits: `--TEST` <= 40 (except
-      IE/TI/TS), `--TESTCD`/`QNAM` <= 8, `QLABEL` <= 40.
+- [x] **1.3.1** Validate SDTMIG/SAS V5 length limits: `--TEST` <= 40 (except
+      IE/TI/TS), `--TESTCD`/`QNAM` <= 8, `QLABEL` <= 40. **Implementation
+      notes**: Added internal rule IDs `TRANS0014`-`TRANS0017` in
+      `rule_mapping.rs`. Created `RuleContext` variants (`TestLength`,
+      `TestCodeLength`, `QnamLength`, `QlabelLength`) in `generator.rs`.
+      Implemented `check_value_length()` in `engine.rs` that validates column
+      values against specified maximum lengths and reports violations with
+      sample values. Generated rules are domain-aware: IE/TI/TS domains allow
+      200 chars for --TEST.
 
-- [ ] **1.3.2** Implement long-text splitting (>200 chars) into parent +
+- [x] **1.3.2** Implement long-text splitting (>200 chars) into parent +
       `QNAM1`, `QNAM2` SUPP records with word-boundary splitting and QLABEL
-      rules (Section 4.5.3).
+      rules (Section 4.5.3). **Implementation notes**: Created
+      `text_utils.rs` module in `sdtm-core` with: `split_text_at_word_boundary()`
+      for intelligent text splitting at word boundaries, `generate_split_qnams()`
+      for QNAM suffix handling (per SDTMIG: 8-char QNAMs replace last char with
+      digit), `split_for_supp_records()` for generating SUPP record data,
+      length constants (`SAS_V5_MAX_LENGTH=200`, `TEST_MAX_LENGTH=40`, etc.),
+      and helper functions (`exceeds_*_max()`). All functions exported from
+      `sdtm-core` lib.
 
-- [ ] **1.3.3** Enforce QNAM/QLABEL constraints: QNAM <= 8, QLABEL <= 40, QVAL
+- [x] **1.3.3** Enforce QNAM/QLABEL constraints: QNAM <= 8, QLABEL <= 40, QVAL
       non-empty, uniqueness across
-      `STUDYID,RDOMAIN,USUBJID,IDVAR,IDVARVAL,QNAM`.
+      `STUDYID,RDOMAIN,USUBJID,IDVAR,IDVARVAL,QNAM`. **Implementation notes**:
+      QNAM/QLABEL length validation via generated rules in engine.rs (see
+      1.3.1). QVAL non-empty validated in `cross_domain.rs` via
+      `validate_supp_qval_non_empty()` with rule `TRANS0003`. QNAM uniqueness
+      validated via `validate_supp_qnam_uniqueness()` with rule `SD0086`
+      (P21 rule for duplicate SUPPQUAL records).
 
 ## 1.4 SUPPQUAL and Relationship Rules (Chapter 8)
 

@@ -54,6 +54,22 @@ const TRANS_FINDINGS_TIMING: &str = "TRANS0012";
 /// SDTMIG 4.1 guidance for GO class domains (STUDYID, DOMAIN, USUBJID, --SEQ).
 const TRANS_GO_IDENTIFIERS: &str = "TRANS0013";
 
+/// Internal: --TEST length validation
+/// SDTMIG 4.5.3.1 guidance for test name length limits.
+const TRANS_TEST_LENGTH: &str = "TRANS0014";
+
+/// Internal: --TESTCD length validation
+/// SDTMIG guidance for test code length limits (8 chars).
+const TRANS_TESTCD_LENGTH: &str = "TRANS0015";
+
+/// Internal: QNAM length validation
+/// SDTMIG 8.4 guidance for QNAM length limits (8 chars).
+const TRANS_QNAM_LENGTH: &str = "TRANS0016";
+
+/// Internal: QLABEL length validation
+/// SDTMIG 4.5.3.1 guidance for QLABEL length limits (40 chars).
+const TRANS_QLABEL_LENGTH: &str = "TRANS0017";
+
 use sdtm_model::{CtRegistry, Domain, Variable};
 
 use crate::P21Rule;
@@ -160,6 +176,37 @@ pub enum RuleContext {
         /// End date variable (--ENDTC)
         endtc_variable: String,
     },
+    /// Length validation for --TEST variable (40 chars, or 200 for IE/TI/TS)
+    /// SDTMIG 4.5.3.1
+    TestLength {
+        /// Maximum allowed length (40 or 200 depending on domain)
+        max_length: usize,
+        /// Whether this is an exception domain (IE, TI, TS)
+        is_exception_domain: bool,
+    },
+    /// Length validation for --TESTCD variable (8 chars)
+    TestCodeLength {
+        /// Maximum allowed length (8)
+        max_length: usize,
+    },
+    /// Length validation for QNAM variable (8 chars)
+    /// SDTMIG 8.4
+    QnamLength {
+        /// Maximum allowed length (8)
+        max_length: usize,
+    },
+    /// Length validation for QLABEL variable (40 chars)
+    /// SDTMIG 4.5.3.1
+    QlabelLength {
+        /// Maximum allowed length (40)
+        max_length: usize,
+    },
+    /// Length validation for general text variables (200 chars SAS V5 limit)
+    /// SDTMIG 4.5.3.2
+    TextLength200 {
+        /// Variable name to check
+        variable_name: String,
+    },
     /// Custom/other rule
     Other(String),
 }
@@ -223,6 +270,9 @@ impl RuleGenerator {
 
         // Generate General Observation identifier rules per SDTMIG 4.1
         rules.extend(self.generate_go_identifier_rules(domain));
+
+        // Generate length validation rules per SDTMIG 4.5.3
+        rules.extend(self.generate_length_rules(domain));
 
         rules
     }
@@ -622,10 +672,11 @@ impl RuleGenerator {
             .any(|v| v.name.to_uppercase().ends_with("STDTC"));
 
         // Check if --DTC is present (it should be for Findings)
-        let has_dtc = domain
-            .variables
-            .iter()
-            .any(|v| v.name.to_uppercase().ends_with("DTC") && !v.name.to_uppercase().ends_with("STDTC") && !v.name.to_uppercase().ends_with("ENDTC"));
+        let has_dtc = domain.variables.iter().any(|v| {
+            v.name.to_uppercase().ends_with("DTC")
+                && !v.name.to_uppercase().ends_with("STDTC")
+                && !v.name.to_uppercase().ends_with("ENDTC")
+        });
 
         // Rule: --STDTC should not be used in Findings class domains
         if has_stdtc {
@@ -1017,6 +1068,143 @@ impl RuleGenerator {
                     endtc_variable: endtc_var,
                 },
             });
+        }
+
+        rules
+    }
+
+    /// Generate length validation rules per SDTMIG v3.4 Section 4.5.3.
+    ///
+    /// Per SDTMIG 4.5.3:
+    /// - --TEST is limited to 40 characters (except IE, TI, TS which allow 200)
+    /// - --TESTCD is limited to 8 characters
+    /// - QNAM is limited to 8 characters (same restrictions as --TESTCD)
+    /// - QLABEL is limited to 40 characters
+    /// - Character variables have a SAS V5 max length of 200 characters
+    fn generate_length_rules(&self, domain: &Domain) -> Vec<GeneratedRule> {
+        let mut rules = Vec::new();
+
+        // Build the domain-specific variable prefix
+        let prefix = if domain.code.len() >= 2 {
+            &domain.code[..2]
+        } else {
+            &domain.code
+        };
+
+        // Domains with exception: IE, TI, TS allow --TEST up to 200 chars
+        let is_exception_domain = matches!(domain.code.to_uppercase().as_str(), "IE" | "TI" | "TS");
+        let test_max_length = if is_exception_domain { 200 } else { 40 };
+
+        // Check for --TEST variable (Findings class domains)
+        let test_var = format!("{}TEST", prefix);
+        let has_test = domain
+            .variables
+            .iter()
+            .any(|v| v.name.eq_ignore_ascii_case(&test_var));
+
+        if has_test {
+            rules.push(GeneratedRule {
+                rule_id: TRANS_TEST_LENGTH.to_string(),
+                domain: domain.code.clone(),
+                variable: test_var.clone(),
+                category: "Length".to_string(),
+                severity: RuleSeverity::Error,
+                message: format!(
+                    "{} values must not exceed {} characters per SDTMIG 4.5.3.1",
+                    test_var, test_max_length
+                ),
+                description: format!(
+                    "Per SDTMIG v3.4 Section 4.5.3.1, the length of --TEST is limited to {} \
+                     characters to conform to SAS V5 transport file format.{}",
+                    test_max_length,
+                    if is_exception_domain {
+                        " IE, TI, and TS domains are exceptions allowing up to 200 characters."
+                    } else {
+                        ""
+                    }
+                ),
+                context: RuleContext::TestLength {
+                    max_length: test_max_length,
+                    is_exception_domain,
+                },
+            });
+        }
+
+        // Check for --TESTCD variable
+        let testcd_var = format!("{}TESTCD", prefix);
+        let has_testcd = domain
+            .variables
+            .iter()
+            .any(|v| v.name.eq_ignore_ascii_case(&testcd_var));
+
+        if has_testcd {
+            rules.push(GeneratedRule {
+                rule_id: TRANS_TESTCD_LENGTH.to_string(),
+                domain: domain.code.clone(),
+                variable: testcd_var.clone(),
+                category: "Length".to_string(),
+                severity: RuleSeverity::Error,
+                message: format!(
+                    "{} values must not exceed 8 characters per SDTMIG",
+                    testcd_var
+                ),
+                description: "Per SDTMIG, the value of --TESTCD cannot be longer than \
+                              8 characters, and cannot start with a number. This is a short \
+                              code that serves as a unique identifier for each test."
+                    .to_string(),
+                context: RuleContext::TestCodeLength { max_length: 8 },
+            });
+        }
+
+        // For SUPPQUAL domains, check QNAM and QLABEL
+        let is_supp_domain = domain.code.to_uppercase().starts_with("SUPP");
+
+        if is_supp_domain {
+            // QNAM validation
+            let has_qnam = domain
+                .variables
+                .iter()
+                .any(|v| v.name.eq_ignore_ascii_case("QNAM"));
+
+            if has_qnam {
+                rules.push(GeneratedRule {
+                    rule_id: TRANS_QNAM_LENGTH.to_string(),
+                    domain: domain.code.clone(),
+                    variable: "QNAM".to_string(),
+                    category: "Length".to_string(),
+                    severity: RuleSeverity::Error,
+                    message: "QNAM values must not exceed 8 characters per SDTMIG 8.4".to_string(),
+                    description: "Per SDTMIG v3.4 Section 8.4, QNAM serves the same purpose \
+                                  as --TESTCD within supplemental qualifier datasets and is \
+                                  subject to the same constraints: maximum 8 characters, \
+                                  cannot start with a number."
+                        .to_string(),
+                    context: RuleContext::QnamLength { max_length: 8 },
+                });
+            }
+
+            // QLABEL validation
+            let has_qlabel = domain
+                .variables
+                .iter()
+                .any(|v| v.name.eq_ignore_ascii_case("QLABEL"));
+
+            if has_qlabel {
+                rules.push(GeneratedRule {
+                    rule_id: TRANS_QLABEL_LENGTH.to_string(),
+                    domain: domain.code.clone(),
+                    variable: "QLABEL".to_string(),
+                    category: "Length".to_string(),
+                    severity: RuleSeverity::Error,
+                    message: "QLABEL values must not exceed 40 characters per SDTMIG 4.5.3.1"
+                        .to_string(),
+                    description: "Per SDTMIG v3.4 Section 4.5.3.1, the QLABEL in SUPPQUAL \
+                                  datasets is limited to 40 characters, following the same \
+                                  convention as --TEST in parent domains."
+                        .to_string(),
+                    context: RuleContext::QlabelLength { max_length: 40 },
+                });
+            }
         }
 
         rules

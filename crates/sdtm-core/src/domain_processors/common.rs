@@ -746,7 +746,10 @@ pub(super) fn derive_epoch(
 ///
 /// Per SDTMIG: A date falls within an epoch if it is >= start date and <= end date.
 /// If a date is before all periods, EPOCH is null (pre-study).
-fn find_epoch_for_date(date: NaiveDate, periods: &[crate::processing_context::EpochPeriod]) -> String {
+fn find_epoch_for_date(
+    date: NaiveDate,
+    periods: &[crate::processing_context::EpochPeriod],
+) -> String {
     for period in periods {
         // Check if date falls within this period
         let after_start = period

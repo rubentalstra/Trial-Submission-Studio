@@ -6,7 +6,7 @@ pub use cross_domain::{
     CrossDomainValidationInput, CrossDomainValidationResult, validate_cross_domain,
 };
 pub use engine::RuleEngine;
-pub use rule_mapping::{RuleResolver, InternalRuleInfo};
+pub use rule_mapping::{InternalRuleInfo, RuleResolver};
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -310,14 +310,14 @@ const REPORT_SCHEMA_VERSION: u32 = 1;
 // Import P21 rule IDs from central rule_mapping module
 // These IDs match the official Pinnacle 21 Rules.csv exactly
 use rule_mapping::{
-    P21_CT_EXTENSIBLE,         // CT2002 - extensible codelist
-    P21_CT_NON_EXTENSIBLE,     // CT2001 - non-extensible codelist
-    P21_DATATYPE_MISMATCH,     // SD1230 - datatype validation
-    P21_EXPECTED_VAR_MISSING,  // SD0057 - expected variable missing
-    P21_LENGTH_EXCEEDED,       // SD1231 - length exceeded
-    P21_QNAM_INVALID,          // SD1022 - QNAM/TESTCD format validation
-    P21_REQUIRED_VALUE_MISSING, // SD0002 - required value null
-    P21_REQUIRED_VAR_MISSING,  // SD0056 - required variable missing
+    P21_CT_EXTENSIBLE,             // CT2002 - extensible codelist
+    P21_CT_NON_EXTENSIBLE,         // CT2001 - non-extensible codelist
+    P21_DATATYPE_MISMATCH,         // SD1230 - datatype validation
+    P21_EXPECTED_VAR_MISSING,      // SD0057 - expected variable missing
+    P21_LENGTH_EXCEEDED,           // SD1231 - length exceeded
+    P21_QNAM_INVALID,              // SD1022 - QNAM/TESTCD format validation
+    P21_REQUIRED_VALUE_MISSING,    // SD0002 - required value null
+    P21_REQUIRED_VAR_MISSING,      // SD0056 - required variable missing
     TRANS_UNDOCUMENTED_DERIVATION, // Internal - provenance tracking
 };
 
