@@ -74,7 +74,7 @@ are noted where applicable.
 - [x] **0.1.3** Build a `reference_starts` map from DM (RFSTDTC) and pass it
       into `ProcessingContext` for SDY derivation.
 
-- [ ] **0.1.4** Create a shared date/time module in `sdtm-core` with ISO 8601
+- [x] **0.1.4** Create a shared date/time module in `sdtm-core` with ISO 8601
       parsing, validation, and normalization. Remove duplicate date logic from
       domain processors.
 
@@ -664,9 +664,9 @@ are noted where applicable.
 
 | Phase     | Total   | Completed | Remaining |
 | --------- | ------- | --------- | --------- |
-| 0         | 35      | 3         | 32        |
+| 0         | 35      | 4         | 31        |
 | 1         | 67      | 0         | 67        |
 | 2         | 32      | 0         | 32        |
 | 3         | 8       | 0         | 8         |
 | 4         | 8       | 0         | 8         |
-| **Total** | **150** | **3**     | **147**   |
+| **Total** | **150** | **4**     | **146**   |

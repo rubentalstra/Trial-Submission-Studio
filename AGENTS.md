@@ -46,9 +46,15 @@ The full SDTMIG v3.4 specification is available in Markdown format:
 - Prefer explicit, readable transformations over deeply nested helper chains.
 - Refactor to remove redundant legacy wrappers (simple pass-through helpers);
   call shared utilities directly when no extra behavior exists.
+- **No legacy compatibility wrappers**: do not create functions that simply wrap
+  other functions for "backward compatibility". Use the clean, canonical API
+  directly throughout the codebase.
 - Use `tracing` for logs; avoid `println!` in production paths.
 - Favor Polars expressions for batch transforms; avoid row-by-row loops when
   possible.
+- **Place tests in the `tests/` folder**, not inline `#[cfg(test)]` modules.
+  Keep source files focused on implementation. Each crate should have its tests
+  in `crates/<crate>/tests/*.rs`.
 
 ## Security considerations
 

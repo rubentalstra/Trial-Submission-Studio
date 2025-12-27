@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 
 use anyhow::Result;
-use chrono::{DateTime, NaiveDate, NaiveDateTime};
+use chrono::NaiveDate;
 use polars::prelude::{
     AnyValue, BooleanChunked, DataFrame, NamedFrom, NewChunkedArray, Series, UInt32Chunked,
 };
@@ -9,6 +9,7 @@ use polars::prelude::{
 use sdtm_model::{ControlledTerminology, Domain};
 
 use crate::data_utils::{any_to_f64, any_to_i64, any_to_string};
+use crate::datetime::{normalize_iso8601, parse_date};
 use crate::domain_utils::column_name;
 use crate::processing_context::ProcessingContext;
 
@@ -17,7 +18,6 @@ pub(super) use crate::data_utils::parse_f64;
 pub(super) fn col(domain: &Domain, name: &str) -> Option<String> {
     column_name(domain, name)
 }
-
 pub(super) fn has_column(df: &DataFrame, name: &str) -> bool {
     df.column(name).is_ok()
 }
@@ -368,28 +368,12 @@ fn is_missing_usubjid(value: &str) -> bool {
     )
 }
 
+/// Normalizes an ISO 8601 date/time value.
+///
+/// Delegates to the shared datetime module for consistent handling
+/// per SDTMIG v3.4 Chapter 4, Section 4.4.
 pub(super) fn normalize_iso8601_value(raw_value: &str) -> String {
-    raw_value.trim().to_string()
-}
-
-fn parse_date(raw: &str) -> Option<NaiveDate> {
-    let trimmed = raw.trim();
-    if trimmed.is_empty() {
-        return None;
-    }
-    if let Ok(date) = NaiveDate::parse_from_str(trimmed, "%Y-%m-%d") {
-        return Some(date);
-    }
-    if let Ok(dt) = NaiveDateTime::parse_from_str(trimmed, "%Y-%m-%dT%H:%M:%S") {
-        return Some(dt.date());
-    }
-    if let Ok(dt) = NaiveDateTime::parse_from_str(trimmed, "%Y-%m-%dT%H:%M") {
-        return Some(dt.date());
-    }
-    if let Ok(dt) = DateTime::parse_from_rfc3339(trimmed) {
-        return Some(dt.date_naive());
-    }
-    None
+    normalize_iso8601(raw_value)
 }
 
 pub(super) fn ensure_date_pair_order(

@@ -1,5 +1,6 @@
 pub mod ct_utils;
 pub mod data_utils;
+pub mod datetime;
 pub mod dedupe;
 pub mod domain_processors;
 pub mod domain_sets;
@@ -21,6 +22,11 @@ pub use ct_utils::{
 pub use data_utils::{
     any_to_string, column_hint_for_domain, column_value_string, fill_string_column,
     mapping_source_for_target, sanitize_test_code, table_column_values, table_label,
+};
+pub use datetime::{
+    DateTimeError, DateTimePrecision, DateTimeValidation, DurationError, DurationValidation,
+    Iso8601DateTime, Iso8601Duration, calculate_study_day, compare_iso8601, normalize_iso8601,
+    parse_date, parse_iso8601_datetime, parse_iso8601_duration, validate_iso8601,
 };
 pub use dedupe::dedupe_frames_by_identifiers;
 pub use domain_sets::{build_report_domains, domain_map_by_code, is_supporting_domain};
