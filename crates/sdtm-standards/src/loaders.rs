@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
@@ -42,7 +42,13 @@ pub fn load_default_sdtm_domains() -> Result<Vec<Domain>> {
 
 pub fn load_default_ct_registry() -> Result<CtRegistry> {
     let root = default_standards_root();
-    load_ct_registry(&root.join("ct").join(DEFAULT_CT_VERSION))
+    let mut ct_dirs = Vec::new();
+    ct_dirs.push(root.join("ct").join(DEFAULT_CT_VERSION));
+    let docs_ct = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/Controlled_Terminology")
+        .join(DEFAULT_CT_VERSION);
+    ct_dirs.push(docs_ct);
+    load_ct_registry(&ct_dirs)
 }
 
 pub fn load_default_p21_rules() -> Result<Vec<P21Rule>> {
@@ -194,11 +200,12 @@ fn compare_variable_order(left: &Variable, right: &Variable) -> std::cmp::Orderi
     }
 }
 
-pub fn load_ct_registry(ct_dir: &Path) -> Result<CtRegistry> {
+pub fn load_ct_registry(ct_dirs: &[PathBuf]) -> Result<CtRegistry> {
     let mut by_code = BTreeMap::new();
     let mut by_name = BTreeMap::new();
-    let mut files = csv_glob(ct_dir, "CT_")?;
-    files.sort();
+    let mut by_submission = BTreeMap::new();
+    let mut submission_by_code = BTreeMap::new();
+    let files = collect_ct_files(ct_dirs)?;
 
     for path in files {
         let rows = read_csv_rows(&path)?;
@@ -223,6 +230,12 @@ pub fn load_ct_registry(ct_dir: &Path) -> Result<CtRegistry> {
             if codelist_code.is_empty() {
                 if code.is_empty() {
                     continue;
+                }
+                if let Some(submission) = row
+                    .get("CDISC Submission Value")
+                    .filter(|value| !value.is_empty())
+                {
+                    submission_by_code.insert(code.clone(), submission.to_uppercase());
                 }
                 let mut entry = by_code.remove(&code).unwrap_or(ControlledTerminology {
                     codelist_code: code.clone(),
@@ -319,9 +332,36 @@ pub fn load_ct_registry(ct_dir: &Path) -> Result<CtRegistry> {
     for entry in by_code.values() {
         let name_key = entry.codelist_name.to_uppercase();
         by_name.insert(name_key, entry.clone());
+        if let Some(submission) = submission_by_code.get(&entry.codelist_code) {
+            by_submission.insert(submission.to_uppercase(), entry.clone());
+        }
     }
 
-    Ok(CtRegistry { by_code, by_name })
+    Ok(CtRegistry {
+        by_code,
+        by_name,
+        by_submission,
+    })
+}
+
+fn collect_ct_files(ct_dirs: &[PathBuf]) -> Result<Vec<PathBuf>> {
+    let mut files = Vec::new();
+    let mut seen = BTreeSet::new();
+    for dir in ct_dirs {
+        let candidates = csv_glob(dir, "CT_")?;
+        for path in candidates {
+            let name = path
+                .file_name()
+                .and_then(|value| value.to_str())
+                .unwrap_or("")
+                .to_string();
+            if name.is_empty() || !seen.insert(name) {
+                continue;
+            }
+            files.push(path);
+        }
+    }
+    Ok(files)
 }
 
 fn split_synonyms(raw: &str) -> Vec<String> {

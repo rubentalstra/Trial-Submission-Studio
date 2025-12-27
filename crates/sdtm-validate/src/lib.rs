@@ -969,7 +969,10 @@ fn resolve_ct<'a>(
         }
     }
     let name_key = variable.name.to_uppercase();
-    registry.by_name.get(&name_key)
+    registry
+        .by_submission
+        .get(&name_key)
+        .or_else(|| registry.by_name.get(&name_key))
 }
 
 fn split_codelist_codes(raw: &str) -> Vec<String> {

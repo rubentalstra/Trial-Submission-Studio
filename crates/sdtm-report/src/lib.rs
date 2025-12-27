@@ -798,7 +798,10 @@ fn resolve_codelist(
         }
     }
     if ct_entries.is_empty() {
-        if let Some(ct) = ct_registry.by_name.get(&variable.name.to_uppercase()) {
+        let name_key = variable.name.to_uppercase();
+        if let Some(ct) = ct_registry.by_submission.get(&name_key) {
+            ct_entries.push(ct);
+        } else if let Some(ct) = ct_registry.by_name.get(&name_key) {
             ct_entries.push(ct);
         }
     }

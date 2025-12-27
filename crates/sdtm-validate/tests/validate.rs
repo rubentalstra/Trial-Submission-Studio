@@ -124,6 +124,7 @@ fn ct_invalid_value_emits_issue() {
     let ct = ct_registry
         .by_code
         .get(&ct_code.to_uppercase())
+        .or_else(|| ct_registry.by_submission.get(&variable.name.to_uppercase()))
         .or_else(|| ct_registry.by_name.get(&variable.name.to_uppercase()))
         .expect("ct lookup");
     let expected = if ct.extensible {

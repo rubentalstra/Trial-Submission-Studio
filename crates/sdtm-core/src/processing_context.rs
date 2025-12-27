@@ -68,7 +68,10 @@ impl<'a> ProcessingContext<'a> {
             }
         }
         let name_key = variable.to_uppercase();
-        registry.by_name.get(&name_key)
+        registry
+            .by_submission
+            .get(&name_key)
+            .or_else(|| registry.by_name.get(&name_key))
     }
 }
 

@@ -21,4 +21,5 @@ pub struct ControlledTerminology {
 pub struct CtRegistry {
     pub by_code: BTreeMap<String, ControlledTerminology>,
     pub by_name: BTreeMap<String, ControlledTerminology>,
+    pub by_submission: BTreeMap<String, ControlledTerminology>,
 }

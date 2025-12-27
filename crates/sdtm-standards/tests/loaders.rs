@@ -24,6 +24,18 @@ fn loads_ct_registry() {
     let registry = load_default_ct_registry().expect("load ct");
     assert!(!registry.by_code.is_empty());
     assert!(!registry.by_name.is_empty());
+    assert!(!registry.by_submission.is_empty());
+}
+
+#[test]
+fn loads_send_country_codelist() {
+    let registry = load_default_ct_registry().expect("load ct");
+    let ct = registry
+        .by_submission
+        .get("COUNTRY")
+        .expect("country codelist");
+    assert_eq!(ct.codelist_code, "C66786");
+    assert!(ct.submission_values.iter().any(|value| value == "USA"));
 }
 
 #[test]
