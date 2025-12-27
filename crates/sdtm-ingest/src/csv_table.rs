@@ -3,8 +3,73 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use csv::ReaderBuilder;
+use serde::{Deserialize, Serialize};
 
 use sdtm_model::ColumnHint;
+
+/// Options for controlling CSV ingest behavior.
+///
+/// These options allow overriding heuristic detection of header rows
+/// and providing explicit schema hints for columns.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct IngestOptions {
+    /// Explicit 0-based index of the header row.
+    /// When set, bypasses heuristic header detection.
+    pub header_row_index: Option<usize>,
+
+    /// Optional 0-based index of the label row (typically immediately before headers).
+    /// When set, extracts variable labels from this row.
+    pub label_row_index: Option<usize>,
+
+    /// Explicit schema definition for columns.
+    /// When provided, uses these headers/labels instead of detecting from file.
+    pub schema: Option<SchemaHint>,
+
+    /// Maximum number of rows to scan for header detection.
+    /// Defaults to 12 if not specified.
+    pub max_header_scan_rows: Option<usize>,
+}
+
+impl IngestOptions {
+    /// Create options with an explicit header row index.
+    pub fn with_header_row(index: usize) -> Self {
+        Self {
+            header_row_index: Some(index),
+            ..Default::default()
+        }
+    }
+
+    /// Create options with explicit schema.
+    pub fn with_schema(headers: Vec<String>, labels: Option<Vec<String>>) -> Self {
+        Self {
+            schema: Some(SchemaHint { headers, labels }),
+            ..Default::default()
+        }
+    }
+
+    /// Set the label row index.
+    pub fn label_row(mut self, index: usize) -> Self {
+        self.label_row_index = Some(index);
+        self
+    }
+
+    /// Set the maximum header scan rows.
+    pub fn max_scan_rows(mut self, rows: usize) -> Self {
+        self.max_header_scan_rows = Some(rows);
+        self
+    }
+}
+
+/// Explicit schema hint for a CSV file.
+///
+/// When provided, this schema is used instead of detecting headers from the file.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SchemaHint {
+    /// Column headers in order.
+    pub headers: Vec<String>,
+    /// Optional column labels (variable labels).
+    pub labels: Option<Vec<String>>,
+}
 
 #[derive(Debug, Clone)]
 pub struct CsvTable {
@@ -349,4 +414,135 @@ pub fn build_column_hints(table: &CsvTable) -> BTreeMap<String, ColumnHint> {
         );
     }
     hints
+}
+
+/// Read CSV schema with explicit options for header/label detection.
+///
+/// When `options.header_row_index` is set, uses that row as headers.
+/// When `options.schema` is set, uses the provided schema directly.
+/// Otherwise falls back to heuristic detection.
+pub fn read_csv_schema_with_options(path: &Path, options: &IngestOptions) -> Result<CsvSchema> {
+    // If explicit schema provided, use it directly
+    if let Some(schema) = &options.schema {
+        return Ok(CsvSchema {
+            headers: schema.headers.clone(),
+            labels: schema.labels.clone(),
+        });
+    }
+
+    let max_scan = options.max_header_scan_rows.unwrap_or(12);
+    let raw_rows = read_csv_rows_internal(path, Some(max_scan))?;
+    if raw_rows.is_empty() {
+        return Ok(CsvSchema {
+            headers: Vec::new(),
+            labels: None,
+        });
+    }
+
+    let header_index = resolve_header_index(&raw_rows, options);
+    let labels = resolve_labels(&raw_rows, header_index, options);
+    let headers: Vec<String> = raw_rows
+        .get(header_index)
+        .map(|row| row.iter().map(|v| normalize_header(v)).collect())
+        .unwrap_or_default();
+
+    Ok(CsvSchema { headers, labels })
+}
+
+/// Read CSV table with explicit options for header/label detection.
+///
+/// When `options.header_row_index` is set, uses that row as headers.
+/// When `options.schema` is set, uses the provided schema directly.
+/// Otherwise falls back to heuristic detection.
+pub fn read_csv_table_with_options(path: &Path, options: &IngestOptions) -> Result<CsvTable> {
+    // If explicit schema provided, read all rows as data
+    if let Some(schema) = &options.schema {
+        let raw_rows = read_csv_rows_internal(path, None)?;
+        let rows: Vec<Vec<String>> = raw_rows
+            .into_iter()
+            .map(|row| {
+                let mut padded = Vec::with_capacity(schema.headers.len());
+                for idx in 0..schema.headers.len() {
+                    padded.push(row.get(idx).cloned().unwrap_or_default());
+                }
+                padded
+            })
+            .collect();
+        return Ok(CsvTable {
+            headers: schema.headers.clone(),
+            rows,
+            labels: schema.labels.clone(),
+        });
+    }
+
+    let raw_rows = read_csv_rows_internal(path, None)?;
+    if raw_rows.is_empty() {
+        return Ok(CsvTable {
+            headers: Vec::new(),
+            rows: Vec::new(),
+            labels: None,
+        });
+    }
+
+    let header_index = resolve_header_index(&raw_rows, options);
+    let labels = resolve_labels(&raw_rows, header_index, options);
+    let headers: Vec<String> = raw_rows
+        .get(header_index)
+        .map(|row| row.iter().map(|v| normalize_header(v)).collect())
+        .unwrap_or_default();
+
+    let mut rows = Vec::new();
+    for record in raw_rows.iter().skip(header_index + 1) {
+        let mut row = Vec::with_capacity(headers.len());
+        for idx in 0..headers.len() {
+            row.push(record.get(idx).cloned().unwrap_or_default());
+        }
+        rows.push(row);
+    }
+
+    Ok(CsvTable {
+        headers,
+        rows,
+        labels,
+    })
+}
+
+/// Resolve the header row index from options or heuristics.
+fn resolve_header_index(raw_rows: &[Vec<String>], options: &IngestOptions) -> usize {
+    if let Some(explicit_index) = options.header_row_index {
+        // Clamp to valid range
+        return explicit_index.min(raw_rows.len().saturating_sub(1));
+    }
+    detect_header_row(raw_rows)
+}
+
+/// Resolve labels from explicit index or heuristics.
+fn resolve_labels(
+    raw_rows: &[Vec<String>],
+    header_index: usize,
+    options: &IngestOptions,
+) -> Option<Vec<String>> {
+    // Explicit label row takes precedence
+    if let Some(label_index) = options.label_row_index
+        && label_index < raw_rows.len()
+        && label_index != header_index
+    {
+        return Some(
+            raw_rows[label_index]
+                .iter()
+                .map(|v| normalize_header(v))
+                .collect(),
+        );
+    }
+
+    // Fall back to heuristic: check row before header
+    if header_index > 0 {
+        let candidate = &raw_rows[header_index - 1];
+        let stats = row_stats(candidate);
+        if is_header_like(stats) && !is_identifier_row(stats) {
+            return Some(candidate.iter().map(|v| normalize_header(v)).collect());
+        }
+    }
+
+    None
 }

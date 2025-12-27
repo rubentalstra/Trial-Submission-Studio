@@ -2566,16 +2566,20 @@ dependencies = [
  "anyhow",
  "csv",
  "sdtm-model",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
 name = "sdtm-map"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "rapidfuzz",
  "sdtm-model",
  "sdtm-standards",
  "serde",
+ "serde_json",
 ]
 
 [[package]]

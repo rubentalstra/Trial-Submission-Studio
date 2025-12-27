@@ -307,11 +307,26 @@ are noted where applicable.
 
 ## 0.6 Ingest and Mapping Improvements
 
-- [ ] **0.6.1** Allow explicit header row index or schema hints to override
-      heuristics in `sdtm-ingest/src/csv_table.rs`.
+- [x] **0.6.1** Allow explicit header row index or schema hints to override
+      heuristics in `sdtm-ingest/src/csv_table.rs`. **Implementation notes**: -
+      Created `IngestOptions` struct with `header_row_index`, `label_row_index`,
+      `schema`, and `max_header_scan_rows` fields - Added `SchemaHint` struct
+      for explicit schema definition (headers + labels) - Added
+      `read_csv_schema_with_options()` and `read_csv_table_with_options()`
+      functions - Builder methods: `with_header_row()`, `with_schema()`,
+      `label_row()`, `max_scan_rows()` - Supports serde serialization for config
+      persistence - Falls back to heuristic detection when no explicit options
+      provided
 
-- [ ] **0.6.2** Store mapping configs and reuse them across runs via a mapping
-      repository.
+- [x] **0.6.2** Store mapping configs and reuse them across runs via a mapping
+      repository. **Implementation notes**: - Created `repository.rs` module in
+      sdtm-map with `MappingRepository` struct - File-based storage using JSON
+      files named `{study_id}_{domain_code}.json` - `StoredMappingConfig` wraps
+      `MappingConfig` with metadata (saved_at, description, version) - Methods:
+      `save()`, `load()`, `load_stored()`, `load_study_mappings()`, `list()`,
+      `delete()`, `exists()` - `MappingConfigLoader` helper for loading with
+      repository fallback - Normalizes study/domain IDs for safe filenames -
+      Full test coverage in `tests/repository.rs`
 
 - [ ] **0.6.3** Incorporate variable labels, synonyms, and domain patterns from
       standards into the mapping engine in `sdtm-map/src/engine.rs`.
