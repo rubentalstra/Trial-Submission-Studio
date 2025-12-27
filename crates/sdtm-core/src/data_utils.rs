@@ -3,6 +3,16 @@ use polars::prelude::{AnyValue, DataFrame, NamedFrom, Series};
 use sdtm_ingest::CsvTable;
 use sdtm_model::{Domain, MappingConfig};
 
+/// Check if a value is missing/null/empty.
+pub fn is_missing_value(value: &AnyValue) -> bool {
+    match value {
+        AnyValue::Null => true,
+        AnyValue::String(v) => v.trim().is_empty(),
+        AnyValue::StringOwned(v) => v.trim().is_empty(),
+        _ => false,
+    }
+}
+
 pub fn any_to_string(value: AnyValue) -> String {
     match value {
         AnyValue::String(value) => value.to_string(),

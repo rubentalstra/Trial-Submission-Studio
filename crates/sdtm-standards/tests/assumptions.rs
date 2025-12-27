@@ -75,10 +75,21 @@ fn generates_required_variable_rule() {
 
     let rules = generator.generate_rules_for_domain(&domain, &ct);
 
-    assert_eq!(rules.len(), 1);
-    assert_eq!(rules[0].rule_id, "SD0002");
-    assert_eq!(rules[0].variable, "STUDYID");
-    assert!(matches!(rules[0].context, RuleContext::RequiredVariable));
+    // Required variables generate 2 rules: SD0056 (presence) + SD0002 (null check)
+    assert_eq!(rules.len(), 2);
+    let rule_ids: Vec<_> = rules.iter().map(|r| r.rule_id.as_str()).collect();
+    assert!(rule_ids.contains(&"SD0056"));
+    assert!(rule_ids.contains(&"SD0002"));
+
+    let presence_rule = rules.iter().find(|r| r.rule_id == "SD0056").unwrap();
+    let null_rule = rules.iter().find(|r| r.rule_id == "SD0002").unwrap();
+    assert_eq!(presence_rule.variable, "STUDYID");
+    assert_eq!(null_rule.variable, "STUDYID");
+    assert!(matches!(
+        presence_rule.context,
+        RuleContext::RequiredPresence
+    ));
+    assert!(matches!(null_rule.context, RuleContext::RequiredVariable));
 }
 
 #[test]
@@ -110,9 +121,10 @@ fn generates_sequence_rule() {
 
     let rules = generator.generate_rules_for_domain(&domain, &ct);
 
-    // Should have both SD0002 (Required) and SD0005 (Sequence)
-    assert_eq!(rules.len(), 2);
+    // Should have SD0056 (presence), SD0002 (Required null check), and SD0005 (Sequence uniqueness)
+    assert_eq!(rules.len(), 3);
     let rule_ids: Vec<_> = rules.iter().map(|r| r.rule_id.as_str()).collect();
+    assert!(rule_ids.contains(&"SD0056"));
     assert!(rule_ids.contains(&"SD0002"));
     assert!(rule_ids.contains(&"SD0005"));
 }

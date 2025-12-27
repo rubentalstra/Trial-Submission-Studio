@@ -56,7 +56,9 @@ impl RuleSeverity {
 /// Additional context for rule evaluation.
 #[derive(Debug, Clone)]
 pub enum RuleContext {
-    /// Required variable must not be null (SD0002)
+    /// Required variable must be present (SD0056) - column existence check
+    RequiredPresence,
+    /// Required variable must not be null (SD0002) - null value check
     RequiredVariable,
     /// Expected variable should be present (SD0057)
     ExpectedVariable,
@@ -128,21 +130,69 @@ impl RuleGenerator {
 
         match core.as_str() {
             "REQ" => {
-                // SD0002: Required variable cannot be null
-                let p21 = self.p21_rules.get("SD0002");
+                // SD0056: Required variable must be present (column existence)
+                let p21_presence = self.p21_rules.get("SD0056");
+                rules.push(GeneratedRule {
+                    rule_id: "SD0056".to_string(),
+                    domain: domain.code.clone(),
+                    variable: variable.name.clone(),
+                    category: p21_presence
+                        .and_then(|r| r.category.clone())
+                        .unwrap_or_else(|| "Presence".to_string()),
+                    severity: RuleSeverity::Error,
+                    message: p21_presence
+                        .map(|r| {
+                            if !r.message.is_empty() {
+                                format!("{}: {}", r.message, variable.name)
+                            } else {
+                                format!(
+                                    "Required variable {} not found in {}",
+                                    variable.name, domain.code
+                                )
+                            }
+                        })
+                        .unwrap_or_else(|| {
+                            format!(
+                                "Required variable {} not found in {}",
+                                variable.name, domain.code
+                            )
+                        }),
+                    description: p21_presence
+                        .map(|r| r.description.clone())
+                        .unwrap_or_else(|| {
+                            "SDTM Required variable not found in dataset.".to_string()
+                        }),
+                    context: RuleContext::RequiredPresence,
+                });
+
+                // SD0002: Required variable cannot be null (value check)
+                let p21_null = self.p21_rules.get("SD0002");
                 rules.push(GeneratedRule {
                     rule_id: "SD0002".to_string(),
                     domain: domain.code.clone(),
                     variable: variable.name.clone(),
-                    category: p21
+                    category: p21_null
                         .and_then(|r| r.category.clone())
                         .unwrap_or_else(|| "Presence".to_string()),
                     severity: RuleSeverity::Error,
-                    message: format!(
-                        "Required variable {} in {} cannot be null",
-                        variable.name, domain.code
-                    ),
-                    description: p21.map(|r| r.description.clone()).unwrap_or_else(|| {
+                    message: p21_null
+                        .map(|r| {
+                            if !r.message.is_empty() {
+                                format!("{}: {}", r.message, variable.name)
+                            } else {
+                                format!(
+                                    "Required variable {} in {} cannot be null",
+                                    variable.name, domain.code
+                                )
+                            }
+                        })
+                        .unwrap_or_else(|| {
+                            format!(
+                                "Required variable {} in {} cannot be null",
+                                variable.name, domain.code
+                            )
+                        }),
+                    description: p21_null.map(|r| r.description.clone()).unwrap_or_else(|| {
                         "Required variables (Core='Req') cannot be null for any records."
                             .to_string()
                     }),
@@ -160,10 +210,23 @@ impl RuleGenerator {
                         .and_then(|r| r.category.clone())
                         .unwrap_or_else(|| "Metadata".to_string()),
                     severity: RuleSeverity::Warning,
-                    message: format!(
-                        "Expected variable {} should be present in {}",
-                        variable.name, domain.code
-                    ),
+                    message: p21
+                        .map(|r| {
+                            if !r.message.is_empty() {
+                                format!("{}: {}", r.message, variable.name)
+                            } else {
+                                format!(
+                                    "Expected variable {} should be present in {}",
+                                    variable.name, domain.code
+                                )
+                            }
+                        })
+                        .unwrap_or_else(|| {
+                            format!(
+                                "Expected variable {} should be present in {}",
+                                variable.name, domain.code
+                            )
+                        }),
                     description: p21.map(|r| r.description.clone()).unwrap_or_else(|| {
                         "Variables described in SDTM IG as Expected should be included.".to_string()
                     }),

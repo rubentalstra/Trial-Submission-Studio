@@ -1,3 +1,7 @@
+mod engine;
+
+pub use engine::RuleEngine;
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
@@ -6,10 +10,12 @@ use chrono::Utc;
 use polars::prelude::{AnyValue, DataFrame};
 use serde::Serialize;
 
+use sdtm_core::{any_to_string, is_missing_value};
 use sdtm_model::{
     CaseInsensitiveLookup, ConformanceIssue, ConformanceReport, ControlledTerminology, CtRegistry,
     Domain, IssueSeverity, OutputFormat, ResolvedCt, Variable, VariableType,
 };
+use sdtm_standards::assumptions::RuleGenerator;
 use sdtm_standards::loaders::P21Rule;
 
 #[derive(Debug, Clone, Default)]
@@ -74,6 +80,55 @@ impl<'a> ValidationContext<'a> {
         self.ct_catalogs = Some(catalogs);
         self
     }
+
+    /// Build a RuleEngine from dynamically generated rules.
+    ///
+    /// This creates rules from metadata sources (Variables.csv, CT files)
+    /// rather than manually coding them.
+    pub fn build_rule_engine(&self, domains: &[Domain]) -> RuleEngine {
+        let ct_registry = self.ct_registry.cloned().unwrap_or_default();
+        let p21_rules = self
+            .p21_rules
+            .map(|rules| rules.to_vec())
+            .unwrap_or_default();
+
+        let generator = RuleGenerator::new().with_p21_rules(p21_rules);
+
+        let mut engine = RuleEngine::new();
+        for domain in domains {
+            let rules = generator.generate_rules_for_domain(domain, &ct_registry);
+            engine.add_rules(rules);
+        }
+        engine
+    }
+}
+
+/// Validate a domain using dynamically generated rules.
+///
+/// This is the preferred validation approach per AGENTS.md:
+/// rules are generated from metadata, not manually coded.
+pub fn validate_domain_with_rules(
+    domain: &Domain,
+    df: &DataFrame,
+    ctx: &ValidationContext,
+) -> ConformanceReport {
+    let engine = ctx.build_rule_engine(std::slice::from_ref(domain));
+    engine.execute(&domain.code, df)
+}
+
+/// Validate multiple domains using dynamically generated rules.
+pub fn validate_domains_with_rules(
+    domains: &[Domain],
+    frames: &[(&str, &DataFrame)],
+    ctx: &ValidationContext,
+) -> Vec<ConformanceReport> {
+    let engine = ctx.build_rule_engine(domains);
+
+    let mut reports = Vec::new();
+    for (domain_code, df) in frames {
+        reports.push(engine.execute(domain_code, df));
+    }
+    reports
 }
 
 #[derive(Debug, Serialize)]
@@ -731,15 +786,6 @@ fn is_expected(core: Option<&str>) -> bool {
     )
 }
 
-fn is_missing_value(value: &AnyValue) -> bool {
-    match value {
-        AnyValue::Null => true,
-        AnyValue::String(value) => value.trim().is_empty(),
-        AnyValue::StringOwned(value) => value.trim().is_empty(),
-        _ => false,
-    }
-}
-
 fn is_numeric_value(value: &AnyValue) -> bool {
     matches!(
         value,
@@ -754,13 +800,4 @@ fn is_numeric_value(value: &AnyValue) -> bool {
             | AnyValue::UInt32(_)
             | AnyValue::UInt64(_)
     )
-}
-
-fn any_to_string(value: AnyValue) -> String {
-    match value {
-        AnyValue::String(value) => value.to_string(),
-        AnyValue::StringOwned(value) => value.to_string(),
-        AnyValue::Null => String::new(),
-        _ => value.to_string(),
-    }
 }

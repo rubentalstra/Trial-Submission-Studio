@@ -144,8 +144,21 @@ are noted where applicable.
       `generator.rs` (RuleGenerator, GeneratedRule, RuleContext, RuleSeverity),
       tests in `loaders.rs`.
 
-- [ ] **0.3.3** Build a rule engine in `sdtm-validate` that runs assumption
+- [x] **0.3.3** Build a rule engine in `sdtm-validate` that runs assumption
       rules in strict mode and returns structured issues (no string parsing).
+      **Implementation notes**: - Created `engine.rs` with `RuleEngine` that
+      executes `GeneratedRule`s against DataFrames - Fully dynamic: no hardcoded
+      rule IDs in engine—all rule metadata (ID, message, severity, category)
+      comes from `GeneratedRule` - Rule context handlers: - `RequiredPresence`
+      (SD0056): Column must exist - `RequiredVariable` (SD0002): No null values
+      in column - `ExpectedVariable` (SD0057): Column should exist (warning) -
+      `ControlledTerminology` (CT2001/CT2002): Values must match codelist -
+      `DateTimeFormat` (SD0003): ISO 8601 validation - `SequenceUniqueness`
+      (SD0005): --SEQ unique within USUBJID - Integrated into
+      `ValidationContext::build_rule_engine()` - Added
+      `validate_domain_with_rules()` and `validate_domains_with_rules()` public
+      functions - Single `create_issue()` helper ensures all issues use rule
+      metadata
 
 - [ ] **0.3.4** Store CT release version and publishing set in the standards
       registry. Emit in Define-XML with strict CT validation.

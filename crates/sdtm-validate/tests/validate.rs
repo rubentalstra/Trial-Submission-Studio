@@ -9,7 +9,7 @@ use sdtm_standards::{
 };
 use sdtm_validate::{
     ValidationContext, gate_strict_outputs, strict_outputs_requested, validate_domain,
-    write_conformance_report_json,
+    validate_domain_with_rules, write_conformance_report_json,
 };
 
 fn temp_dir() -> PathBuf {
@@ -203,4 +203,103 @@ fn strict_output_gate_ignored_without_strict_formats() {
 fn strict_outputs_requested_only_for_xpt() {
     assert!(strict_outputs_requested(&[OutputFormat::Xpt]));
     assert!(!strict_outputs_requested(&[OutputFormat::Xml]));
+}
+
+// ============================================================================
+// Rule Engine Tests (Dynamic Rule-Driven Validation)
+// ============================================================================
+
+#[test]
+fn rule_engine_validates_required_variable() {
+    let domains = load_default_sdtm_ig_domains().expect("standards");
+    let domain = domains.iter().find(|d| d.code == "DM").expect("DM domain");
+    let ct_registry = load_default_ct_registry().expect("ct");
+    let p21_rules = load_default_p21_rules().expect("p21");
+
+    let ctx = ValidationContext::new()
+        .with_ct_registry(&ct_registry)
+        .with_p21_rules(&p21_rules);
+
+    // DataFrame missing required column STUDYID
+    let df = DataFrame::new(vec![]).expect("df");
+
+    let report = validate_domain_with_rules(domain, &df, &ctx);
+
+    // Should find SD0056 (Required variable not found)
+    let studyid_issue = report
+        .issues
+        .iter()
+        .find(|i| i.variable.as_deref() == Some("STUDYID") && i.code == "SD0056");
+    assert!(
+        studyid_issue.is_some(),
+        "Should emit SD0056 for missing STUDYID"
+    );
+}
+
+#[test]
+fn rule_engine_validates_required_null_values() {
+    let domains = load_default_sdtm_ig_domains().expect("standards");
+    let domain = domains.iter().find(|d| d.code == "DM").expect("DM domain");
+    let ct_registry = load_default_ct_registry().expect("ct");
+
+    let ctx = ValidationContext::new().with_ct_registry(&ct_registry);
+
+    // DataFrame with STUDYID but null values
+    let df = DataFrame::new(vec![Column::new("STUDYID".into(), ["", " "])]).expect("df");
+
+    let report = validate_domain_with_rules(domain, &df, &ctx);
+
+    // Should find SD0002 (Required variable has null values)
+    let null_issue = report.issues.iter().find(|i| {
+        i.variable.as_deref() == Some("STUDYID") && i.rule_id.as_deref() == Some("SD0002")
+    });
+    assert!(
+        null_issue.is_some(),
+        "Should emit SD0002 for null STUDYID values"
+    );
+    assert_eq!(null_issue.unwrap().count, Some(2));
+}
+
+#[test]
+fn rule_engine_validates_ct_values() {
+    let domains = load_default_sdtm_ig_domains().expect("standards");
+    let domain = domains.iter().find(|d| d.code == "DM").expect("DM domain");
+    let ct_registry = load_default_ct_registry().expect("ct");
+
+    let ctx = ValidationContext::new().with_ct_registry(&ct_registry);
+
+    // SEX variable uses codelist C66731, valid values include M, F
+    let df = DataFrame::new(vec![Column::new("SEX".into(), ["INVALID_SEX"])]).expect("df");
+
+    let report = validate_domain_with_rules(domain, &df, &ctx);
+
+    // Should find CT rule issue
+    let ct_issue = report.issues.iter().find(|i| {
+        i.variable.as_deref() == Some("SEX")
+            && (i.rule_id.as_deref() == Some("CT2001") || i.rule_id.as_deref() == Some("CT2002"))
+    });
+    assert!(ct_issue.is_some(), "Should emit CT issue for invalid SEX");
+}
+
+#[test]
+fn rule_engine_builds_from_context() {
+    let domains = load_default_sdtm_ig_domains().expect("standards");
+    let ct_registry = load_default_ct_registry().expect("ct");
+    let p21_rules = load_default_p21_rules().expect("p21");
+
+    let ctx = ValidationContext::new()
+        .with_ct_registry(&ct_registry)
+        .with_p21_rules(&p21_rules);
+
+    let engine = ctx.build_rule_engine(&domains);
+
+    // Should have rules for DM
+    let dm_rules = engine.rules_for_domain("DM");
+    assert!(!dm_rules.is_empty(), "Should have rules for DM domain");
+
+    // Should have Required rules (SD0002)
+    assert!(
+        dm_rules.iter().any(|r| r.rule_id == "SD0002"),
+        "Should have SD0002 rules"
+    );
 }
