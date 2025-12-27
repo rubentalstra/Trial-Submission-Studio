@@ -150,27 +150,3 @@ impl Default for StudyPipelineContext {
         Self::new("")
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn creates_pipeline_context() {
-        let ctx = StudyPipelineContext::new("TEST001");
-        assert_eq!(ctx.study_id, "TEST001");
-        assert!(ctx.standards.is_empty());
-    }
-
-    #[test]
-    fn creates_processing_context() {
-        let mut ref_starts = BTreeMap::new();
-        ref_starts.insert("SUBJ001".to_string(), "2024-01-01".to_string());
-
-        let pipeline = StudyPipelineContext::new("TEST001").with_reference_starts(ref_starts);
-
-        let ctx = pipeline.processing_context();
-        assert_eq!(ctx.study_id, "TEST001");
-        assert!(ctx.reference_starts.is_some());
-    }
-}

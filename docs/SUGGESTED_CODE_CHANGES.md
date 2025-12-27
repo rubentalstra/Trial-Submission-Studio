@@ -127,9 +127,22 @@ are noted where applicable.
       from `Datasets.csv`. Map rules by class (General Observation,
       Special-Purpose, Trial Design, Study Reference).
 
-- [ ] **0.3.2** Create a curated `sdtmig_assumptions` registry (YAML or TOML)
-      per domain with explicit rules and chapter/page citations from
-      `standards/sdtmig/v3_4/chapters`.
+- [x] **0.3.2** Create a dynamic rule generator in
+      `sdtm-standards/src/assumptions/generator.rs` that derives validation
+      rules from metadata sources (not manually coded). **Implementation
+      notes**: - Rules are generated dynamically from: - `Variables.csv`: Core
+      designation (Req/Exp/Perm), codelist codes (e.g., C66731, C66786) -
+      `CT files`: Valid values and extensibility flag (Yes/No) -
+      `P21 Rules.csv`: Rule templates (SD0002, CT2001, etc.) - Rule mappings: -
+      Core="Req" → SD0002 (Error: Required variable cannot be null) - Core="Exp"
+      → SD0057 (Warning: Expected variable should be present) - codelist_code +
+      extensible=No → CT2001 (Error: Invalid CT value) - codelist_code +
+      extensible=Yes → CT2002 (Warning: Non-standard value) - Variable ends with
+      DTC → SD0003 (ISO 8601 datetime format) - Variable ends with SEQ → SD0005
+      (Sequence uniqueness) - **Never manually code SDTM rules**—always derive
+      from metadata sources. - Created: `core.rs` (CoreDesignation),
+      `generator.rs` (RuleGenerator, GeneratedRule, RuleContext, RuleSeverity),
+      tests in `loaders.rs`.
 
 - [ ] **0.3.3** Build a rule engine in `sdtm-validate` that runs assumption
       rules in strict mode and returns structured issues (no string parsing).

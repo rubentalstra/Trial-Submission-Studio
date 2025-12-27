@@ -246,3 +246,218 @@ fn dataset_class_display_and_as_str() {
     // Test Display trait
     assert_eq!(format!("{}", DatasetClass::Events), "Events");
 }
+
+// Tests for Dynamic Rule Generation from Metadata
+
+#[test]
+fn dynamic_rule_generator_from_metadata() {
+    use sdtm_standards::{
+        RuleContext, RuleGenerator, load_default_ct_registry, load_default_p21_rules,
+        load_default_sdtm_ig_domains,
+    };
+
+    // Load all metadata sources
+    let domains = load_default_sdtm_ig_domains().expect("load domains");
+    let ct_registry = load_default_ct_registry().expect("load ct");
+    let p21_rules = load_default_p21_rules().expect("load p21 rules");
+
+    // Create a rule generator with P21 rule templates
+    let generator = RuleGenerator::new().with_p21_rules(p21_rules);
+
+    // Get the DM domain
+    let dm = domains.iter().find(|d| d.code == "DM").expect("DM domain");
+
+    // Generate rules for DM
+    let rules = generator.generate_rules_for_domain(dm, &ct_registry);
+
+    // Should have many rules (Required variables, CT rules, datetime rules)
+    assert!(
+        rules.len() > 10,
+        "Should generate many rules for DM, got {}",
+        rules.len()
+    );
+
+    // Check for SD0002 rules (Required variables)
+    let required_rules: Vec<_> = rules.iter().filter(|r| r.rule_id == "SD0002").collect();
+    assert!(
+        !required_rules.is_empty(),
+        "Should have SD0002 rules for Required variables"
+    );
+
+    // STUDYID should be Required in DM
+    assert!(
+        required_rules.iter().any(|r| r.variable == "STUDYID"),
+        "STUDYID should have SD0002 rule"
+    );
+
+    // Check for CT rules (CT2001/CT2002)
+    let ct_rules: Vec<_> = rules
+        .iter()
+        .filter(|r| r.rule_id.starts_with("CT"))
+        .collect();
+    assert!(!ct_rules.is_empty(), "Should have CT validation rules");
+
+    // SEX in DM should have CT rule (C66731)
+    let sex_ct = ct_rules.iter().find(|r| r.variable == "SEX");
+    assert!(sex_ct.is_some(), "SEX should have CT validation rule");
+    if let RuleContext::ControlledTerminology {
+        codelist_code,
+        valid_values,
+        ..
+    } = &sex_ct.unwrap().context
+    {
+        assert_eq!(codelist_code, "C66731", "SEX uses codelist C66731");
+        assert!(
+            valid_values.iter().any(|v| v == "M" || v == "MALE"),
+            "SEX CT should include M/MALE"
+        );
+    }
+
+    // Check for datetime rules (SD0003)
+    let dtc_rules: Vec<_> = rules.iter().filter(|r| r.rule_id == "SD0003").collect();
+    assert!(!dtc_rules.is_empty(), "Should have SD0003 datetime rules");
+
+    // BRTHDTC should have datetime rule
+    assert!(
+        dtc_rules.iter().any(|r| r.variable == "BRTHDTC"),
+        "BRTHDTC should have SD0003 rule"
+    );
+}
+
+#[test]
+fn dynamic_rule_generator_ct_extensibility() {
+    use sdtm_standards::{
+        RuleContext, RuleGenerator, RuleSeverity, load_default_ct_registry,
+        load_default_sdtm_ig_domains,
+    };
+
+    let domains = load_default_sdtm_ig_domains().expect("load domains");
+    let ct_registry = load_default_ct_registry().expect("load ct");
+    let generator = RuleGenerator::new();
+
+    // Get the AE domain (has many CT-controlled variables)
+    let ae = domains.iter().find(|d| d.code == "AE").expect("AE domain");
+    let rules = generator.generate_rules_for_domain(ae, &ct_registry);
+
+    // Find CT rules and check extensibility affects severity
+    let ct_rules: Vec<_> = rules
+        .iter()
+        .filter(|r| r.rule_id.starts_with("CT"))
+        .collect();
+
+    let mut found_non_extensible = false;
+
+    for rule in ct_rules {
+        if let RuleContext::ControlledTerminology { extensible, .. } = &rule.context {
+            if *extensible {
+                // Extensible codelists should be warnings (CT2002)
+                assert_eq!(
+                    rule.rule_id, "CT2002",
+                    "Extensible CT should use CT2002 rule"
+                );
+                assert_eq!(
+                    rule.severity,
+                    RuleSeverity::Warning,
+                    "Extensible CT should be Warning"
+                );
+            } else {
+                found_non_extensible = true;
+                // Non-extensible codelists should be errors (CT2001)
+                assert_eq!(
+                    rule.rule_id, "CT2001",
+                    "Non-extensible CT should use CT2001 rule"
+                );
+                assert_eq!(
+                    rule.severity,
+                    RuleSeverity::Error,
+                    "Non-extensible CT should be Error"
+                );
+            }
+        }
+    }
+
+    // Should have non-extensible CT rules
+    assert!(
+        found_non_extensible,
+        "Should have non-extensible CT rules (CT2001)"
+    );
+}
+
+#[test]
+fn dynamic_rule_generator_summary() {
+    use sdtm_standards::{RuleGenerator, load_default_ct_registry, load_default_sdtm_ig_domains};
+
+    let domains = load_default_sdtm_ig_domains().expect("load domains");
+    let ct_registry = load_default_ct_registry().expect("load ct");
+    let generator = RuleGenerator::new();
+
+    // Generate summary across all domains
+    let summary = generator.generate_summary(&domains, &ct_registry);
+
+    // Should have many rules
+    assert!(
+        summary.total_rules > 1000,
+        "Should generate many rules across all domains, got {}",
+        summary.total_rules
+    );
+
+    // Should have rules for key rule IDs
+    assert!(
+        summary.by_rule_id.contains_key("SD0002"),
+        "Should have SD0002 rules"
+    );
+    assert!(
+        summary.by_rule_id.contains_key("SD0003"),
+        "Should have SD0003 rules"
+    );
+
+    // Should have rules for many domains
+    assert!(
+        summary.by_domain.len() > 50,
+        "Should have rules for many domains"
+    );
+    assert!(summary.by_domain.contains_key("DM"), "Should have DM rules");
+    assert!(summary.by_domain.contains_key("AE"), "Should have AE rules");
+    assert!(summary.by_domain.contains_key("LB"), "Should have LB rules");
+}
+
+#[test]
+fn country_codelist_c66786_loaded_correctly() {
+    // Verify the COUNTRY codelist (C66786) is loaded from CT files
+    // This tests the example the user mentioned
+    let ct_registry = load_default_ct_registry().expect("load ct");
+
+    // Should be able to resolve C66786
+    let resolved = ct_registry
+        .resolve_by_code("C66786", None)
+        .expect("C66786 should resolve");
+
+    assert_eq!(resolved.ct.codelist_code, "C66786");
+    assert!(
+        !resolved.ct.extensible,
+        "COUNTRY codelist is non-extensible"
+    );
+
+    // Should have many country codes as submission values
+    let values = &resolved.ct.submission_values;
+    assert!(
+        values.len() > 100,
+        "COUNTRY should have many values, got {}",
+        values.len()
+    );
+
+    // Should include specific countries from the user's example
+    assert!(
+        values.iter().any(|v| v == "ABW"),
+        "Should include ABW (Aruba)"
+    );
+    assert!(
+        values.iter().any(|v| v == "AFG"),
+        "Should include AFG (Afghanistan)"
+    );
+    assert!(
+        values.iter().any(|v| v == "AGO"),
+        "Should include AGO (Angola)"
+    );
+    assert!(values.iter().any(|v| v == "USA"), "Should include USA");
+}

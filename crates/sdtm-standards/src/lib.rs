@@ -1,8 +1,14 @@
+pub mod assumptions;
 pub mod loaders;
 pub mod xsl;
 
+// Re-export dynamic rule generation API
+pub use assumptions::{
+    CoreDesignation, GeneratedRule, RuleContext, RuleGenerationSummary, RuleGenerator, RuleSeverity,
+};
+
 pub use loaders::{
-    DomainRegistry, default_standards_root, load_ct_catalog, load_ct_registry,
+    DomainRegistry, P21Rule, default_standards_root, load_ct_catalog, load_ct_registry,
     load_default_ct_registry, load_default_domain_registry, load_default_p21_rules,
     load_default_sdtm_domains, load_default_sdtm_ig_domains, load_domain_registry, load_p21_rules,
     load_sdtm_domains, load_sdtm_ig_domains,
