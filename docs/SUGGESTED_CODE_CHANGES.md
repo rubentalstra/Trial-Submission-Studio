@@ -114,8 +114,12 @@ are noted where applicable.
       `build_default_registry()` function, and `process_domain_with_registry()`
       for custom configurations.)
 
-- [ ] **0.2.5** Define ordered per-domain step lists and run them through a
-      single pipeline executor. Remove nested helper chains.
+- [x] **0.2.5** Define ordered per-domain step lists and run them through a
+      single pipeline executor. Remove nested helper chains. (Created
+      `pipeline.rs` module with `ProcessingStep` trait, `DomainPipeline`
+      executor, `PipelineState` for cross-step sharing, and standard steps:
+      `BaseRulesStep`, `DomainProcessorStep`, `CtNormalizationStep`,
+      `SequenceAssignmentStep`. Added `build_default_pipeline()` factory.)
 
 ## 0.3 Standards Ingestion and Rule Registry
 
@@ -675,9 +679,9 @@ are noted where applicable.
 
 | Phase     | Total   | Completed | Remaining |
 | --------- | ------- | --------- | --------- |
-| 0         | 35      | 9         | 26        |
+| 0         | 35      | 10        | 25        |
 | 1         | 67      | 0         | 67        |
 | 2         | 32      | 0         | 32        |
 | 3         | 8       | 0         | 8         |
 | 4         | 8       | 0         | 8         |
-| **Total** | **150** | **9**     | **141**   |
+| **Total** | **150** | **10**    | **140**   |

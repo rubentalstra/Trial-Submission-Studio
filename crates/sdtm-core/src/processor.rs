@@ -21,7 +21,11 @@ fn sanitize_identifier(raw: &str) -> String {
     trimmed.chars().filter(|ch| *ch != '"').collect()
 }
 
-fn normalize_ct_columns(
+/// Normalize controlled terminology values in a DataFrame.
+///
+/// This function iterates through columns with CT constraints and normalizes
+/// values to their preferred terms.
+pub fn normalize_ct_columns(
     domain: &Domain,
     df: &mut DataFrame,
     ctx: &ProcessingContext,
@@ -138,7 +142,7 @@ pub fn process_domain_with_context(
     apply_base_rules(domain, df, ctx)?;
     domain_processors::process_domain(domain, df, ctx)?;
     normalize_ct_columns(domain, df, ctx)?;
-    maybe_assign_sequence(domain, df, ctx, None)?;
+    assign_sequence(domain, df, ctx, None)?;
     Ok(())
 }
 
@@ -151,7 +155,7 @@ pub fn process_domain_with_context_and_tracker(
     apply_base_rules(domain, df, ctx)?;
     domain_processors::process_domain(domain, df, ctx)?;
     normalize_ct_columns(domain, df, ctx)?;
-    maybe_assign_sequence(domain, df, ctx, seq_tracker)?;
+    assign_sequence(domain, df, ctx, seq_tracker)?;
     Ok(())
 }
 
@@ -184,7 +188,11 @@ pub fn process_domains(
     process_domains_with_context(domains, frames, &ctx)
 }
 
-fn maybe_assign_sequence(
+/// Assign --SEQ values based on USUBJID grouping.
+///
+/// Uses tracker if provided for cross-file sequence continuity.
+/// Skips assignment if `ctx.options.assign_sequence` is false.
+pub fn assign_sequence(
     domain: &Domain,
     df: &mut DataFrame,
     ctx: &ProcessingContext,
@@ -208,12 +216,12 @@ fn maybe_assign_sequence(
     if let Some(tracker) = seq_tracker {
         assign_sequence_with_tracker(domain, df, seq_col_name, usubjid_col_name, tracker, ctx)?;
     } else {
-        assign_sequence(domain, df, seq_col_name, usubjid_col_name, ctx)?;
+        assign_sequence_values(domain, df, seq_col_name, usubjid_col_name, ctx)?;
     }
     Ok(())
 }
 
-fn assign_sequence(
+fn assign_sequence_values(
     domain: &Domain,
     df: &mut DataFrame,
     seq_column: &str,

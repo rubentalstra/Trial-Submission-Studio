@@ -8,6 +8,7 @@ pub mod domain_utils;
 pub mod frame;
 pub mod frame_builder;
 pub mod frame_utils;
+pub mod pipeline;
 pub mod preprocess;
 pub mod processing_context;
 pub mod processor;
@@ -43,11 +44,16 @@ pub use frame_builder::{
     build_mapped_domain_frame,
 };
 pub use frame_utils::{apply_sequence_offsets, insert_frame};
+pub use pipeline::{
+    BaseRulesStep, CtNormalizationStep, DomainPipeline, DomainProcessorStep, PipelineState,
+    ProcessingStep, SequenceAssignmentStep, build_default_pipeline,
+};
 pub use preprocess::fill_missing_test_fields;
 pub use processing_context::{ProcessingContext, ProcessingOptions};
 pub use processor::{
-    apply_base_rules, process_domain, process_domain_with_context,
-    process_domain_with_context_and_tracker, process_domains, process_domains_with_context,
+    apply_base_rules, assign_sequence, normalize_ct_columns, process_domain,
+    process_domain_with_context, process_domain_with_context_and_tracker, process_domains,
+    process_domains_with_context,
 };
 pub use relationships::{build_relationship_frames, build_relrec, build_relspec, build_relsub};
 pub use study_pipeline_context::StudyPipelineContext;
