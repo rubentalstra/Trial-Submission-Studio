@@ -19,7 +19,7 @@ pub struct CsvSchema {
     pub labels: Option<Vec<String>>,
 }
 
-fn normalize_header(raw: &str) -> String {
+pub(crate) fn normalize_header(raw: &str) -> String {
     let trimmed = raw.trim().trim_matches('\u{feff}');
     let mut parts = trimmed.split_whitespace();
     let mut normalized = String::new();
@@ -35,6 +35,29 @@ fn normalize_header(raw: &str) -> String {
 
 fn normalize_cell(raw: &str) -> String {
     raw.trim().trim_matches('\u{feff}').to_string()
+}
+
+fn read_csv_rows_internal(path: &Path, max_rows: Option<usize>) -> Result<Vec<Vec<String>>> {
+    let mut reader = ReaderBuilder::new()
+        .has_headers(false)
+        .flexible(true)
+        .from_path(path)
+        .with_context(|| format!("read csv: {}", path.display()))?;
+    let mut rows: Vec<Vec<String>> = Vec::new();
+    for record in reader.records() {
+        let record = record.with_context(|| format!("read record: {}", path.display()))?;
+        let row: Vec<String> = record.iter().map(normalize_cell).collect();
+        if row.iter().all(|value| value.trim().is_empty()) {
+            continue;
+        }
+        rows.push(row);
+        if let Some(limit) = max_rows {
+            if rows.len() >= limit {
+                break;
+            }
+        }
+    }
+    Ok(rows)
 }
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -167,31 +190,10 @@ fn detect_header_row(rows: &[Vec<String>]) -> usize {
     candidate
 }
 
-pub fn read_csv_schema(path: &Path) -> Result<CsvSchema> {
-    let mut reader = ReaderBuilder::new()
-        .has_headers(false)
-        .flexible(true)
-        .from_path(path)
-        .with_context(|| format!("read csv: {}", path.display()))?;
-    let mut raw_rows: Vec<Vec<String>> = Vec::new();
-    for record in reader.records() {
-        let record = record.with_context(|| format!("read record: {}", path.display()))?;
-        let row: Vec<String> = record.iter().map(normalize_cell).collect();
-        if row.iter().all(|value| value.trim().is_empty()) {
-            continue;
-        }
-        raw_rows.push(row);
-        if raw_rows.len() >= 12 {
-            break;
-        }
-    }
-    if raw_rows.is_empty() {
-        return Ok(CsvSchema {
-            headers: Vec::new(),
-            labels: None,
-        });
-    }
-    let header_index = detect_header_row(&raw_rows);
+fn build_headers_and_labels(
+    raw_rows: &[Vec<String>],
+    header_index: usize,
+) -> (Vec<String>, Option<Vec<String>>) {
     let labels = if header_index > 0 {
         let candidate = &raw_rows[header_index - 1];
         let stats = row_stats(candidate);
@@ -212,24 +214,63 @@ pub fn read_csv_schema(path: &Path) -> Result<CsvSchema> {
         .iter()
         .map(|value| normalize_header(value))
         .collect();
-    Ok(CsvSchema { headers, labels })
+    (headers, labels)
+}
+
+fn build_csv_schema_from_rows(raw_rows: &[Vec<String>], header_index: usize) -> CsvSchema {
+    let (headers, labels) = build_headers_and_labels(raw_rows, header_index);
+    CsvSchema { headers, labels }
+}
+
+fn build_csv_table_from_rows(raw_rows: &[Vec<String>], header_index: usize) -> CsvTable {
+    let (headers, labels) = build_headers_and_labels(raw_rows, header_index);
+    let mut rows = Vec::new();
+    for record in raw_rows.iter().skip(header_index + 1) {
+        let mut row = Vec::with_capacity(headers.len());
+        for idx in 0..headers.len() {
+            row.push(record.get(idx).cloned().unwrap_or_default());
+        }
+        rows.push(row);
+    }
+    CsvTable {
+        headers,
+        rows,
+        labels,
+    }
+}
+
+pub(crate) fn find_header_row_by_match<F>(
+    raw_rows: &[Vec<String>],
+    max_scan_rows: usize,
+    mut match_header: F,
+) -> Option<usize>
+where
+    F: FnMut(&[String]) -> bool,
+{
+    let limit = raw_rows.len().min(max_scan_rows.max(1));
+    for (idx, row) in raw_rows.iter().take(limit).enumerate() {
+        let headers: Vec<String> = row.iter().map(|value| normalize_header(value)).collect();
+        if match_header(&headers) {
+            return Some(idx);
+        }
+    }
+    None
+}
+
+pub fn read_csv_schema(path: &Path) -> Result<CsvSchema> {
+    let raw_rows = read_csv_rows_internal(path, Some(12))?;
+    if raw_rows.is_empty() {
+        return Ok(CsvSchema {
+            headers: Vec::new(),
+            labels: None,
+        });
+    }
+    let header_index = detect_header_row(&raw_rows);
+    Ok(build_csv_schema_from_rows(&raw_rows, header_index))
 }
 
 pub fn read_csv_table(path: &Path) -> Result<CsvTable> {
-    let mut reader = ReaderBuilder::new()
-        .has_headers(false)
-        .flexible(true)
-        .from_path(path)
-        .with_context(|| format!("read csv: {}", path.display()))?;
-    let mut raw_rows: Vec<Vec<String>> = Vec::new();
-    for record in reader.records() {
-        let record = record.with_context(|| format!("read record: {}", path.display()))?;
-        let row: Vec<String> = record.iter().map(normalize_cell).collect();
-        if row.iter().all(|value| value.trim().is_empty()) {
-            continue;
-        }
-        raw_rows.push(row);
-    }
+    let raw_rows = read_csv_rows_internal(path, None)?;
     if raw_rows.is_empty() {
         return Ok(CsvTable {
             headers: Vec::new(),
@@ -238,40 +279,28 @@ pub fn read_csv_table(path: &Path) -> Result<CsvTable> {
         });
     }
     let header_index = detect_header_row(&raw_rows);
-    let labels = if header_index > 0 {
-        let candidate = &raw_rows[header_index - 1];
-        let stats = row_stats(candidate);
-        if is_header_like(stats) && !is_identifier_row(stats) {
-            Some(
-                candidate
-                    .iter()
-                    .map(|value| normalize_header(value))
-                    .collect(),
-            )
-        } else {
-            None
-        }
-    } else {
-        None
-    };
-    let headers: Vec<String> = raw_rows[header_index]
-        .iter()
-        .map(|value| normalize_header(value))
-        .collect();
-    let mut rows = Vec::new();
-    for record in raw_rows.iter().skip(header_index + 1) {
-        let mut row = Vec::with_capacity(headers.len());
-        for idx in 0..headers.len() {
-            let value = record.get(idx).map(String::as_str).unwrap_or("");
-            row.push(normalize_cell(value));
-        }
-        rows.push(row);
+    Ok(build_csv_table_from_rows(&raw_rows, header_index))
+}
+
+pub(crate) fn read_csv_table_with_header_match<F>(
+    path: &Path,
+    max_scan_rows: usize,
+    match_header: F,
+) -> Result<CsvTable>
+where
+    F: FnMut(&[String]) -> bool,
+{
+    let raw_rows = read_csv_rows_internal(path, None)?;
+    if raw_rows.is_empty() {
+        return Ok(CsvTable {
+            headers: Vec::new(),
+            rows: Vec::new(),
+            labels: None,
+        });
     }
-    Ok(CsvTable {
-        headers,
-        rows,
-        labels,
-    })
+    let header_index = find_header_row_by_match(&raw_rows, max_scan_rows, match_header)
+        .unwrap_or_else(|| detect_header_row(&raw_rows));
+    Ok(build_csv_table_from_rows(&raw_rows, header_index))
 }
 
 pub fn build_column_hints(table: &CsvTable) -> BTreeMap<String, ColumnHint> {

@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
 
-use crate::csv_table::{CsvTable, read_csv_table};
+use crate::csv_table::{CsvTable, read_csv_table_with_header_match};
 
 #[derive(Debug, Clone, Default)]
 pub struct StudyMetadata {
@@ -270,9 +270,56 @@ pub fn apply_study_metadata(table: CsvTable, metadata: &StudyMetadata) -> Applie
 }
 
 fn load_items_csv(path: &Path) -> Result<BTreeMap<String, SourceColumn>> {
-    let table =
-        read_csv_table(path).with_context(|| format!("read items csv: {}", path.display()))?;
-    let header_map = build_header_map(&table.headers);
+    let table = read_csv_table_with_header_match(path, 25, matches_items_header)
+        .with_context(|| format!("read items csv: {}", path.display()))?;
+    let (id_idx, label_idx, type_idx, mandatory_idx, format_idx, length_idx) =
+        items_column_indices(&table.headers, path)?;
+    Ok(collect_items(
+        &table.rows,
+        id_idx,
+        label_idx,
+        type_idx,
+        mandatory_idx,
+        format_idx,
+        length_idx,
+    ))
+}
+
+fn load_codelists_csv(path: &Path) -> Result<BTreeMap<String, CodeList>> {
+    let table = read_csv_table_with_header_match(path, 25, matches_codelists_header)
+        .with_context(|| format!("read codelists csv: {}", path.display()))?;
+    let (format_idx, value_idx, text_idx) = codelist_column_indices(&table.headers, path)?;
+    Ok(collect_codelists(
+        &table.rows,
+        format_idx,
+        value_idx,
+        text_idx,
+    ))
+}
+
+fn codelist_column_indices(headers: &[String], path: &Path) -> Result<(usize, usize, usize)> {
+    let header_map = build_header_map(headers);
+    let format_idx = find_column_index(&header_map, CODELISTS_COLUMN_FORMAT)
+        .ok_or_else(|| anyhow::anyhow!("could not find Format column in {}", path.display()))?;
+    let value_idx = find_column_index(&header_map, CODELISTS_COLUMN_VALUE)
+        .ok_or_else(|| anyhow::anyhow!("could not find Code Value column in {}", path.display()))?;
+    let text_idx = find_column_index(&header_map, CODELISTS_COLUMN_TEXT)
+        .ok_or_else(|| anyhow::anyhow!("could not find Code Text column in {}", path.display()))?;
+    Ok((format_idx, value_idx, text_idx))
+}
+
+fn items_column_indices(
+    headers: &[String],
+    path: &Path,
+) -> Result<(
+    usize,
+    Option<usize>,
+    Option<usize>,
+    Option<usize>,
+    Option<usize>,
+    Option<usize>,
+)> {
+    let header_map = build_header_map(headers);
     let id_idx = find_column_index(&header_map, ITEMS_COLUMN_ID)
         .ok_or_else(|| anyhow::anyhow!("could not find ID column in {}", path.display()))?;
     let label_idx = find_column_index(&header_map, ITEMS_COLUMN_LABEL);
@@ -280,9 +327,46 @@ fn load_items_csv(path: &Path) -> Result<BTreeMap<String, SourceColumn>> {
     let mandatory_idx = find_column_index(&header_map, ITEMS_COLUMN_MANDATORY);
     let format_idx = find_column_index(&header_map, ITEMS_COLUMN_FORMAT);
     let length_idx = find_column_index(&header_map, ITEMS_COLUMN_LENGTH);
+    Ok((
+        id_idx,
+        label_idx,
+        type_idx,
+        mandatory_idx,
+        format_idx,
+        length_idx,
+    ))
+}
 
+fn matches_items_header(headers: &[String]) -> bool {
+    let header_map = build_header_map(headers);
+    if find_column_index(&header_map, ITEMS_COLUMN_ID).is_none() {
+        return false;
+    }
+    find_column_index(&header_map, ITEMS_COLUMN_LABEL).is_some()
+        || find_column_index(&header_map, ITEMS_COLUMN_TYPE).is_some()
+        || find_column_index(&header_map, ITEMS_COLUMN_FORMAT).is_some()
+        || find_column_index(&header_map, ITEMS_COLUMN_LENGTH).is_some()
+        || find_column_index(&header_map, ITEMS_COLUMN_MANDATORY).is_some()
+}
+
+fn matches_codelists_header(headers: &[String]) -> bool {
+    let header_map = build_header_map(headers);
+    find_column_index(&header_map, CODELISTS_COLUMN_FORMAT).is_some()
+        && find_column_index(&header_map, CODELISTS_COLUMN_VALUE).is_some()
+        && find_column_index(&header_map, CODELISTS_COLUMN_TEXT).is_some()
+}
+
+fn collect_items(
+    rows: &[Vec<String>],
+    id_idx: usize,
+    label_idx: Option<usize>,
+    type_idx: Option<usize>,
+    mandatory_idx: Option<usize>,
+    format_idx: Option<usize>,
+    length_idx: Option<usize>,
+) -> BTreeMap<String, SourceColumn> {
     let mut items = BTreeMap::new();
-    for row in &table.rows {
+    for row in rows {
         let col_id = row.get(id_idx).map(String::as_str).unwrap_or("").trim();
         if col_id.is_empty() {
             continue;
@@ -327,22 +411,17 @@ fn load_items_csv(path: &Path) -> Result<BTreeMap<String, SourceColumn>> {
             },
         );
     }
-    Ok(items)
+    items
 }
 
-fn load_codelists_csv(path: &Path) -> Result<BTreeMap<String, CodeList>> {
-    let table =
-        read_csv_table(path).with_context(|| format!("read codelists csv: {}", path.display()))?;
-    let header_map = build_header_map(&table.headers);
-    let format_idx = find_column_index(&header_map, CODELISTS_COLUMN_FORMAT)
-        .ok_or_else(|| anyhow::anyhow!("could not find Format column in {}", path.display()))?;
-    let value_idx = find_column_index(&header_map, CODELISTS_COLUMN_VALUE)
-        .ok_or_else(|| anyhow::anyhow!("could not find Code Value column in {}", path.display()))?;
-    let text_idx = find_column_index(&header_map, CODELISTS_COLUMN_TEXT)
-        .ok_or_else(|| anyhow::anyhow!("could not find Code Text column in {}", path.display()))?;
-
+fn collect_codelists(
+    rows: &[Vec<String>],
+    format_idx: usize,
+    value_idx: usize,
+    text_idx: usize,
+) -> BTreeMap<String, CodeList> {
     let mut codelists = BTreeMap::new();
-    for row in &table.rows {
+    for row in rows {
         let format_name = row.get(format_idx).map(String::as_str).unwrap_or("").trim();
         if format_name.is_empty() {
             continue;
@@ -364,7 +443,7 @@ fn load_codelists_csv(path: &Path) -> Result<BTreeMap<String, CodeList>> {
             .or_insert_with(|| CodeList::new(format_name.to_string()));
         entry.insert_value(code_value, code_text);
     }
-    Ok(codelists)
+    codelists
 }
 
 fn discover_metadata_files(study_folder: &Path) -> Result<(Option<PathBuf>, Option<PathBuf>)> {
