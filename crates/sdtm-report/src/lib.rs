@@ -9,7 +9,9 @@ use polars::prelude::{AnyValue, DataFrame};
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 
-use sdtm_core::data_utils::{any_to_f64_for_output, any_to_string_for_output, format_numeric};
+use sdtm_core::data_utils::{
+    any_to_f64_for_output, any_to_string_for_output, any_to_string_non_empty,
+};
 use sdtm_core::{DomainFrame, standard_columns};
 use sdtm_model::{Domain, MappingConfig, Variable, VariableType};
 use sdtm_standards::load_default_ct_registry;
@@ -183,7 +185,7 @@ pub fn write_dataset_xml(
         xml.write_event(Event::Start(group))?;
         for (variable, column) in domain.variables.iter().zip(columns.iter()) {
             let value = column.get(row_idx).unwrap_or(AnyValue::Null);
-            if let Some(text) = xml_value(value) {
+            if let Some(text) = any_to_string_non_empty(value) {
                 let mut item = BytesStart::new("ItemData");
                 let item_oid = format!("IT.{dataset_name}.{}", variable.name);
                 item.push_attribute(("ItemOID", item_oid.as_str()));
@@ -651,60 +653,6 @@ fn normalize_class(value: &str) -> String {
         }
     }
     out.trim().to_string()
-}
-
-fn xml_value(value: AnyValue) -> Option<String> {
-    match value {
-        AnyValue::Null => None,
-        AnyValue::String(v) => {
-            let trimmed = v.trim();
-            if trimmed.is_empty() {
-                None
-            } else {
-                Some(trimmed.to_string())
-            }
-        }
-        AnyValue::StringOwned(v) => {
-            let trimmed = v.as_str().trim();
-            if trimmed.is_empty() {
-                None
-            } else {
-                Some(trimmed.to_string())
-            }
-        }
-        AnyValue::Float64(v) => {
-            if v.is_nan() {
-                None
-            } else {
-                Some(format_numeric(v))
-            }
-        }
-        AnyValue::Float32(v) => {
-            if v.is_nan() {
-                None
-            } else {
-                Some(format_numeric(v as f64))
-            }
-        }
-        AnyValue::Int64(v) => Some(v.to_string()),
-        AnyValue::Int32(v) => Some(v.to_string()),
-        AnyValue::Int16(v) => Some(v.to_string()),
-        AnyValue::Int8(v) => Some(v.to_string()),
-        AnyValue::UInt64(v) => Some(v.to_string()),
-        AnyValue::UInt32(v) => Some(v.to_string()),
-        AnyValue::UInt16(v) => Some(v.to_string()),
-        AnyValue::UInt8(v) => Some(v.to_string()),
-        AnyValue::Boolean(v) => Some(if v { "1" } else { "0" }.to_string()),
-        value => {
-            let text = value.to_string();
-            let trimmed = text.trim();
-            if trimmed.is_empty() {
-                None
-            } else {
-                Some(trimmed.to_string())
-            }
-        }
-    }
 }
 
 fn write_text_element<W: Write>(writer: &mut Writer<W>, name: &str, text: &str) -> Result<()> {

@@ -5,7 +5,7 @@ use polars::prelude::{AnyValue, Column, DataFrame, NamedFrom, Series};
 
 use sdtm_model::{Domain, VariableType};
 
-use crate::data_utils::any_to_string;
+use crate::data_utils::{any_to_string, column_value_string, parse_f64};
 use crate::domain_utils::{StandardColumns, refid_candidates, standard_columns};
 use crate::frame::DomainFrame;
 
@@ -99,10 +99,10 @@ pub fn build_relrec(
             continue;
         };
         for idx in 0..frame.data.height() {
-            let usubjid = column_value(&frame.data, &usubjid_col, idx)
+            let usubjid = column_value_string(&frame.data, &usubjid_col, idx)
                 .trim()
                 .to_string();
-            let idvarval = column_value(&frame.data, &link.name, idx)
+            let idvarval = column_value_string(&frame.data, &link.name, idx)
                 .trim()
                 .to_string();
             if idvarval.is_empty() {
@@ -306,7 +306,7 @@ pub fn build_relsub(
             let mut record = BTreeMap::new();
             for variable in &relsub_domain.variables {
                 let value = resolve_column(&lookup, &variable.name)
-                    .map(|name| column_value(&frame.data, name, idx))
+                    .map(|name| column_value_string(&frame.data, name, idx))
                     .unwrap_or_default();
                 let final_value =
                     if variable.name.eq_ignore_ascii_case("STUDYID") && value.trim().is_empty() {
@@ -360,13 +360,6 @@ fn relrec_record(
     record
 }
 
-fn column_value(df: &DataFrame, name: &str, idx: usize) -> String {
-    match df.column(name) {
-        Ok(series) => any_to_string(series.get(idx).unwrap_or(AnyValue::Null)),
-        Err(_) => String::new(),
-    }
-}
-
 fn build_domain_frame(domain: &Domain, records: &[BTreeMap<String, String>]) -> Result<DataFrame> {
     let mut columns: Vec<Column> = Vec::with_capacity(domain.variables.len());
     for variable in &domain.variables {
@@ -375,11 +368,7 @@ fn build_domain_frame(domain: &Domain, records: &[BTreeMap<String, String>]) -> 
                 let mut values: Vec<Option<f64>> = Vec::with_capacity(records.len());
                 for record in records {
                     let raw = record.get(&variable.name).map(|v| v.trim()).unwrap_or("");
-                    if raw.is_empty() {
-                        values.push(None);
-                    } else {
-                        values.push(raw.parse::<f64>().ok());
-                    }
+                    values.push(parse_f64(raw));
                 }
                 columns.push(Series::new(variable.name.as_str().into(), values).into());
             }
@@ -430,7 +419,7 @@ fn row_has_required(
 ) -> bool {
     required.iter().all(|name| {
         resolve_column(lookup, name)
-            .map(|col| !column_value(df, col, idx).trim().is_empty())
+            .map(|col| !column_value_string(df, col, idx).trim().is_empty())
             .unwrap_or(false)
     })
 }
@@ -441,10 +430,10 @@ fn row_has_subject_reference(
     idx: usize,
 ) -> bool {
     let usubjid = resolve_column(lookup, "USUBJID")
-        .map(|col| column_value(df, col, idx))
+        .map(|col| column_value_string(df, col, idx))
         .unwrap_or_default();
     let poolid = resolve_column(lookup, "POOLID")
-        .map(|col| column_value(df, col, idx))
+        .map(|col| column_value_string(df, col, idx))
         .unwrap_or_default();
     !(usubjid.trim().is_empty() && poolid.trim().is_empty())
 }
@@ -512,10 +501,12 @@ fn collect_relspec_records(
     }
     for refid_col in source.refid_cols {
         for idx in 0..source.df.height() {
-            let usubjid = column_value(source.df, source.usubjid_col, idx)
+            let usubjid = column_value_string(source.df, source.usubjid_col, idx)
                 .trim()
                 .to_string();
-            let refid = column_value(source.df, refid_col, idx).trim().to_string();
+            let refid = column_value_string(source.df, refid_col, idx)
+                .trim()
+                .to_string();
             if usubjid.is_empty() || refid.is_empty() {
                 continue;
             }
@@ -526,7 +517,9 @@ fn collect_relspec_records(
             if entry.spec.is_empty()
                 && let Some(spec_col) = source.spec_col
             {
-                let spec = column_value(source.df, spec_col, idx).trim().to_string();
+                let spec = column_value_string(source.df, spec_col, idx)
+                    .trim()
+                    .to_string();
                 if !spec.is_empty() {
                     entry.spec = spec;
                 }
@@ -534,7 +527,9 @@ fn collect_relspec_records(
             if entry.parent.is_empty()
                 && let Some(parent_col) = source.parent_col
             {
-                let parent = column_value(source.df, parent_col, idx).trim().to_string();
+                let parent = column_value_string(source.df, parent_col, idx)
+                    .trim()
+                    .to_string();
                 if !parent.is_empty() {
                     entry.parent = parent;
                 }

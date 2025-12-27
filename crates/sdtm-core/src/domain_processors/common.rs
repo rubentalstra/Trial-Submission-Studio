@@ -21,13 +21,6 @@ pub(super) fn col(domain: &Domain, name: &str) -> Option<String> {
 pub(super) fn has_column(df: &DataFrame, name: &str) -> bool {
     df.column(name).is_ok()
 }
-pub(super) fn string_value(df: &DataFrame, name: &str, idx: usize) -> String {
-    match df.column(name) {
-        Ok(series) => any_to_string(series.get(idx).unwrap_or(AnyValue::Null)),
-        Err(_) => String::new(),
-    }
-}
-
 pub(super) enum Trim {
     Both,
 }
@@ -277,11 +270,7 @@ pub(super) fn preferred_term_for(ct: &ControlledTerminology, submission: &str) -
 }
 
 pub(super) fn is_numeric_string(value: &str) -> bool {
-    let trimmed = value.trim();
-    if trimmed.is_empty() {
-        return false;
-    }
-    trimmed.parse::<f64>().is_ok()
+    parse_f64(value).is_some()
 }
 
 pub(super) fn drop_placeholder_rows(

@@ -26,6 +26,8 @@ provenance. Output must match SDTMIG and MSG conventions exactly.
 
 - Keep edits ASCII unless a file already uses non-ASCII characters.
 - Prefer explicit, readable transformations over deeply nested helper chains.
+- Refactor to remove redundant legacy wrappers (simple pass-through helpers);
+  call shared utilities directly when no extra behavior exists.
 - Use `tracing` for logs; avoid `println!` in production paths.
 - Favor Polars expressions for batch transforms; avoid row-by-row loops when
   possible.

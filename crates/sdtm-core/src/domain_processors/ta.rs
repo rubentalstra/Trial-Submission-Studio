@@ -2,6 +2,7 @@ use anyhow::Result;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
 
+use crate::data_utils::column_value_string;
 use crate::processing_context::ProcessingContext;
 
 use super::common::*;
@@ -22,7 +23,7 @@ pub(super) fn process_ta(
         for (idx, keep_value) in keep.iter_mut().enumerate().take(df.height()) {
             let mut blank = true;
             for col_name in &key_cols {
-                let value = string_value(df, col_name, idx);
+                let value = column_value_string(df, col_name, idx);
                 if !value.trim().is_empty() {
                     blank = false;
                     break;

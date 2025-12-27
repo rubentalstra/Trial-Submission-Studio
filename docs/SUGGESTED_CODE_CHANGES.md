@@ -123,7 +123,7 @@ rules/conformance; Phase 2 = outputs/perf/testing/cutover.
 
 ## Phase 0 - Domain processing and shared utilities
 
-- [ ] Problem: duplicate `any_to_string` and numeric parsing logic. Fix:
+- [x] Problem: duplicate `any_to_string` and numeric parsing logic. Fix:
       consolidate into a single utility module and remove duplicates from
       `crates/sdtm-core/src/domain_processors/common.rs`,
       `crates/sdtm-core/src/relationships.rs`, and

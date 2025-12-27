@@ -38,6 +38,23 @@ pub fn any_to_string_for_output(value: AnyValue) -> String {
     }
 }
 
+pub fn any_to_string_non_empty(value: AnyValue) -> Option<String> {
+    match value {
+        AnyValue::Null => None,
+        AnyValue::Float64(value) if value.is_nan() => None,
+        AnyValue::Float32(value) if value.is_nan() => None,
+        _ => {
+            let text = any_to_string_for_output(value);
+            let trimmed = text.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_string())
+            }
+        }
+    }
+}
+
 pub fn format_numeric(value: f64) -> String {
     if value.fract() == 0.0 {
         format!("{}", value as i64)
