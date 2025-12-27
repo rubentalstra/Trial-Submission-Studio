@@ -386,6 +386,7 @@ pub(super) fn compute_study_day(
         return Ok(());
     }
     let mut dy_vals: Vec<Option<f64>> = Vec::with_capacity(df.height());
+    let mut derived_count = 0usize;
     for idx in 0..df.height() {
         let obs_date = parse_date(&dtc_vals[idx]);
         let baseline = baseline_vals[idx];
@@ -393,11 +394,20 @@ pub(super) fn compute_study_day(
             let delta = obs.signed_duration_since(base).num_days();
             let adjusted = if delta >= 0 { delta + 1 } else { delta };
             dy_vals.push(Some(adjusted as f64));
+            derived_count += 1;
         } else {
             dy_vals.push(None);
         }
     }
     set_f64_column(df, dy_col, dy_vals)?;
+
+    // Record provenance for study day derivation
+    if derived_count > 0 {
+        ctx.record_provenance(|tracker| {
+            tracker.record_study_day(&domain.code, dy_col, dtc_col, reference_col, derived_count);
+        });
+    }
+
     Ok(())
 }
 

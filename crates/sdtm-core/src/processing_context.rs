@@ -2,6 +2,8 @@ use std::collections::BTreeMap;
 
 use sdtm_model::{ControlledTerminology, CtRegistry, Domain};
 
+use crate::provenance::ProvenanceTracker;
+
 /// Options controlling SDTM processing behavior.
 ///
 /// These options determine how the transpiler handles various transformations
@@ -82,12 +84,15 @@ impl ProcessingOptions {
     }
 }
 
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct ProcessingContext<'a> {
     pub study_id: &'a str,
     pub reference_starts: Option<&'a BTreeMap<String, String>>,
     pub ct_registry: Option<&'a CtRegistry>,
     pub options: ProcessingOptions,
+    /// Optional provenance tracker for recording derivation metadata.
+    /// Clone is cheap (Arc-based).
+    pub provenance: Option<ProvenanceTracker>,
 }
 
 impl<'a> ProcessingContext<'a> {
@@ -97,6 +102,7 @@ impl<'a> ProcessingContext<'a> {
             reference_starts: None,
             ct_registry: None,
             options: ProcessingOptions::default(),
+            provenance: None,
         }
     }
 
@@ -113,6 +119,28 @@ impl<'a> ProcessingContext<'a> {
     pub fn with_options(mut self, options: ProcessingOptions) -> Self {
         self.options = options;
         self
+    }
+
+    /// Enable provenance tracking with a new tracker.
+    pub fn with_provenance(mut self) -> Self {
+        self.provenance = Some(ProvenanceTracker::new());
+        self
+    }
+
+    /// Enable provenance tracking with an existing tracker.
+    pub fn with_provenance_tracker(mut self, tracker: ProvenanceTracker) -> Self {
+        self.provenance = Some(tracker);
+        self
+    }
+
+    /// Record a provenance entry if tracking is enabled.
+    pub fn record_provenance<F>(&self, f: F)
+    where
+        F: FnOnce(&ProvenanceTracker),
+    {
+        if let Some(ref tracker) = self.provenance {
+            f(tracker);
+        }
     }
 
     pub fn resolve_ct(&self, domain: &Domain, variable: &str) -> Option<&'a ControlledTerminology> {

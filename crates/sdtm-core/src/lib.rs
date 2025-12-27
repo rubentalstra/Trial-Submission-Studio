@@ -12,6 +12,7 @@ pub mod pipeline;
 pub mod preprocess;
 pub mod processing_context;
 pub mod processor;
+pub mod provenance;
 pub mod relationships;
 pub mod study_pipeline_context;
 pub mod suppqual;
@@ -56,6 +57,9 @@ pub use processor::{
     apply_base_rules, assign_sequence, normalize_ct_columns, process_domain,
     process_domain_with_context, process_domain_with_context_and_tracker, process_domains,
     process_domains_with_context,
+};
+pub use provenance::{
+    DerivationMethod, OriginSource, OriginType, ProvenanceRecord, ProvenanceTracker,
 };
 pub use relationships::{build_relationship_frames, build_relrec, build_relspec, build_relsub};
 pub use study_pipeline_context::StudyPipelineContext;

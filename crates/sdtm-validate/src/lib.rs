@@ -10,7 +10,7 @@ use chrono::Utc;
 use polars::prelude::{AnyValue, DataFrame};
 use serde::Serialize;
 
-use sdtm_core::{any_to_string, is_missing_value};
+use sdtm_core::{ProvenanceTracker, any_to_string, is_missing_value};
 use sdtm_model::{
     CaseInsensitiveLookup, ConformanceIssue, ConformanceReport, ControlledTerminology, CtRegistry,
     Domain, IssueSeverity, OutputFormat, ResolvedCt, Variable, VariableType,
@@ -128,6 +128,142 @@ pub fn validate_domains_with_rules(
     for (domain_code, df) in frames {
         reports.push(engine.execute(domain_code, df));
     }
+    reports
+}
+
+/// Rule ID for undocumented derivation warning.
+const RULE_UNDOCUMENTED_DERIVATION: &str = "SD_PROV";
+
+/// Known derived variable patterns (typically have Origin="Derived" in Define-XML).
+/// These variables should have provenance tracking if they contain values.
+const DERIVED_VARIABLE_SUFFIXES: &[&str] = &["SEQ", "DY", "STDY", "ENDY"];
+
+/// Variables that are always derived (not collected).
+const ALWAYS_DERIVED_VARIABLES: &[&str] = &["USUBJID", "STUDYID", "DOMAIN"];
+
+/// Check if a variable name indicates a derived variable.
+fn is_derived_variable(name: &str) -> bool {
+    let upper = name.to_uppercase();
+    // Check known derived suffixes
+    for suffix in DERIVED_VARIABLE_SUFFIXES {
+        if upper.ends_with(suffix) {
+            return true;
+        }
+    }
+    // Check always-derived variables
+    ALWAYS_DERIVED_VARIABLES
+        .iter()
+        .any(|v| upper.eq_ignore_ascii_case(v))
+}
+
+/// Validate that derived variables have documented provenance.
+///
+/// This function checks variables that should be derived (based on naming patterns
+/// like --SEQ, --DY, --STDY, --ENDY) and flags any that have values but no
+/// provenance tracking. This implements the no-imputation check: all derived
+/// values should have a documented source or derivation rule.
+///
+/// # Arguments
+///
+/// * `domain` - The domain metadata
+/// * `df` - The domain data
+/// * `provenance` - Optional provenance tracker from processing
+///
+/// # Returns
+///
+/// Conformance issues for any derived variables without documented provenance.
+pub fn validate_provenance(
+    domain: &Domain,
+    df: &DataFrame,
+    provenance: Option<&ProvenanceTracker>,
+) -> Vec<ConformanceIssue> {
+    let mut issues = Vec::new();
+    let column_lookup = CaseInsensitiveLookup::new(df.get_column_names_owned());
+
+    for variable in &domain.variables {
+        // Only check variables that should be derived
+        if !is_derived_variable(&variable.name) {
+            continue;
+        }
+
+        // Check if column exists and has values
+        let column_name = match column_lookup.get(&variable.name) {
+            Some(name) => name,
+            None => continue, // Column not present
+        };
+
+        let series = match df.column(column_name) {
+            Ok(s) => s,
+            Err(_) => continue,
+        };
+
+        // Check if column has any non-null values
+        let has_values = (0..series.len()).any(|idx| {
+            let value = series.get(idx).unwrap_or(AnyValue::Null);
+            let value_str = any_to_string(value);
+            !value_str.trim().is_empty()
+        });
+
+        if !has_values {
+            continue; // No values to validate
+        }
+
+        // Check if provenance exists for this variable
+        let has_provenance = provenance
+            .map(|p| p.has_provenance(&domain.code, &variable.name))
+            .unwrap_or(false);
+
+        if !has_provenance {
+            issues.push(ConformanceIssue {
+                severity: IssueSeverity::Warning,
+                code: format!(
+                    "{}.{}: Derived variable has values but no documented provenance",
+                    domain.code, variable.name
+                ),
+                variable: Some(variable.name.clone()),
+                message: format!(
+                    "Derived variable {} contains values but derivation method is not \
+                     tracked. Enable provenance tracking to document how this variable was \
+                     populated.",
+                    variable.name
+                ),
+                rule_id: Some(RULE_UNDOCUMENTED_DERIVATION.to_string()),
+                category: Some("Provenance".to_string()),
+                count: None,
+                codelist_code: None,
+                ct_source: None,
+            });
+        }
+    }
+
+    issues
+}
+
+/// Validate provenance for multiple domains.
+pub fn validate_domains_provenance(
+    domains: &[Domain],
+    frames: &[(&str, &DataFrame)],
+    provenance: Option<&ProvenanceTracker>,
+) -> Vec<ConformanceReport> {
+    let mut reports = Vec::new();
+
+    for (domain_code, df) in frames {
+        // Find the domain metadata
+        let domain = domains
+            .iter()
+            .find(|d| d.code.eq_ignore_ascii_case(domain_code));
+
+        if let Some(domain) = domain {
+            let issues = validate_provenance(domain, df, provenance);
+            if !issues.is_empty() {
+                reports.push(ConformanceReport {
+                    domain_code: domain_code.to_string(),
+                    issues,
+                });
+            }
+        }
+    }
+
     reports
 }
 

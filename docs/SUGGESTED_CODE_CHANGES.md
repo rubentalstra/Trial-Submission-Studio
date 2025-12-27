@@ -284,11 +284,26 @@ are noted where applicable.
       "CAUCASIAN"→"WHITE", ETHNIC "UNK"→"UNKNOWN" - Documented in `dm.rs` as CT
       compliance requirement, not optional feature
 
-- [ ] **0.5.6** Record provenance for every derived value (SDY, sequence, CT
-      normalization). Expose origin in reports and Define-XML.
+- [x] **0.5.6** Record provenance for every derived value (SDY, sequence, CT
+      normalization). Expose origin in reports and Define-XML. **Implementation
+      notes**: - Created `provenance.rs` module with `ProvenanceTracker`,
+      `ProvenanceRecord`, `OriginType`, `OriginSource`, `DerivationMethod` -
+      Thread-safe tracking via `Arc<RwLock<>>` - Added provenance field to
+      `ProcessingContext` with `.with_provenance()` builder -
+      `compute_study_day()` records derivations per SDTMIG 4.1.4.4 -
+      `assign_sequence_values()` and `assign_sequence_with_tracker()` record
+      sequence assignments per SDTMIG 4.1.5 - Summary API for domain/variable
+      queries and Define-XML origin metadata
 
-- [ ] **0.5.7** Add validation rule that flags any field populated without a
+- [x] **0.5.7** Add validation rule that flags any field populated without a
       documented source or derivation rule (no-imputation check).
+      **Implementation notes**: - Added `validate_provenance()` function in
+      `sdtm-validate/src/lib.rs` - Checks derived variables (--SEQ, --DY,
+      USUBJID, etc.) for provenance - Generates SD_PROV warnings for derived
+      fields without tracked provenance - Added `validate_domains_provenance()`
+      for batch validation - Helper `is_derived_variable()` identifies variables
+      that should have provenance - Integrates with `ProvenanceTracker` from
+      sdtm-core
 
 ## 0.6 Ingest and Mapping Improvements
 
@@ -786,9 +801,9 @@ are noted where applicable.
 
 | Phase     | Total   | Completed | Remaining |
 | --------- | ------- | --------- | --------- |
-| 0         | 35      | 15        | 20        |
+| 0         | 35      | 18        | 17        |
 | 1         | 67      | 0         | 67        |
 | 2         | 32      | 0         | 32        |
 | 3         | 8       | 0         | 8         |
 | 4         | 8       | 0         | 8         |
-| **Total** | **150** | **15**    | **135**   |
+| **Total** | **150** | **18**    | **132**   |
