@@ -12,6 +12,7 @@ pub mod preprocess;
 pub mod processing_context;
 pub mod processor;
 pub mod relationships;
+pub mod study_pipeline_context;
 pub mod suppqual;
 mod wide;
 
@@ -33,7 +34,7 @@ pub use datetime::{
 pub use dedupe::dedupe_frames_by_identifiers;
 pub use domain_sets::{build_report_domains, domain_map_by_code, is_supporting_domain};
 pub use domain_utils::{column_map, column_name, infer_seq_column, standard_columns};
-pub use frame::DomainFrame;
+pub use frame::{DomainFrame, DomainFrameMeta};
 pub use frame_builder::{
     MappedDomainFrame, build_domain_frame, build_domain_frame_with_mapping,
     build_mapped_domain_frame,
@@ -46,4 +47,5 @@ pub use processor::{
     process_domain_with_context_and_tracker, process_domains, process_domains_with_context,
 };
 pub use relationships::{build_relationship_frames, build_relrec, build_relspec, build_relsub};
+pub use study_pipeline_context::StudyPipelineContext;
 pub use suppqual::{SuppqualInput, SuppqualResult, build_suppqual, suppqual_domain_code};

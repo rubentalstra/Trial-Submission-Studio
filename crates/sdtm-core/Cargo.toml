@@ -11,7 +11,7 @@ polars.workspace = true
 sdtm-ingest = { path = "../sdtm-ingest" }
 sdtm-model = { path = "../sdtm-model" }
 sdtm-map = { path = "../sdtm-map" }
+sdtm-standards = { path = "../sdtm-standards" }
 tracing.workspace = true
 
 [dev-dependencies]
-sdtm-standards = { path = "../sdtm-standards" }

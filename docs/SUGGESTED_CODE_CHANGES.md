@@ -13,6 +13,12 @@ are noted where applicable.
 4. **Run validation** after each task:
    `cargo fmt && cargo clippy && cargo test`.
 5. **Update this document** if requirements change during implementation.
+6. **Place tests in the `tests/` folder**, not inline `#[cfg(test)]` modules.
+   Keep source files focused on implementation. Each crate should have its tests
+   in `crates/<crate>/tests/*.rs`.
+7. **No legacy compatibility wrappers**: do not create functions that simply
+   wrap other functions for "backward compatibility". Use the clean, canonical
+   API directly throughout the codebase.
 
 ## SDTM Standards Policy
 
@@ -84,10 +90,10 @@ are noted where applicable.
 
 ## 0.2 Architecture and Pipeline Refactor
 
-- [ ] **0.2.1** Introduce `StudyPipelineContext` struct to cache standards, CT
+- [x] **0.2.1** Introduce `StudyPipelineContext` struct to cache standards, CT
       registry, P21 rules, and metadata. Pass it through all pipeline stages.
 
-- [ ] **0.2.2** Extend `DomainFrame` with `DomainFrameMeta` containing:
+- [x] **0.2.2** Extend `DomainFrame` with `DomainFrameMeta` containing:
       `dataset_name`, `source_files`, `split_variant`, `base_domain_code`.
       Propagate into outputs and reports.
 

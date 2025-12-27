@@ -160,6 +160,7 @@ pub fn build_relrec(
     Ok(Some(DomainFrame {
         domain_code: relrec_domain.code.clone(),
         data,
+        meta: None,
     }))
 }
 
@@ -278,6 +279,7 @@ pub fn build_relspec(
     Ok(Some(DomainFrame {
         domain_code: relspec_domain.code.clone(),
         data,
+        meta: None,
     }))
 }
 
@@ -326,6 +328,7 @@ pub fn build_relsub(
     Ok(Some(DomainFrame {
         domain_code: relsub_domain.code.clone(),
         data,
+        meta: None,
     }))
 }
 

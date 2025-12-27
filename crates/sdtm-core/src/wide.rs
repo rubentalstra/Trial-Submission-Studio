@@ -83,6 +83,7 @@ pub(crate) fn build_lb_wide_frame(
         DomainFrame {
             domain_code: domain.code.clone(),
             data: expanded,
+            meta: None,
         },
         used,
     )))
@@ -126,6 +127,7 @@ pub(crate) fn build_vs_wide_frame(
         DomainFrame {
             domain_code: domain.code.clone(),
             data: expanded,
+            meta: None,
         },
         used,
     )))
@@ -170,6 +172,7 @@ pub(crate) fn build_ie_wide_frame(
         DomainFrame {
             domain_code: domain.code.clone(),
             data: expanded,
+            meta: None,
         },
         used,
     )))

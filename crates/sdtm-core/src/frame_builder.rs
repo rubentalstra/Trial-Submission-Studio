@@ -33,6 +33,7 @@ pub fn build_domain_frame(table: &CsvTable, domain_code: &str) -> Result<DomainF
     Ok(DomainFrame {
         domain_code: domain_code.to_string(),
         data,
+        meta: None,
     })
 }
 
@@ -136,6 +137,7 @@ pub fn build_domain_frame_with_mapping(
     Ok(DomainFrame {
         domain_code: domain.code.clone(),
         data,
+        meta: None,
     })
 }
 

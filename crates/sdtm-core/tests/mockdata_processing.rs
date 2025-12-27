@@ -89,6 +89,7 @@ fn processes_mockdata_end_to_end() {
                 suppqual_frames.push(DomainFrame {
                     domain_code: result.domain_code,
                     data: result.data,
+                    meta: None,
                 });
             }
         }
@@ -96,6 +97,7 @@ fn processes_mockdata_end_to_end() {
             processed_frames.push(DomainFrame {
                 domain_code: domain.code.clone(),
                 data,
+                meta: None,
             });
         }
     }

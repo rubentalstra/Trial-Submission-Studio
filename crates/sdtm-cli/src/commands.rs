@@ -6,7 +6,7 @@ use comfy_table::Table;
 use polars::prelude::{AnyValue, DataFrame};
 
 use sdtm_core::{
-    DomainFrame, ProcessingContext, ProcessingOptions, SuppqualInput, any_to_string,
+    DomainFrame, ProcessingOptions, StudyPipelineContext, SuppqualInput, any_to_string,
     build_domain_frame, build_mapped_domain_frame, build_relationship_frames, build_report_domains,
     build_suppqual, dedupe_frames_by_identifiers, fill_missing_test_fields, insert_frame,
     is_supporting_domain, process_domain_with_context_and_tracker,
@@ -67,11 +67,20 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     let standards = load_default_sdtm_ig_domains().context("load standards")?;
     let ct_registry = load_default_ct_registry().context("load ct registry")?;
     let p21_rules = load_default_p21_rules().context("load p21 rules")?;
-    let domain_codes: Vec<String> = standards.iter().map(|d| d.code.clone()).collect();
-    let mut standards_map = BTreeMap::new();
-    for domain in &standards {
-        standards_map.insert(domain.code.to_uppercase(), domain);
-    }
+
+    // Initialize pipeline context with cached standards and metadata
+    let options = ProcessingOptions {
+        prefix_usubjid: !args.no_usubjid_prefix,
+        assign_sequence: !args.no_auto_seq,
+        warn_on_rewrite: true,
+    };
+    let mut pipeline = StudyPipelineContext::new(&study_id)
+        .with_standards(standards.clone())
+        .with_ct_registry(ct_registry)
+        .with_p21_rules(p21_rules)
+        .with_options(options);
+
+    let domain_codes = pipeline.domain_codes();
 
     let csv_files = list_csv_files(study_folder).context("list csv files")?;
     let discovered = discover_domain_files(&csv_files, &domain_codes);
@@ -89,10 +98,9 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     };
     let mut input_counts: BTreeMap<String, usize> = BTreeMap::new();
     let mut seq_trackers: BTreeMap<String, BTreeMap<String, i64>> = BTreeMap::new();
-    let mut reference_starts: BTreeMap<String, String> = BTreeMap::new();
 
     let mut standard_variables = BTreeSet::new();
-    for domain in &standards {
+    for domain in &pipeline.standards {
         for variable in &domain.variables {
             standard_variables.insert(variable.name.to_uppercase());
         }
@@ -129,14 +137,10 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
         BTreeSet::new()
     };
 
-    let options = ProcessingOptions {
-        prefix_usubjid: !args.no_usubjid_prefix,
-        assign_sequence: !args.no_auto_seq,
-        warn_on_rewrite: true,
-    };
-    let suppqual_domain = standards_map
-        .get("SUPPQUAL")
-        .ok_or_else(|| anyhow!("missing SUPPQUAL metadata"))?;
+    let suppqual_domain = pipeline
+        .get_domain("SUPPQUAL")
+        .ok_or_else(|| anyhow!("missing SUPPQUAL metadata"))?
+        .clone();
 
     let mut ordered_domains: Vec<String> = discovered.keys().cloned().collect();
     ordered_domains.sort_by(|left, right| {
@@ -155,7 +159,7 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
         };
         let multi_source = files.len() > 1;
         let domain_key = domain_code.to_uppercase();
-        let domain = match standards_map.get(&domain_key) {
+        let domain = match pipeline.get_domain(&domain_key).cloned() {
             Some(domain) => domain,
             None => {
                 errors.push(format!("missing standards metadata for {domain_code}"));
@@ -201,7 +205,7 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
             } else {
                 Some(&derived_columns)
             };
-            let mapped_result = match build_mapped_domain_frame(&table, domain, &study_id) {
+            let mapped_result = match build_mapped_domain_frame(&table, &domain, &study_id) {
                 Ok(result) => result,
                 Err(error) => {
                     errors.push(format!("{}: {error}", path.display()));
@@ -221,12 +225,9 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
                 }
             }
             {
-                let ctx = ProcessingContext::new(&study_id)
-                    .with_ct_registry(&ct_registry)
-                    .with_options(options)
-                    .with_reference_starts(&reference_starts);
+                let ctx = pipeline.processing_context();
                 if let Err(error) = fill_missing_test_fields(
-                    domain,
+                    &domain,
                     &mapping_config,
                     &table,
                     &mut mapped.data,
@@ -235,7 +236,7 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
                     errors.push(format!("{}: {error}", path.display()));
                 }
                 if let Err(error) = process_domain_with_context_and_tracker(
-                    domain,
+                    &domain,
                     &mut mapped.data,
                     &ctx,
                     Some(domain_tracker),
@@ -245,13 +246,11 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
             }
             if domain_key == "DM" {
                 let dm_starts = extract_reference_starts(&mapped.data);
-                for (usubjid, rfstdtc) in dm_starts {
-                    reference_starts.entry(usubjid).or_insert(rfstdtc);
-                }
+                pipeline.add_reference_starts(dm_starts);
             }
             match build_suppqual(SuppqualInput {
-                parent_domain: domain,
-                suppqual_domain,
+                parent_domain: &domain,
+                suppqual_domain: &suppqual_domain,
                 source_df: &source.data,
                 mapped_df: Some(&mapped.data),
                 used_source_columns: &used,
@@ -264,6 +263,7 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
                     suppqual_frames.push(DomainFrame {
                         domain_code: result.domain_code,
                         data: result.data,
+                        meta: None,
                     });
                 }
                 Ok(None) => {}
@@ -287,6 +287,7 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
                 DomainFrame {
                     domain_code: domain_code.to_uppercase(),
                     data: mapped.data,
+                    meta: None,
                 },
             ) {
                 errors.push(format!("{}: {error}", path.display()));
@@ -300,6 +301,7 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
                 DomainFrame {
                     domain_code: key.clone(),
                     data,
+                    meta: None,
                 },
             );
         }
@@ -323,7 +325,7 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
         .cloned()
         .collect();
     let relationship_frames =
-        build_relationship_frames(&relationship_sources, &standards, &study_id)
+        build_relationship_frames(&relationship_sources, &pipeline.standards, &study_id)
             .context("build relationship domains")?;
     for frame in relationship_frames {
         if let Err(error) = insert_frame(&mut frames, frame) {
@@ -332,20 +334,20 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     }
 
     let mut frame_list: Vec<DomainFrame> = frames.into_values().collect();
-    dedupe_frames_by_identifiers(&mut frame_list, &standards_map, suppqual_domain)?;
+    dedupe_frames_by_identifiers(&mut frame_list, &pipeline.standards_map, &suppqual_domain)?;
     frame_list.sort_by(|a, b| a.domain_code.cmp(&b.domain_code));
 
-    let report_domains = build_report_domains(&standards, &frame_list)?;
+    let report_domains = build_report_domains(&pipeline.standards, &frame_list)?;
     let report_domain_map = sdtm_core::domain_map_by_code(&report_domains);
 
     let validation_ctx = ValidationContext::new()
-        .with_ct_registry(&ct_registry)
-        .with_p21_rules(&p21_rules);
+        .with_ct_registry(&pipeline.ct_registry)
+        .with_p21_rules(&pipeline.p21_rules);
     let frame_refs: Vec<(&str, &DataFrame)> = frame_list
         .iter()
         .map(|frame| (frame.domain_code.as_str(), &frame.data))
         .collect();
-    let reports = validate_domains(&standards, &frame_refs, &validation_ctx);
+    let reports = validate_domains(&pipeline.standards, &frame_refs, &validation_ctx);
     let mut report_map = BTreeMap::new();
     for report in reports {
         report_map.insert(report.domain_code.to_uppercase(), report);

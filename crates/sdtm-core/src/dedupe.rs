@@ -35,13 +35,13 @@ fn is_generic_identifier(name: &str) -> bool {
 
 pub fn dedupe_frames_by_identifiers(
     frames: &mut [DomainFrame],
-    standards_map: &BTreeMap<String, &Domain>,
+    standards_map: &BTreeMap<String, Domain>,
     suppqual_domain: &Domain,
 ) -> Result<()> {
     for frame in frames.iter_mut() {
         let code = frame.domain_code.to_uppercase();
         let domain = if let Some(domain) = standards_map.get(&code) {
-            *domain
+            domain
         } else if code.starts_with("SUPP") {
             suppqual_domain
         } else {

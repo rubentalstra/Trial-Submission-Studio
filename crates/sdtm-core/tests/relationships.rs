@@ -49,10 +49,12 @@ fn builds_relrec_from_domain_frames() {
         DomainFrame {
             domain_code: "DS".to_string(),
             data: ds,
+            meta: None,
         },
         DomainFrame {
             domain_code: "LB".to_string(),
             data: lb,
+            meta: None,
         },
     ];
 
@@ -106,6 +108,7 @@ fn builds_relspec_from_refid_columns() {
     let frames = vec![DomainFrame {
         domain_code: source_domain,
         data: df,
+        meta: None,
     }];
 
     let relspec_frame = build_relspec(&frames, &standards, relspec, "STUDY1")
@@ -156,6 +159,7 @@ fn builds_relsub_from_matching_rows() {
         &[DomainFrame {
             domain_code: "RELSUB".to_string(),
             data: df,
+            meta: None,
         }],
         relsub,
         "STUDY1",
