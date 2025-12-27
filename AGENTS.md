@@ -27,13 +27,15 @@ provenance. Output must match SDTMIG and MSG conventions exactly.
 - Keep edits ASCII unless a file already uses non-ASCII characters.
 - Prefer explicit, readable transformations over deeply nested helper chains.
 - Use `tracing` for logs; avoid `println!` in production paths.
-- Favor Polars expressions for batch transforms; avoid row-by-row loops when possible.
+- Favor Polars expressions for batch transforms; avoid row-by-row loops when
+  possible.
 
 ## Security considerations
 
 - Treat all input data as PHI/PII; do not log raw values by default.
 - Do not copy sample subject data into new files outside `docs/` or `tests/`.
-- Avoid sending data to external services or downloading external assets without approval.
+- Avoid sending data to external services or downloading external assets without
+  approval.
 
 ## Non-negotiable rules
 
@@ -97,23 +99,22 @@ provenance. Output must match SDTMIG and MSG conventions exactly.
 ## Large datasets and fixtures
 
 - MSG sample package and XML/XPT fixtures are large; avoid printing whole files.
-- Use targeted `rg`/`sed` slices and keep new fixtures minimal and deterministic.
+- Use targeted `rg`/`sed` slices and keep new fixtures minimal and
+  deterministic.
 
 ## Commit and PR guidelines
 
 - Keep changes focused and explain SDTMIG/MSG rationale in descriptions.
-- Update `docs/SUGGESTED_CODE_CHANGES.md` when requirements or assumptions change.
+- Update `docs/SUGGESTED_CODE_CHANGES.md` when requirements or assumptions
+  change.
 - Do not rewrite history or amend unless explicitly requested.
 
 ## Deployment and release
 
-- There is no production deploy flow; build releases with `cargo build --release`.
-- CLI entry point lives in `crates/sdtm-cli`; validate outputs against MSG samples.
-
-## Nested AGENTS.md files
-
-- Use nested `AGENTS.md` files inside subdirectories for crate-specific guidance.
-- The nearest `AGENTS.md` takes precedence over parent files.
+- There is no production deploy flow; build releases with
+  `cargo build --release`.
+- CLI entry point lives in `crates/sdtm-cli`; validate outputs against MSG
+  samples.
 
 ## Working practices
 
