@@ -352,13 +352,13 @@ are noted where applicable.
 
 ## 0.7 Domain Processing Refactor
 
-- [ ] **0.7.1** Split `sdtm-core/src/preprocess.rs` into per-domain modules
+- [x] **0.7.1** Split `sdtm-core/src/preprocess.rs` into per-domain modules
       (e.g., `preprocess/dm.rs`, `preprocess/ae.rs`). Drive with a rule table.
 
-- [ ] **0.7.2** Remove or require explicit mapping metadata before populating
+- [x] **0.7.2** Remove or require explicit mapping metadata before populating
       any value in preprocess/domain processors.
 
-- [ ] **0.7.3** Use Polars expressions for bulk transforms
+- [x] **0.7.3** Use Polars expressions for bulk transforms
       (trimming/uppercasing) instead of per-row loops.
 
 ## 0.8 Validation Refactor
