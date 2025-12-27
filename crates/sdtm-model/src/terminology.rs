@@ -21,7 +21,12 @@ pub struct ControlledTerminology {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CtCatalog {
+    /// Display label (e.g., "SDTM CT")
     pub label: String,
+    /// Release version/date (e.g., "2024-03-29")
+    pub version: Option<String>,
+    /// Publishing set (e.g., "SDTM", "SEND", "DEFINE-XML")
+    pub publishing_set: Option<String>,
     pub by_code: BTreeMap<String, ControlledTerminology>,
     pub by_name: BTreeMap<String, ControlledTerminology>,
     pub by_submission: BTreeMap<String, ControlledTerminology>,
@@ -34,7 +39,10 @@ pub struct CtRegistry {
 
 pub struct ResolvedCt<'a> {
     pub ct: &'a ControlledTerminology,
+    /// Catalog label (e.g., "SDTM CT")
     pub source: &'a str,
+    /// Reference to the catalog for full metadata access
+    pub catalog: &'a CtCatalog,
 }
 
 impl CtRegistry {
@@ -53,6 +61,7 @@ impl CtRegistry {
                 return Some(ResolvedCt {
                     ct,
                     source: catalog.label.as_str(),
+                    catalog,
                 });
             }
         }
@@ -73,6 +82,7 @@ impl CtRegistry {
                         return Some(ResolvedCt {
                             ct,
                             source: catalog.label.as_str(),
+                            catalog,
                         });
                     }
                 }
@@ -84,12 +94,14 @@ impl CtRegistry {
                 return Some(ResolvedCt {
                     ct,
                     source: catalog.label.as_str(),
+                    catalog,
                 });
             }
             if let Some(ct) = catalog.by_name.get(&name_key) {
                 return Some(ResolvedCt {
                     ct,
                     source: catalog.label.as_str(),
+                    catalog,
                 });
             }
         }

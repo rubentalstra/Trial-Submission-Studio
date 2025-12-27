@@ -160,8 +160,20 @@ are noted where applicable.
       functions - Single `create_issue()` helper ensures all issues use rule
       metadata
 
-- [ ] **0.3.4** Store CT release version and publishing set in the standards
-      registry. Emit in Define-XML with strict CT validation.
+- [x] **0.3.4** Store CT release version and publishing set in the standards
+      registry. Emit in Define-XML with strict CT validation. **Implementation
+      notes**: - Added `version` and `publishing_set` fields to `CtCatalog` in
+      `sdtm-model/src/terminology.rs` - Parser extracts metadata from filename
+      pattern `PREFIX_CT_YYYY-MM-DD.csv` (e.g., `SDTM_CT_2024-03-29.csv` →
+      publishing_set="SDTM", version="2024-03-29") - `ResolvedCt` now includes
+      `catalog` reference for full metadata access - Define-XML emits
+      `<def:Standards>` section with CT standards: -
+      `<def:Standard OID="STD.CT.SDTM.2024-03-29" Name="CDISC/NCI" Type="CT"
+          PublishingSet="SDTM" Version="2024-03-29" Status="Final"/>`
+      - Each `<CodeList>` now includes `def:StandardOID` attribute linking to
+      its source CT standard - Added tests:
+      `ct_catalog_has_version_and_publishing_set`,
+      `resolved_ct_includes_catalog_reference`
 
 ## 0.4 Observability and Logging
 

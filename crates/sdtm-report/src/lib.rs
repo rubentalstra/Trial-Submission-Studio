@@ -231,6 +231,7 @@ pub fn write_define_xml(
     let ct_registry = load_default_ct_registry().context("load ct registry")?;
     let mut item_defs: BTreeMap<String, ItemDefSpec> = BTreeMap::new();
     let mut code_lists: BTreeMap<String, CodeListSpec> = BTreeMap::new();
+    let mut ct_standards: BTreeMap<String, CtStandard> = BTreeMap::new();
 
     for (domain, frame) in &entries {
         for variable in &domain.variables {
@@ -239,7 +240,13 @@ pub fn write_define_xml(
                 VariableType::Char => Some(variable_length(variable, &frame.data)?),
                 VariableType::Num => None,
             };
-            let codelist_oid = resolve_codelist(domain, variable, &ct_registry, &mut code_lists)?;
+            let codelist_oid = resolve_codelist(
+                domain,
+                variable,
+                &ct_registry,
+                &mut code_lists,
+                &mut ct_standards,
+            )?;
             item_defs.insert(
                 oid.clone(),
                 ItemDefSpec {
@@ -300,6 +307,22 @@ pub fn write_define_xml(
     metadata.push_attribute(("Description", mdv_desc.as_str()));
     metadata.push_attribute(("def:DefineVersion", DEFINE_XML_VERSION));
     xml.write_event(Event::Start(metadata))?;
+
+    // Write def:Standards section with CT versions
+    if !ct_standards.is_empty() {
+        xml.write_event(Event::Start(BytesStart::new("def:Standards")))?;
+        for standard in ct_standards.values() {
+            let mut std_node = BytesStart::new("def:Standard");
+            std_node.push_attribute(("OID", standard.oid.as_str()));
+            std_node.push_attribute(("Name", standard.name.as_str()));
+            std_node.push_attribute(("Type", "CT"));
+            std_node.push_attribute(("PublishingSet", standard.publishing_set.as_str()));
+            std_node.push_attribute(("Version", standard.version.as_str()));
+            std_node.push_attribute(("Status", "Final"));
+            xml.write_event(Event::Empty(std_node))?;
+        }
+        xml.write_event(Event::End(BytesEnd::new("def:Standards")))?;
+    }
 
     for (domain, _frame) in &entries {
         let mut ig = BytesStart::new("ItemGroupDef");
@@ -370,6 +393,9 @@ pub fn write_define_xml(
         node.push_attribute(("OID", oid.as_str()));
         node.push_attribute(("Name", list.name.as_str()));
         node.push_attribute(("DataType", "text"));
+        if let Some(std_oid) = list.standard_oid.as_ref() {
+            node.push_attribute(("def:StandardOID", std_oid.as_str()));
+        }
         if list.extensible {
             node.push_attribute(("def:Extensible", "Yes"));
         }
@@ -601,6 +627,17 @@ struct CodeListSpec {
     name: String,
     values: Vec<String>,
     extensible: bool,
+    /// Reference to CT standard OID (e.g., "STD.CT.SDTM.2024-03-29")
+    standard_oid: Option<String>,
+}
+
+/// CT Standard definition for Define-XML def:Standards section
+#[derive(Debug, Clone)]
+struct CtStandard {
+    oid: String,
+    name: String,
+    publishing_set: String,
+    version: String,
 }
 
 fn domain_map(domains: &[Domain]) -> BTreeMap<String, &Domain> {
@@ -682,19 +719,24 @@ fn resolve_codelist(
     variable: &Variable,
     ct_registry: &sdtm_model::CtRegistry,
     code_lists: &mut BTreeMap<String, CodeListSpec>,
+    ct_standards: &mut BTreeMap<String, CtStandard>,
 ) -> Result<Option<String>> {
-    let mut ct_entries = Vec::new();
+    let mut ct_entries: Vec<(
+        &sdtm_model::ControlledTerminology,
+        Option<&sdtm_model::CtCatalog>,
+    )> = Vec::new();
+
     if let Some(raw) = variable.codelist_code.as_ref() {
         let codes = parse_codelist_codes(raw);
         for code in codes {
             if let Some(resolved) = ct_registry.resolve_by_code(&code, None) {
-                ct_entries.push(resolved.ct);
+                ct_entries.push((resolved.ct, Some(resolved.catalog)));
             }
         }
     }
     if ct_entries.is_empty() {
         if let Some(resolved) = ct_registry.resolve_for_variable(variable, None) {
-            ct_entries.push(resolved.ct);
+            ct_entries.push((resolved.ct, Some(resolved.catalog)));
         } else if let Some(raw) = variable.codelist_code.as_ref() {
             return Err(anyhow!(
                 "missing codelist {} for {}.{}",
@@ -706,12 +748,34 @@ fn resolve_codelist(
             return Ok(None);
         }
     }
+
+    // Determine the standard OID for this codelist
+    let standard_oid = ct_entries.first().and_then(|(_, catalog)| {
+        catalog.and_then(|cat| {
+            let publishing_set = cat.publishing_set.as_ref()?;
+            let version = cat.version.as_ref()?;
+            let oid = format!("STD.CT.{}.{}", publishing_set, version);
+
+            // Register the CT standard if not already present
+            ct_standards
+                .entry(oid.clone())
+                .or_insert_with(|| CtStandard {
+                    oid: oid.clone(),
+                    name: "CDISC/NCI".to_string(),
+                    publishing_set: publishing_set.clone(),
+                    version: version.clone(),
+                });
+
+            Some(oid)
+        })
+    });
+
     let oid = format!("CL.{}.{}", domain.code, variable.name);
     if !code_lists.contains_key(&oid) {
         let mut values = BTreeSet::new();
         let mut names = BTreeSet::new();
         let mut extensible = false;
-        for ct in &ct_entries {
+        for (ct, _) in &ct_entries {
             names.insert(ct.codelist_name.clone());
             extensible |= ct.extensible;
             for value in &ct.submission_values {
@@ -728,6 +792,7 @@ fn resolve_codelist(
                 name,
                 values: values.into_iter().collect(),
                 extensible,
+                standard_oid,
             },
         );
     }

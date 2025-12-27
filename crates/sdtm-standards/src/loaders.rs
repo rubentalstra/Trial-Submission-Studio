@@ -355,8 +355,12 @@ pub fn load_ct_catalog(path: &Path) -> Result<CtCatalog> {
         }
     }
 
+    let (publishing_set, version) = parse_ct_metadata_from_filename(path);
+
     Ok(CtCatalog {
         label,
+        version,
+        publishing_set,
         by_code,
         by_name,
         by_submission,
@@ -393,6 +397,40 @@ fn ct_label_from_filename(path: &Path) -> String {
     } else {
         stem.to_string()
     }
+}
+
+/// Parse CT metadata from filename pattern like `SDTM_CT_2024-03-29.csv`.
+/// Returns (publishing_set, version) where:
+/// - publishing_set: "SDTM", "SEND", "DEFINE-XML", etc.
+/// - version: "2024-03-29" (release date)
+fn parse_ct_metadata_from_filename(path: &Path) -> (Option<String>, Option<String>) {
+    let stem = path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .unwrap_or("");
+
+    // Pattern: PREFIX_CT_YYYY-MM-DD (e.g., SDTM_CT_2024-03-29)
+    if let Some((prefix, date_part)) = stem.split_once("_CT_") {
+        let publishing_set = match prefix.to_uppercase().as_str() {
+            "SDTM" => Some("SDTM".to_string()),
+            "SEND" => Some("SEND".to_string()),
+            "ADAM" => Some("ADaM".to_string()),
+            "DEFINE-XML" | "DEFINEXML" => Some("DEFINE-XML".to_string()),
+            "PROTOCOL" => Some("Protocol".to_string()),
+            "DDF" => Some("DDF".to_string()),
+            "MRCT" => Some("MRCT".to_string()),
+            other => Some(other.to_string()),
+        };
+        // Version is the date part (e.g., "2024-03-29")
+        let version = if !date_part.is_empty() {
+            Some(date_part.to_string())
+        } else {
+            None
+        };
+        return (publishing_set, version);
+    }
+
+    (None, None)
 }
 
 fn split_synonyms(raw: &str) -> Vec<String> {

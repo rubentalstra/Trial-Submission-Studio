@@ -29,6 +29,52 @@ fn loads_ct_registry() {
 }
 
 #[test]
+fn ct_catalog_has_version_and_publishing_set() {
+    let registry = load_default_ct_registry().expect("load ct");
+    let sdtm_catalog = registry.catalogs.get("SDTM CT").expect("SDTM CT catalog");
+
+    // Verify publishing_set is parsed from filename (e.g., SDTM_CT_2024-03-29.csv)
+    assert_eq!(
+        sdtm_catalog.publishing_set.as_deref(),
+        Some("SDTM"),
+        "publishing_set should be 'SDTM'"
+    );
+
+    // Verify version is parsed (the date portion)
+    assert!(
+        sdtm_catalog.version.is_some(),
+        "version should be set from filename"
+    );
+    let version = sdtm_catalog.version.as_ref().unwrap();
+    // Version should look like a date: YYYY-MM-DD
+    assert!(
+        version.contains('-'),
+        "version should be date format like '2024-03-29', got: {}",
+        version
+    );
+}
+
+#[test]
+fn resolved_ct_includes_catalog_reference() {
+    let registry = load_default_ct_registry().expect("load ct");
+    // Resolve a known codelist (SEX - C66731)
+    let resolved = registry
+        .resolve_by_code("C66731", None)
+        .expect("SEX codelist should exist");
+
+    // Verify we can access the catalog metadata through the resolved reference
+    assert!(!resolved.source.is_empty());
+    assert!(
+        resolved.catalog.publishing_set.is_some(),
+        "catalog should have publishing_set"
+    );
+    assert!(
+        resolved.catalog.version.is_some(),
+        "catalog should have version"
+    );
+}
+
+#[test]
 fn loads_send_country_codelist() {
     let registry = load_default_ct_registry().expect("load ct");
     let send_catalog = registry.catalogs.get("SEND CT").expect("send ct");
