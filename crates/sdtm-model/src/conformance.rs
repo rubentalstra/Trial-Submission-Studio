@@ -18,6 +18,7 @@ pub struct ConformanceIssue {
     pub rule_id: Option<String>,
     pub category: Option<String>,
     pub codelist_code: Option<String>,
+    pub ct_source: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

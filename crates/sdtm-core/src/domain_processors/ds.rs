@@ -40,9 +40,9 @@ fn resolve_dsdecod_codelist<'a>(
 ) -> Option<&'a sdtm_model::ControlledTerminology> {
     let registry = ctx.ct_registry?;
     for code in codes {
-        if let Some(ct) = registry.by_code.get(&code.to_uppercase()) {
-            if resolve_ct_submission_value(ct, value).is_some() {
-                return Some(ct);
+        if let Some(resolved) = registry.resolve_by_code(code, None) {
+            if resolve_ct_submission_value(resolved.ct, value).is_some() {
+                return Some(resolved.ct);
             }
         }
     }

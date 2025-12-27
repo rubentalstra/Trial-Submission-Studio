@@ -5,7 +5,7 @@ use anyhow::{Context, Result};
 use csv::ReaderBuilder;
 
 use sdtm_model::{
-    ControlledTerminology, CtRegistry, DatasetMetadata, Domain, Variable, VariableType,
+    ControlledTerminology, CtCatalog, CtRegistry, DatasetMetadata, Domain, Variable, VariableType,
 };
 
 #[derive(Debug, Clone)]
@@ -201,114 +201,68 @@ fn compare_variable_order(left: &Variable, right: &Variable) -> std::cmp::Orderi
 }
 
 pub fn load_ct_registry(ct_dirs: &[PathBuf]) -> Result<CtRegistry> {
+    let mut catalogs = BTreeMap::new();
+    let files = collect_ct_files(ct_dirs)?;
+
+    for path in files {
+        let catalog = load_ct_catalog(&path)?;
+        catalogs.insert(catalog.label.to_uppercase(), catalog);
+    }
+
+    Ok(CtRegistry { catalogs })
+}
+
+pub fn load_ct_catalog(path: &Path) -> Result<CtCatalog> {
+    let rows = read_csv_rows(path)?;
+    let label = ct_label_from_filename(path);
     let mut by_code = BTreeMap::new();
     let mut by_name = BTreeMap::new();
     let mut by_submission = BTreeMap::new();
     let mut submission_by_code = BTreeMap::new();
-    let files = collect_ct_files(ct_dirs)?;
 
-    for path in files {
-        let rows = read_csv_rows(&path)?;
-        for row in rows {
-            let code = row.get("Code").cloned().unwrap_or_default().to_uppercase();
-            let codelist_code = row
-                .get("Codelist Code")
-                .cloned()
-                .unwrap_or_default()
-                .to_uppercase();
-            let codelist_name = row.get("Codelist Name").cloned().unwrap_or_else(|| {
-                if codelist_code.is_empty() {
-                    code.clone()
-                } else {
-                    codelist_code.clone()
-                }
-            });
-            let extensible = row
-                .get("Codelist Extensible (Yes/No)")
-                .map(|v| v.eq_ignore_ascii_case("yes"))
-                .unwrap_or(false);
+    for row in rows {
+        let code = row.get("Code").cloned().unwrap_or_default().to_uppercase();
+        let codelist_code = row
+            .get("Codelist Code")
+            .cloned()
+            .unwrap_or_default()
+            .to_uppercase();
+        let codelist_name = row.get("Codelist Name").cloned().unwrap_or_else(|| {
             if codelist_code.is_empty() {
-                if code.is_empty() {
-                    continue;
-                }
-                if let Some(submission) = row
-                    .get("CDISC Submission Value")
-                    .filter(|value| !value.is_empty())
-                {
-                    submission_by_code.insert(code.clone(), submission.to_uppercase());
-                }
-                let mut entry = by_code.remove(&code).unwrap_or(ControlledTerminology {
-                    codelist_code: code.clone(),
-                    codelist_name: codelist_name.clone(),
-                    extensible,
-                    submission_values: Vec::new(),
-                    synonyms: BTreeMap::new(),
-                    submission_value_synonyms: BTreeMap::new(),
-                    nci_codes: BTreeMap::new(),
-                    definitions: BTreeMap::new(),
-                    preferred_terms: BTreeMap::new(),
-                    standards: Vec::new(),
-                    sources: Vec::new(),
-                });
-                entry.codelist_name = codelist_name.clone();
-                entry.extensible |= extensible;
-                if let Some(standard) = row.get("Standard and Date").filter(|v| !v.is_empty()) {
-                    if !entry.standards.contains(standard) {
-                        entry.standards.push(standard.clone());
-                    }
-                }
-                if let Some(source) = path.file_name().and_then(|v| v.to_str()) {
-                    if !entry.sources.contains(&source.to_string()) {
-                        entry.sources.push(source.to_string());
-                    }
-                }
-                by_code.insert(code.clone(), entry);
+                code.clone()
+            } else {
+                codelist_code.clone()
+            }
+        });
+        let extensible = row
+            .get("Codelist Extensible (Yes/No)")
+            .map(|v| v.eq_ignore_ascii_case("yes"))
+            .unwrap_or(false);
+        if codelist_code.is_empty() {
+            if code.is_empty() {
                 continue;
             }
-            let submission_value = row
+            if let Some(submission) = row
                 .get("CDISC Submission Value")
-                .cloned()
-                .unwrap_or_default();
-            if submission_value.is_empty() {
-                continue;
+                .filter(|value| !value.is_empty())
+            {
+                submission_by_code.insert(code.clone(), submission.to_uppercase());
             }
-            let mut entry = by_code
-                .remove(&codelist_code)
-                .unwrap_or(ControlledTerminology {
-                    codelist_code: codelist_code.clone(),
-                    codelist_name: codelist_name.clone(),
-                    extensible,
-                    submission_values: Vec::new(),
-                    synonyms: BTreeMap::new(),
-                    submission_value_synonyms: BTreeMap::new(),
-                    nci_codes: BTreeMap::new(),
-                    definitions: BTreeMap::new(),
-                    preferred_terms: BTreeMap::new(),
-                    standards: Vec::new(),
-                    sources: Vec::new(),
-                });
-
+            let mut entry = by_code.remove(&code).unwrap_or(ControlledTerminology {
+                codelist_code: code.clone(),
+                codelist_name: codelist_name.clone(),
+                extensible,
+                submission_values: Vec::new(),
+                synonyms: BTreeMap::new(),
+                submission_value_synonyms: BTreeMap::new(),
+                nci_codes: BTreeMap::new(),
+                definitions: BTreeMap::new(),
+                preferred_terms: BTreeMap::new(),
+                standards: Vec::new(),
+                sources: Vec::new(),
+            });
+            entry.codelist_name = codelist_name.clone();
             entry.extensible |= extensible;
-            if !entry.submission_values.contains(&submission_value) {
-                entry.submission_values.push(submission_value.clone());
-            }
-            if let Some(def) = row.get("CDISC Definition").filter(|v| !v.is_empty()) {
-                entry
-                    .definitions
-                    .insert(submission_value.clone(), def.clone());
-            }
-            if let Some(pref) = row.get("NCI Preferred Term").filter(|v| !v.is_empty()) {
-                entry
-                    .preferred_terms
-                    .insert(submission_value.clone(), pref.clone());
-                insert_ct_alias(&mut entry, &submission_value, pref);
-            }
-            if let Some(code) = row.get("Code").filter(|v| !v.is_empty()) {
-                entry
-                    .nci_codes
-                    .insert(submission_value.clone(), code.clone());
-                insert_ct_alias(&mut entry, &submission_value, code);
-            }
             if let Some(standard) = row.get("Standard and Date").filter(|v| !v.is_empty()) {
                 if !entry.standards.contains(standard) {
                     entry.standards.push(standard.clone());
@@ -319,14 +273,70 @@ pub fn load_ct_registry(ct_dirs: &[PathBuf]) -> Result<CtRegistry> {
                     entry.sources.push(source.to_string());
                 }
             }
-            if let Some(synonyms_raw) = row.get("CDISC Synonym(s)").filter(|v| !v.is_empty()) {
-                for syn in split_synonyms(synonyms_raw) {
-                    insert_ct_alias(&mut entry, &submission_value, &syn);
-                }
-            }
-
-            by_code.insert(codelist_code.clone(), entry);
+            by_code.insert(code.clone(), entry);
+            continue;
         }
+        let submission_value = row
+            .get("CDISC Submission Value")
+            .cloned()
+            .unwrap_or_default();
+        if submission_value.is_empty() {
+            continue;
+        }
+        let mut entry = by_code
+            .remove(&codelist_code)
+            .unwrap_or(ControlledTerminology {
+                codelist_code: codelist_code.clone(),
+                codelist_name: codelist_name.clone(),
+                extensible,
+                submission_values: Vec::new(),
+                synonyms: BTreeMap::new(),
+                submission_value_synonyms: BTreeMap::new(),
+                nci_codes: BTreeMap::new(),
+                definitions: BTreeMap::new(),
+                preferred_terms: BTreeMap::new(),
+                standards: Vec::new(),
+                sources: Vec::new(),
+            });
+
+        entry.extensible |= extensible;
+        if !entry.submission_values.contains(&submission_value) {
+            entry.submission_values.push(submission_value.clone());
+        }
+        if let Some(def) = row.get("CDISC Definition").filter(|v| !v.is_empty()) {
+            entry
+                .definitions
+                .insert(submission_value.clone(), def.clone());
+        }
+        if let Some(pref) = row.get("NCI Preferred Term").filter(|v| !v.is_empty()) {
+            entry
+                .preferred_terms
+                .insert(submission_value.clone(), pref.clone());
+            insert_ct_alias(&mut entry, &submission_value, pref);
+        }
+        if let Some(code) = row.get("Code").filter(|v| !v.is_empty()) {
+            entry
+                .nci_codes
+                .insert(submission_value.clone(), code.clone());
+            insert_ct_alias(&mut entry, &submission_value, code);
+        }
+        if let Some(standard) = row.get("Standard and Date").filter(|v| !v.is_empty()) {
+            if !entry.standards.contains(standard) {
+                entry.standards.push(standard.clone());
+            }
+        }
+        if let Some(source) = path.file_name().and_then(|v| v.to_str()) {
+            if !entry.sources.contains(&source.to_string()) {
+                entry.sources.push(source.to_string());
+            }
+        }
+        if let Some(synonyms_raw) = row.get("CDISC Synonym(s)").filter(|v| !v.is_empty()) {
+            for syn in split_synonyms(synonyms_raw) {
+                insert_ct_alias(&mut entry, &submission_value, &syn);
+            }
+        }
+
+        by_code.insert(codelist_code.clone(), entry);
     }
 
     for entry in by_code.values() {
@@ -337,7 +347,8 @@ pub fn load_ct_registry(ct_dirs: &[PathBuf]) -> Result<CtRegistry> {
         }
     }
 
-    Ok(CtRegistry {
+    Ok(CtCatalog {
+        label,
         by_code,
         by_name,
         by_submission,
@@ -362,6 +373,15 @@ fn collect_ct_files(ct_dirs: &[PathBuf]) -> Result<Vec<PathBuf>> {
         }
     }
     Ok(files)
+}
+
+fn ct_label_from_filename(path: &Path) -> String {
+    let stem = path.file_stem().and_then(|value| value.to_str()).unwrap_or("");
+    if let Some((prefix, _)) = stem.split_once("_CT_") {
+        format!("{} CT", prefix)
+    } else {
+        stem.to_string()
+    }
 }
 
 fn split_synonyms(raw: &str) -> Vec<String> {

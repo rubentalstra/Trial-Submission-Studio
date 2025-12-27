@@ -8,7 +8,7 @@ use serde::Serialize;
 
 use sdtm_model::{
     ConformanceIssue, ConformanceReport, ControlledTerminology, CtRegistry, Domain, IssueSeverity,
-    OutputFormat, Variable, VariableType,
+    OutputFormat, ResolvedCt, Variable, VariableType,
 };
 use sdtm_standards::loaders::P21Rule;
 
@@ -16,6 +16,7 @@ use sdtm_standards::loaders::P21Rule;
 pub struct ValidationContext<'a> {
     pub ct_registry: Option<&'a CtRegistry>,
     pub p21_rules: Option<&'a [P21Rule]>,
+    pub ct_catalogs: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -55,6 +56,7 @@ impl<'a> ValidationContext<'a> {
         Self {
             ct_registry: None,
             p21_rules: None,
+            ct_catalogs: None,
         }
     }
 
@@ -65,6 +67,11 @@ impl<'a> ValidationContext<'a> {
 
     pub fn with_p21_rules(mut self, p21_rules: &'a [P21Rule]) -> Self {
         self.p21_rules = Some(p21_rules);
+        self
+    }
+
+    pub fn with_ct_catalogs(mut self, catalogs: Vec<String>) -> Self {
+        self.ct_catalogs = Some(catalogs);
         self
     }
 }
@@ -97,6 +104,7 @@ pub struct ConformanceIssueJson {
     pub category: Option<String>,
     pub count: Option<u64>,
     pub codelist_code: Option<String>,
+    pub ct_source: Option<String>,
 }
 
 const REPORT_SCHEMA: &str = "cdisc-transpiler.conformance-report";
@@ -138,15 +146,15 @@ pub fn validate_domain(
             issues.push(issue);
         }
         if let Some(ct_registry) = ctx.ct_registry {
-            if let Some(ct) = resolve_ct(ct_registry, variable) {
+            if let Some(resolved) =
+                resolve_ct(ct_registry, variable, ctx.ct_catalogs.as_deref())
+            {
                 if let Some(issue) = ct_issue(
-                    domain,
                     variable,
                     df,
                     column,
-                    ct,
+                    &resolved,
                     &p21_lookup,
-                    &column_lookup,
                 ) {
                     issues.push(issue);
                 }
@@ -221,6 +229,7 @@ pub fn write_conformance_report_json(
                         category: issue.category.clone(),
                         count: issue.count,
                         codelist_code: issue.codelist_code.clone(),
+                        ct_source: issue.ct_source.clone(),
                     })
                     .collect(),
             })
@@ -477,15 +486,14 @@ fn is_valid_test_code(value: &str) -> bool {
 }
 
 fn ct_issue(
-    domain: &Domain,
     variable: &Variable,
     df: &DataFrame,
     column: &str,
-    ct: &ControlledTerminology,
+    resolved: &ResolvedCt,
     p21_lookup: &BTreeMap<String, &P21Rule>,
-    column_lookup: &BTreeMap<String, String>,
 ) -> Option<ConformanceIssue> {
-    let invalid = collect_invalid_ct_values(domain, variable, df, column, ct, column_lookup);
+    let ct = resolved.ct;
+    let invalid = collect_invalid_ct_values(df, column, ct);
     if invalid.is_empty() {
         return None;
     }
@@ -494,31 +502,35 @@ fn ct_issue(
     } else {
         (RULE_CT_NON_EXTENSIBLE, IssueSeverity::Error)
     };
-    let rule = p21_lookup.get(rule_id).copied();
     let mut examples = invalid.iter().take(5).cloned().collect::<Vec<_>>();
     examples.sort();
     let examples = examples.join(", ");
+    let rule = p21_lookup.get(rule_id).copied();
     let base = rule_base_message(rule, "Variable value not found in codelist");
     let mut message = format!(
-        "{}. {} contains {} value(s) not found in CT for {} ({}).",
+        "{}. {} contains {} value(s) not found in {} for {} ({}).",
         base,
         variable.name,
         invalid.len(),
+        resolved.source,
         ct.codelist_name,
         ct.codelist_code
     );
     if !examples.is_empty() {
         message.push_str(&format!(" examples: {}", examples));
     }
-    Some(issue_from_rule(
-        rule_id,
-        p21_lookup,
-        default_severity,
+    let rule = p21_lookup.get(rule_id).copied();
+    Some(ConformanceIssue {
+        code: ct.codelist_code.clone(),
         message,
-        Some(variable.name.clone()),
-        Some(invalid.len() as u64),
-        Some(ct.codelist_code.clone()),
-    ))
+        severity: rule_severity(rule, default_severity),
+        variable: Some(variable.name.clone()),
+        count: Some(invalid.len() as u64),
+        rule_id: Some(rule_id.to_string()),
+        category: rule.and_then(|rule| rule.category.clone()),
+        codelist_code: Some(ct.codelist_code.clone()),
+        ct_source: Some(resolved.source.to_string()),
+    })
 }
 
 fn build_p21_lookup<'a>(rules: Option<&'a [P21Rule]>) -> BTreeMap<String, &'a P21Rule> {
@@ -581,6 +593,7 @@ fn issue_from_rule(
         rule_id: Some(resolved_id),
         category,
         codelist_code,
+        ct_source: None,
     }
 }
 
@@ -623,6 +636,7 @@ fn apply_missing_dataset_issues(
             rule_id: Some(rule.rule_id.clone()),
             category: rule.category.clone(),
             codelist_code: None,
+            ct_source: None,
         };
         add_report_issue(report_map, &code, issue);
     }
@@ -656,6 +670,7 @@ fn apply_missing_dataset_rejects(
             rule_id: Some(rule.rule_id.clone()),
             category: rule.category.clone(),
             codelist_code: None,
+            ct_source: None,
         };
         add_report_issue(report_map, &code, issue);
     }
@@ -730,6 +745,7 @@ fn apply_ts_sstdtc_rejects(
                 rule_id: Some(rule.rule_id.clone()),
                 category: rule.category.clone(),
                 codelist_code: None,
+                ct_source: None,
             };
             add_report_issue(report_map, "TS", issue);
         }
@@ -747,6 +763,7 @@ fn apply_ts_sstdtc_rejects(
                 rule_id: Some(rule.rule_id.clone()),
                 category: rule.category.clone(),
                 codelist_code: None,
+                ct_source: None,
             };
             add_report_issue(report_map, "TS", issue);
         }
@@ -763,6 +780,7 @@ fn apply_ts_sstdtc_rejects(
                 rule_id: Some(rule.rule_id.clone()),
                 category: rule.category.clone(),
                 codelist_code: None,
+                ct_source: None,
             };
             add_report_issue(report_map, "TS", issue);
         }
@@ -883,12 +901,9 @@ fn is_two_digit(value: &str) -> bool {
 }
 
 fn collect_invalid_ct_values(
-    domain: &Domain,
-    variable: &Variable,
     df: &DataFrame,
     column: &str,
     ct: &ControlledTerminology,
-    column_lookup: &BTreeMap<String, String>,
 ) -> BTreeSet<String> {
     let mut invalid = BTreeSet::new();
     let series = match df.column(column) {
@@ -901,30 +916,10 @@ fn collect_invalid_ct_values(
         .map(|value| value.to_uppercase())
         .collect();
 
-    let dscat_col = if domain.code.eq_ignore_ascii_case("DS")
-        && variable.name.eq_ignore_ascii_case("DSDECOD")
-    {
-        column_lookup.get("DSCAT").cloned()
-    } else {
-        None
-    };
-
     for idx in 0..df.height() {
-        if let Some(dscat_col) = dscat_col.as_ref() {
-            let dscat = column_value(df, dscat_col, idx).to_uppercase();
-            if !dscat.is_empty() && dscat != "DISPOSITION EVENT" {
-                continue;
-            }
-        }
         let raw = any_to_string(series.get(idx).unwrap_or(AnyValue::Null));
         let trimmed = raw.trim();
         if trimmed.is_empty() {
-            continue;
-        }
-        if domain.code.eq_ignore_ascii_case("LB")
-            && variable.name.eq_ignore_ascii_case("LBSTRESC")
-            && is_numeric_like_text(trimmed)
-        {
             continue;
         }
         let normalized = normalize_ct_value(ct, trimmed);
@@ -959,37 +954,9 @@ fn normalize_ct_value(ct: &ControlledTerminology, raw: &str) -> String {
 fn resolve_ct<'a>(
     registry: &'a CtRegistry,
     variable: &Variable,
-) -> Option<&'a ControlledTerminology> {
-    if let Some(code_raw) = variable.codelist_code.as_ref() {
-        for code in split_codelist_codes(code_raw) {
-            let code_key = code.to_uppercase();
-            if let Some(ct) = registry.by_code.get(&code_key) {
-                return Some(ct);
-            }
-        }
-    }
-    let name_key = variable.name.to_uppercase();
-    registry
-        .by_submission
-        .get(&name_key)
-        .or_else(|| registry.by_name.get(&name_key))
-}
-
-fn split_codelist_codes(raw: &str) -> Vec<String> {
-    let text = raw.trim();
-    if text.is_empty() {
-        return Vec::new();
-    }
-    for sep in [';', ',', ' '] {
-        if text.contains(sep) {
-            return text
-                .split(sep)
-                .map(|part| part.trim().to_string())
-                .filter(|part| !part.is_empty())
-                .collect();
-        }
-    }
-    vec![text.to_string()]
+    preferred: Option<&[String]>,
+) -> Option<ResolvedCt<'a>> {
+    registry.resolve_for_variable(variable, preferred)
 }
 
 fn is_required(core: Option<&str>) -> bool {
@@ -1038,26 +1005,4 @@ fn any_to_string(value: AnyValue) -> String {
         AnyValue::Null => String::new(),
         _ => value.to_string(),
     }
-}
-
-fn column_value(df: &DataFrame, name: &str, idx: usize) -> String {
-    match df.column(name) {
-        Ok(series) => any_to_string(series.get(idx).unwrap_or(AnyValue::Null)),
-        Err(_) => String::new(),
-    }
-}
-
-fn is_numeric_like_text(value: &str) -> bool {
-    let trimmed = value.trim();
-    if trimmed.is_empty() {
-        return false;
-    }
-    let cleaned = trimmed
-        .strip_prefix("<=")
-        .or_else(|| trimmed.strip_prefix(">="))
-        .or_else(|| trimmed.strip_prefix('<'))
-        .or_else(|| trimmed.strip_prefix('>'))
-        .unwrap_or(trimmed)
-        .trim();
-    cleaned.parse::<f64>().is_ok()
 }

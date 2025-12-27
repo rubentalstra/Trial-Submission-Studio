@@ -54,40 +54,12 @@ impl<'a> ProcessingContext<'a> {
 
     pub fn resolve_ct(&self, domain: &Domain, variable: &str) -> Option<&'a ControlledTerminology> {
         let registry = self.ct_registry?;
-        let code = domain
+        let variable = domain
             .variables
             .iter()
-            .find(|var| var.name.eq_ignore_ascii_case(variable))
-            .and_then(|var| var.codelist_code.as_ref());
-        if let Some(code) = code {
-            for entry in split_codelist_codes(code) {
-                let code_key = entry.to_uppercase();
-                if let Some(ct) = registry.by_code.get(&code_key) {
-                    return Some(ct);
-                }
-            }
-        }
-        let name_key = variable.to_uppercase();
+            .find(|var| var.name.eq_ignore_ascii_case(variable))?;
         registry
-            .by_submission
-            .get(&name_key)
-            .or_else(|| registry.by_name.get(&name_key))
+            .resolve_for_variable(variable, None)
+            .map(|resolved| resolved.ct)
     }
-}
-
-fn split_codelist_codes(raw: &str) -> Vec<String> {
-    let text = raw.trim();
-    if text.is_empty() {
-        return Vec::new();
-    }
-    for sep in [';', ',', ' '] {
-        if text.contains(sep) {
-            return text
-                .split(sep)
-                .map(|part| part.trim().to_string())
-                .filter(|part| !part.is_empty())
-                .collect();
-        }
-    }
-    vec![text.to_string()]
 }

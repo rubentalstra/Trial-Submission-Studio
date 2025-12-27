@@ -22,15 +22,16 @@ fn loads_sdtm_domains() {
 #[test]
 fn loads_ct_registry() {
     let registry = load_default_ct_registry().expect("load ct");
-    assert!(!registry.by_code.is_empty());
-    assert!(!registry.by_name.is_empty());
-    assert!(!registry.by_submission.is_empty());
+    assert!(!registry.catalogs.is_empty());
+    assert!(registry.catalogs.contains_key("SDTM CT"));
+    assert!(registry.catalogs.contains_key("SEND CT"));
 }
 
 #[test]
 fn loads_send_country_codelist() {
     let registry = load_default_ct_registry().expect("load ct");
-    let ct = registry
+    let send_catalog = registry.catalogs.get("SEND CT").expect("send ct");
+    let ct = send_catalog
         .by_submission
         .get("COUNTRY")
         .expect("country codelist");

@@ -118,22 +118,24 @@ fn ct_invalid_value_emits_issue() {
     let issue = report
         .issues
         .iter()
-        .find(|issue| issue.code == "CT2001" || issue.code == "CT2002")
+        .find(|issue| {
+            issue.rule_id.as_deref() == Some("CT2001") || issue.rule_id.as_deref() == Some("CT2002")
+        })
         .expect("ct issue");
     let ct_code = variable.codelist_code.as_deref().unwrap_or("");
     let ct = ct_registry
-        .by_code
-        .get(&ct_code.to_uppercase())
-        .or_else(|| ct_registry.by_submission.get(&variable.name.to_uppercase()))
-        .or_else(|| ct_registry.by_name.get(&variable.name.to_uppercase()))
+        .resolve_by_code(ct_code, None)
+        .or_else(|| ct_registry.resolve_for_variable(variable, None))
+        .map(|resolved| resolved.ct)
         .expect("ct lookup");
     let expected = if ct.extensible {
         IssueSeverity::Warning
     } else {
         IssueSeverity::Error
     };
-    let expected_code = if ct.extensible { "CT2002" } else { "CT2001" };
-    assert_eq!(issue.code, expected_code);
+    let expected_rule = if ct.extensible { "CT2002" } else { "CT2001" };
+    assert_eq!(issue.rule_id.as_deref(), Some(expected_rule));
+    assert_eq!(issue.code, ct.codelist_code);
     assert_eq!(issue.severity, expected);
     assert_eq!(
         issue.codelist_code.as_deref(),
@@ -168,6 +170,7 @@ fn strict_output_gate_blocks_on_errors() {
             rule_id: None,
             category: None,
             codelist_code: None,
+            ct_source: None,
         }],
     };
     let decision = gate_strict_outputs(&[OutputFormat::Xpt], true, &[report]);
@@ -188,6 +191,7 @@ fn strict_output_gate_ignored_without_strict_formats() {
             rule_id: None,
             category: None,
             codelist_code: None,
+            ct_source: None,
         }],
     };
     let decision = gate_strict_outputs(&[OutputFormat::Xml], true, &[report]);

@@ -792,29 +792,24 @@ fn resolve_codelist(
     if let Some(raw) = variable.codelist_code.as_ref() {
         let codes = parse_codelist_codes(raw);
         for code in codes {
-            if let Some(ct) = ct_registry.by_code.get(&code.to_uppercase()) {
-                ct_entries.push(ct);
+            if let Some(resolved) = ct_registry.resolve_by_code(&code, None) {
+                ct_entries.push(resolved.ct);
             }
         }
     }
     if ct_entries.is_empty() {
-        let name_key = variable.name.to_uppercase();
-        if let Some(ct) = ct_registry.by_submission.get(&name_key) {
-            ct_entries.push(ct);
-        } else if let Some(ct) = ct_registry.by_name.get(&name_key) {
-            ct_entries.push(ct);
-        }
-    }
-    if ct_entries.is_empty() {
-        if let Some(raw) = variable.codelist_code.as_ref() {
+        if let Some(resolved) = ct_registry.resolve_for_variable(variable, None) {
+            ct_entries.push(resolved.ct);
+        } else if let Some(raw) = variable.codelist_code.as_ref() {
             return Err(anyhow!(
                 "missing codelist {} for {}.{}",
                 raw,
                 domain.code,
                 variable.name
             ));
+        } else {
+            return Ok(None);
         }
-        return Ok(None);
     }
     let oid = format!("CL.{}.{}", domain.code, variable.name);
     if !code_lists.contains_key(&oid) {

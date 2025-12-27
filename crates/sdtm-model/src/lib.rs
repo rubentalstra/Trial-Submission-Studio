@@ -12,7 +12,7 @@ pub use mapping::{ColumnHint, MappingConfig, MappingSuggestion};
 pub use processing::{
     DomainResult, OutputFormat, OutputPaths, ProcessStudyRequest, ProcessStudyResponse, StudyError,
 };
-pub use terminology::{ControlledTerminology, CtRegistry};
+pub use terminology::{ControlledTerminology, CtCatalog, CtRegistry, ResolvedCt};
 
 #[cfg(test)]
 mod tests {
@@ -32,6 +32,7 @@ mod tests {
                     rule_id: None,
                     category: None,
                     codelist_code: None,
+                    ct_source: None,
                 },
                 ConformanceIssue {
                     code: "SD0057".to_string(),
@@ -42,6 +43,7 @@ mod tests {
                     rule_id: None,
                     category: None,
                     codelist_code: None,
+                    ct_source: None,
                 },
             ],
         };

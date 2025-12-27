@@ -122,6 +122,7 @@ fn print_issue_table(result: &StudyResult) {
         header_cell("Domain"),
         header_cell("Severity"),
         header_cell("Variable"),
+        header_cell("CT"),
         header_cell("Code"),
         header_cell("Count"),
         header_cell("Rule"),
@@ -132,7 +133,8 @@ fn print_issue_table(result: &StudyResult) {
     apply_issue_table_style(&mut table);
     align_column(&mut table, 1, CellAlignment::Center);
     align_column(&mut table, 3, CellAlignment::Center);
-    align_column(&mut table, 4, CellAlignment::Right);
+    align_column(&mut table, 4, CellAlignment::Center);
+    align_column(&mut table, 5, CellAlignment::Right);
     for (domain, issue) in issues {
         let (message, examples) = split_examples(&issue.message);
         let count_cell = issue_count_cell(issue.count, issue.severity);
@@ -141,6 +143,7 @@ fn print_issue_table(result: &StudyResult) {
             domain_cell,
             severity_cell(issue.severity),
             Cell::new(issue.variable.clone().unwrap_or_else(|| "-".to_string())),
+            Cell::new(issue.ct_source.clone().unwrap_or_else(|| "-".to_string())),
             Cell::new(issue.code.clone()),
             count_cell,
             Cell::new(issue.rule_id.clone().unwrap_or_else(|| "-".to_string())),
@@ -268,11 +271,12 @@ fn apply_issue_table_style(table: &mut Table) {
         .apply_modifier(UTF8_SOLID_INNER_BORDERS)
         .set_content_arrangement(ContentArrangement::DynamicFullWidth)
         .set_width(200);
-    if table.column_count() >= 9 {
+    if table.column_count() >= 10 {
         table.set_constraints(vec![
             ColumnConstraint::UpperBoundary(Width::Fixed(10)),
             ColumnConstraint::UpperBoundary(Width::Fixed(9)),
             ColumnConstraint::UpperBoundary(Width::Fixed(12)),
+            ColumnConstraint::UpperBoundary(Width::Fixed(10)),
             ColumnConstraint::UpperBoundary(Width::Fixed(10)),
             ColumnConstraint::LowerBoundary(Width::Fixed(5)),
             ColumnConstraint::UpperBoundary(Width::Fixed(10)),
