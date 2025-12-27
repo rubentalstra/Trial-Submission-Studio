@@ -311,7 +311,7 @@ are noted where applicable.
       heuristics in `sdtm-ingest/src/csv_table.rs`.
 
 - [ ] **0.6.2** Store mapping configs and reuse them across runs via a mapping
-      repository (like Python legacy).
+      repository.
 
 - [ ] **0.6.3** Incorporate variable labels, synonyms, and domain patterns from
       standards into the mapping engine in `sdtm-map/src/engine.rs`.
