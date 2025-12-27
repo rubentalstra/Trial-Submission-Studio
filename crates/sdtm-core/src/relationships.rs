@@ -5,9 +5,10 @@ use polars::prelude::{AnyValue, Column, DataFrame, NamedFrom, Series};
 
 use sdtm_model::{Domain, VariableType};
 
-use crate::data_utils::{any_to_string, column_value_string, parse_f64};
+use crate::data_utils::column_value_string;
 use crate::domain_utils::{StandardColumns, refid_candidates, standard_columns};
 use crate::frame::DomainFrame;
+use sdtm_ingest::{any_to_string, parse_f64};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum LinkKind {

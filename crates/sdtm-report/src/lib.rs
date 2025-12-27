@@ -9,10 +9,8 @@ use polars::prelude::{AnyValue, DataFrame};
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 
-use sdtm_core::data_utils::{
-    any_to_f64_for_output, any_to_string_for_output, any_to_string_non_empty,
-};
 use sdtm_core::{DomainFrame, standard_columns};
+use sdtm_ingest::{any_to_f64_for_output, any_to_string_for_output, any_to_string_non_empty};
 use sdtm_model::{Domain, MappingConfig, Variable, VariableType};
 use sdtm_standards::load_default_ct_registry;
 use sdtm_xpt::{XptColumn, XptDataset, XptType, XptValue, XptWriterOptions, write_xpt};

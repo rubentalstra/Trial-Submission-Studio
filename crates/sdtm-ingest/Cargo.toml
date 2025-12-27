@@ -7,7 +7,9 @@ rust-version.workspace = true
 [dependencies]
 anyhow.workspace = true
 csv.workspace = true
+polars.workspace = true
 serde.workspace = true
+tracing.workspace = true
 sdtm-model = { path = "../sdtm-model" }
 
 [dev-dependencies]

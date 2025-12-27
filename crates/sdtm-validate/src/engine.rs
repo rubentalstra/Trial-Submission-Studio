@@ -10,7 +10,8 @@ use std::collections::BTreeSet;
 
 use polars::prelude::{AnyValue, DataFrame};
 
-use sdtm_core::{any_to_string, is_missing_value, validate_iso8601};
+use sdtm_core::validate_iso8601;
+use sdtm_ingest::{any_to_string, is_missing_value};
 use sdtm_model::{CaseInsensitiveLookup, ConformanceIssue, ConformanceReport, IssueSeverity};
 use sdtm_standards::assumptions::{GeneratedRule, RuleContext, RuleSeverity};
 

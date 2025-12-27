@@ -26,9 +26,8 @@ pub use ct_utils::{
     resolve_ct_value_from_hint,
 };
 pub use data_utils::{
-    any_to_string, column_hint_for_domain, column_value_string, fill_string_column,
-    is_missing_value, mapping_source_for_target, sanitize_test_code, table_column_values,
-    table_label,
+    column_hint_for_domain, column_value_string, fill_string_column, mapping_source_for_target,
+    sanitize_test_code, table_column_values, table_label,
 };
 pub use datetime::{
     DateTimeError, DateTimePrecision, DateTimeValidation, DurationError, DurationValidation,

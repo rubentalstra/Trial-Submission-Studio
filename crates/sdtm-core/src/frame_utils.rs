@@ -5,8 +5,8 @@ use polars::prelude::{AnyValue, DataFrame, NamedFrom, Series};
 
 use sdtm_model::Domain;
 
-use crate::data_utils::any_to_string;
 use crate::{DomainFrame, infer_seq_column, standard_columns};
+use sdtm_ingest::any_to_string;
 
 pub fn insert_frame(map: &mut BTreeMap<String, DomainFrame>, frame: DomainFrame) -> Result<()> {
     let key = frame.domain_code.to_uppercase();

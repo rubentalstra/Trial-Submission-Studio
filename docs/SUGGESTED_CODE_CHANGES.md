@@ -328,11 +328,27 @@ are noted where applicable.
       repository fallback - Normalizes study/domain IDs for safe filenames -
       Full test coverage in `tests/repository.rs`
 
-- [ ] **0.6.3** Incorporate variable labels, synonyms, and domain patterns from
+- [x] **0.6.3** Incorporate variable labels, synonyms, and domain patterns from
       standards into the mapping engine in `sdtm-map/src/engine.rs`.
+      **Implementation notes**: - Enhanced `patterns.rs` with
+      `VARIABLE_SYNONYMS` and `LABEL_HINTS` constants - Added
+      `build_synonym_map()` to create domain-specific synonym lookup - Added
+      `match_synonyms()` for column/label to variable matching -
+      `build_variable_patterns()` now includes label-based patterns and domain
+      prefix handling - Engine uses synonym matching with `SYNONYM_MATCH_BOOST`
+      (1.15) - Label similarity comparison with `LABEL_MATCH_BOOST` (1.10) for
+      high-confidence label matches (>0.85 Jaro-Winkler) - Exports:
+      `build_synonym_map`, `build_variable_patterns`, `match_synonyms`
 
-- [ ] **0.6.4** Use Polars CSV streaming for large datasets. Only sample rows
-      for hints.
+- [x] **0.6.4** Use Polars CSV streaming for large datasets. Only sample rows
+      for hints. **Implementation notes**: - Created `polars_utils.rs` module in
+      sdtm-ingest consolidating all AnyValue conversion functions -
+      `StreamingCsvReader` uses Polars lazy evaluation for memory-efficient
+      reads - `sample_rows()` reads only configurable sample_size rows (default
+      1000) for hints - `build_column_hints()` uses sampling, not full file
+      scan - `read_csv_table_auto()` auto-switches to streaming for files > 10
+      MB - `FileSizeCategory` enum (Small/Medium/Large/VeryLarge) auto-tunes
+      options - All Polars utilities now imported directly from `sdtm_ingest`
 
 ## 0.7 Domain Processing Refactor
 

@@ -4,8 +4,8 @@ use anyhow::Result;
 use polars::prelude::{AnyValue, Column, DataFrame, NamedFrom, Series};
 use sdtm_model::Domain;
 
-use crate::data_utils::any_to_string;
 use crate::domain_utils::{infer_seq_column, standard_columns};
+use sdtm_ingest::any_to_string;
 pub struct SuppqualResult {
     pub domain_code: String,
     pub data: DataFrame,

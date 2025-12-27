@@ -3,16 +3,8 @@ use std::collections::BTreeSet;
 use polars::prelude::{AnyValue, Column, DataFrame};
 
 use sdtm_core::{DomainFrame, build_relrec, build_relspec, build_relsub, column_name};
+use sdtm_ingest::any_to_string;
 use sdtm_standards::load_default_sdtm_ig_domains;
-
-fn any_to_string(value: AnyValue) -> String {
-    match value {
-        AnyValue::String(value) => value.to_string(),
-        AnyValue::StringOwned(value) => value.to_string(),
-        AnyValue::Null => String::new(),
-        _ => value.to_string(),
-    }
-}
 
 #[test]
 fn builds_relrec_from_domain_frames() {

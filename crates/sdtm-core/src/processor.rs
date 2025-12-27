@@ -7,11 +7,11 @@ use tracing::warn;
 use sdtm_model::{CaseInsensitiveLookup, Domain, VariableType};
 
 use crate::ct_utils::{normalize_ct_value_safe, normalize_ct_value_strict};
-use crate::data_utils::any_to_string;
 use crate::domain_processors;
 use crate::domain_utils::{infer_seq_column, standard_columns};
 use crate::frame::DomainFrame;
 use crate::processing_context::ProcessingContext;
+use sdtm_ingest::any_to_string;
 
 fn sanitize_identifier(raw: &str) -> String {
     let trimmed = raw.trim();

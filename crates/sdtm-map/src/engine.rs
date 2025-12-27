@@ -5,7 +5,7 @@ use rapidfuzz::distance::jaro_winkler::similarity as jaro_similarity;
 
 use sdtm_model::{ColumnHint, Domain, MappingConfig, MappingSuggestion, Variable};
 
-use crate::patterns::build_variable_patterns;
+use crate::patterns::{build_synonym_map, build_variable_patterns, match_synonyms};
 use crate::utils::{normalize_text, safe_column_name};
 
 const SEQ_UNIQUENESS_MIN: f64 = 0.5;
@@ -16,6 +16,10 @@ const CODE_EXPECTED_PENALTY: f64 = 0.7;
 const TOKEN_NO_OVERLAP_PENALTY: f64 = 0.6;
 const TOKEN_GENERIC_ONLY_PENALTY: f64 = 0.55;
 const TOKEN_SPECIFIC_BOOST: f64 = 1.05;
+/// Boost for synonym-based matches
+const SYNONYM_MATCH_BOOST: f64 = 1.15;
+/// Boost for label-based matches
+const LABEL_MATCH_BOOST: f64 = 1.10;
 
 #[derive(Debug, Clone)]
 pub struct MappingResult {
@@ -28,6 +32,8 @@ pub struct MappingEngine {
     min_confidence: f32,
     column_hints: BTreeMap<String, ColumnHint>,
     variable_patterns: BTreeMap<String, Vec<String>>,
+    /// Synonym lookup map for column -> variable matching
+    synonym_map: BTreeMap<String, Vec<String>>,
 }
 
 struct Candidate {
@@ -43,11 +49,13 @@ impl MappingEngine {
         column_hints: BTreeMap<String, ColumnHint>,
     ) -> Self {
         let variable_patterns = build_variable_patterns(&domain);
+        let synonym_map = build_synonym_map(&domain);
         Self {
             domain,
             min_confidence,
             column_hints,
             variable_patterns,
+            synonym_map,
         }
     }
 
@@ -243,7 +251,30 @@ impl MappingEngine {
         let score_raw = jaro_similarity(column.to_uppercase().chars(), variable.name.chars());
         let score_norm = jaro_similarity(normalized.chars(), variable.name.to_lowercase().chars());
         let mut score = score_raw.max(score_norm);
+
+        // Check for synonym match and apply boost
+        let label = hint.and_then(|h| h.label.as_deref());
+        let synonym_matches = match_synonyms(column, label, &self.synonym_map);
+        if synonym_matches
+            .iter()
+            .any(|t| t.eq_ignore_ascii_case(&variable.name))
+        {
+            score *= SYNONYM_MATCH_BOOST;
+        }
+
+        // Check for label similarity with variable label
         if let Some(hint) = hint {
+            if let Some(col_label) = &hint.label
+                && let Some(var_label) = &variable.label
+            {
+                let label_score = jaro_similarity(
+                    normalize_text(col_label).chars(),
+                    normalize_text(var_label).chars(),
+                );
+                if label_score > 0.85 {
+                    score *= LABEL_MATCH_BOOST;
+                }
+            }
             score = self.apply_hints(
                 column,
                 variable,

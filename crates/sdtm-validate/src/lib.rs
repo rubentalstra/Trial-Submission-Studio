@@ -10,7 +10,8 @@ use chrono::Utc;
 use polars::prelude::{AnyValue, DataFrame};
 use serde::Serialize;
 
-use sdtm_core::{ProvenanceTracker, any_to_string, is_missing_value};
+use sdtm_core::ProvenanceTracker;
+use sdtm_ingest::{any_to_string, is_missing_value};
 use sdtm_model::{
     CaseInsensitiveLookup, ConformanceIssue, ConformanceReport, ControlledTerminology, CtRegistry,
     Domain, IssueSeverity, OutputFormat, ResolvedCt, Variable, VariableType,

@@ -4,6 +4,7 @@ use anyhow::Result;
 use polars::prelude::{AnyValue, DataFrame, NamedFrom, Series};
 
 use sdtm_ingest::CsvTable;
+use sdtm_ingest::any_to_string;
 use sdtm_model::{CaseInsensitiveLookup, Domain, MappingConfig};
 
 use crate::ProcessingContext;
@@ -12,8 +13,8 @@ use crate::ct_utils::{
     resolve_ct_value_from_hint,
 };
 use crate::data_utils::{
-    any_to_string, column_hint_for_domain, fill_string_column, mapping_source_for_target,
-    sanitize_test_code, table_column_values, table_label,
+    column_hint_for_domain, fill_string_column, mapping_source_for_target, sanitize_test_code,
+    table_column_values, table_label,
 };
 
 type DaOrresCandidate = (Option<String>, Option<String>, Option<String>, Vec<String>);
