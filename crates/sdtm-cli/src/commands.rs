@@ -3,20 +3,20 @@ use std::path::Path;
 
 use anyhow::{Context, Result, anyhow};
 use comfy_table::Table;
-use polars::prelude::DataFrame;
+use polars::prelude::{AnyValue, DataFrame};
 
 use sdtm_core::{
-    DomainFrame, ProcessingContext, ProcessingOptions, SuppqualInput, build_domain_frame,
-    build_mapped_domain_frame, build_relationship_frames, build_report_domains, build_suppqual,
-    dedupe_frames_by_identifiers, fill_missing_test_fields, insert_frame, is_supporting_domain,
-    process_domain_with_context_and_tracker,
+    DomainFrame, ProcessingContext, ProcessingOptions, SuppqualInput, any_to_string,
+    build_domain_frame, build_mapped_domain_frame, build_relationship_frames, build_report_domains,
+    build_suppqual, dedupe_frames_by_identifiers, fill_missing_test_fields, insert_frame,
+    is_supporting_domain, process_domain_with_context_and_tracker,
 };
 use sdtm_ingest::{
     AppliedStudyMetadata, CsvTable, StudyMetadata, apply_study_metadata, discover_domain_files,
     list_csv_files, load_study_metadata, read_csv_schema, read_csv_table,
 };
 use sdtm_map::merge_mappings;
-use sdtm_model::{ConformanceReport, MappingConfig, OutputFormat};
+use sdtm_model::{CaseInsensitiveLookup, ConformanceReport, MappingConfig, OutputFormat};
 use sdtm_report::{
     DefineXmlOptions, SasProgramOptions, write_dataset_xml_outputs, write_define_xml,
     write_sas_outputs, write_xpt_outputs,
@@ -89,6 +89,7 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     };
     let mut input_counts: BTreeMap<String, usize> = BTreeMap::new();
     let mut seq_trackers: BTreeMap<String, BTreeMap<String, i64>> = BTreeMap::new();
+    let mut reference_starts: BTreeMap<String, String> = BTreeMap::new();
 
     let mut standard_variables = BTreeSet::new();
     for domain in &standards {
@@ -133,14 +134,25 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
         assign_sequence: !args.no_auto_seq,
         warn_on_rewrite: true,
     };
-    let ctx = ProcessingContext::new(&study_id)
-        .with_ct_registry(&ct_registry)
-        .with_options(options);
     let suppqual_domain = standards_map
         .get("SUPPQUAL")
         .ok_or_else(|| anyhow!("missing SUPPQUAL metadata"))?;
 
-    for (domain_code, files) in &discovered {
+    let mut ordered_domains: Vec<String> = discovered.keys().cloned().collect();
+    ordered_domains.sort_by(|left, right| {
+        let left_dm = left.eq_ignore_ascii_case("DM");
+        let right_dm = right.eq_ignore_ascii_case("DM");
+        match (left_dm, right_dm) {
+            (true, false) => std::cmp::Ordering::Less,
+            (false, true) => std::cmp::Ordering::Greater,
+            _ => left.cmp(right),
+        }
+    });
+
+    for domain_code in ordered_domains {
+        let Some(files) = discovered.get(&domain_code) else {
+            continue;
+        };
         let multi_source = files.len() > 1;
         let domain_key = domain_code.to_uppercase();
         let domain = match standards_map.get(&domain_key) {
@@ -171,7 +183,7 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
             } else {
                 apply_study_metadata(raw_table, &study_metadata)
             };
-            let source = match build_domain_frame(&table, domain_code) {
+            let source = match build_domain_frame(&table, domain_code.as_str()) {
                 Ok(frame) => frame,
                 Err(error) => {
                     errors.push(format!("{}: {error}", path.display()));
@@ -208,18 +220,34 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
                     }
                 }
             }
-            if let Err(error) =
-                fill_missing_test_fields(domain, &mapping_config, &table, &mut mapped.data, &ctx)
             {
-                errors.push(format!("{}: {error}", path.display()));
+                let ctx = ProcessingContext::new(&study_id)
+                    .with_ct_registry(&ct_registry)
+                    .with_options(options)
+                    .with_reference_starts(&reference_starts);
+                if let Err(error) = fill_missing_test_fields(
+                    domain,
+                    &mapping_config,
+                    &table,
+                    &mut mapped.data,
+                    &ctx,
+                ) {
+                    errors.push(format!("{}: {error}", path.display()));
+                }
+                if let Err(error) = process_domain_with_context_and_tracker(
+                    domain,
+                    &mut mapped.data,
+                    &ctx,
+                    Some(domain_tracker),
+                ) {
+                    errors.push(format!("{}: {error}", path.display()));
+                }
             }
-            if let Err(error) = process_domain_with_context_and_tracker(
-                domain,
-                &mut mapped.data,
-                &ctx,
-                Some(domain_tracker),
-            ) {
-                errors.push(format!("{}: {error}", path.display()));
+            if domain_key == "DM" {
+                let dm_starts = extract_reference_starts(&mapped.data);
+                for (usubjid, rfstdtc) in dm_starts {
+                    reference_starts.entry(usubjid).or_insert(rfstdtc);
+                }
             }
             match build_suppqual(SuppqualInput {
                 parent_domain: domain,
@@ -508,6 +536,36 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
         define_xml,
         has_errors,
     })
+}
+
+fn extract_reference_starts(df: &DataFrame) -> BTreeMap<String, String> {
+    let mut reference_starts = BTreeMap::new();
+    let lookup = CaseInsensitiveLookup::new(df.get_column_names_owned());
+    let Some(usubjid_col) = lookup.get("USUBJID") else {
+        return reference_starts;
+    };
+    let Some(rfstdtc_col) = lookup.get("RFSTDTC") else {
+        return reference_starts;
+    };
+    let Ok(usubjid_series) = df.column(usubjid_col) else {
+        return reference_starts;
+    };
+    let Ok(rfstdtc_series) = df.column(rfstdtc_col) else {
+        return reference_starts;
+    };
+    for idx in 0..df.height() {
+        let usubjid = any_to_string(usubjid_series.get(idx).unwrap_or(AnyValue::Null));
+        let rfstdtc = any_to_string(rfstdtc_series.get(idx).unwrap_or(AnyValue::Null));
+        let usubjid = usubjid.trim();
+        let rfstdtc = rfstdtc.trim();
+        if usubjid.is_empty() || rfstdtc.is_empty() {
+            continue;
+        }
+        reference_starts
+            .entry(usubjid.to_string())
+            .or_insert_with(|| rfstdtc.to_string());
+    }
+    reference_starts
 }
 
 fn column_label_map(table: &CsvTable) -> BTreeMap<String, String> {

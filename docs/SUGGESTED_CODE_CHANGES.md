@@ -139,7 +139,7 @@ rules/conformance; Phase 2 = outputs/perf/testing/cutover.
       with a rule table.
 - [ ] Problem: heuristic fills can add data without provenance. Fix: remove or
       require explicit mapping metadata before populating any value.
-- [ ] Problem: SDY derivation fails without reference starts. Fix: build a
+- [x] Problem: SDY derivation fails without reference starts. Fix: build a
       `reference_starts` map from DM (RFSTDTC) and pass it into
       `ProcessingContext`.
 - [ ] Problem: date normalization is duplicated. Fix: create a shared date
