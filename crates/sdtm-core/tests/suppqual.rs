@@ -1,7 +1,7 @@
 use polars::prelude::{AnyValue, Column, DataFrame};
 use std::collections::BTreeSet;
 
-use sdtm_core::{build_suppqual, column_name, suppqual_domain_code};
+use sdtm_core::{SuppqualInput, build_suppqual, column_name, suppqual_domain_code};
 use sdtm_standards::load_default_sdtm_ig_domains;
 
 #[test]
@@ -29,9 +29,17 @@ fn builds_suppqual_for_any_domain() {
 
     let used = BTreeSet::new();
 
-    let result = build_suppqual(
-        parent, suppqual, &df, None, &used, "STUDY1", None, None, None,
-    )
+    let result = build_suppqual(SuppqualInput {
+        parent_domain: parent,
+        suppqual_domain: suppqual,
+        source_df: &df,
+        mapped_df: None,
+        used_source_columns: &used,
+        study_id: "STUDY1",
+        exclusion_columns: None,
+        source_labels: None,
+        derived_columns: None,
+    })
     .expect("suppqual")
     .expect("suppqual rows");
 

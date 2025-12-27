@@ -6,7 +6,7 @@ use comfy_table::Table;
 use polars::prelude::DataFrame;
 
 use sdtm_core::{
-    DomainFrame, ProcessingContext, ProcessingOptions, build_domain_frame,
+    DomainFrame, ProcessingContext, ProcessingOptions, SuppqualInput, build_domain_frame,
     build_mapped_domain_frame, build_relationship_frames, build_report_domains, build_suppqual,
     dedupe_frames_by_identifiers, fill_missing_test_fields, insert_frame, is_supporting_domain,
     process_domain_with_context_and_tracker,
@@ -221,17 +221,17 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
             ) {
                 errors.push(format!("{}: {error}", path.display()));
             }
-            match build_suppqual(
-                domain,
+            match build_suppqual(SuppqualInput {
+                parent_domain: domain,
                 suppqual_domain,
-                &source.data,
-                Some(&mapped.data),
-                &used,
-                &study_id,
-                Some(&global_suppqual_exclusions),
-                label_map_ref,
-                derived_ref,
-            ) {
+                source_df: &source.data,
+                mapped_df: Some(&mapped.data),
+                used_source_columns: &used,
+                study_id: &study_id,
+                exclusion_columns: Some(&global_suppqual_exclusions),
+                source_labels: label_map_ref,
+                derived_columns: derived_ref,
+            }) {
                 Ok(Some(result)) => {
                     suppqual_frames.push(DomainFrame {
                         domain_code: result.domain_code,

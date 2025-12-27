@@ -5,6 +5,8 @@ use sdtm_model::{ControlledTerminology, Domain};
 
 use crate::data_utils::{table_column_values, table_label};
 
+type CtColumnMatchScore = (String, Vec<Option<String>>, Vec<String>, f64, usize);
+
 pub fn compact_key(value: &str) -> String {
     value
         .chars()
@@ -141,7 +143,7 @@ pub fn ct_column_match(
     for variable in &domain.variables {
         standard_vars.insert(variable.name.to_uppercase());
     }
-    let mut best: Option<(String, Vec<Option<String>>, Vec<String>, f64, usize)> = None;
+    let mut best: Option<CtColumnMatchScore> = None;
     for header in &table.headers {
         if standard_vars.contains(&header.to_uppercase()) {
             continue;

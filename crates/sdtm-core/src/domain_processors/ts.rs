@@ -31,8 +31,8 @@ pub(super) fn process_ts(
         && let Some(ct) = ctx.resolve_ct(domain, "TSPARMCD")
     {
         let mut values = string_column(df, &tsparmcd, Trim::Both)?;
-        for idx in 0..values.len() {
-            values[idx] = normalize_ct_value_keep(ct, &values[idx]);
+        for value in &mut values {
+            *value = normalize_ct_value_keep(ct, value);
         }
         set_string_column(df, &tsparmcd, values)?;
     }
@@ -41,8 +41,8 @@ pub(super) fn process_ts(
         && let Some(ct) = ctx.resolve_ct(domain, "TSPARM")
     {
         let mut values = string_column(df, &tsparm, Trim::Both)?;
-        for idx in 0..values.len() {
-            values[idx] = normalize_ct_value_keep(ct, &values[idx]);
+        for value in &mut values {
+            *value = normalize_ct_value_keep(ct, value);
         }
         set_string_column(df, &tsparm, values)?;
     }
@@ -51,8 +51,8 @@ pub(super) fn process_ts(
         && let Some(ct) = ctx.resolve_ct(domain, "TSVCDREF")
     {
         let mut values = string_column(df, &tsvcdref, Trim::Both)?;
-        for idx in 0..values.len() {
-            values[idx] = normalize_ct_value_keep(ct, &values[idx]);
+        for value in &mut values {
+            *value = normalize_ct_value_keep(ct, value);
         }
         set_string_column(df, &tsvcdref, values)?;
     }

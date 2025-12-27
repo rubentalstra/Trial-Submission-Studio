@@ -80,6 +80,15 @@ impl CodeList {
     }
 }
 
+type ItemColumnIndices = (
+    usize,
+    Option<usize>,
+    Option<usize>,
+    Option<usize>,
+    Option<usize>,
+    Option<usize>,
+);
+
 #[derive(Debug, Clone)]
 pub struct AppliedStudyMetadata {
     pub table: CsvTable,
@@ -307,17 +316,7 @@ fn codelist_column_indices(headers: &[String], path: &Path) -> Result<(usize, us
     Ok((format_idx, value_idx, text_idx))
 }
 
-fn items_column_indices(
-    headers: &[String],
-    path: &Path,
-) -> Result<(
-    usize,
-    Option<usize>,
-    Option<usize>,
-    Option<usize>,
-    Option<usize>,
-    Option<usize>,
-)> {
+fn items_column_indices(headers: &[String], path: &Path) -> Result<ItemColumnIndices> {
     let header_map = build_header_map(headers);
     let id_idx = find_column_index(&header_map, ITEMS_COLUMN_ID)
         .ok_or_else(|| anyhow::anyhow!("could not find ID column in {}", path.display()))?;

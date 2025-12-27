@@ -19,7 +19,7 @@ pub(super) fn process_ta(
         .collect::<Vec<_>>();
     if !key_cols.is_empty() && df.height() > 0 {
         let mut keep = vec![true; df.height()];
-        for idx in 0..df.height() {
+        for (idx, keep_value) in keep.iter_mut().enumerate().take(df.height()) {
             let mut blank = true;
             for col_name in &key_cols {
                 let value = string_value(df, col_name, idx);
@@ -29,7 +29,7 @@ pub(super) fn process_ta(
                 }
             }
             if blank {
-                keep[idx] = false;
+                *keep_value = false;
             }
         }
         filter_rows(df, &keep)?;

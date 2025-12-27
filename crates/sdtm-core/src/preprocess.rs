@@ -16,6 +16,8 @@ use crate::data_utils::{
     sanitize_test_code, table_column_values, table_label,
 };
 
+type DaOrresCandidate = (Option<String>, Option<String>, Option<String>, Vec<String>);
+
 pub fn fill_missing_test_fields(
     domain: &Domain,
     mapping: &MappingConfig,
@@ -145,14 +147,14 @@ pub fn fill_missing_test_fields(
             }
         }
         if !candidates.is_empty() {
-            for idx in 0..df.height() {
-                if !extrt_vals[idx].trim().is_empty() {
+            for (idx, extrt_value) in extrt_vals.iter_mut().enumerate().take(df.height()) {
+                if !extrt_value.trim().is_empty() {
                     continue;
                 }
                 for values in &candidates {
                     let value = values.get(idx).map(|v| v.trim()).unwrap_or("");
                     if !value.is_empty() {
-                        extrt_vals[idx] = value.to_string();
+                        *extrt_value = value.to_string();
                         break;
                     }
                 }
@@ -165,8 +167,7 @@ pub fn fill_missing_test_fields(
         let ct_units = ctx.resolve_ct(domain, "DAORRESU");
         let datest_extensible = ctdatest.map(|ct| ct.extensible).unwrap_or(false);
         let datestcd_extensible = ctdatestcd.map(|ct| ct.extensible).unwrap_or(false);
-        let mut candidates: Vec<(Option<String>, Option<String>, Option<String>, Vec<String>)> =
-            Vec::new();
+        let mut candidates: Vec<DaOrresCandidate> = Vec::new();
         let mut candidate_headers: Vec<String> = Vec::new();
         if let Some(preferred) = mapping_source_for_target(mapping, "DAORRES") {
             candidate_headers.push(preferred);

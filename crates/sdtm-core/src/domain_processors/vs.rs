@@ -93,15 +93,15 @@ pub(super) fn process_vs(
     {
         let test_vals = string_column(df, &vstest, Trim::Both)?;
         let mut testcd_vals = string_column(df, &vstestcd, Trim::Both)?;
-        for idx in 0..df.height() {
-            let existing = testcd_vals[idx].clone();
+        for (testcd, test) in testcd_vals.iter_mut().zip(test_vals.iter()) {
+            let existing = testcd.clone();
             let valid =
                 !existing.is_empty() && ct.submission_values.iter().any(|val| val == &existing);
             if valid {
                 continue;
             }
-            if let Some(mapped) = resolve_ct_submission_value(ct, &test_vals[idx]) {
-                testcd_vals[idx] = mapped;
+            if let Some(mapped) = resolve_ct_submission_value(ct, test) {
+                *testcd = mapped;
             }
         }
         set_string_column(df, &vstestcd, testcd_vals)?;
@@ -112,8 +112,8 @@ pub(super) fn process_vs(
                 && has_column(df, &name)
             {
                 let mut values = string_column(df, &name, Trim::Both)?;
-                for idx in 0..values.len() {
-                    values[idx] = normalize_ct_value_keep(ct, &values[idx]);
+                for value in &mut values {
+                    *value = normalize_ct_value_keep(ct, value);
                 }
                 set_string_column(df, &name, values)?;
             }
@@ -124,8 +124,8 @@ pub(super) fn process_vs(
         && has_column(df, &vstestcd)
     {
         let mut values = string_column(df, &vstestcd, Trim::Both)?;
-        for idx in 0..values.len() {
-            values[idx] = normalize_ct_value_keep(ct, &values[idx]);
+        for value in &mut values {
+            *value = normalize_ct_value_keep(ct, value);
         }
         set_string_column(df, &vstestcd, values)?;
     }
@@ -134,8 +134,8 @@ pub(super) fn process_vs(
         && has_column(df, &vstest)
     {
         let mut values = string_column(df, &vstest, Trim::Both)?;
-        for idx in 0..values.len() {
-            values[idx] = normalize_ct_value_keep(ct, &values[idx]);
+        for value in &mut values {
+            *value = normalize_ct_value_keep(ct, value);
         }
         set_string_column(df, &vstest, values)?;
     }
@@ -147,23 +147,22 @@ pub(super) fn process_vs(
         let ct_names = ctx.resolve_ct(domain, "VSTEST");
         let mut test_vals = string_column(df, &vstest, Trim::Both)?;
         let testcd_vals = string_column(df, &vstestcd, Trim::Both)?;
-        for idx in 0..df.height() {
-            if testcd_vals[idx].is_empty() {
+        for (test, testcd) in test_vals.iter_mut().zip(testcd_vals.iter()) {
+            if testcd.is_empty() {
                 continue;
             }
-            let needs_label =
-                test_vals[idx].is_empty() || test_vals[idx].eq_ignore_ascii_case(&testcd_vals[idx]);
+            let needs_label = test.is_empty() || test.eq_ignore_ascii_case(testcd);
             let valid_name = ct_names
                 .map(|ct| {
-                    let canonical = normalize_ct_value(ct, &test_vals[idx]);
+                    let canonical = normalize_ct_value(ct, test);
                     ct.submission_values.iter().any(|val| val == &canonical)
                 })
                 .unwrap_or(true);
             if !needs_label && valid_name {
                 continue;
             }
-            if let Some(preferred) = preferred_term_for(ct, &testcd_vals[idx]) {
-                test_vals[idx] = preferred;
+            if let Some(preferred) = preferred_term_for(ct, testcd) {
+                *test = preferred;
             }
         }
         set_string_column(df, &vstest, test_vals)?;
@@ -195,7 +194,7 @@ pub(super) fn process_vs(
             .and_then(|name| string_column(df, &name, Trim::Both).ok())
             .unwrap_or_else(|| vec![String::new(); df.height()]);
         let mut keep = vec![true; df.height()];
-        for idx in 0..df.height() {
+        for (idx, keep_value) in keep.iter_mut().enumerate().take(df.height()) {
             let has_test = !test_vals[idx].is_empty() || !testcd_vals[idx].is_empty();
             let has_result = !orres_vals[idx].is_empty()
                 || !stresc_vals[idx].is_empty()
@@ -203,7 +202,7 @@ pub(super) fn process_vs(
                 || !stresu_vals[idx].is_empty()
                 || !pos_vals[idx].is_empty();
             if !has_test && !has_result {
-                keep[idx] = false;
+                *keep_value = false;
             }
         }
         filter_rows(df, &keep)?;

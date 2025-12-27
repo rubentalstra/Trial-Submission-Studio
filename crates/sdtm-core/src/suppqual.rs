@@ -11,6 +11,18 @@ pub struct SuppqualResult {
     pub used_columns: Vec<String>,
 }
 
+pub struct SuppqualInput<'a> {
+    pub parent_domain: &'a Domain,
+    pub suppqual_domain: &'a Domain,
+    pub source_df: &'a DataFrame,
+    pub mapped_df: Option<&'a DataFrame>,
+    pub used_source_columns: &'a BTreeSet<String>,
+    pub study_id: &'a str,
+    pub exclusion_columns: Option<&'a BTreeSet<String>>,
+    pub source_labels: Option<&'a BTreeMap<String, String>>,
+    pub derived_columns: Option<&'a BTreeSet<String>>,
+}
+
 pub fn suppqual_domain_code(parent_domain: &str) -> String {
     let parent = parent_domain.to_uppercase();
     let candidate = format!("SUPP{parent}");
@@ -166,30 +178,20 @@ fn is_duplicate_of_mapped(name: &str, populated: &BTreeSet<String>) -> bool {
     false
 }
 
-pub fn build_suppqual(
-    parent_domain: &Domain,
-    suppqual_domain: &Domain,
-    source_df: &DataFrame,
-    mapped_df: Option<&DataFrame>,
-    used_source_columns: &BTreeSet<String>,
-    study_id: &str,
-    exclusion_columns: Option<&BTreeSet<String>>,
-    source_labels: Option<&BTreeMap<String, String>>,
-    derived_columns: Option<&BTreeSet<String>>,
-) -> Result<Option<SuppqualResult>> {
-    let parent_domain_code = parent_domain.code.to_uppercase();
-    let ordered_columns = ordered_variable_names(suppqual_domain);
-    let core_variables = variable_name_set(parent_domain);
-    let suppqual_cols = standard_columns(suppqual_domain);
-    let parent_cols = standard_columns(parent_domain);
-    let populated = mapped_df.map(populated_columns).unwrap_or_default();
+pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<SuppqualResult>> {
+    let parent_domain_code = input.parent_domain.code.to_uppercase();
+    let ordered_columns = ordered_variable_names(input.suppqual_domain);
+    let core_variables = variable_name_set(input.parent_domain);
+    let suppqual_cols = standard_columns(input.suppqual_domain);
+    let parent_cols = standard_columns(input.parent_domain);
+    let populated = input.mapped_df.map(populated_columns).unwrap_or_default();
     if ordered_columns.is_empty() {
         return Ok(None);
     }
     let mut extra_cols: Vec<String> = Vec::new();
-    for series in source_df.get_columns() {
+    for series in input.source_df.get_columns() {
         let name = series.name().to_string();
-        if used_source_columns.contains(&name) {
+        if input.used_source_columns.contains(&name) {
             continue;
         }
         if core_variables.contains(&name.to_uppercase()) {
@@ -198,7 +200,7 @@ pub fn build_suppqual(
         if is_duplicate_of_mapped(&name, &populated) {
             continue;
         }
-        if let Some(exclusions) = exclusion_columns
+        if let Some(exclusions) = input.exclusion_columns
             && exclusions.contains(&name.to_uppercase())
         {
             continue;
@@ -211,8 +213,8 @@ pub fn build_suppqual(
     for name in &extra_cols {
         extra_upper.insert(name.to_uppercase(), name.clone());
         let upper = name.to_uppercase();
-        if let Ok(series) = source_df.column(name) {
-            for idx in 0..source_df.height() {
+        if let Ok(series) = input.source_df.column(name) {
+            for idx in 0..input.source_df.height() {
                 let value = any_to_string(series.get(idx).unwrap_or(AnyValue::Null));
                 if !value.trim().is_empty() {
                     non_empty_upper.insert(upper.clone());
@@ -236,13 +238,17 @@ pub fn build_suppqual(
         return Ok(None);
     }
 
-    let mut row_count = source_df.height();
-    if let Some(mapped) = mapped_df {
+    let mut row_count = input.source_df.height();
+    if let Some(mapped) = input.mapped_df {
         row_count = row_count.min(mapped.height());
     }
 
-    let idvar = infer_seq_column(parent_domain).and_then(|seq_var| {
-        if mapped_df.and_then(|df| df.column(&seq_var).ok()).is_some() {
+    let idvar = infer_seq_column(input.parent_domain).and_then(|seq_var| {
+        if input
+            .mapped_df
+            .and_then(|df| df.column(&seq_var).ok())
+            .is_some()
+        {
             Some(seq_var)
         } else {
             None
@@ -275,24 +281,25 @@ pub fn build_suppqual(
             .get(col)
             .cloned()
             .unwrap_or_else(|| sanitize_qnam(col));
-        let qlabel = qlabel_for_column(col, source_labels);
-        let qorig = qorig_for_column(col, derived_columns);
+        let qlabel = qlabel_for_column(col, input.source_labels);
+        let qorig = qorig_for_column(col, input.derived_columns);
         for idx in 0..row_count {
-            let raw_val = strip_wrapping_quotes(&column_value(source_df, col, idx));
+            let raw_val = strip_wrapping_quotes(&column_value(input.source_df, col, idx));
             if raw_val.is_empty() {
                 continue;
             }
             let study_value = parent_cols
                 .study_id
                 .as_deref()
-                .map(|name| strip_wrapping_quotes(&column_value(source_df, name, idx)))
+                .map(|name| strip_wrapping_quotes(&column_value(input.source_df, name, idx)))
                 .unwrap_or_default();
             let usubjid_value = parent_cols
                 .usubjid
                 .as_deref()
-                .map(|name| strip_wrapping_quotes(&column_value(source_df, name, idx)))
+                .map(|name| strip_wrapping_quotes(&column_value(input.source_df, name, idx)))
                 .unwrap_or_default();
-            let mapped_usubjid = mapped_df
+            let mapped_usubjid = input
+                .mapped_df
                 .and_then(|df| {
                     parent_cols
                         .usubjid
@@ -307,7 +314,7 @@ pub fn build_suppqual(
             };
 
             let idvar_value = idvar.clone().unwrap_or_default();
-            let idvarval = if let (Some(mapped), Some(idvar_name)) = (mapped_df, &idvar) {
+            let idvarval = if let (Some(mapped), Some(idvar_name)) = (input.mapped_df, &idvar) {
                 column_value(mapped, idvar_name, idx)
             } else {
                 String::new()
@@ -331,7 +338,7 @@ pub fn build_suppqual(
                 if !study_value.is_empty() {
                     study_value
                 } else {
-                    study_id.to_string()
+                    input.study_id.to_string()
                 },
             );
             push_value(suppqual_cols.rdomain.as_deref(), parent_domain_code.clone());

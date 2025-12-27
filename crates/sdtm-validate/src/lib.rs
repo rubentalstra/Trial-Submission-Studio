@@ -366,9 +366,7 @@ fn length_issue(
     column: &str,
     p21_lookup: &BTreeMap<String, &P21Rule>,
 ) -> Option<ConformanceIssue> {
-    let Some(limit) = variable.length else {
-        return None;
-    };
+    let limit = variable.length?;
     if variable.data_type != VariableType::Char {
         return None;
     }

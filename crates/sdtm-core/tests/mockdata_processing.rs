@@ -2,8 +2,9 @@ use std::collections::BTreeSet;
 use std::path::Path;
 
 use sdtm_core::{
-    DomainFrame, ProcessingContext, build_domain_frame, build_domain_frame_with_mapping,
-    build_relrec, build_relspec, build_relsub, build_suppqual, process_domain_with_context,
+    DomainFrame, ProcessingContext, SuppqualInput, build_domain_frame,
+    build_domain_frame_with_mapping, build_relrec, build_relspec, build_relsub, build_suppqual,
+    process_domain_with_context,
 };
 use sdtm_ingest::{build_column_hints, discover_domain_files, list_csv_files, read_csv_table};
 use sdtm_map::MappingEngine;
@@ -72,17 +73,17 @@ fn processes_mockdata_end_to_end() {
                 .map(|mapping| mapping.source_column.clone())
                 .collect();
             let source = build_domain_frame(&table, &domain_code).expect("source frame");
-            if let Some(result) = build_suppqual(
-                domain,
-                suppqual,
-                &source.data,
-                Some(&mapped.data),
-                &used,
+            if let Some(result) = build_suppqual(SuppqualInput {
+                parent_domain: domain,
+                suppqual_domain: suppqual,
+                source_df: &source.data,
+                mapped_df: Some(&mapped.data),
+                used_source_columns: &used,
                 study_id,
-                None,
-                None,
-                None,
-            )
+                exclusion_columns: None,
+                source_labels: None,
+                derived_columns: None,
+            })
             .expect("suppqual")
             {
                 suppqual_frames.push(DomainFrame {

@@ -193,10 +193,10 @@ pub(super) fn process_ds(
     {
         let mut term_vals = string_column(df, &dsterm, Trim::Both)?;
         let decod_vals = string_column(df, &dsdecod, Trim::Both)?;
-        for idx in 0..df.height() {
-            let term_upper = term_vals[idx].to_uppercase();
-            if term_upper.contains("SITE") && !decod_vals[idx].is_empty() {
-                term_vals[idx] = decod_vals[idx].clone();
+        for (term, decod) in term_vals.iter_mut().zip(decod_vals.iter()) {
+            let term_upper = term.to_uppercase();
+            if term_upper.contains("SITE") && !decod.is_empty() {
+                *term = decod.clone();
             }
         }
         set_string_column(df, &dsterm, term_vals)?;
@@ -207,11 +207,11 @@ pub(super) fn process_ds(
     {
         let mut term_vals = string_column(df, &dsterm, Trim::Both)?;
         let mut decod_vals = string_column(df, &dsdecod, Trim::Both)?;
-        for idx in 0..df.height() {
-            if term_vals[idx].is_empty() && !decod_vals[idx].is_empty() {
-                term_vals[idx] = decod_vals[idx].clone();
-            } else if decod_vals[idx].is_empty() && !term_vals[idx].is_empty() {
-                decod_vals[idx] = term_vals[idx].clone();
+        for (term, decod) in term_vals.iter_mut().zip(decod_vals.iter_mut()) {
+            if term.is_empty() && !decod.is_empty() {
+                *term = decod.clone();
+            } else if decod.is_empty() && !term.is_empty() {
+                *decod = term.clone();
             }
         }
         set_string_column(df, &dsterm, term_vals)?;
@@ -222,8 +222,8 @@ pub(super) fn process_ds(
         && let Some(ct) = ctx.resolve_ct(domain, "DSDECOD")
     {
         let mut decod_vals = string_column(df, &dsdecod, Trim::Both)?;
-        for idx in 0..df.height() {
-            let canonical = normalize_ct_value(ct, &decod_vals[idx]);
+        for value in decod_vals.iter_mut() {
+            let canonical = normalize_ct_value(ct, value);
             let mut mapped = match canonical.to_uppercase().as_str() {
                 "Y" | "YES" => "COMPLETED".to_string(),
                 "N" | "NO" => "SCREENING NOT COMPLETED".to_string(),
@@ -244,7 +244,7 @@ pub(super) fn process_ds(
                     mapped = "LOST TO FOLLOW-UP".to_string();
                 }
             }
-            decod_vals[idx] = mapped;
+            *value = mapped;
         }
         if let Some(dsterm) = col(domain, "DSTERM")
             && has_column(df, &dsterm)

@@ -38,4 +38,4 @@ pub use processor::{
     process_domain_with_context_and_tracker, process_domains, process_domains_with_context,
 };
 pub use relationships::{build_relationship_frames, build_relrec, build_relspec, build_relsub};
-pub use suppqual::{SuppqualResult, build_suppqual, suppqual_domain_code};
+pub use suppqual::{SuppqualInput, SuppqualResult, build_suppqual, suppqual_domain_code};

@@ -178,8 +178,8 @@ fn detect_header_row(rows: &[Vec<String>]) -> usize {
     let search_end = data_index.unwrap_or(1).max(1);
     let mut candidate = 0usize;
     let mut picked_identifier = false;
-    for idx in 0..search_end {
-        let stat = stats[idx];
+    for (idx, stat) in stats.iter().take(search_end).enumerate() {
+        let stat = *stat;
         if is_identifier_row(stat) {
             candidate = idx;
             picked_identifier = true;

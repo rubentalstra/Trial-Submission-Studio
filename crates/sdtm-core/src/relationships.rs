@@ -46,6 +46,25 @@ struct RelrecMember {
     idvarval: String,
 }
 
+struct RelrecRecordInput<'a> {
+    rdomain: &'a str,
+    usubjid: &'a str,
+    idvar: &'a str,
+    idvarval: &'a str,
+    relid: &'a str,
+    reltype: Option<&'a str>,
+}
+
+struct RelspecSource<'a> {
+    df: &'a DataFrame,
+    study_id: &'a str,
+    relspec_domain: &'a Domain,
+    usubjid_col: &'a str,
+    refid_cols: &'a [String],
+    spec_col: Option<&'a str>,
+    parent_col: Option<&'a str>,
+}
+
 pub fn build_relrec(
     domain_frames: &[DomainFrame],
     domains: &[Domain],
@@ -120,12 +139,14 @@ pub fn build_relrec(
             records.push(relrec_record(
                 relrec_domain,
                 study_id,
-                &member.domain_code,
-                &member.usubjid,
-                &member.idvar,
-                &member.idvarval,
-                &relid,
-                reltype,
+                RelrecRecordInput {
+                    rdomain: &member.domain_code,
+                    usubjid: &member.usubjid,
+                    idvar: &member.idvar,
+                    idvarval: &member.idvarval,
+                    relid: &relid,
+                    reltype,
+                },
             ));
         }
     }
@@ -159,12 +180,9 @@ fn find_suffix_column(domain: &Domain, df: &DataFrame, suffix: &str) -> Option<S
         .filter(|name| df.column(name).is_ok())
         .collect();
     candidates.sort_by_key(|a| a.to_uppercase());
-    for name in candidates {
-        if column_has_values(df, &name) {
-            return Some(name);
-        }
-    }
-    None
+    candidates
+        .into_iter()
+        .find(|name| column_has_values(df, name))
 }
 
 fn column_has_values(df: &DataFrame, name: &str) -> bool {
@@ -236,13 +254,15 @@ pub fn build_relspec(
         let parent_col = domain_columns.parent.clone();
         collect_relspec_records(
             &mut records,
-            &frame.data,
-            study_id,
-            relspec_domain,
-            &usubjid_col,
-            &refid_cols,
-            spec_col.as_deref(),
-            parent_col.as_deref(),
+            &RelspecSource {
+                df: &frame.data,
+                study_id,
+                relspec_domain,
+                usubjid_col: &usubjid_col,
+                refid_cols: &refid_cols,
+                spec_col: spec_col.as_deref(),
+                parent_col: parent_col.as_deref(),
+            },
         );
     }
     if records.is_empty() {
@@ -311,12 +331,7 @@ pub fn build_relsub(
 fn relrec_record(
     relrec_domain: &Domain,
     study_id: &str,
-    rdomain: &str,
-    usubjid: &str,
-    idvar: &str,
-    idvarval: &str,
-    relid: &str,
-    reltype: Option<&str>,
+    input: RelrecRecordInput<'_>,
 ) -> BTreeMap<String, String> {
     let mut record = BTreeMap::new();
     let columns = standard_columns(relrec_domain);
@@ -324,22 +339,22 @@ fn relrec_record(
         record.insert(name, study_id.to_string());
     }
     if let Some(name) = columns.rdomain {
-        record.insert(name, rdomain.to_string());
+        record.insert(name, input.rdomain.to_string());
     }
     if let Some(name) = columns.usubjid {
-        record.insert(name, usubjid.to_string());
+        record.insert(name, input.usubjid.to_string());
     }
     if let Some(name) = columns.idvar {
-        record.insert(name, idvar.to_string());
+        record.insert(name, input.idvar.to_string());
     }
     if let Some(name) = columns.idvarval {
-        record.insert(name, idvarval.to_string());
+        record.insert(name, input.idvarval.to_string());
     }
     if let Some(name) = columns.reltype {
-        record.insert(name, reltype.unwrap_or("").to_string());
+        record.insert(name, input.reltype.unwrap_or("").to_string());
     }
     if let Some(name) = columns.relid {
-        record.insert(name, relid.to_string());
+        record.insert(name, input.relid.to_string());
     }
     record
 }
@@ -495,43 +510,39 @@ impl RelspecRecord {
 
 fn collect_relspec_records(
     records: &mut BTreeMap<(String, String), RelspecRecord>,
-    df: &DataFrame,
-    study_id: &str,
-    relspec_domain: &Domain,
-    usubjid_col: &str,
-    refid_cols: &[String],
-    spec_col: Option<&str>,
-    parent_col: Option<&str>,
+    source: &RelspecSource<'_>,
 ) {
-    if df.height() == 0 {
+    if source.df.height() == 0 {
         return;
     }
-    if df.column(usubjid_col).is_err() {
+    if source.df.column(source.usubjid_col).is_err() {
         return;
     }
-    for refid_col in refid_cols {
-        for idx in 0..df.height() {
-            let usubjid = column_value(df, usubjid_col, idx).trim().to_string();
-            let refid = column_value(df, refid_col, idx).trim().to_string();
+    for refid_col in source.refid_cols {
+        for idx in 0..source.df.height() {
+            let usubjid = column_value(source.df, source.usubjid_col, idx)
+                .trim()
+                .to_string();
+            let refid = column_value(source.df, refid_col, idx).trim().to_string();
             if usubjid.is_empty() || refid.is_empty() {
                 continue;
             }
             let key = (usubjid.clone(), refid.clone());
-            let entry = records
-                .entry(key)
-                .or_insert_with(|| RelspecRecord::new(study_id, &usubjid, &refid, relspec_domain));
+            let entry = records.entry(key).or_insert_with(|| {
+                RelspecRecord::new(source.study_id, &usubjid, &refid, source.relspec_domain)
+            });
             if entry.spec.is_empty()
-                && let Some(spec_col) = spec_col
+                && let Some(spec_col) = source.spec_col
             {
-                let spec = column_value(df, spec_col, idx).trim().to_string();
+                let spec = column_value(source.df, spec_col, idx).trim().to_string();
                 if !spec.is_empty() {
                     entry.spec = spec;
                 }
             }
             if entry.parent.is_empty()
-                && let Some(parent_col) = parent_col
+                && let Some(parent_col) = source.parent_col
             {
-                let parent = column_value(df, parent_col, idx).trim().to_string();
+                let parent = column_value(source.df, parent_col, idx).trim().to_string();
                 if !parent.is_empty() {
                     entry.parent = parent;
                 }

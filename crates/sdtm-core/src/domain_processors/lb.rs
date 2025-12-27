@@ -30,9 +30,9 @@ pub(super) fn process_lb(
     {
         let orresu_vals = string_column(df, &lborresu, Trim::Both)?;
         let mut stresu_vals = string_column(df, &lbstresu, Trim::Both)?;
-        for idx in 0..df.height() {
-            if stresu_vals[idx].is_empty() && !orresu_vals[idx].is_empty() {
-                stresu_vals[idx] = orresu_vals[idx].clone();
+        for (stresu, orresu) in stresu_vals.iter_mut().zip(orresu_vals.iter()) {
+            if stresu.is_empty() && !orresu.is_empty() {
+                *stresu = orresu.clone();
             }
         }
         set_string_column(df, &lbstresu, stresu_vals)?;
@@ -45,8 +45,8 @@ pub(super) fn process_lb(
             .map(|value| value.to_uppercase())
             .collect::<Vec<_>>();
         if let Some(ct) = ctx.resolve_ct(domain, "LBTESTCD") {
-            for idx in 0..values.len() {
-                values[idx] = normalize_ct_value_keep(ct, &values[idx]);
+            for value in &mut values {
+                *value = normalize_ct_value_keep(ct, value);
             }
         }
         set_string_column(df, &lbtestcd, values)?;
@@ -58,17 +58,17 @@ pub(super) fn process_lb(
     {
         let test_vals = string_column(df, &lbtest, Trim::Both)?;
         let mut testcd_vals = string_column(df, &lbtestcd, Trim::Both)?;
-        for idx in 0..df.height() {
-            let existing = testcd_vals[idx].clone();
+        for (testcd, test) in testcd_vals.iter_mut().zip(test_vals.iter()) {
+            let existing = testcd.clone();
             let valid =
                 !existing.is_empty() && ct.submission_values.iter().any(|val| val == &existing);
             if valid {
                 continue;
             }
-            if let Some(mapped) = resolve_ct_submission_value(ct, &test_vals[idx]) {
-                testcd_vals[idx] = mapped;
-            } else if let Some(mapped) = resolve_ct_value_from_hint(ct, &test_vals[idx]) {
-                testcd_vals[idx] = mapped;
+            if let Some(mapped) = resolve_ct_submission_value(ct, test) {
+                *testcd = mapped;
+            } else if let Some(mapped) = resolve_ct_value_from_hint(ct, test) {
+                *testcd = mapped;
             }
         }
         set_string_column(df, &lbtestcd, testcd_vals)?;
@@ -79,9 +79,9 @@ pub(super) fn process_lb(
     {
         let mut lbtest_vals = string_column(df, &lbtest, Trim::Both)?;
         let testcd_vals = string_column(df, &lbtestcd, Trim::Both)?;
-        for idx in 0..df.height() {
-            if lbtest_vals[idx].is_empty() && !testcd_vals[idx].is_empty() {
-                lbtest_vals[idx] = testcd_vals[idx].clone();
+        for (test, testcd) in lbtest_vals.iter_mut().zip(testcd_vals.iter()) {
+            if test.is_empty() && !testcd.is_empty() {
+                *test = testcd.clone();
             }
         }
         set_string_column(df, &lbtest, lbtest_vals)?;
@@ -93,19 +93,17 @@ pub(super) fn process_lb(
     {
         let mut test_vals = string_column(df, &lbtest, Trim::Both)?;
         let testcd_vals = string_column(df, &lbtestcd, Trim::Both)?;
-        for idx in 0..df.height() {
-            if testcd_vals[idx].is_empty() {
+        for (test, testcd) in test_vals.iter_mut().zip(testcd_vals.iter()) {
+            if testcd.is_empty() {
                 continue;
             }
-            let test_in_ct = resolve_ct_submission_value(ct, &test_vals[idx]).is_some();
-            let needs_label = test_vals[idx].is_empty()
-                || test_vals[idx].eq_ignore_ascii_case(&testcd_vals[idx])
-                || !test_in_ct;
+            let test_in_ct = resolve_ct_submission_value(ct, test).is_some();
+            let needs_label = test.is_empty() || test.eq_ignore_ascii_case(testcd) || !test_in_ct;
             if !needs_label {
                 continue;
             }
-            if let Some(preferred) = preferred_term_for(ct, &testcd_vals[idx]) {
-                test_vals[idx] = preferred;
+            if let Some(preferred) = preferred_term_for(ct, testcd) {
+                *test = preferred;
             }
         }
         set_string_column(df, &lbtest, test_vals)?;
@@ -182,8 +180,8 @@ pub(super) fn process_lb(
                 && has_column(df, &name)
             {
                 let mut values = string_column(df, &name, Trim::Both)?;
-                for idx in 0..values.len() {
-                    values[idx] = normalize_ct_value_keep(ct, &values[idx]);
+                for value in &mut values {
+                    *value = normalize_ct_value_keep(ct, value);
                 }
                 set_string_column(df, &name, values)?;
             }
@@ -206,9 +204,9 @@ pub(super) fn process_lb(
     {
         let orres = string_column(df, &lborres, Trim::Both)?;
         let mut orresu = string_column(df, &lborresu, Trim::Both)?;
-        for idx in 0..df.height() {
-            if orres[idx].is_empty() {
-                orresu[idx].clear();
+        for (orres_val, orresu_val) in orres.iter().zip(orresu.iter_mut()) {
+            if orres_val.is_empty() {
+                orresu_val.clear();
             }
         }
         set_string_column(df, &lborresu, orresu)?;
@@ -219,9 +217,9 @@ pub(super) fn process_lb(
     {
         let stresc = string_column(df, &lbstresc, Trim::Both)?;
         let mut stresu = string_column(df, &lbstresu, Trim::Both)?;
-        for idx in 0..df.height() {
-            if stresc[idx].is_empty() {
-                stresu[idx].clear();
+        for (stresc_val, stresu_val) in stresc.iter().zip(stresu.iter_mut()) {
+            if stresc_val.is_empty() {
+                stresu_val.clear();
             }
         }
         set_string_column(df, &lbstresu, stresu)?;
