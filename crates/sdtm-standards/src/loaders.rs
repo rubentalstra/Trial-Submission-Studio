@@ -511,6 +511,224 @@ pub fn load_p21_rules(path: &Path) -> Result<Vec<P21Rule>> {
     Ok(rules)
 }
 
+// ============================================================================
+// Rule Metadata for Missing Dataset Detection
+// ============================================================================
+
+/// Metadata about validation rules that map to SDTMIG requirements.
+///
+/// Per SDTMIG v3.4 Chapter 4, certain rules apply to specific domains or
+/// dataset classes. This structure captures that mapping for use in validation.
+#[derive(Debug, Clone)]
+pub struct RuleMetadata {
+    /// Rule ID (P21 ID)
+    pub rule_id: String,
+    /// Domain codes this rule applies to (empty = all domains)
+    pub applicable_domains: Vec<String>,
+    /// Dataset classes this rule applies to
+    pub applicable_classes: Vec<DatasetClass>,
+    /// Whether this rule detects missing datasets
+    pub detects_missing_dataset: bool,
+    /// The domain code expected to be present (for missing dataset rules)
+    pub expected_domain: Option<String>,
+    /// Source chapter in SDTMIG
+    pub sdtmig_reference: Option<String>,
+}
+
+/// Registry of rule metadata for validation.
+#[derive(Debug, Clone, Default)]
+pub struct RuleMetadataRegistry {
+    /// Rules indexed by rule ID
+    rules_by_id: BTreeMap<String, RuleMetadata>,
+    /// Rules that detect missing datasets, indexed by expected domain
+    missing_dataset_rules: BTreeMap<String, Vec<String>>,
+    /// Rules indexed by applicable domain
+    rules_by_domain: BTreeMap<String, Vec<String>>,
+}
+
+impl RuleMetadataRegistry {
+    /// Create a new empty registry.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Build a registry from P21 rules and domain information.
+    ///
+    /// This parses P21 rule messages to detect patterns like "Missing XX dataset"
+    /// and maps rules to applicable domains.
+    pub fn from_p21_rules(rules: &[P21Rule], domains: &[Domain]) -> Self {
+        let mut registry = Self::new();
+
+        // Build domain code set
+        let domain_codes: BTreeSet<String> =
+            domains.iter().map(|d| d.code.to_uppercase()).collect();
+
+        for rule in rules {
+            // Check if this is a "Missing XX dataset" rule
+            if let Some(expected_domain) = parse_missing_dataset_rule(&rule.message) {
+                let expected_upper = expected_domain.to_uppercase();
+                if domain_codes.contains(&expected_upper) {
+                    let metadata = RuleMetadata {
+                        rule_id: rule.rule_id.clone(),
+                        applicable_domains: vec![expected_upper.clone()],
+                        applicable_classes: Vec::new(),
+                        detects_missing_dataset: true,
+                        expected_domain: Some(expected_upper.clone()),
+                        sdtmig_reference: rule.category.clone(),
+                    };
+                    registry.insert(metadata);
+                }
+            }
+
+            // Check for domain-specific rules by parsing the message
+            // Rules often mention domain codes in their message/description
+            let rule_domains = extract_domains_from_text(&rule.message, &domain_codes);
+            if !rule_domains.is_empty() && !registry.rules_by_id.contains_key(&rule.rule_id) {
+                let metadata = RuleMetadata {
+                    rule_id: rule.rule_id.clone(),
+                    applicable_domains: rule_domains,
+                    applicable_classes: Vec::new(),
+                    detects_missing_dataset: false,
+                    expected_domain: None,
+                    sdtmig_reference: rule.category.clone(),
+                };
+                registry.insert(metadata);
+            }
+        }
+
+        registry
+    }
+
+    /// Insert rule metadata.
+    pub fn insert(&mut self, metadata: RuleMetadata) {
+        let rule_id = metadata.rule_id.clone();
+
+        // Index by domain
+        for domain in &metadata.applicable_domains {
+            self.rules_by_domain
+                .entry(domain.to_uppercase())
+                .or_default()
+                .push(rule_id.clone());
+        }
+
+        // Index missing dataset rules
+        if metadata.detects_missing_dataset
+            && let Some(expected) = &metadata.expected_domain
+        {
+            self.missing_dataset_rules
+                .entry(expected.to_uppercase())
+                .or_default()
+                .push(rule_id.clone());
+        }
+
+        self.rules_by_id.insert(rule_id, metadata);
+    }
+
+    /// Get rule metadata by ID.
+    pub fn get(&self, rule_id: &str) -> Option<&RuleMetadata> {
+        self.rules_by_id.get(&rule_id.to_uppercase())
+    }
+
+    /// Get rules applicable to a domain.
+    pub fn get_rules_for_domain(&self, domain_code: &str) -> Vec<&RuleMetadata> {
+        self.rules_by_domain
+            .get(&domain_code.to_uppercase())
+            .map(|ids| {
+                ids.iter()
+                    .filter_map(|id| self.rules_by_id.get(id))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    /// Get missing dataset rules for a domain.
+    pub fn get_missing_dataset_rules(&self, domain_code: &str) -> Vec<&RuleMetadata> {
+        self.missing_dataset_rules
+            .get(&domain_code.to_uppercase())
+            .map(|ids| {
+                ids.iter()
+                    .filter_map(|id| self.rules_by_id.get(id))
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
+    /// Get all domains that have "missing dataset" rules.
+    pub fn domains_with_missing_rules(&self) -> Vec<String> {
+        self.missing_dataset_rules.keys().cloned().collect()
+    }
+
+    /// Check if a domain has any associated rules.
+    pub fn has_rules(&self, domain_code: &str) -> bool {
+        self.rules_by_domain
+            .contains_key(&domain_code.to_uppercase())
+    }
+
+    /// Get the count of rules in the registry.
+    pub fn len(&self) -> usize {
+        self.rules_by_id.len()
+    }
+
+    /// Check if the registry is empty.
+    pub fn is_empty(&self) -> bool {
+        self.rules_by_id.is_empty()
+    }
+}
+
+/// Parse a "Missing XX dataset" rule message to extract the expected domain.
+fn parse_missing_dataset_rule(message: &str) -> Option<String> {
+    let msg = message.trim();
+
+    // Pattern: "Missing XX dataset"
+    if let Some(rest) = msg.strip_prefix("Missing ")
+        && let Some(domain) = rest.strip_suffix(" dataset")
+    {
+        let code = domain.trim().to_uppercase();
+        // Validate it looks like a domain code (2-4 uppercase letters)
+        if code.len() >= 2
+            && code.len() <= 8
+            && code
+                .chars()
+                .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
+        {
+            return Some(code);
+        }
+    }
+
+    None
+}
+
+/// Extract domain codes mentioned in rule text.
+fn extract_domains_from_text(text: &str, valid_domains: &BTreeSet<String>) -> Vec<String> {
+    let mut found = Vec::new();
+    let upper = text.to_uppercase();
+
+    for domain in valid_domains {
+        // Look for domain code as a word boundary
+        // Simple heuristic: check if the domain code appears surrounded by non-alphanumeric chars
+        let pattern = format!(" {} ", domain);
+        let start_pattern = format!("{} ", domain);
+        let end_pattern = format!(" {}", domain);
+
+        if upper.contains(&pattern)
+            || upper.starts_with(&start_pattern)
+            || upper.ends_with(&end_pattern)
+            || upper == *domain
+        {
+            found.push(domain.clone());
+        }
+    }
+
+    found
+}
+
+/// Load default rule metadata registry.
+pub fn load_default_rule_metadata() -> Result<RuleMetadataRegistry> {
+    let rules = load_default_p21_rules()?;
+    let domains = load_default_sdtm_ig_domains()?;
+    Ok(RuleMetadataRegistry::from_p21_rules(&rules, &domains))
+}
+
 /// A registry of SDTM domains that allows querying by code and class.
 /// Per SDTMIG v3.4 Chapter 2, domains are organized by observation class.
 #[derive(Debug, Clone, Default)]

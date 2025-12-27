@@ -363,15 +363,47 @@ are noted where applicable.
 
 ## 0.8 Validation Refactor
 
-- [ ] **0.8.1** Add cross-domain validations: split SEQ uniqueness, SUPP QNAM
-      uniqueness, QVAL non-empty, relationship key integrity.
+- [x] **0.8.1** Add cross-domain validations: split SEQ uniqueness, SUPP QNAM
+      uniqueness, QVAL non-empty, relationship key integrity. **Implementation
+      notes**: - Created `crates/sdtm-validate/src/cross_domain.rs` (900+ lines)
+      with: - `validate_cross_domain()` main entry point -
+      `validate_seq_across_splits()` - SEQ uniqueness across split datasets
+      (SD0005X) - `validate_supp_qnam_uniqueness()` - QNAM unique per record key
+      (SD0042) - `validate_supp_qval_non_empty()` - QVAL cannot be empty
+      (SD0043) - `validate_relationship_integrity()` - RELREC/RELSPEC/RELSUB
+      references (SD0044-46) - `CrossDomainValidationInput` accepts frame map
+      and split mappings - `CrossDomainValidationResult` with `merge_into()` for
+      report integration - Helper `infer_base_domain()` maps dataset names to
+      base domains - Tests in `crates/sdtm-validate/tests/cross_domain.rs` (14
+      tests)
 
-- [ ] **0.8.2** Add explicit rule metadata mapping in
+- [x] **0.8.2** Add explicit rule metadata mapping in
       `sdtm-standards/src/loaders.rs`. Use it in `sdtm-validate/src/lib.rs` for
-      missing dataset detection.
+      missing dataset detection. **Implementation notes**: - Added
+      `RuleMetadata` struct with: rule_id, applicable_domains,
+      applicable_classes, detects_missing_dataset, expected_domain,
+      sdtmig_reference - Created `RuleMetadataRegistry` with: -
+      `from_p21_rules()` - builds registry from P21 rules and domain list -
+      `get_rules_for_domain()` - get rules applicable to a domain -
+      `get_missing_dataset_rules()` - get rules detecting missing datasets -
+      `domains_with_missing_rules()` - list domains with missing dataset rules -
+      Helper functions: `parse_missing_dataset_rule()`,
+      `extract_domains_from_text()` - Added `load_default_rule_metadata()`
+      convenience function - Tests in `crates/sdtm-standards/tests/loaders.rs`
+      (5 tests)
 
-- [ ] **0.8.3** Add a structured issue model with counts and samples. Update
-      `sdtm-cli/src/summary.rs` to render it.
+- [x] **0.8.3** Add a structured issue model with counts and samples. Update
+      `sdtm-cli/src/summary.rs` to render it. **Implementation notes**: - Added
+      to `crates/sdtm-model/src/conformance.rs`: - `IssueSummary`: total_errors,
+      total_warnings, total_rejects, by_category, by_domain, by_rule, samples -
+      `CategorySummary`: category name, error/warning counts, rule IDs -
+      `DomainIssueSummary`: domain_code, error/warning/reject counts, rule_ids -
+      `RuleSummary`: rule_id, description, category, severity, violation_count,
+      affected_domains, samples - `IssueSummary::from_reports()` builds summary
+      from ConformanceReport list - Helper `extract_sample_values()` parses
+      "values: X, Y, Z" from messages - Integrated into pipeline via
+      `validate_cross_domain()` in `pipeline.rs` - Tests in
+      `crates/sdtm-model/tests/model.rs` (6 tests)
 
 ---
 

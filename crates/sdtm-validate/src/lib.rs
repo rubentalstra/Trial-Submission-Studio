@@ -1,5 +1,9 @@
+mod cross_domain;
 mod engine;
 
+pub use cross_domain::{
+    CrossDomainValidationInput, CrossDomainValidationResult, validate_cross_domain,
+};
 pub use engine::RuleEngine;
 
 use std::collections::{BTreeMap, BTreeSet};

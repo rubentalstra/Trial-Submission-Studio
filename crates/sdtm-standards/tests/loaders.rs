@@ -507,3 +507,67 @@ fn country_codelist_c66786_loaded_correctly() {
     );
     assert!(values.iter().any(|v| v == "USA"), "Should include USA");
 }
+
+// --- RuleMetadataRegistry tests ---
+
+#[test]
+fn rule_metadata_registry_from_p21_rules() {
+    use sdtm_standards::RuleMetadataRegistry;
+
+    let p21_rules = load_default_p21_rules().expect("load p21 rules");
+    let domains = load_default_sdtm_ig_domains().expect("load domains");
+    let registry = RuleMetadataRegistry::from_p21_rules(&p21_rules, &domains);
+
+    assert!(!registry.is_empty(), "Registry should not be empty");
+}
+
+#[test]
+fn rule_metadata_registry_get_rules_for_domain() {
+    use sdtm_standards::RuleMetadataRegistry;
+
+    let p21_rules = load_default_p21_rules().expect("load p21 rules");
+    let domains = load_default_sdtm_ig_domains().expect("load domains");
+    let registry = RuleMetadataRegistry::from_p21_rules(&p21_rules, &domains);
+
+    // DM is a common domain, should have rules
+    let dm_rules = registry.get_rules_for_domain("DM");
+    // May be empty if no domain-specific rules apply, but shouldn't panic
+    let _ = dm_rules;
+}
+
+#[test]
+fn rule_metadata_registry_missing_dataset_rules() {
+    use sdtm_standards::RuleMetadataRegistry;
+
+    let p21_rules = load_default_p21_rules().expect("load p21 rules");
+    let domains = load_default_sdtm_ig_domains().expect("load domains");
+    let registry = RuleMetadataRegistry::from_p21_rules(&p21_rules, &domains);
+
+    // Get missing rules for DM domain
+    let missing_rules = registry.get_missing_dataset_rules("DM");
+    // Should find some rules that detect missing datasets
+    // May be empty depending on rule definitions
+    let _ = missing_rules;
+}
+
+#[test]
+fn rule_metadata_registry_domains_with_missing_rules() {
+    use sdtm_standards::RuleMetadataRegistry;
+
+    let p21_rules = load_default_p21_rules().expect("load p21 rules");
+    let domains = load_default_sdtm_ig_domains().expect("load domains");
+    let registry = RuleMetadataRegistry::from_p21_rules(&p21_rules, &domains);
+
+    let domains_list = registry.domains_with_missing_rules();
+    // Should be a vector of domains, possibly empty - just verify it works
+    let _ = domains_list;
+}
+
+#[test]
+fn load_default_rule_metadata_works() {
+    use sdtm_standards::load_default_rule_metadata;
+
+    let registry = load_default_rule_metadata().expect("load rule metadata");
+    // Registry should load without error - just verify it works
+    let _ = registry.len();
+}

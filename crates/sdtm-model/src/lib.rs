@@ -6,7 +6,10 @@ pub mod mapping;
 pub mod processing;
 pub mod terminology;
 
-pub use conformance::{ConformanceIssue, ConformanceReport, IssueSeverity};
+pub use conformance::{
+    CategorySummary, ConformanceIssue, ConformanceReport, DomainIssueSummary, IssueSeverity,
+    IssueSummary, RuleSummary,
+};
 pub use domain::{DatasetClass, DatasetMetadata, Domain, Variable, VariableType};
 pub use error::{Result, SdtmError};
 pub use lookup::CaseInsensitiveLookup;

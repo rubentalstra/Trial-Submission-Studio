@@ -33,7 +33,10 @@ use sdtm_report::{
     DefineXmlOptions, SasProgramOptions, write_dataset_xml_outputs, write_define_xml,
     write_sas_outputs, write_xpt_outputs,
 };
-use sdtm_validate::{ValidationContext, validate_domains, write_conformance_report_json};
+use sdtm_validate::{
+    CrossDomainValidationInput, ValidationContext, validate_cross_domain, validate_domains,
+    write_conformance_report_json,
+};
 use sdtm_xpt::{XptWriterOptions, read_xpt};
 
 // ============================================================================
@@ -395,10 +398,55 @@ pub fn validate(
         .map(|frame| (frame.domain_code.as_str(), &frame.data))
         .collect();
 
+    // Per-domain validation
     let reports = validate_domains(&pipeline.standards, &frame_refs, &validation_ctx);
     let mut report_map = BTreeMap::new();
     for report in reports {
         report_map.insert(report.domain_code.to_uppercase(), report);
+    }
+
+    // Cross-domain validation (SEQ uniqueness across splits, SUPPQUAL, relationships)
+    let frame_map: BTreeMap<String, &DataFrame> = frames
+        .iter()
+        .map(|frame| (frame.domain_code.to_uppercase(), &frame.data))
+        .collect();
+
+    // Build split mappings from frame metadata (dataset_name -> base domain)
+    let split_mappings: BTreeMap<String, String> = frames
+        .iter()
+        .filter_map(|frame| {
+            let dataset_name = frame.dataset_name().to_uppercase();
+            let domain_code = frame.domain_code.to_uppercase();
+            if dataset_name != domain_code {
+                Some((dataset_name, domain_code))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    let cross_domain_input = CrossDomainValidationInput {
+        frames: &frame_map,
+        split_mappings: if split_mappings.is_empty() {
+            None
+        } else {
+            Some(&split_mappings)
+        },
+    };
+
+    let cross_domain_result = validate_cross_domain(cross_domain_input);
+
+    if cross_domain_result.has_issues() {
+        debug!(
+            study_id = %study_id,
+            seq_violations = cross_domain_result.seq_violations,
+            qnam_violations = cross_domain_result.qnam_violations,
+            qval_violations = cross_domain_result.qval_violations,
+            relrec_violations = cross_domain_result.relrec_violations,
+            "cross-domain validation issues found"
+        );
+        // Merge cross-domain issues into report map
+        cross_domain_result.merge_into(&mut report_map);
     }
 
     let report_path = if dry_run {
