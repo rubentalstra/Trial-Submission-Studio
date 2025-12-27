@@ -4,7 +4,7 @@ use anyhow::{Result, anyhow};
 use polars::prelude::{AnyValue, Column, DataFrame, NamedFrom, Series};
 use tracing::warn;
 
-use sdtm_model::{ControlledTerminology, Domain, VariableType};
+use sdtm_model::{CaseInsensitiveLookup, ControlledTerminology, Domain, VariableType};
 
 use crate::data_utils::any_to_string;
 use crate::domain_processors;
@@ -142,6 +142,7 @@ fn normalize_ct_columns(
     if ctx.ct_registry.is_none() {
         return Ok(());
     }
+    let column_lookup = CaseInsensitiveLookup::new(df.get_column_names_owned());
     for variable in &domain.variables {
         if !matches!(variable.data_type, VariableType::Char) {
             continue;
@@ -149,7 +150,10 @@ fn normalize_ct_columns(
         let Some(ct) = ctx.resolve_ct(domain, &variable.name) else {
             continue;
         };
-        let Ok(series) = df.column(variable.name.as_str()) else {
+        let Some(column_name) = column_lookup.get(&variable.name) else {
+            continue;
+        };
+        let Ok(series) = df.column(column_name) else {
             continue;
         };
         let mut values = Vec::with_capacity(df.height());
@@ -167,7 +171,7 @@ fn normalize_ct_columns(
             values.push(normalized);
         }
         if changed {
-            let new_series = Series::new(variable.name.as_str().into(), values);
+            let new_series = Series::new(column_name.into(), values);
             df.with_column(new_series)?;
         }
     }
@@ -183,19 +187,23 @@ pub fn apply_base_rules(
         return Ok(());
     }
     let columns = standard_columns(domain);
-    let usubjid_col = match columns.usubjid.as_ref() {
-        Some(name) => name.clone(),
-        None => return Ok(()),
+    let column_lookup = CaseInsensitiveLookup::new(df.get_column_names_owned());
+    let Some(usubjid_col) = columns
+        .usubjid
+        .as_deref()
+        .and_then(|name| column_lookup.get(name))
+    else {
+        return Ok(());
     };
-    let study_col = columns.study_id;
-    let usubjid_series = match df.column(&usubjid_col) {
+    let study_col = columns
+        .study_id
+        .as_deref()
+        .and_then(|name| column_lookup.get(name));
+    let usubjid_series = match df.column(usubjid_col) {
         Ok(series) => series.clone(),
         Err(_) => return Ok(()),
     };
-    let study_series = study_col
-        .as_deref()
-        .and_then(|name| df.column(name).ok())
-        .cloned();
+    let study_series = study_col.and_then(|name| df.column(name).ok()).cloned();
     let mut updated = Vec::with_capacity(df.height());
     let mut changed = false;
 
@@ -299,16 +307,21 @@ fn maybe_assign_sequence(
         return Ok(());
     }
     let columns = standard_columns(domain);
+    let column_lookup = CaseInsensitiveLookup::new(df.get_column_names_owned());
     let (Some(seq_col), Some(usubjid_col)) = (infer_seq_column(domain), columns.usubjid) else {
         return Ok(());
     };
-    if !needs_sequence_assignment(df, &seq_col, &usubjid_col)? {
+    let seq_col_name = column_lookup.get(&seq_col).unwrap_or(seq_col.as_str());
+    let usubjid_col_name = column_lookup
+        .get(&usubjid_col)
+        .unwrap_or(usubjid_col.as_str());
+    if !needs_sequence_assignment(df, seq_col_name, usubjid_col_name)? {
         return Ok(());
     }
     if let Some(tracker) = seq_tracker {
-        assign_sequence_with_tracker(domain, df, &seq_col, &usubjid_col, tracker, ctx)?;
+        assign_sequence_with_tracker(domain, df, seq_col_name, usubjid_col_name, tracker, ctx)?;
     } else {
-        assign_sequence(domain, df, &seq_col, &usubjid_col, ctx)?;
+        assign_sequence(domain, df, seq_col_name, usubjid_col_name, ctx)?;
     }
     Ok(())
 }

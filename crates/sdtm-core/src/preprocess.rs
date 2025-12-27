@@ -4,7 +4,7 @@ use anyhow::Result;
 use polars::prelude::{AnyValue, DataFrame, NamedFrom, Series};
 
 use sdtm_ingest::CsvTable;
-use sdtm_model::{Domain, MappingConfig};
+use sdtm_model::{CaseInsensitiveLookup, Domain, MappingConfig};
 
 use crate::ProcessingContext;
 use crate::ct_utils::{
@@ -26,6 +26,13 @@ pub fn fill_missing_test_fields(
     ctx: &ProcessingContext,
 ) -> Result<()> {
     let code = domain.code.to_uppercase();
+    let column_lookup = CaseInsensitiveLookup::new(df.get_column_names_owned());
+    let column_name = |name: &str| {
+        column_lookup
+            .get(name)
+            .map(|value| value.to_string())
+            .unwrap_or_else(|| name.to_string())
+    };
     if code == "QS" {
         let orres_source = mapping_source_for_target(mapping, "QSORRES")
             .or_else(|| mapping_source_for_target(mapping, "QSSTRESC"));
@@ -56,14 +63,16 @@ pub fn fill_missing_test_fields(
             fill_string_column(df, "PETESTCD", &test_code)?;
         }
     } else if code == "DS" {
-        let mut decod_vals = if let Ok(series) = df.column("DSDECOD") {
+        let decod_col = column_name("DSDECOD");
+        let term_col = column_name("DSTERM");
+        let mut decod_vals = if let Ok(series) = df.column(&decod_col) {
             (0..df.height())
                 .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
                 .collect::<Vec<_>>()
         } else {
             vec![String::new(); df.height()]
         };
-        let mut term_vals = if let Ok(series) = df.column("DSTERM") {
+        let mut term_vals = if let Ok(series) = df.column(&term_col) {
             (0..df.height())
                 .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
                 .collect::<Vec<_>>()
@@ -94,10 +103,11 @@ pub fn fill_missing_test_fields(
                 }
             }
         }
-        df.with_column(Series::new("DSDECOD".into(), decod_vals))?;
-        df.with_column(Series::new("DSTERM".into(), term_vals))?;
+        df.with_column(Series::new(decod_col.as_str().into(), decod_vals))?;
+        df.with_column(Series::new(term_col.as_str().into(), term_vals))?;
     } else if code == "EX" {
-        let mut extrt_vals = if let Ok(series) = df.column("EXTRT") {
+        let extrt_col = column_name("EXTRT");
+        let mut extrt_vals = if let Ok(series) = df.column(&extrt_col) {
             (0..df.height())
                 .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
                 .collect::<Vec<_>>()
@@ -159,7 +169,7 @@ pub fn fill_missing_test_fields(
                     }
                 }
             }
-            df.with_column(Series::new("EXTRT".into(), extrt_vals))?;
+            df.with_column(Series::new(extrt_col.as_str().into(), extrt_vals))?;
         }
     } else if code == "DA" {
         let ctdatest = ctx.resolve_ct(domain, "DATEST");
@@ -243,35 +253,40 @@ pub fn fill_missing_test_fields(
             }
         }
         if !candidates.is_empty() {
-            let mut daorres_vals = if let Ok(series) = df.column("DAORRES") {
+            let daorres_col = column_name("DAORRES");
+            let datest_col = column_name("DATEST");
+            let datestcd_col = column_name("DATESTCD");
+            let daorresu_col = column_name("DAORRESU");
+            let dastresu_col = column_name("DASTRESU");
+            let mut daorres_vals = if let Ok(series) = df.column(&daorres_col) {
                 (0..df.height())
                     .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
                     .collect::<Vec<_>>()
             } else {
                 vec![String::new(); df.height()]
             };
-            let mut datest_vals = if let Ok(series) = df.column("DATEST") {
+            let mut datest_vals = if let Ok(series) = df.column(&datest_col) {
                 (0..df.height())
                     .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
                     .collect::<Vec<_>>()
             } else {
                 vec![String::new(); df.height()]
             };
-            let mut datestcd_vals = if let Ok(series) = df.column("DATESTCD") {
+            let mut datestcd_vals = if let Ok(series) = df.column(&datestcd_col) {
                 (0..df.height())
                     .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
                     .collect::<Vec<_>>()
             } else {
                 vec![String::new(); df.height()]
             };
-            let mut daorresu_vals = if let Ok(series) = df.column("DAORRESU") {
+            let mut daorresu_vals = if let Ok(series) = df.column(&daorresu_col) {
                 (0..df.height())
                     .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
                     .collect::<Vec<_>>()
             } else {
                 vec![String::new(); df.height()]
             };
-            let mut dastresu_vals = if let Ok(series) = df.column("DASTRESU") {
+            let mut dastresu_vals = if let Ok(series) = df.column(&dastresu_col) {
                 (0..df.height())
                     .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
                     .collect::<Vec<_>>()
@@ -316,11 +331,11 @@ pub fn fill_missing_test_fields(
                     break;
                 }
             }
-            df.with_column(Series::new("DAORRES".into(), daorres_vals))?;
-            df.with_column(Series::new("DATEST".into(), datest_vals))?;
-            df.with_column(Series::new("DATESTCD".into(), datestcd_vals))?;
-            df.with_column(Series::new("DAORRESU".into(), daorresu_vals))?;
-            df.with_column(Series::new("DASTRESU".into(), dastresu_vals))?;
+            df.with_column(Series::new(daorres_col.as_str().into(), daorres_vals))?;
+            df.with_column(Series::new(datest_col.as_str().into(), datest_vals))?;
+            df.with_column(Series::new(datestcd_col.as_str().into(), datestcd_vals))?;
+            df.with_column(Series::new(daorresu_col.as_str().into(), daorresu_vals))?;
+            df.with_column(Series::new(dastresu_col.as_str().into(), dastresu_vals))?;
         }
     } else if code == "IE" {
         let mut candidates: Vec<(String, Vec<String>, String)> = Vec::new();
@@ -339,28 +354,32 @@ pub fn fill_missing_test_fields(
             }
         }
         if !candidates.is_empty() {
-            let mut ietest_vals = if let Ok(series) = df.column("IETEST") {
+            let ietest_col = column_name("IETEST");
+            let ietestcd_col = column_name("IETESTCD");
+            let iecat_col = column_name("IECAT");
+            let ieorres_col = column_name("IEORRES");
+            let mut ietest_vals = if let Ok(series) = df.column(&ietest_col) {
                 (0..df.height())
                     .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
                     .collect::<Vec<_>>()
             } else {
                 vec![String::new(); df.height()]
             };
-            let mut ietestcd_vals = if let Ok(series) = df.column("IETESTCD") {
+            let mut ietestcd_vals = if let Ok(series) = df.column(&ietestcd_col) {
                 (0..df.height())
                     .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
                     .collect::<Vec<_>>()
             } else {
                 vec![String::new(); df.height()]
             };
-            let mut iecat_vals = if let Ok(series) = df.column("IECAT") {
+            let mut iecat_vals = if let Ok(series) = df.column(&iecat_col) {
                 (0..df.height())
                     .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
                     .collect::<Vec<_>>()
             } else {
                 vec![String::new(); df.height()]
             };
-            let orres_vals = if let Ok(series) = df.column("IEORRES") {
+            let orres_vals = if let Ok(series) = df.column(&ieorres_col) {
                 (0..df.height())
                     .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
                     .collect::<Vec<_>>()
@@ -395,9 +414,9 @@ pub fn fill_missing_test_fields(
                     break;
                 }
             }
-            df.with_column(Series::new("IETEST".into(), ietest_vals))?;
-            df.with_column(Series::new("IETESTCD".into(), ietestcd_vals))?;
-            df.with_column(Series::new("IECAT".into(), iecat_vals))?;
+            df.with_column(Series::new(ietest_col.as_str().into(), ietest_vals))?;
+            df.with_column(Series::new(ietestcd_col.as_str().into(), ietestcd_vals))?;
+            df.with_column(Series::new(iecat_col.as_str().into(), iecat_vals))?;
         }
     }
     Ok(())

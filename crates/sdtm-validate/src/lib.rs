@@ -7,8 +7,8 @@ use polars::prelude::{AnyValue, DataFrame};
 use serde::Serialize;
 
 use sdtm_model::{
-    ConformanceIssue, ConformanceReport, ControlledTerminology, CtRegistry, Domain, IssueSeverity,
-    OutputFormat, ResolvedCt, Variable, VariableType,
+    CaseInsensitiveLookup, ConformanceIssue, ConformanceReport, ControlledTerminology, CtRegistry,
+    Domain, IssueSeverity, OutputFormat, ResolvedCt, Variable, VariableType,
 };
 use sdtm_standards::loaders::P21Rule;
 
@@ -127,7 +127,7 @@ pub fn validate_domain(
     let p21_lookup = build_p21_lookup(ctx.p21_rules);
     let mut issues = Vec::new();
     for variable in &domain.variables {
-        let column = column_lookup.get(&variable.name.to_uppercase());
+        let column = column_lookup.get(&variable.name);
         if column.is_none() {
             issues.extend(missing_column_issues(domain, variable, &p21_lookup));
             continue;
@@ -230,11 +230,8 @@ pub fn write_conformance_report_json(
     Ok(output_path)
 }
 
-fn build_column_lookup(df: &DataFrame) -> BTreeMap<String, String> {
-    df.get_column_names_owned()
-        .into_iter()
-        .map(|name| (name.to_uppercase(), name.to_string()))
-        .collect()
+fn build_column_lookup(df: &DataFrame) -> CaseInsensitiveLookup {
+    CaseInsensitiveLookup::new(df.get_column_names_owned())
 }
 
 fn missing_column_issues(

@@ -128,7 +128,7 @@ rules/conformance; Phase 2 = outputs/perf/testing/cutover.
       `crates/sdtm-core/src/domain_processors/common.rs`,
       `crates/sdtm-core/src/relationships.rs`, and
       `crates/sdtm-report/src/lib.rs`.
-- [ ] Problem: repeated case conversions and column lookups. Fix: add a
+- [x] Problem: repeated case conversions and column lookups. Fix: add a
       case-insensitive column lookup helper used across `processor`,
       `preprocess`, and `validate`.
 - [ ] Problem: CT resolution uses multiple inconsistent algorithms. Fix:
