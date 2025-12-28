@@ -1,16 +1,15 @@
 use std::collections::BTreeMap;
 
 use anyhow::Result;
-use polars::prelude::{AnyValue, DataFrame};
+use polars::prelude::DataFrame;
 
 use sdtm_model::Domain;
 
-use crate::data_utils::column_value_string;
+use crate::data_utils::{column_trimmed_values, column_value_string};
 use crate::domain_sets::domain_map_by_code;
 use crate::domain_utils::{StandardColumns, refid_candidates, standard_columns};
 use crate::frame::DomainFrame;
 use crate::frame_builder::build_domain_frame_from_records;
-use sdtm_ingest::any_to_string;
 
 /// Configuration options for relationship generation.
 #[derive(Debug, Clone, Default)]
@@ -108,6 +107,7 @@ pub fn build_relrec(
     }
 
     let domain_map = domain_map_by_code(domains);
+    let relrec_columns = standard_columns(relrec_domain);
     let mut groups: BTreeMap<RelrecKey, Vec<RelrecMember>> = BTreeMap::new();
     for frame in domain_frames {
         if frame.data.height() == 0 {
@@ -168,11 +168,13 @@ pub fn build_relrec(
     let mut records: Vec<BTreeMap<String, String>> = Vec::new();
     let mut rel_counter = 0usize;
     for (_key, members) in groups {
-        let mut domain_counts: BTreeMap<String, usize> = BTreeMap::new();
-        for member in &members {
-            *domain_counts.entry(member.domain_code.clone()).or_insert(0) += 1;
-        }
-        if domain_counts.len() < 2 {
+        let Some(first_domain) = members.first().map(|member| member.domain_code.as_str()) else {
+            continue;
+        };
+        let has_multiple_domains = members
+            .iter()
+            .any(|member| member.domain_code.as_str() != first_domain);
+        if !has_multiple_domains {
             continue;
         }
         rel_counter += 1;
@@ -184,7 +186,7 @@ pub fn build_relrec(
             // Since we have IDVAR/IDVARVAL populated (record-level), leave RELTYPE blank.
             let reltype: Option<&str> = None;
             records.push(relrec_record(
-                relrec_domain,
+                &relrec_columns,
                 study_id,
                 RelrecRecordInput {
                     rdomain: &member.domain_code,
@@ -244,34 +246,11 @@ fn find_suffix_column(domain: &Domain, df: &DataFrame, suffix: &str) -> Option<S
         .filter(|name| df.column(name).is_ok())
         .collect();
     candidates.sort_by_key(|a| a.to_uppercase());
-    candidates
-        .into_iter()
-        .find(|name| column_has_values(df, name))
-}
-
-fn column_trimmed_values(df: &DataFrame, name: &str) -> Option<Vec<String>> {
-    let Ok(series) = df.column(name) else {
-        return None;
-    };
-    let mut values = Vec::with_capacity(df.height());
-    for idx in 0..df.height() {
-        let value = any_to_string(series.get(idx).unwrap_or(AnyValue::Null));
-        values.push(value.trim().to_string());
-    }
-    Some(values)
-}
-
-fn column_has_values(df: &DataFrame, name: &str) -> bool {
-    let Ok(series) = df.column(name) else {
-        return false;
-    };
-    for idx in 0..df.height() {
-        let value = any_to_string(series.get(idx).unwrap_or(AnyValue::Null));
-        if !value.trim().is_empty() {
-            return true;
-        }
-    }
-    false
+    candidates.into_iter().find(|name| {
+        column_trimmed_values(df, name)
+            .map(|values| values.iter().any(|value| !value.is_empty()))
+            .unwrap_or(false)
+    })
 }
 
 pub fn build_relationship_frames(
@@ -446,32 +425,31 @@ pub fn build_relsub(
 }
 
 fn relrec_record(
-    relrec_domain: &Domain,
+    columns: &StandardColumns,
     study_id: &str,
     input: RelrecRecordInput<'_>,
 ) -> BTreeMap<String, String> {
     let mut record = BTreeMap::new();
-    let columns = standard_columns(relrec_domain);
-    if let Some(name) = columns.study_id {
-        record.insert(name, study_id.to_string());
+    if let Some(name) = columns.study_id.as_ref() {
+        record.insert(name.clone(), study_id.to_string());
     }
-    if let Some(name) = columns.rdomain {
-        record.insert(name, input.rdomain.to_string());
+    if let Some(name) = columns.rdomain.as_ref() {
+        record.insert(name.clone(), input.rdomain.to_string());
     }
-    if let Some(name) = columns.usubjid {
-        record.insert(name, input.usubjid.to_string());
+    if let Some(name) = columns.usubjid.as_ref() {
+        record.insert(name.clone(), input.usubjid.to_string());
     }
-    if let Some(name) = columns.idvar {
-        record.insert(name, input.idvar.to_string());
+    if let Some(name) = columns.idvar.as_ref() {
+        record.insert(name.clone(), input.idvar.to_string());
     }
-    if let Some(name) = columns.idvarval {
-        record.insert(name, input.idvarval.to_string());
+    if let Some(name) = columns.idvarval.as_ref() {
+        record.insert(name.clone(), input.idvarval.to_string());
     }
-    if let Some(name) = columns.reltype {
-        record.insert(name, input.reltype.unwrap_or("").to_string());
+    if let Some(name) = columns.reltype.as_ref() {
+        record.insert(name.clone(), input.reltype.unwrap_or("").to_string());
     }
-    if let Some(name) = columns.relid {
-        record.insert(name, input.relid.to_string());
+    if let Some(name) = columns.relid.as_ref() {
+        record.insert(name.clone(), input.relid.to_string());
     }
     record
 }

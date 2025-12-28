@@ -10,6 +10,16 @@ pub(crate) fn column_value_string(df: &DataFrame, name: &str, idx: usize) -> Str
     }
 }
 
+pub(crate) fn column_trimmed_values(df: &DataFrame, name: &str) -> Option<Vec<String>> {
+    let series = df.column(name).ok()?;
+    let mut values = Vec::with_capacity(df.height());
+    for idx in 0..df.height() {
+        let value = any_to_string(series.get(idx).unwrap_or(AnyValue::Null));
+        values.push(value.trim().to_string());
+    }
+    Some(values)
+}
+
 pub(crate) fn table_label(table: &CsvTable, column: &str) -> Option<String> {
     let labels = table.labels.as_ref()?;
     let idx = table

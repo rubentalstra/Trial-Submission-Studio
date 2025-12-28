@@ -1,12 +1,13 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use anyhow::Result;
-use polars::prelude::{AnyValue, Column, DataFrame, NamedFrom, Series};
+use polars::prelude::{AnyValue, DataFrame, NamedFrom, Series};
 use tracing::warn;
 
 use sdtm_model::{CaseInsensitiveSet, Domain, VariableType};
 
 use crate::ct_utils::normalize_ct_value;
+use crate::data_utils::column_trimmed_values;
 use crate::domain_processors;
 use crate::domain_utils::{infer_seq_column, standard_columns};
 use crate::pipeline_context::{PipelineContext, SequenceAssignmentMode, UsubjidPrefixMode};
@@ -124,13 +125,15 @@ fn apply_base_rules(domain: &Domain, df: &mut DataFrame, context: &PipelineConte
         updated.push(usubjid);
     }
 
-    let new_series = Series::new(usubjid_col.into(), updated);
-    df.with_column(new_series)?;
-    if changed && context.options.warn_on_rewrite {
-        warn!(
-            domain = %domain.code,
-            "USUBJID values updated with study prefix"
-        );
+    if changed {
+        let new_series = Series::new(usubjid_col.into(), updated);
+        df.with_column(new_series)?;
+        if context.options.warn_on_rewrite {
+            warn!(
+                domain = %domain.code,
+                "USUBJID values updated with study prefix"
+            );
+        }
     }
     Ok(())
 }
@@ -192,22 +195,21 @@ fn assign_sequence_values(
     group_column: &str,
     context: &PipelineContext,
 ) -> Result<()> {
-    let group_series = match df.column(group_column) {
-        Ok(series) => series.clone(),
-        Err(_) => return Ok(()),
+    let Some(group_values) = column_trimmed_values(df, group_column) else {
+        return Ok(());
     };
-    let had_existing = has_existing_sequence(df, seq_column);
+    let had_existing = column_trimmed_values(df, seq_column)
+        .map(|values| values.iter().any(|value| !value.is_empty()))
+        .unwrap_or(false);
     let mut counters: BTreeMap<String, i64> = BTreeMap::new();
     let mut values: Vec<Option<f64>> = Vec::with_capacity(df.height());
 
-    for idx in 0..df.height() {
-        let key = any_to_string(group_series.get(idx).unwrap_or(AnyValue::Null));
-        let key = key.trim();
+    for key in &group_values {
         if key.is_empty() {
             values.push(None);
             continue;
         }
-        let entry = counters.entry(key.to_string()).or_insert(0);
+        let entry = counters.entry(key.clone()).or_insert(0);
         *entry += 1;
         values.push(Some(*entry as f64));
     }
@@ -236,26 +238,20 @@ fn assign_sequence_with_tracker(
     if df.height() == 0 {
         return Ok(());
     }
-    let group_series = match df.column(group_column) {
-        Ok(series) => series.clone(),
-        Err(_) => return Ok(()),
+    let Some(group_values) = column_trimmed_values(df, group_column) else {
+        return Ok(());
     };
-    let seq_series = df.column(seq_column).ok().cloned();
-    let had_existing = seq_series.as_ref().map(column_has_values).unwrap_or(false);
+    let seq_values =
+        column_trimmed_values(df, seq_column).unwrap_or_else(|| vec![String::new(); df.height()]);
+    let had_existing = seq_values.iter().any(|value| !value.is_empty());
     let mut values: Vec<Option<f64>> = Vec::with_capacity(df.height());
-    for idx in 0..df.height() {
-        let key = any_to_string(group_series.get(idx).unwrap_or(AnyValue::Null));
-        let key = key.trim();
+    for (idx, key) in group_values.iter().enumerate() {
         if key.is_empty() {
             values.push(None);
             continue;
         }
-        let entry = tracker.entry(key.to_string()).or_insert(0);
-        let existing = seq_series
-            .as_ref()
-            .map(|series| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
-            .unwrap_or_default();
-        let parsed = parse_sequence_value(existing.trim());
+        let entry = tracker.entry(key.clone()).or_insert(0);
+        let parsed = parse_sequence_value(seq_values[idx].as_str());
         let value = match parsed {
             Some(seq) if seq > *entry => {
                 *entry = seq;
@@ -282,29 +278,23 @@ fn assign_sequence_with_tracker(
 }
 
 fn needs_sequence_assignment(df: &DataFrame, seq_column: &str, group_column: &str) -> Result<bool> {
-    let series = match df.column(seq_column) {
-        Ok(series) => series,
-        Err(_) => return Ok(true),
+    let Some(seq_values) = column_trimmed_values(df, seq_column) else {
+        return Ok(true);
     };
-    let group_series = match df.column(group_column) {
-        Ok(series) => series,
-        Err(_) => return Ok(true),
+    let Some(group_values) = column_trimmed_values(df, group_column) else {
+        return Ok(true);
     };
     let mut groups: BTreeMap<String, BTreeSet<i64>> = BTreeMap::new();
     let mut has_value = false;
-    for idx in 0..df.height() {
-        let value = series.get(idx).unwrap_or(AnyValue::Null);
-        let group = any_to_string(group_series.get(idx).unwrap_or(AnyValue::Null));
+    for (group, value_str) in group_values.iter().zip(seq_values.iter()) {
         let group = group.trim().to_string();
         if group.is_empty() {
             continue;
         }
-        let value_str = any_to_string(value);
-        let trimmed = value_str.trim();
-        if trimmed.is_empty() {
+        if value_str.is_empty() {
             continue;
         }
-        if let Some(parsed) = parse_sequence_value(trimmed) {
+        if let Some(parsed) = parse_sequence_value(value_str) {
             has_value = true;
             let entry = groups.entry(group).or_default();
             if entry.contains(&parsed) {
@@ -335,21 +325,4 @@ fn parse_sequence_value(text: &str) -> Option<i64> {
         }
     }
     None
-}
-
-fn has_existing_sequence(df: &DataFrame, seq_column: &str) -> bool {
-    let Ok(series) = df.column(seq_column) else {
-        return false;
-    };
-    column_has_values(series)
-}
-
-fn column_has_values(series: &Column) -> bool {
-    for idx in 0..series.len() {
-        let value = any_to_string(series.get(idx).unwrap_or(AnyValue::Null));
-        if !value.trim().is_empty() {
-            return true;
-        }
-    }
-    false
 }
