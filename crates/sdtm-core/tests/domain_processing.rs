@@ -2,7 +2,7 @@ use polars::prelude::{AnyValue, Column, DataFrame};
 
 use sdtm_core::domain_utils::column_name;
 use sdtm_core::processing_context::ProcessingContext;
-use sdtm_core::processor::process_domain_with_context;
+use sdtm_core::processor::process_domain_with_context_and_tracker;
 use sdtm_ingest::any_to_i64;
 use sdtm_standards::load_default_sdtm_ig_domains;
 
@@ -23,7 +23,7 @@ fn assigns_sequence_by_usubjid_when_available() {
     .expect("df");
 
     let context = ProcessingContext::new("STUDY1");
-    process_domain_with_context(domain, &mut data, &context).expect("process");
+    process_domain_with_context_and_tracker(domain, &mut data, &context, None).expect("process");
 
     let seq_col = column_name(domain, "DSSEQ").expect("DSSEQ");
     let seq = data.column(&seq_col).expect("DSSEQ");

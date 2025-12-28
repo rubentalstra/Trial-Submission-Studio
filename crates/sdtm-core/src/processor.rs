@@ -139,18 +139,6 @@ pub fn apply_base_rules(
     Ok(())
 }
 
-pub fn process_domain_with_context(
-    domain: &Domain,
-    df: &mut DataFrame,
-    ctx: &ProcessingContext,
-) -> Result<()> {
-    apply_base_rules(domain, df, ctx)?;
-    domain_processors::process_domain(domain, df, ctx)?;
-    normalize_ct_columns(domain, df, ctx)?;
-    assign_sequence(domain, df, ctx, None)?;
-    Ok(())
-}
-
 pub fn process_domain_with_context_and_tracker(
     domain: &Domain,
     df: &mut DataFrame,
