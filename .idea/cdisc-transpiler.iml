@@ -18,6 +18,12 @@
       <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-validate/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-xpt/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-xpt/tests" isTestSource="true" />
+      <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_CF1234_NL_20250120_104838/output/dataset-xml" />
+      <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_CF1234_NL_20250120_104838/output/sas" />
+      <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_CF1234_NL_20250120_104838/output/xpt" />
+      <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_GDISC_20240903_072908/output/dataset-xml" />
+      <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_GDISC_20240903_072908/output/sas" />
+      <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_GDISC_20240903_072908/output/xpt" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
     </content>
     <orderEntry type="inheritedJdk" />
