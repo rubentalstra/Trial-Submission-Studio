@@ -1,15 +1,16 @@
 use std::collections::BTreeMap;
 
 use anyhow::Result;
-use polars::prelude::{AnyValue, Column, DataFrame, NamedFrom, Series};
+use polars::prelude::{AnyValue, DataFrame};
 
-use sdtm_model::{Domain, VariableType};
+use sdtm_model::Domain;
 
 use crate::data_utils::column_value_string;
 use crate::domain_sets::domain_map_by_code;
 use crate::domain_utils::{StandardColumns, refid_candidates, standard_columns};
 use crate::frame::DomainFrame;
-use sdtm_ingest::{any_to_string, parse_f64};
+use crate::frame_builder::build_domain_frame_from_records;
+use sdtm_ingest::any_to_string;
 
 /// Configuration options for relationship generation.
 #[derive(Debug, Clone, Default)]
@@ -209,7 +210,7 @@ pub fn build_relrec(
         return Ok(None);
     }
 
-    let data = build_domain_frame(relrec_domain, &records)?;
+    let data = build_domain_frame_from_records(relrec_domain, &records)?;
     Ok(Some(DomainFrame {
         domain_code: relrec_domain.code.clone(),
         data,
@@ -349,7 +350,7 @@ pub fn build_relspec(
         .into_values()
         .map(|record| record.into_map(&relspec_columns))
         .collect();
-    let data = build_domain_frame(relspec_domain, &records)?;
+    let data = build_domain_frame_from_records(relspec_domain, &records)?;
     Ok(Some(DomainFrame {
         domain_code: relspec_domain.code.clone(),
         data,
@@ -398,7 +399,7 @@ pub fn build_relsub(
     if records.is_empty() {
         return Ok(None);
     }
-    let data = build_domain_frame(relsub_domain, &records)?;
+    let data = build_domain_frame_from_records(relsub_domain, &records)?;
     Ok(Some(DomainFrame {
         domain_code: relsub_domain.code.clone(),
         data,
@@ -435,31 +436,6 @@ fn relrec_record(
         record.insert(name, input.relid.to_string());
     }
     record
-}
-
-fn build_domain_frame(domain: &Domain, records: &[BTreeMap<String, String>]) -> Result<DataFrame> {
-    let mut columns: Vec<Column> = Vec::with_capacity(domain.variables.len());
-    for variable in &domain.variables {
-        match variable.data_type {
-            VariableType::Num => {
-                let mut values: Vec<Option<f64>> = Vec::with_capacity(records.len());
-                for record in records {
-                    let raw = record.get(&variable.name).map(|v| v.trim()).unwrap_or("");
-                    values.push(parse_f64(raw));
-                }
-                columns.push(Series::new(variable.name.as_str().into(), values).into());
-            }
-            VariableType::Char => {
-                let mut values: Vec<String> = Vec::with_capacity(records.len());
-                for record in records {
-                    values.push(record.get(&variable.name).cloned().unwrap_or_default());
-                }
-                columns.push(Series::new(variable.name.as_str().into(), values).into());
-            }
-        }
-    }
-    let data = DataFrame::new(columns)?;
-    Ok(data)
 }
 
 fn required_data_columns(domain: &Domain) -> Vec<String> {

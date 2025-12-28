@@ -1,12 +1,13 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use anyhow::Result;
-use polars::prelude::{AnyValue, Column, DataFrame, NamedFrom, Series};
+use polars::prelude::{AnyValue, DataFrame};
 use sdtm_model::Domain;
 
 use crate::data_utils::column_value_string;
 use crate::domain_utils::{infer_seq_column, standard_columns};
 use crate::frame::DomainFrame;
+use crate::frame_builder::build_domain_frame_from_records;
 use sdtm_ingest::any_to_string;
 
 pub struct SuppqualInput<'a> {
@@ -172,14 +173,17 @@ fn is_duplicate_of_mapped(name: &str, populated: &BTreeSet<String>) -> bool {
     false
 }
 
+fn insert_if_some(record: &mut BTreeMap<String, String>, column: &Option<String>, value: String) {
+    if let Some(name) = column.as_ref() {
+        record.insert(name.clone(), value);
+    }
+}
+
 pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<DomainFrame>> {
     let parent_domain_code = input.parent_domain.code.to_uppercase();
-    let ordered_columns: Vec<String> = input
-        .suppqual_domain
-        .variables
-        .iter()
-        .map(|variable| variable.name.clone())
-        .collect();
+    if input.suppqual_domain.variables.is_empty() {
+        return Ok(None);
+    }
     let core_variables: BTreeSet<String> = input
         .parent_domain
         .variables
@@ -189,9 +193,6 @@ pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<DomainFrame>> {
     let suppqual_cols = standard_columns(input.suppqual_domain);
     let parent_cols = standard_columns(input.parent_domain);
     let populated = input.mapped_df.map(populated_columns).unwrap_or_default();
-    if ordered_columns.is_empty() {
-        return Ok(None);
-    }
     let mut extra_cols: Vec<String> = Vec::new();
     for series in input.source_df.get_columns() {
         let name = series.name().to_string();
@@ -270,19 +271,7 @@ pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<DomainFrame>> {
         })
     };
 
-    let mut values: BTreeMap<String, Vec<String>> = BTreeMap::new();
-    for key in &ordered_columns {
-        values.insert(key.to_string(), Vec::new());
-    }
-
-    let mut push_value = |key: Option<&str>, value: String| {
-        if let Some(name) = key
-            && let Some(entry) = values.get_mut(name)
-        {
-            entry.push(value);
-        }
-    };
-
+    let mut records: Vec<BTreeMap<String, String>> = Vec::new();
     let mut qnam_used: BTreeMap<String, String> = BTreeMap::new();
     let mut qnam_map: BTreeMap<String, String> = BTreeMap::new();
     for col in &extra_cols {
@@ -348,47 +337,38 @@ pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<DomainFrame>> {
                 continue;
             }
 
-            push_value(
-                suppqual_cols.study_id.as_deref(),
+            let mut record = BTreeMap::new();
+            insert_if_some(
+                &mut record,
+                &suppqual_cols.study_id,
                 if !study_value.is_empty() {
                     study_value
                 } else {
                     input.study_id.to_string()
                 },
             );
-            push_value(suppqual_cols.rdomain.as_deref(), parent_domain_code.clone());
-            push_value(suppqual_cols.usubjid.as_deref(), final_usubjid);
-            push_value(suppqual_cols.idvar.as_deref(), idvar_value);
-            push_value(suppqual_cols.idvarval.as_deref(), idvarval);
-            push_value(suppqual_cols.qnam.as_deref(), qnam.clone());
-            push_value(suppqual_cols.qlabel.as_deref(), qlabel.clone());
-            push_value(suppqual_cols.qval.as_deref(), raw_val);
-            push_value(suppqual_cols.qorig.as_deref(), qorig.clone());
-            push_value(suppqual_cols.qeval.as_deref(), String::new());
+            insert_if_some(
+                &mut record,
+                &suppqual_cols.rdomain,
+                parent_domain_code.clone(),
+            );
+            insert_if_some(&mut record, &suppqual_cols.usubjid, final_usubjid);
+            insert_if_some(&mut record, &suppqual_cols.idvar, idvar_value);
+            insert_if_some(&mut record, &suppqual_cols.idvarval, idvarval);
+            insert_if_some(&mut record, &suppqual_cols.qnam, qnam.clone());
+            insert_if_some(&mut record, &suppqual_cols.qlabel, qlabel.clone());
+            insert_if_some(&mut record, &suppqual_cols.qval, raw_val);
+            insert_if_some(&mut record, &suppqual_cols.qorig, qorig.clone());
+            insert_if_some(&mut record, &suppqual_cols.qeval, String::new());
+            records.push(record);
         }
     }
 
-    let total_rows = suppqual_cols
-        .qval
-        .as_deref()
-        .and_then(|name| values.get(name))
-        .map(|vals| vals.len())
-        .unwrap_or(0);
-    if total_rows == 0 {
+    if records.is_empty() {
         return Ok(None);
     }
 
-    let columns: Vec<Column> = ordered_columns
-        .iter()
-        .map(|name| {
-            let mut vals = values.remove(name).unwrap_or_default();
-            if vals.len() < total_rows {
-                vals.resize(total_rows, String::new());
-            }
-            Series::new(name.as_str().into(), vals).into()
-        })
-        .collect();
-    let data = DataFrame::new(columns)?;
+    let data = build_domain_frame_from_records(input.suppqual_domain, &records)?;
 
     // Per SDTMIG 4.1.7/8.4.2: Use base domain code for SUPP naming.
     // All split datasets (e.g., LBCH, LBHE, LBUR) merge into one SUPPLB.

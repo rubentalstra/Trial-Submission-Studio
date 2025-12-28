@@ -4,7 +4,7 @@ use std::path::Path;
 use sdtm_core::frame::DomainFrame;
 use sdtm_core::frame_builder::{build_domain_frame, build_domain_frame_with_mapping};
 use sdtm_core::pipeline_context::PipelineContext;
-use sdtm_core::processor::process_domain_with_context_and_tracker;
+use sdtm_core::processor::{DomainProcessInput, process_domain};
 use sdtm_core::relationships::{RelationshipConfig, build_relrec, build_relspec, build_relsub};
 use sdtm_core::suppqual::{SuppqualInput, build_suppqual};
 use sdtm_ingest::{build_column_hints, discover_domain_files, list_csv_files, read_csv_table};
@@ -60,8 +60,13 @@ fn processes_mockdata_end_to_end() {
             let mapping_config = engine.to_config(study_id, result);
             let mut mapped = build_domain_frame_with_mapping(&table, domain, Some(&mapping_config))
                 .expect("build mapped frame");
-            process_domain_with_context_and_tracker(domain, &mut mapped.data, &context, None)
-                .expect("process");
+            process_domain(DomainProcessInput {
+                domain,
+                data: &mut mapped.data,
+                context: &context,
+                sequence_tracker: None,
+            })
+            .expect("process");
 
             if let Some(existing) = &mut combined {
                 existing.vstack_mut(&mapped.data).expect("vstack");

@@ -13,45 +13,62 @@ use std::collections::BTreeMap;
 use sdtm_model::Domain;
 use sdtm_model::ct::{Codelist, TerminologyRegistry};
 
+/// Mode for applying STUDYID prefixes to USUBJID values.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UsubjidPrefixMode {
+    /// Do not add STUDYID prefixes.
+    Skip,
+    /// Add STUDYID prefixes when missing.
+    Prefix,
+}
+
+/// Mode for assigning --SEQ values.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SequenceAssignmentMode {
+    /// Do not assign sequence values.
+    Skip,
+    /// Assign sequence values when missing or invalid.
+    Assign,
+}
+
+/// Mode for controlled terminology matching.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CtMatchingMode {
+    /// Require exact or synonym matches only.
+    Strict,
+    /// Allow compact-key matching for normalization.
+    Lenient,
+}
+
 /// Options controlling SDTM processing behavior.
-///
-/// These options determine how the transpiler handles transformations during
-/// domain processing. Some transformations are SDTMIG-approved derivations,
-/// while others are convenience features that should be disabled in strict mode.
 #[derive(Debug, Clone, Copy)]
 pub struct ProcessingOptions {
     /// Add STUDYID prefix to USUBJID values.
     ///
     /// SDTMIG 4.1.2: "USUBJID is a unique subject identifier that is a
     /// concatenation of STUDYID and a subject identifier unique within that study."
-    pub prefix_usubjid: bool,
+    pub usubjid_prefix: UsubjidPrefixMode,
 
     /// Automatically assign sequence numbers (--SEQ).
     ///
     /// SDTMIG 4.1.5: "The --SEQ variable [...] is a unique number for each record
     /// within a domain for a subject."
-    pub assign_sequence: bool,
+    pub sequence_assignment: SequenceAssignmentMode,
 
     /// Log warnings when values are rewritten/normalized.
     pub warn_on_rewrite: bool,
 
-    /// Allow CT normalization with lenient matching.
-    ///
-    /// When enabled, CT values that don't exactly match submission values can
-    /// still be normalized using compact-key matching.
-    ///
-    /// Default: true (for backward compatibility)
-    /// Strict mode: false
-    pub allow_lenient_ct_matching: bool,
+    /// Controlled terminology matching mode.
+    pub ct_matching: CtMatchingMode,
 }
 
 impl Default for ProcessingOptions {
     fn default() -> Self {
         Self {
-            prefix_usubjid: true,
-            assign_sequence: true,
+            usubjid_prefix: UsubjidPrefixMode::Prefix,
+            sequence_assignment: SequenceAssignmentMode::Assign,
             warn_on_rewrite: true,
-            allow_lenient_ct_matching: true,
+            ct_matching: CtMatchingMode::Lenient,
         }
     }
 }
@@ -63,10 +80,10 @@ impl ProcessingOptions {
     /// derivations (USUBJID prefix and sequence assignment).
     pub fn strict() -> Self {
         Self {
-            prefix_usubjid: true,
-            assign_sequence: true,
+            usubjid_prefix: UsubjidPrefixMode::Prefix,
+            sequence_assignment: SequenceAssignmentMode::Assign,
             warn_on_rewrite: true,
-            allow_lenient_ct_matching: false,
+            ct_matching: CtMatchingMode::Strict,
         }
     }
 }

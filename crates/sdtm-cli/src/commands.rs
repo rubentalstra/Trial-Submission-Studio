@@ -10,8 +10,9 @@ use tracing::{debug, info, info_span, warn};
 use sdtm_core::dedupe::dedupe_frames_by_identifiers;
 use sdtm_core::domain_sets::{build_report_domains, domain_map_by_code, is_supporting_domain};
 use sdtm_core::frame::DomainFrame;
-use sdtm_core::pipeline_context::PipelineContext;
-use sdtm_core::pipeline_context::ProcessingOptions;
+use sdtm_core::pipeline_context::{
+    CtMatchingMode, PipelineContext, ProcessingOptions, SequenceAssignmentMode, UsubjidPrefixMode,
+};
 use sdtm_core::relationships::build_relationship_frames;
 use sdtm_model::{MappingConfig, OutputFormat};
 use sdtm_standards::{load_default_ct_registry, load_default_sdtm_ig_domains};
@@ -70,10 +71,22 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
         ProcessingOptions::strict()
     } else {
         ProcessingOptions {
-            prefix_usubjid: !args.no_usubjid_prefix,
-            assign_sequence: !args.no_auto_seq,
+            usubjid_prefix: if args.no_usubjid_prefix {
+                UsubjidPrefixMode::Skip
+            } else {
+                UsubjidPrefixMode::Prefix
+            },
+            sequence_assignment: if args.no_auto_seq {
+                SequenceAssignmentMode::Skip
+            } else {
+                SequenceAssignmentMode::Assign
+            },
             warn_on_rewrite: true,
-            allow_lenient_ct_matching: !args.no_lenient_ct,
+            ct_matching: if args.no_lenient_ct {
+                CtMatchingMode::Strict
+            } else {
+                CtMatchingMode::Lenient
+            },
         }
     };
     let mut pipeline = PipelineContext::new(&study_id)

@@ -9,8 +9,17 @@ use sdtm_model::{CaseInsensitiveSet, Domain, VariableType};
 use crate::ct_utils::{normalize_ct_value_safe, normalize_ct_value_strict};
 use crate::domain_processors;
 use crate::domain_utils::{infer_seq_column, standard_columns};
-use crate::pipeline_context::PipelineContext;
+use crate::pipeline_context::{
+    CtMatchingMode, PipelineContext, SequenceAssignmentMode, UsubjidPrefixMode,
+};
 use sdtm_ingest::any_to_string;
+
+pub struct DomainProcessInput<'a> {
+    pub domain: &'a Domain,
+    pub data: &'a mut DataFrame,
+    pub context: &'a PipelineContext,
+    pub sequence_tracker: Option<&'a mut BTreeMap<String, i64>>,
+}
 
 fn sanitize_identifier(raw: &str) -> String {
     let trimmed = raw.trim();
@@ -25,9 +34,9 @@ fn sanitize_identifier(raw: &str) -> String {
 /// This function iterates through columns with CT constraints and normalizes
 /// values to their preferred terms.
 ///
-/// When `allow_lenient_ct_matching` is enabled in options, lenient matching
-/// (including compact key matching) is used. When disabled, only exact matches
-/// and defined synonyms are normalized.
+/// When `ct_matching` is `Lenient`, compact-key matching is allowed. When
+/// `ct_matching` is `Strict`, only exact matches and defined synonyms
+/// are normalized.
 fn normalize_ct_columns(
     domain: &Domain,
     df: &mut DataFrame,
@@ -37,7 +46,7 @@ fn normalize_ct_columns(
         return Ok(());
     }
     let column_lookup = CaseInsensitiveSet::new(df.get_column_names_owned());
-    let use_strict = !context.options.allow_lenient_ct_matching;
+    let use_strict = matches!(context.options.ct_matching, CtMatchingMode::Strict);
 
     for variable in &domain.variables {
         if !matches!(variable.data_type, VariableType::Char) {
@@ -80,7 +89,7 @@ fn normalize_ct_columns(
 }
 
 fn apply_base_rules(domain: &Domain, df: &mut DataFrame, context: &PipelineContext) -> Result<()> {
-    if !context.options.prefix_usubjid {
+    if matches!(context.options.usubjid_prefix, UsubjidPrefixMode::Skip) {
         return Ok(());
     }
     let columns = standard_columns(domain);
@@ -135,30 +144,34 @@ fn apply_base_rules(domain: &Domain, df: &mut DataFrame, context: &PipelineConte
     Ok(())
 }
 
-pub fn process_domain_with_context_and_tracker(
-    domain: &Domain,
-    df: &mut DataFrame,
-    context: &PipelineContext,
-    seq_tracker: Option<&mut BTreeMap<String, i64>>,
-) -> Result<()> {
-    apply_base_rules(domain, df, context)?;
-    domain_processors::process_domain(domain, df, context)?;
-    normalize_ct_columns(domain, df, context)?;
-    assign_sequence(domain, df, context, seq_tracker)?;
+pub fn process_domain(input: DomainProcessInput<'_>) -> Result<()> {
+    let DomainProcessInput {
+        domain,
+        data,
+        context,
+        sequence_tracker,
+    } = input;
+    apply_base_rules(domain, data, context)?;
+    domain_processors::process_domain(domain, data, context)?;
+    normalize_ct_columns(domain, data, context)?;
+    assign_sequence(domain, data, context, sequence_tracker)?;
     Ok(())
 }
 
 /// Assign --SEQ values based on USUBJID grouping.
 ///
 /// Uses tracker if provided for cross-file sequence continuity.
-/// Skips assignment if `context.options.assign_sequence` is false.
+/// Skips assignment if `context.options.sequence_assignment` is `Skip`.
 fn assign_sequence(
     domain: &Domain,
     df: &mut DataFrame,
     context: &PipelineContext,
-    seq_tracker: Option<&mut BTreeMap<String, i64>>,
+    sequence_tracker: Option<&mut BTreeMap<String, i64>>,
 ) -> Result<()> {
-    if !context.options.assign_sequence {
+    if matches!(
+        context.options.sequence_assignment,
+        SequenceAssignmentMode::Skip
+    ) {
         return Ok(());
     }
     let columns = standard_columns(domain);
@@ -173,7 +186,7 @@ fn assign_sequence(
     if !needs_sequence_assignment(df, seq_col_name, usubjid_col_name)? {
         return Ok(());
     }
-    if let Some(tracker) = seq_tracker {
+    if let Some(tracker) = sequence_tracker {
         assign_sequence_with_tracker(domain, df, seq_col_name, usubjid_col_name, tracker, context)?;
     } else {
         assign_sequence_values(domain, df, seq_col_name, usubjid_col_name, context)?;

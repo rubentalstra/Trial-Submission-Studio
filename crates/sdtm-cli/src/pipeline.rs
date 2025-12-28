@@ -21,7 +21,7 @@ use tracing::{debug, info, info_span};
 use sdtm_core::frame::{DomainFrame, DomainFrameMeta};
 use sdtm_core::frame_builder::{build_domain_frame, build_mapped_domain_frame};
 use sdtm_core::pipeline_context::PipelineContext;
-use sdtm_core::processor::process_domain_with_context_and_tracker;
+use sdtm_core::processor::{DomainProcessInput, process_domain};
 use sdtm_core::suppqual::{SuppqualInput, build_suppqual};
 use sdtm_ingest::{
     AppliedStudyMetadata, CsvTable, StudyMetadata, any_to_string, apply_study_metadata,
@@ -227,12 +227,12 @@ pub fn process_file(input: ProcessFileInput<'_>) -> Result<ProcessedFile> {
     // Apply domain rules
     info_span!("domain_rules").in_scope(|| -> Result<()> {
         let start = Instant::now();
-        process_domain_with_context_and_tracker(
-            input.domain,
-            &mut mapped.data,
+        process_domain(DomainProcessInput {
+            domain: input.domain,
+            data: &mut mapped.data,
             context,
-            Some(input.seq_tracker),
-        )
+            sequence_tracker: Some(input.seq_tracker),
+        })
         .with_context(|| format!("domain rules for {}", input.domain.code))?;
         debug!(
             study_id = %input.study_id,
