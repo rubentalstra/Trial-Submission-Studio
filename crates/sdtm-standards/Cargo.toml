@@ -8,4 +8,3 @@ rust-version.workspace = true
 anyhow.workspace = true
 csv.workspace = true
 sdtm-model = { path = "../sdtm-model" }
-serde.workspace = true

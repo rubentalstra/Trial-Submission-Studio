@@ -2524,7 +2524,6 @@ dependencies = [
  "sdtm-standards",
  "sdtm-validate",
  "sdtm-xpt",
- "serde",
  "tracing",
  "tracing-subscriber",
 ]
@@ -2539,7 +2538,6 @@ dependencies = [
  "sdtm-ingest",
  "sdtm-map",
  "sdtm-model",
- "sdtm-standards",
  "tracing",
 ]
 
@@ -2551,7 +2549,6 @@ dependencies = [
  "csv",
  "polars",
  "sdtm-model",
- "tracing",
 ]
 
 [[package]]
@@ -2586,7 +2583,6 @@ dependencies = [
  "sdtm-core",
  "sdtm-ingest",
  "sdtm-model",
- "sdtm-standards",
  "sdtm-xpt",
 ]
 
@@ -2597,7 +2593,6 @@ dependencies = [
  "anyhow",
  "csv",
  "sdtm-model",
- "serde",
 ]
 
 [[package]]
