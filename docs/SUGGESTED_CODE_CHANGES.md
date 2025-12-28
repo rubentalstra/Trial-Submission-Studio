@@ -645,9 +645,18 @@ are noted where applicable.
       - OrderNumber attributes reflect the role-based ordering - KeySequence
       continues to apply only to Identifier role variables
 
-- [ ] **1.5.3** Enforce Core designation rules: require all Required columns
+- [x] **1.5.3** Enforce Core designation rules: require all Required columns
       with non-null values, include Expected columns even when uncollected with
-      Define-XML comment, include Permissible only when collected.
+      Define-XML comment, include Permissible only when collected. **Implementation
+      notes**: - Required validation already exists via P21 SD0002 (null value)
+      and SD0056 (missing variable) - Expected validation exists via SD0057
+      (missing Expected variable) - Added `is_permissible()` helper in
+      sdtm-validate/src/lib.rs - Added `is_expected()` and `has_collected_data()`
+      in sdtm-report/src/lib.rs - Updated Define-XML ItemDef generation to include
+      `def:Origin` element with Type attribute: "Collected", "Not Collected", or
+      "Derived" based on Core designation and data presence - Expected variables
+      with no data get Type="Not Collected" per Define-XML 2.1 spec - TRANS0022
+      rule constant added for Core designation enforcement
 
 ## 1.6 Domain Naming and Custom Codes
 

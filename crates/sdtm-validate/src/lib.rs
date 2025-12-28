@@ -960,6 +960,13 @@ fn is_expected(core: Option<&str>) -> bool {
     )
 }
 
+fn is_permissible(core: Option<&str>) -> bool {
+    matches!(
+        core.map(|value| value.trim().to_lowercase()).as_deref(),
+        Some("perm")
+    )
+}
+
 fn is_numeric_value(value: &AnyValue) -> bool {
     matches!(
         value,

@@ -261,6 +261,10 @@ pub fn write_define_xml(
                 &mut code_lists,
                 &mut ct_standards,
             )?;
+
+            // Check if variable has any non-null/non-empty values
+            let has_data = has_collected_data(&frame.data, &variable.name);
+
             item_defs.insert(
                 oid.clone(),
                 ItemDefSpec {
@@ -270,6 +274,8 @@ pub fn write_define_xml(
                     data_type: variable.data_type,
                     length,
                     codelist_oid,
+                    core: variable.core.clone(),
+                    has_data,
                 },
             );
         }
@@ -408,6 +414,21 @@ pub fn write_define_xml(
             ref_node.push_attribute(("CodeListOID", codelist_oid.as_str()));
             xml.write_event(Event::Empty(ref_node))?;
         }
+
+        // Per SDTMIG 2.5: Add def:Origin element to indicate data provenance.
+        // For Expected variables that are uncollected, use Type="Not Collected"
+        // to document that the variable was included per requirements but no data exists.
+        let origin_type = if is_expected(item_def.core.as_deref()) && !item_def.has_data {
+            "Not Collected"
+        } else if item_def.has_data {
+            "Collected"
+        } else {
+            "Derived" // Default for variables with no data that aren't Expected
+        };
+        let mut origin = BytesStart::new("def:Origin");
+        origin.push_attribute(("Type", origin_type));
+        xml.write_event(Event::Empty(origin))?;
+
         xml.write_event(Event::End(BytesEnd::new("ItemDef")))?;
     }
 
@@ -659,6 +680,10 @@ struct ItemDefSpec {
     data_type: VariableType,
     length: Option<u16>,
     codelist_oid: Option<String>,
+    /// Core designation: "Req", "Exp", or "Perm"
+    core: Option<String>,
+    /// True if the variable has any non-null values
+    has_data: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -934,4 +959,29 @@ fn is_identifier(variable: &Variable) -> bool {
 
 fn should_upcase(variable: &Variable) -> bool {
     is_identifier(variable) || variable.codelist_code.is_some()
+}
+
+fn is_expected(core: Option<&str>) -> bool {
+    core.map(|v| v.trim().eq_ignore_ascii_case("exp"))
+        .unwrap_or(false)
+}
+
+/// Check if a variable column has any non-null/non-empty values (i.e., was "collected").
+fn has_collected_data(df: &DataFrame, variable_name: &str) -> bool {
+    let series = match df.column(variable_name) {
+        Ok(s) => s,
+        Err(_) => return false,
+    };
+
+    for idx in 0..df.height() {
+        if let Ok(value) = series.get(idx) {
+            match value {
+                AnyValue::Null => continue,
+                AnyValue::String(s) if s.trim().is_empty() => continue,
+                AnyValue::StringOwned(ref s) if s.as_str().trim().is_empty() => continue,
+                _ => return true, // Found a non-null, non-empty value
+            }
+        }
+    }
+    false
 }
