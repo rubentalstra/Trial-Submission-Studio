@@ -44,7 +44,7 @@ pub(super) fn process_cm(
             .into_iter()
             .map(|value| {
                 let trimmed = value.trim();
-                if is_numeric_string(trimmed) {
+                if parse_f64(trimmed).is_some() {
                     format!("DOSE {}", trimmed)
                 } else {
                     trimmed.to_string()
@@ -118,7 +118,16 @@ pub(super) fn process_cm(
     {
         let values = string_column(df, &cmdosu)?
             .into_iter()
-            .map(|value| replace_unknown(&value, ""))
+            .map(|value| {
+                let trimmed = value.trim();
+                let upper = trimmed.to_uppercase();
+                match upper.as_str() {
+                    "" | "UNK" | "UNKNOWN" | "NA" | "N/A" | "NONE" | "NAN" | "<NA>" => {
+                        String::new()
+                    }
+                    _ => trimmed.to_string(),
+                }
+            })
             .collect();
         set_string_column(df, &cmdosu, values)?;
     }

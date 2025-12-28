@@ -19,7 +19,10 @@ pub(super) fn process_lb(
         {
             let values = string_column(df, &name)?
                 .into_iter()
-                .map(|value| normalize_empty_tokens(&value))
+                .map(|value| match value.trim() {
+                    "<NA>" | "nan" | "None" => String::new(),
+                    _ => value.trim().to_string(),
+                })
                 .collect();
             set_string_column(df, &name, values)?;
         }
@@ -135,7 +138,10 @@ pub(super) fn process_lb(
     {
         let orres = string_column(df, &lborres)?
             .into_iter()
-            .map(|value| normalize_empty_tokens(&value))
+            .map(|value| match value.trim() {
+                "<NA>" | "nan" | "None" => String::new(),
+                _ => value.trim().to_string(),
+            })
             .collect::<Vec<_>>();
         let mut stresc = string_column(df, &lbstresc)?;
         for idx in 0..df.height() {

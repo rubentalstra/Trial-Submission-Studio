@@ -260,3 +260,22 @@ pub(super) fn process_vs(
     }
     Ok(())
 }
+
+fn is_valid_time(value: &str) -> bool {
+    let trimmed = value.trim();
+    let parts: Vec<&str> = trimmed.split(':').collect();
+    match parts.as_slice() {
+        [hh, mm] => {
+            hh.len() == 2 && mm.len() == 2 && hh.parse::<u32>().is_ok() && mm.parse::<u32>().is_ok()
+        }
+        [hh, mm, ss] => {
+            hh.len() == 2
+                && mm.len() == 2
+                && ss.len() == 2
+                && hh.parse::<u32>().is_ok()
+                && mm.parse::<u32>().is_ok()
+                && ss.parse::<u32>().is_ok()
+        }
+        _ => false,
+    }
+}

@@ -18,7 +18,16 @@ pub(super) fn process_default(
         let values = string_column(df, &epoch_col)?;
         let normalized = values
             .into_iter()
-            .map(|value| replace_unknown(&value, ""))
+            .map(|value| {
+                let trimmed = value.trim();
+                let upper = trimmed.to_uppercase();
+                match upper.as_str() {
+                    "" | "UNK" | "UNKNOWN" | "NA" | "N/A" | "NONE" | "NAN" | "<NA>" => {
+                        String::new()
+                    }
+                    _ => trimmed.to_string(),
+                }
+            })
             .collect();
         set_string_column(df, &epoch_col, normalized)?;
     }

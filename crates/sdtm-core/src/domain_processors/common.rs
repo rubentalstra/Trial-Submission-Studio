@@ -2,9 +2,7 @@ use std::collections::{HashMap, HashSet};
 
 use anyhow::Result;
 use chrono::NaiveDate;
-use polars::prelude::{
-    AnyValue, BooleanChunked, DataFrame, NamedFrom, NewChunkedArray, Series, UInt32Chunked,
-};
+use polars::prelude::{AnyValue, BooleanChunked, DataFrame, NamedFrom, NewChunkedArray, Series};
 use tracing::warn;
 
 use sdtm_model::Domain;
@@ -163,26 +161,7 @@ pub(super) fn map_values<const N: usize>(pairs: [(&str, &str); N]) -> HashMap<St
     map
 }
 
-pub(super) fn normalize_empty_tokens(value: &str) -> String {
-    match value.trim() {
-        "<NA>" | "nan" | "None" => String::new(),
-        _ => value.trim().to_string(),
-    }
-}
-
-pub(super) fn replace_unknown(value: &str, default: &str) -> String {
-    let upper = value.trim().to_uppercase();
-    match upper.as_str() {
-        "" | "UNK" | "UNKNOWN" | "NA" | "N/A" | "NONE" | "NAN" | "<NA>" => default.to_string(),
-        _ => value.trim().to_string(),
-    }
-}
-
 // CT functions are provided by re-exports from ct_utils above
-
-pub(super) fn is_numeric_string(value: &str) -> bool {
-    parse_f64(value).is_some()
-}
 
 /// Drop placeholder/header rows that have missing or invalid USUBJID values.
 ///
@@ -527,37 +506,4 @@ pub(super) fn compute_study_day(
     }
 
     Ok(())
-}
-
-pub(super) fn sort_by_numeric(df: &mut DataFrame, column: &str) -> Result<()> {
-    let values = numeric_column_f64(df, column)?;
-    let mut indices: Vec<u32> = (0..df.height()).map(|idx| idx as u32).collect();
-    indices.sort_by(|a, b| {
-        let left = values[*a as usize];
-        let right = values[*b as usize];
-        left.partial_cmp(&right)
-            .unwrap_or(std::cmp::Ordering::Equal)
-    });
-    let idx = UInt32Chunked::from_vec("idx".into(), indices);
-    *df = df.take(&idx)?;
-    Ok(())
-}
-
-pub(super) fn is_valid_time(value: &str) -> bool {
-    let trimmed = value.trim();
-    let parts: Vec<&str> = trimmed.split(':').collect();
-    match parts.as_slice() {
-        [hh, mm] => {
-            hh.len() == 2 && mm.len() == 2 && hh.parse::<u32>().is_ok() && mm.parse::<u32>().is_ok()
-        }
-        [hh, mm, ss] => {
-            hh.len() == 2
-                && mm.len() == 2
-                && ss.len() == 2
-                && hh.parse::<u32>().is_ok()
-                && mm.parse::<u32>().is_ok()
-                && ss.parse::<u32>().is_ok()
-        }
-        _ => false,
-    }
 }

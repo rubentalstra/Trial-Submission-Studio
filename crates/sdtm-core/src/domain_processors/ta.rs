@@ -1,5 +1,5 @@
 use anyhow::Result;
-use polars::prelude::DataFrame;
+use polars::prelude::{DataFrame, UInt32Chunked};
 use sdtm_model::Domain;
 
 use crate::data_utils::column_value_string;
@@ -50,5 +50,19 @@ pub(super) fn process_ta(
         set_f64_column(df, &taetord, values)?;
         sort_by_numeric(df, &taetord)?;
     }
+    Ok(())
+}
+
+fn sort_by_numeric(df: &mut DataFrame, column: &str) -> Result<()> {
+    let values = numeric_column_f64(df, column)?;
+    let mut indices: Vec<u32> = (0..df.height()).map(|idx| idx as u32).collect();
+    indices.sort_by(|a, b| {
+        let left = values[*a as usize];
+        let right = values[*b as usize];
+        left.partial_cmp(&right)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
+    let idx = UInt32Chunked::from_vec("idx".into(), indices);
+    *df = df.take(&idx)?;
     Ok(())
 }
