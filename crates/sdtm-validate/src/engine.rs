@@ -109,7 +109,7 @@ impl RuleEngine {
         }
 
         // Column is missing - emit issue using rule's metadata
-        vec![self.create_issue(rule, 1, None, None)]
+        vec![self.create_issue(rule, 1, None)]
     }
 
     /// Check for null/missing values in a column.
@@ -142,7 +142,7 @@ impl RuleEngine {
             return Vec::new();
         }
 
-        vec![self.create_issue(rule, missing_count, None, None)]
+        vec![self.create_issue(rule, missing_count, None)]
     }
 
     /// Check controlled terminology values.
@@ -153,7 +153,7 @@ impl RuleEngine {
         column_lookup: &CaseInsensitiveLookup,
         valid_values: &[String],
         _extensible: bool,
-        codelist_code: &str,
+        _codelist_code: &str,
         ct_source: &str,
     ) -> Vec<ConformanceIssue> {
         let column = match column_lookup.get(&rule.variable) {
@@ -188,7 +188,6 @@ impl RuleEngine {
         vec![self.create_issue(
             rule,
             invalid_values.len() as u64,
-            Some(codelist_code.to_string()),
             Some(ct_source.to_string()),
         )]
     }
@@ -227,7 +226,7 @@ impl RuleEngine {
             return Vec::new();
         }
 
-        vec![self.create_issue(rule, invalid_count, None, None)]
+        vec![self.create_issue(rule, invalid_count, None)]
     }
 
     /// Check sequence uniqueness for *SEQ variables.
@@ -275,7 +274,7 @@ impl RuleEngine {
             return Vec::new();
         }
 
-        vec![self.create_issue(rule, duplicate_count, None, None)]
+        vec![self.create_issue(rule, duplicate_count, None)]
     }
 
     /// Create a ConformanceIssue from a GeneratedRule.
@@ -284,7 +283,6 @@ impl RuleEngine {
         &self,
         rule: &GeneratedRule,
         count: u64,
-        codelist_code: Option<String>,
         ct_source: Option<String>,
     ) -> ConformanceIssue {
         ConformanceIssue {
@@ -293,8 +291,6 @@ impl RuleEngine {
             severity: convert_severity(rule.severity),
             variable: Some(rule.variable.clone()),
             count: Some(count),
-            category: Some(rule.category.clone()),
-            codelist_code,
             ct_source,
         }
     }

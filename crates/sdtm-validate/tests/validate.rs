@@ -43,7 +43,7 @@ fn ct_invalid_value_emits_issue() {
     let issue = report
         .issues
         .iter()
-        .find(|issue| issue.codelist_code.is_some() && issue.ct_source.is_some())
+        .find(|issue| issue.ct_source.is_some())
         .expect("ct issue");
     let ct_code = variable.codelist_code.as_deref().unwrap_or("");
     let ct = ct_registry
@@ -55,11 +55,8 @@ fn ct_invalid_value_emits_issue() {
     } else {
         IssueSeverity::Error
     };
-    let _expected_rule = if ct.extensible { "CT2002" } else { "CT2001" };
-    // rule_id check removed - check code/category instead
     assert_eq!(issue.code, ct.code);
     assert_eq!(issue.severity, expected);
-    assert_eq!(issue.codelist_code.as_deref(), Some(ct.code.as_str()));
 }
 
 #[test]
@@ -86,8 +83,6 @@ fn strict_output_gate_blocks_on_errors() {
             severity: IssueSeverity::Error,
             variable: Some("AETERM".to_string()),
             count: Some(1),
-            category: None,
-            codelist_code: None,
             ct_source: None,
         }],
     };
@@ -106,8 +101,6 @@ fn strict_output_gate_ignored_without_strict_formats() {
             severity: IssueSeverity::Error,
             variable: Some("AETERM".to_string()),
             count: Some(1),
-            category: None,
-            codelist_code: None,
             ct_source: None,
         }],
     };
@@ -163,10 +156,10 @@ fn rule_engine_validates_required_null_values() {
     let report = validate_domain_with_rules(domain, &df, &ctx);
 
     // Should find Required Value Missing issue
-    let null_issue = report.issues.iter().find(|i| {
-        i.variable.as_deref() == Some("STUDYID")
-            && i.category.as_deref() == Some("Required Value Missing")
-    });
+    let null_issue = report
+        .issues
+        .iter()
+        .find(|i| i.variable.as_deref() == Some("STUDYID") && i.code == "Required Value Missing");
     assert!(
         null_issue.is_some(),
         "Should emit Required Value Missing issue for null STUDYID values"
@@ -191,7 +184,7 @@ fn rule_engine_validates_ct_values() {
     let ct_issue = report
         .issues
         .iter()
-        .find(|i| i.variable.as_deref() == Some("SEX") && i.codelist_code.is_some());
+        .find(|i| i.variable.as_deref() == Some("SEX") && i.ct_source.is_some());
     assert!(ct_issue.is_some(), "Should emit CT issue for invalid SEX");
 }
 

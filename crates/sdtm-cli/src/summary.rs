@@ -125,7 +125,6 @@ fn print_issue_table(result: &StudyResult) {
         header_cell("Variable"),
         header_cell("CT"),
         header_cell("Code"),
-        header_cell("Category"),
         header_cell("Message"),
         header_cell("Values"),
     ]);
@@ -143,7 +142,6 @@ fn print_issue_table(result: &StudyResult) {
             Cell::new(issue.variable.clone().unwrap_or_else(|| "-".to_string())),
             Cell::new(issue.ct_source.clone().unwrap_or_else(|| "-".to_string())),
             Cell::new(issue.code.clone()),
-            Cell::new(issue.category.clone().unwrap_or_else(|| "-".to_string())),
             Cell::new(message),
             values_cell(values),
         ]);

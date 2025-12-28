@@ -221,9 +221,7 @@ pub fn validate_provenance(
                      populated.",
                     variable.name
                 ),
-                category: Some("Provenance".to_string()),
                 count: None,
-                codelist_code: None,
                 ct_source: None,
             });
         }
@@ -284,9 +282,7 @@ pub struct ConformanceIssueJson {
     pub domain: String,
     pub variable: Option<String>,
     pub message: String,
-    pub category: Option<String>,
     pub count: Option<u64>,
-    pub codelist_code: Option<String>,
     pub ct_source: Option<String>,
 }
 
@@ -375,9 +371,7 @@ pub fn write_conformance_report_json(
                         domain: report.domain_code.clone(),
                         variable: issue.variable.clone(),
                         message: issue.message.clone(),
-                        category: issue.category.clone(),
                         count: issue.count,
-                        codelist_code: issue.codelist_code.clone(),
                         ct_source: issue.ct_source.clone(),
                     })
                     .collect(),
@@ -409,9 +403,8 @@ fn ct_issue(
     } else {
         IssueSeverity::Error
     };
-    let mut examples = invalid.iter().take(5).cloned().collect::<Vec<_>>();
+    let mut examples: Vec<_> = invalid.iter().take(5).cloned().collect();
     examples.sort();
-    let examples = examples.join(", ");
     let mut message = format!(
         "Variable value not found in codelist. {} contains {} value(s) not found in {} for {} ({}).",
         variable.name,
@@ -421,7 +414,7 @@ fn ct_issue(
         ct.code
     );
     if !examples.is_empty() {
-        message.push_str(&format!(" values: {}", examples));
+        message.push_str(&format!(" values: {}", examples.join(", ")));
     }
     Some(ConformanceIssue {
         code: ct.code.clone(),
@@ -429,8 +422,6 @@ fn ct_issue(
         severity,
         variable: Some(variable.name.clone()),
         count: Some(invalid.len() as u64),
-        category: Some(ct.code.clone()),
-        codelist_code: Some(ct.code.clone()),
         ct_source: Some(resolved.source().to_string()),
     })
 }
