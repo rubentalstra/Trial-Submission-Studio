@@ -8,7 +8,7 @@ use comfy_table::{
     Attribute, Cell, CellAlignment, Color, ColumnConstraint, ContentArrangement, Table, Width,
 };
 
-use sdtm_model::Severity;
+use sdtm_model::{Severity, ValidationIssue};
 
 use crate::types::{DomainDataCheck, DomainSummary, StudyResult};
 
@@ -17,9 +17,6 @@ pub fn print_summary(result: &StudyResult) {
     println!("Output: {}", result.output_dir.display());
     if let Some(path) = &result.define_xml {
         println!("Define-XML: {}", path.display());
-    }
-    if let Some(path) = &result.conformance_report {
-        println!("Conformance report: {}", path.display());
     }
     let mut table = Table::new();
     table.set_header(vec![
@@ -134,8 +131,8 @@ fn print_issue_table(result: &StudyResult) {
     align_column(&mut table, 3, CellAlignment::Center);
     align_column(&mut table, 4, CellAlignment::Center);
     for (domain, issue) in issues {
-        let details = split_issue_details(&issue.message);
-        let message = highlight_count_in_message(details.details, issue.count, issue.severity);
+        let message =
+            highlight_count_in_message(issue.message.clone(), issue.count, issue.severity);
         let domain_cell = domain_cell(&domain);
         table.add_row(vec![
             domain_cell,
@@ -144,12 +141,8 @@ fn print_issue_table(result: &StudyResult) {
             Cell::new(issue.ct_source.clone().unwrap_or_else(|| "-".to_string())),
             Cell::new(issue.code.clone()),
             Cell::new(message),
-            examples_cell(format_example_list(details.observed)),
-            examples_cell(format_ct_cell(
-                details.allowed_count,
-                details.allowed_values,
-                details.ct_examples,
-            )),
+            examples_cell(format_observed_values(issue.observed_values.as_ref())),
+            examples_cell(format_ct_cell(&issue)),
         ]);
     }
     println!();
@@ -366,77 +359,24 @@ fn description_cell(description: &str, is_supp: bool) -> Cell {
     }
 }
 
-struct IssueDetails {
-    details: String,
-    observed: Option<String>,
-    allowed_values: Option<String>,
-    allowed_count: Option<String>,
-    ct_examples: Option<String>,
+fn format_observed_values(values: Option<&Vec<String>>) -> String {
+    values
+        .and_then(|items| format_code_list(items))
+        .unwrap_or_else(|| "-".to_string())
 }
 
-fn split_issue_details(message: &str) -> IssueDetails {
-    let mut observed = None;
-    let mut allowed_values = None;
-    let mut allowed_count = None;
-    let mut ct_examples = None;
-    let mut remainder = message;
-
-    if let Some((head, tail)) = remainder.rsplit_once(" Observed values (sample): ") {
-        remainder = head;
-        observed = Some(trim_issue_value(tail));
-    } else if let Some((head, tail)) = remainder.rsplit_once(" values: ") {
-        remainder = head;
-        observed = Some(trim_issue_value(tail));
-    }
-    if let Some((head, tail)) = remainder.rsplit_once(" CT examples: ") {
-        remainder = head;
-        ct_examples = Some(trim_issue_value(tail));
-    }
-    if let Some((head, tail)) = remainder.rsplit_once(" Allowed values: ") {
-        remainder = head;
-        allowed_values = Some(trim_issue_value(tail));
-    }
-    if let Some((head, tail)) = remainder.rsplit_once(" Allowed values count: ") {
-        remainder = head;
-        allowed_count = Some(trim_issue_value(tail));
-    }
-
-    IssueDetails {
-        details: remainder.to_string(),
-        observed,
-        allowed_values,
-        allowed_count,
-        ct_examples,
-    }
-}
-
-fn trim_issue_value(value: &str) -> String {
-    value.trim().trim_end_matches('.').trim().to_string()
-}
-
-fn format_example_list(values: Option<String>) -> String {
-    let Some(values) = values else {
-        return "-".to_string();
-    };
-    format_code_list(&values).unwrap_or_else(|| "-".to_string())
-}
-
-fn format_ct_cell(
-    allowed_count: Option<String>,
-    allowed_values: Option<String>,
-    ct_examples: Option<String>,
-) -> String {
+fn format_ct_cell(issue: &ValidationIssue) -> String {
     let mut lines = Vec::new();
-    if let Some(count) = allowed_count {
+    if let Some(count) = issue.allowed_count {
         lines.push(format!("count: {count}"));
     }
-    if let Some(values) = allowed_values
-        && let Some(list) = format_code_list(&values)
+    if let Some(values) = issue.allowed_values.as_ref()
+        && let Some(list) = format_code_list(values)
     {
         lines.push(list);
     }
-    if let Some(examples) = ct_examples
-        && let Some(list) = format_code_list(&examples)
+    if let Some(examples) = issue.ct_examples.as_ref()
+        && let Some(list) = format_code_list(examples)
     {
         lines.push(format!("examples: {list}"));
     }
@@ -447,13 +387,12 @@ fn format_ct_cell(
     }
 }
 
-fn format_code_list(values: &str) -> Option<String> {
-    let items = split_items(values);
-    if items.is_empty() {
+fn format_code_list(values: &[String]) -> Option<String> {
+    if values.is_empty() {
         None
     } else {
         Some(
-            items
+            values
                 .iter()
                 .map(|item| wrap_code(item))
                 .collect::<Vec<_>>()
@@ -469,16 +408,6 @@ fn wrap_code(value: &str) -> String {
     } else {
         code
     }
-}
-
-fn split_items(values: &str) -> Vec<String> {
-    let separator = if values.contains(" | ") { " | " } else { "," };
-    values
-        .split(separator)
-        .map(|item| item.trim())
-        .filter(|item| !item.is_empty())
-        .map(String::from)
-        .collect()
 }
 
 fn examples_cell(value: String) -> Cell {

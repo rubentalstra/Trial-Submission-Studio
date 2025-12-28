@@ -48,5 +48,4 @@ pub struct ProcessStudyResponse {
     pub output_dir: PathBuf,
     pub domain_results: Vec<DomainResult>,
     pub errors: Vec<StudyError>,
-    pub conformance_report_path: Option<PathBuf>,
 }

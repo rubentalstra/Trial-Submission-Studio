@@ -32,7 +32,7 @@ use sdtm_report::{
     DefineXmlOptions, SasProgramOptions, write_dataset_xml_outputs, write_define_xml,
     write_sas_outputs, write_xpt_outputs,
 };
-use sdtm_validate::{ValidationContext, validate_domains, write_conformance_report_json};
+use sdtm_validate::{ValidationContext, validate_domains};
 use sdtm_xpt::{XptWriterOptions, read_xpt};
 
 // ============================================================================
@@ -344,8 +344,6 @@ pub fn process_file(input: ProcessFileInput<'_>) -> Result<ProcessedFile> {
 pub struct ValidationResult {
     /// Validation reports by domain code.
     pub reports: BTreeMap<String, ValidationReport>,
-    /// Path to the written conformance report JSON.
-    pub report_path: Option<PathBuf>,
     /// Errors encountered during validation.
     pub errors: Vec<String>,
 }
@@ -354,14 +352,11 @@ pub struct ValidationResult {
 pub fn validate(
     frames: &[DomainFrame],
     pipeline: &StudyPipelineContext,
-    output_dir: &Path,
     study_id: &str,
-    dry_run: bool,
 ) -> Result<ValidationResult> {
     let validation_span = info_span!("validate", study_id = %study_id);
     let _validation_guard = validation_span.enter();
     let validation_start = Instant::now();
-    let mut errors = Vec::new();
 
     let validation_ctx = ValidationContext::new().with_ct_registry(&pipeline.ct_registry);
 
@@ -379,19 +374,6 @@ pub fn validate(
     for report in reports {
         report_map.insert(report.domain_code.to_uppercase(), report);
     }
-
-    let report_path = if dry_run {
-        None
-    } else {
-        let report_list: Vec<ValidationReport> = report_map.values().cloned().collect();
-        match write_conformance_report_json(output_dir, study_id, &report_list) {
-            Ok(path) => Some(path),
-            Err(error) => {
-                errors.push(format!("conformance report: {error}"));
-                None
-            }
-        }
-    };
 
     if !report_map.is_empty() {
         let mut frame_lookup: BTreeMap<String, &DomainFrame> = BTreeMap::new();
@@ -441,8 +423,7 @@ pub fn validate(
 
     Ok(ValidationResult {
         reports: report_map,
-        report_path,
-        errors,
+        errors: Vec::new(),
     })
 }
 

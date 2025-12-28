@@ -14,6 +14,10 @@ fn validation_report_counts() {
                 variable: Some("AETERM".to_string()),
                 count: Some(2),
                 ct_source: None,
+                observed_values: None,
+                allowed_values: None,
+                allowed_count: None,
+                ct_examples: None,
             },
             ValidationIssue {
                 code: "SD0057".to_string(),
@@ -22,6 +26,10 @@ fn validation_report_counts() {
                 variable: Some("AESEV".to_string()),
                 count: Some(1),
                 ct_source: None,
+                observed_values: None,
+                allowed_values: None,
+                allowed_count: None,
+                ct_examples: None,
             },
         ],
     };
@@ -38,7 +46,6 @@ fn response_serializes() {
         output_dir: "output".into(),
         domain_results: vec![],
         errors: vec![],
-        conformance_report_path: None,
     };
     let json = serde_json::to_string(&response).expect("serialize response");
     let round: ProcessStudyResponse = serde_json::from_str(&json).expect("deserialize response");
@@ -54,6 +61,10 @@ fn validation_issue_serializes() {
         variable: Some("SEX".to_string()),
         count: Some(3),
         ct_source: Some("SDTM CT".to_string()),
+        observed_values: Some(vec!["OTHER".to_string()]),
+        allowed_values: Some(vec!["F".to_string(), "M".to_string()]),
+        allowed_count: None,
+        ct_examples: None,
     };
     let json = serde_json::to_string(&issue).expect("serialize issue");
     let round: ValidationIssue = serde_json::from_str(&json).expect("deserialize issue");
@@ -72,6 +83,10 @@ fn validation_report_no_errors() {
             variable: None,
             count: None,
             ct_source: None,
+            observed_values: None,
+            allowed_values: None,
+            allowed_count: None,
+            ct_examples: None,
         }],
     };
     assert_eq!(report.error_count(), 0);
@@ -90,6 +105,10 @@ fn validation_report_with_reject() {
             variable: None,
             count: Some(1),
             ct_source: None,
+            observed_values: None,
+            allowed_values: None,
+            allowed_count: None,
+            ct_examples: None,
         }],
     };
     assert_eq!(report.error_count(), 1); // Reject counts as error

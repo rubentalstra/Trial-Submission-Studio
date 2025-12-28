@@ -1,16 +1,10 @@
-use std::collections::{BTreeMap, BTreeSet};
-use std::path::{Path, PathBuf};
-
-use anyhow::Result;
-use chrono::Utc;
 use polars::prelude::{AnyValue, DataFrame};
-use serde::Serialize;
-
 use sdtm_ingest::any_to_string;
 use sdtm_model::ct::{Codelist, ResolvedCodelist, TerminologyRegistry};
 use sdtm_model::{
     CaseInsensitiveSet, Domain, OutputFormat, Severity, ValidationIssue, ValidationReport, Variable,
 };
+use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Clone, Default)]
 pub struct ValidationContext<'a> {
@@ -60,37 +54,6 @@ impl<'a> ValidationContext<'a> {
     }
 }
 
-#[derive(Debug, Serialize)]
-pub struct ValidationReportPayload {
-    pub schema: &'static str,
-    pub schema_version: u32,
-    pub generated_at: String,
-    pub study_id: String,
-    pub reports: Vec<ValidationReportSummary>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ValidationReportSummary {
-    pub domain: String,
-    pub error_count: usize,
-    pub warning_count: usize,
-    pub issues: Vec<ValidationIssueJson>,
-}
-
-#[derive(Debug, Serialize)]
-pub struct ValidationIssueJson {
-    pub severity: Severity,
-    pub code: String,
-    pub domain: String,
-    pub variable: Option<String>,
-    pub message: String,
-    pub count: Option<u64>,
-    pub ct_source: Option<String>,
-}
-
-const REPORT_SCHEMA: &str = "cdisc-transpiler.conformance-report";
-const REPORT_SCHEMA_VERSION: u32 = 1;
-
 pub fn validate_domain(
     domain: &Domain,
     df: &DataFrame,
@@ -138,45 +101,6 @@ pub fn validate_domains(
     report_map.into_values().collect()
 }
 
-pub fn write_conformance_report_json(
-    output_dir: &Path,
-    study_id: &str,
-    reports: &[ValidationReport],
-) -> Result<PathBuf> {
-    std::fs::create_dir_all(output_dir)?;
-    let output_path = output_dir.join("conformance_report.json");
-    let payload = ValidationReportPayload {
-        schema: REPORT_SCHEMA,
-        schema_version: REPORT_SCHEMA_VERSION,
-        generated_at: Utc::now().to_rfc3339(),
-        study_id: study_id.to_string(),
-        reports: reports
-            .iter()
-            .map(|report| ValidationReportSummary {
-                domain: report.domain_code.clone(),
-                error_count: report.error_count(),
-                warning_count: report.warning_count(),
-                issues: report
-                    .issues
-                    .iter()
-                    .map(|issue| ValidationIssueJson {
-                        severity: issue.severity,
-                        code: issue.code.clone(),
-                        domain: report.domain_code.clone(),
-                        variable: issue.variable.clone(),
-                        message: issue.message.clone(),
-                        count: issue.count,
-                        ct_source: issue.ct_source.clone(),
-                    })
-                    .collect(),
-            })
-            .collect(),
-    };
-    let json = serde_json::to_string_pretty(&payload)?;
-    std::fs::write(&output_path, format!("{json}\n"))?;
-    Ok(output_path)
-}
-
 fn build_column_lookup(df: &DataFrame) -> CaseInsensitiveSet {
     CaseInsensitiveSet::new(df.get_column_names_owned())
 }
@@ -200,9 +124,7 @@ fn ct_issue(
     } else {
         Severity::Error
     };
-    let mut observed_samples: Vec<String> =
-        invalid.iter().take(MAX_INVALID_EXAMPLES).cloned().collect();
-    observed_samples.sort();
+    let observed_values: Vec<String> = invalid.iter().take(MAX_INVALID_EXAMPLES).cloned().collect();
     let mut message = format!(
         "CT check failed. {} has {} value(s) not in {} ({}) from {}.",
         variable.name,
@@ -215,23 +137,29 @@ fn ct_issue(
         message.push_str(" Codelist is extensible; invalid values are warnings.");
     }
     let allowed_values = ct.submission_values();
-    if !allowed_values.is_empty() && allowed_values.len() <= MAX_ALLOWED_VALUES_IN_MESSAGE {
-        message.push_str(&format!(" Allowed values: {}.", allowed_values.join(" | ")));
-    } else if !allowed_values.is_empty() {
-        message.push_str(&format!(" Allowed values count: {}.", allowed_values.len()));
-        let mut ct_examples: Vec<&str> = allowed_values.to_vec();
-        ct_examples.sort_unstable();
-        ct_examples.truncate(MAX_CT_EXAMPLES);
-        if !ct_examples.is_empty() {
-            message.push_str(&format!(" CT examples: {}.", ct_examples.join(" | ")));
-        }
-    }
-    if !observed_samples.is_empty() {
-        message.push_str(&format!(
-            " Observed values (sample): {}.",
-            observed_samples.join(" | ")
-        ));
-    }
+    let allowed_values_list = if allowed_values.len() <= MAX_ALLOWED_VALUES_IN_MESSAGE {
+        Some(
+            allowed_values
+                .iter()
+                .map(|value| (*value).to_string())
+                .collect(),
+        )
+    } else {
+        None
+    };
+    let allowed_count = if allowed_values.len() > MAX_ALLOWED_VALUES_IN_MESSAGE {
+        Some(allowed_values.len() as u64)
+    } else {
+        None
+    };
+    let ct_examples = if allowed_values.len() > MAX_ALLOWED_VALUES_IN_MESSAGE {
+        let mut examples = allowed_values.to_vec();
+        examples.sort_unstable();
+        examples.truncate(MAX_CT_EXAMPLES);
+        Some(examples.into_iter().map(String::from).collect())
+    } else {
+        None
+    };
     Some(ValidationIssue {
         code: ct.code.clone(),
         message,
@@ -239,6 +167,14 @@ fn ct_issue(
         variable: Some(variable.name.clone()),
         count: Some(invalid.len() as u64),
         ct_source: Some(resolved.source().to_string()),
+        observed_values: if observed_values.is_empty() {
+            None
+        } else {
+            Some(observed_values)
+        },
+        allowed_values: allowed_values_list,
+        allowed_count,
+        ct_examples,
     })
 }
 

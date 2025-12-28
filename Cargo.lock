@@ -2604,16 +2604,11 @@ dependencies = [
 name = "sdtm-validate"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "chrono",
  "polars",
- "regex",
  "sdtm-core",
  "sdtm-ingest",
  "sdtm-model",
  "sdtm-standards",
- "serde",
- "serde_json",
 ]
 
 [[package]]

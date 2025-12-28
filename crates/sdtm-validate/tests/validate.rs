@@ -1,24 +1,10 @@
-use std::fs;
-use std::path::PathBuf;
-
 use polars::prelude::{Column, DataFrame};
 
 use sdtm_model::{OutputFormat, Severity, ValidationIssue, ValidationReport};
 use sdtm_standards::{load_default_ct_registry, load_default_sdtm_ig_domains};
 use sdtm_validate::{
     ValidationContext, gate_strict_outputs, strict_outputs_requested, validate_domain,
-    write_conformance_report_json,
 };
-
-fn temp_dir() -> PathBuf {
-    let mut dir = std::env::temp_dir();
-    let stamp = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap_or_default()
-        .as_nanos();
-    dir.push(format!("sdtm_validate_{stamp}"));
-    dir
-}
 
 #[test]
 fn ct_invalid_value_emits_issue() {
@@ -60,20 +46,6 @@ fn ct_invalid_value_emits_issue() {
 }
 
 #[test]
-fn writes_conformance_report_json_payload() {
-    let report = ValidationReport {
-        domain_code: "DM".to_string(),
-        issues: Vec::new(),
-    };
-    let dir = temp_dir();
-    let path = write_conformance_report_json(&dir, "STUDY1", &[report]).expect("write json");
-    let contents = fs::read_to_string(&path).expect("read json");
-    assert!(contents.contains("cdisc-transpiler.conformance-report"));
-    assert!(contents.contains("STUDY1"));
-    fs::remove_dir_all(&dir).expect("cleanup");
-}
-
-#[test]
 fn strict_output_gate_blocks_on_errors() {
     let report = ValidationReport {
         domain_code: "AE".to_string(),
@@ -84,6 +56,10 @@ fn strict_output_gate_blocks_on_errors() {
             variable: Some("AETERM".to_string()),
             count: Some(1),
             ct_source: None,
+            observed_values: None,
+            allowed_values: None,
+            allowed_count: None,
+            ct_examples: None,
         }],
     };
     let decision = gate_strict_outputs(&[OutputFormat::Xpt], true, &[report]);
@@ -102,6 +78,10 @@ fn strict_output_gate_ignored_without_strict_formats() {
             variable: Some("AETERM".to_string()),
             count: Some(1),
             ct_source: None,
+            observed_values: None,
+            allowed_values: None,
+            allowed_count: None,
+            ct_examples: None,
         }],
     };
     let decision = gate_strict_outputs(&[OutputFormat::Xml], true, &[report]);

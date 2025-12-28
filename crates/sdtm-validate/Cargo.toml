@@ -5,12 +5,7 @@ edition.workspace = true
 rust-version.workspace = true
 
 [dependencies]
-anyhow.workspace = true
-chrono.workspace = true
 polars.workspace = true
-regex = "1"
-serde.workspace = true
-serde_json.workspace = true
 sdtm-core = { path = "../sdtm-core" }
 sdtm-ingest = { path = "../sdtm-ingest" }
 sdtm-model = { path = "../sdtm-model" }

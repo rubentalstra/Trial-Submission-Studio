@@ -23,6 +23,18 @@ pub struct ValidationIssue {
     pub count: Option<u64>,
     /// CT source identifier (e.g., "SDTM CT").
     pub ct_source: Option<String>,
+    /// Sample observed values from the source data that failed CT validation.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub observed_values: Option<Vec<String>>,
+    /// Allowed CT values (only populated for small codelists).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub allowed_values: Option<Vec<String>>,
+    /// Count of allowed CT values (for large codelists).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub allowed_count: Option<u64>,
+    /// Sample CT values from the codelist (for large codelists).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ct_examples: Option<Vec<String>>,
 }
 
 /// Validation report for a single domain.

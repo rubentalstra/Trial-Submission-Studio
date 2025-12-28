@@ -307,10 +307,9 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     // =========================================================================
     // Stage 5: Validate - Conformance via CT + structural checks
     // =========================================================================
-    let validation_result = validate(&frame_list, &pipeline, &output_dir, &study_id, args.dry_run)?;
+    let validation_result = validate(&frame_list, &pipeline, &study_id)?;
     let mut report_map = validation_result.reports;
     errors.extend(validation_result.errors);
-    let conformance_report = validation_result.report_path;
 
     // =========================================================================
     // Stage 5.5: Gate outputs - Block strict outputs if validation fails
@@ -439,7 +438,6 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
         domains: summaries,
         data_checks,
         errors,
-        conformance_report,
         define_xml,
         has_errors,
     })

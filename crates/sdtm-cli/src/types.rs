@@ -9,7 +9,6 @@ pub struct StudyResult {
     pub domains: Vec<DomainSummary>,
     pub data_checks: Vec<DomainDataCheck>,
     pub errors: Vec<String>,
-    pub conformance_report: Option<PathBuf>,
     pub define_xml: Option<PathBuf>,
     pub has_errors: bool,
 }
