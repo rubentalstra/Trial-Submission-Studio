@@ -12,9 +12,7 @@ use sdtm_core::{
     build_report_domains, dedupe_frames_by_identifiers, insert_frame, is_supporting_domain,
 };
 use sdtm_model::{MappingConfig, OutputFormat};
-use sdtm_standards::{
-    load_default_ct_registry, load_default_p21_rules, load_default_sdtm_ig_domains,
-};
+use sdtm_standards::{load_default_ct_registry, load_default_sdtm_ig_domains};
 use sdtm_validate::gate_strict_outputs;
 
 use crate::cli::{OutputFormatArg, StudyArgs};
@@ -62,7 +60,6 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     // =========================================================================
     let standards = load_default_sdtm_ig_domains().context("load standards")?;
     let ct_registry = load_default_ct_registry().context("load ct registry")?;
-    let p21_rules = load_default_p21_rules().context("load p21 rules")?;
 
     // Build processing options based on CLI flags
     // --strict enables all strict mode options
@@ -82,7 +79,6 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     let mut pipeline = StudyPipelineContext::new(&study_id)
         .with_standards(standards.clone())
         .with_ct_registry(ct_registry)
-        .with_p21_rules(p21_rules)
         .with_options(options);
 
     // Build standard variables set for SUPPQUAL exclusion
@@ -309,7 +305,7 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     let report_domain_map = sdtm_core::domain_map_by_code(&report_domains);
 
     // =========================================================================
-    // Stage 5: Validate - Run P21 validation rules
+    // Stage 5: Validate - Conformance via CT + structural checks
     // =========================================================================
     let validation_result = validate(&frame_list, &pipeline, &output_dir, &study_id, args.dry_run)?;
     let mut report_map = validation_result.reports;

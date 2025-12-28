@@ -13,7 +13,7 @@ fn conformance_report_counts() {
                 severity: IssueSeverity::Error,
                 variable: Some("AETERM".to_string()),
                 count: Some(2),
-                rule_id: None,
+                // rule_id removed
                 category: None,
                 codelist_code: None,
                 ct_source: None,
@@ -24,7 +24,7 @@ fn conformance_report_counts() {
                 severity: IssueSeverity::Warning,
                 variable: Some("AESEV".to_string()),
                 count: Some(1),
-                rule_id: None,
+                // rule_id removed
                 category: None,
                 codelist_code: None,
                 ct_source: None,
@@ -64,7 +64,7 @@ fn issue_summary_from_empty_reports() {
     assert_eq!(summary.total_warnings, 0);
     assert_eq!(summary.total_rejects, 0);
     assert!(summary.by_domain.is_empty());
-    assert!(summary.by_rule.is_empty());
+    assert!(summary.by_category.is_empty());
 }
 
 #[test]
@@ -81,7 +81,7 @@ fn issue_summary_counts_severities() {
                     severity: IssueSeverity::Error,
                     variable: None,
                     count: Some(2),
-                    rule_id: None,
+                    // rule_id removed
                     category: None,
                     codelist_code: None,
                     ct_source: None,
@@ -92,7 +92,7 @@ fn issue_summary_counts_severities() {
                     severity: IssueSeverity::Warning,
                     variable: None,
                     count: Some(3),
-                    rule_id: None,
+                    // rule_id removed
                     category: None,
                     codelist_code: None,
                     ct_source: None,
@@ -107,7 +107,7 @@ fn issue_summary_counts_severities() {
                 severity: IssueSeverity::Reject,
                 variable: None,
                 count: Some(1),
-                rule_id: None,
+                // rule_id removed
                 category: None,
                 codelist_code: None,
                 ct_source: None,
@@ -135,7 +135,7 @@ fn issue_summary_groups_by_domain() {
                 severity: IssueSeverity::Error,
                 variable: None,
                 count: Some(1),
-                rule_id: None,
+                // rule_id removed
                 category: None,
                 codelist_code: None,
                 ct_source: None,
@@ -149,7 +149,7 @@ fn issue_summary_groups_by_domain() {
                 severity: IssueSeverity::Warning,
                 variable: None,
                 count: Some(1),
-                rule_id: None,
+                // rule_id removed
                 category: None,
                 codelist_code: None,
                 ct_source: None,
@@ -178,8 +178,7 @@ fn issue_summary_groups_by_rule() {
                 severity: IssueSeverity::Error,
                 variable: None,
                 count: Some(1),
-                rule_id: Some("SD0002".to_string()), // Set rule_id for by_rule mapping
-                category: None,
+                category: Some("Completeness".to_string()),
                 codelist_code: None,
                 ct_source: None,
             },
@@ -189,8 +188,7 @@ fn issue_summary_groups_by_rule() {
                 severity: IssueSeverity::Error,
                 variable: None,
                 count: Some(2),
-                rule_id: Some("SD0002".to_string()), // Set rule_id for by_rule mapping
-                category: None,
+                category: Some("Completeness".to_string()),
                 codelist_code: None,
                 ct_source: None,
             },
@@ -199,9 +197,9 @@ fn issue_summary_groups_by_rule() {
 
     let summary = IssueSummary::from_reports(&reports);
 
-    assert!(summary.by_rule.contains_key("SD0002"));
-    let rule_summary = summary.by_rule.get("SD0002").unwrap();
-    assert_eq!(rule_summary.violation_count, 3); // 1 + 2 from counts
+    assert!(summary.by_category.contains_key("Completeness"));
+    let rule_summary = summary.by_category.get("Completeness").unwrap();
+    assert_eq!(rule_summary.error_count, 2); // 2 issues of this category
 }
 
 #[test]
@@ -216,8 +214,7 @@ fn issue_summary_extracts_samples() {
             severity: IssueSeverity::Error,
             variable: Some("AESEV".to_string()),
             count: Some(1),
-            rule_id: Some("CT2001".to_string()), // Set rule_id for samples extraction
-            category: None,
+            category: Some("Terminology".to_string()),
             codelist_code: None,
             ct_source: None,
         }],
@@ -225,8 +222,8 @@ fn issue_summary_extracts_samples() {
 
     let summary = IssueSummary::from_reports(&reports);
 
-    // Check if rule is tracked and samples may be extracted
-    assert!(summary.by_rule.contains_key("CT2001"));
+    // Check if category is tracked and samples may be extracted
+    assert!(summary.by_category.contains_key("Terminology"));
 }
 
 #[test]
@@ -241,7 +238,7 @@ fn issue_summary_serializes() {
             severity: IssueSeverity::Error,
             variable: None,
             count: Some(1),
-            rule_id: None,
+            // rule_id removed
             category: None,
             codelist_code: None,
             ct_source: None,

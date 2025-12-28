@@ -8,10 +8,9 @@ pub use assumptions::{
 };
 
 pub use loaders::{
-    DomainRegistry, P21Rule, RuleMetadata, RuleMetadataRegistry, default_standards_root,
-    load_ct_catalog, load_ct_registry, load_default_ct_registry, load_default_domain_registry,
-    load_default_p21_rules, load_default_rule_metadata, load_default_sdtm_domains,
-    load_default_sdtm_ig_domains, load_domain_registry, load_p21_rules, load_sdtm_domains,
-    load_sdtm_ig_domains,
+    DomainRegistry, RuleMetadata, RuleMetadataRegistry, default_standards_root, load_ct_catalog,
+    load_ct_registry, load_default_ct_registry, load_default_domain_registry,
+    load_default_rule_metadata, load_default_sdtm_domains, load_default_sdtm_ig_domains,
+    load_domain_registry, load_sdtm_domains, load_sdtm_ig_domains,
 };
 pub use xsl::{XslAsset, list_default_xsl_assets, list_xsl_assets};

@@ -78,6 +78,7 @@ impl RuleEngine {
                 valid_values,
                 extensible,
                 codelist_code,
+                ct_source,
                 ..
             } => self.check_controlled_terminology(
                 rule,
@@ -86,6 +87,7 @@ impl RuleEngine {
                 valid_values,
                 *extensible,
                 codelist_code,
+                ct_source,
             ),
             RuleContext::DateTimeFormat => self.check_datetime_format(rule, df, column_lookup),
             RuleContext::SequenceUniqueness => {
@@ -107,7 +109,7 @@ impl RuleEngine {
         }
 
         // Column is missing - emit issue using rule's metadata
-        vec![self.create_issue(rule, 1, None)]
+        vec![self.create_issue(rule, 1, None, None)]
     }
 
     /// Check for null/missing values in a column.
@@ -140,11 +142,10 @@ impl RuleEngine {
             return Vec::new();
         }
 
-        vec![self.create_issue(rule, missing_count, None)]
+        vec![self.create_issue(rule, missing_count, None, None)]
     }
 
     /// Check controlled terminology values.
-    /// Used for CT2001 (non-extensible) and CT2002 (extensible).
     fn check_controlled_terminology(
         &self,
         rule: &GeneratedRule,
@@ -153,6 +154,7 @@ impl RuleEngine {
         valid_values: &[String],
         _extensible: bool,
         codelist_code: &str,
+        ct_source: &str,
     ) -> Vec<ConformanceIssue> {
         let column = match column_lookup.get(&rule.variable) {
             Some(col) => col,
@@ -187,6 +189,7 @@ impl RuleEngine {
             rule,
             invalid_values.len() as u64,
             Some(codelist_code.to_string()),
+            Some(ct_source.to_string()),
         )]
     }
 
@@ -224,7 +227,7 @@ impl RuleEngine {
             return Vec::new();
         }
 
-        vec![self.create_issue(rule, invalid_count, None)]
+        vec![self.create_issue(rule, invalid_count, None, None)]
     }
 
     /// Check sequence uniqueness for *SEQ variables.
@@ -272,7 +275,7 @@ impl RuleEngine {
             return Vec::new();
         }
 
-        vec![self.create_issue(rule, duplicate_count, None)]
+        vec![self.create_issue(rule, duplicate_count, None, None)]
     }
 
     /// Create a ConformanceIssue from a GeneratedRule.
@@ -282,17 +285,17 @@ impl RuleEngine {
         rule: &GeneratedRule,
         count: u64,
         codelist_code: Option<String>,
+        ct_source: Option<String>,
     ) -> ConformanceIssue {
         ConformanceIssue {
-            code: rule.rule_id.clone(),
+            code: rule.category.clone(),
             message: format!("{} ({} occurrence(s))", rule.message, count),
             severity: convert_severity(rule.severity),
             variable: Some(rule.variable.clone()),
             count: Some(count),
-            rule_id: Some(rule.rule_id.clone()),
             category: Some(rule.category.clone()),
             codelist_code,
-            ct_source: None,
+            ct_source,
         }
     }
 }

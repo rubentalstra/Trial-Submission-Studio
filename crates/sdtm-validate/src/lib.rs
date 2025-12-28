@@ -1,12 +1,10 @@
 mod cross_domain;
 mod engine;
-pub mod rule_mapping;
 
 pub use cross_domain::{
     CrossDomainValidationInput, CrossDomainValidationResult, validate_cross_domain,
 };
 pub use engine::RuleEngine;
-pub use rule_mapping::RuleResolver;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -23,12 +21,10 @@ use sdtm_model::{
     Domain, IssueSeverity, OutputFormat, ResolvedCt, Variable, VariableType,
 };
 use sdtm_standards::assumptions::RuleGenerator;
-use sdtm_standards::loaders::P21Rule;
 
 #[derive(Debug, Clone, Default)]
 pub struct ValidationContext<'a> {
     pub ct_registry: Option<&'a CtRegistry>,
-    pub p21_rules: Option<&'a [P21Rule]>,
     pub ct_catalogs: Option<Vec<String>>,
 }
 
@@ -68,18 +64,12 @@ impl<'a> ValidationContext<'a> {
     pub fn new() -> Self {
         Self {
             ct_registry: None,
-            p21_rules: None,
             ct_catalogs: None,
         }
     }
 
     pub fn with_ct_registry(mut self, ct_registry: &'a CtRegistry) -> Self {
         self.ct_registry = Some(ct_registry);
-        self
-    }
-
-    pub fn with_p21_rules(mut self, p21_rules: &'a [P21Rule]) -> Self {
-        self.p21_rules = Some(p21_rules);
         self
     }
 
@@ -94,12 +84,8 @@ impl<'a> ValidationContext<'a> {
     /// rather than manually coding them.
     pub fn build_rule_engine(&self, domains: &[Domain]) -> RuleEngine {
         let ct_registry = self.ct_registry.cloned().unwrap_or_default();
-        let p21_rules = self
-            .p21_rules
-            .map(|rules| rules.to_vec())
-            .unwrap_or_default();
 
-        let generator = RuleGenerator::new().with_p21_rules(p21_rules);
+        let generator = RuleGenerator::new();
 
         let mut engine = RuleEngine::new();
         for domain in domains {
@@ -231,7 +217,6 @@ pub fn validate_provenance(
                      populated.",
                     variable.name
                 ),
-                rule_id: Some("TRANS0001".to_string()),
                 category: Some("Provenance".to_string()),
                 count: None,
                 codelist_code: None,
@@ -295,7 +280,6 @@ pub struct ConformanceIssueJson {
     pub domain: String,
     pub variable: Option<String>,
     pub message: String,
-    pub rule_id: Option<String>,
     pub category: Option<String>,
     pub count: Option<u64>,
     pub codelist_code: Option<String>,
@@ -311,30 +295,29 @@ pub fn validate_domain(
     ctx: &ValidationContext,
 ) -> ConformanceReport {
     let column_lookup = build_column_lookup(df);
-    let p21_lookup = build_p21_lookup(ctx.p21_rules);
     let mut issues = Vec::new();
     for variable in &domain.variables {
         let column = column_lookup.get(&variable.name);
         if column.is_none() {
-            issues.extend(missing_column_issues(domain, variable, &p21_lookup));
+            issues.extend(missing_column_issues(domain, variable));
             continue;
         }
         let column = column.expect("column lookup");
-        if let Some(issue) = missing_value_issue(domain, variable, df, column, &p21_lookup) {
+        if let Some(issue) = missing_value_issue(domain, variable, df, column) {
             issues.push(issue);
         }
-        if let Some(issue) = type_issue(domain, variable, df, column, &p21_lookup) {
+        if let Some(issue) = type_issue(domain, variable, df, column) {
             issues.push(issue);
         }
-        if let Some(issue) = length_issue(domain, variable, df, column, &p21_lookup) {
+        if let Some(issue) = length_issue(domain, variable, df, column) {
             issues.push(issue);
         }
-        if let Some(issue) = test_code_issue(domain, variable, df, column, &p21_lookup) {
+        if let Some(issue) = test_code_issue(domain, variable, df, column) {
             issues.push(issue);
         }
         if let Some(ct_registry) = ctx.ct_registry
             && let Some(resolved) = resolve_ct(ct_registry, variable, ctx.ct_catalogs.as_deref())
-            && let Some(issue) = ct_issue(variable, df, column, &resolved, &p21_lookup)
+            && let Some(issue) = ct_issue(variable, df, column, &resolved)
         {
             issues.push(issue);
         }
@@ -349,11 +332,6 @@ pub fn validate_domain(
         .collect();
     let order_result = validate_column_order(&column_names, domain);
     if !order_result.is_valid {
-        // Get rule metadata from P21 Rules.csv
-        let p21_rule = p21_lookup.get("SD1079");
-        let category = p21_rule
-            .and_then(|r| r.category.clone())
-            .unwrap_or_else(|| "Metadata".to_string());
         for violation in &order_result.violations {
             issues.push(ConformanceIssue {
                 code: domain.code.clone(),
@@ -361,8 +339,7 @@ pub fn validate_domain(
                 severity: IssueSeverity::Warning,
                 variable: None,
                 count: Some(1),
-                rule_id: Some("SD1079".to_string()),
-                category: Some(category.clone()),
+                category: Some("Metadata".to_string()),
                 codelist_code: None,
                 ct_source: None,
             });
@@ -394,9 +371,6 @@ pub fn validate_domains(
         if let Some(domain) = domain_map.get(&code) {
             report_map.insert(code.clone(), validate_domain(domain, df, ctx));
         }
-    }
-    if let Some(p21_rules) = ctx.p21_rules {
-        apply_missing_dataset_issues(&domain_map, &frame_map, p21_rules, &mut report_map);
     }
     report_map.into_values().collect()
 }
@@ -432,7 +406,6 @@ pub fn write_conformance_report_json(
                         domain: report.domain_code.clone(),
                         variable: issue.variable.clone(),
                         message: issue.message.clone(),
-                        rule_id: issue.rule_id.clone(),
                         category: issue.category.clone(),
                         count: issue.count,
                         codelist_code: issue.codelist_code.clone(),
@@ -451,38 +424,32 @@ fn build_column_lookup(df: &DataFrame) -> CaseInsensitiveLookup {
     CaseInsensitiveLookup::new(df.get_column_names_owned())
 }
 
-fn missing_column_issues(
-    _domain: &Domain,
-    variable: &Variable,
-    p21_lookup: &BTreeMap<String, &P21Rule>,
-) -> Vec<ConformanceIssue> {
+fn missing_column_issues(_domain: &Domain, variable: &Variable) -> Vec<ConformanceIssue> {
     if is_required(variable.core.as_deref()) {
-        let rule = p21_lookup.get("SD0056").copied();
-        let base = rule_base_message(rule, "SDTM Required variable not found");
-        let message = format!("{base}: {}", variable.name);
-        return vec![issue_from_rule(
-            "SD0056",
-            p21_lookup,
-            IssueSeverity::Error,
+        let message = format!("SDTM Required variable not found: {}", variable.name);
+        return vec![ConformanceIssue {
+            code: "SDTMIG_REQ".to_string(),
             message,
-            Some(variable.name.clone()),
-            None,
-            None,
-        )];
+            severity: IssueSeverity::Error,
+            variable: Some(variable.name.clone()),
+            count: None,
+            category: Some("Presence".to_string()),
+            codelist_code: None,
+            ct_source: None,
+        }];
     }
     if is_expected(variable.core.as_deref()) {
-        let rule = p21_lookup.get("SD0057").copied();
-        let base = rule_base_message(rule, "SDTM Expected variable not found");
-        let message = format!("{base}: {}", variable.name);
-        return vec![issue_from_rule(
-            "SD0057",
-            p21_lookup,
-            IssueSeverity::Warning,
+        let message = format!("SDTM Expected variable not found: {}", variable.name);
+        return vec![ConformanceIssue {
+            code: "SDTMIG_EXP".to_string(),
             message,
-            Some(variable.name.clone()),
-            None,
-            None,
-        )];
+            severity: IssueSeverity::Warning,
+            variable: Some(variable.name.clone()),
+            count: None,
+            category: Some("Presence".to_string()),
+            codelist_code: None,
+            ct_source: None,
+        }];
     }
     Vec::new()
 }
@@ -492,7 +459,6 @@ fn missing_value_issue(
     variable: &Variable,
     df: &DataFrame,
     column: &str,
-    p21_lookup: &BTreeMap<String, &P21Rule>,
 ) -> Option<ConformanceIssue> {
     if !is_required(variable.core.as_deref()) {
         return None;
@@ -508,21 +474,20 @@ fn missing_value_issue(
     if missing == 0 {
         return None;
     }
-    let rule = p21_lookup.get("SD0002").copied();
-    let base = rule_base_message(rule, "Null value in variable marked as Required");
     let message = format!(
-        "{base}: {} has {} missing/blank value(s)",
+        "Null value in variable marked as Required: {} has {} missing/blank value(s)",
         variable.name, missing
     );
-    Some(issue_from_rule(
-        "SD0002",
-        p21_lookup,
-        IssueSeverity::Error,
+    Some(ConformanceIssue {
+        code: "SDTMIG_NULL".to_string(),
         message,
-        Some(variable.name.clone()),
-        Some(missing),
-        None,
-    ))
+        severity: IssueSeverity::Error,
+        variable: Some(variable.name.clone()),
+        count: Some(missing),
+        category: Some("Completeness".to_string()),
+        codelist_code: None,
+        ct_source: None,
+    })
 }
 
 fn type_issue(
@@ -530,7 +495,6 @@ fn type_issue(
     variable: &Variable,
     df: &DataFrame,
     column: &str,
-    p21_lookup: &BTreeMap<String, &P21Rule>,
 ) -> Option<ConformanceIssue> {
     if variable.data_type != VariableType::Num {
         return None;
@@ -556,21 +520,20 @@ fn type_issue(
     if invalid == 0 {
         return None;
     }
-    let rule = p21_lookup.get("SD1230").copied();
-    let base = rule_base_message(rule, "Variable datatype is not the expected SDTM datatype");
     let message = format!(
-        "{base}: {} has {} non-numeric value(s)",
+        "Variable datatype is not the expected SDTM datatype: {} has {} non-numeric value(s)",
         variable.name, invalid
     );
-    Some(issue_from_rule(
-        "SD1230",
-        p21_lookup,
-        IssueSeverity::Error,
+    Some(ConformanceIssue {
+        code: "SDTMIG_TYPE".to_string(),
         message,
-        Some(variable.name.clone()),
-        Some(invalid),
-        None,
-    ))
+        severity: IssueSeverity::Error,
+        variable: Some(variable.name.clone()),
+        count: Some(invalid),
+        category: Some("Data Type".to_string()),
+        codelist_code: None,
+        ct_source: None,
+    })
 }
 
 fn length_issue(
@@ -578,7 +541,6 @@ fn length_issue(
     variable: &Variable,
     df: &DataFrame,
     column: &str,
-    p21_lookup: &BTreeMap<String, &P21Rule>,
 ) -> Option<ConformanceIssue> {
     let limit = variable.length?;
     if variable.data_type != VariableType::Char {
@@ -598,21 +560,20 @@ fn length_issue(
     if over == 0 {
         return None;
     }
-    let rule = p21_lookup.get("SD1231").copied();
-    let base = rule_base_message(rule, "Variable value is longer than defined max length");
     let message = format!(
-        "{base}: {} exceeds length {} in {} value(s)",
+        "Variable value is longer than defined max length: {} exceeds length {} in {} value(s)",
         variable.name, limit, over
     );
-    Some(issue_from_rule(
-        "SD1231",
-        p21_lookup,
-        IssueSeverity::Error,
+    Some(ConformanceIssue {
+        code: "SDTMIG_LEN".to_string(),
         message,
-        Some(variable.name.clone()),
-        Some(over),
-        None,
-    ))
+        severity: IssueSeverity::Error,
+        variable: Some(variable.name.clone()),
+        count: Some(over),
+        category: Some("Length".to_string()),
+        codelist_code: None,
+        ct_source: None,
+    })
 }
 
 fn test_code_issue(
@@ -620,7 +581,6 @@ fn test_code_issue(
     variable: &Variable,
     df: &DataFrame,
     column: &str,
-    p21_lookup: &BTreeMap<String, &P21Rule>,
 ) -> Option<ConformanceIssue> {
     if !is_testcd_variable(&variable.name) {
         return None;
@@ -653,15 +613,16 @@ fn test_code_issue(
     if !examples.is_empty() {
         message.push_str(&format!(" values: {}", examples));
     }
-    Some(issue_from_rule(
-        "SD1022",
-        p21_lookup,
-        IssueSeverity::Error,
+    Some(ConformanceIssue {
+        code: "SDTMIG_TESTCD".to_string(),
         message,
-        Some(variable.name.clone()),
-        Some(invalid),
-        None,
-    ))
+        severity: IssueSeverity::Error,
+        variable: Some(variable.name.clone()),
+        count: Some(invalid),
+        category: Some("Format".to_string()),
+        codelist_code: None,
+        ct_source: None,
+    })
 }
 
 fn is_testcd_variable(name: &str) -> bool {
@@ -692,26 +653,22 @@ fn ct_issue(
     df: &DataFrame,
     column: &str,
     resolved: &ResolvedCt,
-    p21_lookup: &BTreeMap<String, &P21Rule>,
 ) -> Option<ConformanceIssue> {
     let ct = resolved.ct;
     let invalid = collect_invalid_ct_values(df, column, ct);
     if invalid.is_empty() {
         return None;
     }
-    let (rule_id, default_severity) = if ct.extensible {
-        ("CT2002", IssueSeverity::Warning)
+    let severity = if ct.extensible {
+        IssueSeverity::Warning
     } else {
-        ("CT2001", IssueSeverity::Error)
+        IssueSeverity::Error
     };
     let mut examples = invalid.iter().take(5).cloned().collect::<Vec<_>>();
     examples.sort();
     let examples = examples.join(", ");
-    let rule = p21_lookup.get(rule_id).copied();
-    let base = rule_base_message(rule, "Variable value not found in codelist");
     let mut message = format!(
-        "{}. {} contains {} value(s) not found in {} for {} ({}).",
-        base,
+        "Variable value not found in codelist. {} contains {} value(s) not found in {} for {} ({}).",
         variable.name,
         invalid.len(),
         resolved.source,
@@ -721,158 +678,16 @@ fn ct_issue(
     if !examples.is_empty() {
         message.push_str(&format!(" values: {}", examples));
     }
-    let rule = p21_lookup.get(rule_id).copied();
     Some(ConformanceIssue {
         code: ct.codelist_code.clone(),
         message,
-        severity: rule_severity(rule, default_severity),
+        severity,
         variable: Some(variable.name.clone()),
         count: Some(invalid.len() as u64),
-        rule_id: Some(rule_id.to_string()),
-        category: rule.and_then(|rule| rule.category.clone()),
+        category: Some(ct.codelist_code.clone()),
         codelist_code: Some(ct.codelist_code.clone()),
         ct_source: Some(resolved.source.to_string()),
     })
-}
-
-fn build_p21_lookup(rules: Option<&[P21Rule]>) -> BTreeMap<String, &P21Rule> {
-    let mut lookup = BTreeMap::new();
-    if let Some(rules) = rules {
-        for rule in rules {
-            lookup.insert(rule.rule_id.to_uppercase(), rule);
-        }
-    }
-    lookup
-}
-
-fn parse_severity(rule: &P21Rule) -> Option<IssueSeverity> {
-    let raw = rule.severity.as_ref()?.trim().to_lowercase();
-    match raw.as_str() {
-        "reject" => Some(IssueSeverity::Reject),
-        "error" => Some(IssueSeverity::Error),
-        "warning" => Some(IssueSeverity::Warning),
-        _ => None,
-    }
-}
-
-fn rule_severity(rule: Option<&P21Rule>, fallback: IssueSeverity) -> IssueSeverity {
-    rule.and_then(parse_severity).unwrap_or(fallback)
-}
-
-fn rule_base_message(rule: Option<&P21Rule>, fallback: &str) -> String {
-    if let Some(rule) = rule {
-        if !rule.message.trim().is_empty() {
-            return rule.message.clone();
-        }
-        if !rule.description.trim().is_empty() {
-            return rule.description.clone();
-        }
-    }
-    fallback.to_string()
-}
-
-fn issue_from_rule(
-    rule_id: &str,
-    p21_lookup: &BTreeMap<String, &P21Rule>,
-    fallback_severity: IssueSeverity,
-    message: String,
-    variable: Option<String>,
-    count: Option<u64>,
-    codelist_code: Option<String>,
-) -> ConformanceIssue {
-    let rule = p21_lookup.get(&rule_id.to_uppercase()).copied();
-    let severity = rule_severity(rule, fallback_severity);
-    let category = rule.and_then(|rule| rule.category.clone());
-    let resolved_id = rule
-        .map(|rule| rule.rule_id.clone())
-        .unwrap_or_else(|| rule_id.to_string());
-    ConformanceIssue {
-        code: resolved_id.clone(),
-        message,
-        severity,
-        variable,
-        count,
-        rule_id: Some(resolved_id),
-        category,
-        codelist_code,
-        ct_source: None,
-    }
-}
-
-fn apply_missing_dataset_issues(
-    domain_map: &BTreeMap<String, &Domain>,
-    frame_map: &BTreeMap<String, &DataFrame>,
-    p21_rules: &[P21Rule],
-    report_map: &mut BTreeMap<String, ConformanceReport>,
-) {
-    for rule in p21_rules {
-        let Some(code) = missing_dataset_code(&rule.message) else {
-            continue;
-        };
-        if !domain_map.contains_key(&code) {
-            continue;
-        }
-        if frame_map.contains_key(&code) {
-            continue;
-        }
-        let severity = match parse_severity(rule) {
-            Some(IssueSeverity::Warning) => IssueSeverity::Warning,
-            _ => IssueSeverity::Error,
-        };
-        let issue = ConformanceIssue {
-            code: rule.rule_id.clone(),
-            message: rule_message(rule, None),
-            severity,
-            variable: None,
-            count: Some(1),
-            rule_id: Some(rule.rule_id.clone()),
-            category: rule.category.clone(),
-            codelist_code: None,
-            ct_source: None,
-        };
-        add_report_issue(report_map, &code, issue);
-    }
-}
-
-fn missing_dataset_code(message: &str) -> Option<String> {
-    let prefix = "Missing ";
-    let suffix = " dataset";
-    let msg = message.trim();
-    if !msg.starts_with(prefix) || !msg.ends_with(suffix) {
-        return None;
-    }
-    let raw = msg[prefix.len()..msg.len() - suffix.len()].trim();
-    if raw.is_empty() {
-        return None;
-    }
-    Some(raw.to_uppercase())
-}
-
-fn add_report_issue(
-    report_map: &mut BTreeMap<String, ConformanceReport>,
-    domain_code: &str,
-    issue: ConformanceIssue,
-) {
-    report_map
-        .entry(domain_code.to_string())
-        .or_insert_with(|| ConformanceReport {
-            domain_code: domain_code.to_string(),
-            issues: Vec::new(),
-        })
-        .issues
-        .push(issue);
-}
-
-fn rule_message(rule: &P21Rule, count: Option<usize>) -> String {
-    let base = if rule.message.trim().is_empty() {
-        rule.description.clone()
-    } else {
-        rule.message.clone()
-    };
-    match count {
-        Some(value) => format!("{base} ({value} value(s))"),
-        None => base,
-    }
 }
 
 fn collect_invalid_ct_values(
@@ -945,13 +760,6 @@ fn is_expected(core: Option<&str>) -> bool {
     matches!(
         core.map(|value| value.trim().to_lowercase()).as_deref(),
         Some("exp")
-    )
-}
-
-fn is_permissible(core: Option<&str>) -> bool {
-    matches!(
-        core.map(|value| value.trim().to_lowercase()).as_deref(),
-        Some("perm")
     )
 }
 

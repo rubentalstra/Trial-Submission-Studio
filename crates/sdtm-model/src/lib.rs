@@ -8,7 +8,7 @@ pub mod terminology;
 
 pub use conformance::{
     CategorySummary, ConformanceIssue, ConformanceReport, DomainIssueSummary, IssueSeverity,
-    IssueSummary, RuleSummary,
+    IssueSummary,
 };
 pub use domain::{DatasetClass, DatasetMetadata, Domain, Variable, VariableType};
 pub use error::{Result, SdtmError};

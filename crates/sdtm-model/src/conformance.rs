@@ -17,7 +17,6 @@ pub struct ConformanceIssue {
     pub severity: IssueSeverity,
     pub variable: Option<String>,
     pub count: Option<u64>,
-    pub rule_id: Option<String>,
     pub category: Option<String>,
     pub codelist_code: Option<String>,
     pub ct_source: Option<String>,
@@ -70,8 +69,6 @@ pub struct IssueSummary {
     pub by_category: BTreeMap<String, CategorySummary>,
     /// Issues grouped by domain.
     pub by_domain: BTreeMap<String, DomainIssueSummary>,
-    /// Issues grouped by rule ID.
-    pub by_rule: BTreeMap<String, RuleSummary>,
     /// Sample values for each issue type (limited to avoid excessive output).
     pub samples: BTreeMap<String, Vec<String>>,
 }
@@ -85,8 +82,6 @@ pub struct CategorySummary {
     pub error_count: usize,
     /// Number of warnings in this category.
     pub warning_count: usize,
-    /// Rule IDs contributing to this category.
-    pub rule_ids: Vec<String>,
 }
 
 /// Summary of issues within a domain.
@@ -104,27 +99,7 @@ pub struct DomainIssueSummary {
     pub record_count: Option<usize>,
 }
 
-/// Summary of a specific rule's issues.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct RuleSummary {
-    /// Rule ID (e.g., "SD0002", "CT2001").
-    pub rule_id: String,
-    /// Rule description/message.
-    pub description: String,
-    /// Rule category.
-    pub category: Option<String>,
-    /// Severity of this rule's violations.
-    pub severity: Option<IssueSeverity>,
-    /// Number of violations across all domains.
-    pub violation_count: u64,
-    /// Domains affected by this rule.
-    pub affected_domains: Vec<String>,
-    /// Sample values (limited).
-    pub samples: Vec<String>,
-}
-
 impl IssueSummary {
-    /// Create a new empty summary.
     pub fn new() -> Self {
         Self::default()
     }
@@ -182,43 +157,14 @@ impl IssueSummary {
                     IssueSeverity::Warning => cat_summary.warning_count += 1,
                 }
 
-                if let Some(rule_id) = &issue.rule_id
-                    && !cat_summary.rule_ids.contains(rule_id)
-                {
-                    cat_summary.rule_ids.push(rule_id.clone());
-                }
-
-                // Update rule summary
-                if let Some(rule_id) = &issue.rule_id {
-                    let rule_summary =
-                        summary
-                            .by_rule
-                            .entry(rule_id.clone())
-                            .or_insert_with(|| RuleSummary {
-                                rule_id: rule_id.clone(),
-                                description: issue.message.clone(),
-                                category: issue.category.clone(),
-                                severity: Some(issue.severity),
-                                ..Default::default()
-                            });
-
-                    rule_summary.violation_count += issue.count.unwrap_or(1);
-
-                    if !rule_summary.affected_domains.contains(&domain_code) {
-                        rule_summary.affected_domains.push(domain_code.clone());
-                    }
-                }
-
-                // Store samples (limit to 5 per issue type)
-                if let Some(rule_id) = &issue.rule_id {
-                    let samples = summary.samples.entry(rule_id.clone()).or_default();
-                    if samples.len() < 5 {
-                        // Extract sample values from message if present
-                        if let Some(values) = extract_sample_values(&issue.message) {
-                            for value in values {
-                                if samples.len() < 5 && !samples.contains(&value) {
-                                    samples.push(value);
-                                }
+                // Store samples (limit to 5 per category)
+                let samples = summary.samples.entry(category.clone()).or_default();
+                if samples.len() < 5 {
+                    // Extract sample values from message if present
+                    if let Some(values) = extract_sample_values(&issue.message) {
+                        for value in values {
+                            if samples.len() < 5 && !samples.contains(&value) {
+                                samples.push(value);
                             }
                         }
                     }
@@ -246,13 +192,6 @@ impl IssueSummary {
             .filter(|(_, s)| s.error_count > 0 || s.reject_count > 0)
             .map(|(code, _)| code)
             .collect()
-    }
-
-    /// Get the most common rule violations (by count).
-    pub fn top_rules(&self, limit: usize) -> Vec<&RuleSummary> {
-        let mut rules: Vec<&RuleSummary> = self.by_rule.values().collect();
-        rules.sort_by(|a, b| b.violation_count.cmp(&a.violation_count));
-        rules.into_iter().take(limit).collect()
     }
 }
 

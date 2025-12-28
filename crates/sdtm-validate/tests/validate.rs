@@ -4,9 +4,7 @@ use std::path::PathBuf;
 use polars::prelude::{Column, DataFrame};
 
 use sdtm_model::{ConformanceIssue, ConformanceReport, IssueSeverity, OutputFormat, VariableType};
-use sdtm_standards::{
-    load_default_ct_registry, load_default_p21_rules, load_default_sdtm_ig_domains,
-};
+use sdtm_standards::{load_default_ct_registry, load_default_sdtm_ig_domains};
 use sdtm_validate::{
     ValidationContext, gate_strict_outputs, strict_outputs_requested, validate_domain,
     validate_domain_with_rules, write_conformance_report_json,
@@ -36,11 +34,9 @@ fn missing_required_column_emits_error() {
         .expect("required variable");
     let df = DataFrame::new(vec![]).expect("df");
     let report = validate_domain(domain, &df, &ValidationContext::new());
-    assert!(
-        report.issues.iter().any(
-            |issue| issue.code == "SD0056" && issue.variable.as_deref() == Some(&required.name)
-        )
-    );
+    assert!(report.issues.iter().any(
+        |issue| issue.code == "SDTMIG_REQ" && issue.variable.as_deref() == Some(&required.name)
+    ));
 }
 
 #[test]
@@ -61,7 +57,7 @@ fn missing_required_values_emits_error() {
     let issue = report
         .issues
         .iter()
-        .find(|issue| issue.code == "SD0002")
+        .find(|issue| issue.code == "SDTMIG_NULL")
         .expect("missing value issue");
     assert_eq!(issue.count, Some(2));
 }
@@ -87,7 +83,7 @@ fn numeric_type_issue_emits_error() {
     let issue = report
         .issues
         .iter()
-        .find(|issue| issue.code == "SD1230")
+        .find(|issue| issue.code == "SDTMIG_TYPE")
         .expect("type issue");
     assert_eq!(issue.count, Some(1));
 }
@@ -110,17 +106,12 @@ fn ct_invalid_value_emits_issue() {
     )])
     .expect("df");
     let ct_registry = load_default_ct_registry().expect("ct");
-    let p21_rules = load_default_p21_rules().expect("p21");
-    let ctx = ValidationContext::new()
-        .with_ct_registry(&ct_registry)
-        .with_p21_rules(&p21_rules);
+    let ctx = ValidationContext::new().with_ct_registry(&ct_registry);
     let report = validate_domain(domain, &df, &ctx);
     let issue = report
         .issues
         .iter()
-        .find(|issue| {
-            issue.rule_id.as_deref() == Some("CT2001") || issue.rule_id.as_deref() == Some("CT2002")
-        })
+        .find(|issue| issue.codelist_code.is_some() && issue.ct_source.is_some())
         .expect("ct issue");
     let ct_code = variable.codelist_code.as_deref().unwrap_or("");
     let ct = ct_registry
@@ -133,8 +124,8 @@ fn ct_invalid_value_emits_issue() {
     } else {
         IssueSeverity::Error
     };
-    let expected_rule = if ct.extensible { "CT2002" } else { "CT2001" };
-    assert_eq!(issue.rule_id.as_deref(), Some(expected_rule));
+    let _expected_rule = if ct.extensible { "CT2002" } else { "CT2001" };
+    // rule_id check removed - check code/category instead
     assert_eq!(issue.code, ct.codelist_code);
     assert_eq!(issue.severity, expected);
     assert_eq!(
@@ -167,7 +158,6 @@ fn strict_output_gate_blocks_on_errors() {
             severity: IssueSeverity::Error,
             variable: Some("AETERM".to_string()),
             count: Some(1),
-            rule_id: None,
             category: None,
             codelist_code: None,
             ct_source: None,
@@ -188,7 +178,6 @@ fn strict_output_gate_ignored_without_strict_formats() {
             severity: IssueSeverity::Error,
             variable: Some("AETERM".to_string()),
             count: Some(1),
-            rule_id: None,
             category: None,
             codelist_code: None,
             ct_source: None,
@@ -214,25 +203,22 @@ fn rule_engine_validates_required_variable() {
     let domains = load_default_sdtm_ig_domains().expect("standards");
     let domain = domains.iter().find(|d| d.code == "DM").expect("DM domain");
     let ct_registry = load_default_ct_registry().expect("ct");
-    let p21_rules = load_default_p21_rules().expect("p21");
 
-    let ctx = ValidationContext::new()
-        .with_ct_registry(&ct_registry)
-        .with_p21_rules(&p21_rules);
+    let ctx = ValidationContext::new().with_ct_registry(&ct_registry);
 
     // DataFrame missing required column STUDYID
     let df = DataFrame::new(vec![]).expect("df");
 
     let report = validate_domain_with_rules(domain, &df, &ctx);
 
-    // Should find SD0056 (Required variable not found)
+    // Should find SDTMIG_REQ (Required variable not found)
     let studyid_issue = report
         .issues
         .iter()
-        .find(|i| i.variable.as_deref() == Some("STUDYID") && i.code == "SD0056");
+        .find(|i| i.variable.as_deref() == Some("STUDYID") && i.code == "SDTMIG_REQ");
     assert!(
         studyid_issue.is_some(),
-        "Should emit SD0056 for missing STUDYID"
+        "Should emit SDTMIG_REQ for missing STUDYID"
     );
 }
 
@@ -249,13 +235,13 @@ fn rule_engine_validates_required_null_values() {
 
     let report = validate_domain_with_rules(domain, &df, &ctx);
 
-    // Should find SD0002 (Required variable has null values)
+    // Should find SDTMIG_NULL (Required variable has null values)
     let null_issue = report.issues.iter().find(|i| {
-        i.variable.as_deref() == Some("STUDYID") && i.rule_id.as_deref() == Some("SD0002")
+        i.variable.as_deref() == Some("STUDYID") && i.category.as_deref() == Some("SDTMIG_NULL")
     });
     assert!(
         null_issue.is_some(),
-        "Should emit SD0002 for null STUDYID values"
+        "Should emit SDTMIG_NULL for null STUDYID values"
     );
     assert_eq!(null_issue.unwrap().count, Some(2));
 }
@@ -273,11 +259,11 @@ fn rule_engine_validates_ct_values() {
 
     let report = validate_domain_with_rules(domain, &df, &ctx);
 
-    // Should find CT rule issue
-    let ct_issue = report.issues.iter().find(|i| {
-        i.variable.as_deref() == Some("SEX")
-            && (i.rule_id.as_deref() == Some("CT2001") || i.rule_id.as_deref() == Some("CT2002"))
-    });
+    // Should find CT rule issue (code will be the CT codelist code)
+    let ct_issue = report
+        .issues
+        .iter()
+        .find(|i| i.variable.as_deref() == Some("SEX") && i.codelist_code.is_some());
     assert!(ct_issue.is_some(), "Should emit CT issue for invalid SEX");
 }
 
@@ -285,11 +271,8 @@ fn rule_engine_validates_ct_values() {
 fn rule_engine_builds_from_context() {
     let domains = load_default_sdtm_ig_domains().expect("standards");
     let ct_registry = load_default_ct_registry().expect("ct");
-    let p21_rules = load_default_p21_rules().expect("p21");
 
-    let ctx = ValidationContext::new()
-        .with_ct_registry(&ct_registry)
-        .with_p21_rules(&p21_rules);
+    let ctx = ValidationContext::new().with_ct_registry(&ct_registry);
 
     let engine = ctx.build_rule_engine(&domains);
 
@@ -297,9 +280,9 @@ fn rule_engine_builds_from_context() {
     let dm_rules = engine.rules_for_domain("DM");
     assert!(!dm_rules.is_empty(), "Should have rules for DM domain");
 
-    // Should have Required rules (SD0002)
+    // Should have Required rules (SDTMIG_NULL)
     assert!(
-        dm_rules.iter().any(|r| r.rule_id == "SD0002"),
-        "Should have SD0002 rules"
+        dm_rules.iter().any(|r| r.category == "SDTMIG_NULL"),
+        "Should have SDTMIG_NULL rules"
     );
 }

@@ -1,7 +1,7 @@
 //! Study Pipeline Context for caching standards and metadata.
 //!
 //! This module provides a centralized context struct that caches all standards,
-//! CT registry, P21 rules, and study metadata for use across all pipeline stages.
+//! CT registry, and study metadata for use across all pipeline stages.
 //!
 //! # SDTMIG v3.4 Reference
 //!
@@ -9,19 +9,17 @@
 //! the processing pipeline. This context ensures:
 //! - Domain metadata is loaded once and reused
 //! - CT resolution uses a consistent registry version
-//! - P21 validation rules are cached for repeated use
 //! - Study-level metadata is propagated to all stages
 
 use std::collections::BTreeMap;
 
 use sdtm_model::{CtRegistry, Domain};
-use sdtm_standards::loaders::P21Rule;
 
 use crate::processing_context::{ProcessingContext, ProcessingOptions};
 
 /// Centralized context for the study processing pipeline.
 ///
-/// This struct caches all standards, CT registry, P21 rules, and study metadata
+/// This struct caches all standards, CT registry, and study metadata
 /// once and provides them to all pipeline stages. This avoids repeated loading
 /// and ensures consistency across the pipeline.
 ///
@@ -30,8 +28,7 @@ use crate::processing_context::{ProcessingContext, ProcessingOptions};
 /// ```ignore
 /// let pipeline = StudyPipelineContext::new("STUDY001")
 ///     .with_standards(standards)
-///     .with_ct_registry(ct_registry)
-///     .with_p21_rules(p21_rules);
+///     .with_ct_registry(ct_registry);
 ///
 /// // Create processing contexts for individual operations
 /// let ctx = pipeline.processing_context();
@@ -50,9 +47,6 @@ pub struct StudyPipelineContext {
     /// Controlled Terminology registry.
     pub ct_registry: CtRegistry,
 
-    /// P21 validation rules.
-    pub p21_rules: Vec<P21Rule>,
-
     /// Reference start dates (RFSTDTC) by USUBJID for SDY derivation.
     pub reference_starts: BTreeMap<String, String>,
 
@@ -70,7 +64,6 @@ impl StudyPipelineContext {
             standards: Vec::new(),
             standards_map: BTreeMap::new(),
             ct_registry: CtRegistry::default(),
-            p21_rules: Vec::new(),
             reference_starts: BTreeMap::new(),
             options: ProcessingOptions::default(),
         }
@@ -90,12 +83,6 @@ impl StudyPipelineContext {
     /// Sets the Controlled Terminology registry.
     pub fn with_ct_registry(mut self, ct_registry: CtRegistry) -> Self {
         self.ct_registry = ct_registry;
-        self
-    }
-
-    /// Sets the P21 validation rules.
-    pub fn with_p21_rules(mut self, p21_rules: Vec<P21Rule>) -> Self {
-        self.p21_rules = p21_rules;
         self
     }
 

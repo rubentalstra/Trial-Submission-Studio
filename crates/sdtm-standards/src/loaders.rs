@@ -9,16 +9,6 @@ use sdtm_model::{
     VariableType,
 };
 
-#[derive(Debug, Clone)]
-pub struct P21Rule {
-    pub rule_id: String,
-    pub publisher_id: Option<String>,
-    pub message: String,
-    pub description: String,
-    pub category: Option<String>,
-    pub severity: Option<String>,
-}
-
 const DEFAULT_CT_VERSION: &str = "2024-03-29";
 const DEFAULT_SDTMIG_VERSION: &str = "v3_4";
 const DEFAULT_SDTM_VERSION: &str = "v2_0";
@@ -50,11 +40,6 @@ pub fn load_default_ct_registry() -> Result<CtRegistry> {
         .join(DEFAULT_CT_VERSION);
     ct_dirs.push(docs_ct);
     load_ct_registry(&ct_dirs)
-}
-
-pub fn load_default_p21_rules() -> Result<Vec<P21Rule>> {
-    let root = default_standards_root();
-    load_p21_rules(&root.join("p21").join("Rules.csv"))
 }
 
 fn read_csv_rows(path: &Path) -> Result<Vec<BTreeMap<String, String>>> {
@@ -473,44 +458,6 @@ fn insert_ct_alias(entry: &mut ControlledTerminology, submission_value: &str, al
     }
 }
 
-pub fn load_p21_rules(path: &Path) -> Result<Vec<P21Rule>> {
-    let mut reader = ReaderBuilder::new()
-        .delimiter(b';')
-        .has_headers(true)
-        .from_path(path)
-        .with_context(|| format!("read p21 rules: {}", path.display()))?;
-    let headers = reader
-        .headers()
-        .with_context(|| format!("read p21 headers: {}", path.display()))?
-        .clone();
-    let mut rules = Vec::new();
-    for record in reader.records() {
-        let record = record.with_context(|| format!("read p21 record: {}", path.display()))?;
-        let mut row = BTreeMap::new();
-        for (idx, value) in record.iter().enumerate() {
-            let key = headers
-                .get(idx)
-                .unwrap_or("")
-                .trim_matches('\u{feff}')
-                .to_string();
-            row.insert(key, value.trim().to_string());
-        }
-        let rule_id = row.get("Pinnacle 21 ID").cloned().unwrap_or_default();
-        if rule_id.is_empty() {
-            continue;
-        }
-        rules.push(P21Rule {
-            rule_id,
-            publisher_id: row.get("Publisher ID").filter(|v| !v.is_empty()).cloned(),
-            message: row.get("Message").cloned().unwrap_or_default(),
-            description: row.get("Description").cloned().unwrap_or_default(),
-            category: row.get("Category").filter(|v| !v.is_empty()).cloned(),
-            severity: row.get("Severity").filter(|v| !v.is_empty()).cloned(),
-        });
-    }
-    Ok(rules)
-}
-
 // ============================================================================
 // Rule Metadata for Missing Dataset Detection
 // ============================================================================
@@ -521,8 +468,6 @@ pub fn load_p21_rules(path: &Path) -> Result<Vec<P21Rule>> {
 /// dataset classes. This structure captures that mapping for use in validation.
 #[derive(Debug, Clone)]
 pub struct RuleMetadata {
-    /// Rule ID (P21 ID)
-    pub rule_id: String,
     /// Domain codes this rule applies to (empty = all domains)
     pub applicable_domains: Vec<String>,
     /// Dataset classes this rule applies to
@@ -538,12 +483,10 @@ pub struct RuleMetadata {
 /// Registry of rule metadata for validation.
 #[derive(Debug, Clone, Default)]
 pub struct RuleMetadataRegistry {
-    /// Rules indexed by rule ID
-    rules_by_id: BTreeMap<String, RuleMetadata>,
     /// Rules that detect missing datasets, indexed by expected domain
-    missing_dataset_rules: BTreeMap<String, Vec<String>>,
+    missing_dataset_rules: BTreeMap<String, RuleMetadata>,
     /// Rules indexed by applicable domain
-    rules_by_domain: BTreeMap<String, Vec<String>>,
+    rules_by_domain: BTreeMap<String, Vec<RuleMetadata>>,
 }
 
 impl RuleMetadataRegistry {
@@ -552,63 +495,14 @@ impl RuleMetadataRegistry {
         Self::default()
     }
 
-    /// Build a registry from P21 rules and domain information.
-    ///
-    /// This parses P21 rule messages to detect patterns like "Missing XX dataset"
-    /// and maps rules to applicable domains.
-    pub fn from_p21_rules(rules: &[P21Rule], domains: &[Domain]) -> Self {
-        let mut registry = Self::new();
-
-        // Build domain code set
-        let domain_codes: BTreeSet<String> =
-            domains.iter().map(|d| d.code.to_uppercase()).collect();
-
-        for rule in rules {
-            // Check if this is a "Missing XX dataset" rule
-            if let Some(expected_domain) = parse_missing_dataset_rule(&rule.message) {
-                let expected_upper = expected_domain.to_uppercase();
-                if domain_codes.contains(&expected_upper) {
-                    let metadata = RuleMetadata {
-                        rule_id: rule.rule_id.clone(),
-                        applicable_domains: vec![expected_upper.clone()],
-                        applicable_classes: Vec::new(),
-                        detects_missing_dataset: true,
-                        expected_domain: Some(expected_upper.clone()),
-                        sdtmig_reference: rule.category.clone(),
-                    };
-                    registry.insert(metadata);
-                }
-            }
-
-            // Check for domain-specific rules by parsing the message
-            // Rules often mention domain codes in their message/description
-            let rule_domains = extract_domains_from_text(&rule.message, &domain_codes);
-            if !rule_domains.is_empty() && !registry.rules_by_id.contains_key(&rule.rule_id) {
-                let metadata = RuleMetadata {
-                    rule_id: rule.rule_id.clone(),
-                    applicable_domains: rule_domains,
-                    applicable_classes: Vec::new(),
-                    detects_missing_dataset: false,
-                    expected_domain: None,
-                    sdtmig_reference: rule.category.clone(),
-                };
-                registry.insert(metadata);
-            }
-        }
-
-        registry
-    }
-
     /// Insert rule metadata.
     pub fn insert(&mut self, metadata: RuleMetadata) {
-        let rule_id = metadata.rule_id.clone();
-
         // Index by domain
         for domain in &metadata.applicable_domains {
             self.rules_by_domain
                 .entry(domain.to_uppercase())
                 .or_default()
-                .push(rule_id.clone());
+                .push(metadata.clone());
         }
 
         // Index missing dataset rules
@@ -616,41 +510,21 @@ impl RuleMetadataRegistry {
             && let Some(expected) = &metadata.expected_domain
         {
             self.missing_dataset_rules
-                .entry(expected.to_uppercase())
-                .or_default()
-                .push(rule_id.clone());
+                .insert(expected.to_uppercase(), metadata);
         }
-
-        self.rules_by_id.insert(rule_id, metadata);
-    }
-
-    /// Get rule metadata by ID.
-    pub fn get(&self, rule_id: &str) -> Option<&RuleMetadata> {
-        self.rules_by_id.get(&rule_id.to_uppercase())
     }
 
     /// Get rules applicable to a domain.
     pub fn get_rules_for_domain(&self, domain_code: &str) -> Vec<&RuleMetadata> {
         self.rules_by_domain
             .get(&domain_code.to_uppercase())
-            .map(|ids| {
-                ids.iter()
-                    .filter_map(|id| self.rules_by_id.get(id))
-                    .collect()
-            })
+            .map(|rules| rules.iter().collect())
             .unwrap_or_default()
     }
 
     /// Get missing dataset rules for a domain.
-    pub fn get_missing_dataset_rules(&self, domain_code: &str) -> Vec<&RuleMetadata> {
-        self.missing_dataset_rules
-            .get(&domain_code.to_uppercase())
-            .map(|ids| {
-                ids.iter()
-                    .filter_map(|id| self.rules_by_id.get(id))
-                    .collect()
-            })
-            .unwrap_or_default()
+    pub fn get_missing_dataset_rule(&self, domain_code: &str) -> Option<&RuleMetadata> {
+        self.missing_dataset_rules.get(&domain_code.to_uppercase())
     }
 
     /// Get all domains that have "missing dataset" rules.
@@ -666,67 +540,19 @@ impl RuleMetadataRegistry {
 
     /// Get the count of rules in the registry.
     pub fn len(&self) -> usize {
-        self.rules_by_id.len()
+        self.rules_by_domain.len() + self.missing_dataset_rules.len()
     }
 
     /// Check if the registry is empty.
     pub fn is_empty(&self) -> bool {
-        self.rules_by_id.is_empty()
+        self.rules_by_domain.is_empty() && self.missing_dataset_rules.is_empty()
     }
-}
-
-/// Parse a "Missing XX dataset" rule message to extract the expected domain.
-fn parse_missing_dataset_rule(message: &str) -> Option<String> {
-    let msg = message.trim();
-
-    // Pattern: "Missing XX dataset"
-    if let Some(rest) = msg.strip_prefix("Missing ")
-        && let Some(domain) = rest.strip_suffix(" dataset")
-    {
-        let code = domain.trim().to_uppercase();
-        // Validate it looks like a domain code (2-4 uppercase letters)
-        if code.len() >= 2
-            && code.len() <= 8
-            && code
-                .chars()
-                .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit())
-        {
-            return Some(code);
-        }
-    }
-
-    None
-}
-
-/// Extract domain codes mentioned in rule text.
-fn extract_domains_from_text(text: &str, valid_domains: &BTreeSet<String>) -> Vec<String> {
-    let mut found = Vec::new();
-    let upper = text.to_uppercase();
-
-    for domain in valid_domains {
-        // Look for domain code as a word boundary
-        // Simple heuristic: check if the domain code appears surrounded by non-alphanumeric chars
-        let pattern = format!(" {} ", domain);
-        let start_pattern = format!("{} ", domain);
-        let end_pattern = format!(" {}", domain);
-
-        if upper.contains(&pattern)
-            || upper.starts_with(&start_pattern)
-            || upper.ends_with(&end_pattern)
-            || upper == *domain
-        {
-            found.push(domain.clone());
-        }
-    }
-
-    found
 }
 
 /// Load default rule metadata registry.
 pub fn load_default_rule_metadata() -> Result<RuleMetadataRegistry> {
-    let rules = load_default_p21_rules()?;
-    let domains = load_default_sdtm_ig_domains()?;
-    Ok(RuleMetadataRegistry::from_p21_rules(&rules, &domains))
+    // Return empty registry - CT-based validation only
+    Ok(RuleMetadataRegistry::new())
 }
 
 /// A registry of SDTM domains that allows querying by code and class.

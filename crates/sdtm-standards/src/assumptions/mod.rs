@@ -53,7 +53,9 @@
 
 mod generator;
 
-pub use generator::{GeneratedRule, RuleContext, RuleGenerationSummary, RuleGenerator, RuleSeverity};
+pub use generator::{
+    GeneratedRule, RuleContext, RuleGenerationSummary, RuleGenerator, RuleSeverity,
+};
 
 // Re-export CoreDesignation for parsing Core column values
 mod core;

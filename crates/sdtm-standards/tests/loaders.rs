@@ -1,7 +1,7 @@
 use sdtm_model::DatasetClass;
 use sdtm_standards::{
-    load_default_ct_registry, load_default_domain_registry, load_default_p21_rules,
-    load_default_sdtm_domains, load_default_sdtm_ig_domains,
+    load_default_ct_registry, load_default_domain_registry, load_default_sdtm_domains,
+    load_default_sdtm_ig_domains,
 };
 
 #[test]
@@ -84,12 +84,6 @@ fn loads_send_country_codelist() {
         .expect("country codelist");
     assert_eq!(ct.codelist_code, "C66786");
     assert!(ct.submission_values.iter().any(|value| value == "USA"));
-}
-
-#[test]
-fn loads_p21_rules() {
-    let rules = load_default_p21_rules().expect("load rules");
-    assert!(!rules.is_empty());
 }
 
 // Tests for DomainRegistry and DatasetClass functionality per SDTMIG v3.4
@@ -293,83 +287,6 @@ fn dataset_class_display_and_as_str() {
     assert_eq!(format!("{}", DatasetClass::Events), "Events");
 }
 
-// Tests for Dynamic Rule Generation from Metadata
-
-#[test]
-fn dynamic_rule_generator_from_metadata() {
-    use sdtm_standards::{
-        RuleContext, RuleGenerator, load_default_ct_registry, load_default_p21_rules,
-        load_default_sdtm_ig_domains,
-    };
-
-    // Load all metadata sources
-    let domains = load_default_sdtm_ig_domains().expect("load domains");
-    let ct_registry = load_default_ct_registry().expect("load ct");
-    let p21_rules = load_default_p21_rules().expect("load p21 rules");
-
-    // Create a rule generator with P21 rule templates
-    let generator = RuleGenerator::new().with_p21_rules(p21_rules);
-
-    // Get the DM domain
-    let dm = domains.iter().find(|d| d.code == "DM").expect("DM domain");
-
-    // Generate rules for DM
-    let rules = generator.generate_rules_for_domain(dm, &ct_registry);
-
-    // Should have many rules (Required variables, CT rules, datetime rules)
-    assert!(
-        rules.len() > 10,
-        "Should generate many rules for DM, got {}",
-        rules.len()
-    );
-
-    // Check for SD0002 rules (Required variables)
-    let required_rules: Vec<_> = rules.iter().filter(|r| r.rule_id == "SD0002").collect();
-    assert!(
-        !required_rules.is_empty(),
-        "Should have SD0002 rules for Required variables"
-    );
-
-    // STUDYID should be Required in DM
-    assert!(
-        required_rules.iter().any(|r| r.variable == "STUDYID"),
-        "STUDYID should have SD0002 rule"
-    );
-
-    // Check for CT rules (CT2001/CT2002)
-    let ct_rules: Vec<_> = rules
-        .iter()
-        .filter(|r| r.rule_id.starts_with("CT"))
-        .collect();
-    assert!(!ct_rules.is_empty(), "Should have CT validation rules");
-
-    // SEX in DM should have CT rule (C66731)
-    let sex_ct = ct_rules.iter().find(|r| r.variable == "SEX");
-    assert!(sex_ct.is_some(), "SEX should have CT validation rule");
-    if let RuleContext::ControlledTerminology {
-        codelist_code,
-        valid_values,
-        ..
-    } = &sex_ct.unwrap().context
-    {
-        assert_eq!(codelist_code, "C66731", "SEX uses codelist C66731");
-        assert!(
-            valid_values.iter().any(|v| v == "M" || v == "MALE"),
-            "SEX CT should include M/MALE"
-        );
-    }
-
-    // Check for datetime rules (SD0003)
-    let dtc_rules: Vec<_> = rules.iter().filter(|r| r.rule_id == "SD0003").collect();
-    assert!(!dtc_rules.is_empty(), "Should have SD0003 datetime rules");
-
-    // BRTHDTC should have datetime rule
-    assert!(
-        dtc_rules.iter().any(|r| r.variable == "BRTHDTC"),
-        "BRTHDTC should have SD0003 rule"
-    );
-}
-
 #[test]
 fn dynamic_rule_generator_ct_extensibility() {
     use sdtm_standards::{
@@ -388,7 +305,7 @@ fn dynamic_rule_generator_ct_extensibility() {
     // Find CT rules and check extensibility affects severity
     let ct_rules: Vec<_> = rules
         .iter()
-        .filter(|r| r.rule_id.starts_with("CT"))
+        .filter(|r| matches!(r.context, RuleContext::ControlledTerminology { .. }))
         .collect();
 
     let mut found_non_extensible = false;
@@ -396,11 +313,7 @@ fn dynamic_rule_generator_ct_extensibility() {
     for rule in ct_rules {
         if let RuleContext::ControlledTerminology { extensible, .. } = &rule.context {
             if *extensible {
-                // Extensible codelists should be warnings (CT2002)
-                assert_eq!(
-                    rule.rule_id, "CT2002",
-                    "Extensible CT should use CT2002 rule"
-                );
+                // Extensible codelists should be warnings
                 assert_eq!(
                     rule.severity,
                     RuleSeverity::Warning,
@@ -408,11 +321,7 @@ fn dynamic_rule_generator_ct_extensibility() {
                 );
             } else {
                 found_non_extensible = true;
-                // Non-extensible codelists should be errors (CT2001)
-                assert_eq!(
-                    rule.rule_id, "CT2001",
-                    "Non-extensible CT should use CT2001 rule"
-                );
+                // Non-extensible codelists should be errors
                 assert_eq!(
                     rule.severity,
                     RuleSeverity::Error,
@@ -423,10 +332,7 @@ fn dynamic_rule_generator_ct_extensibility() {
     }
 
     // Should have non-extensible CT rules
-    assert!(
-        found_non_extensible,
-        "Should have non-extensible CT rules (CT2001)"
-    );
+    assert!(found_non_extensible, "Should have non-extensible CT rules");
 }
 
 #[test]
@@ -447,14 +353,14 @@ fn dynamic_rule_generator_summary() {
         summary.total_rules
     );
 
-    // Should have rules for key rule IDs
+    // Should have rules for key categories
     assert!(
-        summary.by_rule_id.contains_key("SD0002"),
-        "Should have SD0002 rules"
+        summary.by_category.contains_key("SDTMIG_NULL"),
+        "Should have SDTMIG_NULL rules"
     );
     assert!(
-        summary.by_rule_id.contains_key("SD0003"),
-        "Should have SD0003 rules"
+        summary.by_category.contains_key("SDTMIG_REQ"),
+        "Should have SDTMIG_REQ rules"
     );
 
     // Should have rules for many domains
@@ -506,68 +412,4 @@ fn country_codelist_c66786_loaded_correctly() {
         "Should include AGO (Angola)"
     );
     assert!(values.iter().any(|v| v == "USA"), "Should include USA");
-}
-
-// --- RuleMetadataRegistry tests ---
-
-#[test]
-fn rule_metadata_registry_from_p21_rules() {
-    use sdtm_standards::RuleMetadataRegistry;
-
-    let p21_rules = load_default_p21_rules().expect("load p21 rules");
-    let domains = load_default_sdtm_ig_domains().expect("load domains");
-    let registry = RuleMetadataRegistry::from_p21_rules(&p21_rules, &domains);
-
-    assert!(!registry.is_empty(), "Registry should not be empty");
-}
-
-#[test]
-fn rule_metadata_registry_get_rules_for_domain() {
-    use sdtm_standards::RuleMetadataRegistry;
-
-    let p21_rules = load_default_p21_rules().expect("load p21 rules");
-    let domains = load_default_sdtm_ig_domains().expect("load domains");
-    let registry = RuleMetadataRegistry::from_p21_rules(&p21_rules, &domains);
-
-    // DM is a common domain, should have rules
-    let dm_rules = registry.get_rules_for_domain("DM");
-    // May be empty if no domain-specific rules apply, but shouldn't panic
-    let _ = dm_rules;
-}
-
-#[test]
-fn rule_metadata_registry_missing_dataset_rules() {
-    use sdtm_standards::RuleMetadataRegistry;
-
-    let p21_rules = load_default_p21_rules().expect("load p21 rules");
-    let domains = load_default_sdtm_ig_domains().expect("load domains");
-    let registry = RuleMetadataRegistry::from_p21_rules(&p21_rules, &domains);
-
-    // Get missing rules for DM domain
-    let missing_rules = registry.get_missing_dataset_rules("DM");
-    // Should find some rules that detect missing datasets
-    // May be empty depending on rule definitions
-    let _ = missing_rules;
-}
-
-#[test]
-fn rule_metadata_registry_domains_with_missing_rules() {
-    use sdtm_standards::RuleMetadataRegistry;
-
-    let p21_rules = load_default_p21_rules().expect("load p21 rules");
-    let domains = load_default_sdtm_ig_domains().expect("load domains");
-    let registry = RuleMetadataRegistry::from_p21_rules(&p21_rules, &domains);
-
-    let domains_list = registry.domains_with_missing_rules();
-    // Should be a vector of domains, possibly empty - just verify it works
-    let _ = domains_list;
-}
-
-#[test]
-fn load_default_rule_metadata_works() {
-    use sdtm_standards::load_default_rule_metadata;
-
-    let registry = load_default_rule_metadata().expect("load rule metadata");
-    // Registry should load without error - just verify it works
-    let _ = registry.len();
 }

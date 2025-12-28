@@ -75,14 +75,14 @@ fn generates_required_variable_rule() {
 
     let rules = generator.generate_rules_for_domain(&domain, &ct);
 
-    // Required variables generate 2 rules: SD0056 (presence) + SD0002 (null check)
+    // Required variables generate 2 rules: presence + null check
     assert_eq!(rules.len(), 2);
-    let rule_ids: Vec<_> = rules.iter().map(|r| r.rule_id.as_str()).collect();
-    assert!(rule_ids.contains(&"SD0056"));
-    assert!(rule_ids.contains(&"SD0002"));
+    let categories: Vec<_> = rules.iter().map(|r| r.category.as_str()).collect();
+    assert!(categories.contains(&"SDTMIG_REQ"));
+    assert!(categories.contains(&"SDTMIG_NULL"));
 
-    let presence_rule = rules.iter().find(|r| r.rule_id == "SD0056").unwrap();
-    let null_rule = rules.iter().find(|r| r.rule_id == "SD0002").unwrap();
+    let presence_rule = rules.iter().find(|r| r.category == "SDTMIG_REQ").unwrap();
+    let null_rule = rules.iter().find(|r| r.category == "SDTMIG_NULL").unwrap();
     assert_eq!(presence_rule.variable, "STUDYID");
     assert_eq!(null_rule.variable, "STUDYID");
     assert!(matches!(
@@ -106,7 +106,7 @@ fn generates_datetime_rule() {
     let rules = generator.generate_rules_for_domain(&domain, &ct);
 
     assert_eq!(rules.len(), 1);
-    assert_eq!(rules[0].rule_id, "SD0003");
+    assert_eq!(rules[0].category, "SDTMIG_DTC");
     assert_eq!(rules[0].variable, "AESTDTC");
     assert!(matches!(rules[0].context, RuleContext::DateTimeFormat));
 }
@@ -121,10 +121,10 @@ fn generates_sequence_rule() {
 
     let rules = generator.generate_rules_for_domain(&domain, &ct);
 
-    // Should have SD0056 (presence), SD0002 (Required null check), and SD0005 (Sequence uniqueness)
+    // Should have presence, completeness, and sequence uniqueness
     assert_eq!(rules.len(), 3);
-    let rule_ids: Vec<_> = rules.iter().map(|r| r.rule_id.as_str()).collect();
-    assert!(rule_ids.contains(&"SD0056"));
-    assert!(rule_ids.contains(&"SD0002"));
-    assert!(rule_ids.contains(&"SD0005"));
+    let categories: Vec<_> = rules.iter().map(|r| r.category.as_str()).collect();
+    assert!(categories.contains(&"SDTMIG_REQ"));
+    assert!(categories.contains(&"SDTMIG_NULL"));
+    assert!(categories.contains(&"SDTMIG_SEQ"));
 }

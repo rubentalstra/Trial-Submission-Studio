@@ -5,7 +5,7 @@
 //! 2. **Map**: Apply column mappings to SDTM variables
 //! 3. **Preprocess**: Fill missing fields, extract reference dates
 //! 4. **Domain Rules**: Process domains, build SUPPQUAL, relationships
-//! 5. **Validate**: Run P21 validation rules
+//! 5. **Validate**: Run CT-based and structural validation
 //! 6. **Output**: Write XPT, Dataset-XML, Define-XML, SAS programs
 //!
 //! Each stage takes the output of the previous stage and returns typed results.
@@ -389,9 +389,7 @@ pub fn validate(
     let validation_start = Instant::now();
     let mut errors = Vec::new();
 
-    let validation_ctx = ValidationContext::new()
-        .with_ct_registry(&pipeline.ct_registry)
-        .with_p21_rules(&pipeline.p21_rules);
+    let validation_ctx = ValidationContext::new().with_ct_registry(&pipeline.ct_registry);
 
     // Use dataset names for validation keys (handles split domains like LBCH)
     let dataset_names: Vec<String> = frames.iter().map(|f| f.dataset_name()).collect();
