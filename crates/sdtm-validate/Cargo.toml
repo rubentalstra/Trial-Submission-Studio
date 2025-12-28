@@ -6,7 +6,8 @@ rust-version.workspace = true
 
 [dependencies]
 polars.workspace = true
-sdtm-core = { path = "../sdtm-core" }
 sdtm-ingest = { path = "../sdtm-ingest" }
 sdtm-model = { path = "../sdtm-model" }
+
+[dev-dependencies]
 sdtm-standards = { path = "../sdtm-standards" }

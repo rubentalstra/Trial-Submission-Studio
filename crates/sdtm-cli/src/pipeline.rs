@@ -32,7 +32,7 @@ use sdtm_report::{
     DefineXmlOptions, SasProgramOptions, write_dataset_xml_outputs, write_define_xml,
     write_sas_outputs, write_xpt_outputs,
 };
-use sdtm_validate::{ValidationContext, validate_domains};
+use sdtm_validate::validate_domains;
 use sdtm_xpt::{XptWriterOptions, read_xpt};
 
 // ============================================================================
@@ -339,26 +339,15 @@ pub fn process_file(input: ProcessFileInput<'_>) -> Result<ProcessedFile> {
 // Stage 5: Validate
 // ============================================================================
 
-/// Result of the validation stage.
-#[derive(Debug)]
-pub struct ValidationResult {
-    /// Validation reports by domain code.
-    pub reports: BTreeMap<String, ValidationReport>,
-    /// Errors encountered during validation.
-    pub errors: Vec<String>,
-}
-
 /// Run validation on processed frames.
 pub fn validate(
     frames: &[DomainFrame],
     pipeline: &StudyPipelineContext,
     study_id: &str,
-) -> Result<ValidationResult> {
+) -> BTreeMap<String, ValidationReport> {
     let validation_span = info_span!("validate", study_id = %study_id);
     let _validation_guard = validation_span.enter();
     let validation_start = Instant::now();
-
-    let validation_ctx = ValidationContext::new().with_ct_registry(&pipeline.ct_registry);
 
     // Use dataset names for validation keys (handles split domains like LBCH)
     let dataset_names: Vec<String> = frames.iter().map(|f| f.dataset_name()).collect();
@@ -369,7 +358,11 @@ pub fn validate(
         .collect();
 
     // Per-domain validation - pass dataset names instead of domain codes
-    let reports = validate_domains(&pipeline.standards, &frame_refs, &validation_ctx);
+    let reports = validate_domains(
+        &pipeline.standards,
+        &frame_refs,
+        Some(&pipeline.ct_registry),
+    );
     let mut report_map = BTreeMap::new();
     for report in reports {
         report_map.insert(report.domain_code.to_uppercase(), report);
@@ -421,10 +414,7 @@ pub fn validate(
         );
     }
 
-    Ok(ValidationResult {
-        reports: report_map,
-        errors: Vec::new(),
-    })
+    report_map
 }
 
 // ============================================================================

@@ -2605,7 +2605,6 @@ name = "sdtm-validate"
 version = "0.1.0"
 dependencies = [
  "polars",
- "sdtm-core",
  "sdtm-ingest",
  "sdtm-model",
  "sdtm-standards",

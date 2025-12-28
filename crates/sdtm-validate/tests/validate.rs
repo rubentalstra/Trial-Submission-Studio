@@ -2,9 +2,7 @@ use polars::prelude::{Column, DataFrame};
 
 use sdtm_model::{OutputFormat, Severity, ValidationIssue, ValidationReport};
 use sdtm_standards::{load_default_ct_registry, load_default_sdtm_ig_domains};
-use sdtm_validate::{
-    ValidationContext, gate_strict_outputs, strict_outputs_requested, validate_domain,
-};
+use sdtm_validate::{gate_strict_outputs, strict_outputs_requested, validate_domain};
 
 #[test]
 fn ct_invalid_value_emits_issue() {
@@ -24,8 +22,7 @@ fn ct_invalid_value_emits_issue() {
     )])
     .expect("df");
     let ct_registry = load_default_ct_registry().expect("ct");
-    let ctx = ValidationContext::new().with_ct_registry(&ct_registry);
-    let report = validate_domain(domain, &df, &ctx);
+    let report = validate_domain(domain, &df, Some(&ct_registry));
     let issue = report
         .issues
         .iter()

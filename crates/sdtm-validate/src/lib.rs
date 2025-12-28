@@ -7,11 +7,6 @@ use sdtm_model::{
 use std::collections::{BTreeMap, BTreeSet};
 
 #[derive(Debug, Clone, Default)]
-pub struct ValidationContext<'a> {
-    pub ct_registry: Option<&'a TerminologyRegistry>,
-}
-
-#[derive(Debug, Clone, Default)]
 pub struct GatingDecision {
     pub block_strict_outputs: bool,
     pub blocking_domains: Vec<String>,
@@ -43,27 +38,16 @@ pub fn gate_strict_outputs(
     }
 }
 
-impl<'a> ValidationContext<'a> {
-    pub fn new() -> Self {
-        Self { ct_registry: None }
-    }
-
-    pub fn with_ct_registry(mut self, ct_registry: &'a TerminologyRegistry) -> Self {
-        self.ct_registry = Some(ct_registry);
-        self
-    }
-}
-
 pub fn validate_domain(
     domain: &Domain,
     df: &DataFrame,
-    ctx: &ValidationContext,
+    ct_registry: Option<&TerminologyRegistry>,
 ) -> ValidationReport {
     let column_lookup = build_column_lookup(df);
     let mut issues = Vec::new();
 
     // CT validation only - controlled terminology is our source of truth
-    if let Some(ct_registry) = ctx.ct_registry {
+    if let Some(ct_registry) = ct_registry {
         for variable in &domain.variables {
             let Some(column) = column_lookup.get(&variable.name) else {
                 continue;
@@ -85,7 +69,7 @@ pub fn validate_domain(
 pub fn validate_domains(
     domains: &[Domain],
     frames: &[(&str, &DataFrame)],
-    ctx: &ValidationContext,
+    ct_registry: Option<&TerminologyRegistry>,
 ) -> Vec<ValidationReport> {
     let mut domain_map: BTreeMap<String, &Domain> = BTreeMap::new();
     for domain in domains {
@@ -95,7 +79,7 @@ pub fn validate_domains(
     for (domain_code, df) in frames {
         let code = domain_code.to_uppercase();
         if let Some(domain) = domain_map.get(&code) {
-            report_map.insert(code.clone(), validate_domain(domain, df, ctx));
+            report_map.insert(code.clone(), validate_domain(domain, df, ct_registry));
         }
     }
     report_map.into_values().collect()

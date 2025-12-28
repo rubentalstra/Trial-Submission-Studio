@@ -307,9 +307,7 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     // =========================================================================
     // Stage 5: Validate - Conformance via CT + structural checks
     // =========================================================================
-    let validation_result = validate(&frame_list, &pipeline, &study_id)?;
-    let mut report_map = validation_result.reports;
-    errors.extend(validation_result.errors);
+    let mut report_map = validate(&frame_list, &pipeline, &study_id);
 
     // =========================================================================
     // Stage 5.5: Gate outputs - Block strict outputs if validation fails
