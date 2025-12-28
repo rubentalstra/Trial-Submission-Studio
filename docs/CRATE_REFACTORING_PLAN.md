@@ -4,19 +4,22 @@ This document outlines what to simplify, remove, and consolidate in each crate.
 The goal is **less complexity, less overhead, less duplicated code, clean and
 simple**.
 
+> **See also:** [NAMING_CONVENTIONS.md](NAMING_CONVENTIONS.md) for consistent
+> naming across the codebase.
+
 ## Quick Summary
 
-| Crate            | Status      | Actions                                                        |
-| ---------------- | ----------- | -------------------------------------------------------------- |
-| `sdtm-model`     | ✅ Clean    | Minor: remove unused `DatasetMetadata` fields                  |
-| `sdtm-standards` | ⚠️ Moderate | Remove `assumptions/` module (duplicate of validator.rs logic) |
-| `sdtm-validate`  | 🔴 Major    | **DELETE** `validator.rs` (603 lines of duplicate code)        |
-| `sdtm-core`      | ⚠️ Moderate | Simplify `ct_utils.rs`, remove `datetime.rs` if unused         |
-| `sdtm-ingest`    | ✅ Clean    | Keep as-is                                                     |
-| `sdtm-map`       | ✅ Clean    | Keep as-is                                                     |
-| `sdtm-report`    | ✅ Clean    | Keep as-is                                                     |
-| `sdtm-cli`       | ✅ Clean    | Keep as-is                                                     |
-| `sdtm-xpt`       | ✅ Clean    | Keep as-is                                                     |
+| Crate            | Status      | Actions                                                           |
+| ---------------- | ----------- | ----------------------------------------------------------------- |
+| `sdtm-model`     | ✅ Clean    | Rename types per naming conventions                               |
+| `sdtm-standards` | ⚠️ Moderate | DELETE `assumptions/` module (OLD rule generation)                |
+| `sdtm-validate`  | 🔴 Major    | **KEEP** `validator.rs` logic, DELETE `engine.rs` + old lib.rs fn |
+| `sdtm-core`      | ⚠️ Moderate | Simplify `ct_utils.rs`, remove `datetime.rs` if unused            |
+| `sdtm-ingest`    | ✅ Clean    | Keep as-is                                                        |
+| `sdtm-map`       | ✅ Clean    | Keep as-is                                                        |
+| `sdtm-report`    | ✅ Clean    | Keep as-is                                                        |
+| `sdtm-cli`       | ✅ Clean    | Update to use `DomainValidator` from `validator.rs`               |
+| `sdtm-xpt`       | ✅ Clean    | Keep as-is                                                        |
 
 ---
 
@@ -38,9 +41,22 @@ simple**.
 - `lookup.rs` - `CaseInsensitiveLookup` utility
 - `error.rs` - `SdtmError`, `Result`
 
+### Naming Changes (per NAMING_CONVENTIONS.md)
+
+| Current Name            | New Name              | Rationale                         |
+| ----------------------- | --------------------- | --------------------------------- |
+| `CtTerm`                | `Term`                | CT context implied by module      |
+| `CtCatalog`             | `TerminologyCatalog`  | Matches CDISC "CT Package"        |
+| `CtRegistry`            | `TerminologyRegistry` | More descriptive                  |
+| `IssueSeverity`         | `Severity`            | Shorter, context is clear         |
+| `ConformanceIssue`      | `ValidationIssue`     | "validation" is the activity      |
+| `ConformanceReport`     | `ValidationReport`    | Consistent with `ValidationIssue` |
+| `CaseInsensitiveLookup` | `CaseInsensitiveSet`  | It's a set, not a lookup table    |
+
 ### Recommended Actions
 
 - [x] Already simplified `conformance.rs` (from ~216 to ~55 lines)
+- [ ] Rename types per naming conventions table above
 - [ ] **Minor:** Consider removing `DatasetMetadata` if unused elsewhere
 - [ ] **Minor:** `domain.rs` has many helper methods on `DatasetClass` -
       evaluate if all are used
@@ -68,30 +84,32 @@ simple**.
     `RuleContext`
   - `core.rs` - `CoreDesignation` enum
 
-### 🔴 REMOVE: `assumptions/` module (329 lines)
+### 🔴 REMOVE: `assumptions/` module (OLD code - 329 lines)
 
-**Why:** This duplicates logic that already exists in
-`sdtm-validate/src/validator.rs`:
+**Why:** This is OLD code that generates rules which are then executed by the
+OLD `engine.rs`. The NEWER `validator.rs` already has the same logic inline and
+is compliant with `SDTM_CT_relationships.md`.
 
-| `assumptions/generator.rs`  | `sdtm-validate/validator.rs` |
-| --------------------------- | ---------------------------- |
-| `RuleSeverity` enum         | `Severity` enum              |
-| `GeneratedRule` struct      | `Issue` struct               |
-| `generate_core_rules()`     | `check_core()`               |
-| `generate_ct_rules()`       | `check_ct()`                 |
-| `generate_datetime_rules()` | `check_format()`             |
+| OLD: `assumptions/generator.rs` | NEW: `sdtm-validate/validator.rs` |
+| ------------------------------- | --------------------------------- |
+| `RuleSeverity` enum             | `Severity` enum                   |
+| `GeneratedRule` struct          | `Issue` struct                    |
+| `generate_core_rules()`         | `check_core()`                    |
+| `generate_ct_rules()`           | `check_ct()`                      |
+| `generate_datetime_rules()`     | `check_format()`                  |
 
-**The `assumptions/` module:**
+**The `assumptions/` module is part of the OLD pipeline:**
 
-1. Generates rules that are then executed by `engine.rs`
-2. But `validator.rs` already has the same logic inline
-3. Creates unnecessary indirection
+```
+OLD: assumptions/ → engine.rs → validate_domain_with_rules()
+NEW: validator.rs → DomainValidator::validate() ← CORRECT per SDTM_CT_relationships.md
+```
 
 ### Recommended Actions
 
 - [ ] **DELETE** entire `assumptions/` folder
 - [ ] Remove `RuleEngine` usage from `sdtm-validate/src/lib.rs`
-- [ ] Use `Validator` directly (after consolidating, see `sdtm-validate`
+- [ ] Use `DomainValidator` directly (after consolidating, see `sdtm-validate`
       section)
 
 ---
@@ -99,31 +117,49 @@ simple**.
 ## `sdtm-validate` (Major 🔴)
 
 **Lines of code:** ~1500+\
-**Status:** Has MAJOR duplication
+**Status:** Has MAJOR duplication - but **validator.rs is the CORRECT
+implementation**
 
 ### Current Structure
 
-- `lib.rs` (473 lines) - Main validation functions, `ValidationContext`
-- `validator.rs` (603 lines) - **DUPLICATE** `Validator`, `Issue`, `Severity`,
-  `ValidationReport`
-- `engine.rs` (307 lines) - `RuleEngine` for executing generated rules
+- `lib.rs` (473 lines) - OLD, incomplete validation (CT-only)
+- `validator.rs` (603 lines) - **NEWER, per SDTM_CT_relationships.md** ✅
+- `engine.rs` (307 lines) - OLD `RuleEngine` for executing generated rules
 - `cross_domain.rs` (~130 lines) - Cross-domain validation (simplified)
 
-### 🔴 CRITICAL: Two parallel validation systems exist!
+### Naming Changes (per NAMING_CONVENTIONS.md)
 
-**System 1: `lib.rs` + `engine.rs`**
+| Current Name                  | New Name            | Rationale                    |
+| ----------------------------- | ------------------- | ---------------------------- |
+| `Validator`                   | `DomainValidator`   | More specific                |
+| `ValidationReport`            | `ValidationReport`  | ✅ Keep (matches convention) |
+| `Issue`                       | `ValidationIssue`   | More descriptive             |
+| `Severity`                    | `Severity`          | ✅ Keep (matches convention) |
+| `CrossDomainValidationInput`  | `CrossDomainInput`  | Shorter                      |
+| `CrossDomainValidationResult` | `CrossDomainResult` | Shorter                      |
 
-- Uses `ValidationContext` + `RuleEngine`
-- Rules generated by `sdtm-standards/assumptions/`
-- Returns `ConformanceReport` from `sdtm-model`
+### 🔴 CRITICAL: System 2 (`validator.rs`) is the CORRECT one!
 
-**System 2: `validator.rs`**
+**System 1: `lib.rs::validate_domain()` (OLD - INCOMPLETE)**
 
-- Uses `Validator` struct
-- Has inline validation logic
-- Returns its own `ValidationReport` with `Issue` structs
+- Only CT validation (no Core checks, no format checks)
+- Uses `ConformanceReport` from `sdtm-model`
+- Does NOT follow `SDTM_CT_relationships.md` fully
 
-### Type Duplication
+**System 2: `validator.rs::DomainValidator` (NEWER - CORRECT)**
+
+Per the comment at top of file: _"Clean SDTM validation per
+SDTM_CT_relationships.md"_
+
+Implements all rules from the spec:
+
+- ✅ **Core designation (Req/Exp/Perm)** → Severity mapping
+- ✅ **CT extensibility** → Error for Non-extensible, Warning for Extensible
+- ✅ **Format checks** → --DTC ISO 8601, --TESTCD format
+
+Uses its own types (`Severity`, `ValidationIssue`, `ValidationReport`)
+
+### The Problem: Type Duplication
 
 | `sdtm-model/conformance.rs` | `validator.rs`     |
 | --------------------------- | ------------------ |
@@ -131,33 +167,31 @@ simple**.
 | `ConformanceIssue`          | `Issue`            |
 | `ConformanceReport`         | `ValidationReport` |
 
-### Recommended Actions
+### CORRECTED Recommendation: Unify on New Names
 
-**Option A: DELETE `validator.rs` entirely (RECOMMENDED)**
+Per NAMING_CONVENTIONS.md, use the `validator.rs` naming (it's cleaner):
 
-- [ ] Delete `validator.rs` (603 lines)
-- [ ] Delete `engine.rs` (307 lines)
-- [ ] Keep only `validate_domain()` in `lib.rs` which uses `ConformanceReport`
-- [ ] Remove `assumptions/` module from `sdtm-standards`
+1. Rename `sdtm-model/conformance.rs` → `sdtm-model/validation.rs`
+2. Rename `IssueSeverity` → `Severity`
+3. Rename `ConformanceIssue` → `ValidationIssue`
+4. Rename `ConformanceReport` → `ValidationReport`
+5. Keep `DomainValidator` struct and all `check_*` methods from `validator.rs`
+6. DELETE `lib.rs::validate_domain()` (incomplete)
+7. DELETE `engine.rs` and `assumptions/` (old approach)
+8. Update CLI to use `DomainValidator` directly
 
-**Total lines removed:** ~1200+ lines
+### What to DELETE (OLD code)
 
-**After cleanup, `sdtm-validate` becomes:**
+- [ ] `engine.rs` (307 lines) - OLD rule engine approach
+- [ ] `assumptions/` module from `sdtm-standards` (329 lines)
+- [ ] `lib.rs::validate_domain_with_rules()` - uses old engine
+- [ ] `lib.rs::validate_domains_with_rules()` - uses old engine
+- [ ] `lib.rs::ValidationContext::build_rule_engine()` - old approach
 
-```rust
-// lib.rs (~200 lines)
-pub mod cross_domain;
+### What to KEEP (NEWER code)
 
-pub use cross_domain::{...};
-pub use sdtm_model::{ConformanceIssue, ConformanceReport, IssueSeverity};
-
-// Single validation function
-pub fn validate_domain(domain: &Domain, df: &DataFrame, ctx: &ValidationContext) -> ConformanceReport {
-    // CT-only validation (source of truth)
-    // Core designation checks
-    // Format checks
-}
-```
+- ✅ `validator.rs` logic (Validator, check_core, check_ct, check_format)
+- ✅ Cross-domain validation (`cross_domain.rs`)
 
 ---
 
@@ -300,64 +334,106 @@ These functions may duplicate CT registry methods:
 
 ---
 
-## Critical Finding: Production vs Dead Code
+## Critical Finding: OLD vs NEW Code
 
-### What the CLI Actually Uses (pipeline.rs)
+### What the CLI Currently Uses (OLD approach)
 
 ```rust
-// Line 37 - imports
+// Line 37 - imports (OLD API)
 use sdtm_validate::{
     CrossDomainValidationInput, ValidationContext, validate_cross_domain, validate_domains,
     write_conformance_report_json,
 };
 
-// Line 403 - validation call
+// Line 403 - validation call (OLD API)
 let reports = validate_domains(&pipeline.standards, &frame_refs, &validation_ctx);
 ```
 
-**This means:**
+**This means the CLI uses the OLD, INCOMPLETE validation:**
 
-- ✅ `validate_domains()` → `validate_domain()` - USED IN PRODUCTION
-- ✅ `validate_cross_domain()` - USED IN PRODUCTION
-- ✅ `ValidationContext` - USED IN PRODUCTION
-- ❌ `Validator` struct - DEAD CODE (only in validator.rs tests)
-- ❌ `validate_domain_with_rules()` - DEAD CODE (only in tests)
-- ❌ `RuleEngine` - DEAD CODE (only used by validate_domain_with_rules)
-- ❌ `RuleGenerator` - DEAD CODE (only generates rules for RuleEngine)
+- `validate_domains()` → `validate_domain()` - **CT-only, no Core/format
+  checks!**
+- Does NOT follow `SDTM_CT_relationships.md` fully
 
-### Safe to Delete (verified by grep search)
+### What SHOULD Be Used (NEW approach)
 
-| File/Module                    | Usage                               | Status    |
-| ------------------------------ | ----------------------------------- | --------- |
-| `validator.rs`                 | Only internal `#[cfg(test)]` module | ❌ DELETE |
-| `engine.rs`                    | Only `validate_domain_with_rules`   | ❌ DELETE |
-| `assumptions/`                 | Only `RuleGenerator` for engine     | ❌ DELETE |
-| `validate_domain_with_rules()` | Only tests                          | ❌ DELETE |
+```rust
+// NEW API (per SDTM_CT_relationships.md)
+use sdtm_validate::Validator;
+
+// Create validator with CT registry
+let validator = Validator::new()
+    .with_ct(&ct_registry)
+    .with_preferred_catalogs(vec!["SDTM CT".to_string()]);
+
+// Validate each domain - full validation!
+let report = validator.validate(&domain, &df);
+```
+
+**The NEW `Validator` struct in `validator.rs`:**
+
+- ✅ Core designation checks (Req → Error, Exp → Warning, Perm → Optional)
+- ✅ CT validation with extensibility (Extensible=No → Error, Yes → Warning)
+- ✅ Format checks (--DTC ISO 8601, --TESTCD format)
+- ✅ Compliant with `SDTM_CT_relationships.md`
+
+### Code Status Summary
+
+| Code                        | Status                        | Action      |
+| --------------------------- | ----------------------------- | ----------- |
+| `validator.rs` (Validator)  | ✅ NEW, CORRECT, per spec     | **KEEP**    |
+| `lib.rs::validate_domain()` | ❌ OLD, CT-only, incomplete   | **REPLACE** |
+| `engine.rs` (RuleEngine)    | ❌ OLD, intermediate approach | **DELETE**  |
+| `assumptions/` module       | ❌ OLD, feeds RuleEngine      | **DELETE**  |
+| `cross_domain.rs`           | ✅ Current, works well        | **KEEP**    |
 
 ---
 
-## Execution Order
+## Execution Order (CORRECTED)
 
-### Phase 1: Remove Duplicate Validation (Biggest Win)
+### Phase 1: Migrate CLI to Use New Validator
 
-1. **DELETE** `sdtm-validate/src/validator.rs` (603 lines)
-2. **DELETE** `sdtm-validate/src/engine.rs` (307 lines)
-3. **DELETE** `sdtm-standards/src/assumptions/` folder (329 lines)
-4. Update `sdtm-validate/src/lib.rs` to remove dead exports
-5. Update `sdtm-standards/src/lib.rs` to remove assumptions exports
+1. **KEEP** `validator.rs` (603 lines) - this is the CORRECT implementation
+2. **Migrate** `validator.rs` types to use `sdtm-model` types:
+   - `Severity` → `IssueSeverity`
+   - `Issue` → `ConformanceIssue`
+   - `ValidationReport` → `ConformanceReport`
+3. **UPDATE** `lib.rs` to expose `Validator` and use it in `validate_domain()`
+4. **DELETE** OLD code:
+   - `engine.rs` (307 lines)
+   - `validate_domain_with_rules()` functions
+   - `ValidationContext::build_rule_engine()`
+5. **DELETE** `sdtm-standards/src/assumptions/` folder (329 lines)
 
-**Total: ~1200+ lines removed**
+**Total: ~600+ lines removed, BETTER validation!**
 
-### Phase 2: Consolidate CT Utils
+### Phase 2: Type Unification
+
+Option A: Update `validator.rs` to use `sdtm-model` types:
+
+```rust
+// Before (validator.rs)
+pub fn validate(&self, domain: &Domain, df: &DataFrame) -> ValidationReport
+
+// After
+pub fn validate(&self, domain: &Domain, df: &DataFrame) -> ConformanceReport
+```
+
+Option B: Keep `ValidationReport` and add conversion:
+
+```rust
+impl From<ValidationReport> for ConformanceReport { ... }
+```
+
+### Phase 3: Consolidate CT Utils
 
 1. Audit `sdtm-core/src/ct_utils.rs` (542 lines)
 2. Move essential methods to `sdtm-model/src/ct.rs`
 3. Simplify or remove duplicate functions
-4. Update imports across crates
 
 **Estimate: ~200-300 lines removed**
 
-### Phase 3: Minor Cleanup
+### Phase 4: Minor Cleanup
 
 1. Remove unused types in `sdtm-model/domain.rs`
 2. Simplify `sdtm-core/src/lib.rs` re-exports
@@ -377,17 +453,338 @@ cargo test
 
 ---
 
-## Summary
+## Summary (CORRECTED)
 
-| Phase     | Action                      | Lines Removed    |
-| --------- | --------------------------- | ---------------- |
-| 1         | Delete duplicate validation | ~1200            |
-| 2         | Consolidate CT utils        | ~200-300         |
-| 3         | Minor cleanup               | ~50-100          |
-| **Total** |                             | **~1500+ lines** |
+| Phase     | Action                       | Lines Changed           |
+| --------- | ---------------------------- | ----------------------- |
+| 1         | Delete OLD validation system | -600 lines              |
+| 2         | Unify types                  | ~50 lines refactored    |
+| 3         | Consolidate CT utils         | -200-300 lines          |
+| 4         | Minor cleanup                | -50-100 lines           |
+| **Total** |                              | **~1000 lines removed** |
 
 The codebase will be:
 
-- **Simpler**: One validation path, one CT model
+- **Correct**: Validation follows `SDTM_CT_relationships.md`
+- **Complete**: Core designation, CT, AND format checks
+- **Simpler**: One validation path via `Validator`
 - **Less duplicated**: No parallel type hierarchies
-- **Cleaner**: Fewer re-exports, clearer APIs
+
+---
+
+## Phase 1: Detailed Code Changes
+
+### Step 1.1: Delete `validator.rs` (603 lines)
+
+**File to delete:** `crates/sdtm-validate/src/validator.rs`
+
+This file contains:
+
+- `Severity` enum (duplicate of `IssueSeverity`)
+- `Issue` struct (duplicate of `ConformanceIssue`)
+- `ValidationReport` struct (duplicate of `ConformanceReport`)
+- `Validator` struct (unused in production)
+- All `check_*` methods duplicated by `lib.rs::validate_domain()`
+- ~200 lines of inline tests
+
+**Impact:** None - only used by its own tests
+
+---
+
+### Step 1.2: Delete `engine.rs` (307 lines)
+
+**File to delete:** `crates/sdtm-validate/src/engine.rs`
+
+This file contains:
+
+- `RuleEngine` struct
+- `execute()` method that runs `GeneratedRule`s
+- Rule context handlers (duplicate logic from assumptions/)
+
+**Impact:** Only used by `validate_domain_with_rules()` which is dead code
+
+---
+
+### Step 1.3: Delete `assumptions/` module (329 lines)
+
+**Folder to delete:** `crates/sdtm-standards/src/assumptions/`
+
+Contents:
+
+- `mod.rs` (65 lines) - exports
+- `generator.rs` (329 lines) - `RuleGenerator`, `GeneratedRule`
+- `core.rs` (45 lines) - `CoreDesignation` enum
+
+**Impact:** Only used by `RuleEngine` which is being deleted
+
+---
+
+### Step 1.4: Update `sdtm-validate/src/lib.rs`
+
+**Remove these exports:**
+
+```rust
+// DELETE THESE LINES:
+mod engine;
+mod validator;
+
+pub use engine::RuleEngine;
+pub use validator::{Issue, Severity, ValidationReport, Validator};
+```
+
+**Remove these functions:**
+
+```rust
+// DELETE: validate_domain_with_rules() - ~20 lines
+// DELETE: validate_domains_with_rules() - ~15 lines
+// DELETE: build_rule_engine() from ValidationContext - ~15 lines
+```
+
+**Remove this import:**
+
+```rust
+// DELETE:
+use sdtm_standards::assumptions::RuleGenerator;
+```
+
+---
+
+### Step 1.5: Update `sdtm-standards/src/lib.rs`
+
+**Remove these exports:**
+
+```rust
+// DELETE THESE LINES:
+pub mod assumptions;
+
+pub use assumptions::{
+    CoreDesignation, GeneratedRule, RuleContext, RuleGenerationSummary, RuleGenerator, RuleSeverity,
+};
+```
+
+---
+
+### Step 1.6: Delete Test Files
+
+**Files to delete:**
+
+- `crates/sdtm-standards/tests/assumptions.rs` (137 lines)
+
+**Files to update:**
+
+- `crates/sdtm-validate/tests/validate.rs` - Remove `validate_domain_with_rules`
+  import and tests
+
+---
+
+## Phase 2: CT Utils Consolidation
+
+### Analysis: What's Actually Used in `ct_utils.rs`
+
+| Function                       | Used By                      | Keep/Delete                      |
+| ------------------------------ | ---------------------------- | -------------------------------- |
+| `CtResolution` enum            | `ct_utils.rs` internal       | **KEEP** - useful type           |
+| `compact_key()`                | Multiple places              | **KEEP**                         |
+| `resolve_ct_value()`           | Core resolution              | **KEEP**                         |
+| `resolve_ct_strict()`          | `processor.rs`               | **KEEP**                         |
+| `resolve_ct_lenient()`         | `domain_processors/`         | **KEEP**                         |
+| `normalize_ct_value()`         | `domain_processors/`         | **KEEP**                         |
+| `normalize_ct_value_safe()`    | `processor.rs`               | **KEEP**                         |
+| `normalize_ct_value_strict()`  | `processor.rs`               | **KEEP**                         |
+| `preferred_term_for()`         | `da.rs`, `vs.rs`, `lb.rs`    | **KEEP**                         |
+| `nci_code_for()`               | Not found in usage           | **DELETE**                       |
+| `is_valid_submission_value()`  | Re-exports only              | **DELETE** - use `ct.is_valid()` |
+| `is_valid_ct_value()`          | Not found in usage           | **DELETE**                       |
+| `is_yes_no_token()`            | Limited usage                | **KEEP** (small)                 |
+| `edit_distance()`              | `resolve_ct_value_from_hint` | **KEEP** (internal)              |
+| `resolve_ct_value_from_hint()` | Mapping engine               | **KEEP**                         |
+| `resolve_ct_for_variable()`    | Limited                      | **EVALUATE**                     |
+| `ct_column_match()`            | Mapping engine               | **KEEP**                         |
+| `completion_column()`          | Preprocess                   | **KEEP**                         |
+
+**Estimated removal:** ~40 lines from unused functions
+
+---
+
+### Step 2.1: Remove Unused Functions from `ct_utils.rs`
+
+```rust
+// DELETE THESE FUNCTIONS:
+pub fn nci_code_for(ct: &Codelist, submission: &str) -> Option<String> { ... }
+pub fn is_valid_submission_value(ct: &Codelist, value: &str) -> bool { ... }
+pub fn is_valid_ct_value(ct: &Codelist, raw: &str) -> bool { ... }
+```
+
+Note: `preferred_term_for()` is USED by `da.rs`, `vs.rs`, `lb.rs` - KEEP IT
+
+---
+
+### Step 2.2: Update `sdtm-core/src/lib.rs` Exports
+
+```rust
+// BEFORE (too many exports):
+pub use ct_utils::{
+    CtResolution, compact_key, completion_column, ct_column_match, is_valid_ct_value,
+    is_valid_submission_value, is_yes_no_token, nci_code_for, normalize_ct_value,
+    normalize_ct_value_safe, normalize_ct_value_strict, preferred_term_for,
+    resolve_ct_for_variable, resolve_ct_lenient, resolve_ct_strict, resolve_ct_value,
+    resolve_ct_value_from_hint,
+};
+
+// AFTER (simplified):
+pub use ct_utils::{
+    CtResolution, compact_key, completion_column, ct_column_match,
+    is_yes_no_token, normalize_ct_value, normalize_ct_value_safe,
+    normalize_ct_value_strict, resolve_ct_for_variable, resolve_ct_lenient,
+    resolve_ct_strict, resolve_ct_value, resolve_ct_value_from_hint,
+};
+```
+
+---
+
+## Phase 3: Architecture Improvements
+
+### Option A: Keep Current Structure (Recommended)
+
+The current crate structure is actually reasonable:
+
+```
+sdtm-model     → Types only (no dependencies)
+sdtm-standards → Load standards from files
+sdtm-ingest    → Read input data
+sdtm-map       → Column mapping
+sdtm-core      → Processing logic
+sdtm-validate  → Validation
+sdtm-report    → Output generation
+sdtm-xpt       → XPT format
+sdtm-cli       → CLI
+```
+
+**Don't create new crates** - the current structure is logical.
+
+### Option B: Merge Small Crates (Not Recommended)
+
+Could merge `sdtm-xpt` into `sdtm-report`, but:
+
+- XPT is a distinct concern
+- Current separation is clean
+
+---
+
+## Phase 4: Minor Cleanups
+
+### 4.1: Remove `DatasetMetadata` if Unused
+
+Currently only used in `loaders.rs` as intermediate type during CSV parsing.
+
+**Check:** Is it exported/used elsewhere?
+
+- `sdtm-model/src/lib.rs` exports it
+- Only used in `loaders.rs`
+
+**Action:** Keep for now (minimal overhead, used correctly)
+
+---
+
+### 4.2: Simplify `DatasetClass` Helper Methods
+
+```rust
+// These methods might be unused - verify before removing:
+impl DatasetClass {
+    pub fn is_general_observation(&self) -> bool { ... }  // CHECK USAGE
+    pub fn general_observation_class(&self) -> Option<DatasetClass> { ... }  // CHECK USAGE
+    pub fn is_trial_design(&self) -> bool { ... }  // CHECK USAGE
+    pub fn is_special_purpose(&self) -> bool { ... }  // CHECK USAGE
+    pub fn is_relationship(&self) -> bool { ... }  // CHECK USAGE
+    pub fn is_study_reference(&self) -> bool { ... }  // CHECK USAGE
+}
+```
+
+---
+
+### 4.3: Evaluate `preprocess/rule_table.rs`
+
+This is a sophisticated rule system (297 lines) for preprocessing.
+
+**Current state:** Appears well-designed and used **Action:** Keep - legitimate
+functionality
+
+---
+
+### 4.4: Evaluate `provenance.rs`
+
+This module (371 lines) tracks derivation origins for Define-XML.
+
+**Current state:** Used by `ProcessingContext`, validation **Action:** Keep -
+required for SDTMIG compliance
+
+---
+
+## Implementation Checklist
+
+### Phase 1: Dead Code Removal ✅ Priority: HIGH
+
+- [ ] Delete `crates/sdtm-validate/src/validator.rs`
+- [ ] Delete `crates/sdtm-validate/src/engine.rs`
+- [ ] Delete `crates/sdtm-standards/src/assumptions/` folder
+- [ ] Update `crates/sdtm-validate/src/lib.rs`
+- [ ] Update `crates/sdtm-standards/src/lib.rs`
+- [ ] Delete `crates/sdtm-standards/tests/assumptions.rs`
+- [ ] Update `crates/sdtm-validate/tests/validate.rs`
+- [ ] Run `cargo fmt && cargo clippy && cargo test`
+
+### Phase 2: CT Utils Cleanup ✅ Priority: MEDIUM
+
+- [ ] Remove `nci_code_for()` from `ct_utils.rs`
+- [ ] Remove `is_valid_submission_value()` from `ct_utils.rs`
+- [ ] Remove `is_valid_ct_value()` from `ct_utils.rs`
+- [ ] Update `lib.rs` exports
+- [ ] Run `cargo fmt && cargo clippy && cargo test`
+
+### Phase 3: Verify No New Crates Needed ✅ Priority: LOW
+
+- [x] Architecture review complete
+- [x] Current structure is appropriate
+- [ ] No action needed
+
+### Phase 4: Minor Cleanups ✅ Priority: LOW
+
+- [ ] Verify `DatasetClass` helper method usage
+- [ ] Keep `preprocess/rule_table.rs` (legitimate)
+- [ ] Keep `provenance.rs` (required for compliance)
+
+---
+
+## Final Line Count Estimate
+
+| Item                           | Lines Removed    |
+| ------------------------------ | ---------------- |
+| `validator.rs`                 | 603              |
+| `engine.rs`                    | 307              |
+| `assumptions/` folder          | ~440             |
+| `assumptions.rs` test          | 137              |
+| `ct_utils.rs` unused functions | ~30              |
+| `lib.rs` export cleanup        | ~15              |
+| **Total**                      | **~1,532 lines** |
+
+---
+
+## Risk Assessment
+
+| Change                | Risk   | Mitigation                  |
+| --------------------- | ------ | --------------------------- |
+| Delete `validator.rs` | LOW    | Only used by internal tests |
+| Delete `engine.rs`    | LOW    | Only used by dead function  |
+| Delete `assumptions/` | LOW    | Only used by engine         |
+| Remove CT functions   | MEDIUM | Grep search before deletion |
+| Change exports        | MEDIUM | Full test suite must pass   |
+
+---
+
+## Next Steps
+
+1. **Approve this plan** - Review and confirm approach
+2. **Execute Phase 1** - Delete dead validation code
+3. **Run full test suite** - Ensure nothing breaks
+4. **Execute Phase 2** - CT utils cleanup
+5. **Final verification** - `cargo clippy`, `cargo test`

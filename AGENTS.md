@@ -15,6 +15,12 @@ provenance. Output must match SDTMIG and MSG conventions exactly.
 - Define-XML spec: `docs/Define-XML_2.1/`
 - Dataset-XML spec: `docs/Dataset-XML_1-0/`
 - MSG v2.0 golden standard: `docs/SDTM-MSG_v2.0_Sample_Submission_Package/`
+- CT relationship rules: `SDTM_CT_relationships.md`
+
+### Project documentation
+
+- **Naming conventions**: `docs/NAMING_CONVENTIONS.md` - Type/function naming
+- **Refactoring plan**: `docs/CRATE_REFACTORING_PLAN.md` - Crate-level changes
 
 ### SDTMIG v3.4 Chapter Reference
 
@@ -55,6 +61,52 @@ The full SDTMIG v3.4 specification is available in Markdown format:
 - **Place tests in the `tests/` folder**, not inline `#[cfg(test)]` modules.
   Keep source files focused on implementation. Each crate should have its tests
   in `crates/<crate>/tests/*.rs`.
+
+## Naming conventions
+
+**Follow `docs/NAMING_CONVENTIONS.md` strictly.** Key rules:
+
+### Rust style (RFC 430)
+
+- Types: `UpperCamelCase` (`Domain`, `ValidationReport`, `Codelist`)
+- Functions: `snake_case` (`validate_domain`, `load_terminology`)
+- Constants: `SCREAMING_SNAKE` (`MAX_VARIABLE_LENGTH`)
+- Modules: `snake_case` (`controlled_terminology`)
+
+### SDTM terminology alignment
+
+| Concept           | Rust Type             | Notes                              |
+| ----------------- | --------------------- | ---------------------------------- |
+| Domain metadata   | `Domain`              | Per SDTMIG Chapter 2               |
+| Variable metadata | `Variable`            | Column definition                  |
+| Dataset class     | `DatasetClass`        | Interventions/Events/Findings/etc. |
+| Controlled Term   | `Term`                | Single CT value                    |
+| Codelist          | `Codelist`            | Set of terms                       |
+| CT Package        | `TerminologyCatalog`  | Full CT release                    |
+| CT Registry       | `TerminologyRegistry` | Multi-catalog lookup               |
+| Validation result | `ValidationReport`    | Per-domain issues                  |
+| Validation issue  | `ValidationIssue`     | Single finding                     |
+| Issue severity    | `Severity`            | Error/Warning/Info                 |
+| Core designation  | `CoreDesignation`     | Req/Exp/Perm enum                  |
+
+### Function naming patterns
+
+- `validate_*` - Validation functions returning reports
+- `check_*` - Internal boolean/issue checks
+- `load_*` - Load from files
+- `parse_*` - Parse strings
+- `normalize_*` - Transform to canonical form
+- `process_*` - Multi-step operations
+
+### Forbidden abbreviations
+
+| ❌ Avoid | ✅ Use Instead  |
+| -------- | --------------- |
+| `ctx`    | `context`       |
+| `df`     | `data`, `frame` |
+| `cfg`    | `config`        |
+| `val`    | `value`         |
+| `proc`   | `process`       |
 
 ## Security considerations
 
@@ -136,8 +188,6 @@ The full SDTMIG v3.4 specification is available in Markdown format:
 ## Commit and PR guidelines
 
 - Keep changes focused and explain SDTMIG/MSG rationale in descriptions.
-- Update `docs/SUGGESTED_CODE_CHANGES.md` when requirements or assumptions
-  change.
 - Do not rewrite history or amend unless explicitly requested.
 
 ## Deployment and release
@@ -150,10 +200,9 @@ The full SDTMIG v3.4 specification is available in Markdown format:
 ## Working practices
 
 - Prefer `rg` for file and text search.
-- Always check the task scope and status in `docs/SUGGESTED_CODE_CHANGES.md`
-  before starting work.
-- Mark completed tasks with `[x]` in `docs/SUGGESTED_CODE_CHANGES.md`.
-- If requirements change, update `docs/SUGGESTED_CODE_CHANGES.md`.
 - Before implementing any SDTM rule, read the relevant section in
   `standards/sdtmig/v3_4/chapters/` to verify the requirement.
 - When in doubt about SDTM behavior, consult the chapter documentation first.
+- **Follow naming conventions** in `docs/NAMING_CONVENTIONS.md` for all new
+  code.
+- Check `docs/CRATE_REFACTORING_PLAN.md` for architecture decisions.
