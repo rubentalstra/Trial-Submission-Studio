@@ -1,3 +1,14 @@
+//! Domain frame types for SDTM dataset representation.
+//!
+//! This module provides the [`DomainFrame`] type which wraps a Polars DataFrame
+//! with SDTM-specific metadata including domain code, source file provenance,
+//! and dataset naming for output.
+//!
+//! # SDTMIG v3.4 Reference
+//!
+//! - Chapter 4.1.4: Split datasets and dataset naming conventions
+//! - Chapter 8: Relationship datasets (SUPPQUAL naming)
+
 use std::path::PathBuf;
 
 use polars::prelude::DataFrame;
@@ -25,9 +36,22 @@ pub struct DomainFrameMeta {
     pub base_domain_code: Option<String>,
 }
 
+/// A processed SDTM domain dataset with metadata.
+///
+/// Combines a Polars DataFrame with SDTM domain identification and
+/// optional provenance metadata. This is the primary data structure
+/// passed through the processing pipeline.
+///
+/// # Fields
+///
+/// - `domain_code`: The SDTM domain code (e.g., "AE", "DM", "LB")
+/// - `data`: The actual dataset as a Polars DataFrame
+/// - `meta`: Optional metadata for source tracking and naming
 #[derive(Debug, Clone)]
 pub struct DomainFrame {
+    /// The SDTM domain code (e.g., "AE", "DM", "LB", "SUPPLB").
     pub domain_code: String,
+    /// The dataset contents as a Polars DataFrame.
     pub data: DataFrame,
     /// Optional metadata about provenance and naming.
     pub meta: Option<DomainFrameMeta>,

@@ -52,6 +52,21 @@ pub(super) fn process_vs(
     // Derive VSTEST from VSTESTCD using CT preferred terms
     derive_test_from_testcd(domain, df, context, "VSTEST", "VSTESTCD", "VSTESTCD")?;
 
+    // VSCAT: Category
+    normalize_ct_columns(domain, df, context, "VSCAT", &["VSCAT"])?;
+    // VSSCAT: Subcategory
+    normalize_ct_columns(domain, df, context, "VSSCAT", &["VSSCAT"])?;
+    // VSPOS: Position (Codelist C71148)
+    normalize_ct_columns(domain, df, context, "VSPOS", &["VSPOS"])?;
+    // VSLOC: Location (Codelist C74456)
+    normalize_ct_columns(domain, df, context, "VSLOC", &["VSLOC"])?;
+    // VSLAT: Laterality (Codelist C99073)
+    normalize_ct_columns(domain, df, context, "VSLAT", &["VSLAT"])?;
+    // VSMETHOD: Method (Codelist C85492)
+    normalize_ct_columns(domain, df, context, "VSMETHOD", &["VSMETHOD"])?;
+    // EPOCH: Epoch (Codelist C99079)
+    normalize_ct_columns(domain, df, context, "EPOCH", &["EPOCH"])?;
+
     // Derive numeric result from VSORRES
     if let (Some(vsorres), Some(vsstresn)) = (col(domain, "VSORRES"), col(domain, "VSSTRESN"))
         && has_column(df, vsorres)

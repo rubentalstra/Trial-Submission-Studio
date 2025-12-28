@@ -71,5 +71,20 @@ pub(super) fn process_mh(
         let values = numeric_column_f64(df, mhdy)?;
         set_f64_column(df, mhdy, values)?;
     }
+
+    // Normalize CT columns
+    // MHCAT: Category
+    normalize_ct_columns(domain, df, context, "MHCAT", &["MHCAT"])?;
+    // MHSCAT: Subcategory
+    normalize_ct_columns(domain, df, context, "MHSCAT", &["MHSCAT"])?;
+    // MHENRF: End Relative to Reference Period (Codelist C66728)
+    normalize_ct_columns(domain, df, context, "MHENRF", &["MHENRF"])?;
+    // MHSTRF: Start Relative to Reference Period (Codelist C66728)
+    normalize_ct_columns(domain, df, context, "MHSTRF", &["MHSTRF"])?;
+    // MHPRESP: Pre-specified (Codelist C66742)
+    normalize_ct_columns(domain, df, context, "MHPRESP", &["MHPRESP"])?;
+    // MHOCCUR: Occurrence (Codelist C66742)
+    normalize_ct_columns(domain, df, context, "MHOCCUR", &["MHOCCUR"])?;
+
     Ok(())
 }

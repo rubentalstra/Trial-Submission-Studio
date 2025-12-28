@@ -1,3 +1,20 @@
+//! Domain processing and transformation engine.
+//!
+//! This module provides the main [`process_domain`] function that applies
+//! SDTM-specific transformations to domain DataFrames. Processing includes:
+//!
+//! - USUBJID prefix application (STUDYID-SUBJID format)
+//! - Domain-specific business rules (via domain_processors)
+//! - Controlled Terminology normalization
+//! - Sequence number (--SEQ) assignment
+//!
+//! # SDTMIG v3.4 Reference
+//!
+//! - Section 4.1.2: USUBJID construction (STUDYID concatenation)
+//! - Section 4.1.5: --SEQ variable assignment per subject
+//! - Chapter 6: Domain-specific processing rules
+//! - Chapter 10: Controlled Terminology conformance
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use anyhow::Result;
@@ -12,10 +29,18 @@ use crate::domain_processors;
 use crate::pipeline_context::{PipelineContext, SequenceAssignmentMode, UsubjidPrefixMode};
 use sdtm_ingest::any_to_string;
 
+/// Input for domain processing operations.
+///
+/// Bundles together the domain definition, mutable DataFrame reference,
+/// pipeline context, and optional sequence tracker for cross-file continuity.
 pub struct DomainProcessInput<'a> {
+    /// The SDTM domain definition with variable specifications.
     pub domain: &'a Domain,
+    /// The DataFrame to process (modified in place).
     pub data: &'a mut DataFrame,
+    /// Pipeline context with study metadata, CT registry, and options.
     pub context: &'a PipelineContext,
+    /// Optional tracker for cross-file sequence number continuity.
     pub sequence_tracker: Option<&'a mut BTreeMap<String, i64>>,
 }
 
@@ -136,6 +161,22 @@ fn apply_base_rules(domain: &Domain, df: &mut DataFrame, context: &PipelineConte
     Ok(())
 }
 
+/// Process a domain DataFrame through the SDTM transformation pipeline.
+///
+/// Applies the following transformations in order:
+///
+/// 1. **Base rules** - USUBJID prefix application (STUDYID-SUBJID format)
+/// 2. **Domain-specific rules** - Business logic per domain (AE, DM, CM, etc.)
+/// 3. **CT normalization** - Normalize values to CDISC Controlled Terminology
+/// 4. **Sequence assignment** - Generate --SEQ values per subject
+///
+/// # Arguments
+///
+/// * `input` - Processing input containing domain, data, context, and tracker
+///
+/// # Errors
+///
+/// Returns an error if any processing step fails.
 pub fn process_domain(input: DomainProcessInput<'_>) -> Result<()> {
     let DomainProcessInput {
         domain,

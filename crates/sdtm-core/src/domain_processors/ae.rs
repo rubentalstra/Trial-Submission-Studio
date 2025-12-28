@@ -1,3 +1,7 @@
+//! Adverse Events (AE) domain processor.
+//!
+//! Processes AE domain data per SDTMIG v3.4 Section 6.3.2.
+
 use anyhow::Result;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
@@ -49,82 +53,18 @@ pub(super) fn process_ae(
     }
     // Backward fill: AETERM → AEDECOD
     backward_fill_var(domain, df, "AETERM", "AEDECOD")?;
-    apply_map_upper(
-        df,
-        col(domain, "AEACN"),
-        &map_values([
-            ("NONE", "DOSE NOT CHANGED"),
-            ("NO ACTION", "DOSE NOT CHANGED"),
-            ("UNK", "UNKNOWN"),
-            ("NA", "NOT APPLICABLE"),
-            ("N/A", "NOT APPLICABLE"),
-        ]),
-    )?;
-    apply_map_upper(
-        df,
-        col(domain, "AESER"),
-        &map_values([
-            ("YES", "Y"),
-            ("NO", "N"),
-            ("1", "Y"),
-            ("0", "N"),
-            ("TRUE", "Y"),
-            ("FALSE", "N"),
-        ]),
-    )?;
-    apply_map_upper(
-        df,
-        col(domain, "AEREL"),
-        &map_values([
-            ("NO", "NOT RELATED"),
-            ("N", "NOT RELATED"),
-            ("NOT SUSPECTED", "NOT RELATED"),
-            ("UNLIKELY RELATED", "NOT RELATED"),
-            ("YES", "RELATED"),
-            ("Y", "RELATED"),
-            ("POSSIBLY RELATED", "RELATED"),
-            ("PROBABLY RELATED", "RELATED"),
-            ("SUSPECTED", "RELATED"),
-            ("UNK", "UNKNOWN"),
-            ("NOT ASSESSED", "UNKNOWN"),
-        ]),
-    )?;
-    apply_map_upper(
-        df,
-        col(domain, "AEOUT"),
-        &map_values([
-            ("RECOVERED", "RECOVERED/RESOLVED"),
-            ("RESOLVED", "RECOVERED/RESOLVED"),
-            ("RECOVERED OR RESOLVED", "RECOVERED/RESOLVED"),
-            ("RECOVERING", "RECOVERING/RESOLVING"),
-            ("RESOLVING", "RECOVERING/RESOLVING"),
-            ("NOT RECOVERED", "NOT RECOVERED/NOT RESOLVED"),
-            ("NOT RESOLVED", "NOT RECOVERED/NOT RESOLVED"),
-            ("UNRESOLVED", "NOT RECOVERED/NOT RESOLVED"),
-            (
-                "RECOVERED WITH SEQUELAE",
-                "RECOVERED/RESOLVED WITH SEQUELAE",
-            ),
-            ("RESOLVED WITH SEQUELAE", "RECOVERED/RESOLVED WITH SEQUELAE"),
-            ("DEATH", "FATAL"),
-            ("5", "FATAL"),
-            ("GRADE 5", "FATAL"),
-            ("UNK", "UNKNOWN"),
-            ("U", "UNKNOWN"),
-        ]),
-    )?;
-    apply_map_upper(
-        df,
-        col(domain, "AESEV"),
-        &map_values([
-            ("1", "MILD"),
-            ("GRADE 1", "MILD"),
-            ("2", "MODERATE"),
-            ("GRADE 2", "MODERATE"),
-            ("3", "SEVERE"),
-            ("GRADE 3", "SEVERE"),
-        ]),
-    )?;
+
+    // Normalize via CT (dynamic, using synonyms from CT files)
+    // AEACN: Codelist C66767 (Action Taken with Study Treatment)
+    normalize_ct_columns(domain, df, context, "AEACN", &["AEACN"])?;
+    // AESER: Codelist C66742 (No Yes Response)
+    normalize_ct_columns(domain, df, context, "AESER", &["AESER"])?;
+    // AEREL: Codelist C66766 (Causality)
+    normalize_ct_columns(domain, df, context, "AEREL", &["AEREL"])?;
+    // AEOUT: Codelist C66768 (Outcome of Adverse Event)
+    normalize_ct_columns(domain, df, context, "AEOUT", &["AEOUT"])?;
+    // AESEV: Codelist C66769 (Severity/Intensity Scale for Adverse Events)
+    normalize_ct_columns(domain, df, context, "AESEV", &["AESEV"])?;
 
     for code in [
         "AEPTCD", "AEHLGTCD", "AEHLTCD", "AELLTCD", "AESOCCD", "AEBDSYCD",

@@ -58,5 +58,19 @@ pub(super) fn process_ie(
         set_f64_column(df, iedy, numeric)?;
     }
 
+    // Normalize CT columns
+    // IETESTCD: Test Code
+    normalize_ct_columns(domain, df, context, "IETESTCD", &["IETESTCD"])?;
+    // IETEST: Test Name
+    normalize_ct_columns(domain, df, context, "IETEST", &["IETEST"])?;
+    // IECAT: Category (Codelist C66781)
+    normalize_ct_columns(domain, df, context, "IECAT", &["IECAT"])?;
+    // IESCAT: Subcategory
+    normalize_ct_columns(domain, df, context, "IESCAT", &["IESCAT"])?;
+    // IEORRES/IESTRESC: Original/Standardized Result (Codelist C66742)
+    normalize_ct_columns(domain, df, context, "IEORRES", &["IEORRES", "IESTRESC"])?;
+    // EPOCH: Epoch (Codelist C99079)
+    normalize_ct_columns(domain, df, context, "EPOCH", &["EPOCH"])?;
+
     Ok(())
 }

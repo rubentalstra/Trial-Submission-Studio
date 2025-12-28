@@ -109,6 +109,23 @@ pub(super) fn process_lb(
     // Normalize unit columns via CT
     normalize_ct_columns(domain, df, context, "LBORRESU", &["LBORRESU", "LBSTRESU"])?;
 
+    // LBTEST: Test Name
+    normalize_ct_columns(domain, df, context, "LBTEST", &["LBTEST"])?;
+    // LBCAT: Category
+    normalize_ct_columns(domain, df, context, "LBCAT", &["LBCAT"])?;
+    // LBSCAT: Subcategory
+    normalize_ct_columns(domain, df, context, "LBSCAT", &["LBSCAT"])?;
+    // LBSPEC: Specimen (Codelist C78734)
+    normalize_ct_columns(domain, df, context, "LBSPEC", &["LBSPEC"])?;
+    // LBMETHOD: Method (Codelist C85492)
+    normalize_ct_columns(domain, df, context, "LBMETHOD", &["LBMETHOD"])?;
+    // LBLOC: Location (Codelist C74456)
+    normalize_ct_columns(domain, df, context, "LBLOC", &["LBLOC"])?;
+    // LBFAST: Fasting Status (Codelist C66742)
+    normalize_ct_columns(domain, df, context, "LBFAST", &["LBFAST"])?;
+    // LBNRIND: Normal Range Indicator (Codelist C78736)
+    normalize_ct_columns(domain, df, context, "LBNRIND", &["LBNRIND"])?;
+
     // Clear LBCOLSRT if it contains Y/N tokens
     if let Some(lbcolsrt) = col(domain, "LBCOLSRT")
         && has_column(df, lbcolsrt)

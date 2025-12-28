@@ -46,5 +46,20 @@ pub(super) fn process_pe(
         let values = string_column(df, epoch)?;
         set_string_column(df, epoch, values)?;
     }
+
+    // Normalize CT columns
+    // PESTAT: Status (Codelist C66789)
+    normalize_ct_columns(domain, df, context, "PESTAT", &["PESTAT"])?;
+    // PELOC: Location (Codelist C74456)
+    normalize_ct_columns(domain, df, context, "PELOC", &["PELOC"])?;
+    // PEBODSYS: Body System (Codelist C66770)
+    normalize_ct_columns(domain, df, context, "PEBODSYS", &["PEBODSYS"])?;
+    // PECAT: Category
+    normalize_ct_columns(domain, df, context, "PECAT", &["PECAT"])?;
+    // PESCAT: Subcategory
+    normalize_ct_columns(domain, df, context, "PESCAT", &["PESCAT"])?;
+    // EPOCH: Epoch (Codelist C99079)
+    normalize_ct_columns(domain, df, context, "EPOCH", &["EPOCH"])?;
+
     Ok(())
 }

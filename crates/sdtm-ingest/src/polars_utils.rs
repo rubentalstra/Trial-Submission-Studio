@@ -27,28 +27,6 @@ pub fn any_to_string(value: AnyValue<'_>) -> String {
     }
 }
 
-/// Converts a Polars AnyValue to a String for output, handling missing values.
-/// Similar to `any_to_string` but specifically for output contexts.
-pub fn any_to_string_for_output(value: AnyValue<'_>) -> String {
-    match value {
-        AnyValue::Null => String::new(),
-        AnyValue::Int8(v) => v.to_string(),
-        AnyValue::Int16(v) => v.to_string(),
-        AnyValue::Int32(v) => v.to_string(),
-        AnyValue::Int64(v) => v.to_string(),
-        AnyValue::UInt8(v) => v.to_string(),
-        AnyValue::UInt16(v) => v.to_string(),
-        AnyValue::UInt32(v) => v.to_string(),
-        AnyValue::UInt64(v) => v.to_string(),
-        AnyValue::Float32(v) => format_numeric(f64::from(v)),
-        AnyValue::Float64(v) => format_numeric(v),
-        AnyValue::String(s) => s.to_string(),
-        AnyValue::StringOwned(s) => s.to_string(),
-        AnyValue::Boolean(b) => if b { "Y" } else { "N" }.to_string(),
-        other => other.to_string(),
-    }
-}
-
 /// Converts AnyValue to String, returning None if the result is empty.
 pub fn any_to_string_non_empty(value: AnyValue<'_>) -> Option<String> {
     let s = any_to_string(value);
@@ -80,11 +58,6 @@ pub fn any_to_f64(value: AnyValue<'_>) -> Option<f64> {
         AnyValue::StringOwned(s) => parse_f64(&s),
         _ => None,
     }
-}
-
-/// Converts an AnyValue to f64 for output purposes.
-pub fn any_to_f64_for_output(value: AnyValue<'_>) -> Option<f64> {
-    any_to_f64(value)
 }
 
 /// Converts an AnyValue to i64, returning None for non-integer or null values.

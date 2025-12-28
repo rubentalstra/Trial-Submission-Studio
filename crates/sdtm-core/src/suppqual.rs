@@ -1,3 +1,16 @@
+//! Supplemental Qualifier (SUPP--) dataset generation.
+//!
+//! Generates SUPPQUAL datasets for unmapped source columns per SDTMIG v3.4
+//! Section 8.4. Supplemental qualifiers store non-standard variables that
+//! don't fit into the core domain structure.
+//!
+//! # SDTMIG v3.4 Reference
+//!
+//! - Section 4.1.7: Split dataset naming (SUPP prefix, SQ fallback)
+//! - Section 8.4: Supplemental Qualifiers structure
+//! - Section 8.4.1: DM domain special case (no IDVAR/IDVARVAL)
+//! - Section 8.4.2: SUPP dataset naming conventions
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use anyhow::Result;
@@ -8,15 +21,28 @@ use crate::data_utils::column_value_string;
 use crate::frame::DomainFrame;
 use crate::frame_builder::build_domain_frame_from_records;
 
+/// Input for SUPPQUAL generation.
+///
+/// Contains all the context needed to generate a SUPP-- dataset from
+/// unmapped source columns.
 pub struct SuppqualInput<'a> {
+    /// The parent domain definition (e.g., AE, DM).
     pub parent_domain: &'a Domain,
+    /// The SUPPQUAL domain definition with variable specs.
     pub suppqual_domain: &'a Domain,
+    /// The original source DataFrame before mapping.
     pub source_df: &'a DataFrame,
+    /// The mapped DataFrame (for USUBJID and --SEQ values).
     pub mapped_df: Option<&'a DataFrame>,
+    /// Source columns that were successfully mapped to SDTM variables.
     pub used_source_columns: &'a BTreeSet<String>,
+    /// The study identifier for STUDYID column.
     pub study_id: &'a str,
+    /// Columns to exclude from SUPPQUAL (uppercase).
     pub exclusion_columns: Option<&'a BTreeSet<String>>,
+    /// Source column labels for QLABEL population.
     pub source_labels: Option<&'a BTreeMap<String, String>>,
+    /// Columns that are derived (for QORIG = "Derived").
     pub derived_columns: Option<&'a BTreeSet<String>>,
 }
 
@@ -140,6 +166,16 @@ struct SuppColumn {
     qorig: String,
 }
 
+/// Build a SUPPQUAL dataset from unmapped source columns.
+///
+/// Generates supplemental qualifier records for source columns that were
+/// not mapped to standard SDTM variables. Each non-empty value becomes
+/// a separate SUPPQUAL record.
+///
+/// # Returns
+///
+/// `None` if there are no extra columns to capture, otherwise a DomainFrame
+/// containing the SUPP-- dataset.
 pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<DomainFrame>> {
     let parent_domain_code = input.parent_domain.code.to_uppercase();
     if input.suppqual_domain.variables.is_empty() {

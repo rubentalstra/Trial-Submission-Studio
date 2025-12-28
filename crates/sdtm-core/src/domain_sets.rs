@@ -1,3 +1,9 @@
+//! Domain collection utilities for SDTM processing.
+//!
+//! Provides helper functions for working with collections of domains,
+//! including building lookup maps and generating report-ready domain sets
+//! with dynamic SUPPQUAL metadata.
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use anyhow::{Result, anyhow};
@@ -6,6 +12,9 @@ use sdtm_model::Domain;
 
 use crate::frame::DomainFrame;
 
+/// Build a lookup map from domain code to domain definition.
+///
+/// Keys are uppercase domain codes for case-insensitive lookup.
 pub fn domain_map_by_code(domains: &[Domain]) -> BTreeMap<String, &Domain> {
     let mut map = BTreeMap::new();
     for domain in domains {
@@ -14,6 +23,15 @@ pub fn domain_map_by_code(domains: &[Domain]) -> BTreeMap<String, &Domain> {
     map
 }
 
+/// Build a complete domain list for reporting, including dynamic SUPP domains.
+///
+/// Takes the standard domain definitions and processed frames, then generates
+/// domain definitions for any SUPP-- datasets found in the frames that don't
+/// have explicit definitions.
+///
+/// # Errors
+///
+/// Returns an error if SUPPQUAL metadata is missing from standards.
 pub fn build_report_domains(standards: &[Domain], frames: &[DomainFrame]) -> Result<Vec<Domain>> {
     let mut domains = standards.to_vec();
     let mut known: BTreeSet<String> = standards
@@ -51,6 +69,10 @@ pub fn build_report_domains(standards: &[Domain], frames: &[DomainFrame]) -> Res
     Ok(domains)
 }
 
+/// Check if a domain code represents a supporting/relationship domain.
+///
+/// Supporting domains include SUPP-- (supplemental qualifiers), SQ--,
+/// and relationship datasets (RELREC, RELSPEC, RELSUB).
 pub fn is_supporting_domain(code: &str) -> bool {
     let upper = code.to_uppercase();
     upper.starts_with("SUPP")

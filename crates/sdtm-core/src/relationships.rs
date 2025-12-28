@@ -1,3 +1,22 @@
+//! Relationship dataset generation (RELREC, RELSPEC, RELSUB).
+//!
+//! This module generates relationship datasets that describe connections
+//! between records across domains per SDTMIG v3.4 Chapter 8.
+//!
+//! # SDTMIG v3.4 Reference
+//!
+//! - Section 8.1: Grouping and linking variables (--GRPID, --LNKID, --LNKGRP)
+//! - Section 8.2: RELREC dataset structure
+//! - Section 8.3: RELTYPE usage (dataset-level vs record-level)
+//! - Section 8.4: RELSPEC for specimen relationships
+//! - Section 8.5: Comments domain (CO) linking mechanism
+//!
+//! # Key Datasets
+//!
+//! - **RELREC**: Links records across domains using --LNKID or --LNKGRP
+//! - **RELSPEC**: Links specimens to subjects and parent specimens
+//! - **RELSUB**: Links subjects to pools or groups
+
 use std::collections::BTreeMap;
 
 use anyhow::Result;

@@ -67,6 +67,21 @@ pub(super) fn process_ex(
             set_string_column(df, name, values)?;
         }
     }
+
+    // Normalize CT columns
+    // EXDOSFRM: Dose Form (Codelist C66726)
+    normalize_ct_columns(domain, df, context, "EXDOSFRM", &["EXDOSFRM"])?;
+    // EXDOSU: Dose Units (Codelist C71620)
+    normalize_ct_columns(domain, df, context, "EXDOSU", &["EXDOSU"])?;
+    // EXDOSFRQ: Dosing Frequency (Codelist C71113)
+    normalize_ct_columns(domain, df, context, "EXDOSFRQ", &["EXDOSFRQ"])?;
+    // EXROUTE: Route of Administration (Codelist C66729)
+    normalize_ct_columns(domain, df, context, "EXROUTE", &["EXROUTE"])?;
+    // EXCAT/EXSCAT: Category/Subcategory
+    normalize_ct_columns(domain, df, context, "EXCAT", &["EXCAT"])?;
+    normalize_ct_columns(domain, df, context, "EXSCAT", &["EXSCAT"])?;
+    // EPOCH: Epoch (Codelist C99079)
+    normalize_ct_columns(domain, df, context, "EPOCH", &["EPOCH"])?;
     for col_name in ["EXSTDY", "EXENDY"] {
         if let Some(name) = col(domain, col_name)
             && has_column(df, name)

@@ -19,6 +19,14 @@ pub(super) fn process_ds(
             set_string_column(df, name, values)?;
         }
     }
+
+    // Normalize CT columns
+    // DSCAT: Category (Codelist C66786)
+    normalize_ct_columns(domain, df, context, "DSCAT", &["DSCAT"])?;
+    // DSSCAT: Subcategory
+    normalize_ct_columns(domain, df, context, "DSSCAT", &["DSSCAT"])?;
+    // EPOCH: Epoch (Codelist C99079)
+    normalize_ct_columns(domain, df, context, "EPOCH", &["EPOCH"])?;
     if let Some(dsdecod) = col(domain, "DSDECOD")
         && has_column(df, dsdecod)
         && let Some(ct) = context.resolve_ct(domain, "DSDECOD")

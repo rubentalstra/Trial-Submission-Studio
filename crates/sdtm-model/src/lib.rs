@@ -1,3 +1,23 @@
+//! SDTM data model types and structures.
+//!
+//! This crate provides the core data model for SDTM (Study Data Tabulation Model)
+//! processing, including domain definitions, variables, controlled terminology,
+//! validation, and processing request/response types.
+//!
+//! # SDTMIG Reference
+//!
+//! All types in this crate are designed to align with SDTMIG v3.4 specifications.
+//!
+//! # Modules
+//!
+//! - [`conformance`] - Validation severity levels and reports
+//! - [`ct`] - Controlled Terminology model (codelists, terms, catalogs)
+//! - [`domain`] - Domain and variable definitions
+//! - [`error`] - Error types for SDTM processing
+//! - [`lookup`] - Utility types for case-insensitive lookups
+//! - [`mapping`] - Column mapping suggestions and configuration
+//! - [`processing`] - Request/response types for study processing
+
 pub mod conformance;
 pub mod ct;
 pub mod domain;

@@ -75,5 +75,23 @@ pub(super) fn process_da(
         compute_study_day(domain, df, dadtc, dady, context, "RFSTDTC")?;
     }
 
+    // Normalize CT columns
+    // DASTAT: Status (Codelist C66789)
+    normalize_ct_columns(domain, df, context, "DASTAT", &["DASTAT"])?;
+    // DATESTCD: Test Code
+    normalize_ct_columns(domain, df, context, "DATESTCD", &["DATESTCD"])?;
+    // DATEST: Test Name
+    normalize_ct_columns(domain, df, context, "DATEST", &["DATEST"])?;
+    // DACAT: Category
+    normalize_ct_columns(domain, df, context, "DACAT", &["DACAT"])?;
+    // DASCAT: Subcategory
+    normalize_ct_columns(domain, df, context, "DASCAT", &["DASCAT"])?;
+    // DAORRESU: Original Result Unit
+    normalize_ct_columns(domain, df, context, "DAORRESU", &["DAORRESU"])?;
+    // DASTRESU: Standardized Result Unit
+    normalize_ct_columns(domain, df, context, "DASTRESU", &["DASTRESU"])?;
+    // EPOCH: Epoch (Codelist C99079)
+    normalize_ct_columns(domain, df, context, "EPOCH", &["EPOCH"])?;
+
     Ok(())
 }

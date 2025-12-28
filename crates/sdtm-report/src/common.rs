@@ -8,7 +8,7 @@ use polars::prelude::{AnyValue, DataFrame};
 use quick_xml::Writer;
 use quick_xml::events::{BytesEnd, BytesStart, BytesText, Event};
 
-use sdtm_ingest::any_to_string_for_output;
+use sdtm_ingest::any_to_string;
 use sdtm_model::{Variable, VariableType, Domain};
 
 /// SAS numeric length constant (8 bytes).
@@ -106,7 +106,7 @@ pub fn variable_length(variable: &Variable, df: &DataFrame) -> Result<u16> {
             let mut max_len = 0usize;
             for idx in 0..df.height() {
                 let value = series.get(idx).unwrap_or(AnyValue::Null);
-                let text = any_to_string_for_output(value);
+                let text = any_to_string(value);
                 let len = text.trim_end().len();
                 if len > max_len {
                     max_len = len;

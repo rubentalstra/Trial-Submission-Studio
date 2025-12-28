@@ -139,6 +139,11 @@ pub fn clear_unit_when_empty_var(
 /// Additional clinical significance mappings:
 /// - "CS" → "Y" (Clinically Significant)
 /// - "NCS" → "N" (Not Clinically Significant)
+///
+/// # Note
+///
+/// For CT-based normalization, prefer using `normalize_ct_columns` with
+/// the appropriate codelist (e.g., C66742 for No Yes Response).
 pub fn yn_mapping() -> HashMap<String, String> {
     map_values([
         ("YES", "Y"),

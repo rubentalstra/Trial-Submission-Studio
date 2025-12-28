@@ -83,5 +83,20 @@ pub(super) fn process_pr(
         let values = numeric_column_i64(df, visitnum)?;
         set_i64_column(df, visitnum, values)?;
     }
+
+    // Normalize CT columns
+    // PRCAT: Category
+    normalize_ct_columns(domain, df, context, "PRCAT", &["PRCAT"])?;
+    // PRSCAT: Subcategory
+    normalize_ct_columns(domain, df, context, "PRSCAT", &["PRSCAT"])?;
+    // EPOCH: Epoch (Codelist C99079)
+    normalize_ct_columns(domain, df, context, "EPOCH", &["EPOCH"])?;
+    // PRROUTE: Route of Administration (Codelist C66729)
+    normalize_ct_columns(domain, df, context, "PRROUTE", &["PRROUTE"])?;
+    // PRDOSFRM: Dose Form (Codelist C66726)
+    normalize_ct_columns(domain, df, context, "PRDOSFRM", &["PRDOSFRM"])?;
+    // PRDOSU: Dose Units (Codelist C71620)
+    normalize_ct_columns(domain, df, context, "PRDOSU", &["PRDOSU"])?;
+
     Ok(())
 }

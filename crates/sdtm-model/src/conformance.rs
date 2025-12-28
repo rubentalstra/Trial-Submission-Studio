@@ -1,10 +1,29 @@
+//! Validation conformance types for SDTM compliance checking.
+//!
+//! This module provides types for representing validation issues and reports
+//! generated during SDTM conformance checking.
+//!
+//! # SDTMIG Reference
+//!
+//! - Chapter 10: Controlled Terminology
+//! - Appendix C: Validation Rules
+
 use serde::{Deserialize, Serialize};
 
+/// Severity level for validation issues.
+///
+/// Determines how validation findings should be handled:
+/// - `Reject` - Critical issue that prevents submission
+/// - `Error` - Non-extensible CT violation or required field missing
+/// - `Warning` - Extensible CT deviation or best practice violation
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Severity {
+    /// Critical issue - submission will be rejected.
     Reject,
+    /// Error - requires correction before submission.
     Error,
+    /// Warning - should be reviewed but may be acceptable.
     Warning,
 }
 

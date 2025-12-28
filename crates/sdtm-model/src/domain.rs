@@ -1,3 +1,14 @@
+//! SDTM domain and variable definitions.
+//!
+//! This module provides the core types for representing SDTM domains, variables,
+//! and dataset classes per SDTMIG v3.4.
+//!
+//! # SDTMIG Reference
+//!
+//! - Chapter 2: Fundamentals of the SDTM
+//! - Section 2.1: General Observation Classes
+//! - Section 4.1: Variable Naming Conventions
+
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
@@ -91,37 +102,68 @@ impl FromStr for DatasetClass {
     }
 }
 
+/// Variable data type per SDTMIG v3.4.
+///
+/// SDTM supports two fundamental data types:
+/// - `Char` - Character/text data
+/// - `Num` - Numeric data (stored as 8-byte IEEE floating point in SAS)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum VariableType {
+    /// Character/text data type.
     Char,
+    /// Numeric data type (8-byte floating point).
     Num,
 }
 
+/// SDTM variable definition per SDTMIG v3.4.
+///
+/// Represents a single variable (column) within an SDTM domain dataset.
+/// Variables have associated metadata including role, core status, and
+/// controlled terminology references.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Variable {
+    /// Variable name (e.g., "USUBJID", "AEDECOD").
     pub name: String,
+    /// Human-readable label (max 40 characters for SAS).
     pub label: Option<String>,
+    /// Data type (Char or Num).
     pub data_type: VariableType,
+    /// Maximum length for character variables (in bytes).
     pub length: Option<u32>,
+    /// SDTM role: Identifier, Topic, Qualifier, Timing, or Rule.
     pub role: Option<String>,
+    /// Core designation: Req (Required), Exp (Expected), or Perm (Permissible).
     pub core: Option<String>,
+    /// NCI codelist code(s) for controlled terminology validation.
     pub codelist_code: Option<String>,
+    /// Variable ordering within the domain.
     #[serde(default)]
     pub order: Option<u32>,
 }
 
+/// SDTM domain definition per SDTMIG v3.4.
+///
+/// A domain represents a collection of observations with a common topic
+/// (e.g., Adverse Events, Demographics, Lab Results). Each domain has
+/// a two-character code and contains multiple variables.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Domain {
+    /// Two-character domain code (e.g., "AE", "DM", "LB").
     pub code: String,
+    /// Domain description.
     pub description: Option<String>,
-    /// The raw class name from standards (e.g., "Findings", "Special-Purpose")
+    /// Raw class name from standards (e.g., "Findings", "Special-Purpose").
     pub class_name: Option<String>,
-    /// The parsed dataset class enum
+    /// Parsed dataset class enum.
     #[serde(default)]
     pub dataset_class: Option<DatasetClass>,
+    /// Human-readable domain label.
     pub label: Option<String>,
+    /// Dataset structure description (e.g., "One record per subject").
     pub structure: Option<String>,
+    /// Output dataset name (may differ from code for split domains).
     pub dataset_name: Option<String>,
+    /// Variables belonging to this domain.
     pub variables: Vec<Variable>,
 }
 

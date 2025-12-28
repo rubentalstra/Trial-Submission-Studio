@@ -7,7 +7,7 @@ use anyhow::{Context, Result, anyhow};
 use polars::prelude::{AnyValue, DataFrame};
 
 use sdtm_core::frame::DomainFrame;
-use sdtm_ingest::{any_to_f64_for_output, any_to_string_for_output};
+use sdtm_ingest::{any_to_f64, any_to_string};
 use sdtm_model::{Domain, VariableType};
 use sdtm_xpt::{XptColumn, XptDataset, XptType, XptValue, XptWriterOptions, write_xpt};
 
@@ -105,8 +105,8 @@ fn build_xpt_rows(domain: &Domain, df: &DataFrame) -> Result<Vec<Vec<XptValue>>>
         for (variable, column) in domain.variables.iter().zip(series.iter()) {
             let value = column.get(row_idx).unwrap_or(AnyValue::Null);
             let cell = match variable.data_type {
-                VariableType::Num => XptValue::Num(any_to_f64_for_output(value)),
-                VariableType::Char => XptValue::Char(any_to_string_for_output(value)),
+                VariableType::Num => XptValue::Num(any_to_f64(value)),
+                VariableType::Char => XptValue::Char(any_to_string(value)),
             };
             row.push(cell);
         }

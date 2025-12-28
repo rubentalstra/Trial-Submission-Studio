@@ -69,5 +69,18 @@ pub(super) fn process_qs(
             set_string_column(df, qstptref, values)?;
         }
     }
+
+    // Normalize CT columns
+    // QSTESTCD: Test Code
+    normalize_ct_columns(domain, df, context, "QSTESTCD", &["QSTESTCD"])?;
+    // QSTEST: Test Name
+    normalize_ct_columns(domain, df, context, "QSTEST", &["QSTEST"])?;
+    // QSCAT: Category
+    normalize_ct_columns(domain, df, context, "QSCAT", &["QSCAT"])?;
+    // QSSCAT: Subcategory
+    normalize_ct_columns(domain, df, context, "QSSCAT", &["QSSCAT"])?;
+    // EPOCH: Epoch (Codelist C99079)
+    normalize_ct_columns(domain, df, context, "EPOCH", &["EPOCH"])?;
+
     Ok(())
 }

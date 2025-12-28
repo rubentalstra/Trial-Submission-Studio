@@ -1,3 +1,7 @@
+//! Concomitant Medications (CM) domain processor.
+//!
+//! Processes CM domain data per SDTMIG v3.4 Section 6.1.
+
 use anyhow::Result;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
@@ -51,57 +55,10 @@ pub(super) fn process_cm(
         ]);
         apply_map_upper(df, Some(cmstat), &stat_map)?;
     }
-    if let Some(cmdosfrq) = col(domain, "CMDOSFRQ")
-        && has_column(df, cmdosfrq)
-    {
-        let freq_map = map_values([
-            ("ONCE", "ONCE"),
-            ("QD", "QD"),
-            ("BID", "BID"),
-            ("TID", "TID"),
-            ("QID", "QID"),
-            ("QOD", "QOD"),
-            ("QW", "QW"),
-            ("QM", "QM"),
-            ("PRN", "PRN"),
-            ("DAILY", "QD"),
-            ("TWICE DAILY", "BID"),
-            ("TWICE PER DAY", "BID"),
-            ("THREE TIMES DAILY", "TID"),
-            ("ONCE DAILY", "QD"),
-            ("AS NEEDED", "PRN"),
-            ("", ""),
-            ("NAN", ""),
-        ]);
-        apply_map_upper(df, Some(cmdosfrq), &freq_map)?;
-    }
-    if let Some(cmroute) = col(domain, "CMROUTE")
-        && has_column(df, cmroute)
-    {
-        let route_map = map_values([
-            ("ORAL", "ORAL"),
-            ("PO", "ORAL"),
-            ("INTRAVENOUS", "INTRAVENOUS"),
-            ("IV", "INTRAVENOUS"),
-            ("INTRAMUSCULAR", "INTRAMUSCULAR"),
-            ("IM", "INTRAMUSCULAR"),
-            ("SUBCUTANEOUS", "SUBCUTANEOUS"),
-            ("SC", "SUBCUTANEOUS"),
-            ("SUBQ", "SUBCUTANEOUS"),
-            ("TOPICAL", "TOPICAL"),
-            ("TRANSDERMAL", "TRANSDERMAL"),
-            ("INHALATION", "INHALATION"),
-            ("INHALED", "INHALATION"),
-            ("RECTAL", "RECTAL"),
-            ("VAGINAL", "VAGINAL"),
-            ("OPHTHALMIC", "OPHTHALMIC"),
-            ("OTIC", "OTIC"),
-            ("NASAL", "NASAL"),
-            ("", ""),
-            ("NAN", ""),
-        ]);
-        apply_map_upper(df, Some(cmroute), &route_map)?;
-    }
+    // Normalize dosing frequency via CT (Codelist C71113)
+    normalize_ct_columns(domain, df, context, "CMDOSFRQ", &["CMDOSFRQ"])?;
+    // Normalize administration route via CT (Codelist C66729)
+    normalize_ct_columns(domain, df, context, "CMROUTE", &["CMROUTE"])?;
     if let Some(cmdosu) = col(domain, "CMDOSU")
         && has_column(df, cmdosu)
     {

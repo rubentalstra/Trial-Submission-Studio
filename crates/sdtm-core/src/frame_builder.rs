@@ -1,3 +1,14 @@
+//! DataFrame construction from CSV tables and mappings.
+//!
+//! Provides functions to build SDTM domain DataFrames from source CSV tables,
+//! handling column mapping, type conversion, and wide-format transformations.
+//!
+//! # Key Functions
+//!
+//! - [`build_domain_frame`]: Simple frame construction without mapping
+//! - [`build_domain_frame_with_mapping`]: Frame construction with column mapping
+//! - [`build_mapped_domain_frame`]: Auto-mapped frame with wide-format detection
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use anyhow::{Context, Result};
@@ -11,6 +22,10 @@ use sdtm_model::{Domain, MappingConfig, VariableType};
 use crate::frame::DomainFrame;
 use crate::wide::{build_ie_wide_frame, build_lb_wide_frame, build_vs_wide_frame};
 
+/// Build a basic domain frame from a CSV table without column mapping.
+///
+/// Creates a DataFrame with columns matching the CSV headers exactly.
+/// Headers are deduplicated by appending suffixes for duplicates.
 pub fn build_domain_frame(table: &CsvTable, domain_code: &str) -> Result<DomainFrame> {
     let headers = dedupe_headers(&table.headers);
     let column_values = collect_table_columns(table);
@@ -22,6 +37,9 @@ pub fn build_domain_frame(table: &CsvTable, domain_code: &str) -> Result<DomainF
     Ok(DomainFrame::new(domain_code.to_string(), data))
 }
 
+/// Build a DataFrame from a vector of record maps.
+///
+/// Used internally to construct frames for SUPPQUAL and relationship datasets.
 pub(crate) fn build_domain_frame_from_records(
     domain: &Domain,
     records: &[BTreeMap<String, String>],
@@ -79,6 +97,10 @@ fn collect_table_columns(table: &CsvTable) -> Vec<Vec<String>> {
     columns
 }
 
+/// Build a domain frame using column mapping configuration.
+///
+/// Maps source columns to SDTM variables according to the mapping config,
+/// applying type conversions and populating STUDYID/DOMAIN columns.
 pub fn build_domain_frame_with_mapping(
     table: &CsvTable,
     domain: &Domain,
@@ -153,6 +175,14 @@ pub fn build_domain_frame_with_mapping(
     Ok(DomainFrame::new(domain.code.clone(), data))
 }
 
+/// Build a domain frame with automatic column mapping and wide-format detection.
+///
+/// For LB, VS, and IE domains, attempts wide-format transformation first.
+/// Otherwise uses the mapping engine to suggest column mappings.
+///
+/// # Returns
+///
+/// A tuple of (mapping config, domain frame, set of used source columns).
 pub fn build_mapped_domain_frame(
     table: &CsvTable,
     domain: &Domain,
