@@ -11,6 +11,7 @@ use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 
 use sdtm_core::{DomainFrame, order_variables_by_role, standard_columns};
 use sdtm_ingest::{any_to_f64_for_output, any_to_string_for_output, any_to_string_non_empty};
+use sdtm_model::ct::{Codelist, CtCatalog, CtRegistry};
 use sdtm_model::{Domain, MappingConfig, Variable, VariableType};
 use sdtm_standards::load_default_ct_registry;
 use sdtm_xpt::{XptColumn, XptDataset, XptType, XptValue, XptWriterOptions, write_xpt};
@@ -781,58 +782,65 @@ fn write_translated_text<W: Write>(
 fn resolve_codelist(
     domain: &Domain,
     variable: &Variable,
-    ct_registry: &sdtm_model::CtRegistry,
+    ct_registry: &CtRegistry,
     code_lists: &mut BTreeMap<String, CodeListSpec>,
     ct_standards: &mut BTreeMap<String, CtStandard>,
 ) -> Result<Option<String>> {
-    let mut ct_entries: Vec<(
-        &sdtm_model::ControlledTerminology,
-        Option<&sdtm_model::CtCatalog>,
-    )> = Vec::new();
+    let mut ct_entries: Vec<(&Codelist, Option<&CtCatalog>)> = Vec::new();
 
     if let Some(raw) = variable.codelist_code.as_ref() {
         let codes = parse_codelist_codes(raw);
         for code in codes {
-            if let Some(resolved) = ct_registry.resolve_by_code(&code, None) {
-                ct_entries.push((resolved.ct, Some(resolved.catalog)));
+            if let Some(resolved) = ct_registry.resolve(&code, None) {
+                ct_entries.push((resolved.codelist, Some(resolved.catalog)));
             }
         }
     }
     if ct_entries.is_empty() {
-        if let Some(resolved) = ct_registry.resolve_for_variable(variable, None) {
-            ct_entries.push((resolved.ct, Some(resolved.catalog)));
-        } else if let Some(raw) = variable.codelist_code.as_ref() {
-            return Err(anyhow!(
-                "missing codelist {} for {}.{}",
-                raw,
-                domain.code,
-                variable.name
-            ));
-        } else {
+        // Try to resolve by first codelist code
+        if let Some(raw) = variable.codelist_code.as_ref() {
+            let code = raw.split(';').next().unwrap_or("").trim();
+            if !code.is_empty() {
+                if let Some(resolved) = ct_registry.resolve(code, None) {
+                    ct_entries.push((resolved.codelist, Some(resolved.catalog)));
+                } else {
+                    return Err(anyhow!(
+                        "missing codelist {} for {}.{}",
+                        raw,
+                        domain.code,
+                        variable.name
+                    ));
+                }
+            }
+        }
+        if ct_entries.is_empty() {
             return Ok(None);
         }
     }
 
     // Determine the standard OID for this codelist
-    let standard_oid = ct_entries.first().and_then(|(_, catalog)| {
-        catalog.and_then(|cat| {
-            let publishing_set = cat.publishing_set.as_ref()?;
-            let version = cat.version.as_ref()?;
-            let oid = format!("STD.CT.{}.{}", publishing_set, version);
+    let standard_oid =
+        ct_entries
+            .first()
+            .and_then(|(_, catalog): &(&Codelist, Option<&CtCatalog>)| {
+                catalog.and_then(|cat| {
+                    let publishing_set = cat.publishing_set.as_ref()?;
+                    let version = cat.version.as_ref()?;
+                    let oid = format!("STD.CT.{}.{}", publishing_set, version);
 
-            // Register the CT standard if not already present
-            ct_standards
-                .entry(oid.clone())
-                .or_insert_with(|| CtStandard {
-                    oid: oid.clone(),
-                    name: "CDISC/NCI".to_string(),
-                    publishing_set: publishing_set.clone(),
-                    version: version.clone(),
-                });
+                    // Register the CT standard if not already present
+                    ct_standards
+                        .entry(oid.clone())
+                        .or_insert_with(|| CtStandard {
+                            oid: oid.clone(),
+                            name: "CDISC/NCI".to_string(),
+                            publishing_set: publishing_set.clone(),
+                            version: version.clone(),
+                        });
 
-            Some(oid)
-        })
-    });
+                    Some(oid)
+                })
+            });
 
     let oid = format!("CL.{}.{}", domain.code, variable.name);
     if !code_lists.contains_key(&oid) {
@@ -840,9 +848,9 @@ fn resolve_codelist(
         let mut names = BTreeSet::new();
         let mut extensible = false;
         for (ct, _) in &ct_entries {
-            names.insert(ct.codelist_name.clone());
+            names.insert(ct.name.clone());
             extensible |= ct.extensible;
-            for value in &ct.submission_values {
+            for value in ct.submission_values() {
                 let trimmed = value.trim();
                 if !trimmed.is_empty() {
                     values.insert(trimmed.to_string());

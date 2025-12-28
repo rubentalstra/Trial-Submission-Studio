@@ -96,7 +96,7 @@ pub(super) fn process_vs(
         for (testcd, test) in testcd_vals.iter_mut().zip(test_vals.iter()) {
             let existing = testcd.clone();
             let valid =
-                !existing.is_empty() && ct.submission_values.iter().any(|val| val == &existing);
+                !existing.is_empty() && ct.submission_values().iter().any(|val| val == &existing);
             if valid {
                 continue;
             }
@@ -155,7 +155,7 @@ pub(super) fn process_vs(
             let valid_name = ct_names
                 .map(|ct| {
                     let canonical = normalize_ct_value(ct, test);
-                    ct.submission_values.iter().any(|val| val == &canonical)
+                    ct.submission_values().iter().any(|val| val == &canonical)
                 })
                 .unwrap_or(true);
             if !needs_label && valid_name {

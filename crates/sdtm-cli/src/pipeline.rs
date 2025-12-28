@@ -441,10 +441,7 @@ pub fn validate(
     if cross_domain_result.has_issues() {
         debug!(
             study_id = %study_id,
-            seq_violations = cross_domain_result.seq_violations,
-            qnam_violations = cross_domain_result.qnam_violations,
-            qval_violations = cross_domain_result.qval_violations,
-            relrec_violations = cross_domain_result.relrec_violations,
+            total_issues = cross_domain_result.total_issues(),
             "cross-domain validation issues found"
         );
         // Merge cross-domain issues into report map

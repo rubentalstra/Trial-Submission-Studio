@@ -184,22 +184,29 @@ impl RuleGenerator {
         // Split multiple codes (some variables have "C66742; C66789")
         for code in split_codelist_codes(codelist_code) {
             // Look up the CT in the registry
-            if let Some(resolved) = ct_registry.resolve_by_code(&code, None) {
-                let ct = resolved.ct;
+            if let Some(resolved) = ct_registry.resolve(&code, None) {
+                let codelist = resolved.codelist;
 
                 // Determine severity based on extensibility
-                let severity = if ct.extensible {
+                let severity = if codelist.extensible {
                     RuleSeverity::Warning // Extensible = warning
                 } else {
                     RuleSeverity::Error // Non-extensible = error
                 };
 
-                let description = if ct.extensible {
+                let description = if codelist.extensible {
                     "Variable should be populated with terms from its CDISC CT codelist."
                         .to_string()
                 } else {
                     "Variable must be populated with terms from its CDISC CT codelist.".to_string()
                 };
+
+                // Collect valid submission values
+                let valid_values: Vec<String> = codelist
+                    .submission_values()
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect();
 
                 rules.push(GeneratedRule {
                     domain: domain.code.clone(),
@@ -208,15 +215,15 @@ impl RuleGenerator {
                     severity,
                     message: format!(
                         "Value in {}.{} must be from {} codelist ({})",
-                        domain.code, variable.name, ct.codelist_name, code
+                        domain.code, variable.name, codelist.name, code
                     ),
                     description,
                     context: RuleContext::ControlledTerminology {
                         codelist_code: code.clone(),
-                        codelist_name: ct.codelist_name.clone(),
-                        extensible: ct.extensible,
-                        valid_values: ct.submission_values.clone(),
-                        ct_source: resolved.source.to_string(),
+                        codelist_name: codelist.name.clone(),
+                        extensible: codelist.extensible,
+                        valid_values,
+                        ct_source: resolved.source().to_string(),
                     },
                 });
             }

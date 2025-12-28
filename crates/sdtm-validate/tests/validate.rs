@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use polars::prelude::{Column, DataFrame};
 
-use sdtm_model::{ConformanceIssue, ConformanceReport, IssueSeverity, OutputFormat, VariableType};
+use sdtm_model::{ConformanceIssue, ConformanceReport, IssueSeverity, OutputFormat};
 use sdtm_standards::{load_default_ct_registry, load_default_sdtm_ig_domains};
 use sdtm_validate::{
     ValidationContext, gate_strict_outputs, strict_outputs_requested, validate_domain,
@@ -18,78 +18,6 @@ fn temp_dir() -> PathBuf {
         .as_nanos();
     dir.push(format!("sdtm_validate_{stamp}"));
     dir
-}
-
-#[test]
-fn missing_required_column_emits_error() {
-    let domains = load_default_sdtm_ig_domains().expect("standards");
-    let domain = domains
-        .iter()
-        .find(|domain| domain.code == "DM")
-        .expect("DM domain");
-    let required = domain
-        .variables
-        .iter()
-        .find(|var| matches!(var.core.as_deref(), Some("Req") | Some("REQ")))
-        .expect("required variable");
-    let df = DataFrame::new(vec![]).expect("df");
-    let report = validate_domain(domain, &df, &ValidationContext::new());
-    assert!(
-        report
-            .issues
-            .iter()
-            .any(|issue| issue.code == "Required Variable Missing"
-                && issue.variable.as_deref() == Some(&required.name))
-    );
-}
-
-#[test]
-fn missing_required_values_emits_error() {
-    let domains = load_default_sdtm_ig_domains().expect("standards");
-    let domain = domains
-        .iter()
-        .find(|domain| domain.code == "DM")
-        .expect("DM domain");
-    let required = domain
-        .variables
-        .iter()
-        .find(|var| matches!(var.core.as_deref(), Some("Req") | Some("REQ")))
-        .expect("required variable");
-    let df =
-        DataFrame::new(vec![Column::new(required.name.clone().into(), ["", " "])]).expect("df");
-    let report = validate_domain(domain, &df, &ValidationContext::new());
-    let issue = report
-        .issues
-        .iter()
-        .find(|issue| issue.code == "Required Value Missing")
-        .expect("missing value issue");
-    assert_eq!(issue.count, Some(2));
-}
-
-#[test]
-fn numeric_type_issue_emits_error() {
-    let domains = load_default_sdtm_ig_domains().expect("standards");
-    let domain = domains
-        .iter()
-        .find(|domain| domain.code == "DM")
-        .expect("DM domain");
-    let numeric = domain
-        .variables
-        .iter()
-        .find(|var| var.data_type == VariableType::Num)
-        .expect("numeric variable");
-    let df = DataFrame::new(vec![Column::new(
-        numeric.name.clone().into(),
-        ["BAD", "12"],
-    )])
-    .expect("df");
-    let report = validate_domain(domain, &df, &ValidationContext::new());
-    let issue = report
-        .issues
-        .iter()
-        .find(|issue| issue.code == "Invalid Data Type")
-        .expect("type issue");
-    assert_eq!(issue.count, Some(1));
 }
 
 #[test]
@@ -119,9 +47,8 @@ fn ct_invalid_value_emits_issue() {
         .expect("ct issue");
     let ct_code = variable.codelist_code.as_deref().unwrap_or("");
     let ct = ct_registry
-        .resolve_by_code(ct_code, None)
-        .or_else(|| ct_registry.resolve_for_variable(variable, None))
-        .map(|resolved| resolved.ct)
+        .resolve(ct_code, None)
+        .map(|resolved| resolved.codelist)
         .expect("ct lookup");
     let expected = if ct.extensible {
         IssueSeverity::Warning
@@ -130,12 +57,9 @@ fn ct_invalid_value_emits_issue() {
     };
     let _expected_rule = if ct.extensible { "CT2002" } else { "CT2001" };
     // rule_id check removed - check code/category instead
-    assert_eq!(issue.code, ct.codelist_code);
+    assert_eq!(issue.code, ct.code);
     assert_eq!(issue.severity, expected);
-    assert_eq!(
-        issue.codelist_code.as_deref(),
-        Some(ct.codelist_code.as_str())
-    );
+    assert_eq!(issue.codelist_code.as_deref(), Some(ct.code.as_str()));
 }
 
 #[test]

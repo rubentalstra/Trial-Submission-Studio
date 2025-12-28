@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 
 use chrono::NaiveDate;
-use sdtm_model::{ControlledTerminology, CtRegistry, Domain};
+use sdtm_model::Domain;
+use sdtm_model::ct::{Codelist, CtRegistry};
 
 use crate::provenance::ProvenanceTracker;
 
@@ -187,14 +188,24 @@ impl<'a> ProcessingContext<'a> {
         }
     }
 
-    pub fn resolve_ct(&self, domain: &Domain, variable: &str) -> Option<&'a ControlledTerminology> {
+    pub fn resolve_ct(&self, domain: &Domain, variable: &str) -> Option<&'a Codelist> {
         let registry = self.ct_registry?;
         let variable = domain
             .variables
             .iter()
             .find(|var| var.name.eq_ignore_ascii_case(variable))?;
+
+        // Get the codelist code from the variable metadata
+        let codelist_code = variable.codelist_code.as_ref()?;
+
+        // Resolve the first codelist code (some variables have multiple separated by ';')
+        let code = codelist_code.split(';').next()?.trim();
+        if code.is_empty() {
+            return None;
+        }
+
         registry
-            .resolve_for_variable(variable, None)
-            .map(|resolved| resolved.ct)
+            .resolve(code, None)
+            .map(|resolved| resolved.codelist)
     }
 }

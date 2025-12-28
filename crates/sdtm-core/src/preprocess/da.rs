@@ -150,7 +150,7 @@ impl PreprocessRule for DaTestFieldRule {
                 if test_name.is_none()
                     && let (Some(ct), Some(code)) = (ctdatestcd, test_code.as_ref())
                 {
-                    test_name = ct.preferred_terms.get(code).cloned();
+                    test_name = crate::ct_utils::preferred_term_for(ct, code);
                 }
 
                 // Use extensible fallbacks

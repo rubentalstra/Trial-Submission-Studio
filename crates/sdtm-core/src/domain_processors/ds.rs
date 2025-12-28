@@ -1,6 +1,7 @@
 use anyhow::Result;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
+use sdtm_model::ct::Codelist;
 
 use crate::processing_context::ProcessingContext;
 
@@ -37,23 +38,20 @@ fn resolve_dsdecod_codelist<'a>(
     ctx: &'a ProcessingContext<'a>,
     codes: &[String],
     value: &str,
-) -> Option<&'a sdtm_model::ControlledTerminology> {
+) -> Option<&'a Codelist> {
     let registry = ctx.ct_registry?;
     for code in codes {
-        if let Some(resolved) = registry.resolve_by_code(code, None)
-            && resolve_ct_lenient(resolved.ct, value).is_some()
+        if let Some(resolved) = registry.resolve(code, None)
+            && resolve_ct_lenient(resolved.codelist, value).is_some()
         {
-            return Some(resolved.ct);
+            return Some(resolved.codelist);
         }
     }
     None
 }
 
-fn dscat_value_for_codelist(
-    dscat_ct: &sdtm_model::ControlledTerminology,
-    dsdecod_ct: &sdtm_model::ControlledTerminology,
-) -> Option<String> {
-    let name_upper = dsdecod_ct.codelist_name.to_uppercase();
+fn dscat_value_for_codelist(dscat_ct: &Codelist, dsdecod_ct: &Codelist) -> Option<String> {
+    let name_upper = dsdecod_ct.name.to_uppercase();
     let hint = if name_upper.contains("MILESTONE") {
         "PROTOCOL MILESTONE"
     } else if name_upper.contains("OTHER") {
@@ -64,10 +62,10 @@ fn dscat_value_for_codelist(
     resolve_ct_lenient(dscat_ct, hint).or_else(|| {
         let upper = hint.to_uppercase();
         dscat_ct
-            .submission_values
+            .submission_values()
             .iter()
             .find(|val| val.to_uppercase() == upper)
-            .cloned()
+            .map(|v| v.to_string())
     })
 }
 
@@ -144,7 +142,7 @@ pub(super) fn process_ds(
                     continue;
                 }
                 let canonical = normalize_ct_value(ct, &dscat_vals[idx]);
-                let is_valid = ct.submission_values.iter().any(|val| val == &canonical);
+                let is_valid = ct.submission_values().iter().any(|val| val == &canonical);
                 invalid[idx] = !is_valid;
             }
         } else {
@@ -229,7 +227,7 @@ pub(super) fn process_ds(
                 "N" | "NO" => "SCREENING NOT COMPLETED".to_string(),
                 _ => canonical.to_uppercase(),
             };
-            if !ct.submission_values.iter().any(|val| val == &mapped) {
+            if !ct.submission_values().iter().any(|val| val == &mapped) {
                 let compact: String = mapped
                     .chars()
                     .filter(|ch| ch.is_ascii_alphanumeric())
@@ -252,11 +250,11 @@ pub(super) fn process_ds(
             let term_vals = string_column(df, &dsterm, Trim::Both)?;
             for idx in 0..df.height() {
                 let term_code = normalize_ct_value(ct, &term_vals[idx]).to_uppercase();
-                let valid_from_term = ct.submission_values.iter().any(|val| val == &term_code);
+                let valid_from_term = ct.submission_values().iter().any(|val| *val == term_code);
                 let valid_from_decod = ct
-                    .submission_values
+                    .submission_values()
                     .iter()
-                    .any(|val| val == &decod_vals[idx]);
+                    .any(|val| *val == decod_vals[idx]);
                 if valid_from_term && !valid_from_decod {
                     decod_vals[idx] = term_code;
                 }

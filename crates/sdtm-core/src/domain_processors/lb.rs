@@ -61,7 +61,7 @@ pub(super) fn process_lb(
         for (testcd, test) in testcd_vals.iter_mut().zip(test_vals.iter()) {
             let existing = testcd.clone();
             let valid =
-                !existing.is_empty() && ct.submission_values.iter().any(|val| val == &existing);
+                !existing.is_empty() && ct.submission_values().iter().any(|val| val == &existing);
             if valid {
                 continue;
             }

@@ -59,11 +59,11 @@ fn resolved_ct_includes_catalog_reference() {
     let registry = load_default_ct_registry().expect("load ct");
     // Resolve a known codelist (SEX - C66731)
     let resolved = registry
-        .resolve_by_code("C66731", None)
+        .resolve("C66731", None)
         .expect("SEX codelist should exist");
 
     // Verify we can access the catalog metadata through the resolved reference
-    assert!(!resolved.source.is_empty());
+    assert!(!resolved.source().is_empty());
     assert!(
         resolved.catalog.publishing_set.is_some(),
         "catalog should have publishing_set"
@@ -78,12 +78,14 @@ fn resolved_ct_includes_catalog_reference() {
 fn loads_send_country_codelist() {
     let registry = load_default_ct_registry().expect("load ct");
     let send_catalog = registry.catalogs.get("SEND CT").expect("send ct");
+    // Find the COUNTRY codelist (C66786) in the catalog
     let ct = send_catalog
-        .by_submission
-        .get("COUNTRY")
+        .codelists
+        .values()
+        .find(|cl| cl.code == "C66786")
         .expect("country codelist");
-    assert_eq!(ct.codelist_code, "C66786");
-    assert!(ct.submission_values.iter().any(|value| value == "USA"));
+    assert_eq!(ct.code, "C66786");
+    assert!(ct.submission_values().iter().any(|value| *value == "USA"));
 }
 
 // Tests for DomainRegistry and DatasetClass functionality per SDTMIG v3.4
@@ -383,17 +385,17 @@ fn country_codelist_c66786_loaded_correctly() {
 
     // Should be able to resolve C66786
     let resolved = ct_registry
-        .resolve_by_code("C66786", None)
+        .resolve("C66786", None)
         .expect("C66786 should resolve");
 
-    assert_eq!(resolved.ct.codelist_code, "C66786");
+    assert_eq!(resolved.codelist.code, "C66786");
     assert!(
-        !resolved.ct.extensible,
+        !resolved.codelist.extensible,
         "COUNTRY codelist is non-extensible"
     );
 
     // Should have many country codes as submission values
-    let values = &resolved.ct.submission_values;
+    let values = resolved.codelist.submission_values();
     assert!(
         values.len() > 100,
         "COUNTRY should have many values, got {}",
@@ -402,16 +404,16 @@ fn country_codelist_c66786_loaded_correctly() {
 
     // Should include specific countries from the user's example
     assert!(
-        values.iter().any(|v| v == "ABW"),
+        values.iter().any(|v| *v == "ABW"),
         "Should include ABW (Aruba)"
     );
     assert!(
-        values.iter().any(|v| v == "AFG"),
+        values.iter().any(|v| *v == "AFG"),
         "Should include AFG (Afghanistan)"
     );
     assert!(
-        values.iter().any(|v| v == "AGO"),
+        values.iter().any(|v| *v == "AGO"),
         "Should include AGO (Angola)"
     );
-    assert!(values.iter().any(|v| v == "USA"), "Should include USA");
+    assert!(values.iter().any(|v| *v == "USA"), "Should include USA");
 }

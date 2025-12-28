@@ -1,10 +1,13 @@
-mod cross_domain;
+pub mod cross_domain;
 mod engine;
+mod validator;
 
 pub use cross_domain::{
     CrossDomainValidationInput, CrossDomainValidationResult, validate_cross_domain,
 };
 pub use engine::RuleEngine;
+// Clean validator (per SDTM_CT_relationships.md)
+pub use validator::{Issue, Severity, ValidationReport, Validator};
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -14,11 +17,12 @@ use chrono::Utc;
 use polars::prelude::{AnyValue, DataFrame};
 use serde::Serialize;
 
-use sdtm_core::{ProvenanceTracker, validate_column_order};
-use sdtm_ingest::{any_to_string, is_missing_value};
+use sdtm_core::ProvenanceTracker;
+use sdtm_ingest::any_to_string;
+use sdtm_model::ct::{Codelist, CtRegistry, ResolvedCodelist};
 use sdtm_model::{
-    CaseInsensitiveLookup, ConformanceIssue, ConformanceReport, ControlledTerminology, CtRegistry,
-    Domain, IssueSeverity, OutputFormat, ResolvedCt, Variable, VariableType,
+    CaseInsensitiveLookup, ConformanceIssue, ConformanceReport, Domain, IssueSeverity,
+    OutputFormat, Variable,
 };
 use sdtm_standards::assumptions::RuleGenerator;
 
@@ -296,53 +300,18 @@ pub fn validate_domain(
 ) -> ConformanceReport {
     let column_lookup = build_column_lookup(df);
     let mut issues = Vec::new();
-    for variable in &domain.variables {
-        let column = column_lookup.get(&variable.name);
-        if column.is_none() {
-            issues.extend(missing_column_issues(domain, variable));
-            continue;
-        }
-        let column = column.expect("column lookup");
-        if let Some(issue) = missing_value_issue(domain, variable, df, column) {
-            issues.push(issue);
-        }
-        if let Some(issue) = type_issue(domain, variable, df, column) {
-            issues.push(issue);
-        }
-        if let Some(issue) = length_issue(domain, variable, df, column) {
-            issues.push(issue);
-        }
-        if let Some(issue) = test_code_issue(domain, variable, df, column) {
-            issues.push(issue);
-        }
-        if let Some(ct_registry) = ctx.ct_registry
-            && let Some(resolved) = resolve_ct(ct_registry, variable, ctx.ct_catalogs.as_deref())
-            && let Some(issue) = ct_issue(variable, df, column, &resolved)
-        {
-            issues.push(issue);
-        }
-    }
 
-    // Validate column order by SDTM role (Identifiers, Topic, Qualifiers, Rule, Timing)
-    // Per SDTMIG v3.4 Chapter 2.1 and P21 Rule SD1079
-    let column_names: Vec<String> = df
-        .get_column_names()
-        .iter()
-        .map(|s| s.to_string())
-        .collect();
-    let order_result = validate_column_order(&column_names, domain);
-    if !order_result.is_valid {
-        for violation in &order_result.violations {
-            issues.push(ConformanceIssue {
-                code: domain.code.clone(),
-                message: violation.clone(),
-                severity: IssueSeverity::Warning,
-                variable: None,
-                count: Some(1),
-                category: Some("Metadata".to_string()),
-                codelist_code: None,
-                ct_source: None,
-            });
+    // CT validation only - controlled terminology is our source of truth
+    if let Some(ct_registry) = ctx.ct_registry {
+        for variable in &domain.variables {
+            let Some(column) = column_lookup.get(&variable.name) else {
+                continue;
+            };
+            if let Some(resolved) = resolve_ct(ct_registry, variable, ctx.ct_catalogs.as_deref())
+                && let Some(issue) = ct_issue(variable, df, column, &resolved)
+            {
+                issues.push(issue);
+            }
         }
     }
 
@@ -424,237 +393,13 @@ fn build_column_lookup(df: &DataFrame) -> CaseInsensitiveLookup {
     CaseInsensitiveLookup::new(df.get_column_names_owned())
 }
 
-fn missing_column_issues(_domain: &Domain, variable: &Variable) -> Vec<ConformanceIssue> {
-    if is_required(variable.core.as_deref()) {
-        let message = format!("SDTM Required variable not found: {}", variable.name);
-        return vec![ConformanceIssue {
-            code: "Required Variable Missing".to_string(),
-            message,
-            severity: IssueSeverity::Error,
-            variable: Some(variable.name.clone()),
-            count: None,
-            category: Some("Required Variable Missing".to_string()),
-            codelist_code: None,
-            ct_source: None,
-        }];
-    }
-    if is_expected(variable.core.as_deref()) {
-        let message = format!("SDTM Expected variable not found: {}", variable.name);
-        return vec![ConformanceIssue {
-            code: "Expected Variable Missing".to_string(),
-            message,
-            severity: IssueSeverity::Warning,
-            variable: Some(variable.name.clone()),
-            count: None,
-            category: Some("Expected Variable Missing".to_string()),
-            codelist_code: None,
-            ct_source: None,
-        }];
-    }
-    Vec::new()
-}
-
-fn missing_value_issue(
-    _domain: &Domain,
-    variable: &Variable,
-    df: &DataFrame,
-    column: &str,
-) -> Option<ConformanceIssue> {
-    if !is_required(variable.core.as_deref()) {
-        return None;
-    }
-    let series = df.column(column).ok()?;
-    let mut missing = 0u64;
-    for idx in 0..df.height() {
-        let value = series.get(idx).unwrap_or(AnyValue::Null);
-        if is_missing_value(&value) {
-            missing += 1;
-        }
-    }
-    if missing == 0 {
-        return None;
-    }
-    let message = format!(
-        "Null value in variable marked as Required: {} has {} missing/blank value(s)",
-        variable.name, missing
-    );
-    Some(ConformanceIssue {
-        code: "Required Value Missing".to_string(),
-        message,
-        severity: IssueSeverity::Error,
-        variable: Some(variable.name.clone()),
-        count: Some(missing),
-        category: Some("Required Value Missing".to_string()),
-        codelist_code: None,
-        ct_source: None,
-    })
-}
-
-fn type_issue(
-    _domain: &Domain,
-    variable: &Variable,
-    df: &DataFrame,
-    column: &str,
-) -> Option<ConformanceIssue> {
-    if variable.data_type != VariableType::Num {
-        return None;
-    }
-    let series = df.column(column).ok()?;
-    let mut invalid = 0u64;
-    for idx in 0..df.height() {
-        let value = series.get(idx).unwrap_or(AnyValue::Null);
-        if is_missing_value(&value) {
-            continue;
-        }
-        if is_numeric_value(&value) {
-            continue;
-        }
-        let text = any_to_string(value);
-        if text.trim().is_empty() {
-            continue;
-        }
-        if text.trim().parse::<f64>().is_err() {
-            invalid += 1;
-        }
-    }
-    if invalid == 0 {
-        return None;
-    }
-    let message = format!(
-        "Variable datatype is not the expected SDTM datatype: {} has {} non-numeric value(s)",
-        variable.name, invalid
-    );
-    Some(ConformanceIssue {
-        code: "Invalid Data Type".to_string(),
-        message,
-        severity: IssueSeverity::Error,
-        variable: Some(variable.name.clone()),
-        count: Some(invalid),
-        category: Some("Invalid Data Type".to_string()),
-        codelist_code: None,
-        ct_source: None,
-    })
-}
-
-fn length_issue(
-    _domain: &Domain,
-    variable: &Variable,
-    df: &DataFrame,
-    column: &str,
-) -> Option<ConformanceIssue> {
-    let limit = variable.length?;
-    if variable.data_type != VariableType::Char {
-        return None;
-    }
-    let series = df.column(column).ok()?;
-    let mut over = 0u64;
-    for idx in 0..df.height() {
-        let value = any_to_string(series.get(idx).unwrap_or(AnyValue::Null));
-        if value.trim().is_empty() {
-            continue;
-        }
-        if value.chars().count() > limit as usize {
-            over += 1;
-        }
-    }
-    if over == 0 {
-        return None;
-    }
-    let message = format!(
-        "Variable value is longer than defined max length: {} exceeds length {} in {} value(s)",
-        variable.name, limit, over
-    );
-    Some(ConformanceIssue {
-        code: "Value Exceeds Length".to_string(),
-        message,
-        severity: IssueSeverity::Error,
-        variable: Some(variable.name.clone()),
-        count: Some(over),
-        category: Some("Value Exceeds Length".to_string()),
-        codelist_code: None,
-        ct_source: None,
-    })
-}
-
-fn test_code_issue(
-    _domain: &Domain,
-    variable: &Variable,
-    df: &DataFrame,
-    column: &str,
-) -> Option<ConformanceIssue> {
-    if !is_testcd_variable(&variable.name) {
-        return None;
-    }
-    let series = df.column(column).ok()?;
-    let mut invalid = 0u64;
-    let mut examples = BTreeSet::new();
-    for idx in 0..df.height() {
-        let value = any_to_string(series.get(idx).unwrap_or(AnyValue::Null));
-        let trimmed = value.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-        if is_valid_test_code(trimmed) {
-            continue;
-        }
-        invalid += 1;
-        if examples.len() < 5 {
-            examples.insert(trimmed.to_string());
-        }
-    }
-    if invalid == 0 {
-        return None;
-    }
-    let mut example_list: Vec<String> = examples.into_iter().collect();
-    example_list.sort();
-    let examples = example_list.join(", ");
-    let base = "Invalid TESTCD/QNAM value (must be <=8 chars, start with a letter or underscore, and contain only letters, numbers, or underscores)";
-    let mut message = format!("{base}: {} has {invalid} invalid value(s)", variable.name);
-    if !examples.is_empty() {
-        message.push_str(&format!(" values: {}", examples));
-    }
-    Some(ConformanceIssue {
-        code: "Invalid TESTCD Format".to_string(),
-        message,
-        severity: IssueSeverity::Error,
-        variable: Some(variable.name.clone()),
-        count: Some(invalid),
-        category: Some("Invalid TESTCD Format".to_string()),
-        codelist_code: None,
-        ct_source: None,
-    })
-}
-
-fn is_testcd_variable(name: &str) -> bool {
-    let upper = name.to_uppercase();
-    upper == "QNAM" || upper.ends_with("TESTCD")
-}
-
-fn is_valid_test_code(value: &str) -> bool {
-    let trimmed = value.trim();
-    if trimmed.is_empty() || trimmed.chars().count() > 8 {
-        return false;
-    }
-    let mut chars = trimmed.chars();
-    let Some(first) = chars.next() else {
-        return false;
-    };
-    if first.is_ascii_digit() {
-        return false;
-    }
-    if !first.is_ascii_alphanumeric() && first != '_' {
-        return false;
-    }
-    chars.all(|ch| ch.is_ascii_alphanumeric() || ch == '_')
-}
-
 fn ct_issue(
     variable: &Variable,
     df: &DataFrame,
     column: &str,
-    resolved: &ResolvedCt,
+    resolved: &ResolvedCodelist,
 ) -> Option<ConformanceIssue> {
-    let ct = resolved.ct;
+    let ct = resolved.codelist;
     let invalid = collect_invalid_ct_values(df, column, ct);
     if invalid.is_empty() {
         return None;
@@ -671,37 +416,33 @@ fn ct_issue(
         "Variable value not found in codelist. {} contains {} value(s) not found in {} for {} ({}).",
         variable.name,
         invalid.len(),
-        resolved.source,
-        ct.codelist_name,
-        ct.codelist_code
+        resolved.source(),
+        ct.name,
+        ct.code
     );
     if !examples.is_empty() {
         message.push_str(&format!(" values: {}", examples));
     }
     Some(ConformanceIssue {
-        code: ct.codelist_code.clone(),
+        code: ct.code.clone(),
         message,
         severity,
         variable: Some(variable.name.clone()),
         count: Some(invalid.len() as u64),
-        category: Some(ct.codelist_code.clone()),
-        codelist_code: Some(ct.codelist_code.clone()),
-        ct_source: Some(resolved.source.to_string()),
+        category: Some(ct.code.clone()),
+        codelist_code: Some(ct.code.clone()),
+        ct_source: Some(resolved.source().to_string()),
     })
 }
 
-fn collect_invalid_ct_values(
-    df: &DataFrame,
-    column: &str,
-    ct: &ControlledTerminology,
-) -> BTreeSet<String> {
+fn collect_invalid_ct_values(df: &DataFrame, column: &str, ct: &Codelist) -> BTreeSet<String> {
     let mut invalid = BTreeSet::new();
     let series = match df.column(column) {
         Ok(series) => series,
         Err(_) => return invalid,
     };
     let submission_values: BTreeSet<String> = ct
-        .submission_values
+        .submission_values()
         .iter()
         .map(|value| value.to_uppercase())
         .collect();
@@ -712,7 +453,7 @@ fn collect_invalid_ct_values(
         if trimmed.is_empty() {
             continue;
         }
-        let normalized = normalize_ct_value(ct, trimmed);
+        let normalized = ct.normalize(trimmed);
         if normalized.is_empty() {
             continue;
         }
@@ -720,61 +461,21 @@ fn collect_invalid_ct_values(
         if submission_values.contains(&key) {
             continue;
         }
-        if ct.extensible {
-            invalid.insert(trimmed.to_string());
-            continue;
-        }
         invalid.insert(trimmed.to_string());
     }
     invalid
-}
-
-fn normalize_ct_value(ct: &ControlledTerminology, raw: &str) -> String {
-    let trimmed = raw.trim();
-    if trimmed.is_empty() {
-        return String::new();
-    }
-    let lookup = trimmed.to_uppercase();
-    ct.synonyms
-        .get(&lookup)
-        .cloned()
-        .unwrap_or_else(|| trimmed.to_string())
 }
 
 fn resolve_ct<'a>(
     registry: &'a CtRegistry,
     variable: &Variable,
     preferred: Option<&[String]>,
-) -> Option<ResolvedCt<'a>> {
-    registry.resolve_for_variable(variable, preferred)
-}
-
-fn is_required(core: Option<&str>) -> bool {
-    matches!(
-        core.map(|value| value.trim().to_lowercase()).as_deref(),
-        Some("req")
-    )
-}
-
-fn is_expected(core: Option<&str>) -> bool {
-    matches!(
-        core.map(|value| value.trim().to_lowercase()).as_deref(),
-        Some("exp")
-    )
-}
-
-fn is_numeric_value(value: &AnyValue) -> bool {
-    matches!(
-        value,
-        AnyValue::Float32(_)
-            | AnyValue::Float64(_)
-            | AnyValue::Int8(_)
-            | AnyValue::Int16(_)
-            | AnyValue::Int32(_)
-            | AnyValue::Int64(_)
-            | AnyValue::UInt8(_)
-            | AnyValue::UInt16(_)
-            | AnyValue::UInt32(_)
-            | AnyValue::UInt64(_)
-    )
+) -> Option<ResolvedCodelist<'a>> {
+    // Get codelist code from variable metadata
+    let codelist_code = variable.codelist_code.as_ref()?;
+    let code = codelist_code.split(';').next()?.trim();
+    if code.is_empty() {
+        return None;
+    }
+    registry.resolve(code, preferred)
 }
