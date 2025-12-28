@@ -2,16 +2,16 @@ use anyhow::Result;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
 
-use crate::processing_context::ProcessingContext;
+use crate::pipeline_context::PipelineContext;
 
 use super::common::*;
 
 pub(super) fn process_pr(
     domain: &Domain,
     df: &mut DataFrame,
-    ctx: &ProcessingContext,
+    context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, ctx)?;
+    drop_placeholder_rows(domain, df, context)?;
     for visit_col in ["VISIT", "VISITNUM"] {
         if let Some(name) = col(domain, visit_col)
             && has_column(df, &name)
@@ -23,12 +23,12 @@ pub(super) fn process_pr(
     if let Some(prstdtc) = col(domain, "PRSTDTC")
         && let Some(prstdy) = col(domain, "PRSTDY")
     {
-        compute_study_day(domain, df, &prstdtc, &prstdy, ctx, "RFSTDTC")?;
+        compute_study_day(domain, df, &prstdtc, &prstdy, context, "RFSTDTC")?;
     }
     if let Some(prendtc) = col(domain, "PRENDTC")
         && let Some(prendy) = col(domain, "PRENDY")
     {
-        compute_study_day(domain, df, &prendtc, &prendy, ctx, "RFSTDTC")?;
+        compute_study_day(domain, df, &prendtc, &prendy, context, "RFSTDTC")?;
     }
     if let Some(prdur) = col(domain, "PRDUR")
         && has_column(df, &prdur)
@@ -71,7 +71,7 @@ pub(super) fn process_pr(
             }
             set_string_column(df, &prdecod, values)?;
         }
-        if let Some(ct) = ctx.resolve_ct(domain, "PRDECOD") {
+        if let Some(ct) = context.resolve_ct(domain, "PRDECOD") {
             let values = string_column(df, &prdecod)?
                 .into_iter()
                 .map(|value| normalize_ct_value_safe(ct, &value))

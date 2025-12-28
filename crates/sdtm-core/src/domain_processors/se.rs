@@ -2,16 +2,16 @@ use anyhow::Result;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
 
-use crate::processing_context::ProcessingContext;
+use crate::pipeline_context::PipelineContext;
 
 use super::common::*;
 
 pub(super) fn process_se(
     domain: &Domain,
     df: &mut DataFrame,
-    ctx: &ProcessingContext,
+    context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, ctx)?;
+    drop_placeholder_rows(domain, df, context)?;
     for col_name in [
         "STUDYID", "DOMAIN", "USUBJID", "ETCD", "ELEMENT", "EPOCH", "SESTDTC", "SEENDTC",
     ] {
@@ -25,13 +25,13 @@ pub(super) fn process_se(
     if let Some(sestdtc) = col(domain, "SESTDTC") {
         ensure_date_pair_order(df, &sestdtc, col(domain, "SEENDTC").as_deref())?;
         if let Some(sestdy) = col(domain, "SESTDY") {
-            compute_study_day(domain, df, &sestdtc, &sestdy, ctx, "RFSTDTC")?;
+            compute_study_day(domain, df, &sestdtc, &sestdy, context, "RFSTDTC")?;
         }
     }
     if let Some(seendtc) = col(domain, "SEENDTC")
         && let Some(seendy) = col(domain, "SEENDY")
     {
-        compute_study_day(domain, df, &seendtc, &seendy, ctx, "RFSTDTC")?;
+        compute_study_day(domain, df, &seendtc, &seendy, context, "RFSTDTC")?;
     }
     Ok(())
 }

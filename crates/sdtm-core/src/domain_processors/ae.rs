@@ -2,16 +2,16 @@ use anyhow::Result;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
 
-use crate::processing_context::ProcessingContext;
+use crate::pipeline_context::PipelineContext;
 
 use super::common::*;
 
 pub(super) fn process_ae(
     domain: &Domain,
     df: &mut DataFrame,
-    ctx: &ProcessingContext,
+    context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, ctx)?;
+    drop_placeholder_rows(domain, df, context)?;
     if let Some(aedur) = col(domain, "AEDUR")
         && has_column(df, &aedur)
     {
@@ -35,12 +35,12 @@ pub(super) fn process_ae(
             set_string_column(df, &end, end_vals)?;
         }
         if let Some(aestdy) = col(domain, "AESTDY") {
-            compute_study_day(domain, df, &start, &aestdy, ctx, "RFSTDTC")?;
+            compute_study_day(domain, df, &start, &aestdy, context, "RFSTDTC")?;
         }
         if let Some(aeend) = col(domain, "AEENDTC")
             && let Some(aeendy) = col(domain, "AEENDY")
         {
-            compute_study_day(domain, df, &aeend, &aeendy, ctx, "RFSTDTC")?;
+            compute_study_day(domain, df, &aeend, &aeendy, context, "RFSTDTC")?;
         }
     }
     if let Some(teae) = col(domain, "TEAE")
@@ -169,8 +169,8 @@ pub(super) fn process_ae(
     if let Some(aeacndev) = col(domain, "AEACNDEV")
         && has_column(df, &aeacndev)
     {
-        let ct_dev = ctx.resolve_ct(domain, "AEACNDEV");
-        let ct_acn = ctx.resolve_ct(domain, "AEACN");
+        let ct_dev = context.resolve_ct(domain, "AEACNDEV");
+        let ct_acn = context.resolve_ct(domain, "AEACN");
         let aeacn_col = col(domain, "AEACN").filter(|name| has_column(df, name));
         let aeacnoth_col = col(domain, "AEACNOTH").filter(|name| has_column(df, name));
         if ct_dev.is_some() {

@@ -3,16 +3,16 @@ use polars::prelude::DataFrame;
 use sdtm_model::Domain;
 
 use crate::data_utils::column_value_string;
-use crate::processing_context::ProcessingContext;
+use crate::pipeline_context::PipelineContext;
 
 use super::common::*;
 
 pub(super) fn process_ta(
     domain: &Domain,
     df: &mut DataFrame,
-    ctx: &ProcessingContext,
+    context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, ctx)?;
+    drop_placeholder_rows(domain, df, context)?;
     let key_cols = ["EPOCH", "ARMCD", "ARM", "ETCD"]
         .into_iter()
         .filter_map(|name| col(domain, name))

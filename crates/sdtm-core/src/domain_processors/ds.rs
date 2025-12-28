@@ -3,7 +3,7 @@ use polars::prelude::DataFrame;
 use sdtm_model::Domain;
 use sdtm_model::ct::Codelist;
 
-use crate::processing_context::ProcessingContext;
+use crate::pipeline_context::PipelineContext;
 
 use super::common::*;
 
@@ -35,13 +35,15 @@ fn dsdecod_codelists(domain: &Domain) -> Vec<String> {
 }
 
 fn resolve_dsdecod_codelist<'a>(
-    ctx: &'a ProcessingContext<'a>,
+    context: &'a PipelineContext,
     codes: &[String],
     value: &str,
 ) -> Option<&'a Codelist> {
-    let registry = ctx.ct_registry?;
+    if context.ct_registry.catalogs.is_empty() {
+        return None;
+    }
     for code in codes {
-        if let Some(resolved) = registry.resolve(code, None)
+        if let Some(resolved) = context.ct_registry.resolve(code, None)
             && resolve_ct_lenient(resolved.codelist, value).is_some()
         {
             return Some(resolved.codelist);
@@ -72,9 +74,9 @@ fn dscat_value_for_codelist(dscat_ct: &Codelist, dsdecod_ct: &Codelist) -> Optio
 pub(super) fn process_ds(
     domain: &Domain,
     df: &mut DataFrame,
-    ctx: &ProcessingContext,
+    context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, ctx)?;
+    drop_placeholder_rows(domain, df, context)?;
     for col_name in ["DSDECOD", "DSTERM", "DSCAT", "EPOCH"] {
         if let Some(name) = col(domain, col_name)
             && has_column(df, &name)
@@ -134,7 +136,7 @@ pub(super) fn process_ds(
             .iter()
             .map(|value| value.to_uppercase().contains("SITE"))
             .collect();
-        let ct_dscat = ctx.resolve_ct(domain, "DSCAT");
+        let ct_dscat = context.resolve_ct(domain, "DSCAT");
         let mut invalid = vec![false; df.height()];
         if let Some(ct) = ct_dscat {
             for idx in 0..df.height() {
@@ -217,7 +219,7 @@ pub(super) fn process_ds(
     }
     if let Some(dsdecod) = col(domain, "DSDECOD")
         && has_column(df, &dsdecod)
-        && let Some(ct) = ctx.resolve_ct(domain, "DSDECOD")
+        && let Some(ct) = context.resolve_ct(domain, "DSDECOD")
     {
         let mut decod_vals = string_column(df, &dsdecod)?;
         for value in decod_vals.iter_mut() {
@@ -269,7 +271,7 @@ pub(super) fn process_ds(
         let codes = dsdecod_codelists(domain);
         let decod_vals = string_column(df, &dsdecod)?;
         let mut dscat_vals = string_column(df, &dscat)?;
-        if let (Some(dscat_ct), Some(_)) = (ctx.resolve_ct(domain, "DSCAT"), ctx.ct_registry) {
+        if let Some(dscat_ct) = context.resolve_ct(domain, "DSCAT") {
             for idx in 0..df.height() {
                 if !dscat_vals[idx].trim().is_empty() {
                     continue;
@@ -278,7 +280,7 @@ pub(super) fn process_ds(
                 if decod.is_empty() {
                     continue;
                 }
-                if let Some(dsdecod_ct) = resolve_dsdecod_codelist(ctx, &codes, decod)
+                if let Some(dsdecod_ct) = resolve_dsdecod_codelist(context, &codes, decod)
                     && let Some(value) = dscat_value_for_codelist(dscat_ct, dsdecod_ct)
                 {
                     dscat_vals[idx] = value;
@@ -296,7 +298,7 @@ pub(super) fn process_ds(
             .collect();
         set_string_column(df, &dsstdtc, values)?;
         if let Some(dsstudy) = col(domain, "DSSTDY") {
-            compute_study_day(domain, df, &dsstdtc, &dsstudy, ctx, "RFSTDTC")?;
+            compute_study_day(domain, df, &dsstdtc, &dsstudy, context, "RFSTDTC")?;
         }
     }
     if let Some(dsdtc) = col(domain, "DSDTC")
@@ -308,7 +310,7 @@ pub(super) fn process_ds(
             .collect();
         set_string_column(df, &dsdtc, values)?;
         if let Some(dsdy) = col(domain, "DSDY") {
-            compute_study_day(domain, df, &dsdtc, &dsdy, ctx, "RFSTDTC")?;
+            compute_study_day(domain, df, &dsdtc, &dsdy, context, "RFSTDTC")?;
         }
     }
     let dedup_keys = ["USUBJID", "DSDECOD", "DSTERM", "DSCAT", "DSSTDTC"]

@@ -3,7 +3,7 @@ use std::path::Path;
 
 use sdtm_core::frame::DomainFrame;
 use sdtm_core::frame_builder::{build_domain_frame, build_domain_frame_with_mapping};
-use sdtm_core::processing_context::ProcessingContext;
+use sdtm_core::pipeline_context::PipelineContext;
 use sdtm_core::processor::process_domain_with_context_and_tracker;
 use sdtm_core::relationships::{RelationshipConfig, build_relrec, build_relspec, build_relsub};
 use sdtm_core::suppqual::{SuppqualInput, build_suppqual};
@@ -43,7 +43,7 @@ fn processes_mockdata_end_to_end() {
     let discovered = discover_domain_files(&csv_files, &domain_codes);
 
     let study_id = "DEMO_GDISC_20240903_072908";
-    let ctx = ProcessingContext::new(study_id).with_ct_registry(&ct_registry);
+    let context = PipelineContext::new(study_id).with_ct_registry(ct_registry);
     let mut processed_frames: Vec<DomainFrame> = Vec::new();
     let mut suppqual_frames: Vec<DomainFrame> = Vec::new();
 
@@ -60,7 +60,7 @@ fn processes_mockdata_end_to_end() {
             let mapping_config = engine.to_config(study_id, result);
             let mut mapped = build_domain_frame_with_mapping(&table, domain, Some(&mapping_config))
                 .expect("build mapped frame");
-            process_domain_with_context_and_tracker(domain, &mut mapped.data, &ctx, None)
+            process_domain_with_context_and_tracker(domain, &mut mapped.data, &context, None)
                 .expect("process");
 
             if let Some(existing) = &mut combined {

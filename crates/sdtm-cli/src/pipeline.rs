@@ -20,8 +20,8 @@ use tracing::{debug, info, info_span};
 
 use sdtm_core::frame::{DomainFrame, DomainFrameMeta};
 use sdtm_core::frame_builder::{build_domain_frame, build_mapped_domain_frame};
+use sdtm_core::pipeline_context::PipelineContext;
 use sdtm_core::processor::process_domain_with_context_and_tracker;
-use sdtm_core::study_pipeline_context::StudyPipelineContext;
 use sdtm_core::suppqual::{SuppqualInput, build_suppqual};
 use sdtm_ingest::{
     AppliedStudyMetadata, CsvTable, StudyMetadata, any_to_string, apply_study_metadata,
@@ -148,7 +148,7 @@ pub struct ProcessFileInput<'a> {
     pub suppqual_domain: &'a Domain,
     pub suppqual_exclusions: &'a BTreeSet<String>,
     pub seq_tracker: &'a mut BTreeMap<String, i64>,
-    pub pipeline: &'a StudyPipelineContext,
+    pub pipeline: &'a PipelineContext,
 }
 
 /// Process a single domain file through map, preprocess, and domain rules stages.
@@ -222,7 +222,7 @@ pub fn process_file(input: ProcessFileInput<'_>) -> Result<ProcessedFile> {
         }
     }
 
-    let ctx = input.pipeline.processing_context();
+    let context = input.pipeline;
 
     // Apply domain rules
     info_span!("domain_rules").in_scope(|| -> Result<()> {
@@ -230,7 +230,7 @@ pub fn process_file(input: ProcessFileInput<'_>) -> Result<ProcessedFile> {
         process_domain_with_context_and_tracker(
             input.domain,
             &mut mapped.data,
-            &ctx,
+            context,
             Some(input.seq_tracker),
         )
         .with_context(|| format!("domain rules for {}", input.domain.code))?;
@@ -340,7 +340,7 @@ pub fn process_file(input: ProcessFileInput<'_>) -> Result<ProcessedFile> {
 /// Run validation on processed frames.
 pub fn validate(
     frames: &[DomainFrame],
-    pipeline: &StudyPipelineContext,
+    pipeline: &PipelineContext,
     study_id: &str,
 ) -> BTreeMap<String, ValidationReport> {
     let validation_span = info_span!("validate", study_id = %study_id);

@@ -9,7 +9,7 @@ use sdtm_model::{CaseInsensitiveSet, Domain, VariableType};
 use crate::ct_utils::{normalize_ct_value_safe, normalize_ct_value_strict};
 use crate::domain_processors;
 use crate::domain_utils::{infer_seq_column, standard_columns};
-use crate::processing_context::ProcessingContext;
+use crate::pipeline_context::PipelineContext;
 use sdtm_ingest::any_to_string;
 
 fn sanitize_identifier(raw: &str) -> String {
@@ -31,19 +31,19 @@ fn sanitize_identifier(raw: &str) -> String {
 fn normalize_ct_columns(
     domain: &Domain,
     df: &mut DataFrame,
-    ctx: &ProcessingContext,
+    context: &PipelineContext,
 ) -> Result<()> {
-    if ctx.ct_registry.is_none() {
+    if context.ct_registry.catalogs.is_empty() {
         return Ok(());
     }
     let column_lookup = CaseInsensitiveSet::new(df.get_column_names_owned());
-    let use_strict = !ctx.options.allow_lenient_ct_matching;
+    let use_strict = !context.options.allow_lenient_ct_matching;
 
     for variable in &domain.variables {
         if !matches!(variable.data_type, VariableType::Char) {
             continue;
         }
-        let Some(ct) = ctx.resolve_ct(domain, &variable.name) else {
+        let Some(ct) = context.resolve_ct(domain, &variable.name) else {
             continue;
         };
         let Some(column_name) = column_lookup.get(&variable.name) else {
@@ -79,8 +79,8 @@ fn normalize_ct_columns(
     Ok(())
 }
 
-fn apply_base_rules(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingContext) -> Result<()> {
-    if !ctx.options.prefix_usubjid {
+fn apply_base_rules(domain: &Domain, df: &mut DataFrame, context: &PipelineContext) -> Result<()> {
+    if !context.options.prefix_usubjid {
         return Ok(());
     }
     let columns = standard_columns(domain);
@@ -110,7 +110,7 @@ fn apply_base_rules(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingContext
         let study_value = study_series
             .as_ref()
             .map(|series| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
-            .unwrap_or_else(|| ctx.study_id.to_string());
+            .unwrap_or_else(|| context.study_id.to_string());
         let study_value = sanitize_identifier(&study_value);
         if !study_value.is_empty() && !usubjid.is_empty() {
             let prefix = format!("{study_value}-");
@@ -126,7 +126,7 @@ fn apply_base_rules(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingContext
 
     let new_series = Series::new(usubjid_col.into(), updated);
     df.with_column(new_series)?;
-    if changed && ctx.options.warn_on_rewrite {
+    if changed && context.options.warn_on_rewrite {
         warn!(
             domain = %domain.code,
             "USUBJID values updated with study prefix"
@@ -138,27 +138,27 @@ fn apply_base_rules(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingContext
 pub fn process_domain_with_context_and_tracker(
     domain: &Domain,
     df: &mut DataFrame,
-    ctx: &ProcessingContext,
+    context: &PipelineContext,
     seq_tracker: Option<&mut BTreeMap<String, i64>>,
 ) -> Result<()> {
-    apply_base_rules(domain, df, ctx)?;
-    domain_processors::process_domain(domain, df, ctx)?;
-    normalize_ct_columns(domain, df, ctx)?;
-    assign_sequence(domain, df, ctx, seq_tracker)?;
+    apply_base_rules(domain, df, context)?;
+    domain_processors::process_domain(domain, df, context)?;
+    normalize_ct_columns(domain, df, context)?;
+    assign_sequence(domain, df, context, seq_tracker)?;
     Ok(())
 }
 
 /// Assign --SEQ values based on USUBJID grouping.
 ///
 /// Uses tracker if provided for cross-file sequence continuity.
-/// Skips assignment if `ctx.options.assign_sequence` is false.
+/// Skips assignment if `context.options.assign_sequence` is false.
 fn assign_sequence(
     domain: &Domain,
     df: &mut DataFrame,
-    ctx: &ProcessingContext,
+    context: &PipelineContext,
     seq_tracker: Option<&mut BTreeMap<String, i64>>,
 ) -> Result<()> {
-    if !ctx.options.assign_sequence {
+    if !context.options.assign_sequence {
         return Ok(());
     }
     let columns = standard_columns(domain);
@@ -174,9 +174,9 @@ fn assign_sequence(
         return Ok(());
     }
     if let Some(tracker) = seq_tracker {
-        assign_sequence_with_tracker(domain, df, seq_col_name, usubjid_col_name, tracker, ctx)?;
+        assign_sequence_with_tracker(domain, df, seq_col_name, usubjid_col_name, tracker, context)?;
     } else {
-        assign_sequence_values(domain, df, seq_col_name, usubjid_col_name, ctx)?;
+        assign_sequence_values(domain, df, seq_col_name, usubjid_col_name, context)?;
     }
     Ok(())
 }
@@ -186,7 +186,7 @@ fn assign_sequence_values(
     df: &mut DataFrame,
     seq_column: &str,
     group_column: &str,
-    ctx: &ProcessingContext,
+    context: &PipelineContext,
 ) -> Result<()> {
     let group_series = match df.column(group_column) {
         Ok(series) => series.clone(),
@@ -210,7 +210,7 @@ fn assign_sequence_values(
 
     let series = Series::new(seq_column.into(), values);
     df.with_column(series)?;
-    if had_existing && ctx.options.warn_on_rewrite {
+    if had_existing && context.options.warn_on_rewrite {
         warn!(
             domain = %domain.code,
             sequence = %seq_column,
@@ -227,7 +227,7 @@ fn assign_sequence_with_tracker(
     seq_column: &str,
     group_column: &str,
     tracker: &mut BTreeMap<String, i64>,
-    ctx: &ProcessingContext,
+    context: &PipelineContext,
 ) -> Result<()> {
     if df.height() == 0 {
         return Ok(());
@@ -266,7 +266,7 @@ fn assign_sequence_with_tracker(
     }
     let series = Series::new(seq_column.into(), values);
     df.with_column(series)?;
-    if had_existing && ctx.options.warn_on_rewrite {
+    if had_existing && context.options.warn_on_rewrite {
         warn!(
             domain = %domain.code,
             sequence = %seq_column,

@@ -106,7 +106,7 @@ Per Rust API Guidelines (RFC 430):
 
 | Current Name           | New Name                 | Rationale               |
 | ---------------------- | ------------------------ | ----------------------- |
-| `ProcessingContext`    | `ProcessingContext`      | ✅ Keep                 |
+| `PipelineContext`      | `PipelineContext`        | ✅ Keep                 |
 | `ProcessingOptions`    | `ProcessingOptions`      | ✅ Keep                 |
 | `DomainPipeline`       | `TransformationPipeline` | Clearer purpose         |
 | `ProcessingStep`       | `TransformationStep`     | Matches pipeline rename |
@@ -367,7 +367,7 @@ pub fn normalize_case(value: &str) -> String
 pub fn transform_domain(df: &mut DataFrame, domain: &Domain)
 
 // Pattern: process_<thing> for multi-step operations
-pub fn process_domain(df: &mut DataFrame, context: &ProcessingContext)
+pub fn process_domain(df: &mut DataFrame, context: &PipelineContext)
 pub fn process_study(input: ProcessStudyRequest) -> ProcessStudyResponse
 ```
 

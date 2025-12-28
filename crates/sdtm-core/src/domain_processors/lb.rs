@@ -4,16 +4,16 @@ use sdtm_model::Domain;
 
 use crate::ct_utils::is_yes_no_token;
 use crate::ct_utils::resolve_ct_value_from_hint;
-use crate::processing_context::ProcessingContext;
+use crate::pipeline_context::PipelineContext;
 
 use super::common::*;
 
 pub(super) fn process_lb(
     domain: &Domain,
     df: &mut DataFrame,
-    ctx: &ProcessingContext,
+    context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, ctx)?;
+    drop_placeholder_rows(domain, df, context)?;
     for col_name in ["LBORRESU", "LBSTRESU"] {
         if let Some(name) = col(domain, col_name)
             && has_column(df, &name)
@@ -45,7 +45,7 @@ pub(super) fn process_lb(
             .into_iter()
             .map(|value| value.to_uppercase())
             .collect::<Vec<_>>();
-        if let Some(ct) = ctx.resolve_ct(domain, "LBTESTCD") {
+        if let Some(ct) = context.resolve_ct(domain, "LBTESTCD") {
             for value in &mut values {
                 *value = normalize_ct_value_safe(ct, value);
             }
@@ -55,7 +55,7 @@ pub(super) fn process_lb(
     if let (Some(lbtest), Some(lbtestcd)) = (col(domain, "LBTEST"), col(domain, "LBTESTCD"))
         && has_column(df, &lbtest)
         && has_column(df, &lbtestcd)
-        && let Some(ct) = ctx.resolve_ct(domain, "LBTESTCD")
+        && let Some(ct) = context.resolve_ct(domain, "LBTESTCD")
     {
         let test_vals = string_column(df, &lbtest)?;
         let mut testcd_vals = string_column(df, &lbtestcd)?;
@@ -90,7 +90,7 @@ pub(super) fn process_lb(
     if let (Some(lbtest), Some(lbtestcd)) = (col(domain, "LBTEST"), col(domain, "LBTESTCD"))
         && has_column(df, &lbtest)
         && has_column(df, &lbtestcd)
-        && let Some(ct) = ctx.resolve_ct(domain, "LBTESTCD")
+        && let Some(ct) = context.resolve_ct(domain, "LBTESTCD")
     {
         let mut test_vals = string_column(df, &lbtest)?;
         let testcd_vals = string_column(df, &lbtestcd)?;
@@ -112,12 +112,12 @@ pub(super) fn process_lb(
     if let Some(lbdtc) = col(domain, "LBDTC")
         && let Some(lbdy) = col(domain, "LBDY")
     {
-        compute_study_day(domain, df, &lbdtc, &lbdy, ctx, "RFSTDTC")?;
+        compute_study_day(domain, df, &lbdtc, &lbdy, context, "RFSTDTC")?;
     }
     if let Some(lbendtc) = col(domain, "LBENDTC")
         && let Some(lbendy) = col(domain, "LBENDY")
     {
-        compute_study_day(domain, df, &lbendtc, &lbendy, ctx, "RFSTDTC")?;
+        compute_study_day(domain, df, &lbendtc, &lbendy, context, "RFSTDTC")?;
     }
     if let Some(lbstresc) = col(domain, "LBSTRESC")
         && has_column(df, &lbstresc)
@@ -175,7 +175,7 @@ pub(super) fn process_lb(
         ]);
         apply_map_upper(df, Some(&lbclsig), &yn_map)?;
     }
-    if let Some(ct) = ctx.resolve_ct(domain, "LBORRESU") {
+    if let Some(ct) = context.resolve_ct(domain, "LBORRESU") {
         for col_name in ["LBORRESU", "LBSTRESU"] {
             if let Some(name) = col(domain, col_name)
                 && has_column(df, &name)

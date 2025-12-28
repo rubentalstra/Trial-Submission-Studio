@@ -4,20 +4,20 @@ use anyhow::Result;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
 
-use crate::processing_context::ProcessingContext;
+use crate::pipeline_context::PipelineContext;
 
 use super::common::*;
 
 pub(super) fn process_vs(
     domain: &Domain,
     df: &mut DataFrame,
-    ctx: &ProcessingContext,
+    context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, ctx)?;
+    drop_placeholder_rows(domain, df, context)?;
     if let Some(vsdtc) = col(domain, "VSDTC")
         && let Some(vsdy) = col(domain, "VSDY")
     {
-        compute_study_day(domain, df, &vsdtc, &vsdy, ctx, "RFSTDTC")?;
+        compute_study_day(domain, df, &vsdtc, &vsdy, context, "RFSTDTC")?;
         let values = numeric_column_f64(df, &vsdy)?;
         set_f64_column(df, &vsdy, values)?;
     }
@@ -89,7 +89,7 @@ pub(super) fn process_vs(
     if let (Some(vstest), Some(vstestcd)) = (col(domain, "VSTEST"), col(domain, "VSTESTCD"))
         && has_column(df, &vstest)
         && has_column(df, &vstestcd)
-        && let Some(ct) = ctx.resolve_ct(domain, "VSTESTCD")
+        && let Some(ct) = context.resolve_ct(domain, "VSTESTCD")
     {
         let test_vals = string_column(df, &vstest)?;
         let mut testcd_vals = string_column(df, &vstestcd)?;
@@ -106,7 +106,7 @@ pub(super) fn process_vs(
         }
         set_string_column(df, &vstestcd, testcd_vals)?;
     }
-    if let Some(ct) = ctx.resolve_ct(domain, "VSORRESU") {
+    if let Some(ct) = context.resolve_ct(domain, "VSORRESU") {
         for col_name in ["VSORRESU", "VSSTRESU"] {
             if let Some(name) = col(domain, col_name)
                 && has_column(df, &name)
@@ -119,7 +119,7 @@ pub(super) fn process_vs(
             }
         }
     }
-    if let Some(ct) = ctx.resolve_ct(domain, "VSTESTCD")
+    if let Some(ct) = context.resolve_ct(domain, "VSTESTCD")
         && let Some(vstestcd) = col(domain, "VSTESTCD")
         && has_column(df, &vstestcd)
     {
@@ -129,7 +129,7 @@ pub(super) fn process_vs(
         }
         set_string_column(df, &vstestcd, values)?;
     }
-    if let Some(ct) = ctx.resolve_ct(domain, "VSTEST")
+    if let Some(ct) = context.resolve_ct(domain, "VSTEST")
         && let Some(vstest) = col(domain, "VSTEST")
         && has_column(df, &vstest)
     {
@@ -142,9 +142,9 @@ pub(super) fn process_vs(
     if let (Some(vstest), Some(vstestcd)) = (col(domain, "VSTEST"), col(domain, "VSTESTCD"))
         && has_column(df, &vstest)
         && has_column(df, &vstestcd)
-        && let Some(ct) = ctx.resolve_ct(domain, "VSTESTCD")
+        && let Some(ct) = context.resolve_ct(domain, "VSTESTCD")
     {
-        let ct_names = ctx.resolve_ct(domain, "VSTEST");
+        let ct_names = context.resolve_ct(domain, "VSTEST");
         let mut test_vals = string_column(df, &vstest)?;
         let testcd_vals = string_column(df, &vstestcd)?;
         for (test, testcd) in test_vals.iter_mut().zip(testcd_vals.iter()) {

@@ -2,16 +2,16 @@ use anyhow::Result;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
 
-use crate::processing_context::ProcessingContext;
+use crate::pipeline_context::PipelineContext;
 
 use super::common::*;
 
 pub(super) fn process_default(
     domain: &Domain,
     df: &mut DataFrame,
-    ctx: &ProcessingContext,
+    context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, ctx)?;
+    drop_placeholder_rows(domain, df, context)?;
     if let Some(epoch_col) = col(domain, "EPOCH")
         && has_column(df, &epoch_col)
     {

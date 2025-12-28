@@ -2,16 +2,16 @@ use anyhow::Result;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
 
-use crate::processing_context::ProcessingContext;
+use crate::pipeline_context::PipelineContext;
 
 use super::common::*;
 
 pub(super) fn process_ie(
     domain: &Domain,
     df: &mut DataFrame,
-    ctx: &ProcessingContext,
+    context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, ctx)?;
+    drop_placeholder_rows(domain, df, context)?;
     for col_name in [
         "IEORRES", "IESTRESC", "IETESTCD", "IETEST", "IECAT", "IESCAT", "EPOCH",
     ] {
@@ -68,7 +68,7 @@ pub(super) fn process_ie(
     {
         let values = string_column(df, &iedtc)?;
         set_string_column(df, &iedtc, values)?;
-        compute_study_day(domain, df, &iedtc, &iedy, ctx, "RFSTDTC")?;
+        compute_study_day(domain, df, &iedtc, &iedy, context, "RFSTDTC")?;
         let numeric = numeric_column_f64(df, &iedy)?;
         set_f64_column(df, &iedy, numeric)?;
     }

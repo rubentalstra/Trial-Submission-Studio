@@ -10,9 +10,9 @@ use tracing::{debug, info, info_span, warn};
 use sdtm_core::dedupe::dedupe_frames_by_identifiers;
 use sdtm_core::domain_sets::{build_report_domains, domain_map_by_code, is_supporting_domain};
 use sdtm_core::frame::DomainFrame;
-use sdtm_core::processing_context::ProcessingOptions;
+use sdtm_core::pipeline_context::PipelineContext;
+use sdtm_core::pipeline_context::ProcessingOptions;
 use sdtm_core::relationships::build_relationship_frames;
-use sdtm_core::study_pipeline_context::StudyPipelineContext;
 use sdtm_model::{MappingConfig, OutputFormat};
 use sdtm_standards::{load_default_ct_registry, load_default_sdtm_ig_domains};
 use sdtm_validate::gate_strict_outputs;
@@ -76,7 +76,7 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
             allow_lenient_ct_matching: !args.no_lenient_ct,
         }
     };
-    let mut pipeline = StudyPipelineContext::new(&study_id)
+    let mut pipeline = PipelineContext::new(&study_id)
         .with_standards(standards.clone())
         .with_ct_registry(ct_registry)
         .with_options(options);

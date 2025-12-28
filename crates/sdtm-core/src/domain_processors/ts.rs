@@ -2,16 +2,16 @@ use anyhow::Result;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
 
-use crate::processing_context::ProcessingContext;
+use crate::pipeline_context::PipelineContext;
 
 use super::common::*;
 
 pub(super) fn process_ts(
     domain: &Domain,
     df: &mut DataFrame,
-    ctx: &ProcessingContext,
+    context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, ctx)?;
+    drop_placeholder_rows(domain, df, context)?;
     if df.height() == 0 {
         return Ok(());
     }
@@ -28,7 +28,7 @@ pub(super) fn process_ts(
     }
     if let Some(tsparmcd) = col(domain, "TSPARMCD")
         && has_column(df, &tsparmcd)
-        && let Some(ct) = ctx.resolve_ct(domain, "TSPARMCD")
+        && let Some(ct) = context.resolve_ct(domain, "TSPARMCD")
     {
         let mut values = string_column(df, &tsparmcd)?;
         for value in &mut values {
@@ -38,7 +38,7 @@ pub(super) fn process_ts(
     }
     if let Some(tsparm) = col(domain, "TSPARM")
         && has_column(df, &tsparm)
-        && let Some(ct) = ctx.resolve_ct(domain, "TSPARM")
+        && let Some(ct) = context.resolve_ct(domain, "TSPARM")
     {
         let mut values = string_column(df, &tsparm)?;
         for value in &mut values {
@@ -48,7 +48,7 @@ pub(super) fn process_ts(
     }
     if let Some(tsvcdref) = col(domain, "TSVCDREF")
         && has_column(df, &tsvcdref)
-        && let Some(ct) = ctx.resolve_ct(domain, "TSVCDREF")
+        && let Some(ct) = context.resolve_ct(domain, "TSVCDREF")
     {
         let mut values = string_column(df, &tsvcdref)?;
         for value in &mut values {

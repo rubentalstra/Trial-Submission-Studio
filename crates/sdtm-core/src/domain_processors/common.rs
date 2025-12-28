@@ -14,7 +14,7 @@ use crate::datetime::DatePairOrder;
 use crate::datetime::parse_date;
 use crate::datetime::validate_date_pair;
 use crate::domain_utils::column_name;
-use crate::processing_context::ProcessingContext;
+use crate::pipeline_context::PipelineContext;
 pub(super) use sdtm_ingest::{any_to_f64, any_to_i64, any_to_string, parse_f64};
 
 // Re-export shared functions for domain processors
@@ -205,11 +205,11 @@ pub(super) fn is_numeric_string(value: &str) -> bool {
 ///
 /// * `domain` - Domain metadata
 /// * `df` - DataFrame to process (modified in place)
-/// * `ctx` - Processing context
+/// * `context` - Processing context
 pub(super) fn drop_placeholder_rows(
     domain: &Domain,
     df: &mut DataFrame,
-    ctx: &ProcessingContext,
+    context: &PipelineContext,
 ) -> Result<()> {
     let Some(usubjid_col) = col(domain, "USUBJID") else {
         return Ok(());
@@ -289,7 +289,7 @@ pub(super) fn drop_placeholder_rows(
         }
     }
     if study_id.is_empty() {
-        study_id = ctx.study_id.to_string();
+        study_id = context.study_id.to_string();
     }
     if !study_id.is_empty() {
         let prefix = format!("{study_id}-");
@@ -401,14 +401,14 @@ pub(super) fn ensure_date_pair_order(
 /// * `df` - The DataFrame to update
 /// * `dtc_col` - The date/time column (--DTC, --STDTC, or --ENDTC)
 /// * `dy_col` - The study day column to populate (--DY, --STDY, or --ENDY)
-/// * `ctx` - Processing context with reference starts
+/// * `context` - Processing context with reference starts
 /// * `reference_col` - Fallback reference column name (typically "RFSTDTC")
 pub(super) fn compute_study_day(
     domain: &Domain,
     df: &mut DataFrame,
     dtc_col: &str,
     dy_col: &str,
-    ctx: &ProcessingContext,
+    context: &PipelineContext,
     reference_col: &str,
 ) -> Result<()> {
     if !has_column(df, dtc_col) {
@@ -419,13 +419,13 @@ pub(super) fn compute_study_day(
 
     // Build baseline (reference) dates from context or column
     let mut baseline_vals: Vec<Option<NaiveDate>> = vec![None; df.height()];
-    if let (Some(reference_starts), Some(usubjid_col)) =
-        (ctx.reference_starts, col(domain, "USUBJID"))
+    if !context.reference_starts.is_empty()
+        && let Some(usubjid_col) = col(domain, "USUBJID")
         && has_column(df, &usubjid_col)
     {
         let usub_vals = string_column(df, &usubjid_col)?;
         for idx in 0..df.height() {
-            if let Some(start) = reference_starts.get(&usub_vals[idx]) {
+            if let Some(start) = context.reference_starts.get(&usub_vals[idx]) {
                 // parse_date returns None for partial dates
                 baseline_vals[idx] = parse_date(start);
             }

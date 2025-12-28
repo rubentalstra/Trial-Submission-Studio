@@ -2,16 +2,16 @@ use anyhow::Result;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
 
-use crate::processing_context::ProcessingContext;
+use crate::pipeline_context::PipelineContext;
 
 use super::common::*;
 
 pub(super) fn process_pe(
     domain: &Domain,
     df: &mut DataFrame,
-    ctx: &ProcessingContext,
+    context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, ctx)?;
+    drop_placeholder_rows(domain, df, context)?;
     if let Some(pestat) = col(domain, "PESTAT") {
         let stat_map = map_values([
             ("NOT DONE", "NOT DONE"),
@@ -39,7 +39,7 @@ pub(super) fn process_pe(
     if let Some(pedtc) = col(domain, "PEDTC")
         && let Some(pedy) = col(domain, "PEDY")
     {
-        compute_study_day(domain, df, &pedtc, &pedy, ctx, "RFSTDTC")?;
+        compute_study_day(domain, df, &pedtc, &pedy, context, "RFSTDTC")?;
     }
     if let Some(epoch) = col(domain, "EPOCH")
         && has_column(df, &epoch)

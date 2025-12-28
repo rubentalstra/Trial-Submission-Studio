@@ -2,16 +2,16 @@ use anyhow::Result;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
 
-use crate::processing_context::ProcessingContext;
+use crate::pipeline_context::PipelineContext;
 
 use super::common::*;
 
 pub(super) fn process_dm(
     domain: &Domain,
     df: &mut DataFrame,
-    ctx: &ProcessingContext,
+    context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, ctx)?;
+    drop_placeholder_rows(domain, df, context)?;
     if let Some(age) = col(domain, "AGE")
         && has_column(df, &age)
     {
@@ -111,7 +111,7 @@ pub(super) fn process_dm(
     ) && has_column(df, &dmdtc)
         && has_column(df, &rfstdtc)
     {
-        compute_study_day(domain, df, &dmdtc, &dmdy, ctx, "RFSTDTC")?;
+        compute_study_day(domain, df, &dmdtc, &dmdy, context, "RFSTDTC")?;
     }
     Ok(())
 }

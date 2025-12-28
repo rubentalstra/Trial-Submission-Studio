@@ -2,16 +2,16 @@ use anyhow::Result;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
 
-use crate::processing_context::ProcessingContext;
+use crate::pipeline_context::PipelineContext;
 
 use super::common::*;
 
 pub(super) fn process_cm(
     domain: &Domain,
     df: &mut DataFrame,
-    ctx: &ProcessingContext,
+    context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, ctx)?;
+    drop_placeholder_rows(domain, df, context)?;
     if let Some(cmdosu) = col(domain, "CMDOSU")
         && has_column(df, &cmdosu)
     {
@@ -125,12 +125,12 @@ pub(super) fn process_cm(
     if let Some(cmstdtc) = col(domain, "CMSTDTC")
         && let Some(cmstdy) = col(domain, "CMSTDY")
     {
-        compute_study_day(domain, df, &cmstdtc, &cmstdy, ctx, "RFSTDTC")?;
+        compute_study_day(domain, df, &cmstdtc, &cmstdy, context, "RFSTDTC")?;
     }
     if let Some(cmendtc) = col(domain, "CMENDTC")
         && let Some(cmendy) = col(domain, "CMENDY")
     {
-        compute_study_day(domain, df, &cmendtc, &cmendy, ctx, "RFSTDTC")?;
+        compute_study_day(domain, df, &cmendtc, &cmendy, context, "RFSTDTC")?;
     }
     deduplicate(df, &df.get_column_names_owned())?;
     Ok(())

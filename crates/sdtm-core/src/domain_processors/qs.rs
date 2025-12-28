@@ -2,16 +2,16 @@ use anyhow::Result;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
 
-use crate::processing_context::ProcessingContext;
+use crate::pipeline_context::PipelineContext;
 
 use super::common::*;
 
 pub(super) fn process_qs(
     domain: &Domain,
     df: &mut DataFrame,
-    ctx: &ProcessingContext,
+    context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, ctx)?;
+    drop_placeholder_rows(domain, df, context)?;
     for col_name in [
         "QSTESTCD", "QSTEST", "QSCAT", "QSSCAT", "QSORRES", "QSSTRESC", "QSLOBXFL", "VISIT",
         "EPOCH",
@@ -160,7 +160,7 @@ pub(super) fn process_qs(
             .collect();
         set_string_column(df, &qsdtc, values)?;
         if let Some(qsdy) = col(domain, "QSDY") {
-            compute_study_day(domain, df, &qsdtc, &qsdy, ctx, "RFSTDTC")?;
+            compute_study_day(domain, df, &qsdtc, &qsdy, context, "RFSTDTC")?;
         }
     }
     if let Some(qstptref) = col(domain, "QSTPTREF")
