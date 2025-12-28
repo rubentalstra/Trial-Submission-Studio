@@ -14,20 +14,13 @@ use crate::wide::{build_ie_wide_frame, build_lb_wide_frame, build_vs_wide_frame}
 
 pub fn build_domain_frame(table: &CsvTable, domain_code: &str) -> Result<DomainFrame> {
     let headers = dedupe_headers(&table.headers);
+    let column_values = collect_table_columns(table);
     let mut columns: Vec<Column> = Vec::with_capacity(headers.len());
-    for (col_idx, header) in headers.iter().enumerate() {
-        let mut values = Vec::with_capacity(table.rows.len());
-        for row in &table.rows {
-            values.push(row.get(col_idx).cloned().unwrap_or_default());
-        }
+    for (header, values) in headers.iter().zip(column_values) {
         columns.push(Series::new(header.as_str().into(), values).into());
     }
     let data = DataFrame::new(columns).context("build dataframe")?;
-    Ok(DomainFrame {
-        domain_code: domain_code.to_string(),
-        data,
-        meta: None,
-    })
+    Ok(DomainFrame::new(domain_code.to_string(), data))
 }
 
 pub(crate) fn build_domain_frame_from_records(
@@ -74,50 +67,58 @@ fn dedupe_headers(headers: &[String]) -> Vec<String> {
     deduped
 }
 
+fn collect_table_columns(table: &CsvTable) -> Vec<Vec<String>> {
+    let row_count = table.rows.len();
+    let mut columns: Vec<Vec<String>> = (0..table.headers.len())
+        .map(|_| Vec::with_capacity(row_count))
+        .collect();
+    for row in &table.rows {
+        for (col_idx, column) in columns.iter_mut().enumerate() {
+            column.push(row.get(col_idx).cloned().unwrap_or_default());
+        }
+    }
+    columns
+}
+
 pub fn build_domain_frame_with_mapping(
     table: &CsvTable,
     domain: &Domain,
     mapping: Option<&MappingConfig>,
 ) -> Result<DomainFrame> {
     let row_count = table.rows.len();
-    let mut source_columns = std::collections::BTreeMap::new();
-    let mut source_upper = std::collections::BTreeMap::new();
+    let column_values = collect_table_columns(table);
+    let mut source_indices = BTreeMap::new();
+    let mut source_upper = BTreeMap::new();
     for (col_idx, header) in table.headers.iter().enumerate() {
-        let mut values = Vec::with_capacity(row_count);
-        for row in &table.rows {
-            values.push(row.get(col_idx).cloned().unwrap_or_default());
-        }
-        source_columns.insert(header.clone(), values);
-        source_upper.insert(header.to_uppercase(), header.clone());
+        source_indices.insert(header.clone(), col_idx);
+        source_upper.insert(header.to_uppercase(), col_idx);
     }
-
-    let mut mapping_lookup = std::collections::BTreeMap::new();
-    if let Some(config) = mapping {
+    let mapping_lookup = mapping.map(|config| {
+        let mut lookup = BTreeMap::new();
         for item in &config.mappings {
-            mapping_lookup.insert(item.target_variable.to_uppercase(), item);
+            lookup.insert(item.target_variable.to_uppercase(), item);
         }
-    }
+        lookup
+    });
 
     let mut columns: Vec<Column> = Vec::with_capacity(domain.variables.len());
     for variable in &domain.variables {
         let mut values: Vec<String> = Vec::with_capacity(row_count);
         let target_upper = variable.name.to_uppercase();
-        if mapping.is_some() {
+        if let Some(mapping_lookup) = mapping_lookup.as_ref() {
             if let Some(suggestion) = mapping_lookup.get(&target_upper) {
                 let mut source_name = suggestion.source_column.as_str();
                 if let Some(transformation) = suggestion.transformation.as_deref()
-                    && source_columns.contains_key(transformation)
+                    && source_indices.contains_key(transformation)
                 {
                     source_name = transformation;
                 }
-                if let Some(source) = source_columns.get(source_name) {
-                    values = source.clone();
+                if let Some(source_index) = source_indices.get(source_name) {
+                    values = column_values[*source_index].clone();
                 }
             }
-        } else if let Some(source_name) = source_upper.get(&target_upper)
-            && let Some(source) = source_columns.get(source_name)
-        {
-            values = source.clone();
+        } else if let Some(source_index) = source_upper.get(&target_upper) {
+            values = column_values[*source_index].clone();
         }
 
         if values.is_empty() {
@@ -155,11 +156,7 @@ pub fn build_domain_frame_with_mapping(
         data.with_column(new_series)?;
     }
 
-    Ok(DomainFrame {
-        domain_code: domain.code.clone(),
-        data,
-        meta: None,
-    })
+    Ok(DomainFrame::new(domain.code.clone(), data))
 }
 
 pub fn build_mapped_domain_frame(

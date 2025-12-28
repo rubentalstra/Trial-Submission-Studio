@@ -1,14 +1,13 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use anyhow::Result;
-use polars::prelude::{AnyValue, DataFrame};
+use polars::prelude::DataFrame;
 use sdtm_model::Domain;
 
 use crate::data_utils::column_value_string;
 use crate::domain_utils::{infer_seq_column, standard_columns};
 use crate::frame::DomainFrame;
 use crate::frame_builder::build_domain_frame_from_records;
-use sdtm_ingest::any_to_string;
 
 pub struct SuppqualInput<'a> {
     pub parent_domain: &'a Domain,
@@ -123,56 +122,6 @@ fn unique_qnam(name: &str, used: &mut BTreeMap<String, String>) -> String {
     base
 }
 
-fn populated_columns(df: &DataFrame) -> BTreeSet<String> {
-    let mut populated = BTreeSet::new();
-    for series in df.get_columns() {
-        let mut has_value = false;
-        for idx in 0..df.height() {
-            let value = any_to_string(series.get(idx).unwrap_or(AnyValue::Null));
-            if !value.trim().is_empty() {
-                has_value = true;
-                break;
-            }
-        }
-        if has_value {
-            populated.insert(series.name().to_uppercase());
-        }
-    }
-    populated
-}
-
-fn is_duplicate_of_mapped(name: &str, populated: &BTreeSet<String>) -> bool {
-    if populated.is_empty() {
-        return false;
-    }
-    let upper = name.to_uppercase();
-    if upper.ends_with("SEQ") && populated.iter().any(|col| col.ends_with("SEQ")) {
-        return true;
-    }
-    if upper.ends_with("CD") && upper.len() > 2 {
-        let base = &upper[..upper.len() - 2];
-        if populated.contains(base) {
-            return true;
-        }
-    }
-    if let Some(prefix) = upper.strip_suffix("DATE")
-        && populated.contains(&format!("{prefix}DTC"))
-    {
-        return true;
-    }
-    if let Some(prefix) = upper.strip_suffix("DAT")
-        && populated.contains(&format!("{prefix}DTC"))
-    {
-        return true;
-    }
-    if let Some(prefix) = upper.strip_suffix("DT")
-        && populated.contains(&format!("{prefix}DTC"))
-    {
-        return true;
-    }
-    false
-}
-
 fn insert_if_some(record: &mut BTreeMap<String, String>, column: &Option<String>, value: String) {
     if let Some(name) = column.as_ref() {
         record.insert(name.clone(), value);
@@ -192,7 +141,6 @@ pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<DomainFrame>> {
         .collect();
     let suppqual_cols = standard_columns(input.suppqual_domain);
     let parent_cols = standard_columns(input.parent_domain);
-    let populated = input.mapped_df.map(populated_columns).unwrap_or_default();
     let mut extra_cols: Vec<String> = Vec::new();
     for series in input.source_df.get_columns() {
         let name = series.name().to_string();
@@ -202,9 +150,6 @@ pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<DomainFrame>> {
         if core_variables.contains(&name.to_uppercase()) {
             continue;
         }
-        if is_duplicate_of_mapped(&name, &populated) {
-            continue;
-        }
         if let Some(exclusions) = input.exclusion_columns
             && exclusions.contains(&name.to_uppercase())
         {
@@ -212,32 +157,6 @@ pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<DomainFrame>> {
         }
         extra_cols.push(name);
     }
-
-    let mut extra_upper: BTreeMap<String, String> = BTreeMap::new();
-    let mut non_empty_upper = BTreeSet::new();
-    for name in &extra_cols {
-        extra_upper.insert(name.to_uppercase(), name.clone());
-        let upper = name.to_uppercase();
-        if let Ok(series) = input.source_df.column(name) {
-            for idx in 0..input.source_df.height() {
-                let value = any_to_string(series.get(idx).unwrap_or(AnyValue::Null));
-                if !value.trim().is_empty() {
-                    non_empty_upper.insert(upper.clone());
-                    break;
-                }
-            }
-        }
-    }
-    extra_cols.retain(|name| {
-        let upper = name.to_uppercase();
-        if upper.ends_with("CD") && upper.len() > 2 {
-            let base = &upper[..upper.len() - 2];
-            if extra_upper.contains_key(base) && non_empty_upper.contains(base) {
-                return false;
-            }
-        }
-        true
-    });
 
     if extra_cols.is_empty() {
         return Ok(None);
@@ -279,7 +198,44 @@ pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<DomainFrame>> {
         qnam_map.insert(col.clone(), qnam);
     }
 
-    let mut seen_keys: BTreeSet<String> = BTreeSet::new();
+    let study_values: Vec<String> = parent_cols
+        .study_id
+        .as_deref()
+        .map(|name| {
+            (0..row_count)
+                .map(|idx| strip_wrapping_quotes(&column_value_string(input.source_df, name, idx)))
+                .collect()
+        })
+        .unwrap_or_else(|| vec![String::new(); row_count]);
+    let usubjid_values: Vec<String> = parent_cols
+        .usubjid
+        .as_deref()
+        .map(|name| {
+            (0..row_count)
+                .map(|idx| strip_wrapping_quotes(&column_value_string(input.source_df, name, idx)))
+                .collect()
+        })
+        .unwrap_or_else(|| vec![String::new(); row_count]);
+    let mapped_usubjid_values: Vec<String> = input
+        .mapped_df
+        .and_then(|df| {
+            parent_cols.usubjid.as_deref().map(|name| {
+                (0..row_count)
+                    .map(|idx| strip_wrapping_quotes(&column_value_string(df, name, idx)))
+                    .collect()
+            })
+        })
+        .unwrap_or_else(|| vec![String::new(); row_count]);
+    let idvar_values: Vec<String> =
+        if let (Some(mapped), Some(idvar_name)) = (input.mapped_df, &idvar) {
+            (0..row_count)
+                .map(|idx| column_value_string(mapped, idvar_name, idx))
+                .collect()
+        } else {
+            vec![String::new(); row_count]
+        };
+
+    let idvar_value = idvar.clone().unwrap_or_default();
     for col in &extra_cols {
         let qnam = qnam_map
             .get(col)
@@ -292,50 +248,15 @@ pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<DomainFrame>> {
             if raw_val.is_empty() {
                 continue;
             }
-            let study_value = parent_cols
-                .study_id
-                .as_deref()
-                .map(|name| strip_wrapping_quotes(&column_value_string(input.source_df, name, idx)))
-                .unwrap_or_default();
-            let usubjid_value = parent_cols
-                .usubjid
-                .as_deref()
-                .map(|name| strip_wrapping_quotes(&column_value_string(input.source_df, name, idx)))
-                .unwrap_or_default();
-            let mapped_usubjid = input
-                .mapped_df
-                .and_then(|df| {
-                    parent_cols
-                        .usubjid
-                        .as_deref()
-                        .map(|name| strip_wrapping_quotes(&column_value_string(df, name, idx)))
-                })
-                .unwrap_or_default();
+            let study_value = study_values[idx].clone();
+            let usubjid_value = usubjid_values[idx].clone();
+            let mapped_usubjid = mapped_usubjid_values[idx].clone();
             let final_usubjid = if !usubjid_value.is_empty() {
                 usubjid_value
             } else {
                 mapped_usubjid
             };
-
-            let idvar_value = idvar.clone().unwrap_or_default();
-            let idvarval = if let (Some(mapped), Some(idvar_name)) = (input.mapped_df, &idvar) {
-                column_value_string(mapped, idvar_name, idx)
-            } else {
-                String::new()
-            };
-
-            let dedupe_key = format!(
-                "{}|{}|{}|{}|{}|{}",
-                study_value.trim(),
-                parent_domain_code,
-                final_usubjid.trim(),
-                idvar_value.trim(),
-                idvarval.trim(),
-                qnam
-            );
-            if !seen_keys.insert(dedupe_key) {
-                continue;
-            }
+            let idvarval = idvar_values[idx].clone();
 
             let mut record = BTreeMap::new();
             insert_if_some(
@@ -353,7 +274,7 @@ pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<DomainFrame>> {
                 parent_domain_code.clone(),
             );
             insert_if_some(&mut record, &suppqual_cols.usubjid, final_usubjid);
-            insert_if_some(&mut record, &suppqual_cols.idvar, idvar_value);
+            insert_if_some(&mut record, &suppqual_cols.idvar, idvar_value.clone());
             insert_if_some(&mut record, &suppqual_cols.idvarval, idvarval);
             insert_if_some(&mut record, &suppqual_cols.qnam, qnam.clone());
             insert_if_some(&mut record, &suppqual_cols.qlabel, qlabel.clone());
