@@ -138,10 +138,10 @@ pub fn resolve_ct_value(ct: &Codelist, raw: &str) -> CtResolution {
 
     // 3. Check compact key match against preferred terms
     for term in ct.terms.values() {
-        if let Some(ref preferred) = term.preferred_term {
-            if compact_key(preferred) == input_compact {
-                return CtResolution::CompactMatch(term.submission_value.clone());
-            }
+        if let Some(ref preferred) = term.preferred_term
+            && compact_key(preferred) == input_compact
+        {
+            return CtResolution::CompactMatch(term.submission_value.clone());
         }
     }
 
@@ -251,22 +251,6 @@ pub fn normalize_ct_value_strict(ct: &Codelist, raw: &str) -> String {
 pub fn preferred_term_for(ct: &Codelist, submission: &str) -> Option<String> {
     let key = submission.to_uppercase();
     ct.terms.get(&key).and_then(|t| t.preferred_term.clone())
-}
-
-/// Gets the NCI code for a submission value.
-pub fn nci_code_for(ct: &Codelist, submission: &str) -> Option<String> {
-    let key = submission.to_uppercase();
-    ct.terms.get(&key).map(|t| t.code.clone())
-}
-
-/// Checks if a value is a valid submission value in the codelist.
-pub fn is_valid_submission_value(ct: &Codelist, value: &str) -> bool {
-    ct.is_valid(value)
-}
-
-/// Checks if a value can be resolved to a valid CT value (strict mode).
-pub fn is_valid_ct_value(ct: &Codelist, raw: &str) -> bool {
-    resolve_ct_strict(ct, raw).is_some()
 }
 
 // =============================================================================
