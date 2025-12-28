@@ -12,7 +12,6 @@ pub(super) fn process_lb(
     df: &mut DataFrame,
     context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, context)?;
     for col_name in ["LBORRESU", "LBSTRESU"] {
         if let Some(name) = col(domain, col_name)
             && has_column(df, &name)

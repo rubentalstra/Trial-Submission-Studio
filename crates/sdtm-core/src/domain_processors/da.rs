@@ -11,7 +11,6 @@ pub(super) fn process_da(
     df: &mut DataFrame,
     context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, context)?;
     if let Some(dastat) = col(domain, "DASTAT") {
         let stat_map = map_values([
             ("NOT DONE", "NOT DONE"),

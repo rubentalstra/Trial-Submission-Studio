@@ -11,7 +11,6 @@ pub(super) fn process_se(
     df: &mut DataFrame,
     context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, context)?;
     for col_name in [
         "STUDYID", "DOMAIN", "USUBJID", "ETCD", "ELEMENT", "EPOCH", "SESTDTC", "SEENDTC",
     ] {

@@ -11,7 +11,6 @@ pub(super) fn process_ie(
     df: &mut DataFrame,
     context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, context)?;
     for col_name in [
         "IEORRES", "IESTRESC", "IETESTCD", "IETEST", "IECAT", "IESCAT", "EPOCH",
     ] {

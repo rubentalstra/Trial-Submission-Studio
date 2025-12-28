@@ -11,7 +11,6 @@ pub(super) fn process_ex(
     df: &mut DataFrame,
     context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, context)?;
     if let Some(extrt) = col(domain, "EXTRT")
         && has_column(df, &extrt)
     {

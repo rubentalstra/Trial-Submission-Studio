@@ -11,7 +11,6 @@ pub(super) fn process_ts(
     df: &mut DataFrame,
     context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, context)?;
     if df.height() == 0 {
         return Ok(());
     }

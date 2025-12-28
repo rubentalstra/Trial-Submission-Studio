@@ -9,9 +9,8 @@ use super::common::*;
 pub(super) fn process_te(
     domain: &Domain,
     df: &mut DataFrame,
-    context: &PipelineContext,
+    _context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, context)?;
     for col_name in ["STUDYID", "DOMAIN", "ETCD", "ELEMENT", "TESTRL", "TEENRL"] {
         if let Some(name) = col(domain, col_name)
             && has_column(df, &name)

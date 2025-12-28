@@ -11,7 +11,6 @@ pub(super) fn process_cm(
     df: &mut DataFrame,
     context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, context)?;
     if let Some(cmdosu) = col(domain, "CMDOSU")
         && has_column(df, &cmdosu)
     {
@@ -26,16 +25,6 @@ pub(super) fn process_cm(
     {
         let values = string_column(df, &cmdur)?;
         set_string_column(df, &cmdur, values)?;
-    }
-    let key_cols = ["USUBJID", "CMTRT", "CMSTDTC", "CMENDTC"]
-        .into_iter()
-        .filter_map(|name| col(domain, name))
-        .filter(|name| has_column(df, name))
-        .collect::<Vec<_>>();
-    if !key_cols.is_empty() {
-        deduplicate(df, &key_cols)?;
-    } else {
-        deduplicate(df, &df.get_column_names_owned())?;
     }
     if let Some(cmdostxt) = col(domain, "CMDOSTXT")
         && has_column(df, &cmdostxt)
@@ -141,6 +130,5 @@ pub(super) fn process_cm(
     {
         compute_study_day(domain, df, &cmendtc, &cmendy, context, "RFSTDTC")?;
     }
-    deduplicate(df, &df.get_column_names_owned())?;
     Ok(())
 }

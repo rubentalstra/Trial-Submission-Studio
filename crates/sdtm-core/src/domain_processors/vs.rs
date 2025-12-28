@@ -13,7 +13,6 @@ pub(super) fn process_vs(
     df: &mut DataFrame,
     context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, context)?;
     if let Some(vsdtc) = col(domain, "VSDTC")
         && let Some(vsdy) = col(domain, "VSDY")
     {
@@ -166,46 +165,6 @@ pub(super) fn process_vs(
             }
         }
         set_string_column(df, &vstest, test_vals)?;
-    }
-    if let (Some(vstest), Some(vstestcd)) = (col(domain, "VSTEST"), col(domain, "VSTESTCD"))
-        && has_column(df, &vstest)
-        && has_column(df, &vstestcd)
-    {
-        let test_vals = string_column(df, &vstest)?;
-        let testcd_vals = string_column(df, &vstestcd)?;
-        let orres_vals = col(domain, "VSORRES")
-            .filter(|name| has_column(df, name))
-            .and_then(|name| string_column(df, &name).ok())
-            .unwrap_or_else(|| vec![String::new(); df.height()]);
-        let stresc_vals = col(domain, "VSSTRESC")
-            .filter(|name| has_column(df, name))
-            .and_then(|name| string_column(df, &name).ok())
-            .unwrap_or_else(|| vec![String::new(); df.height()]);
-        let orresu_vals = col(domain, "VSORRESU")
-            .filter(|name| has_column(df, name))
-            .and_then(|name| string_column(df, &name).ok())
-            .unwrap_or_else(|| vec![String::new(); df.height()]);
-        let stresu_vals = col(domain, "VSSTRESU")
-            .filter(|name| has_column(df, name))
-            .and_then(|name| string_column(df, &name).ok())
-            .unwrap_or_else(|| vec![String::new(); df.height()]);
-        let pos_vals = col(domain, "VSPOS")
-            .filter(|name| has_column(df, name))
-            .and_then(|name| string_column(df, &name).ok())
-            .unwrap_or_else(|| vec![String::new(); df.height()]);
-        let mut keep = vec![true; df.height()];
-        for (idx, keep_value) in keep.iter_mut().enumerate().take(df.height()) {
-            let has_test = !test_vals[idx].is_empty() || !testcd_vals[idx].is_empty();
-            let has_result = !orres_vals[idx].is_empty()
-                || !stresc_vals[idx].is_empty()
-                || !orresu_vals[idx].is_empty()
-                || !stresu_vals[idx].is_empty()
-                || !pos_vals[idx].is_empty();
-            if !has_test && !has_result {
-                *keep_value = false;
-            }
-        }
-        filter_rows(df, &keep)?;
     }
     if let (Some(vsorres), Some(vsstresn)) = (col(domain, "VSORRES"), col(domain, "VSSTRESN"))
         && has_column(df, &vsorres)

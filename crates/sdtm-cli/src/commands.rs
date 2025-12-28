@@ -7,7 +7,6 @@ use comfy_table::Table;
 use polars::prelude::DataFrame;
 use tracing::{debug, info, info_span, warn};
 
-use sdtm_core::dedupe::dedupe_frames_by_identifiers;
 use sdtm_core::domain_sets::{build_report_domains, domain_map_by_code, is_supporting_domain};
 use sdtm_core::frame::DomainFrame;
 use sdtm_core::pipeline_context::{
@@ -300,9 +299,8 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
         }
     }
 
-    // Deduplicate and sort frames
+    // Sort frames
     let mut frame_list: Vec<DomainFrame> = frames.into_values().collect();
-    dedupe_frames_by_identifiers(&mut frame_list, &pipeline.standards_map, &suppqual_domain)?;
     frame_list.sort_by(|a, b| a.domain_code.cmp(&b.domain_code));
     let total_records: usize = frame_list.iter().map(|frame| frame.record_count()).sum();
     info!(

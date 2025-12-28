@@ -11,7 +11,6 @@ pub(super) fn process_pr(
     df: &mut DataFrame,
     context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, context)?;
     for visit_col in ["VISIT", "VISITNUM"] {
         if let Some(name) = col(domain, visit_col)
             && has_column(df, &name)
@@ -42,7 +41,7 @@ pub(super) fn process_pr(
         let values = string_column(df, &prrftdtc)?;
         set_string_column(df, &prrftdtc, values)?;
     }
-    for col_name in ["PRTPTREF", "PRTPT", "PRTPTNUM", "PRELTM"] {
+    for col_name in ["PRTPTREF", "PRTPT", "PRELTM"] {
         if let Some(name) = col(domain, col_name)
             && has_column(df, &name)
         {
@@ -52,23 +51,10 @@ pub(super) fn process_pr(
     }
     if let Some(prdecod) = col(domain, "PRDECOD") {
         if has_column(df, &prdecod) {
-            let mut values = string_column(df, &prdecod)?
+            let values = string_column(df, &prdecod)?
                 .into_iter()
                 .map(|value| value.to_uppercase())
                 .collect::<Vec<_>>();
-            if let Some(usubjid) = col(domain, "USUBJID")
-                && has_column(df, &usubjid)
-            {
-                let prefixes = string_column(df, &usubjid)?
-                    .into_iter()
-                    .map(|value| value.split('-').next().unwrap_or("").trim().to_uppercase())
-                    .collect::<Vec<_>>();
-                for idx in 0..df.height() {
-                    if !prefixes[idx].is_empty() && values[idx] == prefixes[idx] {
-                        values[idx].clear();
-                    }
-                }
-            }
             set_string_column(df, &prdecod, values)?;
         }
         if let Some(ct) = context.resolve_ct(domain, "PRDECOD") {
@@ -85,50 +71,17 @@ pub(super) fn process_pr(
         let values = string_column(df, &epoch)?;
         set_string_column(df, &epoch, values)?;
     }
-    let timing_defaults = [
-        ("PRTPTREF", "VISIT"),
-        ("PRTPT", "VISIT"),
-        ("PRELTM", "PT0H"),
-    ];
-    for (col_name, default) in timing_defaults {
-        if let Some(name) = col(domain, col_name) {
-            let mut values = if has_column(df, &name) {
-                string_column(df, &name)?
-            } else {
-                vec![String::new(); df.height()]
-            };
-            for value in &mut values {
-                if value.is_empty() {
-                    *value = default.to_string();
-                }
-            }
-            set_string_column(df, &name, values)?;
-        }
-    }
-    if let Some(prtptnum) = col(domain, "PRTPTNUM") {
-        let values = if has_column(df, &prtptnum) {
-            numeric_column_i64(df, &prtptnum)?
-        } else {
-            vec![Some(1); df.height()]
-        };
-        let normalized = values.into_iter().map(|value| value.or(Some(1))).collect();
-        set_i64_column(df, &prtptnum, normalized)?;
+    if let Some(prtptnum) = col(domain, "PRTPTNUM")
+        && has_column(df, &prtptnum)
+    {
+        let values = numeric_column_i64(df, &prtptnum)?;
+        set_i64_column(df, &prtptnum, values)?;
     }
     if let Some(visitnum) = col(domain, "VISITNUM")
         && has_column(df, &visitnum)
     {
-        let values = numeric_column_i64(df, &visitnum)?
-            .into_iter()
-            .map(|value| value.or(Some(1)))
-            .collect::<Vec<_>>();
-        set_i64_column(df, &visitnum, values.clone())?;
-        if let Some(visit) = col(domain, "VISIT") {
-            let labels = values
-                .into_iter()
-                .map(|value| format!("Visit {}", value.unwrap_or(1)))
-                .collect::<Vec<_>>();
-            set_string_column(df, &visit, labels)?;
-        }
+        let values = numeric_column_i64(df, &visitnum)?;
+        set_i64_column(df, &visitnum, values)?;
     }
     Ok(())
 }

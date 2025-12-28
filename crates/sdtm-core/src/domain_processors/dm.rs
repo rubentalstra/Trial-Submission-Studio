@@ -11,7 +11,6 @@ pub(super) fn process_dm(
     df: &mut DataFrame,
     context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, context)?;
     if let Some(age) = col(domain, "AGE")
         && has_column(df, &age)
     {

@@ -11,7 +11,6 @@ pub(super) fn process_ae(
     df: &mut DataFrame,
     context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, context)?;
     if let Some(aedur) = col(domain, "AEDUR")
         && has_column(df, &aedur)
     {

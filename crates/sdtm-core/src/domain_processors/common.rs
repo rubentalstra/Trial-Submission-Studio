@@ -1,9 +1,8 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use anyhow::Result;
 use chrono::NaiveDate;
-use polars::prelude::{AnyValue, BooleanChunked, DataFrame, NamedFrom, NewChunkedArray, Series};
-use tracing::warn;
+use polars::prelude::{AnyValue, DataFrame, NamedFrom, Series};
 
 use sdtm_model::Domain;
 
@@ -36,14 +35,6 @@ pub(super) fn string_column(df: &DataFrame, name: &str) -> Result<Vec<String>> {
         values.push(value.trim().to_string());
     }
     Ok(values)
-}
-
-fn strip_quotes(value: &str) -> String {
-    let trimmed = value.trim();
-    if !trimmed.contains('"') {
-        return trimmed.to_string();
-    }
-    trimmed.chars().filter(|ch| *ch != '"').collect()
 }
 
 pub(super) fn numeric_column_f64(df: &DataFrame, name: &str) -> Result<Vec<Option<f64>>> {
@@ -92,45 +83,6 @@ pub(super) fn set_i64_column(
     Ok(())
 }
 
-pub(super) fn filter_rows(df: &mut DataFrame, keep: &[bool]) -> Result<()> {
-    let mask = BooleanChunked::from_slice("keep".into(), keep);
-    *df = df.filter(&mask)?;
-    Ok(())
-}
-
-pub(super) fn deduplicate<S: AsRef<str>>(df: &mut DataFrame, keys: &[S]) -> Result<()> {
-    if keys.is_empty() || df.height() == 0 {
-        return Ok(());
-    }
-    let mut key_columns = Vec::with_capacity(keys.len());
-    for key in keys {
-        let key = key.as_ref();
-        if !has_column(df, key) {
-            continue;
-        }
-        key_columns.push(string_column(df, key)?);
-    }
-    if key_columns.is_empty() {
-        return Ok(());
-    }
-    let mut seen: HashSet<String> = HashSet::new();
-    let mut keep = Vec::with_capacity(df.height());
-    for idx in 0..df.height() {
-        let mut key = String::new();
-        for col_vals in &key_columns {
-            key.push_str(&col_vals[idx]);
-            key.push('|');
-        }
-        if seen.insert(key) {
-            keep.push(true);
-        } else {
-            keep.push(false);
-        }
-    }
-    filter_rows(df, &keep)?;
-    Ok(())
-}
-
 pub(super) fn apply_map_upper(
     df: &mut DataFrame,
     column: Option<&str>,
@@ -160,134 +112,7 @@ pub(super) fn map_values<const N: usize>(pairs: [(&str, &str); N]) -> HashMap<St
     }
     map
 }
-
 // CT functions are provided by re-exports from ct_utils above
-
-/// Drop placeholder/header rows that have missing or invalid USUBJID values.
-///
-/// # SDTMIG Reference (Section 4.1.2)
-///
-/// USUBJID is a required identifier for all General Observation class records.
-/// It must be "a unique identifier for each subject in the study" and is
-/// "a concatenation of STUDYID and a subject identifier unique within that study."
-///
-/// This function:
-/// 1. First attempts to derive USUBJID from STUDYID + SUBJID if USUBJID is missing
-///    (SDTMIG-approved derivation per Section 4.1.2)
-/// 2. Drops rows that still have invalid USUBJID values (placeholder/header rows)
-/// 3. Logs a warning when rows are dropped so the user is aware
-///
-/// Placeholder values that are dropped: empty string, "NaN", "<NA>", "NONE", "NULL"
-///
-/// # Arguments
-///
-/// * `domain` - Domain metadata
-/// * `df` - DataFrame to process (modified in place)
-/// * `context` - Processing context
-pub(super) fn drop_placeholder_rows(
-    domain: &Domain,
-    df: &mut DataFrame,
-    context: &PipelineContext,
-) -> Result<()> {
-    let Some(usubjid_col) = col(domain, "USUBJID") else {
-        return Ok(());
-    };
-    if !has_column(df, &usubjid_col) {
-        return Ok(());
-    }
-    let mut usubjid_vals = string_column(df, &usubjid_col)?;
-    for value in &mut usubjid_vals {
-        *value = strip_quotes(value);
-    }
-    let mut missing = vec![false; df.height()];
-    for idx in 0..df.height() {
-        missing[idx] = is_missing_usubjid(&usubjid_vals[idx]);
-    }
-
-    if missing.iter().any(|value| *value) {
-        if let Some(subjid_col) = col(domain, "SUBJID")
-            && has_column(df, &subjid_col)
-        {
-            let subjid_vals = string_column(df, &subjid_col)?;
-            let studyid_vals = col(domain, "STUDYID")
-                .filter(|name| has_column(df, name))
-                .and_then(|name| string_column(df, &name).ok())
-                .unwrap_or_else(|| vec![String::new(); df.height()]);
-            for idx in 0..df.height() {
-                if !missing[idx] {
-                    continue;
-                }
-                let subjid = strip_quotes(&subjid_vals[idx]);
-                let subjid = subjid.trim();
-                let placeholder = matches!(
-                    subjid.to_uppercase().as_str(),
-                    "SUBJID" | "SUBJECTID" | "SUBJECT ID"
-                );
-                if subjid.is_empty() || placeholder {
-                    continue;
-                }
-                let studyid = strip_quotes(studyid_vals[idx].trim());
-                if studyid.is_empty() {
-                    usubjid_vals[idx] = subjid.to_string();
-                } else {
-                    usubjid_vals[idx] = format!("{}-{}", studyid, subjid);
-                }
-            }
-        }
-        for idx in 0..df.height() {
-            missing[idx] = is_missing_usubjid(&usubjid_vals[idx]);
-        }
-    }
-
-    if missing.iter().any(|value| *value) {
-        let drop_count = missing.iter().filter(|v| **v).count();
-        let keep = missing.iter().map(|value| !*value).collect::<Vec<_>>();
-        set_string_column(df, &usubjid_col, usubjid_vals)?;
-
-        // Log dropped rows - these are placeholder/header rows with invalid USUBJID
-        // SDTMIG 4.1.2: USUBJID is required for all General Observation records
-        warn!(
-            domain_code = %domain.code,
-            dropped_count = drop_count,
-            "Dropped rows with missing/invalid USUBJID (placeholder/header rows)"
-        );
-
-        filter_rows(df, &keep)?;
-    } else {
-        set_string_column(df, &usubjid_col, usubjid_vals.clone())?;
-    }
-
-    let mut study_id = String::new();
-    if let Some(studyid_col) = col(domain, "STUDYID")
-        && has_column(df, &studyid_col)
-    {
-        let study_vals = string_column(df, &studyid_col)?;
-        if let Some(found) = study_vals.iter().find(|value| !value.is_empty()) {
-            study_id = strip_quotes(found);
-        }
-    }
-    if study_id.is_empty() {
-        study_id = context.study_id.to_string();
-    }
-    if !study_id.is_empty() {
-        let prefix = format!("{study_id}-");
-        let mut updated = string_column(df, &usubjid_col)?;
-        for value in &mut updated {
-            if !value.is_empty() && !value.starts_with(&prefix) {
-                *value = format!("{prefix}{value}");
-            }
-        }
-        set_string_column(df, &usubjid_col, updated)?;
-    }
-    Ok(())
-}
-
-fn is_missing_usubjid(value: &str) -> bool {
-    matches!(
-        value.trim().to_uppercase().as_str(),
-        "" | "NAN" | "<NA>" | "NONE" | "NULL"
-    )
-}
 
 pub(super) fn ensure_date_pair_order(
     df: &mut DataFrame,

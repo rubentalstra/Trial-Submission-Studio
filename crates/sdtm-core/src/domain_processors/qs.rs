@@ -11,7 +11,6 @@ pub(super) fn process_qs(
     df: &mut DataFrame,
     context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, context)?;
     for col_name in [
         "QSTESTCD", "QSTEST", "QSCAT", "QSSCAT", "QSORRES", "QSSTRESC", "QSLOBXFL", "VISIT",
         "EPOCH",
@@ -21,111 +20,6 @@ pub(super) fn process_qs(
         {
             let values = string_column(df, &name)?;
             set_string_column(df, &name, values)?;
-        }
-    }
-
-    let mut pga_score: Option<Vec<String>> = None;
-    let mut score_from_qsgrpid = false;
-    if let Some(qspgars) = col(domain, "QSPGARS")
-        && has_column(df, &qspgars)
-    {
-        pga_score = Some(string_column(df, &qspgars)?);
-    }
-    if pga_score.is_none()
-        && let Some(qspgarscd) = col(domain, "QSPGARSCD")
-        && has_column(df, &qspgarscd)
-    {
-        pga_score = Some(string_column(df, &qspgarscd)?);
-    }
-    if pga_score.is_none()
-        && let (Some(qsorres), Some(qsgrpid)) = (col(domain, "QSORRES"), col(domain, "QSGRPID"))
-        && has_column(df, &qsorres)
-        && has_column(df, &qsgrpid)
-    {
-        let orres_vals = string_column(df, &qsorres)?;
-        let grpid_vals = string_column(df, &qsgrpid)?;
-        let all_orres_empty = orres_vals.iter().all(|value| value.is_empty());
-        let any_grpid = grpid_vals.iter().any(|value| !value.is_empty());
-        if all_orres_empty && any_grpid {
-            pga_score = Some(grpid_vals);
-            score_from_qsgrpid = true;
-        }
-    }
-
-    if let Some(score) = pga_score {
-        if let Some(qsorres) = col(domain, "QSORRES") {
-            let mut orres_vals = if has_column(df, &qsorres) {
-                string_column(df, &qsorres)?
-            } else {
-                vec![String::new(); df.height()]
-            };
-            for idx in 0..df.height() {
-                if orres_vals[idx].is_empty() {
-                    orres_vals[idx] = score[idx].clone();
-                }
-            }
-            set_string_column(df, &qsorres, orres_vals)?;
-        }
-        if score_from_qsgrpid
-            && let Some(qsgrpid) = col(domain, "QSGRPID")
-            && has_column(df, &qsgrpid)
-        {
-            let cleared = vec![String::new(); df.height()];
-            set_string_column(df, &qsgrpid, cleared)?;
-        }
-        if let Some(qstestcd) = col(domain, "QSTESTCD")
-            && has_column(df, &qstestcd)
-        {
-            let mut values = string_column(df, &qstestcd)?;
-            if let Some(usubjid) = col(domain, "USUBJID") {
-                if has_column(df, &usubjid) {
-                    let usub_vals = string_column(df, &usubjid)?;
-                    for idx in 0..df.height() {
-                        if values[idx].is_empty() {
-                            values[idx] = "PGAS".to_string();
-                            continue;
-                        }
-                        let site_part = usub_vals[idx]
-                            .split('-')
-                            .nth(1)
-                            .unwrap_or("")
-                            .trim()
-                            .to_string();
-                        if !site_part.is_empty() && values[idx] == site_part {
-                            values[idx] = "PGAS".to_string();
-                        }
-                    }
-                }
-            } else {
-                for value in &mut values {
-                    if value.is_empty() {
-                        *value = "PGAS".to_string();
-                    }
-                }
-            }
-            set_string_column(df, &qstestcd, values)?;
-        }
-        if let Some(qstest) = col(domain, "QSTEST")
-            && has_column(df, &qstest)
-        {
-            let mut values = string_column(df, &qstest)?;
-            for value in &mut values {
-                if value.is_empty() {
-                    *value = "PHYSICIAN GLOBAL ASSESSMENT".to_string();
-                }
-            }
-            set_string_column(df, &qstest, values)?;
-        }
-        if let Some(qscat) = col(domain, "QSCAT")
-            && has_column(df, &qscat)
-        {
-            let mut values = string_column(df, &qscat)?;
-            for value in &mut values {
-                if value.is_empty() {
-                    *value = "PGI".to_string();
-                }
-            }
-            set_string_column(df, &qscat, values)?;
         }
     }
 

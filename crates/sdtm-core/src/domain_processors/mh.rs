@@ -11,7 +11,6 @@ pub(super) fn process_mh(
     df: &mut DataFrame,
     context: &PipelineContext,
 ) -> Result<()> {
-    drop_placeholder_rows(domain, df, context)?;
     if let Some(mhseq) = col(domain, "MHSEQ")
         && has_column(df, &mhseq)
     {
@@ -32,9 +31,7 @@ pub(super) fn process_mh(
                 }
             }
         }
-        let keep: Vec<bool> = terms.iter().map(|value| !value.is_empty()).collect();
         set_string_column(df, &mhterm, terms)?;
-        filter_rows(df, &keep)?;
     }
     for col_name in ["MHSTDTC", "MHENDTC", "MHDTC"] {
         if let Some(name) = col(domain, col_name)
