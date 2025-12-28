@@ -1,6 +1,6 @@
 use std::collections::{BTreeMap, BTreeSet};
 
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use polars::prelude::{AnyValue, Column, DataFrame, NamedFrom, Series};
 use tracing::warn;
 
@@ -9,7 +9,6 @@ use sdtm_model::{CaseInsensitiveSet, Domain, VariableType};
 use crate::ct_utils::{normalize_ct_value_safe, normalize_ct_value_strict};
 use crate::domain_processors;
 use crate::domain_utils::{infer_seq_column, standard_columns};
-use crate::frame::DomainFrame;
 use crate::processing_context::ProcessingContext;
 use sdtm_ingest::any_to_string;
 
@@ -167,26 +166,6 @@ pub fn process_domain_with_context_and_tracker(
     domain_processors::process_domain(domain, df, ctx)?;
     normalize_ct_columns(domain, df, ctx)?;
     assign_sequence(domain, df, ctx, seq_tracker)?;
-    Ok(())
-}
-
-pub fn process_domains_with_context(
-    domains: &[Domain],
-    frames: &mut [DomainFrame],
-    ctx: &ProcessingContext,
-) -> Result<()> {
-    let mut domain_map: BTreeMap<String, &Domain> = BTreeMap::new();
-    for domain in domains {
-        domain_map.insert(domain.code.to_uppercase(), domain);
-    }
-    frames.sort_by(|a, b| a.domain_code.cmp(&b.domain_code));
-    for frame in frames.iter_mut() {
-        let key = frame.domain_code.to_uppercase();
-        let domain = domain_map
-            .get(&key)
-            .ok_or_else(|| anyhow!("missing standards metadata for domain {}", key))?;
-        process_domain_with_context(domain, &mut frame.data, ctx)?;
-    }
     Ok(())
 }
 

@@ -34,14 +34,12 @@ Minimal options (v1):
 - `--log-format [pretty|compact|json]`
 - `--color [auto|always|never]`
 - `--log-file <path>`
-- `--log-data` (explicitly allow row-level logging)
 
 No config file in v1; defaults are compiled.
 
 ## Logging and PHI
 
-- Row-level values are redacted by default; only counts and metadata are logged.
-- Use `--log-data` to allow row-level logging when you have PHI-safe handling.
+- Logs avoid row-level values; only counts and metadata are logged.
 - Prefer `--log-level` (or `-v`/`-vv`) for verbosity control; `--quiet` limits
   logs to errors.
 - Use `--log-format` for JSON/compact output, `--color` to control ANSI output,

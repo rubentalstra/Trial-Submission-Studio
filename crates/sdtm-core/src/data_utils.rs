@@ -24,18 +24,6 @@ pub fn table_label(table: &CsvTable, column: &str) -> Option<String> {
     }
 }
 
-pub fn table_column_values(table: &CsvTable, column: &str) -> Option<Vec<String>> {
-    let idx = table
-        .headers
-        .iter()
-        .position(|header| header.eq_ignore_ascii_case(column))?;
-    let mut values = Vec::with_capacity(table.rows.len());
-    for row in &table.rows {
-        values.push(row.get(idx).cloned().unwrap_or_default());
-    }
-    Some(values)
-}
-
 pub fn mapping_source_for_target(mapping: &MappingConfig, target: &str) -> Option<String> {
     mapping
         .mappings

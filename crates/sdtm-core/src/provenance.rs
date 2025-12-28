@@ -218,17 +218,6 @@ impl ProvenanceTracker {
             .collect()
     }
 
-    /// Get records for a specific variable.
-    pub fn records_for_variable(&self, domain_code: &str, variable: &str) -> Vec<ProvenanceRecord> {
-        self.records()
-            .into_iter()
-            .filter(|r| {
-                r.domain_code.eq_ignore_ascii_case(domain_code)
-                    && r.variable_name.eq_ignore_ascii_case(variable)
-            })
-            .collect()
-    }
-
     /// Generate a summary of derivations by domain and variable.
     pub fn summary(&self) -> BTreeMap<String, BTreeMap<String, Vec<String>>> {
         let mut result: BTreeMap<String, BTreeMap<String, Vec<String>>> = BTreeMap::new();
@@ -240,11 +229,6 @@ impl ProvenanceTracker {
         }
 
         result
-    }
-
-    /// Check if a variable has any provenance records.
-    pub fn has_provenance(&self, domain_code: &str, variable: &str) -> bool {
-        !self.records_for_variable(domain_code, variable).is_empty()
     }
 
     /// Get count of all records.

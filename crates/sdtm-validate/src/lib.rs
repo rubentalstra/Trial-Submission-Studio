@@ -1,9 +1,3 @@
-pub mod cross_domain;
-
-pub use cross_domain::{
-    CrossDomainValidationInput, CrossDomainValidationResult, validate_cross_domain,
-};
-
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
@@ -21,7 +15,6 @@ use sdtm_model::{
 #[derive(Debug, Clone, Default)]
 pub struct ValidationContext<'a> {
     pub ct_registry: Option<&'a TerminologyRegistry>,
-    pub ct_catalogs: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -58,10 +51,7 @@ pub fn gate_strict_outputs(
 
 impl<'a> ValidationContext<'a> {
     pub fn new() -> Self {
-        Self {
-            ct_registry: None,
-            ct_catalogs: None,
-        }
+        Self { ct_registry: None }
     }
 
     pub fn with_ct_registry(mut self, ct_registry: &'a TerminologyRegistry) -> Self {
@@ -115,7 +105,7 @@ pub fn validate_domain(
             let Some(column) = column_lookup.get(&variable.name) else {
                 continue;
             };
-            if let Some(resolved) = resolve_ct(ct_registry, variable, ctx.ct_catalogs.as_deref())
+            if let Some(resolved) = resolve_ct(ct_registry, variable)
                 && let Some(issue) = ct_issue(variable, df, column, &resolved)
             {
                 issues.push(issue);
@@ -137,10 +127,6 @@ pub fn validate_domains(
     let mut domain_map: BTreeMap<String, &Domain> = BTreeMap::new();
     for domain in domains {
         domain_map.insert(domain.code.to_uppercase(), domain);
-    }
-    let mut frame_map: BTreeMap<String, &DataFrame> = BTreeMap::new();
-    for (domain_code, df) in frames {
-        frame_map.insert(domain_code.to_uppercase(), *df);
     }
     let mut report_map: BTreeMap<String, ValidationReport> = BTreeMap::new();
     for (domain_code, df) in frames {
@@ -268,7 +254,6 @@ fn collect_invalid_ct_values(df: &DataFrame, column: &str, ct: &Codelist) -> BTr
 fn resolve_ct<'a>(
     registry: &'a TerminologyRegistry,
     variable: &Variable,
-    preferred: Option<&[String]>,
 ) -> Option<ResolvedCodelist<'a>> {
     // Get codelist code from variable metadata
     let codelist_code = variable.codelist_code.as_ref()?;
@@ -276,5 +261,5 @@ fn resolve_ct<'a>(
     if code.is_empty() {
         return None;
     }
-    registry.resolve(code, preferred)
+    registry.resolve(code, None)
 }

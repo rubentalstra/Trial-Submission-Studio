@@ -258,11 +258,6 @@ impl DomainRegistry {
             .unwrap_or(false)
     }
 
-    /// Get all domain codes.
-    pub fn codes(&self) -> impl Iterator<Item = &String> {
-        self.domains_by_code.keys()
-    }
-
     /// Get all domains.
     pub fn domains(&self) -> impl Iterator<Item = &Domain> {
         self.domains_by_code.values()

@@ -24,8 +24,7 @@ pub use ct_utils::{
     resolve_ct_value, resolve_ct_value_from_hint,
 };
 pub use data_utils::{
-    column_value_string, mapping_source_for_target, sanitize_test_code, table_column_values,
-    table_label,
+    column_value_string, mapping_source_for_target, sanitize_test_code, table_label,
 };
 pub use datetime::{
     DatePairOrder, DateTimeError, DateTimePrecision, DateTimeValidation, DurationError,
@@ -57,7 +56,6 @@ pub use processing_context::{EpochPeriod, ProcessingContext, ProcessingOptions};
 pub use processor::{
     apply_base_rules, assign_sequence, normalize_ct_columns, process_domain,
     process_domain_with_context, process_domain_with_context_and_tracker,
-    process_domains_with_context,
 };
 pub use provenance::{
     DerivationMethod, OriginSource, OriginType, ProvenanceRecord, ProvenanceTracker,

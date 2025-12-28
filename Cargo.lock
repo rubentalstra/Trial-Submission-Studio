@@ -2551,8 +2551,6 @@ dependencies = [
  "csv",
  "polars",
  "sdtm-model",
- "serde",
- "serde_json",
  "tracing",
 ]
 
