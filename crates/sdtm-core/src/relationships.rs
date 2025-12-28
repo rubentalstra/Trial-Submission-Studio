@@ -121,6 +121,12 @@ pub fn build_relrec(
         if frame.data.height() == 0 {
             continue;
         }
+        // Per SDTMIG 8.5: CO (Comments) domain uses RDOMAIN/IDVAR/IDVARVAL to link
+        // comments to records in other domains. This is its own linking mechanism,
+        // so we should not generate RELREC entries for CO domain.
+        if frame.domain_code.eq_ignore_ascii_case("CO") {
+            continue;
+        }
         let domain_def = match domain_map.get(&frame.domain_code.to_uppercase()) {
             Some(domain) => domain,
             None => {

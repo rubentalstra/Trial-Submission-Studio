@@ -28,12 +28,14 @@ use crate::rule_mapping::{
     // P21 Rules (from Rules.csv) - use ONLY when validation matches P21 definition
     P21_SUPP_QNAM_DUPLICATE, // SD0086 - SUPPQUAL duplicate records
     // Internal Rules (not in P21 - use TRANS_* prefix)
-    TRANS_RELREC_INTEGRITY,  // RELREC referential integrity
-    TRANS_RELSPEC_INTEGRITY, // RELSPEC structure validation
-    TRANS_RELSUB_INTEGRITY,  // RELSUB referential integrity
-    TRANS_SEQ_CROSS_SPLIT,   // --SEQ collision across split datasets
-    TRANS_SUPP_QVAL_EMPTY,   // QVAL empty in SUPPQUAL
-    TRANS_VARIABLE_PREFIX,   // Variable prefix validation for splits
+    TRANS_CO_IDVAR_INTEGRITY, // CO IDVAR/IDVARVAL referential integrity
+    TRANS_RELREC_INTEGRITY,   // RELREC referential integrity
+    TRANS_RELSPEC_INTEGRITY,  // RELSPEC structure validation
+    TRANS_RELSUB_INTEGRITY,   // RELSUB referential integrity
+    TRANS_SEQ_CROSS_SPLIT,    // --SEQ collision across split datasets
+    TRANS_SUPP_QVAL_EMPTY,    // QVAL empty in SUPPQUAL
+    TRANS_SUPP_TIMING_VAR,    // Timing variable in SUPPQUAL
+    TRANS_VARIABLE_PREFIX,    // Variable prefix validation for splits
 };
 
 /// Input for cross-domain validation.
@@ -150,6 +152,16 @@ pub fn validate_cross_domain(input: CrossDomainValidationInput<'_>) -> CrossDoma
     let prefix_result = validate_variable_prefixes(&input);
     result.prefix_violations = prefix_result.violation_count;
     for (domain, issues) in prefix_result.issues {
+        result
+            .issues_by_domain
+            .entry(domain)
+            .or_default()
+            .extend(issues);
+    }
+
+    // 6. Validate no timing variables in SUPPQUAL
+    let timing_result = validate_supp_timing_variables(input.frames);
+    for (domain, issues) in timing_result.issues {
         result
             .issues_by_domain
             .entry(domain)
@@ -635,6 +647,96 @@ fn validate_supp_qval_non_empty(frames: &BTreeMap<String, &DataFrame>) -> QvalVa
 }
 
 // ============================================================================
+// SUPPQUAL Timing Variable Validation
+// ============================================================================
+
+struct TimingValidationResult {
+    issues: BTreeMap<String, Vec<ConformanceIssue>>,
+}
+
+/// Validate that SUPPQUAL datasets don't contain timing variables.
+///
+/// Per SDTMIG v3.4 Section 8.4: Timing variables should be included in the
+/// parent domain, not as supplemental qualifiers. Common timing variable
+/// suffixes include:
+/// - --DTC (datetime)
+/// - --STDTC, --ENDTC (start/end datetime)
+/// - --DY, --STDY, --ENDY (study day)
+/// - --DUR (duration)
+/// - --TPT (timepoint)
+fn validate_supp_timing_variables(
+    frames: &BTreeMap<String, &DataFrame>,
+) -> TimingValidationResult {
+    let mut issues: BTreeMap<String, Vec<ConformanceIssue>> = BTreeMap::new();
+
+    // Timing variable suffixes that should not be in SUPPQUAL
+    const TIMING_SUFFIXES: &[&str] = &[
+        "DTC", "STDTC", "ENDTC", "DY", "STDY", "ENDY", "DUR", "TPT", "TPTNUM", "ELTM", "TPTREF",
+    ];
+
+    for (domain_code, df) in frames {
+        // Only check SUPP datasets
+        if !domain_code.starts_with("SUPP") {
+            continue;
+        }
+
+        let lookup = CaseInsensitiveLookup::new(df.get_column_names_owned());
+        let qnam_col = match lookup.get("QNAM") {
+            Some(col) => col,
+            None => continue,
+        };
+
+        let qnam_series = match df.column(qnam_col) {
+            Ok(s) => s,
+            Err(_) => continue,
+        };
+
+        // Collect unique QNAMs that look like timing variables
+        let mut timing_qnams: BTreeSet<String> = BTreeSet::new();
+
+        for idx in 0..df.height() {
+            let qnam = any_to_string(qnam_series.get(idx).unwrap_or(AnyValue::Null));
+            let qnam_upper = qnam.trim().to_uppercase();
+
+            if qnam_upper.is_empty() {
+                continue;
+            }
+
+            // Check if QNAM ends with any timing suffix
+            for suffix in TIMING_SUFFIXES {
+                if qnam_upper.ends_with(suffix) {
+                    timing_qnams.insert(qnam.trim().to_string());
+                    break;
+                }
+            }
+        }
+
+        if !timing_qnams.is_empty() {
+            let timing_list: Vec<String> = timing_qnams.into_iter().collect();
+            issues
+                .entry(domain_code.clone())
+                .or_default()
+                .push(ConformanceIssue {
+                    code: TRANS_SUPP_TIMING_VAR.to_string(),
+                    message: format!(
+                        "SUPPQUAL contains timing variable(s): {}. Timing variables should be in parent domain.",
+                        timing_list.join(", ")
+                    ),
+                    severity: IssueSeverity::Warning,
+                    variable: Some("QNAM".to_string()),
+                    count: Some(timing_list.len() as u64),
+                    rule_id: Some(TRANS_SUPP_TIMING_VAR.to_string()),
+                    category: Some("Structure".to_string()),
+                    codelist_code: None,
+                    ct_source: None,
+                });
+        }
+    }
+
+    TimingValidationResult { issues }
+}
+
+// ============================================================================
 // Relationship Key Integrity
 // ============================================================================
 
@@ -676,6 +778,15 @@ fn validate_relationship_integrity(
     // Validate RELSUB (if present)
     if let Some(relsub_df) = frames.get("RELSUB") {
         let result = validate_relsub_integrity(relsub_df, frames);
+        violation_count += result.violation_count;
+        for (domain, domain_issues) in result.issues {
+            issues.entry(domain).or_default().extend(domain_issues);
+        }
+    }
+
+    // Validate CO (Comments) IDVAR/IDVARVAL references (if present)
+    if let Some(co_df) = frames.get("CO") {
+        let result = validate_co_idvar_integrity(co_df, frames);
         violation_count += result.violation_count;
         for (domain, domain_issues) in result.issues {
             issues.entry(domain).or_default().extend(domain_issues);
@@ -955,6 +1066,191 @@ fn validate_relsub_integrity(
                 variable: Some("USUBJID".to_string()),
                 count: Some(invalid_subjects),
                 rule_id: Some(TRANS_RELSUB_INTEGRITY.to_string()),
+                category: Some("Referential Integrity".to_string()),
+                codelist_code: None,
+                ct_source: None,
+            });
+    }
+
+    IntegrityResult {
+        issues,
+        violation_count,
+    }
+}
+
+/// Validate CO (Comments) IDVAR/IDVARVAL references point to valid records.
+///
+/// Per SDTMIG v3.4 Section 8.5, the CO domain uses:
+/// - RDOMAIN: The domain code being referenced (e.g., "AE", "CM")
+/// - IDVAR: The identifying variable in the referenced domain (usually --SEQ)
+/// - IDVARVAL: The value of IDVAR that identifies the specific record
+///
+/// This validation checks that RDOMAIN/IDVAR/IDVARVAL combinations reference
+/// records that actually exist in the referenced domains.
+fn validate_co_idvar_integrity(
+    co_df: &DataFrame,
+    frames: &BTreeMap<String, &DataFrame>,
+) -> IntegrityResult {
+    let mut issues: BTreeMap<String, Vec<ConformanceIssue>> = BTreeMap::new();
+    let mut violation_count = 0u64;
+
+    let lookup = CaseInsensitiveLookup::new(co_df.get_column_names_owned());
+
+    // Get CO columns
+    let rdomain_col = match lookup.get("RDOMAIN") {
+        Some(col) => col,
+        None => {
+            // RDOMAIN is optional in CO - if not present, skip validation
+            return IntegrityResult {
+                issues,
+                violation_count: 0,
+            };
+        }
+    };
+
+    let idvar_col = match lookup.get("IDVAR") {
+        Some(col) => col,
+        None => {
+            return IntegrityResult {
+                issues,
+                violation_count: 0,
+            };
+        }
+    };
+
+    let idvarval_col = match lookup.get("IDVARVAL") {
+        Some(col) => col,
+        None => {
+            return IntegrityResult {
+                issues,
+                violation_count: 0,
+            };
+        }
+    };
+
+    // Get series
+    let rdomain_series = match co_df.column(rdomain_col) {
+        Ok(s) => s,
+        Err(_) => {
+            return IntegrityResult {
+                issues,
+                violation_count: 0,
+            };
+        }
+    };
+    let idvar_series = match co_df.column(idvar_col) {
+        Ok(s) => s,
+        Err(_) => {
+            return IntegrityResult {
+                issues,
+                violation_count: 0,
+            };
+        }
+    };
+    let idvarval_series = match co_df.column(idvarval_col) {
+        Ok(s) => s,
+        Err(_) => {
+            return IntegrityResult {
+                issues,
+                violation_count: 0,
+            };
+        }
+    };
+
+    // Build lookup of valid values by (domain, idvar) -> set of idvarval values
+    let mut valid_refs: HashMap<(String, String), BTreeSet<String>> = HashMap::new();
+
+    for (domain_code, domain_df) in frames {
+        let domain_lookup = CaseInsensitiveLookup::new(domain_df.get_column_names_owned());
+
+        // Look for --SEQ variables (most common IDVAR)
+        for col_name in domain_df.get_column_names_owned() {
+            let upper = col_name.to_uppercase();
+            if upper.ends_with("SEQ") {
+                if let Ok(series) = domain_df.column(&col_name) {
+                    let values: BTreeSet<String> = (0..domain_df.height())
+                        .map(|idx| {
+                            any_to_string(series.get(idx).unwrap_or(AnyValue::Null))
+                                .trim()
+                                .to_string()
+                        })
+                        .filter(|v| !v.is_empty())
+                        .collect();
+                    let key = (domain_code.clone(), upper);
+                    valid_refs.insert(key, values);
+                }
+            }
+        }
+
+        // Also check for USUBJID as potential IDVAR
+        if let Some(usubjid_col) = domain_lookup.get("USUBJID") {
+            if let Ok(series) = domain_df.column(usubjid_col) {
+                let values: BTreeSet<String> = (0..domain_df.height())
+                    .map(|idx| {
+                        any_to_string(series.get(idx).unwrap_or(AnyValue::Null))
+                            .trim()
+                            .to_string()
+                    })
+                    .filter(|v| !v.is_empty())
+                    .collect();
+                let key = (domain_code.clone(), "USUBJID".to_string());
+                valid_refs.insert(key, values);
+            }
+        }
+    }
+
+    // Check each CO record
+    let mut invalid_refs = 0u64;
+    let mut invalid_samples: Vec<String> = Vec::new();
+
+    for idx in 0..co_df.height() {
+        let rdomain = any_to_string(rdomain_series.get(idx).unwrap_or(AnyValue::Null));
+        let idvar = any_to_string(idvar_series.get(idx).unwrap_or(AnyValue::Null));
+        let idvarval = any_to_string(idvarval_series.get(idx).unwrap_or(AnyValue::Null));
+
+        let rdomain_trimmed = rdomain.trim().to_uppercase();
+        let idvar_trimmed = idvar.trim().to_uppercase();
+        let idvarval_trimmed = idvarval.trim();
+
+        // Skip if any key field is empty
+        if rdomain_trimmed.is_empty() || idvar_trimmed.is_empty() || idvarval_trimmed.is_empty() {
+            continue;
+        }
+
+        // Check if referenced domain exists and has the referenced value
+        let key = (rdomain_trimmed.clone(), idvar_trimmed.clone());
+        let is_valid = valid_refs
+            .get(&key)
+            .map(|values| values.contains(idvarval_trimmed))
+            .unwrap_or(false);
+
+        if !is_valid {
+            invalid_refs += 1;
+            if invalid_samples.len() < 5 {
+                invalid_samples.push(format!(
+                    "{}:{}.{}={}",
+                    rdomain_trimmed, idvar_trimmed, idvarval_trimmed, idvarval_trimmed
+                ));
+            }
+        }
+    }
+
+    if invalid_refs > 0 {
+        violation_count += invalid_refs;
+        issues
+            .entry("CO".to_string())
+            .or_default()
+            .push(ConformanceIssue {
+                code: TRANS_CO_IDVAR_INTEGRITY.to_string(),
+                message: format!(
+                    "CO contains {} reference(s) to non-existent records. Samples: {}",
+                    invalid_refs,
+                    invalid_samples.join(", ")
+                ),
+                severity: IssueSeverity::Error,
+                variable: Some("IDVARVAL".to_string()),
+                count: Some(invalid_refs),
+                rule_id: Some(TRANS_CO_IDVAR_INTEGRITY.to_string()),
                 category: Some("Referential Integrity".to_string()),
                 codelist_code: None,
                 ct_source: None,

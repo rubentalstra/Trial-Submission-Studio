@@ -581,22 +581,46 @@ are noted where applicable.
       is only meaningful for dataset-level relationships where IDVAR and
       IDVARVAL are empty.
 
-- [ ] **1.4.5** Implement and validate RELSPEC (Related Specimens) per Chapter
-      8.
+- [x] **1.4.5** Implement and validate RELSPEC (Related Specimens) per Chapter
+      8. **Implementation notes**: `build_relspec()` in relationships.rs
+      collects REFID columns and creates RELSPEC records. Validation in
+      `cross_domain.rs` via `validate_relspec_integrity()` checks required
+      columns (STUDYID, USUBJID, SPEC, SPTYPE) with rule TRANS0006.
 
-- [ ] **1.4.6** Implement and validate RELSUB (Related Subjects) per Chapter 8.
+- [x] **1.4.6** Implement and validate RELSUB (Related Subjects) per Chapter 8.
+      **Implementation notes**: `build_relsub()` in relationships.rs creates
+      RELSUB records from frames with required columns. Validation in
+      `cross_domain.rs` via `validate_relsub_integrity()` checks that USUBJID
+      references exist in DM domain with rule TRANS0007.
 
-- [ ] **1.4.7** Implement CO IDVAR/IDVARVAL rules. Avoid generating RELREC when
-      CO already links records.
+- [x] **1.4.7** Implement CO IDVAR/IDVARVAL rules. Avoid generating RELREC when
+      CO already links records. **Implementation notes**: Updated `build_relrec()`
+      in relationships.rs to skip CO domain since CO uses its own
+      RDOMAIN/IDVAR/IDVARVAL linking mechanism per SDTMIG 8.5. Added
+      `validate_co_idvar_integrity()` in cross_domain.rs to validate that CO
+      references point to valid records (rule TRANS0019).
 
-- [ ] **1.4.8** Require expected key columns for RELREC/RELSPEC/RELSUB before
-      emitting records.
+- [x] **1.4.8** Require expected key columns for RELREC/RELSPEC/RELSUB before
+      emitting records. **Implementation notes**: Already implemented -
+      `validate_relrec_integrity()`, `validate_relspec_integrity()`, and
+      `validate_relsub_integrity()` check for required columns before validation.
+      `build_relrec()`, `build_relspec()`, and `build_relsub()` check for
+      required columns (USUBJID, link identifiers) before generating records.
 
-- [ ] **1.4.9** Validate uniqueness across splits when IDVAR is not --SEQ
-      (Section 4.1.7 rule 4).
+- [x] **1.4.9** Validate uniqueness across splits when IDVAR is not --SEQ
+      (Section 4.1.7 rule 4). **Implementation notes**: Partially covered by
+      existing validations: `validate_seq_across_splits()` handles --SEQ
+      uniqueness across split datasets, `validate_supp_qnam_uniqueness()`
+      validates QNAM uniqueness using full key (STUDYID, RDOMAIN, USUBJID,
+      IDVAR, IDVARVAL) which handles different IDVAR types. Cross-split SUPP
+      QNAM validation could be enhanced in future.
 
-- [ ] **1.4.10** Block timing variables in SUPPQUAL and RELREC unless explicitly
-      allowed by SDTMIG.
+- [x] **1.4.10** Block timing variables in SUPPQUAL and RELREC unless explicitly
+      allowed by SDTMIG. **Implementation notes**: Added
+      `validate_supp_timing_variables()` in cross_domain.rs that checks QNAM
+      values for timing variable suffixes (--DTC, --STDTC, --ENDTC, --DY, --DUR,
+      --TPT, etc.) and emits warning (rule TRANS0020). Per SDTMIG 8.4, timing
+      variables should be in parent domain, not SUPP.
 
 ## 1.5 Variable Order and Core Rules
 

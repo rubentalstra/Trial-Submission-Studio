@@ -152,6 +152,14 @@ pub const TRANS_QLABEL_LENGTH: &str = "TRANS0017";
 /// Per SDTMIG 4.2.1, character variables have max length 200.
 pub const TRANS_TEXT_LENGTH_200: &str = "TRANS0018";
 
+/// Internal: CO (Comments) IDVAR/IDVARVAL referential integrity
+/// Per SDTMIG 8.5, CO IDVAR/IDVARVAL must reference valid records.
+pub const TRANS_CO_IDVAR_INTEGRITY: &str = "TRANS0019";
+
+/// Internal: Timing variable in SUPPQUAL
+/// Per SDTMIG 8.4, timing variables should be in parent domain, not SUPP.
+pub const TRANS_SUPP_TIMING_VAR: &str = "TRANS0020";
+
 // ============================================================================
 // Rule Resolver
 // ============================================================================
@@ -479,6 +487,34 @@ impl RuleResolver {
                 category: "Length",
                 severity: "Warning",
                 sdtmig_reference: Some("SDTMIG 4.5.3.2"),
+            },
+        );
+
+        map.insert(
+            TRANS_CO_IDVAR_INTEGRITY,
+            InternalRuleInfo {
+                message: "CO IDVAR/IDVARVAL references non-existent record",
+                description: "Per SDTMIG v3.4 Section 8.5, the CO (Comments) domain uses \
+                              RDOMAIN, IDVAR, and IDVARVAL to link comments to specific \
+                              records in other domains. These references must point to \
+                              valid records.",
+                category: "Referential Integrity",
+                severity: "Error",
+                sdtmig_reference: Some("SDTMIG 8.5"),
+            },
+        );
+
+        map.insert(
+            TRANS_SUPP_TIMING_VAR,
+            InternalRuleInfo {
+                message: "Timing variable found in SUPPQUAL",
+                description: "Per SDTMIG v3.4 Section 8.4, timing variables (--DTC, --STDTC, \
+                              --ENDTC, --DY, --DUR, etc.) should be included in the parent \
+                              domain, not as supplemental qualifiers. Timing information \
+                              in SUPP may indicate incorrect domain design.",
+                category: "Structure",
+                severity: "Warning",
+                sdtmig_reference: Some("SDTMIG 8.4"),
             },
         );
 
