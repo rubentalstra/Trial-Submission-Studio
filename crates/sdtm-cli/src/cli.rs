@@ -100,20 +100,12 @@ pub struct StudyArgs {
 
     /// Enable strict SDTMIG-conformant processing.
     ///
-    /// Disables heuristic inference and lenient CT matching. Only explicitly
-    /// documented SDTMIG derivations (USUBJID prefixing, sequence assignment)
-    /// are performed.
+    /// Disables lenient CT matching while keeping documented SDTMIG
+    /// derivations (USUBJID prefixing, sequence assignment).
     ///
     /// Use this mode for production submissions requiring strict conformance.
     #[arg(long = "strict")]
     pub strict: bool,
-
-    /// Disable heuristic field inference from source columns.
-    ///
-    /// When set, test names, codes, and categories are not inferred from
-    /// source column headers and labels. Only explicit mappings are used.
-    #[arg(long = "no-heuristic-inference")]
-    pub no_heuristic_inference: bool,
 
     /// Disable lenient CT matching.
     ///
@@ -121,14 +113,6 @@ pub struct StudyArgs {
     /// controlled terminology normalization.
     #[arg(long = "no-lenient-ct")]
     pub no_lenient_ct: bool,
-
-    /// Require explicit mapping metadata before populating derived values.
-    ///
-    /// When set, preprocessing rules will only populate derived values
-    /// (--TEST, --TESTCD, --ORRES, etc.) if there is explicit mapping metadata
-    /// specifying the source column. This prevents heuristic guessing.
-    #[arg(long = "require-explicit-mapping")]
-    pub require_explicit_mapping: bool,
 }
 
 #[derive(Clone, Copy, ValueEnum)]

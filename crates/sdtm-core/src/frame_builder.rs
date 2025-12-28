@@ -12,13 +12,6 @@ use crate::domain_utils::standard_columns;
 use crate::frame::DomainFrame;
 use crate::wide::{build_ie_wide_frame, build_lb_wide_frame, build_vs_wide_frame};
 
-#[derive(Debug)]
-pub struct MappedDomainFrame {
-    pub mapping: MappingConfig,
-    pub frame: DomainFrame,
-    pub used_columns: BTreeSet<String>,
-}
-
 pub fn build_domain_frame(table: &CsvTable, domain_code: &str) -> Result<DomainFrame> {
     let headers = dedupe_headers(&table.headers);
     let mut columns: Vec<Column> = Vec::with_capacity(headers.len());
@@ -145,7 +138,7 @@ pub fn build_mapped_domain_frame(
     table: &CsvTable,
     domain: &Domain,
     study_id: &str,
-) -> Result<MappedDomainFrame> {
+) -> Result<(MappingConfig, DomainFrame, BTreeSet<String>)> {
     let domain_code = domain.code.to_uppercase();
     let wide_result = match domain_code.as_str() {
         "LB" => build_lb_wide_frame(table, domain, study_id)?,
@@ -154,11 +147,7 @@ pub fn build_mapped_domain_frame(
         _ => None,
     };
     if let Some((mapping, frame, used_columns)) = wide_result {
-        return Ok(MappedDomainFrame {
-            mapping,
-            frame,
-            used_columns,
-        });
+        return Ok((mapping, frame, used_columns));
     }
 
     let hints = build_column_hints(table);
@@ -171,9 +160,5 @@ pub fn build_mapped_domain_frame(
         .iter()
         .map(|item| item.source_column.clone())
         .collect::<BTreeSet<String>>();
-    Ok(MappedDomainFrame {
-        mapping,
-        frame,
-        used_columns,
-    })
+    Ok((mapping, frame, used_columns))
 }

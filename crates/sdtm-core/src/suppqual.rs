@@ -4,13 +4,10 @@ use anyhow::Result;
 use polars::prelude::{AnyValue, Column, DataFrame, NamedFrom, Series};
 use sdtm_model::Domain;
 
+use crate::data_utils::column_value_string;
 use crate::domain_utils::{infer_seq_column, standard_columns};
+use crate::frame::DomainFrame;
 use sdtm_ingest::any_to_string;
-pub struct SuppqualResult {
-    pub domain_code: String,
-    pub data: DataFrame,
-    pub used_columns: Vec<String>,
-}
 
 pub struct SuppqualInput<'a> {
     pub parent_domain: &'a Domain,
@@ -62,22 +59,6 @@ pub fn suppqual_dataset_code(parent_domain: &str) -> String {
         return short;
     }
     short.chars().take(8).collect()
-}
-
-fn ordered_variable_names(domain: &Domain) -> Vec<String> {
-    domain
-        .variables
-        .iter()
-        .map(|variable| variable.name.clone())
-        .collect()
-}
-
-fn variable_name_set(domain: &Domain) -> BTreeSet<String> {
-    domain
-        .variables
-        .iter()
-        .map(|variable| variable.name.to_uppercase())
-        .collect()
 }
 
 fn strip_wrapping_quotes(value: &str) -> String {
@@ -141,13 +122,6 @@ fn unique_qnam(name: &str, used: &mut BTreeMap<String, String>) -> String {
     base
 }
 
-fn column_value(df: &DataFrame, name: &str, idx: usize) -> String {
-    match df.column(name) {
-        Ok(series) => any_to_string(series.get(idx).unwrap_or(AnyValue::Null)),
-        Err(_) => String::new(),
-    }
-}
-
 fn populated_columns(df: &DataFrame) -> BTreeSet<String> {
     let mut populated = BTreeSet::new();
     for series in df.get_columns() {
@@ -198,10 +172,20 @@ fn is_duplicate_of_mapped(name: &str, populated: &BTreeSet<String>) -> bool {
     false
 }
 
-pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<SuppqualResult>> {
+pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<DomainFrame>> {
     let parent_domain_code = input.parent_domain.code.to_uppercase();
-    let ordered_columns = ordered_variable_names(input.suppqual_domain);
-    let core_variables = variable_name_set(input.parent_domain);
+    let ordered_columns: Vec<String> = input
+        .suppqual_domain
+        .variables
+        .iter()
+        .map(|variable| variable.name.clone())
+        .collect();
+    let core_variables: BTreeSet<String> = input
+        .parent_domain
+        .variables
+        .iter()
+        .map(|variable| variable.name.to_uppercase())
+        .collect();
     let suppqual_cols = standard_columns(input.suppqual_domain);
     let parent_cols = standard_columns(input.parent_domain);
     let populated = input.mapped_df.map(populated_columns).unwrap_or_default();
@@ -315,19 +299,19 @@ pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<SuppqualResult>
         let qlabel = qlabel_for_column(col, input.source_labels);
         let qorig = qorig_for_column(col, input.derived_columns);
         for idx in 0..row_count {
-            let raw_val = strip_wrapping_quotes(&column_value(input.source_df, col, idx));
+            let raw_val = strip_wrapping_quotes(&column_value_string(input.source_df, col, idx));
             if raw_val.is_empty() {
                 continue;
             }
             let study_value = parent_cols
                 .study_id
                 .as_deref()
-                .map(|name| strip_wrapping_quotes(&column_value(input.source_df, name, idx)))
+                .map(|name| strip_wrapping_quotes(&column_value_string(input.source_df, name, idx)))
                 .unwrap_or_default();
             let usubjid_value = parent_cols
                 .usubjid
                 .as_deref()
-                .map(|name| strip_wrapping_quotes(&column_value(input.source_df, name, idx)))
+                .map(|name| strip_wrapping_quotes(&column_value_string(input.source_df, name, idx)))
                 .unwrap_or_default();
             let mapped_usubjid = input
                 .mapped_df
@@ -335,7 +319,7 @@ pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<SuppqualResult>
                     parent_cols
                         .usubjid
                         .as_deref()
-                        .map(|name| strip_wrapping_quotes(&column_value(df, name, idx)))
+                        .map(|name| strip_wrapping_quotes(&column_value_string(df, name, idx)))
                 })
                 .unwrap_or_default();
             let final_usubjid = if !usubjid_value.is_empty() {
@@ -346,7 +330,7 @@ pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<SuppqualResult>
 
             let idvar_value = idvar.clone().unwrap_or_default();
             let idvarval = if let (Some(mapped), Some(idvar_name)) = (input.mapped_df, &idvar) {
-                column_value(mapped, idvar_name, idx)
+                column_value_string(mapped, idvar_name, idx)
             } else {
                 String::new()
             };
@@ -408,10 +392,10 @@ pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<SuppqualResult>
 
     // Per SDTMIG 4.1.7/8.4.2: Use base domain code for SUPP naming.
     // All split datasets (e.g., LBCH, LBHE, LBUR) merge into one SUPPLB.
-    Ok(Some(SuppqualResult {
+    Ok(Some(DomainFrame {
         domain_code: suppqual_dataset_code(&parent_domain_code),
         data,
-        used_columns: extra_cols,
+        meta: None,
     }))
 }
 

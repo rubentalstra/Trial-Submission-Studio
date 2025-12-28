@@ -4,8 +4,8 @@ use polars::prelude::DataFrame;
 
 /// Metadata about a domain frame's provenance and identity.
 ///
-/// This struct tracks the source files that contributed to a domain frame,
-/// the dataset naming for outputs, and any split domain information.
+/// This struct tracks the source files that contributed to a domain frame
+/// and the dataset naming for outputs.
 ///
 /// # SDTMIG Reference
 /// See Chapter 4.1.4 (Split Datasets) for rules on domain splitting.
@@ -20,44 +20,9 @@ pub struct DomainFrameMeta {
     /// Useful for traceability in validation reports.
     pub source_files: Vec<PathBuf>,
 
-    /// For split domains (e.g., FACM, FAAE), the variant identifier.
-    /// This is the suffix or distinguishing part of the split.
-    pub split_variant: Option<String>,
-
     /// The base SDTM domain code before splitting (e.g., "FA" for FACM).
     /// For non-split domains, this equals the domain_code.
     pub base_domain_code: Option<String>,
-}
-
-impl DomainFrameMeta {
-    /// Create a new empty metadata instance.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Set the dataset name.
-    pub fn with_dataset_name(mut self, name: impl Into<String>) -> Self {
-        self.dataset_name = Some(name.into());
-        self
-    }
-
-    /// Add a source file path.
-    pub fn with_source_file(mut self, path: PathBuf) -> Self {
-        self.source_files.push(path);
-        self
-    }
-
-    /// Set the split variant.
-    pub fn with_split_variant(mut self, variant: impl Into<String>) -> Self {
-        self.split_variant = Some(variant.into());
-        self
-    }
-
-    /// Set the base domain code.
-    pub fn with_base_domain_code(mut self, code: impl Into<String>) -> Self {
-        self.base_domain_code = Some(code.into());
-        self
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -98,14 +63,6 @@ impl DomainFrame {
             .unwrap_or(&[])
     }
 
-    /// Check if this is a split domain.
-    pub fn is_split_domain(&self) -> bool {
-        self.meta
-            .as_ref()
-            .map(|m| m.split_variant.is_some())
-            .unwrap_or(false)
-    }
-
     /// Get the base domain code (for split domains).
     pub fn base_domain_code(&self) -> &str {
         self.meta
@@ -119,7 +76,11 @@ impl DomainFrame {
         if let Some(ref mut meta) = self.meta {
             meta.source_files.push(path);
         } else {
-            self.meta = Some(DomainFrameMeta::new().with_source_file(path));
+            self.meta = Some(DomainFrameMeta {
+                dataset_name: None,
+                source_files: vec![path],
+                base_domain_code: None,
+            });
         }
     }
 }

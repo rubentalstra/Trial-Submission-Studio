@@ -6,6 +6,7 @@ use polars::prelude::{AnyValue, Column, DataFrame, NamedFrom, Series};
 use sdtm_model::{Domain, VariableType};
 
 use crate::data_utils::column_value_string;
+use crate::domain_sets::domain_map_by_code;
 use crate::domain_utils::{StandardColumns, refid_candidates, standard_columns};
 use crate::frame::DomainFrame;
 use sdtm_ingest::{any_to_string, parse_f64};
@@ -115,7 +116,7 @@ pub fn build_relrec(
         return Ok(None);
     }
 
-    let domain_map = build_domain_map(domains);
+    let domain_map = domain_map_by_code(domains);
     let mut groups: BTreeMap<RelrecKey, Vec<RelrecMember>> = BTreeMap::new();
     for frame in domain_frames {
         if frame.data.height() == 0 {
@@ -277,7 +278,7 @@ pub fn build_relationship_frames(
     domains: &[Domain],
     study_id: &str,
 ) -> Result<Vec<DomainFrame>> {
-    let domain_map = build_domain_map(domains);
+    let domain_map = domain_map_by_code(domains);
     let mut frames = Vec::new();
     let config = RelationshipConfig::default();
     if let Some(relrec_domain) = domain_map.get("RELREC")
@@ -304,7 +305,7 @@ pub fn build_relspec(
     relspec_domain: &Domain,
     study_id: &str,
 ) -> Result<Option<DomainFrame>> {
-    let domain_map = build_domain_map(domains);
+    let domain_map = domain_map_by_code(domains);
     let mut records: BTreeMap<(String, String), RelspecRecord> = BTreeMap::new();
     for frame in domain_frames {
         let domain_def = match domain_map.get(&frame.domain_code.to_uppercase()) {
@@ -619,12 +620,4 @@ fn find_refid_columns(domain: &Domain, df: &DataFrame) -> Vec<String> {
         .into_iter()
         .filter(|name| df.column(name.as_str()).is_ok())
         .collect()
-}
-
-fn build_domain_map(domains: &[Domain]) -> BTreeMap<String, &Domain> {
-    let mut map = BTreeMap::new();
-    for domain in domains {
-        map.insert(domain.code.to_uppercase(), domain);
-    }
-    map
 }

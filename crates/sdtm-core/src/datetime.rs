@@ -134,23 +134,6 @@ impl std::error::Error for DateTimeError {}
 /// - Time designator 'T' required between date and time
 /// - Supports partial/incomplete dates via right truncation
 ///
-/// # Examples
-///
-/// ```
-/// use sdtm_core::datetime::parse_iso8601_datetime;
-///
-/// // Complete date/time
-/// let result = parse_iso8601_datetime("2003-12-15T13:14:17");
-/// assert!(result.is_valid());
-///
-/// // Partial date (year and month only)
-/// let result = parse_iso8601_datetime("2003-12");
-/// assert!(result.is_valid());
-///
-/// // Empty value
-/// let result = parse_iso8601_datetime("");
-/// assert!(result.is_empty());
-/// ```
 fn parse_iso8601_datetime(value: &str) -> DateTimeValidation {
     let trimmed = value.trim();
 
@@ -631,29 +614,6 @@ pub(crate) enum DatePairOrder {
 ///
 /// A `DatePairOrder` indicating the validation result.
 ///
-/// # Examples
-///
-/// ```
-/// use sdtm_core::datetime::{validate_date_pair, DatePairOrder};
-///
-/// // Valid: end after start
-/// assert_eq!(
-///     validate_date_pair("2003-12-01", "2003-12-15"),
-///     DatePairOrder::Valid
-/// );
-///
-/// // Invalid: end before start
-/// assert_eq!(
-///     validate_date_pair("2003-12-15", "2003-12-01"),
-///     DatePairOrder::EndBeforeStart
-/// );
-///
-/// // Partial dates
-/// assert_eq!(
-///     validate_date_pair("2003-12", "2003-12-15"),
-///     DatePairOrder::StartIncomplete
-/// );
-/// ```
 pub(crate) fn validate_date_pair(start_value: &str, end_value: &str) -> DatePairOrder {
     let start_trimmed = start_value.trim();
     let end_trimmed = end_value.trim();

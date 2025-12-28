@@ -203,16 +203,14 @@ pub fn process_file(input: ProcessFileInput<'_>) -> Result<ProcessedFile> {
             dataset_name = %dataset_name,
             source_file = %source_file,
             input_rows = input_count,
-            output_rows = result.frame.data.height(),
+            output_rows = result.1.data.height(),
             duration_ms = start.elapsed().as_millis(),
             "mapping complete"
         );
         Ok(result)
     })?;
 
-    let mapping_config = mapped_result.mapping;
-    let mut mapped = mapped_result.frame;
-    let mut used = mapped_result.used_columns;
+    let (mapping_config, mut mapped, mut used) = mapped_result;
 
     // Track code columns as used if their base column was used
     if !code_to_base.is_empty() {
@@ -301,14 +299,13 @@ pub fn process_file(input: ProcessFileInput<'_>) -> Result<ProcessedFile> {
             }
             Ok(result)
         })?
-        .map(|result| DomainFrame {
-            domain_code: result.domain_code.clone(),
-            data: result.data,
-            meta: Some(build_frame_meta(
-                &result.domain_code,
-                &result.domain_code,
+        .map(|mut frame| {
+            frame.meta = Some(build_frame_meta(
+                &frame.domain_code,
+                &frame.domain_code,
                 input.path,
-            )),
+            ));
+            frame
         });
 
     // Add source file and dataset naming metadata
@@ -678,25 +675,11 @@ fn column_label_map(table: &CsvTable) -> BTreeMap<String, String> {
 
 /// Build frame metadata with dataset naming and source provenance details.
 fn build_frame_meta(domain_code: &str, dataset_name: &str, source_file: &Path) -> DomainFrameMeta {
-    let mut meta = DomainFrameMeta::new()
-        .with_dataset_name(dataset_name.to_string())
-        .with_source_file(source_file.to_path_buf())
-        .with_base_domain_code(domain_code.to_string());
-    if let Some(variant) = split_variant_suffix(domain_code, dataset_name) {
-        meta = meta.with_split_variant(variant);
+    DomainFrameMeta {
+        dataset_name: Some(dataset_name.to_string()),
+        source_files: vec![source_file.to_path_buf()],
+        base_domain_code: Some(domain_code.to_string()),
     }
-    meta
-}
-
-/// Derive the split suffix when the dataset name extends the base domain code.
-fn split_variant_suffix(base_domain: &str, dataset_name: &str) -> Option<String> {
-    if dataset_name == base_domain {
-        return None;
-    }
-    dataset_name
-        .strip_prefix(base_domain)
-        .filter(|suffix| !suffix.is_empty())
-        .map(|suffix| suffix.to_string())
 }
 
 /// Verify XPT output counts match input counts.

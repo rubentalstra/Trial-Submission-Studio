@@ -88,11 +88,7 @@ fn processes_mockdata_end_to_end() {
             })
             .expect("suppqual")
             {
-                suppqual_frames.push(DomainFrame {
-                    domain_code: result.domain_code,
-                    data: result.data,
-                    meta: None,
-                });
+                suppqual_frames.push(result);
             }
         }
         if let Some(data) = combined {

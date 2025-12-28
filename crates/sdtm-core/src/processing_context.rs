@@ -30,16 +30,6 @@ pub struct ProcessingOptions {
     /// Log warnings when values are rewritten/normalized.
     pub warn_on_rewrite: bool,
 
-    /// Allow heuristic field inference from source columns.
-    ///
-    /// When enabled, the preprocessor attempts to infer test names, codes, and
-    /// other fields from source column headers and labels. This is a convenience
-    /// feature that may not have explicit SDTMIG backing.
-    ///
-    /// Default: true (for backward compatibility)
-    /// Strict mode: should be false
-    pub allow_heuristic_inference: bool,
-
     /// Allow CT normalization with fuzzy/lenient matching.
     ///
     /// When enabled, CT values that don't exactly match submission values can
@@ -48,16 +38,6 @@ pub struct ProcessingOptions {
     /// Default: true (for backward compatibility)
     /// Strict mode: should be false
     pub allow_lenient_ct_matching: bool,
-
-    /// Require explicit mapping metadata before populating derived values.
-    ///
-    /// When enabled, preprocessing rules will only populate derived values
-    /// (--TEST, --TESTCD, --ORRES, etc.) if there is explicit mapping metadata
-    /// specifying the source column. This prevents heuristic guessing.
-    ///
-    /// Default: false (for backward compatibility)
-    /// Strict mode: should be true
-    pub require_explicit_mapping: bool,
 }
 
 impl Default for ProcessingOptions {
@@ -66,11 +46,7 @@ impl Default for ProcessingOptions {
             prefix_usubjid: true,
             assign_sequence: true,
             warn_on_rewrite: true,
-            // Default to lenient mode for backward compatibility
-            // Strict mode should set these to false
-            allow_heuristic_inference: true,
             allow_lenient_ct_matching: true,
-            require_explicit_mapping: false,
         }
     }
 }
@@ -78,8 +54,8 @@ impl Default for ProcessingOptions {
 impl ProcessingOptions {
     /// Create options for strict SDTMIG-conformant processing.
     ///
-    /// This disables all heuristic inference and lenient matching,
-    /// only allowing explicitly documented SDTMIG derivations.
+    /// This disables lenient CT matching while preserving documented
+    /// SDTMIG derivations.
     ///
     /// Note: Value normalization (e.g., SEX "FEMALE"→"F", RACE mappings)
     /// is always enabled as it's required for SDTM CT compliance.
@@ -88,9 +64,7 @@ impl ProcessingOptions {
             prefix_usubjid: true,  // SDTMIG-approved: 4.1.2
             assign_sequence: true, // SDTMIG-approved: 4.1.5
             warn_on_rewrite: true,
-            allow_heuristic_inference: false,
             allow_lenient_ct_matching: false,
-            require_explicit_mapping: true,
         }
     }
 }
