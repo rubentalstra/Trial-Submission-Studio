@@ -13,3 +13,4 @@ sdtm-core = { path = "../sdtm-core" }
 sdtm-ingest = { path = "../sdtm-ingest" }
 sdtm-model = { path = "../sdtm-model" }
 sdtm-xpt = { path = "../sdtm-xpt" }
+sdtm-standards = { path = "../sdtm-standards" }

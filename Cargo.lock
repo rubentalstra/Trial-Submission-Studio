@@ -2583,6 +2583,7 @@ dependencies = [
  "sdtm-core",
  "sdtm-ingest",
  "sdtm-model",
+ "sdtm-standards",
  "sdtm-xpt",
 ]
 
