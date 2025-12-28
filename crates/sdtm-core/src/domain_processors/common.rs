@@ -10,7 +10,6 @@ use sdtm_model::Domain;
 use crate::datetime::DatePairOrder;
 use crate::datetime::parse_date;
 use crate::datetime::validate_date_pair;
-use crate::domain_utils::column_name;
 use crate::pipeline_context::PipelineContext;
 pub(super) use sdtm_ingest::{any_to_f64, any_to_i64, any_to_string, parse_f64};
 
@@ -21,7 +20,7 @@ pub(super) use crate::ct_utils::resolve_ct_value;
 pub(super) use crate::datetime::normalize_iso8601;
 
 pub(super) fn col(domain: &Domain, name: &str) -> Option<String> {
-    column_name(domain, name)
+    domain.column_name(name).map(str::to_string)
 }
 pub(super) fn has_column(df: &DataFrame, name: &str) -> bool {
     df.column(name).is_ok()

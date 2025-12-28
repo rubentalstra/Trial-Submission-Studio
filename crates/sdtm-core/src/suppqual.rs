@@ -5,7 +5,6 @@ use polars::prelude::DataFrame;
 use sdtm_model::Domain;
 
 use crate::data_utils::column_value_string;
-use crate::domain_utils::{infer_seq_column, standard_columns};
 use crate::frame::DomainFrame;
 use crate::frame_builder::build_domain_frame_from_records;
 
@@ -122,9 +121,9 @@ fn unique_qnam(name: &str, used: &mut BTreeMap<String, String>) -> String {
     base
 }
 
-fn insert_if_some(record: &mut BTreeMap<String, String>, column: &Option<String>, value: String) {
-    if let Some(name) = column.as_ref() {
-        record.insert(name.clone(), value);
+fn insert_if_some(record: &mut BTreeMap<String, String>, column: Option<&str>, value: String) {
+    if let Some(name) = column {
+        record.insert(name.to_string(), value);
     }
 }
 
@@ -139,8 +138,18 @@ pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<DomainFrame>> {
         .iter()
         .map(|variable| variable.name.to_uppercase())
         .collect();
-    let suppqual_cols = standard_columns(input.suppqual_domain);
-    let parent_cols = standard_columns(input.parent_domain);
+    let parent_study_col = input.parent_domain.column_name("STUDYID");
+    let parent_usubjid_col = input.parent_domain.column_name("USUBJID");
+    let supp_study_col = input.suppqual_domain.column_name("STUDYID");
+    let supp_rdomain_col = input.suppqual_domain.column_name("RDOMAIN");
+    let supp_usubjid_col = input.suppqual_domain.column_name("USUBJID");
+    let supp_idvar_col = input.suppqual_domain.column_name("IDVAR");
+    let supp_idvarval_col = input.suppqual_domain.column_name("IDVARVAL");
+    let supp_qnam_col = input.suppqual_domain.column_name("QNAM");
+    let supp_qlabel_col = input.suppqual_domain.column_name("QLABEL");
+    let supp_qval_col = input.suppqual_domain.column_name("QVAL");
+    let supp_qorig_col = input.suppqual_domain.column_name("QORIG");
+    let supp_qeval_col = input.suppqual_domain.column_name("QEVAL");
     let mut extra_cols: Vec<String> = Vec::new();
     for series in input.source_df.get_columns() {
         let name = series.name().to_string();
@@ -177,10 +186,10 @@ pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<DomainFrame>> {
         None
     } else {
         // Non-DM domains: try to infer the sequence column
-        infer_seq_column(input.parent_domain).and_then(|seq_var| {
+        input.parent_domain.infer_seq_column().and_then(|seq_var| {
             if input
                 .mapped_df
-                .and_then(|df| df.column(&seq_var).ok())
+                .and_then(|df| df.column(seq_var).ok())
                 .is_some()
             {
                 Some(seq_var)
@@ -198,18 +207,14 @@ pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<DomainFrame>> {
         qnam_map.insert(col.clone(), qnam);
     }
 
-    let study_values: Vec<String> = parent_cols
-        .study_id
-        .as_deref()
+    let study_values: Vec<String> = parent_study_col
         .map(|name| {
             (0..row_count)
                 .map(|idx| strip_wrapping_quotes(&column_value_string(input.source_df, name, idx)))
                 .collect()
         })
         .unwrap_or_else(|| vec![String::new(); row_count]);
-    let usubjid_values: Vec<String> = parent_cols
-        .usubjid
-        .as_deref()
+    let usubjid_values: Vec<String> = parent_usubjid_col
         .map(|name| {
             (0..row_count)
                 .map(|idx| strip_wrapping_quotes(&column_value_string(input.source_df, name, idx)))
@@ -219,7 +224,7 @@ pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<DomainFrame>> {
     let mapped_usubjid_values: Vec<String> = input
         .mapped_df
         .and_then(|df| {
-            parent_cols.usubjid.as_deref().map(|name| {
+            parent_usubjid_col.map(|name| {
                 (0..row_count)
                     .map(|idx| strip_wrapping_quotes(&column_value_string(df, name, idx)))
                     .collect()
@@ -235,7 +240,7 @@ pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<DomainFrame>> {
             vec![String::new(); row_count]
         };
 
-    let idvar_value = idvar.clone().unwrap_or_default();
+    let idvar_value = idvar.map(str::to_string).unwrap_or_default();
     for col in &extra_cols {
         let qnam = qnam_map
             .get(col)
@@ -261,26 +266,22 @@ pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<DomainFrame>> {
             let mut record = BTreeMap::new();
             insert_if_some(
                 &mut record,
-                &suppqual_cols.study_id,
+                supp_study_col,
                 if !study_value.is_empty() {
                     study_value
                 } else {
                     input.study_id.to_string()
                 },
             );
-            insert_if_some(
-                &mut record,
-                &suppqual_cols.rdomain,
-                parent_domain_code.clone(),
-            );
-            insert_if_some(&mut record, &suppqual_cols.usubjid, final_usubjid);
-            insert_if_some(&mut record, &suppqual_cols.idvar, idvar_value.clone());
-            insert_if_some(&mut record, &suppqual_cols.idvarval, idvarval);
-            insert_if_some(&mut record, &suppqual_cols.qnam, qnam.clone());
-            insert_if_some(&mut record, &suppqual_cols.qlabel, qlabel.clone());
-            insert_if_some(&mut record, &suppqual_cols.qval, raw_val);
-            insert_if_some(&mut record, &suppqual_cols.qorig, qorig.clone());
-            insert_if_some(&mut record, &suppqual_cols.qeval, String::new());
+            insert_if_some(&mut record, supp_rdomain_col, parent_domain_code.clone());
+            insert_if_some(&mut record, supp_usubjid_col, final_usubjid);
+            insert_if_some(&mut record, supp_idvar_col, idvar_value.clone());
+            insert_if_some(&mut record, supp_idvarval_col, idvarval);
+            insert_if_some(&mut record, supp_qnam_col, qnam.clone());
+            insert_if_some(&mut record, supp_qlabel_col, qlabel.clone());
+            insert_if_some(&mut record, supp_qval_col, raw_val);
+            insert_if_some(&mut record, supp_qorig_col, qorig.clone());
+            insert_if_some(&mut record, supp_qeval_col, String::new());
             records.push(record);
         }
     }

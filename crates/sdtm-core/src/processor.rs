@@ -9,7 +9,6 @@ use sdtm_model::{CaseInsensitiveSet, Domain, VariableType};
 use crate::ct_utils::normalize_ct_value;
 use crate::data_utils::column_trimmed_values;
 use crate::domain_processors;
-use crate::domain_utils::{infer_seq_column, standard_columns};
 use crate::pipeline_context::{PipelineContext, SequenceAssignmentMode, UsubjidPrefixMode};
 use sdtm_ingest::any_to_string;
 
@@ -84,18 +83,15 @@ fn apply_base_rules(domain: &Domain, df: &mut DataFrame, context: &PipelineConte
     if matches!(context.options.usubjid_prefix, UsubjidPrefixMode::Skip) {
         return Ok(());
     }
-    let columns = standard_columns(domain);
     let column_lookup = CaseInsensitiveSet::new(df.get_column_names_owned());
-    let Some(usubjid_col) = columns
-        .usubjid
-        .as_deref()
+    let Some(usubjid_col) = domain
+        .column_name("USUBJID")
         .and_then(|name| column_lookup.get(name))
     else {
         return Ok(());
     };
-    let study_col = columns
-        .study_id
-        .as_deref()
+    let study_col = domain
+        .column_name("STUDYID")
         .and_then(|name| column_lookup.get(name));
     let usubjid_series = match df.column(usubjid_col) {
         Ok(series) => series.clone(),
@@ -168,15 +164,15 @@ fn assign_sequence(
     ) {
         return Ok(());
     }
-    let columns = standard_columns(domain);
     let column_lookup = CaseInsensitiveSet::new(df.get_column_names_owned());
-    let (Some(seq_col), Some(usubjid_col)) = (infer_seq_column(domain), columns.usubjid) else {
+    let Some(seq_col) = domain.infer_seq_column() else {
         return Ok(());
     };
-    let seq_col_name = column_lookup.get(&seq_col).unwrap_or(seq_col.as_str());
-    let usubjid_col_name = column_lookup
-        .get(&usubjid_col)
-        .unwrap_or(usubjid_col.as_str());
+    let Some(usubjid_col) = domain.column_name("USUBJID") else {
+        return Ok(());
+    };
+    let seq_col_name = column_lookup.get(seq_col).unwrap_or(seq_col);
+    let usubjid_col_name = column_lookup.get(usubjid_col).unwrap_or(usubjid_col);
     if !needs_sequence_assignment(df, seq_col_name, usubjid_col_name)? {
         return Ok(());
     }

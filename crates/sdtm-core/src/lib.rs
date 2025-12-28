@@ -3,7 +3,6 @@ mod data_utils;
 mod datetime;
 mod domain_processors;
 pub mod domain_sets;
-pub mod domain_utils;
 pub mod frame;
 pub mod frame_builder;
 pub mod pipeline_context;

@@ -691,14 +691,13 @@ fn expand_ie_wide(
             }
         }
     }
-    let test_col = crate::domain_utils::column_name(domain, "IETEST");
-    let testcd_col = crate::domain_utils::column_name(domain, "IETESTCD");
-    let cat_col = crate::domain_utils::column_name(domain, "IECAT");
+    let test_col = domain.column_name("IETEST");
+    let testcd_col = domain.column_name("IETESTCD");
+    let cat_col = domain.column_name("IECAT");
     let mut total_rows = 0usize;
     for row_idx in 0..table.rows.len() {
         let base_test = if allow_base_test {
             test_col
-                .as_deref()
                 .map(|name| column_value_string(base_df, name, row_idx))
                 .unwrap_or_default()
         } else {
@@ -706,7 +705,6 @@ fn expand_ie_wide(
         };
         let base_testcd = if allow_base_test {
             testcd_col
-                .as_deref()
                 .map(|name| column_value_string(base_df, name, row_idx))
                 .unwrap_or_default()
         } else {
@@ -714,7 +712,6 @@ fn expand_ie_wide(
         };
         let base_cat = if allow_base_cat {
             cat_col
-                .as_deref()
                 .map(|name| column_value_string(base_df, name, row_idx))
                 .unwrap_or_default()
         } else {

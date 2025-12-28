@@ -8,7 +8,6 @@ use sdtm_ingest::{CsvTable, parse_f64};
 use sdtm_map::MappingEngine;
 use sdtm_model::{Domain, MappingConfig, VariableType};
 
-use crate::domain_utils::standard_columns;
 use crate::frame::DomainFrame;
 use crate::wide::{build_ie_wide_frame, build_lb_wide_frame, build_vs_wide_frame};
 
@@ -139,20 +138,19 @@ pub fn build_domain_frame_with_mapping(
     }
 
     let mut data = DataFrame::new(columns).context("build dataframe")?;
-    let standard = standard_columns(domain);
     if let Some(config) = mapping
-        && let Some(study_col) = standard.study_id.as_ref()
+        && let Some(study_col) = domain.column_name("STUDYID")
         && let Ok(series) = data.column(study_col)
     {
         let values = vec![config.study_id.clone(); row_count];
         let new_series = Series::new(series.name().as_str().into(), values);
         data.with_column(new_series)?;
     }
-    if let Some(domain_col) = standard.domain.as_ref()
+    if let Some(domain_col) = domain.column_name("DOMAIN")
         && data.column(domain_col).is_ok()
     {
         let values = vec![domain.code.clone(); row_count];
-        let new_series = Series::new(domain_col.as_str().into(), values);
+        let new_series = Series::new(domain_col.into(), values);
         data.with_column(new_series)?;
     }
 

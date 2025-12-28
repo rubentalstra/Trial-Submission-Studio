@@ -1,6 +1,9 @@
 //! Tests for sdtm-model types.
 
-use sdtm_model::{ProcessStudyResponse, Severity, ValidationIssue, ValidationReport};
+use sdtm_model::{
+    Domain, ProcessStudyResponse, Severity, ValidationIssue, ValidationReport, Variable,
+    VariableType,
+};
 
 #[test]
 fn validation_report_counts() {
@@ -113,4 +116,40 @@ fn validation_report_with_reject() {
     };
     assert_eq!(report.error_count(), 1); // Reject counts as error
     assert!(report.has_errors());
+}
+
+fn make_variable(name: &str, role: &str, order: u32) -> Variable {
+    Variable {
+        name: name.to_string(),
+        label: None,
+        data_type: VariableType::Char,
+        length: Some(200),
+        role: Some(role.to_string()),
+        core: Some("Req".to_string()),
+        codelist_code: None,
+        order: Some(order),
+    }
+}
+
+#[test]
+fn domain_variables_by_role_sorts_by_role_then_order() {
+    let domain = Domain {
+        code: "AE".to_string(),
+        description: None,
+        class_name: None,
+        dataset_class: None,
+        label: None,
+        structure: None,
+        dataset_name: None,
+        variables: vec![
+            make_variable("AESTDTC", "Timing", 53),
+            make_variable("AETERM", "Topic", 9),
+            make_variable("AESEV", "Record Qualifier", 27),
+            make_variable("STUDYID", "Identifier", 1),
+        ],
+    };
+
+    let ordered = domain.variables_by_role();
+    let names: Vec<&str> = ordered.iter().map(|var| var.name.as_str()).collect();
+    assert_eq!(names, vec!["STUDYID", "AETERM", "AESEV", "AESTDTC"]);
 }

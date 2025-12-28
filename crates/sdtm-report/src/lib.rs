@@ -9,7 +9,6 @@ use polars::prelude::{AnyValue, DataFrame};
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 
-use sdtm_core::domain_utils::{order_variables_by_role, standard_columns};
 use sdtm_core::frame::DomainFrame;
 use sdtm_ingest::{any_to_f64_for_output, any_to_string_for_output, any_to_string_non_empty};
 use sdtm_model::ct::{Codelist, TerminologyCatalog, TerminologyRegistry};
@@ -374,7 +373,7 @@ pub fn write_define_xml(
 
         // Order variables by SDTM role per SDTMIG v3.4 Chapter 2.1:
         // Identifiers, Topic, Qualifiers (Grouping, Result, Synonym, Record, Variable), Rule, Timing
-        let ordered_vars = order_variables_by_role(&domain.variables);
+        let ordered_vars = domain.variables_by_role();
 
         let mut key_sequence = 1usize;
         for (idx, variable) in ordered_vars.iter().enumerate() {
@@ -547,11 +546,10 @@ pub fn generate_sas_program(
     for default_line in default_assignments(domain, mapping) {
         lines.push(format!("    {default_line}"));
     }
-    let standard = standard_columns(domain);
-    if let Some(study_col) = standard.study_id.as_ref() {
+    if let Some(study_col) = domain.column_name("STUDYID") {
         lines.push(format!("    {study_col} = \"{}\";", mapping.study_id));
     }
-    if let Some(domain_col) = standard.domain.as_ref() {
+    if let Some(domain_col) = domain.column_name("DOMAIN") {
         lines.push(format!("    {domain_col} = \"{}\";", domain.code));
     }
     lines.push(String::new());

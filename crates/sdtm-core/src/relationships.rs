@@ -7,7 +7,6 @@ use sdtm_model::Domain;
 
 use crate::data_utils::{column_trimmed_values, column_value_string};
 use crate::domain_sets::domain_map_by_code;
-use crate::domain_utils::{StandardColumns, refid_candidates, standard_columns};
 use crate::frame::DomainFrame;
 use crate::frame_builder::build_domain_frame_from_records;
 
@@ -64,15 +63,6 @@ struct RelrecMember {
     idvarval: String,
 }
 
-struct RelrecRecordInput<'a> {
-    rdomain: &'a str,
-    usubjid: &'a str,
-    idvar: &'a str,
-    idvarval: &'a str,
-    relid: &'a str,
-    reltype: Option<&'a str>,
-}
-
 /// Build RELREC dataset from domain frames.
 ///
 /// Per SDTMIG v3.4 Section 8.2:
@@ -107,7 +97,13 @@ pub fn build_relrec(
     }
 
     let domain_map = domain_map_by_code(domains);
-    let relrec_columns = standard_columns(relrec_domain);
+    let relrec_study_col = relrec_domain.column_name("STUDYID");
+    let relrec_rdomain_col = relrec_domain.column_name("RDOMAIN");
+    let relrec_usubjid_col = relrec_domain.column_name("USUBJID");
+    let relrec_idvar_col = relrec_domain.column_name("IDVAR");
+    let relrec_idvarval_col = relrec_domain.column_name("IDVARVAL");
+    let relrec_reltype_col = relrec_domain.column_name("RELTYPE");
+    let relrec_relid_col = relrec_domain.column_name("RELID");
     let mut groups: BTreeMap<RelrecKey, Vec<RelrecMember>> = BTreeMap::new();
     for frame in domain_frames {
         if frame.data.height() == 0 {
@@ -128,18 +124,16 @@ pub fn build_relrec(
                 ));
             }
         };
-        let domain_columns = standard_columns(domain_def);
-        let usubjid_col = match domain_columns.usubjid.as_ref() {
-            Some(name) => name.clone(),
-            None => continue,
+        let Some(usubjid_col) = domain_def.column_name("USUBJID") else {
+            continue;
         };
-        if frame.data.column(&usubjid_col).is_err() {
+        if frame.data.column(usubjid_col).is_err() {
             continue;
         }
         let Some(link) = infer_link_idvar_for_relrec(domain_def, &frame.data, config) else {
             continue;
         };
-        let Some(usubjid_vals) = column_trimmed_values(&frame.data, &usubjid_col) else {
+        let Some(usubjid_vals) = column_trimmed_values(&frame.data, usubjid_col) else {
             continue;
         };
         let Some(idvar_vals) = column_trimmed_values(&frame.data, &link.name) else {
@@ -184,19 +178,29 @@ pub fn build_relrec(
             // (where IDVAR and IDVARVAL are empty). For record-level relationships,
             // RELTYPE should be blank.
             // Since we have IDVAR/IDVARVAL populated (record-level), leave RELTYPE blank.
-            let reltype: Option<&str> = None;
-            records.push(relrec_record(
-                &relrec_columns,
-                study_id,
-                RelrecRecordInput {
-                    rdomain: &member.domain_code,
-                    usubjid: &member.usubjid,
-                    idvar: &member.idvar,
-                    idvarval: &member.idvarval,
-                    relid: &relid,
-                    reltype,
-                },
-            ));
+            let mut record = BTreeMap::new();
+            if let Some(name) = relrec_study_col {
+                record.insert(name.to_string(), study_id.to_string());
+            }
+            if let Some(name) = relrec_rdomain_col {
+                record.insert(name.to_string(), member.domain_code.clone());
+            }
+            if let Some(name) = relrec_usubjid_col {
+                record.insert(name.to_string(), member.usubjid.clone());
+            }
+            if let Some(name) = relrec_idvar_col {
+                record.insert(name.to_string(), member.idvar.clone());
+            }
+            if let Some(name) = relrec_idvarval_col {
+                record.insert(name.to_string(), member.idvarval.clone());
+            }
+            if let Some(name) = relrec_reltype_col {
+                record.insert(name.to_string(), String::new());
+            }
+            if let Some(name) = relrec_relid_col {
+                record.insert(name.to_string(), relid.clone());
+            }
+            records.push(record);
         }
     }
 
@@ -297,10 +301,8 @@ pub fn build_relspec(
                 ));
             }
         };
-        let domain_columns = standard_columns(domain_def);
-        let usubjid_col = match domain_columns.usubjid.as_ref() {
-            Some(name) => name,
-            None => continue,
+        let Some(usubjid_col) = domain_def.column_name("USUBJID") else {
+            continue;
         };
         if frame.data.column(usubjid_col).is_err() {
             continue;
@@ -312,13 +314,11 @@ pub fn build_relspec(
         if refid_cols.is_empty() {
             continue;
         }
-        let spec_vals = domain_columns
-            .spec
-            .as_ref()
+        let spec_vals = domain_def
+            .column_name("SPEC")
             .and_then(|name| column_trimmed_values(&frame.data, name));
-        let parent_vals = domain_columns
-            .parent
-            .as_ref()
+        let parent_vals = domain_def
+            .column_name("PARENT")
             .and_then(|name| column_trimmed_values(&frame.data, name));
         for refid_col in refid_cols {
             let Some(refid_vals) = column_trimmed_values(&frame.data, &refid_col) else {
@@ -355,10 +355,24 @@ pub fn build_relspec(
     if records.is_empty() {
         return Ok(None);
     }
-    let relspec_columns = standard_columns(relspec_domain);
+    let relspec_study_col = relspec_domain.column_name("STUDYID");
+    let relspec_usubjid_col = relspec_domain.column_name("USUBJID");
+    let relspec_refid_col = relspec_domain.column_name("REFID");
+    let relspec_spec_col = relspec_domain.column_name("SPEC");
+    let relspec_parent_col = relspec_domain.column_name("PARENT");
+    let relspec_level_col = relspec_domain.column_name("LEVEL");
     let records: Vec<BTreeMap<String, String>> = records
         .into_values()
-        .map(|record| record.into_map(&relspec_columns))
+        .map(|record| {
+            record.into_map(
+                relspec_study_col,
+                relspec_usubjid_col,
+                relspec_refid_col,
+                relspec_spec_col,
+                relspec_parent_col,
+                relspec_level_col,
+            )
+        })
         .collect();
     let data = build_domain_frame_from_records(relspec_domain, &records)?;
     Ok(Some(DomainFrame::new(relspec_domain.code.clone(), data)))
@@ -424,36 +438,6 @@ pub fn build_relsub(
     Ok(Some(DomainFrame::new(relsub_domain.code.clone(), data)))
 }
 
-fn relrec_record(
-    columns: &StandardColumns,
-    study_id: &str,
-    input: RelrecRecordInput<'_>,
-) -> BTreeMap<String, String> {
-    let mut record = BTreeMap::new();
-    if let Some(name) = columns.study_id.as_ref() {
-        record.insert(name.clone(), study_id.to_string());
-    }
-    if let Some(name) = columns.rdomain.as_ref() {
-        record.insert(name.clone(), input.rdomain.to_string());
-    }
-    if let Some(name) = columns.usubjid.as_ref() {
-        record.insert(name.clone(), input.usubjid.to_string());
-    }
-    if let Some(name) = columns.idvar.as_ref() {
-        record.insert(name.clone(), input.idvar.to_string());
-    }
-    if let Some(name) = columns.idvarval.as_ref() {
-        record.insert(name.clone(), input.idvarval.to_string());
-    }
-    if let Some(name) = columns.reltype.as_ref() {
-        record.insert(name.clone(), input.reltype.unwrap_or("").to_string());
-    }
-    if let Some(name) = columns.relid.as_ref() {
-        record.insert(name.clone(), input.relid.to_string());
-    }
-    record
-}
-
 fn required_data_columns(domain: &Domain) -> Vec<String> {
     domain
         .variables
@@ -502,33 +486,54 @@ impl RelspecRecord {
         }
     }
 
-    fn into_map(self, columns: &StandardColumns) -> BTreeMap<String, String> {
+    fn into_map(
+        self,
+        study_id_col: Option<&str>,
+        usubjid_col: Option<&str>,
+        refid_col: Option<&str>,
+        spec_col: Option<&str>,
+        parent_col: Option<&str>,
+        level_col: Option<&str>,
+    ) -> BTreeMap<String, String> {
         let mut record = BTreeMap::new();
-        if let Some(name) = columns.study_id.as_ref() {
-            record.insert(name.clone(), self.study_id);
+        if let Some(name) = study_id_col {
+            record.insert(name.to_string(), self.study_id);
         }
-        if let Some(name) = columns.usubjid.as_ref() {
-            record.insert(name.clone(), self.usubjid);
+        if let Some(name) = usubjid_col {
+            record.insert(name.to_string(), self.usubjid);
         }
-        if let Some(name) = columns.refid.as_ref() {
-            record.insert(name.clone(), self.refid);
+        if let Some(name) = refid_col {
+            record.insert(name.to_string(), self.refid);
         }
-        if let Some(name) = columns.spec.as_ref() {
-            record.insert(name.clone(), self.spec);
+        if let Some(name) = spec_col {
+            record.insert(name.to_string(), self.spec);
         }
-        if let Some(name) = columns.parent.as_ref() {
-            record.insert(name.clone(), self.parent);
+        if let Some(name) = parent_col {
+            record.insert(name.to_string(), self.parent);
         }
-        if let Some(name) = columns.level.as_ref() {
-            record.insert(name.clone(), self.level);
+        if let Some(name) = level_col {
+            record.insert(name.to_string(), self.level);
         }
         record
     }
 }
 
 fn find_refid_columns(domain: &Domain, df: &DataFrame) -> Vec<String> {
-    refid_candidates(domain)
-        .into_iter()
-        .filter(|name| df.column(name.as_str()).is_ok())
+    domain
+        .variables
+        .iter()
+        .map(|var| var.name.as_str())
+        .filter(|name| {
+            name.eq_ignore_ascii_case("REFID") || ends_with_case_insensitive(name, "REFID")
+        })
+        .filter(|name| df.column(name).is_ok())
+        .map(|name| name.to_string())
         .collect()
+}
+
+fn ends_with_case_insensitive(value: &str, suffix: &str) -> bool {
+    if value.len() < suffix.len() {
+        return false;
+    }
+    value[value.len() - suffix.len()..].eq_ignore_ascii_case(suffix)
 }
