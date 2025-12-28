@@ -78,11 +78,17 @@ fn generates_required_variable_rule() {
     // Required variables generate 2 rules: presence + null check
     assert_eq!(rules.len(), 2);
     let categories: Vec<_> = rules.iter().map(|r| r.category.as_str()).collect();
-    assert!(categories.contains(&"SDTMIG_REQ"));
-    assert!(categories.contains(&"SDTMIG_NULL"));
+    assert!(categories.contains(&"Required Variable Missing"));
+    assert!(categories.contains(&"Required Value Missing"));
 
-    let presence_rule = rules.iter().find(|r| r.category == "SDTMIG_REQ").unwrap();
-    let null_rule = rules.iter().find(|r| r.category == "SDTMIG_NULL").unwrap();
+    let presence_rule = rules
+        .iter()
+        .find(|r| r.category == "Required Variable Missing")
+        .unwrap();
+    let null_rule = rules
+        .iter()
+        .find(|r| r.category == "Required Value Missing")
+        .unwrap();
     assert_eq!(presence_rule.variable, "STUDYID");
     assert_eq!(null_rule.variable, "STUDYID");
     assert!(matches!(
@@ -106,7 +112,7 @@ fn generates_datetime_rule() {
     let rules = generator.generate_rules_for_domain(&domain, &ct);
 
     assert_eq!(rules.len(), 1);
-    assert_eq!(rules[0].category, "SDTMIG_DTC");
+    assert_eq!(rules[0].category, "Invalid ISO 8601 Format");
     assert_eq!(rules[0].variable, "AESTDTC");
     assert!(matches!(rules[0].context, RuleContext::DateTimeFormat));
 }
@@ -121,10 +127,10 @@ fn generates_sequence_rule() {
 
     let rules = generator.generate_rules_for_domain(&domain, &ct);
 
-    // Should have presence, completeness, and sequence uniqueness
+    // Should have presence, null value, and sequence uniqueness
     assert_eq!(rules.len(), 3);
     let categories: Vec<_> = rules.iter().map(|r| r.category.as_str()).collect();
-    assert!(categories.contains(&"SDTMIG_REQ"));
-    assert!(categories.contains(&"SDTMIG_NULL"));
-    assert!(categories.contains(&"SDTMIG_SEQ"));
+    assert!(categories.contains(&"Required Variable Missing"));
+    assert!(categories.contains(&"Required Value Missing"));
+    assert!(categories.contains(&"Duplicate Sequence Number"));
 }

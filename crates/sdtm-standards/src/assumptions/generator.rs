@@ -117,7 +117,7 @@ impl RuleGenerator {
                 rules.push(GeneratedRule {
                     domain: domain.code.clone(),
                     variable: variable.name.clone(),
-                    category: "SDTMIG_REQ".to_string(),
+                    category: "Required Variable Missing".to_string(),
                     severity: RuleSeverity::Error,
                     message: format!(
                         "Required variable {} not found in {}",
@@ -131,7 +131,7 @@ impl RuleGenerator {
                 rules.push(GeneratedRule {
                     domain: domain.code.clone(),
                     variable: variable.name.clone(),
-                    category: "SDTMIG_NULL".to_string(),
+                    category: "Required Value Missing".to_string(),
                     severity: RuleSeverity::Error,
                     message: format!(
                         "Required variable {} in {} cannot be null",
@@ -147,7 +147,7 @@ impl RuleGenerator {
                 rules.push(GeneratedRule {
                     domain: domain.code.clone(),
                     variable: variable.name.clone(),
-                    category: "SDTMIG_EXP".to_string(),
+                    category: "Expected Variable Missing".to_string(),
                     severity: RuleSeverity::Warning,
                     message: format!(
                         "Expected variable {} should be present in {}",
@@ -237,7 +237,7 @@ impl RuleGenerator {
         rules.push(GeneratedRule {
             domain: domain.code.clone(),
             variable: variable.name.clone(),
-            category: "SDTMIG_DTC".to_string(),
+            category: "Invalid ISO 8601 Format".to_string(),
             severity: RuleSeverity::Error,
             message: format!(
                 "{}.{} must be in ISO 8601 format",
@@ -264,7 +264,7 @@ impl RuleGenerator {
         rules.push(GeneratedRule {
             domain: domain.code.clone(),
             variable: variable.name.clone(),
-            category: "SDTMIG_SEQ".to_string(),
+            category: "Duplicate Sequence Number".to_string(),
             severity: RuleSeverity::Error,
             message: format!(
                 "{} must be unique within USUBJID in {}",

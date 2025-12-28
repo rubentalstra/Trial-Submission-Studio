@@ -355,12 +355,14 @@ fn dynamic_rule_generator_summary() {
 
     // Should have rules for key categories
     assert!(
-        summary.by_category.contains_key("SDTMIG_NULL"),
-        "Should have SDTMIG_NULL rules"
+        summary.by_category.contains_key("Required Value Missing"),
+        "Should have Required Value Missing rules"
     );
     assert!(
-        summary.by_category.contains_key("SDTMIG_REQ"),
-        "Should have SDTMIG_REQ rules"
+        summary
+            .by_category
+            .contains_key("Required Variable Missing"),
+        "Should have Required Variable Missing rules"
     );
 
     // Should have rules for many domains

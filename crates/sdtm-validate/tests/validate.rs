@@ -34,9 +34,13 @@ fn missing_required_column_emits_error() {
         .expect("required variable");
     let df = DataFrame::new(vec![]).expect("df");
     let report = validate_domain(domain, &df, &ValidationContext::new());
-    assert!(report.issues.iter().any(
-        |issue| issue.code == "SDTMIG_REQ" && issue.variable.as_deref() == Some(&required.name)
-    ));
+    assert!(
+        report
+            .issues
+            .iter()
+            .any(|issue| issue.code == "Required Variable Missing"
+                && issue.variable.as_deref() == Some(&required.name))
+    );
 }
 
 #[test]
@@ -57,7 +61,7 @@ fn missing_required_values_emits_error() {
     let issue = report
         .issues
         .iter()
-        .find(|issue| issue.code == "SDTMIG_NULL")
+        .find(|issue| issue.code == "Required Value Missing")
         .expect("missing value issue");
     assert_eq!(issue.count, Some(2));
 }
@@ -83,7 +87,7 @@ fn numeric_type_issue_emits_error() {
     let issue = report
         .issues
         .iter()
-        .find(|issue| issue.code == "SDTMIG_TYPE")
+        .find(|issue| issue.code == "Invalid Data Type")
         .expect("type issue");
     assert_eq!(issue.count, Some(1));
 }
@@ -211,14 +215,13 @@ fn rule_engine_validates_required_variable() {
 
     let report = validate_domain_with_rules(domain, &df, &ctx);
 
-    // Should find SDTMIG_REQ (Required variable not found)
-    let studyid_issue = report
-        .issues
-        .iter()
-        .find(|i| i.variable.as_deref() == Some("STUDYID") && i.code == "SDTMIG_REQ");
+    // Should find Required Variable Missing issue
+    let studyid_issue = report.issues.iter().find(|i| {
+        i.variable.as_deref() == Some("STUDYID") && i.code == "Required Variable Missing"
+    });
     assert!(
         studyid_issue.is_some(),
-        "Should emit SDTMIG_REQ for missing STUDYID"
+        "Should emit Required Variable Missing issue for missing STUDYID"
     );
 }
 
@@ -235,13 +238,14 @@ fn rule_engine_validates_required_null_values() {
 
     let report = validate_domain_with_rules(domain, &df, &ctx);
 
-    // Should find SDTMIG_NULL (Required variable has null values)
+    // Should find Required Value Missing issue
     let null_issue = report.issues.iter().find(|i| {
-        i.variable.as_deref() == Some("STUDYID") && i.category.as_deref() == Some("SDTMIG_NULL")
+        i.variable.as_deref() == Some("STUDYID")
+            && i.category.as_deref() == Some("Required Value Missing")
     });
     assert!(
         null_issue.is_some(),
-        "Should emit SDTMIG_NULL for null STUDYID values"
+        "Should emit Required Value Missing issue for null STUDYID values"
     );
     assert_eq!(null_issue.unwrap().count, Some(2));
 }
@@ -280,9 +284,11 @@ fn rule_engine_builds_from_context() {
     let dm_rules = engine.rules_for_domain("DM");
     assert!(!dm_rules.is_empty(), "Should have rules for DM domain");
 
-    // Should have Required rules (SDTMIG_NULL)
+    // Should have Required Value Missing rules
     assert!(
-        dm_rules.iter().any(|r| r.category == "SDTMIG_NULL"),
-        "Should have SDTMIG_NULL rules"
+        dm_rules
+            .iter()
+            .any(|r| r.category == "Required Value Missing"),
+        "Should have Required Value Missing rules"
     );
 }

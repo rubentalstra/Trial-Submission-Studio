@@ -428,12 +428,12 @@ fn missing_column_issues(_domain: &Domain, variable: &Variable) -> Vec<Conforman
     if is_required(variable.core.as_deref()) {
         let message = format!("SDTM Required variable not found: {}", variable.name);
         return vec![ConformanceIssue {
-            code: "SDTMIG_REQ".to_string(),
+            code: "Required Variable Missing".to_string(),
             message,
             severity: IssueSeverity::Error,
             variable: Some(variable.name.clone()),
             count: None,
-            category: Some("Presence".to_string()),
+            category: Some("Required Variable Missing".to_string()),
             codelist_code: None,
             ct_source: None,
         }];
@@ -441,12 +441,12 @@ fn missing_column_issues(_domain: &Domain, variable: &Variable) -> Vec<Conforman
     if is_expected(variable.core.as_deref()) {
         let message = format!("SDTM Expected variable not found: {}", variable.name);
         return vec![ConformanceIssue {
-            code: "SDTMIG_EXP".to_string(),
+            code: "Expected Variable Missing".to_string(),
             message,
             severity: IssueSeverity::Warning,
             variable: Some(variable.name.clone()),
             count: None,
-            category: Some("Presence".to_string()),
+            category: Some("Expected Variable Missing".to_string()),
             codelist_code: None,
             ct_source: None,
         }];
@@ -479,12 +479,12 @@ fn missing_value_issue(
         variable.name, missing
     );
     Some(ConformanceIssue {
-        code: "SDTMIG_NULL".to_string(),
+        code: "Required Value Missing".to_string(),
         message,
         severity: IssueSeverity::Error,
         variable: Some(variable.name.clone()),
         count: Some(missing),
-        category: Some("Completeness".to_string()),
+        category: Some("Required Value Missing".to_string()),
         codelist_code: None,
         ct_source: None,
     })
@@ -525,12 +525,12 @@ fn type_issue(
         variable.name, invalid
     );
     Some(ConformanceIssue {
-        code: "SDTMIG_TYPE".to_string(),
+        code: "Invalid Data Type".to_string(),
         message,
         severity: IssueSeverity::Error,
         variable: Some(variable.name.clone()),
         count: Some(invalid),
-        category: Some("Data Type".to_string()),
+        category: Some("Invalid Data Type".to_string()),
         codelist_code: None,
         ct_source: None,
     })
@@ -565,12 +565,12 @@ fn length_issue(
         variable.name, limit, over
     );
     Some(ConformanceIssue {
-        code: "SDTMIG_LEN".to_string(),
+        code: "Value Exceeds Length".to_string(),
         message,
         severity: IssueSeverity::Error,
         variable: Some(variable.name.clone()),
         count: Some(over),
-        category: Some("Length".to_string()),
+        category: Some("Value Exceeds Length".to_string()),
         codelist_code: None,
         ct_source: None,
     })
@@ -614,12 +614,12 @@ fn test_code_issue(
         message.push_str(&format!(" values: {}", examples));
     }
     Some(ConformanceIssue {
-        code: "SDTMIG_TESTCD".to_string(),
+        code: "Invalid TESTCD Format".to_string(),
         message,
         severity: IssueSeverity::Error,
         variable: Some(variable.name.clone()),
         count: Some(invalid),
-        category: Some("Format".to_string()),
+        category: Some("Invalid TESTCD Format".to_string()),
         codelist_code: None,
         ct_source: None,
     })
