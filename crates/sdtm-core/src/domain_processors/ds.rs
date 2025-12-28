@@ -44,7 +44,7 @@ fn resolve_dsdecod_codelist<'a>(
     }
     for code in codes {
         if let Some(resolved) = context.ct_registry.resolve(code, None)
-            && resolve_ct_lenient(resolved.codelist, value).is_some()
+            && resolve_ct_value(resolved.codelist, value, context.options.ct_matching).is_some()
         {
             return Some(resolved.codelist);
         }
@@ -52,7 +52,11 @@ fn resolve_dsdecod_codelist<'a>(
     None
 }
 
-fn dscat_value_for_codelist(dscat_ct: &Codelist, dsdecod_ct: &Codelist) -> Option<String> {
+fn dscat_value_for_codelist(
+    dscat_ct: &Codelist,
+    dsdecod_ct: &Codelist,
+    mode: crate::pipeline_context::CtMatchingMode,
+) -> Option<String> {
     let name_upper = dsdecod_ct.name.to_uppercase();
     let hint = if name_upper.contains("MILESTONE") {
         "PROTOCOL MILESTONE"
@@ -61,7 +65,7 @@ fn dscat_value_for_codelist(dscat_ct: &Codelist, dsdecod_ct: &Codelist) -> Optio
     } else {
         "DISPOSITION EVENT"
     };
-    resolve_ct_lenient(dscat_ct, hint).or_else(|| {
+    resolve_ct_value(dscat_ct, hint, mode).or_else(|| {
         let upper = hint.to_uppercase();
         dscat_ct
             .submission_values()
@@ -143,7 +147,8 @@ pub(super) fn process_ds(
                 if dscat_vals[idx].is_empty() {
                     continue;
                 }
-                let canonical = normalize_ct_value(ct, &dscat_vals[idx]);
+                let canonical =
+                    normalize_ct_value(ct, &dscat_vals[idx], context.options.ct_matching);
                 let is_valid = ct.submission_values().iter().any(|val| val == &canonical);
                 invalid[idx] = !is_valid;
             }
@@ -223,7 +228,7 @@ pub(super) fn process_ds(
     {
         let mut decod_vals = string_column(df, &dsdecod)?;
         for value in decod_vals.iter_mut() {
-            let canonical = normalize_ct_value(ct, value);
+            let canonical = normalize_ct_value(ct, value, context.options.ct_matching);
             let mut mapped = match canonical.to_uppercase().as_str() {
                 "Y" | "YES" => "COMPLETED".to_string(),
                 "N" | "NO" => "SCREENING NOT COMPLETED".to_string(),
@@ -251,7 +256,9 @@ pub(super) fn process_ds(
         {
             let term_vals = string_column(df, &dsterm)?;
             for idx in 0..df.height() {
-                let term_code = normalize_ct_value(ct, &term_vals[idx]).to_uppercase();
+                let term_code =
+                    normalize_ct_value(ct, &term_vals[idx], context.options.ct_matching)
+                        .to_uppercase();
                 let valid_from_term = ct.submission_values().iter().any(|val| *val == term_code);
                 let valid_from_decod = ct
                     .submission_values()
@@ -281,7 +288,8 @@ pub(super) fn process_ds(
                     continue;
                 }
                 if let Some(dsdecod_ct) = resolve_dsdecod_codelist(context, &codes, decod)
-                    && let Some(value) = dscat_value_for_codelist(dscat_ct, dsdecod_ct)
+                    && let Some(value) =
+                        dscat_value_for_codelist(dscat_ct, dsdecod_ct, context.options.ct_matching)
                 {
                     dscat_vals[idx] = value;
                 }

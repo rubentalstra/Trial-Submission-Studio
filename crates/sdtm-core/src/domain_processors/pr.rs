@@ -74,7 +74,7 @@ pub(super) fn process_pr(
         if let Some(ct) = context.resolve_ct(domain, "PRDECOD") {
             let values = string_column(df, &prdecod)?
                 .into_iter()
-                .map(|value| normalize_ct_value_safe(ct, &value))
+                .map(|value| normalize_ct_value(ct, &value, context.options.ct_matching))
                 .collect::<Vec<_>>();
             set_string_column(df, &prdecod, values)?;
         }

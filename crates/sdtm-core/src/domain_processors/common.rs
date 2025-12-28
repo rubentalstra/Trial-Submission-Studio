@@ -19,9 +19,8 @@ pub(super) use sdtm_ingest::{any_to_f64, any_to_i64, any_to_string, parse_f64};
 
 // Re-export shared functions for domain processors
 pub(super) use crate::ct_utils::normalize_ct_value;
-pub(super) use crate::ct_utils::normalize_ct_value_safe;
 pub(super) use crate::ct_utils::preferred_term_for;
-pub(super) use crate::ct_utils::resolve_ct_lenient;
+pub(super) use crate::ct_utils::resolve_ct_value;
 pub(super) use crate::datetime::normalize_iso8601;
 
 pub(super) fn col(domain: &Domain, name: &str) -> Option<String> {

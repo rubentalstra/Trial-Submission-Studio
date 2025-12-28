@@ -100,7 +100,7 @@ pub(super) fn process_vs(
             if valid {
                 continue;
             }
-            if let Some(mapped) = resolve_ct_lenient(ct, test) {
+            if let Some(mapped) = resolve_ct_value(ct, test, context.options.ct_matching) {
                 *testcd = mapped;
             }
         }
@@ -113,7 +113,7 @@ pub(super) fn process_vs(
             {
                 let mut values = string_column(df, &name)?;
                 for value in &mut values {
-                    *value = normalize_ct_value_safe(ct, value);
+                    *value = normalize_ct_value(ct, value, context.options.ct_matching);
                 }
                 set_string_column(df, &name, values)?;
             }
@@ -125,7 +125,7 @@ pub(super) fn process_vs(
     {
         let mut values = string_column(df, &vstestcd)?;
         for value in &mut values {
-            *value = normalize_ct_value_safe(ct, value);
+            *value = normalize_ct_value(ct, value, context.options.ct_matching);
         }
         set_string_column(df, &vstestcd, values)?;
     }
@@ -135,7 +135,7 @@ pub(super) fn process_vs(
     {
         let mut values = string_column(df, &vstest)?;
         for value in &mut values {
-            *value = normalize_ct_value_safe(ct, value);
+            *value = normalize_ct_value(ct, value, context.options.ct_matching);
         }
         set_string_column(df, &vstest, values)?;
     }
@@ -154,7 +154,7 @@ pub(super) fn process_vs(
             let needs_label = test.is_empty() || test.eq_ignore_ascii_case(testcd);
             let valid_name = ct_names
                 .map(|ct| {
-                    let canonical = normalize_ct_value(ct, test);
+                    let canonical = normalize_ct_value(ct, test, context.options.ct_matching);
                     ct.submission_values().iter().any(|val| val == &canonical)
                 })
                 .unwrap_or(true);

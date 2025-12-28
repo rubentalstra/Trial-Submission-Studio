@@ -6,12 +6,10 @@ use tracing::warn;
 
 use sdtm_model::{CaseInsensitiveSet, Domain, VariableType};
 
-use crate::ct_utils::{normalize_ct_value_safe, normalize_ct_value_strict};
+use crate::ct_utils::normalize_ct_value;
 use crate::domain_processors;
 use crate::domain_utils::{infer_seq_column, standard_columns};
-use crate::pipeline_context::{
-    CtMatchingMode, PipelineContext, SequenceAssignmentMode, UsubjidPrefixMode,
-};
+use crate::pipeline_context::{PipelineContext, SequenceAssignmentMode, UsubjidPrefixMode};
 use sdtm_ingest::any_to_string;
 
 pub struct DomainProcessInput<'a> {
@@ -46,8 +44,6 @@ fn normalize_ct_columns(
         return Ok(());
     }
     let column_lookup = CaseInsensitiveSet::new(df.get_column_names_owned());
-    let use_strict = matches!(context.options.ct_matching, CtMatchingMode::Strict);
-
     for variable in &domain.variables {
         if !matches!(variable.data_type, VariableType::Char) {
             continue;
@@ -69,12 +65,7 @@ fn normalize_ct_columns(
                 values.push(raw);
                 continue;
             }
-            // Use strict or lenient matching based on options
-            let normalized = if use_strict {
-                normalize_ct_value_strict(ct, &raw)
-            } else {
-                normalize_ct_value_safe(ct, &raw)
-            };
+            let normalized = normalize_ct_value(ct, &raw, context.options.ct_matching);
             if normalized != raw {
                 changed = true;
             }
