@@ -1,19 +1,9 @@
 //! Polars AnyValue utility functions.
 //!
 //! This module provides helper functions for working with Polars `AnyValue` types,
-//! including string conversions, missing value detection, and numeric parsing.
+//! including string conversions and numeric parsing.
 
 use polars::prelude::*;
-
-/// Checks if an AnyValue represents a missing value (Null, None, or empty/whitespace string).
-pub fn is_missing_value(value: &AnyValue<'_>) -> bool {
-    match value {
-        AnyValue::Null => true,
-        AnyValue::StringOwned(s) => s.trim().is_empty(),
-        AnyValue::String(s) => s.trim().is_empty(),
-        _ => false,
-    }
-}
 
 /// Converts a Polars AnyValue to a String representation.
 /// Returns empty string for Null, properly formats numeric types.

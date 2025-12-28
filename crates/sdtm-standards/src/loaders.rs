@@ -241,12 +241,6 @@ impl DomainRegistry {
         self.get_by_class(DatasetClass::Relationship)
     }
 
-    /// Get all Study Reference domains (OI, DI).
-    /// Per SDTMIG v3.4 Chapter 9.
-    pub fn get_study_reference_domains(&self) -> Vec<&Domain> {
-        self.get_by_class(DatasetClass::StudyReference)
-    }
-
     /// Get the dataset class for a domain code.
     pub fn get_class(&self, code: &str) -> Option<DatasetClass> {
         self.get(code).and_then(|d| d.dataset_class)
@@ -288,11 +282,5 @@ impl DomainRegistry {
 /// Load the default SDTMIG domain registry.
 pub fn load_default_domain_registry() -> Result<DomainRegistry> {
     let domains = load_default_sdtm_ig_domains()?;
-    Ok(DomainRegistry::new(domains))
-}
-
-/// Load a domain registry from a directory.
-pub fn load_domain_registry(base_dir: &Path) -> Result<DomainRegistry> {
-    let domains = load_sdtm_ig_domains(base_dir)?;
     Ok(DomainRegistry::new(domains))
 }

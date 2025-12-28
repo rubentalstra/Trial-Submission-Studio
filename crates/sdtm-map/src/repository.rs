@@ -17,7 +17,7 @@
 
 use std::collections::BTreeMap;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
@@ -122,10 +122,6 @@ impl MappingRepository {
     }
 
     /// Get the base directory of this repository.
-    pub fn base_dir(&self) -> &Path {
-        &self.base_dir
-    }
-
     /// Save a mapping configuration to the repository.
     ///
     /// The mapping is stored with a filename based on study_id and domain_code.

@@ -52,12 +52,6 @@ impl IngestOptions {
         self.label_row_index = Some(index);
         self
     }
-
-    /// Set the maximum header scan rows.
-    pub fn max_scan_rows(mut self, rows: usize) -> Self {
-        self.max_header_scan_rows = Some(rows);
-        self
-    }
 }
 
 /// Explicit schema hint for a CSV file.
@@ -414,39 +408,6 @@ pub fn build_column_hints(table: &CsvTable) -> BTreeMap<String, ColumnHint> {
         );
     }
     hints
-}
-
-/// Read CSV schema with explicit options for header/label detection.
-///
-/// When `options.header_row_index` is set, uses that row as headers.
-/// When `options.schema` is set, uses the provided schema directly.
-/// Otherwise falls back to heuristic detection.
-pub fn read_csv_schema_with_options(path: &Path, options: &IngestOptions) -> Result<CsvSchema> {
-    // If explicit schema provided, use it directly
-    if let Some(schema) = &options.schema {
-        return Ok(CsvSchema {
-            headers: schema.headers.clone(),
-            labels: schema.labels.clone(),
-        });
-    }
-
-    let max_scan = options.max_header_scan_rows.unwrap_or(12);
-    let raw_rows = read_csv_rows_internal(path, Some(max_scan))?;
-    if raw_rows.is_empty() {
-        return Ok(CsvSchema {
-            headers: Vec::new(),
-            labels: None,
-        });
-    }
-
-    let header_index = resolve_header_index(&raw_rows, options);
-    let labels = resolve_labels(&raw_rows, header_index, options);
-    let headers: Vec<String> = raw_rows
-        .get(header_index)
-        .map(|row| row.iter().map(|v| normalize_header(v)).collect())
-        .unwrap_or_default();
-
-    Ok(CsvSchema { headers, labels })
 }
 
 /// Read CSV table with explicit options for header/label detection.

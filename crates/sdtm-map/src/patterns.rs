@@ -66,26 +66,6 @@ const VARIABLE_SYNONYMS: &[(&str, &[&str])] = &[
     ("note", &["COVAL", "--COM"]),
 ];
 
-/// Label fragments that hint at specific variable types.
-const LABEL_HINTS: &[(&str, &[&str])] = &[
-    ("identifier", &["ID", "USUBJID", "STUDYID", "SUBJID"]),
-    ("sequence", &["SEQ", "--SEQ"]),
-    ("date", &["DTC", "--DTC", "STDTC", "ENDTC"]),
-    ("start date", &["STDTC", "--STDTC"]),
-    ("end date", &["ENDTC", "--ENDTC"]),
-    ("duration", &["DUR", "--DUR"]),
-    ("day", &["DY", "--DY"]),
-    ("number", &["NUM", "--NUM"]),
-    ("name", &["NAM", "--NAM"]),
-    ("code", &["CD", "--CD", "TESTCD"]),
-    ("unit", &["U", "ORRESU", "STRESU"]),
-    ("result", &["RES", "ORRES", "STRESC", "STRESN"]),
-    ("original", &["ORRES", "--ORRES"]),
-    ("standard", &["STRESC", "STRESN", "--STRESC", "--STRESN"]),
-    ("numeric", &["N", "STRESN", "--STRESN"]),
-    ("character", &["C", "STRESC", "--STRESC"]),
-];
-
 /// Build variable patterns including synonyms and label-based patterns.
 pub fn build_variable_patterns(domain: &Domain) -> BTreeMap<String, Vec<String>> {
     let mut patterns = BTreeMap::new();
@@ -185,19 +165,6 @@ pub fn build_synonym_map(domain: &Domain) -> BTreeMap<String, Vec<String>> {
     }
 
     synonyms
-}
-
-/// Build label hint lookup for improving matching confidence.
-pub fn build_label_hints() -> BTreeMap<String, Vec<String>> {
-    LABEL_HINTS
-        .iter()
-        .map(|(pattern, targets)| {
-            (
-                pattern.to_string(),
-                targets.iter().map(|s| s.to_string()).collect(),
-            )
-        })
-        .collect()
 }
 
 /// Extract significant fragments from a label for pattern matching.

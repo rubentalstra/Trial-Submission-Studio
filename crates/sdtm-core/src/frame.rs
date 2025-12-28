@@ -47,12 +47,6 @@ impl DomainFrameMeta {
         self
     }
 
-    /// Add multiple source file paths.
-    pub fn with_source_files(mut self, paths: impl IntoIterator<Item = PathBuf>) -> Self {
-        self.source_files.extend(paths);
-        self
-    }
-
     /// Set the split variant.
     pub fn with_split_variant(mut self, variant: impl Into<String>) -> Self {
         self.split_variant = Some(variant.into());
@@ -63,13 +57,6 @@ impl DomainFrameMeta {
     pub fn with_base_domain_code(mut self, code: impl Into<String>) -> Self {
         self.base_domain_code = Some(code.into());
         self
-    }
-
-    /// Get the effective dataset name, falling back to the provided domain_code.
-    pub fn effective_dataset_name(&self, domain_code: &str) -> String {
-        self.dataset_name
-            .clone()
-            .unwrap_or_else(|| domain_code.to_uppercase())
     }
 
     /// Check if this is a split domain.
@@ -143,11 +130,6 @@ impl DomainFrame {
             .as_ref()
             .and_then(|m| m.base_domain_code.as_deref())
             .unwrap_or(&self.domain_code)
-    }
-
-    /// Set metadata on this frame.
-    pub fn set_meta(&mut self, meta: DomainFrameMeta) {
-        self.meta = Some(meta);
     }
 
     /// Add a source file to the metadata.

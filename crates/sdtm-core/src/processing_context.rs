@@ -153,28 +153,8 @@ impl<'a> ProcessingContext<'a> {
         self
     }
 
-    pub fn with_epoch_periods(
-        mut self,
-        epoch_periods: &'a BTreeMap<String, Vec<EpochPeriod>>,
-    ) -> Self {
-        self.epoch_periods = Some(epoch_periods);
-        self
-    }
-
     pub fn with_options(mut self, options: ProcessingOptions) -> Self {
         self.options = options;
-        self
-    }
-
-    /// Enable provenance tracking with a new tracker.
-    pub fn with_provenance(mut self) -> Self {
-        self.provenance = Some(ProvenanceTracker::new());
-        self
-    }
-
-    /// Enable provenance tracking with an existing tracker.
-    pub fn with_provenance_tracker(mut self, tracker: ProvenanceTracker) -> Self {
-        self.provenance = Some(tracker);
         self
     }
 

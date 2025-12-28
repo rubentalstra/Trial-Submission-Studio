@@ -559,12 +559,6 @@ pub fn generate_sas_program(
     Ok(lines.join("\n"))
 }
 
-/// Build XPT dataset using the frame's metadata for naming.
-pub fn build_xpt_dataset(domain: &Domain, frame: &DomainFrame) -> Result<XptDataset> {
-    let dataset_name = frame.dataset_name();
-    build_xpt_dataset_with_name(domain, frame, &dataset_name)
-}
-
 /// Build XPT dataset with an explicit dataset name.
 ///
 /// This variant allows specifying the dataset name directly, useful for:

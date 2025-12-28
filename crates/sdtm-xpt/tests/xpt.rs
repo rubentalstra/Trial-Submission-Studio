@@ -72,8 +72,10 @@ fn writes_and_reads_roundtrip() {
             vec![XptValue::Char("SUBJ002".to_string()), XptValue::Num(None)],
         ],
     };
-    let mut options = XptWriterOptions::default();
-    options.missing_numeric = MissingNumeric::Standard;
+    let options = XptWriterOptions {
+        missing_numeric: MissingNumeric::Standard,
+        ..Default::default()
+    };
     write_xpt(&path, &dataset, &options).expect("write xpt");
     let round = read_xpt(&path).expect("read back");
     assert_eq!(round.name, "TEST");

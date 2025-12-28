@@ -102,12 +102,6 @@ impl StreamingOptions {
         self.low_memory = enabled;
         self
     }
-
-    /// Set ingest options.
-    pub fn with_ingest_options(mut self, options: IngestOptions) -> Self {
-        self.ingest_options = options;
-        self
-    }
 }
 
 /// Streaming CSV reader using Polars.
@@ -192,13 +186,6 @@ impl StreamingCsvReader {
         Ok(df)
     }
 
-    /// Read using lazy evaluation and streaming.
-    ///
-    /// Returns a LazyFrame that can be further processed before collecting.
-    pub fn read_lazy(&self) -> Result<LazyFrame> {
-        self.scan()
-    }
-
     /// Get the schema of the CSV file.
     pub fn schema(&mut self) -> Result<Arc<Schema>> {
         if self.schema.is_none() {
@@ -213,19 +200,6 @@ impl StreamingCsvReader {
             self.schema = Some(sample.schema().clone());
         }
         Ok(self.schema.clone().unwrap())
-    }
-
-    /// Get column names from the CSV.
-    pub fn column_names(&mut self) -> Result<Vec<String>> {
-        let schema = self.schema()?;
-        Ok(schema.iter_names().map(|n| n.to_string()).collect())
-    }
-
-    /// Count total rows in the file using lazy evaluation.
-    pub fn count_rows(&self) -> Result<usize> {
-        // Count all rows using lazy evaluation
-        let count = self.scan()?.select([len()]).collect()?.height();
-        Ok(count)
     }
 
     /// Stream through the file in chunks, applying a function to each chunk.
@@ -386,13 +360,6 @@ impl FileSizeCategory {
             },
         }
     }
-}
-
-/// Auto-detect file size and create an appropriate reader.
-pub fn auto_streaming_reader(path: impl AsRef<Path>) -> Result<StreamingCsvReader> {
-    let category = FileSizeCategory::from_path(&path)?;
-    let options = category.recommended_options();
-    StreamingCsvReader::new(path, options)
 }
 
 /// Convert a Polars DataFrame to CsvTable format.

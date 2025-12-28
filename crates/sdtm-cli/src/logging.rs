@@ -9,14 +9,14 @@
 //! - `warn`: Warnings, non-fatal issues
 //! - `info`: Pipeline stage progress, summary counts
 //! - `debug`: Detailed processing information
-//! - `trace`: Row-level data (requires explicit `--log-data` flag for PHI safety)
+//! - `trace`: Very detailed processing information
 //!
 //! # Usage
 //!
 //! ```ignore
 //! use sdtm_cli::logging::{init_logging, LogConfig};
 //!
-//! let config = LogConfig::from_verbosity(2);
+//! let config = LogConfig::default();
 //! init_logging(&config).expect("init logging");
 //! ```
 
@@ -25,7 +25,6 @@ use std::fmt as std_fmt;
 use std::fs::OpenOptions;
 use std::io::{self, Write};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use tracing::field::{Field, Visit};
 use tracing::level_filters::LevelFilter;
@@ -43,25 +42,6 @@ use tracing_subscriber::{
     registry::LookupSpan,
     util::SubscriberInitExt,
 };
-
-static LOG_DATA_ENABLED: AtomicBool = AtomicBool::new(false);
-
-/// Placeholder used when row-level logging is disabled.
-pub const REDACTED_VALUE: &str = "[REDACTED]";
-
-/// Returns true if row-level logging is explicitly enabled.
-pub fn log_data_enabled() -> bool {
-    LOG_DATA_ENABLED.load(Ordering::Relaxed)
-}
-
-/// Returns the input value when PHI logging is enabled, otherwise a redacted token.
-pub fn redact_value(value: &str) -> &str {
-    if log_data_enabled() {
-        value
-    } else {
-        REDACTED_VALUE
-    }
-}
 
 /// Configuration for logging behavior.
 #[derive(Debug, Clone)]
@@ -82,8 +62,6 @@ pub struct LogConfig {
     pub format: LogFormat,
     /// Optional log file path. When set, logs are written to the file.
     pub log_file: Option<PathBuf>,
-    /// Whether row-level (PHI/PII) values may be logged.
-    pub log_data: bool,
 }
 
 /// Log output format.
@@ -109,77 +87,7 @@ impl Default for LogConfig {
             with_ansi: true,
             format: LogFormat::default(),
             log_file: None,
-            log_data: false,
         }
-    }
-}
-
-impl LogConfig {
-    /// Create a `LogConfig` from CLI verbosity count.
-    ///
-    /// - 0 (no `-v`): info level
-    /// - 1 (`-v`): debug level
-    /// - 2+ (`-vv`): trace level
-    #[must_use]
-    pub fn from_verbosity(verbosity: u8) -> Self {
-        let level_filter = match verbosity {
-            0 => LevelFilter::INFO,
-            1 => LevelFilter::DEBUG,
-            _ => LevelFilter::TRACE,
-        };
-        Self {
-            level_filter,
-            ..Default::default()
-        }
-    }
-
-    /// Set log level directly.
-    #[must_use]
-    pub fn with_level_filter(mut self, level_filter: LevelFilter) -> Self {
-        self.level_filter = level_filter;
-        self
-    }
-
-    /// Enable or disable timestamps.
-    #[must_use]
-    pub fn with_timestamps(mut self, enable: bool) -> Self {
-        self.with_timestamps = enable;
-        self
-    }
-
-    /// Enable or disable target (module path) in output.
-    #[must_use]
-    pub fn with_target(mut self, enable: bool) -> Self {
-        self.with_target = enable;
-        self
-    }
-
-    /// Enable or disable ANSI colors.
-    #[must_use]
-    pub fn with_ansi(mut self, enable: bool) -> Self {
-        self.with_ansi = enable;
-        self
-    }
-
-    /// Set output format.
-    #[must_use]
-    pub fn with_format(mut self, format: LogFormat) -> Self {
-        self.format = format;
-        self
-    }
-
-    /// Set the log file path (writes to stderr when None).
-    #[must_use]
-    pub fn with_log_file(mut self, path: Option<PathBuf>) -> Self {
-        self.log_file = path;
-        self
-    }
-
-    /// Enable or disable row-level logging of sensitive values.
-    #[must_use]
-    pub fn with_log_data(mut self, enable: bool) -> Self {
-        self.log_data = enable;
-        self
     }
 }
 
@@ -209,7 +117,6 @@ pub fn init_logging_with_writer<W>(config: &LogConfig, writer: W)
 where
     W: for<'writer> MakeWriter<'writer> + Send + Sync + 'static,
 {
-    LOG_DATA_ENABLED.store(config.log_data, Ordering::Release);
     let filter = build_env_filter(config.level_filter, config.use_env_filter);
 
     match config.format {

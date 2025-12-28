@@ -1,35 +1,13 @@
-use anyhow::Result;
-use polars::prelude::{AnyValue, DataFrame, NamedFrom, Series};
+use polars::prelude::{AnyValue, DataFrame};
 use sdtm_ingest::CsvTable;
 use sdtm_ingest::any_to_string;
-use sdtm_model::{Domain, MappingConfig};
+use sdtm_model::MappingConfig;
 
 pub fn column_value_string(df: &DataFrame, name: &str, idx: usize) -> String {
     match df.column(name) {
         Ok(series) => any_to_string(series.get(idx).unwrap_or(AnyValue::Null)),
         Err(_) => String::new(),
     }
-}
-
-pub fn fill_string_column(df: &mut DataFrame, name: &str, fill: &str) -> Result<()> {
-    if fill.is_empty() {
-        return Ok(());
-    }
-    let mut values = if let Ok(series) = df.column(name) {
-        (0..df.height())
-            .map(|idx| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
-            .collect::<Vec<_>>()
-    } else {
-        vec![String::new(); df.height()]
-    };
-    for value in &mut values {
-        if value.trim().is_empty() {
-            *value = fill.to_string();
-        }
-    }
-    let series = Series::new(name.into(), values);
-    df.with_column(series)?;
-    Ok(())
 }
 
 pub fn table_label(table: &CsvTable, column: &str) -> Option<String> {
@@ -43,35 +21,6 @@ pub fn table_label(table: &CsvTable, column: &str) -> Option<String> {
         None
     } else {
         Some(label.to_string())
-    }
-}
-
-pub fn column_hint_for_domain(
-    table: &CsvTable,
-    domain: &Domain,
-    column: &str,
-) -> Option<(String, bool)> {
-    let idx = table
-        .headers
-        .iter()
-        .position(|header| header.eq_ignore_ascii_case(column))?;
-    if let Some(labels) = table.labels.as_ref()
-        && let Some(label) = labels.get(idx)
-    {
-        let trimmed = label.trim();
-        if !trimmed.is_empty() {
-            return Some((trimmed.to_string(), true));
-        }
-    }
-    let header = table.headers.get(idx)?.clone();
-    let is_standard = domain
-        .variables
-        .iter()
-        .any(|var| var.name.eq_ignore_ascii_case(&header));
-    if is_standard {
-        None
-    } else {
-        Some((header, false))
     }
 }
 

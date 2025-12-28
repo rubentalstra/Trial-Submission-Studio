@@ -85,7 +85,7 @@ fn loads_send_country_codelist() {
         .find(|cl| cl.code == "C66786")
         .expect("country codelist");
     assert_eq!(ct.code, "C66786");
-    assert!(ct.submission_values().iter().any(|value| *value == "USA"));
+    assert!(ct.submission_values().contains(&"USA"));
 }
 
 // Tests for DomainRegistry and DatasetClass functionality per SDTMIG v3.4
@@ -315,17 +315,8 @@ fn country_codelist_c66786_loaded_correctly() {
     );
 
     // Should include specific countries from the user's example
-    assert!(
-        values.iter().any(|v| *v == "ABW"),
-        "Should include ABW (Aruba)"
-    );
-    assert!(
-        values.iter().any(|v| *v == "AFG"),
-        "Should include AFG (Afghanistan)"
-    );
-    assert!(
-        values.iter().any(|v| *v == "AGO"),
-        "Should include AGO (Angola)"
-    );
-    assert!(values.iter().any(|v| *v == "USA"), "Should include USA");
+    assert!(values.contains(&"ABW"), "Should include ABW (Aruba)");
+    assert!(values.contains(&"AFG"), "Should include AFG (Afghanistan)");
+    assert!(values.contains(&"AGO"), "Should include AGO (Angola)");
+    assert!(values.contains(&"USA"), "Should include USA");
 }

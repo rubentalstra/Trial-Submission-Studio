@@ -190,15 +190,6 @@ pub fn process_domains_with_context(
     Ok(())
 }
 
-pub fn process_domains(
-    domains: &[Domain],
-    frames: &mut [DomainFrame],
-    study_id: &str,
-) -> Result<()> {
-    let ctx = ProcessingContext::new(study_id);
-    process_domains_with_context(domains, frames, &ctx)
-}
-
 /// Assign --SEQ values based on USUBJID grouping.
 ///
 /// Uses tracker if provided for cross-file sequence continuity.

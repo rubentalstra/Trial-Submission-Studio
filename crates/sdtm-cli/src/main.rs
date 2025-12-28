@@ -65,7 +65,6 @@ fn log_config_from_cli(cli: &Cli) -> LogConfig {
         LogFormatArg::Json => LogFormat::Json,
     };
     config.log_file = cli.log_file.clone();
-    config.log_data = cli.log_data;
     config.with_ansi = match cli.color.color {
         ColorChoice::Always => true,
         ColorChoice::Never => false,

@@ -2,7 +2,7 @@
 
 use std::path::PathBuf;
 
-use clap::{ArgAction, Parser, Subcommand, ValueEnum};
+use clap::{Parser, Subcommand, ValueEnum};
 use clap_verbosity_flag::{Verbosity, WarnLevel};
 use colorchoice_clap::Color;
 
@@ -43,10 +43,6 @@ pub struct Cli {
     /// Write logs to a file instead of stderr.
     #[arg(long = "log-file", value_name = "PATH", global = true)]
     pub log_file: Option<PathBuf>,
-
-    /// Allow logging of row-level PHI/PII values (use with caution).
-    #[arg(long = "log-data", action = ArgAction::SetTrue, global = true)]
-    pub log_data: bool,
 }
 
 #[derive(Subcommand)]

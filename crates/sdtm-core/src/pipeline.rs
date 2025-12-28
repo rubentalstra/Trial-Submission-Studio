@@ -75,16 +75,6 @@ impl PipelineState {
     pub fn new() -> Self {
         Self::default()
     }
-
-    pub fn with_seq_tracker(mut self, tracker: BTreeMap<String, i64>) -> Self {
-        self.seq_tracker = Some(tracker);
-        self
-    }
-
-    pub fn with_registry(mut self, registry: DomainProcessorRegistry) -> Self {
-        self.processor_registry = Some(registry);
-        self
-    }
 }
 
 /// An ordered pipeline of processing steps.
@@ -110,12 +100,6 @@ impl DomainPipeline {
     /// Add a step to the end of the pipeline.
     pub fn add_step(mut self, step: Box<dyn ProcessingStep>) -> Self {
         self.steps.push(step);
-        self
-    }
-
-    /// Insert a step at a specific position.
-    pub fn insert_step(mut self, index: usize, step: Box<dyn ProcessingStep>) -> Self {
-        self.steps.insert(index, step);
         self
     }
 

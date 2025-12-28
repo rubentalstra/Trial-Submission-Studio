@@ -2,7 +2,7 @@
 
 use sdtm_ingest::{discover_domain_files, list_csv_files};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 fn temp_dir() -> PathBuf {
     let mut dir = std::env::temp_dir();
@@ -15,7 +15,7 @@ fn temp_dir() -> PathBuf {
     dir
 }
 
-fn touch(dir: &PathBuf, name: &str) -> PathBuf {
+fn touch(dir: &Path, name: &str) -> PathBuf {
     let path = dir.join(name);
     fs::write(&path, "A,B\n1,2\n").expect("write file");
     path

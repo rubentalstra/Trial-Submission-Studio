@@ -17,13 +17,7 @@
 //! - **Lenient**: Falls back to fuzzy matching for better data ingestion.
 //!   Use only during mapping/preview, not for final outputs.
 
-use std::collections::BTreeSet;
-
-use sdtm_model::Domain;
 use sdtm_model::ct::Codelist;
-
-use crate::data_utils::{table_column_values, table_label};
-use crate::processing_context::ProcessingContext;
 
 // =============================================================================
 // Core Types
@@ -58,19 +52,6 @@ impl CtResolution {
             Self::CompactMatch(v) => Some(v),
             Self::NoMatch | Self::Empty => None,
         }
-    }
-
-    /// Returns true if a valid CT value was resolved.
-    pub fn is_match(&self) -> bool {
-        matches!(
-            self,
-            Self::ExactMatch(_) | Self::SynonymMatch { .. } | Self::CompactMatch(_)
-        )
-    }
-
-    /// Returns true if this was a strict (exact or synonym) match.
-    pub fn is_strict_match(&self) -> bool {
-        matches!(self, Self::ExactMatch(_) | Self::SynonymMatch { .. })
     }
 }
 
@@ -374,152 +355,4 @@ pub fn resolve_ct_value_from_hint(ct: &Codelist, hint: &str) -> Option<String> {
     } else {
         None
     }
-}
-
-// =============================================================================
-// Context-Aware Resolution
-// =============================================================================
-
-/// Resolves a CT value for a specific variable using the processing context.
-///
-/// # Arguments
-///
-/// * `ctx` - Processing context with CT registry
-/// * `domain` - The domain definition
-/// * `variable` - Variable name to look up CT for
-/// * `hint` - The value to resolve
-/// * `allow_raw` - If true and codelist is extensible, allow non-CT values
-pub fn resolve_ct_for_variable(
-    ctx: &ProcessingContext,
-    domain: &Domain,
-    variable: &str,
-    hint: &str,
-    allow_raw: bool,
-) -> Option<String> {
-    let ct = ctx.resolve_ct(domain, variable)?;
-
-    // Try standard resolution
-    if let Some(value) = resolve_ct_lenient(ct, hint) {
-        return Some(value);
-    }
-
-    // For extensible codelists, allow raw values
-    if allow_raw && ct.extensible {
-        let trimmed = hint.trim();
-        if !trimmed.is_empty() {
-            return Some(trimmed.to_string());
-        }
-    }
-
-    None
-}
-
-// =============================================================================
-// Column Matching Utilities (for mapping engine)
-// =============================================================================
-
-type CtColumnMatchScore = (String, Vec<Option<String>>, Vec<String>, f64, usize);
-
-/// Finds the best matching column for a CT codelist in a CSV table.
-///
-/// This is used by the mapping engine to suggest column mappings.
-pub fn ct_column_match(
-    table: &sdtm_ingest::CsvTable,
-    domain: &Domain,
-    ct: &Codelist,
-) -> Option<(String, Vec<Option<String>>, Vec<String>)> {
-    let mut standard_vars = BTreeSet::new();
-    for variable in &domain.variables {
-        standard_vars.insert(variable.name.to_uppercase());
-    }
-
-    let mut best: Option<CtColumnMatchScore> = None;
-    for header in &table.headers {
-        if standard_vars.contains(&header.to_uppercase()) {
-            continue;
-        }
-        let Some(values) = table_column_values(table, header) else {
-            continue;
-        };
-        let mut mapped = Vec::with_capacity(values.len());
-        let mut matches = 0usize;
-        let mut non_empty = 0usize;
-        for value in &values {
-            let trimmed = value.trim();
-            if trimmed.is_empty() {
-                mapped.push(None);
-                continue;
-            }
-            non_empty += 1;
-            if let Some(ct_value) = resolve_ct_value_from_hint(ct, trimmed) {
-                matches += 1;
-                mapped.push(Some(ct_value));
-            } else {
-                mapped.push(None);
-            }
-        }
-        if non_empty == 0 || matches == 0 {
-            continue;
-        }
-        let ratio = matches as f64 / non_empty as f64;
-        if ratio < 0.6 {
-            continue;
-        }
-        let replace = match &best {
-            Some((_, _, _, best_ratio, best_matches)) => {
-                ratio > *best_ratio || (ratio == *best_ratio && matches > *best_matches)
-            }
-            None => true,
-        };
-        if replace {
-            best = Some((header.clone(), mapped, values, ratio, matches));
-        }
-    }
-    best.map(|(header, mapped, values, _ratio, _matches)| (header, mapped, values))
-}
-
-fn is_yes_no(value: &str) -> bool {
-    matches!(
-        value.trim().to_uppercase().as_str(),
-        "Y" | "YES" | "N" | "NO"
-    )
-}
-
-/// Finds a completion column in a CSV table.
-pub fn completion_column(
-    table: &sdtm_ingest::CsvTable,
-    domain: &Domain,
-) -> Option<(Vec<String>, String)> {
-    let mut standard_vars = BTreeSet::new();
-    for variable in &domain.variables {
-        standard_vars.insert(variable.name.to_uppercase());
-    }
-    for header in &table.headers {
-        if standard_vars.contains(&header.to_uppercase()) {
-            continue;
-        }
-        let label = table_label(table, header).unwrap_or_else(|| header.clone());
-        let label_upper = label.to_uppercase();
-        if !label_upper.contains("COMPLETE") && !label_upper.contains("COMPLETION") {
-            continue;
-        }
-        let Some(values) = table_column_values(table, header) else {
-            continue;
-        };
-        let mut non_empty = 0usize;
-        let mut yes_no = 0usize;
-        for value in &values {
-            if value.trim().is_empty() {
-                continue;
-            }
-            non_empty += 1;
-            if is_yes_no(value) {
-                yes_no += 1;
-            }
-        }
-        if non_empty > 0 && (yes_no as f64 / non_empty as f64) >= 0.6 {
-            return Some((values, label));
-        }
-    }
-    None
 }

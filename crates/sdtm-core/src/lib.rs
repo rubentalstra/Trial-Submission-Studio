@@ -19,22 +19,20 @@ pub mod text_utils;
 mod wide;
 
 pub use ct_utils::{
-    CtResolution, compact_key, completion_column, ct_column_match, is_yes_no_token,
-    normalize_ct_value, normalize_ct_value_safe, normalize_ct_value_strict, preferred_term_for,
-    resolve_ct_for_variable, resolve_ct_lenient, resolve_ct_strict, resolve_ct_value,
-    resolve_ct_value_from_hint,
+    CtResolution, compact_key, is_yes_no_token, normalize_ct_value, normalize_ct_value_safe,
+    normalize_ct_value_strict, preferred_term_for, resolve_ct_lenient, resolve_ct_strict,
+    resolve_ct_value, resolve_ct_value_from_hint,
 };
 pub use data_utils::{
-    column_hint_for_domain, column_value_string, fill_string_column, mapping_source_for_target,
-    sanitize_test_code, table_column_values, table_label,
+    column_value_string, mapping_source_for_target, sanitize_test_code, table_column_values,
+    table_label,
 };
 pub use datetime::{
     DatePairOrder, DateTimeError, DateTimePrecision, DateTimeValidation, DurationError,
     DurationValidation, IntervalError, IntervalValidation, Iso8601DateTime, Iso8601Duration,
     Iso8601Interval, TimingValidationResult, TimingVariableType, calculate_study_day,
     can_compute_study_day, compare_iso8601, normalize_iso8601, parse_date, parse_iso8601_datetime,
-    parse_iso8601_duration, parse_iso8601_interval, validate_date_pair, validate_iso8601,
-    validate_timing_variable,
+    parse_iso8601_duration, parse_iso8601_interval, validate_date_pair, validate_timing_variable,
 };
 pub use dedupe::dedupe_frames_by_identifiers;
 pub use domain_processors::{
@@ -42,16 +40,15 @@ pub use domain_processors::{
 };
 pub use domain_sets::{build_report_domains, domain_map_by_code, is_supporting_domain};
 pub use domain_utils::{
-    ColumnOrderValidation, SdtmRole, column_map, column_name, infer_seq_column,
-    order_variables_by_role, reorder_columns_by_role, standard_columns, validate_column_order,
-    variable_sort_key,
+    ColumnOrderValidation, SdtmRole, column_name, infer_seq_column, order_variables_by_role,
+    reorder_columns_by_role, standard_columns, validate_column_order, variable_sort_key,
 };
 pub use frame::{DomainFrame, DomainFrameMeta};
 pub use frame_builder::{
     MappedDomainFrame, build_domain_frame, build_domain_frame_with_mapping,
     build_mapped_domain_frame,
 };
-pub use frame_utils::{apply_sequence_offsets, insert_frame};
+pub use frame_utils::insert_frame;
 pub use pipeline::{
     BaseRulesStep, CtNormalizationStep, DomainPipeline, DomainProcessorStep, PipelineState,
     ProcessingStep, SequenceAssignmentStep, build_default_pipeline,
@@ -59,7 +56,7 @@ pub use pipeline::{
 pub use processing_context::{EpochPeriod, ProcessingContext, ProcessingOptions};
 pub use processor::{
     apply_base_rules, assign_sequence, normalize_ct_columns, process_domain,
-    process_domain_with_context, process_domain_with_context_and_tracker, process_domains,
+    process_domain_with_context, process_domain_with_context_and_tracker,
     process_domains_with_context,
 };
 pub use provenance::{
@@ -72,7 +69,6 @@ pub use study_pipeline_context::StudyPipelineContext;
 pub use suppqual::{SuppqualInput, SuppqualResult, build_suppqual, suppqual_dataset_code};
 pub use text_utils::{
     QLABEL_MAX_LENGTH, SAS_V5_MAX_LENGTH, SuppSplitRecord, TEST_EXCEPTION_MAX_LENGTH,
-    TEST_MAX_LENGTH, TESTCD_MAX_LENGTH, TextSplitResult, exceeds_qlabel_max, exceeds_sas_v5_max,
-    exceeds_test_max, exceeds_testcd_max, generate_split_qnams, split_for_supp_records,
-    split_text_at_word_boundary, truncate_at_word_boundary,
+    TEST_MAX_LENGTH, TESTCD_MAX_LENGTH, TextSplitResult, exceeds_test_max, generate_split_qnams,
+    split_for_supp_records, split_text_at_word_boundary, truncate_at_word_boundary,
 };

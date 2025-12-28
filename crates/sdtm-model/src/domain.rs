@@ -49,26 +49,6 @@ impl DatasetClass {
         }
     }
 
-    /// Returns true if this class is a Trial Design class.
-    pub fn is_trial_design(&self) -> bool {
-        matches!(self, DatasetClass::TrialDesign)
-    }
-
-    /// Returns true if this class is a Special-Purpose class.
-    pub fn is_special_purpose(&self) -> bool {
-        matches!(self, DatasetClass::SpecialPurpose)
-    }
-
-    /// Returns true if this class is a Relationship class.
-    pub fn is_relationship(&self) -> bool {
-        matches!(self, DatasetClass::Relationship)
-    }
-
-    /// Returns true if this class is a Study Reference class.
-    pub fn is_study_reference(&self) -> bool {
-        matches!(self, DatasetClass::StudyReference)
-    }
-
     /// Returns the canonical class name as it appears in SDTMIG documentation.
     pub fn as_str(&self) -> &'static str {
         match self {

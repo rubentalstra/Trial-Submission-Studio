@@ -29,7 +29,7 @@
 //! - `--ENDTC`: End date/time (Events/Interventions/Interval Findings)
 //! - `--DUR`: Duration (when start/end not collected)
 
-use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
+use chrono::NaiveDate;
 use std::fmt;
 
 /// Precision level for ISO 8601 date/time values.
@@ -60,14 +60,6 @@ impl DateTimePrecision {
         matches!(
             self,
             Self::Day | Self::Hour | Self::Minute | Self::Second | Self::FractionalSecond
-        )
-    }
-
-    /// Returns whether this precision level includes any time information.
-    pub fn has_time(&self) -> bool {
-        matches!(
-            self,
-            Self::Hour | Self::Minute | Self::Second | Self::FractionalSecond
         )
     }
 }
@@ -134,18 +126,6 @@ impl Iso8601DateTime {
         } else {
             None
         }
-    }
-
-    /// Attempts to extract a NaiveDateTime if date and time are complete.
-    pub fn to_naive_datetime(&self) -> Option<NaiveDateTime> {
-        let date = self.to_naive_date()?;
-        let time = NaiveTime::from_hms_nano_opt(
-            self.hour.unwrap_or(0),
-            self.minute.unwrap_or(0),
-            self.second.unwrap_or(0),
-            self.nanosecond.unwrap_or(0),
-        )?;
-        Some(NaiveDateTime::new(date, time))
     }
 
     /// Returns a normalized ISO 8601 string representation.
@@ -355,22 +335,6 @@ impl DateTimeValidation {
     pub fn is_empty(&self) -> bool {
         matches!(self, Self::Empty)
     }
-
-    /// Returns the parsed date/time if valid.
-    pub fn as_datetime(&self) -> Option<&Iso8601DateTime> {
-        match self {
-            Self::Valid(dt) => Some(dt),
-            _ => None,
-        }
-    }
-
-    /// Returns the error if invalid.
-    pub fn as_error(&self) -> Option<&DateTimeError> {
-        match self {
-            Self::Invalid(err) => Some(err),
-            _ => None,
-        }
-    }
 }
 
 /// Result of validating an ISO 8601 duration value.
@@ -388,14 +352,6 @@ impl DurationValidation {
     /// Returns true if the validation result is valid.
     pub fn is_valid(&self) -> bool {
         matches!(self, Self::Valid(_))
-    }
-
-    /// Returns the parsed duration if valid.
-    pub fn as_duration(&self) -> Option<&Iso8601Duration> {
-        match self {
-            Self::Valid(dur) => Some(dur),
-            _ => None,
-        }
     }
 }
 
@@ -427,16 +383,6 @@ impl Iso8601Interval {
             _ => false,
         }
     }
-
-    /// Returns the start date if available and complete.
-    pub fn start_date(&self) -> Option<NaiveDate> {
-        self.start.as_ref().and_then(|s| s.to_naive_date())
-    }
-
-    /// Returns the end date if available and complete.
-    pub fn end_date(&self) -> Option<NaiveDate> {
-        self.end.as_ref().and_then(|e| e.to_naive_date())
-    }
 }
 
 impl fmt::Display for Iso8601Interval {
@@ -460,14 +406,6 @@ impl IntervalValidation {
     /// Returns true if the validation result is valid.
     pub fn is_valid(&self) -> bool {
         matches!(self, Self::Valid(_))
-    }
-
-    /// Returns the parsed interval if valid.
-    pub fn as_interval(&self) -> Option<&Iso8601Interval> {
-        match self {
-            Self::Valid(int) => Some(int),
-            _ => None,
-        }
     }
 }
 
@@ -1175,14 +1113,6 @@ pub fn normalize_iso8601(value: &str) -> String {
     value.trim().to_string()
 }
 
-/// Validates an ISO 8601 date/time string and returns an error message if invalid.
-pub fn validate_iso8601(value: &str) -> Option<String> {
-    match parse_iso8601_datetime(value) {
-        DateTimeValidation::Valid(_) | DateTimeValidation::Empty => None,
-        DateTimeValidation::Invalid(err) => Some(err.to_string()),
-    }
-}
-
 /// Calculates study day per SDTMIG v3.4 Section 4.4.4.
 ///
 /// # Formula
@@ -1491,16 +1421,6 @@ impl TimingVariableType {
         } else {
             None
         }
-    }
-
-    /// Returns whether this variable type should contain a date/time value.
-    pub fn is_datetime(&self) -> bool {
-        !matches!(self, Self::Duration)
-    }
-
-    /// Returns whether this variable type should contain a duration value.
-    pub fn is_duration(&self) -> bool {
-        matches!(self, Self::Duration)
     }
 }
 

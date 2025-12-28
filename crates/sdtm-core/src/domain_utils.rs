@@ -250,14 +250,6 @@ pub struct StandardColumns {
     pub level: Option<String>,
 }
 
-pub fn column_map(domain: &Domain) -> BTreeMap<String, String> {
-    domain
-        .variables
-        .iter()
-        .map(|variable| (variable.name.to_uppercase(), variable.name.clone()))
-        .collect()
-}
-
 pub fn column_name(domain: &Domain, canonical: &str) -> Option<String> {
     let target = canonical.to_uppercase();
     domain

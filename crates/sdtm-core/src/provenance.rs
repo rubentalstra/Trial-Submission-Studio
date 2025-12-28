@@ -205,64 +205,6 @@ impl ProvenanceTracker {
         });
     }
 
-    /// Record USUBJID concatenation.
-    pub fn record_usubjid_derivation(&self, domain_code: &str, count: usize) {
-        self.record(ProvenanceRecord {
-            domain_code: domain_code.to_string(),
-            variable_name: "USUBJID".to_string(),
-            origin_type: OriginType::Derived,
-            origin_source: OriginSource::Sponsor,
-            method: DerivationMethod::UsubjidConcatenation,
-            affected_count: count,
-        });
-    }
-
-    /// Record a CT normalization.
-    pub fn record_ct_normalization(
-        &self,
-        domain_code: &str,
-        variable_name: &str,
-        codelist: &str,
-        original: &str,
-        submission: &str,
-        count: usize,
-    ) {
-        self.record(ProvenanceRecord {
-            domain_code: domain_code.to_string(),
-            variable_name: variable_name.to_string(),
-            origin_type: OriginType::Derived,
-            origin_source: OriginSource::Sponsor,
-            method: DerivationMethod::CtNormalization {
-                codelist: codelist.to_string(),
-                original_value: original.to_string(),
-                submission_value: submission.to_string(),
-            },
-            affected_count: count,
-        });
-    }
-
-    /// Record a value normalization (synonym mapping).
-    pub fn record_value_normalization(
-        &self,
-        domain_code: &str,
-        variable_name: &str,
-        original: &str,
-        normalized: &str,
-        count: usize,
-    ) {
-        self.record(ProvenanceRecord {
-            domain_code: domain_code.to_string(),
-            variable_name: variable_name.to_string(),
-            origin_type: OriginType::Derived,
-            origin_source: OriginSource::Sponsor,
-            method: DerivationMethod::ValueNormalization {
-                original_value: original.to_string(),
-                normalized_value: normalized.to_string(),
-            },
-            affected_count: count,
-        });
-    }
-
     /// Get all recorded provenance records.
     pub fn records(&self) -> Vec<ProvenanceRecord> {
         self.records.read().map(|r| r.clone()).unwrap_or_default()
@@ -298,20 +240,6 @@ impl ProvenanceTracker {
         }
 
         result
-    }
-
-    /// Get the origin type for a variable (for Define-XML generation).
-    pub fn origin_for_variable(&self, domain_code: &str, variable: &str) -> Option<OriginType> {
-        self.records_for_variable(domain_code, variable)
-            .first()
-            .map(|r| r.origin_type)
-    }
-
-    /// Get the origin source for a variable (for Define-XML generation).
-    pub fn source_for_variable(&self, domain_code: &str, variable: &str) -> Option<OriginSource> {
-        self.records_for_variable(domain_code, variable)
-            .first()
-            .map(|r| r.origin_source)
     }
 
     /// Check if a variable has any provenance records.

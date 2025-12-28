@@ -151,12 +151,6 @@ impl Codelist {
         // Return original for extensible codelists
         value.to_string()
     }
-
-    /// Get a term by NCI concept code.
-    pub fn get_term_by_code(&self, code: &str) -> Option<&Term> {
-        let key = code.to_uppercase();
-        self.terms.values().find(|t| t.code.to_uppercase() == key)
-    }
 }
 
 /// A CT catalog (e.g., "SDTM CT 2024-03-29").

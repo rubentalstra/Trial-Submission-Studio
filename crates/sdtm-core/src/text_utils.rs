@@ -243,11 +243,6 @@ pub fn split_for_supp_records(
         .collect()
 }
 
-/// Check if a text value exceeds the SAS V5 maximum length.
-pub fn exceeds_sas_v5_max(text: &str) -> bool {
-    text.trim().len() > SAS_V5_MAX_LENGTH
-}
-
 /// Check if a --TEST value exceeds the allowed length.
 ///
 /// # Arguments
@@ -260,16 +255,6 @@ pub fn exceeds_test_max(text: &str, is_exception_domain: bool) -> bool {
         TEST_MAX_LENGTH
     };
     text.trim().len() > max_len
-}
-
-/// Check if a --TESTCD or QNAM value exceeds the allowed length (8 chars).
-pub fn exceeds_testcd_max(text: &str) -> bool {
-    text.trim().len() > TESTCD_MAX_LENGTH
-}
-
-/// Check if a QLABEL value exceeds the allowed length (40 chars).
-pub fn exceeds_qlabel_max(text: &str) -> bool {
-    text.trim().len() > QLABEL_MAX_LENGTH
 }
 
 /// Truncate text to the specified maximum length at a word boundary if possible.
