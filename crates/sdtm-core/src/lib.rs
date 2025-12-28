@@ -11,11 +11,9 @@ pub mod frame_utils;
 pub mod pipeline;
 pub mod processing_context;
 pub mod processor;
-pub mod provenance;
 pub mod relationships;
 pub mod study_pipeline_context;
 pub mod suppqual;
-pub mod text_utils;
 mod wide;
 
 pub use ct_utils::{
@@ -52,21 +50,13 @@ pub use pipeline::{
     BaseRulesStep, CtNormalizationStep, DomainPipeline, DomainProcessorStep, PipelineState,
     ProcessingStep, SequenceAssignmentStep, build_default_pipeline,
 };
-pub use processing_context::{EpochPeriod, ProcessingContext, ProcessingOptions};
+pub use processing_context::{ProcessingContext, ProcessingOptions};
 pub use processor::{
-    apply_base_rules, assign_sequence, normalize_ct_columns, process_domain,
-    process_domain_with_context, process_domain_with_context_and_tracker,
-};
-pub use provenance::{
-    DerivationMethod, OriginSource, OriginType, ProvenanceRecord, ProvenanceTracker,
+    apply_base_rules, assign_sequence, normalize_ct_columns, process_domain_with_context,
+    process_domain_with_context_and_tracker,
 };
 pub use relationships::{
     RelationshipConfig, build_relationship_frames, build_relrec, build_relspec, build_relsub,
 };
 pub use study_pipeline_context::StudyPipelineContext;
 pub use suppqual::{SuppqualInput, SuppqualResult, build_suppqual, suppqual_dataset_code};
-pub use text_utils::{
-    QLABEL_MAX_LENGTH, SAS_V5_MAX_LENGTH, SuppSplitRecord, TEST_EXCEPTION_MAX_LENGTH,
-    TEST_MAX_LENGTH, TESTCD_MAX_LENGTH, TextSplitResult, exceeds_test_max, generate_split_qnams,
-    split_for_supp_records, split_text_at_word_boundary, truncate_at_word_boundary,
-};

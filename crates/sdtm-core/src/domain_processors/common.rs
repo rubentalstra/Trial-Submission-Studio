@@ -533,13 +533,6 @@ pub(super) fn compute_study_day(
         );
     }
 
-    // Record provenance for study day derivation
-    if derived_count > 0 {
-        ctx.record_provenance(|tracker| {
-            tracker.record_study_day(&domain.code, dy_col, dtc_col, reference_col, derived_count);
-        });
-    }
-
     Ok(())
 }
 

@@ -139,11 +139,6 @@ pub fn apply_base_rules(
     Ok(())
 }
 
-pub fn process_domain(domain: &Domain, df: &mut DataFrame, study_id: &str) -> Result<()> {
-    let ctx = ProcessingContext::new(study_id);
-    process_domain_with_context(domain, df, &ctx)
-}
-
 pub fn process_domain_with_context(
     domain: &Domain,
     df: &mut DataFrame,
@@ -216,7 +211,6 @@ fn assign_sequence_values(
     let had_existing = has_existing_sequence(df, seq_column);
     let mut counters: BTreeMap<String, i64> = BTreeMap::new();
     let mut values: Vec<Option<f64>> = Vec::with_capacity(df.height());
-    let mut assigned_count = 0usize;
 
     for idx in 0..df.height() {
         let key = any_to_string(group_series.get(idx).unwrap_or(AnyValue::Null));
@@ -228,7 +222,6 @@ fn assign_sequence_values(
         let entry = counters.entry(key.to_string()).or_insert(0);
         *entry += 1;
         values.push(Some(*entry as f64));
-        assigned_count += 1;
     }
 
     let series = Series::new(seq_column.into(), values);
@@ -239,13 +232,6 @@ fn assign_sequence_values(
             sequence = %seq_column,
             "Sequence values recalculated"
         );
-    }
-
-    // Record provenance for sequence assignment
-    if assigned_count > 0 {
-        ctx.record_provenance(|tracker| {
-            tracker.record_sequence(&domain.code, seq_column, assigned_count);
-        });
     }
 
     Ok(())
@@ -269,7 +255,6 @@ fn assign_sequence_with_tracker(
     let seq_series = df.column(seq_column).ok().cloned();
     let had_existing = seq_series.as_ref().map(column_has_values).unwrap_or(false);
     let mut values: Vec<Option<f64>> = Vec::with_capacity(df.height());
-    let mut assigned_count = 0usize;
     for idx in 0..df.height() {
         let key = any_to_string(group_series.get(idx).unwrap_or(AnyValue::Null));
         let key = key.trim();
@@ -294,7 +279,6 @@ fn assign_sequence_with_tracker(
             }
         };
         values.push(Some(value as f64));
-        assigned_count += 1;
     }
     let series = Series::new(seq_column.into(), values);
     df.with_column(series)?;
@@ -304,13 +288,6 @@ fn assign_sequence_with_tracker(
             sequence = %seq_column,
             "Sequence values recalculated with tracker"
         );
-    }
-
-    // Record provenance for sequence assignment
-    if assigned_count > 0 {
-        ctx.record_provenance(|prov| {
-            prov.record_sequence(&domain.code, seq_column, assigned_count);
-        });
     }
 
     Ok(())

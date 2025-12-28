@@ -1,27 +1,7 @@
 use std::collections::BTreeMap;
 
-use chrono::NaiveDate;
 use sdtm_model::Domain;
 use sdtm_model::ct::{Codelist, TerminologyRegistry};
-
-use crate::provenance::ProvenanceTracker;
-
-/// Represents a subject's element period from SE (Subject Elements) domain.
-///
-/// Per SDTMIG v3.4 Chapter 5.3, Subject Elements records the actual elements
-/// and epochs experienced by each subject. This is used to derive EPOCH
-/// for other domain records.
-#[derive(Debug, Clone)]
-pub struct EpochPeriod {
-    /// The epoch name (e.g., "TREATMENT", "FOLLOW-UP")
-    pub epoch: String,
-    /// The element code (ETCD)
-    pub etcd: String,
-    /// Start date of this period (parsed from SESTDTC)
-    pub start_date: Option<NaiveDate>,
-    /// End date of this period (parsed from SEENDTC)
-    pub end_date: Option<NaiveDate>,
-}
 
 /// Options controlling SDTM processing behavior.
 ///
@@ -121,14 +101,6 @@ pub struct ProcessingContext<'a> {
     pub reference_starts: Option<&'a BTreeMap<String, String>>,
     pub ct_registry: Option<&'a TerminologyRegistry>,
     pub options: ProcessingOptions,
-    /// Optional provenance tracker for recording derivation metadata.
-    /// Clone is cheap (Arc-based).
-    pub provenance: Option<ProvenanceTracker>,
-    /// Epoch periods from SE (Subject Elements) domain, keyed by USUBJID.
-    ///
-    /// Per SDTMIG v3.4 Section 4.1.3.1, EPOCH should be derived from SE
-    /// period data based on the observation date.
-    pub epoch_periods: Option<&'a BTreeMap<String, Vec<EpochPeriod>>>,
 }
 
 impl<'a> ProcessingContext<'a> {
@@ -138,8 +110,6 @@ impl<'a> ProcessingContext<'a> {
             reference_starts: None,
             ct_registry: None,
             options: ProcessingOptions::default(),
-            provenance: None,
-            epoch_periods: None,
         }
     }
 
@@ -156,16 +126,6 @@ impl<'a> ProcessingContext<'a> {
     pub fn with_options(mut self, options: ProcessingOptions) -> Self {
         self.options = options;
         self
-    }
-
-    /// Record a provenance entry if tracking is enabled.
-    pub fn record_provenance<F>(&self, f: F)
-    where
-        F: FnOnce(&ProvenanceTracker),
-    {
-        if let Some(ref tracker) = self.provenance {
-            f(tracker);
-        }
     }
 
     pub fn resolve_ct(&self, domain: &Domain, variable: &str) -> Option<&'a Codelist> {
