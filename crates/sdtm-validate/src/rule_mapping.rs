@@ -160,6 +160,14 @@ pub const TRANS_CO_IDVAR_INTEGRITY: &str = "TRANS0019";
 /// Per SDTMIG 8.4, timing variables should be in parent domain, not SUPP.
 pub const TRANS_SUPP_TIMING_VAR: &str = "TRANS0020";
 
+/// Internal: Variable order does not follow SDTM role order
+/// Per SDTMIG 2.1, variables should be ordered: Identifiers, Topic, Qualifiers, Rule, Timing.
+pub const TRANS_COLUMN_ORDER: &str = "TRANS0021";
+
+/// Internal: Core designation enforcement
+/// Per SDTMIG 2.5, Required columns must have values, Expected should be present.
+pub const TRANS_CORE_DESIGNATION: &str = "TRANS0022";
+
 // ============================================================================
 // Rule Resolver
 // ============================================================================
@@ -515,6 +523,33 @@ impl RuleResolver {
                 category: "Structure",
                 severity: "Warning",
                 sdtmig_reference: Some("SDTMIG 8.4"),
+            },
+        );
+
+        map.insert(
+            TRANS_COLUMN_ORDER,
+            InternalRuleInfo {
+                message: "Variable order does not follow SDTM role order",
+                description: "Per SDTMIG v3.4 Section 2.1, dataset variables should be ordered \
+                              by role: Identifiers, Topic, Qualifiers (Grouping, Result, \
+                              Synonym, Record, Variable), Rule, Timing.",
+                category: "Order",
+                severity: "Warning",
+                sdtmig_reference: Some("SDTMIG 2.1"),
+            },
+        );
+
+        map.insert(
+            TRANS_CORE_DESIGNATION,
+            InternalRuleInfo {
+                message: "Core designation violation",
+                description: "Per SDTMIG v3.4 Section 2.5, Required variables must have \
+                              non-null values, Expected variables should be included \
+                              (even if empty), and Permissible variables should only be \
+                              included when collected.",
+                category: "Presence",
+                severity: "Error",
+                sdtmig_reference: Some("SDTMIG 2.5"),
             },
         );
 

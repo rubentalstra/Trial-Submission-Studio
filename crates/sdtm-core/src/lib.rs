@@ -50,7 +50,11 @@ pub use domain_processors::{
     DomainProcessor, DomainProcessorRegistry, build_default_registry, process_domain_with_registry,
 };
 pub use domain_sets::{build_report_domains, domain_map_by_code, is_supporting_domain};
-pub use domain_utils::{column_map, column_name, infer_seq_column, standard_columns};
+pub use domain_utils::{
+    ColumnOrderValidation, SdtmRole, column_map, column_name, infer_seq_column,
+    order_variables_by_role, reorder_columns_by_role, standard_columns, validate_column_order,
+    variable_sort_key,
+};
 pub use frame::{DomainFrame, DomainFrameMeta};
 pub use frame_builder::{
     MappedDomainFrame, build_domain_frame, build_domain_frame_with_mapping,

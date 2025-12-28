@@ -664,9 +664,7 @@ struct TimingValidationResult {
 /// - --DY, --STDY, --ENDY (study day)
 /// - --DUR (duration)
 /// - --TPT (timepoint)
-fn validate_supp_timing_variables(
-    frames: &BTreeMap<String, &DataFrame>,
-) -> TimingValidationResult {
+fn validate_supp_timing_variables(frames: &BTreeMap<String, &DataFrame>) -> TimingValidationResult {
     let mut issues: BTreeMap<String, Vec<ConformanceIssue>> = BTreeMap::new();
 
     // Timing variable suffixes that should not be in SUPPQUAL

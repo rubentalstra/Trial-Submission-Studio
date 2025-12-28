@@ -624,8 +624,19 @@ are noted where applicable.
 
 ## 1.5 Variable Order and Core Rules
 
-- [ ] **1.5.1** Order dataset columns by SDTM role: Identifiers, Topic,
-      Qualifiers, Timing. Validate output order.
+- [x] **1.5.1** Order dataset columns by SDTM role: Identifiers, Topic,
+      Qualifiers, Timing. Validate output order. **Implementation notes**: -
+      Created `SdtmRole` enum in `domain_utils.rs` with all 9 role types:
+      Identifier, Topic, GroupingQualifier, ResultQualifier, SynonymQualifier,
+      RecordQualifier, VariableQualifier, Rule, Timing - Added `SdtmRole::parse()`
+      for parsing role strings from SDTMIG metadata - Added `sort_order()` method
+      defining standard ordering (per SDTMIG 2.1) - Created utility functions:
+      `variable_sort_key()`, `order_variables_by_role()`,
+      `validate_column_order()`, `reorder_columns_by_role()` - Added
+      `ColumnOrderValidation` struct with is_valid, violations, suggested_order -
+      Integrated validation into `validate_domain()` in sdtm-validate - Added rule
+      TRANS0021 for column order violations with "Order" category - Full test
+      coverage in `tests/domain_utils.rs` (11 tests)
 
 - [ ] **1.5.2** Order Define-XML ItemRefs by SDTM role order.
 

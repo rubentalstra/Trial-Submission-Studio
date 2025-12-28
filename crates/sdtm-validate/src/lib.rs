@@ -16,7 +16,7 @@ use chrono::Utc;
 use polars::prelude::{AnyValue, DataFrame};
 use serde::Serialize;
 
-use sdtm_core::ProvenanceTracker;
+use sdtm_core::{ProvenanceTracker, validate_column_order};
 use sdtm_ingest::{any_to_string, is_missing_value};
 use sdtm_model::{
     CaseInsensitiveLookup, ConformanceIssue, ConformanceReport, ControlledTerminology, CtRegistry,
@@ -318,6 +318,7 @@ use rule_mapping::{
     P21_QNAM_INVALID,              // SD1022 - QNAM/TESTCD format validation
     P21_REQUIRED_VALUE_MISSING,    // SD0002 - required value null
     P21_REQUIRED_VAR_MISSING,      // SD0056 - required variable missing
+    TRANS_COLUMN_ORDER,            // Internal - column order by SDTM role
     TRANS_UNDOCUMENTED_DERIVATION, // Internal - provenance tracking
 };
 
@@ -355,6 +356,31 @@ pub fn validate_domain(
             issues.push(issue);
         }
     }
+
+    // Validate column order by SDTM role (Identifiers, Topic, Qualifiers, Rule, Timing)
+    // Per SDTMIG v3.4 Chapter 2.1
+    let column_names: Vec<String> = df
+        .get_column_names()
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+    let order_result = validate_column_order(&column_names, domain);
+    if !order_result.is_valid {
+        for violation in &order_result.violations {
+            issues.push(ConformanceIssue {
+                code: domain.code.clone(),
+                message: violation.clone(),
+                severity: IssueSeverity::Warning,
+                variable: None,
+                count: Some(1),
+                rule_id: Some(TRANS_COLUMN_ORDER.to_string()),
+                category: Some("Order".to_string()),
+                codelist_code: None,
+                ct_source: None,
+            });
+        }
+    }
+
     ConformanceReport {
         domain_code: domain.code.clone(),
         issues,
