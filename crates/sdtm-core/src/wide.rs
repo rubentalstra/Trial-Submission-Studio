@@ -81,11 +81,7 @@ pub(crate) fn build_lb_wide_frame(
     used.extend(used_wide);
     Ok(Some((
         mapping_config,
-        DomainFrame {
-            domain_code: domain.code.clone(),
-            data: expanded,
-            meta: None,
-        },
+        DomainFrame::new(domain.code.clone(), expanded),
         used,
     )))
 }
@@ -125,11 +121,7 @@ pub(crate) fn build_vs_wide_frame(
     used.extend(used_wide);
     Ok(Some((
         mapping_config,
-        DomainFrame {
-            domain_code: domain.code.clone(),
-            data: expanded,
-            meta: None,
-        },
+        DomainFrame::new(domain.code.clone(), expanded),
         used,
     )))
 }
@@ -170,11 +162,7 @@ pub(crate) fn build_ie_wide_frame(
     used.extend(used_wide);
     Ok(Some((
         mapping_config,
-        DomainFrame {
-            domain_code: domain.code.clone(),
-            data: expanded,
-            meta: None,
-        },
+        DomainFrame::new(domain.code.clone(), expanded),
         used,
     )))
 }
@@ -644,6 +632,38 @@ fn filter_table_columns(table: &CsvTable, columns: &BTreeSet<String>, include: b
     }
 }
 
+fn base_row_values(base_df: &DataFrame, variable_names: &[String], row_idx: usize) -> Vec<String> {
+    variable_names
+        .iter()
+        .map(|name| column_value_string(base_df, name, row_idx))
+        .collect()
+}
+
+fn push_row(values: &mut [Vec<String>], row: Vec<String>) {
+    for (idx, value) in row.into_iter().enumerate() {
+        values[idx].push(value);
+    }
+}
+
+fn build_wide_data(domain: &Domain, mut values: Vec<Vec<String>>) -> Result<DataFrame> {
+    let mut columns = Vec::with_capacity(domain.variables.len());
+    for (idx, variable) in domain.variables.iter().enumerate() {
+        let vals = values.get_mut(idx).map(std::mem::take).unwrap_or_default();
+        let column = match variable.data_type {
+            VariableType::Num => {
+                let numeric: Vec<Option<f64>> = vals
+                    .iter()
+                    .map(|value| value.trim().parse::<f64>().ok())
+                    .collect();
+                Series::new(variable.name.as_str().into(), numeric).into()
+            }
+            VariableType::Char => Series::new(variable.name.as_str().into(), vals).into(),
+        };
+        columns.push(column);
+    }
+    DataFrame::new(columns).map_err(Into::into)
+}
+
 fn expand_ie_wide(
     table: &CsvTable,
     base_df: &DataFrame,
@@ -652,10 +672,15 @@ fn expand_ie_wide(
     allow_base_test: bool,
     allow_base_cat: bool,
 ) -> Result<(DataFrame, BTreeSet<String>)> {
-    let mut values: BTreeMap<String, Vec<String>> = BTreeMap::new();
-    for variable in &domain.variables {
-        values.insert(variable.name.clone(), Vec::new());
-    }
+    let variable_names: Vec<String> = domain
+        .variables
+        .iter()
+        .map(|var| var.name.clone())
+        .collect();
+    let mut values: Vec<Vec<String>> = variable_names.iter().map(|_| Vec::new()).collect();
+    let test_idx = variable_names.iter().position(|name| name == "IETEST");
+    let testcd_idx = variable_names.iter().position(|name| name == "IETESTCD");
+    let cat_idx = variable_names.iter().position(|name| name == "IECAT");
     let mut used = BTreeSet::new();
     for group in groups.values() {
         for idx in [group.test_col, group.testcd_col] {
@@ -695,6 +720,7 @@ fn expand_ie_wide(
         } else {
             String::new()
         };
+        let base_row = base_row_values(base_df, &variable_names, row_idx);
         let mut added = false;
         for group in groups.values() {
             let test_value = group
@@ -744,31 +770,23 @@ fn expand_ie_wide(
                 test_label = test_code.clone();
             }
 
-            let mut base_values: BTreeMap<String, String> = BTreeMap::new();
-            for variable in &domain.variables {
-                let val = column_value_string(base_df, &variable.name, row_idx);
-                base_values.insert(variable.name.clone(), val);
-            }
-            if let Some(name) = testcd_col.as_ref()
+            let mut row_values = base_row.clone();
+            if let Some(idx) = testcd_idx
                 && !test_code.trim().is_empty()
             {
-                base_values.insert(name.clone(), test_code);
+                row_values[idx] = test_code;
             }
-            if let Some(name) = test_col.as_ref()
+            if let Some(idx) = test_idx
                 && !test_label.trim().is_empty()
             {
-                base_values.insert(name.clone(), test_label);
+                row_values[idx] = test_label;
             }
-            if let Some(name) = cat_col.as_ref() {
-                let current = base_values.get(name).cloned().unwrap_or_default();
-                if current.trim().is_empty() {
-                    base_values.insert(name.clone(), group.category.clone());
-                }
+            if let Some(idx) = cat_idx
+                && row_values[idx].trim().is_empty()
+            {
+                row_values[idx] = group.category.clone();
             }
-            for (name, list) in values.iter_mut() {
-                let value = base_values.get(name).cloned().unwrap_or_default();
-                list.push(value);
-            }
+            push_row(&mut values, row_values);
             total_rows += 1;
             added = true;
         }
@@ -777,15 +795,7 @@ fn expand_ie_wide(
                 || !base_testcd.trim().is_empty()
                 || !base_cat.trim().is_empty();
             if base_has {
-                let mut base_values: BTreeMap<String, String> = BTreeMap::new();
-                for variable in &domain.variables {
-                    let val = column_value_string(base_df, &variable.name, row_idx);
-                    base_values.insert(variable.name.clone(), val);
-                }
-                for (name, list) in values.iter_mut() {
-                    let value = base_values.get(name).cloned().unwrap_or_default();
-                    list.push(value);
-                }
+                push_row(&mut values, base_row);
                 total_rows += 1;
             }
         }
@@ -793,22 +803,7 @@ fn expand_ie_wide(
     if total_rows == 0 {
         return Ok((base_df.clone(), used));
     }
-    let mut columns = Vec::with_capacity(domain.variables.len());
-    for variable in &domain.variables {
-        let vals = values.remove(&variable.name).unwrap_or_default();
-        let column = match variable.data_type {
-            VariableType::Num => {
-                let numeric: Vec<Option<f64>> = vals
-                    .iter()
-                    .map(|value| value.trim().parse::<f64>().ok())
-                    .collect();
-                Series::new(variable.name.as_str().into(), numeric).into()
-            }
-            VariableType::Char => Series::new(variable.name.as_str().into(), vals).into(),
-        };
-        columns.push(column);
-    }
-    let data = DataFrame::new(columns)?;
+    let data = build_wide_data(domain, values)?;
     Ok((data, used))
 }
 
@@ -879,10 +874,18 @@ fn expand_vs_wide(
     date_idx: Option<usize>,
     time_idx: Option<usize>,
 ) -> Result<(DataFrame, BTreeSet<String>)> {
-    let mut values: BTreeMap<String, Vec<String>> = BTreeMap::new();
-    for variable in &domain.variables {
-        values.insert(variable.name.clone(), Vec::new());
-    }
+    let variable_names: Vec<String> = domain
+        .variables
+        .iter()
+        .map(|var| var.name.clone())
+        .collect();
+    let mut values: Vec<Vec<String>> = variable_names.iter().map(|_| Vec::new()).collect();
+    let vstestcd_idx = variable_names.iter().position(|name| name == "VSTESTCD");
+    let vstest_idx = variable_names.iter().position(|name| name == "VSTEST");
+    let vsorres_idx = variable_names.iter().position(|name| name == "VSORRES");
+    let vsorresu_idx = variable_names.iter().position(|name| name == "VSORRESU");
+    let vspos_idx = variable_names.iter().position(|name| name == "VSPOS");
+    let vsdtc_idx = variable_names.iter().position(|name| name == "VSDTC");
     let mut used = BTreeSet::new();
     for group in groups.values() {
         for idx in [group.orres_col, group.orresu_col, group.pos_col] {
@@ -925,6 +928,7 @@ fn expand_vs_wide(
             .and_then(|idx| table.rows[row_idx].get(idx))
             .cloned()
             .unwrap_or_default();
+        let base_row = base_row_values(base_df, &variable_names, row_idx);
         for group in groups.values() {
             let orres_value = group
                 .orres_col
@@ -969,75 +973,52 @@ fn expand_vs_wide(
             total_rows += 1;
             let test_code = sanitize_test_code(&group.key);
             let test_label = group.label.clone().unwrap_or_default();
-            let mut base_values: BTreeMap<String, String> = BTreeMap::new();
-            for variable in &domain.variables {
-                let val = column_value_string(base_df, &variable.name, row_idx);
-                base_values.insert(variable.name.clone(), val);
+            let mut row_values = base_row.clone();
+            if let Some(idx) = vstestcd_idx {
+                row_values[idx] = test_code.clone();
             }
-            if let Some(value) = base_values.get_mut("VSTESTCD") {
-                *value = test_code.clone();
-            }
-            if let Some(value) = base_values.get_mut("VSTEST") {
+            if let Some(idx) = vstest_idx {
                 if !test_label.is_empty() {
-                    *value = test_label.clone();
+                    row_values[idx] = test_label.clone();
                 } else if !test_code.is_empty() {
-                    *value = test_code.clone();
+                    row_values[idx] = test_code.clone();
                 }
             }
-            if let Some(value) = base_values.get_mut("VSORRES") {
-                *value = orres_value.clone();
+            if let Some(idx) = vsorres_idx {
+                row_values[idx] = orres_value.clone();
             }
-            if let Some(value) = base_values.get_mut("VSORRESU") {
+            if let Some(idx) = vsorresu_idx {
                 if !orresu_value.trim().is_empty() {
-                    *value = orresu_value.clone();
+                    row_values[idx] = orresu_value.clone();
                 } else {
-                    *value = orresu_fallback.clone();
+                    row_values[idx] = orresu_fallback.clone();
                 }
             }
-            if let Some(value) = base_values.get_mut("VSPOS") {
+            if let Some(idx) = vspos_idx {
                 if !pos_value.trim().is_empty() {
-                    *value = pos_value.clone();
+                    row_values[idx] = pos_value.clone();
                 } else {
-                    *value = pos_fallback.clone();
+                    row_values[idx] = pos_fallback.clone();
                 }
             }
-            if let Some(value) = base_values.get_mut("VSDTC") {
-                let date_value = base_date_value.clone();
-                let time_value = base_time_value.clone();
-                if !date_value.trim().is_empty() {
-                    if !time_value.trim().is_empty() && !date_value.contains('T') {
-                        *value = format!("{}T{}", date_value.trim(), time_value.trim());
-                    } else {
-                        *value = date_value.clone();
-                    }
+            if let Some(idx) = vsdtc_idx
+                && !base_date_value.trim().is_empty()
+            {
+                if !base_time_value.trim().is_empty() && !base_date_value.contains('T') {
+                    row_values[idx] =
+                        format!("{}T{}", base_date_value.trim(), base_time_value.trim());
+                } else {
+                    row_values[idx] = base_date_value.clone();
                 }
             }
 
-            for (name, list) in values.iter_mut() {
-                let value = base_values.get(name).cloned().unwrap_or_default();
-                list.push(value);
-            }
+            push_row(&mut values, row_values);
         }
     }
     if total_rows == 0 {
         return Ok((base_df.clone(), used));
     }
-    let mut columns = Vec::with_capacity(domain.variables.len());
-    for variable in &domain.variables {
-        let vals = values.remove(&variable.name).unwrap_or_default();
-        let column = match variable.data_type {
-            VariableType::Num => {
-                let numeric: Vec<Option<f64>> = vals
-                    .iter()
-                    .map(|value| value.trim().parse::<f64>().ok())
-                    .collect();
-                Series::new(variable.name.as_str().into(), numeric).into()
-            }
-            VariableType::Char => Series::new(variable.name.as_str().into(), vals).into(),
-        };
-        columns.push(column);
-    }
-    let data = DataFrame::new(columns)?;
+    let data = build_wide_data(domain, values)?;
     Ok((data, used))
 }
 
@@ -1049,10 +1030,20 @@ fn expand_lb_wide(
     date_idx: Option<usize>,
     time_idx: Option<usize>,
 ) -> Result<(DataFrame, BTreeSet<String>)> {
-    let mut values: BTreeMap<String, Vec<String>> = BTreeMap::new();
-    for variable in &domain.variables {
-        values.insert(variable.name.clone(), Vec::new());
-    }
+    let variable_names: Vec<String> = domain
+        .variables
+        .iter()
+        .map(|var| var.name.clone())
+        .collect();
+    let mut values: Vec<Vec<String>> = variable_names.iter().map(|_| Vec::new()).collect();
+    let lbtestcd_idx = variable_names.iter().position(|name| name == "LBTESTCD");
+    let lbtest_idx = variable_names.iter().position(|name| name == "LBTEST");
+    let lborres_idx = variable_names.iter().position(|name| name == "LBORRES");
+    let lborresu_idx = variable_names.iter().position(|name| name == "LBORRESU");
+    let lbornrlo_idx = variable_names.iter().position(|name| name == "LBORNRLO");
+    let lbornrhi_idx = variable_names.iter().position(|name| name == "LBORNRHI");
+    let lbclsig_idx = variable_names.iter().position(|name| name == "LBCLSIG");
+    let lbdtc_idx = variable_names.iter().position(|name| name == "LBDTC");
     let mut used = BTreeSet::new();
     for group in groups.values() {
         for idx in [
@@ -1101,6 +1092,7 @@ fn expand_lb_wide(
             .and_then(|idx| table.rows[row_idx].get(idx))
             .cloned()
             .unwrap_or_default();
+        let base_row = base_row_values(base_df, &variable_names, row_idx);
         for group in groups.values() {
             let group_date_value = group
                 .date_col
@@ -1209,70 +1201,48 @@ fn expand_lb_wide(
             } else {
                 group.base_key.clone()
             };
-            let mut base_values: BTreeMap<String, String> = BTreeMap::new();
-            for variable in &domain.variables {
-                let val = column_value_string(base_df, &variable.name, row_idx);
-                base_values.insert(variable.name.clone(), val);
+            let mut row_values = base_row.clone();
+            if let Some(idx) = lbtestcd_idx {
+                row_values[idx] = test_code;
             }
-            if let Some(value) = base_values.get_mut("LBTESTCD") {
-                *value = test_code;
+            if let Some(idx) = lbtest_idx {
+                row_values[idx] = test_label;
             }
-            if let Some(value) = base_values.get_mut("LBTEST") {
-                *value = test_label;
+            if let Some(idx) = lborres_idx {
+                row_values[idx] = orres_value.clone();
             }
-            if let Some(value) = base_values.get_mut("LBORRES") {
-                *value = orres_value.clone();
-            }
-            if let Some(value) = base_values.get_mut("LBORRESU") {
+            if let Some(idx) = lborresu_idx {
                 if !orresu_value.trim().is_empty() {
-                    *value = orresu_value.clone();
+                    row_values[idx] = orresu_value.clone();
                 } else {
-                    *value = orresu_alt_value.clone();
+                    row_values[idx] = orresu_alt_value.clone();
                 }
             }
-            if let Some(value) = base_values.get_mut("LBORNRLO") {
-                *value = normalize_numeric(&ornr_lower_value);
+            if let Some(idx) = lbornrlo_idx {
+                row_values[idx] = normalize_numeric(&ornr_lower_value);
             }
-            if let Some(value) = base_values.get_mut("LBORNRHI") {
-                *value = normalize_numeric(&ornr_upper_value);
+            if let Some(idx) = lbornrhi_idx {
+                row_values[idx] = normalize_numeric(&ornr_upper_value);
             }
-            if let Some(value) = base_values.get_mut("LBCLSIG") {
-                *value = clsig_value.clone();
+            if let Some(idx) = lbclsig_idx {
+                row_values[idx] = clsig_value.clone();
             }
-            if let Some(value) = base_values.get_mut("LBDTC")
+            if let Some(idx) = lbdtc_idx
                 && !date_value.trim().is_empty()
             {
                 if !time_value.trim().is_empty() && !date_value.contains('T') {
-                    *value = format!("{}T{}", date_value.trim(), time_value.trim());
+                    row_values[idx] = format!("{}T{}", date_value.trim(), time_value.trim());
                 } else {
-                    *value = date_value.clone();
+                    row_values[idx] = date_value.clone();
                 }
             }
 
-            for (name, list) in values.iter_mut() {
-                let value = base_values.get(name).cloned().unwrap_or_default();
-                list.push(value);
-            }
+            push_row(&mut values, row_values);
         }
     }
     if total_rows == 0 {
         return Ok((base_df.clone(), used));
     }
-    let mut columns = Vec::with_capacity(domain.variables.len());
-    for variable in &domain.variables {
-        let vals = values.remove(&variable.name).unwrap_or_default();
-        let column = match variable.data_type {
-            VariableType::Num => {
-                let numeric: Vec<Option<f64>> = vals
-                    .iter()
-                    .map(|value| value.trim().parse::<f64>().ok())
-                    .collect();
-                Series::new(variable.name.as_str().into(), numeric).into()
-            }
-            VariableType::Char => Series::new(variable.name.as_str().into(), vals).into(),
-        };
-        columns.push(column);
-    }
-    let data = DataFrame::new(columns)?;
+    let data = build_wide_data(domain, values)?;
     Ok((data, used))
 }

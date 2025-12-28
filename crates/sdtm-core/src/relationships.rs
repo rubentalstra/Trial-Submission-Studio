@@ -74,16 +74,6 @@ struct RelrecRecordInput<'a> {
     reltype: Option<&'a str>,
 }
 
-struct RelspecSource<'a> {
-    df: &'a DataFrame,
-    study_id: &'a str,
-    relspec_domain: &'a Domain,
-    usubjid_col: &'a str,
-    refid_cols: &'a [String],
-    spec_col: Option<&'a str>,
-    parent_col: Option<&'a str>,
-}
-
 /// Build RELREC dataset from domain frames.
 ///
 /// Per SDTMIG v3.4 Section 8.2:
@@ -149,13 +139,15 @@ pub fn build_relrec(
         let Some(link) = infer_link_idvar_for_relrec(domain_def, &frame.data, config) else {
             continue;
         };
+        let Some(usubjid_vals) = column_trimmed_values(&frame.data, &usubjid_col) else {
+            continue;
+        };
+        let Some(idvar_vals) = column_trimmed_values(&frame.data, &link.name) else {
+            continue;
+        };
         for idx in 0..frame.data.height() {
-            let usubjid = column_value_string(&frame.data, &usubjid_col, idx)
-                .trim()
-                .to_string();
-            let idvarval = column_value_string(&frame.data, &link.name, idx)
-                .trim()
-                .to_string();
+            let usubjid = usubjid_vals[idx].clone();
+            let idvarval = idvar_vals[idx].clone();
             if idvarval.is_empty() {
                 continue;
             }
@@ -211,11 +203,7 @@ pub fn build_relrec(
     }
 
     let data = build_domain_frame_from_records(relrec_domain, &records)?;
-    Ok(Some(DomainFrame {
-        domain_code: relrec_domain.code.clone(),
-        data,
-        meta: None,
-    }))
+    Ok(Some(DomainFrame::new(relrec_domain.code.clone(), data)))
 }
 
 /// Infer link identifier variable for RELREC generation.
@@ -259,6 +247,18 @@ fn find_suffix_column(domain: &Domain, df: &DataFrame, suffix: &str) -> Option<S
     candidates
         .into_iter()
         .find(|name| column_has_values(df, name))
+}
+
+fn column_trimmed_values(df: &DataFrame, name: &str) -> Option<Vec<String>> {
+    let Ok(series) = df.column(name) else {
+        return None;
+    };
+    let mut values = Vec::with_capacity(df.height());
+    for idx in 0..df.height() {
+        let value = any_to_string(series.get(idx).unwrap_or(AnyValue::Null));
+        values.push(value.trim().to_string());
+    }
+    Some(values)
 }
 
 fn column_has_values(df: &DataFrame, name: &str) -> bool {
@@ -320,27 +320,58 @@ pub fn build_relspec(
         };
         let domain_columns = standard_columns(domain_def);
         let usubjid_col = match domain_columns.usubjid.as_ref() {
-            Some(name) => name.clone(),
+            Some(name) => name,
             None => continue,
+        };
+        if frame.data.column(usubjid_col).is_err() {
+            continue;
+        }
+        let Some(usubjid_vals) = column_trimmed_values(&frame.data, usubjid_col) else {
+            continue;
         };
         let refid_cols = find_refid_columns(domain_def, &frame.data);
         if refid_cols.is_empty() {
             continue;
         }
-        let spec_col = domain_columns.spec.clone();
-        let parent_col = domain_columns.parent.clone();
-        collect_relspec_records(
-            &mut records,
-            &RelspecSource {
-                df: &frame.data,
-                study_id,
-                relspec_domain,
-                usubjid_col: &usubjid_col,
-                refid_cols: &refid_cols,
-                spec_col: spec_col.as_deref(),
-                parent_col: parent_col.as_deref(),
-            },
-        );
+        let spec_vals = domain_columns
+            .spec
+            .as_ref()
+            .and_then(|name| column_trimmed_values(&frame.data, name));
+        let parent_vals = domain_columns
+            .parent
+            .as_ref()
+            .and_then(|name| column_trimmed_values(&frame.data, name));
+        for refid_col in refid_cols {
+            let Some(refid_vals) = column_trimmed_values(&frame.data, &refid_col) else {
+                continue;
+            };
+            for idx in 0..frame.data.height() {
+                let usubjid = usubjid_vals[idx].clone();
+                let refid = refid_vals[idx].clone();
+                if usubjid.is_empty() || refid.is_empty() {
+                    continue;
+                }
+                let entry = records
+                    .entry((usubjid.clone(), refid.clone()))
+                    .or_insert_with(|| RelspecRecord::new(study_id, &usubjid, &refid));
+                if entry.spec.is_empty()
+                    && let Some(spec_vals) = spec_vals.as_ref()
+                {
+                    let spec = spec_vals[idx].clone();
+                    if !spec.is_empty() {
+                        entry.spec = spec;
+                    }
+                }
+                if entry.parent.is_empty()
+                    && let Some(parent_vals) = parent_vals.as_ref()
+                {
+                    let parent = parent_vals[idx].clone();
+                    if !parent.is_empty() {
+                        entry.parent = parent;
+                    }
+                }
+            }
+        }
     }
     if records.is_empty() {
         return Ok(None);
@@ -351,11 +382,7 @@ pub fn build_relspec(
         .map(|record| record.into_map(&relspec_columns))
         .collect();
     let data = build_domain_frame_from_records(relspec_domain, &records)?;
-    Ok(Some(DomainFrame {
-        domain_code: relspec_domain.code.clone(),
-        data,
-        meta: None,
-    }))
+    Ok(Some(DomainFrame::new(relspec_domain.code.clone(), data)))
 }
 
 pub fn build_relsub(
@@ -370,14 +397,29 @@ pub fn build_relsub(
             continue;
         }
         let lookup = frame_column_lookup(&frame.data);
-        if !required.iter().all(|name| lookup.contains_key(name)) {
+        let required_cols: Vec<String> = required
+            .iter()
+            .filter_map(|name| lookup.get(name).cloned())
+            .collect();
+        if required_cols.len() != required.len() {
             continue;
         }
+        let required_values: Vec<Vec<String>> = required_cols
+            .iter()
+            .map(|name| column_trimmed_values(&frame.data, name).unwrap_or_default())
+            .collect();
+        let usubjid_values = resolve_column(&lookup, "USUBJID")
+            .and_then(|name| column_trimmed_values(&frame.data, name))
+            .unwrap_or_else(|| vec![String::new(); frame.data.height()]);
+        let poolid_values = resolve_column(&lookup, "POOLID")
+            .and_then(|name| column_trimmed_values(&frame.data, name))
+            .unwrap_or_else(|| vec![String::new(); frame.data.height()]);
         for idx in 0..frame.data.height() {
-            if !row_has_required(&frame.data, &lookup, &required, idx) {
+            let missing_required = required_values.iter().any(|values| values[idx].is_empty());
+            if missing_required {
                 continue;
             }
-            if !row_has_subject_reference(&frame.data, &lookup, idx) {
+            if usubjid_values[idx].is_empty() && poolid_values[idx].is_empty() {
                 continue;
             }
             let mut record = BTreeMap::new();
@@ -400,11 +442,7 @@ pub fn build_relsub(
         return Ok(None);
     }
     let data = build_domain_frame_from_records(relsub_domain, &records)?;
-    Ok(Some(DomainFrame {
-        domain_code: relsub_domain.code.clone(),
-        data,
-        meta: None,
-    }))
+    Ok(Some(DomainFrame::new(relsub_domain.code.clone(), data)))
 }
 
 fn relrec_record(
@@ -464,33 +502,6 @@ fn resolve_column<'a>(lookup: &'a BTreeMap<String, String>, name: &str) -> Optio
     lookup.get(&name.to_uppercase())
 }
 
-fn row_has_required(
-    df: &DataFrame,
-    lookup: &BTreeMap<String, String>,
-    required: &[String],
-    idx: usize,
-) -> bool {
-    required.iter().all(|name| {
-        resolve_column(lookup, name)
-            .map(|col| !column_value_string(df, col, idx).trim().is_empty())
-            .unwrap_or(false)
-    })
-}
-
-fn row_has_subject_reference(
-    df: &DataFrame,
-    lookup: &BTreeMap<String, String>,
-    idx: usize,
-) -> bool {
-    let usubjid = resolve_column(lookup, "USUBJID")
-        .map(|col| column_value_string(df, col, idx))
-        .unwrap_or_default();
-    let poolid = resolve_column(lookup, "POOLID")
-        .map(|col| column_value_string(df, col, idx))
-        .unwrap_or_default();
-    !(usubjid.trim().is_empty() && poolid.trim().is_empty())
-}
-
 #[derive(Debug, Clone)]
 struct RelspecRecord {
     study_id: String,
@@ -499,15 +510,10 @@ struct RelspecRecord {
     spec: String,
     parent: String,
     level: String,
-    columns: BTreeMap<String, String>,
 }
 
 impl RelspecRecord {
-    fn new(study_id: &str, usubjid: &str, refid: &str, relspec_domain: &Domain) -> Self {
-        let mut columns = BTreeMap::new();
-        for variable in &relspec_domain.variables {
-            columns.insert(variable.name.clone(), String::new());
-        }
+    fn new(study_id: &str, usubjid: &str, refid: &str) -> Self {
         Self {
             study_id: study_id.to_string(),
             usubjid: usubjid.to_string(),
@@ -515,79 +521,30 @@ impl RelspecRecord {
             spec: String::new(),
             parent: String::new(),
             level: "1".to_string(),
-            columns,
         }
     }
 
-    fn into_map(mut self, columns: &StandardColumns) -> BTreeMap<String, String> {
+    fn into_map(self, columns: &StandardColumns) -> BTreeMap<String, String> {
+        let mut record = BTreeMap::new();
         if let Some(name) = columns.study_id.as_ref() {
-            self.columns.insert(name.clone(), self.study_id.clone());
+            record.insert(name.clone(), self.study_id);
         }
         if let Some(name) = columns.usubjid.as_ref() {
-            self.columns.insert(name.clone(), self.usubjid.clone());
+            record.insert(name.clone(), self.usubjid);
         }
         if let Some(name) = columns.refid.as_ref() {
-            self.columns.insert(name.clone(), self.refid.clone());
+            record.insert(name.clone(), self.refid);
         }
         if let Some(name) = columns.spec.as_ref() {
-            self.columns.insert(name.clone(), self.spec.clone());
+            record.insert(name.clone(), self.spec);
         }
         if let Some(name) = columns.parent.as_ref() {
-            self.columns.insert(name.clone(), self.parent.clone());
+            record.insert(name.clone(), self.parent);
         }
         if let Some(name) = columns.level.as_ref() {
-            self.columns.insert(name.clone(), self.level.clone());
+            record.insert(name.clone(), self.level);
         }
-        self.columns
-    }
-}
-
-fn collect_relspec_records(
-    records: &mut BTreeMap<(String, String), RelspecRecord>,
-    source: &RelspecSource<'_>,
-) {
-    if source.df.height() == 0 {
-        return;
-    }
-    if source.df.column(source.usubjid_col).is_err() {
-        return;
-    }
-    for refid_col in source.refid_cols {
-        for idx in 0..source.df.height() {
-            let usubjid = column_value_string(source.df, source.usubjid_col, idx)
-                .trim()
-                .to_string();
-            let refid = column_value_string(source.df, refid_col, idx)
-                .trim()
-                .to_string();
-            if usubjid.is_empty() || refid.is_empty() {
-                continue;
-            }
-            let key = (usubjid.clone(), refid.clone());
-            let entry = records.entry(key).or_insert_with(|| {
-                RelspecRecord::new(source.study_id, &usubjid, &refid, source.relspec_domain)
-            });
-            if entry.spec.is_empty()
-                && let Some(spec_col) = source.spec_col
-            {
-                let spec = column_value_string(source.df, spec_col, idx)
-                    .trim()
-                    .to_string();
-                if !spec.is_empty() {
-                    entry.spec = spec;
-                }
-            }
-            if entry.parent.is_empty()
-                && let Some(parent_col) = source.parent_col
-            {
-                let parent = column_value_string(source.df, parent_col, idx)
-                    .trim()
-                    .to_string();
-                if !parent.is_empty() {
-                    entry.parent = parent;
-                }
-            }
-        }
+        record
     }
 }
 
