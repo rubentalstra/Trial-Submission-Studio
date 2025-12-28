@@ -18,18 +18,18 @@ CDISC submission values).
 ### SDTMIG metadata
 
 - `Datasets.csv`
-  - **Key:** `Dataset Name` (domain, e.g., `DM`, `AE`)
-  - Fields used: `Class`, `Dataset Label`, `Structure`
+    - **Key:** `Dataset Name` (domain, e.g., `DM`, `AE`)
+    - Fields used: `Class`, `Dataset Label`, `Structure`
 - `Variables.csv`
-  - **Key:** (`Dataset Name`, `Variable Name`)
-  - Fields used:
-    - `CDISC CT Codelist Code(s)` → one or more **NCI codelist codes** like
-      `C66731`
-    - `Described Value Domain(s)` → external formats/dictionaries (e.g.,
-      `MedDRA`, `LOINC`, `ISO 8601...`)
-    - `Value List` → fixed constant values (e.g., `DOMAIN` must equal the 2-char
-      domain code)
-    - plus `Type`, `Role`, `Core`, `CDISC Notes` for additional constraints
+    - **Key:** (`Dataset Name`, `Variable Name`)
+    - Fields used:
+        - `CDISC CT Codelist Code(s)` → one or more **NCI codelist codes** like
+          `C66731`
+        - `Described Value Domain(s)` → external formats/dictionaries (e.g.,
+          `MedDRA`, `LOINC`, `ISO 8601...`)
+        - `Value List` → fixed constant values (e.g., `DOMAIN` must equal the 2-char
+          domain code)
+        - plus `Type`, `Role`, `Core`, `CDISC Notes` for additional constraints
 
 #### `Core` column (`Req`, `Exp`, `Perm`)
 
@@ -175,8 +175,8 @@ Given a variable `(DOMAIN, VARIABLE)` with codelist code(s) `[Cxxxxxx, ...]`:
 3. **Normalization (recommended)**
 
 - Build a case-insensitive lookup from:
-  - `CDISC Submission Value` (canonical)
-  - plus all tokens in `CDISC Synonym(s)` split on `;`
+    - `CDISC Submission Value` (canonical)
+    - plus all tokens in `CDISC Synonym(s)` split on `;`
 - Normalize an incoming value to the canonical `CDISC Submission Value` when it
   matches either the canonical value or a synonym.
 
@@ -206,7 +206,7 @@ standard** (not CDISC CT). In the provided SDTMIG extract, the distinct values
 are:
 
 | Described Value Domain        | Variable Count |
-| ----------------------------- | -------------- |
+|-------------------------------|----------------|
 | ISO 8601 datetime or interval | 113            |
 | ISO 8601 duration             | 45             |
 | MedDRA                        | 11             |
@@ -282,7 +282,7 @@ Example from Lab:
 ### Variables that reference multiple codelists
 
 | Domain  | Variable | Codelist Codes                             | Codelist Names                                                                                                                                     |
-| ------- | -------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+|---------|----------|--------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------|
 | DS      | DSDECOD  | C66727; C114118; C150811                   | Completion/Reason for Non-Completion, Protocol Milestone, Other Disposition Event Response                                                         |
 | BS      | BSSPEC   | C78734; C111114                            | Specimen Type, Genetic Sample Type                                                                                                                 |
 | EG      | EGTESTCD | C71153; C120523                            | ECG Test Code, Holter ECG Test Code                                                                                                                |
@@ -297,7 +297,7 @@ Example from Lab:
 ### Most reused codelists (top 25 by number of variables referencing them)
 
 | Codelist Code | Codelist Name                    | Extensible | Term Count | Referenced By (#variables) |
-| ------------- | -------------------------------- | ---------- | ---------- | -------------------------- |
+|---------------|----------------------------------|------------|------------|----------------------------|
 | C66742        | No Yes Response                  | No         | 4          | 123                        |
 | C71620        | Unit                             | Yes        | 901        | 58                         |
 | C99079        | Epoch                            | Yes        | 13         | 44                         |
@@ -327,7 +327,7 @@ Example from Lab:
 ### All referenced codelists
 
 | Codelist Code | Codelist Name                                          | Extensible | CT Package Used | Term Count | Referenced By (#variables) |
-| ------------- | ------------------------------------------------------ | ---------- | --------------- | ---------- | -------------------------- |
+|---------------|--------------------------------------------------------|------------|-----------------|------------|----------------------------|
 | C66742        | No Yes Response                                        | No         | SDTM            | 4          | 123                        |
 | C71620        | Unit                                                   | Yes        | SDTM            | 901        | 58                         |
 | C99079        | Epoch                                                  | Yes        | SDTM            | 13         | 44                         |
@@ -489,7 +489,7 @@ _Class:_ `Events`\
 _Structure:_ One record per adverse event per subject
 
 | Variable   | Codelist link(s)                                                             |
-| ---------- | ---------------------------------------------------------------------------- |
+|------------|------------------------------------------------------------------------------|
 | `AEACN`    | C66767 (Action Taken with Study Treatment; Extensible=No; Terms=8)           |
 | `AEACNDEV` | C111110 (Device Events Action Taken with Device; Extensible=Yes; Terms=3)    |
 | `AECONTRT` | C66742 (No Yes Response; Extensible=No; Terms=4)                             |
@@ -519,7 +519,7 @@ _Class:_ `Interventions`\
 _Structure:_ One record per recorded intervention occurrence per subject
 
 | Variable   | Codelist link(s)                                                     |
-| ---------- | -------------------------------------------------------------------- |
+|------------|----------------------------------------------------------------------|
 | `AGDOSFRM` | C66726 (Pharmaceutical Dosage Form; Extensible=Yes; Terms=189)       |
 | `AGDOSFRQ` | C71113 (Frequency; Extensible=Yes; Terms=102)                        |
 | `AGDOSU`   | C71620 (Unit; Extensible=Yes; Terms=901)                             |
@@ -541,7 +541,7 @@ _Structure:_ One record per instance per biospecimen event per biospecimen
 identifier per subject
 
 | Variable  | Codelist link(s)                                                               |
-| --------- | ------------------------------------------------------------------------------ |
+|-----------|--------------------------------------------------------------------------------|
 | `BEDECOD` | C124297 (Biospecimen Events Dictionary Derived Term; Extensible=Yes; Terms=27) |
 | `BELOC`   | C74456 (Anatomical Location; Extensible=Yes; Terms=1376)                       |
 
@@ -552,7 +552,7 @@ _Class:_ `Findings`\
 _Structure:_ One record per measurement per biospecimen identifier per subject
 
 | Variable   | Codelist link(s)                                                                                           |
-| ---------- | ---------------------------------------------------------------------------------------------------------- |
+|------------|------------------------------------------------------------------------------------------------------------|
 | `BSBLFL`   | C66742 (No Yes Response; Extensible=No; Terms=4)                                                           |
 | `BSMETHOD` | C85492 (Method; Extensible=Yes; Terms=504)                                                                 |
 | `BSORRESU` | C71620 (Unit; Extensible=Yes; Terms=901)                                                                   |
@@ -570,7 +570,7 @@ _Class:_ `Events`\
 _Structure:_ One record per event per subject
 
 | Variable   | Codelist link(s)                                              |
-| ---------- | ------------------------------------------------------------- |
+|------------|---------------------------------------------------------------|
 | `CEENRF`   | C66728 (Relation to Reference Period; Extensible=No; Terms=8) |
 | `CEENRTPT` | C66728 (Relation to Reference Period; Extensible=No; Terms=8) |
 | `CEOCCUR`  | C66742 (No Yes Response; Extensible=No; Terms=4)              |
@@ -589,7 +589,7 @@ _Structure:_ One record per recorded intervention occurrence or constant-dosing
 interval per subject
 
 | Variable   | Codelist link(s)                                                     |
-| ---------- | -------------------------------------------------------------------- |
+|------------|----------------------------------------------------------------------|
 | `CMDOSFRM` | C66726 (Pharmaceutical Dosage Form; Extensible=Yes; Terms=189)       |
 | `CMDOSFRQ` | C71113 (Frequency; Extensible=Yes; Terms=102)                        |
 | `CMDOSU`   | C71620 (Unit; Extensible=Yes; Terms=901)                             |
@@ -610,7 +610,7 @@ _Class:_ `Special-Purpose`\
 _Structure:_ One record per comment per subject
 
 | Variable   | Codelist link(s)                                                |
-| ---------- | --------------------------------------------------------------- |
+|------------|-----------------------------------------------------------------|
 | `COEVAL`   | C78735 (Evaluator; Extensible=Yes; Terms=60)                    |
 | `COEVALID` | C96777 (Medical Evaluator Identifier; Extensible=Yes; Terms=56) |
 | `RDOMAIN`  | C66734 (SDTM Domain Abbreviation; Extensible=Yes; Terms=83)     |
@@ -623,7 +623,7 @@ _Structure:_ One record per test per specimen per timepoint per visit per
 subject
 
 | Variable   | Codelist link(s)                                                            |
-| ---------- | --------------------------------------------------------------------------- |
+|------------|-----------------------------------------------------------------------------|
 | `CPBLFL`   | C66742 (No Yes Response; Extensible=No; Terms=4)                            |
 | `CPCAT`    | C181171 (Category for Cell Phenotyping; Extensible=Yes; Terms=3)            |
 | `CPCELSTA` | C181172 (Cell State Response; Extensible=Yes; Terms=8)                      |
@@ -653,7 +653,7 @@ _Structure:_ One record per finding or result per time point per visit per
 subject
 
 | Variable   | Codelist link(s)                                                |
-| ---------- | --------------------------------------------------------------- |
+|------------|-----------------------------------------------------------------|
 | `CVBLFL`   | C66742 (No Yes Response; Extensible=No; Terms=4)                |
 | `CVDIR`    | C99074 (Directionality; Extensible=Yes; Terms=55)               |
 | `CVDRVFL`  | C66742 (No Yes Response; Extensible=No; Terms=4)                |
@@ -678,7 +678,7 @@ _Class:_ `Findings`\
 _Structure:_ One record per product accountability finding per subject
 
 | Variable   | Codelist link(s)                                                |
-| ---------- | --------------------------------------------------------------- |
+|------------|-----------------------------------------------------------------|
 | `DAORRESU` | C71620 (Unit; Extensible=Yes; Terms=901)                        |
 | `DASTAT`   | C66789 (Not Done; Extensible=No; Terms=1)                       |
 | `DASTRESU` | C71620 (Unit; Extensible=Yes; Terms=901)                        |
@@ -693,7 +693,7 @@ _Class:_ `Findings`\
 _Structure:_ One record per finding per subject
 
 | Variable   | Codelist link(s)                                                               |
-| ---------- | ------------------------------------------------------------------------------ |
+|------------|--------------------------------------------------------------------------------|
 | `DDEVAL`   | C78735 (Evaluator; Extensible=Yes; Terms=60)                                   |
 | `DDTEST`   | C116107 (SDTM Death Diagnosis and Details Test Name; Extensible=Yes; Terms=13) |
 | `DDTESTCD` | C116108 (SDTM Death Diagnosis and Details Test Code; Extensible=Yes; Terms=13) |
@@ -705,7 +705,7 @@ _Class:_ `Special-Purpose`\
 _Structure:_ One record per subject
 
 | Variable | Codelist link(s)                                   |
-| -------- | -------------------------------------------------- |
+|----------|----------------------------------------------------|
 | `AGEU`   | C66781 (Age Unit; Extensible=No; Terms=5)          |
 | `ARMNRS` | C142179 (Arm Null Reason; Extensible=Yes; Terms=4) |
 | `DTHFL`  | C66742 (No Yes Response; Extensible=No; Terms=4)   |
@@ -720,7 +720,7 @@ _Class:_ `Events`\
 _Structure:_ One record per disposition status or protocol milestone per subject
 
 | Variable  | Codelist link(s)                                                                                                                                                                                     |
-| --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|-----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `DSCAT`   | C74558 (Category of Disposition Event; Extensible=No; Terms=3)                                                                                                                                       |
 | `DSDECOD` | C66727 (Completion/Reason for Non-Completion; Extensible=Yes; Terms=43); C114118 (Protocol Milestone; Extensible=Yes; Terms=13); C150811 (Other Disposition Event Response; Extensible=Yes; Terms=4) |
 | `DSSCAT`  | C170443 (Subcategory for Disposition Event; Extensible=Yes; Terms=2)                                                                                                                                 |
@@ -733,7 +733,7 @@ _Class:_ `Events`\
 _Structure:_ One record per protocol deviation per subject
 
 | Variable | Codelist link(s)                         |
-| -------- | ---------------------------------------- |
+|----------|------------------------------------------|
 | `EPOCH`  | C99079 (Epoch; Extensible=Yes; Terms=13) |
 
 ### EC
@@ -744,7 +744,7 @@ _Structure:_ One record per protocol-specified study treatment, collected-dosing
 interval, per subject, per mood
 
 | Variable   | Codelist link(s)                                                     |
-| ---------- | -------------------------------------------------------------------- |
+|------------|----------------------------------------------------------------------|
 | `ECDIR`    | C99074 (Directionality; Extensible=Yes; Terms=55)                    |
 | `ECDOSFRM` | C66726 (Pharmaceutical Dosage Form; Extensible=Yes; Terms=189)       |
 | `ECDOSFRQ` | C71113 (Frequency; Extensible=Yes; Terms=102)                        |
@@ -768,7 +768,7 @@ _Structure:_ One record per ECG observation per replicate per time point or one
 record per ECG observation per beat per visit per subject
 
 | Variable   | Codelist link(s)                                                                                                                                                    |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `EGBLFL`   | C66742 (No Yes Response; Extensible=No; Terms=4)                                                                                                                    |
 | `EGCLSIG`  | C66742 (No Yes Response; Extensible=No; Terms=4)                                                                                                                    |
 | `EGDRVFL`  | C66742 (No Yes Response; Extensible=No; Terms=4)                                                                                                                    |
@@ -794,7 +794,7 @@ _Structure:_ One record per protocol-specified study treatment, constant-dosing
 interval, per subject
 
 | Variable   | Codelist link(s)                                                     |
-| ---------- | -------------------------------------------------------------------- |
+|------------|----------------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                             |
 | `EXDIR`    | C99074 (Directionality; Extensible=Yes; Terms=55)                    |
 | `EXDOSFRM` | C66726 (Pharmaceutical Dosage Form; Extensible=Yes; Terms=189)       |
@@ -813,7 +813,7 @@ _Structure:_ One record per finding, per object, per time point, per visit per
 subject
 
 | Variable   | Codelist link(s)                                              |
-| ---------- | ------------------------------------------------------------- |
+|------------|---------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                      |
 | `FABLFL`   | C66742 (No Yes Response; Extensible=No; Terms=4)              |
 | `FAEVAL`   | C78735 (Evaluator; Extensible=Yes; Terms=60)                  |
@@ -834,7 +834,7 @@ _Structure:_ One record per Functional Test finding per time point per visit per
 subject
 
 | Variable   | Codelist link(s)                                                |
-| ---------- | --------------------------------------------------------------- |
+|------------|-----------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                        |
 | `FTBLFL`   | C66742 (No Yes Response; Extensible=No; Terms=4)                |
 | `FTCAT`    | C115304 (Category of Functional Test; Extensible=Yes; Terms=26) |
@@ -853,7 +853,7 @@ _Class:_ `Findings`\
 _Structure:_ One record per finding per observation per biospecimen per subject
 
 | Variable   | Codelist link(s)                                                                          |
-| ---------- | ----------------------------------------------------------------------------------------- |
+|------------|-------------------------------------------------------------------------------------------|
 | `GFANMETH` | C181181 (Genomic Findings Analytical Method Calculation Formula; Extensible=Yes; Terms=7) |
 | `GFBLFL`   | C66742 (No Yes Response; Extensible=No; Terms=4)                                          |
 | `GFDRVFL`  | C66742 (No Yes Response; Extensible=No; Terms=4)                                          |
@@ -875,7 +875,7 @@ _Class:_ `Events`\
 _Structure:_ One record per healthcare encounter per subject
 
 | Variable   | Codelist link(s)                                                                   |
-| ---------- | ---------------------------------------------------------------------------------- |
+|------------|------------------------------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                                           |
 | `HODECOD`  | C171444 (Health Care Encounters Dictionary Derived Term; Extensible=Yes; Terms=37) |
 | `HOENRTPT` | C66728 (Relation to Reference Period; Extensible=No; Terms=8)                      |
@@ -891,7 +891,7 @@ _Class:_ `Findings`\
 _Structure:_ One record per inclusion/exclusion criterion not met per subject
 
 | Variable   | Codelist link(s)                                                 |
-| ---------- | ---------------------------------------------------------------- |
+|------------|------------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                         |
 | `IECAT`    | C66797 (Category of Inclusion/Exclusion; Extensible=No; Terms=2) |
 | `IEORRES`  | C66742 (No Yes Response; Extensible=No; Terms=4)                 |
@@ -904,7 +904,7 @@ _Class:_ `Findings`\
 _Structure:_ One record per test per visit per subject
 
 | Variable   | Codelist link(s)                                                                                                                |
-| ---------- | ------------------------------------------------------------------------------------------------------------------------------- |
+|------------|---------------------------------------------------------------------------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                                                                                        |
 | `ISBDAGNT` | C85491 (Microorganism; Extensible=Yes; Terms=1669); C181169 (Binding Agent for Immunogenicity Tests; Extensible=Yes; Terms=293) |
 | `ISBLFL`   | C66742 (No Yes Response; Extensible=No; Terms=4)                                                                                |
@@ -930,7 +930,7 @@ _Class:_ `Findings`\
 _Structure:_ One record per lab test per time point per visit per subject
 
 | Variable   | Codelist link(s)                                                                     |
-| ---------- | ------------------------------------------------------------------------------------ |
+|------------|--------------------------------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                                             |
 | `LBANMETH` | C160922 (Laboratory Analytical Method Calculation Formula; Extensible=Yes; Terms=26) |
 | `LBBLFL`   | C66742 (No Yes Response; Extensible=No; Terms=4)                                     |
@@ -965,7 +965,7 @@ _Structure:_ One record per microbiology specimen finding per time point per
 visit per subject
 
 | Variable   | Codelist link(s)                                                      |
-| ---------- | --------------------------------------------------------------------- |
+|------------|-----------------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                              |
 | `MBBLFL`   | C66742 (No Yes Response; Extensible=No; Terms=4)                      |
 | `MBDIR`    | C99074 (Directionality; Extensible=Yes; Terms=55)                     |
@@ -991,7 +991,7 @@ _Class:_ `Events`\
 _Structure:_ One record per medical history event per subject
 
 | Variable   | Codelist link(s)                                                    |
-| ---------- | ------------------------------------------------------------------- |
+|------------|---------------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                            |
 | `MHENRF`   | C66728 (Relation to Reference Period; Extensible=No; Terms=8)       |
 | `MHENRTPT` | C66728 (Relation to Reference Period; Extensible=No; Terms=8)       |
@@ -1007,7 +1007,7 @@ _Class:_ `Findings`\
 _Structure:_ One record per finding per specimen per subject
 
 | Variable   | Codelist link(s)                                                         |
-| ---------- | ------------------------------------------------------------------------ |
+|------------|--------------------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                                 |
 | `MIBLFL`   | C66742 (No Yes Response; Extensible=No; Terms=4)                         |
 | `MIDIR`    | C99074 (Directionality; Extensible=Yes; Terms=55)                        |
@@ -1032,7 +1032,7 @@ _Class:_ `Findings`\
 _Structure:_ One record per assessment per visit per subject
 
 | Variable   | Codelist link(s)                                                             |
-| ---------- | ---------------------------------------------------------------------------- |
+|------------|------------------------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                                     |
 | `MKBLFL`   | C66742 (No Yes Response; Extensible=No; Terms=4)                             |
 | `MKDIR`    | C99074 (Directionality; Extensible=Yes; Terms=55)                            |
@@ -1058,7 +1058,7 @@ _Structure:_ One record per food product occurrence or constant intake interval
 per subject
 
 | Variable   | Codelist link(s)                                               |
-| ---------- | -------------------------------------------------------------- |
+|------------|----------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                       |
 | `MLDOSFRM` | C66726 (Pharmaceutical Dosage Form; Extensible=Yes; Terms=189) |
 | `MLDOSU`   | C71620 (Unit; Extensible=Yes; Terms=901)                       |
@@ -1074,7 +1074,7 @@ _Structure:_ One record per microbiology susceptibility test (or other
 organism-related finding) per organism found in MB
 
 | Variable   | Codelist link(s)                                                                     |
-| ---------- | ------------------------------------------------------------------------------------ |
+|------------|--------------------------------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                                             |
 | `MSACPTFL` | C66742 (No Yes Response; Extensible=No; Terms=4)                                     |
 | `MSBLFL`   | C66742 (No Yes Response; Extensible=No; Terms=4)                                     |
@@ -1106,7 +1106,7 @@ _Structure:_ One record per finding per location per time point per visit per
 subject
 
 | Variable   | Codelist link(s)                                                      |
-| ---------- | --------------------------------------------------------------------- |
+|------------|-----------------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                              |
 | `NVBLFL`   | C66742 (No Yes Response; Extensible=No; Terms=4)                      |
 | `NVDIR`    | C99074 (Directionality; Extensible=Yes; Terms=55)                     |
@@ -1131,7 +1131,7 @@ _Structure:_ One record per ophthalmic finding per method per location, per time
 point per visit per subject
 
 | Variable   | Codelist link(s)                                                              |
-| ---------- | ----------------------------------------------------------------------------- |
+|------------|-------------------------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                                      |
 | `FOCID`    | C119013 (Ophthalmic Focus of Study Specific Interest; Extensible=No; Terms=3) |
 | `OEACPTFL` | C66742 (No Yes Response; Extensible=No; Terms=4)                              |
@@ -1159,7 +1159,7 @@ _Class:_ `Study Reference`\
 _Structure:_ One record per taxon per non-host organism
 
 | Variable   | Codelist link(s)                                                                 |
-| ---------- | -------------------------------------------------------------------------------- |
+|------------|----------------------------------------------------------------------------------|
 | `OIPARM`   | C179590 (Non-host Organism Identifier Parameters; Extensible=Yes; Terms=16)      |
 | `OIPARMCD` | C179591 (Non-host Organism Identifier Parameters Code; Extensible=Yes; Terms=16) |
 
@@ -1171,7 +1171,7 @@ _Structure:_ One record per sample characteristic or time-point concentration
 per reference time point or per analyte per subject
 
 | Variable   | Codelist link(s)                                        |
-| ---------- | ------------------------------------------------------- |
+|------------|---------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                |
 | `PCDRVFL`  | C66742 (No Yes Response; Extensible=No; Terms=4)        |
 | `PCFAST`   | C66742 (No Yes Response; Extensible=No; Terms=4)        |
@@ -1189,7 +1189,7 @@ _Class:_ `Findings`\
 _Structure:_ One record per body system or abnormality per visit per subject
 
 | Variable   | Codelist link(s)                                         |
-| ---------- | -------------------------------------------------------- |
+|------------|----------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                 |
 | `PEBLFL`   | C66742 (No Yes Response; Extensible=No; Terms=4)         |
 | `PEEVAL`   | C78735 (Evaluator; Extensible=Yes; Terms=60)             |
@@ -1208,7 +1208,7 @@ _Structure:_ One record per PK parameter per time-concentration profile per
 modeling method per subject
 
 | Variable   | Codelist link(s)                                                                                                                                                                                                                                                                                                                         |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+|------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                                                                                                                                                                                                                                                                                                 |
 | `PPANMETH` | C172330 (PK Analytical Method; Extensible=Yes; Terms=4)                                                                                                                                                                                                                                                                                  |
 | `PPORRESU` | C85494 (PK Units of Measure; Extensible=Yes; Terms=598); C128684 (PK Units of Measure - Weight g; Extensible=Yes; Terms=57); C128683 (PK Units of Measure - Weight kg; Extensible=Yes; Terms=54); C128685 (PK Units of Measure - Dose mg; Extensible=Yes; Terms=154); C128686 (PK Units of Measure - Dose ug; Extensible=Yes; Terms=132) |
@@ -1225,7 +1225,7 @@ _Class:_ `Interventions`\
 _Structure:_ One record per recorded procedure per occurrence per subject
 
 | Variable   | Codelist link(s)                                                     |
-| ---------- | -------------------------------------------------------------------- |
+|------------|----------------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                             |
 | `PRDECOD`  | C101858 (Procedure; Extensible=Yes; Terms=145)                       |
 | `PRDIR`    | C99074 (Directionality; Extensible=Yes; Terms=55)                    |
@@ -1249,7 +1249,7 @@ _Structure:_ One record per questionnaire per question per time point per visit
 per subject
 
 | Variable   | Codelist link(s)                                               |
-| ---------- | -------------------------------------------------------------- |
+|------------|----------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                       |
 | `QSBLFL`   | C66742 (No Yes Response; Extensible=No; Terms=4)               |
 | `QSCAT`    | C100129 (Category of Questionnaire; Extensible=Yes; Terms=299) |
@@ -1268,7 +1268,7 @@ _Structure:_ One record per finding or result per time point per visit per
 subject
 
 | Variable   | Codelist link(s)                                                |
-| ---------- | --------------------------------------------------------------- |
+|------------|-----------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                        |
 | `REBLFL`   | C66742 (No Yes Response; Extensible=No; Terms=4)                |
 | `REDIR`    | C99074 (Directionality; Extensible=Yes; Terms=55)               |
@@ -1293,7 +1293,7 @@ _Class:_ `Relationship`\
 _Structure:_ One record per related record, group of records or dataset
 
 | Variable  | Codelist link(s)                                            |
-| --------- | ----------------------------------------------------------- |
+|-----------|-------------------------------------------------------------|
 | `RDOMAIN` | C66734 (SDTM Domain Abbreviation; Extensible=Yes; Terms=83) |
 | `RELTYPE` | C78737 (Relationship Type; Extensible=No; Terms=2)          |
 
@@ -1304,7 +1304,7 @@ _Class:_ `Relationship`\
 _Structure:_ One record per specimen identifier per subject
 
 | Variable | Codelist link(s)                                                                                           |
-| -------- | ---------------------------------------------------------------------------------------------------------- |
+|----------|------------------------------------------------------------------------------------------------------------|
 | `SPEC`   | C78734 (Specimen Type; Extensible=Yes; Terms=127); C111114 (Genetic Sample Type; Extensible=Yes; Terms=33) |
 
 ### RELSUB
@@ -1314,7 +1314,7 @@ _Class:_ `Relationship`\
 _Structure:_ One record per relationship per related subject per subject
 
 | Variable | Codelist link(s)                                            |
-| -------- | ----------------------------------------------------------- |
+|----------|-------------------------------------------------------------|
 | `SREL`   | C100130 (Relationship to Subject; Extensible=Yes; Terms=83) |
 
 ### RP
@@ -1325,7 +1325,7 @@ _Structure:_ One record per finding or result per time point per visit per
 subject
 
 | Variable   | Codelist link(s)                                                           |
-| ---------- | -------------------------------------------------------------------------- |
+|------------|----------------------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                                   |
 | `RPBLFL`   | C66742 (No Yes Response; Extensible=No; Terms=4)                           |
 | `RPDRVFL`  | C66742 (No Yes Response; Extensible=No; Terms=4)                           |
@@ -1345,7 +1345,7 @@ assessment per time point per visit per subject per assessor per medical
 evaluator
 
 | Variable   | Codelist link(s)                                                                                                                                      |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+|------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                                                                                                              |
 | `RSACPTFL` | C66742 (No Yes Response; Extensible=No; Terms=4)                                                                                                      |
 | `RSBLFL`   | C66742 (No Yes Response; Extensible=No; Terms=4)                                                                                                      |
@@ -1371,7 +1371,7 @@ _Class:_ `Findings`\
 _Structure:_ One record per characteristic per visit per subject.
 
 | Variable   | Codelist link(s)                                                     |
-| ---------- | -------------------------------------------------------------------- |
+|------------|----------------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                             |
 | `SCORRESU` | C71620 (Unit; Extensible=Yes; Terms=901)                             |
 | `SCSTAT`   | C66789 (Not Done; Extensible=No; Terms=1)                            |
@@ -1386,7 +1386,7 @@ _Class:_ `Special-Purpose`\
 _Structure:_ One record per actual Element per subject
 
 | Variable | Codelist link(s)                         |
-| -------- | ---------------------------------------- |
+|----------|------------------------------------------|
 | `EPOCH`  | C99079 (Epoch; Extensible=Yes; Terms=13) |
 
 ### SR
@@ -1397,7 +1397,7 @@ _Structure:_ One record per finding, per object, per time point, per visit per
 subject
 
 | Variable   | Codelist link(s)                                            |
-| ---------- | ----------------------------------------------------------- |
+|------------|-------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                    |
 | `SRBLFL`   | C66742 (No Yes Response; Extensible=No; Terms=4)            |
 | `SREVAL`   | C78735 (Evaluator; Extensible=Yes; Terms=60)                |
@@ -1419,7 +1419,7 @@ _Class:_ `Findings`\
 _Structure:_ One record per status per visit per subject
 
 | Variable   | Codelist link(s)                                            |
-| ---------- | ----------------------------------------------------------- |
+|------------|-------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                    |
 | `SSEVAL`   | C78735 (Evaluator; Extensible=Yes; Terms=60)                |
 | `SSSTAT`   | C66789 (Not Done; Extensible=No; Terms=1)                   |
@@ -1434,7 +1434,7 @@ _Class:_ `Interventions`\
 _Structure:_ One record per substance type per reported occurrence per subject
 
 | Variable   | Codelist link(s)                                                     |
-| ---------- | -------------------------------------------------------------------- |
+|------------|----------------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                             |
 | `SUDOSFRM` | C66726 (Pharmaceutical Dosage Form; Extensible=Yes; Terms=189)       |
 | `SUDOSFRQ` | C71113 (Frequency; Extensible=Yes; Terms=102)                        |
@@ -1456,7 +1456,7 @@ _Structure:_ One record per supplemental qualifier per related parent domain
 record(s)
 
 | Variable  | Codelist link(s)                                            |
-| --------- | ----------------------------------------------------------- |
+|-----------|-------------------------------------------------------------|
 | `QEVAL`   | C78735 (Evaluator; Extensible=Yes; Terms=60)                |
 | `RDOMAIN` | C66734 (SDTM Domain Abbreviation; Extensible=Yes; Terms=83) |
 
@@ -1467,7 +1467,7 @@ _Class:_ `Special-Purpose`\
 _Structure:_ One record per actual or planned visit per subject
 
 | Variable   | Codelist link(s)                                           |
-| ---------- | ---------------------------------------------------------- |
+|------------|------------------------------------------------------------|
 | `SVCNTMOD` | C171445 (Mode of Subject Contact; Extensible=Yes; Terms=9) |
 | `SVEPCHGI` | C66742 (No Yes Response; Extensible=No; Terms=4)           |
 | `SVOCCUR`  | C66742 (No Yes Response; Extensible=No; Terms=4)           |
@@ -1480,7 +1480,7 @@ _Class:_ `Trial Design`\
 _Structure:_ One record per planned Element per Arm
 
 | Variable | Codelist link(s)                         |
-| -------- | ---------------------------------------- |
+|----------|------------------------------------------|
 | `EPOCH`  | C99079 (Epoch; Extensible=Yes; Terms=13) |
 
 ### TI
@@ -1490,7 +1490,7 @@ _Class:_ `Trial Design`\
 _Structure:_ One record per I/E criterion
 
 | Variable | Codelist link(s)                                                 |
-| -------- | ---------------------------------------------------------------- |
+|----------|------------------------------------------------------------------|
 | `IECAT`  | C66797 (Category of Inclusion/Exclusion; Extensible=No; Terms=2) |
 
 ### TM
@@ -1500,7 +1500,7 @@ _Class:_ `Trial Design`\
 _Structure:_ One record per Disease Milestone type
 
 | Variable | Codelist link(s)                                 |
-| -------- | ------------------------------------------------ |
+|----------|--------------------------------------------------|
 | `TMRPT`  | C66742 (No Yes Response; Extensible=No; Terms=4) |
 
 ### TR
@@ -1511,7 +1511,7 @@ _Structure:_ One record per tumor measurement/assessment per visit per subject
 per assessor
 
 | Variable   | Codelist link(s)                                                           |
-| ---------- | -------------------------------------------------------------------------- |
+|------------|----------------------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                                   |
 | `TRACPTFL` | C66742 (No Yes Response; Extensible=No; Terms=4)                           |
 | `TRBLFL`   | C66742 (No Yes Response; Extensible=No; Terms=4)                           |
@@ -1533,7 +1533,7 @@ _Class:_ `Trial Design`\
 _Structure:_ One record per trial summary parameter value
 
 | Variable   | Codelist link(s)                                                      |
-| ---------- | --------------------------------------------------------------------- |
+|------------|-----------------------------------------------------------------------|
 | `TSPARM`   | C67152 (Trial Summary Parameter Test Name; Extensible=Yes; Terms=126) |
 | `TSPARMCD` | C66738 (Trial Summary Parameter Test Code; Extensible=Yes; Terms=126) |
 | `TSVCDREF` | C66788 (Dictionary Name; Extensible=Yes; Terms=14)                    |
@@ -1545,7 +1545,7 @@ _Class:_ `Findings`\
 _Structure:_ One record per identified tumor per subject per assessor
 
 | Variable   | Codelist link(s)                                                                |
-| ---------- | ------------------------------------------------------------------------------- |
+|------------|---------------------------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                                        |
 | `TUACPTFL` | C66742 (No Yes Response; Extensible=No; Terms=4)                                |
 | `TUBLFL`   | C66742 (No Yes Response; Extensible=No; Terms=4)                                |
@@ -1568,7 +1568,7 @@ _Class:_ `Findings`\
 _Structure:_ One record per finding per location per per visit per subject
 
 | Variable   | Codelist link(s)                                                |
-| ---------- | --------------------------------------------------------------- |
+|------------|-----------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                        |
 | `URBLFL`   | C66742 (No Yes Response; Extensible=No; Terms=4)                |
 | `URDIR`    | C99074 (Directionality; Extensible=Yes; Terms=55)               |
@@ -1593,7 +1593,7 @@ _Structure:_ One record per vital sign measurement per time point per visit per
 subject
 
 | Variable   | Codelist link(s)                                                 |
-| ---------- | ---------------------------------------------------------------- |
+|------------|------------------------------------------------------------------|
 | `EPOCH`    | C99079 (Epoch; Extensible=Yes; Terms=13)                         |
 | `VSBLFL`   | C66742 (No Yes Response; Extensible=No; Terms=4)                 |
 | `VSCLSIG`  | C66742 (No Yes Response; Extensible=No; Terms=4)                 |
