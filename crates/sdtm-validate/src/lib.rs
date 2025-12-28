@@ -192,23 +192,45 @@ fn ct_issue(
     if invalid.is_empty() {
         return None;
     }
+    const MAX_ALLOWED_VALUES_IN_MESSAGE: usize = 12;
+    const MAX_INVALID_EXAMPLES: usize = 5;
+    const MAX_CT_EXAMPLES: usize = 5;
     let severity = if ct.extensible {
         Severity::Warning
     } else {
         Severity::Error
     };
-    let mut examples: Vec<_> = invalid.iter().take(5).cloned().collect();
-    examples.sort();
+    let mut observed_samples: Vec<String> =
+        invalid.iter().take(MAX_INVALID_EXAMPLES).cloned().collect();
+    observed_samples.sort();
     let mut message = format!(
-        "Variable value not found in codelist. {} contains {} value(s) not found in {} for {} ({}).",
+        "CT check failed. {} has {} value(s) not in {} ({}) from {}.",
         variable.name,
         invalid.len(),
-        resolved.source(),
         ct.name,
-        ct.code
+        ct.code,
+        resolved.source()
     );
-    if !examples.is_empty() {
-        message.push_str(&format!(" values: {}", examples.join(", ")));
+    if ct.extensible {
+        message.push_str(" Codelist is extensible; invalid values are warnings.");
+    }
+    let allowed_values = ct.submission_values();
+    if !allowed_values.is_empty() && allowed_values.len() <= MAX_ALLOWED_VALUES_IN_MESSAGE {
+        message.push_str(&format!(" Allowed values: {}.", allowed_values.join(" | ")));
+    } else if !allowed_values.is_empty() {
+        message.push_str(&format!(" Allowed values count: {}.", allowed_values.len()));
+        let mut ct_examples: Vec<&str> = allowed_values.to_vec();
+        ct_examples.sort_unstable();
+        ct_examples.truncate(MAX_CT_EXAMPLES);
+        if !ct_examples.is_empty() {
+            message.push_str(&format!(" CT examples: {}.", ct_examples.join(" | ")));
+        }
+    }
+    if !observed_samples.is_empty() {
+        message.push_str(&format!(
+            " Observed values (sample): {}.",
+            observed_samples.join(" | ")
+        ));
     }
     Some(ValidationIssue {
         code: ct.code.clone(),

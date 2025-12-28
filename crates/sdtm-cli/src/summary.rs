@@ -123,18 +123,19 @@ fn print_issue_table(result: &StudyResult) {
         header_cell("Domain"),
         header_cell("Severity"),
         header_cell("Variable"),
-        header_cell("CT"),
-        header_cell("Code"),
-        header_cell("Message"),
-        header_cell("Values"),
+        header_cell("CT Source"),
+        header_cell("Codelist"),
+        header_cell("Details"),
+        header_cell("Observed Values"),
+        header_cell("CT Examples"),
     ]);
     apply_issue_table_style(&mut table);
     align_column(&mut table, 1, CellAlignment::Center);
     align_column(&mut table, 3, CellAlignment::Center);
     align_column(&mut table, 4, CellAlignment::Center);
     for (domain, issue) in issues {
-        let (message, values) = split_values(&issue.message);
-        let message = highlight_count_in_message(message, issue.count, issue.severity);
+        let details = split_issue_details(&issue.message);
+        let message = highlight_count_in_message(details.details, issue.count, issue.severity);
         let domain_cell = domain_cell(&domain);
         table.add_row(vec![
             domain_cell,
@@ -143,7 +144,12 @@ fn print_issue_table(result: &StudyResult) {
             Cell::new(issue.ct_source.clone().unwrap_or_else(|| "-".to_string())),
             Cell::new(issue.code.clone()),
             Cell::new(message),
-            values_cell(values),
+            examples_cell(format_example_list(details.observed)),
+            examples_cell(format_ct_cell(
+                details.allowed_count,
+                details.allowed_values,
+                details.ct_examples,
+            )),
         ]);
     }
     println!();
@@ -264,7 +270,7 @@ fn apply_issue_table_style(table: &mut Table) {
         .apply_modifier(UTF8_ROUND_CORNERS)
         .apply_modifier(UTF8_SOLID_INNER_BORDERS)
         .set_content_arrangement(ContentArrangement::Dynamic)
-        .set_width(200);
+        .set_width(220);
 }
 
 fn apply_data_check_table_style(table: &mut Table) {
@@ -360,14 +366,122 @@ fn description_cell(description: &str, is_supp: bool) -> Cell {
     }
 }
 
-fn split_values(message: &str) -> (String, String) {
-    match message.rsplit_once(" values: ") {
-        Some((head, tail)) => (head.to_string(), tail.to_string()),
-        None => (message.to_string(), "-".to_string()),
+struct IssueDetails {
+    details: String,
+    observed: Option<String>,
+    allowed_values: Option<String>,
+    allowed_count: Option<String>,
+    ct_examples: Option<String>,
+}
+
+fn split_issue_details(message: &str) -> IssueDetails {
+    let mut observed = None;
+    let mut allowed_values = None;
+    let mut allowed_count = None;
+    let mut ct_examples = None;
+    let mut remainder = message;
+
+    if let Some((head, tail)) = remainder.rsplit_once(" Observed values (sample): ") {
+        remainder = head;
+        observed = Some(trim_issue_value(tail));
+    } else if let Some((head, tail)) = remainder.rsplit_once(" values: ") {
+        remainder = head;
+        observed = Some(trim_issue_value(tail));
+    }
+    if let Some((head, tail)) = remainder.rsplit_once(" CT examples: ") {
+        remainder = head;
+        ct_examples = Some(trim_issue_value(tail));
+    }
+    if let Some((head, tail)) = remainder.rsplit_once(" Allowed values: ") {
+        remainder = head;
+        allowed_values = Some(trim_issue_value(tail));
+    }
+    if let Some((head, tail)) = remainder.rsplit_once(" Allowed values count: ") {
+        remainder = head;
+        allowed_count = Some(trim_issue_value(tail));
+    }
+
+    IssueDetails {
+        details: remainder.to_string(),
+        observed,
+        allowed_values,
+        allowed_count,
+        ct_examples,
     }
 }
 
-fn values_cell(value: String) -> Cell {
+fn trim_issue_value(value: &str) -> String {
+    value.trim().trim_end_matches('.').trim().to_string()
+}
+
+fn format_example_list(values: Option<String>) -> String {
+    let Some(values) = values else {
+        return "-".to_string();
+    };
+    format_code_list(&values).unwrap_or_else(|| "-".to_string())
+}
+
+fn format_ct_cell(
+    allowed_count: Option<String>,
+    allowed_values: Option<String>,
+    ct_examples: Option<String>,
+) -> String {
+    let mut lines = Vec::new();
+    if let Some(count) = allowed_count {
+        lines.push(format!("count: {count}"));
+    }
+    if let Some(values) = allowed_values
+        && let Some(list) = format_code_list(&values)
+    {
+        lines.push(list);
+    }
+    if let Some(examples) = ct_examples
+        && let Some(list) = format_code_list(&examples)
+    {
+        lines.push(format!("examples: {list}"));
+    }
+    if lines.is_empty() {
+        "-".to_string()
+    } else {
+        lines.join("\n")
+    }
+}
+
+fn format_code_list(values: &str) -> Option<String> {
+    let items = split_items(values);
+    if items.is_empty() {
+        None
+    } else {
+        Some(
+            items
+                .iter()
+                .map(|item| wrap_code(item))
+                .collect::<Vec<_>>()
+                .join(", "),
+        )
+    }
+}
+
+fn wrap_code(value: &str) -> String {
+    let code = value.replace('`', "'");
+    if io::stdout().is_terminal() {
+        format!("{ANSI_CODE_FG}{code}{ANSI_RESET}")
+    } else {
+        code
+    }
+}
+
+fn split_items(values: &str) -> Vec<String> {
+    let separator = if values.contains(" | ") { " | " } else { "," };
+    values
+        .split(separator)
+        .map(|item| item.trim())
+        .filter(|item| !item.is_empty())
+        .map(String::from)
+        .collect()
+}
+
+fn examples_cell(value: String) -> Cell {
     if value == "-" {
         dim_cell(value)
     } else {
@@ -427,6 +541,7 @@ fn ansi_severity_color(severity: Severity) -> &'static str {
 
 const ANSI_RED: &str = "\x1b[31m";
 const ANSI_YELLOW: &str = "\x1b[33m";
+const ANSI_CODE_FG: &str = "\x1b[38;5;245m";
 const ANSI_RESET: &str = "\x1b[0m";
 
 fn dim_cell<T: ToString>(value: T) -> Cell {
