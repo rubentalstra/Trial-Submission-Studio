@@ -1,50 +1,17 @@
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
-use anyhow::{Context, Result};
-use csv::ReaderBuilder;
+use anyhow::Result;
 
 use sdtm_model::{DatasetClass, DatasetMetadata, Domain, Variable, VariableType};
 
-const DEFAULT_SDTMIG_VERSION: &str = "v3_4";
-const STANDARDS_ENV_VAR: &str = "CDISC_STANDARDS_DIR";
+use crate::csv_utils::{default_standards_root, read_csv_rows};
 
-pub fn default_standards_root() -> PathBuf {
-    if let Ok(root) = std::env::var(STANDARDS_ENV_VAR) {
-        return PathBuf::from(root);
-    }
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../standards")
-}
+const DEFAULT_SDTMIG_VERSION: &str = "v3_4";
 
 pub fn load_default_sdtm_ig_domains() -> Result<Vec<Domain>> {
     let root = default_standards_root();
     load_sdtm_ig_domains(&root.join("sdtmig").join(DEFAULT_SDTMIG_VERSION))
-}
-
-fn read_csv_rows(path: &Path) -> Result<Vec<BTreeMap<String, String>>> {
-    let mut reader = ReaderBuilder::new()
-        .has_headers(true)
-        .from_path(path)
-        .with_context(|| format!("read csv: {}", path.display()))?;
-    let headers = reader
-        .headers()
-        .with_context(|| format!("read headers: {}", path.display()))?
-        .clone();
-    let mut rows = Vec::new();
-    for record in reader.records() {
-        let record = record.with_context(|| format!("read record: {}", path.display()))?;
-        let mut row = BTreeMap::new();
-        for (idx, value) in record.iter().enumerate() {
-            let key = headers
-                .get(idx)
-                .unwrap_or("")
-                .trim_matches('\u{feff}')
-                .to_string();
-            row.insert(key, value.trim().to_string());
-        }
-        rows.push(row);
-    }
-    Ok(rows)
 }
 
 fn parse_variable_type(raw: &str) -> VariableType {

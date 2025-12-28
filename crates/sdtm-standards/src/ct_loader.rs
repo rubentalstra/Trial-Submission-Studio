@@ -2,23 +2,15 @@
 //!
 //! This module loads CT files into the new clean model (`sdtm_model::ct`).
 
-use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result};
-use csv::ReaderBuilder;
+use anyhow::Result;
 
 use sdtm_model::ct::{Codelist, Term, TerminologyCatalog, TerminologyRegistry};
 
-const DEFAULT_CT_VERSION: &str = "2024-03-29";
+use crate::csv_utils::{default_standards_root, get_field, get_optional, read_csv_rows};
 
-/// Get the default standards root directory.
-fn default_standards_root() -> PathBuf {
-    if let Ok(root) = std::env::var("CDISC_STANDARDS_DIR") {
-        return PathBuf::from(root);
-    }
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../standards")
-}
+const DEFAULT_CT_VERSION: &str = "2024-03-29";
 
 /// Load the default CT registry (SDTM CT 2024-03-29).
 pub fn load_default_ct_registry() -> Result<TerminologyRegistry> {
@@ -162,40 +154,4 @@ fn parse_synonyms(raw: &str) -> Vec<String> {
         .map(|s| s.trim().to_string())
         .filter(|s| !s.is_empty())
         .collect()
-}
-
-fn read_csv_rows(path: &Path) -> Result<Vec<BTreeMap<String, String>>> {
-    let mut reader = ReaderBuilder::new()
-        .has_headers(true)
-        .from_path(path)
-        .with_context(|| format!("read csv: {}", path.display()))?;
-
-    let headers = reader
-        .headers()
-        .with_context(|| format!("read headers: {}", path.display()))?
-        .clone();
-
-    let mut rows = Vec::new();
-    for record in reader.records() {
-        let record = record.with_context(|| format!("read record: {}", path.display()))?;
-        let mut row = BTreeMap::new();
-        for (idx, value) in record.iter().enumerate() {
-            let key = headers
-                .get(idx)
-                .unwrap_or("")
-                .trim_matches('\u{feff}')
-                .to_string();
-            row.insert(key, value.trim().to_string());
-        }
-        rows.push(row);
-    }
-    Ok(rows)
-}
-
-fn get_field(row: &BTreeMap<String, String>, key: &str) -> String {
-    row.get(key).cloned().unwrap_or_default()
-}
-
-fn get_optional(row: &BTreeMap<String, String>, key: &str) -> Option<String> {
-    row.get(key).filter(|v| !v.is_empty()).cloned()
 }
