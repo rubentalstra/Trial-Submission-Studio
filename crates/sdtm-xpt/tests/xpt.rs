@@ -16,8 +16,8 @@ fn temp_file(name: &str) -> PathBuf {
 
 #[test]
 fn reads_dm_xpt() {
-    let path =
-        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../tests/validation/data/xpt/dm.xpt");
+    let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../docs/SDTM-MSG_v2.0_Sample_Submission_Package/m5/datasets/cdiscpilot01/tabulations/sdtm/dm.xpt");
     let dataset = read_xpt(&path).expect("read dm");
     assert_eq!(dataset.name, "DM");
     assert_eq!(dataset.label.as_deref(), Some("Demographics"));
