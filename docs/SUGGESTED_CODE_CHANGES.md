@@ -638,7 +638,12 @@ are noted where applicable.
       TRANS0021 for column order violations with "Order" category - Full test
       coverage in `tests/domain_utils.rs` (11 tests)
 
-- [ ] **1.5.2** Order Define-XML ItemRefs by SDTM role order.
+- [x] **1.5.2** Order Define-XML ItemRefs by SDTM role order. **Implementation
+      notes**: - Updated `write_define_xml()` in sdtm-report/src/lib.rs to use
+      `order_variables_by_role()` before generating ItemRef elements - ItemRefs
+      are now ordered by SDTM role: Identifiers, Topic, Qualifiers, Rule, Timing
+      - OrderNumber attributes reflect the role-based ordering - KeySequence
+      continues to apply only to Identifier role variables
 
 - [ ] **1.5.3** Enforce Core designation rules: require all Required columns
       with non-null values, include Expected columns even when uncollected with

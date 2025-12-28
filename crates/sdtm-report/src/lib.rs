@@ -9,7 +9,7 @@ use polars::prelude::{AnyValue, DataFrame};
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 
-use sdtm_core::{DomainFrame, standard_columns};
+use sdtm_core::{DomainFrame, order_variables_by_role, standard_columns};
 use sdtm_ingest::{any_to_f64_for_output, any_to_string_for_output, any_to_string_non_empty};
 use sdtm_model::{Domain, MappingConfig, Variable, VariableType};
 use sdtm_standards::load_default_ct_registry;
@@ -363,8 +363,13 @@ pub fn write_define_xml(
             ig.push_attribute(("def:IsReferenceData", "Yes"));
         }
         xml.write_event(Event::Start(ig))?;
+
+        // Order variables by SDTM role per SDTMIG v3.4 Chapter 2.1:
+        // Identifiers, Topic, Qualifiers (Grouping, Result, Synonym, Record, Variable), Rule, Timing
+        let ordered_vars = order_variables_by_role(&domain.variables);
+
         let mut key_sequence = 1usize;
-        for (idx, variable) in domain.variables.iter().enumerate() {
+        for (idx, variable) in ordered_vars.iter().enumerate() {
             let mut item_ref = BytesStart::new("ItemRef");
             // Use dataset name for ItemOID reference to match ItemDef OIDs
             let item_oid = format!("IT.{}.{}", output_dataset_name, variable.name);
