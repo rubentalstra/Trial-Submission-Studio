@@ -12,7 +12,11 @@ fn creates_frame_with_metadata() {
         .with_base_domain_code("FA")
         .with_split_variant("CM");
 
-    let frame = DomainFrame::with_meta("FA", data, meta);
+    let frame = DomainFrame {
+        domain_code: "FA".to_string(),
+        data,
+        meta: Some(meta),
+    };
 
     assert_eq!(frame.dataset_name(), "FACM");
     assert_eq!(frame.base_domain_code(), "FA");

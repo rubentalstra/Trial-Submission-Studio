@@ -86,12 +86,6 @@ impl StudyPipelineContext {
         self
     }
 
-    /// Sets the reference start dates map.
-    pub fn with_reference_starts(mut self, reference_starts: BTreeMap<String, String>) -> Self {
-        self.reference_starts = reference_starts;
-        self
-    }
-
     /// Sets the processing options.
     pub fn with_options(mut self, options: ProcessingOptions) -> Self {
         self.options = options;

@@ -25,7 +25,11 @@ use sdtm_model::Domain;
 use crate::processing_context::ProcessingContext;
 
 /// Process a domain using the standard SDTM processor match.
-pub fn process_domain(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingContext) -> Result<()> {
+pub(crate) fn process_domain(
+    domain: &Domain,
+    df: &mut DataFrame,
+    ctx: &ProcessingContext,
+) -> Result<()> {
     match domain.code.to_uppercase().as_str() {
         "AE" => ae::process_ae(domain, df, ctx),
         "CM" => cm::process_cm(domain, df, ctx),

@@ -34,7 +34,7 @@ enum SdtmRole {
 impl SdtmRole {
     /// Parse a role string from SDTMIG metadata into an SdtmRole.
     /// Returns None for empty or unrecognized role strings.
-    pub fn parse(s: &str) -> Option<Self> {
+    fn parse(s: &str) -> Option<Self> {
         let normalized = s.trim().to_uppercase();
         match normalized.as_str() {
             "IDENTIFIER" => Some(SdtmRole::Identifier),
@@ -52,7 +52,7 @@ impl SdtmRole {
 
     /// Returns the sort order for this role (lower = earlier in output).
     /// Per SDTMIG v3.4 Chapter 2: Identifiers, Topic, Qualifiers, Rule, Timing.
-    pub fn sort_order(&self) -> u8 {
+    fn sort_order(&self) -> u8 {
         match self {
             SdtmRole::Identifier => 1,
             SdtmRole::Topic => 2,
@@ -64,27 +64,6 @@ impl SdtmRole {
             SdtmRole::Rule => 8,
             SdtmRole::Timing => 9,
         }
-    }
-
-    /// Returns the role category name as it appears in SDTMIG.
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            SdtmRole::Identifier => "Identifier",
-            SdtmRole::Topic => "Topic",
-            SdtmRole::GroupingQualifier => "Grouping Qualifier",
-            SdtmRole::ResultQualifier => "Result Qualifier",
-            SdtmRole::SynonymQualifier => "Synonym Qualifier",
-            SdtmRole::RecordQualifier => "Record Qualifier",
-            SdtmRole::VariableQualifier => "Variable Qualifier",
-            SdtmRole::Rule => "Rule",
-            SdtmRole::Timing => "Timing",
-        }
-    }
-}
-
-impl std::fmt::Display for SdtmRole {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_str())
     }
 }
 
@@ -165,7 +144,7 @@ pub fn standard_columns(domain: &Domain) -> StandardColumns {
     }
 }
 
-pub fn infer_seq_column(domain: &Domain) -> Option<String> {
+pub(crate) fn infer_seq_column(domain: &Domain) -> Option<String> {
     let code = domain.code.to_uppercase();
     let expected = format!("{code}SEQ");
     if domain
@@ -201,7 +180,7 @@ pub fn infer_seq_column(domain: &Domain) -> Option<String> {
     grp_candidates.first().cloned()
 }
 
-pub fn refid_candidates(domain: &Domain) -> Vec<String> {
+pub(crate) fn refid_candidates(domain: &Domain) -> Vec<String> {
     domain
         .variables
         .iter()

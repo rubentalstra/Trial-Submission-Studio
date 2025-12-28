@@ -113,7 +113,10 @@ impl<'a> ProcessingContext<'a> {
         }
     }
 
-    pub fn with_reference_starts(mut self, reference_starts: &'a BTreeMap<String, String>) -> Self {
+    pub(crate) fn with_reference_starts(
+        mut self,
+        reference_starts: &'a BTreeMap<String, String>,
+    ) -> Self {
         self.reference_starts = Some(reference_starts);
         self
     }
@@ -128,7 +131,7 @@ impl<'a> ProcessingContext<'a> {
         self
     }
 
-    pub fn resolve_ct(&self, domain: &Domain, variable: &str) -> Option<&'a Codelist> {
+    pub(crate) fn resolve_ct(&self, domain: &Domain, variable: &str) -> Option<&'a Codelist> {
         let registry = self.ct_registry?;
         let variable = domain
             .variables

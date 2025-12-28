@@ -58,11 +58,6 @@ impl DomainFrameMeta {
         self.base_domain_code = Some(code.into());
         self
     }
-
-    /// Check if this is a split domain.
-    pub fn is_split_domain(&self) -> bool {
-        self.split_variant.is_some()
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -80,19 +75,6 @@ impl DomainFrame {
             domain_code: domain_code.into(),
             data,
             meta: None,
-        }
-    }
-
-    /// Create a new domain frame with metadata.
-    pub fn with_meta(
-        domain_code: impl Into<String>,
-        data: DataFrame,
-        meta: DomainFrameMeta,
-    ) -> Self {
-        Self {
-            domain_code: domain_code.into(),
-            data,
-            meta: Some(meta),
         }
     }
 
@@ -120,7 +102,7 @@ impl DomainFrame {
     pub fn is_split_domain(&self) -> bool {
         self.meta
             .as_ref()
-            .map(|m| m.is_split_domain())
+            .map(|m| m.split_variant.is_some())
             .unwrap_or(false)
     }
 

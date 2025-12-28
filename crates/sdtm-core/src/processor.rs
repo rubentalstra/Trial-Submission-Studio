@@ -28,7 +28,7 @@ fn sanitize_identifier(raw: &str) -> String {
 /// When `allow_lenient_ct_matching` is enabled in options, lenient matching
 /// (including compact key matching) is used. When disabled, only exact matches
 /// and defined synonyms are normalized.
-pub fn normalize_ct_columns(
+fn normalize_ct_columns(
     domain: &Domain,
     df: &mut DataFrame,
     ctx: &ProcessingContext,
@@ -79,11 +79,7 @@ pub fn normalize_ct_columns(
     Ok(())
 }
 
-pub fn apply_base_rules(
-    domain: &Domain,
-    df: &mut DataFrame,
-    ctx: &ProcessingContext,
-) -> Result<()> {
+fn apply_base_rules(domain: &Domain, df: &mut DataFrame, ctx: &ProcessingContext) -> Result<()> {
     if !ctx.options.prefix_usubjid {
         return Ok(());
     }
@@ -156,7 +152,7 @@ pub fn process_domain_with_context_and_tracker(
 ///
 /// Uses tracker if provided for cross-file sequence continuity.
 /// Skips assignment if `ctx.options.assign_sequence` is false.
-pub fn assign_sequence(
+fn assign_sequence(
     domain: &Domain,
     df: &mut DataFrame,
     ctx: &ProcessingContext,

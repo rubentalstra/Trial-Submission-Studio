@@ -25,7 +25,7 @@ use sdtm_model::ct::Codelist;
 
 /// Result of CT resolution with provenance information.
 #[derive(Debug, Clone, PartialEq)]
-pub enum CtResolution {
+enum CtResolution {
     /// Exact match to a submission value in the codelist.
     ExactMatch(String),
     /// Matched via a defined synonym mapping.
@@ -43,7 +43,7 @@ pub enum CtResolution {
 
 impl CtResolution {
     /// Returns the resolved submission value if found.
-    pub fn submission_value(&self) -> Option<&str> {
+    fn submission_value(&self) -> Option<&str> {
         match self {
             Self::ExactMatch(v) => Some(v),
             Self::SynonymMatch {
@@ -62,7 +62,7 @@ impl CtResolution {
 /// Creates a compact key from a string by keeping only uppercase alphanumeric characters.
 ///
 /// This is used for fuzzy matching when exact matching fails.
-pub fn compact_key(value: &str) -> String {
+fn compact_key(value: &str) -> String {
     value
         .chars()
         .filter(|ch| ch.is_ascii_alphanumeric())
@@ -87,7 +87,7 @@ pub fn compact_key(value: &str) -> String {
 /// # Returns
 ///
 /// A `CtResolution` indicating the match type and resolved value.
-pub fn resolve_ct_value(ct: &Codelist, raw: &str) -> CtResolution {
+fn resolve_ct_value(ct: &Codelist, raw: &str) -> CtResolution {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
         return CtResolution::Empty;
@@ -133,7 +133,7 @@ pub fn resolve_ct_value(ct: &Codelist, raw: &str) -> CtResolution {
 ///
 /// Returns `Some(submission_value)` only for exact matches or defined synonyms.
 /// This is the preferred function for validation and final output generation.
-pub fn resolve_ct_strict(ct: &Codelist, raw: &str) -> Option<String> {
+fn resolve_ct_strict(ct: &Codelist, raw: &str) -> Option<String> {
     match resolve_ct_value(ct, raw) {
         CtResolution::ExactMatch(v)
         | CtResolution::SynonymMatch {
@@ -148,7 +148,7 @@ pub fn resolve_ct_strict(ct: &Codelist, raw: &str) -> Option<String> {
 ///
 /// Returns `Some(submission_value)` for any successful match including fuzzy matches.
 /// Use this for data ingestion and mapping suggestions, not for final outputs.
-pub fn resolve_ct_lenient(ct: &Codelist, raw: &str) -> Option<String> {
+pub(crate) fn resolve_ct_lenient(ct: &Codelist, raw: &str) -> Option<String> {
     resolve_ct_value(ct, raw)
         .submission_value()
         .map(String::from)
@@ -166,7 +166,7 @@ pub fn resolve_ct_lenient(ct: &Codelist, raw: &str) -> Option<String> {
 /// 3. If no match, returns the original trimmed value
 ///
 /// Use this when you want to normalize known values but preserve unknown ones.
-pub fn normalize_ct_value(ct: &Codelist, raw: &str) -> String {
+pub(crate) fn normalize_ct_value(ct: &Codelist, raw: &str) -> String {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
         return String::new();
@@ -185,7 +185,7 @@ pub fn normalize_ct_value(ct: &Codelist, raw: &str) -> String {
 ///
 /// This prevents normalizing to invalid values but allows fuzzy matching.
 /// For strict-mode processing, use `normalize_ct_value_strict` instead.
-pub fn normalize_ct_value_safe(ct: &Codelist, raw: &str) -> String {
+pub(crate) fn normalize_ct_value_safe(ct: &Codelist, raw: &str) -> String {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
         return String::new();
@@ -215,7 +215,7 @@ pub fn normalize_ct_value_safe(ct: &Codelist, raw: &str) -> String {
 ///
 /// Use this in strict mode when only exact matches or defined synonyms should
 /// be normalized. Fuzzy/compact key matching is not used.
-pub fn normalize_ct_value_strict(ct: &Codelist, raw: &str) -> String {
+pub(crate) fn normalize_ct_value_strict(ct: &Codelist, raw: &str) -> String {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
         return String::new();
@@ -229,7 +229,7 @@ pub fn normalize_ct_value_strict(ct: &Codelist, raw: &str) -> String {
 // =============================================================================
 
 /// Gets the preferred term for a submission value.
-pub fn preferred_term_for(ct: &Codelist, submission: &str) -> Option<String> {
+pub(crate) fn preferred_term_for(ct: &Codelist, submission: &str) -> Option<String> {
     let key = submission.to_uppercase();
     ct.terms.get(&key).and_then(|t| t.preferred_term.clone())
 }
@@ -239,7 +239,7 @@ pub fn preferred_term_for(ct: &Codelist, submission: &str) -> Option<String> {
 // =============================================================================
 
 /// Checks if a value appears to be a yes/no token.
-pub fn is_yes_no_token(value: &str) -> bool {
+pub(crate) fn is_yes_no_token(value: &str) -> bool {
     matches!(
         value.trim().to_uppercase().as_str(),
         "Y" | "N" | "YES" | "NO" | "TRUE" | "FALSE" | "1" | "0"
@@ -290,7 +290,7 @@ fn edit_distance(a: &str, b: &str) -> usize {
 /// # Warning
 ///
 /// Do not use this for final output generation. Use `resolve_ct_strict` instead.
-pub fn resolve_ct_value_from_hint(ct: &Codelist, hint: &str) -> Option<String> {
+pub(crate) fn resolve_ct_value_from_hint(ct: &Codelist, hint: &str) -> Option<String> {
     // First try standard resolution
     if let Some(value) = resolve_ct_lenient(ct, hint) {
         return Some(value);

@@ -21,198 +21,53 @@
 use chrono::NaiveDate;
 use std::fmt;
 
-/// Precision level for ISO 8601 date/time values.
-///
-/// Per SDTMIG v3.4 Section 4.4.2, precision is indicated by the presence
-/// or absence of components in the date/time value.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub enum DateTimePrecision {
-    /// Year only: `YYYY`
-    Year,
-    /// Year and month: `YYYY-MM`
-    Month,
-    /// Full date: `YYYY-MM-DD`
-    Day,
-    /// Date and hour: `YYYY-MM-DDThh`
-    Hour,
-    /// Date, hour, and minute: `YYYY-MM-DDThh:mm`
-    Minute,
-    /// Date, hour, minute, and second: `YYYY-MM-DDThh:mm:ss`
-    Second,
-    /// Date, hour, minute, second, and fractional seconds: `YYYY-MM-DDThh:mm:ss.nnn`
-    FractionalSecond,
-}
-
-impl DateTimePrecision {
-    /// Returns whether this precision level includes complete date information.
-    pub fn has_complete_date(&self) -> bool {
-        matches!(
-            self,
-            Self::Day | Self::Hour | Self::Minute | Self::Second | Self::FractionalSecond
-        )
-    }
-}
-
 /// Represents a parsed ISO 8601 date/time value with precision tracking.
 ///
 /// This struct preserves the original precision of the parsed value,
 /// which is critical for SDTM compliance where partial dates are common.
 #[derive(Debug, Clone, PartialEq)]
-pub struct Iso8601DateTime {
+struct Iso8601DateTime {
     /// Year component (always present for valid dates)
-    pub year: Option<i32>,
+    year: Option<i32>,
     /// Month component (1-12)
-    pub month: Option<u32>,
+    month: Option<u32>,
     /// Day component (1-31)
-    pub day: Option<u32>,
+    day: Option<u32>,
     /// Hour component (0-23)
-    pub hour: Option<u32>,
+    hour: Option<u32>,
     /// Minute component (0-59)
-    pub minute: Option<u32>,
+    minute: Option<u32>,
     /// Second component (0-59)
-    pub second: Option<u32>,
+    second: Option<u32>,
     /// Fractional seconds (nanoseconds)
-    pub nanosecond: Option<u32>,
+    nanosecond: Option<u32>,
     /// Timezone offset in minutes (e.g., +05:30 = 330, -08:00 = -480)
-    pub tz_offset_minutes: Option<i32>,
+    tz_offset_minutes: Option<i32>,
     /// Whether the time is in UTC (indicated by 'Z')
-    pub is_utc: bool,
+    is_utc: bool,
     /// The original string representation
-    pub original: String,
+    original: String,
 }
 
 impl Iso8601DateTime {
-    /// Returns the precision level of this date/time value.
-    pub fn precision(&self) -> Option<DateTimePrecision> {
-        self.year?;
-
-        if self.nanosecond.is_some() {
-            Some(DateTimePrecision::FractionalSecond)
-        } else if self.second.is_some() {
-            Some(DateTimePrecision::Second)
-        } else if self.minute.is_some() {
-            Some(DateTimePrecision::Minute)
-        } else if self.hour.is_some() {
-            Some(DateTimePrecision::Hour)
-        } else if self.day.is_some() {
-            Some(DateTimePrecision::Day)
-        } else if self.month.is_some() {
-            Some(DateTimePrecision::Month)
-        } else {
-            Some(DateTimePrecision::Year)
-        }
-    }
-
     /// Returns whether this represents a complete date (year, month, day all present).
-    pub fn has_complete_date(&self) -> bool {
+    fn has_complete_date(&self) -> bool {
         self.year.is_some() && self.month.is_some() && self.day.is_some()
     }
 
     /// Attempts to extract a NaiveDate if the date is complete.
-    pub fn to_naive_date(&self) -> Option<NaiveDate> {
+    fn to_naive_date(&self) -> Option<NaiveDate> {
         if let (Some(year), Some(month), Some(day)) = (self.year, self.month, self.day) {
             NaiveDate::from_ymd_opt(year, month, day)
         } else {
             None
         }
     }
-
-    /// Returns a normalized ISO 8601 string representation.
-    ///
-    /// This preserves the original precision by only including components
-    /// that were present in the original value.
-    pub fn to_iso8601_string(&self) -> String {
-        let mut result = String::new();
-
-        // Year (or "--" for missing year per SDTMIG)
-        if let Some(year) = self.year {
-            result.push_str(&format!("{:04}", year));
-        } else {
-            result.push_str("--");
-        }
-
-        // Month
-        if let Some(month) = self.month {
-            result.push('-');
-            result.push_str(&format!("{:02}", month));
-        } else if self.day.is_some() {
-            // Missing month with known day
-            result.push_str("--");
-        } else {
-            return result;
-        }
-
-        // Day
-        if let Some(day) = self.day {
-            result.push('-');
-            result.push_str(&format!("{:02}", day));
-        } else if self.hour.is_some() {
-            // Missing day with known time
-            result.push('-');
-        } else {
-            return result;
-        }
-
-        // Time components
-        if self.hour.is_some() {
-            result.push('T');
-
-            if let Some(hour) = self.hour {
-                result.push_str(&format!("{:02}", hour));
-            } else {
-                result.push('-');
-            }
-
-            if let Some(minute) = self.minute {
-                result.push(':');
-                result.push_str(&format!("{:02}", minute));
-
-                if let Some(second) = self.second {
-                    result.push(':');
-                    result.push_str(&format!("{:02}", second));
-
-                    if let Some(nano) = self.nanosecond
-                        && nano > 0
-                    {
-                        // Convert nanoseconds to decimal fraction
-                        let frac = format!("{:09}", nano);
-                        let frac = frac.trim_end_matches('0');
-                        if !frac.is_empty() {
-                            result.push('.');
-                            result.push_str(frac);
-                        }
-                    }
-                }
-            } else if self.second.is_some() {
-                // Missing minute with known second
-                result.push_str(":-");
-            }
-
-            // Timezone
-            if self.is_utc {
-                result.push('Z');
-            } else if let Some(offset) = self.tz_offset_minutes {
-                let sign = if offset >= 0 { '+' } else { '-' };
-                let offset_abs = offset.abs();
-                let hours = offset_abs / 60;
-                let minutes = offset_abs % 60;
-                result.push_str(&format!("{}{:02}:{:02}", sign, hours, minutes));
-            }
-        }
-
-        result
-    }
-}
-
-impl fmt::Display for Iso8601DateTime {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.to_iso8601_string())
-    }
 }
 
 /// Result of validating an ISO 8601 date/time value.
 #[derive(Debug, Clone)]
-pub enum DateTimeValidation {
+enum DateTimeValidation {
     /// Valid ISO 8601 extended format date/time
     Valid(Iso8601DateTime),
     /// Empty or null value
@@ -221,21 +76,9 @@ pub enum DateTimeValidation {
     Invalid(DateTimeError),
 }
 
-impl DateTimeValidation {
-    /// Returns true if the validation result is valid.
-    pub fn is_valid(&self) -> bool {
-        matches!(self, Self::Valid(_))
-    }
-
-    /// Returns true if the value is empty/null.
-    pub fn is_empty(&self) -> bool {
-        matches!(self, Self::Empty)
-    }
-}
-
 /// Errors that can occur when parsing/validating date/time values.
 #[derive(Debug, Clone, PartialEq)]
-pub enum DateTimeError {
+enum DateTimeError {
     /// Basic format (no delimiters) detected - SDTM requires extended format
     BasicFormatNotAllowed,
     /// Invalid year component
@@ -308,7 +151,7 @@ impl std::error::Error for DateTimeError {}
 /// let result = parse_iso8601_datetime("");
 /// assert!(result.is_empty());
 /// ```
-pub fn parse_iso8601_datetime(value: &str) -> DateTimeValidation {
+fn parse_iso8601_datetime(value: &str) -> DateTimeValidation {
     let trimmed = value.trim();
 
     if trimmed.is_empty() {
@@ -658,7 +501,7 @@ fn is_leap_year(year: i32) -> bool {
 ///
 /// This is a convenience function for cases where only the date portion is needed.
 /// Returns `None` for partial dates, invalid values, or empty strings.
-pub fn parse_date(value: &str) -> Option<NaiveDate> {
+pub(crate) fn parse_date(value: &str) -> Option<NaiveDate> {
     match parse_iso8601_datetime(value) {
         DateTimeValidation::Valid(dt) => dt.to_naive_date(),
         _ => None,
@@ -669,7 +512,7 @@ pub fn parse_date(value: &str) -> Option<NaiveDate> {
 ///
 /// This function performs minimal normalization to preserve the original
 /// precision and format of the value.
-pub fn normalize_iso8601(value: &str) -> String {
+pub(crate) fn normalize_iso8601(value: &str) -> String {
     value.trim().to_string()
 }
 
@@ -682,7 +525,7 @@ pub fn normalize_iso8601(value: &str) -> String {
 /// - `None` if comparison is not possible (partial dates or invalid values)
 ///
 /// Note: This only compares values that have the same or compatible precision.
-pub fn compare_iso8601(a: &str, b: &str) -> Option<std::cmp::Ordering> {
+fn compare_iso8601(a: &str, b: &str) -> Option<std::cmp::Ordering> {
     let dt_a = match parse_iso8601_datetime(a) {
         DateTimeValidation::Valid(dt) => dt,
         _ => return None,
@@ -751,7 +594,7 @@ pub fn compare_iso8601(a: &str, b: &str) -> Option<std::cmp::Ordering> {
 
 /// Result of comparing a start/end date pair.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DatePairOrder {
+pub(crate) enum DatePairOrder {
     /// Both dates are present and end >= start (valid)
     Valid,
     /// End date is before start date (invalid)
@@ -811,7 +654,7 @@ pub enum DatePairOrder {
 ///     DatePairOrder::StartIncomplete
 /// );
 /// ```
-pub fn validate_date_pair(start_value: &str, end_value: &str) -> DatePairOrder {
+pub(crate) fn validate_date_pair(start_value: &str, end_value: &str) -> DatePairOrder {
     let start_trimmed = start_value.trim();
     let end_trimmed = end_value.trim();
 
