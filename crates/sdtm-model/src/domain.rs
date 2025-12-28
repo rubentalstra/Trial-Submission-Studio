@@ -159,127 +159,61 @@ impl Domain {
     /// Per SDTMIG v3.4 Section 4.1.7, domain-prefixed variables use DOMAIN as the prefix.
     pub fn infer_seq_column(&self) -> Option<&str> {
         let expected = format!("{}SEQ", self.code);
-        if let Some(variable) = self
-            .variables
-            .iter()
-            .find(|var| var.name.eq_ignore_ascii_case(&expected))
-        {
-            return Some(variable.name.as_str());
+        if let Some(name) = self.column_name(&expected) {
+            return Some(name);
         }
-        let mut candidates: Vec<&str> = self
-            .variables
-            .iter()
-            .map(|var| var.name.as_str())
-            .filter(|name| {
-                ends_with_case_insensitive(name, "SEQ") && !name.eq_ignore_ascii_case("SEQ")
-            })
-            .collect();
-        candidates.sort_by_key(|name| name.to_ascii_uppercase());
-        if let Some(name) = candidates.first() {
-            return Some(*name);
-        }
-        let mut grp_candidates: Vec<&str> = self
-            .variables
-            .iter()
-            .map(|var| var.name.as_str())
-            .filter(|name| {
-                ends_with_case_insensitive(name, "GRPID") && !name.eq_ignore_ascii_case("GRPID")
-            })
-            .collect();
-        grp_candidates.sort_by_key(|name| name.to_ascii_uppercase());
-        grp_candidates.first().copied()
+        find_suffix_column(&self.variables, "SEQ", "SEQ")
+            .or_else(|| find_suffix_column(&self.variables, "GRPID", "GRPID"))
     }
 }
 
-/// SDTM variable roles per SDTMIG v3.4 Chapter 2 (Section 2.1).
-/// Roles define the type of information conveyed by a variable.
-///
-/// The order of variants defines the standard column ordering:
-/// 1. Identifier - identify study, subject, domain, sequence
-/// 2. Topic - focus of the observation
-/// 3. Qualifiers (in order): Grouping, Result, Synonym, Record, Variable
-/// 4. Rule - Trial Design Model conditions (start, end, branch, loop)
-/// 5. Timing - timing of the observation
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum SdtmRole {
-    /// Identifier variables (STUDYID, USUBJID, DOMAIN, --SEQ)
-    Identifier,
-    /// Topic variables - focus of observation (e.g., lab test name)
-    Topic,
-    /// Grouping Qualifier - group observations (--CAT, --SCAT)
-    GroupingQualifier,
-    /// Result Qualifier - describe results (--ORRES, --STRESC, --STRESN)
-    ResultQualifier,
-    /// Synonym Qualifier - alternative names (--MODIFY, --DECOD)
-    SynonymQualifier,
-    /// Record Qualifier - attributes of the record as a whole
-    RecordQualifier,
-    /// Variable Qualifier - modify specific variables (--ORRESU, --DOSU)
-    VariableQualifier,
-    /// Rule variables - Trial Design conditions (start, end, branch, loop)
-    Rule,
-    /// Timing variables - timing of observation (--STDTC, --ENDTC, --DY)
-    Timing,
-}
-
-impl SdtmRole {
-    /// Parse a role string from SDTMIG metadata into an SdtmRole.
-    /// Returns None for empty or unrecognized role strings.
-    fn parse(s: &str) -> Option<Self> {
-        let trimmed = s.trim();
-        if trimmed.eq_ignore_ascii_case("IDENTIFIER") {
-            Some(SdtmRole::Identifier)
-        } else if trimmed.eq_ignore_ascii_case("TOPIC") {
-            Some(SdtmRole::Topic)
-        } else if trimmed.eq_ignore_ascii_case("GROUPING QUALIFIER") {
-            Some(SdtmRole::GroupingQualifier)
-        } else if trimmed.eq_ignore_ascii_case("RESULT QUALIFIER") {
-            Some(SdtmRole::ResultQualifier)
-        } else if trimmed.eq_ignore_ascii_case("SYNONYM QUALIFIER") {
-            Some(SdtmRole::SynonymQualifier)
-        } else if trimmed.eq_ignore_ascii_case("RECORD QUALIFIER") {
-            Some(SdtmRole::RecordQualifier)
-        } else if trimmed.eq_ignore_ascii_case("VARIABLE QUALIFIER") {
-            Some(SdtmRole::VariableQualifier)
-        } else if trimmed.eq_ignore_ascii_case("RULE") {
-            Some(SdtmRole::Rule)
-        } else if trimmed.eq_ignore_ascii_case("TIMING") {
-            Some(SdtmRole::Timing)
-        } else {
-            None
-        }
-    }
-
-    /// Returns the sort order for this role (lower = earlier in output).
-    /// Per SDTMIG v3.4 Chapter 2: Identifiers, Topic, Qualifiers, Rule, Timing.
-    fn sort_order(&self) -> u8 {
-        match self {
-            SdtmRole::Identifier => 1,
-            SdtmRole::Topic => 2,
-            SdtmRole::GroupingQualifier => 3,
-            SdtmRole::ResultQualifier => 4,
-            SdtmRole::SynonymQualifier => 5,
-            SdtmRole::RecordQualifier => 6,
-            SdtmRole::VariableQualifier => 7,
-            SdtmRole::Rule => 8,
-            SdtmRole::Timing => 9,
-        }
-    }
-}
+/// Per SDTMIG v3.4 Chapter 2 (Section 2.1): Identifiers, Topic, Qualifiers, Rule, Timing.
+const ROLE_SORT_ORDER: [(&str, u8); 9] = [
+    ("IDENTIFIER", 1),
+    ("TOPIC", 2),
+    ("GROUPING QUALIFIER", 3),
+    ("RESULT QUALIFIER", 4),
+    ("SYNONYM QUALIFIER", 5),
+    ("RECORD QUALIFIER", 6),
+    ("VARIABLE QUALIFIER", 7),
+    ("RULE", 8),
+    ("TIMING", 9),
+];
 
 /// Get the sort key for a variable based on SDTM role and order.
 /// Uses the variable's order field if present, otherwise uses role order * 1000.
 /// This ensures variables are sorted by role first, then by their defined order within each role.
 fn variable_sort_key(var: &Variable) -> (u8, u32) {
-    let role = var
-        .role
-        .as_ref()
-        .and_then(|r| SdtmRole::parse(r))
-        .map(|r| r.sort_order())
-        .unwrap_or(99); // Unknown roles sort last
-
+    let role = role_sort_order(var.role.as_deref());
     let order = var.order.unwrap_or(999);
     (role, order)
+}
+
+fn role_sort_order(role: Option<&str>) -> u8 {
+    let Some(role) = role else {
+        return 99;
+    };
+    let trimmed = role.trim();
+    for (name, order) in ROLE_SORT_ORDER {
+        if trimmed.eq_ignore_ascii_case(name) {
+            return order;
+        }
+    }
+    99
+}
+
+fn find_suffix_column<'a>(
+    variables: &'a [Variable],
+    suffix: &str,
+    exact_exclude: &str,
+) -> Option<&'a str> {
+    variables
+        .iter()
+        .map(|var| var.name.as_str())
+        .filter(|name| {
+            ends_with_case_insensitive(name, suffix) && !name.eq_ignore_ascii_case(exact_exclude)
+        })
+        .min_by_key(|name| name.to_ascii_uppercase())
 }
 
 fn ends_with_case_insensitive(value: &str, suffix: &str) -> bool {
