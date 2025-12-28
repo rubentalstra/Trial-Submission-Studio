@@ -47,19 +47,8 @@ pub(super) fn process_ae(
     {
         df.drop_in_place(teae)?;
     }
-    if let (Some(aedecod), Some(aeterm)) = (col(domain, "AEDECOD"), col(domain, "AETERM"))
-        && has_column(df, aedecod)
-        && has_column(df, aeterm)
-    {
-        let mut decod_vals = string_column(df, aedecod)?;
-        let term_vals = string_column(df, aeterm)?;
-        for idx in 0..df.height() {
-            if decod_vals[idx].is_empty() && !term_vals[idx].is_empty() {
-                decod_vals[idx] = term_vals[idx].clone();
-            }
-        }
-        set_string_column(df, aedecod, decod_vals)?;
-    }
+    // Backward fill: AETERM → AEDECOD
+    backward_fill_var(domain, df, "AETERM", "AEDECOD")?;
     apply_map_upper(
         df,
         col(domain, "AEACN"),
@@ -146,23 +135,9 @@ pub(super) fn process_ae(
         }
     }
 
-    if let Some(aesintv) = col(domain, "AESINTV")
-        && has_column(df, aesintv)
-    {
-        let yn_map = map_values([
-            ("Y", "Y"),
-            ("YES", "Y"),
-            ("1", "Y"),
-            ("TRUE", "Y"),
-            ("N", "N"),
-            ("NO", "N"),
-            ("0", "N"),
-            ("FALSE", "N"),
-            ("", ""),
-            ("NAN", ""),
-            ("<NA>", ""),
-        ]);
-        apply_map_upper(df, Some(aesintv), &yn_map)?;
+    // Apply Y/N mapping to AESINTV
+    if let Some(aesintv) = col(domain, "AESINTV") {
+        apply_map_upper(df, Some(aesintv), &yn_mapping())?;
     }
 
     if let Some(aeacndev) = col(domain, "AEACNDEV")

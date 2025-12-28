@@ -13,6 +13,7 @@ pub(super) fn process_vs(
     df: &mut DataFrame,
     context: &PipelineContext,
 ) -> Result<()> {
+    // Compute study day
     if let Some(vsdtc) = col(domain, "VSDTC")
         && let Some(vsdy) = col(domain, "VSDY")
     {
@@ -20,152 +21,38 @@ pub(super) fn process_vs(
         let values = numeric_column_f64(df, vsdy)?;
         set_f64_column(df, vsdy, values)?;
     }
-    if let (Some(vsorres), Some(vsstresc)) = (col(domain, "VSORRES"), col(domain, "VSSTRESC"))
-        && has_column(df, vsorres)
-        && has_column(df, vsstresc)
-    {
-        let orres = string_column(df, vsorres)?;
-        let mut stresc = string_column(df, vsstresc)?;
-        for idx in 0..df.height() {
-            if stresc[idx].is_empty() && !orres[idx].is_empty() {
-                stresc[idx] = orres[idx].clone();
-            }
-        }
-        set_string_column(df, vsstresc, stresc)?;
-    }
-    if let (Some(vsorresu), Some(vsstresu)) = (col(domain, "VSORRESU"), col(domain, "VSSTRESU"))
-        && has_column(df, vsorresu)
-        && has_column(df, vsstresu)
-    {
-        let orresu = string_column(df, vsorresu)?;
-        let mut stresu = string_column(df, vsstresu)?;
-        for idx in 0..df.height() {
-            if stresu[idx].is_empty() && !orresu[idx].is_empty() {
-                stresu[idx] = orresu[idx].clone();
-            }
-        }
-        set_string_column(df, vsstresu, stresu)?;
-    }
-    if let (Some(vsorres), Some(vsorresu)) = (col(domain, "VSORRES"), col(domain, "VSORRESU"))
-        && has_column(df, vsorres)
-        && has_column(df, vsorresu)
-    {
-        let orres = string_column(df, vsorres)?;
-        let mut orresu = string_column(df, vsorresu)?;
-        for idx in 0..df.height() {
-            if orres[idx].is_empty() {
-                orresu[idx].clear();
-            }
-        }
-        set_string_column(df, vsorresu, orresu)?;
-    }
-    if let (Some(vsstresc), Some(vsstresu)) = (col(domain, "VSSTRESC"), col(domain, "VSSTRESU"))
-        && has_column(df, vsstresc)
-        && has_column(df, vsstresu)
-    {
-        let stresc = string_column(df, vsstresc)?;
-        let mut stresu = string_column(df, vsstresu)?;
-        for idx in 0..df.height() {
-            if stresc[idx].is_empty() {
-                stresu[idx].clear();
-            }
-        }
-        set_string_column(df, vsstresu, stresu)?;
-    }
-    if let (Some(vstest), Some(vstestcd)) = (col(domain, "VSTEST"), col(domain, "VSTESTCD"))
-        && has_column(df, vstest)
-        && has_column(df, vstestcd)
-    {
-        let mut test_vals = string_column(df, vstest)?;
-        let testcd_vals = string_column(df, vstestcd)?;
-        for idx in 0..df.height() {
-            if test_vals[idx].is_empty() && !testcd_vals[idx].is_empty() {
-                test_vals[idx] = testcd_vals[idx].clone();
-            }
-        }
-        set_string_column(df, vstest, test_vals)?;
-    }
-    if let (Some(vstest), Some(vstestcd)) = (col(domain, "VSTEST"), col(domain, "VSTESTCD"))
-        && has_column(df, vstest)
-        && has_column(df, vstestcd)
-        && let Some(ct) = context.resolve_ct(domain, "VSTESTCD")
-    {
-        let test_vals = string_column(df, vstest)?;
-        let mut testcd_vals = string_column(df, vstestcd)?;
-        for (testcd, test) in testcd_vals.iter_mut().zip(test_vals.iter()) {
-            let existing = testcd.clone();
-            let valid =
-                !existing.is_empty() && ct.submission_values().iter().any(|val| val == &existing);
-            if valid {
-                continue;
-            }
-            if let Some(mapped) = resolve_ct_value(ct, test, context.options.ct_matching) {
-                *testcd = mapped;
-            }
-        }
-        set_string_column(df, vstestcd, testcd_vals)?;
-    }
-    if let Some(ct) = context.resolve_ct(domain, "VSORRESU") {
-        for col_name in ["VSORRESU", "VSSTRESU"] {
-            if let Some(name) = col(domain, col_name)
-                && has_column(df, name)
-            {
-                let mut values = string_column(df, name)?;
-                for value in &mut values {
-                    *value = normalize_ct_value(ct, value, context.options.ct_matching);
-                }
-                set_string_column(df, name, values)?;
-            }
-        }
-    }
-    if let Some(ct) = context.resolve_ct(domain, "VSTESTCD")
-        && let Some(vstestcd) = col(domain, "VSTESTCD")
-        && has_column(df, vstestcd)
-    {
-        let mut values = string_column(df, vstestcd)?;
-        for value in &mut values {
-            *value = normalize_ct_value(ct, value, context.options.ct_matching);
-        }
-        set_string_column(df, vstestcd, values)?;
-    }
-    if let Some(ct) = context.resolve_ct(domain, "VSTEST")
-        && let Some(vstest) = col(domain, "VSTEST")
-        && has_column(df, vstest)
-    {
-        let mut values = string_column(df, vstest)?;
-        for value in &mut values {
-            *value = normalize_ct_value(ct, value, context.options.ct_matching);
-        }
-        set_string_column(df, vstest, values)?;
-    }
-    if let (Some(vstest), Some(vstestcd)) = (col(domain, "VSTEST"), col(domain, "VSTESTCD"))
-        && has_column(df, vstest)
-        && has_column(df, vstestcd)
-        && let Some(ct) = context.resolve_ct(domain, "VSTESTCD")
-    {
-        let ct_names = context.resolve_ct(domain, "VSTEST");
-        let mut test_vals = string_column(df, vstest)?;
-        let testcd_vals = string_column(df, vstestcd)?;
-        for (test, testcd) in test_vals.iter_mut().zip(testcd_vals.iter()) {
-            if testcd.is_empty() {
-                continue;
-            }
-            let needs_label = test.is_empty() || test.eq_ignore_ascii_case(testcd);
-            let valid_name = ct_names
-                .map(|ct| {
-                    let canonical = normalize_ct_value(ct, test, context.options.ct_matching);
-                    ct.submission_values().iter().any(|val| val == &canonical)
-                })
-                .unwrap_or(true);
-            if !needs_label && valid_name {
-                continue;
-            }
-            if let Some(preferred) = preferred_term_for(ct, testcd) {
-                *test = preferred;
-            }
-        }
-        set_string_column(df, vstest, test_vals)?;
-    }
+
+    // Backward fill: VSORRES → VSSTRESC
+    backward_fill_var(domain, df, "VSORRES", "VSSTRESC")?;
+
+    // Backward fill: VSORRESU → VSSTRESU
+    backward_fill_var(domain, df, "VSORRESU", "VSSTRESU")?;
+
+    // Clear unit when result is empty (original)
+    clear_unit_when_empty_var(domain, df, "VSORRES", "VSORRESU")?;
+
+    // Clear unit when result is empty (standardized)
+    clear_unit_when_empty_var(domain, df, "VSSTRESC", "VSSTRESU")?;
+
+    // Backward fill: VSTESTCD → VSTEST
+    backward_fill_var(domain, df, "VSTESTCD", "VSTEST")?;
+
+    // Resolve VSTESTCD from VSTEST when invalid
+    resolve_testcd_from_test(domain, df, context, "VSTESTCD", "VSTEST", "VSTESTCD")?;
+
+    // Normalize unit columns via CT
+    normalize_ct_columns(domain, df, context, "VSORRESU", &["VSORRESU", "VSSTRESU"])?;
+
+    // Normalize VSTESTCD via CT
+    normalize_ct_columns(domain, df, context, "VSTESTCD", &["VSTESTCD"])?;
+
+    // Normalize VSTEST via CT
+    normalize_ct_columns(domain, df, context, "VSTEST", &["VSTEST"])?;
+
+    // Derive VSTEST from VSTESTCD using CT preferred terms
+    derive_test_from_testcd(domain, df, context, "VSTEST", "VSTESTCD", "VSTESTCD")?;
+
+    // Derive numeric result from VSORRES
     if let (Some(vsorres), Some(vsstresn)) = (col(domain, "VSORRES"), col(domain, "VSSTRESN"))
         && has_column(df, vsorres)
     {
@@ -176,6 +63,8 @@ pub(super) fn process_vs(
             .collect::<Vec<_>>();
         set_f64_column(df, vsstresn, numeric_vals)?;
     }
+
+    // Compute VSLOBXFL (Last Observation Before flag)
     if let Some(vslobxfl) = col(domain, "VSLOBXFL")
         && let (Some(usubjid), Some(vstestcd)) = (col(domain, "USUBJID"), col(domain, "VSTESTCD"))
         && has_column(df, vslobxfl)
@@ -188,6 +77,7 @@ pub(super) fn process_vs(
         let pos_vals = col(domain, "VSPOS")
             .filter(|&name| has_column(df, name))
             .and_then(|name| string_column(df, name).ok());
+
         let mut last_idx: HashMap<String, usize> = HashMap::new();
         for idx in 0..df.height() {
             let mut key = format!("{}|{}", usub_vals[idx], test_vals[idx]);
@@ -197,11 +87,14 @@ pub(super) fn process_vs(
             }
             last_idx.insert(key, idx);
         }
+
         for (_, idx) in last_idx {
             flags[idx] = "Y".to_string();
         }
         set_string_column(df, vslobxfl, flags)?;
     }
+
+    // Validate VSELTM time format
     if let Some(vseltm) = col(domain, "VSELTM")
         && has_column(df, vseltm)
     {
@@ -217,6 +110,7 @@ pub(super) fn process_vs(
             .collect();
         set_string_column(df, vseltm, values)?;
     }
+
     Ok(())
 }
 

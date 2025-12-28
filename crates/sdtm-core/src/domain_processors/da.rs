@@ -11,6 +11,7 @@ pub(super) fn process_da(
     df: &mut DataFrame,
     context: &PipelineContext,
 ) -> Result<()> {
+    // Apply DASTAT mapping
     if let Some(dastat) = col(domain, "DASTAT") {
         let stat_map = map_values([
             ("NOT DONE", "NOT DONE"),
@@ -22,6 +23,8 @@ pub(super) fn process_da(
         ]);
         apply_map_upper(df, Some(dastat), &stat_map)?;
     }
+
+    // Set DASTAT to "NOT DONE" when DAREASND is populated
     if let (Some(dastat), Some(dareasnd)) = (col(domain, "DASTAT"), col(domain, "DAREASND"))
         && has_column(df, dastat)
         && has_column(df, dareasnd)
@@ -35,32 +38,14 @@ pub(super) fn process_da(
         }
         set_string_column(df, dastat, stat_vals)?;
     }
-    if let (Some(daorresu), Some(daorres)) = (col(domain, "DAORRESU"), col(domain, "DAORRES"))
-        && has_column(df, daorresu)
-        && has_column(df, daorres)
-    {
-        let orres = string_column(df, daorres)?;
-        let mut orresu = string_column(df, daorresu)?;
-        for (idx, value) in orres.iter().enumerate() {
-            if value.is_empty() {
-                orresu[idx].clear();
-            }
-        }
-        set_string_column(df, daorresu, orresu)?;
-    }
-    if let (Some(daorres), Some(dastresc)) = (col(domain, "DAORRES"), col(domain, "DASTRESC"))
-        && has_column(df, daorres)
-        && has_column(df, dastresc)
-    {
-        let orres = string_column(df, daorres)?;
-        let mut stresc = string_column(df, dastresc)?;
-        for (idx, value) in orres.iter().enumerate() {
-            if !value.is_empty() && stresc[idx].is_empty() {
-                stresc[idx] = value.clone();
-            }
-        }
-        set_string_column(df, dastresc, stresc)?;
-    }
+
+    // Clear unit when result is empty
+    clear_unit_when_empty_var(domain, df, "DAORRES", "DAORRESU")?;
+
+    // Backward fill: DAORRES → DASTRESC
+    backward_fill_var(domain, df, "DAORRES", "DASTRESC")?;
+
+    // Derive numeric result from DASTRESC
     if let (Some(dastresc), Some(dastresn)) = (col(domain, "DASTRESC"), col(domain, "DASTRESN"))
         && has_column(df, dastresc)
     {
@@ -81,11 +66,14 @@ pub(super) fn process_da(
         }
         set_f64_column(df, dastresn, stresn_vals)?;
     }
+
+    // Compute study day
     if let Some(dadtc) = col(domain, "DADTC")
         && has_column(df, dadtc)
         && let Some(dady) = col(domain, "DADY")
     {
         compute_study_day(domain, df, dadtc, dady, context, "RFSTDTC")?;
     }
+
     Ok(())
 }

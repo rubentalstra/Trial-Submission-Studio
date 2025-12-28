@@ -19,6 +19,12 @@ pub(super) use crate::ct_utils::preferred_term_for;
 pub(super) use crate::ct_utils::resolve_ct_value;
 pub(super) use crate::datetime::normalize_iso8601;
 
+// Re-export operations module functions
+pub(super) use super::operations::{
+    backward_fill, backward_fill_var, clean_na_values_vars, clear_unit_when_empty_var,
+    derive_test_from_testcd, normalize_ct_columns, resolve_testcd_from_test, yn_mapping,
+};
+
 pub(super) fn col<'a>(domain: &'a Domain, name: &str) -> Option<&'a str> {
     domain.column_name(name)
 }

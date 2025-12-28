@@ -9,6 +9,7 @@ mod ex;
 mod ie;
 mod lb;
 mod mh;
+mod operations;
 mod pe;
 mod pr;
 mod qs;
