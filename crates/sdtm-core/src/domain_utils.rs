@@ -35,18 +35,27 @@ impl SdtmRole {
     /// Parse a role string from SDTMIG metadata into an SdtmRole.
     /// Returns None for empty or unrecognized role strings.
     fn parse(s: &str) -> Option<Self> {
-        let normalized = s.trim().to_uppercase();
-        match normalized.as_str() {
-            "IDENTIFIER" => Some(SdtmRole::Identifier),
-            "TOPIC" => Some(SdtmRole::Topic),
-            "GROUPING QUALIFIER" => Some(SdtmRole::GroupingQualifier),
-            "RESULT QUALIFIER" => Some(SdtmRole::ResultQualifier),
-            "SYNONYM QUALIFIER" => Some(SdtmRole::SynonymQualifier),
-            "RECORD QUALIFIER" => Some(SdtmRole::RecordQualifier),
-            "VARIABLE QUALIFIER" => Some(SdtmRole::VariableQualifier),
-            "RULE" => Some(SdtmRole::Rule),
-            "TIMING" => Some(SdtmRole::Timing),
-            _ => None,
+        let trimmed = s.trim();
+        if trimmed.eq_ignore_ascii_case("IDENTIFIER") {
+            Some(SdtmRole::Identifier)
+        } else if trimmed.eq_ignore_ascii_case("TOPIC") {
+            Some(SdtmRole::Topic)
+        } else if trimmed.eq_ignore_ascii_case("GROUPING QUALIFIER") {
+            Some(SdtmRole::GroupingQualifier)
+        } else if trimmed.eq_ignore_ascii_case("RESULT QUALIFIER") {
+            Some(SdtmRole::ResultQualifier)
+        } else if trimmed.eq_ignore_ascii_case("SYNONYM QUALIFIER") {
+            Some(SdtmRole::SynonymQualifier)
+        } else if trimmed.eq_ignore_ascii_case("RECORD QUALIFIER") {
+            Some(SdtmRole::RecordQualifier)
+        } else if trimmed.eq_ignore_ascii_case("VARIABLE QUALIFIER") {
+            Some(SdtmRole::VariableQualifier)
+        } else if trimmed.eq_ignore_ascii_case("RULE") {
+            Some(SdtmRole::Rule)
+        } else if trimmed.eq_ignore_ascii_case("TIMING") {
+            Some(SdtmRole::Timing)
+        } else {
+            None
         }
     }
 
@@ -114,34 +123,54 @@ pub struct StandardColumns {
 }
 
 pub fn column_name(domain: &Domain, canonical: &str) -> Option<String> {
-    let target = canonical.to_uppercase();
     domain
         .variables
         .iter()
-        .find(|variable| variable.name.to_uppercase() == target)
+        .find(|variable| variable.name.eq_ignore_ascii_case(canonical))
         .map(|variable| variable.name.clone())
 }
 
 pub fn standard_columns(domain: &Domain) -> StandardColumns {
-    StandardColumns {
-        study_id: column_name(domain, "STUDYID"),
-        domain: column_name(domain, "DOMAIN"),
-        rdomain: column_name(domain, "RDOMAIN"),
-        usubjid: column_name(domain, "USUBJID"),
-        idvar: column_name(domain, "IDVAR"),
-        idvarval: column_name(domain, "IDVARVAL"),
-        qnam: column_name(domain, "QNAM"),
-        qlabel: column_name(domain, "QLABEL"),
-        qval: column_name(domain, "QVAL"),
-        qorig: column_name(domain, "QORIG"),
-        qeval: column_name(domain, "QEVAL"),
-        relid: column_name(domain, "RELID"),
-        reltype: column_name(domain, "RELTYPE"),
-        refid: column_name(domain, "REFID"),
-        spec: column_name(domain, "SPEC"),
-        parent: column_name(domain, "PARENT"),
-        level: column_name(domain, "LEVEL"),
+    let mut columns = StandardColumns::default();
+    for variable in &domain.variables {
+        let name = variable.name.as_str();
+        if columns.study_id.is_none() && name.eq_ignore_ascii_case("STUDYID") {
+            columns.study_id = Some(variable.name.clone());
+        } else if columns.domain.is_none() && name.eq_ignore_ascii_case("DOMAIN") {
+            columns.domain = Some(variable.name.clone());
+        } else if columns.rdomain.is_none() && name.eq_ignore_ascii_case("RDOMAIN") {
+            columns.rdomain = Some(variable.name.clone());
+        } else if columns.usubjid.is_none() && name.eq_ignore_ascii_case("USUBJID") {
+            columns.usubjid = Some(variable.name.clone());
+        } else if columns.idvar.is_none() && name.eq_ignore_ascii_case("IDVAR") {
+            columns.idvar = Some(variable.name.clone());
+        } else if columns.idvarval.is_none() && name.eq_ignore_ascii_case("IDVARVAL") {
+            columns.idvarval = Some(variable.name.clone());
+        } else if columns.qnam.is_none() && name.eq_ignore_ascii_case("QNAM") {
+            columns.qnam = Some(variable.name.clone());
+        } else if columns.qlabel.is_none() && name.eq_ignore_ascii_case("QLABEL") {
+            columns.qlabel = Some(variable.name.clone());
+        } else if columns.qval.is_none() && name.eq_ignore_ascii_case("QVAL") {
+            columns.qval = Some(variable.name.clone());
+        } else if columns.qorig.is_none() && name.eq_ignore_ascii_case("QORIG") {
+            columns.qorig = Some(variable.name.clone());
+        } else if columns.qeval.is_none() && name.eq_ignore_ascii_case("QEVAL") {
+            columns.qeval = Some(variable.name.clone());
+        } else if columns.relid.is_none() && name.eq_ignore_ascii_case("RELID") {
+            columns.relid = Some(variable.name.clone());
+        } else if columns.reltype.is_none() && name.eq_ignore_ascii_case("RELTYPE") {
+            columns.reltype = Some(variable.name.clone());
+        } else if columns.refid.is_none() && name.eq_ignore_ascii_case("REFID") {
+            columns.refid = Some(variable.name.clone());
+        } else if columns.spec.is_none() && name.eq_ignore_ascii_case("SPEC") {
+            columns.spec = Some(variable.name.clone());
+        } else if columns.parent.is_none() && name.eq_ignore_ascii_case("PARENT") {
+            columns.parent = Some(variable.name.clone());
+        } else if columns.level.is_none() && name.eq_ignore_ascii_case("LEVEL") {
+            columns.level = Some(variable.name.clone());
+        }
     }
+    columns
 }
 
 pub(crate) fn infer_seq_column(domain: &Domain) -> Option<String> {
@@ -154,30 +183,26 @@ pub(crate) fn infer_seq_column(domain: &Domain) -> Option<String> {
     {
         return Some(expected);
     }
-    let mut candidates: Vec<String> = domain
+    let mut candidates: Vec<&str> = domain
         .variables
         .iter()
-        .map(|var| var.name.clone())
-        .filter(|name| {
-            let upper = name.to_uppercase();
-            upper.ends_with("SEQ") && upper != "SEQ"
-        })
+        .map(|var| var.name.as_str())
+        .filter(|name| ends_with_case_insensitive(name, "SEQ") && !name.eq_ignore_ascii_case("SEQ"))
         .collect();
-    candidates.sort_by_key(|a| a.to_uppercase());
+    candidates.sort_by_key(|name| name.to_ascii_uppercase());
     if let Some(name) = candidates.first() {
-        return Some(name.clone());
+        return Some((*name).to_string());
     }
-    let mut grp_candidates: Vec<String> = domain
+    let mut grp_candidates: Vec<&str> = domain
         .variables
         .iter()
-        .map(|var| var.name.clone())
+        .map(|var| var.name.as_str())
         .filter(|name| {
-            let upper = name.to_uppercase();
-            upper.ends_with("GRPID") && upper != "GRPID"
+            ends_with_case_insensitive(name, "GRPID") && !name.eq_ignore_ascii_case("GRPID")
         })
         .collect();
-    grp_candidates.sort_by_key(|a| a.to_uppercase());
-    grp_candidates.first().cloned()
+    grp_candidates.sort_by_key(|name| name.to_ascii_uppercase());
+    grp_candidates.first().map(|name| (*name).to_string())
 }
 
 pub(crate) fn refid_candidates(domain: &Domain) -> Vec<String> {
@@ -186,8 +211,14 @@ pub(crate) fn refid_candidates(domain: &Domain) -> Vec<String> {
         .iter()
         .map(|var| var.name.clone())
         .filter(|name| {
-            let upper = name.to_uppercase();
-            upper == "REFID" || upper.ends_with("REFID")
+            name.eq_ignore_ascii_case("REFID") || ends_with_case_insensitive(name, "REFID")
         })
         .collect()
+}
+
+fn ends_with_case_insensitive(value: &str, suffix: &str) -> bool {
+    if value.len() < suffix.len() {
+        return false;
+    }
+    value[value.len() - suffix.len()..].eq_ignore_ascii_case(suffix)
 }

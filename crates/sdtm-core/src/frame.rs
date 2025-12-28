@@ -73,14 +73,7 @@ impl DomainFrame {
 
     /// Add a source file to the metadata.
     pub fn add_source_file(&mut self, path: PathBuf) {
-        if let Some(ref mut meta) = self.meta {
-            meta.source_files.push(path);
-        } else {
-            self.meta = Some(DomainFrameMeta {
-                dataset_name: None,
-                source_files: vec![path],
-                base_domain_code: None,
-            });
-        }
+        let meta = self.meta.get_or_insert_with(DomainFrameMeta::default);
+        meta.source_files.push(path);
     }
 }
