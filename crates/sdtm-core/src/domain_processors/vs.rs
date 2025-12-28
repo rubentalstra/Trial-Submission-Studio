@@ -25,8 +25,8 @@ pub(super) fn process_vs(
         && has_column(df, &vsorres)
         && has_column(df, &vsstresc)
     {
-        let orres = string_column(df, &vsorres, Trim::Both)?;
-        let mut stresc = string_column(df, &vsstresc, Trim::Both)?;
+        let orres = string_column(df, &vsorres)?;
+        let mut stresc = string_column(df, &vsstresc)?;
         for idx in 0..df.height() {
             if stresc[idx].is_empty() && !orres[idx].is_empty() {
                 stresc[idx] = orres[idx].clone();
@@ -38,8 +38,8 @@ pub(super) fn process_vs(
         && has_column(df, &vsorresu)
         && has_column(df, &vsstresu)
     {
-        let orresu = string_column(df, &vsorresu, Trim::Both)?;
-        let mut stresu = string_column(df, &vsstresu, Trim::Both)?;
+        let orresu = string_column(df, &vsorresu)?;
+        let mut stresu = string_column(df, &vsstresu)?;
         for idx in 0..df.height() {
             if stresu[idx].is_empty() && !orresu[idx].is_empty() {
                 stresu[idx] = orresu[idx].clone();
@@ -51,8 +51,8 @@ pub(super) fn process_vs(
         && has_column(df, &vsorres)
         && has_column(df, &vsorresu)
     {
-        let orres = string_column(df, &vsorres, Trim::Both)?;
-        let mut orresu = string_column(df, &vsorresu, Trim::Both)?;
+        let orres = string_column(df, &vsorres)?;
+        let mut orresu = string_column(df, &vsorresu)?;
         for idx in 0..df.height() {
             if orres[idx].is_empty() {
                 orresu[idx].clear();
@@ -64,8 +64,8 @@ pub(super) fn process_vs(
         && has_column(df, &vsstresc)
         && has_column(df, &vsstresu)
     {
-        let stresc = string_column(df, &vsstresc, Trim::Both)?;
-        let mut stresu = string_column(df, &vsstresu, Trim::Both)?;
+        let stresc = string_column(df, &vsstresc)?;
+        let mut stresu = string_column(df, &vsstresu)?;
         for idx in 0..df.height() {
             if stresc[idx].is_empty() {
                 stresu[idx].clear();
@@ -77,8 +77,8 @@ pub(super) fn process_vs(
         && has_column(df, &vstest)
         && has_column(df, &vstestcd)
     {
-        let mut test_vals = string_column(df, &vstest, Trim::Both)?;
-        let testcd_vals = string_column(df, &vstestcd, Trim::Both)?;
+        let mut test_vals = string_column(df, &vstest)?;
+        let testcd_vals = string_column(df, &vstestcd)?;
         for idx in 0..df.height() {
             if test_vals[idx].is_empty() && !testcd_vals[idx].is_empty() {
                 test_vals[idx] = testcd_vals[idx].clone();
@@ -91,8 +91,8 @@ pub(super) fn process_vs(
         && has_column(df, &vstestcd)
         && let Some(ct) = ctx.resolve_ct(domain, "VSTESTCD")
     {
-        let test_vals = string_column(df, &vstest, Trim::Both)?;
-        let mut testcd_vals = string_column(df, &vstestcd, Trim::Both)?;
+        let test_vals = string_column(df, &vstest)?;
+        let mut testcd_vals = string_column(df, &vstestcd)?;
         for (testcd, test) in testcd_vals.iter_mut().zip(test_vals.iter()) {
             let existing = testcd.clone();
             let valid =
@@ -111,7 +111,7 @@ pub(super) fn process_vs(
             if let Some(name) = col(domain, col_name)
                 && has_column(df, &name)
             {
-                let mut values = string_column(df, &name, Trim::Both)?;
+                let mut values = string_column(df, &name)?;
                 for value in &mut values {
                     *value = normalize_ct_value_safe(ct, value);
                 }
@@ -123,7 +123,7 @@ pub(super) fn process_vs(
         && let Some(vstestcd) = col(domain, "VSTESTCD")
         && has_column(df, &vstestcd)
     {
-        let mut values = string_column(df, &vstestcd, Trim::Both)?;
+        let mut values = string_column(df, &vstestcd)?;
         for value in &mut values {
             *value = normalize_ct_value_safe(ct, value);
         }
@@ -133,7 +133,7 @@ pub(super) fn process_vs(
         && let Some(vstest) = col(domain, "VSTEST")
         && has_column(df, &vstest)
     {
-        let mut values = string_column(df, &vstest, Trim::Both)?;
+        let mut values = string_column(df, &vstest)?;
         for value in &mut values {
             *value = normalize_ct_value_safe(ct, value);
         }
@@ -145,8 +145,8 @@ pub(super) fn process_vs(
         && let Some(ct) = ctx.resolve_ct(domain, "VSTESTCD")
     {
         let ct_names = ctx.resolve_ct(domain, "VSTEST");
-        let mut test_vals = string_column(df, &vstest, Trim::Both)?;
-        let testcd_vals = string_column(df, &vstestcd, Trim::Both)?;
+        let mut test_vals = string_column(df, &vstest)?;
+        let testcd_vals = string_column(df, &vstestcd)?;
         for (test, testcd) in test_vals.iter_mut().zip(testcd_vals.iter()) {
             if testcd.is_empty() {
                 continue;
@@ -171,27 +171,27 @@ pub(super) fn process_vs(
         && has_column(df, &vstest)
         && has_column(df, &vstestcd)
     {
-        let test_vals = string_column(df, &vstest, Trim::Both)?;
-        let testcd_vals = string_column(df, &vstestcd, Trim::Both)?;
+        let test_vals = string_column(df, &vstest)?;
+        let testcd_vals = string_column(df, &vstestcd)?;
         let orres_vals = col(domain, "VSORRES")
             .filter(|name| has_column(df, name))
-            .and_then(|name| string_column(df, &name, Trim::Both).ok())
+            .and_then(|name| string_column(df, &name).ok())
             .unwrap_or_else(|| vec![String::new(); df.height()]);
         let stresc_vals = col(domain, "VSSTRESC")
             .filter(|name| has_column(df, name))
-            .and_then(|name| string_column(df, &name, Trim::Both).ok())
+            .and_then(|name| string_column(df, &name).ok())
             .unwrap_or_else(|| vec![String::new(); df.height()]);
         let orresu_vals = col(domain, "VSORRESU")
             .filter(|name| has_column(df, name))
-            .and_then(|name| string_column(df, &name, Trim::Both).ok())
+            .and_then(|name| string_column(df, &name).ok())
             .unwrap_or_else(|| vec![String::new(); df.height()]);
         let stresu_vals = col(domain, "VSSTRESU")
             .filter(|name| has_column(df, name))
-            .and_then(|name| string_column(df, &name, Trim::Both).ok())
+            .and_then(|name| string_column(df, &name).ok())
             .unwrap_or_else(|| vec![String::new(); df.height()]);
         let pos_vals = col(domain, "VSPOS")
             .filter(|name| has_column(df, name))
-            .and_then(|name| string_column(df, &name, Trim::Both).ok())
+            .and_then(|name| string_column(df, &name).ok())
             .unwrap_or_else(|| vec![String::new(); df.height()]);
         let mut keep = vec![true; df.height()];
         for (idx, keep_value) in keep.iter_mut().enumerate().take(df.height()) {
@@ -210,7 +210,7 @@ pub(super) fn process_vs(
     if let (Some(vsorres), Some(vsstresn)) = (col(domain, "VSORRES"), col(domain, "VSSTRESN"))
         && has_column(df, &vsorres)
     {
-        let orres_vals = string_column(df, &vsorres, Trim::Both)?;
+        let orres_vals = string_column(df, &vsorres)?;
         let numeric_vals = orres_vals
             .iter()
             .map(|value| parse_f64(value))
@@ -224,11 +224,11 @@ pub(super) fn process_vs(
         && has_column(df, &vstestcd)
     {
         let mut flags = vec![String::new(); df.height()];
-        let usub_vals = string_column(df, &usubjid, Trim::Both)?;
-        let test_vals = string_column(df, &vstestcd, Trim::Both)?;
+        let usub_vals = string_column(df, &usubjid)?;
+        let test_vals = string_column(df, &vstestcd)?;
         let pos_vals = col(domain, "VSPOS")
             .filter(|name| has_column(df, name))
-            .and_then(|name| string_column(df, &name, Trim::Both).ok());
+            .and_then(|name| string_column(df, &name).ok());
         let mut last_idx: HashMap<String, usize> = HashMap::new();
         for idx in 0..df.height() {
             let mut key = format!("{}|{}", usub_vals[idx], test_vals[idx]);
@@ -246,7 +246,7 @@ pub(super) fn process_vs(
     if let Some(vseltm) = col(domain, "VSELTM")
         && has_column(df, &vseltm)
     {
-        let values = string_column(df, &vseltm, Trim::Both)?
+        let values = string_column(df, &vseltm)?
             .into_iter()
             .map(|value| {
                 if is_valid_time(&value) {

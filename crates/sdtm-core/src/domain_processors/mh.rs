@@ -21,11 +21,11 @@ pub(super) fn process_mh(
     if let Some(mhterm) = col(domain, "MHTERM")
         && has_column(df, &mhterm)
     {
-        let mut terms = string_column(df, &mhterm, Trim::Both)?;
+        let mut terms = string_column(df, &mhterm)?;
         if let Some(mhdecod) = col(domain, "MHDECOD")
             && has_column(df, &mhdecod)
         {
-            let decods = string_column(df, &mhdecod, Trim::Both)?;
+            let decods = string_column(df, &mhdecod)?;
             for idx in 0..df.height() {
                 if terms[idx].is_empty() && !decods[idx].is_empty() {
                     terms[idx] = decods[idx].clone();
@@ -40,7 +40,7 @@ pub(super) fn process_mh(
         if let Some(name) = col(domain, col_name)
             && has_column(df, &name)
         {
-            let values = string_column(df, &name, Trim::Both)?
+            let values = string_column(df, &name)?
                 .into_iter()
                 .map(|value| normalize_iso8601(&value))
                 .collect();
@@ -50,7 +50,7 @@ pub(super) fn process_mh(
     if let Some(mhenrf) = col(domain, "MHENRF")
         && has_column(df, &mhenrf)
     {
-        let values = string_column(df, &mhenrf, Trim::Both)?
+        let values = string_column(df, &mhenrf)?
             .into_iter()
             .map(|value| {
                 let upper = value.to_uppercase();

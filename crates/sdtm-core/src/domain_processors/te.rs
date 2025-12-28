@@ -16,7 +16,7 @@ pub(super) fn process_te(
         if let Some(name) = col(domain, col_name)
             && has_column(df, &name)
         {
-            let values = string_column(df, &name, Trim::Both)?;
+            let values = string_column(df, &name)?;
             set_string_column(df, &name, values)?;
         }
     }

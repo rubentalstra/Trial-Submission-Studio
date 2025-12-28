@@ -30,19 +30,13 @@ pub(super) fn col(domain: &Domain, name: &str) -> Option<String> {
 pub(super) fn has_column(df: &DataFrame, name: &str) -> bool {
     df.column(name).is_ok()
 }
-pub(super) enum Trim {
-    Both,
-}
 
-pub(super) fn string_column(df: &DataFrame, name: &str, trim: Trim) -> Result<Vec<String>> {
+pub(super) fn string_column(df: &DataFrame, name: &str) -> Result<Vec<String>> {
     let series = df.column(name)?;
     let mut values = Vec::with_capacity(df.height());
     for idx in 0..df.height() {
-        let mut value = any_to_string(series.get(idx).unwrap_or(AnyValue::Null));
-        if matches!(trim, Trim::Both) {
-            value = value.trim().to_string();
-        }
-        values.push(value);
+        let value = any_to_string(series.get(idx).unwrap_or(AnyValue::Null));
+        values.push(value.trim().to_string());
     }
     Ok(values)
 }
@@ -117,7 +111,7 @@ pub(super) fn deduplicate<S: AsRef<str>>(df: &mut DataFrame, keys: &[S]) -> Resu
         if !has_column(df, key) {
             continue;
         }
-        key_columns.push(string_column(df, key, Trim::Both)?);
+        key_columns.push(string_column(df, key)?);
     }
     if key_columns.is_empty() {
         return Ok(());
@@ -151,7 +145,7 @@ pub(super) fn apply_map_upper(
     if !has_column(df, column) {
         return Ok(());
     }
-    let values = string_column(df, column, Trim::Both)?
+    let values = string_column(df, column)?
         .into_iter()
         .map(|value| {
             let upper = value.to_uppercase();
@@ -223,7 +217,7 @@ pub(super) fn drop_placeholder_rows(
     if !has_column(df, &usubjid_col) {
         return Ok(());
     }
-    let mut usubjid_vals = string_column(df, &usubjid_col, Trim::Both)?;
+    let mut usubjid_vals = string_column(df, &usubjid_col)?;
     for value in &mut usubjid_vals {
         *value = strip_quotes(value);
     }
@@ -236,10 +230,10 @@ pub(super) fn drop_placeholder_rows(
         if let Some(subjid_col) = col(domain, "SUBJID")
             && has_column(df, &subjid_col)
         {
-            let subjid_vals = string_column(df, &subjid_col, Trim::Both)?;
+            let subjid_vals = string_column(df, &subjid_col)?;
             let studyid_vals = col(domain, "STUDYID")
                 .filter(|name| has_column(df, name))
-                .and_then(|name| string_column(df, &name, Trim::Both).ok())
+                .and_then(|name| string_column(df, &name).ok())
                 .unwrap_or_else(|| vec![String::new(); df.height()]);
             for idx in 0..df.height() {
                 if !missing[idx] {
@@ -289,7 +283,7 @@ pub(super) fn drop_placeholder_rows(
     if let Some(studyid_col) = col(domain, "STUDYID")
         && has_column(df, &studyid_col)
     {
-        let study_vals = string_column(df, &studyid_col, Trim::Both)?;
+        let study_vals = string_column(df, &studyid_col)?;
         if let Some(found) = study_vals.iter().find(|value| !value.is_empty()) {
             study_id = strip_quotes(found);
         }
@@ -299,7 +293,7 @@ pub(super) fn drop_placeholder_rows(
     }
     if !study_id.is_empty() {
         let prefix = format!("{study_id}-");
-        let mut updated = string_column(df, &usubjid_col, Trim::Both)?;
+        let mut updated = string_column(df, &usubjid_col)?;
         for value in &mut updated {
             if !value.is_empty() && !value.starts_with(&prefix) {
                 *value = format!("{prefix}{value}");
@@ -327,7 +321,7 @@ pub(super) fn ensure_date_pair_order(
     }
 
     // Normalize start dates (trim whitespace only)
-    let start_vals = string_column(df, start_col, Trim::Both)?
+    let start_vals = string_column(df, start_col)?
         .into_iter()
         .map(|value| normalize_iso8601(&value))
         .collect::<Vec<_>>();
@@ -337,7 +331,7 @@ pub(super) fn ensure_date_pair_order(
         && has_column(df, end_col)
     {
         // Normalize end dates (trim whitespace only)
-        let end_vals = string_column(df, end_col, Trim::Both)?
+        let end_vals = string_column(df, end_col)?
             .into_iter()
             .map(|value| normalize_iso8601(&value))
             .collect::<Vec<_>>();
@@ -421,7 +415,7 @@ pub(super) fn compute_study_day(
         return Ok(());
     }
 
-    let dtc_vals = string_column(df, dtc_col, Trim::Both)?;
+    let dtc_vals = string_column(df, dtc_col)?;
 
     // Build baseline (reference) dates from context or column
     let mut baseline_vals: Vec<Option<NaiveDate>> = vec![None; df.height()];
@@ -429,7 +423,7 @@ pub(super) fn compute_study_day(
         (ctx.reference_starts, col(domain, "USUBJID"))
         && has_column(df, &usubjid_col)
     {
-        let usub_vals = string_column(df, &usubjid_col, Trim::Both)?;
+        let usub_vals = string_column(df, &usubjid_col)?;
         for idx in 0..df.height() {
             if let Some(start) = reference_starts.get(&usub_vals[idx]) {
                 // parse_date returns None for partial dates
@@ -440,7 +434,7 @@ pub(super) fn compute_study_day(
 
     // Fallback to reference column if no context reference starts found
     if baseline_vals.iter().all(|value| value.is_none()) && has_column(df, reference_col) {
-        let ref_vals = string_column(df, reference_col, Trim::Both)?;
+        let ref_vals = string_column(df, reference_col)?;
         for idx in 0..df.height() {
             baseline_vals[idx] = parse_date(&ref_vals[idx]);
         }

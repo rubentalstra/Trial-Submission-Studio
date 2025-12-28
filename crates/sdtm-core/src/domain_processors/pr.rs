@@ -16,7 +16,7 @@ pub(super) fn process_pr(
         if let Some(name) = col(domain, visit_col)
             && has_column(df, &name)
         {
-            let values = string_column(df, &name, Trim::Both)?;
+            let values = string_column(df, &name)?;
             set_string_column(df, &name, values)?;
         }
     }
@@ -33,33 +33,33 @@ pub(super) fn process_pr(
     if let Some(prdur) = col(domain, "PRDUR")
         && has_column(df, &prdur)
     {
-        let values = string_column(df, &prdur, Trim::Both)?;
+        let values = string_column(df, &prdur)?;
         set_string_column(df, &prdur, values)?;
     }
     if let Some(prrftdtc) = col(domain, "PRRFTDTC")
         && has_column(df, &prrftdtc)
     {
-        let values = string_column(df, &prrftdtc, Trim::Both)?;
+        let values = string_column(df, &prrftdtc)?;
         set_string_column(df, &prrftdtc, values)?;
     }
     for col_name in ["PRTPTREF", "PRTPT", "PRTPTNUM", "PRELTM"] {
         if let Some(name) = col(domain, col_name)
             && has_column(df, &name)
         {
-            let values = string_column(df, &name, Trim::Both)?;
+            let values = string_column(df, &name)?;
             set_string_column(df, &name, values)?;
         }
     }
     if let Some(prdecod) = col(domain, "PRDECOD") {
         if has_column(df, &prdecod) {
-            let mut values = string_column(df, &prdecod, Trim::Both)?
+            let mut values = string_column(df, &prdecod)?
                 .into_iter()
                 .map(|value| value.to_uppercase())
                 .collect::<Vec<_>>();
             if let Some(usubjid) = col(domain, "USUBJID")
                 && has_column(df, &usubjid)
             {
-                let prefixes = string_column(df, &usubjid, Trim::Both)?
+                let prefixes = string_column(df, &usubjid)?
                     .into_iter()
                     .map(|value| value.split('-').next().unwrap_or("").trim().to_uppercase())
                     .collect::<Vec<_>>();
@@ -72,7 +72,7 @@ pub(super) fn process_pr(
             set_string_column(df, &prdecod, values)?;
         }
         if let Some(ct) = ctx.resolve_ct(domain, "PRDECOD") {
-            let values = string_column(df, &prdecod, Trim::Both)?
+            let values = string_column(df, &prdecod)?
                 .into_iter()
                 .map(|value| normalize_ct_value_safe(ct, &value))
                 .collect::<Vec<_>>();
@@ -82,7 +82,7 @@ pub(super) fn process_pr(
     if let Some(epoch) = col(domain, "EPOCH")
         && has_column(df, &epoch)
     {
-        let values = string_column(df, &epoch, Trim::Both)?;
+        let values = string_column(df, &epoch)?;
         set_string_column(df, &epoch, values)?;
     }
     let timing_defaults = [
@@ -93,7 +93,7 @@ pub(super) fn process_pr(
     for (col_name, default) in timing_defaults {
         if let Some(name) = col(domain, col_name) {
             let mut values = if has_column(df, &name) {
-                string_column(df, &name, Trim::Both)?
+                string_column(df, &name)?
             } else {
                 vec![String::new(); df.height()]
             };

@@ -19,7 +19,7 @@ pub(super) fn process_qs(
         if let Some(name) = col(domain, col_name)
             && has_column(df, &name)
         {
-            let values = string_column(df, &name, Trim::Both)?;
+            let values = string_column(df, &name)?;
             set_string_column(df, &name, values)?;
         }
     }
@@ -29,21 +29,21 @@ pub(super) fn process_qs(
     if let Some(qspgars) = col(domain, "QSPGARS")
         && has_column(df, &qspgars)
     {
-        pga_score = Some(string_column(df, &qspgars, Trim::Both)?);
+        pga_score = Some(string_column(df, &qspgars)?);
     }
     if pga_score.is_none()
         && let Some(qspgarscd) = col(domain, "QSPGARSCD")
         && has_column(df, &qspgarscd)
     {
-        pga_score = Some(string_column(df, &qspgarscd, Trim::Both)?);
+        pga_score = Some(string_column(df, &qspgarscd)?);
     }
     if pga_score.is_none()
         && let (Some(qsorres), Some(qsgrpid)) = (col(domain, "QSORRES"), col(domain, "QSGRPID"))
         && has_column(df, &qsorres)
         && has_column(df, &qsgrpid)
     {
-        let orres_vals = string_column(df, &qsorres, Trim::Both)?;
-        let grpid_vals = string_column(df, &qsgrpid, Trim::Both)?;
+        let orres_vals = string_column(df, &qsorres)?;
+        let grpid_vals = string_column(df, &qsgrpid)?;
         let all_orres_empty = orres_vals.iter().all(|value| value.is_empty());
         let any_grpid = grpid_vals.iter().any(|value| !value.is_empty());
         if all_orres_empty && any_grpid {
@@ -55,7 +55,7 @@ pub(super) fn process_qs(
     if let Some(score) = pga_score {
         if let Some(qsorres) = col(domain, "QSORRES") {
             let mut orres_vals = if has_column(df, &qsorres) {
-                string_column(df, &qsorres, Trim::Both)?
+                string_column(df, &qsorres)?
             } else {
                 vec![String::new(); df.height()]
             };
@@ -76,10 +76,10 @@ pub(super) fn process_qs(
         if let Some(qstestcd) = col(domain, "QSTESTCD")
             && has_column(df, &qstestcd)
         {
-            let mut values = string_column(df, &qstestcd, Trim::Both)?;
+            let mut values = string_column(df, &qstestcd)?;
             if let Some(usubjid) = col(domain, "USUBJID") {
                 if has_column(df, &usubjid) {
-                    let usub_vals = string_column(df, &usubjid, Trim::Both)?;
+                    let usub_vals = string_column(df, &usubjid)?;
                     for idx in 0..df.height() {
                         if values[idx].is_empty() {
                             values[idx] = "PGAS".to_string();
@@ -108,7 +108,7 @@ pub(super) fn process_qs(
         if let Some(qstest) = col(domain, "QSTEST")
             && has_column(df, &qstest)
         {
-            let mut values = string_column(df, &qstest, Trim::Both)?;
+            let mut values = string_column(df, &qstest)?;
             for value in &mut values {
                 if value.is_empty() {
                     *value = "PHYSICIAN GLOBAL ASSESSMENT".to_string();
@@ -119,7 +119,7 @@ pub(super) fn process_qs(
         if let Some(qscat) = col(domain, "QSCAT")
             && has_column(df, &qscat)
         {
-            let mut values = string_column(df, &qscat, Trim::Both)?;
+            let mut values = string_column(df, &qscat)?;
             for value in &mut values {
                 if value.is_empty() {
                     *value = "PGI".to_string();
@@ -133,8 +133,8 @@ pub(super) fn process_qs(
         && has_column(df, &qsstresc)
         && has_column(df, &qsorres)
     {
-        let orres = string_column(df, &qsorres, Trim::Both)?;
-        let mut stresc = string_column(df, &qsstresc, Trim::Both)?;
+        let orres = string_column(df, &qsorres)?;
+        let mut stresc = string_column(df, &qsstresc)?;
         for idx in 0..df.height() {
             if stresc[idx].is_empty() {
                 stresc[idx] = orres[idx].clone();
@@ -145,7 +145,7 @@ pub(super) fn process_qs(
     if let Some(qslobxfl) = col(domain, "QSLOBXFL")
         && has_column(df, &qslobxfl)
     {
-        let values = string_column(df, &qslobxfl, Trim::Both)?
+        let values = string_column(df, &qslobxfl)?
             .into_iter()
             .map(|value| if value == "N" { "".to_string() } else { value })
             .collect();
@@ -154,7 +154,7 @@ pub(super) fn process_qs(
     if let Some(qsdtc) = col(domain, "QSDTC")
         && has_column(df, &qsdtc)
     {
-        let values = string_column(df, &qsdtc, Trim::Both)?
+        let values = string_column(df, &qsdtc)?
             .into_iter()
             .map(|value| normalize_iso8601(&value))
             .collect();

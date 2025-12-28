@@ -15,7 +15,7 @@ pub(super) fn process_cm(
     if let Some(cmdosu) = col(domain, "CMDOSU")
         && has_column(df, &cmdosu)
     {
-        let values = string_column(df, &cmdosu, Trim::Both)?
+        let values = string_column(df, &cmdosu)?
             .into_iter()
             .map(|v| v.to_lowercase())
             .collect();
@@ -24,7 +24,7 @@ pub(super) fn process_cm(
     if let Some(cmdur) = col(domain, "CMDUR")
         && has_column(df, &cmdur)
     {
-        let values = string_column(df, &cmdur, Trim::Both)?;
+        let values = string_column(df, &cmdur)?;
         set_string_column(df, &cmdur, values)?;
     }
     let key_cols = ["USUBJID", "CMTRT", "CMSTDTC", "CMENDTC"]
@@ -40,7 +40,7 @@ pub(super) fn process_cm(
     if let Some(cmdostxt) = col(domain, "CMDOSTXT")
         && has_column(df, &cmdostxt)
     {
-        let values = string_column(df, &cmdostxt, Trim::Both)?
+        let values = string_column(df, &cmdostxt)?
             .into_iter()
             .map(|value| {
                 let trimmed = value.trim();
@@ -116,7 +116,7 @@ pub(super) fn process_cm(
     if let Some(cmdosu) = col(domain, "CMDOSU")
         && has_column(df, &cmdosu)
     {
-        let values = string_column(df, &cmdosu, Trim::Both)?
+        let values = string_column(df, &cmdosu)?
             .into_iter()
             .map(|value| replace_unknown(&value, ""))
             .collect();

@@ -18,7 +18,7 @@ pub(super) fn process_ie(
         if let Some(name) = col(domain, col_name)
             && has_column(df, &name)
         {
-            let values = string_column(df, &name, Trim::Both)?;
+            let values = string_column(df, &name)?;
             set_string_column(df, &name, values)?;
         }
     }
@@ -40,8 +40,8 @@ pub(super) fn process_ie(
         && has_column(df, &ieorres)
         && has_column(df, &iestresc)
     {
-        let orres = string_column(df, &ieorres, Trim::Both)?;
-        let mut stresc = string_column(df, &iestresc, Trim::Both)?;
+        let orres = string_column(df, &ieorres)?;
+        let mut stresc = string_column(df, &iestresc)?;
         for idx in 0..df.height() {
             if stresc[idx].is_empty() && !orres[idx].is_empty() {
                 stresc[idx] = orres[idx].clone();
@@ -53,8 +53,8 @@ pub(super) fn process_ie(
         && has_column(df, &iecat)
         && has_column(df, &iestresc)
     {
-        let cat_vals = string_column(df, &iecat, Trim::Both)?;
-        let mut stresc_vals = string_column(df, &iestresc, Trim::Both)?;
+        let cat_vals = string_column(df, &iecat)?;
+        let mut stresc_vals = string_column(df, &iestresc)?;
         for idx in 0..df.height() {
             if cat_vals[idx].eq_ignore_ascii_case("EXCLUSION") && stresc_vals[idx].trim().is_empty()
             {
@@ -66,7 +66,7 @@ pub(super) fn process_ie(
     if let (Some(iedtc), Some(iedy)) = (col(domain, "IEDTC"), col(domain, "IEDY"))
         && has_column(df, &iedtc)
     {
-        let values = string_column(df, &iedtc, Trim::Both)?;
+        let values = string_column(df, &iedtc)?;
         set_string_column(df, &iedtc, values)?;
         compute_study_day(domain, df, &iedtc, &iedy, ctx, "RFSTDTC")?;
         let numeric = numeric_column_f64(df, &iedy)?;

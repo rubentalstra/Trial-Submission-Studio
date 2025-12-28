@@ -27,8 +27,8 @@ pub(super) fn process_da(
         && has_column(df, &dastat)
         && has_column(df, &dareasnd)
     {
-        let reason_vals = string_column(df, &dareasnd, Trim::Both)?;
-        let mut stat_vals = string_column(df, &dastat, Trim::Both)?;
+        let reason_vals = string_column(df, &dareasnd)?;
+        let mut stat_vals = string_column(df, &dastat)?;
         for idx in 0..df.height() {
             if stat_vals[idx].is_empty() && !reason_vals[idx].is_empty() {
                 stat_vals[idx] = "NOT DONE".to_string();
@@ -40,8 +40,8 @@ pub(super) fn process_da(
         && has_column(df, &daorresu)
         && has_column(df, &daorres)
     {
-        let orres = string_column(df, &daorres, Trim::Both)?;
-        let mut orresu = string_column(df, &daorresu, Trim::Both)?;
+        let orres = string_column(df, &daorres)?;
+        let mut orresu = string_column(df, &daorresu)?;
         for (idx, value) in orres.iter().enumerate() {
             if value.is_empty() {
                 orresu[idx].clear();
@@ -53,8 +53,8 @@ pub(super) fn process_da(
         && has_column(df, &daorres)
         && has_column(df, &dastresc)
     {
-        let orres = string_column(df, &daorres, Trim::Both)?;
-        let mut stresc = string_column(df, &dastresc, Trim::Both)?;
+        let orres = string_column(df, &daorres)?;
+        let mut stresc = string_column(df, &dastresc)?;
         for (idx, value) in orres.iter().enumerate() {
             if !value.is_empty() && stresc[idx].is_empty() {
                 stresc[idx] = value.clone();
@@ -65,7 +65,7 @@ pub(super) fn process_da(
     if let (Some(dastresc), Some(dastresn)) = (col(domain, "DASTRESC"), col(domain, "DASTRESN"))
         && has_column(df, &dastresc)
     {
-        let stresc = string_column(df, &dastresc, Trim::Both)?;
+        let stresc = string_column(df, &dastresc)?;
         let mut stresn_vals: Vec<Option<f64>> = vec![None; df.height()];
         if has_column(df, &dastresn) {
             stresn_vals = numeric_column_f64(df, &dastresn)?;

@@ -15,14 +15,14 @@ pub(super) fn process_ae(
     if let Some(aedur) = col(domain, "AEDUR")
         && has_column(df, &aedur)
     {
-        let values = string_column(df, &aedur, Trim::Both)?;
+        let values = string_column(df, &aedur)?;
         set_string_column(df, &aedur, values)?;
     }
     for visit_col in ["VISIT", "VISITNUM"] {
         if let Some(name) = col(domain, visit_col)
             && has_column(df, &name)
         {
-            let values = string_column(df, &name, Trim::Both)?;
+            let values = string_column(df, &name)?;
             set_string_column(df, &name, values)?;
         }
     }
@@ -31,7 +31,7 @@ pub(super) fn process_ae(
         if let Some(end) = col(domain, "AEENDTC")
             && has_column(df, &end)
         {
-            let end_vals = string_column(df, &end, Trim::Both)?;
+            let end_vals = string_column(df, &end)?;
             set_string_column(df, &end, end_vals)?;
         }
         if let Some(aestdy) = col(domain, "AESTDY") {
@@ -52,8 +52,8 @@ pub(super) fn process_ae(
         && has_column(df, &aedecod)
         && has_column(df, &aeterm)
     {
-        let mut decod_vals = string_column(df, &aedecod, Trim::Both)?;
-        let term_vals = string_column(df, &aeterm, Trim::Both)?;
+        let mut decod_vals = string_column(df, &aedecod)?;
+        let term_vals = string_column(df, &aeterm)?;
         for idx in 0..df.height() {
             if decod_vals[idx].is_empty() && !term_vals[idx].is_empty() {
                 decod_vals[idx] = term_vals[idx].clone();
@@ -174,15 +174,15 @@ pub(super) fn process_ae(
         let aeacn_col = col(domain, "AEACN").filter(|name| has_column(df, name));
         let aeacnoth_col = col(domain, "AEACNOTH").filter(|name| has_column(df, name));
         if ct_dev.is_some() {
-            let mut dev_vals = string_column(df, &aeacndev, Trim::Both)?;
+            let mut dev_vals = string_column(df, &aeacndev)?;
             let mut acn_vals = aeacn_col
                 .as_ref()
-                .map(|name| string_column(df, name, Trim::Both))
+                .map(|name| string_column(df, name))
                 .transpose()?
                 .unwrap_or_else(|| vec![String::new(); df.height()]);
             let mut oth_vals = aeacnoth_col
                 .as_ref()
-                .map(|name| string_column(df, name, Trim::Both))
+                .map(|name| string_column(df, name))
                 .transpose()?
                 .unwrap_or_else(|| vec![String::new(); df.height()]);
             for idx in 0..df.height() {

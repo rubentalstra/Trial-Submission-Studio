@@ -25,7 +25,7 @@ pub(super) fn process_dm(
     if let Some(ageu) = col(domain, "AGEU")
         && has_column(df, &ageu)
     {
-        let values = string_column(df, &ageu, Trim::Both)?
+        let values = string_column(df, &ageu)?
             .into_iter()
             .map(|value| {
                 let upper = value.to_uppercase();
@@ -40,13 +40,13 @@ pub(super) fn process_dm(
     if let Some(country) = col(domain, "COUNTRY")
         && has_column(df, &country)
     {
-        let values = string_column(df, &country, Trim::Both)?;
+        let values = string_column(df, &country)?;
         set_string_column(df, &country, values)?;
     }
     if let Some(ethnic) = col(domain, "ETHNIC")
         && has_column(df, &ethnic)
     {
-        let values = string_column(df, &ethnic, Trim::Both)?
+        let values = string_column(df, &ethnic)?
             .into_iter()
             .map(|value| {
                 let upper = value.to_uppercase();
@@ -62,7 +62,7 @@ pub(super) fn process_dm(
     if let Some(race) = col(domain, "RACE")
         && has_column(df, &race)
     {
-        let values = string_column(df, &race, Trim::Both)?
+        let values = string_column(df, &race)?
             .into_iter()
             .map(|value| {
                 let upper = value.to_uppercase();
@@ -79,7 +79,7 @@ pub(super) fn process_dm(
     if let Some(sex) = col(domain, "SEX")
         && has_column(df, &sex)
     {
-        let values = string_column(df, &sex, Trim::Both)?
+        let values = string_column(df, &sex)?
             .into_iter()
             .map(|value| {
                 let upper = value.to_uppercase();
@@ -100,7 +100,7 @@ pub(super) fn process_dm(
         if let Some(name) = col(domain, date_col)
             && has_column(df, &name)
         {
-            let values = string_column(df, &name, Trim::Both)?;
+            let values = string_column(df, &name)?;
             set_string_column(df, &name, values)?;
         }
     }

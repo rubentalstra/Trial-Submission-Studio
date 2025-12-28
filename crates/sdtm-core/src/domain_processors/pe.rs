@@ -27,8 +27,8 @@ pub(super) fn process_pe(
         && has_column(df, &peorres)
         && has_column(df, &pestresc)
     {
-        let orres = string_column(df, &peorres, Trim::Both)?;
-        let mut stresc = string_column(df, &pestresc, Trim::Both)?;
+        let orres = string_column(df, &peorres)?;
+        let mut stresc = string_column(df, &pestresc)?;
         for idx in 0..df.height() {
             if stresc[idx].is_empty() && !orres[idx].is_empty() {
                 stresc[idx] = orres[idx].clone();
@@ -44,7 +44,7 @@ pub(super) fn process_pe(
     if let Some(epoch) = col(domain, "EPOCH")
         && has_column(df, &epoch)
     {
-        let values = string_column(df, &epoch, Trim::Both)?;
+        let values = string_column(df, &epoch)?;
         set_string_column(df, &epoch, values)?;
     }
     Ok(())

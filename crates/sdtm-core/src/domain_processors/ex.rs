@@ -15,15 +15,15 @@ pub(super) fn process_ex(
     if let Some(extrt) = col(domain, "EXTRT")
         && has_column(df, &extrt)
     {
-        let values = string_column(df, &extrt, Trim::Both)?;
+        let values = string_column(df, &extrt)?;
         set_string_column(df, &extrt, values)?;
     }
     if let (Some(extrt), Some(exeltm)) = (col(domain, "EXTRT"), col(domain, "EXELTM"))
         && has_column(df, &extrt)
         && has_column(df, &exeltm)
     {
-        let mut extrt_vals = string_column(df, &extrt, Trim::Both)?;
-        let mut exeltm_vals = string_column(df, &exeltm, Trim::Both)?;
+        let mut extrt_vals = string_column(df, &extrt)?;
+        let mut exeltm_vals = string_column(df, &exeltm)?;
         for idx in 0..df.height() {
             let has_letters = exeltm_vals[idx].chars().any(|c| c.is_ascii_alphabetic());
             if extrt_vals[idx].is_empty() && !exeltm_vals[idx].is_empty() && has_letters {
@@ -38,7 +38,7 @@ pub(super) fn process_ex(
         if let Some(name) = col(domain, date_col)
             && has_column(df, &name)
         {
-            let values = string_column(df, &name, Trim::Both)?
+            let values = string_column(df, &name)?
                 .into_iter()
                 .map(|value| normalize_iso8601(&value))
                 .collect();
@@ -64,7 +64,7 @@ pub(super) fn process_ex(
         if let Some(name) = col(domain, col_name)
             && has_column(df, &name)
         {
-            let values = string_column(df, &name, Trim::Both)?;
+            let values = string_column(df, &name)?;
             set_string_column(df, &name, values)?;
         }
     }

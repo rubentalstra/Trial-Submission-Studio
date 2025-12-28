@@ -22,7 +22,7 @@ pub(super) fn process_ts(
         if let Some(name) = col(domain, col_name)
             && has_column(df, &name)
         {
-            let values = string_column(df, &name, Trim::Both)?;
+            let values = string_column(df, &name)?;
             set_string_column(df, &name, values)?;
         }
     }
@@ -30,7 +30,7 @@ pub(super) fn process_ts(
         && has_column(df, &tsparmcd)
         && let Some(ct) = ctx.resolve_ct(domain, "TSPARMCD")
     {
-        let mut values = string_column(df, &tsparmcd, Trim::Both)?;
+        let mut values = string_column(df, &tsparmcd)?;
         for value in &mut values {
             *value = normalize_ct_value_safe(ct, value);
         }
@@ -40,7 +40,7 @@ pub(super) fn process_ts(
         && has_column(df, &tsparm)
         && let Some(ct) = ctx.resolve_ct(domain, "TSPARM")
     {
-        let mut values = string_column(df, &tsparm, Trim::Both)?;
+        let mut values = string_column(df, &tsparm)?;
         for value in &mut values {
             *value = normalize_ct_value_safe(ct, value);
         }
@@ -50,7 +50,7 @@ pub(super) fn process_ts(
         && has_column(df, &tsvcdref)
         && let Some(ct) = ctx.resolve_ct(domain, "TSVCDREF")
     {
-        let mut values = string_column(df, &tsvcdref, Trim::Both)?;
+        let mut values = string_column(df, &tsvcdref)?;
         for value in &mut values {
             *value = normalize_ct_value_safe(ct, value);
         }

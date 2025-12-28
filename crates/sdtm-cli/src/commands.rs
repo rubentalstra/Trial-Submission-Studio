@@ -10,7 +10,6 @@ use tracing::{debug, info, info_span, warn};
 use sdtm_core::dedupe::dedupe_frames_by_identifiers;
 use sdtm_core::domain_sets::{build_report_domains, domain_map_by_code, is_supporting_domain};
 use sdtm_core::frame::DomainFrame;
-use sdtm_core::frame_utils::insert_frame;
 use sdtm_core::processing_context::ProcessingOptions;
 use sdtm_core::relationships::build_relationship_frames;
 use sdtm_core::study_pipeline_context::StudyPipelineContext;
@@ -461,4 +460,30 @@ fn derive_study_id(study_folder: &Path) -> String {
     } else {
         name.to_string()
     }
+}
+
+fn insert_frame(map: &mut BTreeMap<String, DomainFrame>, frame: DomainFrame) -> Result<()> {
+    let key = frame.domain_code.to_uppercase();
+    if let Some(existing) = map.get_mut(&key) {
+        let DomainFrame { data, meta, .. } = frame;
+        existing
+            .data
+            .vstack_mut(&data)
+            .with_context(|| format!("merge {key} frames"))?;
+        if let Some(meta) = meta {
+            for source in meta.source_files {
+                existing.add_source_file(source);
+            }
+        }
+    } else {
+        map.insert(
+            key.clone(),
+            DomainFrame {
+                domain_code: key,
+                data: frame.data,
+                meta: frame.meta,
+            },
+        );
+    }
+    Ok(())
 }

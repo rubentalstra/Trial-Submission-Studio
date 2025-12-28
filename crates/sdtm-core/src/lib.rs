@@ -7,7 +7,6 @@ pub mod domain_sets;
 pub mod domain_utils;
 pub mod frame;
 pub mod frame_builder;
-pub mod frame_utils;
 pub mod processing_context;
 pub mod processor;
 pub mod relationships;

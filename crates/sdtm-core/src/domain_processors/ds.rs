@@ -79,7 +79,7 @@ pub(super) fn process_ds(
         if let Some(name) = col(domain, col_name)
             && has_column(df, &name)
         {
-            let values = string_column(df, &name, Trim::Both)?;
+            let values = string_column(df, &name)?;
             set_string_column(df, &name, values)?;
         }
     }
@@ -91,9 +91,9 @@ pub(super) fn process_ds(
         && has_column(df, &dsdecod)
         && has_column(df, &dsterm)
     {
-        let usub_vals = string_column(df, &usubjid, Trim::Both)?;
-        let mut decod_vals = string_column(df, &dsdecod, Trim::Both)?;
-        let mut term_vals = string_column(df, &dsterm, Trim::Both)?;
+        let usub_vals = string_column(df, &usubjid)?;
+        let mut decod_vals = string_column(df, &dsdecod)?;
+        let mut term_vals = string_column(df, &dsterm)?;
         for idx in 0..df.height() {
             let site_part = usub_vals[idx]
                 .split('-')
@@ -128,8 +128,8 @@ pub(super) fn process_ds(
         && has_column(df, &dscat)
         && has_column(df, &dsterm)
     {
-        let dscat_vals = string_column(df, &dscat, Trim::Both)?;
-        let mut dsterm_vals = string_column(df, &dsterm, Trim::Both)?;
+        let dscat_vals = string_column(df, &dscat)?;
+        let mut dsterm_vals = string_column(df, &dsterm)?;
         let looks_like_site: Vec<bool> = dsterm_vals
             .iter()
             .map(|value| value.to_uppercase().contains("SITE"))
@@ -166,8 +166,8 @@ pub(super) fn process_ds(
         && has_column(df, &dsdecod)
         && has_column(df, &dsterm)
     {
-        let mut decod_vals = string_column(df, &dsdecod, Trim::Both)?;
-        let term_vals = string_column(df, &dsterm, Trim::Both)?;
+        let mut decod_vals = string_column(df, &dsdecod)?;
+        let term_vals = string_column(df, &dsterm)?;
         for idx in 0..df.height() {
             if !decod_vals[idx].is_empty() {
                 continue;
@@ -189,8 +189,8 @@ pub(super) fn process_ds(
         && has_column(df, &dsterm)
         && has_column(df, &dsdecod)
     {
-        let mut term_vals = string_column(df, &dsterm, Trim::Both)?;
-        let decod_vals = string_column(df, &dsdecod, Trim::Both)?;
+        let mut term_vals = string_column(df, &dsterm)?;
+        let decod_vals = string_column(df, &dsdecod)?;
         for (term, decod) in term_vals.iter_mut().zip(decod_vals.iter()) {
             let term_upper = term.to_uppercase();
             if term_upper.contains("SITE") && !decod.is_empty() {
@@ -203,8 +203,8 @@ pub(super) fn process_ds(
         && has_column(df, &dsterm)
         && has_column(df, &dsdecod)
     {
-        let mut term_vals = string_column(df, &dsterm, Trim::Both)?;
-        let mut decod_vals = string_column(df, &dsdecod, Trim::Both)?;
+        let mut term_vals = string_column(df, &dsterm)?;
+        let mut decod_vals = string_column(df, &dsdecod)?;
         for (term, decod) in term_vals.iter_mut().zip(decod_vals.iter_mut()) {
             if term.is_empty() && !decod.is_empty() {
                 *term = decod.clone();
@@ -219,7 +219,7 @@ pub(super) fn process_ds(
         && has_column(df, &dsdecod)
         && let Some(ct) = ctx.resolve_ct(domain, "DSDECOD")
     {
-        let mut decod_vals = string_column(df, &dsdecod, Trim::Both)?;
+        let mut decod_vals = string_column(df, &dsdecod)?;
         for value in decod_vals.iter_mut() {
             let canonical = normalize_ct_value(ct, value);
             let mut mapped = match canonical.to_uppercase().as_str() {
@@ -247,7 +247,7 @@ pub(super) fn process_ds(
         if let Some(dsterm) = col(domain, "DSTERM")
             && has_column(df, &dsterm)
         {
-            let term_vals = string_column(df, &dsterm, Trim::Both)?;
+            let term_vals = string_column(df, &dsterm)?;
             for idx in 0..df.height() {
                 let term_code = normalize_ct_value(ct, &term_vals[idx]).to_uppercase();
                 let valid_from_term = ct.submission_values().iter().any(|val| *val == term_code);
@@ -267,8 +267,8 @@ pub(super) fn process_ds(
         && has_column(df, &dscat)
     {
         let codes = dsdecod_codelists(domain);
-        let decod_vals = string_column(df, &dsdecod, Trim::Both)?;
-        let mut dscat_vals = string_column(df, &dscat, Trim::Both)?;
+        let decod_vals = string_column(df, &dsdecod)?;
+        let mut dscat_vals = string_column(df, &dscat)?;
         if let (Some(dscat_ct), Some(_)) = (ctx.resolve_ct(domain, "DSCAT"), ctx.ct_registry) {
             for idx in 0..df.height() {
                 if !dscat_vals[idx].trim().is_empty() {
@@ -290,7 +290,7 @@ pub(super) fn process_ds(
     if let Some(dsstdtc) = col(domain, "DSSTDTC")
         && has_column(df, &dsstdtc)
     {
-        let values = string_column(df, &dsstdtc, Trim::Both)?
+        let values = string_column(df, &dsstdtc)?
             .into_iter()
             .map(|value| normalize_iso8601(&value))
             .collect();
@@ -302,7 +302,7 @@ pub(super) fn process_ds(
     if let Some(dsdtc) = col(domain, "DSDTC")
         && has_column(df, &dsdtc)
     {
-        let values = string_column(df, &dsdtc, Trim::Both)?
+        let values = string_column(df, &dsdtc)?
             .into_iter()
             .map(|value| normalize_iso8601(&value))
             .collect();

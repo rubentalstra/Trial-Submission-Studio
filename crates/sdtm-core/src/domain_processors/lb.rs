@@ -18,7 +18,7 @@ pub(super) fn process_lb(
         if let Some(name) = col(domain, col_name)
             && has_column(df, &name)
         {
-            let values = string_column(df, &name, Trim::Both)?
+            let values = string_column(df, &name)?
                 .into_iter()
                 .map(|value| normalize_empty_tokens(&value))
                 .collect();
@@ -29,8 +29,8 @@ pub(super) fn process_lb(
         && has_column(df, &lborresu)
         && has_column(df, &lbstresu)
     {
-        let orresu_vals = string_column(df, &lborresu, Trim::Both)?;
-        let mut stresu_vals = string_column(df, &lbstresu, Trim::Both)?;
+        let orresu_vals = string_column(df, &lborresu)?;
+        let mut stresu_vals = string_column(df, &lbstresu)?;
         for (stresu, orresu) in stresu_vals.iter_mut().zip(orresu_vals.iter()) {
             if stresu.is_empty() && !orresu.is_empty() {
                 *stresu = orresu.clone();
@@ -41,7 +41,7 @@ pub(super) fn process_lb(
     if let Some(lbtestcd) = col(domain, "LBTESTCD")
         && has_column(df, &lbtestcd)
     {
-        let mut values = string_column(df, &lbtestcd, Trim::Both)?
+        let mut values = string_column(df, &lbtestcd)?
             .into_iter()
             .map(|value| value.to_uppercase())
             .collect::<Vec<_>>();
@@ -57,8 +57,8 @@ pub(super) fn process_lb(
         && has_column(df, &lbtestcd)
         && let Some(ct) = ctx.resolve_ct(domain, "LBTESTCD")
     {
-        let test_vals = string_column(df, &lbtest, Trim::Both)?;
-        let mut testcd_vals = string_column(df, &lbtestcd, Trim::Both)?;
+        let test_vals = string_column(df, &lbtest)?;
+        let mut testcd_vals = string_column(df, &lbtestcd)?;
         for (testcd, test) in testcd_vals.iter_mut().zip(test_vals.iter()) {
             let existing = testcd.clone();
             let valid =
@@ -78,8 +78,8 @@ pub(super) fn process_lb(
         && has_column(df, &lbtest)
         && has_column(df, &lbtestcd)
     {
-        let mut lbtest_vals = string_column(df, &lbtest, Trim::Both)?;
-        let testcd_vals = string_column(df, &lbtestcd, Trim::Both)?;
+        let mut lbtest_vals = string_column(df, &lbtest)?;
+        let testcd_vals = string_column(df, &lbtestcd)?;
         for (test, testcd) in lbtest_vals.iter_mut().zip(testcd_vals.iter()) {
             if test.is_empty() && !testcd.is_empty() {
                 *test = testcd.clone();
@@ -92,8 +92,8 @@ pub(super) fn process_lb(
         && has_column(df, &lbtestcd)
         && let Some(ct) = ctx.resolve_ct(domain, "LBTESTCD")
     {
-        let mut test_vals = string_column(df, &lbtest, Trim::Both)?;
-        let testcd_vals = string_column(df, &lbtestcd, Trim::Both)?;
+        let mut test_vals = string_column(df, &lbtest)?;
+        let testcd_vals = string_column(df, &lbtestcd)?;
         for (test, testcd) in test_vals.iter_mut().zip(testcd_vals.iter()) {
             if testcd.is_empty() {
                 continue;
@@ -122,7 +122,7 @@ pub(super) fn process_lb(
     if let Some(lbstresc) = col(domain, "LBSTRESC")
         && has_column(df, &lbstresc)
     {
-        let values = string_column(df, &lbstresc, Trim::Both)?
+        let values = string_column(df, &lbstresc)?
             .into_iter()
             .map(|value| match value.as_str() {
                 "Positive" => "POSITIVE".to_string(),
@@ -136,11 +136,11 @@ pub(super) fn process_lb(
         && has_column(df, &lborres)
         && has_column(df, &lbstresc)
     {
-        let orres = string_column(df, &lborres, Trim::Both)?
+        let orres = string_column(df, &lborres)?
             .into_iter()
             .map(|value| normalize_empty_tokens(&value))
             .collect::<Vec<_>>();
-        let mut stresc = string_column(df, &lbstresc, Trim::Both)?;
+        let mut stresc = string_column(df, &lbstresc)?;
         for idx in 0..df.height() {
             if stresc[idx].is_empty() && !orres[idx].is_empty() {
                 stresc[idx] = orres[idx].clone();
@@ -151,7 +151,7 @@ pub(super) fn process_lb(
     if let (Some(lbstresc), Some(lbstresn)) = (col(domain, "LBSTRESC"), col(domain, "LBSTRESN"))
         && has_column(df, &lbstresc)
     {
-        let stresc_vals = string_column(df, &lbstresc, Trim::Both)?;
+        let stresc_vals = string_column(df, &lbstresc)?;
         let numeric_vals = stresc_vals
             .iter()
             .map(|value| parse_f64(value))
@@ -180,7 +180,7 @@ pub(super) fn process_lb(
             if let Some(name) = col(domain, col_name)
                 && has_column(df, &name)
             {
-                let mut values = string_column(df, &name, Trim::Both)?;
+                let mut values = string_column(df, &name)?;
                 for value in &mut values {
                     *value = normalize_ct_value_safe(ct, value);
                 }
@@ -191,7 +191,7 @@ pub(super) fn process_lb(
     if let Some(lbcolsrt) = col(domain, "LBCOLSRT")
         && has_column(df, &lbcolsrt)
     {
-        let mut values = string_column(df, &lbcolsrt, Trim::Both)?;
+        let mut values = string_column(df, &lbcolsrt)?;
         for value in &mut values {
             if is_yes_no_token(value) {
                 value.clear();
@@ -203,8 +203,8 @@ pub(super) fn process_lb(
         && has_column(df, &lborres)
         && has_column(df, &lborresu)
     {
-        let orres = string_column(df, &lborres, Trim::Both)?;
-        let mut orresu = string_column(df, &lborresu, Trim::Both)?;
+        let orres = string_column(df, &lborres)?;
+        let mut orresu = string_column(df, &lborresu)?;
         for (orres_val, orresu_val) in orres.iter().zip(orresu.iter_mut()) {
             if orres_val.is_empty() {
                 orresu_val.clear();
@@ -216,8 +216,8 @@ pub(super) fn process_lb(
         && has_column(df, &lbstresc)
         && has_column(df, &lbstresu)
     {
-        let stresc = string_column(df, &lbstresc, Trim::Both)?;
-        let mut stresu = string_column(df, &lbstresu, Trim::Both)?;
+        let stresc = string_column(df, &lbstresc)?;
+        let mut stresu = string_column(df, &lbstresu)?;
         for (stresc_val, stresu_val) in stresc.iter().zip(stresu.iter_mut()) {
             if stresc_val.is_empty() {
                 stresu_val.clear();

@@ -15,7 +15,7 @@ pub(super) fn process_default(
     if let Some(epoch_col) = col(domain, "EPOCH")
         && has_column(df, &epoch_col)
     {
-        let values = string_column(df, &epoch_col, Trim::Both)?;
+        let values = string_column(df, &epoch_col)?;
         let normalized = values
             .into_iter()
             .map(|value| replace_unknown(&value, ""))
