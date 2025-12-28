@@ -75,21 +75,21 @@ Per Rust API Guidelines (RFC 430):
 
 ---
 
-## Renamed Types (Current → New)
+## Type Renames (Completed ✅)
 
 ### sdtm-model
 
-| Current Name            | New Name              | Rationale                                    |
-| ----------------------- | --------------------- | -------------------------------------------- |
-| `CtTerm`                | `Term`                | Simpler; CT context is implied by module     |
-| `CtCatalog`             | `TerminologyCatalog`  | More descriptive; matches CDISC "CT Package" |
-| `CtRegistry`            | `TerminologyRegistry` | More descriptive                             |
-| `ResolvedCodelist`      | `ResolvedCodelist`    | ✅ Keep (descriptive)                        |
-| `IssueSeverity`         | `Severity`            | Shorter; context is clear from usage         |
-| `ConformanceIssue`      | `ValidationIssue`     | More accurate; "validation" is the activity  |
-| `ConformanceReport`     | `ValidationReport`    | Consistent with `ValidationIssue`            |
-| `DatasetClass`          | `DatasetClass`        | ✅ Keep (matches SDTM terminology)           |
-| `CaseInsensitiveLookup` | `CaseInsensitiveSet`  | More accurate (it's a set, not a lookup)     |
+| Old Name                | New Name              | Rationale                                    | Status |
+| ----------------------- | --------------------- | -------------------------------------------- | ------ |
+| `CtTerm`                | `Term`                | Simpler; CT context is implied by module     | ✅     |
+| `CtCatalog`             | `TerminologyCatalog`  | More descriptive; matches CDISC "CT Package" | ✅     |
+| `CtRegistry`            | `TerminologyRegistry` | More descriptive                             | ✅     |
+| `ResolvedCodelist`      | `ResolvedCodelist`    | Keep (descriptive)                           | ✅     |
+| `IssueSeverity`         | `Severity`            | Shorter; context is clear from usage         | ✅     |
+| `ConformanceIssue`      | `ValidationIssue`     | More accurate; "validation" is the activity  | ✅     |
+| `ConformanceReport`     | `ValidationReport`    | Consistent with `ValidationIssue`            | ✅     |
+| `DatasetClass`          | `DatasetClass`        | Keep (matches SDTM terminology)              | ✅     |
+| `CaseInsensitiveLookup` | `CaseInsensitiveSet`  | More accurate (it's a set, not a lookup)     | ✅     |
 
 ### sdtm-validate
 

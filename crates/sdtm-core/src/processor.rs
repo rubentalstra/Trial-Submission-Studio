@@ -4,7 +4,7 @@ use anyhow::{Result, anyhow};
 use polars::prelude::{AnyValue, Column, DataFrame, NamedFrom, Series};
 use tracing::warn;
 
-use sdtm_model::{CaseInsensitiveLookup, Domain, VariableType};
+use sdtm_model::{CaseInsensitiveSet, Domain, VariableType};
 
 use crate::ct_utils::{normalize_ct_value_safe, normalize_ct_value_strict};
 use crate::domain_processors;
@@ -37,7 +37,7 @@ pub fn normalize_ct_columns(
     if ctx.ct_registry.is_none() {
         return Ok(());
     }
-    let column_lookup = CaseInsensitiveLookup::new(df.get_column_names_owned());
+    let column_lookup = CaseInsensitiveSet::new(df.get_column_names_owned());
     let use_strict = !ctx.options.allow_lenient_ct_matching;
 
     for variable in &domain.variables {
@@ -89,7 +89,7 @@ pub fn apply_base_rules(
         return Ok(());
     }
     let columns = standard_columns(domain);
-    let column_lookup = CaseInsensitiveLookup::new(df.get_column_names_owned());
+    let column_lookup = CaseInsensitiveSet::new(df.get_column_names_owned());
     let Some(usubjid_col) = columns
         .usubjid
         .as_deref()
@@ -213,7 +213,7 @@ pub fn assign_sequence(
         return Ok(());
     }
     let columns = standard_columns(domain);
-    let column_lookup = CaseInsensitiveLookup::new(df.get_column_names_owned());
+    let column_lookup = CaseInsensitiveSet::new(df.get_column_names_owned());
     let (Some(seq_col), Some(usubjid_col)) = (infer_seq_column(domain), columns.usubjid) else {
         return Ok(());
     };

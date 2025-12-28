@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::conformance::ConformanceReport;
+use crate::conformance::ValidationReport;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum OutputFormat {
@@ -22,7 +22,7 @@ pub struct DomainResult {
     pub domain_code: String,
     pub records: usize,
     pub output_paths: OutputPaths,
-    pub conformance_report: Option<ConformanceReport>,
+    pub validation_report: Option<ValidationReport>,
     pub errors: Vec<String>,
 }
 

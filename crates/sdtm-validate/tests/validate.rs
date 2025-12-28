@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use polars::prelude::{Column, DataFrame};
 
-use sdtm_model::{ConformanceIssue, ConformanceReport, IssueSeverity, OutputFormat};
+use sdtm_model::{OutputFormat, Severity, ValidationIssue, ValidationReport};
 use sdtm_standards::{load_default_ct_registry, load_default_sdtm_ig_domains};
 use sdtm_validate::{
     ValidationContext, gate_strict_outputs, strict_outputs_requested, validate_domain,
@@ -51,9 +51,9 @@ fn ct_invalid_value_emits_issue() {
         .map(|resolved| resolved.codelist)
         .expect("ct lookup");
     let expected = if ct.extensible {
-        IssueSeverity::Warning
+        Severity::Warning
     } else {
-        IssueSeverity::Error
+        Severity::Error
     };
     assert_eq!(issue.code, ct.code);
     assert_eq!(issue.severity, expected);
@@ -61,7 +61,7 @@ fn ct_invalid_value_emits_issue() {
 
 #[test]
 fn writes_conformance_report_json_payload() {
-    let report = ConformanceReport {
+    let report = ValidationReport {
         domain_code: "DM".to_string(),
         issues: Vec::new(),
     };
@@ -75,12 +75,12 @@ fn writes_conformance_report_json_payload() {
 
 #[test]
 fn strict_output_gate_blocks_on_errors() {
-    let report = ConformanceReport {
+    let report = ValidationReport {
         domain_code: "AE".to_string(),
-        issues: vec![ConformanceIssue {
+        issues: vec![ValidationIssue {
             code: "SD0002".to_string(),
             message: "missing".to_string(),
-            severity: IssueSeverity::Error,
+            severity: Severity::Error,
             variable: Some("AETERM".to_string()),
             count: Some(1),
             ct_source: None,
@@ -93,12 +93,12 @@ fn strict_output_gate_blocks_on_errors() {
 
 #[test]
 fn strict_output_gate_ignored_without_strict_formats() {
-    let report = ConformanceReport {
+    let report = ValidationReport {
         domain_code: "AE".to_string(),
-        issues: vec![ConformanceIssue {
+        issues: vec![ValidationIssue {
             code: "SD0002".to_string(),
             message: "missing".to_string(),
-            severity: IssueSeverity::Error,
+            severity: Severity::Error,
             variable: Some("AETERM".to_string()),
             count: Some(1),
             ct_source: None,

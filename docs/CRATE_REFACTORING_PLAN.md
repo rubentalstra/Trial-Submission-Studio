@@ -9,21 +9,21 @@ simple**.
 
 ## Quick Summary
 
-| Crate            | Status   | Actions                                  |
-| ---------------- | -------- | ---------------------------------------- |
-| `sdtm-model`     | ✅ Clean | Rename types per naming conventions      |
-| `sdtm-standards` | ✅ Clean | ~~DELETE `assumptions/` module~~ ✅ DONE |
-| `sdtm-validate`  | ✅ Clean | ~~DELETE `engine.rs`~~ ✅ DONE           |
-| `sdtm-core`      | ✅ Clean | ~~Simplify `ct_utils.rs`~~ ✅ DONE       |
-| `sdtm-ingest`    | ✅ Clean | Keep as-is                               |
-| `sdtm-map`       | ✅ Clean | Keep as-is                               |
-| `sdtm-report`    | ✅ Clean | Keep as-is                               |
-| `sdtm-cli`       | ✅ Clean | Keep as-is                               |
-| `sdtm-xpt`       | ✅ Clean | Keep as-is                               |
+| Crate            | Status   | Actions                                         |
+| ---------------- | -------- | ----------------------------------------------- |
+| `sdtm-model`     | ✅ Clean | ~~Rename types per naming conventions~~ ✅ DONE |
+| `sdtm-standards` | ✅ Clean | ~~DELETE `assumptions/` module~~ ✅ DONE        |
+| `sdtm-validate`  | ✅ Clean | ~~DELETE `engine.rs`~~ ✅ DONE                  |
+| `sdtm-core`      | ✅ Clean | ~~Simplify `ct_utils.rs`~~ ✅ DONE              |
+| `sdtm-ingest`    | ✅ Clean | Keep as-is                                      |
+| `sdtm-map`       | ✅ Clean | Keep as-is                                      |
+| `sdtm-report`    | ✅ Clean | Keep as-is                                      |
+| `sdtm-cli`       | ✅ Clean | Keep as-is                                      |
+| `sdtm-xpt`       | ✅ Clean | Keep as-is                                      |
 
 ---
 
-## Completed Refactoring (2024-12-28)
+## Completed Refactoring
 
 ### Phase 1: Dead Code Removal ✅ COMPLETE
 
@@ -49,13 +49,26 @@ simple**.
 - ✅ Removed `is_valid_ct_value()` from `ct_utils.rs`
 - ✅ Updated `sdtm-core/src/lib.rs` exports
 
+### Phase 3: Naming Conventions ✅ COMPLETE
+
+**Types renamed per NAMING_CONVENTIONS.md:**
+
+- ✅ `CtTerm` → `Term`
+- ✅ `CtCatalog` → `TerminologyCatalog`
+- ✅ `CtRegistry` → `TerminologyRegistry`
+- ✅ `IssueSeverity` → `Severity`
+- ✅ `ConformanceIssue` → `ValidationIssue`
+- ✅ `ConformanceReport` → `ValidationReport`
+- ✅ `CaseInsensitiveLookup` → `CaseInsensitiveSet`
+- ✅ `DomainResult.conformance_report` → `DomainResult.validation_report`
+
 ### Verification
 
 All tests pass:
 
 ```bash
 cargo fmt && cargo clippy && cargo test
-# Result: 182 tests pass, no warnings
+# Result: All tests pass, no warnings
 ```
 
 ---
@@ -67,33 +80,33 @@ cargo fmt && cargo clippy && cargo test
 
 ### Current Structure
 
-- `ct.rs` - Clean CT model: `Codelist`, `CtTerm`, `CtCatalog`, `CtRegistry`,
-  `ResolvedCodelist`
-- `conformance.rs` - Simplified: `IssueSeverity`, `ConformanceIssue`,
-  `ConformanceReport`
+- `ct.rs` - Clean CT model: `Codelist`, `Term`, `TerminologyCatalog`,
+  `TerminologyRegistry`, `ResolvedCodelist`
+- `conformance.rs` - Simplified: `Severity`, `ValidationIssue`,
+  `ValidationReport`
 - `domain.rs` - Domain types: `DatasetClass`, `Variable`, `Domain`
 - `mapping.rs` - Mapping types: `ColumnHint`, `MappingSuggestion`,
   `MappingConfig`
 - `processing.rs` - Processing types: `OutputFormat`, `DomainResult`, etc.
-- `lookup.rs` - `CaseInsensitiveLookup` utility
+- `lookup.rs` - `CaseInsensitiveSet` utility
 - `error.rs` - `SdtmError`, `Result`
 
 ### Naming Changes (per NAMING_CONVENTIONS.md)
 
-| Current Name            | New Name              | Rationale                         |
-| ----------------------- | --------------------- | --------------------------------- |
-| `CtTerm`                | `Term`                | CT context implied by module      |
-| `CtCatalog`             | `TerminologyCatalog`  | Matches CDISC "CT Package"        |
-| `CtRegistry`            | `TerminologyRegistry` | More descriptive                  |
-| `IssueSeverity`         | `Severity`            | Shorter, context is clear         |
-| `ConformanceIssue`      | `ValidationIssue`     | "validation" is the activity      |
-| `ConformanceReport`     | `ValidationReport`    | Consistent with `ValidationIssue` |
-| `CaseInsensitiveLookup` | `CaseInsensitiveSet`  | It's a set, not a lookup table    |
+| Current Name            | New Name              | Rationale                         | Status |
+| ----------------------- | --------------------- | --------------------------------- | ------ |
+| `CtTerm`                | `Term`                | CT context implied by module      | ✅     |
+| `CtCatalog`             | `TerminologyCatalog`  | Matches CDISC "CT Package"        | ✅     |
+| `CtRegistry`            | `TerminologyRegistry` | More descriptive                  | ✅     |
+| `IssueSeverity`         | `Severity`            | Shorter, context is clear         | ✅     |
+| `ConformanceIssue`      | `ValidationIssue`     | "validation" is the activity      | ✅     |
+| `ConformanceReport`     | `ValidationReport`    | Consistent with `ValidationIssue` | ✅     |
+| `CaseInsensitiveLookup` | `CaseInsensitiveSet`  | It's a set, not a lookup table    | ✅     |
 
 ### Recommended Actions
 
 - [x] Already simplified `conformance.rs` (from ~216 to ~55 lines)
-- [ ] Rename types per naming conventions table above
+- [x] Rename types per naming conventions table above
 - [ ] **Minor:** Consider removing `DatasetMetadata` if unused elsewhere
 - [ ] **Minor:** `domain.rs` has many helper methods on `DatasetClass` -
       evaluate if all are used

@@ -13,7 +13,7 @@
 
 use std::collections::BTreeMap;
 
-use sdtm_model::{CtRegistry, Domain};
+use sdtm_model::{Domain, TerminologyRegistry};
 
 use crate::processing_context::{ProcessingContext, ProcessingOptions};
 
@@ -45,7 +45,7 @@ pub struct StudyPipelineContext {
     pub standards_map: BTreeMap<String, Domain>,
 
     /// Controlled Terminology registry.
-    pub ct_registry: CtRegistry,
+    pub ct_registry: TerminologyRegistry,
 
     /// Reference start dates (RFSTDTC) by USUBJID for SDY derivation.
     pub reference_starts: BTreeMap<String, String>,
@@ -63,7 +63,7 @@ impl StudyPipelineContext {
             study_id: study_id.into(),
             standards: Vec::new(),
             standards_map: BTreeMap::new(),
-            ct_registry: CtRegistry::default(),
+            ct_registry: TerminologyRegistry::default(),
             reference_starts: BTreeMap::new(),
             options: ProcessingOptions::default(),
         }
@@ -81,7 +81,7 @@ impl StudyPipelineContext {
     }
 
     /// Sets the Controlled Terminology registry.
-    pub fn with_ct_registry(mut self, ct_registry: CtRegistry) -> Self {
+    pub fn with_ct_registry(mut self, ct_registry: TerminologyRegistry) -> Self {
         self.ct_registry = ct_registry;
         self
     }

@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use sdtm_model::ConformanceReport;
+use sdtm_model::ValidationReport;
 
 #[derive(Debug)]
 pub struct StudyResult {
@@ -20,7 +20,7 @@ pub struct DomainSummary {
     pub description: String,
     pub records: usize,
     pub outputs: sdtm_model::OutputPaths,
-    pub conformance: Option<ConformanceReport>,
+    pub conformance: Option<ValidationReport>,
 }
 
 #[derive(Debug, Clone)]

@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 
 use polars::prelude::DataFrame;
 
-use sdtm_model::{ConformanceIssue, ConformanceReport};
+use sdtm_model::{ValidationIssue, ValidationReport};
 
 /// Input for cross-domain validation.
 pub struct CrossDomainValidationInput<'a> {
@@ -22,15 +22,15 @@ pub struct CrossDomainValidationInput<'a> {
 #[derive(Debug, Default)]
 pub struct CrossDomainValidationResult {
     /// Issues found, grouped by domain code.
-    pub issues_by_domain: BTreeMap<String, Vec<ConformanceIssue>>,
+    pub issues_by_domain: BTreeMap<String, Vec<ValidationIssue>>,
 }
 
 impl CrossDomainValidationResult {
-    /// Convert to conformance reports.
-    pub fn into_reports(self) -> Vec<ConformanceReport> {
+    /// Convert to validation reports.
+    pub fn into_reports(self) -> Vec<ValidationReport> {
         self.issues_by_domain
             .into_iter()
-            .map(|(domain_code, issues)| ConformanceReport {
+            .map(|(domain_code, issues)| ValidationReport {
                 domain_code,
                 issues,
             })
@@ -38,11 +38,11 @@ impl CrossDomainValidationResult {
     }
 
     /// Merge issues into existing report map.
-    pub fn merge_into(self, reports: &mut BTreeMap<String, ConformanceReport>) {
+    pub fn merge_into(self, reports: &mut BTreeMap<String, ValidationReport>) {
         for (domain_code, issues) in self.issues_by_domain {
             reports
                 .entry(domain_code.clone())
-                .or_insert_with(|| ConformanceReport {
+                .or_insert_with(|| ValidationReport {
                     domain_code,
                     issues: Vec::new(),
                 })

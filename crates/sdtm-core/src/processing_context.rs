@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use chrono::NaiveDate;
 use sdtm_model::Domain;
-use sdtm_model::ct::{Codelist, CtRegistry};
+use sdtm_model::ct::{Codelist, TerminologyRegistry};
 
 use crate::provenance::ProvenanceTracker;
 
@@ -119,7 +119,7 @@ impl ProcessingOptions {
 pub struct ProcessingContext<'a> {
     pub study_id: &'a str,
     pub reference_starts: Option<&'a BTreeMap<String, String>>,
-    pub ct_registry: Option<&'a CtRegistry>,
+    pub ct_registry: Option<&'a TerminologyRegistry>,
     pub options: ProcessingOptions,
     /// Optional provenance tracker for recording derivation metadata.
     /// Clone is cheap (Arc-based).
@@ -148,7 +148,7 @@ impl<'a> ProcessingContext<'a> {
         self
     }
 
-    pub fn with_ct_registry(mut self, ct_registry: &'a CtRegistry) -> Self {
+    pub fn with_ct_registry(mut self, ct_registry: &'a TerminologyRegistry) -> Self {
         self.ct_registry = Some(ct_registry);
         self
     }

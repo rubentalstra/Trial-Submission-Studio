@@ -2,21 +2,21 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
-pub enum IssueSeverity {
+pub enum Severity {
     Reject,
     Error,
     Warning,
 }
 
-/// A conformance issue found during validation.
+/// A validation issue found during validation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct ConformanceIssue {
+pub struct ValidationIssue {
     /// Codelist code (e.g., "C66742").
     pub code: String,
     /// Human-readable message describing the issue.
     pub message: String,
     /// Severity level.
-    pub severity: IssueSeverity,
+    pub severity: Severity,
     /// Variable name (if applicable).
     pub variable: Option<String>,
     /// Count of occurrences.
@@ -25,26 +25,26 @@ pub struct ConformanceIssue {
     pub ct_source: Option<String>,
 }
 
-/// Conformance report for a single domain.
+/// Validation report for a single domain.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ConformanceReport {
+pub struct ValidationReport {
     #[serde(rename = "domain")]
     pub domain_code: String,
-    pub issues: Vec<ConformanceIssue>,
+    pub issues: Vec<ValidationIssue>,
 }
 
-impl ConformanceReport {
+impl ValidationReport {
     pub fn error_count(&self) -> usize {
         self.issues
             .iter()
-            .filter(|issue| matches!(issue.severity, IssueSeverity::Error | IssueSeverity::Reject))
+            .filter(|issue| matches!(issue.severity, Severity::Error | Severity::Reject))
             .count()
     }
 
     pub fn warning_count(&self) -> usize {
         self.issues
             .iter()
-            .filter(|issue| issue.severity == IssueSeverity::Warning)
+            .filter(|issue| issue.severity == Severity::Warning)
             .count()
     }
 

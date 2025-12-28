@@ -14,15 +14,14 @@ use serde::Serialize;
 
 use sdtm_core::ProvenanceTracker;
 use sdtm_ingest::any_to_string;
-use sdtm_model::ct::{Codelist, CtRegistry, ResolvedCodelist};
+use sdtm_model::ct::{Codelist, ResolvedCodelist, TerminologyRegistry};
 use sdtm_model::{
-    CaseInsensitiveLookup, ConformanceIssue, ConformanceReport, Domain, IssueSeverity,
-    OutputFormat, Variable,
+    CaseInsensitiveSet, Domain, OutputFormat, Severity, ValidationIssue, ValidationReport, Variable,
 };
 
 #[derive(Debug, Clone, Default)]
 pub struct ValidationContext<'a> {
-    pub ct_registry: Option<&'a CtRegistry>,
+    pub ct_registry: Option<&'a TerminologyRegistry>,
     pub ct_catalogs: Option<Vec<String>>,
 }
 
@@ -41,7 +40,7 @@ pub fn strict_outputs_requested(output_formats: &[OutputFormat]) -> bool {
 pub fn gate_strict_outputs(
     output_formats: &[OutputFormat],
     fail_on_conformance_errors: bool,
-    reports: &[ConformanceReport],
+    reports: &[ValidationReport],
 ) -> GatingDecision {
     if !fail_on_conformance_errors || !strict_outputs_requested(output_formats) {
         return GatingDecision::default();
@@ -66,7 +65,7 @@ impl<'a> ValidationContext<'a> {
         }
     }
 
-    pub fn with_ct_registry(mut self, ct_registry: &'a CtRegistry) -> Self {
+    pub fn with_ct_registry(mut self, ct_registry: &'a TerminologyRegistry) -> Self {
         self.ct_registry = Some(ct_registry);
         self
     }
@@ -119,9 +118,9 @@ pub fn validate_provenance(
     domain: &Domain,
     df: &DataFrame,
     provenance: Option<&ProvenanceTracker>,
-) -> Vec<ConformanceIssue> {
+) -> Vec<ValidationIssue> {
     let mut issues = Vec::new();
-    let column_lookup = CaseInsensitiveLookup::new(df.get_column_names_owned());
+    let column_lookup = CaseInsensitiveSet::new(df.get_column_names_owned());
 
     for variable in &domain.variables {
         // Only check variables that should be derived
@@ -157,8 +156,8 @@ pub fn validate_provenance(
             .unwrap_or(false);
 
         if !has_provenance {
-            issues.push(ConformanceIssue {
-                severity: IssueSeverity::Warning,
+            issues.push(ValidationIssue {
+                severity: Severity::Warning,
                 code: format!(
                     "{}.{}: Derived variable has values but no documented provenance",
                     domain.code, variable.name
@@ -184,7 +183,7 @@ pub fn validate_domains_provenance(
     domains: &[Domain],
     frames: &[(&str, &DataFrame)],
     provenance: Option<&ProvenanceTracker>,
-) -> Vec<ConformanceReport> {
+) -> Vec<ValidationReport> {
     let mut reports = Vec::new();
 
     for (domain_code, df) in frames {
@@ -196,7 +195,7 @@ pub fn validate_domains_provenance(
         if let Some(domain) = domain {
             let issues = validate_provenance(domain, df, provenance);
             if !issues.is_empty() {
-                reports.push(ConformanceReport {
+                reports.push(ValidationReport {
                     domain_code: domain_code.to_string(),
                     issues,
                 });
@@ -208,25 +207,25 @@ pub fn validate_domains_provenance(
 }
 
 #[derive(Debug, Serialize)]
-pub struct ConformanceReportPayload {
+pub struct ValidationReportPayload {
     pub schema: &'static str,
     pub schema_version: u32,
     pub generated_at: String,
     pub study_id: String,
-    pub reports: Vec<ConformanceReportSummary>,
+    pub reports: Vec<ValidationReportSummary>,
 }
 
 #[derive(Debug, Serialize)]
-pub struct ConformanceReportSummary {
+pub struct ValidationReportSummary {
     pub domain: String,
     pub error_count: usize,
     pub warning_count: usize,
-    pub issues: Vec<ConformanceIssueJson>,
+    pub issues: Vec<ValidationIssueJson>,
 }
 
 #[derive(Debug, Serialize)]
-pub struct ConformanceIssueJson {
-    pub severity: IssueSeverity,
+pub struct ValidationIssueJson {
+    pub severity: Severity,
     pub code: String,
     pub domain: String,
     pub variable: Option<String>,
@@ -242,7 +241,7 @@ pub fn validate_domain(
     domain: &Domain,
     df: &DataFrame,
     ctx: &ValidationContext,
-) -> ConformanceReport {
+) -> ValidationReport {
     let column_lookup = build_column_lookup(df);
     let mut issues = Vec::new();
 
@@ -260,7 +259,7 @@ pub fn validate_domain(
         }
     }
 
-    ConformanceReport {
+    ValidationReport {
         domain_code: domain.code.clone(),
         issues,
     }
@@ -270,7 +269,7 @@ pub fn validate_domains(
     domains: &[Domain],
     frames: &[(&str, &DataFrame)],
     ctx: &ValidationContext,
-) -> Vec<ConformanceReport> {
+) -> Vec<ValidationReport> {
     let mut domain_map: BTreeMap<String, &Domain> = BTreeMap::new();
     for domain in domains {
         domain_map.insert(domain.code.to_uppercase(), domain);
@@ -279,7 +278,7 @@ pub fn validate_domains(
     for (domain_code, df) in frames {
         frame_map.insert(domain_code.to_uppercase(), *df);
     }
-    let mut report_map: BTreeMap<String, ConformanceReport> = BTreeMap::new();
+    let mut report_map: BTreeMap<String, ValidationReport> = BTreeMap::new();
     for (domain_code, df) in frames {
         let code = domain_code.to_uppercase();
         if let Some(domain) = domain_map.get(&code) {
@@ -289,32 +288,32 @@ pub fn validate_domains(
     report_map.into_values().collect()
 }
 
-pub fn has_conformance_errors(reports: &[ConformanceReport]) -> bool {
+pub fn has_conformance_errors(reports: &[ValidationReport]) -> bool {
     reports.iter().any(|report| report.has_errors())
 }
 
 pub fn write_conformance_report_json(
     output_dir: &Path,
     study_id: &str,
-    reports: &[ConformanceReport],
+    reports: &[ValidationReport],
 ) -> Result<PathBuf> {
     std::fs::create_dir_all(output_dir)?;
     let output_path = output_dir.join("conformance_report.json");
-    let payload = ConformanceReportPayload {
+    let payload = ValidationReportPayload {
         schema: REPORT_SCHEMA,
         schema_version: REPORT_SCHEMA_VERSION,
         generated_at: Utc::now().to_rfc3339(),
         study_id: study_id.to_string(),
         reports: reports
             .iter()
-            .map(|report| ConformanceReportSummary {
+            .map(|report| ValidationReportSummary {
                 domain: report.domain_code.clone(),
                 error_count: report.error_count(),
                 warning_count: report.warning_count(),
                 issues: report
                     .issues
                     .iter()
-                    .map(|issue| ConformanceIssueJson {
+                    .map(|issue| ValidationIssueJson {
                         severity: issue.severity,
                         code: issue.code.clone(),
                         domain: report.domain_code.clone(),
@@ -332,8 +331,8 @@ pub fn write_conformance_report_json(
     Ok(output_path)
 }
 
-fn build_column_lookup(df: &DataFrame) -> CaseInsensitiveLookup {
-    CaseInsensitiveLookup::new(df.get_column_names_owned())
+fn build_column_lookup(df: &DataFrame) -> CaseInsensitiveSet {
+    CaseInsensitiveSet::new(df.get_column_names_owned())
 }
 
 fn ct_issue(
@@ -341,16 +340,16 @@ fn ct_issue(
     df: &DataFrame,
     column: &str,
     resolved: &ResolvedCodelist,
-) -> Option<ConformanceIssue> {
+) -> Option<ValidationIssue> {
     let ct = resolved.codelist;
     let invalid = collect_invalid_ct_values(df, column, ct);
     if invalid.is_empty() {
         return None;
     }
     let severity = if ct.extensible {
-        IssueSeverity::Warning
+        Severity::Warning
     } else {
-        IssueSeverity::Error
+        Severity::Error
     };
     let mut examples: Vec<_> = invalid.iter().take(5).cloned().collect();
     examples.sort();
@@ -365,7 +364,7 @@ fn ct_issue(
     if !examples.is_empty() {
         message.push_str(&format!(" values: {}", examples.join(", ")));
     }
-    Some(ConformanceIssue {
+    Some(ValidationIssue {
         code: ct.code.clone(),
         message,
         severity,
@@ -407,7 +406,7 @@ fn collect_invalid_ct_values(df: &DataFrame, column: &str, ct: &Codelist) -> BTr
 }
 
 fn resolve_ct<'a>(
-    registry: &'a CtRegistry,
+    registry: &'a TerminologyRegistry,
     variable: &Variable,
     preferred: Option<&[String]>,
 ) -> Option<ResolvedCodelist<'a>> {

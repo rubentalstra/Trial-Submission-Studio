@@ -11,7 +11,7 @@ use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 
 use sdtm_core::{DomainFrame, order_variables_by_role, standard_columns};
 use sdtm_ingest::{any_to_f64_for_output, any_to_string_for_output, any_to_string_non_empty};
-use sdtm_model::ct::{Codelist, CtCatalog, CtRegistry};
+use sdtm_model::ct::{Codelist, TerminologyCatalog, TerminologyRegistry};
 use sdtm_model::{Domain, MappingConfig, Variable, VariableType};
 use sdtm_standards::load_default_ct_registry;
 use sdtm_xpt::{XptColumn, XptDataset, XptType, XptValue, XptWriterOptions, write_xpt};
@@ -782,11 +782,11 @@ fn write_translated_text<W: Write>(
 fn resolve_codelist(
     domain: &Domain,
     variable: &Variable,
-    ct_registry: &CtRegistry,
+    ct_registry: &TerminologyRegistry,
     code_lists: &mut BTreeMap<String, CodeListSpec>,
     ct_standards: &mut BTreeMap<String, CtStandard>,
 ) -> Result<Option<String>> {
-    let mut ct_entries: Vec<(&Codelist, Option<&CtCatalog>)> = Vec::new();
+    let mut ct_entries: Vec<(&Codelist, Option<&TerminologyCatalog>)> = Vec::new();
 
     if let Some(raw) = variable.codelist_code.as_ref() {
         let codes = parse_codelist_codes(raw);
@@ -822,7 +822,7 @@ fn resolve_codelist(
     let standard_oid =
         ct_entries
             .first()
-            .and_then(|(_, catalog): &(&Codelist, Option<&CtCatalog>)| {
+            .and_then(|(_, catalog): &(&Codelist, Option<&TerminologyCatalog>)| {
                 catalog.and_then(|cat| {
                     let publishing_set = cat.publishing_set.as_ref()?;
                     let version = cat.version.as_ref()?;

@@ -20,15 +20,14 @@ use tracing::{debug, info, info_span};
 
 use sdtm_core::{
     DomainFrame, DomainFrameMeta, StudyPipelineContext, SuppqualInput, build_domain_frame,
-    build_mapped_domain_frame, build_suppqual, fill_missing_test_fields,
-    process_domain_with_context_and_tracker,
+    build_mapped_domain_frame, build_suppqual, process_domain_with_context_and_tracker,
 };
 use sdtm_ingest::{
     AppliedStudyMetadata, CsvTable, StudyMetadata, any_to_string, apply_study_metadata,
     discover_domain_files, list_csv_files, load_study_metadata, read_csv_schema, read_csv_table,
 };
 use sdtm_map::merge_mappings;
-use sdtm_model::{CaseInsensitiveLookup, ConformanceReport, Domain, MappingConfig, OutputFormat};
+use sdtm_model::{CaseInsensitiveSet, Domain, MappingConfig, OutputFormat, ValidationReport};
 use sdtm_report::{
     DefineXmlOptions, SasProgramOptions, write_dataset_xml_outputs, write_define_xml,
     write_sas_outputs, write_xpt_outputs,
@@ -228,28 +227,6 @@ pub fn process_file(input: ProcessFileInput<'_>) -> Result<ProcessedFile> {
     }
 
     let ctx = input.pipeline.processing_context();
-    // Preprocess: fill missing test fields
-    info_span!("preprocess").in_scope(|| -> Result<()> {
-        let start = Instant::now();
-        fill_missing_test_fields(
-            input.domain,
-            &mapping_config,
-            &table,
-            &mut mapped.data,
-            &ctx,
-        )
-        .with_context(|| format!("preprocess {}", input.domain.code))?;
-        debug!(
-            study_id = %input.study_id,
-            domain_code = %domain_code,
-            dataset_name = %dataset_name,
-            source_file = %source_file,
-            record_count = mapped.data.height(),
-            duration_ms = start.elapsed().as_millis(),
-            "preprocess complete"
-        );
-        Ok(())
-    })?;
 
     // Apply domain rules
     info_span!("domain_rules").in_scope(|| -> Result<()> {
@@ -368,8 +345,8 @@ pub fn process_file(input: ProcessFileInput<'_>) -> Result<ProcessedFile> {
 /// Result of the validation stage.
 #[derive(Debug)]
 pub struct ValidationResult {
-    /// Conformance reports by domain code.
-    pub reports: BTreeMap<String, ConformanceReport>,
+    /// Validation reports by domain code.
+    pub reports: BTreeMap<String, ValidationReport>,
     /// Path to the written conformance report JSON.
     pub report_path: Option<PathBuf>,
     /// Errors encountered during validation.
@@ -451,7 +428,7 @@ pub fn validate(
     let report_path = if dry_run {
         None
     } else {
-        let report_list: Vec<ConformanceReport> = report_map.values().cloned().collect();
+        let report_list: Vec<ValidationReport> = report_map.values().cloned().collect();
         match write_conformance_report_json(output_dir, study_id, &report_list) {
             Ok(path) => Some(path),
             Err(error) => {
@@ -729,7 +706,7 @@ pub fn output(config: OutputConfig<'_>) -> Result<OutputResult> {
 /// Extract RFSTDTC reference starts from DM frame.
 pub fn extract_reference_starts(df: &DataFrame) -> BTreeMap<String, String> {
     let mut reference_starts = BTreeMap::new();
-    let lookup = CaseInsensitiveLookup::new(df.get_column_names_owned());
+    let lookup = CaseInsensitiveSet::new(df.get_column_names_owned());
     let Some(usubjid_col) = lookup.get("USUBJID") else {
         return reference_starts;
     };

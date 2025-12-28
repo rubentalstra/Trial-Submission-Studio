@@ -1,24 +1,24 @@
 //! Tests for sdtm-model types.
 
-use sdtm_model::{ConformanceIssue, ConformanceReport, IssueSeverity, ProcessStudyResponse};
+use sdtm_model::{ProcessStudyResponse, Severity, ValidationIssue, ValidationReport};
 
 #[test]
-fn conformance_report_counts() {
-    let report = ConformanceReport {
+fn validation_report_counts() {
+    let report = ValidationReport {
         domain_code: "AE".to_string(),
         issues: vec![
-            ConformanceIssue {
+            ValidationIssue {
                 code: "SD0002".to_string(),
                 message: "Missing AE term".to_string(),
-                severity: IssueSeverity::Error,
+                severity: Severity::Error,
                 variable: Some("AETERM".to_string()),
                 count: Some(2),
                 ct_source: None,
             },
-            ConformanceIssue {
+            ValidationIssue {
                 code: "SD0057".to_string(),
                 message: "Unexpected value".to_string(),
-                severity: IssueSeverity::Warning,
+                severity: Severity::Warning,
                 variable: Some("AESEV".to_string()),
                 count: Some(1),
                 ct_source: None,
@@ -46,29 +46,29 @@ fn response_serializes() {
 }
 
 #[test]
-fn conformance_issue_serializes() {
-    let issue = ConformanceIssue {
+fn validation_issue_serializes() {
+    let issue = ValidationIssue {
         code: "C66742".to_string(),
         message: "Invalid value".to_string(),
-        severity: IssueSeverity::Error,
+        severity: Severity::Error,
         variable: Some("SEX".to_string()),
         count: Some(3),
         ct_source: Some("SDTM CT".to_string()),
     };
     let json = serde_json::to_string(&issue).expect("serialize issue");
-    let round: ConformanceIssue = serde_json::from_str(&json).expect("deserialize issue");
+    let round: ValidationIssue = serde_json::from_str(&json).expect("deserialize issue");
     assert_eq!(round.code, "C66742");
     assert_eq!(round.ct_source.as_deref(), Some("SDTM CT"));
 }
 
 #[test]
-fn conformance_report_no_errors() {
-    let report = ConformanceReport {
+fn validation_report_no_errors() {
+    let report = ValidationReport {
         domain_code: "DM".to_string(),
-        issues: vec![ConformanceIssue {
+        issues: vec![ValidationIssue {
             code: "C66742".to_string(),
             message: "Warning only".to_string(),
-            severity: IssueSeverity::Warning,
+            severity: Severity::Warning,
             variable: None,
             count: None,
             ct_source: None,
@@ -80,13 +80,13 @@ fn conformance_report_no_errors() {
 }
 
 #[test]
-fn conformance_report_with_reject() {
-    let report = ConformanceReport {
+fn validation_report_with_reject() {
+    let report = ValidationReport {
         domain_code: "AE".to_string(),
-        issues: vec![ConformanceIssue {
+        issues: vec![ValidationIssue {
             code: "FATAL".to_string(),
             message: "Critical error".to_string(),
-            severity: IssueSeverity::Reject,
+            severity: Severity::Reject,
             variable: None,
             count: Some(1),
             ct_source: None,

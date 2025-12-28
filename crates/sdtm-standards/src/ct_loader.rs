@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result};
 use csv::ReaderBuilder;
 
-use sdtm_model::ct::{Codelist, CtCatalog, CtRegistry, CtTerm};
+use sdtm_model::ct::{Codelist, Term, TerminologyCatalog, TerminologyRegistry};
 
 const DEFAULT_CT_VERSION: &str = "2024-03-29";
 
@@ -21,7 +21,7 @@ fn default_standards_root() -> PathBuf {
 }
 
 /// Load the default CT registry (SDTM CT 2024-03-29).
-pub fn load_default_ct_registry() -> Result<CtRegistry> {
+pub fn load_default_ct_registry() -> Result<TerminologyRegistry> {
     let root = default_standards_root();
     let mut ct_dirs = Vec::new();
     ct_dirs.push(root.join("ct").join(DEFAULT_CT_VERSION));
@@ -36,8 +36,8 @@ pub fn load_default_ct_registry() -> Result<CtRegistry> {
 }
 
 /// Load a CT registry from one or more directories.
-pub fn load_ct_registry(ct_dirs: &[PathBuf]) -> Result<CtRegistry> {
-    let mut registry = CtRegistry::new();
+pub fn load_ct_registry(ct_dirs: &[PathBuf]) -> Result<TerminologyRegistry> {
+    let mut registry = TerminologyRegistry::new();
 
     for dir in ct_dirs {
         if !dir.exists() {
@@ -66,11 +66,11 @@ pub fn load_ct_registry(ct_dirs: &[PathBuf]) -> Result<CtRegistry> {
 /// Per SDTM_CT_relationships.md:
 /// - Codelist rows: `Codelist Code` is blank, `Code` is the codelist NCI code
 /// - Term rows: `Codelist Code` is the parent codelist code
-pub fn load_ct_catalog(path: &Path) -> Result<CtCatalog> {
+pub fn load_ct_catalog(path: &Path) -> Result<TerminologyCatalog> {
     let rows = read_csv_rows(path)?;
     let (label, version, publishing_set) = parse_ct_metadata(path);
 
-    let mut catalog = CtCatalog::new(label, version, publishing_set);
+    let mut catalog = TerminologyCatalog::new(label, version, publishing_set);
     catalog.source = path.file_name().and_then(|v| v.to_str()).map(String::from);
 
     // First pass: collect codelist definition rows
@@ -101,7 +101,7 @@ pub fn load_ct_catalog(path: &Path) -> Result<CtCatalog> {
             let definition = get_optional(row, "CDISC Definition");
             let preferred_term = get_optional(row, "NCI Preferred Term");
 
-            let term = CtTerm {
+            let term = Term {
                 code: term_code,
                 submission_value,
                 synonyms,

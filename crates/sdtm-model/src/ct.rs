@@ -43,7 +43,7 @@ use serde::{Deserialize, Serialize};
 /// - `Codelist Code` = parent codelist code
 /// - `CDISC Submission Value` = the permissible dataset value
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CtTerm {
+pub struct Term {
     /// NCI concept code for this term (e.g., "C20197" for Male).
     pub code: String,
 
@@ -83,7 +83,7 @@ pub struct Codelist {
 
     /// Terms belonging to this codelist.
     /// Key: uppercase submission value for case-insensitive lookup.
-    pub terms: BTreeMap<String, CtTerm>,
+    pub terms: BTreeMap<String, Term>,
 
     /// Synonym lookup: maps uppercase alias -> uppercase submission value.
     /// Built from all terms' synonyms for fast normalization.
@@ -103,7 +103,7 @@ impl Codelist {
     }
 
     /// Add a term to this codelist.
-    pub fn add_term(&mut self, term: CtTerm) {
+    pub fn add_term(&mut self, term: Term) {
         let key = term.submission_value.to_uppercase();
 
         // Build synonym lookup
@@ -153,7 +153,7 @@ impl Codelist {
     }
 
     /// Get a term by NCI concept code.
-    pub fn get_term_by_code(&self, code: &str) -> Option<&CtTerm> {
+    pub fn get_term_by_code(&self, code: &str) -> Option<&Term> {
         let key = code.to_uppercase();
         self.terms.values().find(|t| t.code.to_uppercase() == key)
     }
@@ -161,7 +161,7 @@ impl Codelist {
 
 /// A CT catalog (e.g., "SDTM CT 2024-03-29").
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct CtCatalog {
+pub struct TerminologyCatalog {
     /// Display label (e.g., "SDTM CT").
     pub label: String,
 
@@ -178,7 +178,7 @@ pub struct CtCatalog {
     pub codelists: BTreeMap<String, Codelist>,
 }
 
-impl CtCatalog {
+impl TerminologyCatalog {
     /// Create a new catalog.
     pub fn new(label: String, version: Option<String>, publishing_set: Option<String>) -> Self {
         Self {
@@ -204,19 +204,19 @@ impl CtCatalog {
 
 /// Registry of all loaded CT catalogs.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct CtRegistry {
+pub struct TerminologyRegistry {
     /// Catalogs by label (uppercase).
-    pub catalogs: BTreeMap<String, CtCatalog>,
+    pub catalogs: BTreeMap<String, TerminologyCatalog>,
 }
 
-impl CtRegistry {
+impl TerminologyRegistry {
     /// Create a new empty registry.
     pub fn new() -> Self {
         Self::default()
     }
 
     /// Add a catalog to the registry.
-    pub fn add_catalog(&mut self, catalog: CtCatalog) {
+    pub fn add_catalog(&mut self, catalog: TerminologyCatalog) {
         self.catalogs.insert(catalog.label.to_uppercase(), catalog);
     }
 
@@ -241,7 +241,7 @@ impl CtRegistry {
     }
 
     /// Get catalogs in priority order.
-    fn catalogs_in_order(&self, preferred: Option<&[String]>) -> Vec<&CtCatalog> {
+    fn catalogs_in_order(&self, preferred: Option<&[String]>) -> Vec<&TerminologyCatalog> {
         if let Some(preferred) = preferred {
             return preferred
                 .iter()
@@ -250,7 +250,7 @@ impl CtRegistry {
         }
 
         // Default order: SDTM CT first, then SEND CT, then others alphabetically
-        let mut catalogs: Vec<&CtCatalog> = self.catalogs.values().collect();
+        let mut catalogs: Vec<&TerminologyCatalog> = self.catalogs.values().collect();
         catalogs.sort_by_key(|c| {
             let label = c.label.to_uppercase();
             match label.as_str() {
@@ -266,7 +266,7 @@ impl CtRegistry {
 /// A resolved codelist with its source catalog.
 pub struct ResolvedCodelist<'a> {
     pub codelist: &'a Codelist,
-    pub catalog: &'a CtCatalog,
+    pub catalog: &'a TerminologyCatalog,
 }
 
 impl<'a> ResolvedCodelist<'a> {
@@ -293,21 +293,21 @@ mod tests {
     #[test]
     fn test_codelist_validation() {
         let mut sex = Codelist::new("C66731".to_string(), "Sex".to_string(), false);
-        sex.add_term(CtTerm {
+        sex.add_term(Term {
             code: "C16576".to_string(),
             submission_value: "F".to_string(),
             synonyms: vec!["Female".to_string()],
             definition: None,
             preferred_term: Some("Female".to_string()),
         });
-        sex.add_term(CtTerm {
+        sex.add_term(Term {
             code: "C20197".to_string(),
             submission_value: "M".to_string(),
             synonyms: vec!["Male".to_string()],
             definition: None,
             preferred_term: Some("Male".to_string()),
         });
-        sex.add_term(CtTerm {
+        sex.add_term(Term {
             code: "C17998".to_string(),
             submission_value: "U".to_string(),
             synonyms: vec!["U".to_string(), "UNK".to_string(), "Unknown".to_string()],
@@ -336,7 +336,7 @@ mod tests {
     #[test]
     fn test_codelist_normalization() {
         let mut sex = Codelist::new("C66731".to_string(), "Sex".to_string(), false);
-        sex.add_term(CtTerm {
+        sex.add_term(Term {
             code: "C17998".to_string(),
             submission_value: "U".to_string(),
             synonyms: vec!["UNK".to_string(), "Unknown".to_string()],

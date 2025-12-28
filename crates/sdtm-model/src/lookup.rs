@@ -1,11 +1,11 @@
 use std::collections::HashMap;
 
 #[derive(Debug, Clone)]
-pub struct CaseInsensitiveLookup {
+pub struct CaseInsensitiveSet {
     map: HashMap<String, String>,
 }
 
-impl CaseInsensitiveLookup {
+impl CaseInsensitiveSet {
     pub fn new<I, S>(names: I) -> Self
     where
         I: IntoIterator<Item = S>,

@@ -8,7 +8,7 @@ use comfy_table::{
     Attribute, Cell, CellAlignment, Color, ColumnConstraint, ContentArrangement, Table, Width,
 };
 
-use sdtm_model::IssueSeverity;
+use sdtm_model::Severity;
 
 use crate::types::{DomainDataCheck, DomainSummary, StudyResult};
 
@@ -313,21 +313,21 @@ fn summary_sort_key(code: &str) -> (String, u8, String) {
     (base.clone(), if is_supp { 1 } else { 0 }, upper)
 }
 
-fn severity_cell(severity: IssueSeverity) -> Cell {
+fn severity_cell(severity: Severity) -> Cell {
     match severity {
-        IssueSeverity::Reject => Cell::new("REJECT")
+        Severity::Reject => Cell::new("REJECT")
             .fg(Color::Red)
             .add_attribute(Attribute::Bold),
-        IssueSeverity::Error => Cell::new("ERROR").fg(Color::Red),
-        IssueSeverity::Warning => Cell::new("WARN").fg(Color::Yellow),
+        Severity::Error => Cell::new("ERROR").fg(Color::Red),
+        Severity::Warning => Cell::new("WARN").fg(Color::Yellow),
     }
 }
 
-fn severity_rank(severity: IssueSeverity) -> u8 {
+fn severity_rank(severity: Severity) -> u8 {
     match severity {
-        IssueSeverity::Reject => 3,
-        IssueSeverity::Error => 2,
-        IssueSeverity::Warning => 1,
+        Severity::Reject => 3,
+        Severity::Error => 2,
+        Severity::Warning => 1,
     }
 }
 
@@ -375,11 +375,7 @@ fn values_cell(value: String) -> Cell {
     }
 }
 
-fn highlight_count_in_message(
-    message: String,
-    count: Option<u64>,
-    severity: IssueSeverity,
-) -> String {
+fn highlight_count_in_message(message: String, count: Option<u64>, severity: Severity) -> String {
     let Some(count) = count else {
         return message;
     };
@@ -422,10 +418,10 @@ fn replace_first_count(message: &str, count: &str, replacement: &str) -> Option<
     None
 }
 
-fn ansi_severity_color(severity: IssueSeverity) -> &'static str {
+fn ansi_severity_color(severity: Severity) -> &'static str {
     match severity {
-        IssueSeverity::Reject | IssueSeverity::Error => ANSI_RED,
-        IssueSeverity::Warning => ANSI_YELLOW,
+        Severity::Reject | Severity::Error => ANSI_RED,
+        Severity::Warning => ANSI_YELLOW,
     }
 }
 

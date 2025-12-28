@@ -9,7 +9,6 @@ pub mod frame;
 pub mod frame_builder;
 pub mod frame_utils;
 pub mod pipeline;
-pub mod preprocess;
 pub mod processing_context;
 pub mod processor;
 pub mod provenance;
@@ -18,13 +17,6 @@ pub mod study_pipeline_context;
 pub mod suppqual;
 pub mod text_utils;
 mod wide;
-
-// Re-export preprocess module types
-pub use preprocess::{
-    DomainPreprocessor, PreprocessConfig, PreprocessContext, PreprocessRegistry, PreprocessRule,
-    RuleCategory, RuleExecutor, RuleMetadata, build_default_preprocess_registry,
-    fill_missing_test_fields, preprocess_domain,
-};
 
 pub use ct_utils::{
     CtResolution, compact_key, completion_column, ct_column_match, is_yes_no_token,
