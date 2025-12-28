@@ -20,31 +20,31 @@ pub(super) fn process_pe(
             ("", ""),
             ("NAN", ""),
         ]);
-        apply_map_upper(df, Some(&pestat), &stat_map)?;
+        apply_map_upper(df, Some(pestat), &stat_map)?;
     }
     if let (Some(peorres), Some(pestresc)) = (col(domain, "PEORRES"), col(domain, "PESTRESC"))
-        && has_column(df, &peorres)
-        && has_column(df, &pestresc)
+        && has_column(df, peorres)
+        && has_column(df, pestresc)
     {
-        let orres = string_column(df, &peorres)?;
-        let mut stresc = string_column(df, &pestresc)?;
+        let orres = string_column(df, peorres)?;
+        let mut stresc = string_column(df, pestresc)?;
         for idx in 0..df.height() {
             if stresc[idx].is_empty() && !orres[idx].is_empty() {
                 stresc[idx] = orres[idx].clone();
             }
         }
-        set_string_column(df, &pestresc, stresc)?;
+        set_string_column(df, pestresc, stresc)?;
     }
     if let Some(pedtc) = col(domain, "PEDTC")
         && let Some(pedy) = col(domain, "PEDY")
     {
-        compute_study_day(domain, df, &pedtc, &pedy, context, "RFSTDTC")?;
+        compute_study_day(domain, df, pedtc, pedy, context, "RFSTDTC")?;
     }
     if let Some(epoch) = col(domain, "EPOCH")
-        && has_column(df, &epoch)
+        && has_column(df, epoch)
     {
-        let values = string_column(df, &epoch)?;
-        set_string_column(df, &epoch, values)?;
+        let values = string_column(df, epoch)?;
+        set_string_column(df, epoch, values)?;
     }
     Ok(())
 }

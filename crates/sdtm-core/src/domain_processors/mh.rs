@@ -12,42 +12,42 @@ pub(super) fn process_mh(
     context: &PipelineContext,
 ) -> Result<()> {
     if let Some(mhseq) = col(domain, "MHSEQ")
-        && has_column(df, &mhseq)
+        && has_column(df, mhseq)
     {
-        let values = numeric_column_f64(df, &mhseq)?;
-        set_f64_column(df, &mhseq, values)?;
+        let values = numeric_column_f64(df, mhseq)?;
+        set_f64_column(df, mhseq, values)?;
     }
     if let Some(mhterm) = col(domain, "MHTERM")
-        && has_column(df, &mhterm)
+        && has_column(df, mhterm)
     {
-        let mut terms = string_column(df, &mhterm)?;
+        let mut terms = string_column(df, mhterm)?;
         if let Some(mhdecod) = col(domain, "MHDECOD")
-            && has_column(df, &mhdecod)
+            && has_column(df, mhdecod)
         {
-            let decods = string_column(df, &mhdecod)?;
+            let decods = string_column(df, mhdecod)?;
             for idx in 0..df.height() {
                 if terms[idx].is_empty() && !decods[idx].is_empty() {
                     terms[idx] = decods[idx].clone();
                 }
             }
         }
-        set_string_column(df, &mhterm, terms)?;
+        set_string_column(df, mhterm, terms)?;
     }
     for col_name in ["MHSTDTC", "MHENDTC", "MHDTC"] {
         if let Some(name) = col(domain, col_name)
-            && has_column(df, &name)
+            && has_column(df, name)
         {
-            let values = string_column(df, &name)?
+            let values = string_column(df, name)?
                 .into_iter()
                 .map(|value| normalize_iso8601(&value))
                 .collect();
-            set_string_column(df, &name, values)?;
+            set_string_column(df, name, values)?;
         }
     }
     if let Some(mhenrf) = col(domain, "MHENRF")
-        && has_column(df, &mhenrf)
+        && has_column(df, mhenrf)
     {
-        let values = string_column(df, &mhenrf)?
+        let values = string_column(df, mhenrf)?
             .into_iter()
             .map(|value| {
                 let upper = value.to_uppercase();
@@ -62,14 +62,14 @@ pub(super) fn process_mh(
                 }
             })
             .collect();
-        set_string_column(df, &mhenrf, values)?;
+        set_string_column(df, mhenrf, values)?;
     }
     if let (Some(mhdtc), Some(mhdy)) = (col(domain, "MHDTC"), col(domain, "MHDY"))
-        && has_column(df, &mhdtc)
+        && has_column(df, mhdtc)
     {
-        compute_study_day(domain, df, &mhdtc, &mhdy, context, "RFSTDTC")?;
-        let values = numeric_column_f64(df, &mhdy)?;
-        set_f64_column(df, &mhdy, values)?;
+        compute_study_day(domain, df, mhdtc, mhdy, context, "RFSTDTC")?;
+        let values = numeric_column_f64(df, mhdy)?;
+        set_f64_column(df, mhdy, values)?;
     }
     Ok(())
 }

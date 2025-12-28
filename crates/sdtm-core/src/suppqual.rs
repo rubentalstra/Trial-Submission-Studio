@@ -68,6 +68,12 @@ fn strip_wrapping_quotes(value: &str) -> String {
     trimmed.to_string()
 }
 
+fn column_values(df: &DataFrame, column: &str, row_count: usize) -> Vec<String> {
+    (0..row_count)
+        .map(|idx| strip_wrapping_quotes(&column_value_string(df, column, idx)))
+        .collect()
+}
+
 fn sanitize_qnam(name: &str) -> String {
     let mut safe = String::new();
     for ch in name.chars() {
@@ -125,6 +131,13 @@ fn insert_if_some(record: &mut BTreeMap<String, String>, column: Option<&str>, v
     if let Some(name) = column {
         record.insert(name.to_string(), value);
     }
+}
+
+struct SuppColumn {
+    name: String,
+    qnam: String,
+    qlabel: String,
+    qorig: String,
 }
 
 pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<DomainFrame>> {
@@ -201,35 +214,30 @@ pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<DomainFrame>> {
 
     let mut records: Vec<BTreeMap<String, String>> = Vec::new();
     let mut qnam_used: BTreeMap<String, String> = BTreeMap::new();
-    let mut qnam_map: BTreeMap<String, String> = BTreeMap::new();
-    for col in &extra_cols {
-        let qnam = unique_qnam(col, &mut qnam_used);
-        qnam_map.insert(col.clone(), qnam);
-    }
+    let supp_columns: Vec<SuppColumn> = extra_cols
+        .into_iter()
+        .map(|name| {
+            let qnam = unique_qnam(&name, &mut qnam_used);
+            let qlabel = qlabel_for_column(&name, input.source_labels);
+            let qorig = qorig_for_column(&name, input.derived_columns);
+            SuppColumn {
+                name,
+                qnam,
+                qlabel,
+                qorig,
+            }
+        })
+        .collect();
 
     let study_values: Vec<String> = parent_study_col
-        .map(|name| {
-            (0..row_count)
-                .map(|idx| strip_wrapping_quotes(&column_value_string(input.source_df, name, idx)))
-                .collect()
-        })
+        .map(|name| column_values(input.source_df, name, row_count))
         .unwrap_or_else(|| vec![String::new(); row_count]);
     let usubjid_values: Vec<String> = parent_usubjid_col
-        .map(|name| {
-            (0..row_count)
-                .map(|idx| strip_wrapping_quotes(&column_value_string(input.source_df, name, idx)))
-                .collect()
-        })
+        .map(|name| column_values(input.source_df, name, row_count))
         .unwrap_or_else(|| vec![String::new(); row_count]);
     let mapped_usubjid_values: Vec<String> = input
         .mapped_df
-        .and_then(|df| {
-            parent_usubjid_col.map(|name| {
-                (0..row_count)
-                    .map(|idx| strip_wrapping_quotes(&column_value_string(df, name, idx)))
-                    .collect()
-            })
-        })
+        .and_then(|df| parent_usubjid_col.map(|name| column_values(df, name, row_count)))
         .unwrap_or_else(|| vec![String::new(); row_count]);
     let idvar_values: Vec<String> =
         if let (Some(mapped), Some(idvar_name)) = (input.mapped_df, &idvar) {
@@ -240,47 +248,44 @@ pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<DomainFrame>> {
             vec![String::new(); row_count]
         };
 
+    let final_study_values: Vec<String> = study_values
+        .into_iter()
+        .map(|value| {
+            if value.is_empty() {
+                input.study_id.to_string()
+            } else {
+                value
+            }
+        })
+        .collect();
+    let final_usubjid_values: Vec<String> = usubjid_values
+        .into_iter()
+        .zip(mapped_usubjid_values)
+        .map(|(raw, mapped)| if raw.is_empty() { mapped } else { raw })
+        .collect();
+
     let idvar_value = idvar.map(str::to_string).unwrap_or_default();
-    for col in &extra_cols {
-        let qnam = qnam_map
-            .get(col)
-            .cloned()
-            .unwrap_or_else(|| sanitize_qnam(col));
-        let qlabel = qlabel_for_column(col, input.source_labels);
-        let qorig = qorig_for_column(col, input.derived_columns);
+    for column in &supp_columns {
+        let values = column_values(input.source_df, &column.name, row_count);
         for idx in 0..row_count {
-            let raw_val = strip_wrapping_quotes(&column_value_string(input.source_df, col, idx));
+            let raw_val = values[idx].clone();
             if raw_val.is_empty() {
                 continue;
             }
-            let study_value = study_values[idx].clone();
-            let usubjid_value = usubjid_values[idx].clone();
-            let mapped_usubjid = mapped_usubjid_values[idx].clone();
-            let final_usubjid = if !usubjid_value.is_empty() {
-                usubjid_value
-            } else {
-                mapped_usubjid
-            };
+            let study_value = final_study_values[idx].clone();
+            let final_usubjid = final_usubjid_values[idx].clone();
             let idvarval = idvar_values[idx].clone();
 
             let mut record = BTreeMap::new();
-            insert_if_some(
-                &mut record,
-                supp_study_col,
-                if !study_value.is_empty() {
-                    study_value
-                } else {
-                    input.study_id.to_string()
-                },
-            );
+            insert_if_some(&mut record, supp_study_col, study_value);
             insert_if_some(&mut record, supp_rdomain_col, parent_domain_code.clone());
             insert_if_some(&mut record, supp_usubjid_col, final_usubjid);
             insert_if_some(&mut record, supp_idvar_col, idvar_value.clone());
             insert_if_some(&mut record, supp_idvarval_col, idvarval);
-            insert_if_some(&mut record, supp_qnam_col, qnam.clone());
-            insert_if_some(&mut record, supp_qlabel_col, qlabel.clone());
+            insert_if_some(&mut record, supp_qnam_col, column.qnam.clone());
+            insert_if_some(&mut record, supp_qlabel_col, column.qlabel.clone());
             insert_if_some(&mut record, supp_qval_col, raw_val);
-            insert_if_some(&mut record, supp_qorig_col, qorig.clone());
+            insert_if_some(&mut record, supp_qorig_col, column.qorig.clone());
             insert_if_some(&mut record, supp_qeval_col, String::new());
             records.push(record);
         }

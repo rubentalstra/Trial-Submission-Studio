@@ -12,9 +12,9 @@ pub(super) fn process_default(
     _context: &PipelineContext,
 ) -> Result<()> {
     if let Some(epoch_col) = col(domain, "EPOCH")
-        && has_column(df, &epoch_col)
+        && has_column(df, epoch_col)
     {
-        let values = string_column(df, &epoch_col)?;
+        let values = string_column(df, epoch_col)?;
         let normalized = values
             .into_iter()
             .map(|value| {
@@ -28,7 +28,7 @@ pub(super) fn process_default(
                 }
             })
             .collect();
-        set_string_column(df, &epoch_col, normalized)?;
+        set_string_column(df, epoch_col, normalized)?;
     }
     Ok(())
 }

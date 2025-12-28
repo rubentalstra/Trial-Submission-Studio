@@ -102,27 +102,23 @@ pub fn build_domain_frame_with_mapping(
 
     let mut columns: Vec<Column> = Vec::with_capacity(domain.variables.len());
     for variable in &domain.variables {
-        let mut values: Vec<String> = Vec::with_capacity(row_count);
         let target_upper = variable.name.to_uppercase();
-        if let Some(mapping_lookup) = mapping_lookup.as_ref() {
-            if let Some(suggestion) = mapping_lookup.get(&target_upper) {
-                let mut source_name = suggestion.source_column.as_str();
-                if let Some(transformation) = suggestion.transformation.as_deref()
-                    && source_indices.contains_key(transformation)
-                {
-                    source_name = transformation;
-                }
-                if let Some(source_index) = source_indices.get(source_name) {
-                    values = column_values[*source_index].clone();
-                }
-            }
-        } else if let Some(source_index) = source_upper.get(&target_upper) {
-            values = column_values[*source_index].clone();
-        }
+        let source_index = mapping_lookup
+            .as_ref()
+            .and_then(|lookup| lookup.get(&target_upper))
+            .and_then(|suggestion| {
+                let source_name = suggestion
+                    .transformation
+                    .as_deref()
+                    .filter(|name| source_indices.contains_key(*name))
+                    .unwrap_or(suggestion.source_column.as_str());
+                source_indices.get(source_name).copied()
+            })
+            .or_else(|| source_upper.get(&target_upper).copied());
 
-        if values.is_empty() {
-            values = vec![String::new(); row_count];
-        }
+        let values = source_index
+            .map(|idx| column_values[idx].clone())
+            .unwrap_or_else(|| vec![String::new(); row_count]);
 
         let column: Column = match variable.data_type {
             VariableType::Num => {

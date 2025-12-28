@@ -63,6 +63,12 @@ struct RelrecMember {
     idvarval: String,
 }
 
+fn insert_if_some(record: &mut BTreeMap<String, String>, column: Option<&str>, value: String) {
+    if let Some(name) = column {
+        record.insert(name.to_string(), value);
+    }
+}
+
 /// Build RELREC dataset from domain frames.
 ///
 /// Per SDTMIG v3.4 Section 8.2:
@@ -179,27 +185,13 @@ pub fn build_relrec(
             // RELTYPE should be blank.
             // Since we have IDVAR/IDVARVAL populated (record-level), leave RELTYPE blank.
             let mut record = BTreeMap::new();
-            if let Some(name) = relrec_study_col {
-                record.insert(name.to_string(), study_id.to_string());
-            }
-            if let Some(name) = relrec_rdomain_col {
-                record.insert(name.to_string(), member.domain_code.clone());
-            }
-            if let Some(name) = relrec_usubjid_col {
-                record.insert(name.to_string(), member.usubjid.clone());
-            }
-            if let Some(name) = relrec_idvar_col {
-                record.insert(name.to_string(), member.idvar.clone());
-            }
-            if let Some(name) = relrec_idvarval_col {
-                record.insert(name.to_string(), member.idvarval.clone());
-            }
-            if let Some(name) = relrec_reltype_col {
-                record.insert(name.to_string(), String::new());
-            }
-            if let Some(name) = relrec_relid_col {
-                record.insert(name.to_string(), relid.clone());
-            }
+            insert_if_some(&mut record, relrec_study_col, study_id.to_string());
+            insert_if_some(&mut record, relrec_rdomain_col, member.domain_code.clone());
+            insert_if_some(&mut record, relrec_usubjid_col, member.usubjid.clone());
+            insert_if_some(&mut record, relrec_idvar_col, member.idvar.clone());
+            insert_if_some(&mut record, relrec_idvarval_col, member.idvarval.clone());
+            insert_if_some(&mut record, relrec_reltype_col, String::new());
+            insert_if_some(&mut record, relrec_relid_col, relid.clone());
             records.push(record);
         }
     }
@@ -242,19 +234,17 @@ fn infer_link_idvar_for_relrec(
 }
 
 fn find_suffix_column(domain: &Domain, df: &DataFrame, suffix: &str) -> Option<String> {
-    let mut candidates: Vec<String> = domain
+    let mut candidates: Vec<&str> = domain
         .variables
         .iter()
-        .map(|var| var.name.clone())
-        .filter(|name| name.to_uppercase().ends_with(suffix))
-        .filter(|name| df.column(name).is_ok())
+        .map(|var| var.name.as_str())
+        .filter(|name| ends_with_case_insensitive(name, suffix))
         .collect();
-    candidates.sort_by_key(|a| a.to_uppercase());
-    candidates.into_iter().find(|name| {
-        column_trimmed_values(df, name)
-            .map(|values| values.iter().any(|value| !value.is_empty()))
-            .unwrap_or(false)
-    })
+    candidates.sort_by_key(|name| name.to_ascii_uppercase());
+    candidates
+        .into_iter()
+        .find(|name| df.column(name).is_ok() && column_has_values(df, name))
+        .map(|name| name.to_string())
 }
 
 pub fn build_relationship_frames(
@@ -529,6 +519,12 @@ fn find_refid_columns(domain: &Domain, df: &DataFrame) -> Vec<String> {
         .filter(|name| df.column(name).is_ok())
         .map(|name| name.to_string())
         .collect()
+}
+
+fn column_has_values(df: &DataFrame, name: &str) -> bool {
+    column_trimmed_values(df, name)
+        .map(|values| values.iter().any(|value| !value.is_empty()))
+        .unwrap_or(false)
 }
 
 fn ends_with_case_insensitive(value: &str, suffix: &str) -> bool {

@@ -13,10 +13,10 @@ pub(super) fn process_te(
 ) -> Result<()> {
     for col_name in ["STUDYID", "DOMAIN", "ETCD", "ELEMENT", "TESTRL", "TEENRL"] {
         if let Some(name) = col(domain, col_name)
-            && has_column(df, &name)
+            && has_column(df, name)
         {
-            let values = string_column(df, &name)?;
-            set_string_column(df, &name, values)?;
+            let values = string_column(df, name)?;
+            set_string_column(df, name, values)?;
         }
     }
     Ok(())

@@ -14,35 +14,35 @@ pub(super) fn process_lb(
 ) -> Result<()> {
     for col_name in ["LBORRESU", "LBSTRESU"] {
         if let Some(name) = col(domain, col_name)
-            && has_column(df, &name)
+            && has_column(df, name)
         {
-            let values = string_column(df, &name)?
+            let values = string_column(df, name)?
                 .into_iter()
                 .map(|value| match value.trim() {
                     "<NA>" | "nan" | "None" => String::new(),
                     _ => value.trim().to_string(),
                 })
                 .collect();
-            set_string_column(df, &name, values)?;
+            set_string_column(df, name, values)?;
         }
     }
     if let (Some(lborresu), Some(lbstresu)) = (col(domain, "LBORRESU"), col(domain, "LBSTRESU"))
-        && has_column(df, &lborresu)
-        && has_column(df, &lbstresu)
+        && has_column(df, lborresu)
+        && has_column(df, lbstresu)
     {
-        let orresu_vals = string_column(df, &lborresu)?;
-        let mut stresu_vals = string_column(df, &lbstresu)?;
+        let orresu_vals = string_column(df, lborresu)?;
+        let mut stresu_vals = string_column(df, lbstresu)?;
         for (stresu, orresu) in stresu_vals.iter_mut().zip(orresu_vals.iter()) {
             if stresu.is_empty() && !orresu.is_empty() {
                 *stresu = orresu.clone();
             }
         }
-        set_string_column(df, &lbstresu, stresu_vals)?;
+        set_string_column(df, lbstresu, stresu_vals)?;
     }
     if let Some(lbtestcd) = col(domain, "LBTESTCD")
-        && has_column(df, &lbtestcd)
+        && has_column(df, lbtestcd)
     {
-        let mut values = string_column(df, &lbtestcd)?
+        let mut values = string_column(df, lbtestcd)?
             .into_iter()
             .map(|value| value.to_uppercase())
             .collect::<Vec<_>>();
@@ -51,15 +51,15 @@ pub(super) fn process_lb(
                 *value = normalize_ct_value(ct, value, context.options.ct_matching);
             }
         }
-        set_string_column(df, &lbtestcd, values)?;
+        set_string_column(df, lbtestcd, values)?;
     }
     if let (Some(lbtest), Some(lbtestcd)) = (col(domain, "LBTEST"), col(domain, "LBTESTCD"))
-        && has_column(df, &lbtest)
-        && has_column(df, &lbtestcd)
+        && has_column(df, lbtest)
+        && has_column(df, lbtestcd)
         && let Some(ct) = context.resolve_ct(domain, "LBTESTCD")
     {
-        let test_vals = string_column(df, &lbtest)?;
-        let mut testcd_vals = string_column(df, &lbtestcd)?;
+        let test_vals = string_column(df, lbtest)?;
+        let mut testcd_vals = string_column(df, lbtestcd)?;
         for (testcd, test) in testcd_vals.iter_mut().zip(test_vals.iter()) {
             let existing = testcd.clone();
             let valid =
@@ -71,28 +71,28 @@ pub(super) fn process_lb(
                 *testcd = mapped;
             }
         }
-        set_string_column(df, &lbtestcd, testcd_vals)?;
+        set_string_column(df, lbtestcd, testcd_vals)?;
     }
     if let (Some(lbtest), Some(lbtestcd)) = (col(domain, "LBTEST"), col(domain, "LBTESTCD"))
-        && has_column(df, &lbtest)
-        && has_column(df, &lbtestcd)
+        && has_column(df, lbtest)
+        && has_column(df, lbtestcd)
     {
-        let mut lbtest_vals = string_column(df, &lbtest)?;
-        let testcd_vals = string_column(df, &lbtestcd)?;
+        let mut lbtest_vals = string_column(df, lbtest)?;
+        let testcd_vals = string_column(df, lbtestcd)?;
         for (test, testcd) in lbtest_vals.iter_mut().zip(testcd_vals.iter()) {
             if test.is_empty() && !testcd.is_empty() {
                 *test = testcd.clone();
             }
         }
-        set_string_column(df, &lbtest, lbtest_vals)?;
+        set_string_column(df, lbtest, lbtest_vals)?;
     }
     if let (Some(lbtest), Some(lbtestcd)) = (col(domain, "LBTEST"), col(domain, "LBTESTCD"))
-        && has_column(df, &lbtest)
-        && has_column(df, &lbtestcd)
+        && has_column(df, lbtest)
+        && has_column(df, lbtestcd)
         && let Some(ct) = context.resolve_ct(domain, "LBTESTCD")
     {
-        let mut test_vals = string_column(df, &lbtest)?;
-        let testcd_vals = string_column(df, &lbtestcd)?;
+        let mut test_vals = string_column(df, lbtest)?;
+        let testcd_vals = string_column(df, lbtestcd)?;
         for (test, testcd) in test_vals.iter_mut().zip(testcd_vals.iter()) {
             if testcd.is_empty() {
                 continue;
@@ -106,22 +106,22 @@ pub(super) fn process_lb(
                 *test = preferred;
             }
         }
-        set_string_column(df, &lbtest, test_vals)?;
+        set_string_column(df, lbtest, test_vals)?;
     }
     if let Some(lbdtc) = col(domain, "LBDTC")
         && let Some(lbdy) = col(domain, "LBDY")
     {
-        compute_study_day(domain, df, &lbdtc, &lbdy, context, "RFSTDTC")?;
+        compute_study_day(domain, df, lbdtc, lbdy, context, "RFSTDTC")?;
     }
     if let Some(lbendtc) = col(domain, "LBENDTC")
         && let Some(lbendy) = col(domain, "LBENDY")
     {
-        compute_study_day(domain, df, &lbendtc, &lbendy, context, "RFSTDTC")?;
+        compute_study_day(domain, df, lbendtc, lbendy, context, "RFSTDTC")?;
     }
     if let Some(lbstresc) = col(domain, "LBSTRESC")
-        && has_column(df, &lbstresc)
+        && has_column(df, lbstresc)
     {
-        let values = string_column(df, &lbstresc)?
+        let values = string_column(df, lbstresc)?
             .into_iter()
             .map(|value| match value.as_str() {
                 "Positive" => "POSITIVE".to_string(),
@@ -129,36 +129,36 @@ pub(super) fn process_lb(
                 _ => value,
             })
             .collect();
-        set_string_column(df, &lbstresc, values)?;
+        set_string_column(df, lbstresc, values)?;
     }
     if let (Some(lborres), Some(lbstresc)) = (col(domain, "LBORRES"), col(domain, "LBSTRESC"))
-        && has_column(df, &lborres)
-        && has_column(df, &lbstresc)
+        && has_column(df, lborres)
+        && has_column(df, lbstresc)
     {
-        let orres = string_column(df, &lborres)?
+        let orres = string_column(df, lborres)?
             .into_iter()
             .map(|value| match value.trim() {
                 "<NA>" | "nan" | "None" => String::new(),
                 _ => value.trim().to_string(),
             })
             .collect::<Vec<_>>();
-        let mut stresc = string_column(df, &lbstresc)?;
+        let mut stresc = string_column(df, lbstresc)?;
         for idx in 0..df.height() {
             if stresc[idx].is_empty() && !orres[idx].is_empty() {
                 stresc[idx] = orres[idx].clone();
             }
         }
-        set_string_column(df, &lbstresc, stresc)?;
+        set_string_column(df, lbstresc, stresc)?;
     }
     if let (Some(lbstresc), Some(lbstresn)) = (col(domain, "LBSTRESC"), col(domain, "LBSTRESN"))
-        && has_column(df, &lbstresc)
+        && has_column(df, lbstresc)
     {
-        let stresc_vals = string_column(df, &lbstresc)?;
+        let stresc_vals = string_column(df, lbstresc)?;
         let numeric_vals = stresc_vals
             .iter()
             .map(|value| parse_f64(value))
             .collect::<Vec<_>>();
-        set_f64_column(df, &lbstresn, numeric_vals)?;
+        set_f64_column(df, lbstresn, numeric_vals)?;
     }
     if let Some(lbclsig) = col(domain, "LBCLSIG") {
         let yn_map = map_values([
@@ -175,57 +175,57 @@ pub(super) fn process_lb(
             ("", ""),
             ("NAN", ""),
         ]);
-        apply_map_upper(df, Some(&lbclsig), &yn_map)?;
+        apply_map_upper(df, Some(lbclsig), &yn_map)?;
     }
     if let Some(ct) = context.resolve_ct(domain, "LBORRESU") {
         for col_name in ["LBORRESU", "LBSTRESU"] {
             if let Some(name) = col(domain, col_name)
-                && has_column(df, &name)
+                && has_column(df, name)
             {
-                let mut values = string_column(df, &name)?;
+                let mut values = string_column(df, name)?;
                 for value in &mut values {
                     *value = normalize_ct_value(ct, value, context.options.ct_matching);
                 }
-                set_string_column(df, &name, values)?;
+                set_string_column(df, name, values)?;
             }
         }
     }
     if let Some(lbcolsrt) = col(domain, "LBCOLSRT")
-        && has_column(df, &lbcolsrt)
+        && has_column(df, lbcolsrt)
     {
-        let mut values = string_column(df, &lbcolsrt)?;
+        let mut values = string_column(df, lbcolsrt)?;
         for value in &mut values {
             if is_yes_no_token(value) {
                 value.clear();
             }
         }
-        set_string_column(df, &lbcolsrt, values)?;
+        set_string_column(df, lbcolsrt, values)?;
     }
     if let (Some(lborres), Some(lborresu)) = (col(domain, "LBORRES"), col(domain, "LBORRESU"))
-        && has_column(df, &lborres)
-        && has_column(df, &lborresu)
+        && has_column(df, lborres)
+        && has_column(df, lborresu)
     {
-        let orres = string_column(df, &lborres)?;
-        let mut orresu = string_column(df, &lborresu)?;
+        let orres = string_column(df, lborres)?;
+        let mut orresu = string_column(df, lborresu)?;
         for (orres_val, orresu_val) in orres.iter().zip(orresu.iter_mut()) {
             if orres_val.is_empty() {
                 orresu_val.clear();
             }
         }
-        set_string_column(df, &lborresu, orresu)?;
+        set_string_column(df, lborresu, orresu)?;
     }
     if let (Some(lbstresc), Some(lbstresu)) = (col(domain, "LBSTRESC"), col(domain, "LBSTRESU"))
-        && has_column(df, &lbstresc)
-        && has_column(df, &lbstresu)
+        && has_column(df, lbstresc)
+        && has_column(df, lbstresu)
     {
-        let stresc = string_column(df, &lbstresc)?;
-        let mut stresu = string_column(df, &lbstresu)?;
+        let stresc = string_column(df, lbstresc)?;
+        let mut stresu = string_column(df, lbstresu)?;
         for (stresc_val, stresu_val) in stresc.iter().zip(stresu.iter_mut()) {
             if stresc_val.is_empty() {
                 stresu_val.clear();
             }
         }
-        set_string_column(df, &lbstresu, stresu)?;
+        set_string_column(df, lbstresu, stresu)?;
     }
     Ok(())
 }

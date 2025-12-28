@@ -54,6 +54,29 @@ struct IeWideGroup {
     testcd_col: Option<usize>,
 }
 
+fn build_wide_base_mapping(
+    table: &CsvTable,
+    domain: &Domain,
+    study_id: &str,
+    wide_columns: &BTreeSet<String>,
+) -> Result<(MappingConfig, DomainFrame)> {
+    let base_table = filter_table_columns(table, wide_columns, false);
+    let hints = build_column_hints(&base_table);
+    let engine = MappingEngine::new((*domain).clone(), 0.5, hints);
+    let result = engine.suggest(&base_table.headers);
+    let mapping_config = engine.to_config(study_id, result);
+    let base_frame = build_domain_frame_with_mapping(&base_table, domain, Some(&mapping_config))?;
+    Ok((mapping_config, base_frame))
+}
+
+fn mapping_used_sources(mapping: &MappingConfig) -> BTreeSet<String> {
+    mapping
+        .mappings
+        .iter()
+        .map(|item| item.source_column.clone())
+        .collect()
+}
+
 pub(crate) fn build_lb_wide_frame(
     table: &CsvTable,
     domain: &Domain,
@@ -63,21 +86,13 @@ pub(crate) fn build_lb_wide_frame(
     if groups.is_empty() {
         return Ok(None);
     }
-    let base_table = filter_table_columns(table, &wide_columns, false);
-    let hints = build_column_hints(&base_table);
-    let engine = MappingEngine::new((*domain).clone(), 0.5, hints);
-    let result = engine.suggest(&base_table.headers);
-    let mapping_config = engine.to_config(study_id, result);
-    let base_frame = build_domain_frame_with_mapping(&base_table, domain, Some(&mapping_config))?;
+    let (mapping_config, base_frame) =
+        build_wide_base_mapping(table, domain, study_id, &wide_columns)?;
     let date_idx = find_lb_date_column(&table.headers);
     let time_idx = find_lb_time_column(&table.headers);
     let (expanded, used_wide) =
         expand_lb_wide(table, &base_frame.data, domain, &groups, date_idx, time_idx)?;
-    let mut used: BTreeSet<String> = mapping_config
-        .mappings
-        .iter()
-        .map(|mapping| mapping.source_column.clone())
-        .collect();
+    let mut used = mapping_used_sources(&mapping_config);
     used.extend(used_wide);
     Ok(Some((
         mapping_config,
@@ -96,12 +111,8 @@ pub(crate) fn build_vs_wide_frame(
     if groups.is_empty() {
         return Ok(None);
     }
-    let base_table = filter_table_columns(table, &wide_columns, false);
-    let hints = build_column_hints(&base_table);
-    let engine = MappingEngine::new((*domain).clone(), 0.5, hints);
-    let result = engine.suggest(&base_table.headers);
-    let mapping_config = engine.to_config(study_id, result);
-    let base_frame = build_domain_frame_with_mapping(&base_table, domain, Some(&mapping_config))?;
+    let (mapping_config, base_frame) =
+        build_wide_base_mapping(table, domain, study_id, &wide_columns)?;
     let date_idx = find_vs_date_column(&table.headers);
     let time_idx = find_vs_time_column(&table.headers);
     let (expanded, used_wide) = expand_vs_wide(
@@ -113,11 +124,7 @@ pub(crate) fn build_vs_wide_frame(
         date_idx,
         time_idx,
     )?;
-    let mut used: BTreeSet<String> = mapping_config
-        .mappings
-        .iter()
-        .map(|mapping| mapping.source_column.clone())
-        .collect();
+    let mut used = mapping_used_sources(&mapping_config);
     used.extend(used_wide);
     Ok(Some((
         mapping_config,
@@ -135,12 +142,8 @@ pub(crate) fn build_ie_wide_frame(
     if groups.is_empty() {
         return Ok(None);
     }
-    let base_table = filter_table_columns(table, &wide_columns, false);
-    let hints = build_column_hints(&base_table);
-    let engine = MappingEngine::new((*domain).clone(), 0.5, hints);
-    let result = engine.suggest(&base_table.headers);
-    let mapping_config = engine.to_config(study_id, result);
-    let base_frame = build_domain_frame_with_mapping(&base_table, domain, Some(&mapping_config))?;
+    let (mapping_config, base_frame) =
+        build_wide_base_mapping(table, domain, study_id, &wide_columns)?;
     let test_source = mapping_source_for_target(&mapping_config, "IETEST");
     let testcd_source = mapping_source_for_target(&mapping_config, "IETESTCD");
     let cat_source = mapping_source_for_target(&mapping_config, "IECAT");
@@ -154,11 +157,7 @@ pub(crate) fn build_ie_wide_frame(
         allow_base_test,
         allow_base_cat,
     )?;
-    let mut used: BTreeSet<String> = mapping_config
-        .mappings
-        .iter()
-        .map(|mapping| mapping.source_column.clone())
-        .collect();
+    let mut used = mapping_used_sources(&mapping_config);
     used.extend(used_wide);
     Ok(Some((
         mapping_config,

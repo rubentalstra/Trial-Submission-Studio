@@ -57,9 +57,10 @@ fn normalize_ct_columns(
         let Ok(series) = df.column(column_name) else {
             continue;
         };
-        let mut values = Vec::with_capacity(df.height());
+        let row_count = df.height();
+        let mut values = Vec::with_capacity(row_count);
         let mut changed = false;
-        for idx in 0..df.height() {
+        for idx in 0..row_count {
             let raw = any_to_string(series.get(idx).unwrap_or(AnyValue::Null));
             if raw.trim().is_empty() {
                 values.push(raw);
@@ -98,10 +99,11 @@ fn apply_base_rules(domain: &Domain, df: &mut DataFrame, context: &PipelineConte
         Err(_) => return Ok(()),
     };
     let study_series = study_col.and_then(|name| df.column(name).ok()).cloned();
-    let mut updated = Vec::with_capacity(df.height());
+    let row_count = df.height();
+    let mut updated = Vec::with_capacity(row_count);
     let mut changed = false;
 
-    for idx in 0..df.height() {
+    for idx in 0..row_count {
         let raw_usubjid = any_to_string(usubjid_series.get(idx).unwrap_or(AnyValue::Null));
         let mut usubjid = sanitize_identifier(&raw_usubjid);
         let study_value = study_series
@@ -194,11 +196,12 @@ fn assign_sequence_values(
     let Some(group_values) = column_trimmed_values(df, group_column) else {
         return Ok(());
     };
+    let row_count = df.height();
     let had_existing = column_trimmed_values(df, seq_column)
         .map(|values| values.iter().any(|value| !value.is_empty()))
         .unwrap_or(false);
     let mut counters: BTreeMap<String, i64> = BTreeMap::new();
-    let mut values: Vec<Option<f64>> = Vec::with_capacity(df.height());
+    let mut values: Vec<Option<f64>> = Vec::with_capacity(row_count);
 
     for key in &group_values {
         if key.is_empty() {
@@ -237,10 +240,11 @@ fn assign_sequence_with_tracker(
     let Some(group_values) = column_trimmed_values(df, group_column) else {
         return Ok(());
     };
+    let row_count = df.height();
     let seq_values =
-        column_trimmed_values(df, seq_column).unwrap_or_else(|| vec![String::new(); df.height()]);
+        column_trimmed_values(df, seq_column).unwrap_or_else(|| vec![String::new(); row_count]);
     let had_existing = seq_values.iter().any(|value| !value.is_empty());
-    let mut values: Vec<Option<f64>> = Vec::with_capacity(df.height());
+    let mut values: Vec<Option<f64>> = Vec::with_capacity(row_count);
     for (idx, key) in group_values.iter().enumerate() {
         if key.is_empty() {
             values.push(None);

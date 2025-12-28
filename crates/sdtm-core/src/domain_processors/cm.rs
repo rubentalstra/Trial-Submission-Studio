@@ -12,24 +12,24 @@ pub(super) fn process_cm(
     context: &PipelineContext,
 ) -> Result<()> {
     if let Some(cmdosu) = col(domain, "CMDOSU")
-        && has_column(df, &cmdosu)
+        && has_column(df, cmdosu)
     {
-        let values = string_column(df, &cmdosu)?
+        let values = string_column(df, cmdosu)?
             .into_iter()
             .map(|v| v.to_lowercase())
             .collect();
-        set_string_column(df, &cmdosu, values)?;
+        set_string_column(df, cmdosu, values)?;
     }
     if let Some(cmdur) = col(domain, "CMDUR")
-        && has_column(df, &cmdur)
+        && has_column(df, cmdur)
     {
-        let values = string_column(df, &cmdur)?;
-        set_string_column(df, &cmdur, values)?;
+        let values = string_column(df, cmdur)?;
+        set_string_column(df, cmdur, values)?;
     }
     if let Some(cmdostxt) = col(domain, "CMDOSTXT")
-        && has_column(df, &cmdostxt)
+        && has_column(df, cmdostxt)
     {
-        let values = string_column(df, &cmdostxt)?
+        let values = string_column(df, cmdostxt)?
             .into_iter()
             .map(|value| {
                 let trimmed = value.trim();
@@ -40,7 +40,7 @@ pub(super) fn process_cm(
                 }
             })
             .collect();
-        set_string_column(df, &cmdostxt, values)?;
+        set_string_column(df, cmdostxt, values)?;
     }
     if let Some(cmstat) = col(domain, "CMSTAT") {
         let stat_map = map_values([
@@ -49,10 +49,10 @@ pub(super) fn process_cm(
             ("", ""),
             ("NAN", ""),
         ]);
-        apply_map_upper(df, Some(&cmstat), &stat_map)?;
+        apply_map_upper(df, Some(cmstat), &stat_map)?;
     }
     if let Some(cmdosfrq) = col(domain, "CMDOSFRQ")
-        && has_column(df, &cmdosfrq)
+        && has_column(df, cmdosfrq)
     {
         let freq_map = map_values([
             ("ONCE", "ONCE"),
@@ -73,10 +73,10 @@ pub(super) fn process_cm(
             ("", ""),
             ("NAN", ""),
         ]);
-        apply_map_upper(df, Some(&cmdosfrq), &freq_map)?;
+        apply_map_upper(df, Some(cmdosfrq), &freq_map)?;
     }
     if let Some(cmroute) = col(domain, "CMROUTE")
-        && has_column(df, &cmroute)
+        && has_column(df, cmroute)
     {
         let route_map = map_values([
             ("ORAL", "ORAL"),
@@ -100,12 +100,12 @@ pub(super) fn process_cm(
             ("", ""),
             ("NAN", ""),
         ]);
-        apply_map_upper(df, Some(&cmroute), &route_map)?;
+        apply_map_upper(df, Some(cmroute), &route_map)?;
     }
     if let Some(cmdosu) = col(domain, "CMDOSU")
-        && has_column(df, &cmdosu)
+        && has_column(df, cmdosu)
     {
-        let values = string_column(df, &cmdosu)?
+        let values = string_column(df, cmdosu)?
             .into_iter()
             .map(|value| {
                 let trimmed = value.trim();
@@ -118,17 +118,17 @@ pub(super) fn process_cm(
                 }
             })
             .collect();
-        set_string_column(df, &cmdosu, values)?;
+        set_string_column(df, cmdosu, values)?;
     }
     if let Some(cmstdtc) = col(domain, "CMSTDTC")
         && let Some(cmstdy) = col(domain, "CMSTDY")
     {
-        compute_study_day(domain, df, &cmstdtc, &cmstdy, context, "RFSTDTC")?;
+        compute_study_day(domain, df, cmstdtc, cmstdy, context, "RFSTDTC")?;
     }
     if let Some(cmendtc) = col(domain, "CMENDTC")
         && let Some(cmendy) = col(domain, "CMENDY")
     {
-        compute_study_day(domain, df, &cmendtc, &cmendy, context, "RFSTDTC")?;
+        compute_study_day(domain, df, cmendtc, cmendy, context, "RFSTDTC")?;
     }
     Ok(())
 }

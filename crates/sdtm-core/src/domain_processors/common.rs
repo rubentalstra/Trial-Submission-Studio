@@ -19,8 +19,8 @@ pub(super) use crate::ct_utils::preferred_term_for;
 pub(super) use crate::ct_utils::resolve_ct_value;
 pub(super) use crate::datetime::normalize_iso8601;
 
-pub(super) fn col(domain: &Domain, name: &str) -> Option<String> {
-    domain.column_name(name).map(str::to_string)
+pub(super) fn col<'a>(domain: &'a Domain, name: &str) -> Option<&'a str> {
+    domain.column_name(name)
 }
 pub(super) fn has_column(df: &DataFrame, name: &str) -> bool {
     df.column(name).is_ok()
@@ -223,9 +223,9 @@ pub(super) fn compute_study_day(
     let mut baseline_vals: Vec<Option<NaiveDate>> = vec![None; df.height()];
     if !context.reference_starts.is_empty()
         && let Some(usubjid_col) = col(domain, "USUBJID")
-        && has_column(df, &usubjid_col)
+        && has_column(df, usubjid_col)
     {
-        let usub_vals = string_column(df, &usubjid_col)?;
+        let usub_vals = string_column(df, usubjid_col)?;
         for idx in 0..df.height() {
             if let Some(start) = context.reference_starts.get(&usub_vals[idx]) {
                 // parse_date returns None for partial dates
