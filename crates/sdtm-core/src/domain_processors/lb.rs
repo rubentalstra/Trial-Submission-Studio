@@ -2,8 +2,9 @@ use anyhow::Result;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
 
+use crate::ct_utils::is_yes_no_token;
 use crate::ct_utils::resolve_ct_value_from_hint;
-use crate::{ProcessingContext, is_yes_no_token};
+use crate::processing_context::ProcessingContext;
 
 use super::common::*;
 

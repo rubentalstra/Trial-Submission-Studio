@@ -1,4 +1,4 @@
-use sdtm_core::{
+use sdtm_core::domain_utils::{
     SdtmRole, order_variables_by_role, reorder_columns_by_role, validate_column_order,
     variable_sort_key,
 };

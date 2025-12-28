@@ -7,10 +7,13 @@ use comfy_table::Table;
 use polars::prelude::DataFrame;
 use tracing::{debug, info, info_span, warn};
 
-use sdtm_core::{
-    DomainFrame, ProcessingOptions, StudyPipelineContext, build_relationship_frames,
-    build_report_domains, dedupe_frames_by_identifiers, insert_frame, is_supporting_domain,
-};
+use sdtm_core::dedupe::dedupe_frames_by_identifiers;
+use sdtm_core::domain_sets::{build_report_domains, domain_map_by_code, is_supporting_domain};
+use sdtm_core::frame::DomainFrame;
+use sdtm_core::frame_utils::insert_frame;
+use sdtm_core::processing_context::ProcessingOptions;
+use sdtm_core::relationships::build_relationship_frames;
+use sdtm_core::study_pipeline_context::StudyPipelineContext;
 use sdtm_model::{MappingConfig, OutputFormat};
 use sdtm_standards::{load_default_ct_registry, load_default_sdtm_ig_domains};
 use sdtm_validate::gate_strict_outputs;
@@ -302,7 +305,7 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
 
     // Build report domains for output
     let report_domains = build_report_domains(&pipeline.standards, &frame_list)?;
-    let report_domain_map = sdtm_core::domain_map_by_code(&report_domains);
+    let report_domain_map = domain_map_by_code(&report_domains);
 
     // =========================================================================
     // Stage 5: Validate - Conformance via CT + structural checks

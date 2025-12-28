@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use anyhow::{Context, Result};
 
-use crate::DomainFrame;
+use crate::frame::DomainFrame;
 
 pub fn insert_frame(map: &mut BTreeMap<String, DomainFrame>, frame: DomainFrame) -> Result<()> {
     let key = frame.domain_code.to_uppercase();

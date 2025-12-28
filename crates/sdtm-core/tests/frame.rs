@@ -1,7 +1,7 @@
 //! Tests for DomainFrame and DomainFrameMeta.
 
 use polars::prelude::DataFrame;
-use sdtm_core::{DomainFrame, DomainFrameMeta};
+use sdtm_core::frame::{DomainFrame, DomainFrameMeta};
 use std::path::PathBuf;
 
 #[test]

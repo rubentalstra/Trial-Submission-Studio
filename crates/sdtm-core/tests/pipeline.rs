@@ -1,9 +1,9 @@
 //! Tests for study pipeline context and domain pipeline.
 
 use polars::prelude::DataFrame;
-use sdtm_core::{
-    PipelineState, ProcessingContext, ProcessingStep, StudyPipelineContext, build_default_pipeline,
-};
+use sdtm_core::pipeline::{PipelineState, ProcessingStep, build_default_pipeline};
+use sdtm_core::processing_context::ProcessingContext;
+use sdtm_core::study_pipeline_context::StudyPipelineContext;
 use sdtm_model::Domain;
 use std::collections::BTreeMap;
 

@@ -1,7 +1,7 @@
-use sdtm_core::{
-    DomainProcessor, DomainProcessorRegistry, ProcessingContext, build_default_registry,
-    process_domain_with_registry,
+use sdtm_core::domain_processors::{
+    DomainProcessor, DomainProcessorRegistry, build_default_registry, process_domain_with_registry,
 };
+use sdtm_core::processing_context::ProcessingContext;
 
 use anyhow::Result;
 use polars::prelude::*;

@@ -1,6 +1,8 @@
 use polars::prelude::{AnyValue, Column, DataFrame};
 
-use sdtm_core::{ProcessingContext, column_name, process_domain_with_context};
+use sdtm_core::domain_utils::column_name;
+use sdtm_core::processing_context::ProcessingContext;
+use sdtm_core::processor::process_domain_with_context;
 use sdtm_ingest::any_to_i64;
 use sdtm_standards::load_default_sdtm_ig_domains;
 

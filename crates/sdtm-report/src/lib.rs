@@ -9,7 +9,8 @@ use polars::prelude::{AnyValue, DataFrame};
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 
-use sdtm_core::{DomainFrame, order_variables_by_role, standard_columns};
+use sdtm_core::domain_utils::{order_variables_by_role, standard_columns};
+use sdtm_core::frame::DomainFrame;
 use sdtm_ingest::{any_to_f64_for_output, any_to_string_for_output, any_to_string_non_empty};
 use sdtm_model::ct::{Codelist, TerminologyCatalog, TerminologyRegistry};
 use sdtm_model::{Domain, MappingConfig, Variable, VariableType};

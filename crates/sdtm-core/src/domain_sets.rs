@@ -4,7 +4,7 @@ use anyhow::{Result, anyhow};
 
 use sdtm_model::Domain;
 
-use crate::DomainFrame;
+use crate::frame::DomainFrame;
 
 pub fn domain_map_by_code(domains: &[Domain]) -> BTreeMap<String, &Domain> {
     let mut map = BTreeMap::new();

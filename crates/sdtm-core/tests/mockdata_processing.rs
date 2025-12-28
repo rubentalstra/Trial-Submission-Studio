@@ -1,11 +1,12 @@
 use std::collections::BTreeSet;
 use std::path::Path;
 
-use sdtm_core::{
-    DomainFrame, ProcessingContext, RelationshipConfig, SuppqualInput, build_domain_frame,
-    build_domain_frame_with_mapping, build_relrec, build_relspec, build_relsub, build_suppqual,
-    process_domain_with_context,
-};
+use sdtm_core::frame::DomainFrame;
+use sdtm_core::frame_builder::{build_domain_frame, build_domain_frame_with_mapping};
+use sdtm_core::processing_context::ProcessingContext;
+use sdtm_core::processor::process_domain_with_context;
+use sdtm_core::relationships::{RelationshipConfig, build_relrec, build_relspec, build_relsub};
+use sdtm_core::suppqual::{SuppqualInput, build_suppqual};
 use sdtm_ingest::{build_column_hints, discover_domain_files, list_csv_files, read_csv_table};
 use sdtm_map::MappingEngine;
 use sdtm_standards::{load_default_ct_registry, load_default_sdtm_ig_domains};

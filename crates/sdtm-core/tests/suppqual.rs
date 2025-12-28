@@ -1,7 +1,8 @@
 use polars::prelude::{AnyValue, Column, DataFrame};
 use std::collections::BTreeSet;
 
-use sdtm_core::{SuppqualInput, build_suppqual, column_name, suppqual_dataset_code};
+use sdtm_core::domain_utils::column_name;
+use sdtm_core::suppqual::{SuppqualInput, build_suppqual, suppqual_dataset_code};
 use sdtm_standards::load_default_sdtm_ig_domains;
 
 #[test]

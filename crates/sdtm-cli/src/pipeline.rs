@@ -18,10 +18,11 @@ use anyhow::{Context, Result};
 use polars::prelude::{AnyValue, DataFrame};
 use tracing::{debug, info, info_span};
 
-use sdtm_core::{
-    DomainFrame, DomainFrameMeta, StudyPipelineContext, SuppqualInput, build_domain_frame,
-    build_mapped_domain_frame, build_suppqual, process_domain_with_context_and_tracker,
-};
+use sdtm_core::frame::{DomainFrame, DomainFrameMeta};
+use sdtm_core::frame_builder::{build_domain_frame, build_mapped_domain_frame};
+use sdtm_core::processor::process_domain_with_context_and_tracker;
+use sdtm_core::study_pipeline_context::StudyPipelineContext;
+use sdtm_core::suppqual::{SuppqualInput, build_suppqual};
 use sdtm_ingest::{
     AppliedStudyMetadata, CsvTable, StudyMetadata, any_to_string, apply_study_metadata,
     discover_domain_files, list_csv_files, load_study_metadata, read_csv_schema, read_csv_table,

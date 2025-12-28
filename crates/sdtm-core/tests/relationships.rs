@@ -2,9 +2,9 @@ use std::collections::BTreeSet;
 
 use polars::prelude::{AnyValue, Column, DataFrame};
 
-use sdtm_core::{
-    DomainFrame, RelationshipConfig, build_relrec, build_relspec, build_relsub, column_name,
-};
+use sdtm_core::domain_utils::column_name;
+use sdtm_core::frame::DomainFrame;
+use sdtm_core::relationships::{RelationshipConfig, build_relrec, build_relspec, build_relsub};
 use sdtm_ingest::any_to_string;
 use sdtm_standards::load_default_sdtm_ig_domains;
 
