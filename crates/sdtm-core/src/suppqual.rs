@@ -22,48 +22,42 @@ pub struct SuppqualInput<'a> {
     pub exclusion_columns: Option<&'a BTreeSet<String>>,
     pub source_labels: Option<&'a BTreeMap<String, String>>,
     pub derived_columns: Option<&'a BTreeSet<String>>,
-    /// Optional dataset name for split domains (e.g., "LBCH" for LB split).
-    /// Per SDTMIG 8.4.2, SUPP dataset names should use the parent dataset name,
-    /// not just the domain code.
-    pub dataset_name: Option<&'a str>,
 }
 
-/// Generate a SUPPQUAL dataset code from a parent domain or dataset name.
+/// Generate a SUPPQUAL dataset code from a parent domain code.
 ///
-/// Per SDTMIG v3.4 Section 8.4.2:
-/// - For split datasets (e.g., LBCH, LBHE), the SUPP dataset should be named
-///   after the parent dataset, not just the domain code.
-/// - If SUPP{name} exceeds 8 characters, fall back to SQ{name}.
+/// Per SDTMIG v3.4 Section 4.1.7 and Section 8.4.2:
+/// - There should be ONE SUPP dataset per base domain, regardless of splits.
+/// - For split domains (e.g., LBCH, LBHE, LBUR), all supplemental qualifiers
+///   go into a single SUPPLB dataset with RDOMAIN="LB".
+/// - The SUPP dataset is named after the base domain code, not split dataset names.
+/// - If SUPP{domain} exceeds 8 characters, fall back to SQ{domain}.
 /// - If still > 8 characters, truncate to 8.
 ///
 /// # Arguments
-/// * `parent_domain` - The domain code (e.g., "LB", "AE")
-/// * `dataset_name` - Optional dataset name for split domains (e.g., "LBCH")
+/// * `parent_domain` - The base domain code (e.g., "LB", "AE", "FA")
 ///
 /// # Returns
-/// A SUPP dataset code (e.g., "SUPPLB", "SUPPLBCH", "SQLBCH")
+/// A SUPP dataset code (e.g., "SUPPLB", "SUPPAE", "SUPPFA")
 ///
 /// # Examples
 /// ```
 /// use sdtm_core::suppqual_dataset_code;
 ///
 /// // Simple domain
-/// assert_eq!(suppqual_dataset_code("LB", None), "SUPPLB");
+/// assert_eq!(suppqual_dataset_code("LB"), "SUPPLB");
+/// assert_eq!(suppqual_dataset_code("AE"), "SUPPAE");
 ///
-/// // Split dataset
-/// assert_eq!(suppqual_dataset_code("LB", Some("LBCH")), "SUPPLBCH");
-///
-/// // Long name falls back to SQ prefix
-/// assert_eq!(suppqual_dataset_code("FAMRSK", None), "SQFAMRSK");
+/// // Long domain code falls back to SQ prefix
+/// assert_eq!(suppqual_dataset_code("FAMRSK"), "SQFAMRSK");
 /// ```
-pub fn suppqual_dataset_code(parent_domain: &str, dataset_name: Option<&str>) -> String {
-    // Use dataset_name if provided, otherwise use parent_domain
-    let parent = dataset_name.unwrap_or(parent_domain).to_uppercase();
-    let candidate = format!("SUPP{parent}");
+pub fn suppqual_dataset_code(parent_domain: &str) -> String {
+    let domain = parent_domain.to_uppercase();
+    let candidate = format!("SUPP{domain}");
     if candidate.len() <= 8 {
         return candidate;
     }
-    let short = format!("SQ{parent}");
+    let short = format!("SQ{domain}");
     if short.len() <= 8 {
         return short;
     }
@@ -412,10 +406,10 @@ pub fn build_suppqual(input: SuppqualInput<'_>) -> Result<Option<SuppqualResult>
         .collect();
     let data = DataFrame::new(columns)?;
 
-    // Per SDTMIG 8.4.2: Use dataset_name for SUPP naming if provided
-    // (for split datasets like LBCH -> SUPPLBCH)
+    // Per SDTMIG 4.1.7/8.4.2: Use base domain code for SUPP naming.
+    // All split datasets (e.g., LBCH, LBHE, LBUR) merge into one SUPPLB.
     Ok(Some(SuppqualResult {
-        domain_code: suppqual_dataset_code(&parent_domain_code, input.dataset_name),
+        domain_code: suppqual_dataset_code(&parent_domain_code),
         data,
         used_columns: extra_cols,
     }))

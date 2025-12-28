@@ -34,7 +34,7 @@
 //!     let rules = generator.generate_rules_for_domain(domain, &ct_registry);
 //!     for rule in rules {
 //!         // rule.rule_id: "SD0002", "CT2001", "CT2002", "SD0003", etc.
-//!         // rule.context: RuleContext::RequiredVariable, ControlledTerminology { valid_values, ... }
+//!         // All rule IDs are official P21 rules from the CSV
 //!     }
 //! }
 //! ```
@@ -44,6 +44,7 @@
 //! | Source | Rule ID | Description |
 //! |--------|---------|-------------|
 //! | Core="Req" in Variables.csv | SD0002 | Required variable cannot be null |
+//! | Core="Req" in Variables.csv | SD0056 | Required variable must be present |
 //! | Core="Exp" in Variables.csv | SD0057 | Expected variable should be present |
 //! | codelist_code + extensible=No | CT2001 | Value must be from non-extensible codelist |
 //! | codelist_code + extensible=Yes | CT2002 | Value should be from extensible codelist |
@@ -52,9 +53,7 @@
 
 mod generator;
 
-pub use generator::{
-    GeneratedRule, RuleContext, RuleGenerationSummary, RuleGenerator, RuleSeverity,
-};
+pub use generator::{GeneratedRule, RuleContext, RuleGenerationSummary, RuleGenerator, RuleSeverity};
 
 // Re-export CoreDesignation for parsing Core column values
 mod core;

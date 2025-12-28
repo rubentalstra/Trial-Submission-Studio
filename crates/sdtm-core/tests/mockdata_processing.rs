@@ -83,7 +83,6 @@ fn processes_mockdata_end_to_end() {
                 exclusion_columns: None,
                 source_labels: None,
                 derived_columns: None,
-                dataset_name: None,
             })
             .expect("suppqual")
             {

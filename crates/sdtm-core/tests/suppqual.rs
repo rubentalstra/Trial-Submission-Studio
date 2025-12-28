@@ -39,12 +39,11 @@ fn builds_suppqual_for_any_domain() {
         exclusion_columns: None,
         source_labels: None,
         derived_columns: None,
-        dataset_name: None,
     })
     .expect("suppqual")
     .expect("suppqual rows");
 
-    assert_eq!(result.domain_code, suppqual_dataset_code("LB", None));
+    assert_eq!(result.domain_code, suppqual_dataset_code("LB"));
     assert_eq!(result.data.height(), 1);
     let qnam_col = column_name(suppqual, "QNAM").expect("QNAM");
     let qnam = result

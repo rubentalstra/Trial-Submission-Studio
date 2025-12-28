@@ -6,7 +6,7 @@ pub use cross_domain::{
     CrossDomainValidationInput, CrossDomainValidationResult, validate_cross_domain,
 };
 pub use engine::RuleEngine;
-pub use rule_mapping::{InternalRuleInfo, RuleResolver};
+pub use rule_mapping::RuleResolver;
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -138,8 +138,6 @@ pub fn validate_domains_with_rules(
     reports
 }
 
-// Note: TRANS_UNDOCUMENTED_DERIVATION is imported from rule_mapping module
-
 /// Known derived variable patterns (typically have Origin="Derived" in Define-XML).
 /// These variables should have provenance tracking if they contain values.
 const DERIVED_VARIABLE_SUFFIXES: &[&str] = &["SEQ", "DY", "STDY", "ENDY"];
@@ -233,7 +231,7 @@ pub fn validate_provenance(
                      populated.",
                     variable.name
                 ),
-                rule_id: Some(TRANS_UNDOCUMENTED_DERIVATION.to_string()),
+                rule_id: Some("TRANS0001".to_string()),
                 category: Some("Provenance".to_string()),
                 count: None,
                 codelist_code: None,
@@ -307,21 +305,6 @@ pub struct ConformanceIssueJson {
 const REPORT_SCHEMA: &str = "cdisc-transpiler.conformance-report";
 const REPORT_SCHEMA_VERSION: u32 = 1;
 
-// Import P21 rule IDs from central rule_mapping module
-// These IDs match the official Pinnacle 21 Rules.csv exactly
-use rule_mapping::{
-    P21_CT_EXTENSIBLE,             // CT2002 - extensible codelist
-    P21_CT_NON_EXTENSIBLE,         // CT2001 - non-extensible codelist
-    P21_DATATYPE_MISMATCH,         // SD1230 - datatype validation
-    P21_EXPECTED_VAR_MISSING,      // SD0057 - expected variable missing
-    P21_LENGTH_EXCEEDED,           // SD1231 - length exceeded
-    P21_QNAM_INVALID,              // SD1022 - QNAM/TESTCD format validation
-    P21_REQUIRED_VALUE_MISSING,    // SD0002 - required value null
-    P21_REQUIRED_VAR_MISSING,      // SD0056 - required variable missing
-    TRANS_COLUMN_ORDER,            // Internal - column order by SDTM role
-    TRANS_UNDOCUMENTED_DERIVATION, // Internal - provenance tracking
-};
-
 pub fn validate_domain(
     domain: &Domain,
     df: &DataFrame,
@@ -358,7 +341,7 @@ pub fn validate_domain(
     }
 
     // Validate column order by SDTM role (Identifiers, Topic, Qualifiers, Rule, Timing)
-    // Per SDTMIG v3.4 Chapter 2.1
+    // Per SDTMIG v3.4 Chapter 2.1 and P21 Rule SD1079
     let column_names: Vec<String> = df
         .get_column_names()
         .iter()
@@ -366,6 +349,11 @@ pub fn validate_domain(
         .collect();
     let order_result = validate_column_order(&column_names, domain);
     if !order_result.is_valid {
+        // Get rule metadata from P21 Rules.csv
+        let p21_rule = p21_lookup.get("SD1079");
+        let category = p21_rule
+            .and_then(|r| r.category.clone())
+            .unwrap_or_else(|| "Metadata".to_string());
         for violation in &order_result.violations {
             issues.push(ConformanceIssue {
                 code: domain.code.clone(),
@@ -373,8 +361,8 @@ pub fn validate_domain(
                 severity: IssueSeverity::Warning,
                 variable: None,
                 count: Some(1),
-                rule_id: Some(TRANS_COLUMN_ORDER.to_string()),
-                category: Some("Order".to_string()),
+                rule_id: Some("SD1079".to_string()),
+                category: Some(category.clone()),
                 codelist_code: None,
                 ct_source: None,
             });
@@ -469,11 +457,11 @@ fn missing_column_issues(
     p21_lookup: &BTreeMap<String, &P21Rule>,
 ) -> Vec<ConformanceIssue> {
     if is_required(variable.core.as_deref()) {
-        let rule = p21_lookup.get(P21_REQUIRED_VAR_MISSING).copied();
+        let rule = p21_lookup.get("SD0056").copied();
         let base = rule_base_message(rule, "SDTM Required variable not found");
         let message = format!("{base}: {}", variable.name);
         return vec![issue_from_rule(
-            P21_REQUIRED_VAR_MISSING,
+            "SD0056",
             p21_lookup,
             IssueSeverity::Error,
             message,
@@ -483,11 +471,11 @@ fn missing_column_issues(
         )];
     }
     if is_expected(variable.core.as_deref()) {
-        let rule = p21_lookup.get(P21_EXPECTED_VAR_MISSING).copied();
+        let rule = p21_lookup.get("SD0057").copied();
         let base = rule_base_message(rule, "SDTM Expected variable not found");
         let message = format!("{base}: {}", variable.name);
         return vec![issue_from_rule(
-            P21_EXPECTED_VAR_MISSING,
+            "SD0057",
             p21_lookup,
             IssueSeverity::Warning,
             message,
@@ -520,14 +508,14 @@ fn missing_value_issue(
     if missing == 0 {
         return None;
     }
-    let rule = p21_lookup.get(P21_REQUIRED_VALUE_MISSING).copied();
+    let rule = p21_lookup.get("SD0002").copied();
     let base = rule_base_message(rule, "Null value in variable marked as Required");
     let message = format!(
         "{base}: {} has {} missing/blank value(s)",
         variable.name, missing
     );
     Some(issue_from_rule(
-        P21_REQUIRED_VALUE_MISSING,
+        "SD0002",
         p21_lookup,
         IssueSeverity::Error,
         message,
@@ -568,14 +556,14 @@ fn type_issue(
     if invalid == 0 {
         return None;
     }
-    let rule = p21_lookup.get(P21_DATATYPE_MISMATCH).copied();
+    let rule = p21_lookup.get("SD1230").copied();
     let base = rule_base_message(rule, "Variable datatype is not the expected SDTM datatype");
     let message = format!(
         "{base}: {} has {} non-numeric value(s)",
         variable.name, invalid
     );
     Some(issue_from_rule(
-        P21_DATATYPE_MISMATCH,
+        "SD1230",
         p21_lookup,
         IssueSeverity::Error,
         message,
@@ -610,14 +598,14 @@ fn length_issue(
     if over == 0 {
         return None;
     }
-    let rule = p21_lookup.get(P21_LENGTH_EXCEEDED).copied();
+    let rule = p21_lookup.get("SD1231").copied();
     let base = rule_base_message(rule, "Variable value is longer than defined max length");
     let message = format!(
         "{base}: {} exceeds length {} in {} value(s)",
         variable.name, limit, over
     );
     Some(issue_from_rule(
-        P21_LENGTH_EXCEEDED,
+        "SD1231",
         p21_lookup,
         IssueSeverity::Error,
         message,
@@ -666,7 +654,7 @@ fn test_code_issue(
         message.push_str(&format!(" values: {}", examples));
     }
     Some(issue_from_rule(
-        P21_QNAM_INVALID,
+        "SD1022",
         p21_lookup,
         IssueSeverity::Error,
         message,
@@ -712,9 +700,9 @@ fn ct_issue(
         return None;
     }
     let (rule_id, default_severity) = if ct.extensible {
-        (P21_CT_EXTENSIBLE, IssueSeverity::Warning)
+        ("CT2002", IssueSeverity::Warning)
     } else {
-        (P21_CT_NON_EXTENSIBLE, IssueSeverity::Error)
+        ("CT2001", IssueSeverity::Error)
     };
     let mut examples = invalid.iter().take(5).cloned().collect::<Vec<_>>();
     examples.sort();

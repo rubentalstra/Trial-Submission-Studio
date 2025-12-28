@@ -22,21 +22,8 @@ use polars::prelude::{AnyValue, DataFrame};
 use sdtm_ingest::any_to_string;
 use sdtm_model::{CaseInsensitiveLookup, ConformanceIssue, ConformanceReport, IssueSeverity};
 
-// Import rule mappings - use correct P21 rules where they exist,
-// internal TRANS_* rules for transpiler-specific validations
-use crate::rule_mapping::{
-    // P21 Rules (from Rules.csv) - use ONLY when validation matches P21 definition
-    P21_SUPP_QNAM_DUPLICATE, // SD0086 - SUPPQUAL duplicate records
-    // Internal Rules (not in P21 - use TRANS_* prefix)
-    TRANS_CO_IDVAR_INTEGRITY, // CO IDVAR/IDVARVAL referential integrity
-    TRANS_RELREC_INTEGRITY,   // RELREC referential integrity
-    TRANS_RELSPEC_INTEGRITY,  // RELSPEC structure validation
-    TRANS_RELSUB_INTEGRITY,   // RELSUB referential integrity
-    TRANS_SEQ_CROSS_SPLIT,    // --SEQ collision across split datasets
-    TRANS_SUPP_QVAL_EMPTY,    // QVAL empty in SUPPQUAL
-    TRANS_SUPP_TIMING_VAR,    // Timing variable in SUPPQUAL
-    TRANS_VARIABLE_PREFIX,    // Variable prefix validation for splits
-};
+// Rule IDs are used directly as string literals.
+// All rule metadata comes from standards/p21/Rules.csv.
 
 /// Input for cross-domain validation.
 pub struct CrossDomainValidationInput<'a> {
@@ -252,7 +239,7 @@ fn validate_variable_prefixes(input: &CrossDomainValidationInput<'_>) -> PrefixV
                 .entry(dataset_name.clone())
                 .or_default()
                 .push(ConformanceIssue {
-                    code: TRANS_VARIABLE_PREFIX.to_string(),
+                    code: "TRANS0004".to_string(),
                     message: format!(
                         "Split dataset {} contains {} variable(s) using dataset name as prefix instead of base domain {}. \
                          Variables should use prefix '{}', not '{}'. Invalid columns: {}",
@@ -266,7 +253,7 @@ fn validate_variable_prefixes(input: &CrossDomainValidationInput<'_>) -> PrefixV
                     severity: IssueSeverity::Error,
                     variable: None,
                     count: Some(invalid_columns.len() as u64),
-                    rule_id: Some(TRANS_VARIABLE_PREFIX.to_string()),
+                    rule_id: Some("TRANS0004".to_string()),
                     category: Some("Naming".to_string()),
                     codelist_code: None,
                     ct_source: None,
@@ -369,7 +356,7 @@ fn validate_seq_across_splits(input: &CrossDomainValidationInput<'_>) -> SeqVali
                 .collect();
 
             issues.entry(base_domain.clone()).or_default().push(ConformanceIssue {
-                code: TRANS_SEQ_CROSS_SPLIT.to_string(),
+                code: "SD0005".to_string(),
                 message: format!(
                     "{}SEQ values are not unique across split datasets ({}). {} duplicate(s) found. Samples: {}",
                     base_domain,
@@ -380,7 +367,7 @@ fn validate_seq_across_splits(input: &CrossDomainValidationInput<'_>) -> SeqVali
                 severity: IssueSeverity::Error,
                 variable: Some(seq_column),
                 count: Some(duplicates.len() as u64),
-                rule_id: Some(TRANS_SEQ_CROSS_SPLIT.to_string()),
+                rule_id: Some("SD0005".to_string()),
                 category: Some("Identifier".to_string()),
                 codelist_code: None,
                 ct_source: None,
@@ -552,7 +539,7 @@ fn validate_supp_qnam_uniqueness(frames: &BTreeMap<String, &DataFrame>) -> QnamV
                 .collect();
 
             issues.entry(domain_code.clone()).or_default().push(ConformanceIssue {
-                code: P21_SUPP_QNAM_DUPLICATE.to_string(),
+                code: "SD0086".to_string(),
                 message: format!(
                     "QNAM is not unique within (STUDYID, RDOMAIN, USUBJID, IDVAR, IDVARVAL). {} duplicate key(s) found. Samples: {}",
                     duplicates.len(),
@@ -561,7 +548,7 @@ fn validate_supp_qnam_uniqueness(frames: &BTreeMap<String, &DataFrame>) -> QnamV
                 severity: IssueSeverity::Error,
                 variable: Some("QNAM".to_string()),
                 count: Some(total_dups),
-                rule_id: Some(P21_SUPP_QNAM_DUPLICATE.to_string()),
+                rule_id: Some("SD0086".to_string()),
                 category: Some("Uniqueness".to_string()),
                 codelist_code: None,
                 ct_source: None,
@@ -624,7 +611,7 @@ fn validate_supp_qval_non_empty(frames: &BTreeMap<String, &DataFrame>) -> QvalVa
                 .entry(domain_code.clone())
                 .or_default()
                 .push(ConformanceIssue {
-                    code: TRANS_SUPP_QVAL_EMPTY.to_string(),
+                    code: "TRANS0003".to_string(),
                     message: format!(
                         "QVAL contains {} empty value(s). SUPPQUAL records require non-empty QVAL.",
                         empty_count
@@ -632,7 +619,7 @@ fn validate_supp_qval_non_empty(frames: &BTreeMap<String, &DataFrame>) -> QvalVa
                     severity: IssueSeverity::Error,
                     variable: Some("QVAL".to_string()),
                     count: Some(empty_count),
-                    rule_id: Some(TRANS_SUPP_QVAL_EMPTY.to_string()),
+                    rule_id: Some("TRANS0003".to_string()),
                     category: Some("Completeness".to_string()),
                     codelist_code: None,
                     ct_source: None,
@@ -715,7 +702,7 @@ fn validate_supp_timing_variables(frames: &BTreeMap<String, &DataFrame>) -> Timi
                 .entry(domain_code.clone())
                 .or_default()
                 .push(ConformanceIssue {
-                    code: TRANS_SUPP_TIMING_VAR.to_string(),
+                    code: "TRANS0020".to_string(),
                     message: format!(
                         "SUPPQUAL contains timing variable(s): {}. Timing variables should be in parent domain.",
                         timing_list.join(", ")
@@ -723,7 +710,7 @@ fn validate_supp_timing_variables(frames: &BTreeMap<String, &DataFrame>) -> Timi
                     severity: IssueSeverity::Warning,
                     variable: Some("QNAM".to_string()),
                     count: Some(timing_list.len() as u64),
-                    rule_id: Some(TRANS_SUPP_TIMING_VAR.to_string()),
+                    rule_id: Some("TRANS0020".to_string()),
                     category: Some("Structure".to_string()),
                     codelist_code: None,
                     ct_source: None,
@@ -886,7 +873,7 @@ fn validate_relrec_integrity(
             .entry("RELREC".to_string())
             .or_default()
             .push(ConformanceIssue {
-                code: TRANS_RELREC_INTEGRITY.to_string(),
+                code: "TRANS0005".to_string(),
                 message: format!(
                     "RELREC contains {} reference(s) to non-existent records. Samples: {}",
                     invalid_refs,
@@ -895,7 +882,7 @@ fn validate_relrec_integrity(
                 severity: IssueSeverity::Error,
                 variable: Some("RDOMAIN".to_string()),
                 count: Some(invalid_refs),
-                rule_id: Some(TRANS_RELREC_INTEGRITY.to_string()),
+                rule_id: Some("TRANS0005".to_string()),
                 category: Some("Referential Integrity".to_string()),
                 codelist_code: None,
                 ct_source: None,
@@ -932,7 +919,7 @@ fn validate_relspec_integrity(
             .entry("RELSPEC".to_string())
             .or_default()
             .push(ConformanceIssue {
-                code: TRANS_RELSPEC_INTEGRITY.to_string(),
+                code: "TRANS0006".to_string(),
                 message: format!(
                     "RELSPEC is missing required columns: {}",
                     missing.join(", ")
@@ -940,7 +927,7 @@ fn validate_relspec_integrity(
                 severity: IssueSeverity::Error,
                 variable: None,
                 count: Some(missing.len() as u64),
-                rule_id: Some(TRANS_RELSPEC_INTEGRITY.to_string()),
+                rule_id: Some("TRANS0006".to_string()),
                 category: Some("Structure".to_string()),
                 codelist_code: None,
                 ct_source: None,
@@ -974,12 +961,12 @@ fn validate_relsub_integrity(
                 .entry("RELSUB".to_string())
                 .or_default()
                 .push(ConformanceIssue {
-                    code: TRANS_RELSUB_INTEGRITY.to_string(),
+                    code: "TRANS0007".to_string(),
                     message: "RELSUB is missing required USUBJID column".to_string(),
                     severity: IssueSeverity::Error,
                     variable: Some("USUBJID".to_string()),
                     count: Some(1),
-                    rule_id: Some(TRANS_RELSUB_INTEGRITY.to_string()),
+                    rule_id: Some("TRANS0007".to_string()),
                     category: Some("Structure".to_string()),
                     codelist_code: None,
                     ct_source: None,
@@ -1054,7 +1041,7 @@ fn validate_relsub_integrity(
             .entry("RELSUB".to_string())
             .or_default()
             .push(ConformanceIssue {
-                code: TRANS_RELSUB_INTEGRITY.to_string(),
+                code: "TRANS0007".to_string(),
                 message: format!(
                     "RELSUB contains {} reference(s) to non-existent subjects. Samples: {}",
                     invalid_subjects,
@@ -1063,7 +1050,7 @@ fn validate_relsub_integrity(
                 severity: IssueSeverity::Error,
                 variable: Some("USUBJID".to_string()),
                 count: Some(invalid_subjects),
-                rule_id: Some(TRANS_RELSUB_INTEGRITY.to_string()),
+                rule_id: Some("TRANS0007".to_string()),
                 category: Some("Referential Integrity".to_string()),
                 codelist_code: None,
                 ct_source: None,
@@ -1239,7 +1226,7 @@ fn validate_co_idvar_integrity(
             .entry("CO".to_string())
             .or_default()
             .push(ConformanceIssue {
-                code: TRANS_CO_IDVAR_INTEGRITY.to_string(),
+                code: "TRANS0019".to_string(),
                 message: format!(
                     "CO contains {} reference(s) to non-existent records. Samples: {}",
                     invalid_refs,
@@ -1248,7 +1235,7 @@ fn validate_co_idvar_integrity(
                 severity: IssueSeverity::Error,
                 variable: Some("IDVARVAL".to_string()),
                 count: Some(invalid_refs),
-                rule_id: Some(TRANS_CO_IDVAR_INTEGRITY.to_string()),
+                rule_id: Some("TRANS0019".to_string()),
                 category: Some("Referential Integrity".to_string()),
                 codelist_code: None,
                 ct_source: None,

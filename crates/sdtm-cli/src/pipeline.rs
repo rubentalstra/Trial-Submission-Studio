@@ -299,8 +299,6 @@ pub fn process_file(input: ProcessFileInput<'_>) -> Result<ProcessedFile> {
                 exclusion_columns: Some(input.suppqual_exclusions),
                 source_labels: label_map_ref,
                 derived_columns: derived_ref,
-                // Per SDTMIG 8.4.2: Use dataset_name for split datasets
-                dataset_name: Some(&dataset_name),
             })
             .with_context(|| format!("SUPPQUAL for {}", input.domain.code))?;
             match &result {
