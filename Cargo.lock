@@ -2605,6 +2605,7 @@ dependencies = [
  "sdtm-ingest",
  "sdtm-map",
  "sdtm-model",
+ "sdtm-transform",
  "tracing",
 ]
 
