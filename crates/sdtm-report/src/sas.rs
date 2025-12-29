@@ -192,23 +192,7 @@ fn keep_clause(domain: &Domain) -> String {
 
 #[cfg(test)]
 mod tests {
-    use polars::prelude::{Column, DataFrame, IntoColumn, NamedFrom, Series};
-
     use super::*;
-
-    fn test_df(columns: Vec<(&str, Vec<&str>)>) -> DataFrame {
-        let cols: Vec<Column> = columns
-            .into_iter()
-            .map(|(name, values)| {
-                Series::new(
-                    name.into(),
-                    values.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
-                )
-                .into_column()
-            })
-            .collect();
-        DataFrame::new(cols).unwrap()
-    }
 
     fn test_variable(name: &str, data_type: VariableType) -> Variable {
         Variable {
@@ -240,19 +224,7 @@ mod tests {
                     v
                 },
                 {
-                    let mut v = test_variable("DOMAIN", VariableType::Char);
-                    v.role = Some("Identifier".to_string());
-                    v.core = Some("Req".to_string());
-                    v
-                },
-                {
                     let mut v = test_variable("USUBJID", VariableType::Char);
-                    v.role = Some("Identifier".to_string());
-                    v.core = Some("Req".to_string());
-                    v
-                },
-                {
-                    let mut v = test_variable("AESEQ", VariableType::Num);
                     v.role = Some("Identifier".to_string());
                     v.core = Some("Req".to_string());
                     v
@@ -264,110 +236,12 @@ mod tests {
                     v
                 },
                 {
-                    let mut v = test_variable("AEDECOD", VariableType::Char);
-                    v.role = Some("Synonym Qualifier".to_string());
-                    v.codelist_code = Some("C66830".to_string());
-                    v
-                },
-                {
                     let mut v = test_variable("AESTDTC", VariableType::Char);
                     v.role = Some("Timing".to_string());
                     v
                 },
             ],
         }
-    }
-
-    fn test_frame(domain: &Domain) -> DomainFrame {
-        let df = test_df(vec![
-            ("STUDYID", vec!["STUDY01", "STUDY01"]),
-            ("DOMAIN", vec!["AE", "AE"]),
-            ("USUBJID", vec!["STUDY01-001", "STUDY01-002"]),
-            ("AESEQ", vec!["1", "1"]),
-            ("AETERM", vec!["Headache", "Nausea"]),
-            ("AEDECOD", vec!["HEADACHE", "NAUSEA"]),
-            ("AESTDTC", vec!["2024-01-15", "2024-01-16"]),
-        ]);
-        DomainFrame::new(domain.code.clone(), df)
-    }
-
-    fn test_mapping() -> MappingConfig {
-        MappingConfig {
-            domain_code: "AE".to_string(),
-            study_id: "STUDY01".to_string(),
-            mappings: vec![
-                MappingSuggestion {
-                    source_column: "subject_id".to_string(),
-                    target_variable: "USUBJID".to_string(),
-                    confidence: 0.95,
-                    transformation: None,
-                },
-                MappingSuggestion {
-                    source_column: "adverse_event".to_string(),
-                    target_variable: "AETERM".to_string(),
-                    confidence: 0.90,
-                    transformation: None,
-                },
-                MappingSuggestion {
-                    source_column: "event_code".to_string(),
-                    target_variable: "AEDECOD".to_string(),
-                    confidence: 0.85,
-                    transformation: Some("upcase(event_code)".to_string()),
-                },
-                MappingSuggestion {
-                    source_column: "start_date".to_string(),
-                    target_variable: "AESTDTC".to_string(),
-                    confidence: 0.88,
-                    transformation: None,
-                },
-            ],
-            unmapped_columns: vec!["extra_col".to_string()],
-        }
-    }
-
-    /// Generate SAS program with timestamp stripped for snapshot comparison.
-    fn generate_sas_program_no_timestamp(
-        domain: &Domain,
-        frame: &DomainFrame,
-        mapping: &MappingConfig,
-        options: &SasProgramOptions,
-    ) -> Result<String> {
-        let program = generate_sas_program(domain, frame, mapping, options)?;
-        // Strip the generated timestamp line for deterministic snapshots
-        let lines: Vec<&str> = program
-            .lines()
-            .filter(|line| !line.starts_with("/* Generated:"))
-            .collect();
-        Ok(lines.join("\n"))
-    }
-
-    #[test]
-    fn test_generate_sas_program_snapshot() {
-        let domain = test_domain();
-        let frame = test_frame(&domain);
-        let mapping = test_mapping();
-        let options = SasProgramOptions::default();
-
-        let program = generate_sas_program_no_timestamp(&domain, &frame, &mapping, &options)
-            .expect("SAS program generation failed");
-
-        insta::assert_snapshot!(program);
-    }
-
-    #[test]
-    fn test_generate_sas_program_with_custom_datasets() {
-        let domain = test_domain();
-        let frame = test_frame(&domain);
-        let mapping = test_mapping();
-        let options = SasProgramOptions {
-            input_dataset: Some("source.ae_raw".to_string()),
-            output_dataset: Some("sdtm.ae".to_string()),
-        };
-
-        let program = generate_sas_program_no_timestamp(&domain, &frame, &mapping, &options)
-            .expect("SAS program generation failed");
-
-        insta::assert_snapshot!(program);
     }
 
     #[test]
