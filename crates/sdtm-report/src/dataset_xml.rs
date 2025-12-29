@@ -14,9 +14,11 @@ use sdtm_ingest::any_to_string_non_empty;
 use sdtm_model::Domain;
 use sdtm_transform::frame::DomainFrame;
 
+use sdtm_transform::domain_sets::domain_map_by_code;
+
 use crate::common::{
-    DATASET_XML_NS, DATASET_XML_VERSION, DEFINE_XML_VERSION, ODM_NS, XLINK_NS, domain_map,
-    is_reference_domain, normalize_study_id,
+    DATASET_XML_NS, DATASET_XML_VERSION, DEFINE_XML_VERSION, ODM_NS, XLINK_NS, is_reference_domain,
+    normalize_study_id,
 };
 
 /// Options for Dataset-XML output.
@@ -35,7 +37,7 @@ pub fn write_dataset_xml_outputs(
     study_id: &str,
     sdtm_ig_version: &str,
 ) -> Result<Vec<PathBuf>> {
-    let domain_lookup = domain_map(domains);
+    let domain_lookup = domain_map_by_code(domains);
     let mut frames_sorted: Vec<&DomainFrame> = frames.iter().collect();
     frames_sorted.sort_by(|a, b| a.domain_code.cmp(&b.domain_code));
 

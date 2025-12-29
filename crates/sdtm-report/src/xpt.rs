@@ -1,6 +1,5 @@
 //! XPT (SAS Transport) output generation.
 
-use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, anyhow};
@@ -8,6 +7,7 @@ use polars::prelude::{AnyValue, DataFrame};
 
 use sdtm_ingest::{any_to_f64, any_to_string};
 use sdtm_model::{Domain, VariableType};
+use sdtm_transform::domain_sets::domain_map_by_code;
 use sdtm_transform::frame::DomainFrame;
 use sdtm_xpt::{XptColumn, XptDataset, XptType, XptValue, XptWriterOptions, write_xpt};
 
@@ -20,11 +20,7 @@ pub fn write_xpt_outputs(
     frames: &[DomainFrame],
     options: &XptWriterOptions,
 ) -> Result<Vec<PathBuf>> {
-    let mut domain_map = BTreeMap::new();
-    for domain in domains {
-        domain_map.insert(domain.code.to_uppercase(), domain);
-    }
-
+    let domain_lookup = domain_map_by_code(domains);
     let mut frames_sorted: Vec<&DomainFrame> = frames.iter().collect();
     frames_sorted.sort_by(|a, b| a.domain_code.cmp(&b.domain_code));
 
@@ -34,7 +30,7 @@ pub fn write_xpt_outputs(
     let mut outputs = Vec::new();
     for frame in frames_sorted {
         let code = frame.domain_code.to_uppercase();
-        let domain = domain_map
+        let domain = domain_lookup
             .get(&code)
             .ok_or_else(|| anyhow!("missing domain definition for {code}"))?;
         // Use frame's dataset name (from metadata) for split domains, falling back to domain.code

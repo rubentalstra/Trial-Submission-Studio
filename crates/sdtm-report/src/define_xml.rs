@@ -15,10 +15,12 @@ use sdtm_model::{Domain, Variable, VariableType};
 use sdtm_standards::load_default_ct_registry;
 use sdtm_transform::frame::DomainFrame;
 
+use sdtm_transform::domain_sets::domain_map_by_code;
+
 use crate::common::{
-    DEFINE_XML_NS, DEFINE_XML_VERSION, ODM_NS, VariableTypeExt, XLINK_NS, domain_map,
-    has_collected_data, is_expected, is_identifier, is_reference_domain, is_required,
-    normalize_study_id, variable_length, write_text_element, write_translated_text,
+    DEFINE_XML_NS, DEFINE_XML_VERSION, ODM_NS, VariableTypeExt, XLINK_NS, has_collected_data,
+    is_expected, is_identifier, is_reference_domain, is_required, normalize_study_id,
+    variable_length, write_text_element, write_translated_text,
 };
 
 /// Options for Define-XML output.
@@ -85,7 +87,7 @@ pub fn write_define_xml(
     let mdv_oid = format!("MDV.{study_oid}.SDTMIG.{}", options.sdtm_ig_version);
     let timestamp = Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true);
 
-    let domain_lookup = domain_map(domains);
+    let domain_lookup = domain_map_by_code(domains);
     let mut entries: Vec<(&Domain, &DomainFrame)> = Vec::new();
     for frame in frames {
         let code = frame.domain_code.to_uppercase();

@@ -7,9 +7,10 @@ use anyhow::{Context, Result, anyhow};
 use chrono::{SecondsFormat, Utc};
 
 use sdtm_model::{Domain, MappingConfig, MappingSuggestion, Variable, VariableType};
+use sdtm_transform::domain_sets::domain_map_by_code;
 use sdtm_transform::frame::DomainFrame;
 
-use crate::common::{dataset_name, domain_map, is_required, should_upcase, variable_length};
+use crate::common::{dataset_name, is_required, should_upcase, variable_length};
 
 /// Options for SAS program generation.
 #[derive(Debug, Clone, Default)]
@@ -26,7 +27,7 @@ pub fn write_sas_outputs(
     mappings: &BTreeMap<String, MappingConfig>,
     options: &SasProgramOptions,
 ) -> Result<Vec<PathBuf>> {
-    let domain_lookup = domain_map(domains);
+    let domain_lookup = domain_map_by_code(domains);
     let mut frames_sorted: Vec<&DomainFrame> = frames.iter().collect();
     frames_sorted.sort_by(|a, b| a.domain_code.cmp(&b.domain_code));
 

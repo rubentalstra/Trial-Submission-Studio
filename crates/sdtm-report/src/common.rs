@@ -1,6 +1,5 @@
 //! Shared utilities and types for SDTM report generation.
 
-use std::collections::BTreeMap;
 use std::io::Write;
 
 use anyhow::{Context, Result, anyhow};
@@ -31,15 +30,6 @@ pub const DATASET_XML_VERSION: &str = "1.0";
 
 /// Define-XML version.
 pub const DEFINE_XML_VERSION: &str = "2.1";
-
-/// Build a map from uppercase domain code to domain reference.
-pub fn domain_map(domains: &[Domain]) -> BTreeMap<String, &Domain> {
-    let mut map = BTreeMap::new();
-    for domain in domains {
-        map.insert(domain.code.to_uppercase(), domain);
-    }
-    map
-}
 
 /// Get dataset name from domain.
 pub fn dataset_name(domain: &Domain) -> String {
@@ -255,21 +245,6 @@ mod tests {
             dataset_name: None,
             variables: vec![],
         }
-    }
-
-    #[test]
-    fn test_domain_map_builds_uppercase_lookup() {
-        let domains = vec![
-            test_domain("ae", None),
-            test_domain("DM", None),
-            test_domain("Lb", None),
-        ];
-        let map = domain_map(&domains);
-
-        assert!(map.contains_key("AE"));
-        assert!(map.contains_key("DM"));
-        assert!(map.contains_key("LB"));
-        assert!(!map.contains_key("ae"));
     }
 
     #[test]
