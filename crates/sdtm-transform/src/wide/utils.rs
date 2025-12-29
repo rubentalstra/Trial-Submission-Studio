@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use anyhow::Result;
 use polars::prelude::{DataFrame, NamedFrom, Series};
 
-use sdtm_ingest::{CsvTable, build_column_hints};
+use sdtm_ingest::build_column_hints;
 use sdtm_map::MappingEngine;
 use sdtm_model::{Domain, MappingConfig, VariableType};
 
@@ -15,15 +15,20 @@ use crate::frame_builder::build_domain_frame_with_mapping;
 
 /// Build base mapping for non-wide columns.
 pub fn build_wide_base_mapping(
-    table: &CsvTable,
+    table: &DataFrame,
     domain: &Domain,
     study_id: &str,
     wide_columns: &BTreeSet<String>,
 ) -> Result<(MappingConfig, DomainFrame)> {
-    let base_table = filter_table_columns(table, wide_columns, false);
+    let base_table = filter_table_columns(table, wide_columns, false)?;
     let hints = build_column_hints(&base_table);
     let engine = MappingEngine::new((*domain).clone(), 0.5, hints);
-    let result = engine.suggest(&base_table.headers);
+    let headers: Vec<String> = base_table
+        .get_column_names()
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+    let result = engine.suggest(&headers);
     let mapping_config = engine.to_config(study_id, result);
     let base_frame = build_domain_frame_with_mapping(&base_table, domain, Some(&mapping_config))?;
     Ok((mapping_config, base_frame))
@@ -40,41 +45,21 @@ pub fn mapping_used_sources(mapping: &MappingConfig) -> BTreeSet<String> {
 
 /// Filter table columns by inclusion/exclusion set.
 pub fn filter_table_columns(
-    table: &CsvTable,
+    table: &DataFrame,
     columns: &BTreeSet<String>,
     include: bool,
-) -> CsvTable {
-    let mut indices = Vec::new();
-    let mut headers = Vec::new();
-    let mut labels = table.labels.as_ref().map(|_| Vec::new());
+) -> Result<DataFrame> {
+    let col_names = table.get_column_names();
+    let selection: Vec<&str> = col_names
+        .iter()
+        .filter(|name| {
+            let has = columns.contains(&name.to_uppercase());
+            has == include
+        })
+        .map(|s| s.as_str())
+        .collect();
 
-    for (idx, header) in table.headers.iter().enumerate() {
-        let has = columns.contains(&header.to_uppercase());
-        if has == include {
-            indices.push(idx);
-            headers.push(header.clone());
-            if let Some(label_vec) = table.labels.as_ref()
-                && let Some(labels_mut) = labels.as_mut()
-            {
-                labels_mut.push(label_vec.get(idx).cloned().unwrap_or_default());
-            }
-        }
-    }
-
-    let mut rows = Vec::with_capacity(table.rows.len());
-    for row in &table.rows {
-        let mut next = Vec::with_capacity(indices.len());
-        for &idx in &indices {
-            next.push(row.get(idx).cloned().unwrap_or_default());
-        }
-        rows.push(next);
-    }
-
-    CsvTable {
-        headers,
-        rows,
-        labels,
-    }
+    Ok(table.select(selection)?)
 }
 
 /// Extract values from base DataFrame for a single row.

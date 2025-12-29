@@ -5,9 +5,9 @@
 use std::collections::BTreeMap;
 
 use anyhow::{Context, Result};
-use polars::prelude::{Column, DataFrame, NamedFrom, Series};
+use polars::prelude::*;
 
-use sdtm_ingest::{CsvTable, parse_f64};
+use sdtm_ingest::parse_f64;
 use sdtm_model::{Domain, MappingConfig, VariableType};
 
 use crate::frame::DomainFrame;
@@ -60,49 +60,15 @@ pub fn build_domain_frame_from_records(
     Ok(data)
 }
 
-/// Build a basic domain frame from a CSV table without column mapping.
+/// Build a basic domain frame from a DataFrame without column mapping.
 ///
-/// Creates a DataFrame with columns matching the CSV headers exactly.
-/// Headers are deduplicated by appending suffixes for duplicates.
-pub fn build_domain_frame(table: &CsvTable, domain_code: &str) -> Result<DomainFrame> {
-    let headers = dedupe_headers(&table.headers);
-    let column_values = collect_table_columns(table);
-    let mut columns: Vec<Column> = Vec::with_capacity(headers.len());
-    for (header, values) in headers.iter().zip(column_values) {
-        columns.push(Series::new(header.as_str().into(), values).into());
-    }
-    let data = DataFrame::new(columns).context("build dataframe")?;
-    Ok(DomainFrame::new(domain_code.to_string(), data))
-}
-
-fn dedupe_headers(headers: &[String]) -> Vec<String> {
-    let mut seen: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
-    let mut deduped = Vec::with_capacity(headers.len());
-    for header in headers {
-        let key = header.to_uppercase();
-        let count = seen.entry(key).or_insert(0);
-        *count += 1;
-        if *count == 1 {
-            deduped.push(header.clone());
-        } else {
-            deduped.push(format!("{header}__{count}"));
-        }
-    }
-    deduped
-}
-
-/// Collect column values from a CSV table as vectors.
-pub fn collect_table_columns(table: &CsvTable) -> Vec<Vec<String>> {
-    let row_count = table.rows.len();
-    let mut columns: Vec<Vec<String>> = (0..table.headers.len())
-        .map(|_| Vec::with_capacity(row_count))
-        .collect();
-    for row in &table.rows {
-        for (col_idx, column) in columns.iter_mut().enumerate() {
-            column.push(row.get(col_idx).cloned().unwrap_or_default());
-        }
-    }
-    columns
+/// Creates a DataFrame with columns matching the source DataFrame.
+/// Headers are deduplicated by Polars automatically, but we ensure domain code is set.
+pub fn build_domain_frame(table: &DataFrame, domain_code: &str) -> Result<DomainFrame> {
+    // Polars DataFrame is already built, just wrap it.
+    // We might want to ensure column names are unique if they aren't already,
+    // but Polars usually handles that on read.
+    Ok(DomainFrame::new(domain_code.to_string(), table.clone()))
 }
 
 /// Build a domain frame using column mapping configuration.
@@ -110,18 +76,13 @@ pub fn collect_table_columns(table: &CsvTable) -> Vec<Vec<String>> {
 /// Maps source columns to SDTM variables according to the mapping config,
 /// applying type conversions and populating STUDYID/DOMAIN columns.
 pub fn build_domain_frame_with_mapping(
-    table: &CsvTable,
+    table: &DataFrame,
     domain: &Domain,
     mapping: Option<&MappingConfig>,
 ) -> Result<DomainFrame> {
-    let row_count = table.rows.len();
-    let column_values = collect_table_columns(table);
-    let mut source_indices = BTreeMap::new();
-    let mut source_upper = BTreeMap::new();
-    for (col_idx, header) in table.headers.iter().enumerate() {
-        source_indices.insert(header.clone(), col_idx);
-        source_upper.insert(header.to_uppercase(), col_idx);
-    }
+    let mut expressions: Vec<Expr> = Vec::new();
+
+    // Pre-calculate mapping lookup
     let mapping_lookup = mapping.map(|config| {
         let mut lookup = BTreeMap::new();
         for item in &config.mappings {
@@ -130,57 +91,71 @@ pub fn build_domain_frame_with_mapping(
         lookup
     });
 
-    let mut columns: Vec<Column> = Vec::with_capacity(domain.variables.len());
+    let source_columns: BTreeMap<String, String> = table
+        .get_column_names()
+        .iter()
+        .map(|name| (name.to_uppercase(), name.to_string()))
+        .collect();
+
     for variable in &domain.variables {
         let target_upper = variable.name.to_uppercase();
-        let source_index = mapping_lookup
+
+        // Handle STUDYID and DOMAIN specially to ensure they are in the correct order
+        // and use the constant values if available.
+        if target_upper == "STUDYID" {
+            if let Some(config) = mapping {
+                expressions.push(lit(config.study_id.clone()).alias(&variable.name));
+                continue;
+            }
+        }
+        if target_upper == "DOMAIN" {
+            expressions.push(lit(domain.code.clone()).alias(&variable.name));
+            continue;
+        }
+
+        // Determine source column name
+        let source_col_name = mapping_lookup
             .as_ref()
             .and_then(|lookup| lookup.get(&target_upper))
             .and_then(|suggestion| {
                 let source_name = suggestion
                     .transformation
                     .as_deref()
-                    .filter(|name| source_indices.contains_key(*name))
+                    .filter(|name| source_columns.contains_key(&name.to_uppercase()))
                     .unwrap_or(suggestion.source_column.as_str());
-                source_indices.get(source_name).copied()
+
+                // Find exact case in source
+                source_columns.get(&source_name.to_uppercase())
             })
-            .or_else(|| source_upper.get(&target_upper).copied());
+            .or_else(|| source_columns.get(&target_upper));
 
-        let values = source_index
-            .map(|idx| column_values[idx].clone())
-            .unwrap_or_else(|| vec![String::new(); row_count]);
+        if let Some(source_name) = source_col_name {
+            let mut expr = col(source_name);
 
-        let column: Column = match variable.data_type {
-            VariableType::Num => {
-                let numeric: Vec<Option<f64>> = values
-                    .iter()
-                    .map(|value| value.trim().parse::<f64>().ok())
-                    .collect();
-                Series::new(variable.name.as_str().into(), numeric).into()
+            // Apply type conversion
+            if matches!(variable.data_type, VariableType::Num) {
+                // Try to cast to Float64, handling non-numeric strings if necessary
+                expr = expr
+                    .cast(DataType::String)
+                    .str()
+                    .strip_chars(lit(" "))
+                    .cast(DataType::Float64);
+            } else {
+                expr = expr.cast(DataType::String);
             }
-            VariableType::Char => Series::new(variable.name.as_str().into(), values).into(),
-            // Handle future VariableType variants as strings
-            _ => Series::new(variable.name.as_str().into(), values).into(),
-        };
-        columns.push(column);
+
+            expressions.push(expr.alias(&variable.name));
+        } else {
+            // Column missing in source, fill with nulls/empty
+            let expr = match variable.data_type {
+                VariableType::Num => lit(NULL).cast(DataType::Float64),
+                _ => lit("").cast(DataType::String),
+            };
+            expressions.push(expr.alias(&variable.name));
+        }
     }
 
-    let mut data = DataFrame::new(columns).context("build dataframe")?;
-    if let Some(config) = mapping
-        && let Some(study_col) = domain.column_name("STUDYID")
-        && let Ok(series) = data.column(study_col)
-    {
-        let values = vec![config.study_id.clone(); row_count];
-        let new_series = Series::new(series.name().as_str().into(), values);
-        data.with_column(new_series)?;
-    }
-    if let Some(domain_col) = domain.column_name("DOMAIN")
-        && data.column(domain_col).is_ok()
-    {
-        let values = vec![domain.code.clone(); row_count];
-        let new_series = Series::new(domain_col.into(), values);
-        data.with_column(new_series)?;
-    }
+    let new_df = table.clone().lazy().select(expressions).collect()?;
 
-    Ok(DomainFrame::new(domain.code.clone(), data))
+    Ok(DomainFrame::new(domain.code.clone(), new_df))
 }

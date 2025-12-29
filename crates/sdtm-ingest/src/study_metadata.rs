@@ -2,8 +2,9 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result};
+use polars::prelude::*;
 
-use crate::csv_table::{CsvTable, read_csv_table_with_header_match};
+use crate::csv_table::read_csv_table_with_header_match;
 
 #[derive(Debug, Clone, Default)]
 pub struct StudyMetadata {
@@ -91,13 +92,13 @@ type ItemColumnIndices = (
 
 #[derive(Debug, Clone)]
 pub struct AppliedStudyMetadata {
-    pub table: CsvTable,
+    pub table: DataFrame,
     pub code_to_base: BTreeMap<String, String>,
     pub derived_columns: BTreeSet<String>,
 }
 
 impl AppliedStudyMetadata {
-    pub fn new(table: CsvTable) -> Self {
+    pub fn new(table: DataFrame) -> Self {
         Self {
             table,
             code_to_base: BTreeMap::new(),
@@ -156,119 +157,101 @@ pub fn load_study_metadata(study_folder: &Path) -> Result<StudyMetadata> {
     Ok(metadata)
 }
 
-pub fn apply_study_metadata(table: CsvTable, metadata: &StudyMetadata) -> AppliedStudyMetadata {
+pub fn apply_study_metadata(
+    mut table: DataFrame,
+    metadata: &StudyMetadata,
+) -> AppliedStudyMetadata {
     if metadata.items.is_empty() && metadata.codelists.is_empty() {
         return AppliedStudyMetadata::new(table);
     }
-    let mut table = table;
-    let row_count = table.rows.len();
-    let mut labels = table
-        .labels
-        .unwrap_or_else(|| vec![String::new(); table.headers.len()]);
-    if labels.len() < table.headers.len() {
-        labels.resize(table.headers.len(), String::new());
-    }
-    let mut header_map = build_header_map(&table.headers);
+
     let mut code_to_base = BTreeMap::new();
-    let mut new_columns: BTreeMap<String, Vec<String>> = BTreeMap::new();
-    let mut new_labels: BTreeMap<String, String> = BTreeMap::new();
-    let mut new_upper: BTreeSet<String> = BTreeSet::new();
-    let mut derived_columns: BTreeSet<String> = BTreeSet::new();
+    let mut derived_columns = BTreeSet::new();
+    let mut new_columns = Vec::new();
+
+    let column_names: Vec<String> = table
+        .get_column_names()
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+    let header_map: BTreeMap<String, String> = column_names
+        .iter()
+        .map(|n| (n.to_uppercase(), n.clone()))
+        .collect();
 
     for item in metadata.items.values() {
         let id_upper = item.id.to_uppercase();
-        let Some(&code_idx) = header_map.get(&id_upper) else {
+        let Some(col_name) = header_map.get(&id_upper) else {
             continue;
         };
-        if labels
-            .get(code_idx)
-            .map(|label| label.trim().is_empty())
-            .unwrap_or(true)
-            && !item.label.trim().is_empty()
-        {
-            labels[code_idx] = item.label.clone();
-        }
+
         let Some(format_name) = item.format_name.as_ref() else {
             continue;
         };
         let Some(codelist) = metadata.codelists.get(&format_name.to_uppercase()) else {
             continue;
         };
-        let Some(base_name) = base_column_name(&table.headers[code_idx]) else {
+        let Some(base_name) = base_column_name(col_name) else {
             continue;
         };
         let base_upper = base_name.to_uppercase();
-        if let Some(&base_idx) = header_map.get(&base_upper) {
-            let base_label = strip_code_label(&item.label);
-            if labels
-                .get(base_idx)
-                .map(|label| label.trim().is_empty())
-                .unwrap_or(true)
-                && !base_label.trim().is_empty()
-            {
-                labels[base_idx] = base_label;
-            }
-            for row in table.rows.iter_mut() {
-                let code_value = row.get(code_idx).map(String::as_str).unwrap_or("");
-                let decoded = codelist.lookup_text(code_value);
-                if let Some(text) = decoded
-                    && row
-                        .get(base_idx)
-                        .map(|value| value.trim().is_empty())
-                        .unwrap_or(true)
-                {
-                    row[base_idx] = text;
-                }
-            }
-            code_to_base.insert(
-                table.headers[code_idx].clone(),
-                table.headers[base_idx].clone(),
-            );
-        } else if !new_upper.contains(&base_upper) {
-            let mut decoded_values = Vec::with_capacity(row_count);
-            let mut any_value = false;
-            for row in &table.rows {
-                let code_value = row.get(code_idx).map(String::as_str).unwrap_or("");
-                if let Some(text) = codelist.lookup_text(code_value) {
-                    decoded_values.push(text);
-                    any_value = true;
-                } else {
-                    decoded_values.push(String::new());
-                }
-            }
-            if any_value {
-                new_upper.insert(base_upper.clone());
-                new_columns.insert(base_name.clone(), decoded_values);
-                derived_columns.insert(base_name.to_uppercase());
-                let base_label = strip_code_label(&item.label);
-                if !base_label.trim().is_empty() {
-                    new_labels.insert(base_name.clone(), base_label);
-                }
-                code_to_base.insert(table.headers[code_idx].clone(), base_name.clone());
-            }
-        }
-    }
 
-    if !new_columns.is_empty() {
-        for (name, values) in new_columns {
-            if header_map.contains_key(&name.to_uppercase()) {
+        if let Some(existing_base) = header_map.get(&base_upper) {
+            let code_series = table.column(col_name).unwrap();
+            let base_series = table.column(existing_base).unwrap();
+
+            let decoded_chunked = code_series.str().unwrap().apply(|opt_val| {
+                if let Some(val) = opt_val {
+                    Some(std::borrow::Cow::Owned(
+                        codelist.lookup_text(val).unwrap_or_default(),
+                    ))
+                } else {
+                    Some(std::borrow::Cow::Borrowed(""))
+                }
+            });
+            let decoded_series = decoded_chunked.into_series();
+
+            let base_str = base_series.str().unwrap();
+            let mask = base_series.is_null() | base_str.equal("");
+
+            let decoded_col = Column::from(decoded_series);
+            if let Ok(new_base) = base_series.zip_with(&mask, &decoded_col) {
+                let _ = table.with_column(new_base.with_name(existing_base.into()));
+            }
+
+            code_to_base.insert(col_name.clone(), existing_base.clone());
+        } else {
+            if derived_columns.contains(&base_upper) {
                 continue;
             }
-            header_map.insert(name.to_uppercase(), table.headers.len());
-            table.headers.push(name.clone());
-            labels.push(new_labels.get(&name).cloned().unwrap_or_default());
-            for (row_idx, row) in table.rows.iter_mut().enumerate() {
-                let value = values.get(row_idx).cloned().unwrap_or_default();
-                row.push(value);
+
+            let code_series = table.column(col_name).unwrap();
+            let decoded_chunked = code_series.str().unwrap().apply(|opt_val| {
+                if let Some(val) = opt_val {
+                    if let Some(text) = codelist.lookup_text(val) {
+                        return Some(std::borrow::Cow::Owned(text));
+                    }
+                }
+                Some(std::borrow::Cow::Borrowed(""))
+            });
+
+            let has_any = decoded_chunked
+                .into_iter()
+                .any(|opt| opt.map(|s| !s.is_empty()).unwrap_or(false));
+
+            if has_any {
+                let mut new_series = decoded_chunked.into_series();
+                new_series.rename((&base_name).into());
+                new_columns.push(new_series);
+                derived_columns.insert(base_upper);
+                code_to_base.insert(col_name.clone(), base_name);
             }
         }
     }
 
-    table.labels = if labels.iter().any(|label| !label.trim().is_empty()) {
-        Some(labels)
-    } else {
-        None
-    };
+    for col in new_columns {
+        let _ = table.with_column(col);
+    }
 
     AppliedStudyMetadata {
         table,
@@ -280,10 +263,15 @@ pub fn apply_study_metadata(table: CsvTable, metadata: &StudyMetadata) -> Applie
 fn load_items_csv(path: &Path) -> Result<BTreeMap<String, SourceColumn>> {
     let table = read_csv_table_with_header_match(path, 25, matches_items_header)
         .with_context(|| format!("read items csv: {}", path.display()))?;
+    let column_names: Vec<String> = table
+        .get_column_names()
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
     let (id_idx, label_idx, type_idx, mandatory_idx, format_idx, length_idx) =
-        items_column_indices(&table.headers, path)?;
+        items_column_indices(&column_names, path)?;
     Ok(collect_items(
-        &table.rows,
+        &table,
         id_idx,
         label_idx,
         type_idx,
@@ -296,13 +284,13 @@ fn load_items_csv(path: &Path) -> Result<BTreeMap<String, SourceColumn>> {
 fn load_codelists_csv(path: &Path) -> Result<BTreeMap<String, CodeList>> {
     let table = read_csv_table_with_header_match(path, 25, matches_codelists_header)
         .with_context(|| format!("read codelists csv: {}", path.display()))?;
-    let (format_idx, value_idx, text_idx) = codelist_column_indices(&table.headers, path)?;
-    Ok(collect_codelists(
-        &table.rows,
-        format_idx,
-        value_idx,
-        text_idx,
-    ))
+    let column_names: Vec<String> = table
+        .get_column_names()
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+    let (format_idx, value_idx, text_idx) = codelist_column_indices(&column_names, path)?;
+    Ok(collect_codelists(&table, format_idx, value_idx, text_idx))
 }
 
 fn codelist_column_indices(headers: &[String], path: &Path) -> Result<(usize, usize, usize)> {
@@ -355,7 +343,7 @@ fn matches_codelists_header(headers: &[String]) -> bool {
 }
 
 fn collect_items(
-    rows: &[Vec<String>],
+    df: &DataFrame,
     id_idx: usize,
     label_idx: Option<usize>,
     type_idx: Option<usize>,
@@ -364,37 +352,81 @@ fn collect_items(
     length_idx: Option<usize>,
 ) -> BTreeMap<String, SourceColumn> {
     let mut items = BTreeMap::new();
-    for row in rows {
-        let col_id = row.get(id_idx).map(String::as_str).unwrap_or("").trim();
+
+    let id_series = df
+        .select_at_idx(id_idx)
+        .unwrap()
+        .cast(&DataType::String)
+        .unwrap();
+    let id_col = id_series.str().unwrap();
+
+    let label_series = label_idx.map(|i| {
+        df.select_at_idx(i)
+            .unwrap()
+            .cast(&DataType::String)
+            .unwrap()
+    });
+    let label_col = label_series.as_ref().map(|s| s.str().unwrap());
+
+    let type_series = type_idx.map(|i| {
+        df.select_at_idx(i)
+            .unwrap()
+            .cast(&DataType::String)
+            .unwrap()
+    });
+    let type_col = type_series.as_ref().map(|s| s.str().unwrap());
+
+    let mandatory_series = mandatory_idx.map(|i| {
+        df.select_at_idx(i)
+            .unwrap()
+            .cast(&DataType::String)
+            .unwrap()
+    });
+    let mandatory_col = mandatory_series.as_ref().map(|s| s.str().unwrap());
+
+    let format_series = format_idx.map(|i| {
+        df.select_at_idx(i)
+            .unwrap()
+            .cast(&DataType::String)
+            .unwrap()
+    });
+    let format_col = format_series.as_ref().map(|s| s.str().unwrap());
+
+    let length_series = length_idx.map(|i| {
+        df.select_at_idx(i)
+            .unwrap()
+            .cast(&DataType::String)
+            .unwrap()
+    });
+    let length_col = length_series.as_ref().map(|s| s.str().unwrap());
+
+    for (i, opt_id) in id_col.into_iter().enumerate() {
+        let Some(col_id) = opt_id else { continue };
+        let col_id = col_id.trim();
         if col_id.is_empty() {
             continue;
         }
         if matches!(col_id.to_lowercase().as_str(), "id" | "columnid") {
             continue;
         }
-        let label = label_idx
-            .and_then(|idx| row.get(idx))
-            .map(String::as_str)
+        let label = label_col
+            .and_then(|s| s.get(i))
             .unwrap_or(col_id)
             .trim()
             .to_string();
-        let data_type = type_idx
-            .and_then(|idx| row.get(idx))
-            .map(String::as_str)
+        let data_type = type_col
+            .and_then(|s| s.get(i))
             .map(|value| value.trim().to_lowercase())
             .filter(|value| !value.is_empty());
-        let mandatory = mandatory_idx
-            .and_then(|idx| row.get(idx))
-            .map(String::as_str)
+        let mandatory = mandatory_col
+            .and_then(|s| s.get(i))
             .map(parse_bool)
             .unwrap_or(false);
-        let format_name = format_idx
-            .and_then(|idx| row.get(idx))
-            .map(String::as_str)
+        let format_name = format_col
+            .and_then(|s| s.get(i))
             .and_then(parse_format_name);
-        let content_length = length_idx
-            .and_then(|idx| row.get(idx))
-            .map(String::as_str)
+        let content_length = length_col
+            .and_then(|s| s.get(i))
             .and_then(parse_content_length);
 
         items.insert(
@@ -413,14 +445,39 @@ fn collect_items(
 }
 
 fn collect_codelists(
-    rows: &[Vec<String>],
+    df: &DataFrame,
     format_idx: usize,
     value_idx: usize,
     text_idx: usize,
 ) -> BTreeMap<String, CodeList> {
     let mut codelists = BTreeMap::new();
-    for row in rows {
-        let format_name = row.get(format_idx).map(String::as_str).unwrap_or("").trim();
+
+    let format_series = df
+        .select_at_idx(format_idx)
+        .unwrap()
+        .cast(&DataType::String)
+        .unwrap();
+    let format_col = format_series.str().unwrap();
+
+    let value_series = df
+        .select_at_idx(value_idx)
+        .unwrap()
+        .cast(&DataType::String)
+        .unwrap();
+    let value_col = value_series.str().unwrap();
+
+    let text_series = df
+        .select_at_idx(text_idx)
+        .unwrap()
+        .cast(&DataType::String)
+        .unwrap();
+    let text_col = text_series.str().unwrap();
+
+    for (i, opt_format) in format_col.into_iter().enumerate() {
+        let Some(format_name) = opt_format else {
+            continue;
+        };
+        let format_name = format_name.trim();
         if format_name.is_empty() {
             continue;
         }
@@ -430,8 +487,8 @@ fn collect_codelists(
         ) {
             continue;
         }
-        let code_value = row.get(value_idx).map(String::as_str).unwrap_or("").trim();
-        let code_text = row.get(text_idx).map(String::as_str).unwrap_or("").trim();
+        let code_value = value_col.get(i).unwrap_or("").trim();
+        let code_text = text_col.get(i).unwrap_or("").trim();
         if code_value.is_empty() || code_text.is_empty() {
             continue;
         }
@@ -527,21 +584,6 @@ fn parse_content_length(value: &str) -> Option<usize> {
         .parse::<f64>()
         .ok()
         .map(|value| value.round() as usize)
-}
-
-fn strip_code_label(label: &str) -> String {
-    let trimmed = label.trim();
-    if trimmed.is_empty() {
-        return String::new();
-    }
-    let upper = trimmed.to_uppercase();
-    for suffix in [" - CODE", "- CODE", " CODE"] {
-        if upper.ends_with(suffix) {
-            let cut = trimmed.len().saturating_sub(suffix.len());
-            return trimmed[..cut].trim().to_string();
-        }
-    }
-    trimmed.to_string()
 }
 
 fn base_column_name(header: &str) -> Option<String> {

@@ -2641,7 +2641,6 @@ name = "sdtm-ingest"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "csv",
  "polars",
  "sdtm-model",
 ]

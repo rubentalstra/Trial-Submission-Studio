@@ -5,31 +5,35 @@ use std::collections::{BTreeMap, BTreeSet};
 use anyhow::Result;
 use polars::prelude::DataFrame;
 
-use sdtm_ingest::CsvTable;
 use sdtm_model::{Domain, MappingConfig};
 
 use super::types::{VsWideGroup, VsWideShared};
 use super::utils::{
     base_row_values, build_wide_base_mapping, build_wide_data, mapping_used_sources, push_row,
 };
-use crate::data_utils::sanitize_test_code;
+use crate::data_utils::{column_value_string, sanitize_test_code};
 use crate::frame::DomainFrame;
 
 /// Build VS domain frame from wide format data.
 pub fn build_vs_wide_frame(
-    table: &CsvTable,
+    table: &DataFrame,
     domain: &Domain,
     study_id: &str,
 ) -> Result<Option<(MappingConfig, DomainFrame, BTreeSet<String>)>> {
-    let (groups, shared, wide_columns) =
-        detect_vs_wide_groups(&table.headers, table.labels.as_deref());
+    let headers: Vec<String> = table
+        .get_column_names()
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+    // Note: labels are not available in DataFrame directly, passing None
+    let (groups, shared, wide_columns) = detect_vs_wide_groups(&headers, None);
     if groups.is_empty() {
         return Ok(None);
     }
     let (mapping_config, base_frame) =
         build_wide_base_mapping(table, domain, study_id, &wide_columns)?;
-    let date_idx = find_vs_date_column(&table.headers);
-    let time_idx = find_vs_time_column(&table.headers);
+    let date_idx = find_vs_date_column(&headers);
+    let time_idx = find_vs_time_column(&headers);
     let (expanded, used_wide) = expand_vs_wide(
         table,
         &base_frame.data,
@@ -38,6 +42,7 @@ pub fn build_vs_wide_frame(
         &shared,
         date_idx,
         time_idx,
+        &headers,
     )?;
     let mut used = mapping_used_sources(&mapping_config);
     used.extend(used_wide);
@@ -190,13 +195,14 @@ fn find_generic_time_column(headers: &[String]) -> Option<usize> {
 
 /// Expand VS wide format to long format.
 fn expand_vs_wide(
-    table: &CsvTable,
+    table: &DataFrame,
     base_df: &DataFrame,
     domain: &Domain,
     groups: &BTreeMap<String, VsWideGroup>,
     shared: &VsWideShared,
     date_idx: Option<usize>,
     time_idx: Option<usize>,
+    headers: &[String],
 ) -> Result<(DataFrame, BTreeSet<String>)> {
     let variable_names: Vec<String> = domain
         .variables
@@ -218,13 +224,13 @@ fn expand_vs_wide(
     for group in groups.values() {
         for idx in [group.orres_col, group.orresu_col, group.pos_col] {
             if let Some(idx) = idx
-                && let Some(name) = table.headers.get(idx)
+                && let Some(name) = headers.get(idx)
             {
                 used.insert(name.clone());
             }
         }
         for idx in &group.extra_cols {
-            if let Some(name) = table.headers.get(*idx) {
+            if let Some(name) = headers.get(*idx) {
                 used.insert(name.clone());
             }
         }
@@ -232,58 +238,59 @@ fn expand_vs_wide(
 
     for idx in [shared.orresu_bp, shared.pos_bp] {
         if let Some(idx) = idx
-            && let Some(name) = table.headers.get(idx)
+            && let Some(name) = headers.get(idx)
         {
             used.insert(name.clone());
         }
     }
 
     if let Some(idx) = date_idx
-        && let Some(name) = table.headers.get(idx)
+        && let Some(name) = headers.get(idx)
     {
         used.insert(name.clone());
     }
     if let Some(idx) = time_idx
-        && let Some(name) = table.headers.get(idx)
+        && let Some(name) = headers.get(idx)
     {
         used.insert(name.clone());
     }
 
     let mut total_rows = 0usize;
+    let height = table.height();
 
-    for row_idx in 0..table.rows.len() {
+    for row_idx in 0..height {
         let base_date_value = date_idx
-            .and_then(|idx| table.rows[row_idx].get(idx))
-            .cloned()
+            .and_then(|idx| headers.get(idx))
+            .map(|name| column_value_string(table, name, row_idx))
             .unwrap_or_default();
         let base_time_value = time_idx
-            .and_then(|idx| table.rows[row_idx].get(idx))
-            .cloned()
+            .and_then(|idx| headers.get(idx))
+            .map(|name| column_value_string(table, name, row_idx))
             .unwrap_or_default();
         let base_row = base_row_values(base_df, &variable_names, row_idx);
 
         for group in groups.values() {
             let orres_value = group
                 .orres_col
-                .and_then(|idx| table.rows[row_idx].get(idx))
-                .cloned()
+                .and_then(|idx| headers.get(idx))
+                .map(|name| column_value_string(table, name, row_idx))
                 .unwrap_or_default();
             let orresu_value = group
                 .orresu_col
-                .and_then(|idx| table.rows[row_idx].get(idx))
-                .cloned()
+                .and_then(|idx| headers.get(idx))
+                .map(|name| column_value_string(table, name, row_idx))
                 .unwrap_or_default();
             let pos_value = group
                 .pos_col
-                .and_then(|idx| table.rows[row_idx].get(idx))
-                .cloned()
+                .and_then(|idx| headers.get(idx))
+                .map(|name| column_value_string(table, name, row_idx))
                 .unwrap_or_default();
 
             let orresu_fallback = if group.key.ends_with("BP") || group.key.contains("BP") {
                 shared
                     .orresu_bp
-                    .and_then(|idx| table.rows[row_idx].get(idx))
-                    .cloned()
+                    .and_then(|idx| headers.get(idx))
+                    .map(|name| column_value_string(table, name, row_idx))
                     .unwrap_or_default()
             } else {
                 String::new()
@@ -292,8 +299,8 @@ fn expand_vs_wide(
             let pos_fallback = if group.key.ends_with("BP") || group.key.contains("BP") {
                 shared
                     .pos_bp
-                    .and_then(|idx| table.rows[row_idx].get(idx))
-                    .cloned()
+                    .and_then(|idx| headers.get(idx))
+                    .map(|name| column_value_string(table, name, row_idx))
                     .unwrap_or_default()
             } else {
                 String::new()

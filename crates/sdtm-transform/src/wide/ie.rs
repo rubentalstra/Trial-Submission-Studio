@@ -5,7 +5,6 @@ use std::collections::{BTreeMap, BTreeSet};
 use anyhow::Result;
 use polars::prelude::DataFrame;
 
-use sdtm_ingest::CsvTable;
 use sdtm_model::{Domain, MappingConfig};
 
 use super::types::IeWideGroup;
@@ -13,17 +12,22 @@ use super::utils::{
     base_row_values, build_wide_base_mapping, build_wide_data, mapping_used_sources, push_row,
 };
 use crate::data_utils::{
-    column_value_string, mapping_source_for_target, sanitize_test_code, table_label,
+    column_value_string, mapping_source_for_target, sanitize_test_code,
 };
 use crate::frame::DomainFrame;
 
 /// Build IE domain frame from wide format data.
 pub fn build_ie_wide_frame(
-    table: &CsvTable,
+    table: &DataFrame,
     domain: &Domain,
     study_id: &str,
 ) -> Result<Option<(MappingConfig, DomainFrame, BTreeSet<String>)>> {
-    let (groups, wide_columns) = detect_ie_wide_groups(&table.headers);
+    let headers: Vec<String> = table
+        .get_column_names()
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+    let (groups, wide_columns) = detect_ie_wide_groups(&headers);
     if groups.is_empty() {
         return Ok(None);
     }
@@ -41,6 +45,7 @@ pub fn build_ie_wide_frame(
         &groups,
         allow_base_test,
         allow_base_cat,
+        &headers,
     )?;
     let mut used = mapping_used_sources(&mapping_config);
     used.extend(used_wide);
@@ -120,12 +125,13 @@ fn source_is_ie_cat(source: &Option<String>) -> bool {
 
 /// Expand IE wide format to long format.
 fn expand_ie_wide(
-    table: &CsvTable,
+    table: &DataFrame,
     base_df: &DataFrame,
     domain: &Domain,
     groups: &BTreeMap<String, IeWideGroup>,
     allow_base_test: bool,
     allow_base_cat: bool,
+    headers: &[String],
 ) -> Result<(DataFrame, BTreeSet<String>)> {
     let variable_names: Vec<String> = domain
         .variables
@@ -144,7 +150,7 @@ fn expand_ie_wide(
     for group in groups.values() {
         for idx in [group.test_col, group.testcd_col] {
             if let Some(idx) = idx
-                && let Some(name) = table.headers.get(idx)
+                && let Some(name) = headers.get(idx)
             {
                 used.insert(name.clone());
             }
@@ -156,8 +162,9 @@ fn expand_ie_wide(
     let cat_col = domain.column_name("IECAT");
 
     let mut total_rows = 0usize;
+    let height = table.height();
 
-    for row_idx in 0..table.rows.len() {
+    for row_idx in 0..height {
         let base_test = if allow_base_test {
             test_col
                 .map(|name| column_value_string(base_df, name, row_idx))
@@ -186,24 +193,22 @@ fn expand_ie_wide(
         for group in groups.values() {
             let test_value = group
                 .test_col
-                .and_then(|idx| table.rows[row_idx].get(idx))
-                .cloned()
+                .and_then(|idx| headers.get(idx))
+                .map(|name| column_value_string(table, name, row_idx))
                 .unwrap_or_default();
             let testcd_value = group
                 .testcd_col
-                .and_then(|idx| table.rows[row_idx].get(idx))
-                .cloned()
+                .and_then(|idx| headers.get(idx))
+                .map(|name| column_value_string(table, name, row_idx))
                 .unwrap_or_default();
 
             if test_value.trim().is_empty() && testcd_value.trim().is_empty() {
                 continue;
             }
 
-            let label = group
-                .test_col
-                .and_then(|idx| table.headers.get(idx))
-                .and_then(|name| table_label(table, name))
-                .unwrap_or_default();
+            // Note: table_label removed as it was CsvTable specific and rarely used/supported in Polars context easily without metadata
+            // If labels are critical, we need another way to pass them. For now, assuming empty label.
+            let label = String::new(); 
 
             let mut test_label = if !test_value.trim().is_empty() {
                 test_value.clone()

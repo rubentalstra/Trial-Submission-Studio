@@ -22,7 +22,7 @@ use sdtm_core::frame_builder::build_mapped_domain_frame;
 use sdtm_core::pipeline_context::PipelineContext;
 use sdtm_core::processor::{DomainProcessInput, process_domain};
 use sdtm_ingest::{
-    AppliedStudyMetadata, CsvTable, StudyMetadata, any_to_string, apply_study_metadata,
+    AppliedStudyMetadata, StudyMetadata, any_to_string, apply_study_metadata,
     discover_domain_files, list_csv_files, load_study_metadata, read_csv_schema, read_csv_table,
 };
 use sdtm_map::merge_mappings;
@@ -405,7 +405,7 @@ fn process_file(&self, input: &mut ProcessFileInput<'_>) -> Result<ProcessedFile
 
         let raw_table =
             read_csv_table(input.path).with_context(|| format!("read {}", input.path.display()))?;
-        let input_count = raw_table.rows.len();
+        let input_count = raw_table.height();
 
         let AppliedStudyMetadata {
             table,
@@ -1062,19 +1062,8 @@ pub fn extract_reference_starts(df: &DataFrame) -> BTreeMap<String, String> {
     reference_starts
 }
 
-fn column_label_map(table: &CsvTable) -> BTreeMap<String, String> {
-    let mut labels = BTreeMap::new();
-    let Some(label_row) = table.labels.as_ref() else {
-        return labels;
-    };
-    for (header, label) in table.headers.iter().zip(label_row.iter()) {
-        let trimmed = label.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-        labels.insert(header.to_uppercase(), trimmed.to_string());
-    }
-    labels
+fn column_label_map(_table: &DataFrame) -> BTreeMap<String, String> {
+    BTreeMap::new()
 }
 
 /// Build frame metadata with dataset naming and source provenance details.

@@ -3,9 +3,9 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use anyhow::Result;
-use polars::prelude::DataFrame;
+use polars::prelude::{DataFrame, AnyValue};
 
-use sdtm_ingest::CsvTable;
+use sdtm_ingest::any_to_string;
 use sdtm_model::{Domain, MappingConfig};
 
 use crate::data_utils::{sanitize_test_code, table_label};
@@ -19,19 +19,20 @@ use super::utils::{
 
 /// Build LB wide format frame from CSV table.
 pub fn build_lb_wide_frame(
-    table: &CsvTable,
+    table: &DataFrame,
     domain: &Domain,
     study_id: &str,
 ) -> Result<Option<(MappingConfig, DomainFrame, BTreeSet<String>)>> {
-    let (groups, wide_columns) = detect_lb_wide_groups(&table.headers);
+    let headers: Vec<String> = table.get_column_names().iter().map(|s| s.to_string()).collect();
+    let (groups, wide_columns) = detect_lb_wide_groups(&headers);
     if groups.is_empty() {
         return Ok(None);
     }
 
     let (mapping_config, base_frame) =
         build_wide_base_mapping(table, domain, study_id, &wide_columns)?;
-    let date_idx = find_lb_date_column(&table.headers);
-    let time_idx = find_lb_time_column(&table.headers);
+    let date_idx = find_lb_date_column(&headers);
+    let time_idx = find_lb_time_column(&headers);
     let (expanded, used_wide) =
         expand_lb_wide(table, &base_frame.data, domain, &groups, date_idx, time_idx)?;
 
@@ -381,7 +382,7 @@ pub fn find_lb_time_column(headers: &[String]) -> Option<usize> {
 
 /// Expand LB wide format to long format.
 fn expand_lb_wide(
-    table: &CsvTable,
+    table: &DataFrame,
     base_df: &DataFrame,
     domain: &Domain,
     groups: &BTreeMap<String, LbWideGroup>,
@@ -405,6 +406,13 @@ fn expand_lb_wide(
     let lbclsig_idx = variable_names.iter().position(|name| name == "LBCLSIG");
     let lbdtc_idx = variable_names.iter().position(|name| name == "LBDTC");
 
+    let headers: Vec<String> = table.get_column_names().iter().map(|s| s.to_string()).collect();
+    
+    // Extract all columns as strings for random access
+    let columns: Vec<Vec<String>> = table.get_columns().iter().map(|s| {
+        (0..s.len()).map(|i| any_to_string(s.get(i).unwrap_or(AnyValue::Null))).collect()
+    }).collect();
+
     let mut used = BTreeSet::new();
 
     // Collect used column names
@@ -424,38 +432,39 @@ fn expand_lb_wide(
             group.time_col,
         ] {
             if let Some(idx) = idx
-                && let Some(name) = table.headers.get(idx)
+                && let Some(name) = headers.get(idx)
             {
                 used.insert(name.clone());
             }
         }
         for idx in &group.extra_cols {
-            if let Some(name) = table.headers.get(*idx) {
+            if let Some(name) = headers.get(*idx) {
                 used.insert(name.clone());
             }
         }
     }
 
     if let Some(idx) = date_idx
-        && let Some(name) = table.headers.get(idx)
+        && let Some(name) = headers.get(idx)
     {
         used.insert(name.clone());
     }
     if let Some(idx) = time_idx
-        && let Some(name) = table.headers.get(idx)
+        && let Some(name) = headers.get(idx)
     {
         used.insert(name.clone());
     }
 
     let mut total_rows = 0usize;
+    let row_count = table.height();
 
-    for row_idx in 0..table.rows.len() {
+    for row_idx in 0..row_count {
         let base_date_value = date_idx
-            .and_then(|idx| table.rows[row_idx].get(idx))
+            .and_then(|idx| columns.get(idx).and_then(|col| col.get(row_idx)))
             .cloned()
             .unwrap_or_default();
         let base_time_value = time_idx
-            .and_then(|idx| table.rows[row_idx].get(idx))
+            .and_then(|idx| columns.get(idx).and_then(|col| col.get(row_idx)))
             .cloned()
             .unwrap_or_default();
         let base_row = base_row_values(base_df, &variable_names, row_idx);
@@ -463,12 +472,12 @@ fn expand_lb_wide(
         for group in groups.values() {
             let group_date_value = group
                 .date_col
-                .and_then(|idx| table.rows[row_idx].get(idx))
+                .and_then(|idx| columns.get(idx).and_then(|col| col.get(row_idx)))
                 .cloned()
                 .unwrap_or_default();
             let group_time_value = group
                 .time_col
-                .and_then(|idx| table.rows[row_idx].get(idx))
+                .and_then(|idx| columns.get(idx).and_then(|col| col.get(row_idx)))
                 .cloned()
                 .unwrap_or_default();
 
@@ -485,42 +494,42 @@ fn expand_lb_wide(
 
             let test_value = group
                 .test_col
-                .and_then(|idx| table.rows[row_idx].get(idx))
+                .and_then(|idx| columns.get(idx).and_then(|col| col.get(row_idx)))
                 .cloned()
                 .unwrap_or_default();
             let testcd_value = group
                 .testcd_col
-                .and_then(|idx| table.rows[row_idx].get(idx))
+                .and_then(|idx| columns.get(idx).and_then(|col| col.get(row_idx)))
                 .cloned()
                 .unwrap_or_default();
             let orres_value = group
                 .orres_col
-                .and_then(|idx| table.rows[row_idx].get(idx))
+                .and_then(|idx| columns.get(idx).and_then(|col| col.get(row_idx)))
                 .cloned()
                 .unwrap_or_default();
             let orresu_value = group
                 .orresu_col
-                .and_then(|idx| table.rows[row_idx].get(idx))
+                .and_then(|idx| columns.get(idx).and_then(|col| col.get(row_idx)))
                 .cloned()
                 .unwrap_or_default();
             let orresu_alt_value = group
                 .orresu_alt_col
-                .and_then(|idx| table.rows[row_idx].get(idx))
+                .and_then(|idx| columns.get(idx).and_then(|col| col.get(row_idx)))
                 .cloned()
                 .unwrap_or_default();
             let ornr_lower_value = group
                 .ornr_lower_col
-                .and_then(|idx| table.rows[row_idx].get(idx))
+                .and_then(|idx| columns.get(idx).and_then(|col| col.get(row_idx)))
                 .cloned()
                 .unwrap_or_default();
             let ornr_upper_value = group
                 .ornr_upper_col
-                .and_then(|idx| table.rows[row_idx].get(idx))
+                .and_then(|idx| columns.get(idx).and_then(|col| col.get(row_idx)))
                 .cloned()
                 .unwrap_or_default();
             let clsig_value = group
                 .clsig_col
-                .and_then(|idx| table.rows[row_idx].get(idx))
+                .and_then(|idx| columns.get(idx).and_then(|col| col.get(row_idx)))
                 .cloned()
                 .unwrap_or_default();
 
@@ -538,12 +547,12 @@ fn expand_lb_wide(
 
             let label = group
                 .test_col
-                .and_then(|idx| table.headers.get(idx))
+                .and_then(|idx| headers.get(idx))
                 .and_then(|name| table_label(table, name))
                 .or_else(|| {
                     group
                         .orres_col
-                        .and_then(|idx| table.headers.get(idx))
+                        .and_then(|idx| headers.get(idx))
                         .and_then(|name| table_label(table, name))
                 })
                 .unwrap_or_default();

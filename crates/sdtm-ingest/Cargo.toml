@@ -9,6 +9,5 @@ workspace = true
 
 [dependencies]
 anyhow.workspace = true
-csv.workspace = true
 polars.workspace = true
 sdtm-model = { path = "../sdtm-model" }

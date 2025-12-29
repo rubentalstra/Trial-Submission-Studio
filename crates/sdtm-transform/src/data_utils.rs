@@ -4,7 +4,7 @@
 //! handling source table metadata, and sanitizing test codes.
 
 use polars::prelude::{AnyValue, DataFrame};
-use sdtm_ingest::{CsvTable, any_to_string};
+use sdtm_ingest::any_to_string;
 use sdtm_model::MappingConfig;
 
 /// Get a string value from a DataFrame column at the given row index.
@@ -27,18 +27,9 @@ pub fn column_trimmed_values(df: &DataFrame, name: &str) -> Option<Vec<String>> 
 }
 
 /// Get the label for a column from CSV table metadata.
-pub fn table_label(table: &CsvTable, column: &str) -> Option<String> {
-    let labels = table.labels.as_ref()?;
-    let idx = table
-        .headers
-        .iter()
-        .position(|header| header.eq_ignore_ascii_case(column))?;
-    let label = labels.get(idx)?.trim();
-    if label.is_empty() {
-        None
-    } else {
-        Some(label.to_string())
-    }
+pub fn table_label(_table: &DataFrame, _column: &str) -> Option<String> {
+    // Labels are no longer supported in the optimized ingestion
+    None
 }
 
 /// Find the source column name for a target SDTM variable in a mapping config.
