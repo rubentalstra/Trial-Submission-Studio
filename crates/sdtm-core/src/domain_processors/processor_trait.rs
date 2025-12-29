@@ -202,66 +202,124 @@ pub fn default_registry() -> &'static ProcessorRegistry {
 fn build_default_registry() -> ProcessorRegistry {
     let mut registry = ProcessorRegistry::new(Box::new(DefaultProcessor));
 
-    // Register all standard domain processors
-    // Note: These use wrapper structs that delegate to the existing functions.
-    // In Phase 2 PR-012/PR-013, these will be replaced with direct trait implementations.
-    registry.register(Box::new(FunctionProcessor::new("AE", super::ae::process_ae)));
-    registry.register(Box::new(FunctionProcessor::new("CM", super::cm::process_cm)));
-    registry.register(Box::new(FunctionProcessor::new("DA", super::da::process_da)));
-    registry.register(Box::new(FunctionProcessor::new("DM", super::dm::process_dm)));
-    registry.register(Box::new(FunctionProcessor::new("DS", super::ds::process_ds)));
-    registry.register(Box::new(FunctionProcessor::new("EX", super::ex::process_ex)));
-    registry.register(Box::new(FunctionProcessor::new("IE", super::ie::process_ie)));
-    registry.register(Box::new(FunctionProcessor::new("LB", super::lb::process_lb)));
-    registry.register(Box::new(FunctionProcessor::new("MH", super::mh::process_mh)));
-    registry.register(Box::new(FunctionProcessor::new("PE", super::pe::process_pe)));
-    registry.register(Box::new(FunctionProcessor::new("PR", super::pr::process_pr)));
-    registry.register(Box::new(FunctionProcessor::new("QS", super::qs::process_qs)));
-    registry.register(Box::new(FunctionProcessor::new("SE", super::se::process_se)));
-    registry.register(Box::new(FunctionProcessor::new("TA", super::ta::process_ta)));
-    registry.register(Box::new(FunctionProcessor::new("TE", super::te::process_te)));
-    registry.register(Box::new(FunctionProcessor::new("TS", super::ts::process_ts)));
-    registry.register(Box::new(FunctionProcessor::new("VS", super::vs::process_vs)));
+    // Register all standard domain processors (macro-generated at compile time)
+    registry.register(Box::new(AEProcessor));
+    registry.register(Box::new(CMProcessor));
+    registry.register(Box::new(DAProcessor));
+    registry.register(Box::new(DMProcessor));
+    registry.register(Box::new(DSProcessor));
+    registry.register(Box::new(EXProcessor));
+    registry.register(Box::new(IEProcessor));
+    registry.register(Box::new(LBProcessor));
+    registry.register(Box::new(MHProcessor));
+    registry.register(Box::new(PEProcessor));
+    registry.register(Box::new(PRProcessor));
+    registry.register(Box::new(QSProcessor));
+    registry.register(Box::new(SEProcessor));
+    registry.register(Box::new(TAProcessor));
+    registry.register(Box::new(TEProcessor));
+    registry.register(Box::new(TSProcessor));
+    registry.register(Box::new(VSProcessor));
 
     registry
 }
 
-/// Wrapper that adapts a processing function to the DomainProcessor trait.
+/// Macro to create a domain processor from a processing function.
 ///
-/// This enables gradual migration from function-based processors to
-/// trait-based processors without breaking existing code.
-struct FunctionProcessor {
-    code: &'static str,
-    process_fn: fn(&Domain, &mut DataFrame, &PipelineContext) -> Result<()>,
+/// Generates a struct implementing [`DomainProcessor`] that delegates to
+/// the specified processing function. This provides compile-time generation
+/// instead of runtime wrapping.
+///
+/// # Syntax
+///
+/// ```ignore
+/// domain_processor!("AE", AEProcessor, process_ae);
+/// domain_processor!("DM", DMProcessor, process_dm, "Demographics domain processor");
+/// ```
+///
+/// # Arguments
+///
+/// * `code` - The SDTM domain code (e.g., "AE", "DM", "VS")
+/// * `struct_name` - The name of the generated processor struct
+/// * `fn_name` - The processing function to delegate to
+/// * `description` - Optional description string (defaults to "Domain processor")
+///
+/// # Example
+///
+/// ```ignore
+/// // In ae.rs:
+/// pub(super) fn process_ae(domain: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
+///     // AE-specific processing...
+///     Ok(())
+/// }
+///
+/// // In processor_trait.rs:
+/// domain_processor!("AE", AEProcessor, super::ae::process_ae, "Adverse Events processor");
+///
+/// // Register in build_default_registry:
+/// registry.register(Box::new(AEProcessor));
+/// ```
+macro_rules! domain_processor {
+    ($code:literal, $struct_name:ident, $fn:path) => {
+        struct $struct_name;
+
+        impl DomainProcessor for $struct_name {
+            fn domain_code(&self) -> &'static str {
+                $code
+            }
+
+            fn process(
+                &self,
+                domain: &Domain,
+                df: &mut DataFrame,
+                context: &PipelineContext,
+            ) -> Result<()> {
+                $fn(domain, df, context)
+            }
+        }
+    };
+    ($code:literal, $struct_name:ident, $fn:path, $desc:literal) => {
+        struct $struct_name;
+
+        impl DomainProcessor for $struct_name {
+            fn domain_code(&self) -> &'static str {
+                $code
+            }
+
+            fn description(&self) -> &'static str {
+                $desc
+            }
+
+            fn process(
+                &self,
+                domain: &Domain,
+                df: &mut DataFrame,
+                context: &PipelineContext,
+            ) -> Result<()> {
+                $fn(domain, df, context)
+            }
+        }
+    };
 }
 
-impl FunctionProcessor {
-    fn new(
-        code: &'static str,
-        process_fn: fn(&Domain, &mut DataFrame, &PipelineContext) -> Result<()>,
-    ) -> Self {
-        Self { code, process_fn }
-    }
-}
-
-impl DomainProcessor for FunctionProcessor {
-    fn domain_code(&self) -> &'static str {
-        self.code
-    }
-
-    fn description(&self) -> &'static str {
-        "Function-based processor"
-    }
-
-    fn process(
-        &self,
-        domain: &Domain,
-        df: &mut DataFrame,
-        context: &PipelineContext,
-    ) -> Result<()> {
-        (self.process_fn)(domain, df, context)
-    }
-}
+// Generate all domain processor structs at compile time
+domain_processor!("AE", AEProcessor, super::ae::process_ae, "Adverse Events processor");
+domain_processor!("CM", CMProcessor, super::cm::process_cm, "Concomitant Medications processor");
+domain_processor!("DA", DAProcessor, super::da::process_da, "Drug Accountability processor");
+domain_processor!("DM", DMProcessor, super::dm::process_dm, "Demographics processor");
+domain_processor!("DS", DSProcessor, super::ds::process_ds, "Disposition processor");
+domain_processor!("EX", EXProcessor, super::ex::process_ex, "Exposure processor");
+domain_processor!("IE", IEProcessor, super::ie::process_ie, "Inclusion/Exclusion processor");
+domain_processor!("LB", LBProcessor, super::lb::process_lb, "Laboratory Results processor");
+domain_processor!("MH", MHProcessor, super::mh::process_mh, "Medical History processor");
+domain_processor!("PE", PEProcessor, super::pe::process_pe, "Physical Examination processor");
+domain_processor!("PR", PRProcessor, super::pr::process_pr, "Procedures processor");
+domain_processor!("QS", QSProcessor, super::qs::process_qs, "Questionnaires processor");
+domain_processor!("SE", SEProcessor, super::se::process_se, "Subject Elements processor");
+domain_processor!("TA", TAProcessor, super::ta::process_ta, "Trial Arms processor");
+domain_processor!("TE", TEProcessor, super::te::process_te, "Trial Elements processor");
+domain_processor!("TS", TSProcessor, super::ts::process_ts, "Trial Summary processor");
+domain_processor!("VS", VSProcessor, super::vs::process_vs, "Vital Signs processor");
 
 #[cfg(test)]
 mod tests {
@@ -302,5 +360,21 @@ mod tests {
         assert_eq!(registry.get("dm").domain_code(), "DM");
         assert_eq!(registry.get("DM").domain_code(), "DM");
         assert_eq!(registry.get("Dm").domain_code(), "DM");
+    }
+
+    #[test]
+    fn processor_descriptions_are_set() {
+        let registry = default_registry();
+
+        // Macro-generated processors should have descriptive descriptions
+        assert_eq!(registry.get("AE").description(), "Adverse Events processor");
+        assert_eq!(registry.get("DM").description(), "Demographics processor");
+        assert_eq!(registry.get("VS").description(), "Vital Signs processor");
+
+        // Default processor has its own description
+        assert_eq!(
+            registry.get("UNKNOWN").description(),
+            "Default processor for unknown domains"
+        );
     }
 }
