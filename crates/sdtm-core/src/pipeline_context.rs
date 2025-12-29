@@ -3,6 +3,18 @@
 //! This module centralizes study-level metadata, CT registry, and processing
 //! options to ensure consistent behavior across pipeline stages.
 //!
+//! # Architecture
+//!
+//! The [`PipelineContext`] bundles several concerns for convenience:
+//!
+//! - **Study metadata**: `study_id` identifying the clinical study
+//! - **Standards registry**: SDTMIG domain definitions (`standards`, `standards_map`)
+//! - **CT registry**: Controlled Terminology lookup (`ct_registry`)
+//! - **Reference dates**: Subject baseline dates for --DY derivation (`reference_starts`)
+//! - **Options**: Processing behavior configuration ([`ProcessingOptions`])
+//!
+//! The [`ProcessingOptions`] type is extracted to allow configuration reuse.
+//!
 //! # SDTMIG v3.4 Reference
 //!
 //! Per Chapter 3, submission metadata and standards must be consistent
