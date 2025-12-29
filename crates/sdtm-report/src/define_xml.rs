@@ -5,10 +5,10 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::path::Path;
 
-use anyhow::{anyhow, Context, Result};
+use anyhow::{Context, Result, anyhow};
 use chrono::{SecondsFormat, Utc};
-use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, Event};
 use quick_xml::Writer;
+use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, Event};
 
 use sdtm_core::frame::DomainFrame;
 use sdtm_model::ct::{Codelist, TerminologyCatalog, TerminologyRegistry};
@@ -16,9 +16,9 @@ use sdtm_model::{Domain, Variable, VariableType};
 use sdtm_standards::load_default_ct_registry;
 
 use crate::common::{
-    domain_map, has_collected_data, is_expected, is_identifier, is_reference_domain, is_required,
-    normalize_study_id, variable_length, write_text_element, write_translated_text, VariableTypeExt,
-    DEFINE_XML_NS, DEFINE_XML_VERSION, ODM_NS, XLINK_NS,
+    DEFINE_XML_NS, DEFINE_XML_VERSION, ODM_NS, VariableTypeExt, XLINK_NS, domain_map,
+    has_collected_data, is_expected, is_identifier, is_reference_domain, is_required,
+    normalize_study_id, variable_length, write_text_element, write_translated_text,
 };
 
 /// Options for Define-XML output.

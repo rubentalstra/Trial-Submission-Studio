@@ -9,9 +9,7 @@ use chrono::{SecondsFormat, Utc};
 use sdtm_core::frame::DomainFrame;
 use sdtm_model::{Domain, MappingConfig, MappingSuggestion, Variable, VariableType};
 
-use crate::common::{
-    dataset_name, domain_map, is_required, should_upcase, variable_length,
-};
+use crate::common::{dataset_name, domain_map, is_required, should_upcase, variable_length};
 
 /// Options for SAS program generation.
 #[derive(Debug, Clone, Default)]

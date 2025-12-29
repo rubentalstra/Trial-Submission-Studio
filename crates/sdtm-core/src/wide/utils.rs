@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use anyhow::Result;
 use polars::prelude::{DataFrame, NamedFrom, Series};
 
-use sdtm_ingest::{build_column_hints, CsvTable};
+use sdtm_ingest::{CsvTable, build_column_hints};
 use sdtm_map::MappingEngine;
 use sdtm_model::{Domain, MappingConfig, VariableType};
 
@@ -39,7 +39,11 @@ pub fn mapping_used_sources(mapping: &MappingConfig) -> BTreeSet<String> {
 }
 
 /// Filter table columns by inclusion/exclusion set.
-pub fn filter_table_columns(table: &CsvTable, columns: &BTreeSet<String>, include: bool) -> CsvTable {
+pub fn filter_table_columns(
+    table: &CsvTable,
+    columns: &BTreeSet<String>,
+    include: bool,
+) -> CsvTable {
     let mut indices = Vec::new();
     let mut headers = Vec::new();
     let mut labels = table.labels.as_ref().map(|_| Vec::new());
@@ -74,7 +78,11 @@ pub fn filter_table_columns(table: &CsvTable, columns: &BTreeSet<String>, includ
 }
 
 /// Extract values from base DataFrame for a single row.
-pub fn base_row_values(base_df: &DataFrame, variable_names: &[String], row_idx: usize) -> Vec<String> {
+pub fn base_row_values(
+    base_df: &DataFrame,
+    variable_names: &[String],
+    row_idx: usize,
+) -> Vec<String> {
     variable_names
         .iter()
         .map(|name| column_value_string(base_df, name, row_idx))

@@ -14,7 +14,7 @@ mod sas;
 mod xpt;
 
 // Re-export public types and functions
-pub use dataset_xml::{write_dataset_xml, write_dataset_xml_outputs, DatasetXmlOptions};
-pub use define_xml::{write_define_xml, DefineXmlOptions};
-pub use sas::{generate_sas_program, write_sas_outputs, SasProgramOptions};
+pub use dataset_xml::{DatasetXmlOptions, write_dataset_xml, write_dataset_xml_outputs};
+pub use define_xml::{DefineXmlOptions, write_define_xml};
+pub use sas::{SasProgramOptions, generate_sas_program, write_sas_outputs};
 pub use xpt::{build_xpt_dataset_with_name, write_xpt_outputs};

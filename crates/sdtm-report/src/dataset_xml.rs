@@ -15,8 +15,8 @@ use sdtm_ingest::any_to_string_non_empty;
 use sdtm_model::Domain;
 
 use crate::common::{
-    domain_map, is_reference_domain, normalize_study_id, ODM_NS, XLINK_NS, DATASET_XML_NS,
-    DATASET_XML_VERSION, DEFINE_XML_VERSION,
+    DATASET_XML_NS, DATASET_XML_VERSION, DEFINE_XML_VERSION, ODM_NS, XLINK_NS, domain_map,
+    is_reference_domain, normalize_study_id,
 };
 
 /// Options for Dataset-XML output.
