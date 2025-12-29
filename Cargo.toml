@@ -31,7 +31,13 @@ comfy-table = { version = "7.2.1", features = ["custom_styling"] }
 hex = "0.4.3"
 insta = { version = "1.45.1", features = ["json"] }
 proptest = "1.9.0"
-polars = { version = "0.51.0", features = ["lazy", "csv", "strings"] }
+polars = { version = "0.51.0", features = [
+    "lazy",
+    "csv",
+    "strings",
+    "range",
+    "dtype-array",
+] }
 quick-xml = "0.38.4"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.148"

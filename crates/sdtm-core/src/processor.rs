@@ -18,7 +18,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use anyhow::Result;
-use polars::prelude::{AnyValue, DataFrame, NamedFrom, Series};
+use polars::prelude::*;
 use tracing::warn;
 
 use sdtm_model::{CaseInsensitiveSet, Domain, VariableType};
@@ -26,7 +26,7 @@ use sdtm_model::{CaseInsensitiveSet, Domain, VariableType};
 use crate::ct_utils::normalize_ct_value;
 use crate::domain_processors;
 use crate::pipeline_context::{PipelineContext, SequenceAssignmentMode, UsubjidPrefixMode};
-use sdtm_ingest::any_to_string;
+use polars::lazy::dsl::{cols, int_range};
 use sdtm_transform::data_utils::{column_trimmed_values, strip_all_quotes};
 
 /// Input for domain processing operations.
@@ -61,6 +61,8 @@ fn normalize_ct_columns(
         return Ok(());
     }
     let column_lookup = CaseInsensitiveSet::new(df.get_column_names_owned());
+    let mut expressions = Vec::new();
+
     for variable in &domain.variables {
         if !matches!(variable.data_type, VariableType::Char) {
             continue;
@@ -71,28 +73,35 @@ fn normalize_ct_columns(
         let Some(column_name) = column_lookup.get(&variable.name) else {
             continue;
         };
-        let Ok(series) = df.column(column_name) else {
+        if df.column(column_name).is_err() {
             continue;
-        };
-        let row_count = df.height();
-        let mut values = Vec::with_capacity(row_count);
-        let mut changed = false;
-        for idx in 0..row_count {
-            let raw = any_to_string(series.get(idx).unwrap_or(AnyValue::Null));
-            if raw.trim().is_empty() {
-                values.push(raw);
-                continue;
-            }
-            let normalized = normalize_ct_value(ct, &raw, context.options.ct_matching);
-            if normalized != raw {
-                changed = true;
-            }
-            values.push(normalized);
         }
-        if changed {
-            let new_series = Series::new(column_name.into(), values);
-            df.with_column(new_series)?;
-        }
+
+        let ct_clone = ct.clone();
+        let matching_mode = context.options.ct_matching;
+
+        let expr = col(column_name)
+            .map(
+                move |c: Column| {
+                    let ca = c.str()?;
+                    let out: StringChunked = ca.apply_values(|s| {
+                        if s.trim().is_empty() {
+                            std::borrow::Cow::Borrowed("")
+                        } else {
+                            std::borrow::Cow::Owned(normalize_ct_value(&ct_clone, s, matching_mode))
+                        }
+                    });
+                    Ok(out.into_column())
+                },
+                |_, field| Ok(Field::new(field.name().clone(), DataType::String)),
+            )
+            .alias(column_name);
+        expressions.push(expr);
+    }
+
+    if !expressions.is_empty() {
+        let new_df = df.clone().lazy().with_columns(expressions).collect()?;
+        *df = new_df;
     }
     Ok(())
 }
@@ -111,25 +120,31 @@ fn apply_base_rules(domain: &Domain, df: &mut DataFrame, context: &PipelineConte
     let study_col = domain
         .column_name("STUDYID")
         .and_then(|name| column_lookup.get(name));
-    let usubjid_series = match df.column(usubjid_col) {
-        Ok(series) => series.clone(),
-        Err(_) => return Ok(()),
+
+    // Use direct ChunkedArray iteration for speed
+    let usubjid_ca = df.column(usubjid_col)?.str()?;
+    let study_ca = if let Some(name) = study_col {
+        df.column(name)?.str().ok()
+    } else {
+        None
     };
-    let study_series = study_col.and_then(|name| df.column(name).ok()).cloned();
-    let row_count = df.height();
-    let mut updated = Vec::with_capacity(row_count);
+
+    let mut updated_builder =
+        polars::prelude::StringChunkedBuilder::new(usubjid_col.into(), df.height());
     let mut changed = false;
 
-    for idx in 0..row_count {
-        let raw_usubjid = any_to_string(usubjid_series.get(idx).unwrap_or(AnyValue::Null));
-        let mut usubjid = strip_all_quotes(&raw_usubjid);
-        let study_value = study_series
-            .as_ref()
-            .map(|series| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
-            .unwrap_or_else(|| context.study_id.to_string());
-        let study_value = strip_all_quotes(&study_value);
-        if !study_value.is_empty() && !usubjid.is_empty() {
-            let prefix = format!("{study_value}-");
+    for (idx, opt_u) in usubjid_ca.into_iter().enumerate() {
+        let raw_usubjid = opt_u.unwrap_or("");
+        let mut usubjid = strip_all_quotes(raw_usubjid);
+        let study_val = if let Some(ca) = study_ca {
+            ca.get(idx).unwrap_or("")
+        } else {
+            context.study_id.as_str()
+        };
+        let study_val = strip_all_quotes(study_val);
+
+        if !study_val.is_empty() && !usubjid.is_empty() {
+            let prefix = format!("{study_val}-");
             if !usubjid.starts_with(&prefix) {
                 usubjid = format!("{prefix}{usubjid}");
             }
@@ -137,11 +152,11 @@ fn apply_base_rules(domain: &Domain, df: &mut DataFrame, context: &PipelineConte
         if usubjid != raw_usubjid {
             changed = true;
         }
-        updated.push(usubjid);
+        updated_builder.append_value(usubjid);
     }
 
     if changed {
-        let new_series = Series::new(usubjid_col.into(), updated);
+        let new_series = updated_builder.finish().into_series();
         df.with_column(new_series)?;
         if context.options.warn_on_rewrite {
             warn!(
@@ -230,48 +245,90 @@ fn assign_sequence_values(
     tracker: Option<&mut BTreeMap<String, i64>>,
     context: &PipelineContext,
 ) -> Result<()> {
+    let is_tracked = tracker.is_some();
     if df.height() == 0 {
         return Ok(());
     }
-    let Some(group_values) = column_trimmed_values(df, group_column) else {
-        return Ok(());
+
+    // Calculate local sequence (1-based index within group)
+    // We use lazy execution for optimization
+    let lazy = df.clone().lazy();
+
+    // If we have a tracker, we need to incorporate offsets
+    let (new_df, max_updates) = if let Some(tracker_map) = &tracker {
+        // 1. Create DataFrame from tracker
+        let keys: Vec<String> = tracker_map.keys().cloned().collect();
+        let offsets: Vec<i64> = tracker_map.values().cloned().collect();
+        let tracker_df = DataFrame::new(vec![
+            Series::new(group_column.into(), keys).into(),
+            Series::new("offset".into(), offsets).into(),
+        ])?;
+
+        // 2. Join and calculate
+        // We use left join to keep all rows
+        let joined = lazy.join(
+            tracker_df.lazy(),
+            [col(group_column)],
+            [col(group_column)],
+            JoinArgs::new(JoinType::Left),
+        );
+
+        // 3. Calculate SEQ = offset + cumcount + 1
+        // cumcount().over(group) gives 0-based index within group
+        let seq_expr = col("offset").fill_null(lit(0))
+            + int_range(lit(0), col(group_column).len(), 1, DataType::Int64)
+                .over([col(group_column)])
+            + lit(1);
+
+        let res_df = joined
+            .with_column(seq_expr.cast(DataType::Float64).alias(seq_column))
+            .drop(cols(["offset"]))
+            .collect()?;
+
+        // 4. Calculate updates for tracker
+        let updates = res_df
+            .clone()
+            .lazy()
+            .group_by([col(group_column)])
+            .agg([col(seq_column).max().alias("max_seq")])
+            .collect()?;
+
+        (res_df, Some(updates))
+    } else {
+        // Simple case: just cumcount + 1
+        let seq_expr = int_range(lit(0), col(group_column).len(), 1, DataType::Int64)
+            .over([col(group_column)])
+            + lit(1);
+        let res_df = lazy
+            .with_column(seq_expr.cast(DataType::Float64).alias(seq_column))
+            .collect()?;
+        (res_df, None)
     };
-    let row_count = df.height();
-    let seq_values =
-        column_trimmed_values(df, seq_column).unwrap_or_else(|| vec![String::new(); row_count]);
-    let had_existing = seq_values.iter().any(|value| !value.is_empty());
-    let mut counters: BTreeMap<String, i64> = BTreeMap::new();
-    let mut tracker = tracker;
-    let mut values: Vec<Option<f64>> = Vec::with_capacity(row_count);
-    for (idx, key) in group_values.iter().enumerate() {
-        if key.is_empty() {
-            values.push(None);
-            continue;
-        }
-        let value = if let Some(ref mut tracker) = tracker {
-            let entry = tracker.entry(key.clone()).or_insert(0);
-            let parsed = parse_sequence_value(seq_values[idx].as_str());
-            match parsed {
-                Some(seq) if seq > *entry => {
-                    *entry = seq;
-                    seq
-                }
-                _ => {
-                    *entry += 1;
-                    *entry
+
+    *df = new_df;
+
+    // Update tracker if needed
+    if let Some(updates_df) = max_updates {
+        if let Some(tracker_map) = tracker {
+            let groups = updates_df
+                .column(group_column)?
+                .as_materialized_series()
+                .str()?;
+            let maxes = updates_df
+                .column("max_seq")?
+                .as_materialized_series()
+                .f64()?;
+
+            for (opt_g, opt_m) in groups.into_iter().zip(maxes.into_iter()) {
+                if let (Some(g), Some(m)) = (opt_g, opt_m) {
+                    tracker_map.insert(g.to_string(), m as i64);
                 }
             }
-        } else {
-            let entry = counters.entry(key.clone()).or_insert(0);
-            *entry += 1;
-            *entry
-        };
-        values.push(Some(value as f64));
+        }
     }
-    let series = Series::new(seq_column.into(), values);
-    df.with_column(series)?;
-    if had_existing && context.options.warn_on_rewrite {
-        let message = if tracker.is_some() {
+
+    if context.options.warn_on_rewrite {
+        let message = if is_tracked {
             "Sequence values recalculated with tracker"
         } else {
             "Sequence values recalculated"
