@@ -17,8 +17,8 @@ use sdtm_transform::frame::DomainFrame;
 use sdtm_transform::domain_sets::domain_map_by_code;
 
 use crate::common::{
-    DATASET_XML_NS, DATASET_XML_VERSION, DEFINE_XML_VERSION, ODM_NS, XLINK_NS, is_reference_domain,
-    normalize_study_id,
+    DATASET_XML_NS, DATASET_XML_VERSION, DEFINE_XML_VERSION, ODM_NS, XLINK_NS, ensure_output_dir,
+    ensure_parent_dir, is_reference_domain, normalize_study_id,
 };
 
 /// Options for Dataset-XML output.
@@ -41,8 +41,7 @@ pub fn write_dataset_xml_outputs(
     let mut frames_sorted: Vec<&DomainFrame> = frames.iter().collect();
     frames_sorted.sort_by(|a, b| a.domain_code.cmp(&b.domain_code));
 
-    let xml_dir = output_dir.join("dataset-xml");
-    std::fs::create_dir_all(&xml_dir).with_context(|| format!("create {}", xml_dir.display()))?;
+    let xml_dir = ensure_output_dir(output_dir, "dataset-xml")?;
 
     let mut outputs = Vec::new();
     for frame in frames_sorted {
@@ -101,6 +100,7 @@ pub fn write_dataset_xml(
     };
 
     let timestamp = Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true);
+    ensure_parent_dir(output_path)?;
     let file =
         File::create(output_path).with_context(|| format!("create {}", output_path.display()))?;
     let writer = BufWriter::new(file);

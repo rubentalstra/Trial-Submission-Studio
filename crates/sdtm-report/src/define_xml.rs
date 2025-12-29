@@ -1,7 +1,7 @@
 //! Define-XML output generation.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::fs::{self, File};
+use std::fs::File;
 use std::io::BufWriter;
 use std::path::Path;
 
@@ -18,9 +18,9 @@ use sdtm_transform::frame::DomainFrame;
 use sdtm_transform::domain_sets::domain_map_by_code;
 
 use crate::common::{
-    DEFINE_XML_NS, DEFINE_XML_VERSION, ODM_NS, VariableTypeExt, XLINK_NS, has_collected_data,
-    is_expected, is_identifier, is_reference_domain, is_required, normalize_study_id,
-    variable_length, write_text_element, write_translated_text,
+    DEFINE_XML_NS, DEFINE_XML_VERSION, ODM_NS, VariableTypeExt, XLINK_NS, ensure_parent_dir,
+    has_collected_data, is_expected, is_identifier, is_reference_domain, is_required,
+    normalize_study_id, variable_length, write_text_element, write_translated_text,
 };
 
 /// Options for Define-XML output.
@@ -138,12 +138,7 @@ pub fn write_define_xml(
         }
     }
 
-    if let Some(parent) = output_path.parent() {
-        if !parent.as_os_str().is_empty() {
-            fs::create_dir_all(parent)
-                .with_context(|| format!("create {}", parent.display()))?;
-        }
-    }
+    ensure_parent_dir(output_path)?;
     let file =
         File::create(output_path).with_context(|| format!("create {}", output_path.display()))?;
     let writer = BufWriter::new(file);

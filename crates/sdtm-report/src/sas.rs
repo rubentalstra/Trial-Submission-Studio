@@ -10,7 +10,7 @@ use sdtm_model::{Domain, MappingConfig, MappingSuggestion, Variable, VariableTyp
 use sdtm_transform::domain_sets::domain_map_by_code;
 use sdtm_transform::frame::DomainFrame;
 
-use crate::common::{dataset_name, is_required, should_upcase, variable_length};
+use crate::common::{dataset_name, ensure_output_dir, is_required, should_upcase, variable_length};
 
 /// Options for SAS program generation.
 #[derive(Debug, Clone, Default)]
@@ -31,8 +31,7 @@ pub fn write_sas_outputs(
     let mut frames_sorted: Vec<&DomainFrame> = frames.iter().collect();
     frames_sorted.sort_by(|a, b| a.domain_code.cmp(&b.domain_code));
 
-    let sas_dir = output_dir.join("sas");
-    std::fs::create_dir_all(&sas_dir).with_context(|| format!("create {}", sas_dir.display()))?;
+    let sas_dir = ensure_output_dir(output_dir, "sas")?;
 
     let mut outputs = Vec::new();
     for frame in frames_sorted {

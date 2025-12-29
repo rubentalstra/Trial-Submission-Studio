@@ -1,6 +1,8 @@
 //! Shared utilities and types for SDTM report generation.
 
+use std::fs;
 use std::io::Write;
+use std::path::{Path, PathBuf};
 
 use anyhow::{Context, Result, anyhow};
 use polars::prelude::{AnyValue, DataFrame};
@@ -37,6 +39,24 @@ pub fn dataset_name(domain: &Domain) -> String {
         .dataset_name
         .clone()
         .unwrap_or_else(|| domain.code.clone())
+}
+
+/// Ensure a parent directory exists for a file path.
+pub fn ensure_parent_dir(path: &Path) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent)
+                .with_context(|| format!("create {}", parent.display()))?;
+        }
+    }
+    Ok(())
+}
+
+/// Ensure an output subdirectory exists and return its path.
+pub fn ensure_output_dir(base_dir: &Path, name: &str) -> Result<PathBuf> {
+    let dir = base_dir.join(name);
+    fs::create_dir_all(&dir).with_context(|| format!("create {}", dir.display()))?;
+    Ok(dir)
 }
 
 /// Normalize study ID, defaulting to "STUDY" if empty.

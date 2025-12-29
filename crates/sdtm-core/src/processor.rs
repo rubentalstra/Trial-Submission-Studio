@@ -211,11 +211,14 @@ fn assign_sequence(
     if !needs_sequence_assignment(df, seq_col_name, usubjid_col_name)? {
         return Ok(());
     }
-    if let Some(tracker) = sequence_tracker {
-        assign_sequence_with_tracker(domain, df, seq_col_name, usubjid_col_name, tracker, context)?;
-    } else {
-        assign_sequence_values(domain, df, seq_col_name, usubjid_col_name, context)?;
-    }
+    assign_sequence_values(
+        domain,
+        df,
+        seq_col_name,
+        usubjid_col_name,
+        sequence_tracker,
+        context,
+    )?;
     Ok(())
 }
 
@@ -224,47 +227,7 @@ fn assign_sequence_values(
     df: &mut DataFrame,
     seq_column: &str,
     group_column: &str,
-    context: &PipelineContext,
-) -> Result<()> {
-    let Some(group_values) = column_trimmed_values(df, group_column) else {
-        return Ok(());
-    };
-    let row_count = df.height();
-    let had_existing = column_trimmed_values(df, seq_column)
-        .map(|values| values.iter().any(|value| !value.is_empty()))
-        .unwrap_or(false);
-    let mut counters: BTreeMap<String, i64> = BTreeMap::new();
-    let mut values: Vec<Option<f64>> = Vec::with_capacity(row_count);
-
-    for key in &group_values {
-        if key.is_empty() {
-            values.push(None);
-            continue;
-        }
-        let entry = counters.entry(key.clone()).or_insert(0);
-        *entry += 1;
-        values.push(Some(*entry as f64));
-    }
-
-    let series = Series::new(seq_column.into(), values);
-    df.with_column(series)?;
-    if had_existing && context.options.warn_on_rewrite {
-        warn!(
-            domain = %domain.code,
-            sequence = %seq_column,
-            "Sequence values recalculated"
-        );
-    }
-
-    Ok(())
-}
-
-fn assign_sequence_with_tracker(
-    domain: &Domain,
-    df: &mut DataFrame,
-    seq_column: &str,
-    group_column: &str,
-    tracker: &mut BTreeMap<String, i64>,
+    tracker: Option<&mut BTreeMap<String, i64>>,
     context: &PipelineContext,
 ) -> Result<()> {
     if df.height() == 0 {
@@ -277,33 +240,46 @@ fn assign_sequence_with_tracker(
     let seq_values =
         column_trimmed_values(df, seq_column).unwrap_or_else(|| vec![String::new(); row_count]);
     let had_existing = seq_values.iter().any(|value| !value.is_empty());
+    let mut counters: BTreeMap<String, i64> = BTreeMap::new();
+    let mut tracker = tracker;
     let mut values: Vec<Option<f64>> = Vec::with_capacity(row_count);
     for (idx, key) in group_values.iter().enumerate() {
         if key.is_empty() {
             values.push(None);
             continue;
         }
-        let entry = tracker.entry(key.clone()).or_insert(0);
-        let parsed = parse_sequence_value(seq_values[idx].as_str());
-        let value = match parsed {
-            Some(seq) if seq > *entry => {
-                *entry = seq;
-                seq
+        let value = if let Some(ref mut tracker) = tracker {
+            let entry = tracker.entry(key.clone()).or_insert(0);
+            let parsed = parse_sequence_value(seq_values[idx].as_str());
+            match parsed {
+                Some(seq) if seq > *entry => {
+                    *entry = seq;
+                    seq
+                }
+                _ => {
+                    *entry += 1;
+                    *entry
+                }
             }
-            _ => {
-                *entry += 1;
-                *entry
-            }
+        } else {
+            let entry = counters.entry(key.clone()).or_insert(0);
+            *entry += 1;
+            *entry
         };
         values.push(Some(value as f64));
     }
     let series = Series::new(seq_column.into(), values);
     df.with_column(series)?;
     if had_existing && context.options.warn_on_rewrite {
+        let message = if tracker.is_some() {
+            "Sequence values recalculated with tracker"
+        } else {
+            "Sequence values recalculated"
+        };
         warn!(
             domain = %domain.code,
             sequence = %seq_column,
-            "Sequence values recalculated with tracker"
+            "{message}"
         );
     }
 

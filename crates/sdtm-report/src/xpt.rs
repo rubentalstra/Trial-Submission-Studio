@@ -11,7 +11,7 @@ use sdtm_transform::domain_sets::domain_map_by_code;
 use sdtm_transform::frame::DomainFrame;
 use sdtm_xpt::{XptColumn, XptDataset, XptType, XptValue, XptWriterOptions, write_xpt};
 
-use crate::common::variable_length;
+use crate::common::{ensure_output_dir, variable_length};
 
 /// Write XPT outputs for all domains.
 pub fn write_xpt_outputs(
@@ -24,8 +24,7 @@ pub fn write_xpt_outputs(
     let mut frames_sorted: Vec<&DomainFrame> = frames.iter().collect();
     frames_sorted.sort_by(|a, b| a.domain_code.cmp(&b.domain_code));
 
-    let xpt_dir = output_dir.join("xpt");
-    std::fs::create_dir_all(&xpt_dir).with_context(|| format!("create {}", xpt_dir.display()))?;
+    let xpt_dir = ensure_output_dir(output_dir, "xpt")?;
 
     let mut outputs = Vec::new();
     for frame in frames_sorted {
