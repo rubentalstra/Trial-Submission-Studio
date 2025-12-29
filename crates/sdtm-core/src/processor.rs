@@ -24,7 +24,7 @@ use tracing::warn;
 use sdtm_model::{CaseInsensitiveSet, Domain, VariableType};
 
 use crate::ct_utils::normalize_ct_value;
-use crate::data_utils::column_trimmed_values;
+use crate::data_utils::{column_trimmed_values, strip_all_quotes};
 use crate::domain_processors;
 use crate::pipeline_context::{PipelineContext, SequenceAssignmentMode, UsubjidPrefixMode};
 use sdtm_ingest::any_to_string;
@@ -42,14 +42,6 @@ pub struct DomainProcessInput<'a> {
     pub context: &'a PipelineContext,
     /// Optional tracker for cross-file sequence number continuity.
     pub sequence_tracker: Option<&'a mut BTreeMap<String, i64>>,
-}
-
-fn sanitize_identifier(raw: &str) -> String {
-    let trimmed = raw.trim();
-    if !trimmed.contains('"') {
-        return trimmed.to_string();
-    }
-    trimmed.chars().filter(|ch| *ch != '"').collect()
 }
 
 /// Normalize controlled terminology values in a DataFrame.
@@ -130,12 +122,12 @@ fn apply_base_rules(domain: &Domain, df: &mut DataFrame, context: &PipelineConte
 
     for idx in 0..row_count {
         let raw_usubjid = any_to_string(usubjid_series.get(idx).unwrap_or(AnyValue::Null));
-        let mut usubjid = sanitize_identifier(&raw_usubjid);
+        let mut usubjid = strip_all_quotes(&raw_usubjid);
         let study_value = study_series
             .as_ref()
             .map(|series| any_to_string(series.get(idx).unwrap_or(AnyValue::Null)))
             .unwrap_or_else(|| context.study_id.to_string());
-        let study_value = sanitize_identifier(&study_value);
+        let study_value = strip_all_quotes(&study_value);
         if !study_value.is_empty() && !usubjid.is_empty() {
             let prefix = format!("{study_value}-");
             if !usubjid.starts_with(&prefix) {

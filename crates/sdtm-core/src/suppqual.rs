@@ -17,7 +17,7 @@ use anyhow::Result;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
 
-use crate::data_utils::column_value_string;
+use crate::data_utils::{column_value_string, sanitize_qnam, strip_quotes};
 use crate::frame::DomainFrame;
 use crate::frame_builder::build_domain_frame_from_records;
 
@@ -86,45 +86,10 @@ pub fn suppqual_dataset_code(parent_domain: &str) -> String {
     short.chars().take(8).collect()
 }
 
-fn strip_wrapping_quotes(value: &str) -> String {
-    let trimmed = value.trim();
-    if trimmed.len() >= 2 && trimmed.starts_with('"') && trimmed.ends_with('"') {
-        return trimmed[1..trimmed.len() - 1].to_string();
-    }
-    trimmed.to_string()
-}
-
 fn column_values(df: &DataFrame, column: &str, row_count: usize) -> Vec<String> {
     (0..row_count)
-        .map(|idx| strip_wrapping_quotes(&column_value_string(df, column, idx)))
+        .map(|idx| strip_quotes(&column_value_string(df, column, idx)))
         .collect()
-}
-
-fn sanitize_qnam(name: &str) -> String {
-    let mut safe = String::new();
-    for ch in name.chars() {
-        if ch.is_ascii_alphanumeric() {
-            safe.push(ch.to_ascii_uppercase());
-        } else {
-            safe.push('_');
-        }
-    }
-    while safe.contains("__") {
-        safe = safe.replace("__", "_");
-    }
-    safe = safe.trim_matches('_').to_string();
-    if safe.is_empty() {
-        safe = "QVAL".to_string();
-    }
-    if safe
-        .chars()
-        .next()
-        .map(|c| c.is_ascii_digit())
-        .unwrap_or(false)
-    {
-        safe = format!("Q{safe}");
-    }
-    safe.chars().take(8).collect()
 }
 
 fn unique_qnam(name: &str, used: &mut BTreeMap<String, String>) -> String {

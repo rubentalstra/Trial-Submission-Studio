@@ -51,11 +51,60 @@ pub(crate) fn mapping_source_for_target(mapping: &MappingConfig, target: &str) -
         .map(|entry| entry.source_column.clone())
 }
 
-/// Sanitize a test name into a valid --TESTCD code.
+/// Strip wrapping double quotes from a string value.
 ///
-/// Per SDTMIG, test codes must be uppercase alphanumeric, start with a letter,
-/// and be at most 8 characters.
-pub(crate) fn sanitize_test_code(raw: &str) -> String {
+/// If the string starts and ends with double quotes, removes them.
+/// Always trims leading/trailing whitespace.
+///
+/// # Examples
+///
+/// ```ignore
+/// assert_eq!(strip_quotes("\"hello\""), "hello");
+/// assert_eq!(strip_quotes("  \"world\"  "), "world");
+/// assert_eq!(strip_quotes("unquoted"), "unquoted");
+/// assert_eq!(strip_quotes("\"partial"), "\"partial");
+/// ```
+pub(crate) fn strip_quotes(value: &str) -> String {
+    let trimmed = value.trim();
+    if trimmed.len() >= 2 && trimmed.starts_with('"') && trimmed.ends_with('"') {
+        trimmed[1..trimmed.len() - 1].to_string()
+    } else {
+        trimmed.to_string()
+    }
+}
+
+/// Remove all double quotes from a string value.
+///
+/// Used for SDTM identifiers (USUBJID, STUDYID) that should never contain quotes.
+/// Always trims leading/trailing whitespace first.
+///
+/// # Examples
+///
+/// ```ignore
+/// assert_eq!(strip_all_quotes("\"hello\""), "hello");
+/// assert_eq!(strip_all_quotes("he\"llo"), "hello");
+/// assert_eq!(strip_all_quotes("unquoted"), "unquoted");
+/// ```
+pub(crate) fn strip_all_quotes(value: &str) -> String {
+    let trimmed = value.trim();
+    if !trimmed.contains('"') {
+        return trimmed.to_string();
+    }
+    trimmed.chars().filter(|ch| *ch != '"').collect()
+}
+
+/// Sanitize a raw string into a valid SDTM identifier.
+///
+/// Converts to uppercase alphanumeric, replaces other characters with underscore,
+/// collapses multiple underscores, and limits to max_len characters.
+///
+/// # Arguments
+///
+/// * `raw` - The raw input string
+/// * `fallback` - Default value if result would be empty
+/// * `prefix` - Character to prepend if result starts with digit
+/// * `max_len` - Maximum length of result
+fn sanitize_sdtm_identifier(raw: &str, fallback: &str, prefix: char, max_len: usize) -> String {
     let mut safe = String::new();
     for ch in raw.chars() {
         if ch.is_ascii_alphanumeric() {
@@ -64,16 +113,131 @@ pub(crate) fn sanitize_test_code(raw: &str) -> String {
             safe.push('_');
         }
     }
-    if safe.is_empty() {
-        safe = "TEST".to_string();
+
+    // Collapse multiple underscores and trim
+    while safe.contains("__") {
+        safe = safe.replace("__", "_");
     }
+    safe = safe.trim_matches('_').to_string();
+
+    // Use fallback if empty
+    if safe.is_empty() {
+        safe = fallback.to_string();
+    }
+
+    // Prefix if starts with digit
     if safe
         .chars()
         .next()
-        .map(|c| c.is_ascii_digit())
-        .unwrap_or(false)
+        .is_some_and(|c| c.is_ascii_digit())
     {
-        safe.insert(0, 'T');
+        safe.insert(0, prefix);
     }
-    safe.chars().take(8).collect()
+
+    safe.chars().take(max_len).collect()
+}
+
+/// Sanitize a test name into a valid --TESTCD code.
+///
+/// Per SDTMIG, test codes must be uppercase alphanumeric, start with a letter,
+/// and be at most 8 characters.
+pub(crate) fn sanitize_test_code(raw: &str) -> String {
+    sanitize_sdtm_identifier(raw, "TEST", 'T', 8)
+}
+
+/// Sanitize a qualifier name into a valid QNAM code.
+///
+/// Per SDTMIG, QNAM values must be uppercase alphanumeric, start with a letter,
+/// and be at most 8 characters.
+pub(crate) fn sanitize_qnam(raw: &str) -> String {
+    sanitize_sdtm_identifier(raw, "QVAL", 'Q', 8)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn strip_quotes_removes_wrapping_quotes() {
+        assert_eq!(strip_quotes("\"hello\""), "hello");
+        assert_eq!(strip_quotes("\"world\""), "world");
+    }
+
+    #[test]
+    fn strip_quotes_trims_whitespace() {
+        assert_eq!(strip_quotes("  \"hello\"  "), "hello");
+        assert_eq!(strip_quotes("  unquoted  "), "unquoted");
+    }
+
+    #[test]
+    fn strip_quotes_leaves_partial_quotes() {
+        assert_eq!(strip_quotes("\"partial"), "\"partial");
+        assert_eq!(strip_quotes("partial\""), "partial\"");
+    }
+
+    #[test]
+    fn strip_quotes_handles_unquoted() {
+        assert_eq!(strip_quotes("unquoted"), "unquoted");
+        assert_eq!(strip_quotes(""), "");
+    }
+
+    #[test]
+    fn strip_all_quotes_removes_all_quotes() {
+        assert_eq!(strip_all_quotes("\"hello\""), "hello");
+        assert_eq!(strip_all_quotes("he\"llo"), "hello");
+        assert_eq!(strip_all_quotes("\"a\"b\"c\""), "abc");
+    }
+
+    #[test]
+    fn strip_all_quotes_handles_no_quotes() {
+        assert_eq!(strip_all_quotes("unquoted"), "unquoted");
+        assert_eq!(strip_all_quotes("  trimmed  "), "trimmed");
+    }
+
+    #[test]
+    fn sanitize_test_code_uppercase_alphanumeric() {
+        assert_eq!(sanitize_test_code("weight"), "WEIGHT");
+        assert_eq!(sanitize_test_code("SYSBP"), "SYSBP");
+        assert_eq!(sanitize_test_code("wt-kg"), "WT_KG"); // 5 chars, fits
+        assert_eq!(sanitize_test_code("weight-kg"), "WEIGHT_K"); // 9 chars truncated to 8
+    }
+
+    #[test]
+    fn sanitize_test_code_truncates_to_8_chars() {
+        assert_eq!(sanitize_test_code("verylongname"), "VERYLONG");
+    }
+
+    #[test]
+    fn sanitize_test_code_prefixes_if_starts_with_digit() {
+        assert_eq!(sanitize_test_code("123test"), "T123TEST");
+    }
+
+    #[test]
+    fn sanitize_test_code_fallback_for_empty() {
+        assert_eq!(sanitize_test_code(""), "TEST");
+        assert_eq!(sanitize_test_code("---"), "TEST");
+    }
+
+    #[test]
+    fn sanitize_qnam_uppercase_alphanumeric() {
+        assert_eq!(sanitize_qnam("custom"), "CUSTOM");
+        assert_eq!(sanitize_qnam("my-value"), "MY_VALUE");
+    }
+
+    #[test]
+    fn sanitize_qnam_collapses_underscores() {
+        assert_eq!(sanitize_qnam("a--b"), "A_B");
+        assert_eq!(sanitize_qnam("a---b"), "A_B");
+    }
+
+    #[test]
+    fn sanitize_qnam_prefixes_if_starts_with_digit() {
+        assert_eq!(sanitize_qnam("123value"), "Q123VALU");
+    }
+
+    #[test]
+    fn sanitize_qnam_fallback_for_empty() {
+        assert_eq!(sanitize_qnam(""), "QVAL");
+        assert_eq!(sanitize_qnam("---"), "QVAL");
+    }
 }
