@@ -17,6 +17,8 @@ pub enum OutputFormat {
     Xpt,
     /// CDISC Dataset-XML format.
     Xml,
+    /// SAS program output.
+    Sas,
 }
 
 /// Paths to generated output files for a domain.

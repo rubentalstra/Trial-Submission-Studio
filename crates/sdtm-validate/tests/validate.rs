@@ -92,4 +92,5 @@ fn strict_output_gate_ignored_without_strict_formats() {
 fn strict_outputs_requested_only_for_xpt() {
     assert!(strict_outputs_requested(&[OutputFormat::Xpt]));
     assert!(!strict_outputs_requested(&[OutputFormat::Xml]));
+    assert!(!strict_outputs_requested(&[OutputFormat::Sas]));
 }

@@ -3,9 +3,6 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use comfy_table::Table;
 
-use sdtm_core::pipeline_context::{
-    CtMatchingMode, ProcessingOptions, SequenceAssignmentMode, UsubjidPrefixMode,
-};
 use sdtm_model::OutputFormat;
 use sdtm_standards::load_default_sdtm_ig_domains;
 
@@ -45,49 +42,29 @@ fn build_pipeline_config(args: &StudyArgs) -> PipelineConfig {
         .output_dir
         .clone()
         .unwrap_or_else(|| study_folder.join("output"));
-    let output_formats = format_outputs(args.format);
-    let options = if args.strict {
-        ProcessingOptions::strict()
-    } else {
-        ProcessingOptions {
-            usubjid_prefix: if args.no_usubjid_prefix {
-                UsubjidPrefixMode::Skip
-            } else {
-                UsubjidPrefixMode::Prefix
-            },
-            sequence_assignment: if args.no_auto_seq {
-                SequenceAssignmentMode::Skip
-            } else {
-                SequenceAssignmentMode::Assign
-            },
-            warn_on_rewrite: true,
-            ct_matching: if args.no_lenient_ct {
-                CtMatchingMode::Strict
-            } else {
-                CtMatchingMode::Lenient
-            },
-        }
-    };
+    let output_formats = format_outputs(&args.format);
 
     PipelineConfig {
         study_id,
         study_folder,
         output_dir,
         output_formats,
-        dry_run: args.dry_run,
-        fail_on_conformance_errors: !args.no_fail_on_conformance_errors,
-        skip_define_xml: args.no_define_xml,
-        skip_sas: args.no_sas,
-        options,
     }
 }
 
-fn format_outputs(format: OutputFormatArg) -> Vec<OutputFormat> {
-    match format {
-        OutputFormatArg::Xpt => vec![OutputFormat::Xpt],
-        OutputFormatArg::Xml => vec![OutputFormat::Xml],
-        OutputFormatArg::Both => vec![OutputFormat::Xpt, OutputFormat::Xml],
+fn format_outputs(formats: &[OutputFormatArg]) -> Vec<OutputFormat> {
+    let mut output_formats = Vec::new();
+    for format in formats {
+        let output = match format {
+            OutputFormatArg::Xpt => OutputFormat::Xpt,
+            OutputFormatArg::Xml => OutputFormat::Xml,
+            OutputFormatArg::Sas => OutputFormat::Sas,
+        };
+        if !output_formats.contains(&output) {
+            output_formats.push(output);
+        }
     }
+    output_formats
 }
 
 fn derive_study_id(study_folder: &Path) -> String {

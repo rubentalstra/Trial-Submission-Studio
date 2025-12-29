@@ -12,7 +12,7 @@ use colorchoice_clap::Color;
     version,
     about = "CDISC SDTM Transpiler - Convert clinical data to SDTM format",
     long_about = "Convert clinical study data to CDISC SDTM format.\n\n\
-                  Supports XPT (SAS Transport), Dataset-XML, and Define-XML outputs.\n\
+                  Supports XPT (SAS Transport), Dataset-XML, Define-XML, and SAS program outputs.\n\
                   Validates data against SDTMIG v3.4 and Controlled Terminology."
 )]
 pub struct Cli {
@@ -64,62 +64,16 @@ pub struct StudyArgs {
     #[arg(long = "output-dir", value_name = "DIR")]
     pub output_dir: Option<PathBuf>,
 
-    /// Output format to generate.
-    #[arg(long = "format", value_enum, default_value = "both")]
-    pub format: OutputFormatArg,
-
-    /// Validate and report without writing output files.
-    #[arg(long = "dry-run")]
-    pub dry_run: bool,
-
-    /// Skip adding STUDYID prefix to USUBJID values.
-    #[arg(long = "no-usubjid-prefix")]
-    pub no_usubjid_prefix: bool,
-
-    /// Skip automatic sequence number generation.
-    #[arg(long = "no-auto-seq")]
-    pub no_auto_seq: bool,
-
-    /// Continue writing outputs even if conformance errors are detected.
-    ///
-    /// By default, the transpiler blocks XPT output generation when conformance
-    /// errors are found. Use this flag to override that behavior and write
-    /// outputs regardless of validation results.
-    ///
-    /// WARNING: Outputs generated with this flag may not be conformant.
-    #[arg(long = "no-fail-on-conformance-errors")]
-    pub no_fail_on_conformance_errors: bool,
-
-    /// Skip Define-XML generation.
-    #[arg(long = "no-define-xml")]
-    pub no_define_xml: bool,
-
-    /// Skip SAS program generation.
-    #[arg(long = "no-sas")]
-    pub no_sas: bool,
-
-    /// Enable strict SDTMIG-conformant processing.
-    ///
-    /// Disables lenient CT matching while keeping documented SDTMIG
-    /// derivations (USUBJID prefixing, sequence assignment).
-    ///
-    /// Use this mode for production submissions requiring strict conformance.
-    #[arg(long = "strict")]
-    pub strict: bool,
-
-    /// Disable lenient CT matching.
-    ///
-    /// When set, only exact matches and defined synonyms are allowed for
-    /// controlled terminology normalization.
-    #[arg(long = "no-lenient-ct")]
-    pub no_lenient_ct: bool,
+    /// Output formats to generate (comma-separated, e.g. xpt,xml,sas).
+    #[arg(long = "format", value_enum, value_delimiter = ',', default_value = "xpt,xml,sas")]
+    pub format: Vec<OutputFormatArg>,
 }
 
 #[derive(Clone, Copy, ValueEnum)]
 pub enum OutputFormatArg {
     Xpt,
     Xml,
-    Both,
+    Sas,
 }
 
 /// CLI log level choices.

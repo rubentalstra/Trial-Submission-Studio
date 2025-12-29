@@ -19,7 +19,7 @@ use polars::prelude::{AnyValue, DataFrame};
 use tracing::{debug, info, info_span};
 
 use sdtm_core::frame_builder::build_mapped_domain_frame;
-use sdtm_core::pipeline_context::{PipelineContext, ProcessingOptions};
+use sdtm_core::pipeline_context::PipelineContext;
 use sdtm_core::processor::{DomainProcessInput, process_domain};
 use sdtm_ingest::{
     AppliedStudyMetadata, CsvTable, StudyMetadata, any_to_string, apply_study_metadata,
@@ -49,11 +49,6 @@ pub struct PipelineConfig {
     pub study_folder: PathBuf,
     pub output_dir: PathBuf,
     pub output_formats: Vec<OutputFormat>,
-    pub dry_run: bool,
-    pub fail_on_conformance_errors: bool,
-    pub skip_define_xml: bool,
-    pub skip_sas: bool,
-    pub options: ProcessingOptions,
 }
 
 /// Stateful study pipeline runner.
@@ -69,8 +64,7 @@ impl PipelineRunner {
         let ct_registry = load_default_ct_registry().context("load ct registry")?;
         let pipeline = PipelineContext::new(&config.study_id)
             .with_standards(standards.clone())
-            .with_ct_registry(ct_registry)
-            .with_options(config.options);
+            .with_ct_registry(ct_registry);
 
         let mut standard_variables = BTreeSet::new();
         for domain in &pipeline.standards {
@@ -90,10 +84,7 @@ impl PipelineRunner {
         let study_folder = &self.config.study_folder;
         let study_id = self.config.study_id.clone();
         let output_dir = self.config.output_dir.clone();
-        let output_formats = self.config.output_formats.clone();
-        let want_xpt = output_formats
-            .iter()
-            .any(|f| matches!(f, OutputFormat::Xpt));
+        let want_xpt = self.config.output_formats.contains(&OutputFormat::Xpt);
 
         // =========================================================================
         // Stage 1: Ingest - Discover files, load metadata, compute exclusions
@@ -152,24 +143,23 @@ impl PipelineRunner {
         // =========================================================================
         let mut report_map = self.validate(&frame_list, &study_id);
 
+        let output_formats = &self.config.output_formats;
+
         // =========================================================================
         // Stage 5.5: Gate outputs - Block strict outputs if validation fails
         // =========================================================================
         let conformance_reports: Vec<_> = report_map.values().cloned().collect();
-        let gating = gate_strict_outputs(
-            &output_formats,
-            self.config.fail_on_conformance_errors,
-            &conformance_reports,
-        );
+        let gating = gate_strict_outputs(output_formats, true, &conformance_reports);
+        let allow_xpt = !gating.blocks_output();
 
-        if gating.blocks_output() {
+        if !allow_xpt {
             tracing::warn!(
                 study_id = %study_id,
                 blocked_domains = ?gating.blocking_domains,
                 "strict output blocked due to conformance errors"
             );
             errors.push(format!(
-                "Output blocked: conformance errors in domains: {}. Use --no-fail-on-conformance-errors to override.",
+                "XPT output blocked: conformance errors in domains: {}.",
                 gating.blocking_domains.join(", ")
             ));
         }
@@ -177,21 +167,12 @@ impl PipelineRunner {
         // =========================================================================
         // Stage 6: Output - Write XPT, Dataset-XML, Define-XML, SAS
         // =========================================================================
-        let gated_formats: Vec<OutputFormat> = if gating.blocks_output() {
-            output_formats
-                .iter()
-                .filter(|f| !matches!(f, OutputFormat::Xpt))
-                .copied()
-                .collect()
-        } else {
-            output_formats.clone()
-        };
-
         let output_result = self.output(OutputInput {
             report_domains: &report_domains,
             frames: &frame_list,
             mapping_configs: &mapping_configs,
-            formats: &gated_formats,
+            formats: output_formats,
+            allow_xpt,
         })?;
         let mut output_paths = output_result.paths;
         let define_xml = output_result.define_xml;
@@ -201,8 +182,7 @@ impl PipelineRunner {
         // Post-processing: Verify XPT counts and build summaries
         // =========================================================================
         let mut data_checks = Vec::new();
-        let want_xpt_and_not_blocked = want_xpt && !gating.blocks_output();
-        if want_xpt_and_not_blocked && !self.config.dry_run {
+        if want_xpt && allow_xpt {
             let (xpt_counts, xpt_errors) = verify_xpt_counts(&output_paths);
             errors.extend(xpt_errors);
 
@@ -878,6 +858,7 @@ struct OutputInput<'a> {
     frames: &'a [DomainFrame],
     mapping_configs: &'a BTreeMap<String, Vec<MappingConfig>>,
     formats: &'a [OutputFormat],
+    allow_xpt: bool,
 }
 
 impl PipelineRunner {
@@ -890,17 +871,13 @@ fn output(&self, input: OutputInput<'_>) -> Result<OutputResult> {
     let mut errors = Vec::new();
     let mut paths: BTreeMap<String, sdtm_model::OutputPaths> = BTreeMap::new();
 
-    let want_xpt = input
-        .formats
-        .iter()
-        .any(|f| matches!(f, OutputFormat::Xpt));
-    let want_xml = input
-        .formats
-        .iter()
-        .any(|f| matches!(f, OutputFormat::Xml));
+    let want_xpt = input.allow_xpt && input.formats.contains(&OutputFormat::Xpt);
+    let want_xml = input.formats.contains(&OutputFormat::Xml);
+    let want_sas = input.formats.contains(&OutputFormat::Sas);
+    let want_define_xml = want_xpt || want_xml;
 
     // Write Define-XML
-    let define_xml = if self.config.dry_run || self.config.skip_define_xml {
+    let define_xml = if !want_define_xml {
         None
     } else {
         let options = DefineXmlOptions::new("3.4", "Submission");
@@ -918,20 +895,6 @@ fn output(&self, input: OutputInput<'_>) -> Result<OutputResult> {
             Some(path)
         }
     };
-
-    if self.config.dry_run {
-        info!(
-            study_id = %study_id,
-            domain_count = input.frames.len(),
-            duration_ms = output_start.elapsed().as_millis(),
-            "output skipped (dry run)"
-        );
-        return Ok(OutputResult {
-            paths,
-            define_xml,
-            errors,
-        });
-    }
 
     // Write XPT
     if want_xpt {
@@ -984,34 +947,36 @@ fn output(&self, input: OutputInput<'_>) -> Result<OutputResult> {
     }
 
     // Write SAS programs
-    let merged_mappings = merge_mappings(input.mapping_configs, study_id);
-    if !self.config.skip_sas && !merged_mappings.is_empty() {
-        let mut sas_frames: Vec<DomainFrame> = input
-            .frames
-            .iter()
-            .filter(|frame| merged_mappings.contains_key(&frame.domain_code.to_uppercase()))
-            .cloned()
-            .collect();
-        sas_frames.sort_by(|a, b| a.domain_code.cmp(&b.domain_code));
-        let options = SasProgramOptions::default();
-        match write_sas_outputs(
-            &self.config.output_dir,
-            input.report_domains,
-            &sas_frames,
-            &merged_mappings,
-            &options,
-        ) {
-            Ok(written) => {
-                for path in written {
-                    let key = path
-                        .file_stem()
-                        .and_then(|v| v.to_str())
-                        .unwrap_or("")
-                        .to_uppercase();
-                    paths.entry(key).or_default().sas.get_or_insert(path);
+    if want_sas {
+        let merged_mappings = merge_mappings(input.mapping_configs, study_id);
+        if !merged_mappings.is_empty() {
+            let mut sas_frames: Vec<DomainFrame> = input
+                .frames
+                .iter()
+                .filter(|frame| merged_mappings.contains_key(&frame.domain_code.to_uppercase()))
+                .cloned()
+                .collect();
+            sas_frames.sort_by(|a, b| a.domain_code.cmp(&b.domain_code));
+            let options = SasProgramOptions::default();
+            match write_sas_outputs(
+                &self.config.output_dir,
+                input.report_domains,
+                &sas_frames,
+                &merged_mappings,
+                &options,
+            ) {
+                Ok(written) => {
+                    for path in written {
+                        let key = path
+                            .file_stem()
+                            .and_then(|v| v.to_str())
+                            .unwrap_or("")
+                            .to_uppercase();
+                        paths.entry(key).or_default().sas.get_or_insert(path);
+                    }
                 }
+                Err(error) => errors.push(format!("sas: {error}")),
             }
-            Err(error) => errors.push(format!("sas: {error}")),
         }
     }
 
