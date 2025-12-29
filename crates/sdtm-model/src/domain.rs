@@ -17,6 +17,7 @@ use std::str::FromStr;
 /// These are the major observation class categories used to organize domains.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
+#[non_exhaustive]
 pub enum DatasetClass {
     /// Interventions: AG, CM, EC, EX, ML, PR, SU
     Interventions,
@@ -108,6 +109,7 @@ impl FromStr for DatasetClass {
 /// - `Char` - Character/text data
 /// - `Num` - Numeric data (stored as 8-byte IEEE floating point in SAS)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum VariableType {
     /// Character/text data type.
     Char,

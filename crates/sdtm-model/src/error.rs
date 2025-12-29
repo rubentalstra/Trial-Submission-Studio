@@ -7,6 +7,7 @@ use thiserror::Error;
 
 /// Error type for SDTM processing operations.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum SdtmError {
     /// I/O error (file operations, network, etc.).
     #[error("io error: {0}")]

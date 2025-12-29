@@ -11,6 +11,7 @@ use crate::conformance::ValidationReport;
 
 /// Supported output formats for SDTM data.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[non_exhaustive]
 pub enum OutputFormat {
     /// SAS Transport (XPT) v5 format.
     Xpt,

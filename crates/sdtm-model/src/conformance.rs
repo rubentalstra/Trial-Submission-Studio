@@ -18,6 +18,7 @@ use serde::{Deserialize, Serialize};
 /// - `Warning` - Extensible CT deviation or best practice violation
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[non_exhaustive]
 pub enum Severity {
     /// Critical issue - submission will be rejected.
     Reject,
