@@ -55,9 +55,14 @@ mod ct_utils;
 mod data_utils;
 mod datetime;
 pub mod domain_processors;
+
+// Internal modules - public for sdtm-cli but not part of stable API
+#[doc(hidden)]
 pub mod domain_sets;
 pub mod frame;
+#[doc(hidden)]
 pub mod frame_builder;
+
 pub mod pipeline_context;
 pub mod processor;
 pub mod relationships;
