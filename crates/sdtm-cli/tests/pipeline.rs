@@ -10,7 +10,7 @@ fn test_df(columns: Vec<(&str, Vec<&str>)>) -> DataFrame {
         .map(|(name, values)| {
             Series::new(
                 name.into(),
-                values.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
+                values.iter().copied().map(String::from).collect::<Vec<_>>(),
             )
             .into_column()
         })
@@ -22,10 +22,7 @@ fn test_df(columns: Vec<(&str, Vec<&str>)>) -> DataFrame {
 fn test_extract_reference_starts_basic() {
     let df = test_df(vec![
         ("USUBJID", vec!["STUDY01-001", "STUDY01-002", "STUDY01-003"]),
-        (
-            "RFSTDTC",
-            vec!["2024-01-15", "2024-01-16", "2024-01-17"],
-        ),
+        ("RFSTDTC", vec!["2024-01-15", "2024-01-16", "2024-01-17"]),
     ]);
 
     let starts = extract_reference_starts(&df);

@@ -10,10 +10,10 @@ use chrono::{SecondsFormat, Utc};
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, Event};
 
-use sdtm_transform::frame::DomainFrame;
 use sdtm_model::ct::{Codelist, TerminologyCatalog, TerminologyRegistry};
 use sdtm_model::{Domain, Variable, VariableType};
 use sdtm_standards::load_default_ct_registry;
+use sdtm_transform::frame::DomainFrame;
 
 use crate::common::{
     DEFINE_XML_NS, DEFINE_XML_VERSION, ODM_NS, VariableTypeExt, XLINK_NS, domain_map,
@@ -401,8 +401,8 @@ fn resolve_codelist(
 /// Parse codelist codes from semicolon/comma-separated string.
 fn parse_codelist_codes(raw: &str) -> Vec<String> {
     raw.split([';', ','])
-        .map(|part| part.trim())
+        .map(str::trim)
         .filter(|part| !part.is_empty())
-        .map(|part| part.to_string())
+        .map(std::string::ToString::to_string)
         .collect()
 }

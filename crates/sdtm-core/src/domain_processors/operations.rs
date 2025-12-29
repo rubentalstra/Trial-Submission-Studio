@@ -409,8 +409,11 @@ mod tests {
         let cols: Vec<Column> = columns
             .into_iter()
             .map(|(name, values)| {
-                Series::new(name.into(), values.iter().map(|s| s.to_string()).collect::<Vec<_>>())
-                    .into_column()
+                Series::new(
+                    name.into(),
+                    values.iter().copied().map(String::from).collect::<Vec<_>>(),
+                )
+                .into_column()
             })
             .collect();
         DataFrame::new(cols).unwrap()

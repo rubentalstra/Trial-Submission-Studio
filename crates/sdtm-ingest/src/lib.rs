@@ -3,16 +3,12 @@
 //! This crate provides functionality for discovering, parsing, and loading
 //! clinical trial source data (CSV files) into Polars DataFrames.
 
-// TODO(docs): Add documentation for remaining public items (Phase 4 - PR-028)
-#![allow(missing_docs)]
-
 pub mod csv_table;
 pub mod discovery;
 pub mod study_metadata;
 
 // Internal utilities for Polars AnyValue conversions.
 // These are re-exported for workspace use but may be refactored in the future.
-#[doc(hidden)]
 pub mod polars_utils;
 
 pub use csv_table::{CsvSchema, CsvTable, build_column_hints, read_csv_schema, read_csv_table};

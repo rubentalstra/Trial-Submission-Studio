@@ -4,7 +4,7 @@ use sdtm_model::Domain;
 
 use crate::pipeline_context::PipelineContext;
 
-use super::common::*;
+use super::common::{clean_na_values, col, has_column};
 
 pub(super) fn process_default(
     domain: &Domain,

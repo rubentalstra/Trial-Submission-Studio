@@ -13,8 +13,8 @@ use std::collections::BTreeSet;
 
 use anyhow::Result;
 
-use sdtm_ingest::build_column_hints;
 use sdtm_ingest::CsvTable;
+use sdtm_ingest::build_column_hints;
 use sdtm_map::MappingEngine;
 use sdtm_model::{Domain, MappingConfig};
 use sdtm_transform::frame::DomainFrame;

@@ -25,9 +25,9 @@ use sdtm_model::{CaseInsensitiveSet, Domain, VariableType};
 
 use crate::ct_utils::normalize_ct_value;
 use crate::domain_processors;
-use sdtm_transform::data_utils::{column_trimmed_values, strip_all_quotes};
 use crate::pipeline_context::{PipelineContext, SequenceAssignmentMode, UsubjidPrefixMode};
 use sdtm_ingest::any_to_string;
+use sdtm_transform::data_utils::{column_trimmed_values, strip_all_quotes};
 
 /// Input for domain processing operations.
 ///

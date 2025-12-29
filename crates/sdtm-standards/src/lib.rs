@@ -16,9 +16,6 @@
 //!     └── Variables.csv    # Variable definitions
 //! ```
 
-// TODO(docs): Add documentation for remaining public items (Phase 4 - PR-028)
-#![allow(missing_docs)]
-
 mod csv_utils;
 pub mod ct_loader;
 pub mod loaders;

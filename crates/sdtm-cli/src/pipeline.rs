@@ -21,9 +21,6 @@ use tracing::{debug, info, info_span};
 use sdtm_core::frame_builder::build_mapped_domain_frame;
 use sdtm_core::pipeline_context::PipelineContext;
 use sdtm_core::processor::{DomainProcessInput, process_domain};
-use sdtm_transform::frame::{DomainFrame, DomainFrameMeta};
-use sdtm_transform::frame_builder::build_domain_frame;
-use sdtm_transform::suppqual::{SuppqualInput, build_suppqual};
 use sdtm_ingest::{
     AppliedStudyMetadata, CsvTable, StudyMetadata, any_to_string, apply_study_metadata,
     discover_domain_files, list_csv_files, load_study_metadata, read_csv_schema, read_csv_table,
@@ -34,6 +31,9 @@ use sdtm_report::{
     DefineXmlOptions, SasProgramOptions, write_dataset_xml_outputs, write_define_xml,
     write_sas_outputs, write_xpt_outputs,
 };
+use sdtm_transform::frame::{DomainFrame, DomainFrameMeta};
+use sdtm_transform::frame_builder::build_domain_frame;
+use sdtm_transform::suppqual::{SuppqualInput, build_suppqual};
 use sdtm_validate::validate_domains;
 use sdtm_xpt::{XptWriterOptions, read_xpt};
 
@@ -161,7 +161,7 @@ pub struct ProcessFileInput<'a> {
 /// 4. Fills missing test fields
 /// 5. Applies domain-specific rules
 /// 6. Builds SUPPQUAL for non-standard columns
-pub fn process_file(input: ProcessFileInput<'_>) -> Result<ProcessedFile> {
+pub fn process_file(input: &mut ProcessFileInput<'_>) -> Result<ProcessedFile> {
     let domain_code = input.domain.code.to_uppercase();
     let dataset_name = input.dataset_name.to_uppercase();
     let source_file = input.path.display().to_string();
@@ -349,7 +349,10 @@ pub fn validate(
     let validation_start = Instant::now();
 
     // Use dataset names for validation keys (handles split domains like LBCH)
-    let dataset_names: Vec<String> = frames.iter().map(|f| f.dataset_name()).collect();
+    let dataset_names: Vec<String> = frames
+        .iter()
+        .map(sdtm_transform::frame::DomainFrame::dataset_name)
+        .collect();
     let frame_refs: Vec<(&str, &DataFrame)> = frames
         .iter()
         .zip(dataset_names.iter())
@@ -391,10 +394,13 @@ pub fn validate(
                 );
             }
         }
-        let total_errors: usize = report_map.values().map(|report| report.error_count()).sum();
+        let total_errors: usize = report_map
+            .values()
+            .map(sdtm_model::ValidationReport::error_count)
+            .sum();
         let total_warnings: usize = report_map
             .values()
-            .map(|report| report.warning_count())
+            .map(sdtm_model::ValidationReport::warning_count)
             .sum();
         info!(
             study_id = %study_id,
@@ -432,6 +438,7 @@ pub struct OutputResult {
 }
 
 /// Output configuration.
+#[derive(Clone, Copy)]
 pub struct OutputConfig<'a> {
     pub output_dir: &'a Path,
     pub study_id: &'a str,

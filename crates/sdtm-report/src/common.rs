@@ -223,7 +223,7 @@ mod tests {
             .map(|(name, values)| {
                 Series::new(
                     name.into(),
-                    values.iter().map(|s| s.to_string()).collect::<Vec<_>>(),
+                    values.iter().copied().map(String::from).collect::<Vec<_>>(),
                 )
                 .into_column()
             })

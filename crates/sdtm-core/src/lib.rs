@@ -44,18 +44,11 @@
 //! process_domain(input)?;
 //! ```
 
-// TODO(docs): Add documentation for remaining public items (Phase 4 - PR-028)
-#![allow(missing_docs)]
-// TODO(clippy): Fix these clippy warnings (Phase 4)
-#![allow(clippy::needless_pass_by_value)]
-#![allow(clippy::redundant_closure_for_method_calls)]
-#![allow(clippy::wildcard_imports)]
-
 mod ct_utils;
 pub mod domain_processors;
 
 // Internal modules - public for sdtm-cli but not part of stable API
-#[doc(hidden)]
+
 pub mod frame_builder;
 
 pub mod pipeline_context;

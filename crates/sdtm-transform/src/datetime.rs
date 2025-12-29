@@ -691,7 +691,10 @@ mod tests {
     #[test]
     fn normalize_iso8601_trims_whitespace() {
         assert_eq!(normalize_iso8601("  2023-12-25  "), "2023-12-25");
-        assert_eq!(normalize_iso8601("2023-12-25T10:30:00"), "2023-12-25T10:30:00");
+        assert_eq!(
+            normalize_iso8601("2023-12-25T10:30:00"),
+            "2023-12-25T10:30:00"
+        );
     }
 
     #[test]

@@ -16,9 +16,6 @@
 //! This crate sits between sdtm-model (pure types) and sdtm-core (orchestration),
 //! providing reusable transformation logic that can be used independently.
 
-// TODO(docs): Add documentation for remaining public items (Phase 4 - PR-028)
-#![allow(missing_docs)]
-
 pub mod data_utils;
 pub mod datetime;
 pub mod domain_sets;

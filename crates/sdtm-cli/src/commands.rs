@@ -10,11 +10,11 @@ use tracing::{debug, info, info_span, warn};
 use sdtm_core::pipeline_context::{
     CtMatchingMode, PipelineContext, ProcessingOptions, SequenceAssignmentMode, UsubjidPrefixMode,
 };
+use sdtm_model::{MappingConfig, OutputFormat};
+use sdtm_standards::{load_default_ct_registry, load_default_sdtm_ig_domains};
 use sdtm_transform::domain_sets::{build_report_domains, domain_map_by_code, is_supporting_domain};
 use sdtm_transform::frame::DomainFrame;
 use sdtm_transform::relationships::build_relationship_frames;
-use sdtm_model::{MappingConfig, OutputFormat};
-use sdtm_standards::{load_default_ct_registry, load_default_sdtm_ig_domains};
 use sdtm_validate::gate_strict_outputs;
 
 use crate::cli::{OutputFormatArg, StudyArgs};
@@ -117,7 +117,7 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
         suppqual_exclusions,
         errors: ingest_errors,
     } = ingest_span.in_scope(|| ingest(study_folder, &domain_codes, &standard_variables))?;
-    let file_count: usize = discovered.values().map(|files| files.len()).sum();
+    let file_count: usize = discovered.values().map(std::vec::Vec::len).sum();
     info!(
         study_id = %study_id,
         domain_count = discovered.len(),
@@ -210,7 +210,7 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
             }
 
             // Use pipeline stage function to process each file
-            let result = process_file(ProcessFileInput {
+            let mut input = ProcessFileInput {
                 path,
                 domain: &domain,
                 dataset_name: variant.as_str(),
@@ -220,7 +220,8 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
                 suppqual_exclusions: &suppqual_exclusions,
                 seq_tracker: domain_tracker,
                 pipeline: &pipeline,
-            });
+            };
+            let result = process_file(&mut input);
 
             match result {
                 Ok(processed) => {
@@ -302,7 +303,10 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     // Sort frames
     let mut frame_list: Vec<DomainFrame> = frames.into_values().collect();
     frame_list.sort_by(|a, b| a.domain_code.cmp(&b.domain_code));
-    let total_records: usize = frame_list.iter().map(|frame| frame.record_count()).sum();
+    let total_records: usize = frame_list
+        .iter()
+        .map(sdtm_transform::frame::DomainFrame::record_count)
+        .sum();
     info!(
         study_id = %study_id,
         domain_count = frame_list.len(),
@@ -352,7 +356,7 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
         output_formats
             .iter()
             .filter(|f| !matches!(f, OutputFormat::Xpt))
-            .cloned()
+            .copied()
             .collect()
     } else {
         output_formats.clone()
@@ -437,7 +441,7 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
             summary
                 .conformance
                 .as_ref()
-                .map(|report| report.has_errors())
+                .map(sdtm_model::ValidationReport::has_errors)
                 .unwrap_or(false)
         });
 

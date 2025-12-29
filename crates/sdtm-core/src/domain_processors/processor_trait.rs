@@ -89,12 +89,8 @@ pub trait DomainProcessor: Send + Sync {
     ///
     /// Returns an error if processing fails (e.g., missing required columns,
     /// invalid data, CT resolution failures).
-    fn process(
-        &self,
-        domain: &Domain,
-        df: &mut DataFrame,
-        context: &PipelineContext,
-    ) -> Result<()>;
+    fn process(&self, domain: &Domain, df: &mut DataFrame, context: &PipelineContext)
+    -> Result<()>;
 }
 
 /// Registry of domain processors indexed by domain code.
@@ -135,7 +131,7 @@ impl ProcessorRegistry {
         let code = domain_code.to_uppercase();
         self.processors
             .get(code.as_str())
-            .map(|p| p.as_ref())
+            .map(std::convert::AsRef::as_ref)
             .unwrap_or(self.default_processor.as_ref())
     }
 
@@ -303,23 +299,108 @@ macro_rules! domain_processor {
 }
 
 // Generate all domain processor structs at compile time
-domain_processor!("AE", AEProcessor, super::ae::process_ae, "Adverse Events processor");
-domain_processor!("CM", CMProcessor, super::cm::process_cm, "Concomitant Medications processor");
-domain_processor!("DA", DAProcessor, super::da::process_da, "Drug Accountability processor");
-domain_processor!("DM", DMProcessor, super::dm::process_dm, "Demographics processor");
-domain_processor!("DS", DSProcessor, super::ds::process_ds, "Disposition processor");
-domain_processor!("EX", EXProcessor, super::ex::process_ex, "Exposure processor");
-domain_processor!("IE", IEProcessor, super::ie::process_ie, "Inclusion/Exclusion processor");
-domain_processor!("LB", LBProcessor, super::lb::process_lb, "Laboratory Results processor");
-domain_processor!("MH", MHProcessor, super::mh::process_mh, "Medical History processor");
-domain_processor!("PE", PEProcessor, super::pe::process_pe, "Physical Examination processor");
-domain_processor!("PR", PRProcessor, super::pr::process_pr, "Procedures processor");
-domain_processor!("QS", QSProcessor, super::qs::process_qs, "Questionnaires processor");
-domain_processor!("SE", SEProcessor, super::se::process_se, "Subject Elements processor");
-domain_processor!("TA", TAProcessor, super::ta::process_ta, "Trial Arms processor");
-domain_processor!("TE", TEProcessor, super::te::process_te, "Trial Elements processor");
-domain_processor!("TS", TSProcessor, super::ts::process_ts, "Trial Summary processor");
-domain_processor!("VS", VSProcessor, super::vs::process_vs, "Vital Signs processor");
+domain_processor!(
+    "AE",
+    AEProcessor,
+    super::ae::process_ae,
+    "Adverse Events processor"
+);
+domain_processor!(
+    "CM",
+    CMProcessor,
+    super::cm::process_cm,
+    "Concomitant Medications processor"
+);
+domain_processor!(
+    "DA",
+    DAProcessor,
+    super::da::process_da,
+    "Drug Accountability processor"
+);
+domain_processor!(
+    "DM",
+    DMProcessor,
+    super::dm::process_dm,
+    "Demographics processor"
+);
+domain_processor!(
+    "DS",
+    DSProcessor,
+    super::ds::process_ds,
+    "Disposition processor"
+);
+domain_processor!(
+    "EX",
+    EXProcessor,
+    super::ex::process_ex,
+    "Exposure processor"
+);
+domain_processor!(
+    "IE",
+    IEProcessor,
+    super::ie::process_ie,
+    "Inclusion/Exclusion processor"
+);
+domain_processor!(
+    "LB",
+    LBProcessor,
+    super::lb::process_lb,
+    "Laboratory Results processor"
+);
+domain_processor!(
+    "MH",
+    MHProcessor,
+    super::mh::process_mh,
+    "Medical History processor"
+);
+domain_processor!(
+    "PE",
+    PEProcessor,
+    super::pe::process_pe,
+    "Physical Examination processor"
+);
+domain_processor!(
+    "PR",
+    PRProcessor,
+    super::pr::process_pr,
+    "Procedures processor"
+);
+domain_processor!(
+    "QS",
+    QSProcessor,
+    super::qs::process_qs,
+    "Questionnaires processor"
+);
+domain_processor!(
+    "SE",
+    SEProcessor,
+    super::se::process_se,
+    "Subject Elements processor"
+);
+domain_processor!(
+    "TA",
+    TAProcessor,
+    super::ta::process_ta,
+    "Trial Arms processor"
+);
+domain_processor!(
+    "TE",
+    TEProcessor,
+    super::te::process_te,
+    "Trial Elements processor"
+);
+domain_processor!(
+    "TS",
+    TSProcessor,
+    super::ts::process_ts,
+    "Trial Summary processor"
+);
+domain_processor!(
+    "VS",
+    VSProcessor,
+    super::vs::process_vs,
+    "Vital Signs processor"
+);
 
 #[cfg(test)]
 mod tests {
@@ -328,12 +409,22 @@ mod tests {
     #[test]
     fn default_registry_has_all_domains() {
         let registry = default_registry();
-        assert!(registry.len() >= 17, "Expected at least 17 domain processors");
+        assert!(
+            registry.len() >= 17,
+            "Expected at least 17 domain processors"
+        );
 
         // Check specific domains are registered
-        for code in ["AE", "CM", "DA", "DM", "DS", "EX", "IE", "LB", "MH", "PE", "PR", "QS", "SE", "TA", "TE", "TS", "VS"] {
+        for code in [
+            "AE", "CM", "DA", "DM", "DS", "EX", "IE", "LB", "MH", "PE", "PR", "QS", "SE", "TA",
+            "TE", "TS", "VS",
+        ] {
             let processor = registry.get(code);
-            assert_eq!(processor.domain_code(), code, "Processor for {code} should return correct code");
+            assert_eq!(
+                processor.domain_code(),
+                code,
+                "Processor for {code} should return correct code"
+            );
         }
     }
 
@@ -341,7 +432,11 @@ mod tests {
     fn unknown_domain_returns_default() {
         let registry = default_registry();
         let processor = registry.get("UNKNOWN");
-        assert_eq!(processor.domain_code(), "*", "Unknown domain should return default processor");
+        assert_eq!(
+            processor.domain_code(),
+            "*",
+            "Unknown domain should return default processor"
+        );
     }
 
     #[test]

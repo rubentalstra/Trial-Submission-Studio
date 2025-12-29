@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use anyhow::Result;
 use polars::prelude::{DataFrame, NamedFrom, Series};
 
-use sdtm_ingest::{build_column_hints, CsvTable};
+use sdtm_ingest::{CsvTable, build_column_hints};
 use sdtm_map::MappingEngine;
 use sdtm_model::{Domain, MappingConfig, VariableType};
 

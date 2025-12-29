@@ -4,7 +4,7 @@ use sdtm_model::Domain;
 
 use crate::pipeline_context::PipelineContext;
 
-use super::common::*;
+use super::common::{col, has_column, set_string_column, string_column};
 
 pub(super) fn process_te(
     domain: &Domain,

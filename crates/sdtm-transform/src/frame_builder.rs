@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use anyhow::{Context, Result};
 use polars::prelude::{Column, DataFrame, NamedFrom, Series};
 
-use sdtm_ingest::{parse_f64, CsvTable};
+use sdtm_ingest::{CsvTable, parse_f64};
 use sdtm_model::{Domain, MappingConfig, VariableType};
 
 use crate::frame::DomainFrame;

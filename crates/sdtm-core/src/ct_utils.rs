@@ -14,7 +14,7 @@ use crate::pipeline_context::CtMatchingMode;
 fn compact_key(value: &str) -> String {
     value
         .chars()
-        .filter(|ch| ch.is_ascii_alphanumeric())
+        .filter(char::is_ascii_alphanumeric)
         .map(|ch| ch.to_ascii_uppercase())
         .collect()
 }

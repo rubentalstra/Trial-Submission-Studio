@@ -4,7 +4,7 @@
 //! handling source table metadata, and sanitizing test codes.
 
 use polars::prelude::{AnyValue, DataFrame};
-use sdtm_ingest::{any_to_string, CsvTable};
+use sdtm_ingest::{CsvTable, any_to_string};
 use sdtm_model::MappingConfig;
 
 /// Get a string value from a DataFrame column at the given row index.
@@ -129,11 +129,7 @@ fn sanitize_sdtm_identifier(raw: &str, fallback: &str, prefix: char, max_len: us
     }
 
     // Prefix if starts with digit
-    if safe
-        .chars()
-        .next()
-        .is_some_and(|c| c.is_ascii_digit())
-    {
+    if safe.chars().next().is_some_and(|c| c.is_ascii_digit()) {
         safe.insert(0, prefix);
     }
 

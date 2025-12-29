@@ -10,7 +10,7 @@ use crate::pipeline_context::PipelineContext;
 
 // Re-export datetime utilities for domain processors
 pub(super) use sdtm_transform::datetime::{
-    normalize_iso8601, parse_date, validate_date_pair, DatePairOrder,
+    DatePairOrder, normalize_iso8601, parse_date, validate_date_pair,
 };
 
 // Re-export Polars utilities for domain processors
@@ -242,7 +242,7 @@ pub(super) fn compute_study_day(
     }
 
     // Fallback to reference column if no context reference starts found
-    if baseline_vals.iter().all(|value| value.is_none()) && has_column(df, reference_col) {
+    if baseline_vals.iter().all(std::option::Option::is_none) && has_column(df, reference_col) {
         let ref_vals = string_column(df, reference_col)?;
         for idx in 0..df.height() {
             baseline_vals[idx] = parse_date(&ref_vals[idx]);
@@ -250,7 +250,7 @@ pub(super) fn compute_study_day(
     }
 
     // No reference dates available at all
-    if baseline_vals.iter().all(|value| value.is_none()) {
+    if baseline_vals.iter().all(std::option::Option::is_none) {
         tracing::debug!(
             domain = domain.code.as_str(),
             dtc_col,

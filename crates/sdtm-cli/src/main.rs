@@ -1,12 +1,5 @@
 //! CDISC Transpiler CLI.
 
-// TODO(docs): Add documentation for remaining public items (Phase 4 - PR-028)
-#![allow(missing_docs)]
-// TODO(clippy): Fix these clippy warnings (Phase 4)
-#![allow(clippy::needless_pass_by_value)]
-#![allow(clippy::redundant_closure_for_method_calls)]
-#![allow(clippy::cloned_instead_of_copied)]
-
 use clap::{ColorChoice, Parser};
 use sdtm_cli::logging::{LogConfig, LogFormat, init_logging};
 use std::io::{self, IsTerminal};
