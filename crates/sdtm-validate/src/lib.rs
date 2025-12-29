@@ -1,3 +1,13 @@
+//! SDTM validation and conformance checking.
+//!
+//! This crate provides validation logic for SDTM datasets, including:
+//! - Controlled terminology value checks
+//! - Required variable presence
+//! - Output format gating based on validation results
+
+// TODO(docs): Add documentation for remaining public items (Phase 4 - PR-028)
+#![allow(missing_docs)]
+
 use polars::prelude::{AnyValue, DataFrame};
 use sdtm_ingest::any_to_string;
 use sdtm_model::ct::{Codelist, ResolvedCodelist, TerminologyRegistry};

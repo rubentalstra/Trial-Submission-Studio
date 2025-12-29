@@ -21,4 +21,4 @@ target
 #.idea/
 
 # ignore output mockdata
-mockdata/*/output/*
+mockdata/*/output/*.DS_Store

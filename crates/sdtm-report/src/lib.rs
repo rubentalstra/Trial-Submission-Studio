@@ -7,6 +7,11 @@
 //! - **Define-XML**: CDISC Define-XML for metadata documentation
 //! - **SAS Programs**: Transformation code for SAS processing
 
+// TODO(docs): Add documentation for remaining public items (Phase 4 - PR-028)
+#![allow(missing_docs)]
+// TODO(clippy): Fix these clippy warnings (Phase 4)
+#![allow(clippy::redundant_closure_for_method_calls)]
+
 mod common;
 mod dataset_xml;
 mod define_xml;

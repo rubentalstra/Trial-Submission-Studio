@@ -1,3 +1,11 @@
+//! SAS Transport (XPT) file format reader and writer.
+//!
+//! This crate provides functionality to read and write SAS Transport v5 format files,
+//! commonly used for SDTM datasets in regulatory submissions.
+
+// TODO(docs): Add documentation for all public items (Phase 4 - PR-028)
+#![allow(missing_docs)]
+
 use std::collections::BTreeSet;
 use std::fs::File;
 use std::io::{Read, Write};

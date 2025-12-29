@@ -1,3 +1,5 @@
+//! Mapping engine implementation.
+
 use std::cmp::Ordering;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -21,18 +23,250 @@ const SYNONYM_MATCH_BOOST: f64 = 1.15;
 /// Boost for label-based matches
 const LABEL_MATCH_BOOST: f64 = 1.10;
 
+/// Confidence level categories for mapping quality assessment.
+///
+/// These levels help categorize mappings by their reliability:
+/// - `High`: Near-certain matches that can be used without review
+/// - `Medium`: Good matches that should be verified
+/// - `Low`: Weak matches requiring manual confirmation
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum ConfidenceLevel {
+    /// Low confidence (≥ low threshold, < medium threshold).
+    /// These mappings are uncertain and require manual verification.
+    Low,
+    /// Medium confidence (≥ medium threshold, < high threshold).
+    /// These mappings are reasonable but should be reviewed.
+    Medium,
+    /// High confidence (≥ high threshold).
+    /// These mappings are near-certain and typically correct.
+    High,
+}
+
+impl ConfidenceLevel {
+    /// Returns a human-readable description of the confidence level.
+    #[must_use]
+    pub fn description(&self) -> &'static str {
+        match self {
+            Self::High => "high confidence - likely correct",
+            Self::Medium => "medium confidence - should review",
+            Self::Low => "low confidence - needs verification",
+        }
+    }
+}
+
+/// Configurable thresholds for categorizing mapping confidence.
+///
+/// The thresholds define boundaries between confidence levels:
+/// - Below `low`: rejected (not included in results)
+/// - `low` to `medium`: [`ConfidenceLevel::Low`]
+/// - `medium` to `high`: [`ConfidenceLevel::Medium`]
+/// - At or above `high`: [`ConfidenceLevel::High`]
+#[derive(Debug, Clone, Copy)]
+pub struct ConfidenceThresholds {
+    /// Minimum confidence for high-quality matches (default: 0.95).
+    pub high: f32,
+    /// Minimum confidence for medium-quality matches (default: 0.80).
+    pub medium: f32,
+    /// Minimum confidence to include in results (default: 0.60).
+    pub low: f32,
+}
+
+impl Default for ConfidenceThresholds {
+    fn default() -> Self {
+        Self {
+            high: 0.95,
+            medium: 0.80,
+            low: 0.60,
+        }
+    }
+}
+
+impl ConfidenceThresholds {
+    /// Creates thresholds with strict boundaries for high-quality mapping.
+    #[must_use]
+    pub fn strict() -> Self {
+        Self {
+            high: 0.98,
+            medium: 0.90,
+            low: 0.75,
+        }
+    }
+
+    /// Creates thresholds with relaxed boundaries for exploratory mapping.
+    #[must_use]
+    pub fn relaxed() -> Self {
+        Self {
+            high: 0.90,
+            medium: 0.70,
+            low: 0.50,
+        }
+    }
+
+    /// Categorizes a confidence score into a confidence level.
+    ///
+    /// Returns `None` if the score is below the low threshold.
+    #[must_use]
+    pub fn categorize(&self, confidence: f32) -> Option<ConfidenceLevel> {
+        if confidence >= self.high {
+            Some(ConfidenceLevel::High)
+        } else if confidence >= self.medium {
+            Some(ConfidenceLevel::Medium)
+        } else if confidence >= self.low {
+            Some(ConfidenceLevel::Low)
+        } else {
+            None
+        }
+    }
+}
+
+/// Result of a mapping operation.
 #[derive(Debug, Clone)]
 pub struct MappingResult {
+    /// Successfully mapped column-to-variable suggestions.
     pub mappings: Vec<MappingSuggestion>,
+    /// Columns that could not be mapped above the confidence threshold.
     pub unmapped_columns: Vec<String>,
 }
 
+impl MappingResult {
+    /// Returns the count of mappings at each confidence level.
+    ///
+    /// Uses default thresholds. For custom thresholds, use [`Self::count_by_level_with`].
+    #[must_use]
+    pub fn count_by_level(&self) -> BTreeMap<ConfidenceLevel, usize> {
+        self.count_by_level_with(&ConfidenceThresholds::default())
+    }
+
+    /// Returns the count of mappings at each confidence level using custom thresholds.
+    #[must_use]
+    pub fn count_by_level_with(
+        &self,
+        thresholds: &ConfidenceThresholds,
+    ) -> BTreeMap<ConfidenceLevel, usize> {
+        let mut counts = BTreeMap::new();
+        for mapping in &self.mappings {
+            if let Some(level) = thresholds.categorize(mapping.confidence) {
+                *counts.entry(level).or_insert(0) += 1;
+            }
+        }
+        counts
+    }
+
+    /// Filters mappings to only those at or above the specified confidence level.
+    ///
+    /// Uses default thresholds. For custom thresholds, use [`Self::filter_by_level_with`].
+    #[must_use]
+    pub fn filter_by_level(&self, min_level: ConfidenceLevel) -> Vec<&MappingSuggestion> {
+        self.filter_by_level_with(min_level, &ConfidenceThresholds::default())
+    }
+
+    /// Filters mappings to only those at or above the specified confidence level
+    /// using custom thresholds.
+    #[must_use]
+    pub fn filter_by_level_with(
+        &self,
+        min_level: ConfidenceLevel,
+        thresholds: &ConfidenceThresholds,
+    ) -> Vec<&MappingSuggestion> {
+        self.mappings
+            .iter()
+            .filter(|m| {
+                thresholds
+                    .categorize(m.confidence)
+                    .is_some_and(|level| level >= min_level)
+            })
+            .collect()
+    }
+
+    /// Returns mappings grouped by their confidence level.
+    ///
+    /// Uses default thresholds.
+    #[must_use]
+    pub fn group_by_level(&self) -> BTreeMap<ConfidenceLevel, Vec<&MappingSuggestion>> {
+        self.group_by_level_with(&ConfidenceThresholds::default())
+    }
+
+    /// Returns mappings grouped by their confidence level using custom thresholds.
+    #[must_use]
+    pub fn group_by_level_with(
+        &self,
+        thresholds: &ConfidenceThresholds,
+    ) -> BTreeMap<ConfidenceLevel, Vec<&MappingSuggestion>> {
+        let mut groups: BTreeMap<ConfidenceLevel, Vec<&MappingSuggestion>> = BTreeMap::new();
+        for mapping in &self.mappings {
+            if let Some(level) = thresholds.categorize(mapping.confidence) {
+                groups.entry(level).or_default().push(mapping);
+            }
+        }
+        groups
+    }
+
+    /// Returns the minimum confidence score among all mappings, if any.
+    #[must_use]
+    pub fn min_confidence(&self) -> Option<f32> {
+        self.mappings
+            .iter()
+            .map(|m| m.confidence)
+            .min_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal))
+    }
+
+    /// Returns the maximum confidence score among all mappings, if any.
+    #[must_use]
+    pub fn max_confidence(&self) -> Option<f32> {
+        self.mappings
+            .iter()
+            .map(|m| m.confidence)
+            .max_by(|a, b| a.partial_cmp(b).unwrap_or(Ordering::Equal))
+    }
+
+    /// Returns the mean confidence score among all mappings, if any.
+    #[must_use]
+    pub fn mean_confidence(&self) -> Option<f32> {
+        if self.mappings.is_empty() {
+            return None;
+        }
+        let sum: f32 = self.mappings.iter().map(|m| m.confidence).sum();
+        Some(sum / self.mappings.len() as f32)
+    }
+
+    /// Returns true if all mappings are at high confidence level.
+    #[must_use]
+    pub fn all_high_confidence(&self) -> bool {
+        self.all_high_confidence_with(&ConfidenceThresholds::default())
+    }
+
+    /// Returns true if all mappings are at high confidence level using custom thresholds.
+    #[must_use]
+    pub fn all_high_confidence_with(&self, thresholds: &ConfidenceThresholds) -> bool {
+        !self.mappings.is_empty()
+            && self
+                .mappings
+                .iter()
+                .all(|m| thresholds.categorize(m.confidence) == Some(ConfidenceLevel::High))
+    }
+}
+
+/// Engine for mapping source columns to SDTM domain variables.
+///
+/// The engine uses fuzzy string matching combined with metadata hints
+/// to suggest the best mapping between source data columns and target
+/// SDTM variables. It produces confidence scores for each mapping,
+/// allowing downstream processing to filter or prioritize results.
+///
+/// # Example
+///
+/// ```ignore
+/// use sdtm_map::MappingEngine;
+/// use std::collections::BTreeMap;
+///
+/// let engine = MappingEngine::new(domain, 0.6, BTreeMap::new());
+/// let result = engine.suggest(&["STUDYID".to_string(), "AGE".to_string()]);
+/// ```
 pub struct MappingEngine {
     domain: Domain,
     min_confidence: f32,
     column_hints: BTreeMap<String, ColumnHint>,
     variable_patterns: BTreeMap<String, Vec<String>>,
-    /// Synonym lookup map for column -> variable matching
     synonym_map: BTreeMap<String, Vec<String>>,
 }
 
@@ -43,6 +277,13 @@ struct Candidate {
 }
 
 impl MappingEngine {
+    /// Creates a new mapping engine for a specific domain.
+    ///
+    /// # Arguments
+    ///
+    /// * `domain` - The SDTM domain definition containing target variables
+    /// * `min_confidence` - Minimum confidence score (0.0-1.0) for a mapping to be included
+    /// * `column_hints` - Optional metadata about source columns (type, uniqueness, etc.)
     pub fn new(
         domain: Domain,
         min_confidence: f32,
@@ -59,6 +300,14 @@ impl MappingEngine {
         }
     }
 
+    /// Suggests mappings for a list of source column names.
+    ///
+    /// Returns a [`MappingResult`] containing:
+    /// - Suggested mappings with confidence scores
+    /// - Columns that could not be mapped above the minimum confidence threshold
+    ///
+    /// The engine performs one-to-one matching: each source column maps to at most
+    /// one target variable, and each target variable is assigned at most once.
     pub fn suggest(&self, columns: &[String]) -> MappingResult {
         let mut suggestions = Vec::new();
         let mut assigned_targets = BTreeSet::new();
@@ -172,6 +421,12 @@ impl MappingEngine {
         }
     }
 
+    /// Converts a mapping result into a [`MappingConfig`] for persistence or further processing.
+    ///
+    /// # Arguments
+    ///
+    /// * `study_id` - The study identifier to include in the config
+    /// * `result` - The mapping result to convert
     pub fn to_config(&self, study_id: &str, result: MappingResult) -> MappingConfig {
         MappingConfig {
             domain_code: self.domain.code.clone(),

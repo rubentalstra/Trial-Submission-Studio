@@ -1,3 +1,5 @@
+#![allow(missing_docs)]
+
 use sdtm_model::ct::{Codelist, Term};
 
 #[test]

@@ -1,3 +1,5 @@
+#![allow(missing_docs)]
+
 use sdtm_model::DatasetClass;
 use sdtm_standards::{load_default_ct_registry, load_default_sdtm_ig_domains};
 

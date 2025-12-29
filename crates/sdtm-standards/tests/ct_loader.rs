@@ -1,3 +1,5 @@
+#![allow(missing_docs)]
+
 use std::path::PathBuf;
 
 use sdtm_standards::load_ct_catalog;

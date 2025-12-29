@@ -22,6 +22,7 @@
 //! - Chapter 6: Domain-specific processing rules
 //! - Chapter 8: Relationship datasets (RELREC, RELSPEC, RELSUB)
 //! - Chapter 10: Controlled Terminology conformance
+
 //!
 //! # Example
 //!
@@ -42,6 +43,13 @@
 //!
 //! process_domain(input)?;
 //! ```
+
+// TODO(docs): Add documentation for remaining public items (Phase 4 - PR-028)
+#![allow(missing_docs)]
+// TODO(clippy): Fix these clippy warnings (Phase 4)
+#![allow(clippy::needless_pass_by_value)]
+#![allow(clippy::redundant_closure_for_method_calls)]
+#![allow(clippy::wildcard_imports)]
 
 mod ct_utils;
 mod data_utils;

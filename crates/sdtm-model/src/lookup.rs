@@ -45,9 +45,7 @@ impl CaseInsensitiveSet {
 
     /// Get the original-cased name for a case-insensitive lookup.
     pub fn get(&self, name: &str) -> Option<&str> {
-        self.map
-            .get(&name.to_ascii_uppercase())
-            .map(|value| value.as_str())
+        self.map.get(&name.to_ascii_uppercase()).map(String::as_str)
     }
 
     /// Check if a name exists (case-insensitive).

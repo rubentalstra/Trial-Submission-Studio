@@ -1,3 +1,9 @@
+//! Pattern matching and synonym handling for column-to-variable mapping.
+//!
+//! This module provides synonym tables and pattern builders that help match
+//! source column names to SDTM variable names, including common abbreviations
+//! and alternative terms used in clinical data collection.
+
 use std::collections::BTreeMap;
 
 use sdtm_model::Domain;

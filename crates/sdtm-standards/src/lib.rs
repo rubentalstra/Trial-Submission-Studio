@@ -1,3 +1,24 @@
+//! SDTM standards and controlled terminology loaders.
+//!
+//! This crate loads SDTM-IG domain definitions and controlled terminology (CT)
+//! from offline CSV files in the `standards/` directory. All standards are
+//! committed to the repository for offline operation.
+//!
+//! # Standards Directory Structure
+//!
+//! ```text
+//! standards/
+//! ├── ct/                  # Controlled Terminology by version
+//! │   └── 2024-03-29/      # CT version date
+//! │       └── SDTM_CT_*.csv
+//! └── sdtmig/v3_4/         # SDTM-IG v3.4
+//!     ├── Datasets.csv     # Domain metadata
+//!     └── Variables.csv    # Variable definitions
+//! ```
+
+// TODO(docs): Add documentation for remaining public items (Phase 4 - PR-028)
+#![allow(missing_docs)]
+
 mod csv_utils;
 pub mod ct_loader;
 pub mod loaders;

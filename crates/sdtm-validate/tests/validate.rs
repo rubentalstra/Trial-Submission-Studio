@@ -1,3 +1,5 @@
+#![allow(missing_docs)]
+
 use polars::prelude::{Column, DataFrame};
 
 use sdtm_model::{OutputFormat, Severity, ValidationIssue, ValidationReport};

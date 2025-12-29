@@ -1,3 +1,5 @@
+#![allow(missing_docs)]
+
 use std::fs;
 use std::path::PathBuf;
 
@@ -143,7 +145,7 @@ proptest! {
     #[test]
     fn proptest_char_roundtrip(value in "[A-Za-z][A-Za-z0-9 ]{0,39}") {
         let path = temp_file(&format!("proptest_char_{:?}", std::thread::current().id()));
-        let length = value.len().max(1).min(200) as u16;
+        let length = value.len().clamp(1, 200) as u16;
         let dataset = XptDataset {
             name: "TEST".to_string(),
             label: None,

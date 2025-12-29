@@ -1,5 +1,8 @@
+//! Utility functions for mapping operations.
+
 use sdtm_model::{MappingConfig, MappingSuggestion};
 
+/// Normalizes text for comparison by lowercasing and replacing separators with spaces.
 pub fn normalize_text(raw: &str) -> String {
     raw.trim()
         .to_lowercase()
@@ -9,10 +12,15 @@ pub fn normalize_text(raw: &str) -> String {
         .join(" ")
 }
 
+/// Trims whitespace from a column name, preserving the original casing.
 pub fn safe_column_name(raw: &str) -> String {
     raw.trim().to_string()
 }
 
+/// Merges multiple mapping configs per domain into a single config per domain.
+///
+/// When the same target variable is mapped by multiple configs, the one with
+/// the highest confidence is selected. Ties are broken by source column name.
 pub fn merge_mappings(
     configs: &std::collections::BTreeMap<String, Vec<MappingConfig>>,
     study_id: &str,
@@ -30,6 +38,10 @@ pub fn merge_mappings(
     merged
 }
 
+/// Merges multiple mapping configs for a single domain into one.
+///
+/// For each target variable, keeps the mapping with the highest confidence.
+/// All unmapped columns from all configs are collected.
 pub fn merge_mapping_configs(
     domain_code: &str,
     study_id: &str,
