@@ -1,0 +1,18 @@
+[package]
+name = "sdtm-transform"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "SDTM data transformations: datetime, wide format, suppqual, relationships"
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+polars.workspace = true
+sdtm-model = { path = "../sdtm-model" }
+tracing.workspace = true
+
+[dev-dependencies]

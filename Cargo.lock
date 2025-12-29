@@ -2664,6 +2664,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "sdtm-transform"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "polars",
+ "sdtm-model",
+ "tracing",
+]
+
+[[package]]
 name = "sdtm-validate"
 version = "0.1.0"
 dependencies = [
