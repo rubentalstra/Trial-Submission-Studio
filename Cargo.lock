@@ -2672,6 +2672,7 @@ dependencies = [
  "chrono",
  "polars",
  "sdtm-ingest",
+ "sdtm-map",
  "sdtm-model",
  "tracing",
 ]

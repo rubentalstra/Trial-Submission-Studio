@@ -6,6 +6,7 @@
 //! - **frame**: Domain frame types for SDTM datasets
 //! - **frame_builder**: DataFrame construction utilities
 //! - **data_utils**: DataFrame value extraction and SDTM identifier sanitization
+//! - **wide**: Wide-to-long format conversion for LB, VS, IE domains
 //!
 //! # Architecture
 //!
@@ -19,3 +20,4 @@ pub mod data_utils;
 pub mod datetime;
 pub mod frame;
 pub mod frame_builder;
+pub mod wide;

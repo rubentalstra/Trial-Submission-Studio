@@ -12,7 +12,7 @@ use super::types::IeWideGroup;
 use super::utils::{
     base_row_values, build_wide_base_mapping, build_wide_data, mapping_used_sources, push_row,
 };
-use crate::data_utils::{mapping_source_for_target, sanitize_test_code, table_label};
+use crate::data_utils::{column_value_string, mapping_source_for_target, sanitize_test_code, table_label};
 use crate::frame::DomainFrame;
 
 /// Build IE domain frame from wide format data.
@@ -158,21 +158,21 @@ fn expand_ie_wide(
     for row_idx in 0..table.rows.len() {
         let base_test = if allow_base_test {
             test_col
-                .map(|name| crate::data_utils::column_value_string(base_df, name, row_idx))
+                .map(|name| column_value_string(base_df, name, row_idx))
                 .unwrap_or_default()
         } else {
             String::new()
         };
         let base_testcd = if allow_base_test {
             testcd_col
-                .map(|name| crate::data_utils::column_value_string(base_df, name, row_idx))
+                .map(|name| column_value_string(base_df, name, row_idx))
                 .unwrap_or_default()
         } else {
             String::new()
         };
         let base_cat = if allow_base_cat {
             cat_col
-                .map(|name| crate::data_utils::column_value_string(base_df, name, row_idx))
+                .map(|name| column_value_string(base_df, name, row_idx))
                 .unwrap_or_default()
         } else {
             String::new()

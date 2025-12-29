@@ -1,22 +1,6 @@
-//! Wide format processing for SDTM domains.
+//! Re-export of wide format processing from sdtm-transform.
 //!
-//! This module handles the conversion of wide format CSV data to long format
-//! SDTM domains. Wide format data has multiple test results in separate columns
-//! (e.g., `ORRES_HR`, `ORRES_SYSBP`), while long format has one row per test.
-//!
-//! ## Supported Domains
-//!
-//! - **LB (Laboratory)**: Lab test results with values, units, and ranges
-//! - **VS (Vital Signs)**: Vital sign measurements with positions
-//! - **IE (Inclusion/Exclusion)**: Eligibility criteria with categories
+//! This module provides backward compatibility for internal imports.
+//! All wide format functionality is now implemented in the `sdtm-transform` crate.
 
-mod ie;
-mod lb;
-mod types;
-mod utils;
-mod vs;
-
-// Re-export public functions
-pub use ie::build_ie_wide_frame;
-pub use lb::build_lb_wide_frame;
-pub use vs::build_vs_wide_frame;
+pub use sdtm_transform::wide::{build_ie_wide_frame, build_lb_wide_frame, build_vs_wide_frame};
