@@ -1,7 +1,7 @@
 //! Define-XML output generation.
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::fs::File;
+use std::fs::{self, File};
 use std::io::BufWriter;
 use std::path::Path;
 
@@ -138,6 +138,12 @@ pub fn write_define_xml(
         }
     }
 
+    if let Some(parent) = output_path.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent)
+                .with_context(|| format!("create {}", parent.display()))?;
+        }
+    }
     let file =
         File::create(output_path).with_context(|| format!("create {}", output_path.display()))?;
     let writer = BufWriter::new(file);
