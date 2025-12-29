@@ -75,17 +75,7 @@ pub(super) fn process_lb(
         && has_column(df, lborres)
         && has_column(df, lbstresc)
     {
-        // Clean NA values from LBORRES
-        let orres = string_column(df, lborres)?
-            .into_iter()
-            .map(|value| match value.trim() {
-                "<NA>" | "nan" | "None" => String::new(),
-                _ => value.trim().to_string(),
-            })
-            .collect::<Vec<_>>();
-        set_string_column(df, lborres, orres)?;
-
-        // Then backward fill
+        clean_na_values(df, lborres)?;
         backward_fill(df, lborres, lbstresc)?;
     }
 

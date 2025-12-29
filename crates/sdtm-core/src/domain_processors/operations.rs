@@ -319,10 +319,41 @@ pub fn resolve_testcd_from_test(
     Ok(())
 }
 
+/// Check if a string value represents a missing/NA value.
+///
+/// Recognizes common NA representations (case-insensitive):
+/// - Empty string
+/// - "NA", "N/A", "<NA>"
+/// - "NAN", "nan"
+/// - "None"
+/// - "UNK", "UNKNOWN"
+///
+/// # Examples
+///
+/// ```ignore
+/// assert!(is_na_value("NA"));
+/// assert!(is_na_value("n/a"));
+/// assert!(is_na_value("<NA>"));
+/// assert!(is_na_value("nan"));
+/// assert!(is_na_value("None"));
+/// assert!(is_na_value("UNKNOWN"));
+/// assert!(!is_na_value("NORMAL"));
+/// ```
+pub fn is_na_value(value: &str) -> bool {
+    let trimmed = value.trim();
+    if trimmed.is_empty() {
+        return true;
+    }
+    matches!(
+        trimmed.to_uppercase().as_str(),
+        "NA" | "N/A" | "<NA>" | "NAN" | "NONE" | "UNK" | "UNKNOWN"
+    )
+}
+
 /// Clean NA-like values from string columns.
 ///
-/// Replaces common NA representations with empty strings:
-/// - "<NA>", "nan", "None" → ""
+/// Replaces common NA representations with empty strings using [`is_na_value`].
+/// This provides consistent NA handling across all domain processors.
 ///
 /// # Arguments
 ///
@@ -335,9 +366,13 @@ pub fn clean_na_values(df: &mut DataFrame, column: &str) -> Result<()> {
 
     let values = string_column(df, column)?
         .into_iter()
-        .map(|value| match value.trim() {
-            "<NA>" | "nan" | "None" => String::new(),
-            _ => value.trim().to_string(),
+        .map(|value| {
+            let trimmed = value.trim();
+            if is_na_value(trimmed) {
+                String::new()
+            } else {
+                trimmed.to_string()
+            }
         })
         .collect();
 
@@ -361,4 +396,67 @@ pub fn clean_na_values_vars(domain: &Domain, df: &mut DataFrame, columns: &[&str
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn is_na_value_recognizes_empty() {
+        assert!(is_na_value(""));
+        assert!(is_na_value("   "));
+        assert!(is_na_value("\t\n"));
+    }
+
+    #[test]
+    fn is_na_value_recognizes_na_variants() {
+        // Case insensitive NA patterns
+        assert!(is_na_value("NA"));
+        assert!(is_na_value("na"));
+        assert!(is_na_value("N/A"));
+        assert!(is_na_value("n/a"));
+        assert!(is_na_value("<NA>"));
+        assert!(is_na_value("<na>"));
+    }
+
+    #[test]
+    fn is_na_value_recognizes_nan_variants() {
+        assert!(is_na_value("NAN"));
+        assert!(is_na_value("nan"));
+        assert!(is_na_value("NaN"));
+    }
+
+    #[test]
+    fn is_na_value_recognizes_none() {
+        assert!(is_na_value("NONE"));
+        assert!(is_na_value("None"));
+        assert!(is_na_value("none"));
+    }
+
+    #[test]
+    fn is_na_value_recognizes_unknown() {
+        assert!(is_na_value("UNK"));
+        assert!(is_na_value("unk"));
+        assert!(is_na_value("UNKNOWN"));
+        assert!(is_na_value("unknown"));
+        assert!(is_na_value("Unknown"));
+    }
+
+    #[test]
+    fn is_na_value_rejects_valid_values() {
+        assert!(!is_na_value("NORMAL"));
+        assert!(!is_na_value("123"));
+        assert!(!is_na_value("mg/dL"));
+        assert!(!is_na_value("POSITIVE"));
+        assert!(!is_na_value("Y"));
+        assert!(!is_na_value("NANA")); // Contains NA but is not NA
+    }
+
+    #[test]
+    fn is_na_value_handles_whitespace() {
+        assert!(is_na_value("  NA  "));
+        assert!(is_na_value("\tNAN\n"));
+        assert!(is_na_value("  UNKNOWN  "));
+    }
 }

@@ -11,24 +11,11 @@ pub(super) fn process_default(
     df: &mut DataFrame,
     _context: &PipelineContext,
 ) -> Result<()> {
+    // Clean NA-like values from EPOCH column
     if let Some(epoch_col) = col(domain, "EPOCH")
         && has_column(df, epoch_col)
     {
-        let values = string_column(df, epoch_col)?;
-        let normalized = values
-            .into_iter()
-            .map(|value| {
-                let trimmed = value.trim();
-                let upper = trimmed.to_uppercase();
-                match upper.as_str() {
-                    "" | "UNK" | "UNKNOWN" | "NA" | "N/A" | "NONE" | "NAN" | "<NA>" => {
-                        String::new()
-                    }
-                    _ => trimmed.to_string(),
-                }
-            })
-            .collect();
-        set_string_column(df, epoch_col, normalized)?;
+        clean_na_values(df, epoch_col)?;
     }
     Ok(())
 }
