@@ -1,8 +1,10 @@
 //! Clean CT loader per SDTM_CT_relationships.md
 //!
 //! This module loads CT files into the new clean model (`sdtm_model::ct`).
+//! The default registry is cached using `OnceLock` to avoid repeated file I/O.
 
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 
 use anyhow::Result;
 
@@ -12,8 +14,30 @@ use crate::csv_utils::{default_standards_root, get_field, get_optional, read_csv
 
 const DEFAULT_CT_VERSION: &str = "2024-03-29";
 
+/// Cached default CT registry.
+static DEFAULT_CT_REGISTRY: OnceLock<TerminologyRegistry> = OnceLock::new();
+
 /// Load the default CT registry (SDTM CT 2024-03-29).
+///
+/// The registry is cached on first load and subsequent calls return a clone.
+/// Use [`load_ct_registry`] directly if you need to load from custom paths.
 pub fn load_default_ct_registry() -> Result<TerminologyRegistry> {
+    // Return cached registry if available
+    if let Some(registry) = DEFAULT_CT_REGISTRY.get() {
+        return Ok(registry.clone());
+    }
+
+    // Load and cache the registry
+    let registry = load_default_ct_registry_uncached()?;
+
+    // Try to cache it (ignore if another thread beat us)
+    let _ = DEFAULT_CT_REGISTRY.set(registry.clone());
+
+    Ok(registry)
+}
+
+/// Load the default CT registry without caching.
+fn load_default_ct_registry_uncached() -> Result<TerminologyRegistry> {
     let root = default_standards_root();
     let mut ct_dirs = Vec::new();
     ct_dirs.push(root.join("ct").join(DEFAULT_CT_VERSION));
