@@ -9,3 +9,6 @@ workspace = true
 
 [dependencies]
 anyhow.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
