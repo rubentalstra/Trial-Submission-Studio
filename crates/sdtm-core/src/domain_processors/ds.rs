@@ -1,3 +1,7 @@
+//! Disposition (DS) domain processor.
+//!
+//! Processes DS domain data per SDTMIG v3.4 Section 6.2.
+
 use anyhow::Result;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
@@ -5,8 +9,8 @@ use sdtm_model::Domain;
 use crate::pipeline_context::PipelineContext;
 
 use super::common::{
-    col, compute_study_day, has_column, normalize_ct_columns, normalize_ct_value,
-    normalize_iso8601, set_string_column, string_column,
+    col, compute_study_days_batch, has_column, normalize_ct_batch, normalize_ct_columns,
+    normalize_iso8601, set_string_column, string_column, trim_columns,
 };
 
 pub(super) fn process_ds(
@@ -14,55 +18,35 @@ pub(super) fn process_ds(
     df: &mut DataFrame,
     context: &PipelineContext,
 ) -> Result<()> {
-    for col_name in ["DSDECOD", "DSTERM", "DSCAT", "EPOCH"] {
-        if let Some(name) = col(domain, col_name)
+    // Trim string columns
+    trim_columns(domain, df, &["DSDECOD", "DSTERM", "DSCAT", "EPOCH"])?;
+
+    // Batch CT normalization
+    normalize_ct_batch(domain, df, context, &["DSCAT", "DSSCAT", "EPOCH"])?;
+
+    // Normalize DSDECOD via CT
+    normalize_ct_columns(domain, df, context, "DSDECOD", &["DSDECOD"])?;
+
+    // Normalize date columns
+    for date_col in ["DSSTDTC", "DSDTC"] {
+        if let Some(name) = col(domain, date_col)
             && has_column(df, name)
         {
-            let values = string_column(df, name)?;
+            let values = string_column(df, name)?
+                .into_iter()
+                .map(|v| normalize_iso8601(&v))
+                .collect();
             set_string_column(df, name, values)?;
         }
     }
 
-    // Normalize CT columns
-    // DSCAT: Category (Codelist C66786)
-    normalize_ct_columns(domain, df, context, "DSCAT", &["DSCAT"])?;
-    // DSSCAT: Subcategory
-    normalize_ct_columns(domain, df, context, "DSSCAT", &["DSSCAT"])?;
-    // EPOCH: Epoch (Codelist C99079)
-    normalize_ct_columns(domain, df, context, "EPOCH", &["EPOCH"])?;
-    if let Some(dsdecod) = col(domain, "DSDECOD")
-        && has_column(df, dsdecod)
-        && let Some(ct) = context.resolve_ct(domain, "DSDECOD")
-    {
-        let values = string_column(df, dsdecod)?
-            .into_iter()
-            .map(|value| normalize_ct_value(ct, &value, context.options.ct_matching))
-            .collect();
-        set_string_column(df, dsdecod, values)?;
-    }
-    if let Some(dsstdtc) = col(domain, "DSSTDTC")
-        && has_column(df, dsstdtc)
-    {
-        let values = string_column(df, dsstdtc)?
-            .into_iter()
-            .map(|value| normalize_iso8601(&value))
-            .collect();
-        set_string_column(df, dsstdtc, values)?;
-        if let Some(dsstudy) = col(domain, "DSSTDY") {
-            compute_study_day(domain, df, dsstdtc, dsstudy, context, "RFSTDTC")?;
-        }
-    }
-    if let Some(dsdtc) = col(domain, "DSDTC")
-        && has_column(df, dsdtc)
-    {
-        let values = string_column(df, dsdtc)?
-            .into_iter()
-            .map(|value| normalize_iso8601(&value))
-            .collect();
-        set_string_column(df, dsdtc, values)?;
-        if let Some(dsdy) = col(domain, "DSDY") {
-            compute_study_day(domain, df, dsdtc, dsdy, context, "RFSTDTC")?;
-        }
-    }
+    // Compute study days
+    compute_study_days_batch(
+        domain,
+        df,
+        context,
+        &[("DSSTDTC", "DSSTDY"), ("DSDTC", "DSDY")],
+    )?;
+
     Ok(())
 }

@@ -1,44 +1,38 @@
+//! Trial Arms (TA) domain processor.
+//!
+//! Processes TA domain data per SDTMIG v3.4 Section 7.2.
+
 use anyhow::Result;
 use polars::prelude::{DataFrame, UInt32Chunked};
 use sdtm_model::Domain;
 
 use crate::pipeline_context::PipelineContext;
 
-use super::common::{
-    col, has_column, numeric_column_f64, set_f64_column, set_string_column, string_column,
-};
+use super::common::{col, has_column, normalize_numeric_f64, numeric_column_f64};
 
 pub(super) fn process_ta(
     domain: &Domain,
     df: &mut DataFrame,
     _context: &PipelineContext,
 ) -> Result<()> {
-    for col_name in ["EPOCH", "ARMCD", "ARM", "ETCD", "STUDYID", "DOMAIN"] {
-        if let Some(name) = col(domain, col_name)
-            && has_column(df, name)
-        {
-            let values = string_column(df, name)?;
-            set_string_column(df, name, values)?;
-        }
-    }
+    // Normalize and sort by TAETORD
+    normalize_numeric_f64(domain, df, &["TAETORD"])?;
     if let Some(taetord) = col(domain, "TAETORD")
         && has_column(df, taetord)
     {
-        let values = numeric_column_f64(df, taetord)?;
-        set_f64_column(df, taetord, values)?;
         sort_by_numeric(df, taetord)?;
     }
     Ok(())
 }
 
+/// Sort DataFrame by a numeric column.
 fn sort_by_numeric(df: &mut DataFrame, column: &str) -> Result<()> {
     let values = numeric_column_f64(df, column)?;
     let mut indices: Vec<u32> = (0..df.height()).map(|idx| idx as u32).collect();
     indices.sort_by(|a, b| {
         let left = values[*a as usize];
         let right = values[*b as usize];
-        left.partial_cmp(&right)
-            .unwrap_or(std::cmp::Ordering::Equal)
+        left.partial_cmp(&right).unwrap_or(std::cmp::Ordering::Equal)
     });
     let idx = UInt32Chunked::from_vec("idx".into(), indices);
     *df = df.take(&idx)?;

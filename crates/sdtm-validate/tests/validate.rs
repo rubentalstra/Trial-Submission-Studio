@@ -62,7 +62,7 @@ fn strict_output_gate_blocks_on_errors() {
         }],
     };
     let decision = gate_strict_outputs(&[OutputFormat::Xpt], true, &[report]);
-    assert!(decision.block_strict_outputs);
+    assert!(decision.blocks_output());
     assert_eq!(decision.blocking_domains, vec!["AE".to_string()]);
 }
 
@@ -84,7 +84,7 @@ fn strict_output_gate_ignored_without_strict_formats() {
         }],
     };
     let decision = gate_strict_outputs(&[OutputFormat::Xml], true, &[report]);
-    assert!(!decision.block_strict_outputs);
+    assert!(!decision.blocks_output());
     assert!(decision.blocking_domains.is_empty());
 }
 

@@ -21,9 +21,10 @@ pub(super) use crate::ct_utils::{normalize_ct_value, preferred_term_for, resolve
 
 // Re-export operations module functions
 pub(super) use super::operations::{
-    backward_fill, backward_fill_var, clean_na_values, clean_na_values_vars,
-    clear_unit_when_empty_var, derive_test_from_testcd, normalize_ct_columns,
-    resolve_testcd_from_test, yn_mapping,
+    backward_fill, backward_fill_batch, backward_fill_var, clean_na_values, clean_na_values_vars,
+    clear_unit_when_empty_var, clear_units_batch, compute_study_days_batch, derive_test_from_testcd,
+    normalize_ct_batch, normalize_ct_columns, normalize_numeric_f64, normalize_numeric_i64,
+    resolve_testcd_from_test, trim_columns, yn_mapping,
 };
 
 pub(super) fn col<'a>(domain: &'a Domain, name: &str) -> Option<&'a str> {

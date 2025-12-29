@@ -220,187 +220,165 @@ fn build_default_registry() -> ProcessorRegistry {
     registry
 }
 
-/// Macro to create a domain processor from a processing function.
-///
-/// Generates a struct implementing [`DomainProcessor`] that delegates to
-/// the specified processing function. This provides compile-time generation
-/// instead of runtime wrapping.
-///
-/// # Syntax
-///
-/// ```ignore
-/// domain_processor!("AE", AEProcessor, process_ae);
-/// domain_processor!("DM", DMProcessor, process_dm, "Demographics domain processor");
-/// ```
-///
-/// # Arguments
-///
-/// * `code` - The SDTM domain code (e.g., "AE", "DM", "VS")
-/// * `struct_name` - The name of the generated processor struct
-/// * `fn_name` - The processing function to delegate to
-/// * `description` - Optional description string (defaults to "Domain processor")
-///
-/// # Example
-///
-/// ```ignore
-/// // In ae.rs:
-/// pub(super) fn process_ae(domain: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
-///     // AE-specific processing...
-///     Ok(())
-/// }
-///
-/// // In processor_trait.rs:
-/// domain_processor!("AE", AEProcessor, super::ae::process_ae, "Adverse Events processor");
-///
-/// // Register in build_default_registry:
-/// registry.register(Box::new(AEProcessor));
-/// ```
-macro_rules! domain_processor {
-    ($code:literal, $struct_name:ident, $fn:path) => {
-        struct $struct_name;
+// ============================================================================
+// Domain Processor Implementations
+// ============================================================================
+//
+// Each processor delegates to the corresponding process_XX function in its
+// domain module. The implementations are intentionally simple and explicit.
 
-        impl DomainProcessor for $struct_name {
-            fn domain_code(&self) -> &'static str {
-                $code
-            }
-
-            fn process(
-                &self,
-                domain: &Domain,
-                df: &mut DataFrame,
-                context: &PipelineContext,
-            ) -> Result<()> {
-                $fn(domain, df, context)
-            }
-        }
-    };
-    ($code:literal, $struct_name:ident, $fn:path, $desc:literal) => {
-        struct $struct_name;
-
-        impl DomainProcessor for $struct_name {
-            fn domain_code(&self) -> &'static str {
-                $code
-            }
-
-            fn description(&self) -> &'static str {
-                $desc
-            }
-
-            fn process(
-                &self,
-                domain: &Domain,
-                df: &mut DataFrame,
-                context: &PipelineContext,
-            ) -> Result<()> {
-                $fn(domain, df, context)
-            }
-        }
-    };
+struct AEProcessor;
+impl DomainProcessor for AEProcessor {
+    fn domain_code(&self) -> &'static str { "AE" }
+    fn description(&self) -> &'static str { "Adverse Events processor" }
+    fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
+        super::ae::process_ae(d, df, ctx)
+    }
 }
 
-// Generate all domain processor structs at compile time
-domain_processor!(
-    "AE",
-    AEProcessor,
-    super::ae::process_ae,
-    "Adverse Events processor"
-);
-domain_processor!(
-    "CM",
-    CMProcessor,
-    super::cm::process_cm,
-    "Concomitant Medications processor"
-);
-domain_processor!(
-    "DA",
-    DAProcessor,
-    super::da::process_da,
-    "Drug Accountability processor"
-);
-domain_processor!(
-    "DM",
-    DMProcessor,
-    super::dm::process_dm,
-    "Demographics processor"
-);
-domain_processor!(
-    "DS",
-    DSProcessor,
-    super::ds::process_ds,
-    "Disposition processor"
-);
-domain_processor!(
-    "EX",
-    EXProcessor,
-    super::ex::process_ex,
-    "Exposure processor"
-);
-domain_processor!(
-    "IE",
-    IEProcessor,
-    super::ie::process_ie,
-    "Inclusion/Exclusion processor"
-);
-domain_processor!(
-    "LB",
-    LBProcessor,
-    super::lb::process_lb,
-    "Laboratory Results processor"
-);
-domain_processor!(
-    "MH",
-    MHProcessor,
-    super::mh::process_mh,
-    "Medical History processor"
-);
-domain_processor!(
-    "PE",
-    PEProcessor,
-    super::pe::process_pe,
-    "Physical Examination processor"
-);
-domain_processor!(
-    "PR",
-    PRProcessor,
-    super::pr::process_pr,
-    "Procedures processor"
-);
-domain_processor!(
-    "QS",
-    QSProcessor,
-    super::qs::process_qs,
-    "Questionnaires processor"
-);
-domain_processor!(
-    "SE",
-    SEProcessor,
-    super::se::process_se,
-    "Subject Elements processor"
-);
-domain_processor!(
-    "TA",
-    TAProcessor,
-    super::ta::process_ta,
-    "Trial Arms processor"
-);
-domain_processor!(
-    "TE",
-    TEProcessor,
-    super::te::process_te,
-    "Trial Elements processor"
-);
-domain_processor!(
-    "TS",
-    TSProcessor,
-    super::ts::process_ts,
-    "Trial Summary processor"
-);
-domain_processor!(
-    "VS",
-    VSProcessor,
-    super::vs::process_vs,
-    "Vital Signs processor"
-);
+struct CMProcessor;
+impl DomainProcessor for CMProcessor {
+    fn domain_code(&self) -> &'static str { "CM" }
+    fn description(&self) -> &'static str { "Concomitant Medications processor" }
+    fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
+        super::cm::process_cm(d, df, ctx)
+    }
+}
+
+struct DAProcessor;
+impl DomainProcessor for DAProcessor {
+    fn domain_code(&self) -> &'static str { "DA" }
+    fn description(&self) -> &'static str { "Drug Accountability processor" }
+    fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
+        super::da::process_da(d, df, ctx)
+    }
+}
+
+struct DMProcessor;
+impl DomainProcessor for DMProcessor {
+    fn domain_code(&self) -> &'static str { "DM" }
+    fn description(&self) -> &'static str { "Demographics processor" }
+    fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
+        super::dm::process_dm(d, df, ctx)
+    }
+}
+
+struct DSProcessor;
+impl DomainProcessor for DSProcessor {
+    fn domain_code(&self) -> &'static str { "DS" }
+    fn description(&self) -> &'static str { "Disposition processor" }
+    fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
+        super::ds::process_ds(d, df, ctx)
+    }
+}
+
+struct EXProcessor;
+impl DomainProcessor for EXProcessor {
+    fn domain_code(&self) -> &'static str { "EX" }
+    fn description(&self) -> &'static str { "Exposure processor" }
+    fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
+        super::ex::process_ex(d, df, ctx)
+    }
+}
+
+struct IEProcessor;
+impl DomainProcessor for IEProcessor {
+    fn domain_code(&self) -> &'static str { "IE" }
+    fn description(&self) -> &'static str { "Inclusion/Exclusion processor" }
+    fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
+        super::ie::process_ie(d, df, ctx)
+    }
+}
+
+struct LBProcessor;
+impl DomainProcessor for LBProcessor {
+    fn domain_code(&self) -> &'static str { "LB" }
+    fn description(&self) -> &'static str { "Laboratory Results processor" }
+    fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
+        super::lb::process_lb(d, df, ctx)
+    }
+}
+
+struct MHProcessor;
+impl DomainProcessor for MHProcessor {
+    fn domain_code(&self) -> &'static str { "MH" }
+    fn description(&self) -> &'static str { "Medical History processor" }
+    fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
+        super::mh::process_mh(d, df, ctx)
+    }
+}
+
+struct PEProcessor;
+impl DomainProcessor for PEProcessor {
+    fn domain_code(&self) -> &'static str { "PE" }
+    fn description(&self) -> &'static str { "Physical Examination processor" }
+    fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
+        super::pe::process_pe(d, df, ctx)
+    }
+}
+
+struct PRProcessor;
+impl DomainProcessor for PRProcessor {
+    fn domain_code(&self) -> &'static str { "PR" }
+    fn description(&self) -> &'static str { "Procedures processor" }
+    fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
+        super::pr::process_pr(d, df, ctx)
+    }
+}
+
+struct QSProcessor;
+impl DomainProcessor for QSProcessor {
+    fn domain_code(&self) -> &'static str { "QS" }
+    fn description(&self) -> &'static str { "Questionnaires processor" }
+    fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
+        super::qs::process_qs(d, df, ctx)
+    }
+}
+
+struct SEProcessor;
+impl DomainProcessor for SEProcessor {
+    fn domain_code(&self) -> &'static str { "SE" }
+    fn description(&self) -> &'static str { "Subject Elements processor" }
+    fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
+        super::se::process_se(d, df, ctx)
+    }
+}
+
+struct TAProcessor;
+impl DomainProcessor for TAProcessor {
+    fn domain_code(&self) -> &'static str { "TA" }
+    fn description(&self) -> &'static str { "Trial Arms processor" }
+    fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
+        super::ta::process_ta(d, df, ctx)
+    }
+}
+
+struct TEProcessor;
+impl DomainProcessor for TEProcessor {
+    fn domain_code(&self) -> &'static str { "TE" }
+    fn description(&self) -> &'static str { "Trial Elements processor" }
+    fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
+        super::te::process_te(d, df, ctx)
+    }
+}
+
+struct TSProcessor;
+impl DomainProcessor for TSProcessor {
+    fn domain_code(&self) -> &'static str { "TS" }
+    fn description(&self) -> &'static str { "Trial Summary processor" }
+    fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
+        super::ts::process_ts(d, df, ctx)
+    }
+}
+
+struct VSProcessor;
+impl DomainProcessor for VSProcessor {
+    fn domain_code(&self) -> &'static str { "VS" }
+    fn description(&self) -> &'static str { "Vital Signs processor" }
+    fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
+        super::vs::process_vs(d, df, ctx)
+    }
+}
 
 #[cfg(test)]
 mod tests {

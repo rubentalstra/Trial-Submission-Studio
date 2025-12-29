@@ -3,7 +3,7 @@ use std::path::Path;
 
 use anyhow::Result;
 
-use sdtm_model::{DatasetClass, DatasetMetadata, Domain, Variable, VariableType};
+use sdtm_model::{DatasetClass, Domain, Variable, VariableType};
 
 use crate::csv_utils::{default_standards_root, read_csv_rows};
 
@@ -27,26 +27,30 @@ pub fn load_sdtm_ig_domains(base_dir: &Path) -> Result<Vec<Domain>> {
     build_domains(&datasets, &variables, "Dataset Name")
 }
 
+/// Metadata fields collected from Datasets.csv rows (used only during loading).
+struct DatasetRow {
+    class_name: Option<String>,
+    dataset_class: Option<DatasetClass>,
+    label: Option<String>,
+    structure: Option<String>,
+}
+
 fn build_domains(
     datasets: &[BTreeMap<String, String>],
     variables: &[BTreeMap<String, String>],
     dataset_key: &str,
 ) -> Result<Vec<Domain>> {
-    let mut meta = BTreeMap::new();
+    let mut meta: BTreeMap<String, DatasetRow> = BTreeMap::new();
     for row in datasets {
         let name = row.get(dataset_key).cloned().unwrap_or_default();
         if name.is_empty() {
             continue;
         }
         let class_name = row.get("Class").filter(|v| !v.is_empty()).cloned();
-        // Parse the class name into the strongly-typed DatasetClass enum
-        let dataset_class = class_name
-            .as_ref()
-            .and_then(|c| c.parse::<DatasetClass>().ok());
+        let dataset_class = class_name.as_ref().and_then(|c| c.parse().ok());
         meta.insert(
             name.to_uppercase(),
-            DatasetMetadata {
-                dataset_name: name.to_uppercase(),
+            DatasetRow {
                 class_name,
                 dataset_class,
                 label: row.get("Dataset Label").filter(|v| !v.is_empty()).cloned(),

@@ -1,3 +1,7 @@
+//! Medical History (MH) domain processor.
+//!
+//! Processes MH domain data per SDTMIG v3.4 Section 6.3.6.
+
 use anyhow::Result;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
@@ -5,8 +9,8 @@ use sdtm_model::Domain;
 use crate::pipeline_context::PipelineContext;
 
 use super::common::{
-    col, compute_study_day, has_column, normalize_ct_columns, normalize_iso8601,
-    numeric_column_f64, set_f64_column, set_string_column, string_column,
+    col, compute_study_days_batch, has_column, normalize_ct_batch, normalize_iso8601,
+    normalize_numeric_f64, set_string_column, string_column,
 };
 
 pub(super) fn process_mh(
@@ -14,12 +18,10 @@ pub(super) fn process_mh(
     df: &mut DataFrame,
     context: &PipelineContext,
 ) -> Result<()> {
-    if let Some(mhseq) = col(domain, "MHSEQ")
-        && has_column(df, mhseq)
-    {
-        let values = numeric_column_f64(df, mhseq)?;
-        set_f64_column(df, mhseq, values)?;
-    }
+    // Normalize MHSEQ as numeric
+    normalize_numeric_f64(domain, df, &["MHSEQ"])?;
+
+    // Backward fill MHTERM from MHDECOD
     if let Some(mhterm) = col(domain, "MHTERM")
         && has_column(df, mhterm)
     {
@@ -36,58 +38,52 @@ pub(super) fn process_mh(
         }
         set_string_column(df, mhterm, terms)?;
     }
-    for col_name in ["MHSTDTC", "MHENDTC", "MHDTC"] {
-        if let Some(name) = col(domain, col_name)
+
+    // Normalize date columns
+    for date_col in ["MHSTDTC", "MHENDTC", "MHDTC"] {
+        if let Some(name) = col(domain, date_col)
             && has_column(df, name)
         {
             let values = string_column(df, name)?
                 .into_iter()
-                .map(|value| normalize_iso8601(&value))
+                .map(|v| normalize_iso8601(&v))
                 .collect();
             set_string_column(df, name, values)?;
         }
     }
+
+    // Process MHENRF (End Relative to Reference Period)
     if let Some(mhenrf) = col(domain, "MHENRF")
         && has_column(df, mhenrf)
     {
         let values = string_column(df, mhenrf)?
             .into_iter()
-            .map(|value| {
-                let upper = value.to_uppercase();
-                match upper.as_str() {
+            .map(|v| {
+                match v.to_uppercase().as_str() {
                     "Y" | "YES" | "TRUE" | "1" => "ONGOING".to_string(),
-                    "N" | "NO" | "FALSE" | "0" => "".to_string(),
+                    "N" | "NO" | "FALSE" | "0" => String::new(),
                     "PRIOR" => "BEFORE".to_string(),
                     "POST" => "AFTER".to_string(),
                     "CONCURRENT" => "COINCIDENT".to_string(),
                     "UNK" | "U" => "UNKNOWN".to_string(),
-                    _ => upper,
+                    _ => v.to_uppercase(),
                 }
             })
             .collect();
         set_string_column(df, mhenrf, values)?;
     }
-    if let (Some(mhdtc), Some(mhdy)) = (col(domain, "MHDTC"), col(domain, "MHDY"))
-        && has_column(df, mhdtc)
-    {
-        compute_study_day(domain, df, mhdtc, mhdy, context, "RFSTDTC")?;
-        let values = numeric_column_f64(df, mhdy)?;
-        set_f64_column(df, mhdy, values)?;
-    }
 
-    // Normalize CT columns
-    // MHCAT: Category
-    normalize_ct_columns(domain, df, context, "MHCAT", &["MHCAT"])?;
-    // MHSCAT: Subcategory
-    normalize_ct_columns(domain, df, context, "MHSCAT", &["MHSCAT"])?;
-    // MHENRF: End Relative to Reference Period (Codelist C66728)
-    normalize_ct_columns(domain, df, context, "MHENRF", &["MHENRF"])?;
-    // MHSTRF: Start Relative to Reference Period (Codelist C66728)
-    normalize_ct_columns(domain, df, context, "MHSTRF", &["MHSTRF"])?;
-    // MHPRESP: Pre-specified (Codelist C66742)
-    normalize_ct_columns(domain, df, context, "MHPRESP", &["MHPRESP"])?;
-    // MHOCCUR: Occurrence (Codelist C66742)
-    normalize_ct_columns(domain, df, context, "MHOCCUR", &["MHOCCUR"])?;
+    // Compute study day
+    compute_study_days_batch(domain, df, context, &[("MHDTC", "MHDY")])?;
+    normalize_numeric_f64(domain, df, &["MHDY"])?;
+
+    // Batch CT normalization
+    normalize_ct_batch(
+        domain,
+        df,
+        context,
+        &["MHCAT", "MHSCAT", "MHENRF", "MHSTRF", "MHPRESP", "MHOCCUR"],
+    )?;
 
     Ok(())
 }

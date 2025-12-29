@@ -335,7 +335,7 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
         &conformance_reports,
     );
 
-    if gating.block_strict_outputs {
+    if gating.blocks_output() {
         warn!(
             study_id = %study_id,
             blocked_domains = ?gating.blocking_domains,
@@ -351,7 +351,7 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     // Stage 6: Output - Write XPT, Dataset-XML, Define-XML, SAS
     // =========================================================================
     // Filter formats based on gating decision
-    let gated_formats: Vec<OutputFormat> = if gating.block_strict_outputs {
+    let gated_formats: Vec<OutputFormat> = if gating.blocks_output() {
         // Block XPT output when conformance errors exist
         output_formats
             .iter()
@@ -381,7 +381,7 @@ pub fn run_study(args: &StudyArgs) -> Result<StudyResult> {
     // Post-processing: Verify XPT counts and build summaries
     // =========================================================================
     let mut data_checks = Vec::new();
-    let want_xpt_and_not_blocked = want_xpt && !gating.block_strict_outputs;
+    let want_xpt_and_not_blocked = want_xpt && !gating.blocks_output();
     if want_xpt_and_not_blocked && !args.dry_run {
         let (xpt_counts, xpt_errors) = verify_xpt_counts(&output_paths, &input_counts);
         errors.extend(xpt_errors);

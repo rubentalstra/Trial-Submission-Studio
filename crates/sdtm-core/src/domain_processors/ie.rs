@@ -1,3 +1,7 @@
+//! Inclusion/Exclusion Criteria (IE) domain processor.
+//!
+//! Processes IE domain data per SDTMIG v3.4 Section 6.3.
+
 use anyhow::Result;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
@@ -5,8 +9,9 @@ use sdtm_model::Domain;
 use crate::pipeline_context::PipelineContext;
 
 use super::common::{
-    apply_map_upper, backward_fill_var, col, compute_study_day, has_column, normalize_ct_columns,
-    numeric_column_f64, set_f64_column, set_string_column, string_column, yn_mapping,
+    apply_map_upper, backward_fill_var, col, compute_study_days_batch, has_column,
+    normalize_ct_batch, normalize_ct_columns, normalize_numeric_f64, set_string_column,
+    string_column, yn_mapping,
 };
 
 pub(super) fn process_ie(
@@ -14,18 +19,6 @@ pub(super) fn process_ie(
     df: &mut DataFrame,
     context: &PipelineContext,
 ) -> Result<()> {
-    // Normalize string columns
-    for col_name in [
-        "IEORRES", "IESTRESC", "IETESTCD", "IETEST", "IECAT", "IESCAT", "EPOCH",
-    ] {
-        if let Some(name) = col(domain, col_name)
-            && has_column(df, name)
-        {
-            let values = string_column(df, name)?;
-            set_string_column(df, name, values)?;
-        }
-    }
-
     // Apply Y/N mapping to IEORRES
     if let Some(ieorres) = col(domain, "IEORRES") {
         apply_map_upper(df, Some(ieorres), &yn_mapping())?;
@@ -35,45 +28,40 @@ pub(super) fn process_ie(
     backward_fill_var(domain, df, "IEORRES", "IESTRESC")?;
 
     // Set IESTRESC to "Y" for EXCLUSION category when empty
-    if let (Some(iecat), Some(iestresc)) = (col(domain, "IECAT"), col(domain, "IESTRESC"))
-        && has_column(df, iecat)
-        && has_column(df, iestresc)
-    {
-        let cat_vals = string_column(df, iecat)?;
-        let mut stresc_vals = string_column(df, iestresc)?;
-        for idx in 0..df.height() {
-            if cat_vals[idx].eq_ignore_ascii_case("EXCLUSION") && stresc_vals[idx].trim().is_empty()
-            {
-                stresc_vals[idx] = "Y".to_string();
-            }
-        }
-        set_string_column(df, iestresc, stresc_vals)?;
-    }
+    set_exclusion_default(domain, df)?;
 
     // Compute study day
-    if let (Some(iedtc), Some(iedy)) = (col(domain, "IEDTC"), col(domain, "IEDY"))
-        && has_column(df, iedtc)
-    {
-        let values = string_column(df, iedtc)?;
-        set_string_column(df, iedtc, values)?;
-        compute_study_day(domain, df, iedtc, iedy, context, "RFSTDTC")?;
-        let numeric = numeric_column_f64(df, iedy)?;
-        set_f64_column(df, iedy, numeric)?;
-    }
+    compute_study_days_batch(domain, df, context, &[("IEDTC", "IEDY")])?;
+    normalize_numeric_f64(domain, df, &["IEDY"])?;
 
-    // Normalize CT columns
-    // IETESTCD: Test Code
-    normalize_ct_columns(domain, df, context, "IETESTCD", &["IETESTCD"])?;
-    // IETEST: Test Name
-    normalize_ct_columns(domain, df, context, "IETEST", &["IETEST"])?;
-    // IECAT: Category (Codelist C66781)
-    normalize_ct_columns(domain, df, context, "IECAT", &["IECAT"])?;
-    // IESCAT: Subcategory
-    normalize_ct_columns(domain, df, context, "IESCAT", &["IESCAT"])?;
-    // IEORRES/IESTRESC: Original/Standardized Result (Codelist C66742)
+    // Batch CT normalization
+    normalize_ct_batch(
+        domain,
+        df,
+        context,
+        &["IETESTCD", "IETEST", "IECAT", "IESCAT", "EPOCH"],
+    )?;
+    // IEORRES/IESTRESC share codelist
     normalize_ct_columns(domain, df, context, "IEORRES", &["IEORRES", "IESTRESC"])?;
-    // EPOCH: Epoch (Codelist C99079)
-    normalize_ct_columns(domain, df, context, "EPOCH", &["EPOCH"])?;
 
     Ok(())
+}
+
+/// Set IESTRESC to "Y" for EXCLUSION category when empty.
+fn set_exclusion_default(domain: &Domain, df: &mut DataFrame) -> Result<()> {
+    let (Some(iecat), Some(iestresc)) = (col(domain, "IECAT"), col(domain, "IESTRESC")) else {
+        return Ok(());
+    };
+    if !has_column(df, iecat) || !has_column(df, iestresc) {
+        return Ok(());
+    }
+
+    let cat_vals = string_column(df, iecat)?;
+    let mut stresc_vals = string_column(df, iestresc)?;
+    for idx in 0..df.height() {
+        if cat_vals[idx].eq_ignore_ascii_case("EXCLUSION") && stresc_vals[idx].trim().is_empty() {
+            stresc_vals[idx] = "Y".to_string();
+        }
+    }
+    set_string_column(df, iestresc, stresc_vals)
 }

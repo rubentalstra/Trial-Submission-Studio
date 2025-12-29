@@ -9,8 +9,8 @@ use sdtm_model::Domain;
 use crate::pipeline_context::PipelineContext;
 
 use super::common::{
-    apply_map_upper, col, compute_study_day, has_column, map_values, normalize_ct_columns,
-    parse_f64, set_string_column, string_column,
+    apply_map_upper, col, compute_study_days_batch, has_column, map_values, normalize_ct_batch,
+    parse_f64, set_string_column, string_column, trim_columns,
 };
 
 pub(super) fn process_cm(
@@ -18,6 +18,7 @@ pub(super) fn process_cm(
     df: &mut DataFrame,
     context: &PipelineContext,
 ) -> Result<()> {
+    // Lowercase CMDOSU
     if let Some(cmdosu) = col(domain, "CMDOSU")
         && has_column(df, cmdosu)
     {
@@ -27,19 +28,18 @@ pub(super) fn process_cm(
             .collect();
         set_string_column(df, cmdosu, values)?;
     }
-    if let Some(cmdur) = col(domain, "CMDUR")
-        && has_column(df, cmdur)
-    {
-        let values = string_column(df, cmdur)?;
-        set_string_column(df, cmdur, values)?;
-    }
+
+    // Trim CMDUR
+    trim_columns(domain, df, &["CMDUR"])?;
+
+    // Prefix numeric CMDOSTXT with "DOSE "
     if let Some(cmdostxt) = col(domain, "CMDOSTXT")
         && has_column(df, cmdostxt)
     {
         let values = string_column(df, cmdostxt)?
             .into_iter()
-            .map(|value| {
-                let trimmed = value.trim();
+            .map(|v| {
+                let trimmed = v.trim();
                 if parse_f64(trimmed).is_some() {
                     format!("DOSE {}", trimmed)
                 } else {
@@ -49,46 +49,41 @@ pub(super) fn process_cm(
             .collect();
         set_string_column(df, cmdostxt, values)?;
     }
+
+    // Map CMSTAT values
     if let Some(cmstat) = col(domain, "CMSTAT") {
-        let stat_map = map_values([
-            ("NOT DONE", "NOT DONE"),
-            ("ND", "NOT DONE"),
-            ("", ""),
-            ("NAN", ""),
-        ]);
+        let stat_map =
+            map_values([("NOT DONE", "NOT DONE"), ("ND", "NOT DONE"), ("", ""), ("NAN", "")]);
         apply_map_upper(df, Some(cmstat), &stat_map)?;
     }
-    // Normalize dosing frequency via CT (Codelist C71113)
-    normalize_ct_columns(domain, df, context, "CMDOSFRQ", &["CMDOSFRQ"])?;
-    // Normalize administration route via CT (Codelist C66729)
-    normalize_ct_columns(domain, df, context, "CMROUTE", &["CMROUTE"])?;
+
+    // Batch CT normalization
+    normalize_ct_batch(domain, df, context, &["CMDOSFRQ", "CMROUTE"])?;
+
+    // Clean NA-like values from CMDOSU
     if let Some(cmdosu) = col(domain, "CMDOSU")
         && has_column(df, cmdosu)
     {
         let values = string_column(df, cmdosu)?
             .into_iter()
-            .map(|value| {
-                let trimmed = value.trim();
-                let upper = trimmed.to_uppercase();
+            .map(|v| {
+                let upper = v.trim().to_uppercase();
                 match upper.as_str() {
-                    "" | "UNK" | "UNKNOWN" | "NA" | "N/A" | "NONE" | "NAN" | "<NA>" => {
-                        String::new()
-                    }
-                    _ => trimmed.to_string(),
+                    "" | "UNK" | "UNKNOWN" | "NA" | "N/A" | "NONE" | "NAN" | "<NA>" => String::new(),
+                    _ => v.trim().to_string(),
                 }
             })
             .collect();
         set_string_column(df, cmdosu, values)?;
     }
-    if let Some(cmstdtc) = col(domain, "CMSTDTC")
-        && let Some(cmstdy) = col(domain, "CMSTDY")
-    {
-        compute_study_day(domain, df, cmstdtc, cmstdy, context, "RFSTDTC")?;
-    }
-    if let Some(cmendtc) = col(domain, "CMENDTC")
-        && let Some(cmendy) = col(domain, "CMENDY")
-    {
-        compute_study_day(domain, df, cmendtc, cmendy, context, "RFSTDTC")?;
-    }
+
+    // Compute study days
+    compute_study_days_batch(
+        domain,
+        df,
+        context,
+        &[("CMSTDTC", "CMSTDY"), ("CMENDTC", "CMENDY")],
+    )?;
+
     Ok(())
 }

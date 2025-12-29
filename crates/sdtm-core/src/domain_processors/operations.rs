@@ -398,6 +398,213 @@ pub fn clean_na_values_vars(domain: &Domain, df: &mut DataFrame, columns: &[&str
     Ok(())
 }
 
+// =============================================================================
+// Batch helper functions for reducing domain processor boilerplate
+// =============================================================================
+
+/// Batch normalize multiple CT columns where field name equals variable name.
+///
+/// This is a convenience wrapper around [`normalize_ct_columns`] for the common
+/// case where the CT field name matches the variable name.
+///
+/// # Example
+///
+/// Before:
+/// ```ignore
+/// normalize_ct_columns(domain, df, context, "LBCAT", &["LBCAT"])?;
+/// normalize_ct_columns(domain, df, context, "LBSCAT", &["LBSCAT"])?;
+/// normalize_ct_columns(domain, df, context, "LBSPEC", &["LBSPEC"])?;
+/// ```
+///
+/// After:
+/// ```ignore
+/// normalize_ct_batch(domain, df, context, &["LBCAT", "LBSCAT", "LBSPEC"])?;
+/// ```
+pub fn normalize_ct_batch(
+    domain: &Domain,
+    df: &mut DataFrame,
+    context: &PipelineContext,
+    fields: &[&str],
+) -> Result<()> {
+    for field in fields {
+        normalize_ct_columns(domain, df, context, field, &[field])?;
+    }
+    Ok(())
+}
+
+/// Batch compute study days for multiple date/day column pairs.
+///
+/// Each pair is (dtc_var, dy_var) where:
+/// - `dtc_var` is the date column (e.g., "AESTDTC", "LBDTC")
+/// - `dy_var` is the study day column (e.g., "AESTDY", "LBDY")
+///
+/// # Example
+///
+/// Before:
+/// ```ignore
+/// if let Some(aestdtc) = col(domain, "AESTDTC") && let Some(aestdy) = col(domain, "AESTDY") {
+///     compute_study_day(domain, df, aestdtc, aestdy, context, "RFSTDTC")?;
+/// }
+/// if let Some(aeendtc) = col(domain, "AEENDTC") && let Some(aeendy) = col(domain, "AEENDY") {
+///     compute_study_day(domain, df, aeendtc, aeendy, context, "RFSTDTC")?;
+/// }
+/// ```
+///
+/// After:
+/// ```ignore
+/// compute_study_days_batch(domain, df, context, &[("AESTDTC", "AESTDY"), ("AEENDTC", "AEENDY")])?;
+/// ```
+pub fn compute_study_days_batch(
+    domain: &Domain,
+    df: &mut DataFrame,
+    context: &PipelineContext,
+    date_pairs: &[(&str, &str)],
+) -> Result<()> {
+    for (dtc_var, dy_var) in date_pairs {
+        if let Some(dtc_col) = col(domain, dtc_var)
+            && let Some(dy_col) = col(domain, dy_var)
+        {
+            super::common::compute_study_day(domain, df, dtc_col, dy_col, context, "RFSTDTC")?;
+        }
+    }
+    Ok(())
+}
+
+/// Batch trim and normalize string columns.
+///
+/// For each column, reads all string values, trims whitespace, and writes back.
+/// Silently skips columns that don't exist in the DataFrame.
+///
+/// # Example
+///
+/// Before:
+/// ```ignore
+/// if let Some(col) = col(domain, "EXTRT") && has_column(df, col) {
+///     let values = string_column(df, col)?;
+///     set_string_column(df, col, values)?;
+/// }
+/// if let Some(col) = col(domain, "EXDOSFRM") && has_column(df, col) {
+///     let values = string_column(df, col)?;
+///     set_string_column(df, col, values)?;
+/// }
+/// ```
+///
+/// After:
+/// ```ignore
+/// trim_columns(domain, df, &["EXTRT", "EXDOSFRM"])?;
+/// ```
+pub fn trim_columns(domain: &Domain, df: &mut DataFrame, columns: &[&str]) -> Result<()> {
+    for col_name in columns {
+        if let Some(name) = col(domain, col_name)
+            && has_column(df, name)
+        {
+            let values = string_column(df, name)?;
+            set_string_column(df, name, values)?;
+        }
+    }
+    Ok(())
+}
+
+/// Batch normalize numeric columns (f64).
+///
+/// For each column, reads all values as f64 and writes back. This ensures
+/// consistent numeric formatting and type handling.
+///
+/// # Example
+///
+/// Before:
+/// ```ignore
+/// if let Some(age) = col(domain, "AGE") && has_column(df, age) {
+///     let values = numeric_column_f64(df, age)?;
+///     set_f64_column(df, age, values)?;
+/// }
+/// if let Some(dose) = col(domain, "EXDOSE") && has_column(df, dose) {
+///     let values = numeric_column_f64(df, dose)?;
+///     set_f64_column(df, dose, values)?;
+/// }
+/// ```
+///
+/// After:
+/// ```ignore
+/// normalize_numeric_f64(domain, df, &["AGE", "EXDOSE"])?;
+/// ```
+pub fn normalize_numeric_f64(domain: &Domain, df: &mut DataFrame, columns: &[&str]) -> Result<()> {
+    for col_name in columns {
+        if let Some(name) = col(domain, col_name)
+            && has_column(df, name)
+        {
+            let values = super::common::numeric_column_f64(df, name)?;
+            super::common::set_f64_column(df, name, values)?;
+        }
+    }
+    Ok(())
+}
+
+/// Batch normalize integer columns (i64).
+///
+/// Similar to [`normalize_numeric_f64`] but for integer columns.
+pub fn normalize_numeric_i64(domain: &Domain, df: &mut DataFrame, columns: &[&str]) -> Result<()> {
+    for col_name in columns {
+        if let Some(name) = col(domain, col_name)
+            && has_column(df, name)
+        {
+            let values = super::common::numeric_column_i64(df, name)?;
+            super::common::set_i64_column(df, name, values)?;
+        }
+    }
+    Ok(())
+}
+
+/// Batch backward fill from source variables to target variables.
+///
+/// Each pair is (source_var, target_var).
+///
+/// # Example
+///
+/// Before:
+/// ```ignore
+/// backward_fill_var(domain, df, "LBORRES", "LBSTRESC")?;
+/// backward_fill_var(domain, df, "LBORRESU", "LBSTRESU")?;
+/// ```
+///
+/// After:
+/// ```ignore
+/// backward_fill_batch(domain, df, &[("LBORRES", "LBSTRESC"), ("LBORRESU", "LBSTRESU")])?;
+/// ```
+pub fn backward_fill_batch(
+    domain: &Domain,
+    df: &mut DataFrame,
+    pairs: &[(&str, &str)],
+) -> Result<()> {
+    for (source_var, target_var) in pairs {
+        backward_fill_var(domain, df, source_var, target_var)?;
+    }
+    Ok(())
+}
+
+/// Batch clear units when result columns are empty.
+///
+/// Each pair is (result_var, unit_var).
+///
+/// # Example
+///
+/// Before:
+/// ```ignore
+/// clear_unit_when_empty_var(domain, df, "LBORRES", "LBORRESU")?;
+/// clear_unit_when_empty_var(domain, df, "LBSTRESC", "LBSTRESU")?;
+/// ```
+///
+/// After:
+/// ```ignore
+/// clear_units_batch(domain, df, &[("LBORRES", "LBORRESU"), ("LBSTRESC", "LBSTRESU")])?;
+/// ```
+pub fn clear_units_batch(domain: &Domain, df: &mut DataFrame, pairs: &[(&str, &str)]) -> Result<()> {
+    for (result_var, unit_var) in pairs {
+        clear_unit_when_empty_var(domain, df, result_var, unit_var)?;
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use polars::prelude::{Column, IntoColumn, NamedFrom, Series};

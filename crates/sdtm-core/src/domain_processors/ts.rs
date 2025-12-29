@@ -1,3 +1,7 @@
+//! Trial Summary (TS) domain processor.
+//!
+//! Processes TS domain data per SDTMIG v3.4 Section 7.3.
+
 use anyhow::Result;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
@@ -14,46 +18,35 @@ pub(super) fn process_ts(
     if df.height() == 0 {
         return Ok(());
     }
-    for col_name in [
-        "STUDYID", "DOMAIN", "TSPARMCD", "TSPARM", "TSVAL", "TSVALCD", "TSVCDREF", "TSVCDVER",
-        "TSGRPID", "TSVALNF",
-    ] {
-        if let Some(name) = col(domain, col_name)
-            && has_column(df, name)
-        {
-            let values = string_column(df, name)?;
-            set_string_column(df, name, values)?;
-        }
+
+    // Normalize CT columns that have direct codelist mappings
+    for ct_col in ["TSPARMCD", "TSPARM", "TSVCDREF"] {
+        normalize_ts_ct_column(domain, df, context, ct_col)?;
     }
-    if let Some(tsparmcd) = col(domain, "TSPARMCD")
-        && has_column(df, tsparmcd)
-        && let Some(ct) = context.resolve_ct(domain, "TSPARMCD")
-    {
-        let mut values = string_column(df, tsparmcd)?;
-        for value in &mut values {
-            *value = normalize_ct_value(ct, value, context.options.ct_matching);
-        }
-        set_string_column(df, tsparmcd, values)?;
-    }
-    if let Some(tsparm) = col(domain, "TSPARM")
-        && has_column(df, tsparm)
-        && let Some(ct) = context.resolve_ct(domain, "TSPARM")
-    {
-        let mut values = string_column(df, tsparm)?;
-        for value in &mut values {
-            *value = normalize_ct_value(ct, value, context.options.ct_matching);
-        }
-        set_string_column(df, tsparm, values)?;
-    }
-    if let Some(tsvcdref) = col(domain, "TSVCDREF")
-        && has_column(df, tsvcdref)
-        && let Some(ct) = context.resolve_ct(domain, "TSVCDREF")
-    {
-        let mut values = string_column(df, tsvcdref)?;
-        for value in &mut values {
-            *value = normalize_ct_value(ct, value, context.options.ct_matching);
-        }
-        set_string_column(df, tsvcdref, values)?;
-    }
+
     Ok(())
+}
+
+/// Normalize a TS column using controlled terminology.
+fn normalize_ts_ct_column(
+    domain: &Domain,
+    df: &mut DataFrame,
+    context: &PipelineContext,
+    col_name: &str,
+) -> Result<()> {
+    let Some(col_ref) = col(domain, col_name) else {
+        return Ok(());
+    };
+    if !has_column(df, col_ref) {
+        return Ok(());
+    }
+    let Some(ct) = context.resolve_ct(domain, col_name) else {
+        return Ok(());
+    };
+
+    let mut values = string_column(df, col_ref)?;
+    for value in &mut values {
+        *value = normalize_ct_value(ct, value, context.options.ct_matching);
+    }
+    set_string_column(df, col_ref, values)
 }

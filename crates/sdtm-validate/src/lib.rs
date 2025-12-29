@@ -13,10 +13,18 @@ use sdtm_model::{
 };
 use std::collections::{BTreeMap, BTreeSet};
 
+/// Decision about whether to block strict output formats based on validation errors.
 #[derive(Debug, Clone, Default)]
 pub struct GatingDecision {
-    pub block_strict_outputs: bool,
+    /// Domains that have blocking validation errors.
     pub blocking_domains: Vec<String>,
+}
+
+impl GatingDecision {
+    /// Returns true if strict outputs should be blocked.
+    pub fn blocks_output(&self) -> bool {
+        !self.blocking_domains.is_empty()
+    }
 }
 
 pub fn strict_outputs_requested(output_formats: &[OutputFormat]) -> bool {
@@ -40,7 +48,6 @@ pub fn gate_strict_outputs(
         }
     }
     GatingDecision {
-        block_strict_outputs: !blocking.is_empty(),
         blocking_domains: blocking.into_iter().collect(),
     }
 }

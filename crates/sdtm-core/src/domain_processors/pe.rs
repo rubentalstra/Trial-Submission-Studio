@@ -1,3 +1,7 @@
+//! Physical Examination (PE) domain processor.
+//!
+//! Processes PE domain data per SDTMIG v3.4 Section 6.3.7.
+
 use anyhow::Result;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
@@ -5,8 +9,8 @@ use sdtm_model::Domain;
 use crate::pipeline_context::PipelineContext;
 
 use super::common::{
-    apply_map_upper, col, compute_study_day, has_column, map_values, normalize_ct_columns,
-    set_string_column, string_column,
+    apply_map_upper, backward_fill_var, col, compute_study_days_batch, map_values,
+    normalize_ct_batch, trim_columns,
 };
 
 pub(super) fn process_pe(
@@ -14,6 +18,7 @@ pub(super) fn process_pe(
     df: &mut DataFrame,
     context: &PipelineContext,
 ) -> Result<()> {
+    // Map PESTAT values
     if let Some(pestat) = col(domain, "PESTAT") {
         let stat_map = map_values([
             ("NOT DONE", "NOT DONE"),
@@ -25,44 +30,23 @@ pub(super) fn process_pe(
         ]);
         apply_map_upper(df, Some(pestat), &stat_map)?;
     }
-    if let (Some(peorres), Some(pestresc)) = (col(domain, "PEORRES"), col(domain, "PESTRESC"))
-        && has_column(df, peorres)
-        && has_column(df, pestresc)
-    {
-        let orres = string_column(df, peorres)?;
-        let mut stresc = string_column(df, pestresc)?;
-        for idx in 0..df.height() {
-            if stresc[idx].is_empty() && !orres[idx].is_empty() {
-                stresc[idx] = orres[idx].clone();
-            }
-        }
-        set_string_column(df, pestresc, stresc)?;
-    }
-    if let Some(pedtc) = col(domain, "PEDTC")
-        && let Some(pedy) = col(domain, "PEDY")
-    {
-        compute_study_day(domain, df, pedtc, pedy, context, "RFSTDTC")?;
-    }
-    if let Some(epoch) = col(domain, "EPOCH")
-        && has_column(df, epoch)
-    {
-        let values = string_column(df, epoch)?;
-        set_string_column(df, epoch, values)?;
-    }
 
-    // Normalize CT columns
-    // PESTAT: Status (Codelist C66789)
-    normalize_ct_columns(domain, df, context, "PESTAT", &["PESTAT"])?;
-    // PELOC: Location (Codelist C74456)
-    normalize_ct_columns(domain, df, context, "PELOC", &["PELOC"])?;
-    // PEBODSYS: Body System (Codelist C66770)
-    normalize_ct_columns(domain, df, context, "PEBODSYS", &["PEBODSYS"])?;
-    // PECAT: Category
-    normalize_ct_columns(domain, df, context, "PECAT", &["PECAT"])?;
-    // PESCAT: Subcategory
-    normalize_ct_columns(domain, df, context, "PESCAT", &["PESCAT"])?;
-    // EPOCH: Epoch (Codelist C99079)
-    normalize_ct_columns(domain, df, context, "EPOCH", &["EPOCH"])?;
+    // Backward fill PEORRES → PESTRESC
+    backward_fill_var(domain, df, "PEORRES", "PESTRESC")?;
+
+    // Compute study day
+    compute_study_days_batch(domain, df, context, &[("PEDTC", "PEDY")])?;
+
+    // Trim EPOCH
+    trim_columns(domain, df, &["EPOCH"])?;
+
+    // Batch CT normalization
+    normalize_ct_batch(
+        domain,
+        df,
+        context,
+        &["PESTAT", "PELOC", "PEBODSYS", "PECAT", "PESCAT", "EPOCH"],
+    )?;
 
     Ok(())
 }
