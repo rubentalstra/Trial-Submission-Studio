@@ -3,6 +3,9 @@
 //! This crate provides transformation logic extracted from sdtm-core:
 //!
 //! - **datetime**: ISO 8601 date/time parsing and validation per SDTMIG v3.4
+//! - **frame**: Domain frame types for SDTM datasets
+//! - **frame_builder**: DataFrame construction utilities
+//! - **data_utils**: DataFrame value extraction and SDTM identifier sanitization
 //!
 //! # Architecture
 //!
@@ -12,4 +15,7 @@
 // TODO(docs): Add documentation for remaining public items (Phase 4 - PR-028)
 #![allow(missing_docs)]
 
+pub mod data_utils;
 pub mod datetime;
+pub mod frame;
+pub mod frame_builder;

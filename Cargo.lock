@@ -2671,6 +2671,7 @@ dependencies = [
  "anyhow",
  "chrono",
  "polars",
+ "sdtm-ingest",
  "sdtm-model",
  "tracing",
 ]
