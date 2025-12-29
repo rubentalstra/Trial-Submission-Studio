@@ -319,6 +319,8 @@ fn severity_cell(severity: Severity) -> Cell {
             .add_attribute(Attribute::Bold),
         Severity::Error => Cell::new("ERROR").fg(Color::Red),
         Severity::Warning => Cell::new("WARN").fg(Color::Yellow),
+        // Future severity levels default to warning style
+        _ => Cell::new("INFO").fg(Color::Blue),
     }
 }
 
@@ -327,6 +329,8 @@ fn severity_rank(severity: Severity) -> u8 {
         Severity::Reject => 3,
         Severity::Error => 2,
         Severity::Warning => 1,
+        // Future severity levels default to lowest rank
+        _ => 0,
     }
 }
 
@@ -465,6 +469,8 @@ fn ansi_severity_color(severity: Severity) -> &'static str {
     match severity {
         Severity::Reject | Severity::Error => ANSI_RED,
         Severity::Warning => ANSI_YELLOW,
+        // Future severity levels default to no color
+        _ => "",
     }
 }
 

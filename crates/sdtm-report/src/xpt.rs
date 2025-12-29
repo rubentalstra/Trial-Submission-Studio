@@ -80,7 +80,8 @@ fn build_xpt_columns(domain: &Domain, df: &DataFrame) -> Result<Vec<XptColumn>> 
             label: variable.label.clone(),
             data_type: match variable.data_type {
                 VariableType::Num => XptType::Num,
-                VariableType::Char => XptType::Char,
+                // Treat Char and future types as Char
+                VariableType::Char | _ => XptType::Char,
             },
             length,
         });
@@ -106,7 +107,8 @@ fn build_xpt_rows(domain: &Domain, df: &DataFrame) -> Result<Vec<Vec<XptValue>>>
             let value = column.get(row_idx).unwrap_or(AnyValue::Null);
             let cell = match variable.data_type {
                 VariableType::Num => XptValue::Num(any_to_f64(value)),
-                VariableType::Char => XptValue::Char(any_to_string(value)),
+                // Treat Char and future types as Char
+                VariableType::Char | _ => XptValue::Char(any_to_string(value)),
             };
             row.push(cell);
         }

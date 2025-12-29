@@ -110,6 +110,8 @@ pub fn build_wide_data(domain: &Domain, mut values: Vec<Vec<String>>) -> Result<
                 Series::new(variable.name.as_str().into(), numeric).into()
             }
             VariableType::Char => Series::new(variable.name.as_str().into(), vals).into(),
+            // Handle future VariableType variants as strings
+            _ => Series::new(variable.name.as_str().into(), vals).into(),
         };
         columns.push(column);
     }

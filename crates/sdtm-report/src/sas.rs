@@ -175,7 +175,8 @@ fn default_assignments(domain: &Domain, mapping: &MappingConfig) -> Vec<String> 
 fn default_assignment(variable: &Variable) -> String {
     match variable.data_type {
         VariableType::Num => format!("{} = .;", variable.name),
-        VariableType::Char => format!("{} = '';", variable.name),
+        // Treat Char and future types as string
+        VariableType::Char | _ => format!("{} = '';", variable.name),
     }
 }
 

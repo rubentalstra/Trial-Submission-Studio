@@ -62,6 +62,14 @@ pub(crate) fn build_domain_frame_from_records(
                 }
                 columns.push(Series::new(variable.name.as_str().into(), values).into());
             }
+            // Handle future VariableType variants as strings
+            _ => {
+                let mut values: Vec<String> = Vec::with_capacity(records.len());
+                for record in records {
+                    values.push(record.get(&variable.name).cloned().unwrap_or_default());
+                }
+                columns.push(Series::new(variable.name.as_str().into(), values).into());
+            }
         }
     }
     let data = DataFrame::new(columns).context("build dataframe")?;
@@ -151,6 +159,8 @@ pub fn build_domain_frame_with_mapping(
                 Series::new(variable.name.as_str().into(), numeric).into()
             }
             VariableType::Char => Series::new(variable.name.as_str().into(), values).into(),
+            // Handle future VariableType variants as strings
+            _ => Series::new(variable.name.as_str().into(), values).into(),
         };
         columns.push(column);
     }
