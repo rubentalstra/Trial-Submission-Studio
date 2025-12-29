@@ -142,10 +142,10 @@ impl Codelist {
         }
 
         // Check if it's a synonym
-        if let Some(canonical_key) = self.synonyms.get(&key)
-            && let Some(term) = self.terms.get(canonical_key)
-        {
-            return term.submission_value.clone();
+        if let Some(canonical_key) = self.synonyms.get(&key) {
+            if let Some(term) = self.terms.get(canonical_key) {
+                return term.submission_value.clone();
+            }
         }
 
         // Return original for extensible codelists

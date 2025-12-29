@@ -46,12 +46,8 @@ pub fn print_summary(result: &StudyResult) {
             None => (None, None),
         };
         total_records += summary.records;
-        if let Some(count) = errors {
-            total_errors += count;
-        }
-        if let Some(count) = warnings {
-            total_warnings += count;
-        }
+        total_errors += errors.unwrap_or(0);
+        total_warnings += warnings.unwrap_or(0);
         let domain_cell = domain_cell(&summary.domain_code);
         let description_cell =
             description_cell(&summary.description, is_supp_domain(&summary.domain_code));
@@ -305,11 +301,11 @@ fn summary_sort_key(code: &str) -> (String, u8, String) {
     let upper = code.to_uppercase();
     let is_supp = upper.starts_with("SUPP");
     let base = if is_supp {
-        upper.trim_start_matches("SUPP").to_string()
+        upper[4..].to_string() // Skip "SUPP" prefix
     } else {
         upper.clone()
     };
-    (base.clone(), if is_supp { 1 } else { 0 }, upper)
+    (base, if is_supp { 1 } else { 0 }, upper)
 }
 
 fn severity_cell(severity: Severity) -> Cell {

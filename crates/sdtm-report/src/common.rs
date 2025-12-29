@@ -59,24 +59,14 @@ pub fn is_reference_domain(domain: &Domain) -> bool {
     normalized == "TRIAL DESIGN" || normalized == "STUDY REFERENCE"
 }
 
-/// Normalize class name for comparison.
+/// Normalize class name for comparison (uppercase, collapse separators to single space).
 fn normalize_class(value: &str) -> String {
-    let mut out = String::new();
-    let mut last_space = false;
-    for ch in value.chars() {
-        let c = if ch == '-' || ch == '_' { ' ' } else { ch };
-        let upper = c.to_ascii_uppercase();
-        if upper == ' ' {
-            if !last_space {
-                out.push(' ');
-                last_space = true;
-            }
-        } else {
-            out.push(upper);
-            last_space = false;
-        }
-    }
-    out.trim().to_string()
+    value
+        .split(|c: char| c == '-' || c == '_' || c.is_whitespace())
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_uppercase()
 }
 
 /// Calculate variable length from data.

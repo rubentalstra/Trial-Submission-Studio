@@ -86,6 +86,8 @@ impl ValidationReport {
 
     /// Returns true if there are any error-level issues.
     pub fn has_errors(&self) -> bool {
-        self.error_count() > 0
+        self.issues
+            .iter()
+            .any(|issue| matches!(issue.severity, Severity::Error | Severity::Reject))
     }
 }

@@ -88,17 +88,18 @@ impl FromStr for DatasetClass {
     /// Parse a class name string into a DatasetClass.
     /// Handles various formats found in standards files (case-insensitive, with/without hyphens).
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let normalized = s.trim().to_uppercase().replace('-', " ");
+        // Normalize: trim, uppercase, replace hyphens/underscores with spaces
+        let normalized = s.trim().to_uppercase().replace(['-', '_'], " ");
         match normalized.as_str() {
             "INTERVENTIONS" => Ok(DatasetClass::Interventions),
             "EVENTS" => Ok(DatasetClass::Events),
             "FINDINGS" => Ok(DatasetClass::Findings),
             "FINDINGS ABOUT" => Ok(DatasetClass::FindingsAbout),
-            "SPECIAL PURPOSE" | "SPECIAL-PURPOSE" => Ok(DatasetClass::SpecialPurpose),
+            "SPECIAL PURPOSE" => Ok(DatasetClass::SpecialPurpose),
             "TRIAL DESIGN" => Ok(DatasetClass::TrialDesign),
             "STUDY REFERENCE" => Ok(DatasetClass::StudyReference),
             "RELATIONSHIP" => Ok(DatasetClass::Relationship),
-            _ => Err(format!("Unknown dataset class: {}", s)),
+            _ => Err(format!("Unknown dataset class: {s}")),
         }
     }
 }

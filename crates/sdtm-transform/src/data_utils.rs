@@ -108,24 +108,31 @@ pub fn strip_all_quotes(value: &str) -> String {
 /// * `prefix` - Character to prepend if result starts with digit
 /// * `max_len` - Maximum length of result
 fn sanitize_sdtm_identifier(raw: &str, fallback: &str, prefix: char, max_len: usize) -> String {
-    let mut safe = String::new();
+    // Build result, collapsing non-alphanumeric to single underscore
+    let mut safe = String::with_capacity(raw.len());
+    let mut last_was_underscore = true; // Treat start as underscore to skip leading
     for ch in raw.chars() {
         if ch.is_ascii_alphanumeric() {
             safe.push(ch.to_ascii_uppercase());
-        } else {
+            last_was_underscore = false;
+        } else if !last_was_underscore {
             safe.push('_');
+            last_was_underscore = true;
         }
     }
 
-    // Collapse multiple underscores and trim
-    while safe.contains("__") {
-        safe = safe.replace("__", "_");
+    // Trim trailing underscore
+    if safe.ends_with('_') {
+        safe.pop();
     }
-    safe = safe.trim_matches('_').to_string();
 
     // Use fallback if empty
     if safe.is_empty() {
-        safe = fallback.to_string();
+        return if fallback.len() <= max_len {
+            fallback.to_string()
+        } else {
+            fallback.chars().take(max_len).collect()
+        };
     }
 
     // Prefix if starts with digit
@@ -133,7 +140,11 @@ fn sanitize_sdtm_identifier(raw: &str, fallback: &str, prefix: char, max_len: us
         safe.insert(0, prefix);
     }
 
-    safe.chars().take(max_len).collect()
+    if safe.len() <= max_len {
+        safe
+    } else {
+        safe.chars().take(max_len).collect()
+    }
 }
 
 /// Sanitize a test name into a valid --TESTCD code.

@@ -302,9 +302,9 @@ pub fn resolve_testcd_from_test(
     let mut testcd_vals = string_column(df, testcd_col)?;
 
     for (testcd, test) in testcd_vals.iter_mut().zip(test_vals.iter()) {
-        let existing = testcd.clone();
+        // Check if existing value is already a valid CT submission value
         let valid =
-            !existing.is_empty() && ct.submission_values().iter().any(|val| val == &existing);
+            !testcd.is_empty() && ct.submission_values().iter().any(|val| *val == *testcd);
 
         if valid {
             continue;

@@ -64,30 +64,26 @@ pub(super) fn numeric_column_i64(df: &DataFrame, name: &str) -> Result<Vec<Optio
     Ok(values)
 }
 
+/// Set a column in the DataFrame. Generic over types that implement NamedFrom.
+fn set_column<T>(df: &mut DataFrame, name: &str, values: T) -> Result<()>
+where
+    Series: NamedFrom<T, [<T as IntoIterator>::Item]>,
+    T: IntoIterator,
+{
+    df.with_column(Series::new(name.into(), values))?;
+    Ok(())
+}
+
 pub(super) fn set_string_column(df: &mut DataFrame, name: &str, values: Vec<String>) -> Result<()> {
-    let series = Series::new(name.into(), values);
-    df.with_column(series)?;
-    Ok(())
+    set_column(df, name, values)
 }
 
-pub(super) fn set_f64_column(
-    df: &mut DataFrame,
-    name: &str,
-    values: Vec<Option<f64>>,
-) -> Result<()> {
-    let series = Series::new(name.into(), values);
-    df.with_column(series)?;
-    Ok(())
+pub(super) fn set_f64_column(df: &mut DataFrame, name: &str, values: Vec<Option<f64>>) -> Result<()> {
+    set_column(df, name, values)
 }
 
-pub(super) fn set_i64_column(
-    df: &mut DataFrame,
-    name: &str,
-    values: Vec<Option<i64>>,
-) -> Result<()> {
-    let series = Series::new(name.into(), values);
-    df.with_column(series)?;
-    Ok(())
+pub(super) fn set_i64_column(df: &mut DataFrame, name: &str, values: Vec<Option<i64>>) -> Result<()> {
+    set_column(df, name, values)
 }
 
 pub(super) fn apply_map_upper(
