@@ -54,7 +54,7 @@
 mod ct_utils;
 mod data_utils;
 mod datetime;
-mod domain_processors;
+pub mod domain_processors;
 pub mod domain_sets;
 pub mod frame;
 pub mod frame_builder;

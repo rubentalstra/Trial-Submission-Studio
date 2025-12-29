@@ -6,12 +6,28 @@
 //!
 //! # Architecture
 //!
-//! Each domain has its own processor function that applies:
+//! Each domain processor implements the [`DomainProcessor`] trait, which defines
+//! a common interface for domain-specific transformations:
+//!
 //! - Variable derivations (e.g., --DY from --DTC)
 //! - Result standardization (ORRES → STRESC, STRESN)
 //! - Unit normalization via CT
 //! - Test code/name resolution
 //! - Date validation and formatting
+//!
+//! Processors are registered in the [`ProcessorRegistry`] and can be looked up
+//! by domain code. The [`default_registry()`] function returns a pre-configured
+//! registry with all standard SDTM domain processors.
+//!
+//! # Usage
+//!
+//! ```ignore
+//! use sdtm_core::domain_processors::{default_registry, DomainProcessor};
+//!
+//! let registry = default_registry();
+//! let processor = registry.get("DM");
+//! processor.process(&domain, &mut df, &context)?;
+//! ```
 //!
 //! # Supported Domains
 //!
@@ -49,12 +65,15 @@ mod mh;
 mod operations;
 mod pe;
 mod pr;
+mod processor_trait;
 mod qs;
 mod se;
 mod ta;
 mod te;
 mod ts;
 mod vs;
+
+pub use processor_trait::{DomainProcessor, ProcessorRegistry, default_registry};
 
 use anyhow::Result;
 use polars::prelude::DataFrame;
