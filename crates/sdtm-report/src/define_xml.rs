@@ -10,7 +10,7 @@ use chrono::{SecondsFormat, Utc};
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, Event};
 
-use sdtm_core::frame::DomainFrame;
+use sdtm_transform::frame::DomainFrame;
 use sdtm_model::ct::{Codelist, TerminologyCatalog, TerminologyRegistry};
 use sdtm_model::{Domain, Variable, VariableType};
 use sdtm_standards::load_default_ct_registry;

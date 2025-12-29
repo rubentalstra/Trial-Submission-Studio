@@ -10,7 +10,7 @@ use polars::prelude::AnyValue;
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, Event};
 
-use sdtm_core::frame::DomainFrame;
+use sdtm_transform::frame::DomainFrame;
 use sdtm_ingest::any_to_string_non_empty;
 use sdtm_model::Domain;
 

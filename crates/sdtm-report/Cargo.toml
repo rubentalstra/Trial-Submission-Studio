@@ -15,5 +15,6 @@ quick-xml.workspace = true
 sdtm-core = { path = "../sdtm-core" }
 sdtm-ingest = { path = "../sdtm-ingest" }
 sdtm-model = { path = "../sdtm-model" }
+sdtm-transform = { path = "../sdtm-transform" }
 sdtm-xpt = { path = "../sdtm-xpt" }
 sdtm-standards = { path = "../sdtm-standards" }
