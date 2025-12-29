@@ -400,7 +400,30 @@ pub fn clean_na_values_vars(domain: &Domain, df: &mut DataFrame, columns: &[&str
 
 #[cfg(test)]
 mod tests {
+    use polars::prelude::{Column, IntoColumn, NamedFrom, Series};
+
     use super::*;
+
+    // Helper to create a simple test DataFrame
+    fn test_df(columns: Vec<(&str, Vec<&str>)>) -> DataFrame {
+        let cols: Vec<Column> = columns
+            .into_iter()
+            .map(|(name, values)| {
+                Series::new(name.into(), values.iter().map(|s| s.to_string()).collect::<Vec<_>>())
+                    .into_column()
+            })
+            .collect();
+        DataFrame::new(cols).unwrap()
+    }
+
+    // Helper to get column values as strings
+    fn get_col(df: &DataFrame, name: &str) -> Vec<String> {
+        string_column(df, name).unwrap()
+    }
+
+    // =========================================================================
+    // is_na_value tests
+    // =========================================================================
 
     #[test]
     fn is_na_value_recognizes_empty() {
@@ -458,5 +481,175 @@ mod tests {
         assert!(is_na_value("  NA  "));
         assert!(is_na_value("\tNAN\n"));
         assert!(is_na_value("  UNKNOWN  "));
+    }
+
+    // =========================================================================
+    // yn_mapping tests
+    // =========================================================================
+
+    #[test]
+    fn yn_mapping_maps_yes_variants() {
+        let mapping = yn_mapping();
+        assert_eq!(mapping.get("YES"), Some(&"Y".to_string()));
+        assert_eq!(mapping.get("Y"), Some(&"Y".to_string()));
+        assert_eq!(mapping.get("1"), Some(&"Y".to_string()));
+        assert_eq!(mapping.get("TRUE"), Some(&"Y".to_string()));
+        assert_eq!(mapping.get("CS"), Some(&"Y".to_string())); // Clinically Significant
+    }
+
+    #[test]
+    fn yn_mapping_maps_no_variants() {
+        let mapping = yn_mapping();
+        assert_eq!(mapping.get("NO"), Some(&"N".to_string()));
+        assert_eq!(mapping.get("N"), Some(&"N".to_string()));
+        assert_eq!(mapping.get("0"), Some(&"N".to_string()));
+        assert_eq!(mapping.get("FALSE"), Some(&"N".to_string()));
+        assert_eq!(mapping.get("NCS"), Some(&"N".to_string())); // Not Clinically Significant
+    }
+
+    #[test]
+    fn yn_mapping_maps_empty_variants() {
+        let mapping = yn_mapping();
+        assert_eq!(mapping.get(""), Some(&"".to_string()));
+        assert_eq!(mapping.get("NAN"), Some(&"".to_string()));
+        assert_eq!(mapping.get("<NA>"), Some(&"".to_string()));
+    }
+
+    // =========================================================================
+    // backward_fill tests
+    // =========================================================================
+
+    #[test]
+    fn backward_fill_copies_when_target_empty() {
+        let mut df = test_df(vec![
+            ("SOURCE", vec!["A", "B", "C"]),
+            ("TARGET", vec!["", "", "X"]),
+        ]);
+
+        backward_fill(&mut df, "SOURCE", "TARGET").unwrap();
+
+        let target = get_col(&df, "TARGET");
+        assert_eq!(target, vec!["A", "B", "X"]); // X preserved, others filled
+    }
+
+    #[test]
+    fn backward_fill_preserves_existing_values() {
+        let mut df = test_df(vec![
+            ("SOURCE", vec!["A", "B", "C"]),
+            ("TARGET", vec!["X", "Y", "Z"]),
+        ]);
+
+        backward_fill(&mut df, "SOURCE", "TARGET").unwrap();
+
+        let target = get_col(&df, "TARGET");
+        assert_eq!(target, vec!["X", "Y", "Z"]); // All preserved
+    }
+
+    #[test]
+    fn backward_fill_ignores_empty_source() {
+        let mut df = test_df(vec![
+            ("SOURCE", vec!["", "B", ""]),
+            ("TARGET", vec!["", "", ""]),
+        ]);
+
+        backward_fill(&mut df, "SOURCE", "TARGET").unwrap();
+
+        let target = get_col(&df, "TARGET");
+        assert_eq!(target, vec!["", "B", ""]); // Only B copied
+    }
+
+    #[test]
+    fn backward_fill_handles_missing_columns() {
+        let mut df = test_df(vec![("SOURCE", vec!["A", "B"])]);
+
+        // Should not panic when target column doesn't exist
+        let result = backward_fill(&mut df, "SOURCE", "MISSING");
+        assert!(result.is_ok());
+
+        // Should not panic when source column doesn't exist
+        let result = backward_fill(&mut df, "MISSING", "SOURCE");
+        assert!(result.is_ok());
+    }
+
+    // =========================================================================
+    // clear_unit_when_empty tests
+    // =========================================================================
+
+    #[test]
+    fn clear_unit_when_result_empty() {
+        let mut df = test_df(vec![
+            ("RESULT", vec!["100", "", "50"]),
+            ("UNIT", vec!["mg/dL", "kg", "mg/dL"]),
+        ]);
+
+        clear_unit_when_empty(&mut df, "RESULT", "UNIT").unwrap();
+
+        let units = get_col(&df, "UNIT");
+        assert_eq!(units, vec!["mg/dL", "", "mg/dL"]); // Second unit cleared
+    }
+
+    #[test]
+    fn clear_unit_preserves_when_result_present() {
+        let mut df = test_df(vec![
+            ("RESULT", vec!["100", "200", "300"]),
+            ("UNIT", vec!["mg/dL", "kg", "mL"]),
+        ]);
+
+        clear_unit_when_empty(&mut df, "RESULT", "UNIT").unwrap();
+
+        let units = get_col(&df, "UNIT");
+        assert_eq!(units, vec!["mg/dL", "kg", "mL"]); // All preserved
+    }
+
+    #[test]
+    fn clear_unit_handles_missing_columns() {
+        let mut df = test_df(vec![("RESULT", vec!["100"])]);
+
+        // Should not panic when unit column doesn't exist
+        let result = clear_unit_when_empty(&mut df, "RESULT", "MISSING");
+        assert!(result.is_ok());
+    }
+
+    // =========================================================================
+    // clean_na_values tests
+    // =========================================================================
+
+    #[test]
+    fn clean_na_values_clears_na_strings() {
+        let mut df = test_df(vec![("COL", vec!["NA", "VALUE", "N/A", "NaN", "UNKNOWN"])]);
+
+        clean_na_values(&mut df, "COL").unwrap();
+
+        let values = get_col(&df, "COL");
+        assert_eq!(values, vec!["", "VALUE", "", "", ""]);
+    }
+
+    #[test]
+    fn clean_na_values_preserves_valid_values() {
+        let mut df = test_df(vec![("COL", vec!["NORMAL", "HIGH", "LOW"])]);
+
+        clean_na_values(&mut df, "COL").unwrap();
+
+        let values = get_col(&df, "COL");
+        assert_eq!(values, vec!["NORMAL", "HIGH", "LOW"]);
+    }
+
+    #[test]
+    fn clean_na_values_trims_whitespace() {
+        let mut df = test_df(vec![("COL", vec!["  VALUE  ", "  NA  ", "  "])]);
+
+        clean_na_values(&mut df, "COL").unwrap();
+
+        let values = get_col(&df, "COL");
+        assert_eq!(values, vec!["VALUE", "", ""]);
+    }
+
+    #[test]
+    fn clean_na_values_handles_missing_column() {
+        let mut df = test_df(vec![("COL", vec!["VALUE"])]);
+
+        // Should not panic when column doesn't exist
+        let result = clean_na_values(&mut df, "MISSING");
+        assert!(result.is_ok());
     }
 }
