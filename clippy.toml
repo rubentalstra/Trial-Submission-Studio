@@ -1,1 +1,16 @@
+# Workspace-wide Clippy configuration
+# See: https://doc.rust-lang.org/clippy/
+
 msrv = "1.92"
+
+# Cognitive complexity threshold for functions
+cognitive-complexity-threshold = 25
+
+# Maximum number of lines in a function
+too-many-lines-threshold = 100
+
+# Type complexity threshold
+type-complexity-threshold = 250
+
+# Allowed names for variables (avoids false positives)
+allowed-idents-below-min-chars = ["i", "j", "k", "n", "x", "y", "df"]
