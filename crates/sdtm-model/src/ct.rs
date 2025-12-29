@@ -259,7 +259,9 @@ impl TerminologyRegistry {
 
 /// A resolved codelist with its source catalog.
 pub struct ResolvedCodelist<'a> {
+    /// Reference to the resolved codelist.
     pub codelist: &'a Codelist,
+    /// Reference to the catalog containing this codelist.
     pub catalog: &'a TerminologyCatalog,
 }
 

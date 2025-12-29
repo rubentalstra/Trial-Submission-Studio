@@ -265,13 +265,17 @@ fn ends_with_case_insensitive(value: &str, suffix: &str) -> bool {
     value[value.len() - suffix.len()..].eq_ignore_ascii_case(suffix)
 }
 
+/// Metadata describing an SDTM dataset.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct DatasetMetadata {
+    /// The dataset name (e.g., "AE", "DM", "SUPPAE").
     pub dataset_name: String,
-    /// The raw class name from standards
+    /// The raw class name from standards.
     pub class_name: Option<String>,
-    /// The parsed dataset class enum
+    /// The parsed dataset class enum.
     pub dataset_class: Option<DatasetClass>,
+    /// Human-readable label for the dataset.
     pub label: Option<String>,
+    /// Dataset structure type (e.g., "One record per subject").
     pub structure: Option<String>,
 }

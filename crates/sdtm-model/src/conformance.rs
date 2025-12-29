@@ -59,12 +59,15 @@ pub struct ValidationIssue {
 /// Validation report for a single domain.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct ValidationReport {
+    /// The domain code (e.g., "AE", "DM") this report covers.
     #[serde(rename = "domain")]
     pub domain_code: String,
+    /// List of validation issues found in this domain.
     pub issues: Vec<ValidationIssue>,
 }
 
 impl ValidationReport {
+    /// Returns the count of error-level issues (Error or Reject severity).
     pub fn error_count(&self) -> usize {
         self.issues
             .iter()
@@ -72,6 +75,7 @@ impl ValidationReport {
             .count()
     }
 
+    /// Returns the count of warning-level issues.
     pub fn warning_count(&self) -> usize {
         self.issues
             .iter()
@@ -79,6 +83,7 @@ impl ValidationReport {
             .count()
     }
 
+    /// Returns true if there are any error-level issues.
     pub fn has_errors(&self) -> bool {
         self.error_count() > 0
     }
