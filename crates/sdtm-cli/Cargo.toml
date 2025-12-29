@@ -20,6 +20,7 @@ sdtm-map = { path = "../sdtm-map" }
 sdtm-model = { path = "../sdtm-model" }
 sdtm-report = { path = "../sdtm-report" }
 sdtm-standards = { path = "../sdtm-standards" }
+sdtm-transform = { path = "../sdtm-transform" }
 sdtm-validate = { path = "../sdtm-validate" }
 sdtm-xpt = { path = "../sdtm-xpt" }
 tracing.workspace = true

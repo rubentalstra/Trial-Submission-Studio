@@ -7,12 +7,12 @@ use comfy_table::Table;
 use polars::prelude::DataFrame;
 use tracing::{debug, info, info_span, warn};
 
-use sdtm_core::domain_sets::{build_report_domains, domain_map_by_code, is_supporting_domain};
-use sdtm_core::frame::DomainFrame;
 use sdtm_core::pipeline_context::{
     CtMatchingMode, PipelineContext, ProcessingOptions, SequenceAssignmentMode, UsubjidPrefixMode,
 };
-use sdtm_core::relationships::build_relationship_frames;
+use sdtm_transform::domain_sets::{build_report_domains, domain_map_by_code, is_supporting_domain};
+use sdtm_transform::frame::DomainFrame;
+use sdtm_transform::relationships::build_relationship_frames;
 use sdtm_model::{MappingConfig, OutputFormat};
 use sdtm_standards::{load_default_ct_registry, load_default_sdtm_ig_domains};
 use sdtm_validate::gate_strict_outputs;

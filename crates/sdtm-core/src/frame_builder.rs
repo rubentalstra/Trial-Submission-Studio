@@ -17,14 +17,12 @@ use sdtm_ingest::build_column_hints;
 use sdtm_ingest::CsvTable;
 use sdtm_map::MappingEngine;
 use sdtm_model::{Domain, MappingConfig};
+use sdtm_transform::frame::DomainFrame;
+use sdtm_transform::frame_builder::build_domain_frame_with_mapping;
+use sdtm_transform::wide::{build_ie_wide_frame, build_lb_wide_frame, build_vs_wide_frame};
 
-use crate::frame::DomainFrame;
-use crate::wide::{build_ie_wide_frame, build_lb_wide_frame, build_vs_wide_frame};
-
-// Re-export from sdtm-transform
-pub use sdtm_transform::frame_builder::{
-    build_domain_frame, build_domain_frame_with_mapping, collect_table_columns,
-};
+// Public re-exports for external consumers
+pub use sdtm_transform::frame_builder::{build_domain_frame, collect_table_columns};
 
 /// Build a domain frame with automatic column mapping and wide-format detection.
 ///
