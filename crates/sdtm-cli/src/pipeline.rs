@@ -262,7 +262,7 @@ pub fn process_file(input: ProcessFileInput<'_>) -> Result<ProcessedFile> {
     let suppqual = info_span!("suppqual")
         .in_scope(|| -> Result<_> {
             let start = Instant::now();
-            let result = build_suppqual(SuppqualInput {
+            let result = build_suppqual(&SuppqualInput {
                 parent_domain: input.domain,
                 suppqual_domain: input.suppqual_domain,
                 source_df: &source.data,

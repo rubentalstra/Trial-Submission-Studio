@@ -7,6 +7,7 @@
 //! - **frame_builder**: DataFrame construction utilities
 //! - **data_utils**: DataFrame value extraction and SDTM identifier sanitization
 //! - **wide**: Wide-to-long format conversion for LB, VS, IE domains
+//! - **suppqual**: Supplemental Qualifier (SUPP--) dataset generation
 //!
 //! # Architecture
 //!
@@ -20,4 +21,5 @@ pub mod data_utils;
 pub mod datetime;
 pub mod frame;
 pub mod frame_builder;
+pub mod suppqual;
 pub mod wide;
