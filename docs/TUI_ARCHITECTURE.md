@@ -44,11 +44,11 @@ Transform the CLI into an **interactive TUI (Terminal User Interface)** using `r
 4. **Offers alternatives** - Low-confidence mappings show ranked options
 5. **Handles unmapped columns** - Clear workflow for SUPP domain fallback
 6. **Displays rich context** - Source column description alongside SDTM variable metadata
-7. **Shows all Required Variables** - Clear visibility of which SDTM variables must be mapped
+7. **Shows Required Variables** - Clear visibility of which SDTM variables must be mapped
 
 ### Data Integrity Principles
 
-> ⚠️ **CRITICAL**: The transpiler NEVER modifies source data or renames source columns.
+**Important**: The transpiler NEVER modifies source data or renames source columns.
 
 | What Changes (Output) | What Does NOT Change (Source) |
 |-----------------------|-------------------------------|
@@ -77,8 +77,8 @@ Transform the CLI into an **interactive TUI (Terminal User Interface)** using `r
 | **SUPP Decisions** | Automatic (may be wrong) | User-guided with context |
 | **User Confidence** | Low (black box) | High (transparent) |
 | **Learning Curve** | Steep (CLI flags) | Gentle (guided workflow) |
-| **Required Variables** | Not visible | Always displayed |
-| **CT Compliance** | Silent normalization | Visible value mapping |
+| **Required Variables** | Not visible | Clearly displayed with status |
+| **CT Compliance** | Silent normalization | Visible CT mapping review |
 
 ---
 
@@ -717,9 +717,9 @@ pub struct RankedSuggestion {
 │  Domain Preview (CM - Concomitant Medications):                         │
 │  ┌─────────────────────────────────────────────────────────────────────┐│
 │  │  Class: Interventions    Structure: One record per conc. med        ││
-│  │  Required: 5 vars • Expected: 8 vars • Source rows: 342             ││
-│  │  Metadata: Items.csv ✓ loaded • CodeLists.csv ✓ loaded              ││
+│  │  Required: 5 vars • Expected: 8 vars • Source columns: 18           ││
 │  │  Confidence: 14 high • 3 medium • 1 low • 0 unmapped               ││
+│  │  Metadata: Items.csv ✓ • CodeLists.csv ✓                            ││
 │  └─────────────────────────────────────────────────────────────────────┘│
 │                                                                         │
 ├─────────────────────────────────────────────────────────────────────────┤
@@ -727,125 +727,175 @@ pub struct RankedSuggestion {
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Screen 3: Mapping Review (Main Screen) - Wide Layout
+### Screen 3: Mapping Review - SDTM-First Design
 
-The mapping review uses a **3-panel layout** to show all necessary information:
-- **Left Panel**: Source columns list (navigation)
-- **Center Panel**: Source column details (from Items.csv + CodeLists.csv)
-- **Right Panel**: Target SDTM variable details (from Variables.csv + CT)
+**Design Philosophy**: SDTM variables are the STANDARD - they're always the same.
+We navigate through SDTM variables and assign source columns TO them.
 
-The header shows Required/Expected variable progress so the user always knows
-what still needs to be mapped.
+The layout uses **3 panels**:
+- **Left Panel**: SDTM Variables list (the standard structure - always consistent)
+- **Center Panel**: Selected SDTM variable details + CT information
+- **Right Panel**: Source column candidates + selected mapping
 
 ```
 ┌───────────────────────────────────────────────────────────────────────────────────────────┐
-│  CM - Concomitant Medications                              Req: 5/5 ✓  Exp: 6/8  Perm: 3  │
-│  Progress: ████████████████░░░░ 14/18 mapped               [R] Required Variables View    │
+│  CM - Concomitant Medications                              Req: 4/5  Exp: 6/8  Perm: 2/12 │
+│  Progress: ████████████████░░░░ 12/25 variables mapped                                    │
 ├───────────────────────────────────────────────────────────────────────────────────────────┤
-│ Source Columns    │ SOURCE DETAILS                │ TARGET SDTM VARIABLE                  │
-│ ┌───────────────┐ │ ┌───────────────────────────┐ │ ┌───────────────────────────────────┐ │
-│ │ [A]ll [?]Need │ │ │ Column: CMROUTE           │ │ │ Suggested: CMROUTE                │ │
-│ │               │ │ │ Label:  "Route"           │ │ │ Confidence: ████████████░░ 94%   │ │
-│ │ ✓ STUDYID     │ │ │         (from Items.csv)  │ │ │                                   │ │
-│ │ ✓ SUBJID      │ │ │                           │ │ │ Variable: CMROUTE                 │ │
-│ │ ✓ CMTRT       │ │ │ Data Type: text           │ │ │ Label: "Route of Administration" │ │
-│ │ ✓ CMDOSE      │ │ │ Mandatory: True           │ │ │ Type: Char    Core: Perm          │ │
-│ │ > CMROUTE     │ │ │ Format: ROUTE             │ │ │ Role: Record Qualifier            │ │
-│ │ ? CMDOSU      │ │ │                           │ │ │                                   │ │
-│ │ ? START_DATE  │ │ │ ─── Study CodeList ────── │ │ │ ─── CDISC CT: C66729 ─────────── │ │
-│ │ ? END_DATE    │ │ │ (from CodeLists.csv)      │ │ │ "Route of Administration"         │ │
-│ │ ○ COMMENTS    │ │ │                           │ │ │ Extensible: Yes (142 terms)       │ │
-│ │               │ │ │ ORAL    → "Oral"          │ │ │                                   │ │
-│ │               │ │ │ NASAL   → "Nasal"         │ │ │ ─── CT Value Matching ─────────── │ │
-│ │               │ │ │ TOPICAL → "Topical"       │ │ │                                   │ │
-│ │               │ │ │                           │ │ │ ORAL    → ORAL     ✓ exact match │ │
-│ │               │ │ │ ─── Sample Values ─────── │ │ │ NASAL   → NASAL    ✓ exact match │ │
-│ │               │ │ │ "ORAL", "NASAL",          │ │ │ TOPICAL → TOPICAL  ✓ exact match │ │
-│ │               │ │ │ "TOPICAL"                 │ │ │                                   │ │
-│ │               │ │ │                           │ │ │ ✓ All 3 source values valid      │ │
-│ └───────────────┘ │ └───────────────────────────┘ │ └───────────────────────────────────┘ │
+│ SDTM Variables      │ VARIABLE DETAILS              │ SOURCE MAPPING                      │
+│ (Standard)          │                               │                                     │
+│ ┌─────────────────┐ │ ┌───────────────────────────┐ │ ┌─────────────────────────────────┐ │
+│ │ [R]eq [E]xp [P] │ │ │ Variable: CMROUTE         │ │ │ Mapped Source: CMROUTE          │ │
+│ │                 │ │ │ Label: "Route of Admin."  │ │ │ Confidence: ████████████░░ 94%  │ │
+│ │ ── Required ──  │ │ │                           │ │ │                                 │ │
+│ │ ✓ STUDYID  AUTO │ │ │ Type: Char   Core: Perm   │ │ │ ─── Source Details ───────────  │ │
+│ │ ✓ DOMAIN   AUTO │ │ │ Role: Record Qualifier    │ │ │ Column: CMROUTE                 │ │
+│ │ ✓ USUBJID  ←SRC │ │ │                           │ │ │ Label: "Route" (Items.csv)      │ │
+│ │ ✓ CMSEQ    AUTO │ │ │ ─── CDISC CT ───────────  │ │ │ Type: text                      │ │
+│ │ ○ CMTRT    NEED │ │ │ Codelist: C66729          │ │ │                                 │ │
+│ │                 │ │ │ Name: "Route of Admin."   │ │ │ Study CodeList (ROUTE):         │ │
+│ │ ── Expected ──  │ │ │ Extensible: Yes           │ │ │  ORAL → "Oral"                  │ │
+│ │ ✓ CMDOSE   ←SRC │ │ │ Terms: 142 values         │ │ │  NASAL → "Nasal"                │ │
+│ │ ? CMDOSU   ←SRC │ │ │                           │ │ │  TOPICAL → "Topical"            │ │
+│ │ > CMROUTE  ←SRC │ │ │ Example CT values:        │ │ │                                 │ │
+│ │ ○ CMDOSFRQ      │ │ │  ORAL, NASAL, TOPICAL,    │ │ │ ─── CT Validation ────────────  │ │
+│ │ ✓ CMSTDTC  ←SRC │ │ │  INTRAVENOUS, SUBLINGUAL  │ │ │ ✓ ORAL    → ORAL   (match)     │ │
+│ │ ○ CMENDTC       │ │ │                           │ │ │ ✓ NASAL   → NASAL  (match)     │ │
+│ │                 │ │ │                           │ │ │ ✓ TOPICAL → TOPICAL (match)    │ │
+│ │ ── Permissible  │ │ │                           │ │ │                                 │ │
+│ │   CMCAT         │ │ │                           │ │ │ ✓ All source values valid      │ │
+│ │   CMSCAT        │ │ │                           │ │ │                                 │ │
+│ └─────────────────┘ │ └───────────────────────────┘ │ └─────────────────────────────────┘ │
 ├───────────────────────────────────────────────────────────────────────────────────────────┤
-│ ✓ Confirmed  > Current  ? Review  ○ Unmapped/SUPP │ CT: ✓ Valid  ⚠ Warning  ✗ Error       │
+│ ✓ AUTO=system  ✓←SRC=mapped  ?←SRC=review  ○ NEED=unmapped │ CT: ✓ Valid  ⚠ Warn  ✗ Err  │
 ├───────────────────────────────────────────────────────────────────────────────────────────┤
-│ [↑↓] Navigate  [Enter] Accept  [Tab] Alternatives  [S] SUPP  [R] Required  [C] CT Detail │
+│ [↑↓] Navigate  [Enter] Assign Source  [Tab] Change Source  [U] Unmap  [S] Sources  [Esc] │
 └───────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Screen 3: Mapping Review - Narrow Layout (Alternative)
+**Key Design Elements:**
 
-For narrower terminals, use a **2-panel layout with tabs** to switch between
-Source Details and Target Details:
+1. **Left Panel - SDTM Variables**: Navigate through the standard SDTM structure
+   - Grouped by Core: Required → Expected → Permissible
+   - Status shows: AUTO (system-generated), ←SRC (has source), NEED (needs mapping)
+   - This view is CONSISTENT across all studies
+
+2. **Center Panel - Variable Details**: Shows selected SDTM variable info
+   - Variable metadata from SDTMIG
+   - CT codelist information if applicable
+   - Example valid CT values
+
+3. **Right Panel - Source Mapping**: Shows what source column is mapped
+   - Source column details from Items.csv
+   - Study CodeList values from CodeLists.csv
+   - CT validation results
+
+### Screen 3a: Assign Source Column (When Enter Pressed on Unmapped Variable)
+
+When user selects an unmapped SDTM variable and presses Enter, show source candidates:
+
+```
+┌───────────────────────────────────────────────────────────────────────────────────────────┐
+│  Assign Source Column to: CMTRT (Required - Topic Variable)                               │
+├───────────────────────────────────────────────────────────────────────────────────────────┤
+│ SDTM Variable         │ Source Column Candidates                                          │
+│ ┌───────────────────┐ │ ┌───────────────────────────────────────────────────────────────┐ │
+│ │                   │ │ │ Select source column to map to CMTRT:                         │ │
+│ │ Variable: CMTRT   │ │ │                                                               │ │
+│ │ Label: "Reported  │ │ │ Ranked by confidence:                                         │ │
+│ │   Name of Drug"   │ │ │ ┌─────────────────────────────────────────────────────────┐   │ │
+│ │                   │ │ │ │ > 1. CMTRT         ████████████████ 98%  (exact name)   │   │ │
+│ │ Type: Char        │ │ │ │      Label: "Medication" (Items.csv)                    │   │ │
+│ │ Core: Required    │ │ │ │      Sample: "ASPIRIN", "METFORMIN", "LISINOPRIL"       │   │ │
+│ │ Role: Topic       │ │ │ │                                                         │   │ │
+│ │                   │ │ │ │   2. MEDICATION    ██████████████░░ 89%                 │   │ │
+│ │ CT: None          │ │ │ │      Label: "Drug Name" (Items.csv)                     │   │ │
+│ │ (free text)       │ │ │ │      Sample: "Aspirin 100mg", "Metformin 500mg"         │   │ │
+│ │                   │ │ │ │                                                         │   │ │
+│ │ ─────────────────  │ │ │   3. DRUG_NAME     █████████████░░░ 82%                 │   │ │
+│ │                   │ │ │ │      Label: "Name of Drug" (Items.csv)                  │   │ │
+│ │ Description:      │ │ │ │      Sample: "aspirin", "metformin"                     │   │ │
+│ │ The verbatim name │ │ │ │                                                         │   │ │
+│ │ of the drug or    │ │ │ │   4. [No source - leave unmapped]                       │   │ │
+│ │ therapy reported  │ │ │ │                                                         │   │ │
+│ │ by the source.    │ │ │ │   5. [Create constant value]                            │   │ │
+│ │                   │ │ │ └─────────────────────────────────────────────────────────┘   │ │
+│ │                   │ │ │                                                               │ │
+│ │                   │ │ │ [/] Search columns    [A] Show all columns                   │ │
+│ └───────────────────┘ │ └───────────────────────────────────────────────────────────────┘ │
+├───────────────────────────────────────────────────────────────────────────────────────────┤
+│ [↑↓] Select  [Enter] Confirm  [/] Search  [A] All Columns  [Esc] Cancel                   │
+└───────────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Screen 3b: Narrow Layout (2-Panel with Tabs)
+
+For narrower terminals, use tabs to switch between views:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│  CM - Concomitant Medications                    Req: 5/5 ✓  Exp: 6/8   │
-│  Progress: ████████████████░░░░ 14/18            [R] Required Variables │
+│  CM - Concomitant Medications                    Req: 4/5  Exp: 6/8     │
+│  Progress: ████████████████░░░░ 12/25 mapped                            │
 ├─────────────────────────────────────────────────────────────────────────┤
-│ Source Columns    │ [1] Source  [2] Target  [3] CT Match               │
+│ SDTM Variables    │ [1] Variable  [2] Source  [3] CT Match              │
 │ ┌───────────────┐ │ ┌─────────────────────────────────────────────────┐ │
-│ │ [A]ll [?]Need │ │ │ ══════ SOURCE COLUMN ══════                     │ │
+│ │ [R]eq [E]xp   │ │ │ ══════ SDTM VARIABLE ══════                     │ │
 │ │               │ │ │                                                 │ │
-│ │ ✓ STUDYID     │ │ │ Column:    CMROUTE                              │ │
-│ │ ✓ SUBJID      │ │ │ Label:     "Route" (from Items.csv)             │ │
-│ │ ✓ CMTRT       │ │ │ Data Type: text                                 │ │
-│ │ ✓ CMDOSE      │ │ │ Mandatory: True                                 │ │
-│ │ > CMROUTE     │ │ │ Format:    ROUTE (has CodeList)                 │ │
+│ │ ── Required ─ │ │ │ Variable: CMROUTE                               │ │
+│ │ ✓ STUDYID     │ │ │ Label: "Route of Administration"                │ │
+│ │ ✓ DOMAIN      │ │ │ Type: Char         Core: Permissible            │ │
+│ │ ✓ USUBJID     │ │ │ Role: Record Qualifier                          │ │
+│ │ ✓ CMSEQ       │ │ │                                                 │ │
+│ │ ○ CMTRT       │ │ │ ══════ CDISC CT: C66729 ══════                  │ │
+│ │               │ │ │ Name: "Route of Administration Response"        │ │
+│ │ ── Expected ─ │ │ │ Extensible: Yes                                 │ │
+│ │ ✓ CMDOSE      │ │ │ Terms: 142 values                               │ │
 │ │ ? CMDOSU      │ │ │                                                 │ │
-│ │ ? START_DATE  │ │ │ ══════ STUDY CODELIST (ROUTE) ══════            │ │
-│ │ ? END_DATE    │ │ │                                                 │ │
-│ │ ○ COMMENTS    │ │ │ Code     Text                                   │ │
-│ │               │ │ │ ──────── ──────────────────                     │ │
-│ │               │ │ │ ORAL     Oral                                   │ │
-│ │               │ │ │ NASAL    Nasal                                  │ │
-│ │               │ │ │ TOPICAL  Topical                                │ │
-│ │               │ │ │                                                 │ │
-│ │               │ │ │ ══════ SAMPLE VALUES ══════                     │ │
-│ │               │ │ │ "ORAL", "NASAL", "TOPICAL"                      │ │
-│ │               │ │ │                                                 │ │
+│ │ > CMROUTE     │ │ │ Examples: ORAL, NASAL, TOPICAL, INTRAVENOUS,    │ │
+│ │ ○ CMDOSFRQ    │ │ │ SUBCUTANEOUS, INTRAMUSCULAR, SUBLINGUAL...      │ │
+│ │ ✓ CMSTDTC     │ │ │                                                 │ │
+│ │ ○ CMENDTC     │ │ │ ══════ DESCRIPTION ══════                       │ │
+│ │               │ │ │ Route of administration of the treatment.       │ │
 │ └───────────────┘ │ └─────────────────────────────────────────────────┘ │
 ├─────────────────────────────────────────────────────────────────────────┤
-│ Suggested: CMROUTE  Confidence: ████████████░░ 94%  CT: ✓ All valid    │
+│ Mapped: CMROUTE ← CMROUTE (94%)        CT: ✓ All values valid          │
 ├─────────────────────────────────────────────────────────────────────────┤
-│ [↑↓] Navigate  [1-3] Tabs  [Enter] Accept  [Tab] Alt  [S] SUPP  [Esc]  │
+│ [↑↓] Navigate  [1-3] Tabs  [Enter] Assign  [U] Unmap  [Esc] Back       │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-When user presses `[2]` to see Target details:
+When user presses `[2]` to see Source details:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│  CM - Concomitant Medications                    Req: 5/5 ✓  Exp: 6/8   │
-│  Progress: ████████████████░░░░ 14/18            [R] Required Variables │
+│  CM - Concomitant Medications                    Req: 4/5  Exp: 6/8     │
+│  Progress: ████████████████░░░░ 12/25 mapped                            │
 ├─────────────────────────────────────────────────────────────────────────┤
-│ Source Columns    │ [1] Source  [2] Target  [3] CT Match               │
+│ SDTM Variables    │ [1] Variable  [2] Source  [3] CT Match              │
 │ ┌───────────────┐ │ ┌─────────────────────────────────────────────────┐ │
-│ │ [A]ll [?]Need │ │ │ ══════ SUGGESTED TARGET ══════                  │ │
+│ │ [R]eq [E]xp   │ │ │ ══════ MAPPED SOURCE COLUMN ══════              │ │
 │ │               │ │ │                                                 │ │
-│ │ ✓ STUDYID     │ │ │ Variable:  CMROUTE                              │ │
-│ │ ✓ SUBJID      │ │ │ Label:     "Route of Administration"            │ │
-│ │ ✓ CMTRT       │ │ │ Data Type: Char                                 │ │
-│ │ ✓ CMDOSE      │ │ │ Core:      Perm (Permissible)                   │ │
-│ │ > CMROUTE     │ │ │ Role:      Record Qualifier                     │ │
+│ │ ── Required ─ │ │ │ Source: CMROUTE                                 │ │
+│ │ ✓ STUDYID     │ │ │ Confidence: ████████████████░░░░ 94% (HIGH)     │ │
+│ │ ✓ DOMAIN      │ │ │                                                 │ │
+│ │ ✓ USUBJID     │ │ │ ══════ FROM ITEMS.CSV ══════                    │ │
+│ │ ✓ CMSEQ       │ │ │ Column ID: CMROUTE                              │ │
+│ │ ○ CMTRT       │ │ │ Label: "Route"                                  │ │
+│ │               │ │ │ Data Type: text                                 │ │
+│ │ ── Expected ─ │ │ │ Mandatory: True                                 │ │
+│ │ ✓ CMDOSE      │ │ │ Format: ROUTE (has CodeList)                    │ │
 │ │ ? CMDOSU      │ │ │                                                 │ │
-│ │ ? START_DATE  │ │ │ ══════ CONFIDENCE ══════                        │ │
-│ │ ? END_DATE    │ │ │                                                 │ │
-│ │ ○ COMMENTS    │ │ │ Score: ████████████░░ 94% (HIGH)                │ │
-│ │               │ │ │                                                 │ │
-│ │               │ │ │ Reasoning:                                      │ │
-│ │               │ │ │ • Column name exact match: CMROUTE              │ │
-│ │               │ │ │ • Label similarity: 78%                         │ │
-│ │               │ │ │ • Data type compatible: text → Char             │ │
-│ │               │ │ │ • CT codelist available: C66729                 │ │
-│ │               │ │ │                                                 │ │
-│ │               │ │ │ ══════ CDISC CT: C66729 ══════                  │ │
-│ │               │ │ │ Name: "Route of Administration Response"        │ │
-│ │               │ │ │ Extensible: Yes (sponsor extensions allowed)    │ │
-│ │               │ │ │ Terms: 142 values                               │ │
+│ │ > CMROUTE     │ │ │ ══════ STUDY CODELIST (ROUTE) ══════            │ │
+│ │ ○ CMDOSFRQ    │ │ │ Code      Text                                  │ │
+│ │ ✓ CMSTDTC     │ │ │ ────────  ────────────────────                  │ │
+│ │ ○ CMENDTC     │ │ │ ORAL      Oral                                  │ │
+│ │               │ │ │ NASAL     Nasal                                 │ │
+│ │               │ │ │ TOPICAL   Topical                               │ │
 │ └───────────────┘ │ └─────────────────────────────────────────────────┘ │
 ├─────────────────────────────────────────────────────────────────────────┤
-│ Suggested: CMROUTE  Confidence: ████████████░░ 94%  CT: ✓ All valid    │
+│ Mapped: CMROUTE ← CMROUTE (94%)        CT: ✓ All values valid          │
 ├─────────────────────────────────────────────────────────────────────────┤
-│ [↑↓] Navigate  [1-3] Tabs  [Enter] Accept  [Tab] Alt  [S] SUPP  [Esc]  │
+│ [↑↓] Navigate  [1-3] Tabs  [Tab] Change Source  [U] Unmap  [Esc] Back  │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -853,147 +903,109 @@ When user presses `[3]` to see CT Match details:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│  CM - Concomitant Medications                    Req: 5/5 ✓  Exp: 6/8   │
-│  Progress: ████████████████░░░░ 14/18            [R] Required Variables │
+│  CM - Concomitant Medications                    Req: 4/5  Exp: 6/8     │
+│  Progress: ████████████████░░░░ 12/25 mapped                            │
 ├─────────────────────────────────────────────────────────────────────────┤
-│ Source Columns    │ [1] Source  [2] Target  [3] CT Match               │
+│ SDTM Variables    │ [1] Variable  [2] Source  [3] CT Match              │
 │ ┌───────────────┐ │ ┌─────────────────────────────────────────────────┐ │
-│ │ [A]ll [?]Need │ │ │ ══════ CT VALUE COMPARISON ══════               │ │
+│ │ [R]eq [E]xp   │ │ │ ══════ CT VALUE VALIDATION ══════               │ │
 │ │               │ │ │                                                 │ │
-│ │ ✓ STUDYID     │ │ │ CDISC CT Codelist: C66729                       │ │
-│ │ ✓ SUBJID      │ │ │ Name: "Route of Administration Response"        │ │
-│ │ ✓ CMTRT       │ │ │ Extensible: Yes                                 │ │
-│ │ ✓ CMDOSE      │ │ │                                                 │ │
-│ │ > CMROUTE     │ │ │ ────────────────────────────────────────────    │ │
-│ │ ? CMDOSU      │ │ │ Source Value  │ CT Value   │ Status             │ │
-│ │ ? START_DATE  │ │ │ ────────────  │ ─────────  │ ─────────────────  │ │
-│ │ ? END_DATE    │ │ │ ORAL          │ ORAL       │ ✓ Exact match      │ │
-│ │ ○ COMMENTS    │ │ │ NASAL         │ NASAL      │ ✓ Exact match      │ │
-│ │               │ │ │ TOPICAL       │ TOPICAL    │ ✓ Exact match      │ │
-│ │               │ │ │                                                 │ │
-│ │               │ │ │ ══════ SUMMARY ══════                           │ │
-│ │               │ │ │                                                 │ │
-│ │               │ │ │ ✓ 3/3 source values found in CDISC CT           │ │
-│ │               │ │ │ ✓ No normalization needed                       │ │
+│ │ ── Required ─ │ │ │ SDTM Variable: CMROUTE                          │ │
+│ │ ✓ STUDYID     │ │ │ CT Codelist: C66729                             │ │
+│ │ ✓ DOMAIN      │ │ │ Extensible: Yes (sponsor values allowed)        │ │
+│ │ ✓ USUBJID     │ │ │                                                 │ │
+│ │ ✓ CMSEQ       │ │ │ ══════ SOURCE → OUTPUT MAPPING ══════           │ │
+│ │ ○ CMTRT       │ │ │                                                 │ │
+│ │               │ │ │ Source Value  →  SDTM Output  │  Status         │ │
+│ │ ── Expected ─ │ │ │ ────────────     ───────────     ─────────────  │ │
+│ │ ✓ CMDOSE      │ │ │ ORAL          →  ORAL           ✓ Exact match  │ │
+│ │ ? CMDOSU      │ │ │ NASAL         →  NASAL          ✓ Exact match  │ │
+│ │ > CMROUTE     │ │ │ TOPICAL       →  TOPICAL        ✓ Exact match  │ │
+│ │ ○ CMDOSFRQ    │ │ │                                                 │ │
+│ │ ✓ CMSTDTC     │ │ │ ══════ SUMMARY ══════                           │ │
+│ │ ○ CMENDTC     │ │ │ ✓ 3/3 source values found in CDISC CT           │ │
+│ │               │ │ │ ✓ No normalization required                     │ │
 │ │               │ │ │ ✓ Output will use values as-is                  │ │
-│ │               │ │ │                                                 │ │
 │ └───────────────┘ │ └─────────────────────────────────────────────────┘ │
 ├─────────────────────────────────────────────────────────────────────────┤
-│ Suggested: CMROUTE  Confidence: ████████████░░ 94%  CT: ✓ All valid    │
+│ Mapped: CMROUTE ← CMROUTE (94%)        CT: ✓ All values valid          │
 ├─────────────────────────────────────────────────────────────────────────┤
-│ [↑↓] Navigate  [1-3] Tabs  [Enter] Accept  [Tab] Alt  [S] SUPP  [Esc]  │
+│ [↑↓] Navigate  [1-3] Tabs  [Tab] Change Source  [U] Unmap  [Esc] Back  │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Screen 3c: CT Mismatch Warning Example
+### Screen 3c: CT Value Mismatch Warning
 
-When source values don't match CDISC CT, show clear warnings:
+When source values don't match CDISC CT (especially for non-extensible codelists):
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│  CM - Concomitant Medications                    Req: 5/5 ✓  Exp: 6/8   │
+│  DM - Demographics                               Req: 8/8  Exp: 4/5     │
 ├─────────────────────────────────────────────────────────────────────────┤
-│ Source Columns    │ [1] Source  [2] Target  [3] CT Match               │
+│ SDTM Variables    │ [1] Variable  [2] Source  [3] CT Match              │
 │ ┌───────────────┐ │ ┌─────────────────────────────────────────────────┐ │
-│ │               │ │ │ ══════ CT VALUE COMPARISON ══════               │ │
-│ │ ✓ STUDYID     │ │ │                                                 │ │
-│ │ ✓ SUBJID      │ │ │ CDISC CT Codelist: C66731 (Sex)                 │ │
-│ │ > SEX         │ │ │ Extensible: NO (closed list!)                   │ │
+│ │               │ │ │ ══════ ⚠ CT VALIDATION WARNING ══════           │ │
+│ │ ── Required ─ │ │ │                                                 │ │
+│ │ ✓ STUDYID     │ │ │ SDTM Variable: SEX                              │ │
+│ │ ✓ DOMAIN      │ │ │ CT Codelist: C66731 (Sex)                       │ │
+│ │ ✓ USUBJID     │ │ │ Extensible: NO ← Values MUST match CT!          │ │
+│ │ > SEX    ←SRC │ │ │                                                 │ │
+│ │ ✓ BRTHDTC     │ │ │ ══════ SOURCE → OUTPUT MAPPING ══════           │ │
 │ │               │ │ │                                                 │ │
-│ │               │ │ │ ────────────────────────────────────────────    │ │
-│ │               │ │ │ Source Value  │ CT Value   │ Status             │ │
-│ │               │ │ │ ────────────  │ ─────────  │ ─────────────────  │ │
-│ │               │ │ │ Male          │ M          │ ✓ Normalize to M   │ │
-│ │               │ │ │ Female        │ F          │ ✓ Normalize to F   │ │
-│ │               │ │ │ Unknown       │ U          │ ✓ Normalize to U   │ │
-│ │               │ │ │ Other         │ ???        │ ✗ NOT IN CT!       │ │
+│ │ ── Expected ─ │ │ │ Source Value  →  SDTM Output  │  Status         │ │
+│ │ ✓ AGE         │ │ │ ────────────     ───────────     ─────────────  │ │
+│ │ ✓ AGEU        │ │ │ Male          →  M              ✓ Normalize     │ │
+│ │ ✓ RACE        │ │ │ Female        →  F              ✓ Normalize     │ │
+│ │ ○ ETHNIC      │ │ │ Unknown       →  U              ✓ Normalize     │ │
+│ │               │ │ │ Other         →  ???            ✗ NOT IN CT!    │ │
 │ │               │ │ │                                                 │ │
-│ │               │ │ │ ══════ ⚠ WARNING ══════                         │ │
-│ │               │ │ │                                                 │ │
+│ │               │ │ │ ══════ ✗ ERROR ══════                           │ │
 │ │               │ │ │ 1 value not found in CDISC CT!                  │ │
-│ │               │ │ │ "Other" has no valid CT submission value.       │ │
+│ │               │ │ │ "Other" has no valid submission value.          │ │
 │ │               │ │ │                                                 │ │
 │ │               │ │ │ This codelist is NOT extensible.                │ │
-│ │               │ │ │ You must fix this in source data or             │ │
-│ │               │ │ │ map affected records to a valid CT value.       │ │
-│ │               │ │ │                                                 │ │
+│ │               │ │ │ Options: Fix source data, or use [M] to         │ │
+│ │               │ │ │ manually map "Other" to a valid CT value.       │ │
 │ └───────────────┘ │ └─────────────────────────────────────────────────┘ │
 ├─────────────────────────────────────────────────────────────────────────┤
-│ Suggested: SEX  Confidence: ████████████░░ 92%  CT: ✗ 1 ERROR          │
+│ Mapped: SEX ← SEXCD (92%)              CT: ✗ 1 ERROR - action required │
 ├─────────────────────────────────────────────────────────────────────────┤
-│ [↑↓] Navigate  [1-3] Tabs  [Enter] Accept (with warning)  [Esc] Cancel │
+│ [↑↓] Navigate  [M] Map Values  [Tab] Change Source  [Esc] Back         │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Screen 3d: Required Variables View (Press [R])
+### Screen 3d: Unmapped Source Columns View (Press [S])
 
-Shows all Required and Expected SDTM variables and their mapping status:
+Show all source columns that haven't been mapped to any SDTM variable:
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│  CM - Required & Expected Variables                                     │
+│  CM - Unmapped Source Columns                                           │
 ├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  These source columns have not been mapped to any SDTM variable.        │
+│  You can assign them to SDTM variables or send them to SUPP domain.     │
 │                                                                         │
 │  ┌───────────────────────────────────────────────────────────────────┐  │
-│  │ Variable  │ Core │ Status    │ Mapped From     │ CT Codelist      │  │
-│  │ ────────  │ ──── │ ───────── │ ─────────────── │ ──────────────── │  │
-│  │ STUDYID   │ Req  │ ✓ AUTO    │ (study config)  │ -                │  │
-│  │ DOMAIN    │ Req  │ ✓ AUTO    │ "CM"            │ C66734           │  │
-│  │ USUBJID   │ Req  │ ✓ mapped  │ SUBJID          │ -                │  │
-│  │ CMSEQ     │ Req  │ ✓ AUTO    │ (auto-sequence) │ -                │  │
-│  │ CMTRT     │ Req  │ ✓ mapped  │ CMTRT           │ -                │  │
-│  │ ────────  │ ──── │ ───────── │ ─────────────── │ ──────────────── │  │
-│  │ CMDOSE    │ Exp  │ ✓ mapped  │ CMDOSE          │ -                │  │
-│  │ CMDOSU    │ Exp  │ ? review  │ DOSE_UNIT       │ C71620           │  │
-│  │ CMROUTE   │ Perm │ > current │ CMROUTE         │ C66729           │  │
-│  │ CMDOSFRQ  │ Perm │ ○ unmapped│ -               │ C71113           │  │
-│  │ CMSTDTC   │ Exp  │ ✓ mapped  │ START_DATE      │ -                │  │
-│  │ CMENDTC   │ Exp  │ ○ unmapped│ -               │ -                │  │
+│  │ Source Column    │ Label (Items.csv)       │ Action               │  │
+│  │ ───────────────  │ ──────────────────────  │ ────────────────     │  │
+│  │ > COMMENTS       │ "Additional comments"   │ [Enter] Assign       │  │
+│  │   NOTES          │ "Internal notes"        │ [S] Send to SUPP     │  │
+│  │   CUSTOM_FIELD   │ "Custom data field"     │                      │  │
+│  │   BATCH_NUMBER   │ "Drug batch number"     │                      │  │
 │  └───────────────────────────────────────────────────────────────────┘  │
 │                                                                         │
-│  Legend:                                                                │
-│  ✓ AUTO = System auto-generates    ✓ mapped = Source column assigned   │
-│  ? review = Needs your review      ○ unmapped = No mapping yet          │
+│  Selected: COMMENTS                                                     │
+│  Label: "Additional comments about medication"                          │
+│  Sample: "Patient reported nausea", "Taken with food"                   │
+│                                                                         │
+│  Options:                                                               │
+│  • [Enter] Assign to an SDTM variable (browse variable list)            │
+│  • [S] Send to SUPP domain (create SUPPCM.QNAM)                         │
+│  • [X] Skip this column (won't be included in output)                   │
 │                                                                         │
 ├─────────────────────────────────────────────────────────────────────────┤
-│  [↑↓] Navigate  [Enter] Jump to Column  [R] Return to Review  [Esc]     │
-└─────────────────────────────────────────────────────────────────────────┘
-```
-
-### Screen 3e: Mapping Alternatives (When Tab Pressed)
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│  Domain: CM (Concomitant Medications)        Progress: 14/18 confirmed  │
-├─────────────────────────────────────────────────────────────────────────┤
-│ Source Columns                 │ Alternative Mappings for DOSE_AMOUNT   │
-│ (18 columns)                   │                                        │
-│ ┌─────────────────────────────┐│┌─────────────────────────────────────┐│
-│ │ Filter: [____________] [A]ll│││ Source: DOSE_AMOUNT                  ││
-│ │                             │││ Label:  "Numeric dose value"         ││
-│ │ ✓ STUDYID      ────▶ STUDYID│││ Sample: 100, 250, 500, 50, 200      ││
-│ │ ✓ SUBJID       ────▶ USUBJID│││ Type:   Numeric                      ││
-│ │ > DOSE_AMOUNT  ────▶ ?      │││──────────────────────────────────────││
-│ │ ? START_DATE   ────▶ ?      │││                                      ││
-│ │ ? ROUTE        ────▶ ?      │││ Ranked Alternatives:                 ││
-│ │ ○ COMMENTS     ──▶ SUPP     │││                                      ││
-│ │                             │││ > 1. CMDOSE   ██████████░░ 92%       ││
-│ │                             │││     "Dose"    Num  Exp               ││
-│ │                             │││                                      ││
-│ │                             │││   2. CMDOSTOT █████████░░░ 78%       ││
-│ │                             │││     "Total Daily Dose" Num Perm      ││
-│ │                             │││                                      ││
-│ │                             │││   3. (Map to SUPP)                   ││
-│ │                             │││                                      ││
-│ │                             │││──────────────────────────────────────││
-│ │                             │││ Selected: CMDOSE                     ││
-│ │                             │││ Label: "Dose"                        ││
-│ │                             │││ Description: Amount of CMTRT         ││
-│ │                             │││   administered. Not populated when   ││
-│ │                             │││   CMDOSTXT is populated.             ││
-│ └─────────────────────────────┘│└─────────────────────────────────────┘│
-├─────────────────────────────────────────────────────────────────────────┤
-│  [↑↓] Select Alternative  [Enter] Confirm  [Tab] Back  [U] Supp  [Esc] │
+│  [↑↓] Navigate  [Enter] Assign  [S] SUPP  [X] Skip  [R] Return  [Esc]   │
 └─────────────────────────────────────────────────────────────────────────┘
 ```
 
