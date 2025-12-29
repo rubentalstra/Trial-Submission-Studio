@@ -25,7 +25,6 @@ use crate::wide::{build_ie_wide_frame, build_lb_wide_frame, build_vs_wide_frame}
 pub use sdtm_transform::frame_builder::{
     build_domain_frame, build_domain_frame_with_mapping, collect_table_columns,
 };
-pub(crate) use sdtm_transform::frame_builder::build_domain_frame_from_records;
 
 /// Build a domain frame with automatic column mapping and wide-format detection.
 ///
