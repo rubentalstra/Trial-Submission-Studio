@@ -7,7 +7,7 @@
 #![allow(dead_code)]
 
 use polars::prelude::DataFrame;
-use sdtm_map::{ConfidenceLevel, ConfidenceThresholds, MappingEngine, MappingResult};
+use sdtm_map::{MappingEngine, MappingResult};
 use sdtm_model::{ColumnHint, Domain, MappingConfig, MappingSuggestion, Variable};
 use std::collections::BTreeMap;
 
@@ -144,21 +144,6 @@ impl MappingState {
             true
         } else {
             false
-        }
-    }
-
-    /// Accept all high-confidence suggestions
-    pub fn accept_all_high(&mut self) {
-        let thresholds = ConfidenceThresholds::default();
-        for suggestion in &self.suggestions {
-            if thresholds.categorize(suggestion.confidence) == Some(ConfidenceLevel::High) {
-                if !self.accepted.contains_key(&suggestion.target_variable) {
-                    self.accepted.insert(
-                        suggestion.target_variable.clone(),
-                        (suggestion.source_column.clone(), suggestion.confidence),
-                    );
-                }
-            }
         }
     }
 

@@ -274,20 +274,6 @@ impl DomainEditorView {
 
         ui.add_space(spacing::SM);
 
-        // Accept all high button
-        if summary.suggested > 0 {
-            if ui.button("Accept all high confidence").clicked() {
-                if let Some(study) = &mut state.study {
-                    if let Some(domain) = study.get_domain_mut(domain_code) {
-                        if let Some(ms) = &mut domain.mapping_state {
-                            ms.accept_all_high();
-                        }
-                    }
-                }
-            }
-            ui.add_space(spacing::SM);
-        }
-
         // Search box
         ui.horizontal(|ui| {
             ui.label("🔍");
