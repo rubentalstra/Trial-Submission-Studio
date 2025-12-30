@@ -10,7 +10,7 @@ use polars::prelude::DataFrame;
 use sdtm_map::{MappingEngine, MappingResult};
 use sdtm_model::{ColumnHint, Domain, MappingConfig, MappingSuggestion, Variable};
 use sdtm_standards::load_default_ct_registry;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet, HashSet};
 
 /// Pre-fetched codelist display info (loaded once when domain opens)
 #[derive(Debug, Clone)]
@@ -80,12 +80,12 @@ impl MappingState {
         let mut cache = BTreeMap::new();
 
         // Collect all unique codelist codes from variables
-        let mut codelist_codes: Vec<String> = Vec::new();
+        let mut codelist_codes = BTreeSet::new();
         for var in &domain.variables {
-            if let Some(ref codes_str) = var.codelist_code {
-                for code in codes_str.split(';').map(|s| s.trim()) {
-                    if !code.is_empty() && !codelist_codes.contains(&code.to_string()) {
-                        codelist_codes.push(code.to_string());
+            if let Some(codes_str) = &var.codelist_code {
+                for code in codes_str.split(';').map(str::trim) {
+                    if !code.is_empty() {
+                        codelist_codes.insert(code.to_string());
                     }
                 }
             }
@@ -260,9 +260,7 @@ impl MappingState {
 
     /// Get all source columns (mapped and unmapped)
     pub fn all_source_columns(&self) -> Vec<&str> {
-        let mut cols: Vec<&str> = self.column_hints.keys().map(String::as_str).collect();
-        cols.sort();
-        cols
+        self.column_hints.keys().map(String::as_str).collect()
     }
 
     /// Check if a source column is already used
@@ -272,9 +270,10 @@ impl MappingState {
 
     /// Get available (unused) source columns
     pub fn available_columns(&self) -> Vec<&str> {
+        let used: HashSet<&str> = self.accepted.values().map(|(c, _)| c.as_str()).collect();
         self.all_source_columns()
             .into_iter()
-            .filter(|c| !self.is_column_used(c))
+            .filter(|c| !used.contains(*c))
             .collect()
     }
 

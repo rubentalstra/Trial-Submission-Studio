@@ -56,86 +56,128 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
     // Rebuild transforms from current mapping state (cheap operation)
     rebuild_transforms_if_needed(state, domain_code);
 
-    // Get data for display
-    let Some(study) = &state.study else {
-        ui.label("No study loaded");
-        return;
-    };
-    let Some(domain) = study.get_domain(domain_code) else {
-        ui.label("Domain not found");
-        return;
-    };
-    let Some(ts) = &domain.transform_state else {
-        ui.label("Loading...");
-        return;
-    };
+    let mut new_selection: Option<usize> = None;
 
-    // Header
-    let generated_count = ts.transforms.iter().filter(|t| t.is_generated()).count();
-    let ct_count = ts.transforms.len().saturating_sub(generated_count);
+    {
+        // Get data for display
+        let (transforms, selected_idx, generated_count, ct_count, has_subject_id_mapping) = {
+            let Some(study) = &state.study else {
+                ui.label("No study loaded");
+                return;
+            };
+            let Some(domain) = study.get_domain(domain_code) else {
+                ui.label("Domain not found");
+                return;
+            };
+            let Some(ts) = &domain.transform_state else {
+                ui.label("Loading...");
+                return;
+            };
 
-    ui.label(
-        RichText::new(format!("{} Transformations", egui_phosphor::regular::SHUFFLE)).strong(),
-    );
-    if ts.transforms.len() > 0 {
-        ui.add_space(spacing::XS);
+            let generated_count = ts.transforms.iter().filter(|t| t.is_generated()).count();
+            let ct_count = ts.transforms.len().saturating_sub(generated_count);
+            let has_subject_id_mapping = domain
+                .mapping_state
+                .as_ref()
+                .map(|ms| subject_id_mapping(ms).is_some())
+                .unwrap_or(false);
+
+            (
+                ts.transforms.as_slice(),
+                ts.selected_idx,
+                generated_count,
+                ct_count,
+                has_subject_id_mapping,
+            )
+        };
+
+        // Header
         ui.label(
-            RichText::new(format!(
-                "{} generated · {} CT",
-                generated_count, ct_count
-            ))
-            .color(theme.text_muted)
-            .small(),
+            RichText::new(format!("{} Transformations", egui_phosphor::regular::SHUFFLE))
+                .strong(),
         );
-    }
-    ui.add_space(spacing::SM);
-    ui.separator();
-
-    if ts.transforms.is_empty() {
-        ui.add_space(spacing::LG);
-        ui.centered_and_justified(|ui| {
+        if !transforms.is_empty() {
+            ui.add_space(spacing::XS);
             ui.label(
                 RichText::new(format!(
-                    "{} No transformations available for this domain",
-                    egui_phosphor::regular::INFO
+                    "{} generated · {} CT",
+                    generated_count, ct_count
                 ))
-                .color(theme.text_muted),
+                .color(theme.text_muted)
+                .small(),
             );
-        });
-        return;
+        }
+        ui.add_space(spacing::SM);
+        ui.separator();
+
+        if transforms.is_empty() {
+            ui.add_space(spacing::LG);
+            ui.centered_and_justified(|ui| {
+                ui.label(
+                    RichText::new(format!(
+                        "{} No transformations available for this domain",
+                        egui_phosphor::regular::INFO
+                    ))
+                    .color(theme.text_muted),
+                );
+            });
+            return;
+        }
+
+        let available_height = ui.available_height();
+
+        egui_extras::StripBuilder::new(ui)
+            .size(egui_extras::Size::exact(300.0))
+            .size(egui_extras::Size::exact(1.0))
+            .size(egui_extras::Size::remainder())
+            .horizontal(|mut strip| {
+                strip.cell(|ui| {
+                    egui::ScrollArea::vertical()
+                        .max_height(available_height)
+                        .show(ui, |ui| {
+                            new_selection = show_transform_list(
+                                ui,
+                                transforms,
+                                selected_idx,
+                                has_subject_id_mapping,
+                                generated_count,
+                                ct_count,
+                                &theme,
+                            );
+                        });
+                });
+
+                strip.cell(|ui| {
+                    ui.separator();
+                });
+
+                strip.cell(|ui| {
+                    egui::ScrollArea::vertical()
+                        .max_height(available_height)
+                        .show(ui, |ui| {
+                            let effective_selection = new_selection.or(selected_idx);
+                            show_transform_detail(
+                                ui,
+                                state,
+                                domain_code,
+                                transforms,
+                                effective_selection,
+                                &theme,
+                            );
+                        });
+                });
+            });
     }
 
-    // Clone what we need for layout
-    let transforms: Vec<_> = ts.transforms.iter().cloned().collect();
-    let selected_idx = ts.selected_idx;
-
-    let available_height = ui.available_height();
-
-    egui_extras::StripBuilder::new(ui)
-        .size(egui_extras::Size::exact(300.0))
-        .size(egui_extras::Size::exact(1.0))
-        .size(egui_extras::Size::remainder())
-        .horizontal(|mut strip| {
-            strip.cell(|ui| {
-                egui::ScrollArea::vertical()
-                    .max_height(available_height)
-                    .show(ui, |ui| {
-                        show_transform_list(ui, state, domain_code, &transforms, selected_idx, &theme);
-                    });
-            });
-
-            strip.cell(|ui| {
-                ui.separator();
-            });
-
-            strip.cell(|ui| {
-                egui::ScrollArea::vertical()
-                    .max_height(available_height)
-                    .show(ui, |ui| {
-                        show_transform_detail(ui, state, domain_code, &transforms, selected_idx, &theme);
-                    });
-            });
-        });
+    if let Some(idx) = new_selection {
+        if let Some(study) = &mut state.study {
+            if let Some(domain) = study.get_domain_mut(domain_code) {
+                if let Some(ts) = &mut domain.transform_state {
+                    ts.selected_idx = Some(idx);
+                }
+            }
+        }
+    }
 }
 
 /// Rebuild transforms from current mapping state
@@ -145,6 +187,7 @@ fn rebuild_transforms_if_needed(state: &mut AppState, domain_code: &str) {
     if let Some(study) = &state.study {
         if let Some(domain) = study.get_domain(domain_code) {
             if let Some(ms) = &domain.mapping_state {
+                transforms.reserve(ms.sdtm_domain.variables.len() + 4);
                 if ms.sdtm_domain.column_name("STUDYID").is_some() {
                     transforms.push(TransformRule::StudyIdConstant);
                 }
@@ -195,36 +238,16 @@ fn rebuild_transforms_if_needed(state: &mut AppState, domain_code: &str) {
 
 fn show_transform_list(
     ui: &mut Ui,
-    state: &mut AppState,
-    domain_code: &str,
     transforms: &[TransformRule],
     selected_idx: Option<usize>,
+    has_subject_id_mapping: bool,
+    generated_count: usize,
+    ct_count: usize,
     theme: &crate::theme::ThemeColors,
-) {
+) -> Option<usize> {
     let mut new_selection: Option<usize> = None;
 
-    // Group by category
-    let generated: Vec<_> = transforms
-        .iter()
-        .enumerate()
-        .filter(|(_, t)| t.is_generated())
-        .collect();
-
-    let ct: Vec<_> = transforms
-        .iter()
-        .enumerate()
-        .filter(|(_, t)| matches!(t, TransformRule::CtNormalization { .. }))
-        .collect();
-
-    let has_subject_id_mapping = state
-        .study
-        .as_ref()
-        .and_then(|s| s.get_domain(domain_code))
-        .and_then(|d| d.mapping_state.as_ref())
-        .map(|ms| subject_id_mapping(ms).is_some())
-        .unwrap_or(false);
-
-    if !generated.is_empty() {
+    if generated_count > 0 {
         ui.label(
             RichText::new(format!(
                 "{} Generated & Derived",
@@ -235,16 +258,16 @@ fn show_transform_list(
         );
         ui.add_space(spacing::SM);
 
-        for (idx, t) in &generated {
+        for (idx, t) in transforms.iter().enumerate().filter(|(_, t)| t.is_generated()) {
             let status_suffix = transform_status_suffix(t, has_subject_id_mapping);
-            if render_row(ui, *idx, t, selected_idx == Some(*idx), status_suffix, theme) {
-                new_selection = Some(*idx);
+            if render_row(ui, idx, t, selected_idx == Some(idx), status_suffix, theme) {
+                new_selection = Some(idx);
             }
         }
     }
 
-    if !ct.is_empty() {
-        if !generated.is_empty() {
+    if ct_count > 0 {
+        if generated_count > 0 {
             ui.add_space(spacing::MD);
             ui.separator();
             ui.add_space(spacing::SM);
@@ -260,22 +283,18 @@ fn show_transform_list(
         );
         ui.add_space(spacing::SM);
 
-        for (idx, t) in &ct {
-            if render_row(ui, *idx, t, selected_idx == Some(*idx), None, theme) {
-                new_selection = Some(*idx);
+        for (idx, t) in transforms
+            .iter()
+            .enumerate()
+            .filter(|(_, t)| matches!(t, TransformRule::CtNormalization { .. }))
+        {
+            if render_row(ui, idx, t, selected_idx == Some(idx), None, theme) {
+                new_selection = Some(idx);
             }
         }
     }
 
-    if let Some(idx) = new_selection {
-        if let Some(study) = &mut state.study {
-            if let Some(domain) = study.get_domain_mut(domain_code) {
-                if let Some(ts) = &mut domain.transform_state {
-                    ts.selected_idx = Some(idx);
-                }
-            }
-        }
-    }
+    new_selection
 }
 
 fn subject_id_mapping<'a>(ms: &'a MappingState) -> Option<(&'a str, &'static str)> {
@@ -387,7 +406,7 @@ fn show_transform_detail(
         let Some(study) = &state.study else { return };
         let Some(domain) = study.get_domain(domain_code) else { return };
         let Some(ms) = &domain.mapping_state else { return };
-        (study.study_id.clone(), ms, &domain.source_data)
+        (study.study_id.as_str(), ms, &domain.source_data)
     };
 
     // Header
@@ -425,7 +444,7 @@ fn show_transform_detail(
                     ui.end_row();
 
                     ui.label(RichText::new("Value").color(theme.text_muted));
-                    ui.label(RichText::new(&study_id).color(theme.accent));
+                    ui.label(RichText::new(study_id).color(theme.accent));
                     ui.end_row();
                 });
         }
@@ -476,7 +495,7 @@ fn show_transform_detail(
                 ui.label(RichText::new("Mapping").strong().color(theme.text_muted));
                 ui.add_space(spacing::SM);
 
-                    egui::Grid::new("usubjid_mapping")
+                egui::Grid::new("usubjid_mapping")
                     .num_columns(2)
                     .spacing([20.0, 4.0])
                     .show(ui, |ui| {
@@ -485,7 +504,7 @@ fn show_transform_detail(
                         ui.end_row();
 
                         ui.label(RichText::new("Study ID").color(theme.text_muted));
-                        ui.label(RichText::new(&study_id).color(theme.accent));
+                        ui.label(RichText::new(study_id).color(theme.accent));
                         ui.end_row();
                     });
 

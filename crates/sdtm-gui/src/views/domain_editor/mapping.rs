@@ -2,7 +2,7 @@
 //!
 //! Interactive column-to-variable mapping with suggestions and CT display.
 
-use crate::services::{MappingService, VariableMappingStatus};
+use crate::services::{MappingService, MappingState, VariableMappingStatus};
 use crate::state::{AppState, DomainStatus};
 use crate::theme::{colors, spacing};
 use egui::{RichText, Ui};
@@ -254,13 +254,9 @@ fn show_variable_list(
         ui.label(egui_phosphor::regular::MAGNIFYING_GLASS);
         let response = ui.text_edit_singleline(&mut search_text);
         if response.changed() {
-            if let Some(study) = &mut state.study {
-                if let Some(domain) = study.get_domain_mut(domain_code) {
-                    if let Some(ms) = &mut domain.mapping_state {
-                        ms.search_filter = search_text;
-                    }
-                }
-            }
+            with_mapping_state_mut(state, domain_code, |ms| {
+                ms.search_filter = search_text;
+            });
         }
     });
 
@@ -346,13 +342,9 @@ fn show_variable_list(
 
     // Apply selection change
     if let Some(idx) = new_selection {
-        if let Some(study) = &mut state.study {
-            if let Some(domain) = study.get_domain_mut(domain_code) {
-                if let Some(ms) = &mut domain.mapping_state {
-                    ms.selected_variable_idx = Some(idx);
-                }
-            }
-        }
+        with_mapping_state_mut(state, domain_code, |ms| {
+            ms.selected_variable_idx = Some(idx);
+        });
     }
 }
 
@@ -395,75 +387,90 @@ fn show_variable_detail(
         let var_codelist = variable.codelist_code.clone();
         let study_id = study.study_id.clone();
         let has_subjid_var = ms.sdtm_domain.column_name("SUBJID").is_some();
+        let is_usubjid_derived = has_subjid_var && var_name.eq_ignore_ascii_case("USUBJID");
+        let is_auto = is_auto_generated_variable(&var_name, var_role.as_deref()) || is_usubjid_derived;
 
         let suggestion = ms.get_suggestion_for(&var_name).cloned();
         let accepted = ms.get_accepted_for(&var_name).map(|(c, f)| (c.to_string(), f));
         let status = ms.variable_status(&var_name);
 
-        // Get available columns with confidence scores and labels for this variable
-        // Tuple: (column_id, optional_label, confidence)
-        let available_cols_with_info: Vec<(String, Option<String>, f32)> = ms
-            .available_columns()
-            .iter()
-            .map(|col| {
-                // Calculate name similarity between column and variable
-                let similarity = calculate_name_similarity(col, &var_name);
-                // Get label from study metadata (Items.csv)
-                let label = study.get_column_label(col).map(String::from);
-                (col.to_string(), label, similarity)
-            })
-            .collect();
-
-        // Sort by confidence (highest first), then by name
-        let mut available_cols_sorted = available_cols_with_info;
-        available_cols_sorted.sort_by(|a, b| {
-            b.2.partial_cmp(&a.2)
-                .unwrap_or(std::cmp::Ordering::Equal)
-                .then_with(|| a.0.cmp(&b.0))
-        });
-
-        // Get source column info if mapped/suggested
-        let source_col_name = accepted
-            .as_ref()
-            .map(|(c, _)| c.clone())
-            .or_else(|| suggestion.as_ref().map(|s| s.source_column.clone()));
-
-        // Get source column label from study metadata (Items.csv)
-        let source_col_label = source_col_name
-            .as_ref()
-            .and_then(|col| study.get_column_label(col).map(String::from));
-
-        let source_info = source_col_name.as_ref().and_then(|col| {
-            ms.column_hints.get(col).map(|hint| {
-                let samples = MappingService::get_sample_values(&domain.source_data, col, 5);
-                (
-                    col.clone(),
-                    hint.is_numeric,
-                    hint.unique_ratio,
-                    hint.null_ratio,
-                    samples,
-                )
-            })
-        });
-
-        let confidence = accepted
-            .as_ref()
-            .map(|(_, c)| *c)
-            .or_else(|| suggestion.as_ref().map(|s| s.confidence));
-
-        let subjid_mapping = if has_subjid_var {
-            ms.get_accepted_for("SUBJID")
-                .map(|(c, _)| c.to_string())
+        let (source_info, source_col_label, confidence, available_cols_sorted) = if is_auto {
+            (None, None, None, Vec::new())
         } else {
-            None
+            // Get available columns with confidence scores and labels for this variable
+            // Tuple: (column_id, optional_label, confidence)
+            let available_cols_with_info: Vec<(String, Option<String>, f32)> = ms
+                .available_columns()
+                .iter()
+                .map(|col| {
+                    // Calculate name similarity between column and variable
+                    let similarity = calculate_name_similarity(col, &var_name);
+                    // Get label from study metadata (Items.csv)
+                    let label = study.get_column_label(col).map(String::from);
+                    (col.to_string(), label, similarity)
+                })
+                .collect();
+
+            // Sort by confidence (highest first), then by name
+            let mut available_cols_sorted = available_cols_with_info;
+            available_cols_sorted.sort_by(|a, b| {
+                b.2.partial_cmp(&a.2)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .then_with(|| a.0.cmp(&b.0))
+            });
+
+            // Get source column info if mapped/suggested
+            let source_col_name = accepted
+                .as_ref()
+                .map(|(c, _)| c.clone())
+                .or_else(|| suggestion.as_ref().map(|s| s.source_column.clone()));
+
+            // Get source column label from study metadata (Items.csv)
+            let source_col_label = source_col_name
+                .as_ref()
+                .and_then(|col| study.get_column_label(col).map(String::from));
+
+            let source_info = source_col_name.as_ref().and_then(|col| {
+                ms.column_hints.get(col).map(|hint| {
+                    let samples = MappingService::get_sample_values(&domain.source_data, col, 5);
+                    (
+                        col.clone(),
+                        hint.is_numeric,
+                        hint.unique_ratio,
+                        hint.null_ratio,
+                        samples,
+                    )
+                })
+            });
+
+            let confidence = accepted
+                .as_ref()
+                .map(|(_, c)| *c)
+                .or_else(|| suggestion.as_ref().map(|s| s.confidence));
+
+            (
+                source_info,
+                source_col_label,
+                confidence,
+                available_cols_sorted,
+            )
         };
-        let subjid_label = subjid_mapping
-            .as_ref()
-            .and_then(|col| study.get_column_label(col).map(String::from));
-        let subjid_samples = subjid_mapping
-            .as_ref()
-            .map(|col| MappingService::get_sample_values(&domain.source_data, col, 3))
-            .unwrap_or_default();
+
+        let (subjid_mapping, subjid_label, subjid_samples) = if is_usubjid_derived {
+            let subjid_mapping = ms
+                .get_accepted_for("SUBJID")
+                .map(|(c, _)| c.to_string());
+            let subjid_label = subjid_mapping
+                .as_ref()
+                .and_then(|col| study.get_column_label(col).map(String::from));
+            let subjid_samples = subjid_mapping
+                .as_ref()
+                .map(|col| MappingService::get_sample_values(&domain.source_data, col, 3))
+                .unwrap_or_default();
+            (subjid_mapping, subjid_label, subjid_samples)
+        } else {
+            (None, None, Vec::new())
+        };
 
         // Get CT data from pre-loaded cache (loaded when domain opened)
         // Clone to avoid borrow issues with state mutations in render loop
@@ -485,7 +492,8 @@ fn show_variable_detail(
             var_role,
             var_codelist,
             study_id,
-            has_subjid_var,
+            is_auto,
+            is_usubjid_derived,
             subjid_mapping,
             subjid_label,
             subjid_samples,
@@ -506,7 +514,8 @@ fn show_variable_detail(
         var_role,
         var_codelist,
         study_id,
-        has_subjid_var,
+        is_auto,
+        is_usubjid_derived,
         subjid_mapping,
         subjid_label,
         subjid_samples,
@@ -517,8 +526,6 @@ fn show_variable_detail(
         available_cols,
         ct_data,
     ) = detail_data;
-
-    let is_usubjid_derived = has_subjid_var && var_name.eq_ignore_ascii_case("USUBJID");
 
     egui::ScrollArea::vertical().show(ui, |ui| {
         // SDTM Target section
@@ -647,8 +654,6 @@ fn show_variable_detail(
         ui.add_space(spacing::LG);
 
         // Check if this is an auto-generated variable using role from standards
-        let is_auto = is_auto_generated_variable(&var_name, var_role.as_deref()) || is_usubjid_derived;
-
         if is_auto {
             // Auto-generated variable section
             ui.label(
@@ -838,6 +843,7 @@ fn show_variable_detail(
 
         // Only show column selection and action buttons for non-auto variables
         if !is_auto {
+            let is_subjid = var_name.eq_ignore_ascii_case("SUBJID");
             ui.add_space(spacing::MD);
 
             // Column selection dropdown with confidence display
@@ -901,17 +907,12 @@ fn show_variable_detail(
 
             // Apply manual selection
             if let Some(col) = selected_new_col {
-                if let Some(study) = &mut state.study {
-                    if let Some(domain) = study.get_domain_mut(domain_code) {
-                        if let Some(ms) = &mut domain.mapping_state {
-                            ms.accept_manual(&var_name, &col);
-                            if var_name.eq_ignore_ascii_case("SUBJID") {
-                                ms.accepted
-                                    .insert("USUBJID".to_string(), (col.clone(), 1.0));
-                            }
-                        }
+                with_mapping_state_mut(state, domain_code, |ms| {
+                    ms.accept_manual(&var_name, &col);
+                    if is_subjid {
+                        sync_usubjid_from_subjid(ms);
                     }
-                }
+                });
             }
 
             ui.add_space(spacing::LG);
@@ -927,22 +928,12 @@ fn show_variable_detail(
                             )
                             .clicked()
                         {
-                            if let Some(study) = &mut state.study {
-                                if let Some(domain) = study.get_domain_mut(domain_code) {
-                                    if let Some(ms) = &mut domain.mapping_state {
-                                        ms.accept_suggestion(&var_name);
-                                        if var_name.eq_ignore_ascii_case("SUBJID") {
-                                            if let Some((col, conf)) = ms.get_accepted_for("SUBJID")
-                                            {
-                                                ms.accepted.insert(
-                                                    "USUBJID".to_string(),
-                                                    (col.to_string(), conf),
-                                                );
-                                            }
-                                        }
-                                    }
+                            with_mapping_state_mut(state, domain_code, |ms| {
+                                ms.accept_suggestion(&var_name);
+                                if is_subjid {
+                                    sync_usubjid_from_subjid(ms);
                                 }
-                            }
+                            });
                         }
                     }
                     VariableMappingStatus::Accepted => {
@@ -950,16 +941,12 @@ fn show_variable_detail(
                             .button(format!("{} Clear", egui_phosphor::regular::X))
                             .clicked()
                         {
-                            if let Some(study) = &mut state.study {
-                                if let Some(domain) = study.get_domain_mut(domain_code) {
-                                    if let Some(ms) = &mut domain.mapping_state {
-                                        ms.clear_mapping(&var_name);
-                                        if var_name.eq_ignore_ascii_case("SUBJID") {
-                                            ms.accepted.remove("USUBJID");
-                                        }
-                                    }
+                            with_mapping_state_mut(state, domain_code, |ms| {
+                                ms.clear_mapping(&var_name);
+                                if is_subjid {
+                                    sync_usubjid_from_subjid(ms);
                                 }
-                            }
+                            });
                         }
                     }
                     VariableMappingStatus::Unmapped => {
@@ -1047,4 +1034,30 @@ fn calculate_name_similarity(source: &str, target: &str) -> f32 {
 
     // Scale to 0.0-0.6 range for partial matches
     jaccard * 0.6
+}
+
+fn with_mapping_state_mut<F>(state: &mut AppState, domain_code: &str, f: F)
+where
+    F: FnOnce(&mut MappingState),
+{
+    if let Some(study) = &mut state.study {
+        if let Some(domain) = study.get_domain_mut(domain_code) {
+            if let Some(ms) = &mut domain.mapping_state {
+                f(ms);
+            }
+        }
+    }
+}
+
+fn sync_usubjid_from_subjid(ms: &mut MappingState) {
+    let subjid = ms
+        .get_accepted_for("SUBJID")
+        .map(|(col, conf)| (col.to_string(), conf));
+
+    if let Some((col, conf)) = subjid {
+        ms.accepted
+            .insert("USUBJID".to_string(), (col, conf));
+    } else {
+        ms.accepted.remove("USUBJID");
+    }
 }
