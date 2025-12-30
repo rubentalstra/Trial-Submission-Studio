@@ -3,18 +3,21 @@ name = "sdtm-transform"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "SDTM data transformation: datetime, CT, units, and structural compliance"
+description = "Data-driven, variable-level transformation system for SDTM domains"
 
 [lints]
 workspace = true
 
 [dependencies]
-anyhow.workspace = true
+# Workspace crates
+sdtm-model = { path = "../sdtm-model" }
+
+# Core dependencies
 chrono.workspace = true
 polars.workspace = true
 serde.workspace = true
-sdtm-ingest = { path = "../sdtm-ingest" }
-sdtm-map = { path = "../sdtm-map" }
-sdtm-model = { path = "../sdtm-model" }
+thiserror.workspace = true
+tracing.workspace = true
 
 [dev-dependencies]
+insta.workspace = true
