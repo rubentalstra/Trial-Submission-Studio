@@ -32,7 +32,8 @@ fn sort_by_numeric(df: &mut DataFrame, column: &str) -> Result<()> {
     indices.sort_by(|a, b| {
         let left = values[*a as usize];
         let right = values[*b as usize];
-        left.partial_cmp(&right).unwrap_or(std::cmp::Ordering::Equal)
+        left.partial_cmp(&right)
+            .unwrap_or(std::cmp::Ordering::Equal)
     });
     let idx = UInt32Chunked::from_vec("idx".into(), indices);
     *df = df.take(&idx)?;

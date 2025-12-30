@@ -28,10 +28,55 @@ pub enum Severity {
     Warning,
 }
 
+/// Type of validation check that generated the issue.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[non_exhaustive]
+pub enum CheckType {
+    /// Controlled terminology validation.
+    ControlledTerminology,
+    /// Required variable is missing from dataset.
+    RequiredVariableMissing,
+    /// Required variable has null/empty values.
+    RequiredVariableEmpty,
+    /// Expected variable is missing from dataset.
+    ExpectedVariableMissing,
+    /// Data type mismatch (numeric vs character).
+    DataTypeMismatch,
+    /// Invalid date/time format (not ISO 8601).
+    InvalidDateFormat,
+    /// Duplicate sequence number detected.
+    DuplicateSequence,
+    /// Text value exceeds maximum length.
+    TextLengthExceeded,
+    /// Identifier variable has null values.
+    IdentifierNull,
+}
+
+impl CheckType {
+    /// Returns a human-readable label for the check type.
+    pub fn label(&self) -> &'static str {
+        match self {
+            CheckType::ControlledTerminology => "Controlled Terminology",
+            CheckType::RequiredVariableMissing => "Required Variable Missing",
+            CheckType::RequiredVariableEmpty => "Required Variable Empty",
+            CheckType::ExpectedVariableMissing => "Expected Variable Missing",
+            CheckType::DataTypeMismatch => "Data Type Mismatch",
+            CheckType::InvalidDateFormat => "Invalid Date Format",
+            CheckType::DuplicateSequence => "Duplicate Sequence",
+            CheckType::TextLengthExceeded => "Text Length Exceeded",
+            CheckType::IdentifierNull => "Identifier Null",
+        }
+    }
+}
+
 /// A validation issue found during validation.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidationIssue {
-    /// Codelist code (e.g., "C66742").
+    /// Type of validation check that found this issue.
+    #[serde(default)]
+    pub check_type: Option<CheckType>,
+    /// Issue code (codelist code for CT, rule code for others).
     pub code: String,
     /// Human-readable message describing the issue.
     pub message: String,
@@ -43,16 +88,16 @@ pub struct ValidationIssue {
     pub count: Option<u64>,
     /// CT source identifier (e.g., "SDTM CT").
     pub ct_source: Option<String>,
-    /// Sample observed values from the source data that failed CT validation.
+    /// Sample observed values from the source data that failed validation.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub observed_values: Option<Vec<String>>,
-    /// Allowed CT values (only populated for small codelists).
+    /// Allowed values (for CT or enum validation).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub allowed_values: Option<Vec<String>>,
-    /// Count of allowed CT values (for large codelists).
+    /// Count of allowed values (for large value sets).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub allowed_count: Option<u64>,
-    /// Sample CT values from the codelist (for large codelists).
+    /// Sample allowed values (for large value sets).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub ct_examples: Option<Vec<String>>,
 }

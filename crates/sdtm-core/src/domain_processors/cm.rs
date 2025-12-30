@@ -52,8 +52,12 @@ pub(super) fn process_cm(
 
     // Map CMSTAT values
     if let Some(cmstat) = col(domain, "CMSTAT") {
-        let stat_map =
-            map_values([("NOT DONE", "NOT DONE"), ("ND", "NOT DONE"), ("", ""), ("NAN", "")]);
+        let stat_map = map_values([
+            ("NOT DONE", "NOT DONE"),
+            ("ND", "NOT DONE"),
+            ("", ""),
+            ("NAN", ""),
+        ]);
         apply_map_upper(df, Some(cmstat), &stat_map)?;
     }
 
@@ -69,7 +73,9 @@ pub(super) fn process_cm(
             .map(|v| {
                 let upper = v.trim().to_uppercase();
                 match upper.as_str() {
-                    "" | "UNK" | "UNKNOWN" | "NA" | "N/A" | "NONE" | "NAN" | "<NA>" => String::new(),
+                    "" | "UNK" | "UNKNOWN" | "NA" | "N/A" | "NONE" | "NAN" | "<NA>" => {
+                        String::new()
+                    }
                     _ => v.trim().to_string(),
                 }
             })

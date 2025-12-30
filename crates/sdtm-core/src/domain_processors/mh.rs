@@ -58,16 +58,14 @@ pub(super) fn process_mh(
     {
         let values = string_column(df, mhenrf)?
             .into_iter()
-            .map(|v| {
-                match v.to_uppercase().as_str() {
-                    "Y" | "YES" | "TRUE" | "1" => "ONGOING".to_string(),
-                    "N" | "NO" | "FALSE" | "0" => String::new(),
-                    "PRIOR" => "BEFORE".to_string(),
-                    "POST" => "AFTER".to_string(),
-                    "CONCURRENT" => "COINCIDENT".to_string(),
-                    "UNK" | "U" => "UNKNOWN".to_string(),
-                    _ => v.to_uppercase(),
-                }
+            .map(|v| match v.to_uppercase().as_str() {
+                "Y" | "YES" | "TRUE" | "1" => "ONGOING".to_string(),
+                "N" | "NO" | "FALSE" | "0" => String::new(),
+                "PRIOR" => "BEFORE".to_string(),
+                "POST" => "AFTER".to_string(),
+                "CONCURRENT" => "COINCIDENT".to_string(),
+                "UNK" | "U" => "UNKNOWN".to_string(),
+                _ => v.to_uppercase(),
             })
             .collect();
         set_string_column(df, mhenrf, values)?;

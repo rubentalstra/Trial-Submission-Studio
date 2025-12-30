@@ -4606,6 +4606,7 @@ name = "sdtm-validate"
 version = "0.1.0"
 dependencies = [
  "polars",
+ "regex",
  "sdtm-ingest",
  "sdtm-model",
  "sdtm-standards",

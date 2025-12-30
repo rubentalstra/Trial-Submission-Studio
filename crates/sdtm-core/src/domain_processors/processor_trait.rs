@@ -229,8 +229,12 @@ fn build_default_registry() -> ProcessorRegistry {
 
 struct AEProcessor;
 impl DomainProcessor for AEProcessor {
-    fn domain_code(&self) -> &'static str { "AE" }
-    fn description(&self) -> &'static str { "Adverse Events processor" }
+    fn domain_code(&self) -> &'static str {
+        "AE"
+    }
+    fn description(&self) -> &'static str {
+        "Adverse Events processor"
+    }
     fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
         super::ae::process_ae(d, df, ctx)
     }
@@ -238,8 +242,12 @@ impl DomainProcessor for AEProcessor {
 
 struct CMProcessor;
 impl DomainProcessor for CMProcessor {
-    fn domain_code(&self) -> &'static str { "CM" }
-    fn description(&self) -> &'static str { "Concomitant Medications processor" }
+    fn domain_code(&self) -> &'static str {
+        "CM"
+    }
+    fn description(&self) -> &'static str {
+        "Concomitant Medications processor"
+    }
     fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
         super::cm::process_cm(d, df, ctx)
     }
@@ -247,8 +255,12 @@ impl DomainProcessor for CMProcessor {
 
 struct DAProcessor;
 impl DomainProcessor for DAProcessor {
-    fn domain_code(&self) -> &'static str { "DA" }
-    fn description(&self) -> &'static str { "Drug Accountability processor" }
+    fn domain_code(&self) -> &'static str {
+        "DA"
+    }
+    fn description(&self) -> &'static str {
+        "Drug Accountability processor"
+    }
     fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
         super::da::process_da(d, df, ctx)
     }
@@ -256,8 +268,12 @@ impl DomainProcessor for DAProcessor {
 
 struct DMProcessor;
 impl DomainProcessor for DMProcessor {
-    fn domain_code(&self) -> &'static str { "DM" }
-    fn description(&self) -> &'static str { "Demographics processor" }
+    fn domain_code(&self) -> &'static str {
+        "DM"
+    }
+    fn description(&self) -> &'static str {
+        "Demographics processor"
+    }
     fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
         super::dm::process_dm(d, df, ctx)
     }
@@ -265,8 +281,12 @@ impl DomainProcessor for DMProcessor {
 
 struct DSProcessor;
 impl DomainProcessor for DSProcessor {
-    fn domain_code(&self) -> &'static str { "DS" }
-    fn description(&self) -> &'static str { "Disposition processor" }
+    fn domain_code(&self) -> &'static str {
+        "DS"
+    }
+    fn description(&self) -> &'static str {
+        "Disposition processor"
+    }
     fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
         super::ds::process_ds(d, df, ctx)
     }
@@ -274,8 +294,12 @@ impl DomainProcessor for DSProcessor {
 
 struct EXProcessor;
 impl DomainProcessor for EXProcessor {
-    fn domain_code(&self) -> &'static str { "EX" }
-    fn description(&self) -> &'static str { "Exposure processor" }
+    fn domain_code(&self) -> &'static str {
+        "EX"
+    }
+    fn description(&self) -> &'static str {
+        "Exposure processor"
+    }
     fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
         super::ex::process_ex(d, df, ctx)
     }
@@ -283,8 +307,12 @@ impl DomainProcessor for EXProcessor {
 
 struct IEProcessor;
 impl DomainProcessor for IEProcessor {
-    fn domain_code(&self) -> &'static str { "IE" }
-    fn description(&self) -> &'static str { "Inclusion/Exclusion processor" }
+    fn domain_code(&self) -> &'static str {
+        "IE"
+    }
+    fn description(&self) -> &'static str {
+        "Inclusion/Exclusion processor"
+    }
     fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
         super::ie::process_ie(d, df, ctx)
     }
@@ -292,8 +320,12 @@ impl DomainProcessor for IEProcessor {
 
 struct LBProcessor;
 impl DomainProcessor for LBProcessor {
-    fn domain_code(&self) -> &'static str { "LB" }
-    fn description(&self) -> &'static str { "Laboratory Results processor" }
+    fn domain_code(&self) -> &'static str {
+        "LB"
+    }
+    fn description(&self) -> &'static str {
+        "Laboratory Results processor"
+    }
     fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
         super::lb::process_lb(d, df, ctx)
     }
@@ -301,8 +333,12 @@ impl DomainProcessor for LBProcessor {
 
 struct MHProcessor;
 impl DomainProcessor for MHProcessor {
-    fn domain_code(&self) -> &'static str { "MH" }
-    fn description(&self) -> &'static str { "Medical History processor" }
+    fn domain_code(&self) -> &'static str {
+        "MH"
+    }
+    fn description(&self) -> &'static str {
+        "Medical History processor"
+    }
     fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
         super::mh::process_mh(d, df, ctx)
     }
@@ -310,8 +346,12 @@ impl DomainProcessor for MHProcessor {
 
 struct PEProcessor;
 impl DomainProcessor for PEProcessor {
-    fn domain_code(&self) -> &'static str { "PE" }
-    fn description(&self) -> &'static str { "Physical Examination processor" }
+    fn domain_code(&self) -> &'static str {
+        "PE"
+    }
+    fn description(&self) -> &'static str {
+        "Physical Examination processor"
+    }
     fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
         super::pe::process_pe(d, df, ctx)
     }
@@ -319,8 +359,12 @@ impl DomainProcessor for PEProcessor {
 
 struct PRProcessor;
 impl DomainProcessor for PRProcessor {
-    fn domain_code(&self) -> &'static str { "PR" }
-    fn description(&self) -> &'static str { "Procedures processor" }
+    fn domain_code(&self) -> &'static str {
+        "PR"
+    }
+    fn description(&self) -> &'static str {
+        "Procedures processor"
+    }
     fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
         super::pr::process_pr(d, df, ctx)
     }
@@ -328,8 +372,12 @@ impl DomainProcessor for PRProcessor {
 
 struct QSProcessor;
 impl DomainProcessor for QSProcessor {
-    fn domain_code(&self) -> &'static str { "QS" }
-    fn description(&self) -> &'static str { "Questionnaires processor" }
+    fn domain_code(&self) -> &'static str {
+        "QS"
+    }
+    fn description(&self) -> &'static str {
+        "Questionnaires processor"
+    }
     fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
         super::qs::process_qs(d, df, ctx)
     }
@@ -337,8 +385,12 @@ impl DomainProcessor for QSProcessor {
 
 struct SEProcessor;
 impl DomainProcessor for SEProcessor {
-    fn domain_code(&self) -> &'static str { "SE" }
-    fn description(&self) -> &'static str { "Subject Elements processor" }
+    fn domain_code(&self) -> &'static str {
+        "SE"
+    }
+    fn description(&self) -> &'static str {
+        "Subject Elements processor"
+    }
     fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
         super::se::process_se(d, df, ctx)
     }
@@ -346,8 +398,12 @@ impl DomainProcessor for SEProcessor {
 
 struct TAProcessor;
 impl DomainProcessor for TAProcessor {
-    fn domain_code(&self) -> &'static str { "TA" }
-    fn description(&self) -> &'static str { "Trial Arms processor" }
+    fn domain_code(&self) -> &'static str {
+        "TA"
+    }
+    fn description(&self) -> &'static str {
+        "Trial Arms processor"
+    }
     fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
         super::ta::process_ta(d, df, ctx)
     }
@@ -355,8 +411,12 @@ impl DomainProcessor for TAProcessor {
 
 struct TEProcessor;
 impl DomainProcessor for TEProcessor {
-    fn domain_code(&self) -> &'static str { "TE" }
-    fn description(&self) -> &'static str { "Trial Elements processor" }
+    fn domain_code(&self) -> &'static str {
+        "TE"
+    }
+    fn description(&self) -> &'static str {
+        "Trial Elements processor"
+    }
     fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
         super::te::process_te(d, df, ctx)
     }
@@ -364,8 +424,12 @@ impl DomainProcessor for TEProcessor {
 
 struct TSProcessor;
 impl DomainProcessor for TSProcessor {
-    fn domain_code(&self) -> &'static str { "TS" }
-    fn description(&self) -> &'static str { "Trial Summary processor" }
+    fn domain_code(&self) -> &'static str {
+        "TS"
+    }
+    fn description(&self) -> &'static str {
+        "Trial Summary processor"
+    }
     fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
         super::ts::process_ts(d, df, ctx)
     }
@@ -373,8 +437,12 @@ impl DomainProcessor for TSProcessor {
 
 struct VSProcessor;
 impl DomainProcessor for VSProcessor {
-    fn domain_code(&self) -> &'static str { "VS" }
-    fn description(&self) -> &'static str { "Vital Signs processor" }
+    fn domain_code(&self) -> &'static str {
+        "VS"
+    }
+    fn description(&self) -> &'static str {
+        "Vital Signs processor"
+    }
     fn process(&self, d: &Domain, df: &mut DataFrame, ctx: &PipelineContext) -> Result<()> {
         super::vs::process_vs(d, df, ctx)
     }

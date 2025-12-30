@@ -2,7 +2,7 @@
 
 use polars::prelude::{Column, DataFrame};
 
-use sdtm_model::{OutputFormat, Severity, ValidationIssue, ValidationReport};
+use sdtm_model::{CheckType, OutputFormat, Severity, ValidationIssue, ValidationReport};
 use sdtm_standards::{load_default_ct_registry, load_default_sdtm_ig_domains};
 use sdtm_validate::{gate_strict_outputs, strict_outputs_requested, validate_domain};
 
@@ -49,6 +49,7 @@ fn strict_output_gate_blocks_on_errors() {
     let report = ValidationReport {
         domain_code: "AE".to_string(),
         issues: vec![ValidationIssue {
+            check_type: Some(CheckType::RequiredVariableEmpty),
             code: "SD0002".to_string(),
             message: "missing".to_string(),
             severity: Severity::Error,
@@ -71,6 +72,7 @@ fn strict_output_gate_ignored_without_strict_formats() {
     let report = ValidationReport {
         domain_code: "AE".to_string(),
         issues: vec![ValidationIssue {
+            check_type: Some(CheckType::RequiredVariableEmpty),
             code: "SD0002".to_string(),
             message: "missing".to_string(),
             severity: Severity::Error,

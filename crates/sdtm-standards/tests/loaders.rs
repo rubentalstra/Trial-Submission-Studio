@@ -168,7 +168,8 @@ fn dm_variables_with_codelists() {
     let dm = domains.iter().find(|d| d.code == "DM").expect("DM domain");
 
     // Count variables with codelist codes
-    let vars_with_ct: Vec<_> = dm.variables
+    let vars_with_ct: Vec<_> = dm
+        .variables
         .iter()
         .filter(|v| v.codelist_code.is_some())
         .collect();
@@ -179,7 +180,10 @@ fn dm_variables_with_codelists() {
         vars_with_ct.len() >= 6,
         "DM domain should have at least 6 variables with CT codelists, got: {}. Variables: {:?}",
         vars_with_ct.len(),
-        vars_with_ct.iter().map(|v| (&v.name, &v.codelist_code)).collect::<Vec<_>>()
+        vars_with_ct
+            .iter()
+            .map(|v| (&v.name, &v.codelist_code))
+            .collect::<Vec<_>>()
     );
 }
 

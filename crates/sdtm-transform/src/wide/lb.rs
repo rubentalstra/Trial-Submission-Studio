@@ -3,7 +3,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use anyhow::Result;
-use polars::prelude::{DataFrame, AnyValue};
+use polars::prelude::{AnyValue, DataFrame};
 
 use sdtm_ingest::any_to_string;
 use sdtm_model::{Domain, MappingConfig};
@@ -23,7 +23,11 @@ pub fn build_lb_wide_frame(
     domain: &Domain,
     study_id: &str,
 ) -> Result<Option<(MappingConfig, DomainFrame, BTreeSet<String>)>> {
-    let headers: Vec<String> = table.get_column_names().iter().map(|s| s.to_string()).collect();
+    let headers: Vec<String> = table
+        .get_column_names()
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
     let (groups, wide_columns) = detect_lb_wide_groups(&headers);
     if groups.is_empty() {
         return Ok(None);
@@ -406,12 +410,22 @@ fn expand_lb_wide(
     let lbclsig_idx = variable_names.iter().position(|name| name == "LBCLSIG");
     let lbdtc_idx = variable_names.iter().position(|name| name == "LBDTC");
 
-    let headers: Vec<String> = table.get_column_names().iter().map(|s| s.to_string()).collect();
-    
+    let headers: Vec<String> = table
+        .get_column_names()
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+
     // Extract all columns as strings for random access
-    let columns: Vec<Vec<String>> = table.get_columns().iter().map(|s| {
-        (0..s.len()).map(|i| any_to_string(s.get(i).unwrap_or(AnyValue::Null))).collect()
-    }).collect();
+    let columns: Vec<Vec<String>> = table
+        .get_columns()
+        .iter()
+        .map(|s| {
+            (0..s.len())
+                .map(|i| any_to_string(s.get(i).unwrap_or(AnyValue::Null)))
+                .collect()
+        })
+        .collect();
 
     let mut used = BTreeSet::new();
 

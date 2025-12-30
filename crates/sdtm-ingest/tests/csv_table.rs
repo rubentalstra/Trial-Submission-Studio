@@ -24,7 +24,11 @@ fn reads_table_and_builds_hints() {
     let df = read_csv_table(&path).expect("read csv");
 
     // Check column names
-    let columns: Vec<String> = df.get_column_names().into_iter().map(|s| s.to_string()).collect();
+    let columns: Vec<String> = df
+        .get_column_names()
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect();
     assert_eq!(columns, vec!["A", "B", "C"]);
 
     // Check row count
@@ -58,7 +62,11 @@ fn reads_table_with_double_header_edc_format() {
     let df = read_csv_table(&path).expect("read csv");
 
     // Should skip the label row and use variable codes as headers
-    let columns: Vec<String> = df.get_column_names().into_iter().map(|s| s.to_string()).collect();
+    let columns: Vec<String> = df
+        .get_column_names()
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect();
     assert_eq!(columns, vec!["VARA", "VARB", "VARC"]);
 
     // Should have 2 data rows (not 3, because variable code row was used as header)
@@ -76,7 +84,11 @@ fn reads_normal_csv_without_double_header() {
     let df = read_csv_table(&path).expect("read csv");
 
     // Headers should remain as-is
-    let columns: Vec<String> = df.get_column_names().into_iter().map(|s| s.to_string()).collect();
+    let columns: Vec<String> = df
+        .get_column_names()
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect();
     assert_eq!(columns, vec!["ID", "NAME", "AGE"]);
 
     // Should have 2 data rows

@@ -22,8 +22,12 @@ pub fn read_csv_schema(path: &Path) -> Result<CsvSchema> {
         .finish()
         .context(format!("Failed to read schema from {}", path.display()))?;
 
-    let headers: Vec<String> = df.get_column_names().iter().map(|s| s.to_string()).collect();
-    
+    let headers: Vec<String> = df
+        .get_column_names()
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+
     Ok(CsvSchema {
         headers,
         labels: None, // Label detection removed for optimization
@@ -147,7 +151,9 @@ fn looks_like_variable_code(s: &str) -> bool {
     let is_mostly_uppercase = uppercase_ratio > 0.5;
 
     // Also check for common patterns like CamelCase or snake_case
-    let is_identifier_like = s.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-');
+    let is_identifier_like = s
+        .chars()
+        .all(|c| c.is_alphanumeric() || c == '_' || c == '-');
 
     is_mostly_uppercase || (is_identifier_like && !s.chars().any(|c| c == ' '))
 }
@@ -187,8 +193,8 @@ pub fn read_csv_table_with_header_match<F>(
 where
     F: Fn(&[String]) -> bool,
 {
-    use std::io::{BufRead, BufReader};
     use std::fs::File;
+    use std::io::{BufRead, BufReader};
 
     let file = File::open(path).context(format!("open {}", path.display()))?;
     let reader = BufReader::new(file);
@@ -202,7 +208,10 @@ where
         let line = line.context("read line")?;
         // Simple CSV split (not robust but maybe enough for header detection)
         // Note: This doesn't handle quotes, but metadata files are usually simple.
-        let headers: Vec<String> = line.split(',').map(|s| s.trim().trim_matches('"').to_string()).collect();
+        let headers: Vec<String> = line
+            .split(',')
+            .map(|s| s.trim().trim_matches('"').to_string())
+            .collect();
         if matcher(&headers) {
             skip_rows = idx;
             found = true;
@@ -230,7 +239,7 @@ where
         .iter()
         .map(|name| name.trim().to_string())
         .collect();
-    
+
     df.set_column_names(&new_columns)?;
 
     Ok(df)
@@ -244,7 +253,7 @@ pub fn build_column_hints(df: &DataFrame) -> BTreeMap<String, ColumnHint> {
         let series = df.column(col_name).unwrap();
         let null_count = series.null_count();
         let non_null = row_count - null_count;
-        
+
         let null_ratio = if row_count == 0 {
             1.0
         } else {
@@ -310,7 +319,10 @@ mod tests {
     fn test_parse_csv_line() {
         let line = "Site sequence number,Site name,Subject Id";
         let parsed = parse_csv_line(line);
-        assert_eq!(parsed, vec!["Site sequence number", "Site name", "Subject Id"]);
+        assert_eq!(
+            parsed,
+            vec!["Site sequence number", "Site name", "Subject Id"]
+        );
 
         // With quotes
         let line2 = "\"Quoted field\",Normal,\"Has, comma\"";

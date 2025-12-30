@@ -12,8 +12,8 @@
 
 use anyhow::Result;
 use polars::prelude::*;
-use sdtm_model::ct::Codelist;
 use sdtm_model::CaseInsensitiveSet;
+use sdtm_model::ct::Codelist;
 use sdtm_transform::data_utils::strip_all_quotes;
 
 use crate::ct_utils::normalize_ct_value;
@@ -133,9 +133,8 @@ pub fn assign_sequence_numbers(
     // Calculate sequence numbers: 1-based index within each group
     use polars::lazy::dsl::int_range;
 
-    let seq_expr = int_range(lit(0), col(group_col).len(), 1, DataType::Int64)
-        .over([col(group_col)])
-        + lit(1);
+    let seq_expr =
+        int_range(lit(0), col(group_col).len(), 1, DataType::Int64).over([col(group_col)]) + lit(1);
 
     let new_df = df
         .clone()
@@ -239,10 +238,7 @@ pub fn normalize_ct_column(
 ///
 /// Returns a list of (column_name, codelist_code) pairs for columns
 /// that should have CT normalization applied.
-pub fn get_ct_columns(
-    df: &DataFrame,
-    domain: &sdtm_model::Domain,
-) -> Vec<(String, String)> {
+pub fn get_ct_columns(df: &DataFrame, domain: &sdtm_model::Domain) -> Vec<(String, String)> {
     let column_lookup = CaseInsensitiveSet::new(df.get_column_names_owned());
     let mut result = Vec::new();
 

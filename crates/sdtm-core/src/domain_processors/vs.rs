@@ -29,7 +29,11 @@ pub(super) fn process_vs(
     backward_fill_batch(
         domain,
         df,
-        &[("VSORRES", "VSSTRESC"), ("VSORRESU", "VSSTRESU"), ("VSTESTCD", "VSTEST")],
+        &[
+            ("VSORRES", "VSSTRESC"),
+            ("VSORRESU", "VSSTRESU"),
+            ("VSTESTCD", "VSTEST"),
+        ],
     )?;
 
     // Clear unit when result is empty
@@ -51,7 +55,9 @@ pub(super) fn process_vs(
         domain,
         df,
         context,
-        &["VSCAT", "VSSCAT", "VSPOS", "VSLOC", "VSLAT", "VSMETHOD", "EPOCH"],
+        &[
+            "VSCAT", "VSSCAT", "VSPOS", "VSLOC", "VSLAT", "VSMETHOD", "EPOCH",
+        ],
     )?;
 
     // Derive numeric result from VSORRES

@@ -11,9 +11,7 @@ use super::types::IeWideGroup;
 use super::utils::{
     base_row_values, build_wide_base_mapping, build_wide_data, mapping_used_sources, push_row,
 };
-use crate::data_utils::{
-    column_value_string, mapping_source_for_target, sanitize_test_code,
-};
+use crate::data_utils::{column_value_string, mapping_source_for_target, sanitize_test_code};
 use crate::frame::DomainFrame;
 
 /// Build IE domain frame from wide format data.
@@ -208,7 +206,7 @@ fn expand_ie_wide(
 
             // Note: table_label removed as it was CsvTable specific and rarely used/supported in Polars context easily without metadata
             // If labels are critical, we need another way to pass them. For now, assuming empty label.
-            let label = String::new(); 
+            let label = String::new();
 
             let mut test_label = if !test_value.trim().is_empty() {
                 test_value.clone()

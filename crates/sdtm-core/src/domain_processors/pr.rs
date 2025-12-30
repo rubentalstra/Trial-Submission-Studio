@@ -30,8 +30,10 @@ pub(super) fn process_pr(
     if let Some(prdecod) = col(domain, "PRDECOD")
         && has_column(df, prdecod)
     {
-        let mut values: Vec<String> =
-            string_column(df, prdecod)?.into_iter().map(|v| v.to_uppercase()).collect();
+        let mut values: Vec<String> = string_column(df, prdecod)?
+            .into_iter()
+            .map(|v| v.to_uppercase())
+            .collect();
         if let Some(ct) = context.resolve_ct(domain, "PRDECOD") {
             for value in &mut values {
                 *value = normalize_ct_value(ct, value, context.options.ct_matching);

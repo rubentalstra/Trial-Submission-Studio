@@ -267,4 +267,3 @@ fn ends_with_case_insensitive(value: &str, suffix: &str) -> bool {
     }
     value[value.len() - suffix.len()..].eq_ignore_ascii_case(suffix)
 }
-

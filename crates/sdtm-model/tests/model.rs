@@ -1,7 +1,7 @@
 //! Tests for sdtm-model types.
 
 use sdtm_model::{
-    Domain, ProcessStudyResponse, Severity, ValidationIssue, ValidationReport, Variable,
+    CheckType, Domain, ProcessStudyResponse, Severity, ValidationIssue, ValidationReport, Variable,
     VariableType,
 };
 
@@ -11,6 +11,7 @@ fn validation_report_counts() {
         domain_code: "AE".to_string(),
         issues: vec![
             ValidationIssue {
+                check_type: Some(CheckType::RequiredVariableEmpty),
                 code: "SD0002".to_string(),
                 message: "Missing AE term".to_string(),
                 severity: Severity::Error,
@@ -23,6 +24,7 @@ fn validation_report_counts() {
                 ct_examples: None,
             },
             ValidationIssue {
+                check_type: Some(CheckType::ControlledTerminology),
                 code: "SD0057".to_string(),
                 message: "Unexpected value".to_string(),
                 severity: Severity::Warning,
@@ -58,6 +60,7 @@ fn response_serializes() {
 #[test]
 fn validation_issue_serializes() {
     let issue = ValidationIssue {
+        check_type: Some(CheckType::ControlledTerminology),
         code: "C66742".to_string(),
         message: "Invalid value".to_string(),
         severity: Severity::Error,
@@ -80,6 +83,7 @@ fn validation_report_no_errors() {
     let report = ValidationReport {
         domain_code: "DM".to_string(),
         issues: vec![ValidationIssue {
+            check_type: Some(CheckType::ControlledTerminology),
             code: "C66742".to_string(),
             message: "Warning only".to_string(),
             severity: Severity::Warning,
@@ -102,6 +106,7 @@ fn validation_report_with_reject() {
     let report = ValidationReport {
         domain_code: "AE".to_string(),
         issues: vec![ValidationIssue {
+            check_type: Some(CheckType::RequiredVariableMissing),
             code: "FATAL".to_string(),
             message: "Critical error".to_string(),
             severity: Severity::Reject,

@@ -303,8 +303,7 @@ pub fn resolve_testcd_from_test(
 
     for (testcd, test) in testcd_vals.iter_mut().zip(test_vals.iter()) {
         // Check if existing value is already a valid CT submission value
-        let valid =
-            !testcd.is_empty() && ct.submission_values().iter().any(|val| *val == *testcd);
+        let valid = !testcd.is_empty() && ct.submission_values().iter().any(|val| *val == *testcd);
 
         if valid {
             continue;
@@ -598,7 +597,11 @@ pub fn backward_fill_batch(
 /// ```ignore
 /// clear_units_batch(domain, df, &[("LBORRES", "LBORRESU"), ("LBSTRESC", "LBSTRESU")])?;
 /// ```
-pub fn clear_units_batch(domain: &Domain, df: &mut DataFrame, pairs: &[(&str, &str)]) -> Result<()> {
+pub fn clear_units_batch(
+    domain: &Domain,
+    df: &mut DataFrame,
+    pairs: &[(&str, &str)],
+) -> Result<()> {
     for (result_var, unit_var) in pairs {
         clear_unit_when_empty_var(domain, df, result_var, unit_var)?;
     }

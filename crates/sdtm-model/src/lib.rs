@@ -26,7 +26,7 @@ pub mod lookup;
 pub mod mapping;
 pub mod processing;
 
-pub use conformance::{Severity, ValidationIssue, ValidationReport};
+pub use conformance::{CheckType, Severity, ValidationIssue, ValidationReport};
 pub use ct::{Codelist, ResolvedCodelist, Term, TerminologyCatalog, TerminologyRegistry};
 pub use domain::{DatasetClass, Domain, Variable, VariableType};
 pub use error::{Result, SdtmError};
