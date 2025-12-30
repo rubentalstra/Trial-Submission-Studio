@@ -1017,12 +1017,10 @@ pub mod dark_colors {
 
 | Shortcut    | Action                      |
 |-------------|-----------------------------|
-| `↑` / `k`   | Move up in list             |
-| `↓` / `j`   | Move down in list           |
-| `h` / `l`   | Switch focus between panels |
+| `↑` / `↓`   | Move up/down in list        |
+| `←` / `→`   | Switch focus between panels |
 | `Enter`     | Accept suggestion           |
 | `Backspace` | Clear mapping               |
-| `/`         | Focus search field          |
 | `Tab`       | Next field                  |
 
 ### Background Task System
