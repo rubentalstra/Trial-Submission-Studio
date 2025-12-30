@@ -1,5 +1,6 @@
 //! Study-level runtime state
 
+use crate::services::MappingState;
 use polars::prelude::DataFrame;
 use sdtm_model::{MappingConfig, ValidationReport};
 use std::collections::HashMap;
@@ -59,7 +60,9 @@ pub struct DomainState {
     pub source_data: DataFrame,
     /// Current status
     pub status: DomainStatus,
-    /// Column mapping configuration
+    /// Interactive mapping state (for GUI)
+    pub mapping_state: Option<MappingState>,
+    /// Finalized column mapping configuration
     pub mapping: Option<MappingConfig>,
     /// Validation results
     pub validation: Option<ValidationReport>,
@@ -75,6 +78,7 @@ impl DomainState {
             source_file,
             source_data,
             status: DomainStatus::NotStarted,
+            mapping_state: None,
             mapping: None,
             validation: None,
             preview_data: None,

@@ -1638,18 +1638,28 @@ All color combinations meet WCAG 2.1 AA (4.5:1 for normal text, 3:1 for large):
 
 **Deliverable:** Core logic is modular and testable ✅
 
-### Phase 3: Mapping Service ⏳ NOT STARTED
+### Phase 3: Mapping Service ✅ COMPLETE
 
 **Goal:** Make mapping work independently
 
 **Status:**
-- [ ] Refactor `sdtm-map` to have `suggest_column_mappings()` (pure suggestions)
-- [ ] Add `apply_single_mapping()` to apply one mapping
-- [ ] Add `preview_mapping()` for sample rows
-- [ ] Implement `MappingService` in `sdtm-gui`
-- [ ] Build Mapping tab in GUI
+- [x] Use existing `sdtm-map::MappingEngine::suggest()` for column suggestions
+- [x] Create `MappingState` for interactive accept/reject workflow
+- [x] Extract column hints from DataFrame (is_numeric, null_ratio, unique_ratio)
+- [x] Implement `MappingService` in `sdtm-gui`
+- [x] Build Mapping tab in GUI with:
+  - Generate suggestions button
+  - Pending/Accepted/Unmapped grouping
+  - Accept/Reject buttons per mapping
+  - "Accept all high confidence" bulk action
+  - Confidence indicators with color coding
 
-**Deliverable:** Can map domains interactively
+**Implementation:**
+- Created `crates/sdtm-gui/src/services/mapping.rs` with MappingService and MappingState
+- Added `mapping_state` field to DomainState for interactive editing
+- Implemented full Mapping tab UI in domain_editor.rs
+
+**Deliverable:** Can map domains interactively ✅
 
 ### Phase 4: Validation & Transforms ⏳ NOT STARTED
 
