@@ -141,6 +141,49 @@ fn dataset_class_display_and_as_str() {
 }
 
 #[test]
+fn dthfl_has_codelist_code() {
+    let domains = load_default_sdtm_ig_domains().expect("load sdtmig domains");
+    let dm = domains.iter().find(|d| d.code == "DM").expect("DM domain");
+
+    // Find DTHFL variable
+    let dthfl = dm.variables.iter().find(|v| v.name == "DTHFL");
+    assert!(dthfl.is_some(), "DTHFL variable should exist in DM domain");
+
+    let dthfl = dthfl.unwrap();
+    assert!(
+        dthfl.codelist_code.is_some(),
+        "DTHFL should have codelist_code (C66742), got: {:?}",
+        dthfl.codelist_code
+    );
+    assert_eq!(
+        dthfl.codelist_code.as_deref(),
+        Some("C66742"),
+        "DTHFL codelist should be C66742"
+    );
+}
+
+#[test]
+fn dm_variables_with_codelists() {
+    let domains = load_default_sdtm_ig_domains().expect("load sdtmig domains");
+    let dm = domains.iter().find(|d| d.code == "DM").expect("DM domain");
+
+    // Count variables with codelist codes
+    let vars_with_ct: Vec<_> = dm.variables
+        .iter()
+        .filter(|v| v.codelist_code.is_some())
+        .collect();
+
+    // DM should have: DTHFL (C66742), AGEU (C66781), SEX (C66731),
+    // RACE (C74457), ETHNIC (C66790), ARMNRS (C142179)
+    assert!(
+        vars_with_ct.len() >= 6,
+        "DM domain should have at least 6 variables with CT codelists, got: {}. Variables: {:?}",
+        vars_with_ct.len(),
+        vars_with_ct.iter().map(|v| (&v.name, &v.codelist_code)).collect::<Vec<_>>()
+    );
+}
+
+#[test]
 fn country_codelist_c66786_loaded_correctly() {
     // Verify the COUNTRY codelist (C66786) is loaded from CT files
     // This tests the example the user mentioned

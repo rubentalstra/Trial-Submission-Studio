@@ -3,6 +3,7 @@
 // Fields kept for future use (validation, preview, etc.)
 #![allow(dead_code)]
 
+use super::TransformState;
 use crate::services::MappingState;
 use polars::prelude::DataFrame;
 use sdtm_ingest::StudyMetadata;
@@ -96,6 +97,8 @@ pub struct DomainState {
     pub status: DomainStatus,
     /// Interactive mapping state (for GUI)
     pub mapping_state: Option<MappingState>,
+    /// Transform display state (read-only, shows what will be applied)
+    pub transform_state: Option<TransformState>,
     /// Finalized column mapping configuration
     pub mapping: Option<MappingConfig>,
     /// Validation results
@@ -113,6 +116,7 @@ impl DomainState {
             source_data,
             status: DomainStatus::NotStarted,
             mapping_state: None,
+            transform_state: None,
             mapping: None,
             validation: None,
             preview_data: None,
