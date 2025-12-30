@@ -172,10 +172,16 @@ impl MappingState {
                 if filter.is_empty() {
                     true
                 } else {
-                    v.name.to_lowercase().contains(&filter)
-                        || v.label
-                            .as_ref()
-                            .is_some_and(|l| l.to_lowercase().contains(&filter))
+                    let matches_name = v.name.to_lowercase().contains(&filter);
+                    let matches_label = v
+                        .label
+                        .as_ref()
+                        .is_some_and(|l| l.to_lowercase().contains(&filter));
+                    let matches_subjid = v.name.eq_ignore_ascii_case("USUBJID")
+                        && (filter.contains("subjid")
+                            || filter.contains("subject id")
+                            || filter.contains("subject"));
+                    matches_name || matches_label || matches_subjid
                 }
             })
             .collect()

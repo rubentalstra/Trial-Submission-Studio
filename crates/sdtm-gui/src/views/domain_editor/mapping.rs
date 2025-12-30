@@ -101,7 +101,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
 }
 
 /// Auto-initialize mapping state for a domain
-fn initialize_mapping(state: &mut AppState, domain_code: &str) {
+pub(super) fn initialize_mapping(state: &mut AppState, domain_code: &str) {
     // Get study info
     let (study_id, source_columns) = {
         if let Some(study) = &state.study {
@@ -169,7 +169,7 @@ fn initialize_mapping(state: &mut AppState, domain_code: &str) {
 }
 
 /// Show loading indicator with spinner
-fn show_loading_indicator(ui: &mut Ui, theme: &crate::theme::ThemeColors) {
+pub(super) fn show_loading_indicator(ui: &mut Ui, theme: &crate::theme::ThemeColors) {
     ui.vertical_centered(|ui| {
         ui.add_space(ui.available_height() / 3.0);
         ui.spinner();
@@ -195,7 +195,7 @@ fn show_variable_list(
     theme: &crate::theme::ThemeColors,
 ) {
     // Collect data we need
-    let (summary, filtered_vars, selected_idx, mut search_text) = {
+    let (summary, filtered_vars, selected_idx, mut search_text, has_subjid_var) = {
         let Some(study) = &state.study else {
             ui.label("No study loaded");
             return;
@@ -210,6 +210,7 @@ fn show_variable_list(
         };
 
         let summary = ms.summary();
+        let has_subjid_var = ms.sdtm_domain.column_name("SUBJID").is_some();
         let filtered: Vec<_> = ms
             .filtered_variables()
             .iter()
@@ -220,7 +221,13 @@ fn show_variable_list(
                 (*idx, v.name.clone(), core, role, status)
             })
             .collect();
-        (summary, filtered, ms.selected_variable_idx, ms.search_filter.clone())
+        (
+            summary,
+            filtered,
+            ms.selected_variable_idx,
+            ms.search_filter.clone(),
+            has_subjid_var,
+        )
     };
 
     // Summary header
@@ -288,7 +295,8 @@ fn show_variable_list(
                 let is_selected = selected_idx == Some(*idx);
 
                 // Check if this is an auto-generated variable using role from standards
-                let is_auto = is_auto_generated_variable(name, role.as_deref());
+                let is_auto = is_auto_generated_variable(name, role.as_deref())
+                    || (has_subjid_var && name.eq_ignore_ascii_case("USUBJID"));
 
                 let status_color = if is_auto {
                     theme.accent
@@ -385,6 +393,8 @@ fn show_variable_detail(
         let var_data_type = format!("{:?}", variable.data_type);
         let var_role = variable.role.clone();
         let var_codelist = variable.codelist_code.clone();
+        let study_id = study.study_id.clone();
+        let has_subjid_var = ms.sdtm_domain.column_name("SUBJID").is_some();
 
         let suggestion = ms.get_suggestion_for(&var_name).cloned();
         let accepted = ms.get_accepted_for(&var_name).map(|(c, f)| (c.to_string(), f));
@@ -441,6 +451,20 @@ fn show_variable_detail(
             .map(|(_, c)| *c)
             .or_else(|| suggestion.as_ref().map(|s| s.confidence));
 
+        let subjid_mapping = if has_subjid_var {
+            ms.get_accepted_for("SUBJID")
+                .map(|(c, _)| c.to_string())
+        } else {
+            None
+        };
+        let subjid_label = subjid_mapping
+            .as_ref()
+            .and_then(|col| study.get_column_label(col).map(String::from));
+        let subjid_samples = subjid_mapping
+            .as_ref()
+            .map(|col| MappingService::get_sample_values(&domain.source_data, col, 3))
+            .unwrap_or_default();
+
         // Get CT data from pre-loaded cache (loaded when domain opened)
         // Clone to avoid borrow issues with state mutations in render loop
         let ct_data: Vec<_> = var_codelist
@@ -460,6 +484,11 @@ fn show_variable_detail(
             var_data_type,
             var_role,
             var_codelist,
+            study_id,
+            has_subjid_var,
+            subjid_mapping,
+            subjid_label,
+            subjid_samples,
             status,
             source_info,
             source_col_label,
@@ -476,6 +505,11 @@ fn show_variable_detail(
         var_data_type,
         var_role,
         var_codelist,
+        study_id,
+        has_subjid_var,
+        subjid_mapping,
+        subjid_label,
+        subjid_samples,
         status,
         source_info,
         source_col_label,
@@ -483,6 +517,8 @@ fn show_variable_detail(
         available_cols,
         ct_data,
     ) = detail_data;
+
+    let is_usubjid_derived = has_subjid_var && var_name.eq_ignore_ascii_case("USUBJID");
 
     egui::ScrollArea::vertical().show(ui, |ui| {
         // SDTM Target section
@@ -497,6 +533,13 @@ fn show_variable_detail(
         ui.heading(&var_name);
         if let Some(label) = &var_label {
             ui.label(RichText::new(label).color(theme.text_secondary));
+        }
+        if is_usubjid_derived {
+            ui.label(
+                RichText::new("Derived as STUDYID-SUBJID from the mapped SUBJID column.")
+                    .color(theme.text_secondary)
+                    .small(),
+            );
         }
 
         ui.add_space(spacing::MD);
@@ -604,7 +647,7 @@ fn show_variable_detail(
         ui.add_space(spacing::LG);
 
         // Check if this is an auto-generated variable using role from standards
-        let is_auto = is_auto_generated_variable(&var_name, var_role.as_deref());
+        let is_auto = is_auto_generated_variable(&var_name, var_role.as_deref()) || is_usubjid_derived;
 
         if is_auto {
             // Auto-generated variable section
@@ -630,7 +673,7 @@ fn show_variable_detail(
             let description = match var_name.as_str() {
                 "DOMAIN" => "Set to the domain code (e.g., \"DM\", \"AE\")",
                 "STUDYID" => "Populated from study configuration",
-                "USUBJID" => "Derived: STUDYID + \"-\" + subject identifier",
+                "USUBJID" => "Derived from STUDYID and SUBJID",
                 name if name.ends_with("SEQ") => {
                     "Assigned sequentially per subject (1, 2, 3...)"
                 }
@@ -643,12 +686,80 @@ fn show_variable_detail(
                     .italics(),
             );
 
-            ui.add_space(spacing::MD);
-            ui.label(
-                RichText::new("This variable cannot be mapped manually.")
-                    .color(theme.text_muted)
-                    .small(),
-            );
+            if is_usubjid_derived {
+                ui.add_space(spacing::MD);
+                ui.label(RichText::new("Derivation").strong().color(theme.text_muted));
+                ui.add_space(spacing::SM);
+
+                egui::Grid::new("usubjid_derive")
+                    .num_columns(2)
+                    .spacing([20.0, 4.0])
+                    .show(ui, |ui| {
+                        ui.label(RichText::new("Formula").color(theme.text_muted));
+                        ui.label("STUDYID-SUBJID");
+                        ui.end_row();
+
+                        ui.label(RichText::new("Study ID").color(theme.text_muted));
+                        ui.label(RichText::new(&study_id).color(theme.accent));
+                        ui.end_row();
+                    });
+
+                if let Some(subjid_col) = &subjid_mapping {
+                    ui.add_space(spacing::SM);
+                    ui.label(RichText::new("Source Mapping").strong().color(theme.text_muted));
+                    ui.add_space(spacing::SM);
+
+                    egui::Grid::new("usubjid_source")
+                        .num_columns(2)
+                        .spacing([20.0, 4.0])
+                        .show(ui, |ui| {
+                            ui.label(RichText::new("SUBJID").color(theme.text_muted));
+                            ui.label(subjid_col);
+                            ui.end_row();
+
+                            ui.label(RichText::new("Label").color(theme.text_muted));
+                            ui.label(subjid_label.as_deref().unwrap_or("—"));
+                            ui.end_row();
+                        });
+
+                    if !subjid_samples.is_empty() {
+                        ui.add_space(spacing::SM);
+                        ui.label(
+                            RichText::new("Sample Values")
+                                .color(theme.text_muted)
+                                .small(),
+                        );
+                        for val in &subjid_samples {
+                            ui.horizontal(|ui| {
+                                ui.label(RichText::new(val).code());
+                                ui.label(RichText::new("→").color(theme.text_muted));
+                                ui.label(
+                                    RichText::new(format!("{}-{}", study_id, val))
+                                        .code()
+                                        .color(theme.accent),
+                                );
+                            });
+                        }
+                    }
+                } else {
+                    ui.add_space(spacing::SM);
+                    ui.label(
+                        RichText::new(format!(
+                            "{} Map SUBJID to generate USUBJID",
+                            egui_phosphor::regular::INFO
+                        ))
+                        .color(theme.warning)
+                        .small(),
+                    );
+                }
+            } else {
+                ui.add_space(spacing::MD);
+                ui.label(
+                    RichText::new("This variable cannot be mapped manually.")
+                        .color(theme.text_muted)
+                        .small(),
+                );
+            }
         } else {
             // Source Column section for mappable variables
             ui.label(
@@ -794,6 +905,10 @@ fn show_variable_detail(
                     if let Some(domain) = study.get_domain_mut(domain_code) {
                         if let Some(ms) = &mut domain.mapping_state {
                             ms.accept_manual(&var_name, &col);
+                            if var_name.eq_ignore_ascii_case("SUBJID") {
+                                ms.accepted
+                                    .insert("USUBJID".to_string(), (col.clone(), 1.0));
+                            }
                         }
                     }
                 }
@@ -816,6 +931,15 @@ fn show_variable_detail(
                                 if let Some(domain) = study.get_domain_mut(domain_code) {
                                     if let Some(ms) = &mut domain.mapping_state {
                                         ms.accept_suggestion(&var_name);
+                                        if var_name.eq_ignore_ascii_case("SUBJID") {
+                                            if let Some((col, conf)) = ms.get_accepted_for("SUBJID")
+                                            {
+                                                ms.accepted.insert(
+                                                    "USUBJID".to_string(),
+                                                    (col.to_string(), conf),
+                                                );
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -830,6 +954,9 @@ fn show_variable_detail(
                                 if let Some(domain) = study.get_domain_mut(domain_code) {
                                     if let Some(ms) = &mut domain.mapping_state {
                                         ms.clear_mapping(&var_name);
+                                        if var_name.eq_ignore_ascii_case("SUBJID") {
+                                            ms.accepted.remove("USUBJID");
+                                        }
                                     }
                                 }
                             }
@@ -854,10 +981,10 @@ fn show_variable_detail(
 /// Check if a variable is auto-generated (not mapped from source)
 ///
 /// Based on SDTMIG v3.4 variable definitions, certain Identifier role variables
-/// are system-generated rather than mapped from source data:
+/// are system-generated rather than mapped from source data. USUBJID derivation
+/// is handled separately when SUBJID is available in the domain.
 /// - STUDYID: From study-level configuration
 /// - DOMAIN: Set to the two-character domain abbreviation
-/// - USUBJID: Derived as STUDYID + subject identifier
 /// - --SEQ: Sequence numbers assigned per subject
 ///
 /// This uses the Variable's role field from the SDTM standards.
@@ -874,9 +1001,8 @@ fn is_auto_generated_variable(name: &str, role: Option<&str>) -> bool {
     // These specific Identifier variables are auto-generated per SDTMIG:
     // - STUDYID: Study identifier from study-level config
     // - DOMAIN: Domain abbreviation (e.g., "DM", "AE")
-    // - USUBJID: Unique subject ID (derived from STUDYID + subject ID)
     // - --SEQ: Sequence number assigned per subject within domain
-    matches!(name, "STUDYID" | "DOMAIN" | "USUBJID")
+    matches!(name, "STUDYID" | "DOMAIN")
         || (name.ends_with("SEQ") && name.len() >= 4)
 }
 
