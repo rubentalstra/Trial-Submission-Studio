@@ -27,6 +27,7 @@ fn make_variable(name: &str, core: Option<&str>, data_type: VariableType) -> Var
         core: core.map(String::from),
         codelist_code: None,
         order: None,
+        described_value_domain: None,
     }
 }
 

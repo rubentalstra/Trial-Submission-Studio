@@ -50,6 +50,7 @@ pub use normalization::datetime;
 // Re-export common types
 pub use context::{CtResolutionMode, TransformContext, TransformResult};
 pub use frame::{DomainFrame, DomainFrameMeta};
+pub use inference::{TransformSummary, build_pipeline_from_domain, infer_transform_type};
 pub use pipeline::{DomainPipeline, TransformOrigin, TransformRule, TransformType};
 
 // Re-export common functions

@@ -8,4 +8,7 @@ mod transform_state;
 
 pub use app_state::{AppState, EditorTab, View};
 pub use study_state::{DomainState, DomainStatus, StudyState};
-pub use transform_state::{TransformRule, TransformState};
+pub use transform_state::{
+    TransformRule, TransformRuleDisplay, TransformState, TransformType, TransformTypeDisplay,
+    build_pipeline_from_domain,
+};

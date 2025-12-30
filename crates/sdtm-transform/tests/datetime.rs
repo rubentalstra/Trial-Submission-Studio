@@ -1,7 +1,7 @@
 //! Tests for datetime normalization.
 
 use chrono::NaiveDate;
-use sdtm_transform::normalization::{normalize_iso8601, parse_date, validate_date_pair, DatePairOrder};
+use sdtm_transform::normalization::{parse_date, validate_date_pair, DatePairOrder};
 
 #[test]
 fn parse_date_complete() {
@@ -23,15 +23,6 @@ fn parse_date_invalid_returns_none() {
     assert!(parse_date("").is_none());
     assert!(parse_date("invalid").is_none());
     assert!(parse_date("2023-13-01").is_none()); // Invalid month
-}
-
-#[test]
-fn normalize_iso8601_trims_whitespace() {
-    assert_eq!(normalize_iso8601("  2023-12-25  "), "2023-12-25");
-    assert_eq!(
-        normalize_iso8601("2023-12-25T10:30:00"),
-        "2023-12-25T10:30:00"
-    );
 }
 
 #[test]

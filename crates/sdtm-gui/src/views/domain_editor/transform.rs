@@ -1,10 +1,13 @@
 //! Transform tab
 //!
 //! Displays SDTM transformations derived from mappings and domain metadata.
-//! Transform list is built from mapping state; display data fetched on-the-fly.
+//! Transform list is built from the sdtm-transform pipeline using variable metadata.
 
 use crate::services::{MappingService, MappingState};
-use crate::state::{AppState, DomainStatus, TransformRule, TransformState};
+use crate::state::{
+    AppState, DomainStatus, TransformRule, TransformRuleDisplay, TransformState, TransformType,
+    build_pipeline_from_domain,
+};
 use crate::theme::{colors, spacing};
 use egui::{RichText, Ui};
 
@@ -60,7 +63,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
 
     {
         // Get data for display
-        let (transforms, selected_idx, generated_count, ct_count, has_subject_id_mapping) = {
+        let (rules, selected_idx, generated_count, ct_count, has_subject_id_mapping) = {
             let Some(study) = &state.study else {
                 ui.label("No study loaded");
                 return;
@@ -74,8 +77,9 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                 return;
             };
 
-            let generated_count = ts.transforms.iter().filter(|t| t.is_generated()).count();
-            let ct_count = ts.transforms.len().saturating_sub(generated_count);
+            let rules = ts.rules();
+            let generated_count = ts.generated_count();
+            let ct_count = ts.ct_count();
             let has_subject_id_mapping = domain
                 .mapping_state
                 .as_ref()
@@ -83,7 +87,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                 .unwrap_or(false);
 
             (
-                ts.transforms.as_slice(),
+                rules,
                 ts.selected_idx,
                 generated_count,
                 ct_count,
@@ -99,7 +103,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
             ))
             .strong(),
         );
-        if !transforms.is_empty() {
+        if !rules.is_empty() {
             ui.add_space(spacing::XS);
             ui.label(
                 RichText::new(format!("{} generated · {} CT", generated_count, ct_count))
@@ -110,7 +114,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
         ui.add_space(spacing::SM);
         ui.separator();
 
-        if transforms.is_empty() {
+        if rules.is_empty() {
             ui.add_space(spacing::LG);
             ui.centered_and_justified(|ui| {
                 ui.label(
@@ -137,7 +141,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                         .show(ui, |ui| {
                             new_selection = show_transform_list(
                                 ui,
-                                transforms,
+                                rules,
                                 selected_idx,
                                 has_subject_id_mapping,
                                 generated_count,
@@ -160,7 +164,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                                 ui,
                                 state,
                                 domain_code,
-                                transforms,
+                                rules,
                                 effective_selection,
                                 &theme,
                             );
@@ -180,51 +184,24 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
     }
 }
 
-/// Rebuild transforms from current mapping state
+/// Rebuild transforms from current mapping state using the sdtm-transform pipeline
 fn rebuild_transforms_if_needed(state: &mut AppState, domain_code: &str) {
-    let mut transforms = Vec::new();
-
-    if let Some(study) = &state.study {
+    // Build pipeline from domain metadata
+    let pipeline = if let Some(study) = &state.study {
         if let Some(domain) = study.get_domain(domain_code) {
             if let Some(ms) = &domain.mapping_state {
-                transforms.reserve(ms.sdtm_domain.variables.len() + 4);
-                if ms.sdtm_domain.column_name("STUDYID").is_some() {
-                    transforms.push(TransformRule::StudyIdConstant);
-                }
-
-                if ms.sdtm_domain.column_name("DOMAIN").is_some() {
-                    transforms.push(TransformRule::DomainConstant);
-                }
-
-                if ms.sdtm_domain.column_name("USUBJID").is_some() {
-                    transforms.push(TransformRule::UsubjidDerivation);
-                }
-
-                if let Some(seq_column) = ms.sdtm_domain.infer_seq_column() {
-                    transforms.push(TransformRule::SequenceNumbers {
-                        seq_column: seq_column.to_string(),
-                    });
-                }
-
-                // CT normalization for each mapped variable with a codelist
-                for variable in &ms.sdtm_domain.variables {
-                    if let Some(codelist_code) = &variable.codelist_code {
-                        if ms.get_accepted_for(&variable.name).is_some() {
-                            let code = codelist_code.split(';').next().unwrap_or("").trim();
-                            if !code.is_empty() {
-                                transforms.push(TransformRule::CtNormalization {
-                                    variable: variable.name.clone(),
-                                    codelist_code: code.to_string(),
-                                });
-                            }
-                        }
-                    }
-                }
+                Some(build_pipeline_from_domain(&ms.sdtm_domain))
+            } else {
+                None
             }
+        } else {
+            None
         }
-    }
+    } else {
+        None
+    };
 
-    // Store transforms
+    // Store the pipeline
     if let Some(study) = &mut state.study {
         if let Some(domain) = study.get_domain_mut(domain_code) {
             let selected_idx = domain
@@ -232,7 +209,7 @@ fn rebuild_transforms_if_needed(state: &mut AppState, domain_code: &str) {
                 .as_ref()
                 .and_then(|ts| ts.selected_idx);
             domain.transform_state = Some(TransformState {
-                transforms,
+                pipeline,
                 selected_idx,
             });
         }
@@ -241,7 +218,7 @@ fn rebuild_transforms_if_needed(state: &mut AppState, domain_code: &str) {
 
 fn show_transform_list(
     ui: &mut Ui,
-    transforms: &[TransformRule],
+    rules: &[TransformRule],
     selected_idx: Option<usize>,
     has_subject_id_mapping: bool,
     generated_count: usize,
@@ -261,13 +238,16 @@ fn show_transform_list(
         );
         ui.add_space(spacing::SM);
 
-        for (idx, t) in transforms
-            .iter()
-            .enumerate()
-            .filter(|(_, t)| t.is_generated())
-        {
-            let status_suffix = transform_status_suffix(t, has_subject_id_mapping);
-            if render_row(ui, idx, t, selected_idx == Some(idx), status_suffix, theme) {
+        for (idx, rule) in rules.iter().enumerate().filter(|(_, r)| r.is_generated()) {
+            let status_suffix = transform_status_suffix(rule, has_subject_id_mapping);
+            if render_row(
+                ui,
+                idx,
+                rule,
+                selected_idx == Some(idx),
+                status_suffix,
+                theme,
+            ) {
                 new_selection = Some(idx);
             }
         }
@@ -290,12 +270,12 @@ fn show_transform_list(
         );
         ui.add_space(spacing::SM);
 
-        for (idx, t) in transforms
+        for (idx, rule) in rules
             .iter()
             .enumerate()
-            .filter(|(_, t)| matches!(t, TransformRule::CtNormalization { .. }))
+            .filter(|(_, r)| matches!(r.transform_type, TransformType::CtNormalization { .. }))
         {
-            if render_row(ui, idx, t, selected_idx == Some(idx), None, theme) {
+            if render_row(ui, idx, rule, selected_idx == Some(idx), None, theme) {
                 new_selection = Some(idx);
             }
         }
@@ -315,18 +295,11 @@ fn subject_id_mapping<'a>(ms: &'a MappingState) -> Option<(&'a str, &'static str
 }
 
 fn transform_status_suffix(
-    transform: &TransformRule,
+    rule: &TransformRule,
     has_subject_id_mapping: bool,
 ) -> Option<&'static str> {
-    match transform {
-        TransformRule::UsubjidDerivation => {
-            if has_subject_id_mapping {
-                None
-            } else {
-                Some("Needs SUBJID")
-            }
-        }
-        TransformRule::SequenceNumbers { .. } => {
+    match &rule.transform_type {
+        TransformType::UsubjidPrefix | TransformType::SequenceNumber => {
             if has_subject_id_mapping {
                 None
             } else {
@@ -340,7 +313,7 @@ fn transform_status_suffix(
 fn render_row(
     ui: &mut Ui,
     _idx: usize,
-    transform: &TransformRule,
+    rule: &TransformRule,
     is_selected: bool,
     status_suffix: Option<&'static str>,
     theme: &crate::theme::ThemeColors,
@@ -348,12 +321,12 @@ fn render_row(
     let mut clicked = false;
 
     ui.horizontal(|ui| {
-        ui.label(RichText::new(transform.icon()).color(theme.accent));
+        ui.label(RichText::new(rule.icon()).color(theme.accent));
 
         let text = if is_selected {
-            RichText::new(transform.target_variable()).strong()
+            RichText::new(&rule.target_variable).strong()
         } else {
-            RichText::new(transform.target_variable())
+            RichText::new(&rule.target_variable)
         };
 
         if ui.selectable_label(is_selected, text).clicked() {
@@ -362,9 +335,9 @@ fn render_row(
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let right_text = if let Some(status) = status_suffix {
-                format!("{} · {}", transform.display_name(), status)
+                format!("{} · {}", rule.category(), status)
             } else {
-                transform.display_name().to_string()
+                rule.category().to_string()
             };
             let right_color = if status_suffix.is_some() {
                 theme.warning
@@ -383,7 +356,7 @@ fn show_transform_detail(
     ui: &mut Ui,
     state: &AppState,
     domain_code: &str,
-    transforms: &[TransformRule],
+    rules: &[TransformRule],
     selected_idx: Option<usize>,
     theme: &crate::theme::ThemeColors,
 ) {
@@ -400,7 +373,7 @@ fn show_transform_detail(
         return;
     };
 
-    let Some(transform) = transforms.get(idx) else {
+    let Some(rule) = rules.get(idx) else {
         return;
     };
 
@@ -418,15 +391,11 @@ fn show_transform_detail(
 
     // Header
     ui.horizontal(|ui| {
-        ui.label(
-            RichText::new(transform.icon())
-                .size(24.0)
-                .color(theme.accent),
-        );
+        ui.label(RichText::new(rule.icon()).size(24.0).color(theme.accent));
         ui.vertical(|ui| {
-            ui.heading(transform.target_variable());
+            ui.heading(&rule.target_variable);
             ui.label(
-                RichText::new(transform.display_name())
+                RichText::new(rule.category())
                     .color(theme.text_muted)
                     .small(),
             );
@@ -437,264 +406,533 @@ fn show_transform_detail(
     ui.separator();
     ui.add_space(spacing::SM);
 
-    match transform {
-        TransformRule::StudyIdConstant => {
+    // Show details based on transform type
+    match &rule.transform_type {
+        TransformType::Constant => {
+            show_constant_detail(ui, &rule.target_variable, study_id, domain_code, theme);
+        }
+        TransformType::UsubjidPrefix => {
+            show_usubjid_detail(ui, study_id, mapping_state, source_data, theme);
+        }
+        TransformType::SequenceNumber => {
+            show_sequence_detail(ui, &rule.target_variable, mapping_state, theme);
+        }
+        TransformType::CtNormalization { codelist_code } => {
+            show_ct_detail(
+                ui,
+                &rule.target_variable,
+                codelist_code,
+                mapping_state,
+                source_data,
+                theme,
+            );
+        }
+        TransformType::Iso8601DateTime | TransformType::Iso8601Date => {
+            show_datetime_detail(ui, &rule.target_variable, mapping_state, source_data, theme);
+        }
+        TransformType::Iso8601Duration => {
+            show_duration_detail(ui, &rule.target_variable, mapping_state, source_data, theme);
+        }
+        TransformType::StudyDay { reference_dtc } => {
+            show_study_day_detail(ui, &rule.target_variable, reference_dtc, theme);
+        }
+        TransformType::NumericConversion => {
+            show_numeric_detail(ui, &rule.target_variable, mapping_state, source_data, theme);
+        }
+        TransformType::CopyDirect => {
+            show_copy_detail(ui, &rule.target_variable, mapping_state, source_data, theme);
+        }
+    }
+}
+
+/// Show details for STUDYID/DOMAIN constants
+fn show_constant_detail(
+    ui: &mut Ui,
+    target: &str,
+    study_id: &str,
+    domain_code: &str,
+    theme: &crate::theme::ThemeColors,
+) {
+    ui.label(
+        RichText::new("Value Source")
+            .strong()
+            .color(theme.text_muted),
+    );
+    ui.add_space(spacing::SM);
+
+    let (source_desc, value) = if target == "STUDYID" {
+        ("Study configuration", study_id)
+    } else if target == "DOMAIN" {
+        ("Domain code", domain_code)
+    } else {
+        ("Constant value", "")
+    };
+
+    egui::Grid::new("constant_detail")
+        .num_columns(2)
+        .spacing([20.0, 4.0])
+        .show(ui, |ui| {
+            ui.label(RichText::new("Source").color(theme.text_muted));
+            ui.label(source_desc);
+            ui.end_row();
+
+            ui.label(RichText::new("Target").color(theme.text_muted));
+            ui.label(target);
+            ui.end_row();
+
+            ui.label(RichText::new("Value").color(theme.text_muted));
+            ui.label(RichText::new(value).color(theme.accent));
+            ui.end_row();
+        });
+}
+
+/// Show details for USUBJID derivation
+fn show_usubjid_detail(
+    ui: &mut Ui,
+    study_id: &str,
+    mapping_state: &MappingState,
+    source_data: &polars::prelude::DataFrame,
+    theme: &crate::theme::ThemeColors,
+) {
+    ui.label(RichText::new("Derivation").strong().color(theme.text_muted));
+    ui.add_space(spacing::SM);
+
+    egui::Grid::new("usubjid_detail")
+        .num_columns(2)
+        .spacing([20.0, 4.0])
+        .show(ui, |ui| {
+            ui.label(RichText::new("Target").color(theme.text_muted));
+            ui.label("USUBJID");
+            ui.end_row();
+
+            ui.label(RichText::new("Formula").color(theme.text_muted));
+            ui.label("STUDYID-SUBJID");
+            ui.end_row();
+        });
+
+    if let Some((source_col, source_label)) = subject_id_mapping(mapping_state) {
+        let samples = MappingService::get_sample_values(source_data, source_col, 3);
+
+        ui.add_space(spacing::MD);
+        ui.label(RichText::new("Mapping").strong().color(theme.text_muted));
+        ui.add_space(spacing::SM);
+
+        egui::Grid::new("usubjid_mapping")
+            .num_columns(2)
+            .spacing([20.0, 4.0])
+            .show(ui, |ui| {
+                ui.label(RichText::new(source_label).color(theme.text_muted));
+                ui.label(source_col);
+                ui.end_row();
+
+                ui.label(RichText::new("Study ID").color(theme.text_muted));
+                ui.label(RichText::new(study_id).color(theme.accent));
+                ui.end_row();
+            });
+
+        if !samples.is_empty() {
+            ui.add_space(spacing::MD);
             ui.label(
-                RichText::new("Value Source")
+                RichText::new("Sample Values")
                     .strong()
                     .color(theme.text_muted),
             );
             ui.add_space(spacing::SM);
 
-            egui::Grid::new("studyid_detail")
-                .num_columns(2)
-                .spacing([20.0, 4.0])
-                .show(ui, |ui| {
-                    ui.label(RichText::new("Source").color(theme.text_muted));
-                    ui.label("Study configuration");
-                    ui.end_row();
-
-                    ui.label(RichText::new("Target").color(theme.text_muted));
-                    ui.label("STUDYID");
-                    ui.end_row();
-
-                    ui.label(RichText::new("Value").color(theme.text_muted));
-                    ui.label(RichText::new(study_id).color(theme.accent));
-                    ui.end_row();
-                });
-        }
-
-        TransformRule::DomainConstant => {
-            ui.label(
-                RichText::new("Value Source")
-                    .strong()
-                    .color(theme.text_muted),
-            );
-            ui.add_space(spacing::SM);
-
-            egui::Grid::new("domain_detail")
-                .num_columns(2)
-                .spacing([20.0, 4.0])
-                .show(ui, |ui| {
-                    ui.label(RichText::new("Source").color(theme.text_muted));
-                    ui.label("Domain code");
-                    ui.end_row();
-
-                    ui.label(RichText::new("Target").color(theme.text_muted));
-                    ui.label("DOMAIN");
-                    ui.end_row();
-
-                    ui.label(RichText::new("Value").color(theme.text_muted));
-                    ui.label(RichText::new(domain_code).color(theme.accent));
-                    ui.end_row();
-                });
-        }
-
-        TransformRule::UsubjidDerivation => {
-            ui.label(RichText::new("Derivation").strong().color(theme.text_muted));
-            ui.add_space(spacing::SM);
-
-            egui::Grid::new("usubjid_detail")
-                .num_columns(2)
-                .spacing([20.0, 4.0])
-                .show(ui, |ui| {
-                    ui.label(RichText::new("Target").color(theme.text_muted));
-                    ui.label("USUBJID");
-                    ui.end_row();
-
-                    ui.label(RichText::new("Formula").color(theme.text_muted));
-                    ui.label("STUDYID-SUBJID");
-                    ui.end_row();
-                });
-
-            if let Some((source_col, source_label)) = subject_id_mapping(mapping_state) {
-                let samples = MappingService::get_sample_values(source_data, source_col, 3);
-
-                ui.add_space(spacing::MD);
-                ui.label(RichText::new("Mapping").strong().color(theme.text_muted));
-                ui.add_space(spacing::SM);
-
-                egui::Grid::new("usubjid_mapping")
-                    .num_columns(2)
-                    .spacing([20.0, 4.0])
-                    .show(ui, |ui| {
-                        ui.label(RichText::new(source_label).color(theme.text_muted));
-                        ui.label(source_col);
-                        ui.end_row();
-
-                        ui.label(RichText::new("Study ID").color(theme.text_muted));
-                        ui.label(RichText::new(study_id).color(theme.accent));
-                        ui.end_row();
-                    });
-
-                if !samples.is_empty() {
-                    ui.add_space(spacing::MD);
+            for val in &samples {
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new(val).code());
+                    ui.label(RichText::new("→").color(theme.text_muted));
                     ui.label(
-                        RichText::new("Sample Values")
-                            .strong()
-                            .color(theme.text_muted),
+                        RichText::new(format!("{}-{}", study_id, val))
+                            .code()
+                            .color(theme.accent),
                     );
-                    ui.add_space(spacing::SM);
+                });
+            }
+        }
+    } else {
+        ui.add_space(spacing::MD);
+        ui.label(
+            RichText::new(format!(
+                "{} Map the SUBJID column in Mapping to build USUBJID",
+                egui_phosphor::regular::INFO
+            ))
+            .color(theme.warning),
+        );
+    }
+}
 
-                    for val in &samples {
+/// Show details for sequence number generation
+fn show_sequence_detail(
+    ui: &mut Ui,
+    seq_column: &str,
+    mapping_state: &MappingState,
+    theme: &crate::theme::ThemeColors,
+) {
+    ui.label(
+        RichText::new("Configuration")
+            .strong()
+            .color(theme.text_muted),
+    );
+    ui.add_space(spacing::SM);
+
+    egui::Grid::new("seq_detail")
+        .num_columns(2)
+        .spacing([20.0, 4.0])
+        .show(ui, |ui| {
+            ui.label(RichText::new("Column").color(theme.text_muted));
+            ui.label(RichText::new(seq_column).strong());
+            ui.end_row();
+
+            ui.label(RichText::new("Group By").color(theme.text_muted));
+            ui.label("USUBJID");
+            ui.end_row();
+
+            ui.label(RichText::new("Values").color(theme.text_muted));
+            ui.label("1, 2, 3... per subject");
+            ui.end_row();
+        });
+
+    if subject_id_mapping(mapping_state).is_none() {
+        ui.add_space(spacing::MD);
+        ui.label(
+            RichText::new(format!(
+                "{} Requires SUBJID mapping to derive USUBJID",
+                egui_phosphor::regular::INFO
+            ))
+            .color(theme.warning),
+        );
+    }
+}
+
+/// Show details for CT normalization
+fn show_ct_detail(
+    ui: &mut Ui,
+    variable: &str,
+    codelist_code: &str,
+    mapping_state: &MappingState,
+    source_data: &polars::prelude::DataFrame,
+    theme: &crate::theme::ThemeColors,
+) {
+    if let Some((source_col, _)) = mapping_state.get_accepted_for(variable) {
+        let samples = MappingService::get_sample_values(source_data, source_col, 5);
+
+        ui.label(RichText::new("Mapping").strong().color(theme.text_muted));
+        ui.add_space(spacing::SM);
+
+        egui::Grid::new("ct_detail")
+            .num_columns(2)
+            .spacing([20.0, 4.0])
+            .show(ui, |ui| {
+                ui.label(RichText::new("Source").color(theme.text_muted));
+                ui.label(source_col);
+                ui.end_row();
+
+                ui.label(RichText::new("Target").color(theme.text_muted));
+                ui.label(variable);
+                ui.end_row();
+
+                ui.label(RichText::new("Codelist").color(theme.text_muted));
+                ui.label(RichText::new(codelist_code).color(theme.accent));
+                ui.end_row();
+            });
+
+        if let Some(ct_info) = mapping_state.ct_cache.get(codelist_code) {
+            ui.add_space(spacing::MD);
+            ui.label(RichText::new("Codelist").strong().color(theme.text_muted));
+            ui.add_space(spacing::SM);
+
+            if ct_info.found {
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new(&ct_info.code).color(theme.text_muted).small());
+                    ui.label(RichText::new(&ct_info.name).strong());
+                    if ct_info.extensible {
+                        ui.label(RichText::new("(Extensible)").color(theme.warning).small());
+                    }
+                });
+
+                if !ct_info.terms.is_empty() {
+                    ui.add_space(spacing::SM);
+                    ui.label(
+                        RichText::new(format!("Valid values ({}):", ct_info.total_terms))
+                            .color(theme.text_muted)
+                            .small(),
+                    );
+
+                    for (value, def) in &ct_info.terms {
                         ui.horizontal(|ui| {
-                            ui.label(RichText::new(val).code());
-                            ui.label(RichText::new("→").color(theme.text_muted));
-                            ui.label(
-                                RichText::new(format!("{}-{}", study_id, val))
-                                    .code()
-                                    .color(theme.accent),
-                            );
+                            ui.label(RichText::new(value).strong().color(theme.accent));
+                            if let Some(d) = def {
+                                ui.label(RichText::new(d).color(theme.text_secondary).small());
+                            }
                         });
                     }
-                }
-            } else {
-                ui.add_space(spacing::MD);
-                ui.label(
-                    RichText::new(format!(
-                        "{} Map the SUBJID column in Mapping to build USUBJID",
-                        egui_phosphor::regular::INFO
-                    ))
-                    .color(theme.warning),
-                );
-            }
-        }
 
-        TransformRule::SequenceNumbers { seq_column } => {
-            ui.label(
-                RichText::new("Configuration")
-                    .strong()
-                    .color(theme.text_muted),
-            );
-            ui.add_space(spacing::SM);
-
-            egui::Grid::new("seq_detail")
-                .num_columns(2)
-                .spacing([20.0, 4.0])
-                .show(ui, |ui| {
-                    ui.label(RichText::new("Column").color(theme.text_muted));
-                    ui.label(RichText::new(seq_column.as_str()).strong());
-                    ui.end_row();
-
-                    ui.label(RichText::new("Group By").color(theme.text_muted));
-                    ui.label("USUBJID");
-                    ui.end_row();
-
-                    ui.label(RichText::new("Values").color(theme.text_muted));
-                    ui.label("1, 2, 3... per subject");
-                    ui.end_row();
-                });
-
-            if subject_id_mapping(mapping_state).is_none() {
-                ui.add_space(spacing::MD);
-                ui.label(
-                    RichText::new(format!(
-                        "{} Requires SUBJID mapping to derive USUBJID",
-                        egui_phosphor::regular::INFO
-                    ))
-                    .color(theme.warning),
-                );
-            }
-        }
-
-        TransformRule::CtNormalization {
-            variable,
-            codelist_code,
-        } => {
-            // Get source column from mapping
-            if let Some((source_col, _)) = mapping_state.get_accepted_for(variable) {
-                let samples = MappingService::get_sample_values(source_data, source_col, 5);
-
-                ui.label(RichText::new("Mapping").strong().color(theme.text_muted));
-                ui.add_space(spacing::SM);
-
-                egui::Grid::new("ct_detail")
-                    .num_columns(2)
-                    .spacing([20.0, 4.0])
-                    .show(ui, |ui| {
-                        ui.label(RichText::new("Source").color(theme.text_muted));
-                        ui.label(source_col);
-                        ui.end_row();
-
-                        ui.label(RichText::new("Target").color(theme.text_muted));
-                        ui.label(variable);
-                        ui.end_row();
-
-                        ui.label(RichText::new("Codelist").color(theme.text_muted));
-                        ui.label(RichText::new(codelist_code.as_str()).color(theme.accent));
-                        ui.end_row();
-                    });
-
-                if let Some(ct_info) = mapping_state.ct_cache.get(codelist_code) {
-                    ui.add_space(spacing::MD);
-                    ui.label(RichText::new("Codelist").strong().color(theme.text_muted));
-                    ui.add_space(spacing::SM);
-
-                    if ct_info.found {
-                        ui.horizontal(|ui| {
-                            ui.label(RichText::new(&ct_info.code).color(theme.text_muted).small());
-                            ui.label(RichText::new(&ct_info.name).strong());
-                            if ct_info.extensible {
-                                ui.label(
-                                    RichText::new("(Extensible)").color(theme.warning).small(),
-                                );
-                            }
-                        });
-
-                        if !ct_info.terms.is_empty() {
-                            ui.add_space(spacing::SM);
-                            ui.label(
-                                RichText::new(format!("Valid values ({}):", ct_info.total_terms))
-                                    .color(theme.text_muted)
-                                    .small(),
-                            );
-
-                            for (value, def) in &ct_info.terms {
-                                ui.horizontal(|ui| {
-                                    ui.label(RichText::new(value).strong().color(theme.accent));
-                                    if let Some(d) = def {
-                                        ui.label(
-                                            RichText::new(d).color(theme.text_secondary).small(),
-                                        );
-                                    }
-                                });
-                            }
-
-                            if ct_info.total_terms > ct_info.terms.len() {
-                                ui.label(
-                                    RichText::new(format!(
-                                        "... and {} more values",
-                                        ct_info.total_terms - ct_info.terms.len()
-                                    ))
-                                    .color(theme.text_muted)
-                                    .small()
-                                    .italics(),
-                                );
-                            }
-                        }
-                    } else {
+                    if ct_info.total_terms > ct_info.terms.len() {
                         ui.label(
-                            RichText::new(format!("{} - not found in CT registry", ct_info.code))
-                                .color(theme.warning)
-                                .small(),
+                            RichText::new(format!(
+                                "... and {} more values",
+                                ct_info.total_terms - ct_info.terms.len()
+                            ))
+                            .color(theme.text_muted)
+                            .small()
+                            .italics(),
                         );
                     }
                 }
-
-                if !samples.is_empty() {
-                    ui.add_space(spacing::MD);
-                    ui.label(
-                        RichText::new("Source Values")
-                            .strong()
-                            .color(theme.text_muted),
-                    );
-                    ui.add_space(spacing::SM);
-
-                    for val in &samples {
-                        ui.label(RichText::new(format!("• {}", val)).code());
-                    }
-                }
+            } else {
+                ui.label(
+                    RichText::new(format!("{} - not found in CT registry", ct_info.code))
+                        .color(theme.warning)
+                        .small(),
+                );
             }
         }
+
+        if !samples.is_empty() {
+            ui.add_space(spacing::MD);
+            ui.label(
+                RichText::new("Source Values")
+                    .strong()
+                    .color(theme.text_muted),
+            );
+            ui.add_space(spacing::SM);
+
+            for val in &samples {
+                ui.label(RichText::new(format!("• {}", val)).code());
+            }
+        }
+    }
+}
+
+/// Show details for ISO 8601 datetime transformation
+fn show_datetime_detail(
+    ui: &mut Ui,
+    variable: &str,
+    mapping_state: &MappingState,
+    source_data: &polars::prelude::DataFrame,
+    theme: &crate::theme::ThemeColors,
+) {
+    ui.label(
+        RichText::new("ISO 8601 DateTime")
+            .strong()
+            .color(theme.text_muted),
+    );
+    ui.add_space(spacing::SM);
+
+    egui::Grid::new("datetime_detail")
+        .num_columns(2)
+        .spacing([20.0, 4.0])
+        .show(ui, |ui| {
+            ui.label(RichText::new("Target").color(theme.text_muted));
+            ui.label(variable);
+            ui.end_row();
+
+            ui.label(RichText::new("Format").color(theme.text_muted));
+            ui.label("YYYY-MM-DDTHH:MM:SS");
+            ui.end_row();
+        });
+
+    if let Some((source_col, _)) = mapping_state.get_accepted_for(variable) {
+        let samples = MappingService::get_sample_values(source_data, source_col, 3);
+        if !samples.is_empty() {
+            ui.add_space(spacing::MD);
+            ui.label(
+                RichText::new("Sample Values")
+                    .strong()
+                    .color(theme.text_muted),
+            );
+            ui.add_space(spacing::SM);
+
+            for val in &samples {
+                ui.label(RichText::new(format!("• {}", val)).code());
+            }
+        }
+    }
+}
+
+/// Show details for ISO 8601 duration transformation
+fn show_duration_detail(
+    ui: &mut Ui,
+    variable: &str,
+    mapping_state: &MappingState,
+    source_data: &polars::prelude::DataFrame,
+    theme: &crate::theme::ThemeColors,
+) {
+    ui.label(
+        RichText::new("ISO 8601 Duration")
+            .strong()
+            .color(theme.text_muted),
+    );
+    ui.add_space(spacing::SM);
+
+    egui::Grid::new("duration_detail")
+        .num_columns(2)
+        .spacing([20.0, 4.0])
+        .show(ui, |ui| {
+            ui.label(RichText::new("Target").color(theme.text_muted));
+            ui.label(variable);
+            ui.end_row();
+
+            ui.label(RichText::new("Format").color(theme.text_muted));
+            ui.label("PnYnMnDTnHnMnS");
+            ui.end_row();
+        });
+
+    if let Some((source_col, _)) = mapping_state.get_accepted_for(variable) {
+        let samples = MappingService::get_sample_values(source_data, source_col, 3);
+        if !samples.is_empty() {
+            ui.add_space(spacing::MD);
+            ui.label(
+                RichText::new("Sample Values")
+                    .strong()
+                    .color(theme.text_muted),
+            );
+            ui.add_space(spacing::SM);
+
+            for val in &samples {
+                ui.label(RichText::new(format!("• {}", val)).code());
+            }
+        }
+    }
+}
+
+/// Show details for study day calculation
+fn show_study_day_detail(
+    ui: &mut Ui,
+    variable: &str,
+    reference_dtc: &str,
+    theme: &crate::theme::ThemeColors,
+) {
+    ui.label(
+        RichText::new("Study Day Calculation")
+            .strong()
+            .color(theme.text_muted),
+    );
+    ui.add_space(spacing::SM);
+
+    egui::Grid::new("studyday_detail")
+        .num_columns(2)
+        .spacing([20.0, 4.0])
+        .show(ui, |ui| {
+            ui.label(RichText::new("Target").color(theme.text_muted));
+            ui.label(variable);
+            ui.end_row();
+
+            ui.label(RichText::new("Reference").color(theme.text_muted));
+            ui.label(reference_dtc);
+            ui.end_row();
+
+            ui.label(RichText::new("Formula").color(theme.text_muted));
+            ui.label(format!("{} - RFSTDTC + 1 (if after)", reference_dtc));
+            ui.end_row();
+        });
+
+    ui.add_space(spacing::MD);
+    ui.label(
+        RichText::new("Per SDTMIG 4.4.4: Study day is relative to RFSTDTC")
+            .color(theme.text_muted)
+            .small(),
+    );
+}
+
+/// Show details for numeric conversion
+fn show_numeric_detail(
+    ui: &mut Ui,
+    variable: &str,
+    mapping_state: &MappingState,
+    source_data: &polars::prelude::DataFrame,
+    theme: &crate::theme::ThemeColors,
+) {
+    ui.label(
+        RichText::new("Numeric Conversion")
+            .strong()
+            .color(theme.text_muted),
+    );
+    ui.add_space(spacing::SM);
+
+    egui::Grid::new("numeric_detail")
+        .num_columns(2)
+        .spacing([20.0, 4.0])
+        .show(ui, |ui| {
+            ui.label(RichText::new("Target").color(theme.text_muted));
+            ui.label(variable);
+            ui.end_row();
+
+            ui.label(RichText::new("Type").color(theme.text_muted));
+            ui.label("Float64");
+            ui.end_row();
+        });
+
+    if let Some((source_col, _)) = mapping_state.get_accepted_for(variable) {
+        let samples = MappingService::get_sample_values(source_data, source_col, 3);
+        if !samples.is_empty() {
+            ui.add_space(spacing::MD);
+            ui.label(
+                RichText::new("Sample Values")
+                    .strong()
+                    .color(theme.text_muted),
+            );
+            ui.add_space(spacing::SM);
+
+            for val in &samples {
+                ui.label(RichText::new(format!("• {}", val)).code());
+            }
+        }
+    }
+}
+
+/// Show details for direct copy (passthrough)
+fn show_copy_detail(
+    ui: &mut Ui,
+    variable: &str,
+    mapping_state: &MappingState,
+    source_data: &polars::prelude::DataFrame,
+    theme: &crate::theme::ThemeColors,
+) {
+    ui.label(
+        RichText::new("Direct Copy")
+            .strong()
+            .color(theme.text_muted),
+    );
+    ui.add_space(spacing::SM);
+
+    if let Some((source_col, _)) = mapping_state.get_accepted_for(variable) {
+        egui::Grid::new("copy_detail")
+            .num_columns(2)
+            .spacing([20.0, 4.0])
+            .show(ui, |ui| {
+                ui.label(RichText::new("Source").color(theme.text_muted));
+                ui.label(source_col);
+                ui.end_row();
+
+                ui.label(RichText::new("Target").color(theme.text_muted));
+                ui.label(variable);
+                ui.end_row();
+            });
+
+        let samples = MappingService::get_sample_values(source_data, source_col, 3);
+        if !samples.is_empty() {
+            ui.add_space(spacing::MD);
+            ui.label(
+                RichText::new("Sample Values")
+                    .strong()
+                    .color(theme.text_muted),
+            );
+            ui.add_space(spacing::SM);
+
+            for val in &samples {
+                ui.label(RichText::new(format!("• {}", val)).code());
+            }
+        }
+    } else {
+        ui.label(RichText::new(format!("Target: {}", variable)).color(theme.text_muted));
+        ui.add_space(spacing::SM);
+        ui.label(
+            RichText::new("No mapping - values will be empty")
+                .color(theme.warning)
+                .small(),
+        );
     }
 }
