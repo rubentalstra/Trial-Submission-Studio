@@ -16,8 +16,8 @@ use sdtm_model::CaseInsensitiveSet;
 use sdtm_model::ct::Codelist;
 use sdtm_normalization::data_utils::strip_all_quotes;
 
-use sdtm_normalization::normalization::ct::normalize_ct_value;
 use sdtm_model::options::{CtMatchingMode, NormalizationOptions};
+use sdtm_normalization::normalization::ct::normalize_ct_value;
 
 /// Apply STUDYID prefix to USUBJID column.
 ///
@@ -308,19 +308,13 @@ pub fn build_preview_dataframe(
 
     // Add constant STUDYID if not mapped
     if !accepted_mappings.contains_key("STUDYID") {
-        let studyid_col = Column::new(
-            "STUDYID".into(),
-            vec![study_id; height],
-        );
+        let studyid_col = Column::new("STUDYID".into(), vec![study_id; height]);
         columns.push(studyid_col);
     }
 
     // Add constant DOMAIN if not mapped
     if !accepted_mappings.contains_key("DOMAIN") {
-        let domain_col = Column::new(
-            "DOMAIN".into(),
-            vec![domain.code.as_str(); height],
-        );
+        let domain_col = Column::new("DOMAIN".into(), vec![domain.code.as_str(); height]);
         columns.push(domain_col);
     }
 

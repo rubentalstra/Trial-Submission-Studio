@@ -33,10 +33,10 @@ pub mod processing;
 pub use conformance::{CheckType, Severity, ValidationIssue, ValidationReport};
 pub use ct::{Codelist, ResolvedCodelist, Term, TerminologyCatalog, TerminologyRegistry};
 pub use domain::{DatasetClass, Domain, Variable, VariableType};
-pub use p21::{P21Category, P21Rule, P21RuleRegistry, P21Severity};
 pub use error::{Result, SdtmError};
 pub use lookup::CaseInsensitiveSet;
 pub use mapping::{ColumnHint, MappingConfig, MappingSuggestion};
+pub use p21::{P21Category, P21Rule, P21RuleRegistry, P21Severity};
 pub use processing::{
     DomainResult, OutputFormat, OutputPaths, ProcessStudyRequest, ProcessStudyResponse, StudyError,
 };
