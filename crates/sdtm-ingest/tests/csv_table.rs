@@ -21,9 +21,16 @@ fn temp_file(name: &str, contents: &str) -> PathBuf {
 #[test]
 fn reads_table_and_builds_hints() {
     let path = temp_file("test.csv", "A,B,C\n1,x,\n2,x,y\n");
-    let table = read_csv_table(&path).expect("read csv");
-    assert_eq!(table.headers, vec!["A", "B", "C"]);
-    let hints = build_column_hints(&table);
+    let df = read_csv_table(&path).expect("read csv");
+
+    // Check column names
+    let columns: Vec<String> = df.get_column_names().into_iter().map(|s| s.to_string()).collect();
+    assert_eq!(columns, vec!["A", "B", "C"]);
+
+    // Check row count
+    assert_eq!(df.height(), 2);
+
+    let hints = build_column_hints(&df);
 
     let a = hints.get("A").expect("A hint");
     assert!(a.is_numeric);
@@ -44,22 +51,36 @@ fn reads_table_and_builds_hints() {
 }
 
 #[test]
-fn reads_table_with_multiple_headers() {
-    let contents = "Label A,Label B,Label C\nA,B,C\n1,x,\n2,y,z\n";
+fn reads_table_with_double_header_edc_format() {
+    // EDC export format: Row 0 = labels, Row 1 = variable codes, Row 2+ = data
+    let contents = "Label A,Label B,Label C\nVARA,VARB,VARC\n1,x,\n2,y,z\n";
     let path = temp_file("multi.csv", contents);
-    let table = read_csv_table(&path).expect("read csv");
-    assert_eq!(table.headers, vec!["A", "B", "C"]);
-    assert_eq!(table.rows.len(), 2);
-    assert_eq!(table.rows[0], vec!["1", "x", ""]);
-    assert_eq!(table.rows[1], vec!["2", "y", "z"]);
-    assert_eq!(
-        table.labels,
-        Some(vec![
-            "Label A".to_string(),
-            "Label B".to_string(),
-            "Label C".to_string()
-        ])
-    );
+    let df = read_csv_table(&path).expect("read csv");
+
+    // Should skip the label row and use variable codes as headers
+    let columns: Vec<String> = df.get_column_names().into_iter().map(|s| s.to_string()).collect();
+    assert_eq!(columns, vec!["VARA", "VARB", "VARC"]);
+
+    // Should have 2 data rows (not 3, because variable code row was used as header)
+    assert_eq!(df.height(), 2);
+
+    let _ = fs::remove_file(&path);
+    let _ = fs::remove_dir_all(path.parent().unwrap());
+}
+
+#[test]
+fn reads_normal_csv_without_double_header() {
+    // Normal CSV: Row 0 = headers (short codes), Row 1+ = data
+    let contents = "ID,NAME,AGE\n1,Alice,30\n2,Bob,25\n";
+    let path = temp_file("normal.csv", contents);
+    let df = read_csv_table(&path).expect("read csv");
+
+    // Headers should remain as-is
+    let columns: Vec<String> = df.get_column_names().into_iter().map(|s| s.to_string()).collect();
+    assert_eq!(columns, vec!["ID", "NAME", "AGE"]);
+
+    // Should have 2 data rows
+    assert_eq!(df.height(), 2);
 
     let _ = fs::remove_file(&path);
     let _ = fs::remove_dir_all(path.parent().unwrap());

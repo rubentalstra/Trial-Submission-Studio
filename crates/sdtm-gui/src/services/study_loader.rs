@@ -4,7 +4,7 @@
 
 use crate::state::{DomainState, StudyState};
 use anyhow::{Context, Result};
-use sdtm_ingest::{discover_domain_files, list_csv_files, read_csv_table};
+use sdtm_ingest::{discover_domain_files, list_csv_files, load_study_metadata, read_csv_table};
 use sdtm_standards::load_default_sdtm_ig_domains;
 use std::path::Path;
 
@@ -39,6 +39,23 @@ impl StudyLoader {
         let domain_files = discover_domain_files(&csv_files, &domain_codes);
 
         tracing::info!("Discovered {} domains", domain_files.len());
+
+        // Load study metadata (Items.csv, CodeLists.csv)
+        match load_study_metadata(study_folder) {
+            Ok(metadata) => {
+                if !metadata.is_empty() {
+                    tracing::info!(
+                        "Loaded study metadata: {} items, {} codelists",
+                        metadata.items.len(),
+                        metadata.codelists.len()
+                    );
+                    study.metadata = Some(metadata);
+                }
+            }
+            Err(e) => {
+                tracing::warn!("Failed to load study metadata: {}", e);
+            }
+        }
 
         // Load each domain
         for (domain_code, files) in domain_files {

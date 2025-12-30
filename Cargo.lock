@@ -4562,6 +4562,7 @@ dependencies = [
  "anyhow",
  "polars",
  "sdtm-model",
+ "tracing",
 ]
 
 [[package]]

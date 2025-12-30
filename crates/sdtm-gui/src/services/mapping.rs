@@ -1,12 +1,14 @@
 //! Mapping service for the GUI
 //!
 //! Provides column-to-variable mapping functionality using sdtm-map,
-//! with support for incremental acceptance/rejection of suggestions.
+//! with support for variable-centric mapping workflow.
 
-use anyhow::{Context, Result};
+// Fields/methods used for state serialization and future features
+#![allow(dead_code)]
+
 use polars::prelude::DataFrame;
 use sdtm_map::{ConfidenceLevel, ConfidenceThresholds, MappingEngine, MappingResult};
-use sdtm_model::{ColumnHint, Domain, MappingConfig, MappingSuggestion};
+use sdtm_model::{ColumnHint, Domain, MappingConfig, MappingSuggestion, Variable};
 use std::collections::BTreeMap;
 
 /// State of a mapping operation for a single domain
@@ -16,127 +18,238 @@ pub struct MappingState {
     pub domain_code: String,
     /// Study ID
     pub study_id: String,
-    /// Accepted mappings
-    pub accepted: Vec<MappingSuggestion>,
-    /// Pending suggestions (not yet accepted or rejected)
-    pub pending: Vec<MappingSuggestion>,
-    /// Rejected/unmapped columns
-    pub unmapped: Vec<String>,
+    /// SDTM domain definition (for variable metadata)
+    pub sdtm_domain: Domain,
+    /// All mapping suggestions from the engine
+    pub suggestions: Vec<MappingSuggestion>,
+    /// Accepted mappings (variable_name -> source_column, confidence)
+    pub accepted: BTreeMap<String, (String, f32)>,
+    /// Source columns that couldn't be mapped
+    pub unmapped_columns: Vec<String>,
+    /// UI state: currently selected variable index
+    pub selected_variable_idx: Option<usize>,
+    /// UI state: search filter text
+    pub search_filter: String,
+    /// Column hints from source data
+    pub column_hints: BTreeMap<String, ColumnHint>,
 }
 
 impl MappingState {
-    /// Create a new mapping state from a MappingResult
-    pub fn from_result(domain_code: &str, study_id: &str, result: MappingResult) -> Self {
+    /// Create a new mapping state
+    pub fn new(
+        domain_code: &str,
+        study_id: &str,
+        sdtm_domain: Domain,
+        result: MappingResult,
+        column_hints: BTreeMap<String, ColumnHint>,
+    ) -> Self {
         Self {
             domain_code: domain_code.to_string(),
             study_id: study_id.to_string(),
-            accepted: Vec::new(),
-            pending: result.mappings,
-            unmapped: result.unmapped_columns,
+            sdtm_domain,
+            suggestions: result.mappings,
+            accepted: BTreeMap::new(),
+            unmapped_columns: result.unmapped_columns,
+            selected_variable_idx: None,
+            search_filter: String::new(),
+            column_hints,
         }
     }
 
-    /// Get all mappings grouped by confidence level
-    pub fn pending_by_level(&self) -> BTreeMap<ConfidenceLevel, Vec<&MappingSuggestion>> {
-        let thresholds = ConfidenceThresholds::default();
-        let mut groups: BTreeMap<ConfidenceLevel, Vec<&MappingSuggestion>> = BTreeMap::new();
+    /// Get filtered variables based on search text
+    pub fn filtered_variables(&self) -> Vec<(usize, &Variable)> {
+        let filter = self.search_filter.to_lowercase();
+        self.sdtm_domain
+            .variables
+            .iter()
+            .enumerate()
+            .filter(|(_, v)| {
+                if filter.is_empty() {
+                    true
+                } else {
+                    v.name.to_lowercase().contains(&filter)
+                        || v.label
+                            .as_ref()
+                            .is_some_and(|l| l.to_lowercase().contains(&filter))
+                }
+            })
+            .collect()
+    }
 
-        for mapping in &self.pending {
-            if let Some(level) = thresholds.categorize(mapping.confidence) {
-                groups.entry(level).or_default().push(mapping);
+    /// Get the currently selected variable
+    pub fn selected_variable(&self) -> Option<&Variable> {
+        self.selected_variable_idx
+            .and_then(|idx| self.sdtm_domain.variables.get(idx))
+    }
+
+    /// Get suggestion for a specific variable
+    pub fn get_suggestion_for(&self, variable_name: &str) -> Option<&MappingSuggestion> {
+        self.suggestions
+            .iter()
+            .find(|s| s.target_variable.eq_ignore_ascii_case(variable_name))
+    }
+
+    /// Get accepted mapping for a variable
+    pub fn get_accepted_for(&self, variable_name: &str) -> Option<(&str, f32)> {
+        self.accepted
+            .get(variable_name)
+            .map(|(col, conf)| (col.as_str(), *conf))
+    }
+
+    /// Get mapping status for a variable
+    pub fn variable_status(&self, variable_name: &str) -> VariableMappingStatus {
+        if self.accepted.contains_key(variable_name) {
+            VariableMappingStatus::Accepted
+        } else if self.get_suggestion_for(variable_name).is_some() {
+            VariableMappingStatus::Suggested
+        } else {
+            VariableMappingStatus::Unmapped
+        }
+    }
+
+    /// Accept the suggestion for a variable
+    pub fn accept_suggestion(&mut self, variable_name: &str) -> bool {
+        if let Some(suggestion) = self.get_suggestion_for(variable_name).cloned() {
+            self.accepted.insert(
+                variable_name.to_string(),
+                (suggestion.source_column.clone(), suggestion.confidence),
+            );
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Accept a manual mapping for a variable
+    pub fn accept_manual(&mut self, variable_name: &str, source_column: &str) {
+        self.accepted.insert(
+            variable_name.to_string(),
+            (source_column.to_string(), 1.0),
+        );
+        // Remove from unmapped if present
+        self.unmapped_columns.retain(|c| c != source_column);
+    }
+
+    /// Clear the mapping for a variable
+    pub fn clear_mapping(&mut self, variable_name: &str) -> bool {
+        if let Some((source_col, _)) = self.accepted.remove(variable_name) {
+            // Add back to unmapped if not suggested elsewhere
+            if !self
+                .suggestions
+                .iter()
+                .any(|s| s.source_column == source_col)
+            {
+                self.unmapped_columns.push(source_col);
+            }
+            true
+        } else {
+            false
+        }
+    }
+
+    /// Accept all high-confidence suggestions
+    pub fn accept_all_high(&mut self) {
+        let thresholds = ConfidenceThresholds::default();
+        for suggestion in &self.suggestions {
+            if thresholds.categorize(suggestion.confidence) == Some(ConfidenceLevel::High) {
+                if !self.accepted.contains_key(&suggestion.target_variable) {
+                    self.accepted.insert(
+                        suggestion.target_variable.clone(),
+                        (suggestion.source_column.clone(), suggestion.confidence),
+                    );
+                }
             }
         }
-
-        groups
     }
 
-    /// Accept a pending mapping by source column name
-    pub fn accept(&mut self, source_column: &str) -> bool {
-        if let Some(pos) = self
-            .pending
+    /// Get all source columns (mapped and unmapped)
+    pub fn all_source_columns(&self) -> Vec<&str> {
+        let mut cols: Vec<&str> = self.column_hints.keys().map(String::as_str).collect();
+        cols.sort();
+        cols
+    }
+
+    /// Check if a source column is already used
+    pub fn is_column_used(&self, column: &str) -> bool {
+        self.accepted.values().any(|(c, _)| c == column)
+    }
+
+    /// Get available (unused) source columns
+    pub fn available_columns(&self) -> Vec<&str> {
+        self.all_source_columns()
+            .into_iter()
+            .filter(|c| !self.is_column_used(c))
+            .collect()
+    }
+
+    /// Get summary counts
+    pub fn summary(&self) -> MappingSummary {
+        let required_count = self
+            .sdtm_domain
+            .variables
             .iter()
-            .position(|m| m.source_column == source_column)
-        {
-            let mapping = self.pending.remove(pos);
-            self.accepted.push(mapping);
-            true
-        } else {
-            false
-        }
-    }
-
-    /// Accept all pending mappings at or above a confidence level
-    pub fn accept_all_above(&mut self, min_level: ConfidenceLevel) {
-        let thresholds = ConfidenceThresholds::default();
-        let (to_accept, remaining): (Vec<_>, Vec<_>) =
-            self.pending.drain(..).partition(|m| {
-                thresholds
-                    .categorize(m.confidence)
-                    .is_some_and(|level| level >= min_level)
-            });
-
-        self.accepted.extend(to_accept);
-        self.pending = remaining;
-    }
-
-    /// Reject a pending mapping by source column name
-    pub fn reject(&mut self, source_column: &str) -> bool {
-        if let Some(pos) = self
-            .pending
+            .filter(|v| v.core.as_deref() == Some("Req"))
+            .count();
+        let required_mapped = self
+            .sdtm_domain
+            .variables
             .iter()
-            .position(|m| m.source_column == source_column)
-        {
-            let mapping = self.pending.remove(pos);
-            self.unmapped.push(mapping.source_column);
-            true
-        } else {
-            false
+            .filter(|v| v.core.as_deref() == Some("Req") && self.accepted.contains_key(&v.name))
+            .count();
+
+        MappingSummary {
+            total_variables: self.sdtm_domain.variables.len(),
+            mapped: self.accepted.len(),
+            suggested: self
+                .suggestions
+                .iter()
+                .filter(|s| !self.accepted.contains_key(&s.target_variable))
+                .count(),
+            required_total: required_count,
+            required_mapped,
         }
     }
 
-    /// Manually map an unmapped column to a variable
-    pub fn set_manual_mapping(&mut self, source_column: &str, target_variable: &str) -> bool {
-        // Remove from unmapped if present
-        if let Some(pos) = self.unmapped.iter().position(|c| c == source_column) {
-            self.unmapped.remove(pos);
-        }
-
-        // Check if already accepted
-        if self
+    /// Convert to final MappingConfig
+    pub fn to_config(&self) -> MappingConfig {
+        let mappings: Vec<MappingSuggestion> = self
             .accepted
             .iter()
-            .any(|m| m.source_column == source_column)
-        {
-            return false;
-        }
+            .map(|(var, (col, conf))| MappingSuggestion {
+                source_column: col.clone(),
+                target_variable: var.clone(),
+                confidence: *conf,
+                transformation: None,
+            })
+            .collect();
 
-        // Add as manually accepted mapping
-        self.accepted.push(MappingSuggestion {
-            source_column: source_column.to_string(),
-            target_variable: target_variable.to_string(),
-            confidence: 1.0, // Manual mappings are always 100% confident
-            transformation: None,
-        });
-
-        true
-    }
-
-    /// Convert to MappingConfig for storage/export
-    pub fn to_config(&self) -> MappingConfig {
         MappingConfig {
             domain_code: self.domain_code.clone(),
             study_id: self.study_id.clone(),
-            mappings: self.accepted.clone(),
-            unmapped_columns: self.unmapped.clone(),
+            mappings,
+            unmapped_columns: self.unmapped_columns.clone(),
         }
     }
+}
 
-    /// Get count summary
-    pub fn summary(&self) -> MappingSummary {
-        MappingSummary {
-            accepted: self.accepted.len(),
-            pending: self.pending.len(),
-            unmapped: self.unmapped.len(),
+/// Status of a variable's mapping
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum VariableMappingStatus {
+    /// Has an accepted mapping
+    Accepted,
+    /// Has a suggestion but not yet accepted
+    Suggested,
+    /// No mapping or suggestion
+    Unmapped,
+}
+
+impl VariableMappingStatus {
+    /// Get status icon
+    pub fn icon(&self) -> &'static str {
+        match self {
+            Self::Accepted => "✓",
+            Self::Suggested => "○",
+            Self::Unmapped => "—",
         }
     }
 }
@@ -144,9 +257,11 @@ impl MappingState {
 /// Summary of mapping counts
 #[derive(Debug, Clone, Copy)]
 pub struct MappingSummary {
-    pub accepted: usize,
-    pub pending: usize,
-    pub unmapped: usize,
+    pub total_variables: usize,
+    pub mapped: usize,
+    pub suggested: usize,
+    pub required_total: usize,
+    pub required_mapped: usize,
 }
 
 /// Service for generating and managing column mappings
@@ -157,22 +272,24 @@ impl MappingService {
     pub fn generate_suggestions(
         domain: &Domain,
         source_columns: &[String],
-        column_hints: BTreeMap<String, ColumnHint>,
+        column_hints: &BTreeMap<String, ColumnHint>,
         min_confidence: f32,
     ) -> MappingResult {
-        let engine = MappingEngine::new(domain.clone(), min_confidence, column_hints);
+        let engine = MappingEngine::new(domain.clone(), min_confidence, column_hints.clone());
         engine.suggest(source_columns)
     }
 
-    /// Generate mapping state for interactive editing
+    /// Create a new mapping state
     pub fn create_mapping_state(
-        domain: &Domain,
+        sdtm_domain: Domain,
         study_id: &str,
         source_columns: &[String],
         column_hints: BTreeMap<String, ColumnHint>,
     ) -> MappingState {
-        let result = Self::generate_suggestions(domain, source_columns, column_hints, 0.6);
-        MappingState::from_result(&domain.code, study_id, result)
+        let result =
+            Self::generate_suggestions(&sdtm_domain, source_columns, &column_hints, 0.6);
+        let domain_code = sdtm_domain.code.clone();
+        MappingState::new(&domain_code, study_id, sdtm_domain, result, column_hints)
     }
 
     /// Extract column hints from a DataFrame
@@ -203,7 +320,6 @@ impl MappingService {
                         | polars::datatypes::DataType::Float64
                 );
 
-                // Calculate unique ratio
                 let unique_ratio = if row_count > 0 {
                     if let Ok(unique) = col.n_unique() {
                         unique as f64 / row_count as f64
@@ -229,45 +345,62 @@ impl MappingService {
         hints
     }
 
-    /// Preview a mapping by extracting sample values
-    pub fn preview_mapping(
-        df: &DataFrame,
-        source_column: &str,
-        limit: usize,
-    ) -> Result<Vec<String>> {
-        let col = df
-            .column(source_column)
-            .with_context(|| format!("Column '{}' not found", source_column))?;
-
-        let str_col = col
-            .str()
-            .with_context(|| format!("Column '{}' is not a string column", source_column))?;
+    /// Get sample values from a column
+    pub fn get_sample_values(df: &DataFrame, column: &str, limit: usize) -> Vec<String> {
+        let Ok(col) = df.column(column) else {
+            return Vec::new();
+        };
 
         let mut samples = Vec::new();
-        for i in 0..limit.min(df.height()) {
-            if let Some(val) = str_col.get(i) {
-                samples.push(val.to_string());
+        let mut seen = std::collections::HashSet::new();
+
+        // Try to get unique sample values
+        if let Ok(str_col) = col.str() {
+            for i in 0..df.height().min(limit * 3) {
+                if let Some(val) = str_col.get(i) {
+                    if !val.is_empty() && seen.insert(val.to_string()) {
+                        samples.push(val.to_string());
+                        if samples.len() >= limit {
+                            break;
+                        }
+                    }
+                }
+            }
+        } else {
+            // For non-string columns, format as string using Display (not Debug)
+            for i in 0..df.height().min(limit) {
+                if let Ok(val) = col.get(i) {
+                    // Use Display formatting which gives clean output without type info
+                    let formatted = format!("{}", val);
+                    if formatted != "null" && !formatted.is_empty() && seen.insert(formatted.clone()) {
+                        samples.push(formatted);
+                        if samples.len() >= limit {
+                            break;
+                        }
+                    }
+                }
             }
         }
 
-        Ok(samples)
+        samples
     }
 }
+
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use polars::prelude::*;
-    use sdtm_model::{Variable, VariableType};
+    use sdtm_model::VariableType;
 
-    fn make_variable(name: &str, label: &str) -> Variable {
+    fn make_variable(name: &str, label: &str, core: Option<&str>) -> Variable {
         Variable {
             name: name.to_string(),
             label: Some(label.to_string()),
             data_type: VariableType::Char,
             length: None,
             role: None,
-            core: None,
+            core: core.map(String::from),
             codelist_code: None,
             order: None,
         }
@@ -283,40 +416,45 @@ mod tests {
             structure: None,
             dataset_name: None,
             variables: vec![
-                make_variable("STUDYID", "Study Identifier"),
-                make_variable("USUBJID", "Unique Subject Identifier"),
-                make_variable("AGE", "Age"),
+                make_variable("STUDYID", "Study Identifier", Some("Req")),
+                make_variable("USUBJID", "Unique Subject Identifier", Some("Req")),
+                make_variable("AGE", "Age", Some("Exp")),
             ],
         }
     }
 
     #[test]
-    fn test_generate_suggestions() {
+    fn test_mapping_state_accept_suggestion() {
         let domain = test_domain();
-        let columns = vec!["STUDY".to_string(), "SUBJECT".to_string(), "AGE".to_string()];
+        let columns = vec!["AGE".to_string()];
+        let hints = BTreeMap::new();
 
-        let result = MappingService::generate_suggestions(&domain, &columns, BTreeMap::new(), 0.6);
+        let mut state =
+            MappingService::create_mapping_state(domain, "STUDY01", &columns, hints);
 
-        assert!(!result.mappings.is_empty());
+        // Should have suggestion for AGE
+        assert!(state.get_suggestion_for("AGE").is_some());
+
+        // Accept it
+        state.accept_suggestion("AGE");
+        assert!(state.get_accepted_for("AGE").is_some());
+        assert_eq!(state.variable_status("AGE"), VariableMappingStatus::Accepted);
     }
 
     #[test]
-    fn test_mapping_state_accept() {
+    fn test_mapping_state_clear() {
         let domain = test_domain();
         let columns = vec!["AGE".to_string()];
+        let hints = BTreeMap::new();
 
-        let mut state = MappingService::create_mapping_state(&domain, "STUDY01", &columns, BTreeMap::new());
+        let mut state =
+            MappingService::create_mapping_state(domain, "STUDY01", &columns, hints);
 
-        assert!(!state.pending.is_empty());
-        let first_col = state.pending[0].source_column.clone();
+        state.accept_suggestion("AGE");
+        assert!(state.get_accepted_for("AGE").is_some());
 
-        state.accept(&first_col);
-
-        assert_eq!(state.accepted.len(), 1);
-        assert!(state
-            .pending
-            .iter()
-            .all(|m| m.source_column != first_col));
+        state.clear_mapping("AGE");
+        assert!(state.get_accepted_for("AGE").is_none());
     }
 
     #[test]

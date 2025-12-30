@@ -2,6 +2,10 @@
 //!
 //! Applies SDTM transformations to domain data using standalone functions
 //! from sdtm-core::transforms.
+//!
+//! NOTE: This service will be used when the Transform tab is implemented.
+
+#![allow(dead_code)]
 
 use anyhow::Result;
 use polars::prelude::DataFrame;

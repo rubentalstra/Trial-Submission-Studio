@@ -1,7 +1,11 @@
 //! Study-level runtime state
 
+// Fields kept for future use (validation, preview, etc.)
+#![allow(dead_code)]
+
 use crate::services::MappingState;
 use polars::prelude::DataFrame;
+use sdtm_ingest::StudyMetadata;
 use sdtm_model::{MappingConfig, ValidationReport};
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -14,6 +18,8 @@ pub struct StudyState {
     pub study_folder: PathBuf,
     /// State for each discovered domain
     pub domains: HashMap<String, DomainState>,
+    /// Source metadata (Items.csv, CodeLists.csv)
+    pub metadata: Option<StudyMetadata>,
 }
 
 impl StudyState {
@@ -29,7 +35,35 @@ impl StudyState {
             study_id,
             study_folder,
             domains: HashMap::new(),
+            metadata: None,
         }
+    }
+
+    /// Get the label for a source column from Items.csv metadata
+    pub fn get_column_label(&self, column_id: &str) -> Option<&str> {
+        self.metadata
+            .as_ref()?
+            .items
+            .get(&column_id.to_uppercase())
+            .map(|item| item.label.as_str())
+    }
+
+    /// Get format name (codelist) for a source column
+    pub fn get_column_format(&self, column_id: &str) -> Option<&str> {
+        self.metadata
+            .as_ref()?
+            .items
+            .get(&column_id.to_uppercase())
+            .and_then(|item| item.format_name.as_deref())
+    }
+
+    /// Look up a code value in a codelist to get the text
+    pub fn lookup_codelist_value(&self, format_name: &str, _code: &str) -> Option<String> {
+        let metadata = self.metadata.as_ref()?;
+        let _codelist = metadata.codelists.get(&format_name.to_uppercase())?;
+        // CodeList has a private lookup method, but we stored values publicly
+        // For now, just return None - need to expose lookup from sdtm-ingest
+        None // TODO: Expose CodeList::lookup_text as public
     }
 
     /// Get a domain by code
