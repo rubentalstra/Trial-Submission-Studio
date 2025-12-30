@@ -2,7 +2,9 @@
 //!
 //! Interactive column-to-variable mapping with suggestions and CT display.
 
-use crate::services::{MappingService, MappingState, VariableMappingStatus, VariableMappingStatusIcon};
+use crate::services::{
+    MappingService, MappingState, VariableMappingStatus, VariableMappingStatusIcon,
+};
 use crate::state::{AppState, DomainStatus};
 use crate::theme::{colors, spacing};
 use egui::{RichText, Ui};
@@ -396,7 +398,12 @@ fn show_variable_detail(
         let status = ms.variable_status(&var_name);
 
         let (source_info, source_col_label, confidence, available_cols_sorted) = if is_auto {
-            (None, None, None, Vec::<(String, Option<String>, f32)>::new())
+            (
+                None,
+                None,
+                None,
+                Vec::<(String, Option<String>, f32)>::new(),
+            )
         } else {
             // Get available columns with confidence scores and labels for this variable
             // Tuple: (column_id, optional_label, confidence)
@@ -591,9 +598,9 @@ fn show_variable_detail(
 
                 if cl_info.found {
                     // Show codelist code, name, and extensibility
-                    ui.horizontal(|ui| {
+                    ui.horizontal_wrapped(|ui| {
                         ui.label(RichText::new(&cl_info.code).color(theme.text_muted).small());
-                        ui.label(RichText::new(&cl_info.name).strong());
+                        ui.add(egui::Label::new(RichText::new(&cl_info.name).strong()).wrap());
                         if cl_info.extensible {
                             ui.label(RichText::new("(Extensible)").color(theme.warning).small());
                         }
@@ -608,13 +615,26 @@ fn show_variable_detail(
                                 .small(),
                         );
 
-                        for (value, def) in &cl_info.terms {
-                            ui.horizontal(|ui| {
-                                ui.label(RichText::new(value).strong().color(theme.accent));
+                        for (idx, (value, def)) in cl_info.terms.iter().enumerate() {
+                            ui.vertical(|ui| {
+                                ui.add(
+                                    egui::Label::new(
+                                        RichText::new(value).strong().color(theme.accent),
+                                    )
+                                    .wrap(),
+                                );
                                 if let Some(d) = def {
-                                    ui.label(RichText::new(d).color(theme.text_secondary).small());
+                                    ui.add(
+                                        egui::Label::new(
+                                            RichText::new(d).color(theme.text_secondary).small(),
+                                        )
+                                        .wrap(),
+                                    );
                                 }
                             });
+                            if idx + 1 < cl_info.terms.len() {
+                                ui.add_space(spacing::XS);
+                            }
                         }
 
                         if cl_info.total_terms > cl_info.terms.len() {

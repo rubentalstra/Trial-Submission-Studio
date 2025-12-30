@@ -16,7 +16,7 @@ pub struct CodelistDisplayInfo {
     pub code: String,
     pub name: String,
     pub extensible: bool,
-    /// (submission_value, truncated_definition) - limited to 8 terms
+    /// (submission_value, definition) - limited to 8 terms
     pub terms: Vec<(String, Option<String>)>,
     pub total_terms: usize,
     pub found: bool,
@@ -95,12 +95,7 @@ fn load_ct_cache(domain: &Domain) -> BTreeMap<String, CodelistDisplayInfo> {
                         .terms
                         .values()
                         .take(8)
-                        .map(|t| {
-                            let def = t.definition.as_ref().map(|d| {
-                                if d.len() > 40 { format!("{}...", &d[..37]) } else { d.clone() }
-                            });
-                            (t.submission_value.clone(), def)
-                        })
+                        .map(|t| (t.submission_value.clone(), t.definition.clone()))
                         .collect();
 
                     CodelistDisplayInfo {

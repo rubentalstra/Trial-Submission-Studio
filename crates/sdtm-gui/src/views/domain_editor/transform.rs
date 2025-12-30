@@ -645,9 +645,9 @@ fn show_ct_detail(
             ui.add_space(spacing::SM);
 
             if ct_info.found {
-                ui.horizontal(|ui| {
+                ui.horizontal_wrapped(|ui| {
                     ui.label(RichText::new(&ct_info.code).color(theme.text_muted).small());
-                    ui.label(RichText::new(&ct_info.name).strong());
+                    ui.add(egui::Label::new(RichText::new(&ct_info.name).strong()).wrap());
                     if ct_info.extensible {
                         ui.label(RichText::new("(Extensible)").color(theme.warning).small());
                     }
@@ -661,13 +661,24 @@ fn show_ct_detail(
                             .small(),
                     );
 
-                    for (value, def) in &ct_info.terms {
-                        ui.horizontal(|ui| {
-                            ui.label(RichText::new(value).strong().color(theme.accent));
+                    for (idx, (value, def)) in ct_info.terms.iter().enumerate() {
+                        ui.vertical(|ui| {
+                            ui.add(
+                                egui::Label::new(RichText::new(value).strong().color(theme.accent))
+                                    .wrap(),
+                            );
                             if let Some(d) = def {
-                                ui.label(RichText::new(d).color(theme.text_secondary).small());
+                                ui.add(
+                                    egui::Label::new(
+                                        RichText::new(d).color(theme.text_secondary).small(),
+                                    )
+                                    .wrap(),
+                                );
                             }
                         });
+                        if idx + 1 < ct_info.terms.len() {
+                            ui.add_space(spacing::XS);
+                        }
                     }
 
                     if ct_info.total_terms > ct_info.terms.len() {
