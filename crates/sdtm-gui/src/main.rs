@@ -4,6 +4,7 @@
 //! CDISC SDTM formats (XPT, Dataset-XML, Define-XML).
 
 mod app;
+mod services;
 mod state;
 mod theme;
 mod views;

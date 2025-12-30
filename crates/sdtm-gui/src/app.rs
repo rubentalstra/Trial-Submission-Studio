@@ -1,5 +1,6 @@
 //! Main application struct and eframe::App implementation
 
+use crate::services::StudyLoader;
 use crate::state::{AppState, EditorTab, View};
 use crate::views::{DomainEditorView, ExportView, HomeView};
 use eframe::egui;
@@ -26,11 +27,14 @@ impl eframe::App for CdiscApp {
         // Handle keyboard shortcuts
         self.handle_shortcuts(ctx);
 
+        // Track if we need to load a study
+        let mut folder_to_load = None;
+
         // Main panel
         egui::CentralPanel::default().show(ctx, |ui| {
             match self.state.view.clone() {
                 View::Home => {
-                    HomeView::show(ui, &mut self.state);
+                    folder_to_load = HomeView::show(ui, &mut self.state);
                 }
                 View::DomainEditor { domain, tab } => {
                     DomainEditorView::show(ui, &mut self.state, &domain, tab);
@@ -40,6 +44,40 @@ impl eframe::App for CdiscApp {
                 }
             }
         });
+
+        // Load study if folder was selected
+        if let Some(folder) = folder_to_load {
+            self.load_study(&folder);
+        }
+    }
+}
+
+impl CdiscApp {
+    /// Load a study from a folder
+    fn load_study(&mut self, folder: &std::path::Path) {
+        match StudyLoader::load_study(folder) {
+            Ok(study) => {
+                let domain_count = study.domains.len();
+                tracing::info!(
+                    "Loaded study '{}' with {} domains",
+                    study.study_id,
+                    domain_count
+                );
+                self.state.study = Some(study);
+
+                // Add to recent studies
+                let path = folder.to_path_buf();
+                self.state.preferences.recent_studies.retain(|p| p != &path);
+                self.state.preferences.recent_studies.insert(0, path);
+                if self.state.preferences.recent_studies.len() > 10 {
+                    self.state.preferences.recent_studies.truncate(10);
+                }
+            }
+            Err(e) => {
+                tracing::error!("Failed to load study: {}", e);
+                // TODO: Show error toast
+            }
+        }
     }
 }
 

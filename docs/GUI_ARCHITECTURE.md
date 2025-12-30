@@ -1603,7 +1603,7 @@ All color combinations meet WCAG 2.1 AA (4.5:1 for normal text, 3:1 for large):
 
 ## Migration Strategy
 
-### Phase 1: Foundation ✅ IN PROGRESS
+### Phase 1: Foundation ✅ COMPLETE
 
 **Goal:** Set up infrastructure
 
@@ -1611,11 +1611,12 @@ All color combinations meet WCAG 2.1 AA (4.5:1 for normal text, 3:1 for large):
 - [x] Create `sdtm-gui` crate with egui 0.33.3
 - [x] Set up eframe application structure
 - [x] Define `AppState`, `StudyState`, `DomainState`
-- [ ] Implement undo/redo stack
+- [x] Implement `StudyLoader` service for loading studies from folders
 - [x] Implement basic navigation (Home ↔ Domain Editor ↔ Export)
 - [x] Replace `sdtm-cli` with `sdtm-gui` in workspace
+- [ ] Implement undo/redo stack (deferred to later phase)
 
-**Deliverable:** Empty GUI shell that compiles and runs ✅
+**Deliverable:** GUI shell that compiles, runs, and loads study folders ✅
 
 ### Phase 2: Extract Core Functions ⏳ NOT STARTED
 

@@ -5,18 +5,22 @@
 use crate::state::{AppState, DomainStatus};
 use crate::theme::{colors, spacing};
 use egui::{RichText, Ui};
+use std::path::PathBuf;
 
 /// Home screen view
 pub struct HomeView;
 
 impl HomeView {
     /// Render the home screen
-    pub fn show(ui: &mut Ui, state: &mut AppState) {
+    ///
+    /// Returns a folder path if the user selected one to load.
+    pub fn show(ui: &mut Ui, state: &mut AppState) -> Option<PathBuf> {
         let theme = colors(state.preferences.dark_mode);
 
         // Track which domain was clicked (if any)
         let mut clicked_domain: Option<String> = None;
         let mut go_to_export = false;
+        let mut selected_folder: Option<PathBuf> = None;
 
         ui.vertical_centered(|ui| {
             ui.add_space(spacing::XL);
@@ -37,8 +41,8 @@ impl HomeView {
                 .clicked()
             {
                 if let Some(folder) = rfd::FileDialog::new().pick_folder() {
-                    // TODO: Load study from folder
                     tracing::info!("Selected folder: {:?}", folder);
+                    selected_folder = Some(folder);
                 }
             }
 
@@ -140,5 +144,7 @@ impl HomeView {
         if go_to_export {
             state.go_export();
         }
+
+        selected_folder
     }
 }
