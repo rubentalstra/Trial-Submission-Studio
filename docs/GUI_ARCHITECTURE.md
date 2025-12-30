@@ -1618,18 +1618,25 @@ All color combinations meet WCAG 2.1 AA (4.5:1 for normal text, 3:1 for large):
 
 **Deliverable:** GUI shell that compiles, runs, and loads study folders ✅
 
-### Phase 2: Extract Core Functions ⏳ NOT STARTED
+### Phase 2: Extract Core Functions ✅ COMPLETE
 
 **Goal:** Refactor `sdtm-core` into standalone functions
 
 **Status:**
-- [ ] Extract `apply_usubjid_prefix` from `processor.rs`
-- [ ] Extract `assign_sequence_numbers` from `processor.rs`
-- [ ] Extract `normalize_ct_column` from `processor.rs`
-- [ ] Keep `domain_processors/` as-is (pure business logic)
-- [ ] Implement `ProcessingService` in `sdtm-gui`
+- [x] Extract `apply_usubjid_prefix` from `processor.rs`
+- [x] Extract `assign_sequence_numbers` from `processor.rs`
+- [x] Extract `normalize_ct_column` from `processor.rs`
+- [x] Add `get_ct_columns` helper function
+- [x] Keep `domain_processors/` as-is (pure business logic)
+- [x] Implement `ProcessingService` in `sdtm-gui`
 
-**Deliverable:** Core logic is modular and testable
+**Implementation:**
+- Created `crates/sdtm-core/src/transforms.rs` with standalone SDTM transformation functions
+- Created `crates/sdtm-gui/src/services/processing.rs` with ProcessingService wrapper
+- All functions operate on `&mut DataFrame` and return modification counts
+- Includes unit tests for all transformations
+
+**Deliverable:** Core logic is modular and testable ✅
 
 ### Phase 3: Mapping Service ⏳ NOT STARTED
 
