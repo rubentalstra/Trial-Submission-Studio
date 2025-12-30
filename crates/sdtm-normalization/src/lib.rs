@@ -24,4 +24,3 @@ pub mod frame;
 pub mod frame_builder;
 pub mod relationships;
 pub mod suppqual;
-pub mod wide;
