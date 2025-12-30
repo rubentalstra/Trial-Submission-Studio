@@ -6,6 +6,10 @@ rust-version.workspace = true
 description = "CDISC SDTM Transpiler - Desktop GUI Application"
 default-run = "sdtm-gui"
 
+[lib]
+name = "sdtm_gui"
+path = "src/lib.rs"
+
 [[bin]]
 name = "sdtm-gui"
 path = "src/main.rs"

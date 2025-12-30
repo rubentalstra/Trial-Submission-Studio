@@ -2,9 +2,6 @@
 //!
 //! Colors, spacing, and visual constants for the application.
 
-// Some fields/constants are kept for future use (e.g., bg_primary for custom backgrounds)
-#![allow(dead_code)]
-
 use egui::Color32;
 
 /// Light mode colors

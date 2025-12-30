@@ -1,8 +1,5 @@
 //! Application-level state
 
-// Fields kept for future use (preferences)
-#![allow(dead_code)]
-
 use super::StudyState;
 
 /// Top-level application state

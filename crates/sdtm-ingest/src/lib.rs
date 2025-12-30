@@ -11,7 +11,10 @@ pub mod study_metadata;
 // These are re-exported for workspace use but may be refactored in the future.
 pub mod polars_utils;
 
-pub use csv_table::{CsvSchema, build_column_hints, read_csv_schema, read_csv_table};
+pub use csv_table::{
+    CsvSchema, build_column_hints, looks_like_label, looks_like_variable_code, parse_csv_line,
+    read_csv_schema, read_csv_table,
+};
 pub use discovery::{discover_domain_files, list_csv_files};
 pub use study_metadata::{
     AppliedStudyMetadata, CodeList, SourceColumn, StudyMetadata, apply_study_metadata,

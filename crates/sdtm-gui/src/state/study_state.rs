@@ -1,8 +1,5 @@
 //! Study-level runtime state
 
-// Fields kept for future use (validation, preview, etc.)
-#![allow(dead_code)]
-
 use super::TransformState;
 use crate::services::MappingState;
 use polars::prelude::DataFrame;

@@ -15,3 +15,7 @@ pub use normalization::datetime;
 pub mod domain_sets;
 pub mod frame;
 pub mod transforms;
+
+// Re-export common functions for external use
+pub use data_utils::{sanitize_qnam, sanitize_test_code, strip_all_quotes, strip_quotes};
+pub use transforms::{apply_usubjid_prefix, assign_sequence_numbers};
