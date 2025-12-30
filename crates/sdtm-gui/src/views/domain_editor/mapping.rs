@@ -898,6 +898,12 @@ fn show_variable_detail(
                         sync_usubjid_from_subjid(ms);
                     }
                 });
+                // Invalidate cached validation/preview when mappings change
+                if let Some(study) = &mut state.study {
+                    if let Some(domain) = study.get_domain_mut(domain_code) {
+                        domain.invalidate_mapping_dependents();
+                    }
+                }
             }
 
             ui.add_space(spacing::LG);
@@ -918,6 +924,12 @@ fn show_variable_detail(
                                 sync_usubjid_from_subjid(ms);
                             }
                         });
+                        // Invalidate cached validation/preview when mappings change
+                        if let Some(study) = &mut state.study {
+                            if let Some(domain) = study.get_domain_mut(domain_code) {
+                                domain.invalidate_mapping_dependents();
+                            }
+                        }
                     }
                 }
                 VariableMappingStatus::Accepted => {
@@ -931,6 +943,12 @@ fn show_variable_detail(
                                 sync_usubjid_from_subjid(ms);
                             }
                         });
+                        // Invalidate cached validation/preview when mappings change
+                        if let Some(study) = &mut state.study {
+                            if let Some(domain) = study.get_domain_mut(domain_code) {
+                                domain.invalidate_mapping_dependents();
+                            }
+                        }
                     }
                 }
                 VariableMappingStatus::Unmapped => {

@@ -2,6 +2,7 @@
 
 use polars::prelude::{Column, DataFrame};
 
+use sdtm_model::p21::rule_ids;
 use sdtm_model::{CheckType, OutputFormat, Severity, ValidationIssue, ValidationReport};
 use sdtm_standards::{load_default_ct_registry, load_default_sdtm_ig_domains};
 use sdtm_validate::{gate_strict_outputs, strict_outputs_requested, validate_domain};
@@ -35,13 +36,15 @@ fn ct_invalid_value_emits_issue() {
         .resolve(ct_code, None)
         .map(|resolved| resolved.codelist)
         .expect("ct lookup");
-    let expected = if ct.extensible {
-        Severity::Warning
+
+    // P21 uses CT2001 for non-extensible, CT2002 for extensible codelists
+    let (expected_code, expected_severity) = if ct.extensible {
+        (rule_ids::CT2002, Severity::Warning)
     } else {
-        Severity::Error
+        (rule_ids::CT2001, Severity::Error)
     };
-    assert_eq!(issue.code, ct.code);
-    assert_eq!(issue.severity, expected);
+    assert_eq!(issue.code, expected_code);
+    assert_eq!(issue.severity, expected_severity);
 }
 
 #[test]

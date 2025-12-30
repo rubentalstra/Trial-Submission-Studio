@@ -126,6 +126,19 @@ impl DomainState {
         }
     }
 
+    /// Invalidate cached data that depends on mappings.
+    ///
+    /// Call this whenever accepted mappings change to ensure:
+    /// - Validation is re-run on the new mapped data
+    /// - Transform state is regenerated
+    /// - Preview data is regenerated
+    pub fn invalidate_mapping_dependents(&mut self) {
+        self.validation = None;
+        self.validation_selected_idx = None;
+        self.transform_state = None;
+        self.preview_data = None;
+    }
+
     /// Get source column names
     pub fn source_columns(&self) -> Vec<String> {
         self.source_data

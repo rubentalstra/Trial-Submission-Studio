@@ -6,9 +6,12 @@
 use crate::state::{AppState, DomainStatus};
 use crate::theme::{ThemeColors, colors, spacing};
 use egui::{RichText, Ui};
+use sdtm_core::transforms::build_preview_dataframe;
+use sdtm_model::p21::P21Category;
 use sdtm_model::{CheckType, Severity, ValidationIssue};
 use sdtm_standards::load_default_ct_registry;
 use sdtm_validate::validate_domain;
+use std::collections::BTreeMap;
 
 use super::mapping::{initialize_mapping, show_loading_indicator};
 
@@ -162,6 +165,9 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
 }
 
 /// Rebuild validation from current mapping state
+///
+/// This validates the **transformed** data (with mappings applied and CT normalized),
+/// not the raw source data. This ensures validation reflects what the final output will be.
 fn rebuild_validation_if_needed(state: &mut AppState, domain_code: &str) {
     // Check if we need to rebuild
     let needs_rebuild = state
@@ -175,7 +181,7 @@ fn rebuild_validation_if_needed(state: &mut AppState, domain_code: &str) {
         return;
     }
 
-    // Get the SDTM domain definition and source data
+    // Get the data we need for building the preview and validation
     let validation_data = {
         let Some(study) = &state.study else { return };
         let Some(domain) = study.get_domain(domain_code) else {
@@ -185,17 +191,47 @@ fn rebuild_validation_if_needed(state: &mut AppState, domain_code: &str) {
             return;
         };
 
+        // Build accepted mappings map: SDTM variable -> source column
+        let accepted_mappings: BTreeMap<String, String> = ms
+            .accepted
+            .iter()
+            .map(|(var, (col, _))| (var.clone(), col.clone()))
+            .collect();
+
         // Clone what we need for validation
-        Some((ms.sdtm_domain.clone(), domain.source_data.clone()))
+        Some((
+            ms.sdtm_domain.clone(),
+            ms.study_id.clone(),
+            domain.source_data.clone(),
+            accepted_mappings,
+        ))
     };
 
-    let Some((sdtm_domain, source_df)) = validation_data else {
+    let Some((sdtm_domain, study_id, source_df, accepted_mappings)) = validation_data else {
         return;
     };
 
-    // Load CT registry and run validation
+    // Load CT registry
     let ct_registry = load_default_ct_registry().ok();
-    let report = validate_domain(&sdtm_domain, &source_df, ct_registry.as_ref());
+
+    // Build preview DataFrame with mappings applied and CT normalized
+    let preview_df = match build_preview_dataframe(
+        &source_df,
+        &accepted_mappings,
+        &sdtm_domain,
+        &study_id,
+        ct_registry.as_ref(),
+    ) {
+        Ok(df) => df,
+        Err(e) => {
+            tracing::warn!("Failed to build preview DataFrame: {}", e);
+            // Fall back to source data if preview fails
+            source_df
+        }
+    };
+
+    // Run validation on the transformed preview data
+    let report = validate_domain(&sdtm_domain, &preview_df, ct_registry.as_ref());
 
     // Store result
     if let Some(study) = &mut state.study {
@@ -324,6 +360,7 @@ fn show_issue_row(
     };
 
     let variable_name = issue.variable.as_deref().unwrap_or("Unknown");
+    let p21_rule_id = &issue.code; // P21 rule ID (e.g., CT2001, SD0002)
     let check_label = issue
         .check_type
         .map(|ct| ct.label())
@@ -357,6 +394,13 @@ fn show_issue_row(
                         } else {
                             theme.text_primary
                         }));
+                        // Show P21 rule ID badge
+                        ui.label(
+                            RichText::new(p21_rule_id)
+                                .small()
+                                .monospace()
+                                .color(theme.text_muted),
+                        );
                     });
                     ui.label(RichText::new(check_label).small().color(theme.text_muted));
                     if !count_text.is_empty() {
@@ -384,8 +428,10 @@ fn show_issue_detail(ui: &mut Ui, issue: Option<&ValidationIssue>, theme: &Theme
         .check_type
         .map(|ct| ct.label())
         .unwrap_or("Validation");
+    let p21_rule_id = &issue.code;
+    let p21_category = issue.p21_category();
 
-    // Header with variable name and check type
+    // Header with variable name and severity
     ui.label(
         RichText::new(format!(
             "{} {} — {}",
@@ -408,11 +454,55 @@ fn show_issue_detail(ui: &mut Ui, issue: Option<&ValidationIssue>, theme: &Theme
 
     ui.add_space(spacing::XS);
 
-    // Check type badge
+    // P21 Rule ID and Category
+    ui.horizontal(|ui| {
+        // P21 Rule ID badge
+        egui::Frame::new()
+            .fill(theme.accent.gamma_multiply(0.2))
+            .inner_margin(egui::Margin::symmetric(6, 2))
+            .corner_radius(4.0)
+            .show(ui, |ui| {
+                ui.label(
+                    RichText::new(p21_rule_id)
+                        .monospace()
+                        .strong()
+                        .color(theme.accent),
+                );
+            });
+
+        // P21 Category badge
+        if let Some(category) = p21_category {
+            let category_label = match category {
+                P21Category::Terminology => "Terminology",
+                P21Category::Presence => "Presence",
+                P21Category::Format => "Format",
+                P21Category::Consistency => "Consistency",
+                P21Category::Limit => "Limit",
+                P21Category::Metadata => "Metadata",
+                P21Category::CrossReference => "Cross-reference",
+                P21Category::Structure => "Structure",
+            };
+            egui::Frame::new()
+                .fill(theme.bg_secondary)
+                .inner_margin(egui::Margin::symmetric(6, 2))
+                .corner_radius(4.0)
+                .show(ui, |ui| {
+                    ui.label(
+                        RichText::new(category_label)
+                            .small()
+                            .color(theme.text_muted),
+                    );
+                });
+        }
+    });
+
+    ui.add_space(spacing::XS);
+
+    // Check type label
     ui.label(
         RichText::new(format!("{} {}", egui_phosphor::regular::TAG, check_label))
             .small()
-            .color(theme.accent),
+            .color(theme.text_muted),
     );
 
     ui.add_space(spacing::MD);
@@ -714,7 +804,7 @@ fn show_check_type_context(ui: &mut Ui, issue: &ValidationIssue, theme: &ThemeCo
 
 /// Show codelist-specific context for CT validation
 fn show_codelist_context(ui: &mut Ui, issue: &ValidationIssue, theme: &ThemeColors) {
-    if issue.code.is_empty() && issue.ct_source.is_none() {
+    if issue.ct_source.is_none() {
         return;
     }
 
@@ -723,16 +813,20 @@ fn show_codelist_context(ui: &mut Ui, issue: &ValidationIssue, theme: &ThemeColo
         .inner_margin(spacing::SM as f32)
         .corner_radius(4.0)
         .show(ui, |ui| {
-            if !issue.code.is_empty() {
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new("Codelist").color(theme.text_muted));
-                    ui.label(RichText::new(&issue.code).strong());
-                });
-            }
+            // P21 Rule explanation
+            let p21_explanation = match issue.code.as_str() {
+                "CT2001" => "Non-extensible codelist violation",
+                "CT2002" => "Extensible codelist violation",
+                _ => "Controlled terminology check",
+            };
+            ui.horizontal(|ui| {
+                ui.label(RichText::new("P21 Rule").color(theme.text_muted));
+                ui.label(RichText::new(p21_explanation).strong());
+            });
 
             if let Some(ct_source) = &issue.ct_source {
                 ui.horizontal(|ui| {
-                    ui.label(RichText::new("Source").color(theme.text_muted));
+                    ui.label(RichText::new("CT Source").color(theme.text_muted));
                     ui.label(ct_source);
                 });
             }

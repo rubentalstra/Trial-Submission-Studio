@@ -257,6 +257,150 @@ pub fn get_ct_columns(df: &DataFrame, domain: &sdtm_model::Domain) -> Vec<(Strin
     result
 }
 
+/// Build a preview DataFrame by applying accepted mappings.
+///
+/// This creates a transformed DataFrame suitable for validation:
+/// 1. Renames source columns to their mapped SDTM variable names
+/// 2. Applies CT normalization where codelists are defined
+/// 3. Adds constant columns (STUDYID, DOMAIN) if mappings don't exist
+///
+/// The result can be passed to `validate_domain()` for accurate validation
+/// of the mapped/transformed data rather than raw source data.
+///
+/// # Arguments
+///
+/// * `source_df` - The original source DataFrame
+/// * `accepted_mappings` - Map of SDTM variable name -> source column name
+/// * `domain` - SDTM domain definition with variable metadata
+/// * `study_id` - Study identifier for STUDYID constant
+/// * `ct_registry` - Optional CT registry for normalization
+///
+/// # Returns
+///
+/// A new DataFrame with SDTM column names and normalized values.
+pub fn build_preview_dataframe(
+    source_df: &DataFrame,
+    accepted_mappings: &std::collections::BTreeMap<String, String>,
+    domain: &sdtm_model::Domain,
+    study_id: &str,
+    ct_registry: Option<&sdtm_model::TerminologyRegistry>,
+) -> Result<DataFrame> {
+    use polars::prelude::*;
+
+    if source_df.height() == 0 {
+        return Ok(source_df.clone());
+    }
+
+    let height = source_df.height();
+
+    // Build list of columns to include, with renaming
+    let mut columns: Vec<Column> = Vec::new();
+
+    // Add mapped columns (renamed from source to SDTM name)
+    for (sdtm_var, source_col) in accepted_mappings {
+        if let Ok(col) = source_df.column(source_col) {
+            // Clone and rename the column
+            let renamed = col.clone().with_name(sdtm_var.into());
+            columns.push(renamed);
+        }
+    }
+
+    // Add constant STUDYID if not mapped
+    if !accepted_mappings.contains_key("STUDYID") {
+        let studyid_col = Column::new(
+            "STUDYID".into(),
+            vec![study_id; height],
+        );
+        columns.push(studyid_col);
+    }
+
+    // Add constant DOMAIN if not mapped
+    if !accepted_mappings.contains_key("DOMAIN") {
+        let domain_col = Column::new(
+            "DOMAIN".into(),
+            vec![domain.code.as_str(); height],
+        );
+        columns.push(domain_col);
+    }
+
+    // Create the preview DataFrame
+    let mut preview_df = DataFrame::new(columns)?;
+
+    // Apply CT normalization for variables that have codelists
+    if let Some(registry) = ct_registry {
+        for variable in &domain.variables {
+            // Skip if no mapping exists for this variable
+            if !accepted_mappings.contains_key(&variable.name) {
+                continue;
+            }
+
+            // Skip if no codelist
+            let Some(codelist_code) = &variable.codelist_code else {
+                continue;
+            };
+
+            // Get the first codelist code
+            let code = codelist_code.split(';').next().unwrap_or("").trim();
+            if code.is_empty() {
+                continue;
+            }
+
+            // Resolve the codelist
+            let Some(resolved) = registry.resolve(code, None) else {
+                continue;
+            };
+
+            // Apply normalization
+            let _ = normalize_ct_column(
+                &mut preview_df,
+                &variable.name,
+                resolved.codelist,
+                CtMatchingMode::Lenient,
+            );
+        }
+    }
+
+    Ok(preview_df)
+}
+
+/// Build a simple preview DataFrame with only column renaming (no CT normalization).
+///
+/// This is a lighter-weight version for quick previews that doesn't require
+/// loading the CT registry.
+pub fn build_simple_preview(
+    source_df: &DataFrame,
+    accepted_mappings: &std::collections::BTreeMap<String, String>,
+    domain_code: &str,
+    study_id: &str,
+) -> Result<DataFrame> {
+    use polars::prelude::*;
+
+    if source_df.height() == 0 {
+        return Ok(source_df.clone());
+    }
+
+    let height = source_df.height();
+    let mut columns: Vec<Column> = Vec::new();
+
+    // Add mapped columns (renamed)
+    for (sdtm_var, source_col) in accepted_mappings {
+        if let Ok(col) = source_df.column(source_col) {
+            let renamed = col.clone().with_name(sdtm_var.into());
+            columns.push(renamed);
+        }
+    }
+
+    // Add constants
+    if !accepted_mappings.contains_key("STUDYID") {
+        columns.push(Column::new("STUDYID".into(), vec![study_id; height]));
+    }
+    if !accepted_mappings.contains_key("DOMAIN") {
+        columns.push(Column::new("DOMAIN".into(), vec![domain_code; height]));
+    }
+
+    DataFrame::new(columns).map_err(Into::into)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

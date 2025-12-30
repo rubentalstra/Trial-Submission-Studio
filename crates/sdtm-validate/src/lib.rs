@@ -22,6 +22,7 @@ use polars::prelude::{AnyValue, DataFrame, DataType as PolarsDataType};
 use regex::Regex;
 use sdtm_ingest::any_to_string;
 use sdtm_model::ct::{Codelist, ResolvedCodelist, TerminologyRegistry};
+use sdtm_model::p21::rule_ids;
 use sdtm_model::{
     CaseInsensitiveSet, CheckType, Domain, OutputFormat, Severity, ValidationIssue,
     ValidationReport, Variable, VariableType,
@@ -182,7 +183,7 @@ fn check_required_variables(
         let Some(column) = column_lookup.get(&variable.name) else {
             issues.push(ValidationIssue {
                 check_type: Some(CheckType::RequiredVariableMissing),
-                code: "SD0001".to_string(),
+                code: rule_ids::SD0056.to_string(),
                 message: format!(
                     "Required variable {} is not present in domain {}.",
                     variable.name, domain.code
@@ -204,7 +205,7 @@ fn check_required_variables(
         if null_count > 0 {
             issues.push(ValidationIssue {
                 check_type: Some(CheckType::RequiredVariableEmpty),
-                code: "SD0002".to_string(),
+                code: rule_ids::SD0002.to_string(),
                 message: format!(
                     "Required variable {} has {} null value(s). Required variables must be fully populated.",
                     variable.name, null_count
@@ -248,7 +249,7 @@ fn check_expected_variables(
         if column_lookup.get(&variable.name).is_none() {
             issues.push(ValidationIssue {
                 check_type: Some(CheckType::ExpectedVariableMissing),
-                code: "SD0003".to_string(),
+                code: rule_ids::SD0057.to_string(),
                 message: format!(
                     "Expected variable {} is not present in domain {}. Consider adding if applicable.",
                     variable.name, domain.code
@@ -318,7 +319,7 @@ fn check_data_types(
         if non_numeric_count > 0 {
             issues.push(ValidationIssue {
                 check_type: Some(CheckType::DataTypeMismatch),
-                code: "SD0004".to_string(),
+                code: rule_ids::SD0055.to_string(),
                 message: format!(
                     "Numeric variable {} contains {} non-numeric value(s).",
                     variable.name, non_numeric_count
@@ -368,7 +369,7 @@ fn check_date_formats(
         if invalid_count > 0 {
             issues.push(ValidationIssue {
                 check_type: Some(CheckType::InvalidDateFormat),
-                code: "SD0005".to_string(),
+                code: rule_ids::SD0003.to_string(),
                 message: format!(
                     "Date variable {} has {} value(s) not in ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS).",
                     variable.name, invalid_count
@@ -432,7 +433,7 @@ fn check_sequence_uniqueness(
     if duplicate_count > 0 {
         issues.push(ValidationIssue {
             check_type: Some(CheckType::DuplicateSequence),
-            code: "SD0006".to_string(),
+            code: rule_ids::SD0005.to_string(),
             message: format!(
                 "{} has {} duplicate sequence number(s) within subject. --SEQ must be unique per USUBJID.",
                 seq_var_name, duplicate_count
@@ -482,7 +483,7 @@ fn check_text_lengths(
         if exceeded_count > 0 {
             issues.push(ValidationIssue {
                 check_type: Some(CheckType::TextLengthExceeded),
-                code: "SD0007".to_string(),
+                code: rule_ids::SD0017.to_string(),
                 message: format!(
                     "Variable {} has {} value(s) exceeding max length {} (max found: {}).",
                     variable.name, exceeded_count, max_length, max_found
@@ -536,7 +537,7 @@ fn check_identifier_nulls(
         if null_count > 0 {
             issues.push(ValidationIssue {
                 check_type: Some(CheckType::IdentifierNull),
-                code: "SD0008".to_string(),
+                code: rule_ids::SD0002.to_string(),
                 message: format!(
                     "Identifier variable {} has {} null value(s). Identifiers must not be null.",
                     variable.name, null_count
@@ -597,14 +598,18 @@ fn ct_issue(
     const MAX_ALLOWED_VALUES_IN_MESSAGE: usize = 12;
     const MAX_INVALID_EXAMPLES: usize = 5;
     const MAX_CT_EXAMPLES: usize = 5;
-    let severity = if ct.extensible {
-        Severity::Warning
+
+    // P21 rules: CT2001 for non-extensible (Error), CT2002 for extensible (Warning)
+    let (p21_rule, severity) = if ct.extensible {
+        (rule_ids::CT2002, Severity::Warning)
     } else {
-        Severity::Error
+        (rule_ids::CT2001, Severity::Error)
     };
+
     let observed_values: Vec<String> = invalid.iter().take(MAX_INVALID_EXAMPLES).cloned().collect();
     let mut message = format!(
-        "CT check failed. {} has {} value(s) not in {} ({}) from {}.",
+        "{}: {} has {} value(s) not in {} ({}) from {}.",
+        p21_rule,
         variable.name,
         invalid.len(),
         ct.name,
@@ -640,7 +645,7 @@ fn ct_issue(
     };
     Some(ValidationIssue {
         check_type: Some(CheckType::ControlledTerminology),
-        code: ct.code.clone(),
+        code: p21_rule.to_string(),
         message,
         severity,
         variable: Some(variable.name.clone()),
