@@ -93,18 +93,18 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
 
         // Header
         ui.label(
-            RichText::new(format!("{} Transformations", egui_phosphor::regular::SHUFFLE))
-                .strong(),
+            RichText::new(format!(
+                "{} Transformations",
+                egui_phosphor::regular::SHUFFLE
+            ))
+            .strong(),
         );
         if !transforms.is_empty() {
             ui.add_space(spacing::XS);
             ui.label(
-                RichText::new(format!(
-                    "{} generated · {} CT",
-                    generated_count, ct_count
-                ))
-                .color(theme.text_muted)
-                .small(),
+                RichText::new(format!("{} generated · {} CT", generated_count, ct_count))
+                    .color(theme.text_muted)
+                    .small(),
             );
         }
         ui.add_space(spacing::SM);
@@ -227,7 +227,10 @@ fn rebuild_transforms_if_needed(state: &mut AppState, domain_code: &str) {
     // Store transforms
     if let Some(study) = &mut state.study {
         if let Some(domain) = study.get_domain_mut(domain_code) {
-            let selected_idx = domain.transform_state.as_ref().and_then(|ts| ts.selected_idx);
+            let selected_idx = domain
+                .transform_state
+                .as_ref()
+                .and_then(|ts| ts.selected_idx);
             domain.transform_state = Some(TransformState {
                 transforms,
                 selected_idx,
@@ -258,7 +261,11 @@ fn show_transform_list(
         );
         ui.add_space(spacing::SM);
 
-        for (idx, t) in transforms.iter().enumerate().filter(|(_, t)| t.is_generated()) {
+        for (idx, t) in transforms
+            .iter()
+            .enumerate()
+            .filter(|(_, t)| t.is_generated())
+        {
             let status_suffix = transform_status_suffix(t, has_subject_id_mapping);
             if render_row(ui, idx, t, selected_idx == Some(idx), status_suffix, theme) {
                 new_selection = Some(idx);
@@ -365,11 +372,7 @@ fn render_row(
                 theme.text_muted
             };
 
-            ui.label(
-                RichText::new(right_text)
-                    .color(right_color)
-                    .small(),
-            );
+            ui.label(RichText::new(right_text).color(right_color).small());
         });
     });
 
@@ -404,14 +407,22 @@ fn show_transform_detail(
     // Get live data from state
     let (study_id, mapping_state, source_data) = {
         let Some(study) = &state.study else { return };
-        let Some(domain) = study.get_domain(domain_code) else { return };
-        let Some(ms) = &domain.mapping_state else { return };
+        let Some(domain) = study.get_domain(domain_code) else {
+            return;
+        };
+        let Some(ms) = &domain.mapping_state else {
+            return;
+        };
         (study.study_id.as_str(), ms, &domain.source_data)
     };
 
     // Header
     ui.horizontal(|ui| {
-        ui.label(RichText::new(transform.icon()).size(24.0).color(theme.accent));
+        ui.label(
+            RichText::new(transform.icon())
+                .size(24.0)
+                .color(theme.accent),
+        );
         ui.vertical(|ui| {
             ui.heading(transform.target_variable());
             ui.label(
@@ -428,7 +439,11 @@ fn show_transform_detail(
 
     match transform {
         TransformRule::StudyIdConstant => {
-            ui.label(RichText::new("Value Source").strong().color(theme.text_muted));
+            ui.label(
+                RichText::new("Value Source")
+                    .strong()
+                    .color(theme.text_muted),
+            );
             ui.add_space(spacing::SM);
 
             egui::Grid::new("studyid_detail")
@@ -450,7 +465,11 @@ fn show_transform_detail(
         }
 
         TransformRule::DomainConstant => {
-            ui.label(RichText::new("Value Source").strong().color(theme.text_muted));
+            ui.label(
+                RichText::new("Value Source")
+                    .strong()
+                    .color(theme.text_muted),
+            );
             ui.add_space(spacing::SM);
 
             egui::Grid::new("domain_detail")
@@ -510,7 +529,11 @@ fn show_transform_detail(
 
                 if !samples.is_empty() {
                     ui.add_space(spacing::MD);
-                    ui.label(RichText::new("Sample Values").strong().color(theme.text_muted));
+                    ui.label(
+                        RichText::new("Sample Values")
+                            .strong()
+                            .color(theme.text_muted),
+                    );
                     ui.add_space(spacing::SM);
 
                     for val in &samples {
@@ -538,7 +561,11 @@ fn show_transform_detail(
         }
 
         TransformRule::SequenceNumbers { seq_column } => {
-            ui.label(RichText::new("Configuration").strong().color(theme.text_muted));
+            ui.label(
+                RichText::new("Configuration")
+                    .strong()
+                    .color(theme.text_muted),
+            );
             ui.add_space(spacing::SM);
 
             egui::Grid::new("seq_detail")
@@ -570,7 +597,10 @@ fn show_transform_detail(
             }
         }
 
-        TransformRule::CtNormalization { variable, codelist_code } => {
+        TransformRule::CtNormalization {
+            variable,
+            codelist_code,
+        } => {
             // Get source column from mapping
             if let Some((source_col, _)) = mapping_state.get_accepted_for(variable) {
                 let samples = MappingService::get_sample_values(source_data, source_col, 5);
@@ -606,9 +636,7 @@ fn show_transform_detail(
                             ui.label(RichText::new(&ct_info.name).strong());
                             if ct_info.extensible {
                                 ui.label(
-                                    RichText::new("(Extensible)")
-                                        .color(theme.warning)
-                                        .small(),
+                                    RichText::new("(Extensible)").color(theme.warning).small(),
                                 );
                             }
                         });
@@ -616,12 +644,9 @@ fn show_transform_detail(
                         if !ct_info.terms.is_empty() {
                             ui.add_space(spacing::SM);
                             ui.label(
-                                RichText::new(format!(
-                                    "Valid values ({}):",
-                                    ct_info.total_terms
-                                ))
-                                .color(theme.text_muted)
-                                .small(),
+                                RichText::new(format!("Valid values ({}):", ct_info.total_terms))
+                                    .color(theme.text_muted)
+                                    .small(),
                             );
 
                             for (value, def) in &ct_info.terms {
@@ -649,19 +674,20 @@ fn show_transform_detail(
                         }
                     } else {
                         ui.label(
-                            RichText::new(format!(
-                                "{} - not found in CT registry",
-                                ct_info.code
-                            ))
-                            .color(theme.warning)
-                            .small(),
+                            RichText::new(format!("{} - not found in CT registry", ct_info.code))
+                                .color(theme.warning)
+                                .small(),
                         );
                     }
                 }
 
                 if !samples.is_empty() {
                     ui.add_space(spacing::MD);
-                    ui.label(RichText::new("Source Values").strong().color(theme.text_muted));
+                    ui.label(
+                        RichText::new("Source Values")
+                            .strong()
+                            .color(theme.text_muted),
+                    );
                     ui.add_space(spacing::SM);
 
                     for val in &samples {

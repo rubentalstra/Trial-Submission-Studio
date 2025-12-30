@@ -19,7 +19,10 @@ pub enum TransformRule {
     SequenceNumbers { seq_column: String },
 
     /// Normalize values against Controlled Terminology
-    CtNormalization { variable: String, codelist_code: String },
+    CtNormalization {
+        variable: String,
+        codelist_code: String,
+    },
 }
 
 impl TransformRule {

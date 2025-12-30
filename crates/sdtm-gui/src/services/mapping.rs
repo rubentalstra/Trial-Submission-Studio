@@ -233,10 +233,8 @@ impl MappingState {
 
     /// Accept a manual mapping for a variable
     pub fn accept_manual(&mut self, variable_name: &str, source_column: &str) {
-        self.accepted.insert(
-            variable_name.to_string(),
-            (source_column.to_string(), 1.0),
-        );
+        self.accepted
+            .insert(variable_name.to_string(), (source_column.to_string(), 1.0));
         // Remove from unmapped if present
         self.unmapped_columns.retain(|c| c != source_column);
     }
@@ -381,8 +379,7 @@ impl MappingService {
         source_columns: &[String],
         column_hints: BTreeMap<String, ColumnHint>,
     ) -> MappingState {
-        let result =
-            Self::generate_suggestions(&sdtm_domain, source_columns, &column_hints, 0.6);
+        let result = Self::generate_suggestions(&sdtm_domain, source_columns, &column_hints, 0.6);
         let domain_code = sdtm_domain.code.clone();
         MappingState::new(&domain_code, study_id, sdtm_domain, result, column_hints)
     }
@@ -467,7 +464,10 @@ impl MappingService {
                 if let Ok(val) = col.get(i) {
                     // Use Display formatting which gives clean output without type info
                     let formatted = format!("{}", val);
-                    if formatted != "null" && !formatted.is_empty() && seen.insert(formatted.clone()) {
+                    if formatted != "null"
+                        && !formatted.is_empty()
+                        && seen.insert(formatted.clone())
+                    {
                         samples.push(formatted);
                         if samples.len() >= limit {
                             break;
@@ -480,7 +480,6 @@ impl MappingService {
         samples
     }
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -524,8 +523,7 @@ mod tests {
         let columns = vec!["AGE".to_string()];
         let hints = BTreeMap::new();
 
-        let mut state =
-            MappingService::create_mapping_state(domain, "STUDY01", &columns, hints);
+        let mut state = MappingService::create_mapping_state(domain, "STUDY01", &columns, hints);
 
         // Should have suggestion for AGE
         assert!(state.get_suggestion_for("AGE").is_some());
@@ -533,7 +531,10 @@ mod tests {
         // Accept it
         state.accept_suggestion("AGE");
         assert!(state.get_accepted_for("AGE").is_some());
-        assert_eq!(state.variable_status("AGE"), VariableMappingStatus::Accepted);
+        assert_eq!(
+            state.variable_status("AGE"),
+            VariableMappingStatus::Accepted
+        );
     }
 
     #[test]
@@ -542,8 +543,7 @@ mod tests {
         let columns = vec!["AGE".to_string()];
         let hints = BTreeMap::new();
 
-        let mut state =
-            MappingService::create_mapping_state(domain, "STUDY01", &columns, hints);
+        let mut state = MappingService::create_mapping_state(domain, "STUDY01", &columns, hints);
 
         state.accept_suggestion("AGE");
         assert!(state.get_accepted_for("AGE").is_some());
@@ -579,18 +579,16 @@ mod tests {
             label: None,
             structure: None,
             dataset_name: None,
-            variables: vec![
-                Variable {
-                    name: "DTHFL".to_string(),
-                    label: Some("Subject Death Flag".to_string()),
-                    data_type: VariableType::Char,
-                    length: None,
-                    role: Some("Record Qualifier".to_string()),
-                    core: Some("Exp".to_string()),
-                    codelist_code: Some("C66742".to_string()),
-                    order: None,
-                },
-            ],
+            variables: vec![Variable {
+                name: "DTHFL".to_string(),
+                label: Some("Subject Death Flag".to_string()),
+                data_type: VariableType::Char,
+                length: None,
+                role: Some("Record Qualifier".to_string()),
+                core: Some("Exp".to_string()),
+                codelist_code: Some("C66742".to_string()),
+                order: None,
+            }],
         };
 
         let columns = vec!["DEATH_FLAG".to_string()];
@@ -616,10 +614,7 @@ mod tests {
             .iter()
             .find(|v| v.name == "DTHFL");
         assert!(dthfl_var.is_some());
-        assert_eq!(
-            dthfl_var.unwrap().codelist_code.as_deref(),
-            Some("C66742")
-        );
+        assert_eq!(dthfl_var.unwrap().codelist_code.as_deref(), Some("C66742"));
 
         // Now check if the transform detection would work
         // This simulates what rebuild_transforms_if_needed does

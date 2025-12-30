@@ -482,7 +482,11 @@ Users can drag source columns from a floating palette onto SDTM variables:
 
 #### Tab B: Transform
 
-Configure value transformations and bulk patterns.
+**Purpose:** Read-only display of SDTM transformations derived from current mappings.
+
+The Transform tab shows what transformations will be applied during export. These
+are automatically derived from the mapping state - users do not configure them
+manually.
 
 ```
 ╭──────────────────────────────────────────────────────────────────────────────╮
@@ -521,25 +525,42 @@ Configure value transformations and bulk patterns.
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
-##### Transform Types
+##### Transform Types (Derived Automatically)
 
 ```rust
 pub enum TransformRule {
-    DateFormat { from_pattern: String, to_pattern: String },
-    CtNormalization { variable: String, matching_mode: CtMatchingMode },
-    Uppercase { variable: String },
-    Lowercase { variable: String },
-    Concatenate { target: String, sources: Vec<String>, separator: String },
-    Constant { target: String, value: String },
-    Custom { expression: String },
+    /// STUDYID = study folder name (constant)
+    StudyIdConstant,
+    /// DOMAIN = domain code (constant)
+    DomainConstant,
+    /// USUBJID = STUDYID + "-" + SUBJID
+    UsubjidDerivation,
+    /// --SEQ = sequence number per subject
+    SequenceNumbers { seq_column: String },
+    /// Normalize column values to CT codelist
+    CtNormalization { variable: String, codelist_code: String },
 }
 ```
+
+**Transform derivation logic:**
+1. STUDYID → always generated from study folder name
+2. DOMAIN → always generated from domain code
+3. USUBJID → derived if SUBJID or USUBJID is mapped
+4. --SEQ → inferred from domain metadata (e.g., AESEQ for AE)
+5. CT Normalization → for each mapped variable with a codelist_code
 
 ---
 
 #### Tab C: Validation
 
-Shows CT validation issues that must be resolved before export.
+**Purpose:** Display-only view of CT validation issues for user awareness.
+
+The Validation tab shows CT conformance issues automatically detected from the
+current mapping state. This is informational only - users cannot modify values
+here, only view what issues exist in their source data.
+
+**Key principle:** We can only normalize/transform existing data to SDTM standards.
+The GUI cannot add or change values that don't exist in the source.
 
 ```
 ╭──────────────────────────────────────────────────────────────────────────────╮
@@ -547,42 +568,48 @@ Shows CT validation issues that must be resolved before export.
 ├──────────────────────────────────────────────────────────────────────────────┤
 │  Mapping ✓       Transform ✓     Validation (5⚠)     Preview     SUPP       │
 │                                  ━━━━━━━━━━━━━━                              │
-├────────────────────────────────────┬─────────────────────────────────────────┤
-│                                    │                                         │
-│  3 issues need resolution          │   AESEV — Severity                      │
-│                                    │   Codelist: C66769                      │
-│  ┌──────────────────────────────┐  │   Extensible: No                        │
-│  │                              │  │                                         │
-│  │  ┃ AESEV                     │  │   This codelist is non-extensible.      │
-│  │    Severity            ERROR │  │   All values must match exactly.        │
-│  │    5 invalid values          │  │                                         │
-│  │                              │  │                                         │
-│  │    AEREL                     │  │   Invalid values found:                 │
-│  │    Causality           WARN  │  │                                         │
-│  │    1 sponsor extension       │  │   ┌─────────────────────────────────┐   │
-│  │                              │  │   │ Source        Count   Map to    │   │
-│  │    AEOUT                     │  │   ├─────────────────────────────────┤   │
-│  │    Outcome             WARN  │  │   │ "Mild"        45      MILD   ▼  │   │
-│  │    2 sponsor extensions      │  │   │ "Moderate"    38      MODERATE▼ │   │
-│  │                              │  │   │ "Severe"      12      SEVERE ▼  │   │
-│  └──────────────────────────────┘  │   │ "Grade 1"      5      [Select]▼ │   │
-│                                    │   │ "Grade 2"      3      [Select]▼ │   │
-│                                    │   └─────────────────────────────────┘   │
-│                                    │                                         │
-│                                    │   Valid CT values:                      │
-│                                    │   MILD, MODERATE, SEVERE                │
-│                                    │                                         │
-│                                    │                     Apply All           │
-│                                    │                                         │
-╰────────────────────────────────────┴─────────────────────────────────────────╯
+├──────────────────────────────────────────────────────────────────────────────┤
+│  ✕ 2 Errors  ·  ⚠ 3 Warnings                                                │
+├────────────────────────────┬─────────────────────────────────────────────────┤
+│                            │                                                 │
+│  Errors (2)                │  AESEV — Severity                               │
+│  ┌──────────────────────┐  │                                                 │
+│  │ ✕ AESEV     C66769   │◀ │  ┌─────────────────────────────────────────┐    │
+│  │   5 invalid values   │  │  │ Codelist     C66769 (SEV)               │    │
+│  │ ✕ AEOUT     C66768   │  │  │ Extensible   No                         │    │
+│  │   3 invalid values   │  │  │                                         │    │
+│  └──────────────────────┘  │  │ This codelist is non-extensible.        │    │
+│                            │  │ Invalid values will block XPT export.   │    │
+│  Warnings (3)              │  └─────────────────────────────────────────┘    │
+│  ┌──────────────────────┐  │                                                 │
+│  │ ⚠ AEREL     C66727   │  │  Invalid Values Found                          │
+│  │   1 extension value  │  │  ┌─────────────────────────────────────────┐    │
+│  │ ⚠ AESER     C66728   │  │  │ Observed Value          Count          │    │
+│  │   2 extension values │  │  ├─────────────────────────────────────────┤    │
+│  │ ⚠ RACE      C74457   │  │  │ "Mild"                  45             │    │
+│  │   1 extension value  │  │  │ "Moderate"              38             │    │
+│  └──────────────────────┘  │  │ "Severe"                12             │    │
+│                            │  │ "Grade 1"               5              │    │
+│                            │  │ "Grade 2"               3              │    │
+│                            │  └─────────────────────────────────────────┘    │
+│                            │                                                 │
+│                            │  Allowed Values (from CT)                       │
+│                            │  MILD, MODERATE, SEVERE                         │
+│                            │                                                 │
+╰────────────────────────────┴─────────────────────────────────────────────────╯
 ```
+
+**Layout:** Master-detail with StripBuilder (300px left panel)
 
 **Severity Meanings**:
 
 | Severity | Codelist Type  | Impact                        |
 |----------|----------------|-------------------------------|
 | ERROR    | Non-extensible | Blocks XPT export             |
-| WARN     | Extensible     | Allowed but flagged in report |
+| WARNING  | Extensible     | Allowed but flagged in report |
+
+**Reactive behavior:** Validation runs automatically when mapping state changes.
+No manual "Run Validation" button needed.
 
 ---
 
@@ -729,9 +756,11 @@ pub struct AppState {
     pub view: View,
     pub study: Option<StudyState>,
     pub preferences: Preferences,
-    pub toasts: ToastManager,
-    pub undo_stack: UndoStack,
-    pub cache: CacheLayer,
+}
+
+pub struct Preferences {
+    pub dark_mode: bool,
+    pub recent_studies: Vec<PathBuf>,
 }
 
 pub enum View {
@@ -756,7 +785,7 @@ pub struct StudyState {
     pub study_id: String,
     pub study_folder: PathBuf,
     pub domains: HashMap<String, DomainState>,
-    pub global_settings: GlobalSettings,
+    pub metadata: Option<StudyMetadata>,  // Items.csv, CodeLists.csv
 }
 
 pub struct DomainState {
@@ -764,15 +793,17 @@ pub struct DomainState {
     pub source_file: PathBuf,
     pub source_data: DataFrame,
     pub status: DomainStatus,
-    pub mapping: Option<MappingConfig>,
-    pub transforms: Vec<TransformRule>,
-    pub validation: Option<ValidationReport>,
+    pub mapping_state: Option<MappingState>,    // Interactive mapping UI state
+    pub transform_state: Option<TransformState>, // Derived transforms display
+    pub mapping: Option<MappingConfig>,          // Finalized mapping for export
+    pub validation: Option<ValidationReport>,    // Validation results
+    pub validation_selected_idx: Option<usize>,  // UI selection state
     pub preview_data: Option<DataFrame>,
-    pub suppqual_mappings: Vec<SuppqualMapping>,
 }
 
 pub enum DomainStatus {
     NotStarted,
+    Loading,
     MappingInProgress,
     MappingComplete,
     ValidationFailed,
@@ -780,39 +811,33 @@ pub enum DomainStatus {
 }
 ```
 
-### Undo/Redo System
+### Reactive State Updates
 
-Command pattern for reversible operations within the current session:
+The GUI uses a reactive pattern where derived state (transforms, validation) is
+automatically rebuilt when mapping state changes:
 
 ```rust
-pub trait UndoableCommand: Send + Sync {
-    fn execute(&self, state: &mut StudyState) -> Result<()>;
-    fn undo(&self, state: &mut StudyState) -> Result<()>;
-    fn description(&self) -> &str;
+// Transform tab: Derive transforms from mapping state
+fn rebuild_transforms_if_needed(state: &mut AppState, domain_code: &str) {
+    // Only rebuild if mapping_state exists but transform_state is stale
+    // Generates: StudyIdConstant, DomainConstant, UsubjidDerivation,
+    //            SequenceNumbers, CtNormalization rules
 }
 
-pub struct UndoStack {
-    undo_stack: Vec<Box<dyn UndoableCommand>>,
-    redo_stack: Vec<Box<dyn UndoableCommand>>,
-    max_size: usize,
-}
-
-impl UndoStack {
-    pub fn push(&mut self, cmd: Box<dyn UndoableCommand>);
-    pub fn undo(&mut self, state: &mut StudyState) -> Result<()>;
-    pub fn redo(&mut self, state: &mut StudyState) -> Result<()>;
-    pub fn can_undo(&self) -> bool;
-    pub fn can_redo(&self) -> bool;
+// Validation tab: Run validation when mapping changes
+fn rebuild_validation_if_needed(state: &mut AppState, domain_code: &str) {
+    // Run CT validation when mapping_state exists
+    // Results stored in domain.validation
 }
 ```
 
-Undoable operations:
+### Future Enhancements (Not Yet Implemented)
 
-- Accept/reject mapping
-- Set constant value
-- Configure SUPPQUAL assignment
-- Resolve CT mismatch
-- Apply transform rule
+The following features are planned for future phases:
+
+- **Undo/Redo System**: Command pattern for reversible operations
+- **Background Task Manager**: Cancellable long-running operations
+- **Cache Layer**: LRU caching for CT lookups and fuzzy matching
 
 ---
 
@@ -1661,17 +1686,22 @@ All color combinations meet WCAG 2.1 AA (4.5:1 for normal text, 3:1 for large):
 
 **Deliverable:** Can map domains interactively ✅
 
-### Phase 4: Validation & Transforms ⏳ NOT STARTED
+### Phase 4: Validation & Transforms 🔄 IN PROGRESS
 
-**Goal:** Real-time validation and configurable transforms
+**Goal:** Display validation results and transform derivations
 
 **Status:**
-- [ ] Enhance `sdtm-validate` with `validate_variable_values()` for incremental checks
-- [ ] Add `preview_ct_mapping()` for user confirmation
-- [ ] Implement Transform tab
-- [ ] Build Validation tab in GUI
+- [x] Implement Transform tab (read-only display of derived transforms)
+- [x] Transform derivation logic: STUDYID, DOMAIN, USUBJID, --SEQ, CT normalization
+- [x] Master-detail layout with StripBuilder
+- [ ] Implement Validation tab (display-only CT conformance issues)
 
-**Deliverable:** Interactive validation with fix suggestions
+**Implementation:**
+- Transform tab derives rules from MappingState using `rebuild_transforms_if_needed()`
+- Validation tab will use existing `sdtm-validate::validate_domain()` function
+- Both tabs are reactive: auto-update when mapping changes
+
+**Deliverable:** CT validation issues visible to user
 
 ### Phase 5: Processing & Preview ⏳ NOT STARTED
 
@@ -1751,56 +1781,47 @@ All color combinations meet WCAG 2.1 AA (4.5:1 for normal text, 3:1 for large):
 
 ---
 
-## File Structure
+## File Structure (Actual Implementation)
 
 ```
 crates/
 └── sdtm-gui/
     ├── Cargo.toml
     └── src/
-        ├── main.rs
-        ├── app.rs               # CdiscApp, eframe::App impl
-        ├── theme.rs             # Colors, spacing, fonts
-        ├── cache.rs             # CacheLayer
-        ├── tasks.rs             # TaskManager, BackgroundTask
-        ├── undo.rs              # UndoStack, UndoableCommand
+        ├── main.rs              # Entry point, font loading
+        ├── app.rs               # CdiscApp, eframe::App impl, keyboard shortcuts
+        ├── theme.rs             # ThemeColors, spacing constants (light/dark)
+        │
         ├── state/
-        │   ├── mod.rs
-        │   ├── app_state.rs     # AppState, View
-        │   ├── study_state.rs   # StudyState, DomainState
-        │   └── domain_state.rs  # DomainStatus, transforms
+        │   ├── mod.rs           # Re-exports
+        │   ├── app_state.rs     # AppState, View, EditorTab, Preferences
+        │   ├── study_state.rs   # StudyState, DomainState, DomainStatus
+        │   └── transform_state.rs # TransformRule, TransformState
+        │
         ├── services/
-        │   ├── mod.rs
-        │   ├── mapping.rs       # MappingService
-        │   ├── processing.rs    # ProcessingService
-        │   ├── validation.rs    # ValidationService
-        │   └── export.rs        # ExportService
-        ├── views/
-        │   ├── mod.rs
-        │   ├── home.rs          # Home screen
-        │   ├── domain_editor.rs # Main editor
-        │   └── export.rs        # Export screen
-        ├── tabs/
-        │   ├── mod.rs
-        │   ├── mapping.rs       # Mapping tab
-        │   ├── transform.rs     # Transform tab
-        │   ├── validation.rs    # Validation tab
-        │   ├── preview.rs       # Preview tab
-        │   └── supp.rs          # SUPP tab
-        ├── components/
-        │   ├── mod.rs
-        │   ├── master_detail.rs # MasterDetailPanel
-        │   ├── ct_picker.rs     # CtPicker
-        │   ├── data_table.rs    # DataTable
-        │   ├── status_badge.rs  # StatusBadge
-        │   ├── toast.rs         # ToastManager
-        │   ├── drag_drop.rs     # DragDropState
-        │   └── modal.rs         # Modal
-        └── dialogs/
-            ├── mod.rs
-            ├── settings.rs      # Settings dialog
-            └── shortcuts.rs     # Keyboard shortcuts help
+        │   ├── mod.rs           # Re-exports
+        │   ├── study_loader.rs  # StudyLoader - domain discovery
+        │   ├── mapping.rs       # MappingService, MappingState, ColumnHint
+        │   └── processing.rs    # ProcessingService (wraps sdtm-core transforms)
+        │
+        └── views/
+            ├── mod.rs           # Re-exports
+            ├── home.rs          # Home screen - study folder selection
+            ├── export.rs        # Export screen (partial)
+            └── domain_editor/
+                ├── mod.rs       # DomainEditorView - tab dispatcher
+                ├── mapping.rs   # Mapping tab (1064 lines, fully implemented)
+                ├── transform.rs # Transform tab (675 lines, fully implemented)
+                ├── validation.rs # Validation tab (placeholder → implementing)
+                ├── preview.rs   # Preview tab (placeholder)
+                └── supp.rs      # SUPP tab (placeholder)
 ```
+
+**Notes:**
+- No separate `components/`, `tabs/`, or `dialogs/` directories
+- Tabs are in `views/domain_editor/` subdirectory
+- No cache.rs, tasks.rs, undo.rs (planned for future)
+- Services handle business logic, views handle UI rendering
 
 ---
 

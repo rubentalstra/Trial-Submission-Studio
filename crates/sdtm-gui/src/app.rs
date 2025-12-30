@@ -33,17 +33,15 @@ impl eframe::App for CdiscApp {
         let mut folder_to_load = None;
 
         // Main panel
-        egui::CentralPanel::default().show(ctx, |ui| {
-            match self.state.view.clone() {
-                View::Home => {
-                    folder_to_load = HomeView::show(ui, &mut self.state);
-                }
-                View::DomainEditor { domain, tab } => {
-                    DomainEditorView::show(ui, &mut self.state, &domain, tab);
-                }
-                View::Export => {
-                    ExportView::show(ui, &mut self.state);
-                }
+        egui::CentralPanel::default().show(ctx, |ui| match self.state.view.clone() {
+            View::Home => {
+                folder_to_load = HomeView::show(ui, &mut self.state);
+            }
+            View::DomainEditor { domain, tab } => {
+                DomainEditorView::show(ui, &mut self.state, &domain, tab);
+            }
+            View::Export => {
+                ExportView::show(ui, &mut self.state);
             }
         });
 

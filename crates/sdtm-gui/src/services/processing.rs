@@ -13,8 +13,8 @@ use sdtm_core::pipeline_context::CtMatchingMode;
 use sdtm_core::transforms::{
     apply_usubjid_prefix, assign_sequence_numbers, get_ct_columns, normalize_ct_column,
 };
-use sdtm_model::ct::TerminologyRegistry;
 use sdtm_model::Domain;
+use sdtm_model::ct::TerminologyRegistry;
 
 /// Result of applying a transformation
 #[derive(Debug, Clone)]
@@ -32,10 +32,7 @@ impl ProcessingService {
     /// Apply STUDYID prefix to USUBJID column.
     ///
     /// Per SDTMIG 4.1.2, USUBJID should be formatted as "STUDYID-SUBJID".
-    pub fn apply_usubjid_prefix(
-        df: &mut DataFrame,
-        study_id: &str,
-    ) -> Result<TransformResult> {
+    pub fn apply_usubjid_prefix(df: &mut DataFrame, study_id: &str) -> Result<TransformResult> {
         let modified = apply_usubjid_prefix(df, study_id, "USUBJID", Some("STUDYID"))?;
 
         Ok(TransformResult {
@@ -60,10 +57,7 @@ impl ProcessingService {
 
         Ok(TransformResult {
             modified_count: modified,
-            description: format!(
-                "Assigned {} values to {} column",
-                modified, seq_column
-            ),
+            description: format!("Assigned {} values to {} column", modified, seq_column),
         })
     }
 
@@ -81,7 +75,8 @@ impl ProcessingService {
 
         for (column_name, codelist_code) in ct_columns {
             if let Some(resolved) = ct_registry.resolve(&codelist_code, None) {
-                let modified = normalize_ct_column(df, &column_name, resolved.codelist, matching_mode)?;
+                let modified =
+                    normalize_ct_column(df, &column_name, resolved.codelist, matching_mode)?;
 
                 if modified > 0 {
                     results.push(TransformResult {

@@ -103,6 +103,8 @@ pub struct DomainState {
     pub mapping: Option<MappingConfig>,
     /// Validation results
     pub validation: Option<ValidationReport>,
+    /// Selected validation issue index (for detail view)
+    pub validation_selected_idx: Option<usize>,
     /// Preview of processed data
     pub preview_data: Option<DataFrame>,
 }
@@ -119,6 +121,7 @@ impl DomainState {
             transform_state: None,
             mapping: None,
             validation: None,
+            validation_selected_idx: None,
             preview_data: None,
         }
     }

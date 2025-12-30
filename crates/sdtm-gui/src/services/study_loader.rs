@@ -20,16 +20,19 @@ impl StudyLoader {
         let mut study = StudyState::new(study_folder.to_path_buf());
 
         // Get supported domain codes from SDTM-IG
-        let domains = load_default_sdtm_ig_domains()
-            .context("Failed to load SDTM-IG domain definitions")?;
+        let domains =
+            load_default_sdtm_ig_domains().context("Failed to load SDTM-IG domain definitions")?;
         let domain_codes: Vec<String> = domains.iter().map(|d| d.code.clone()).collect();
 
         // Find all CSV files
-        let csv_files = list_csv_files(study_folder)
-            .context("Failed to list CSV files in study folder")?;
+        let csv_files =
+            list_csv_files(study_folder).context("Failed to list CSV files in study folder")?;
 
         if csv_files.is_empty() {
-            tracing::warn!("No CSV files found in study folder: {}", study_folder.display());
+            tracing::warn!(
+                "No CSV files found in study folder: {}",
+                study_folder.display()
+            );
             return Ok(study);
         }
 
@@ -72,11 +75,8 @@ impl StudyLoader {
                             df.width()
                         );
 
-                        let domain_state = DomainState::new(
-                            domain_code.clone(),
-                            file_path.clone(),
-                            df,
-                        );
+                        let domain_state =
+                            DomainState::new(domain_code.clone(), file_path.clone(), df);
                         study.domains.insert(domain_code, domain_state);
                     }
                     Err(e) => {
