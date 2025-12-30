@@ -9,7 +9,7 @@ use sdtm_model::Domain;
 use crate::pipeline_context::PipelineContext;
 
 // Re-export datetime utilities for domain processors
-pub(super) use sdtm_normalization::normalization::datetime::{
+pub(super) use sdtm_transform::normalization::datetime::{
     DatePairOrder, normalize_iso8601, parse_date, validate_date_pair,
 };
 
@@ -17,7 +17,7 @@ pub(super) use sdtm_normalization::normalization::datetime::{
 pub(super) use sdtm_ingest::{any_to_f64, any_to_i64, any_to_string, parse_f64};
 
 // Re-export CT utilities for domain processors
-pub(super) use sdtm_normalization::normalization::ct::{
+pub(super) use sdtm_transform::normalization::ct::{
     normalize_ct_value, preferred_term_for, resolve_ct_value,
 };
 

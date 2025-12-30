@@ -14,7 +14,7 @@ polars.workspace = true
 sdtm-ingest = { path = "../sdtm-ingest" }
 sdtm-model = { path = "../sdtm-model" }
 sdtm-map = { path = "../sdtm-map" }
-sdtm-normalization = { path = "../sdtm-normalization" }
+sdtm-transform = { path = "../sdtm-transform" }
 tracing.workspace = true
 
 [dev-dependencies]

@@ -14,10 +14,10 @@ use anyhow::Result;
 use polars::prelude::*;
 use sdtm_model::CaseInsensitiveSet;
 use sdtm_model::ct::Codelist;
-use sdtm_normalization::data_utils::strip_all_quotes;
+use sdtm_transform::data_utils::strip_all_quotes;
 
 use sdtm_model::options::{CtMatchingMode, NormalizationOptions};
-use sdtm_normalization::normalization::ct::normalize_ct_value;
+use sdtm_transform::normalization::ct::normalize_ct_value;
 
 /// Apply STUDYID prefix to USUBJID column.
 ///

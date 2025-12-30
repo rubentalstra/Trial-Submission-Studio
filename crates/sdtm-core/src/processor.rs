@@ -26,8 +26,8 @@ use sdtm_model::{CaseInsensitiveSet, Domain, VariableType};
 use crate::domain_processors;
 use crate::pipeline_context::{PipelineContext, SequenceAssignmentMode, UsubjidPrefixMode};
 use polars::lazy::dsl::{cols, int_range};
-use sdtm_normalization::data_utils::{column_trimmed_values, strip_all_quotes};
-use sdtm_normalization::normalization::ct::normalize_ct_value;
+use sdtm_transform::data_utils::{column_trimmed_values, strip_all_quotes};
+use sdtm_transform::normalization::ct::normalize_ct_value;
 
 /// Input for domain processing operations.
 ///

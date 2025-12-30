@@ -4504,7 +4504,7 @@ dependencies = [
  "sdtm-ingest",
  "sdtm-map",
  "sdtm-model",
- "sdtm-normalization",
+ "sdtm-transform",
  "tracing",
 ]
 
@@ -4566,18 +4566,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sdtm-normalization"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "polars",
- "sdtm-ingest",
- "sdtm-map",
- "sdtm-model",
-]
-
-[[package]]
 name = "sdtm-report"
 version = "0.1.0"
 dependencies = [
@@ -4587,8 +4575,8 @@ dependencies = [
  "quick-xml 0.38.4",
  "sdtm-ingest",
  "sdtm-model",
- "sdtm-normalization",
  "sdtm-standards",
+ "sdtm-transform",
  "sdtm-xpt",
 ]
 
@@ -4598,6 +4586,18 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "csv",
+ "sdtm-model",
+]
+
+[[package]]
+name = "sdtm-transform"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "polars",
+ "sdtm-ingest",
+ "sdtm-map",
  "sdtm-model",
 ]
 

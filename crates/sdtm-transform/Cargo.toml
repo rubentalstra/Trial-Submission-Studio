@@ -1,9 +1,9 @@
 [package]
-name = "sdtm-normalization"
+name = "sdtm-transform"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "SDTM data normalization: datetime, CT, units, and structural compliance"
+description = "SDTM data transformation: datetime, CT, units, and structural compliance"
 
 [lints]
 workspace = true

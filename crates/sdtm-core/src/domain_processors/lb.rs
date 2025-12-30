@@ -6,8 +6,8 @@ use anyhow::Result;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
 
-use sdtm_normalization::normalization::ct::is_yes_no_token;
 use crate::pipeline_context::PipelineContext;
+use sdtm_transform::normalization::ct::is_yes_no_token;
 
 use super::common::{
     apply_map_upper, backward_fill, backward_fill_var, clean_na_values, clean_na_values_vars,

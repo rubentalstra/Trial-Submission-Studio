@@ -7,7 +7,7 @@ members = [
     "crates/sdtm-model",
     "crates/sdtm-report",
     "crates/sdtm-standards",
-    "crates/sdtm-normalization",
+    "crates/sdtm-transform",
     "crates/sdtm-validate",
     "crates/sdtm-xpt",
 ]

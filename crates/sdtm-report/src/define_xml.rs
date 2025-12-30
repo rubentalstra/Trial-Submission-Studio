@@ -13,9 +13,9 @@ use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, Event};
 use sdtm_model::ct::{Codelist, TerminologyCatalog, TerminologyRegistry};
 use sdtm_model::{Domain, Variable, VariableType};
 use sdtm_standards::load_default_ct_registry;
-use sdtm_normalization::frame::DomainFrame;
+use sdtm_transform::frame::DomainFrame;
 
-use sdtm_normalization::domain_sets::domain_map_by_code;
+use sdtm_transform::domain_sets::domain_map_by_code;
 
 use crate::common::{
     DEFINE_XML_NS, DEFINE_XML_VERSION, ODM_NS, VariableTypeExt, XLINK_NS, ensure_parent_dir,
