@@ -4,6 +4,10 @@ A Rust-first CLI tool for transpiling clinical trial source data into CDISC SDTM
 outputs (XPT, Dataset-XML, Define-XML, SAS programs) with strict,
 offline validation.
 
+```bash
+cargo run --package sdtm-gui 
+```
+
 ## Status
 
 - Rust rebuild is in progress; see `docs/REFRACTOR_PLAN.md`.

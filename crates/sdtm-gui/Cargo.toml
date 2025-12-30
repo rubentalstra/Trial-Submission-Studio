@@ -1,0 +1,42 @@
+[package]
+name = "sdtm-gui"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "CDISC SDTM Transpiler - Desktop GUI Application"
+default-run = "sdtm-gui"
+
+[[bin]]
+name = "sdtm-gui"
+path = "src/main.rs"
+
+[dependencies]
+# GUI framework
+eframe = "0.33.3"
+egui = "0.33.3"
+egui_extras = { version = "0.33.3", features = ["all_loaders"] }
+
+# Workspace dependencies
+sdtm-model = { path = "../sdtm-model" }
+sdtm-standards = { path = "../sdtm-standards" }
+sdtm-ingest = { path = "../sdtm-ingest" }
+sdtm-map = { path = "../sdtm-map" }
+sdtm-core = { path = "../sdtm-core" }
+sdtm-validate = { path = "../sdtm-validate" }
+sdtm-report = { path = "../sdtm-report" }
+
+# Common dependencies
+anyhow.workspace = true
+polars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+chrono.workspace = true
+
+# GUI-specific
+rfd = "0.16.0"  # Native file dialogs
+lru = "0.16.2"  # LRU cache
+
+[lints]
+workspace = true

@@ -1603,79 +1603,78 @@ All color combinations meet WCAG 2.1 AA (4.5:1 for normal text, 3:1 for large):
 
 ## Migration Strategy
 
-### Phase 1: Foundation
+### Phase 1: Foundation ✅ IN PROGRESS
 
 **Goal:** Set up infrastructure
 
-1. Create `sdtm-gui` crate
-    - Set up eframe application structure
-    - Define `AppState`, `StudyState`, `DomainState`
-    - Implement undo/redo stack
-    - Implement basic navigation (Home ↔ Domain Editor ↔ Export)
+**Status:**
+- [x] Create `sdtm-gui` crate with egui 0.33.3
+- [x] Set up eframe application structure
+- [x] Define `AppState`, `StudyState`, `DomainState`
+- [ ] Implement undo/redo stack
+- [x] Implement basic navigation (Home ↔ Domain Editor ↔ Export)
+- [x] Replace `sdtm-cli` with `sdtm-gui` in workspace
 
-**Deliverable:** Empty GUI shell that compiles and runs
+**Deliverable:** Empty GUI shell that compiles and runs ✅
 
-### Phase 2: Extract Core Functions
+### Phase 2: Extract Core Functions ⏳ NOT STARTED
 
 **Goal:** Refactor `sdtm-core` into standalone functions
 
-1. Extract from `processor.rs`:
-    - `apply_usubjid_prefix`
-    - `assign_sequence_numbers`
-    - `normalize_ct_column`
-
-2. Keep `domain_processors/` as-is (pure business logic)
-
-3. Implement `ProcessingService` in `sdtm-gui`
+**Status:**
+- [ ] Extract `apply_usubjid_prefix` from `processor.rs`
+- [ ] Extract `assign_sequence_numbers` from `processor.rs`
+- [ ] Extract `normalize_ct_column` from `processor.rs`
+- [ ] Keep `domain_processors/` as-is (pure business logic)
+- [ ] Implement `ProcessingService` in `sdtm-gui`
 
 **Deliverable:** Core logic is modular and testable
 
-### Phase 3: Mapping Service
+### Phase 3: Mapping Service ⏳ NOT STARTED
 
 **Goal:** Make mapping work independently
 
-1. Refactor `sdtm-map`:
-    - `suggest_column_mappings()` - pure suggestions
-    - `apply_single_mapping()` - apply one mapping
-    - `preview_mapping()` - sample rows
-
-2. Implement `MappingService` in `sdtm-gui`
-
-3. Build Mapping tab in GUI
+**Status:**
+- [ ] Refactor `sdtm-map` to have `suggest_column_mappings()` (pure suggestions)
+- [ ] Add `apply_single_mapping()` to apply one mapping
+- [ ] Add `preview_mapping()` for sample rows
+- [ ] Implement `MappingService` in `sdtm-gui`
+- [ ] Build Mapping tab in GUI
 
 **Deliverable:** Can map domains interactively
 
-### Phase 4: Validation & Transforms
+### Phase 4: Validation & Transforms ⏳ NOT STARTED
 
 **Goal:** Real-time validation and configurable transforms
 
-1. Enhance `sdtm-validate`:
-    - `validate_variable_values()` for incremental checks
-    - `preview_ct_mapping()` for user confirmation
-
-2. Implement Transform tab
-
-3. Build Validation tab in GUI
+**Status:**
+- [ ] Enhance `sdtm-validate` with `validate_variable_values()` for incremental checks
+- [ ] Add `preview_ct_mapping()` for user confirmation
+- [ ] Implement Transform tab
+- [ ] Build Validation tab in GUI
 
 **Deliverable:** Interactive validation with fix suggestions
 
-### Phase 5: Processing & Preview
+### Phase 5: Processing & Preview ⏳ NOT STARTED
 
 **Goal:** Show final output with all transforms applied
 
-1. Complete `ProcessingService`
-2. Handle SUPPQUAL user selection
-3. Implement Preview & SUPP tabs
+**Status:**
+- [ ] Complete `ProcessingService`
+- [ ] Handle SUPPQUAL user selection
+- [ ] Implement Preview tab
+- [ ] Implement SUPP tab
 
 **Deliverable:** Full domain processing visible
 
-### Phase 6: Export & Polish
+### Phase 6: Export & Polish ⏳ NOT STARTED
 
 **Goal:** Export functionality and UX refinement
 
-1. Enhance `sdtm-report` for selective export
-2. Implement Export screen
-3. Polish UI (keyboard shortcuts, toasts, help)
+**Status:**
+- [ ] Enhance `sdtm-report` for selective export
+- [ ] Implement Export screen
+- [ ] Polish UI (keyboard shortcuts, toasts, help)
 
 **Deliverable:** Production-ready GUI
 
