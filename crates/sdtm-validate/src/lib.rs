@@ -18,6 +18,8 @@
 //! - Chapter 10: Controlled Terminology
 //! - Appendix C: Validation Rules
 
+pub mod types;
+
 use polars::prelude::{AnyValue, DataFrame, DataType as PolarsDataType};
 use regex::Regex;
 use sdtm_ingest::any_to_string;
@@ -29,6 +31,8 @@ use sdtm_model::{
 };
 use std::collections::{BTreeSet, HashSet};
 use std::sync::LazyLock;
+
+pub use types::{CheckType, Severity, ValidationIssue, ValidationReport};
 
 /// ISO 8601 date patterns per SDTMIG Chapter 7.
 /// Supports: YYYY, YYYY-MM, YYYY-MM-DD, YYYY-MM-DDTHH:MM:SS

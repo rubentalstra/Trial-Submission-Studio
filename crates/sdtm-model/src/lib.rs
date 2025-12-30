@@ -10,7 +10,6 @@
 //!
 //! # Modules
 //!
-//! - [`conformance`] - Validation severity levels and reports
 //! - [`ct`] - Controlled Terminology model (codelists, terms, catalogs)
 //! - [`domain`] - Domain and variable definitions
 //! - [`error`] - Error types for SDTM processing
@@ -18,7 +17,6 @@
 //! - [`p21`] - Pinnacle 21 validation rule types
 //! - [`processing`] - Request/response types for study processing
 
-pub mod conformance;
 pub mod ct;
 pub mod domain;
 pub mod lookup;
@@ -27,7 +25,6 @@ pub mod options;
 pub mod p21;
 pub mod processing;
 
-pub use conformance::{CheckType, Severity, ValidationIssue, ValidationReport};
 pub use ct::{Codelist, ResolvedCodelist, Term, TerminologyCatalog, TerminologyRegistry};
 pub use domain::{DatasetClass, Domain, Variable, VariableType};
 pub use lookup::CaseInsensitiveSet;
