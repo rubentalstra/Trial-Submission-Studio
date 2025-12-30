@@ -4,7 +4,7 @@ members = [
     "crates/sdtm-ingest",
     "crates/sdtm-map",
     "crates/sdtm-model",
-    "crates/sdtm-report",
+    "crates/sdtm-output",
     "crates/sdtm-standards",
     "crates/sdtm-transform",
     "crates/sdtm-validate",

@@ -23,7 +23,7 @@ sdtm-ingest = { path = "../sdtm-ingest" }
 sdtm-map = { path = "../sdtm-map" }
 sdtm-transform = { path = "../sdtm-transform" }
 sdtm-validate = { path = "../sdtm-validate" }
-sdtm-report = { path = "../sdtm-report" }
+# sdtm-output = { path = "../sdtm-output" }  # TODO: Wire up when export is implemented
 
 # Common dependencies
 anyhow.workspace = true

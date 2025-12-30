@@ -24,10 +24,10 @@ use sdtm_ingest::any_to_string;
 use sdtm_model::ct::{Codelist, ResolvedCodelist, TerminologyRegistry};
 use sdtm_model::p21::rule_ids;
 use sdtm_model::{
-    CaseInsensitiveSet, CheckType, Domain, OutputFormat, Severity, ValidationIssue,
-    ValidationReport, Variable, VariableType,
+    CaseInsensitiveSet, CheckType, Domain, Severity, ValidationIssue, ValidationReport, Variable,
+    VariableType,
 };
-use std::collections::{BTreeMap, BTreeSet, HashSet};
+use std::collections::{BTreeSet, HashSet};
 use std::sync::LazyLock;
 
 /// ISO 8601 date patterns per SDTMIG Chapter 7.
@@ -41,45 +41,6 @@ static ISO8601_DATE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
 
 /// Known date/time variable name suffixes that require ISO 8601 validation.
 const DATE_SUFFIXES: &[&str] = &["DTC", "DTM", "DT", "TM", "STDTC", "ENDTC", "STDT", "ENDT"];
-
-/// Decision about whether to block strict output formats based on validation errors.
-#[derive(Debug, Clone, Default)]
-pub struct GatingDecision {
-    /// Domains that have blocking validation errors.
-    pub blocking_domains: Vec<String>,
-}
-
-impl GatingDecision {
-    /// Returns true if strict outputs should be blocked.
-    pub fn blocks_output(&self) -> bool {
-        !self.blocking_domains.is_empty()
-    }
-}
-
-pub fn strict_outputs_requested(output_formats: &[OutputFormat]) -> bool {
-    output_formats
-        .iter()
-        .any(|format| matches!(format, OutputFormat::Xpt))
-}
-
-pub fn gate_strict_outputs(
-    output_formats: &[OutputFormat],
-    fail_on_conformance_errors: bool,
-    reports: &[ValidationReport],
-) -> GatingDecision {
-    if !fail_on_conformance_errors || !strict_outputs_requested(output_formats) {
-        return GatingDecision::default();
-    }
-    let mut blocking = BTreeSet::new();
-    for report in reports {
-        if report.has_errors() {
-            blocking.insert(report.domain_code.clone());
-        }
-    }
-    GatingDecision {
-        blocking_domains: blocking.into_iter().collect(),
-    }
-}
 
 /// Validate a single domain against SDTM conformance rules.
 ///
@@ -135,26 +96,6 @@ pub fn validate_domain(
         domain_code: domain.code.clone(),
         issues,
     }
-}
-
-/// Validate multiple domains.
-pub fn validate_domains(
-    domains: &[Domain],
-    frames: &[(&str, &DataFrame)],
-    ct_registry: Option<&TerminologyRegistry>,
-) -> Vec<ValidationReport> {
-    let mut domain_map: BTreeMap<String, &Domain> = BTreeMap::new();
-    for domain in domains {
-        domain_map.insert(domain.code.to_uppercase(), domain);
-    }
-    let mut report_map: BTreeMap<String, ValidationReport> = BTreeMap::new();
-    for (domain_code, df) in frames {
-        let code = domain_code.to_uppercase();
-        if let Some(domain) = domain_map.get(&code) {
-            report_map.insert(code.clone(), validate_domain(domain, df, ct_registry));
-        }
-    }
-    report_map.into_values().collect()
 }
 
 // =============================================================================

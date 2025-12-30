@@ -1,8 +1,9 @@
 [package]
-name = "sdtm-report"
+name = "sdtm-output"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+description = "SDTM output generation: XPT, Dataset-XML, Define-XML, SAS"
 
 [lints]
 workspace = true

@@ -4510,7 +4510,6 @@ dependencies = [
  "sdtm-ingest",
  "sdtm-map",
  "sdtm-model",
- "sdtm-report",
  "sdtm-standards",
  "sdtm-transform",
  "sdtm-validate",
@@ -4552,7 +4551,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "sdtm-report"
+name = "sdtm-output"
 version = "0.1.0"
 dependencies = [
  "anyhow",

@@ -22,7 +22,6 @@
 pub mod conformance;
 pub mod ct;
 pub mod domain;
-pub mod error;
 pub mod lookup;
 pub mod mapping;
 pub mod metadata;
@@ -33,7 +32,6 @@ pub mod processing;
 pub use conformance::{CheckType, Severity, ValidationIssue, ValidationReport};
 pub use ct::{Codelist, ResolvedCodelist, Term, TerminologyCatalog, TerminologyRegistry};
 pub use domain::{DatasetClass, Domain, Variable, VariableType};
-pub use error::{Result, SdtmError};
 pub use lookup::CaseInsensitiveSet;
 pub use mapping::{ColumnHint, MappingConfig, MappingSuggestion};
 pub use p21::{P21Category, P21Rule, P21RuleRegistry, P21Severity};

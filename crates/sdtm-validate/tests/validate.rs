@@ -2,10 +2,10 @@
 
 use polars::prelude::{Column, DataFrame};
 
+use sdtm_model::Severity;
 use sdtm_model::p21::rule_ids;
-use sdtm_model::{CheckType, OutputFormat, Severity, ValidationIssue, ValidationReport};
 use sdtm_standards::{load_default_ct_registry, load_default_sdtm_ig_domains};
-use sdtm_validate::{gate_strict_outputs, strict_outputs_requested, validate_domain};
+use sdtm_validate::validate_domain;
 
 #[test]
 fn ct_invalid_value_emits_issue() {
@@ -45,57 +45,4 @@ fn ct_invalid_value_emits_issue() {
     };
     assert_eq!(issue.code, expected_code);
     assert_eq!(issue.severity, expected_severity);
-}
-
-#[test]
-fn strict_output_gate_blocks_on_errors() {
-    let report = ValidationReport {
-        domain_code: "AE".to_string(),
-        issues: vec![ValidationIssue {
-            check_type: Some(CheckType::RequiredVariableEmpty),
-            code: "SD0002".to_string(),
-            message: "missing".to_string(),
-            severity: Severity::Error,
-            variable: Some("AETERM".to_string()),
-            count: Some(1),
-            ct_source: None,
-            observed_values: None,
-            allowed_values: None,
-            allowed_count: None,
-            ct_examples: None,
-        }],
-    };
-    let decision = gate_strict_outputs(&[OutputFormat::Xpt], true, &[report]);
-    assert!(decision.blocks_output());
-    assert_eq!(decision.blocking_domains, vec!["AE".to_string()]);
-}
-
-#[test]
-fn strict_output_gate_ignored_without_strict_formats() {
-    let report = ValidationReport {
-        domain_code: "AE".to_string(),
-        issues: vec![ValidationIssue {
-            check_type: Some(CheckType::RequiredVariableEmpty),
-            code: "SD0002".to_string(),
-            message: "missing".to_string(),
-            severity: Severity::Error,
-            variable: Some("AETERM".to_string()),
-            count: Some(1),
-            ct_source: None,
-            observed_values: None,
-            allowed_values: None,
-            allowed_count: None,
-            ct_examples: None,
-        }],
-    };
-    let decision = gate_strict_outputs(&[OutputFormat::Xml], true, &[report]);
-    assert!(!decision.blocks_output());
-    assert!(decision.blocking_domains.is_empty());
-}
-
-#[test]
-fn strict_outputs_requested_only_for_xpt() {
-    assert!(strict_outputs_requested(&[OutputFormat::Xpt]));
-    assert!(!strict_outputs_requested(&[OutputFormat::Xml]));
-    assert!(!strict_outputs_requested(&[OutputFormat::Sas]));
 }
