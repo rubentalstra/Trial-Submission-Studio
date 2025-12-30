@@ -2,6 +2,7 @@
 //!
 //! Colors, spacing, and visual constants for the application.
 
+#[allow(dead_code)]
 use egui::Color32;
 
 /// Light mode colors

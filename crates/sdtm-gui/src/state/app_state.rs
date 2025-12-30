@@ -88,8 +88,6 @@ pub struct Preferences {
     pub dark_mode: bool,
     /// Recent study folders
     pub recent_studies: Vec<std::path::PathBuf>,
-    /// Maximum recent studies to remember
-    pub max_recent: usize,
 }
 
 impl Default for Preferences {
@@ -97,7 +95,6 @@ impl Default for Preferences {
         Self {
             dark_mode: false,
             recent_studies: Vec::new(),
-            max_recent: 10,
         }
     }
 }

@@ -12,8 +12,8 @@ pub mod study_metadata;
 pub mod polars_utils;
 
 pub use csv_table::{
-    CsvSchema, build_column_hints, looks_like_label, looks_like_variable_code, parse_csv_line,
-    read_csv_schema, read_csv_table,
+    CsvSchema, build_column_hints, get_sample_values, looks_like_label, looks_like_variable_code,
+    parse_csv_line, read_csv_schema, read_csv_table,
 };
 pub use discovery::{discover_domain_files, list_csv_files};
 pub use study_metadata::{

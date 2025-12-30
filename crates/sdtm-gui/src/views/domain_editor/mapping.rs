@@ -2,7 +2,7 @@
 //!
 //! Interactive column-to-variable mapping with suggestions and CT display.
 
-use crate::services::{MappingService, MappingState, VariableMappingStatus};
+use crate::services::{MappingService, MappingState, VariableMappingStatus, VariableMappingStatusIcon};
 use crate::state::{AppState, DomainStatus};
 use crate::theme::{colors, spacing};
 use egui::{RichText, Ui};
@@ -396,7 +396,7 @@ fn show_variable_detail(
         let status = ms.variable_status(&var_name);
 
         let (source_info, source_col_label, confidence, available_cols_sorted) = if is_auto {
-            (None, None, None, Vec::new())
+            (None, None, None, Vec::<(String, Option<String>, f32)>::new())
         } else {
             // Get available columns with confidence scores and labels for this variable
             // Tuple: (column_id, optional_label, confidence)

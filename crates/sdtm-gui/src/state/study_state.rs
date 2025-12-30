@@ -4,7 +4,7 @@ use super::TransformState;
 use crate::services::MappingState;
 use polars::prelude::DataFrame;
 use sdtm_ingest::StudyMetadata;
-use sdtm_model::{MappingConfig, ValidationReport};
+use sdtm_model::ValidationReport;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
@@ -46,24 +46,6 @@ impl StudyState {
             .map(|item| item.label.as_str())
     }
 
-    /// Get format name (codelist) for a source column
-    pub fn get_column_format(&self, column_id: &str) -> Option<&str> {
-        self.metadata
-            .as_ref()?
-            .items
-            .get(&column_id.to_uppercase())
-            .and_then(|item| item.format_name.as_deref())
-    }
-
-    /// Look up a code value in a codelist to get the text
-    pub fn lookup_codelist_value(&self, format_name: &str, _code: &str) -> Option<String> {
-        let metadata = self.metadata.as_ref()?;
-        let _codelist = metadata.codelists.get(&format_name.to_uppercase())?;
-        // CodeList has a private lookup method, but we stored values publicly
-        // For now, just return None - need to expose lookup from sdtm-ingest
-        None // TODO: Expose CodeList::lookup_text as public
-    }
-
     /// Get a domain by code
     pub fn get_domain(&self, code: &str) -> Option<&DomainState> {
         self.domains.get(code)
@@ -84,8 +66,6 @@ impl StudyState {
 
 /// State for a single domain
 pub struct DomainState {
-    /// Domain code (e.g., "DM", "AE")
-    pub code: String,
     /// Path to source CSV file
     pub source_file: PathBuf,
     /// Source data as DataFrame
@@ -96,8 +76,6 @@ pub struct DomainState {
     pub mapping_state: Option<MappingState>,
     /// Transform display state (read-only, shows what will be applied)
     pub transform_state: Option<TransformState>,
-    /// Finalized column mapping configuration
-    pub mapping: Option<MappingConfig>,
     /// Validation results
     pub validation: Option<ValidationReport>,
     /// Selected validation issue index (for detail view)
@@ -108,15 +86,13 @@ pub struct DomainState {
 
 impl DomainState {
     /// Create a new domain state
-    pub fn new(code: String, source_file: PathBuf, source_data: DataFrame) -> Self {
+    pub fn new(source_file: PathBuf, source_data: DataFrame) -> Self {
         Self {
-            code,
             source_file,
             source_data,
             status: DomainStatus::NotStarted,
             mapping_state: None,
             transform_state: None,
-            mapping: None,
             validation: None,
             validation_selected_idx: None,
             preview_data: None,
@@ -153,6 +129,7 @@ impl DomainState {
 
 /// Status of domain processing
 #[derive(Default, Clone, Copy, PartialEq)]
+#[allow(dead_code)] // Variants used in pattern matching, constructed when features are implemented
 pub enum DomainStatus {
     /// Not yet started
     #[default]
@@ -170,18 +147,6 @@ pub enum DomainStatus {
 }
 
 impl DomainStatus {
-    /// Get display label
-    pub fn label(&self) -> &'static str {
-        match self {
-            Self::NotStarted => "Not Started",
-            Self::Loading => "Loading...",
-            Self::MappingInProgress => "Mapping...",
-            Self::MappingComplete => "Mapped",
-            Self::ValidationFailed => "Errors",
-            Self::ReadyForExport => "Ready",
-        }
-    }
-
     /// Get status icon (phosphor icon)
     pub fn icon(&self) -> &'static str {
         match self {

@@ -281,3 +281,45 @@ pub fn build_column_hints(df: &DataFrame) -> BTreeMap<String, ColumnHint> {
     }
     hints
 }
+
+/// Get sample unique values from a DataFrame column.
+///
+/// Returns up to `limit` unique non-empty values from the specified column.
+/// Useful for previewing data or building UI displays.
+pub fn get_sample_values(df: &DataFrame, column: &str, limit: usize) -> Vec<String> {
+    let Ok(col) = df.column(column) else {
+        return Vec::new();
+    };
+
+    let mut samples = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+
+    // Try to get unique sample values
+    if let Ok(str_col) = col.str() {
+        for i in 0..df.height().min(limit * 3) {
+            if let Some(val) = str_col.get(i) {
+                if !val.is_empty() && seen.insert(val.to_string()) {
+                    samples.push(val.to_string());
+                    if samples.len() >= limit {
+                        break;
+                    }
+                }
+            }
+        }
+    } else {
+        // For non-string columns, format as string using Display
+        for i in 0..df.height().min(limit) {
+            if let Ok(val) = col.get(i) {
+                let formatted = format!("{val}");
+                if formatted != "null" && !formatted.is_empty() && seen.insert(formatted.clone()) {
+                    samples.push(formatted);
+                    if samples.len() >= limit {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    samples
+}

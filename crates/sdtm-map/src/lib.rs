@@ -32,9 +32,13 @@
 //! # Example
 //!
 //! ```ignore
-//! use sdtm_map::{MappingEngine, ConfidenceLevel};
+//! use sdtm_map::{MappingEngine, MappingState, ConfidenceLevel};
 //! use std::collections::BTreeMap;
 //!
+//! // Create state directly from domain
+//! let state = MappingState::from_domain(domain, "STUDY01", &columns, hints, 0.6);
+//!
+//! // Or use the engine directly
 //! let engine = MappingEngine::new(domain, 0.6, BTreeMap::new());
 //! let result = engine.suggest(&columns);
 //!
@@ -45,6 +49,7 @@
 pub mod engine;
 pub mod patterns;
 pub mod repository;
+pub mod state;
 pub mod utils;
 
 pub use engine::{ConfidenceLevel, ConfidenceThresholds, MappingEngine, MappingResult};
@@ -52,4 +57,5 @@ pub use patterns::{build_synonym_map, build_variable_patterns, match_synonyms};
 pub use repository::{
     MappingConfigLoader, MappingMetadata, MappingRepository, StoredMappingConfig,
 };
+pub use state::{MappingState, MappingSummary, VariableMappingStatus};
 pub use utils::{merge_mapping_configs, merge_mappings};

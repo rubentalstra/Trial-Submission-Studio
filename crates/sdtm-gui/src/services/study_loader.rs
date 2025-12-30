@@ -75,8 +75,7 @@ impl StudyLoader {
                             df.width()
                         );
 
-                        let domain_state =
-                            DomainState::new(domain_code.clone(), file_path.clone(), df);
+                        let domain_state = DomainState::new(file_path.clone(), df);
                         study.domains.insert(domain_code, domain_state);
                     }
                     Err(e) => {
