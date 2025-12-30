@@ -12,6 +12,7 @@ workspace = true
 anyhow.workspace = true
 chrono.workspace = true
 polars.workspace = true
+serde.workspace = true
 sdtm-ingest = { path = "../sdtm-ingest" }
 sdtm-map = { path = "../sdtm-map" }
 sdtm-model = { path = "../sdtm-model" }

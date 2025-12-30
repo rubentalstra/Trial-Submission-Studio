@@ -4584,6 +4584,7 @@ dependencies = [
  "sdtm-ingest",
  "sdtm-map",
  "sdtm-model",
+ "serde",
 ]
 
 [[package]]

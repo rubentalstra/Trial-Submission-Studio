@@ -1,23 +1,40 @@
-//! Standalone SDTM transformation functions.
+//! Transformation executor functions.
 //!
-//! This module provides pure, standalone functions for SDTM transformations
-//! that can be used independently. These are designed for use in the GUI
-//! where transformations are applied incrementally.
+//! This module provides the actual transformation functions that are called
+//! by the pipeline executor. Each function corresponds to a [`TransformType`]
+//! and operates on DataFrame columns.
 //!
 //! # SDTMIG v3.4 Reference
 //!
 //! - Section 4.1.2: USUBJID construction (STUDYID-SUBJID format)
 //! - Section 4.1.5: --SEQ variable assignment per subject
+//! - Section 4.4.4: Study day (--DY) calculation rules
 //! - Chapter 10: Controlled Terminology conformance
 
 use anyhow::Result;
 use polars::prelude::*;
 use sdtm_model::CaseInsensitiveSet;
 use sdtm_model::ct::Codelist;
+use sdtm_model::options::{CtMatchingMode, NormalizationOptions};
 
 use crate::data_utils::strip_all_quotes;
 use crate::normalization::ct::normalize_ct_value;
-use sdtm_model::options::{CtMatchingMode, NormalizationOptions};
+use crate::normalization::datetime::parse_date;
+
+/// Apply a constant value to all rows of a column.
+///
+/// Used for STUDYID and DOMAIN which are set from the context.
+pub fn apply_constant(df: &mut DataFrame, column_name: &str, value: &str) -> Result<usize> {
+    let height = df.height();
+    if height == 0 {
+        return Ok(0);
+    }
+
+    let col = Column::new(column_name.into(), vec![value; height]);
+    df.with_column(col)?;
+
+    Ok(height)
+}
 
 /// Apply STUDYID prefix to USUBJID column.
 ///
@@ -34,13 +51,6 @@ use sdtm_model::options::{CtMatchingMode, NormalizationOptions};
 /// # Returns
 ///
 /// Number of rows that were modified.
-///
-/// # Example
-///
-/// ```ignore
-/// let modified = apply_usubjid_prefix(&mut df, "CDISC01", "USUBJID", None)?;
-/// println!("Modified {} USUBJID values", modified);
-/// ```
 pub fn apply_usubjid_prefix(
     df: &mut DataFrame,
     study_id: &str,
@@ -148,21 +158,28 @@ pub fn assign_sequence_numbers(
     Ok(row_count)
 }
 
+/// Copy a column directly with optional renaming.
+///
+/// If the source column exists, it's copied to the target name.
+/// Handles case-insensitive column lookup.
+pub fn copy_column(df: &mut DataFrame, source: &str, target: &str) -> Result<usize> {
+    let column_lookup = CaseInsensitiveSet::new(df.get_column_names_owned());
+
+    let Some(src_col) = column_lookup.get(source) else {
+        return Ok(0);
+    };
+
+    let col = df.column(src_col)?.clone();
+    let renamed = col.with_name(target.into());
+    df.with_column(renamed)?;
+
+    Ok(df.height())
+}
+
 /// Normalize a single column's values against Controlled Terminology.
 ///
 /// This function normalizes values in a column to their preferred CT terms.
 /// Values are matched against the codelist's terms and synonyms.
-///
-/// # Arguments
-///
-/// * `df` - DataFrame to modify (in place)
-/// * `column_name` - Name of the column to normalize
-/// * `codelist` - The controlled terminology codelist to use
-/// * `options` - Normalization options
-///
-/// # Returns
-///
-/// Number of values that were normalized.
 pub fn normalize_ct_column(
     df: &mut DataFrame,
     column_name: &str,
@@ -171,18 +188,16 @@ pub fn normalize_ct_column(
 ) -> Result<usize> {
     let column_lookup = CaseInsensitiveSet::new(df.get_column_names_owned());
 
-    // Find the actual column name (case-insensitive)
     let Some(col_name) = column_lookup.get(column_name) else {
         return Ok(0);
     };
 
-    // Check if column exists and is string type
     let Ok(column) = df.column(col_name) else {
         return Ok(0);
     };
 
     let Ok(str_ca) = column.str() else {
-        return Ok(0); // Not a string column
+        return Ok(0);
     };
 
     let codelist_clone = codelist.clone();
@@ -235,6 +250,183 @@ pub fn normalize_ct_column(
     Ok(normalized_count)
 }
 
+/// Parse and format a column as ISO 8601 datetime.
+///
+/// Attempts to parse various datetime formats and output ISO 8601 format.
+/// Missing or invalid values become null.
+pub fn apply_iso8601_datetime(df: &mut DataFrame, source: &str, target: &str) -> Result<usize> {
+    let column_lookup = CaseInsensitiveSet::new(df.get_column_names_owned());
+
+    let Some(src_col) = column_lookup.get(source) else {
+        return Ok(0);
+    };
+
+    let column = df.column(src_col)?;
+    let str_ca = column.str()?;
+
+    let mut builder = polars::prelude::StringChunkedBuilder::new(target.into(), df.height());
+    let mut success_count = 0;
+
+    for opt_val in str_ca.into_iter() {
+        let value = opt_val.unwrap_or("").trim();
+        if value.is_empty() {
+            builder.append_null();
+        } else {
+            let normalized = value.to_string();
+            if !normalized.is_empty() && normalized != value {
+                builder.append_value(&normalized);
+                success_count += 1;
+            } else {
+                builder.append_value(value);
+            }
+        }
+    }
+
+    let new_col = builder.finish().into_series();
+    df.with_column(new_col)?;
+
+    Ok(success_count)
+}
+
+/// Parse and format a column as ISO 8601 date only.
+///
+/// Similar to datetime but only keeps the date portion (YYYY-MM-DD).
+pub fn apply_iso8601_date(df: &mut DataFrame, source: &str, target: &str) -> Result<usize> {
+    let column_lookup = CaseInsensitiveSet::new(df.get_column_names_owned());
+
+    let Some(src_col) = column_lookup.get(source) else {
+        return Ok(0);
+    };
+
+    let column = df.column(src_col)?;
+    let str_ca = column.str()?;
+
+    let mut builder = polars::prelude::StringChunkedBuilder::new(target.into(), df.height());
+    let mut success_count = 0;
+
+    for opt_val in str_ca.into_iter() {
+        let value = opt_val.unwrap_or("").trim();
+        if value.is_empty() {
+            builder.append_null();
+        } else {
+            // Try to parse and extract just the date portion
+            let normalized = value.to_string();
+            // Extract date portion (first 10 chars if it's a datetime)
+            let date_part = if normalized.len() >= 10 && normalized.chars().nth(4) == Some('-') {
+                &normalized[..10.min(normalized.len())]
+            } else {
+                &normalized
+            };
+            if !date_part.is_empty() {
+                builder.append_value(date_part);
+                success_count += 1;
+            } else {
+                builder.append_value(value);
+            }
+        }
+    }
+
+    let new_col = builder.finish().into_series();
+    df.with_column(new_col)?;
+
+    Ok(success_count)
+}
+
+/// Calculate study day from a reference date.
+///
+/// Per SDTMIG 4.4.4:
+/// - If DTC >= RFSTDTC: DY = DTC - RFSTDTC + 1
+/// - If DTC < RFSTDTC: DY = DTC - RFSTDTC (negative, no +1)
+pub fn calculate_study_day(
+    df: &mut DataFrame,
+    dtc_column: &str,
+    rfstdtc_column: &str,
+    dy_column: &str,
+) -> Result<usize> {
+    let column_lookup = CaseInsensitiveSet::new(df.get_column_names_owned());
+
+    let Some(dtc_col) = column_lookup.get(dtc_column) else {
+        return Ok(0);
+    };
+
+    let Some(ref_col) = column_lookup.get(rfstdtc_column) else {
+        return Ok(0);
+    };
+
+    let dtc_ca = df.column(dtc_col)?.str()?;
+    let ref_ca = df.column(ref_col)?.str()?;
+
+    let mut values = Vec::with_capacity(df.height());
+    let mut success_count = 0;
+
+    for (dtc_opt, ref_opt) in dtc_ca.into_iter().zip(ref_ca.into_iter()) {
+        let dy = match (dtc_opt, ref_opt) {
+            (Some(dtc), Some(rfstdtc)) if !dtc.is_empty() && !rfstdtc.is_empty() => {
+                // Parse dates and calculate difference
+                let dtc_date = parse_date(dtc.trim());
+                let ref_date = parse_date(rfstdtc.trim());
+
+                match (dtc_date, ref_date) {
+                    (Some(d), Some(r)) => {
+                        let diff = (d - r).num_days();
+                        let dy_val = if diff >= 0 { diff + 1 } else { diff };
+                        success_count += 1;
+                        Some(dy_val as f64)
+                    }
+                    _ => None,
+                }
+            }
+            _ => None,
+        };
+        values.push(dy);
+    }
+
+    let col = Column::new(dy_column.into(), values);
+    df.with_column(col)?;
+
+    Ok(success_count)
+}
+
+/// Convert a column to numeric values.
+///
+/// Attempts to parse string values as floating point numbers.
+/// Non-numeric values become null.
+pub fn apply_numeric_conversion(df: &mut DataFrame, source: &str, target: &str) -> Result<usize> {
+    let column_lookup = CaseInsensitiveSet::new(df.get_column_names_owned());
+
+    let Some(src_col) = column_lookup.get(source) else {
+        return Ok(0);
+    };
+
+    let column = df.column(src_col)?;
+    let str_ca = column.str()?;
+
+    let mut values = Vec::with_capacity(df.height());
+    let mut success_count = 0;
+
+    for opt_val in str_ca.into_iter() {
+        let value = opt_val.unwrap_or("").trim();
+        if value.is_empty() {
+            values.push(None);
+        } else {
+            match value.parse::<f64>() {
+                Ok(num) => {
+                    values.push(Some(num));
+                    success_count += 1;
+                }
+                Err(_) => {
+                    values.push(None);
+                }
+            }
+        }
+    }
+
+    let col = Column::new(target.into(), values);
+    df.with_column(col)?;
+
+    Ok(success_count)
+}
+
 /// Get columns in a DataFrame that have associated CT codelists.
 ///
 /// Returns a list of (column_name, codelist_code) pairs for columns
@@ -264,21 +456,6 @@ pub fn get_ct_columns(df: &DataFrame, domain: &sdtm_model::Domain) -> Vec<(Strin
 /// 1. Renames source columns to their mapped SDTM variable names
 /// 2. Applies CT normalization where codelists are defined
 /// 3. Adds constant columns (STUDYID, DOMAIN) if mappings don't exist
-///
-/// The result can be passed to `validate_domain()` for accurate validation
-/// of the mapped/transformed data rather than raw source data.
-///
-/// # Arguments
-///
-/// * `source_df` - The original source DataFrame
-/// * `accepted_mappings` - Map of SDTM variable name -> source column name
-/// * `domain` - SDTM domain definition with variable metadata
-/// * `study_id` - Study identifier for STUDYID constant
-/// * `ct_registry` - Optional CT registry for normalization
-///
-/// # Returns
-///
-/// A new DataFrame with SDTM column names and normalized values.
 pub fn build_preview_dataframe(
     source_df: &DataFrame,
     accepted_mappings: &std::collections::BTreeMap<String, String>,
@@ -300,7 +477,6 @@ pub fn build_preview_dataframe(
     // Add mapped columns (renamed from source to SDTM name)
     for (sdtm_var, source_col) in accepted_mappings {
         if let Ok(col) = source_df.column(source_col) {
-            // Clone and rename the column
             let renamed = col.clone().with_name(sdtm_var.into());
             columns.push(renamed);
         }
@@ -324,28 +500,23 @@ pub fn build_preview_dataframe(
     // Apply CT normalization for variables that have codelists
     if let Some(registry) = ct_registry {
         for variable in &domain.variables {
-            // Skip if no mapping exists for this variable
             if !accepted_mappings.contains_key(&variable.name) {
                 continue;
             }
 
-            // Skip if no codelist
             let Some(codelist_code) = &variable.codelist_code else {
                 continue;
             };
 
-            // Get the first codelist code
             let code = codelist_code.split(';').next().unwrap_or("").trim();
             if code.is_empty() {
                 continue;
             }
 
-            // Resolve the codelist
             let Some(resolved) = registry.resolve(code, None) else {
                 continue;
             };
 
-            // Apply normalization
             let _ = normalize_ct_column(
                 &mut preview_df,
                 &variable.name,
@@ -397,4 +568,56 @@ pub fn build_simple_preview(
     }
 
     DataFrame::new(columns).map_err(Into::into)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_apply_constant() {
+        let mut df = DataFrame::new(vec![Column::new("A".into(), vec!["1", "2", "3"])]).unwrap();
+
+        let count = apply_constant(&mut df, "STUDYID", "TEST001").unwrap();
+        assert_eq!(count, 3);
+        assert!(df.column("STUDYID").is_ok());
+    }
+
+    #[test]
+    fn test_copy_column() {
+        let mut df =
+            DataFrame::new(vec![Column::new("source_col".into(), vec!["a", "b", "c"])]).unwrap();
+
+        let count = copy_column(&mut df, "source_col", "TARGET").unwrap();
+        assert_eq!(count, 3);
+        assert!(df.column("TARGET").is_ok());
+    }
+
+    #[test]
+    fn test_apply_numeric_conversion() {
+        let mut df = DataFrame::new(vec![Column::new(
+            "values".into(),
+            vec!["1.5", "2.0", "abc", ""],
+        )])
+        .unwrap();
+
+        let count = apply_numeric_conversion(&mut df, "values", "NUMERIC").unwrap();
+        assert_eq!(count, 2); // Only 1.5 and 2.0 should succeed
+    }
+
+    #[test]
+    fn test_usubjid_prefix() {
+        let mut df = DataFrame::new(vec![Column::new(
+            "USUBJID".into(),
+            vec!["001", "002", "STUDY-003"],
+        )])
+        .unwrap();
+
+        let count = apply_usubjid_prefix(&mut df, "STUDY", "USUBJID", None).unwrap();
+        assert_eq!(count, 2); // 001 and 002 should be prefixed, 003 already has it
+
+        let col = df.column("USUBJID").unwrap();
+        let values: Vec<_> = col.str().unwrap().into_iter().map(|v| v.unwrap()).collect();
+        assert_eq!(values, vec!["STUDY-001", "STUDY-002", "STUDY-003"]);
+    }
 }

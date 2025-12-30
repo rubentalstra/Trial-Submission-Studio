@@ -139,6 +139,10 @@ pub struct Variable {
     pub core: Option<String>,
     /// NCI codelist code(s) for controlled terminology validation.
     pub codelist_code: Option<String>,
+    /// Described value domain (e.g., "ISO 8601 datetime", "ISO 8601 duration").
+    /// Used to infer transformation types for date/time/duration variables.
+    #[serde(default)]
+    pub described_value_domain: Option<String>,
     /// Variable ordering within the domain.
     #[serde(default)]
     pub order: Option<u32>,

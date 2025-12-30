@@ -84,6 +84,10 @@ fn build_domains(
                 .get("CDISC CT Codelist Code(s)")
                 .filter(|v| !v.is_empty())
                 .cloned(),
+            described_value_domain: row
+                .get("Described Value Domain(s)")
+                .filter(|v| !v.is_empty())
+                .cloned(),
             order,
         };
         grouped.entry(dataset).or_default().push(variable);

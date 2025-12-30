@@ -491,14 +491,6 @@ pub fn parse_date(value: &str) -> Option<NaiveDate> {
     }
 }
 
-/// Normalizes an ISO 8601 date/time string by trimming whitespace.
-///
-/// This function performs minimal normalization to preserve the original
-/// precision and format of the value.
-pub fn normalize_iso8601(value: &str) -> String {
-    value.trim().to_string()
-}
-
 /// Compares two ISO 8601 date/time values.
 ///
 /// Returns:
