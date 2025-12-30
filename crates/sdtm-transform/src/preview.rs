@@ -44,7 +44,7 @@ pub fn build_preview_dataframe(
     let pipeline_with_mappings = apply_mappings_to_pipeline(pipeline, mappings);
 
     // Create execution context
-    let context = TransformContext::new(study_id, &domain.code)
+    let context = TransformContext::new(study_id, &domain.name)
         .with_ct_registry(ct_registry.cloned())
         .with_mappings(mappings.clone());
 
@@ -92,7 +92,7 @@ pub fn build_preview_dataframe_with_dm(
     let reference_date = dm_df.and_then(extract_reference_date);
 
     // Create execution context
-    let context = TransformContext::new(study_id, &domain.code)
+    let context = TransformContext::new(study_id, &domain.name)
         .with_reference_date(reference_date)
         .with_ct_registry(ct_registry.cloned())
         .with_mappings(mappings.clone());
@@ -133,11 +133,9 @@ mod tests {
 
     fn create_test_domain() -> Domain {
         Domain {
-            code: "AE".to_string(),
-            description: Some("Adverse Events".to_string()),
-            class_name: Some("Events".to_string()),
-            dataset_class: None,
+            name: "AE".to_string(),
             label: Some("Adverse Events".to_string()),
+            class: Some(sdtm_model::DatasetClass::Events),
             structure: None,
             dataset_name: None,
             variables: vec![

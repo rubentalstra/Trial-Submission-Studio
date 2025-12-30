@@ -450,11 +450,9 @@ mod tests {
 
     fn create_test_domain() -> Domain {
         Domain {
-            code: "AE".to_string(),
-            description: Some("Adverse Events".to_string()),
-            class_name: Some("Events".to_string()),
-            dataset_class: None,
+            name: "AE".to_string(),
             label: Some("Adverse Events".to_string()),
+            class: Some(sdtm_model::DatasetClass::Events),
             structure: None,
             dataset_name: None,
             variables: vec![

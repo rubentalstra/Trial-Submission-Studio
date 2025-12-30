@@ -195,10 +195,8 @@ pub struct Variable {
 ///
 /// let domain = Domain {
 ///     code: "AE".to_string(),
-///     description: Some("Adverse Events".to_string()),
-///     class_name: Some("Events".to_string()),
-///     dataset_class: Some(DatasetClass::Events),
 ///     label: Some("Adverse Events".to_string()),
+///     class: Some(DatasetClass::Events),
 ///     structure: Some("One record per adverse event per subject".to_string()),
 ///     dataset_name: None,
 ///     variables: vec![],
@@ -206,21 +204,15 @@ pub struct Variable {
 /// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Domain {
-    /// Two-character domain code (e.g., "AE", "DM", "LB").
-    pub code: String,
+    /// Two-character domain name (e.g., "AE", "DM", "LB").
+    pub name: String,
 
-    /// Domain description.
-    pub description: Option<String>,
-
-    /// Raw class name from standards (e.g., "Findings", "Special-Purpose").
-    pub class_name: Option<String>,
-
-    /// Parsed dataset class enum.
-    #[serde(default)]
-    pub dataset_class: Option<DatasetClass>,
-
-    /// Human-readable domain label.
+    /// Human-readable domain label (e.g., "Adverse Events").
     pub label: Option<String>,
+
+    /// Dataset class (e.g., Events, Findings, Interventions).
+    #[serde(default)]
+    pub class: Option<DatasetClass>,
 
     /// Dataset structure description (e.g., "One record per subject").
     pub structure: Option<String>,
@@ -233,17 +225,24 @@ pub struct Domain {
 }
 
 impl Domain {
+    /// Returns the class name as a string.
+    ///
+    /// Returns the canonical class name from the dataset class enum,
+    /// or None if no class is set.
+    pub fn class_name(&self) -> Option<&'static str> {
+        self.class.map(|c| c.as_str())
+    }
+
     /// Returns true if this domain belongs to a General Observation class.
     pub fn is_general_observation(&self) -> bool {
-        self.dataset_class
+        self.class
             .map(|c| c.is_general_observation())
             .unwrap_or(false)
     }
 
     /// Returns the general observation class for this domain.
     pub fn general_observation_class(&self) -> Option<DatasetClass> {
-        self.dataset_class
-            .and_then(|c| c.general_observation_class())
+        self.class.and_then(|c| c.general_observation_class())
     }
 
     /// Return the variable name that matches a canonical SDTM name (case-insensitive).
@@ -272,7 +271,7 @@ impl Domain {
     /// Per SDTMIG v3.4 Section 4.1.7, looks for `{DOMAIN}SEQ` first,
     /// then falls back to any variable ending in "SEQ".
     pub fn infer_seq_column(&self) -> Option<&str> {
-        let expected = format!("{}SEQ", self.code);
+        let expected = format!("{}SEQ", self.name);
         if let Some(name) = self.column_name(&expected) {
             return Some(name);
         }

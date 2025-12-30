@@ -94,7 +94,7 @@ pub fn write_define_xml(
             .ok_or_else(|| anyhow!("missing domain definition for {code}"))?;
         entries.push((domain, frame));
     }
-    entries.sort_by(|a, b| a.0.code.cmp(&b.0.code));
+    entries.sort_by(|a, b| a.0.name.cmp(&b.0.name));
 
     let ct_registry = load_default_ct_registry().context("load ct registry")?;
     let mut item_defs: BTreeMap<String, ItemDefSpec> = BTreeMap::new();
@@ -214,8 +214,8 @@ pub fn write_define_xml(
         if let Some(label) = domain.label.as_ref() {
             ig.push_attribute(("def:Label", label.as_str()));
         }
-        if let Some(class_name) = domain.class_name.as_ref() {
-            ig.push_attribute(("def:Class", class_name.as_str()));
+        if let Some(class_name) = domain.class_name() {
+            ig.push_attribute(("def:Class", class_name));
         }
         if let Some(structure) = domain.structure.as_ref() {
             ig.push_attribute(("def:Structure", structure.as_str()));
@@ -338,7 +338,7 @@ fn resolve_codelist(
                     return Err(anyhow!(
                         "missing codelist {} for {}.{}",
                         raw,
-                        domain.code,
+                        domain.name,
                         variable.name
                     ));
                 }
@@ -371,7 +371,7 @@ fn resolve_codelist(
                 })
             });
 
-    let oid = format!("CL.{}.{}", domain.code, variable.name);
+    let oid = format!("CL.{}.{}", domain.name, variable.name);
     if !code_lists.contains_key(&oid) {
         let mut values = BTreeSet::new();
         let mut names = BTreeSet::new();

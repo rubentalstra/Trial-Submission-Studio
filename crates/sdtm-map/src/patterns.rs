@@ -75,7 +75,7 @@ const VARIABLE_SYNONYMS: &[(&str, &[&str])] = &[
 /// Build variable patterns including synonyms and label-based patterns.
 pub fn build_variable_patterns(domain: &Domain) -> BTreeMap<String, Vec<String>> {
     let mut patterns = BTreeMap::new();
-    let domain_prefix = domain.code.trim().to_uppercase();
+    let domain_prefix = domain.name.trim().to_uppercase();
 
     for variable in &domain.variables {
         let name = variable.name.trim().to_string();
@@ -124,7 +124,7 @@ pub fn build_variable_patterns(domain: &Domain) -> BTreeMap<String, Vec<String>>
 /// Returns a map from normalized column names/labels to potential target variables.
 pub fn build_synonym_map(domain: &Domain) -> BTreeMap<String, Vec<String>> {
     let mut synonyms = BTreeMap::new();
-    let domain_prefix = domain.code.trim().to_uppercase();
+    let domain_prefix = domain.name.trim().to_uppercase();
 
     // Add standard synonyms, filtering to those relevant for this domain
     for (pattern, targets) in VARIABLE_SYNONYMS {

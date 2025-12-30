@@ -430,7 +430,7 @@ impl MappingEngine {
     /// * `result` - The mapping result to convert
     pub fn to_config(&self, study_id: &str, result: MappingResult) -> MappingConfig {
         MappingConfig {
-            domain_code: self.domain.code.clone(),
+            domain_code: self.domain.name.clone(),
             study_id: study_id.to_string(),
             mappings: result.mappings,
             unmapped_columns: result.unmapped_columns,

@@ -31,7 +31,7 @@ pub fn write_xpt_outputs(
         let domain = domain_lookup
             .get(&code)
             .ok_or_else(|| anyhow!("missing domain definition for {code}"))?;
-        // Use frame's dataset name (from metadata) for split domains, falling back to domain.code
+        // Use frame's dataset name (from metadata) for split domains, falling back to domain.name
         let output_dataset_name = frame.dataset_name();
         let dataset = build_xpt_dataset_with_name(domain, frame, &output_dataset_name)?;
         let disk_name = output_dataset_name.to_lowercase();

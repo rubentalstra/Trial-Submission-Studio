@@ -38,7 +38,7 @@ pub fn dataset_name(domain: &Domain) -> String {
     domain
         .dataset_name
         .clone()
-        .unwrap_or_else(|| domain.code.clone())
+        .unwrap_or_else(|| domain.name.clone())
 }
 
 /// Ensure a parent directory exists for a file path.
@@ -70,22 +70,11 @@ pub fn normalize_study_id(study_id: &str) -> String {
 
 /// Check if domain is a reference domain (Trial Design or Study Reference).
 pub fn is_reference_domain(domain: &Domain) -> bool {
-    let class_name = match domain.class_name.as_ref() {
-        Some(value) => value,
-        None => return false,
-    };
-    let normalized = normalize_class(class_name);
-    normalized == "TRIAL DESIGN" || normalized == "STUDY REFERENCE"
-}
-
-/// Normalize class name for comparison (uppercase, collapse separators to single space).
-fn normalize_class(value: &str) -> String {
-    value
-        .split(|c: char| c == '-' || c == '_' || c.is_whitespace())
-        .filter(|s| !s.is_empty())
-        .collect::<Vec<_>>()
-        .join(" ")
-        .to_uppercase()
+    matches!(
+        domain.class,
+        Some(sdtm_model::DatasetClass::TrialDesign)
+            | Some(sdtm_model::DatasetClass::StudyReference)
+    )
 }
 
 /// Calculate variable length from data.

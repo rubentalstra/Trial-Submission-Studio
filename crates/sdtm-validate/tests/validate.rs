@@ -10,7 +10,7 @@ fn ct_invalid_value_emits_issue() {
     let domains = load_default_sdtm_ig_domains().expect("standards");
     let domain = domains
         .iter()
-        .find(|domain| domain.code == "DM")
+        .find(|domain| domain.name == "DM")
         .expect("DM domain");
     let variable = domain
         .variables

@@ -17,10 +17,10 @@ use crate::types::{DomainPipeline, TransformRule, TransformType};
 /// This is the main entry point for pipeline creation. Each variable
 /// in the domain is analyzed to determine its transformation type.
 pub fn build_pipeline_from_domain(domain: &Domain) -> DomainPipeline {
-    let mut pipeline = DomainPipeline::new(&domain.code);
+    let mut pipeline = DomainPipeline::new(&domain.name);
 
     for variable in &domain.variables {
-        let transform_type = infer_transform_type(variable, &domain.code);
+        let transform_type = infer_transform_type(variable, &domain.name);
         let description = generate_description(&variable.name, &transform_type);
         let order = variable.order.unwrap_or(999);
 

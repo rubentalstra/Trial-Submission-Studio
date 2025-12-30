@@ -20,6 +20,7 @@
 
 pub mod lookup;
 pub mod p21;
+pub mod p21_loader;
 pub mod types;
 
 use polars::prelude::{AnyValue, DataFrame, DataType as PolarsDataType};
@@ -33,6 +34,7 @@ use std::sync::LazyLock;
 // Re-export types from submodules
 pub use lookup::CaseInsensitiveSet;
 pub use p21::{P21Category, P21Rule, P21RuleRegistry, P21Severity, rule_ids};
+pub use p21_loader::{P21LoadError, STANDARDS_ENV_VAR, load_default_p21_rules, load_p21_rules};
 pub use types::{CheckType, Severity, ValidationIssue, ValidationReport};
 
 /// ISO 8601 date patterns per SDTMIG Chapter 7.
@@ -98,7 +100,7 @@ pub fn validate_domain(
     }
 
     ValidationReport {
-        domain_code: domain.code.clone(),
+        domain_code: domain.name.clone(),
         issues,
     }
 }
@@ -129,7 +131,7 @@ fn check_required_variables(
                 code: rule_ids::SD0056.to_string(),
                 message: format!(
                     "Required variable {} is not present in domain {}.",
-                    variable.name, domain.code
+                    variable.name, domain.name
                 ),
                 severity: Severity::Error,
                 variable: Some(variable.name.clone()),
@@ -192,7 +194,7 @@ fn check_expected_variables(
                 code: rule_ids::SD0057.to_string(),
                 message: format!(
                     "Expected variable {} is not present in domain {}. Consider adding if applicable.",
-                    variable.name, domain.code
+                    variable.name, domain.name
                 ),
                 severity: Severity::Warning,
                 variable: Some(variable.name.clone()),
@@ -358,7 +360,7 @@ fn check_sequence_uniqueness(
     let mut issues = Vec::new();
 
     // Find the --SEQ variable for this domain
-    let seq_var_name = format!("{}SEQ", domain.code.to_uppercase());
+    let seq_var_name = format!("{}SEQ", domain.name.to_uppercase());
     let seq_column = column_lookup.get(&seq_var_name);
 
     // USUBJID should always be present

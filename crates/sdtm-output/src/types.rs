@@ -71,5 +71,5 @@ impl DomainFrame {
 
 /// Create a lookup map from domain code to Domain reference.
 pub fn domain_map_by_code(domains: &[Domain]) -> HashMap<String, &Domain> {
-    domains.iter().map(|d| (d.code.to_uppercase(), d)).collect()
+    domains.iter().map(|d| (d.name.to_uppercase(), d)).collect()
 }

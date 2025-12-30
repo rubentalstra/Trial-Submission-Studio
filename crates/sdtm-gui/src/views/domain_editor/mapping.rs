@@ -123,7 +123,7 @@ pub(super) fn initialize_mapping(state: &mut AppState, domain_code: &str) {
     // Load SDTM domain definition
     match load_default_sdtm_ig_domains() {
         Ok(domains) => {
-            if let Some(sdtm_domain) = domains.into_iter().find(|d| d.code == domain_code) {
+            if let Some(sdtm_domain) = domains.into_iter().find(|d| d.name == domain_code) {
                 tracing::info!(
                     "Found SDTM domain {} with {} variables",
                     domain_code,

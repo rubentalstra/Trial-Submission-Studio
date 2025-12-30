@@ -68,7 +68,7 @@ impl MappingState {
     ) -> Self {
         let engine = MappingEngine::new(sdtm_domain.clone(), min_confidence, column_hints.clone());
         let result = engine.suggest(source_columns);
-        let domain_code = sdtm_domain.code.clone();
+        let domain_code = sdtm_domain.name.clone();
         Self::new(&domain_code, study_id, sdtm_domain, result, column_hints)
     }
 

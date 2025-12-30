@@ -1,39 +1,59 @@
 //! SDTM standards and controlled terminology loaders.
 //!
-//! This crate loads SDTM-IG domain definitions, controlled terminology (CT),
-//! and Pinnacle 21 validation rules from offline CSV files in the `standards/`
-//! directory. All standards are committed to the repository for offline operation.
+//! This crate loads SDTM-IG domain definitions and controlled terminology (CT)
+//! from offline CSV files in the `standards/` directory.
 //!
 //! # Standards Directory Structure
 //!
 //! ```text
 //! standards/
 //! ├── ct/                  # Controlled Terminology by version
-//! │   └── 2024-03-29/      # CT version date
-//! │       └── SDTM_CT_*.csv
-//! ├── pinnacle21/          # Pinnacle 21 validation rules
-//! │   └── Rules.csv        # P21 rule definitions
+//! │   ├── 2024-03-29/      # CT version (default)
+//! │   └── 2025-09-26/      # CT version (latest)
 //! └── sdtmig/v3_4/         # SDTM-IG v3.4
 //!     ├── Datasets.csv     # Domain metadata
 //!     └── Variables.csv    # Variable definitions
 //! ```
+//!
+//! # Example
+//!
+//! ```rust,ignore
+//! use sdtm_standards::{ct, sdtm_ig, CtVersion};
+//!
+//! // Load SDTM-IG domains
+//! let domains = sdtm_ig::load()?;
+//! let ae = domains.iter().find(|d| d.name == "AE").unwrap();
+//!
+//! // Load CT with version selection
+//! let registry = ct::load(CtVersion::default())?;  // 2024-03-29
+//! let registry = ct::load(CtVersion::latest())?;   // 2025-09-26
+//! ```
 
-mod csv_utils;
-pub mod ct_loader;
-pub mod loaders;
-pub mod p21_loader;
+pub mod ct;
+pub mod error;
+pub mod paths;
+pub mod sdtm_ig;
 
-// Shared CSV utilities
-pub use csv_utils::{STANDARDS_ENV_VAR, default_standards_root, read_csv_rows};
+// Re-export main types
+pub use ct::CtVersion;
+pub use error::{Result, StandardsError};
+pub use paths::{STANDARDS_ENV_VAR, standards_root};
 
-// CT loader (clean model per SDTM_CT_relationships.md)
-pub use ct_loader::{load_ct_catalog, load_ct_registry, load_default_ct_registry};
+// Convenience re-exports for common operations
+pub use ct::load as load_ct;
+pub use sdtm_ig::load as load_sdtm_ig;
 
-// Domain/Dataset loaders
-pub use loaders::{load_default_sdtm_ig_domains, load_sdtm_ig_domains};
+// Compatibility aliases for old API names
+/// Load SDTM-IG domains from default location.
+///
+/// This is an alias for [`sdtm_ig::load()`].
+pub fn load_default_sdtm_ig_domains() -> Result<Vec<sdtm_model::Domain>> {
+    sdtm_ig::load()
+}
 
-// P21 rules loader
-pub use p21_loader::{load_default_p21_rules, load_p21_rules};
-
-// Re-export P21 types for convenience
-pub use sdtm_validate::P21Category;
+/// Load CT registry from default location with default version.
+///
+/// This is an alias for [`ct::load(CtVersion::default())`].
+pub fn load_default_ct_registry() -> Result<sdtm_model::TerminologyRegistry> {
+    ct::load(CtVersion::default())
+}

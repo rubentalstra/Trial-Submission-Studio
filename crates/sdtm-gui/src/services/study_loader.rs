@@ -22,7 +22,7 @@ impl StudyLoader {
         // Get supported domain codes from SDTM-IG
         let domains =
             load_default_sdtm_ig_domains().context("Failed to load SDTM-IG domain definitions")?;
-        let domain_codes: Vec<String> = domains.iter().map(|d| d.code.clone()).collect();
+        let domain_codes: Vec<String> = domains.iter().map(|d| d.name.clone()).collect();
 
         // Find all CSV files
         let csv_files =

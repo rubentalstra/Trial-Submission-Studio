@@ -6,11 +6,9 @@ use sdtm_validate::{CheckType, Severity, validate_domain};
 
 fn make_domain(variables: Vec<Variable>) -> Domain {
     Domain {
-        code: "AE".to_string(),
-        description: None,
-        class_name: None,
-        dataset_class: None,
+        name: "AE".to_string(),
         label: None,
+        dataset_class: None,
         structure: None,
         dataset_name: None,
         variables,

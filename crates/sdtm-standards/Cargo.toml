@@ -8,7 +8,7 @@ rust-version.workspace = true
 workspace = true
 
 [dependencies]
-anyhow.workspace = true
 csv.workspace = true
 sdtm-model = { path = "../sdtm-model" }
-sdtm-validate = { path = "../sdtm-validate" }
+serde = { workspace = true, features = ["derive"] }
+thiserror = "2.0"

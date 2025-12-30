@@ -88,7 +88,7 @@ fn load_ct_cache(domain: &Domain) -> BTreeMap<String, CodelistDisplayInfo> {
     }
 
     let Ok(registry) = load_default_ct_registry() else {
-        tracing::warn!("Failed to load CT registry for domain {}", domain.code);
+        tracing::warn!("Failed to load CT registry for domain {}", domain.name);
         return BTreeMap::new();
     };
 
@@ -130,7 +130,7 @@ fn load_ct_cache(domain: &Domain) -> BTreeMap<String, CodelistDisplayInfo> {
     tracing::info!(
         "Pre-loaded {} codelists for domain {}",
         cache.len(),
-        domain.code
+        domain.name
     );
     cache
 }
