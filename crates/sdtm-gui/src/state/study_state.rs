@@ -140,6 +140,8 @@ pub enum DomainStatus {
     /// Not yet started
     #[default]
     NotStarted,
+    /// Loading/initializing mapping
+    Loading,
     /// Mapping in progress
     MappingInProgress,
     /// Mapping complete
@@ -155,6 +157,7 @@ impl DomainStatus {
     pub fn label(&self) -> &'static str {
         match self {
             Self::NotStarted => "Not Started",
+            Self::Loading => "Loading...",
             Self::MappingInProgress => "Mapping...",
             Self::MappingComplete => "Mapped",
             Self::ValidationFailed => "Errors",
@@ -166,6 +169,7 @@ impl DomainStatus {
     pub fn icon(&self) -> &'static str {
         match self {
             Self::NotStarted => "○",
+            Self::Loading => "◐",
             Self::MappingInProgress => "◐",
             Self::MappingComplete => "●",
             Self::ValidationFailed => "✕",

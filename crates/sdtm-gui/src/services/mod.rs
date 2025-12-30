@@ -6,7 +6,7 @@ mod mapping;
 mod processing;
 mod study_loader;
 
-pub use mapping::{MappingService, MappingState, VariableMappingStatus};
+pub use mapping::{CodelistDisplayInfo, MappingService, MappingState, VariableMappingStatus};
 // Processing exports will be used when Transform tab is implemented
 #[allow(unused_imports)]
 pub use processing::{ProcessingService, TransformResult};

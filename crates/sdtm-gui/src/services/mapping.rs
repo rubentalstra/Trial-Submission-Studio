@@ -9,7 +9,20 @@
 use polars::prelude::DataFrame;
 use sdtm_map::{MappingEngine, MappingResult};
 use sdtm_model::{ColumnHint, Domain, MappingConfig, MappingSuggestion, Variable};
+use sdtm_standards::load_default_ct_registry;
 use std::collections::BTreeMap;
+
+/// Pre-fetched codelist display info (loaded once when domain opens)
+#[derive(Debug, Clone)]
+pub struct CodelistDisplayInfo {
+    pub code: String,
+    pub name: String,
+    pub extensible: bool,
+    /// (submission_value, truncated_definition) - limited to 8 terms
+    pub terms: Vec<(String, Option<String>)>,
+    pub total_terms: usize,
+    pub found: bool,
+}
 
 /// State of a mapping operation for a single domain
 #[derive(Debug, Clone)]
@@ -32,10 +45,12 @@ pub struct MappingState {
     pub search_filter: String,
     /// Column hints from source data
     pub column_hints: BTreeMap<String, ColumnHint>,
+    /// Pre-loaded CT data (codelist_code -> display info)
+    pub ct_cache: BTreeMap<String, CodelistDisplayInfo>,
 }
 
 impl MappingState {
-    /// Create a new mapping state
+    /// Create a new mapping state and pre-load CT data
     pub fn new(
         domain_code: &str,
         study_id: &str,
@@ -43,6 +58,9 @@ impl MappingState {
         result: MappingResult,
         column_hints: BTreeMap<String, ColumnHint>,
     ) -> Self {
+        // Pre-load CT data for all codelists referenced by variables
+        let ct_cache = Self::load_ct_cache(&sdtm_domain);
+
         Self {
             domain_code: domain_code.to_string(),
             study_id: study_id.to_string(),
@@ -53,7 +71,94 @@ impl MappingState {
             selected_variable_idx: None,
             search_filter: String::new(),
             column_hints,
+            ct_cache,
         }
+    }
+
+    /// Pre-load CT data for all codelists referenced by domain variables
+    fn load_ct_cache(domain: &Domain) -> BTreeMap<String, CodelistDisplayInfo> {
+        let mut cache = BTreeMap::new();
+
+        // Collect all unique codelist codes from variables
+        let mut codelist_codes: Vec<String> = Vec::new();
+        for var in &domain.variables {
+            if let Some(ref codes_str) = var.codelist_code {
+                for code in codes_str.split(';').map(|s| s.trim()) {
+                    if !code.is_empty() && !codelist_codes.contains(&code.to_string()) {
+                        codelist_codes.push(code.to_string());
+                    }
+                }
+            }
+        }
+
+        if codelist_codes.is_empty() {
+            return cache;
+        }
+
+        // Load registry once and resolve all codelists
+        let Ok(registry) = load_default_ct_registry() else {
+            tracing::warn!("Failed to load CT registry for domain {}", domain.code);
+            return cache;
+        };
+
+        for code in codelist_codes {
+            let info = if let Some(resolved) = registry.resolve(&code, None) {
+                let cl = resolved.codelist;
+                // Pre-extract only what we need (limit to 8 terms)
+                let terms: Vec<(String, Option<String>)> = cl
+                    .terms
+                    .values()
+                    .take(8)
+                    .map(|t| {
+                        let def = t.definition.as_ref().map(|d| {
+                            if d.len() > 40 {
+                                format!("{}...", &d[..37])
+                            } else {
+                                d.clone()
+                            }
+                        });
+                        (t.submission_value.clone(), def)
+                    })
+                    .collect();
+
+                CodelistDisplayInfo {
+                    code: code.clone(),
+                    name: cl.name.clone(),
+                    extensible: cl.extensible,
+                    terms,
+                    total_terms: cl.terms.len(),
+                    found: true,
+                }
+            } else {
+                CodelistDisplayInfo {
+                    code: code.clone(),
+                    name: String::new(),
+                    extensible: false,
+                    terms: Vec::new(),
+                    total_terms: 0,
+                    found: false,
+                }
+            };
+
+            cache.insert(code, info);
+        }
+
+        tracing::info!(
+            "Pre-loaded {} codelists for domain {}",
+            cache.len(),
+            domain.code
+        );
+        cache
+    }
+
+    /// Get CT display info for a variable's codelist codes
+    pub fn get_ct_for_variable(&self, codelist_codes: &str) -> Vec<&CodelistDisplayInfo> {
+        codelist_codes
+            .split(';')
+            .map(|s| s.trim())
+            .filter(|s| !s.is_empty())
+            .filter_map(|code| self.ct_cache.get(code))
+            .collect()
     }
 
     /// Get filtered variables based on search text

@@ -2,11 +2,11 @@
 //!
 //! Main editing interface with tabs: Mapping, Transform, Validation, Preview, SUPP.
 
-use crate::services::{MappingService, VariableMappingStatus};
+use crate::services::{CodelistDisplayInfo, MappingService, VariableMappingStatus};
 use crate::state::{AppState, DomainStatus, EditorTab};
 use crate::theme::{colors, spacing};
 use egui::{RichText, Ui};
-use sdtm_standards::{load_default_ct_registry, load_default_sdtm_ig_domains};
+use sdtm_standards::load_default_sdtm_ig_domains;
 use std::collections::BTreeMap;
 
 /// Domain editor view
@@ -75,17 +75,52 @@ impl DomainEditorView {
     fn show_mapping_tab(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
         let theme = colors(state.preferences.dark_mode);
 
-        // Check if mapping state exists
-        let has_mapping_state = state
+        // Check domain status for loading state
+        let (has_mapping_state, status) = state
             .study
             .as_ref()
             .and_then(|s| s.get_domain(domain_code))
-            .map(|d| d.mapping_state.is_some())
-            .unwrap_or(false);
+            .map(|d| (d.mapping_state.is_some(), d.status))
+            .unwrap_or((false, DomainStatus::NotStarted));
 
-        if !has_mapping_state {
-            Self::show_mapping_init(ui, state, domain_code, &theme);
-            return;
+        // State machine for loading:
+        // 1. NotStarted -> set to Loading, show spinner, request repaint
+        // 2. Loading -> do initialization, will transition to MappingInProgress
+        match (has_mapping_state, status) {
+            // Not started: transition to loading and show spinner
+            (false, DomainStatus::NotStarted) => {
+                if let Some(study) = &mut state.study {
+                    if let Some(domain) = study.get_domain_mut(domain_code) {
+                        domain.status = DomainStatus::Loading;
+                    }
+                }
+                // Show spinner immediately
+                Self::show_loading_indicator(ui, &theme);
+                // Request repaint to process loading on next frame
+                ui.ctx().request_repaint();
+                return;
+            }
+
+            // Loading: show spinner and do initialization
+            (false, DomainStatus::Loading) => {
+                Self::show_loading_indicator(ui, &theme);
+                // Do the actual initialization (this takes time)
+                Self::initialize_mapping(state, domain_code);
+                // Request repaint to show the result
+                ui.ctx().request_repaint();
+                return;
+            }
+
+            // No mapping state but not in loading flow - error
+            (false, _) => {
+                ui.centered_and_justified(|ui| {
+                    ui.label(RichText::new("Failed to initialize mapping").color(theme.error));
+                });
+                return;
+            }
+
+            // Has mapping state - continue to render
+            (true, _) => {}
         }
 
         // Master-detail layout using StripBuilder for proper sizing
@@ -121,12 +156,9 @@ impl DomainEditorView {
             });
     }
 
-    fn show_mapping_init(
-        ui: &mut Ui,
-        state: &mut AppState,
-        domain_code: &str,
-        theme: &crate::theme::ThemeColors,
-    ) {
+    /// Auto-initialize mapping state for a domain
+    fn initialize_mapping(state: &mut AppState, domain_code: &str) {
+        // Get study info
         let (study_id, source_columns) = {
             if let Some(study) = &state.study {
                 if let Some(domain) = study.get_domain(domain_code) {
@@ -139,83 +171,76 @@ impl DomainEditorView {
             }
         };
 
-        ui.vertical_centered(|ui| {
-            ui.add_space(spacing::XL);
+        tracing::info!("Auto-initializing mapping for domain: {}", domain_code);
 
-            ui.heading("Column Mapping");
-            ui.add_space(spacing::SM);
-            ui.label(
-                RichText::new("Map source columns to SDTM variables")
-                    .color(theme.text_secondary),
-            );
+        // Load SDTM domain definition
+        match load_default_sdtm_ig_domains() {
+            Ok(domains) => {
+                if let Some(sdtm_domain) = domains.into_iter().find(|d| d.code == domain_code) {
+                    tracing::info!(
+                        "Found SDTM domain {} with {} variables",
+                        domain_code,
+                        sdtm_domain.variables.len()
+                    );
 
-            ui.add_space(spacing::LG);
-
-            if ui
-                .button(RichText::new("Generate Mapping Suggestions").size(16.0))
-                .clicked()
-            {
-                tracing::info!("Generate mapping clicked for domain: {}", domain_code);
-
-                // Load SDTM domain definition
-                match load_default_sdtm_ig_domains() {
-                    Ok(domains) => {
-                        tracing::info!("Loaded {} SDTM domains", domains.len());
-                        if let Some(sdtm_domain) = domains.into_iter().find(|d| d.code == domain_code) {
-                            tracing::info!("Found SDTM domain {} with {} variables", domain_code, sdtm_domain.variables.len());
-
-                            // Get column hints from source data
-                            let hints = if let Some(study) = &state.study {
-                                if let Some(domain) = study.get_domain(domain_code) {
-                                    MappingService::extract_column_hints(&domain.source_data)
-                                } else {
-                                    BTreeMap::new()
-                                }
-                            } else {
-                                BTreeMap::new()
-                            };
-
-                            // Create mapping state
-                            let mapping_state = MappingService::create_mapping_state(
-                                sdtm_domain,
-                                &study_id,
-                                &source_columns,
-                                hints,
-                            );
-
-                            tracing::info!("Created mapping state with {} suggestions", mapping_state.suggestions.len());
-
-                            // Store it
-                            if let Some(study) = &mut state.study {
-                                if let Some(domain) = study.get_domain_mut(domain_code) {
-                                    domain.mapping_state = Some(mapping_state);
-                                    domain.status = DomainStatus::MappingInProgress;
-                                    tracing::info!("Stored mapping state for domain {}", domain_code);
-                                }
-                            }
+                    // Get column hints from source data
+                    let hints = if let Some(study) = &state.study {
+                        if let Some(domain) = study.get_domain(domain_code) {
+                            MappingService::extract_column_hints(&domain.source_data)
                         } else {
-                            tracing::warn!("SDTM domain {} not found in standards", domain_code);
+                            BTreeMap::new()
+                        }
+                    } else {
+                        BTreeMap::new()
+                    };
+
+                    // Create mapping state
+                    let mapping_state = MappingService::create_mapping_state(
+                        sdtm_domain,
+                        &study_id,
+                        &source_columns,
+                        hints,
+                    );
+
+                    tracing::info!(
+                        "Created mapping state with {} suggestions",
+                        mapping_state.suggestions.len()
+                    );
+
+                    // Store it
+                    if let Some(study) = &mut state.study {
+                        if let Some(domain) = study.get_domain_mut(domain_code) {
+                            domain.mapping_state = Some(mapping_state);
+                            domain.status = DomainStatus::MappingInProgress;
                         }
                     }
-                    Err(e) => {
-                        tracing::error!("Failed to load SDTM domains: {}", e);
-                    }
+                } else {
+                    tracing::warn!("SDTM domain {} not found in standards", domain_code);
                 }
             }
+            Err(e) => {
+                tracing::error!("Failed to load SDTM domains: {}", e);
+            }
+        }
+    }
 
-            ui.add_space(spacing::LG);
-
-            // Show source columns
-            ui.label(RichText::new("Source Columns").strong());
+    /// Show loading indicator with spinner
+    fn show_loading_indicator(ui: &mut Ui, theme: &crate::theme::ThemeColors) {
+        ui.vertical_centered(|ui| {
+            ui.add_space(ui.available_height() / 3.0);
+            ui.spinner();
+            ui.add_space(spacing::MD);
+            ui.label(
+                RichText::new("Loading mapping configuration...")
+                    .size(16.0)
+                    .color(theme.text_secondary),
+            );
             ui.add_space(spacing::SM);
-
-            egui::ScrollArea::vertical()
-                .max_height(300.0)
-                .show(ui, |ui| {
-                    for col in &source_columns {
-                        ui.label(format!("  • {}", col));
-                    }
-                });
+            ui.label(
+                RichText::new("Loading SDTM standards and controlled terminology")
+                    .color(theme.text_muted)
+                    .small(),
+            );
         });
     }
 
@@ -474,6 +499,18 @@ impl DomainEditorView {
                 .map(|(_, c)| *c)
                 .or_else(|| suggestion.as_ref().map(|s| s.confidence));
 
+            // Get CT data from pre-loaded cache (loaded when domain opened)
+            // Clone to avoid borrow issues with state mutations in render loop
+            let ct_data: Vec<CodelistDisplayInfo> = var_codelist
+                .as_ref()
+                .map(|codes| {
+                    ms.get_ct_for_variable(codes)
+                        .into_iter()
+                        .cloned()
+                        .collect()
+                })
+                .unwrap_or_default();
+
             (
                 var_name,
                 var_label,
@@ -486,6 +523,7 @@ impl DomainEditorView {
                 source_col_label,
                 confidence,
                 available_cols_sorted,
+                ct_data,
             )
         };
 
@@ -501,6 +539,7 @@ impl DomainEditorView {
             source_col_label,
             confidence,
             available_cols,
+            ct_data,
         ) = detail_data;
 
         egui::ScrollArea::vertical().show(ui, |ui| {
@@ -538,9 +577,8 @@ impl DomainEditorView {
                     ui.end_row();
                 });
 
-            // Show codelist details if present
-            // Per SDTM_CT_relationships.md: variables can have multiple codelist codes separated by `;`
-            if let Some(ref codelist_codes_str) = var_codelist {
+            // Show codelist details using pre-fetched data (no loading during render)
+            if !ct_data.is_empty() {
                 ui.add_space(spacing::MD);
 
                 ui.label(
@@ -551,107 +589,63 @@ impl DomainEditorView {
                 ui.separator();
                 ui.add_space(spacing::SM);
 
-                // Parse multiple codelist codes (separated by `;`)
-                let codelist_codes: Vec<&str> = codelist_codes_str
-                    .split(';')
-                    .map(|s| s.trim())
-                    .filter(|s| !s.is_empty())
-                    .collect();
+                for (cl_idx, cl_info) in ct_data.iter().enumerate() {
+                    if cl_idx > 0 {
+                        ui.add_space(spacing::SM);
+                        ui.separator();
+                        ui.add_space(spacing::SM);
+                    }
 
-                // Load CT registry (cached via OnceLock in sdtm-standards)
-                match load_default_ct_registry() {
-                    Ok(registry) => {
-                        for (cl_idx, codelist_code) in codelist_codes.iter().enumerate() {
-                            if cl_idx > 0 {
-                                ui.add_space(spacing::SM);
-                                ui.separator();
-                                ui.add_space(spacing::SM);
+                    if cl_info.found {
+                        // Show codelist code, name, and extensibility
+                        ui.horizontal(|ui| {
+                            ui.label(RichText::new(&cl_info.code).color(theme.text_muted).small());
+                            ui.label(RichText::new(&cl_info.name).strong());
+                            if cl_info.extensible {
+                                ui.label(
+                                    RichText::new("(Extensible)")
+                                        .color(theme.warning)
+                                        .small(),
+                                );
                             }
+                        });
 
-                            if let Some(resolved) = registry.resolve(codelist_code, None) {
-                                let codelist = resolved.codelist;
+                        // Show valid values
+                        if !cl_info.terms.is_empty() {
+                            ui.add_space(spacing::SM);
+                            ui.label(
+                                RichText::new(format!("Valid values ({}):", cl_info.total_terms))
+                                    .color(theme.text_muted)
+                                    .small(),
+                            );
 
-                                // Show codelist code, name, and extensibility
+                            for (value, def) in &cl_info.terms {
                                 ui.horizontal(|ui| {
-                                    ui.label(
-                                        RichText::new(*codelist_code)
-                                            .color(theme.text_muted)
-                                            .small(),
-                                    );
-                                    ui.label(RichText::new(&codelist.name).strong());
-                                    if codelist.extensible {
+                                    ui.label(RichText::new(value).strong().color(theme.accent));
+                                    if let Some(d) = def {
                                         ui.label(
-                                            RichText::new("(Extensible)")
-                                                .color(theme.warning)
-                                                .small(),
+                                            RichText::new(d).color(theme.text_secondary).small(),
                                         );
                                     }
                                 });
+                            }
 
-                                // Show valid values
-                                let terms: Vec<_> = codelist.terms.values().collect();
-                                if !terms.is_empty() {
-                                    ui.add_space(spacing::SM);
-                                    ui.label(
-                                        RichText::new(format!("Valid values ({}):", terms.len()))
-                                            .color(theme.text_muted)
-                                            .small(),
-                                    );
-
-                                    // Show terms - limit display for large codelists
-                                    let max_display = 8;
-                                    for (i, term) in terms.iter().enumerate() {
-                                        if i < max_display {
-                                            ui.horizontal(|ui| {
-                                                ui.label(
-                                                    RichText::new(&term.submission_value)
-                                                        .strong()
-                                                        .color(theme.accent),
-                                                );
-                                                if let Some(ref def) = term.definition {
-                                                    // Truncate long definitions
-                                                    let short_def = if def.len() > 40 {
-                                                        format!("{}...", &def[..37])
-                                                    } else {
-                                                        def.clone()
-                                                    };
-                                                    ui.label(
-                                                        RichText::new(short_def)
-                                                            .color(theme.text_secondary)
-                                                            .small(),
-                                                    );
-                                                }
-                                            });
-                                        } else if i == max_display {
-                                            ui.label(
-                                                RichText::new(format!(
-                                                    "... and {} more values",
-                                                    terms.len() - max_display
-                                                ))
-                                                .color(theme.text_muted)
-                                                .small()
-                                                .italics(),
-                                            );
-                                            break;
-                                        }
-                                    }
-                                }
-                            } else {
+                            if cl_info.total_terms > cl_info.terms.len() {
                                 ui.label(
                                     RichText::new(format!(
-                                        "{} - not found in CT",
-                                        codelist_code
+                                        "... and {} more values",
+                                        cl_info.total_terms - cl_info.terms.len()
                                     ))
-                                    .color(theme.warning)
-                                    .small(),
+                                    .color(theme.text_muted)
+                                    .small()
+                                    .italics(),
                                 );
                             }
                         }
-                    }
-                    Err(e) => {
+                    } else {
                         ui.label(
-                            RichText::new(format!("CT load error: {}", e))
-                                .color(theme.error)
+                            RichText::new(format!("{} - not found in CT", cl_info.code))
+                                .color(theme.warning)
                                 .small(),
                         );
                     }

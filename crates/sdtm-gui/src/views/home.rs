@@ -88,6 +88,7 @@ impl HomeView {
                             let status_icon = status.icon();
                             let status_color = match status {
                                 DomainStatus::NotStarted => theme.text_muted,
+                                DomainStatus::Loading => theme.accent,
                                 DomainStatus::MappingInProgress => theme.warning,
                                 DomainStatus::MappingComplete => theme.accent,
                                 DomainStatus::ValidationFailed => theme.error,
