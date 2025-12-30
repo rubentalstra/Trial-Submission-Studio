@@ -1,7 +1,7 @@
 //! Controlled Terminology (CT) normalization logic.
 
-use super::options::{CtMatchingMode, NormalizationOptions};
 use sdtm_model::ct::Codelist;
+use sdtm_model::options::{CtMatchingMode, NormalizationOptions};
 
 /// Creates a compact key by keeping only uppercase alphanumeric characters.
 fn compact_key(value: &str) -> String {

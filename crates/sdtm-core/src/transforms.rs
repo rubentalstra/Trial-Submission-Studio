@@ -17,7 +17,7 @@ use sdtm_model::ct::Codelist;
 use sdtm_normalization::data_utils::strip_all_quotes;
 
 use sdtm_normalization::normalization::ct::normalize_ct_value;
-use sdtm_normalization::normalization::options::{CtMatchingMode, NormalizationOptions};
+use sdtm_model::options::{CtMatchingMode, NormalizationOptions};
 
 /// Apply STUDYID prefix to USUBJID column.
 ///

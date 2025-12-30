@@ -25,6 +25,8 @@ pub mod domain;
 pub mod error;
 pub mod lookup;
 pub mod mapping;
+pub mod metadata;
+pub mod options;
 pub mod p21;
 pub mod processing;
 

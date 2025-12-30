@@ -5,81 +5,7 @@ use anyhow::{Context, Result};
 use polars::prelude::*;
 
 use crate::csv_table::read_csv_table_with_header_match;
-
-#[derive(Debug, Clone, Default)]
-pub struct StudyMetadata {
-    pub items: BTreeMap<String, SourceColumn>,
-    pub codelists: BTreeMap<String, CodeList>,
-}
-
-impl StudyMetadata {
-    pub fn is_empty(&self) -> bool {
-        self.items.is_empty() && self.codelists.is_empty()
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct SourceColumn {
-    pub id: String,
-    pub label: String,
-    pub data_type: Option<String>,
-    pub mandatory: bool,
-    pub format_name: Option<String>,
-    pub content_length: Option<usize>,
-}
-
-#[derive(Debug, Clone)]
-pub struct CodeList {
-    pub format_name: String,
-    values: BTreeMap<String, String>,
-    values_upper: BTreeMap<String, String>,
-    values_numeric: BTreeMap<String, String>,
-}
-
-impl CodeList {
-    fn new(format_name: String) -> Self {
-        Self {
-            format_name,
-            values: BTreeMap::new(),
-            values_upper: BTreeMap::new(),
-            values_numeric: BTreeMap::new(),
-        }
-    }
-
-    fn insert_value(&mut self, code_value: &str, code_text: &str) {
-        let trimmed = code_value.trim();
-        let text = code_text.trim();
-        if trimmed.is_empty() || text.is_empty() {
-            return;
-        }
-        self.values.insert(trimmed.to_string(), text.to_string());
-        self.values_upper
-            .insert(trimmed.to_uppercase(), text.to_string());
-        if let Some(key) = normalize_numeric_key(trimmed) {
-            self.values_numeric.insert(key, text.to_string());
-        }
-    }
-
-    fn lookup_text(&self, raw: &str) -> Option<String> {
-        let trimmed = raw.trim();
-        if trimmed.is_empty() {
-            return None;
-        }
-        if let Some(text) = self.values.get(trimmed) {
-            return Some(text.clone());
-        }
-        let upper = trimmed.to_uppercase();
-        if let Some(text) = self.values_upper.get(&upper) {
-            return Some(text.clone());
-        }
-        if let Some(key) = normalize_numeric_key(trimmed)
-            && let Some(text) = self.values_numeric.get(&key)
-        {
-            return Some(text.clone());
-        }
-        None
-    }
-}
+pub use sdtm_model::metadata::{SourceColumn, StudyCodelist as CodeList, StudyMetadata};
 
 type ItemColumnIndices = (
     usize,
@@ -593,22 +519,4 @@ fn base_column_name(header: &str) -> Option<String> {
     } else {
         None
     }
-}
-
-fn normalize_numeric_key(value: &str) -> Option<String> {
-    let trimmed = value.trim();
-    if trimmed.is_empty() {
-        return None;
-    }
-    let parsed = trimmed.parse::<f64>().ok()?;
-    let mut text = format!("{parsed}");
-    if text.contains('.') {
-        while text.ends_with('0') {
-            text.pop();
-        }
-        if text.ends_with('.') {
-            text.pop();
-        }
-    }
-    if text.is_empty() { None } else { Some(text) }
 }

@@ -24,76 +24,10 @@ use std::collections::BTreeMap;
 
 use sdtm_model::Domain;
 use sdtm_model::ct::{Codelist, TerminologyRegistry};
-pub use sdtm_normalization::normalization::options::{CtMatchingMode, NormalizationOptions};
-
-/// Mode for applying STUDYID prefixes to USUBJID values.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum UsubjidPrefixMode {
-    /// Do not add STUDYID prefixes.
-    Skip,
-    /// Add STUDYID prefixes when missing.
-    Prefix,
-}
-
-/// Mode for assigning --SEQ values.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SequenceAssignmentMode {
-    /// Do not assign sequence values.
-    Skip,
-    /// Assign sequence values when missing or invalid.
-    Assign,
-}
-
-/// Options controlling SDTM processing behavior.
-#[derive(Debug, Clone)]
-pub struct ProcessingOptions {
-    /// Add STUDYID prefix to USUBJID values.
-    ///
-    /// SDTMIG 4.1.2: "USUBJID is a unique subject identifier that is a
-    /// concatenation of STUDYID and a subject identifier unique within that study."
-    pub usubjid_prefix: UsubjidPrefixMode,
-
-    /// Automatically assign sequence numbers (--SEQ).
-    ///
-    /// SDTMIG 4.1.5: "The --SEQ variable [...] is a unique number for each record
-    /// within a domain for a subject."
-    pub sequence_assignment: SequenceAssignmentMode,
-
-    /// Log warnings when values are rewritten/normalized.
-    pub warn_on_rewrite: bool,
-
-    /// Normalization options (CT, Date, etc.)
-    pub normalization: NormalizationOptions,
-}
-
-impl Default for ProcessingOptions {
-    fn default() -> Self {
-        Self {
-            usubjid_prefix: UsubjidPrefixMode::Prefix,
-            sequence_assignment: SequenceAssignmentMode::Assign,
-            warn_on_rewrite: true,
-            normalization: NormalizationOptions::default(),
-        }
-    }
-}
-
-impl ProcessingOptions {
-    /// Create options for strict SDTMIG-conformant processing.
-    ///
-    /// This disables lenient CT matching while preserving documented SDTMIG
-    /// derivations (USUBJID prefix and sequence assignment).
-    pub fn strict() -> Self {
-        Self {
-            usubjid_prefix: UsubjidPrefixMode::Prefix,
-            sequence_assignment: SequenceAssignmentMode::Assign,
-            warn_on_rewrite: true,
-            normalization: NormalizationOptions {
-                matching_mode: CtMatchingMode::Strict,
-                ..Default::default()
-            },
-        }
-    }
-}
+pub use sdtm_model::options::{
+    CtMatchingMode, NormalizationOptions, ProcessingOptions, SequenceAssignmentMode,
+    UsubjidPrefixMode,
+};
 
 /// Centralized context for the study processing pipeline.
 #[derive(Debug)]
