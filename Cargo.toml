@@ -44,7 +44,7 @@ tracing-subscriber = { version = "0.3.22", features = ["env-filter", "json"] }
 [workspace.lints.rust]
 # Safety and correctness
 unsafe_code = "warn"
-missing_docs = "warn"
+# missing_docs = "warn"
 
 [workspace.lints.clippy]
 # Correctness

@@ -4,14 +4,1130 @@
 
 The CDISC Transpiler GUI transforms clinical trial source data into
 SDTM-compliant formats. This document defines the user experience, information
-architecture, and technical implementation for a desktop application built with
-egui.
+architecture, technical implementation, and necessary architectural refactoring
+for a desktop application built with egui + eframe.
 
 **Target Users**: Clinical data programmers, biostatisticians, and data managers
 who understand SDTM but need an intuitive tool for data transformation.
 
 **Core Task**: Map source CSV columns to SDTM variables, validate against
 Controlled Terminology, and export submission-ready files.
+
+**Critical Architectural Shift**: This GUI requires moving from a linear
+pipeline architecture to a modular, state-driven architecture that supports
+non-linear, interactive workflows.
+
+---
+
+## Table of Contents
+
+1. [Architecture Transformation Overview](#architecture-transformation-overview)
+2. [Detailed Refactoring Plan](#detailed-refactoring-plan)
+3. [Understanding the Domain](#understanding-the-domain)
+4. [User Goals & Workflow](#user-goals--workflow)
+5. [Information Architecture](#information-architecture)
+6. [Detailed Screen Specifications](#detailed-screen-specifications)
+7. [Technical Implementation](#technical-implementation)
+8. [Migration Strategy](#migration-strategy)
+
+---
+
+## Architecture Transformation Overview
+
+### Current State: Linear Pipeline Architecture
+
+The current codebase is designed as a **linear, one-shot pipeline**:
+
+```
+Ingest → Map → Preprocess → Domain Rules → Validate → Output
+```
+
+**Problems for GUI:**
+
+1. **Tight coupling**: Each stage expects previous stages to be complete
+2. **All-or-nothing**: You can't map one domain without processing everything
+3. **No intermediate state**: Pipeline runs to completion or fails
+4. **Hard to inspect**: Can't pause and examine results mid-process
+5. **Difficult rollback**: Can't undo individual mappings without restarting
+
+### Target State: Modular, State-Driven Architecture
+
+The GUI requires **independent, reusable components** with **persistent state**:
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                           Study Session State                           │
+│  ┌───────────┐  ┌──────────┐  ┌────────────┐  ┌──────────┐            │
+│  │  Domains  │  │ Mappings │  │ Validation │  │  Output  │            │
+│  │   State   │  │  State   │  │   State    │  │  State   │            │
+│  └───────────┘  └──────────┘  └────────────┘  └──────────┘            │
+└─────────────────────────────────────────────────────────────────────────┘
+         ↕              ↕              ↕              ↕
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         Independent Services                             │
+│  ┌───────────┐  ┌──────────┐  ┌────────────┐  ┌──────────┐            │
+│  │  Domain   │  │ Mapping  │  │ Validation │  │  Export  │            │
+│  │ Discovery │  │  Engine  │  │  Service   │  │ Service  │            │
+│  └───────────┘  └──────────┘  └────────────┘  └──────────┘            │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+**Benefits:**
+
+- Map domains in any order
+- Save and resume work
+- Validate individual domains on demand
+- Preview transformations before applying
+- Undo/redo individual changes
+- Export subsets of domains
+
+---
+
+## Detailed Refactoring Plan
+
+### 1. Create New Crate: `sdtm-session`
+
+**Purpose**: Manage GUI session state and persistence.
+
+**Responsibilities:**
+
+- Study session creation and loading
+- Domain-level state management
+- Mapping configuration storage
+- Undo/redo stack
+- Session serialization/deserialization
+
+**Key Types:**
+
+```rust
+pub struct StudySession {
+    pub study_id: String,
+    pub study_folder: PathBuf,
+    pub created_at: DateTime<Utc>,
+    pub modified_at: DateTime<Utc>,
+    pub domains: HashMap<String, DomainState>,
+    pub global_settings: GlobalSettings,
+}
+
+pub struct DomainState {
+    pub code: String,
+    pub source_file: PathBuf,
+    pub status: DomainStatus,
+    pub mapping: Option<MappingConfig>,
+    pub validation: Option<ValidationReport>,
+    pub preview_data: Option<DataFrame>,
+    pub suppqual_mappings: Vec<SuppqualMapping>,
+}
+
+pub enum DomainStatus {
+    NotStarted,
+    MappingInProgress,
+    MappingComplete,
+    ValidationFailed,
+    ReadyForExport,
+}
+```
+
+**Dependencies:** `sdtm-model` only (minimal coupling)
+
+---
+
+### 2. Refactor `sdtm-core` → Extract Pipeline Logic
+
+**Current Problem:** `sdtm-core` contains `PipelineContext` and `process_domain`
+which assume a linear pipeline flow.
+
+**Solution:** Split into two layers:
+
+#### Layer 1: Pure Domain Processing (keep in `sdtm-core`)
+
+```rust
+// Stateless, reusable functions
+pub fn apply_usubjid_prefix(
+    df: &mut DataFrame, 
+    study_id: &str, 
+    mode: UsubjidPrefixMode
+) -> Result<()>;
+
+pub fn assign_sequence_numbers(
+    df: &mut DataFrame, 
+    domain_code: &str
+) -> Result<()>;
+
+pub fn normalize_ct_column(
+    df: &mut DataFrame, 
+    variable: &Variable, 
+    codelist: &Codelist
+) -> Result<()>;
+
+pub fn apply_domain_rules(
+    df: &mut DataFrame, 
+    domain: &Domain, 
+    rules: &DomainRules
+) -> Result<()>;
+```
+
+#### Layer 2: Pipeline Orchestration (new `sdtm-pipeline` crate or keep in CLI)
+
+```rust
+// Orchestration logic for batch processing
+pub struct PipelineRunner { /* ... current implementation ... */ }
+```
+
+**Benefits:**
+
+- GUI can call individual processing functions on-demand
+- No forced ordering between operations
+- Each function is testable in isolation
+
+---
+
+### 3. Decouple `sdtm-map` from Automatic Execution
+
+**Current Problem:** Mapping engine automatically applies mappings during
+`build_mapped_domain_frame`.
+
+**Solution:** Separate suggestion from application:
+
+```rust
+// Phase 1: Generate suggestions (no side effects)
+pub fn suggest_mappings(
+    source_schema: &CsvSchema,
+    domain: &Domain,
+    hints: &[ColumnHint],
+) -> Vec<MappingSuggestion> { /* ... */ }
+
+// Phase 2: Apply selected mappings (returns new DataFrame)
+pub fn apply_mapping(
+    source_df: &DataFrame,
+    mapping: &MappingConfig,
+    domain: &Domain,
+) -> Result<DataFrame> { /* ... */ }
+
+// Phase 3: Preview mapping (shows sample rows without full processing)
+pub fn preview_mapping(
+    source_df: &DataFrame,
+    variable: &Variable,
+    source_column: &str,
+    row_limit: usize,
+) -> Result<Vec<(String, String)>> { /* ... */ }
+```
+
+**Benefits:**
+
+- User can review suggestions before accepting
+- Easy to show "before/after" previews
+- Can modify suggestions interactively
+
+---
+
+### 4. Make Validation Independent
+
+**Current Problem:** Validation is tightly coupled to full pipeline execution.
+
+**Solution:** Expose incremental validation:
+
+```rust
+// Validate a single domain independently
+pub fn validate_domain(
+    df: &DataFrame,
+    domain: &Domain,
+    ct_registry: &TerminologyRegistry,
+) -> ValidationReport { /* ... */ }
+
+// Validate a specific variable's values
+pub fn validate_variable(
+    values: &[String],
+    variable: &Variable,
+    codelist: Option<&Codelist>,
+) -> Vec<ValidationIssue> { /* ... */ }
+
+// Preview CT mapping for user confirmation
+pub fn preview_ct_normalization(
+    source_values: &[String],
+    codelist: &Codelist,
+    matching_mode: CtMatchingMode,
+) -> Vec<(String, Option<String>, f64)> { // (source, mapped, confidence)
+    /* ... */
+}
+```
+
+**Benefits:**
+
+- Validate as the user works, not just at the end
+- Show real-time feedback on CT compliance
+- Allow user to resolve issues incrementally
+
+---
+
+### 5. Refactor SUPPQUAL Generation
+
+**Current Problem:** SUPPQUAL is built automatically during pipeline execution,
+makes assumptions about what should be excluded.
+
+**Solution:** Make it user-controllable:
+
+```rust
+// Identify candidates for SUPPQUAL
+pub fn identify_suppqual_candidates(
+    source_schema: &CsvSchema,
+    mapped_columns: &[String],
+    standard_variables: &HashSet<String>,
+) -> Vec<SuppqualCandidate> { /* ... */ }
+
+pub struct SuppqualCandidate {
+    pub source_column: String,
+    pub suggested_qnam: String,
+    pub suggested_qlabel: String,
+    pub sample_values: Vec<String>,
+    pub recommendation: SuppqualRecommendation,
+}
+
+pub enum SuppqualRecommendation {
+    Include,     // Non-standard, should be in SUPP
+    Exclude,     // Common across files, probably study-level
+    UserDecide,  // Ambiguous, let user choose
+}
+
+// Generate SUPPQUAL only for user-approved columns
+pub fn build_suppqual_from_selections(
+    source_df: &DataFrame,
+    parent_domain: &Domain,
+    selections: &[SuppqualSelection],
+) -> Result<DataFrame> { /* ... */ }
+```
+
+**Benefits:**
+
+- User controls what goes into SUPPQUAL
+- Clear visibility into excluded columns
+- Can adjust decisions without re-running everything
+
+---
+
+### 6. Simplify Transform Operations
+
+**Current Problem:** Date transforms, CT normalization, etc. are scattered
+across the pipeline.
+
+**Solution:** Centralize as configurable transforms:
+
+```rust
+pub enum TransformRule {
+    DateFormat { from_pattern: String, to_pattern: String },
+    CtNormalization { variable: String, matching_mode: CtMatchingMode },
+    Uppercase { variable: String },
+    Concatenate { target: String, sources: Vec<String>, separator: String },
+    Constant { target: String, value: String },
+}
+
+pub struct DomainTransforms {
+    pub domain_code: String,
+    pub rules: Vec<TransformRule>,
+}
+
+// Apply transforms to a DataFrame
+pub fn apply_transforms(
+    df: &mut DataFrame,
+    transforms: &DomainTransforms,
+) -> Result<TransformReport> { /* ... */ }
+
+// Preview a single transform
+pub fn preview_transform(
+    df: &DataFrame,
+    rule: &TransformRule,
+    sample_size: usize,
+) -> Vec<(String, String)> { /* ... */ }
+```
+
+**Benefits:**
+
+- User can see and modify all transforms
+- Easy to add/remove/reorder transforms
+- Preview before applying
+
+---
+
+### 7. Decouple Output Generation
+
+**Current Problem:** Output writing is all-or-nothing, tied to pipeline
+completion.
+
+**Solution:** Allow selective export:
+
+```rust
+// Export individual domains
+pub fn export_domain(
+    df: &DataFrame,
+    domain: &Domain,
+    output_dir: &Path,
+    formats: &[OutputFormat],
+) -> Result<OutputPaths> { /* ... */ }
+
+// Export a subset of domains
+pub fn export_domains_selective(
+    frames: &[(String, DataFrame, Domain)],
+    output_dir: &Path,
+    formats: &[OutputFormat],
+    define_xml_options: Option<DefineXmlOptions>,
+) -> Result<ExportReport> { /* ... */ }
+
+// Preview export (dry run)
+pub fn preview_export(
+    df: &DataFrame,
+    domain: &Domain,
+    format: OutputFormat,
+) -> Result<ExportPreview> { /* ... */ }
+```
+
+**Benefits:**
+
+- Export individual domains as they're completed
+- Re-export after changes without full rebuild
+- Show file sizes and record counts before writing
+
+---
+
+## Proposed Crate Structure for GUI-Only
+
+**CRITICAL DECISION: Removing CLI Entirely**
+
+Since we're building GUI-only, we can eliminate:
+
+- ❌ `sdtm-cli` crate (delete entirely)
+- ❌ `PipelineRunner` orchestration (CLI-specific)
+- ❌ Linear pipeline constraints
+- ❌ CLI argument parsing
+- ❌ Batch processing logic
+
+**Simplified Crate Structure:**
+
+```
+sdtm-transpiler/
+├── crates/
+│   ├── sdtm-model/          # ✓ Core types - NO changes
+│   ├── sdtm-standards/      # ✓ Standards loading - NO changes
+│   ├── sdtm-xpt/            # ✓ XPT format - NO changes
+│   │
+│   ├── sdtm-ingest/         # ⚠️ MINOR: Add preview methods
+│   ├── sdtm-validate/       # ⚠️ MINOR: Already supports incremental
+│   ├── sdtm-report/         # ⚠️ MINOR: Add selective export
+│   │
+│   ├── sdtm-map/            # ⚠️ REFACTOR: Split suggest/apply
+│   ├── sdtm-transform/      # ⚠️ REFACTOR: Make operations standalone
+│   │
+│   ├── sdtm-core/           # ⚠️ MAJOR: Extract all business logic
+│   │                        #          Remove PipelineContext/PipelineRunner
+│   │
+│   ├── sdtm-session/        # 🆕 NEW: Session state + services
+│   └── sdtm-gui/            # 🆕 NEW: egui application
+```
+
+**What This Simplifies:**
+
+| Component         | CLI Approach              | GUI-Only Approach             |
+| ----------------- | ------------------------- | ----------------------------- |
+| **Orchestration** | `PipelineRunner` + stages | Direct service calls from GUI |
+| **State**         | Transient, CLI args       | Persistent `StudySession`     |
+| **Processing**    | All-or-nothing batch      | Per-domain, on-demand         |
+| **Validation**    | End-of-pipeline           | Real-time, incremental        |
+| **Export**        | All domains together      | Selective, per-domain         |
+
+---
+
+## Refactored Architecture (GUI-Only)
+
+### Core Philosophy
+
+**Before (CLI Pipeline):**
+
+```
+User → CLI Args → PipelineRunner → Stage 1 → Stage 2 → ... → Output
+                       ↓
+              Tightly coupled stages
+```
+
+**After (GUI Services):**
+
+```
+User → GUI → Services → Independent Operations
+        ↓         ↓            ↓
+      State  No coupling   Composable
+```
+
+---
+
+### Layer 1: Core Business Logic (No Orchestration)
+
+**Location:** Refactored from `sdtm-core`, `sdtm-transform`, `sdtm-map`
+
+These become **pure, stateless functions** with NO dependencies on pipeline
+context:
+
+```rust
+// ===== sdtm-map/src/lib.rs =====
+
+pub fn suggest_column_mappings(
+    source_schema: &CsvSchema,
+    domain: &Domain,
+    hints: &[ColumnHint],
+) -> Vec<MappingSuggestion> {
+    // Pure function - no side effects
+}
+
+pub fn apply_column_mapping(
+    source_df: &DataFrame,
+    variable: &Variable,
+    source_column: &str,
+) -> Result<Series> {
+    // Returns transformed series, doesn't modify DataFrame
+}
+
+// ===== sdtm-transform/src/processing.rs =====
+
+pub fn apply_usubjid_prefix(
+    usubjid_values: &[String],
+    study_id: &str,
+) -> Vec<String> {
+    // Simple transformation, no context needed
+}
+
+pub fn assign_sequence_numbers(
+    df: &DataFrame,
+    subject_column: &str,
+) -> Vec<i64> {
+    // Returns sequence numbers, doesn't modify DataFrame
+}
+
+pub fn normalize_to_ct(
+    values: &[String],
+    codelist: &Codelist,
+    mode: CtMatchingMode,
+) -> Vec<String> {
+    // Pure CT normalization
+}
+
+// ===== sdtm-transform/src/suppqual.rs =====
+
+pub fn identify_unmapped_columns(
+    source_schema: &CsvSchema,
+    mapped_variables: &[String],
+) -> Vec<String> {
+    // Returns list of unmapped columns
+}
+
+pub fn build_suppqual_dataframe(
+    source_df: &DataFrame,
+    selections: &[SuppqualMapping],
+    parent_domain: &str,
+) -> Result<DataFrame> {
+    // Creates SUPP DataFrame from selections
+}
+```
+
+**Key Insight:** These functions don't know about "pipelines" - they're just
+domain operations.
+
+---
+
+### Layer 2: Service Layer (Stateful Coordination)
+
+**Location:** New `sdtm-session` crate
+
+Services manage state and coordinate business logic:
+
+```rust
+// ===== sdtm-session/src/services/mapping.rs =====
+
+pub struct MappingService {
+    standards: Vec<Domain>,
+    repositories: MappingRepository,
+}
+
+impl MappingService {
+    pub fn suggest_for_domain(
+        &self,
+        domain_code: &str,
+        source_schema: &CsvSchema,
+    ) -> Result<Vec<MappingSuggestion>> {
+        let domain = self.get_domain(domain_code)?;
+        let hints = build_column_hints(source_schema);
+        Ok(suggest_column_mappings(source_schema, domain, &hints))
+    }
+    
+    pub fn apply_mapping(
+        &self,
+        source_df: &DataFrame,
+        config: &MappingConfig,
+        domain_code: &str,
+    ) -> Result<DataFrame> {
+        let domain = self.get_domain(domain_code)?;
+        let mut result = source_df.clone();
+        
+        for (var_name, mapping) in &config.mappings {
+            let variable = domain.get_variable(var_name)?;
+            let series = apply_column_mapping(source_df, variable, &mapping.source)?;
+            result.with_column(series)?;
+        }
+        
+        Ok(result)
+    }
+}
+
+// ===== sdtm-session/src/services/processing.rs =====
+
+pub struct ProcessingService {
+    ct_registry: TerminologyRegistry,
+}
+
+impl ProcessingService {
+    pub fn process_domain(
+        &self,
+        df: &DataFrame,
+        domain_code: &str,
+        study_id: &str,
+        options: &ProcessingOptions,
+    ) -> Result<DataFrame> {
+        let mut result = df.clone();
+        
+        // Apply transforms independently
+        if options.apply_usubjid_prefix {
+            result = self.apply_usubjid_transform(&result, study_id)?;
+        }
+        
+        if options.apply_sequence_numbers {
+            result = self.apply_sequence_transform(&result, "USUBJID")?;
+        }
+        
+        if options.normalize_ct {
+            result = self.apply_ct_normalization(&result, domain_code)?;
+        }
+        
+        Ok(result)
+    }
+    
+    fn apply_usubjid_transform(&self, df: &DataFrame, study_id: &str) -> Result<DataFrame> {
+        let usubjid_col = df.column("USUBJID")?;
+        let values: Vec<String> = /* extract values */;
+        let prefixed = apply_usubjid_prefix(&values, study_id);
+        df.with_column(Series::new("USUBJID", prefixed))
+    }
+}
+
+// ===== sdtm-session/src/services/validation.rs =====
+
+pub struct ValidationService {
+    ct_registry: TerminologyRegistry,
+}
+
+impl ValidationService {
+    pub fn validate_domain(
+        &self,
+        df: &DataFrame,
+        domain_code: &str,
+    ) -> ValidationReport {
+        // Already exists in sdtm-validate - just wrap it
+        validate_domain(domain, df, Some(&self.ct_registry))
+    }
+    
+    pub fn validate_variable_values(
+        &self,
+        values: &[String],
+        variable: &Variable,
+    ) -> Vec<ValidationIssue> {
+        // New incremental validation
+    }
+}
+
+// ===== sdtm-session/src/session.rs =====
+
+pub struct StudySession {
+    pub study_id: String,
+    pub study_folder: PathBuf,
+    pub domains: HashMap<String, DomainState>,
+    
+    // Services
+    pub mapping_service: MappingService,
+    pub processing_service: ProcessingService,
+    pub validation_service: ValidationService,
+    pub export_service: ExportService,
+}
+
+pub struct DomainState {
+    pub source_file: PathBuf,
+    pub source_data: DataFrame,      // Original CSV data
+    pub mapped_data: Option<DataFrame>,  // After mapping
+    pub processed_data: Option<DataFrame>, // After processing
+    pub mapping_config: Option<MappingConfig>,
+    pub validation_report: Option<ValidationReport>,
+    pub suppqual_selections: Vec<SuppqualMapping>,
+    pub status: DomainStatus,
+}
+
+impl StudySession {
+    pub fn load_domain(&mut self, domain_code: &str, file: PathBuf) -> Result<()> {
+        let df = read_csv_table(&file)?;
+        self.domains.insert(domain_code.to_string(), DomainState {
+            source_file: file,
+            source_data: df,
+            status: DomainStatus::Loaded,
+            ..Default::default()
+        });
+        Ok(())
+    }
+    
+    pub fn map_domain(&mut self, domain_code: &str, config: MappingConfig) -> Result<()> {
+        let state = self.domains.get_mut(domain_code)?;
+        let mapped = self.mapping_service.apply_mapping(
+            &state.source_data,
+            &config,
+            domain_code,
+        )?;
+        
+        state.mapped_data = Some(mapped);
+        state.mapping_config = Some(config);
+        state.status = DomainStatus::Mapped;
+        Ok(())
+    }
+    
+    pub fn process_domain(&mut self, domain_code: &str) -> Result<()> {
+        let state = self.domains.get_mut(domain_code)?;
+        let mapped = state.mapped_data.as_ref().ok_or(/* error */)?;
+        
+        let processed = self.processing_service.process_domain(
+            mapped,
+            domain_code,
+            &self.study_id,
+            &ProcessingOptions::default(),
+        )?;
+        
+        state.processed_data = Some(processed);
+        state.status = DomainStatus::Processed;
+        Ok(())
+    }
+    
+    pub fn validate_domain(&mut self, domain_code: &str) -> Result<()> {
+        let state = self.domains.get_mut(domain_code)?;
+        let processed = state.processed_data.as_ref().ok_or(/* error */)?;
+        
+        let report = self.validation_service.validate_domain(processed, domain_code);
+        state.validation_report = Some(report);
+        Ok(())
+    }
+}
+```
+
+**Key Benefits:**
+
+- ✅ No pipeline orchestration
+- ✅ Each domain is independent
+- ✅ Operations can be called in any order
+- ✅ State is persistent and inspectable
+- ✅ Easy to undo/redo
+- ✅ GUI can call services directly
+
+---
+
+## What Can Be DELETED
+
+### 1. Delete Entirely: `sdtm-cli` Crate
+
+```bash
+rm -rf crates/sdtm-cli/
+```
+
+**What's removed:**
+
+- `pipeline.rs` - 1137 lines of orchestration
+- `cli.rs` - CLI argument parsing
+- `commands.rs` - CLI entry points
+- `logging.rs` - CLI-specific logging
+- `summary.rs` - CLI output formatting
+- `types.rs` - CLI-specific result types
+
+**Impact:** None for GUI
+
+---
+
+### 2. Extract from `sdtm-core`: Remove Pipeline Orchestration
+
+**Delete:**
+
+- `pipeline_context.rs` - Replace with simpler context
+- `frame_builder.rs` → Move `build_mapped_domain_frame` to `sdtm-session`
+
+**Keep & Simplify:**
+
+- `processor.rs` → Extract individual functions, remove `process_domain` wrapper
+- `domain_processors/` → Keep as-is (pure business logic)
+- `ct_utils.rs` → Keep as-is
+
+**Before (1 big function):**
+
+```rust
+pub fn process_domain(input: DomainProcessInput<'_>) -> Result<()> {
+    // 200+ lines of orchestration
+}
+```
+
+**After (many small functions):**
+
+```rust
+pub fn apply_usubjid_prefix(df: &mut DataFrame, study_id: &str) -> Result<()>
+pub fn assign_sequences(df: &mut DataFrame, subject_col: &str) -> Result<()>
+pub fn normalize_ct_values(df: &mut DataFrame, var: &Variable, ct: &Codelist) -> Result<()>
+pub fn apply_domain_processor(df: &mut DataFrame, domain_code: &str) -> Result<()>
+```
+
+---
+
+## Simplified Proposed Crate Structure
+
+```
+sdtm-transpiler/
+├── crates/
+│   ├── sdtm-model/          # Shared types (NO changes needed)
+│   ├── sdtm-standards/      # Standards loading (NO changes needed)
+│   ├── sdtm-ingest/         # CSV reading (minor refactor for preview)
+│   ├── sdtm-map/            # Mapping engine (split suggest/apply) ⚠️
+│   ├── sdtm-core/           # Domain processing (extract pure functions) ⚠️
+│   ├── sdtm-transform/      # Transforms (make configurable) ⚠️
+│   ├── sdtm-validate/       # Validation (support incremental) ⚠️
+│   ├── sdtm-xpt/            # XPT format (NO changes needed)
+│   ├── sdtm-report/         # Output generation (support selective export) ⚠️
+│   ├── sdtm-session/        # NEW: Session state management
+│   ├── sdtm-gui/            # NEW: egui + eframe GUI application
+│   ├── sdtm-cli/            # CLI (refactor to use services) ⚠️
+│   └── sdtm-pipeline/       # OPTIONAL: Extract linear pipeline for CLI
+```
+
+**Codebase Size Reduction:**
+
+| Component                    | Before (Lines) | After (Lines) | Reduction |
+| ---------------------------- | -------------- | ------------- | --------- |
+| sdtm-cli (DELETED)           | ~2500          | 0             | -100%     |
+| sdtm-core (refactored)       | ~2000          | ~800          | -60%      |
+| Total orchestration overhead | ~3000          | 0             | -100%     |
+| **New GUI code**             | 0              | ~2000         | +2000     |
+| **Net change**               | ~7500          | ~2800         | **-63%**  |
+
+---
+
+## Updated Migration Strategy (GUI-Only)
+
+### Phase 1: Foundation & Cleanup (Week 1)
+
+**Goal:** Remove CLI, create session infrastructure
+
+1. **Delete `sdtm-cli` crate**
+   ```bash
+   rm -rf crates/sdtm-cli/
+   # Update Cargo.toml to remove sdtm-cli from workspace
+   ```
+
+2. **Create `sdtm-session` crate**
+   ```bash
+   cargo new --lib crates/sdtm-session
+   ```
+   - Define `StudySession`, `DomainState`
+   - Create service interfaces (empty implementations)
+   - Add session serialization
+
+3. **Create `sdtm-gui` crate skeleton**
+   ```bash
+   cargo new crates/sdtm-gui
+   ```
+   - Add egui + eframe dependencies
+   - Create basic app structure
+   - Implement Home screen (loads session)
+
+**Deliverable:** Compiles with CLI removed, GUI shell loads
+
+---
+
+### Phase 2: Extract Core Functions (Week 2)
+
+**Goal:** Refactor `sdtm-core` into standalone functions
+
+1. **Refactor `sdtm-core/src/processor.rs`**
+   - Extract `apply_usubjid_prefix` from `process_domain`
+   - Extract `assign_sequences` from `process_domain`
+   - Extract `normalize_ct_column` from existing logic
+   - Keep `domain_processors/` as-is
+
+2. **Remove `PipelineContext`**
+   - Delete `pipeline_context.rs`
+   - Functions take explicit parameters instead
+
+3. **Update `sdtm-session`**
+   - Implement `ProcessingService` using new functions
+   - Add tests
+
+**Deliverable:** Core logic is modular and testable
+
+---
+
+### Phase 3: Mapping Service (Week 3)
+
+**Goal:** Make mapping work independently
+
+1. **Refactor `sdtm-map`**
+   - `suggest_column_mappings()` - already mostly there
+   - Add `apply_single_mapping()` helper
+   - Add `preview_mapping()` for sample rows
+
+2. **Implement `MappingService` in `sdtm-session`**
+   - Wraps `sdtm-map` functions
+   - Manages mapping state
+   - Saves/loads mapping configs
+
+3. **Build Mapping Tab in GUI**
+   - Variable list (left panel)
+   - Suggestion details (right panel)
+   - Accept/reject buttons
+   - Preview samples
+
+**Deliverable:** Can map domains interactively
+
+---
+
+### Phase 4: Validation & Transforms (Week 4)
+
+**Goal:** Real-time validation and configurable transforms
+
+1. **Enhance `sdtm-validate`**
+   - `validate_variable_values()` for incremental checks
+   - `preview_ct_mapping()` for user confirmation
+   - Already has `validate_domain()`
+
+2. **Implement `ValidationService`**
+   - Real-time CT checking
+   - Issue tracking per domain
+
+3. **Build Validation & Transform Tabs**
+   - Show CT mismatches
+   - Let user map values
+   - Configure transforms
+
+**Deliverable:** Interactive validation with fix suggestions
+
+---
+
+### Phase 5: Processing & Preview (Week 5)
+
+**Goal:** Show final output with all transforms applied
+
+1. **Complete `ProcessingService`**
+   - Chain all transforms
+   - USUBJID prefix
+   - Sequence assignment
+   - CT normalization
+
+2. **Handle SUPPQUAL**
+   - `identify_unmapped_columns()`
+   - User selects what goes to SUPP
+   - `build_suppqual_dataframe()`
+
+3. **Implement Preview & SUPP Tabs**
+   - Data table with pagination
+   - Before/after comparison
+   - SUPP configuration UI
+
+**Deliverable:** Full domain processing visible
+
+---
+
+### Phase 6: Export & Polish (Weeks 6-7)
+
+**Goal:** Export functionality and UX refinement
+
+1. **Enhance `sdtm-report`**
+   - `export_single_domain()`
+   - `export_selected_domains()`
+   - Progress callbacks for GUI
+
+2. **Implement Export Screen**
+   - Domain summary table
+   - Format selection
+   - Export button with progress
+
+3. **Add Session Persistence**
+   - Auto-save on changes
+   - Recent studies list
+   - Load/save dialogs
+
+4. **Polish UI**
+   - Keyboard shortcuts (Ctrl+S, etc.)
+   - Error toasts
+   - Help tooltips
+   - Status indicators
+
+**Deliverable:** Production-ready GUI
+
+---
+
+### Phase 7: Testing & Optimization (Week 8)
+
+**Goal:** Ensure quality and performance
+
+1. **Integration Tests**
+   - Load real study data
+   - Map → Process → Validate → Export
+   - Compare output with expected
+
+2. **Performance**
+   - Profile large datasets (10,000+ rows)
+   - Optimize table rendering
+   - Add lazy loading if needed
+
+3. **Documentation**
+   - User guide with screenshots
+   - Developer docs for services
+   - Architecture diagrams
+
+**Deliverable:** Tested, documented, ready to ship
+
+---
+
+## Updated Success Criteria
+
+### Functional Requirements
+
+✅ User can:
+
+- [ ] Load a study folder and see discovered domains
+- [ ] Map variables with AI-assisted suggestions
+- [ ] Configure transforms and see previews
+- [ ] Validate against CT with fix suggestions
+- [ ] Preview final output before export
+- [ ] Control SUPPQUAL generation
+- [ ] Export individual or all domains
+- [ ] Save and resume work
+- [ ] Undo mapping changes
+
+### Technical Requirements (Simplified)
+
+✅ Architecture:
+
+- [ ] `sdtm-cli` completely removed
+- [ ] Services are stateless and reusable
+- [ ] Each domain processes independently
+- [ ] Operations are composable (no pipeline)
+- [ ] Session state persists across restarts
+- [ ] No linear execution constraints
+
+### Performance Requirements
+
+✅ Performance:
+
+- [ ] Load 100+ domains in < 10 seconds
+- [ ] Mapping suggestions appear instantly (< 500ms)
+- [ ] Validation updates in real-time (< 1s)
+- [ ] Preview renders 1000 rows smoothly (60 FPS)
+- [ ] Export completes with progress indicator
+
+### Code Quality Requirements
+
+✅ Codebase:
+
+- [ ] 60%+ reduction in orchestration code
+- [ ] All business logic is pure functions
+- [ ] Services have <5 dependencies
+- [ ] 80%+ test coverage on services
+- [ ] Zero circular dependencies
+
+---
+
+## Updated Risk Assessment
+
+| Risk                            | Impact | Probability | Mitigation                                     |
+| ------------------------------- | ------ | ----------- | ---------------------------------------------- |
+| **Breaking existing workflows** | Low    | None        | No CLI to break!                               |
+| **Performance with large data** | Medium | Low         | Pagination, lazy loading, streaming            |
+| **egui learning curve**         | Low    | Medium      | Simple layouts first, iterate                  |
+| **State management bugs**       | Medium | Low         | Comprehensive tests, use serde for persistence |
+| **Session corruption**          | Low    | Low         | Versioned format, migration path               |
+
+---
+
+## Conclusion (Updated)
+
+This simplified, GUI-only architecture eliminates **ALL** pipeline orchestration
+overhead:
+
+**What We're Removing:**
+
+- ✂️ Entire `sdtm-cli` crate (~2500 lines)
+- ✂️ `PipelineRunner` and stage orchestration (~1500 lines)
+- ✂️ `PipelineContext` complexity (~200 lines)
+- ✂️ Linear execution constraints
+- ✂️ CLI argument parsing and validation
+
+**What We're Gaining:**
+
+- ✨ Modular, reusable services
+- ✨ Interactive, non-linear workflows
+- ✨ Per-domain processing
+- ✨ Real-time validation and preview
+- ✨ User control over every decision
+- ✨ Persistent session state
+- ✨ Simpler, more maintainable codebase
+
+**Net Result:** **-63% code**, +100% flexibility
+
+**Timeline:** 8 weeks to production-ready GUI
+
+---
+
+## Service Layer Architecture
+
+Create a service layer that both GUI and CLI can use:
+
+```rust
+// In sdtm-session or new sdtm-services crate
+
+pub struct MappingService {
+    engine: MappingEngine,
+    standards: Vec<Domain>,
+}
+
+impl MappingService {
+    pub fn suggest_for_domain(&self, schema: &CsvSchema, domain: &Domain) 
+        -> Vec<MappingSuggestion> { /* ... */ }
+    
+    pub fn apply_mapping(&self, df: &DataFrame, mapping: &MappingConfig, domain: &Domain) 
+        -> Result<DataFrame> { /* ... */ }
+    
+    pub fn preview_mapping(&self, df: &DataFrame, variable: &Variable, column: &str) 
+        -> Vec<(String, String)> { /* ... */ }
+}
+
+pub struct ValidationService {
+    ct_registry: TerminologyRegistry,
+}
+
+impl ValidationService {
+    pub fn validate_domain(&self, df: &DataFrame, domain: &Domain) 
+        -> ValidationReport { /* ... */ }
+    
+    pub fn validate_variable(&self, values: &[String], variable: &Variable) 
+        -> Vec<ValidationIssue> { /* ... */ }
+    
+    pub fn preview_ct_normalization(&self, values: &[String], codelist: &Codelist) 
+        -> Vec<(String, Option<String>)> { /* ... */ }
+}
+
+pub struct ExportService {
+    // ...
+}
+
+pub struct StudySessionService {
+    pub mapping: MappingService,
+    pub validation: ValidationService,
+    pub export: ExportService,
+    pub session: StudySession,
+}
+```
 
 ---
 
@@ -143,9 +1259,9 @@ Based on typical usage patterns:
 │   ┌────────────────────────────────────────────────────────┐                │
 │   │                     DOMAIN EDITOR                       │                │
 │   │                                                         │                │
-│   │   ┌─────────┐ ┌──────┐ ┌────────────┐ ┌─────────┐     │                │
-│   │   │ Mapping │ │ SUPP │ │ Validation │ │ Preview │     │                │
-│   │   └─────────┘ └──────┘ └────────────┘ └─────────┘     │                │
+│   │   ┌─────────┐ ┌───────────┐ ┌────────────┐ ┌─────────┐ ┌──────┐     │                │
+│   │   │ Mapping │ │ Transform │ │ Validation │ │ Preview │ │ SUPP │     │                │
+│   │   └─────────┘ └───────────┘ └────────────┘ └─────────┘ └──────┘     │                │
 │   │                                                         │                │
 │   └────────────────────────────────────────────────────────┘                │
 │                                │                                             │
@@ -164,16 +1280,16 @@ Based on typical usage patterns:
    - Which domains exist?
    - What's the status of each?
    - Where do I need to focus?
+   - **How confident is the system in domain detection?**
 
 2. **Domain Editor - Mapping Tab**
    - Which SDTM variables need attention?
    - What's the suggested mapping for each?
    - How confident is the system?
 
-3. **Domain Editor - SUPP Tab**
-   - Which source columns are unmapped?
-   - Should they be included in SUPPQUAL?
-   - What are the QNAM/QLABEL values?
+3. **Domain Editor - Transform Tab (NEW)**
+   - How should values be transformed? (e.g., Date formats, CT normalization)
+   - Are there bulk patterns to apply?
 
 4. **Domain Editor - Validation Tab**
    - Which values fail CT validation?
@@ -184,7 +1300,12 @@ Based on typical usage patterns:
    - What will the output look like?
    - Are transformations applied correctly?
 
-6. **Export Screen**
+6. **Domain Editor - SUPP Tab**
+   - Which source columns are unmapped?
+   - Should they be included in SUPPQUAL?
+   - What are the QNAM/QLABEL values?
+
+7. **Export Screen**
    - Are all domains ready?
    - What output formats do I want?
    - Where should files be saved?
@@ -339,7 +1460,8 @@ Based on typical usage patterns:
 
 **Layout**: Header + Tab bar + Content area
 
-**Tab Order**: Mapping → SUPP → Validation → Preview (workflow sequence)
+**Tab Order**: Mapping → Transform → Validation → Preview → SUPP (workflow
+sequence)
 
 **Tab Badges**: Each tab shows a status badge to indicate pending work:
 
@@ -474,7 +1596,56 @@ Shows the suggested/selected source column:
 | Clear    | Removes the mapping              |
 | Dropdown | Select a different source column |
 
+**Mapping Method:**
+
+| Method   | Description                                       |
+| -------- | ------------------------------------------------- |
+| Column   | Map directly to a source column (default)         |
+| Constant | Assign a hardcoded value (e.g., "USA")            |
+| Derived  | Calculated from other columns (via Transform tab) |
+
 ---
+
+#### Tab B: Transform (NEW)
+
+Configure value transformations and bulk patterns.
+
+```
+╭──────────────────────────────────────────────────────────────────────────────╮
+│  ←  AE — Adverse Events                                          ◐    ⚙     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  Mapping ✓       Transform (2)     Validation (5⚠)     Preview     SUPP      │
+│                  ━━━━━━━━━━━━━                                               │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  Value Transformations                                                       │
+│                                                                              │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │ Variable   Source Column       Transformation               Sample     │  │
+│  ├────────────────────────────────────────────────────────────────────────┤  │
+│  │ AESTDTC    START_DATE          Date (MM/DD/YYYY → ISO)      2024-01-15 │  │
+│  │ AEENDTC    END_DATE            Date (MM/DD/YYYY → ISO)      2024-01-20 │  │
+│  │ AESEV      SEVERITY            CT Map (Grade 1 → MILD)      MILD       │  │
+│  │ AETERM     ADVERSE_EVENT       Uppercase                    HEADACHE   │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+│                                                                              │
+│  Bulk Patterns                                                               │
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────┐                     │
+│  │  Pattern Mapping                                     │                     │
+│  │                                                      │                     │
+│  │  Source Pattern:  *_DATE                            │                     │
+│  │  Target Pattern:  {DOMAIN}*DTC                      │                     │
+│  │                                                      │                     │
+│  │  Preview:                                            │                     │
+│  │    START_DATE  →  AESTDTC  ✓                        │                     │
+│  │    END_DATE    →  AEENDTC  ✓                        │                     │
+│  │                                                      │                     │
+│  │                         Apply Pattern               │                     │
+│  └─────────────────────────────────────────────────────┘                     │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
 
 #### Tab C: Validation
 
@@ -501,8 +1672,15 @@ Shows CT validation issues that must be resolved before export.
 │  │    1 sponsor extension       │  │                                         │
 │  │                              │  │   ┌─────────────────────────────────┐   │
 │  │    AEOUT                     │  │   │ Source        Count   Map to    │   │
-│  │    Outcome             WARN  │  │   ├─────────────────────────────────┤   │
-│  │    1 sponsor extension       │  │   │ "Mild"        45      MILD   ▼  │   │
+│  │ **Searchable Combobox** to select valid CT term (fuzzy matching)
+4. Apply button to save resolutions
+```
+
+┌─────────────────────────────────────┐ │ 🔍 Search CT values... │
+├─────────────────────────────────────┤ │ ● MILD │ │ MODERATE │ │ SEVERE │
+└─────────────────────────────────────┘
+
+```│   │ "Mild"        45      MILD   ▼  │   │
 │  │                              │  │   │ "Moderate"    38      MODERATE▼ │   │
 │  └──────────────────────────────┘  │   │ "Severe"      12      SEVERE ▼  │   │
 │                                    │   │ "Grade 1"      5      [Select]▼ │   │
@@ -549,7 +1727,8 @@ For the selected issue:
 
 #### Tab D: Preview
 
-Shows transformed data before export.
+Shows transformed data before export. This preview reflects the **Main Domain**
+dataset (e.g., `AE`). Supplemental qualifiers are previewed in the SUPP tab.
 
 ```
 ╭──────────────────────────────────────────────────────────────────────────────╮
@@ -583,7 +1762,7 @@ Shows transformed data before export.
 ╰──────────────────────────────────────────────────────────────────────────────╯
 ```
 
-**Features**:
+**FeatureE**:
 
 - Scrollable data table with SDTM column headers
 - Shows transformed values (CT normalized, dates formatted)
@@ -897,8 +2076,10 @@ pub enum View {
 
 pub enum EditorTab {
     Mapping,
+    Transform,
     Validation,
     Preview,
+    Supp,
 }
 ```
 
@@ -939,6 +2120,16 @@ pub enum MappingState {
     Mapped {
         source_column: String,
         confidence: f32,
+    },
+
+    /// Assigned a constant value
+    Constant {
+        value: String,
+    },
+
+    /// Derived via transformation logic
+    Derived {
+        logic: String,
     },
 
     /// Has suggestion(s) awaiting review
@@ -1014,46 +2205,68 @@ pub struct InvalidValue {
 
 ### Domain Editor
 
-| Shortcut    | Action                       |
-| ----------- | ---------------------------- |
-| `↑` `↓`     | Navigate variable list       |
-| `Enter`     | Accept suggestion            |
-| `Backspace` | Clear mapping                |
-| `Tab`       | Next item needing review     |
-| `Shift+Tab` | Previous item needing review |
-| `1` `2` `3` | Switch tabs                  |
-| `/`         | Focus search                 |
+| Shortcut    | Action                    |
+| ----------- | ------------------------- |
+| `↑` `↓`     | Navigate variable list    |
+| `Enter`     | Accept suggestion         |
+| `Backspace` | Clear mapping             |
+| `Tab`       | Next field / Switch focus |
 
 ---
 
 ## Part 8: File Structure
 
-```
-crates/sdtm-gui/
+```text
+.
 ├── Cargo.toml
-└── src/
-    ├── main.rs
-    ├── app.rs                 # Main eframe::App implementation
-    ├── theme.rs               # Colors, spacing, fonts
-    ├── state.rs               # All state types
-    ├── views/
-    │   ├── mod.rs
-    │   ├── home.rs            # Home screen (selection + overview)
-    │   ├── domain_editor.rs   # Main editor (delegates to tabs)
-    │   ├── mapping_tab.rs     # Mapping tab content
-    │   ├── validation_tab.rs  # Validation tab content
-    │   ├── preview_tab.rs     # Preview tab content
-    │   └── export.rs          # Export screen
-    ├── components/
-    │   ├── mod.rs
-    │   ├── domain_card.rs
-    │   ├── variable_list.rs
-    │   ├── suggestion_card.rs
-    │   ├── data_table.rs
-    │   └── progress_bar.rs
-    └── dialogs/
-        ├── mod.rs
-        └── supp_dialog.rs
+├── crates/
+│   ├── sdtm-core/             # Domain models & business logic
+│   ├── sdtm-ingest/           # File reading (CSV, SAS7bdat)
+│   ├── sdtm-pipeline/         # NEW: Shared pipeline orchestration (extracted from CLI)
+│   │   └── src/
+│   │       ├── lib.rs
+│   │       ├── ingest.rs      # Stage 1: File discovery
+│   │       ├── mapping.rs     # Stage 2: Column mapping
+│   │       ├── processing.rs  # Stage 3-4: Domain rules
+│   │       ├── validation.rs  # Stage 5: Conformance
+│   │       ├── output.rs      # Stage 6: File generation
+│   │       └── state.rs       # Pipeline state (for GUI progress)
+│   └── sdtm-gui/              # NEW: GUI application
+│       ├── Cargo.toml
+│       └── src/
+│           ├── main.rs
+│           ├── app.rs             # Main eframe::App implementation
+│           ├── theme.rs           # Colors, spacing, fonts
+│           ├── state/
+│           │   ├── mod.rs
+│           │   ├── app_state.rs   # Global application state
+│           │   ├── study_state.rs # Loaded study data
+│           │   ├── domain_state.rs # Per-domain working state
+│           │   ├── mapping_state.rs # Interactive mapping session
+│           │   └── validation_state.rs # CT resolution state
+│           ├── views/
+│           │   ├── mod.rs
+│           │   ├── home.rs        # Home screen (selection + overview)
+│           │   ├── domain_editor.rs # Main editor (delegates to tabs)
+│           │   ├── tabs/
+│           │   │   ├── mapping.rs # Mapping tab content
+│           │   │   ├── transform.rs # NEW: Value transformations
+│           │   │   ├── validation.rs # Validation tab content
+│           │   │   ├── preview.rs # Preview tab content
+│           │   │   └── supp.rs    # SUPP tab content
+│           │   └── export.rs      # Export screen
+│           ├── components/
+│           │   ├── mod.rs
+│           │   ├── domain_card.rs
+│           │   ├── variable_list.rs
+│           │   ├── mapping_card.rs
+│           │   ├── ct_picker.rs   # Searchable CT selector
+│           │   ├── data_table.rs
+│           │   └── progress_bar.rs
+│           └── dialogs/
+│               ├── mod.rs
+│               ├── supp_config.rs
+│               └── pattern_mapping.rs # NEW: Bulk mapping pattern
 ```
 
 ---
@@ -1081,7 +2294,13 @@ crates/sdtm-gui/
 - [ ] Detail panel with suggestions
 - [ ] Accept/reject flow
 - [ ] Manual column selection
-- [ ] Unmapped columns section
+- [ ] Constant value assignment
+
+### Phase 3.5: Transform Tab
+
+- [ ] Transformation list
+- [ ] Bulk pattern editor
+- [ ] Derivation logic editor
 
 ### Phase 4: Validation Tab
 
@@ -1110,31 +2329,6 @@ crates/sdtm-gui/
 
 ---
 
-## Part 10: Dependencies
-
-```toml
-[dependencies]
-eframe = "0.29"
-egui = "0.29"
-egui_extras = { version = "0.29", features = ["all_loaders"] }
-rfd = "0.15"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-directories = "5.0"
-anyhow = "1.0"
-tracing = "0.1"
-
-sdtm-model = { path = "../sdtm-model" }
-sdtm-core = { path = "../sdtm-core" }
-sdtm-map = { path = "../sdtm-map" }
-sdtm-standards = { path = "../sdtm-standards" }
-sdtm-ingest = { path = "../sdtm-ingest" }
-sdtm-validate = { path = "../sdtm-validate" }
-sdtm-report = { path = "../sdtm-report" }
-```
-
----
-
 ## Summary
 
 This GUI is designed around one core insight: **the user's job is to fill SDTM
@@ -1150,10 +2344,542 @@ The interface reflects this by:
 4. **Minimizing navigation** — everything for a domain happens in one place
 5. **Progressive disclosure** — simple list view with details on selection
 
-The four-tab design (Mapping → SUPP → Validation → Preview) follows the natural
-workflow:
+The five-tab design (Mapping → Transform → Validation → Preview → SUPP) follows
+the natural workflow:
 
 1. **Mapping** — Map source columns to SDTM variables
-2. **SUPP** — Decide what to do with unmapped columns
+2. **Transform** — Apply value transformations and bulk patterns
 3. **Validation** — Validate all mapped values against CT
 4. **Preview** — See the final transformed output
+5. **SUPP** — Decide what to do with unmapped columns
+
+---
+
+## Technical Implementation
+
+### egui + eframe Architecture
+
+**Framework Choice:** egui with eframe for cross-platform desktop deployment
+
+**Why egui:**
+
+- Pure Rust, integrates seamlessly with existing crates
+- Immediate mode UI - simple state management
+- Cross-platform (Windows, macOS, Linux)
+- Good performance for data-heavy UIs
+- Built-in widgets + easy custom widgets
+
+**Application Structure:**
+
+```rust
+// In crates/sdtm-gui/src/main.rs
+
+use eframe::egui;
+use sdtm_session::StudySessionService;
+
+fn main() -> Result<(), eframe::Error> {
+    let options = eframe::NativeOptions {
+        viewport: egui::ViewportBuilder::default()
+            .with_inner_size([1280.0, 800.0])
+            .with_min_inner_size([1024.0, 600.0]),
+        ..Default::default()
+    };
+    
+    eframe::run_native(
+        "CDISC Transpiler",
+        options,
+        Box::new(|cc| Ok(Box::new(CdiscApp::new(cc)))),
+    )
+}
+
+struct CdiscApp {
+    // Application state
+    session: Option<StudySessionService>,
+    current_screen: Screen,
+    current_domain: Option<String>,
+    current_tab: DomainTab,
+    
+    // UI state
+    selected_variable: Option<String>,
+    search_query: String,
+    error_message: Option<String>,
+}
+
+enum Screen {
+    Home,
+    DomainEditor,
+    Export,
+}
+
+enum DomainTab {
+    Mapping,
+    Transform,
+    Validation,
+    Preview,
+    Supp,
+}
+
+impl eframe::App for CdiscApp {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        match self.current_screen {
+            Screen::Home => self.render_home(ctx),
+            Screen::DomainEditor => self.render_domain_editor(ctx),
+            Screen::Export => self.render_export(ctx),
+        }
+    }
+}
+```
+
+---
+
+### State Management Pattern
+
+**Separation of Concerns:**
+
+```rust
+// Application State (in GUI crate)
+struct AppState {
+    session: Option<StudySessionService>,
+    ui_state: UiState,
+}
+
+// UI State (ephemeral, not persisted)
+struct UiState {
+    current_screen: Screen,
+    selected_domain: Option<String>,
+    selected_variable: Option<String>,
+    search_filter: String,
+    scroll_position: f32,
+}
+
+// Session State (persisted, in sdtm-session crate)
+pub struct StudySession {
+    study_id: String,
+    domains: HashMap<String, DomainState>,
+    // ... business state only
+}
+```
+
+**Benefits:**
+
+- Clean separation between business and UI state
+- Session state can be saved/loaded independently
+- UI state is ephemeral and disposable
+
+---
+
+### Layout Implementation
+
+**Master-Detail Pattern:**
+
+```rust
+impl CdiscApp {
+    fn render_domain_editor(&mut self, ctx: &egui::Context) {
+        egui::TopBottomPanel::top("header").show(ctx, |ui| {
+            self.render_header(ui);
+        });
+        
+        egui::TopBottomPanel::top("tabs").show(ctx, |ui| {
+            self.render_tabs(ui);
+        });
+        
+        egui::CentralPanel::default().show(ctx, |ui| {
+            egui::SidePanel::left("variable_list")
+                .resizable(true)
+                .default_width(250.0)
+                .width_range(200.0..=400.0)
+                .show_inside(ui, |ui| {
+                    self.render_variable_list(ui);
+                });
+            
+            egui::CentralPanel::default().show_inside(ui, |ui| {
+                self.render_detail_panel(ui);
+            });
+        });
+    }
+}
+```
+
+---
+
+### Data Table Rendering
+
+For large DataFrames (Preview tab):
+
+```rust
+use egui_extras::{TableBuilder, Column};
+
+fn render_preview_table(&self, ui: &mut egui::Ui, df: &DataFrame) {
+    let text_height = egui::TextStyle::Body.resolve(ui.style()).size;
+    
+    TableBuilder::new(ui)
+        .striped(true)
+        .resizable(true)
+        .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+        .column(Column::auto()) // Row number
+        .columns(Column::auto(), df.width()) // Data columns
+        .min_scrolled_height(0.0)
+        .header(20.0, |mut header| {
+            header.col(|ui| { ui.strong("#"); });
+            for col_name in df.get_column_names() {
+                header.col(|ui| { ui.strong(col_name); });
+            }
+        })
+        .body(|mut body| {
+            for row_idx in 0..df.height().min(1000) { // Limit rows
+                body.row(text_height, |mut row| {
+                    row.col(|ui| { ui.label(format!("{}", row_idx + 1)); });
+                    for col_idx in 0..df.width() {
+                        row.col(|ui| {
+                            let value = df.column(col_idx)
+                                .and_then(|s| s.get(row_idx).ok())
+                                .map(|v| format!("{}", v))
+                                .unwrap_or_default();
+                            ui.label(value);
+                        });
+                    }
+                });
+            }
+        });
+}
+```
+
+---
+
+### Async Operations
+
+For long-running operations (loading data, validation):
+
+```rust
+use std::sync::mpsc::{channel, Receiver};
+use std::thread;
+
+enum BackgroundTask {
+    LoadStudy(PathBuf),
+    ValidateDomain(String),
+    ExportDomains(Vec<String>),
+}
+
+struct TaskHandle {
+    receiver: Receiver<TaskResult>,
+    progress: Arc<AtomicU32>,
+}
+
+impl CdiscApp {
+    fn start_background_task(&mut self, task: BackgroundTask) {
+        let (tx, rx) = channel();
+        let progress = Arc::new(AtomicU32::new(0));
+        let progress_clone = progress.clone();
+        
+        thread::spawn(move || {
+            let result = match task {
+                BackgroundTask::LoadStudy(path) => {
+                    // Load study with progress updates
+                    // ...
+                }
+                // ... other tasks
+            };
+            tx.send(result).ok();
+        });
+        
+        self.current_task = Some(TaskHandle { receiver: rx, progress });
+    }
+    
+    fn check_background_task(&mut self, ctx: &egui::Context) {
+        if let Some(handle) = &self.current_task {
+            // Update progress indicator
+            let progress = handle.progress.load(Ordering::Relaxed);
+            // ... render progress bar ...
+            
+            // Check for completion
+            if let Ok(result) = handle.receiver.try_recv() {
+                self.handle_task_result(result);
+                self.current_task = None;
+            }
+            
+            // Request repaint for progress updates
+            ctx.request_repaint();
+        }
+    }
+}
+```
+
+---
+
+### Styling and Theming
+
+```rust
+fn configure_styles(ctx: &egui::Context) {
+    let mut style = (*ctx.style()).clone();
+    
+    // Professional color scheme
+    style.visuals.window_fill = egui::Color32::from_rgb(248, 249, 250);
+    style.visuals.panel_fill = egui::Color32::WHITE;
+    
+    // Status colors
+    style.visuals.error_fg_color = egui::Color32::from_rgb(220, 53, 69);
+    style.visuals.warn_fg_color = egui::Color32::from_rgb(255, 193, 7);
+    style.visuals.selection.bg_fill = egui::Color32::from_rgb(13, 110, 253);
+    
+    // Typography
+    style.spacing.item_spacing = egui::vec2(8.0, 6.0);
+    style.spacing.button_padding = egui::vec2(12.0, 6.0);
+    
+    ctx.set_style(style);
+}
+```
+
+---
+
+## Migration Strategy
+
+### Phase 1: Foundation (Weeks 1-2)
+
+**Goal:** Set up infrastructure without breaking existing CLI
+
+1. **Create `sdtm-session` crate**
+   - Define `StudySession`, `DomainState`, and persistence
+   - Add serialization with `serde_json`
+   - Write unit tests for session management
+
+2. **Create `sdtm-gui` crate skeleton**
+   - Set up eframe application structure
+   - Implement basic navigation (Home ↔ Domain Editor ↔ Export)
+   - Create mock UI layouts with placeholder data
+
+3. **Set up integration points**
+   - Add feature flags to existing crates for GUI support
+   - Ensure CLI still works with no regressions
+
+**Deliverable:** Empty GUI shell that compiles and runs
+
+---
+
+### Phase 2: Decouple Mapping (Weeks 3-4)
+
+**Goal:** Make mapping engine work independently
+
+1. **Refactor `sdtm-map`**
+   ```rust
+   // Add new public APIs
+   pub fn suggest_mappings(...) -> Vec<MappingSuggestion>
+   pub fn apply_mapping(...) -> Result<DataFrame>
+   pub fn preview_mapping(...) -> Vec<(String, String)>
+   ```
+
+2. **Integrate with GUI**
+   - Implement Mapping tab UI
+   - Connect to mapping service
+   - Show suggestions with confidence scores
+   - Allow user to accept/reject/modify
+
+3. **Test both paths**
+   - Verify CLI still uses `build_mapped_domain_frame`
+   - Verify GUI can suggest and apply mappings independently
+
+**Deliverable:** Working Mapping tab in GUI
+
+---
+
+### Phase 3: Decouple Validation (Weeks 5-6)
+
+**Goal:** Make validation work incrementally
+
+1. **Refactor `sdtm-validate`**
+   ```rust
+   pub fn validate_domain(...) -> ValidationReport
+   pub fn validate_variable(...) -> Vec<ValidationIssue>
+   pub fn preview_ct_normalization(...) -> Vec<(String, Option<String>)>
+   ```
+
+2. **Integrate with GUI**
+   - Implement Validation tab UI
+   - Show CT mapping suggestions
+   - Allow user to resolve mismatches
+   - Real-time validation feedback
+
+3. **Add Transform tab**
+   - Define `TransformRule` enum
+   - Implement transform preview
+   - Allow user to configure transforms
+
+**Deliverable:** Working Validation and Transform tabs
+
+---
+
+### Phase 4: Processing and Preview (Weeks 7-8)
+
+**Goal:** Extract pure processing functions
+
+1. **Refactor `sdtm-core`**
+   ```rust
+   // Extract from process_domain into smaller functions
+   pub fn apply_usubjid_prefix(...)
+   pub fn assign_sequence_numbers(...)
+   pub fn normalize_ct_column(...)
+   ```
+
+2. **Implement Preview tab**
+   - Apply all transformations
+   - Show DataFrame with pagination
+   - Highlight CT-normalized values
+   - Show before/after comparisons
+
+3. **Make SUPPQUAL user-controlled**
+   - Identify candidates
+   - Show in SUPP tab
+   - Let user approve/reject
+   - Generate SUPP DataFrame
+
+**Deliverable:** Full domain processing in GUI
+
+---
+
+### Phase 5: Export and Polish (Weeks 9-10)
+
+**Goal:** Complete export functionality and UX polish
+
+1. **Refactor `sdtm-report`**
+   ```rust
+   pub fn export_domain(...)
+   pub fn export_domains_selective(...)
+   pub fn preview_export(...)
+   ```
+
+2. **Implement Export screen**
+   - Domain summary table
+   - Output format selection
+   - Selective export
+   - Progress indicators
+
+3. **Add session persistence**
+   - Save/load session state
+   - Recent studies list
+   - Auto-save on changes
+
+4. **Polish UI/UX**
+   - Keyboard shortcuts
+   - Error handling and validation
+   - Help tooltips
+   - Undo/redo (if time permits)
+
+**Deliverable:** Complete GUI application
+
+---
+
+### Phase 6: Testing and Documentation (Weeks 11-12)
+
+**Goal:** Ensure quality and maintainability
+
+1. **Integration testing**
+   - End-to-end GUI workflows
+   - Comparison with CLI outputs
+   - Performance testing with large datasets
+
+2. **Documentation**
+   - User guide with screenshots
+   - Developer documentation for services
+   - API documentation for refactored crates
+
+3. **Packaging and distribution**
+   - Build scripts for all platforms
+   - Installation instructions
+   - Release preparation
+
+**Deliverable:** Production-ready GUI
+
+---
+
+## Success Criteria
+
+### Functional Requirements
+
+✅ User can:
+
+- [ ] Load a study folder and see discovered domains
+- [ ] Map variables with AI-assisted suggestions
+- [ ] Configure value transformations
+- [ ] Validate against Controlled Terminology
+- [ ] Preview final output before export
+- [ ] Control SUPPQUAL generation
+- [ ] Export subsets of domains
+- [ ] Save and resume work
+
+### Technical Requirements
+
+✅ Architecture:
+
+- [ ] Services decoupled from pipeline orchestration
+- [ ] Each domain can be processed independently
+- [ ] Operations are reversible/undoable
+- [ ] Session state can be persisted
+- [ ] CLI remains functional with no regressions
+
+### Performance Requirements
+
+✅ Performance:
+
+- [ ] Load 100+ domain files in < 10 seconds
+- [ ] Mapping suggestions appear in < 1 second
+- [ ] Validation updates in < 2 seconds
+- [ ] Preview renders 1000 rows smoothly
+- [ ] Export completes in reasonable time (< 30s for typical study)
+
+### UX Requirements
+
+✅ User Experience:
+
+- [ ] Clear visual hierarchy
+- [ ] Intuitive workflow (no getting stuck)
+- [ ] Helpful error messages
+- [ ] Progress indicators for long operations
+- [ ] Keyboard shortcuts for common actions
+
+---
+
+## Risks and Mitigation
+
+| Risk                                         | Impact | Probability | Mitigation                                           |
+| -------------------------------------------- | ------ | ----------- | ---------------------------------------------------- |
+| **Refactoring breaks CLI**                   | High   | Medium      | Maintain feature parity tests, incremental changes   |
+| **Performance issues with large DataFrames** | High   | Low         | Lazy loading, pagination, virtual scrolling          |
+| **egui learning curve**                      | Medium | Medium      | Start with simple layouts, iterate                   |
+| **State management complexity**              | Medium | Medium      | Keep business logic in services, UI state minimal    |
+| **Session persistence bugs**                 | Medium | Low         | Comprehensive unit tests, use stable serialization   |
+| **Cross-platform issues**                    | Low    | Low         | Test early on all platforms, use eframe abstractions |
+
+---
+
+## Conclusion
+
+This architecture document defines a comprehensive plan to transform the CDISC
+Transpiler from a linear CLI pipeline into a modular, GUI-friendly application
+while maintaining the existing CLI functionality.
+
+**Key Principles:**
+
+1. **Modularity**: Each operation can work independently
+2. **Separation**: Business logic decoupled from orchestration
+3. **Flexibility**: Users control the workflow, not forced into a pipeline
+4. **Transparency**: Show what's happening, allow inspection and modification
+5. **Reversibility**: Changes can be undone or adjusted
+
+**Expected Outcomes:**
+
+- Users can work more efficiently with visual feedback
+- Complex mapping decisions are easier with preview
+- Validation errors are resolved interactively
+- The codebase is more maintainable and testable
+- Both CLI and GUI share the same robust services
+
+The migration is designed to be incremental and low-risk, with each phase
+delivering tangible value. **By removing the CLI entirely, we eliminate 63% of
+the codebase complexity while gaining a more flexible, maintainable
+architecture.**
+
+---
+
+**Document Version:** 2.0 (GUI-Only)\
+**Last Updated:** December 30, 2025\
+**Status:** Ready for Implementation - Optimized for GUI-Only Development\
+**Expected Timeline:** 8 weeks to production
