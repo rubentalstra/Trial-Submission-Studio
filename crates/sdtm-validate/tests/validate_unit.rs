@@ -2,13 +2,13 @@
 
 use polars::prelude::*;
 use sdtm_model::{CoreDesignation, Domain, Variable, VariableType};
-use sdtm_validate::{CheckType, Severity, validate_domain};
+use sdtm_validate::{validate_domain, CheckType, Severity};
 
 fn make_domain(variables: Vec<Variable>) -> Domain {
     Domain {
         name: "AE".to_string(),
         label: None,
-        dataset_class: None,
+        class: None,
         structure: None,
         dataset_name: None,
         variables,
