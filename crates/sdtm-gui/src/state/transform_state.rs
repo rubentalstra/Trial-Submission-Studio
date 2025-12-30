@@ -32,6 +32,8 @@ impl TransformTypeDisplay for TransformType {
             Self::Iso8601Duration => egui_phosphor::regular::TIMER,
             Self::StudyDay { .. } => egui_phosphor::regular::CALENDAR_CHECK,
             Self::NumericConversion => egui_phosphor::regular::FUNCTION,
+            // Handle future variants
+            _ => egui_phosphor::regular::QUESTION,
         }
     }
 
@@ -47,6 +49,8 @@ impl TransformTypeDisplay for TransformType {
             Self::Iso8601Duration => "ISO 8601 Duration",
             Self::StudyDay { .. } => "Study Day",
             Self::NumericConversion => "Numeric",
+            // Handle future variants
+            _ => "Unknown",
         }
     }
 

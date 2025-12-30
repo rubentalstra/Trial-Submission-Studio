@@ -7,7 +7,7 @@
 use crate::services::{MappingService, MappingState};
 use crate::state::{
     AppState, DomainStatus, TransformRule, TransformRuleDisplay, TransformState, TransformType,
-    build_pipeline_from_domain,
+    TransformTypeDisplay, build_pipeline_from_domain,
 };
 use crate::theme::{colors, spacing};
 use egui::{RichText, Ui};
@@ -442,6 +442,19 @@ fn show_transform_detail(
         }
         TransformType::CopyDirect => {
             show_copy_detail(ui, &rule.target_variable, mapping_state, source_data, theme);
+        }
+        // Handle future transform types
+        _ => {
+            ui.label(
+                RichText::new("Transform Details")
+                    .strong()
+                    .color(theme.text_muted),
+            );
+            ui.add_space(spacing::SM);
+            ui.label(format!(
+                "Transform type: {}",
+                rule.transform_type.category()
+            ));
         }
     }
 }

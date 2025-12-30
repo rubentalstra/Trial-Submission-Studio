@@ -7,7 +7,7 @@ use anyhow::{Context, Result, anyhow};
 use chrono::{SecondsFormat, Utc};
 
 use sdtm_model::{Domain, MappingConfig, MappingSuggestion, Variable, VariableType};
-use sdtm_transform::{DomainFrame, domain_map_by_code};
+use crate::types::{DomainFrame, domain_map_by_code};
 
 use crate::common::{dataset_name, ensure_output_dir, is_required, should_upcase, variable_length};
 

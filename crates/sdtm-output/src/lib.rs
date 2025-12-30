@@ -11,9 +11,11 @@ mod common;
 mod dataset_xml;
 mod define_xml;
 pub mod sas;
+mod types;
 mod xpt;
 
 // Re-export public types and functions
+pub use types::{DomainFrame, domain_map_by_code};
 pub use dataset_xml::{DatasetXmlOptions, write_dataset_xml, write_dataset_xml_outputs};
 pub use define_xml::{DefineXmlOptions, write_define_xml};
 pub use sas::{SasProgramOptions, generate_sas_program, write_sas_outputs};

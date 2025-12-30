@@ -12,7 +12,7 @@ use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, Event};
 
 use sdtm_ingest::any_to_string_non_empty;
 use sdtm_model::Domain;
-use sdtm_transform::{DomainFrame, domain_map_by_code};
+use crate::types::{DomainFrame, domain_map_by_code};
 
 use crate::common::{
     DATASET_XML_NS, DATASET_XML_VERSION, DEFINE_XML_VERSION, ODM_NS, XLINK_NS, ensure_output_dir,
