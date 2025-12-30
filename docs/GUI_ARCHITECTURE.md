@@ -1,492 +1,1129 @@
-# CDISC Transpiler GUI Architecture & Workflow Design
-
-## Table of Contents
-
-1. [Executive Summary](#executive-summary)
-2. [Why egui?](#why-egui)
-3. [Modern GUI Layout Design](#modern-gui-layout-design)
-4. [Current Architecture Analysis](#current-architecture-analysis)
-5. [Proposed GUI Architecture](#proposed-gui-architecture)
-6. [Data Flow & State Management](#data-flow--state-management)
-7. [UI/UX Workflow Design](#uiux-workflow-design)
-8. [Screen Layouts & Wireframes](#screen-layouts--wireframes)
-9. [Component Architecture](#component-architecture)
-10. [Mapping Confidence System](#mapping-confidence-system)
-11. [SUPP Domain Fallback Workflow](#supp-domain-fallback-workflow)
-12. [Technical Implementation Roadmap](#technical-implementation-roadmap)
-13. [Appendix: Data Structures](#appendix-data-structures)
-
----
+# CDISC Transpiler — GUI Architecture
 
 ## Executive Summary
 
-### Problem Statement
+The CDISC Transpiler GUI transforms clinical trial source data into
+SDTM-compliant formats. This document defines the user experience, information
+architecture, and technical implementation for a desktop application built with
+egui.
 
-The current CDISC Transpiler operates as a fully automated CLI tool that
-attempts to:
+**Target Users**: Clinical data programmers, biostatisticians, and data managers
+who understand SDTM but need an intuitive tool for data transformation.
 
-1. Discover source CSV files
-2. Automatically map source columns to SDTM variables using fuzzy matching
-3. Apply transformations and validations
-4. Generate output files (XPT, Dataset-XML, Define-XML)
-
-**The fundamental issue**: Full automation cannot achieve 100% accuracy because:
-
-- Source data has non-standardized column names
-- Domain-specific business logic requires human judgment
-- Controlled Terminology (CT) mappings have ambiguous cases
-- SUPP (Supplemental Qualifier) decisions need domain expertise
-
-### Proposed Solution
-
-Transform the CLI into an **interactive GUI (Graphical User Interface)** using
-[`egui`](https://github.com/emilk/egui) that:
-
-1. **Loads all metadata first** - Standards, CT, source data schema
-2. **Presents mapping suggestions** - Shows confidence-scored mapping options
-   with visual indicators
-3. **Requires user confirmation** - High-confidence mappings shown for approval
-   with single-click
-4. **Offers alternatives** - Low-confidence mappings show dropdown alternatives
-5. **Handles unmapped columns** - Clear workflow for SUPP domain fallback
-6. **Displays rich context** - Source column description alongside SDTM variable
-   metadata
-7. **Shows Required Variables** - Visual indicators for mapping completion
-   status
-8. **Modern UX** - Drag-and-drop, tooltips, search/filter, and responsive
-   layouts
-
-### Data Integrity Principles
-
-**Important**: The transpiler NEVER modifies source data or renames source
-columns.
-
-| What Changes (Output)                  | What Does NOT Change (Source) |
-| -------------------------------------- | ----------------------------- |
-| Output variable names (SDTM-compliant) | Source CSV column names       |
-| CT-normalized VALUES in output         | Original source data values   |
-| Output file format (XPT, XML)          | Source CSV file structure     |
-
-**Mapping ≠ Renaming**: When we "map" a source column to an SDTM variable, we
-are:
-
-- **Directing** which source column's data flows to which output variable
-- **NOT** renaming the source column
-- **NOT** modifying the source file
-
-**CT Normalization** (per SDTMIG v3.4 Section 4.3): Only applies to OUTPUT
-values:
-
-- Source value "Male" stays as "Male" in source CSV
-- Output SDTM variable gets CT-normalized value "M" (via codelist C66731 lookup)
-- The GUI shows this transformation: `Source: "Male" → Output: "M"`
-- Non-extensible codelists: Values MUST match CT exactly (error if not found)
-- Extensible codelists: Non-CT values allowed as sponsor extensions (warning
-  only)
-
-### Key Benefits
-
-| Aspect                 | Current CLI                 | Proposed GUI                         |
-| ---------------------- | --------------------------- | ------------------------------------ |
-| **Mapping Accuracy**   | ~70-80% automated           | 100% user-verified                   |
-| **Error Handling**     | Silent failures or warnings | Interactive resolution with dialogs  |
-| **SUPP Decisions**     | Automatic (may be wrong)    | User-guided with visual context      |
-| **User Confidence**    | Low (black box)             | High (transparent, visual)           |
-| **Learning Curve**     | Steep (CLI flags)           | Intuitive (point-and-click)          |
-| **Required Variables** | Not visible                 | Visual indicators with progress bars |
-| **CT Compliance**      | Silent normalization        | Visual CT mapping review             |
-| **Data Preview**       | None                        | Live data tables with sample values  |
-| **Accessibility**      | Terminal only               | Modern desktop application           |
+**Core Task**: Map source CSV columns to SDTM variables, validate against
+Controlled Terminology, and export submission-ready files.
 
 ---
 
-## Why egui?
+## Part 1: Understanding the Domain
 
-[egui](https://github.com/emilk/egui) is chosen as the GUI framework for the
-following reasons:
+### What is SDTM?
 
-### Advantages
+SDTM (Study Data Tabulation Model) is an FDA-required standard for organizing
+clinical trial data. Key concepts:
 
-| Feature                | Benefit                                                              |
-| ---------------------- | -------------------------------------------------------------------- |
-| **Pure Rust**          | No external dependencies, integrates seamlessly with existing crates |
-| **Immediate Mode**     | Simple state management, no complex widget hierarchies               |
-| **Cross-Platform**     | Windows, macOS, Linux support out of the box                         |
-| **Native Performance** | Fast rendering with GPU acceleration via eframe                      |
-| **Rich Widgets**       | Tables, trees, plots, drag-and-drop built-in                         |
-| **Theming**            | Dark/light themes, customizable styling                              |
-| **WebAssembly**        | Future option to deploy as web application                           |
-| **Active Community**   | Well-maintained, extensive documentation                             |
+| Concept                         | Description                          | Example                                  |
+| ------------------------------- | ------------------------------------ | ---------------------------------------- |
+| **Domain**                      | A dataset category                   | AE (Adverse Events), DM (Demographics)   |
+| **Variable**                    | A column in a domain                 | USUBJID, AETERM, AESTDTC                 |
+| **Core**                        | Required/Expected/Permissible        | USUBJID is Required in all domains       |
+| **Controlled Terminology (CT)** | Allowed values for certain variables | SEX must be M, F, U, or UNDIFFERENTIATED |
 
-### egui vs Alternatives
+### The Mapping Problem
 
-| Framework  | Pros                              | Cons                      |
-| ---------- | --------------------------------- | ------------------------- |
-| **egui** ✓ | Pure Rust, simple, immediate mode | Less "native" look        |
-| iced       | Elm-like, native look             | Steeper learning curve    |
-| tauri      | Web UI, native wrapper            | Requires web stack        |
-| gtk-rs     | Native GTK widgets                | Complex, heavy dependency |
-| druid      | Native, data-driven               | Development slowed        |
+Source data rarely matches SDTM structure exactly:
 
-### Immediate Mode GUI Paradigm
+```
+SOURCE DATA (ae.csv)              SDTM TARGET (AE domain)
+──────────────────────            ─────────────────────────
+SUBJECT_ID         ──────────→    USUBJID
+ADVERSE_EVENT      ──────────→    AETERM
+SEVERITY           ──────────→    AESEV (needs CT validation)
+START_DATE         ──────────→    AESTDTC (needs date format)
+EXTRA_NOTES        ──────────→    ??? (unmapped → SUPP)
+???                              AEDECOD (no source)
+```
 
-egui uses **immediate mode** GUI, which means:
+### Key Challenges
+
+1. **Ambiguous mappings**: "SEVERITY" could map to AESEV, AETOXGR, or AESEVCD
+2. **CT mismatches**: Source value "Mild" must become "MILD" per CT
+3. **Missing required variables**: USUBJID is required but may have a different
+   name
+4. **Unmapped columns**: Source columns with no SDTM equivalent go to SUPP
+   domain
+5. **Auto-generated fields**: STUDYID, DOMAIN, --SEQ are computed, not mapped
+
+---
+
+## Part 2: User Goals & Workflow
+
+### Primary User Goal
+
+> "I have source CSV files. I need to create SDTM-compliant XPT files for FDA
+> submission."
+
+### User Journey
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           USER JOURNEY                                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│   1. SELECT STUDY                                                            │
+│   ───────────────                                                            │
+│   User opens a folder containing source CSV files.                           │
+│   System discovers files and detects domain types.                           │
+│                                                                              │
+│                              ↓                                               │
+│                                                                              │
+│   2. REVIEW DOMAINS                                                          │
+│   ─────────────────                                                          │
+│   User sees all discovered domains with status overview.                     │
+│   User picks a domain to configure.                                          │
+│                                                                              │
+│                              ↓                                               │
+│                                                                              │
+│   3. CONFIGURE MAPPINGS (main work)                                          │
+│   ─────────────────────────────────                                          │
+│   For each SDTM variable, user either:                                       │
+│     • Accepts a high-confidence suggestion                                   │
+│     • Reviews and confirms a medium-confidence match                         │
+│     • Manually selects from available source columns                         │
+│     • Skips the variable (if Permissible)                                    │
+│                                                                              │
+│   For unmapped source columns, user either:                                  │
+│     • Assigns to SUPP domain with QNAM/QLABEL                                │
+│     • Skips (data will not be exported)                                      │
+│                                                                              │
+│                              ↓                                               │
+│                                                                              │
+│   4. RESOLVE CT ISSUES                                                       │
+│   ────────────────────                                                       │
+│   System validates mapped values against Controlled Terminology.             │
+│   User maps invalid source values to valid CT terms.                         │
+│                                                                              │
+│                              ↓                                               │
+│                                                                              │
+│   5. EXPORT                                                                  │
+│   ────────                                                                   │
+│   User reviews summary across all domains.                                   │
+│   User generates XPT, Define-XML, and/or Dataset-XML files.                  │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Time Spent Per Screen
+
+Based on typical usage patterns:
+
+| Screen        | Time | Reason                 |
+| ------------- | ---- | ---------------------- |
+| Home          | 5%   | Quick selection        |
+| Domain Editor | 85%  | Main work happens here |
+| Export        | 10%  | Review and generate    |
+
+**Implication**: The Domain Editor must be exceptionally well-designed.
+
+---
+
+## Part 3: Information Architecture
+
+### Screen Map
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           SCREEN MAP                                         │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│                              HOME                                            │
+│                                │                                             │
+│                                │ (select domain)                             │
+│                                ↓                                             │
+│   ┌────────────────────────────────────────────────────────┐                │
+│   │                     DOMAIN EDITOR                       │                │
+│   │                                                         │                │
+│   │   ┌─────────┐ ┌──────┐ ┌────────────┐ ┌─────────┐     │                │
+│   │   │ Mapping │ │ SUPP │ │ Validation │ │ Preview │     │                │
+│   │   └─────────┘ └──────┘ └────────────┘ └─────────┘     │                │
+│   │                                                         │                │
+│   └────────────────────────────────────────────────────────┘                │
+│                                │                                             │
+│                                │ (done with all domains)                     │
+│                                ↓                                             │
+│                             EXPORT                                           │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Information Hierarchy
+
+**What's most important at each level?**
+
+1. **Home Screen**
+   - Which domains exist?
+   - What's the status of each?
+   - Where do I need to focus?
+
+2. **Domain Editor - Mapping Tab**
+   - Which SDTM variables need attention?
+   - What's the suggested mapping for each?
+   - How confident is the system?
+
+3. **Domain Editor - SUPP Tab**
+   - Which source columns are unmapped?
+   - Should they be included in SUPPQUAL?
+   - What are the QNAM/QLABEL values?
+
+4. **Domain Editor - Validation Tab**
+   - Which values fail CT validation?
+   - What are the valid alternatives?
+   - How many occurrences are affected?
+
+5. **Domain Editor - Preview Tab**
+   - What will the output look like?
+   - Are transformations applied correctly?
+
+6. **Export Screen**
+   - Are all domains ready?
+   - What output formats do I want?
+   - Where should files be saved?
+
+---
+
+## Part 4: Detailed Screen Specifications
+
+### Screen 1: Home
+
+**Purpose**: Study selection and domain overview.
+
+**Layout**: Two sections stacked vertically.
+
+#### Section A: Study Selection (shown when no study loaded)
+
+```
+╭──────────────────────────────────────────────────────────────────────────────╮
+│                                                                ◐    ⚙       │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                          CDISC Transpiler                                    │
+│                              v0.1.0                                          │
+│                                                                              │
+│                                                                              │
+│                    ╭┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈╮                   │
+│                    ┊                                      ┊                   │
+│                    ┊              📁                      ┊                   │
+│                    ┊                                      ┊                   │
+│                    ┊     Drop study folder here          ┊                   │
+│                    ┊        or click to browse           ┊                   │
+│                    ┊                                      ┊                   │
+│                    ╰┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈╯                   │
+│                                                                              │
+│                                                                              │
+│                    Recent                                                    │
+│                                                                              │
+│                    DEMO_STUDY_001                     2 days ago        →    │
+│                    PHASE3_TRIAL_XYZ                  1 week ago        →    │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+**Interactions**:
+
+- Drop zone: Drag folder or click to open native picker
+- Recent items: Click to load directly
+- Settings gear: Opens preferences
+
+#### Section B: Domain Overview (shown when study loaded)
+
+```
+╭──────────────────────────────────────────────────────────────────────────────╮
+│  ←                                                              ◐    ⚙      │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  DEMO_STUDY_001                                                              │
+│  ~/studies/demo_study_001                                    32 domains      │
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │ Search domains...                                                    🔍 │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │                                                                         │ │
+│  │  Domain   Label                Class          Rows    Mapping  Val  St  │ │
+│  │ ───────────────────────────────────────────────────────────────────────│ │
+│  │                                                                         │ │
+│  │  AE       Adverse Events       Events         423     14/18    2⚠   ●  │ │
+│  │  CM       Concomitant Meds     Interventions  312     22/22    —    ✓  │ │
+│  │  DA       Drug Accountability  Interventions   45     8/12     —    ○  │ │
+│  │  DM       Demographics         Special         150     25/25    —    ✓  │ │
+│  │  DS       Disposition          Events          150     10/10    —    ✓  │ │
+│  │  EG       ECG Results          Findings       1205    18/24    5⚠   ●  │ │
+│  │  EX       Exposure             Interventions   150     10/12    —    ○  │ │
+│  │  IE       Incl/Excl Criteria   Findings        150     8/8      —    ✓  │ │
+│  │  LB       Lab Results          Findings       2340    28/30    3✕   ✕  │ │
+│  │  MH       Medical History      Events          890     15/15    —    ✓  │ │
+│  │  PE       Physical Exam        Findings        450     12/14    1⚠   ●  │ │
+│  │  QS       Questionnaires       Findings        780     20/20    —    ✓  │ │
+│  │  SC       Subject Character.   Findings        150     6/6      —    ✓  │ │
+│  │  SU       Substance Use        Interventions   210     8/10     —    ○  │ │
+│  │  VS       Vital Signs          Findings        890     15/15    —    ✓  │ │
+│  │  ...                                                                    │ │
+│  │                                                                         │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                              │
+│                                                                              │
+│  Summary                                                                     │
+│  ──────                                                                      │
+│  ✓ 10 complete    ● 3 in progress    ○ 3 not started    ✕ 1 has errors      │
+│                                                                              │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                             Export All  →    │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+---
+
+##### List Columns
+
+| Column  | Description                                             |
+| ------- | ------------------------------------------------------- |
+| Domain  | 2-letter domain code                                    |
+| Label   | Human-readable name                                     |
+| Class   | SDTM class (Events, Findings, Interventions, Special)   |
+| Rows    | Record count in source file                             |
+| Mapping | Variables mapped / total (e.g., `14/18`)                |
+| Val     | Validation issues: `—` none, `2⚠` warnings, `3✕` errors |
+| St      | Overall status icon                                     |
+
+---
+
+##### Status Icons
+
+| Icon | Meaning                       | Color  |
+| ---- | ----------------------------- | ------ |
+| `○`  | Not started                   | Gray   |
+| `●`  | In progress (needs attention) | Yellow |
+| `✓`  | Complete                      | Green  |
+| `✕`  | Has blocking errors           | Red    |
+
+---
+
+##### Sorting & Filtering
+
+- **Default sort**: Status (errors first, then in progress, then not started,
+  then complete)
+- **Click column header** to sort by that column
+- **Search box** filters by domain code or label
+- **Keyboard**: Arrow keys to navigate, Enter to open domain
+
+---
+
+##### Row Interaction
+
+| Action       | Result                              |
+| ------------ | ----------------------------------- |
+| Click row    | Opens Domain Editor for that domain |
+| Hover row    | Subtle highlight                    |
+| Double-click | Opens Domain Editor                 |
+
+---
+
+### Screen 2: Domain Editor
+
+**Purpose**: The main workspace where 85% of user time is spent.
+
+**Layout**: Header + Tab bar + Content area
+
+**Tab Order**: Mapping → SUPP → Validation → Preview (workflow sequence)
+
+**Tab Badges**: Each tab shows a status badge to indicate pending work:
+
+| Badge    | Meaning                |
+| -------- | ---------------------- |
+| `(3)`    | 3 items pending review |
+| `(2⚠)`   | 2 warnings             |
+| `(1✕)`   | 1 blocking error       |
+| `✓`      | Complete, no issues    |
+| _(none)_ | Not yet started        |
+
+#### Tab A: Mapping
+
+Master-detail layout: 1/3 variable list + 2/3 detail panel.
+
+```
+╭──────────────────────────────────────────────────────────────────────────────╮
+│  ←  AE — Adverse Events                                          ◐    ⚙     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  Mapping (3)     SUPP (2)     Validation (5⚠)     Preview                    │
+│  ━━━━━━━━━━━                                                                 │
+├────────────────────────────┬─────────────────────────────────────────────────┤
+│                            │                                                 │
+│  Variables            14   │  SDTM Target                                    │
+│                            │ ─────────────────────────────────────────────── │
+│  ┌──────────────────────┐  │                                                 │
+│  │ Name     Core    St  │  │  AETERM                                         │
+│  ├──────────────────────┤  │  Reported Term for the Adverse Event            │
+│  │ STUDYID   —      ⚙   │  │                                                 │
+│  │ DOMAIN    —      ⚙   │  │  ┌─────────────┬─────────────────────────────┐  │
+│  │ USUBJID  Req     ✓   │  │  │ Core        │ Required                    │  │
+│  │ AESEQ     —      ⚙   │  │  │ Type        │ Char(200)                   │  │
+│  │ AETERM   Req     ○  ◀│  │  │ Role        │ Topic                       │  │
+│  │ AEDECOD  Req     ✓   │  │  │ Codelist    │ —                           │  │
+│  │ AECAT    Perm    —   │  │  └─────────────┴─────────────────────────────┘  │
+│  │ AEBODSYS Exp     ✓   │  │                                                 │
+│  │ AESEV    Exp     ○   │  │  SDTM Examples                                  │
+│  │ AESER    Exp     ✓   │  │  HEADACHE · NAUSEA · INJECTION SITE PAIN        │
+│  │ AEREL    Exp     —   │  │                                                 │
+│  │ AESTDTC  Req     ✓   │  │                                                 │
+│  │ AEENDTC  Exp     ○   │  │  Source Column                                  │
+│  │ ...                  │  │ ─────────────────────────────────────────────── │
+│  │                      │  │                                                 │
+│  │                      │  │  ┌─────────────────────────────────────────┐    │
+│  │                      │  │  │ ADVERSE_EVENT_TERM              92% ●●○ │    │
+│  │                      │  │  └─────────────────────────────────────────┘    │
+│  │                      │  │                                                 │
+│  │                      │  │  ┌─────────────┬─────────────────────────────┐  │
+│  │                      │  │  │ Label       │ "Adverse Event Term"        │  │
+│  │                      │  │  │ Type        │ Text                        │  │
+│  │                      │  │  │ Unique      │ 847 values (68%)            │  │
+│  │                      │  │  │ Missing     │ 12 rows (0.9%)              │  │
+│  │                      │  │  └─────────────┴─────────────────────────────┘  │
+│  │                      │  │                                                 │
+│  │                      │  │  Sample Values                                  │
+│  │                      │  │  Headache · Nausea · Fatigue · Dizziness        │
+│  │                      │  │                                                 │
+│  │                      │  │                                                 │
+│  └──────────────────────┘  │  ┌─────────────────────────────────────────┐    │
+│                            │  │ Select different column...           ▼  │    │
+│                            │  └─────────────────────────────────────────┘    │
+│                            │                                                 │
+│                            │         Accept               Clear              │
+│                            │                                                 │
+╰────────────────────────────┴─────────────────────────────────────────────────╯
+```
+
+---
+
+##### Left Panel (1/3) — Variable List
+
+| Column | Description                                       |
+| ------ | ------------------------------------------------- |
+| Name   | SDTM variable name                                |
+| Core   | `Req` / `Exp` / `Perm` (blank for auto-generated) |
+| St     | Status icon                                       |
+
+**Status Icons:**
+
+| Icon | Meaning        | Color  |
+| ---- | -------------- | ------ |
+| `⚙`  | Auto-generated | Gray   |
+| `✓`  | Mapped         | Green  |
+| `○`  | Pending        | Yellow |
+| `—`  | Skipped        | Gray   |
+
+---
+
+##### Right Panel (2/3) — Detail View
+
+**Section 1: SDTM Target**
+
+Shows what the source column needs to map TO:
+
+| Field         | Description                                 |
+| ------------- | ------------------------------------------- |
+| Variable name | e.g., `AETERM`                              |
+| Label         | e.g., "Reported Term for the Adverse Event" |
+| Core          | Required / Expected / Permissible           |
+| Type          | Char(length) or Num                         |
+| Role          | Identifier, Topic, Qualifier, Timing        |
+| Codelist      | NCI code if CT-controlled (e.g., C66767)    |
+| SDTM Examples | Example values from SDTM documentation      |
+
+**Section 2: Source Column**
+
+Shows the suggested/selected source column:
+
+| Field         | Description                                |
+| ------------- | ------------------------------------------ |
+| Column name   | e.g., `ADVERSE_EVENT_TERM`                 |
+| Confidence    | Score with visual indicator (●●○ = Medium) |
+| Label         | Column description from source metadata    |
+| Type          | Text or Numeric                            |
+| Unique        | Count and percentage of unique values      |
+| Missing       | Count and percentage of null/empty rows    |
+| Sample Values | 5-10 actual values from the data           |
+
+**Confidence Indicator:**
+
+| Score  | Visual | Level                       |
+| ------ | ------ | --------------------------- |
+| ≥ 95%  | `●●●`  | High — likely correct       |
+| 80-94% | `●●○`  | Medium — review recommended |
+| 60-79% | `●○○`  | Low — needs verification    |
+
+**Actions:**
+
+| Button   | Action                           |
+| -------- | -------------------------------- |
+| Accept   | Confirms the mapping             |
+| Clear    | Removes the mapping              |
+| Dropdown | Select a different source column |
+
+---
+
+#### Tab C: Validation
+
+Shows CT validation issues that must be resolved before export.
+
+```
+╭──────────────────────────────────────────────────────────────────────────────╮
+│  ←  AE — Adverse Events                                          ◐    ⚙     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  Mapping (3)     SUPP (2)     Validation (5⚠)     Preview                    │
+│                              ━━━━━━━━━━━━━━                                  │
+├────────────────────────────────────┬─────────────────────────────────────────┤
+│                                    │                                         │
+│  3 issues need resolution          │                                         │
+│                                    │   AESEV — Severity                      │
+│  ┌──────────────────────────────┐  │   Codelist: C66769                      │
+│  │                              │  │   Extensible: No                        │
+│  │  ┃ AESEV                     │  │                                         │
+│  │    Severity            ERROR │  │   This codelist is non-extensible.      │
+│  │    5 invalid values          │  │   All values must match exactly.        │
+│  │                              │  │                                         │
+│  │    AEREL                     │  │                                         │
+│  │    Causality           WARN  │  │   Invalid values found:                 │
+│  │    1 sponsor extension       │  │                                         │
+│  │                              │  │   ┌─────────────────────────────────┐   │
+│  │    AEOUT                     │  │   │ Source        Count   Map to    │   │
+│  │    Outcome             WARN  │  │   ├─────────────────────────────────┤   │
+│  │    1 sponsor extension       │  │   │ "Mild"        45      MILD   ▼  │   │
+│  │                              │  │   │ "Moderate"    38      MODERATE▼ │   │
+│  └──────────────────────────────┘  │   │ "Severe"      12      SEVERE ▼  │   │
+│                                    │   │ "Grade 1"      5      [Select]▼ │   │
+│                                    │   │ "Grade 2"      3      [Select]▼ │   │
+│                                    │   └─────────────────────────────────┘   │
+│                                    │                                         │
+│                                    │   Valid CT values:                      │
+│                                    │   MILD, MODERATE, SEVERE                │
+│                                    │                                         │
+│                                    │                     Apply All           │
+│                                    │                                         │
+╰────────────────────────────────────┴─────────────────────────────────────────╯
+```
+
+**Left Panel: Issue List**
+
+Each issue shows:
+
+- Variable name
+- Short description
+- Severity badge (ERROR or WARN)
+- Count of affected values
+
+**Severity Meanings**:
+
+| Severity | Codelist Type  | Impact                        |
+| -------- | -------------- | ----------------------------- |
+| ERROR    | Non-extensible | Blocks XPT export             |
+| WARN     | Extensible     | Allowed but flagged in report |
+
+**Right Panel: Resolution**
+
+For the selected issue:
+
+1. Codelist information
+2. Explanation of the issue
+3. Table of invalid values with:
+   - Source value
+   - Occurrence count
+   - Dropdown to select valid CT term
+4. Apply button to save resolutions
+
+---
+
+#### Tab D: Preview
+
+Shows transformed data before export.
+
+```
+╭──────────────────────────────────────────────────────────────────────────────╮
+│  ←  AE — Adverse Events                                          ◐    ⚙     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  Mapping ✓       SUPP ✓       Validation ✓       Preview                     │
+│                                                  ━━━━━━━                     │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │ STUDYID   DOMAIN  USUBJID     AESEQ  AETERM      AESEV     AESTDTC    │  │
+│  ├────────────────────────────────────────────────────────────────────────┤  │
+│  │ DEMO      AE      DEMO-001    1      Headache    MILD      2024-01-15 │  │
+│  │ DEMO      AE      DEMO-001    2      Nausea      MODERATE  2024-01-16 │  │
+│  │ DEMO      AE      DEMO-002    1      Fatigue     MILD      2024-01-17 │  │
+│  │ DEMO      AE      DEMO-002    2      Dizziness   SEVERE    2024-01-18 │  │
+│  │ DEMO      AE      DEMO-003    1      Headache    MILD      2024-01-19 │  │
+│  │ DEMO      AE      DEMO-003    2      Insomnia    MODERATE  2024-01-20 │  │
+│  │ DEMO      AE      DEMO-004    1      Rash        MILD      2024-01-21 │  │
+│  │ DEMO      AE      DEMO-004    2      Fatigue     MILD      2024-01-22 │  │
+│  │                                                                        │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+│                                                                              │
+│  Rows 1-50 of 423                                            ←   1  2  3  → │
+│                                                                              │
+│  Notes:                                                                      │
+│  • STUDYID, DOMAIN, and AESEQ are auto-generated                            │
+│  • AESEV values normalized to CDISC CT                                      │
+│  • Dates converted to ISO 8601 format                                       │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+**Features**:
+
+- Scrollable data table with SDTM column headers
+- Shows transformed values (CT normalized, dates formatted)
+- Auto-generated columns populated
+- Pagination for large datasets
+- Notes section explaining transformations applied
+
+---
+
+#### Tab B: SUPP
+
+Manages unmapped source columns as Supplemental Qualifiers (SUPPQUAL).
+
+Source columns that don't map to standard SDTM variables can be included in
+SUPP-- domains (e.g., SUPPAE, SUPPDM). This tab allows users to configure which
+columns to include and define their QNAM/QLABEL.
+
+```
+╭──────────────────────────────────────────────────────────────────────────────╮
+│  ←  AE — Adverse Events                                          ◐    ⚙      │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  Mapping (3)     SUPP (2)     Validation (5⚠)     Preview                    │
+│                 ━━━━━━━━                                                     │
+├────────────────────────────┬─────────────────────────────────────────────────┤
+│                            │                                                 │
+│  Unmapped Columns      3   │  EXTRA_NOTES                                    │
+│                            │  "Additional Notes"                             │
+│  ┌──────────────────────┐  │                                                 │
+│  │ Column       Action  │  │  ┌─────────────┬─────────────────────────────┐  │
+│  ├──────────────────────┤  │  │ Type        │ Text                        │  │
+│  │ EXTRA_NOTES  SUPP   ◀│  │  │ Unique      │ 312 values (25%)            │  │
+│  │ INTERNAL_FL  Skip    │  │  │ Missing     │ 45 rows (3.6%)              │  │
+│  │ CUSTOM_CODE  ?       │  │  └─────────────┴─────────────────────────────┘  │
+│  │                      │  │                                                 │
+│  └──────────────────────┘  │  Sample Values                                  │
+│                            │  "Patient reported mild discomfort" ·           │
+│                            │  "No issues noted" · "Follow-up required"       │
+│                            │                                                 │
+│                            │                                                 │
+│                            │  Action                                         │
+│                            │ ─────────────────────────────────────────────── │
+│                            │                                                 │
+│                            │  ● Add to SUPPAE                                │
+│                            │  ○ Skip (exclude from output)                   │
+│                            │                                                 │
+│                            │                                                 │
+│                            │  SUPPQUAL Configuration                         │
+│                            │                                                 │
+│                            │  QNAM     ┌─────────────────────────────────┐   │
+│                            │           │ AENOTES                         │   │
+│                            │           └─────────────────────────────────┘   │
+│                            │           Max 8 characters, uppercase           │
+│                            │                                                 │
+│                            │  QLABEL   ┌─────────────────────────────────┐   │
+│                            │           │ Additional Notes                │   │
+│                            │           └─────────────────────────────────┘   │
+│                            │           Max 40 characters                     │
+│                            │                                                 │
+│                            │                              Save               │
+│                            │                                                 │
+╰────────────────────────────┴─────────────────────────────────────────────────╯
+```
+
+---
+
+##### Left Panel — Unmapped Columns
+
+| Column | Description                     |
+| ------ | ------------------------------- |
+| Column | Source column name              |
+| Action | `SUPP` / `Skip` / `?` (pending) |
+
+---
+
+##### Right Panel — Column Detail
+
+**Source Column Info:**
+
+| Field         | Description                             |
+| ------------- | --------------------------------------- |
+| Column name   | Source column name                      |
+| Label         | Description from source metadata        |
+| Type          | Text or Numeric                         |
+| Unique        | Count and percentage of unique values   |
+| Missing       | Count and percentage of null/empty rows |
+| Sample Values | Preview of actual data                  |
+
+**Action Selection:**
+
+| Option      | Result                               |
+| ----------- | ------------------------------------ |
+| Add to SUPP | Include in SUPPAE/SUPPDM/etc. domain |
+| Skip        | Exclude from all output              |
+
+**SUPPQUAL Configuration** (when Add to SUPP selected):
+
+| Field  | Constraint             | Description                                |
+| ------ | ---------------------- | ------------------------------------------ |
+| QNAM   | Max 8 chars, uppercase | Qualifier variable name (e.g., `AENOTES`)  |
+| QLABEL | Max 40 chars           | Qualifier label (e.g., "Additional Notes") |
+
+The system auto-suggests QNAM based on domain prefix + abbreviated column name.
+
+---
+
+##### Empty State
+
+When all source columns are mapped to SDTM variables:
+
+```
+╭──────────────────────────────────────────────────────────────────────────────╮
+│  ←  AE — Adverse Events                                          ◐    ⚙      │
+├──────────────────────────────────────────────────────────────────────────────┤
+│  Mapping ✓       SUPP ✓       Validation        Preview                      │
+│                 ━━━━━━                                                       │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│                                                                              │
+│                                                                              │
+│                                    ✓                                         │
+│                                                                              │
+│                     No unmapped source columns                               │
+│                                                                              │
+│              All source columns mapped to SDTM variables                     │
+│                                                                              │
+│                                                                              │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+---
+
+### Screen 3: Export
+
+**Purpose**: Final review and file generation.
+
+```
+╭──────────────────────────────────────────────────────────────────────────────╮
+│  ←  Export                                                     ◐    ⚙        │
+├──────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│                                                                              │
+│     Summary                                                                  │
+│                                                                              │
+│     ┌────────────────────────────────────────────────────────────────────┐   │
+│     │  Domain     Variables    Mapped      Issues     Ready              │   │
+│     ├────────────────────────────────────────────────────────────────────┤   │
+│     │  DM         25           25/25       0          ✓                  │   │
+│     │  AE         18           16/18       2 warn     ✓                  │   │
+│     │  CM         22           22/22       0          ✓                  │   │
+│     │  LB         30           28/30       3 error    ✕                  │   │
+│     │  VS         15           15/15       0          ✓                  │   │
+│     │  EX         12           10/12       0          ○                  │   │
+│     └────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│     ⚠ LB has 3 CT errors that must be resolved before XPT export.            │
+│     ○ EX has 2 unmapped Required variables.                                  │
+│                                                                              │
+│                                                                              │
+│     Output                                                                   │
+│                                                                              │
+│     ┌────────────────────────────────────────────────────────────────────┐   │
+│     │                                                                    │   │
+│     │  Folder    ~/output/demo_study                         Browse      │   │
+│     │                                                                    │   │
+│     │  ☑  XPT files (SAS Transport v5)                                   │   │
+│     │  ☑  Define-XML 2.0                                                 │   │
+│     │  ☐  Dataset-XML                                                    │   │
+│     │                                                                    │   │
+│     │  ☐  Skip domains with errors                                       │   │
+│     │  ☑  Include SUPP domains                                           │   │
+│     │                                                                    │   │
+│     └────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│                                                                              │
+│                                                Generate Files                │
+│                                                                              │
+│                                                                              │
+╰──────────────────────────────────────────────────────────────────────────────╯
+```
+
+**Summary Table Columns**:
+
+| Column    | Description                                      |
+| --------- | ------------------------------------------------ |
+| Domain    | Domain code                                      |
+| Variables | Total SDTM variables for this domain             |
+| Mapped    | X/Y where X is mapped and Y is total             |
+| Issues    | CT validation issues (errors block XPT)          |
+| Ready     | ✓ = ready, ✕ = blocked by errors, ○ = incomplete |
+
+**Output Options**:
+
+- **XPT**: Standard submission format (blocked by errors)
+- **Define-XML**: Metadata document
+- **Dataset-XML**: Alternative to XPT
+- **Skip domains with errors**: Export others even if some have issues
+- **Include SUPP**: Generate supplemental qualifier domains
+
+---
+
+### Dialog: SUPP Assignment
+
+```
+╭─────────────────────────────────────────────────────╮
+│                                                     │
+│  Assign to SUPPAE                                   │
+│                                                     │
+│  These columns will be added to the                 │
+│  supplemental qualifiers domain.                    │
+│                                                     │
+│  ┌─────────────────────────────────────────────┐    │
+│  │                                             │    │
+│  │  ☑  EXTRA_NOTES                             │    │
+│  │      QNAM    AENOTES                        │    │
+│  │      QLABEL  Extra Notes                    │    │
+│  │                                             │    │
+│  │  ☑  INTERNAL_FLAG                           │    │
+│  │      QNAM    AEINTFL                        │    │
+│  │      QLABEL  Internal Flag                  │    │
+│  │                                             │    │
+│  │  ☐  CUSTOM_CODE  (skip)                     │    │
+│  │                                             │    │
+│  └─────────────────────────────────────────────┘    │
+│                                                     │
+│  QNAM must be ≤8 characters, uppercase.             │
+│                                                     │
+│                        Cancel            Apply      │
+│                                                     │
+╰─────────────────────────────────────────────────────╯
+```
+
+---
+
+## Part 5: Visual Design System
+
+### Colors
 
 ```rust
-// Every frame, you describe what the UI should look like
-fn update(&mut self, ctx: &egui::Context) {
-    egui::CentralPanel::default().show(ctx, |ui| {
-        ui.heading("SDTM Mapping");
-        
-        // If button is clicked, handle immediately
-        if ui.button("Accept Mapping").clicked() {
-            self.accept_current_mapping();
-        }
-        
-        // Conditional rendering based on state
-        if self.show_details {
-            ui.label(format!("Confidence: {:.0}%", self.confidence * 100.0));
-        }
-    });
+pub mod colors {
+    use egui::Color32;
+
+    // Backgrounds
+    pub const BG_PRIMARY: Color32 = Color32::from_rgb(255, 255, 255);
+    pub const BG_SECONDARY: Color32 = Color32::from_rgb(249, 250, 251);
+    pub const BG_HOVER: Color32 = Color32::from_rgb(243, 244, 246);
+
+    // Text
+    pub const TEXT_PRIMARY: Color32 = Color32::from_rgb(17, 24, 39);
+    pub const TEXT_SECONDARY: Color32 = Color32::from_rgb(107, 114, 128);
+    pub const TEXT_MUTED: Color32 = Color32::from_rgb(156, 163, 175);
+
+    // Semantic
+    pub const ACCENT: Color32 = Color32::from_rgb(59, 130, 246);
+    pub const SUCCESS: Color32 = Color32::from_rgb(16, 185, 129);
+    pub const WARNING: Color32 = Color32::from_rgb(245, 158, 11);
+    pub const ERROR: Color32 = Color32::from_rgb(239, 68, 68);
+
+    // Borders
+    pub const BORDER: Color32 = Color32::from_rgb(229, 231, 235);
 }
 ```
 
-This simplifies state management compared to retained-mode GUIs.
+### Typography
+
+| Use            | Size | Weight |
+| -------------- | ---- | ------ |
+| Page title     | 20px | 600    |
+| Section header | 16px | 600    |
+| Body           | 14px | 400    |
+| Small/Label    | 12px | 500    |
+
+### Spacing
+
+| Token | Value |
+| ----- | ----- |
+| xs    | 4px   |
+| sm    | 8px   |
+| md    | 16px  |
+| lg    | 24px  |
+| xl    | 32px  |
+
+### Components
+
+| Component | Radius | Padding     |
+| --------- | ------ | ----------- |
+| Button    | 6px    | 16px × 10px |
+| Card      | 8px    | 20px        |
+| Input     | 6px    | 12px × 8px  |
+| Badge     | 4px    | 8px × 4px   |
 
 ---
 
-## Modern GUI Layout Design
+## Part 6: State Management
 
----
-
-## Current Architecture Analysis
-
-### Crate Dependency Graph
-
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                              sdtm-cli                                   │
-│                         (Entry Point - CLI)                             │
-│  • Parses CLI arguments                                                 │
-│  • Initializes logging                                                  │
-│  • Orchestrates pipeline                                                │
-└─────────────────────────────────────────────────────────────────────────┘
-                                    │
-                    ┌───────────────┼───────────────┐
-                    ▼               ▼               ▼
-┌───────────────────────┐ ┌─────────────────┐ ┌─────────────────────────┐
-│      sdtm-core        │ │  sdtm-report    │ │     sdtm-validate       │
-│  (Business Logic)     │ │ (Output Gen)    │ │   (Conformance)         │
-│ • Domain processors   │ │ • XPT writer    │ │ • CT value checks       │
-│ • CT normalization    │ │ • Dataset-XML   │ │ • Required variables    │
-│ • USUBJID prefixing   │ │ • Define-XML    │ │ • Output gating         │
-│ • --SEQ assignment    │ │ • SAS programs  │ │                         │
-└───────────────────────┘ └─────────────────┘ └─────────────────────────┘
-          │                       │
-          ▼                       ▼
-┌───────────────────────┐ ┌─────────────────┐
-│     sdtm-ingest       │ │    sdtm-xpt     │
-│  (Data Loading)       │ │ (XPT Format)    │
-│ • CSV discovery       │ │ • SAS Transport │
-│ • Schema detection    │ │   v5 format     │
-│ • Metadata loading    │ │                 │
-└───────────────────────┘ └─────────────────┘
-          │
-          ▼
-┌───────────────────────┐ ┌─────────────────┐ ┌─────────────────────────┐
-│       sdtm-map        │ │ sdtm-standards  │ │      sdtm-model         │
-│   (Column Mapping)    │ │ (Standards IO)  │ │    (Pure Types)         │
-│ • Fuzzy matching      │ │ • Load SDTMIG   │ │ • Domain, Variable      │
-│ • Confidence scoring  │ │ • Load CT       │ │ • Term, Codelist        │
-│ • Synonym detection   │ │ • Offline CSVs  │ │ • ValidationIssue       │
-└───────────────────────┘ └─────────────────┘ └─────────────────────────┘
-```
-
-### Current Processing Pipeline
-
-```
-┌──────────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
-│   Discover   │──▶│    Ingest    │──▶│     Map      │──▶│   Process    │
-│  CSV Files   │   │  Load Data   │   │   Columns    │   │   Domains    │
-└──────────────┘   └──────────────┘   └──────────────┘   └──────────────┘
-                                             │                  │
-                                             │ Automated        │
-                                             │ (No Review)      │
-                                             ▼                  ▼
-┌──────────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
-│    Output    │◀──│     Gate     │◀──│   Validate   │◀──│  Transform   │
-│    Files     │   │   Outputs    │   │     CT       │   │    Data      │
-└──────────────┘   └──────────────┘   └──────────────┘   └──────────────┘
-```
-
-### Key Data Structures (from `sdtm-model`)
+### Application State
 
 ```rust
-// Domain definition from SDTMIG
-pub struct Domain {
-    pub code: String,                    // "AE", "DM", "LB"
-    pub description: Option<String>,     // "Adverse Events"
-    pub class_name: Option<String>,      // "Events"
-    pub dataset_class: Option<DatasetClass>,
-    pub label: Option<String>,
-    pub structure: Option<String>,       // "One record per subject"
-    pub variables: Vec<Variable>,
+pub struct AppState {
+    pub view: View,
+    pub study: Option<StudyState>,
+    pub preferences: Preferences,
+    pub toasts: Vec<Toast>,
 }
 
-// Variable specification
-pub struct Variable {
-    pub name: String,                    // "AEDECOD"
-    pub label: Option<String>,           // "Dictionary-Derived Term"
-    pub data_type: VariableType,         // Char, Num
-    pub role: Option<String>,            // "Topic", "Identifier"
-    pub core: Option<String>,            // "Req", "Exp", "Perm"
-    pub codelist_code: Option<String>,   // "C66729" (CT reference)
-    pub order: Option<u32>,
+pub enum View {
+    Home,
+    DomainEditor { domain: String, tab: EditorTab },
+    Export,
 }
 
-// Mapping suggestion from sdtm-map
-pub struct MappingSuggestion {
-    pub source_column: String,           // Original column name
-    pub target_variable: String,         // SDTM variable name
-    pub confidence: f32,                 // 0.0 to 1.0+
-    pub transformation: Option<String>,  // "uppercase", "date_iso8601"
-}
-
-// Confidence levels
-pub enum ConfidenceLevel {
-    High,    // ≥0.95 - Near-certain match
-    Medium,  // ≥0.80 - Good match, review recommended
-    Low,     // ≥0.60 - Weak match, needs verification
+pub enum EditorTab {
+    Mapping,
+    Validation,
+    Preview,
 }
 ```
 
-### Standards Metadata Available
+### Study State
 
-The `standards/` directory contains rich metadata that should be leveraged in
-the GUI:
+```rust
+pub struct StudyState {
+    pub study_id: String,
+    pub path: PathBuf,
+    pub domains: BTreeMap<String, DomainState>,
+}
 
-```
-standards/
-├── ct/                         # Controlled Terminology
-│   └── SDTM_CT_*.csv          # Term definitions with codes
-├── sdtmig/v3_4/
-│   ├── Datasets.csv           # Domain metadata (class, structure)
-│   ├── Variables.csv          # Variable definitions with:
-│   │   • Variable Name        # AEDECOD, USUBJID
-│   │   • Variable Label       # "Dictionary-Derived Term"
-│   │   • Type                 # Char, Num
-│   │   • CDISC CT Codelist    # C66729 (links to CT)
-│   │   • Role                 # Identifier, Topic, Qualifier
-│   │   • Core                 # Req, Exp, Perm
-│   │   • Description          # Full description text
-│   └── chapters/              # SDTMIG documentation
-└── sdtm/                      # SDTM model specifications
+pub struct DomainState {
+    pub code: String,
+    pub label: String,
+    pub source_file: PathBuf,
+    pub row_count: usize,
+    pub variables: Vec<VariableState>,
+    pub unmapped_columns: Vec<UnmappedColumn>,
+    pub ct_issues: Vec<CtIssue>,
+    pub selected_variable: Option<usize>,
+}
 ```
 
-### Study Metadata Files (Items.csv & CodeLists.csv)
+### Variable State
 
-**Important**: Each study folder contains metadata files that provide rich
-context about source columns. This information is essential for accurate
-mapping.
+```rust
+pub struct VariableState {
+    pub spec: Variable,           // From SDTM standards
+    pub mapping: MappingState,
+}
 
-Study folders (e.g., `mockdata/DEMO_GDISC_*`) contain:
+pub enum MappingState {
+    /// Auto-generated by system (STUDYID, DOMAIN, --SEQ)
+    Auto,
 
-#### Items.csv - Source Column Definitions
+    /// Mapped to a source column
+    Mapped {
+        source_column: String,
+        confidence: f32,
+    },
 
-Provides metadata about EVERY column in the source CSVs:
+    /// Has suggestion(s) awaiting review
+    Pending {
+        suggestions: Vec<Suggestion>,
+    },
 
-| Column        | Description                | Example                             |
-| ------------- | -------------------------- | ----------------------------------- |
-| `ID`          | Source column name         | `SEX`, `CMTRT`, `AETERM`            |
-| `Label`       | Human-readable description | `"Gender"`, `"Medication"`          |
-| `Data Type`   | Data type                  | `text`, `integer`, `double`, `date` |
-| `Mandatory`   | Is value required?         | `True`, `False`                     |
-| `Format Name` | Link to CodeLists.csv      | `SEX`, `ROUTE`, `YESNO`             |
+    /// No mapping, no suggestions
+    Unmapped,
 
-**Example:**
+    /// User explicitly skipped
+    Skipped,
+}
 
-```csv
-"ID","Label","Data Type","Mandatory","Format Name"
-"SEX","Gender","text","True","SEX"
-"CMTRT","Medication","text","True",""
-"CMROUTE","Route","text","True","ROUTE"
+pub struct Suggestion {
+    pub source_column: String,
+    pub confidence: f32,
+    pub sample_values: Vec<String>,
+    pub match_reasons: Vec<String>,
+}
 ```
 
-#### CodeLists.csv - Study-Specific Value Sets
+### Unmapped Column
 
-Provides allowed values for coded columns (links to `Format Name` in Items.csv):
+```rust
+pub struct UnmappedColumn {
+    pub name: String,
+    pub assignment: UnmappedAssignment,
+}
 
-| Column        | Description        | Example                  |
-| ------------- | ------------------ | ------------------------ |
-| `Format Name` | Links to Items.csv | `SEX`, `ROUTE`           |
-| `Code Value`  | The actual code    | `M`, `F`, `ORAL`         |
-| `Code Text`   | Display text       | `Male`, `Female`, `Oral` |
+pub enum UnmappedAssignment {
+    /// Not yet decided
+    Pending,
 
-**Example:**
+    /// Assigned to SUPP domain
+    Supp { qnam: String, qlabel: String },
 
-```csv
-"Format Name","Data Type","Code Value","Code Text"
-"SEX","text","F","Female"
-"SEX","text","M","Male"
-"ROUTE","text","ORAL","Oral"
-"ROUTE","text","NASAL","Nasal"
+    /// Explicitly skipped
+    Skip,
+}
 ```
 
-#### How GUI Uses Study Metadata
+### CT Issue
 
-The GUI loads Items.csv and CodeLists.csv to provide:
+```rust
+pub struct CtIssue {
+    pub variable: String,
+    pub codelist_code: String,
+    pub extensible: bool,
+    pub invalid_values: Vec<InvalidValue>,
+}
 
-1. **Rich Source Column Context**: Display the Label from Items.csv so users
-   understand what each column represents
-2. **Value Preview**: Show sample values AND their meanings from CodeLists in
-   data tables
-3. **Smarter Mapping Suggestions**: Use Labels for better fuzzy matching
-4. **CT Comparison**: Visual comparison of study CodeLists values against CDISC
-   CT values
-
-### CT Relationships (SDTM_CT_relationships.md)
-
-The `SDTM_CT_relationships.md` file documents how SDTM variables link to CT
-codelists:
-
+pub struct InvalidValue {
+    pub source_value: String,
+    pub count: usize,
+    pub resolution: Option<String>,  // Selected CT term
+}
 ```
-SDTM Variable → CT Codelist Code → CT Terms → Allowed Values
-
-Example: DM.SEX
-  ├── CDISC CT Codelist Code: C66731
-  ├── Codelist Name: "Sex"
-  ├── Extensible: No (CLOSED list)
-  └── Terms: F, M, U, INTERSEX
-```
-
-**CT Validation Rules:**
-
-| Extensible  | Source Value | Action                        |
-| ----------- | ------------ | ----------------------------- |
-| No (Closed) | In CT        | ✓ Pass                        |
-| No (Closed) | NOT in CT    | ✗ ERROR                       |
-| Yes (Open)  | In CT        | ✓ Pass + normalize            |
-| Yes (Open)  | NOT in CT    | ⚠ WARNING (sponsor extension) |
-
-### Required Variables (Core Designations)
-
-Per SDTMIG v3.4, variables have Core designations that determine if they must be
-mapped:
-
-| Core     | Meaning                                      | GUI Behavior              |
-| -------- | -------------------------------------------- | ------------------------- |
-| **Req**  | Required - must be present, cannot be null   | Must map or auto-generate |
-| **Exp**  | Expected - should be present when applicable | Warning if unmapped       |
-| **Perm** | Permissible - optional                       | No warning if unmapped    |
-
-**Variables that don't need source columns** (auto-generated):
-
-- `DOMAIN` - Auto-filled with domain code ("CM", "AE", etc.)
-- `--SEQ` - Auto-incremented sequence number
-- `STUDYID` - From study configuration
 
 ---
 
-## Proposed GUI Architecture
+## Part 7: Keyboard Shortcuts
 
-### New Crate Structure
+### Global
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                              sdtm-gui (NEW)                             │
-│                     (Graphical User Interface Layer)                    │
-│  • Window management (eframe/egui)                                      │
-│  • User input handling                                                  │
-│  • State management                                                     │
-│  • Event loop                                                           │
-└─────────────────────────────────────────────────────────────────────────┘
-                                    │
-        ┌───────────────────────────┼───────────────────────────┐
-        │                           │                           │
-        ▼                           ▼                           ▼
-┌───────────────┐         ┌─────────────────┐         ┌─────────────────┐
-│  sdtm-cli     │         │   sdtm-core     │         │  sdtm-report    │
-│ (Batch Mode)  │         │ (Business Logic)│         │ (Output Gen)    │
-│ (Keep for CI) │         │  (Unchanged)    │         │  (Unchanged)    │
-└───────────────┘         └─────────────────┘         └─────────────────┘
-        │                           │                           │
-        └───────────────────────────┼───────────────────────────┘
-                                    ▼
-                        ┌───────────────────────┐
-                        │     sdtm-model        │
-                        │   (+ GUI State Types) │
-                        │   MappingDecision     │
-                        │   ColumnReviewState   │
-                        │   SuppDecision        │
-                        └───────────────────────┘
-```
+| Shortcut | Action                 |
+| -------- | ---------------------- |
+| `Cmd+O`  | Open study             |
+| `Cmd+S`  | Save mappings          |
+| `Cmd+E`  | Go to Export           |
+| `Cmd+,`  | Settings               |
+| `Esc`    | Go back / Close dialog |
 
-### GUI Component Architecture
+### Domain Editor
+
+| Shortcut    | Action                       |
+| ----------- | ---------------------------- |
+| `↑` `↓`     | Navigate variable list       |
+| `Enter`     | Accept suggestion            |
+| `Backspace` | Clear mapping                |
+| `Tab`       | Next item needing review     |
+| `Shift+Tab` | Previous item needing review |
+| `1` `2` `3` | Switch tabs                  |
+| `/`         | Focus search                 |
+
+---
+
+## Part 8: File Structure
 
 ```
-sdtm-gui/
+crates/sdtm-gui/
 ├── Cargo.toml
 └── src/
-    ├── main.rs                   # Entry point with eframe
-    ├── app.rs                    # Main App struct implementing eframe::App
-    ├── state/
-    │   ├── mod.rs
-    │   ├── app_state.rs          # Global application state
-    │   ├── mapping_state.rs      # Mapping review state
-    │   ├── domain_state.rs       # Domain-specific state
-    │   └── ui_state.rs           # UI-specific state (selected panels, etc.)
+    ├── main.rs
+    ├── app.rs                 # Main eframe::App implementation
+    ├── theme.rs               # Colors, spacing, fonts
+    ├── state.rs               # All state types
     ├── views/
     │   ├── mod.rs
-    │   ├── welcome.rs            # Study selection view
-    │   ├── domain_select.rs      # Domain selection view
-    │   ├── mapping_review.rs     # Main mapping review view
-    │   ├── variable_detail.rs    # SDTM variable detail panel
-    │   ├── source_detail.rs      # Source column detail panel
-    │   ├── ct_validation.rs      # CT value validation view
-    │   ├── supp_decision.rs      # SUPP domain fallback dialog
-    │   ├── summary.rs            # Final review before output
-    │   └── output_progress.rs    # Output generation progress
-    ├── widgets/
+    │   ├── home.rs            # Home screen (selection + overview)
+    │   ├── domain_editor.rs   # Main editor (delegates to tabs)
+    │   ├── mapping_tab.rs     # Mapping tab content
+    │   ├── validation_tab.rs  # Validation tab content
+    │   ├── preview_tab.rs     # Preview tab content
+    │   └── export.rs          # Export screen
+    ├── components/
     │   ├── mod.rs
-    │   ├── variable_table.rs     # SDTM variables table with sorting
-    │   ├── source_table.rs       # Source columns table
-    │   ├── mapping_row.rs        # Single mapping row widget
-    │   ├── confidence_badge.rs   # Visual confidence indicator
-    │   ├── progress_indicator.rs # Overall mapping progress
-    │   ├── data_preview.rs       # Sample data preview table
-    │   └── ct_comparison.rs      # CT value comparison widget
-    ├── dialogs/
-    │   ├── mod.rs
-    │   ├── file_picker.rs        # Native file/folder picker
-    │   ├── confirmation.rs       # Confirmation dialogs
-    │   ├── error_dialog.rs       # Error display dialogs
-    │   └── about.rs              # About dialog
-    └── theme.rs                  # Custom styling and colors
+    │   ├── domain_card.rs
+    │   ├── variable_list.rs
+    │   ├── suggestion_card.rs
+    │   ├── data_table.rs
+    │   └── progress_bar.rs
+    └── dialogs/
+        ├── mod.rs
+        └── supp_dialog.rs
 ```
 
-### Dependencies for GUI Crate
+---
+
+## Part 9: Implementation Phases
+
+### Phase 1: Foundation
+
+- [ ] Create sdtm-gui crate
+- [ ] Set up eframe window
+- [ ] Implement theme system
+- [ ] Create state structures
+- [ ] Implement view routing
+
+### Phase 2: Home Screen
+
+- [ ] Drop zone with folder picker
+- [ ] Recent studies persistence
+- [ ] Domain card grid
+- [ ] Study loading with progress
+
+### Phase 3: Mapping Tab
+
+- [ ] Variable list with status indicators
+- [ ] Detail panel with suggestions
+- [ ] Accept/reject flow
+- [ ] Manual column selection
+- [ ] Unmapped columns section
+
+### Phase 4: Validation Tab
+
+- [ ] Issue list
+- [ ] Resolution panel
+- [ ] CT term selection
+
+### Phase 5: Preview Tab
+
+- [ ] Data table component
+- [ ] Pagination
+- [ ] Transformation notes
+
+### Phase 6: Export
+
+- [ ] Summary table
+- [ ] Output options
+- [ ] File generation
+
+### Phase 7: Polish
+
+- [ ] Keyboard shortcuts
+- [ ] Toast notifications
+- [ ] Error handling
+- [ ] Settings dialog
+
+---
+
+## Part 10: Dependencies
 
 ```toml
 [dependencies]
-# GUI Framework
-eframe = "0.29"                   # egui framework with native window
-egui = "0.29"                     # Immediate mode GUI
-egui_extras = "0.29"              # Extra widgets (tables, etc.)
-
-# File dialogs
-rfd = "0.15"                      # Native file dialogs
-
-# Async runtime
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
-
-# Error handling
-anyhow = "1.0"
-
-# Serialization (for saving/loading mappings)
+eframe = "0.29"
+egui = "0.29"
+egui_extras = { version = "0.29", features = ["all_loaders"] }
+rfd = "0.15"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+directories = "5.0"
+anyhow = "1.0"
+tracing = "0.1"
 
-# Internal crates
 sdtm-model = { path = "../sdtm-model" }
 sdtm-core = { path = "../sdtm-core" }
 sdtm-map = { path = "../sdtm-map" }
@@ -496,411 +1133,27 @@ sdtm-validate = { path = "../sdtm-validate" }
 sdtm-report = { path = "../sdtm-report" }
 ```
 
-### Main Application Structure
-
-```rust
-use eframe::egui;
-
-fn main() -> eframe::Result<()> {
-    let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_inner_size([1400.0, 900.0])
-            .with_min_inner_size([1000.0, 600.0])
-            .with_title("CDISC Transpiler"),
-        ..Default::default()
-    };
-    
-    eframe::run_native(
-        "CDISC Transpiler",
-        options,
-        Box::new(|cc| Ok(Box::new(CdiscTranspilerApp::new(cc)))),
-    )
-}
-
-pub struct CdiscTranspilerApp {
-    state: AppState,
-    current_view: View,
-}
-
-impl eframe::App for CdiscTranspilerApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // Top menu bar
-        self.render_menu_bar(ctx);
-        
-        // Main content based on current view
-        match &self.current_view {
-            View::Welcome => self.render_welcome(ctx),
-            View::DomainSelect => self.render_domain_select(ctx),
-            View::MappingReview => self.render_mapping_review(ctx),
-            View::Summary => self.render_summary(ctx),
-            View::Output => self.render_output(ctx),
-        }
-        
-        // Status bar at bottom
-        self.render_status_bar(ctx);
-    }
-}
-```
-
 ---
 
-## Data Flow & State Management
+## Summary
 
-### Application State Machine
+This GUI is designed around one core insight: **the user's job is to fill SDTM
+variables with source data**.
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                         GUI Application States                          │
-└─────────────────────────────────────────────────────────────────────────┘
+The interface reflects this by:
 
-    ┌──────────┐
-    │  Start   │
-    └────┬─────┘
-         │
-         ▼
-┌────────────────┐     ┌────────────────┐
-│   Loading      │────▶│   Welcome      │
-│   Standards    │     │   Screen       │
-└────────────────┘     └───────┬────────┘
-                               │ Select Study Folder
-                               ▼
-                       ┌────────────────┐
-                       │   Discovering  │
-                       │   Files        │
-                       └───────┬────────┘
-                               │ Domain files found
-                               ▼
-                       ┌────────────────┐
-                       │   Domain       │◀─────┐
-                       │   Selection    │      │
-                       └───────┬────────┘      │
-                               │ Select domain │
-                               ▼               │
-                       ┌────────────────┐      │
-                       │   Loading      │      │
-                       │   Domain Data  │      │
-                       └───────┬────────┘      │
-                               │ Compute mappings
-                               ▼               │
-┌────────────────┐     ┌────────────────┐      │
-│   SUPP         │◀───▶│   Mapping      │──────┘
-│   Decision     │     │   Review       │ Back to domain list
-└───────┬────────┘     └───────┬────────┘
-        │ Confirm SUPP         │ All columns mapped
-        └──────────┬───────────┘
-                   ▼
-           ┌────────────────┐
-           │   Summary      │
-           │   Review       │
-           └───────┬────────┘
-                   │ Confirm & Generate
-                   ▼
-           ┌────────────────┐
-           │   Output       │
-           │   Generation   │
-           └───────┬────────┘
-                   │
-                   ▼
-              ┌─────────┐
-              │  Done   │
-              └─────────┘
-```
+1. **Centering on SDTM variables** — the left panel always shows what needs to
+   be filled
+2. **Highlighting what needs attention** — clear status indicators and filtering
+3. **Providing contextual help** — suggestions with confidence scores and sample
+   data
+4. **Minimizing navigation** — everything for a domain happens in one place
+5. **Progressive disclosure** — simple list view with details on selection
 
-### Core State Structures
+The four-tab design (Mapping → SUPP → Validation → Preview) follows the natural
+workflow:
 
-```rust
-/// Global application state
-pub struct AppState {
-    /// Current screen being displayed
-    pub screen: Screen,
-    
-    /// Loaded SDTM standards (domains, variables)
-    pub standards: Vec<Domain>,
-    
-    /// Loaded Controlled Terminology registry
-    pub ct_registry: TerminologyRegistry,
-    
-    /// Study being processed
-    pub study: Option<StudyState>,
-    
-    /// User preferences (saved between sessions)
-    pub preferences: UserPreferences,
-}
-
-/// State for a study being processed
-pub struct StudyState {
-    /// Study identifier
-    pub study_id: String,
-    
-    /// Path to study folder
-    pub study_folder: PathBuf,
-    
-    /// Discovered domain files
-    pub discovered_domains: BTreeMap<String, Vec<DomainFile>>,
-    
-    /// Mapping states per domain
-    pub domain_mappings: BTreeMap<String, DomainMappingState>,
-    
-    /// Overall progress (domains completed / total)
-    pub progress: (usize, usize),
-}
-
-/// Discovered domain file
-pub struct DomainFile {
-    pub path: PathBuf,
-    pub filename: String,
-    pub row_count: usize,
-    pub columns: Vec<SourceColumn>,
-}
-
-/// Source column with metadata
-pub struct SourceColumn {
-    /// Original column name from CSV
-    pub name: String,
-    
-    /// Label from CSV header row 2 (if present)
-    pub label: Option<String>,
-    
-    /// Sample values (first 5 non-null)
-    pub sample_values: Vec<String>,
-    
-    /// Data characteristics
-    pub hints: ColumnHint,
-}
-
-/// Mapping state for a single domain
-pub struct DomainMappingState {
-    /// Domain code (e.g., "AE", "DM")
-    pub domain_code: String,
-    
-    /// Domain metadata from standards
-    pub domain: Domain,
-    
-    /// Source columns from CSV files
-    pub source_columns: Vec<SourceColumn>,
-    
-    /// Mapping decisions (one per source column)
-    pub decisions: Vec<MappingDecision>,
-    
-    /// Currently selected column index
-    pub selected_index: usize,
-    
-    /// Filter/search text
-    pub filter_text: String,
-    
-    /// View mode (all, pending, confirmed, supp)
-    pub view_mode: ViewMode,
-}
-
-/// User's decision for a single column mapping
-pub enum MappingDecision {
-    /// Awaiting user review
-    Pending {
-        suggestions: Vec<RankedSuggestion>,
-    },
-    
-    /// User confirmed a mapping
-    Confirmed {
-        target_variable: String,
-        confidence: f32,
-        was_auto: bool,  // High confidence, auto-suggested
-    },
-    
-    /// User decided to map to SUPP domain
-    SuppQual {
-        qnam: String,       // SUPP variable name
-        qlabel: String,     // SUPP variable label
-        reason: String,     // Why mapped to SUPP
-    },
-    
-    /// User decided to skip/ignore column
-    Skipped {
-        reason: Option<String>,
-    },
-}
-
-/// Ranked mapping suggestion with full context
-pub struct RankedSuggestion {
-    /// Target SDTM variable
-    pub variable: Variable,
-    
-    /// Confidence score (0.0 to 1.0+)
-    pub confidence: f32,
-    
-    /// Confidence level category
-    pub level: ConfidenceLevel,
-    
-    /// Why this mapping was suggested
-    pub reasoning: Vec<String>,
-    
-    /// Potential issues with this mapping
-    pub warnings: Vec<String>,
-}
-```
-
----
-
----
-
-## SUPP Domain Fallback Workflow
-
-### When to Use SUPP
-
-Source columns that cannot map to standard SDTM variables are stored in
-Supplemental Qualifier (SUPP--) datasets per SDTMIG guidelines.
-
-### QNAM Generation Algorithm
-
-```rust
-fn generate_qnam(domain: &str, source_column: &str) -> String {
-    // 1. Try domain prefix + abbreviated column name
-    let prefix = &domain[..2]; // "CM", "AE"
-    let abbrev = abbreviate_column_name(source_column, 6); // Max 6 chars
-    
-    // 2. Ensure uniqueness
-    let qnam = format!("{}{}", prefix, abbrev);
-    ensure_unique(&qnam)
-}
-```
-
----
-
-## Technical Implementation Roadmap
-
-### Phase 1: Foundation (Week 1-2)
-
-**Setup & Basic Structure:**
-
-- [ ] Create `sdtm-gui` crate with eframe/egui dependencies
-- [ ] Implement basic window management
-- [ ] Create welcome screen with study folder selection
-- [ ] Implement file picker dialog
-
-**Deliverable:** GUI that launches, shows welcome screen, can select folders
-
-### Phase 2: Data Loading (Week 3-4)
-
-**Standards & Study Data:**
-
-- [ ] Load SDTM standards from `standards/` directory
-- [ ] Load CT codelists and parse relationships
-- [ ] Discover and parse source CSV files
-- [ ] Load Items.csv and CodeLists.csv metadata
-
-**Deliverable:** GUI that loads all data and shows domain list
-
-### Phase 3: Mapping Review UI (Week 5-6)
-
-**Core Mapping Interface:**
-
-- [ ] Implement SDTM-first variable list panel
-- [ ] Implement variable detail panel
-- [ ] Implement source mapping panel
-- [ ] Implement confidence badges and progress bars
-- [ ] Implement CT validation display
-
-**Deliverable:** Functional mapping review screen
-
-### Phase 4: User Interactions (Week 7-8)
-
-**Mapping Operations:**
-
-- [ ] Source column selection dialog
-- [ ] CT value mismatch warning dialog
-- [ ] Unmapped source columns view
-- [ ] SUPP decision dialog
-- [ ] Keyboard shortcuts and tooltips
-
-**Deliverable:** Complete interactive mapping workflow
-
-### Phase 5: Output Generation (Week 9-10)
-
-**Report & Export:**
-
-- [ ] Summary view with validation issues
-- [ ] Output options selection
-- [ ] Progress indicator during generation
-- [ ] Success/error dialogs
-- [ ] Integration with existing `sdtm-report` crate
-
-**Deliverable:** End-to-end working GUI application
-
-### Phase 6: Polish & Testing (Week 11-12)
-
-**Quality & UX:**
-
-- [ ] Dark/light theme support
-- [ ] Responsive layout for different window sizes
-- [ ] Error handling and user feedback
-- [ ] Save/load mapping sessions
-- [ ] Integration tests
-
-**Deliverable:** Production-ready GUI application
-
----
-
-## Appendix: Data Structures
-
-### Core State Types
-
-```rust
-/// Main application state
-pub struct AppState {
-    pub study_path: Option<PathBuf>,
-    pub study_name: String,
-    pub domains: Vec<DomainState>,
-    pub current_domain_idx: Option<usize>,
-    pub standards: Standards,
-    pub recent_studies: Vec<RecentStudy>,
-}
-
-/// Per-domain state
-pub struct DomainState {
-    pub code: String,
-    pub label: String,
-    pub source_files: Vec<PathBuf>,
-    pub variables: Vec<VariableMapping>,
-    pub unmapped_sources: Vec<String>,
-    pub supp_decisions: Vec<SuppDecision>,
-    pub status: MappingStatus,
-}
-
-/// Variable mapping state
-pub struct VariableMapping {
-    pub variable: Variable,
-    pub source_column: Option<String>,
-    pub confidence: Option<f32>,
-    pub ct_validation: Option<CtValidation>,
-    pub status: MappingStatus,
-}
-
-/// Mapping status enum
-pub enum MappingStatus {
-    AutoGenerated,
-    Mapped,
-    NeedsReview,
-    Unmapped,
-    Skipped,
-}
-
-/// SUPP decision
-pub struct SuppDecision {
-    pub source_column: String,
-    pub qnam: String,
-    pub qlabel: String,
-    pub qorig: String,
-    pub qeval: Option<String>,
-}
-```
-
----
-
-## Next Steps
-
-1. **Create `sdtm-gui` crate** with basic eframe setup
-2. **Implement welcome screen** with folder picker
-3. **Build mapping review** using SDTM-first design
-4. **Integrate with existing crates** for data loading and output
-
-This document serves as the architectural blueprint for transforming the CLI
-tool into a modern, user-friendly GUI application using egui.
+1. **Mapping** — Map source columns to SDTM variables
+2. **SUPP** — Decide what to do with unmapped columns
+3. **Validation** — Validate all mapped values against CT
+4. **Preview** — See the final transformed output
