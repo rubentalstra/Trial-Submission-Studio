@@ -4,7 +4,7 @@
 
 use crate::csv_utils::{default_standards_root, read_csv_rows};
 use anyhow::Result;
-use sdtm_model::p21::{P21Category, P21Rule, P21RuleRegistry, P21Severity};
+use sdtm_validate::{P21Category, P21Rule, P21RuleRegistry, P21Severity};
 use std::path::Path;
 
 /// Load P21 rules from a CSV file.

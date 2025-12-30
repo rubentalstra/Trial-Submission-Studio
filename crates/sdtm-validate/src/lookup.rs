@@ -14,7 +14,7 @@ use std::collections::HashMap;
 /// # Example
 ///
 /// ```rust
-/// use sdtm_model::CaseInsensitiveSet;
+/// use sdtm_validate::CaseInsensitiveSet;
 ///
 /// let set = CaseInsensitiveSet::new(["USUBJID", "STUDYID"]);
 /// assert_eq!(set.get("usubjid"), Some("USUBJID"));

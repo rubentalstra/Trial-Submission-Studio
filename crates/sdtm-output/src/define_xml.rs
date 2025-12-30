@@ -10,10 +10,10 @@ use chrono::{SecondsFormat, Utc};
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, Event};
 
+use crate::types::{DomainFrame, domain_map_by_code};
 use sdtm_model::ct::{Codelist, TerminologyCatalog, TerminologyRegistry};
 use sdtm_model::{Domain, Variable, VariableType};
 use sdtm_standards::load_default_ct_registry;
-use crate::types::{DomainFrame, domain_map_by_code};
 
 use crate::common::{
     DEFINE_XML_NS, DEFINE_XML_VERSION, ODM_NS, VariableTypeExt, XLINK_NS, ensure_parent_dir,
@@ -129,7 +129,7 @@ pub fn write_define_xml(
                     data_type: variable.data_type,
                     length,
                     codelist_oid,
-                    core: variable.core.clone(),
+                    core: variable.core.map(|c| c.as_code().to_string()),
                     has_data,
                 },
             );
@@ -267,7 +267,8 @@ pub fn write_define_xml(
             xml.write_event(Event::Empty(ref_node))?;
         }
 
-        let origin_type = if is_expected(item_def.core.as_deref()) && !item_def.has_data {
+        let core_designation = item_def.core.as_deref().and_then(|c| c.parse().ok());
+        let origin_type = if is_expected(core_designation) && !item_def.has_data {
             "Not Collected"
         } else if item_def.has_data {
             "Collected"

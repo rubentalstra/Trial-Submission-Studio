@@ -2,10 +2,8 @@
 
 use polars::prelude::{Column, DataFrame};
 
-use sdtm_model::Severity;
-use sdtm_model::p21::rule_ids;
 use sdtm_standards::{load_default_ct_registry, load_default_sdtm_ig_domains};
-use sdtm_validate::validate_domain;
+use sdtm_validate::{Severity, rule_ids, validate_domain};
 
 #[test]
 fn ct_invalid_value_emits_issue() {

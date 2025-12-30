@@ -10,9 +10,9 @@ use polars::prelude::AnyValue;
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, Event};
 
+use crate::types::{DomainFrame, domain_map_by_code};
 use sdtm_ingest::any_to_string_non_empty;
 use sdtm_model::Domain;
-use crate::types::{DomainFrame, domain_map_by_code};
 
 use crate::common::{
     DATASET_XML_NS, DATASET_XML_VERSION, DEFINE_XML_VERSION, ODM_NS, XLINK_NS, ensure_output_dir,

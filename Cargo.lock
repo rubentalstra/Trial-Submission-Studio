@@ -4557,7 +4557,7 @@ dependencies = [
  "anyhow",
  "polars",
  "sdtm-map",
- "sdtm-model",
+ "serde",
  "tracing",
 ]
 
@@ -4604,6 +4604,7 @@ dependencies = [
  "anyhow",
  "csv",
  "sdtm-model",
+ "sdtm-validate",
 ]
 
 [[package]]
@@ -4628,6 +4629,7 @@ dependencies = [
  "sdtm-ingest",
  "sdtm-model",
  "sdtm-standards",
+ "serde",
 ]
 
 [[package]]

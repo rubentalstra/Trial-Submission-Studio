@@ -5,7 +5,10 @@ use anyhow::{Context, Result};
 use polars::prelude::*;
 
 use crate::csv_table::read_csv_table_with_header_match;
-pub use sdtm_model::metadata::{SourceColumn, StudyCodelist as CodeList, StudyMetadata};
+use crate::metadata::{SourceColumn, StudyCodelist, StudyMetadata};
+
+/// Type alias for backward compatibility.
+pub type CodeList = StudyCodelist;
 
 type ItemColumnIndices = (
     usize,

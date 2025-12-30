@@ -148,7 +148,9 @@ fn generate_description(var_name: &str, transform_type: &TransformType) -> Strin
             "Format as ISO 8601 datetime (preserves precision)".to_string()
         }
         TransformType::Iso8601Date => "Format as ISO 8601 date (preserves precision)".to_string(),
-        TransformType::Iso8601Duration => "Format as ISO 8601 duration (PnYnMnDTnHnMnS)".to_string(),
+        TransformType::Iso8601Duration => {
+            "Format as ISO 8601 duration (PnYnMnDTnHnMnS)".to_string()
+        }
         TransformType::StudyDay { reference_dtc } => {
             format!("Calculate study day from {reference_dtc} relative to RFSTDTC")
         }
@@ -220,10 +222,7 @@ mod tests {
     #[test]
     fn test_infer_date_from_suffix() {
         let var = make_variable("BRTHDTDT");
-        assert_eq!(
-            infer_transform_type(&var, "DM"),
-            TransformType::Iso8601Date
-        );
+        assert_eq!(infer_transform_type(&var, "DM"), TransformType::Iso8601Date);
     }
 
     #[test]

@@ -209,18 +209,18 @@ fn try_parse_date(value: &str) -> Option<NaiveDate> {
     let formats = [
         "%Y-%m-%d",
         "%Y/%m/%d",
-        "%d-%b-%Y",      // 15-Jan-2024
-        "%d-%B-%Y",      // 15-January-2024
-        "%d/%m/%Y",      // European: 15/01/2024
-        "%m/%d/%Y",      // US: 01/15/2024
-        "%d.%m.%Y",      // German: 15.01.2024
-        "%Y%m%d",        // Compact: 20240115
-        "%b %d, %Y",     // Jan 15, 2024
-        "%B %d, %Y",     // January 15, 2024
-        "%d %b %Y",      // 15 Jan 2024
-        "%d %B %Y",      // 15 January 2024
-        "%Y-%b-%d",      // 2024-Jan-15
-        "%d-%m-%Y",      // 15-01-2024
+        "%d-%b-%Y",  // 15-Jan-2024
+        "%d-%B-%Y",  // 15-January-2024
+        "%d/%m/%Y",  // European: 15/01/2024
+        "%m/%d/%Y",  // US: 01/15/2024
+        "%d.%m.%Y",  // German: 15.01.2024
+        "%Y%m%d",    // Compact: 20240115
+        "%b %d, %Y", // Jan 15, 2024
+        "%B %d, %Y", // January 15, 2024
+        "%d %b %Y",  // 15 Jan 2024
+        "%d %B %Y",  // 15 January 2024
+        "%Y-%b-%d",  // 2024-Jan-15
+        "%d-%m-%Y",  // 15-01-2024
     ];
 
     for fmt in &formats {
@@ -236,10 +236,7 @@ fn try_parse_date(value: &str) -> Option<NaiveDate> {
 fn try_parse_year_month(value: &str) -> Option<DateTimePrecision> {
     // YYYY-MM format
     if value.len() == 7 && value.chars().nth(4) == Some('-') {
-        if let (Ok(year), Ok(month)) = (
-            value[0..4].parse::<i32>(),
-            value[5..7].parse::<u32>(),
-        ) {
+        if let (Ok(year), Ok(month)) = (value[0..4].parse::<i32>(), value[5..7].parse::<u32>()) {
             if (1..=12).contains(&month) {
                 return Some(DateTimePrecision::YearMonth { year, month });
             }
@@ -268,10 +265,7 @@ fn try_parse_year_month(value: &str) -> Option<DateTimePrecision> {
             let year = d.year();
             let month = d.month();
             if *has_month_name || (1..=12).contains(&month) {
-                return Some(DateTimePrecision::YearMonth {
-                    year,
-                    month,
-                });
+                return Some(DateTimePrecision::YearMonth { year, month });
             }
         }
     }

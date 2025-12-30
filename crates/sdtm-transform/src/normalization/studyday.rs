@@ -63,8 +63,8 @@ pub fn calculate_study_day_from_strings(
 /// Parse a date string for study day calculation.
 /// Only dates with full day precision can be used.
 fn parse_date_for_studyday(value: &str) -> Option<NaiveDate> {
-    use super::datetime::parse_date_precision;
     use super::datetime::DateTimePrecision;
+    use super::datetime::parse_date_precision;
 
     match parse_date_precision(value) {
         DateTimePrecision::DateTime(dt) => Some(dt.date()),

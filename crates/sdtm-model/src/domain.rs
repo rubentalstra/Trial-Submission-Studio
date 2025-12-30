@@ -1,7 +1,6 @@
-//! SDTM domain and variable definitions.
+//! SDTM domain and variable definitions per SDTMIG v3.4.
 //!
-//! This module provides the core types for representing SDTM domains, variables,
-//! and dataset classes per SDTMIG v3.4.
+//! This module provides the core types for representing SDTM domains and variables.
 //!
 //! # SDTMIG Reference
 //!
@@ -9,15 +8,29 @@
 //! - Section 2.1: General Observation Classes
 //! - Section 4.1: Variable Naming Conventions
 
+use crate::enums::{CoreDesignation, VariableRole};
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
 
-/// Dataset class per SDTMIG v3.4 Chapter 2 (Fundamentals of the SDTM).
-/// These are the major observation class categories used to organize domains.
+/// Dataset class per SDTMIG v3.4 Chapter 2.
+///
+/// SDTM organizes domains into observation classes:
+/// - **General Observation Classes**: Interventions, Events, Findings
+/// - **Special-Purpose**: Demographics, Comments, Subject Elements
+/// - **Trial Design**: Study design metadata
+/// - **Relationship**: Cross-domain links
+///
+/// # Example
+///
+/// ```
+/// use sdtm_model::DatasetClass;
+///
+/// let class: DatasetClass = "Findings".parse().unwrap();
+/// assert!(class.is_general_observation());
+/// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-#[non_exhaustive]
 pub enum DatasetClass {
     /// Interventions: AG, CM, EC, EX, ML, PR, SU
     Interventions,
@@ -31,47 +44,47 @@ pub enum DatasetClass {
     SpecialPurpose,
     /// Trial Design: TA, TD, TE, TI, TM, TS, TV
     TrialDesign,
-    /// Study Reference: OI (and DI per SDTMIG-MD)
+    /// Study Reference: OI
     StudyReference,
     /// Relationship: RELREC, RELSPEC, RELSUB, SUPPQUAL
     Relationship,
 }
 
 impl DatasetClass {
-    /// Returns true if this class is a General Observation class (Interventions, Events, Findings).
-    /// Per SDTMIG v3.4 Section 2.1, these are the three general observation classes.
+    /// Returns true if this is a General Observation class.
+    ///
+    /// Per SDTMIG v3.4 Section 2.1, the three general observation classes are
+    /// Interventions, Events, and Findings (including Findings About).
     pub fn is_general_observation(&self) -> bool {
         matches!(
             self,
-            DatasetClass::Interventions
-                | DatasetClass::Events
-                | DatasetClass::Findings
-                | DatasetClass::FindingsAbout
+            Self::Interventions | Self::Events | Self::Findings | Self::FindingsAbout
         )
     }
 
-    /// Returns the normalized general observation class for Findings About -> Findings mapping.
-    /// Per SDTMIG v3.4, Findings About is a specialized version of the Findings class.
-    pub fn general_observation_class(&self) -> Option<DatasetClass> {
+    /// Returns the normalized general observation class.
+    ///
+    /// Maps `FindingsAbout` to `Findings` per SDTMIG v3.4.
+    pub fn general_observation_class(&self) -> Option<Self> {
         match self {
-            DatasetClass::Interventions => Some(DatasetClass::Interventions),
-            DatasetClass::Events => Some(DatasetClass::Events),
-            DatasetClass::Findings | DatasetClass::FindingsAbout => Some(DatasetClass::Findings),
+            Self::Interventions => Some(Self::Interventions),
+            Self::Events => Some(Self::Events),
+            Self::Findings | Self::FindingsAbout => Some(Self::Findings),
             _ => None,
         }
     }
 
-    /// Returns the canonical class name as it appears in SDTMIG documentation.
+    /// Returns the canonical class name as it appears in SDTMIG.
     pub fn as_str(&self) -> &'static str {
         match self {
-            DatasetClass::Interventions => "Interventions",
-            DatasetClass::Events => "Events",
-            DatasetClass::Findings => "Findings",
-            DatasetClass::FindingsAbout => "Findings About",
-            DatasetClass::SpecialPurpose => "Special-Purpose",
-            DatasetClass::TrialDesign => "Trial Design",
-            DatasetClass::StudyReference => "Study Reference",
-            DatasetClass::Relationship => "Relationship",
+            Self::Interventions => "Interventions",
+            Self::Events => "Events",
+            Self::Findings => "Findings",
+            Self::FindingsAbout => "Findings About",
+            Self::SpecialPurpose => "Special-Purpose",
+            Self::TrialDesign => "Trial Design",
+            Self::StudyReference => "Study Reference",
+            Self::Relationship => "Relationship",
         }
     }
 }
@@ -85,20 +98,17 @@ impl fmt::Display for DatasetClass {
 impl FromStr for DatasetClass {
     type Err = String;
 
-    /// Parse a class name string into a DatasetClass.
-    /// Handles various formats found in standards files (case-insensitive, with/without hyphens).
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        // Normalize: trim, uppercase, replace hyphens/underscores with spaces
         let normalized = s.trim().to_uppercase().replace(['-', '_'], " ");
         match normalized.as_str() {
-            "INTERVENTIONS" => Ok(DatasetClass::Interventions),
-            "EVENTS" => Ok(DatasetClass::Events),
-            "FINDINGS" => Ok(DatasetClass::Findings),
-            "FINDINGS ABOUT" => Ok(DatasetClass::FindingsAbout),
-            "SPECIAL PURPOSE" => Ok(DatasetClass::SpecialPurpose),
-            "TRIAL DESIGN" => Ok(DatasetClass::TrialDesign),
-            "STUDY REFERENCE" => Ok(DatasetClass::StudyReference),
-            "RELATIONSHIP" => Ok(DatasetClass::Relationship),
+            "INTERVENTIONS" => Ok(Self::Interventions),
+            "EVENTS" => Ok(Self::Events),
+            "FINDINGS" => Ok(Self::Findings),
+            "FINDINGS ABOUT" => Ok(Self::FindingsAbout),
+            "SPECIAL PURPOSE" => Ok(Self::SpecialPurpose),
+            "TRIAL DESIGN" => Ok(Self::TrialDesign),
+            "STUDY REFERENCE" => Ok(Self::StudyReference),
+            "RELATIONSHIP" => Ok(Self::Relationship),
             _ => Err(format!("Unknown dataset class: {s}")),
         }
     }
@@ -107,10 +117,9 @@ impl FromStr for DatasetClass {
 /// Variable data type per SDTMIG v3.4.
 ///
 /// SDTM supports two fundamental data types:
-/// - `Char` - Character/text data
-/// - `Num` - Numeric data (stored as 8-byte IEEE floating point in SAS)
+/// - `Char`: Character/text data
+/// - `Num`: Numeric data (8-byte IEEE float in SAS)
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[non_exhaustive]
 pub enum VariableType {
     /// Character/text data type.
     Char,
@@ -123,26 +132,51 @@ pub enum VariableType {
 /// Represents a single variable (column) within an SDTM domain dataset.
 /// Variables have associated metadata including role, core status, and
 /// controlled terminology references.
+///
+/// # Example
+///
+/// ```
+/// use sdtm_model::{Variable, VariableType, VariableRole, CoreDesignation};
+///
+/// let var = Variable {
+///     name: "USUBJID".to_string(),
+///     label: Some("Unique Subject Identifier".to_string()),
+///     data_type: VariableType::Char,
+///     length: Some(200),
+///     role: Some(VariableRole::Identifier),
+///     core: Some(CoreDesignation::Required),
+///     codelist_code: None,
+///     described_value_domain: None,
+///     order: Some(3),
+/// };
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Variable {
     /// Variable name (e.g., "USUBJID", "AEDECOD").
     pub name: String,
+
     /// Human-readable label (max 40 characters for SAS).
     pub label: Option<String>,
+
     /// Data type (Char or Num).
     pub data_type: VariableType,
+
     /// Maximum length for character variables (in bytes).
     pub length: Option<u32>,
+
     /// SDTM role: Identifier, Topic, Qualifier, Timing, or Rule.
-    pub role: Option<String>,
-    /// Core designation: Req (Required), Exp (Expected), or Perm (Permissible).
-    pub core: Option<String>,
+    pub role: Option<VariableRole>,
+
+    /// Core designation: Required, Expected, or Permissible.
+    pub core: Option<CoreDesignation>,
+
     /// NCI codelist code(s) for controlled terminology validation.
     pub codelist_code: Option<String>,
-    /// Described value domain (e.g., "ISO 8601 datetime", "ISO 8601 duration").
-    /// Used to infer transformation types for date/time/duration variables.
+
+    /// Described value domain (e.g., "ISO 8601 datetime").
     #[serde(default)]
     pub described_value_domain: Option<String>,
+
     /// Variable ordering within the domain.
     #[serde(default)]
     pub order: Option<u32>,
@@ -153,23 +187,47 @@ pub struct Variable {
 /// A domain represents a collection of observations with a common topic
 /// (e.g., Adverse Events, Demographics, Lab Results). Each domain has
 /// a two-character code and contains multiple variables.
+///
+/// # Example
+///
+/// ```
+/// use sdtm_model::{Domain, DatasetClass};
+///
+/// let domain = Domain {
+///     code: "AE".to_string(),
+///     description: Some("Adverse Events".to_string()),
+///     class_name: Some("Events".to_string()),
+///     dataset_class: Some(DatasetClass::Events),
+///     label: Some("Adverse Events".to_string()),
+///     structure: Some("One record per adverse event per subject".to_string()),
+///     dataset_name: None,
+///     variables: vec![],
+/// };
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Domain {
     /// Two-character domain code (e.g., "AE", "DM", "LB").
     pub code: String,
+
     /// Domain description.
     pub description: Option<String>,
+
     /// Raw class name from standards (e.g., "Findings", "Special-Purpose").
     pub class_name: Option<String>,
+
     /// Parsed dataset class enum.
     #[serde(default)]
     pub dataset_class: Option<DatasetClass>,
+
     /// Human-readable domain label.
     pub label: Option<String>,
+
     /// Dataset structure description (e.g., "One record per subject").
     pub structure: Option<String>,
+
     /// Output dataset name (may differ from code for split domains).
     pub dataset_name: Option<String>,
+
     /// Variables belonging to this domain.
     pub variables: Vec<Variable>,
 }
@@ -182,7 +240,7 @@ impl Domain {
             .unwrap_or(false)
     }
 
-    /// Returns the general observation class for this domain (Findings About -> Findings).
+    /// Returns the general observation class for this domain.
     pub fn general_observation_class(&self) -> Option<DatasetClass> {
         self.dataset_class
             .and_then(|c| c.general_observation_class())
@@ -192,82 +250,36 @@ impl Domain {
     pub fn column_name(&self, canonical: &str) -> Option<&str> {
         self.variables
             .iter()
-            .find(|variable| variable.name.eq_ignore_ascii_case(canonical))
-            .map(|variable| variable.name.as_str())
+            .find(|v| v.name.eq_ignore_ascii_case(canonical))
+            .map(|v| v.name.as_str())
     }
 
-    /// Order variables by SDTM role per SDTMIG v3.4 Chapter 2 (Section 2.1).
+    /// Order variables by SDTM role per SDTMIG v3.4 Section 2.1.
+    ///
     /// Within each role category, variables are ordered by their defined order.
     pub fn variables_by_role(&self) -> Vec<&Variable> {
         let mut ordered: Vec<&Variable> = self.variables.iter().collect();
-        ordered.sort_by_key(|variable| variable_sort_key(variable));
+        ordered.sort_by_key(|v| {
+            let role_order = v.role.map(|r| r.sort_order()).unwrap_or(99);
+            let order = v.order.unwrap_or(999);
+            (role_order, order)
+        });
         ordered
     }
 
     /// Infer the sequence variable for this domain using SDTM naming rules.
-    /// Per SDTMIG v3.4 Section 4.1.7, domain-prefixed variables use DOMAIN as the prefix.
+    ///
+    /// Per SDTMIG v3.4 Section 4.1.7, looks for `{DOMAIN}SEQ` first,
+    /// then falls back to any variable ending in "SEQ".
     pub fn infer_seq_column(&self) -> Option<&str> {
         let expected = format!("{}SEQ", self.code);
         if let Some(name) = self.column_name(&expected) {
             return Some(name);
         }
-        find_suffix_column(&self.variables, "SEQ", "SEQ")
-            .or_else(|| find_suffix_column(&self.variables, "GRPID", "GRPID"))
+        self.variables
+            .iter()
+            .map(|v| v.name.as_str())
+            .filter(|n| n.len() > 3 && n.to_uppercase().ends_with("SEQ"))
+            .min_by_key(|n| n.to_uppercase())
     }
-}
-
-/// Per SDTMIG v3.4 Chapter 2 (Section 2.1): Identifiers, Topic, Qualifiers, Rule, Timing.
-const ROLE_SORT_ORDER: [(&str, u8); 9] = [
-    ("IDENTIFIER", 1),
-    ("TOPIC", 2),
-    ("GROUPING QUALIFIER", 3),
-    ("RESULT QUALIFIER", 4),
-    ("SYNONYM QUALIFIER", 5),
-    ("RECORD QUALIFIER", 6),
-    ("VARIABLE QUALIFIER", 7),
-    ("RULE", 8),
-    ("TIMING", 9),
-];
-
-/// Get the sort key for a variable based on SDTM role and order.
-/// Uses the variable's order field if present, otherwise uses role order * 1000.
-/// This ensures variables are sorted by role first, then by their defined order within each role.
-fn variable_sort_key(var: &Variable) -> (u8, u32) {
-    let role = role_sort_order(var.role.as_deref());
-    let order = var.order.unwrap_or(999);
-    (role, order)
-}
-
-fn role_sort_order(role: Option<&str>) -> u8 {
-    let Some(role) = role else {
-        return 99;
-    };
-    let trimmed = role.trim();
-    for (name, order) in ROLE_SORT_ORDER {
-        if trimmed.eq_ignore_ascii_case(name) {
-            return order;
-        }
-    }
-    99
-}
-
-fn find_suffix_column<'a>(
-    variables: &'a [Variable],
-    suffix: &str,
-    exact_exclude: &str,
-) -> Option<&'a str> {
-    variables
-        .iter()
-        .map(|var| var.name.as_str())
-        .filter(|name| {
-            ends_with_case_insensitive(name, suffix) && !name.eq_ignore_ascii_case(exact_exclude)
-        })
-        .min_by_key(|name| name.to_ascii_uppercase())
-}
-
-fn ends_with_case_insensitive(value: &str, suffix: &str) -> bool {
-    if value.len() < suffix.len() {
-        return false;
-    }
-    value[value.len() - suffix.len()..].eq_ignore_ascii_case(suffix)
 }

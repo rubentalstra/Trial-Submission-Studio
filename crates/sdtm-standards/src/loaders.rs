@@ -78,8 +78,14 @@ fn build_domains(
             label: row.get("Variable Label").filter(|v| !v.is_empty()).cloned(),
             data_type: parse_variable_type(row.get("Type").map(String::as_str).unwrap_or("")),
             length: None,
-            role: row.get("Role").filter(|v| !v.is_empty()).cloned(),
-            core: row.get("Core").filter(|v| !v.is_empty()).cloned(),
+            role: row
+                .get("Role")
+                .filter(|v| !v.is_empty())
+                .and_then(|v| v.parse().ok()),
+            core: row
+                .get("Core")
+                .filter(|v| !v.is_empty())
+                .and_then(|v| v.parse().ok()),
             codelist_code: row
                 .get("CDISC CT Codelist Code(s)")
                 .filter(|v| !v.is_empty())

@@ -5,9 +5,9 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result, anyhow};
 use polars::prelude::{AnyValue, DataFrame};
 
+use crate::types::{DomainFrame, domain_map_by_code};
 use sdtm_ingest::{any_to_f64, any_to_string};
 use sdtm_model::{Domain, VariableType};
-use crate::types::{DomainFrame, domain_map_by_code};
 use sdtm_xpt::{XptColumn, XptDataset, XptType, XptValue, XptWriterOptions, write_xpt};
 
 use crate::common::{ensure_output_dir, variable_length};

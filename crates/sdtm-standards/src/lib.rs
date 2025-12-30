@@ -36,4 +36,4 @@ pub use loaders::{load_default_sdtm_ig_domains, load_sdtm_ig_domains};
 pub use p21_loader::{load_default_p21_rules, load_p21_rules};
 
 // Re-export P21 types for convenience
-pub use sdtm_model::p21::P21Category;
+pub use sdtm_validate::P21Category;

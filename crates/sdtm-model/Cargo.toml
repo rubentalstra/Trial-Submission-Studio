@@ -3,6 +3,7 @@ name = "sdtm-model"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+description = "SDTM data model definitions"
 
 [lints]
 workspace = true

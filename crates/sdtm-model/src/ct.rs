@@ -1,92 +1,122 @@
-//! Controlled Terminology (CT) model per SDTM_CT_relationships.md
+//! Controlled Terminology (CT) model per CDISC CT standards.
 //!
-//! This module provides a clean CT model that properly separates:
-//! - **Codelist rows** (parent): `Code` = codelist NCI code, `Codelist Code` = blank
-//! - **Term rows** (children): `Codelist Code` = parent, `CDISC Submission Value` = valid value
+//! This module provides types for working with CDISC Controlled Terminology,
+//! which defines the permissible values for SDTM variables.
 //!
-//! ## CT File Structure
+//! # CT File Structure
 //!
 //! Each CT CSV contains two types of rows:
 //!
-//! 1. **Codelist definition row** (the parent)
+//! 1. **Codelist definition row** (parent)
 //!    - `Code` = the codelist's NCI code (e.g., `C66731`)
-//!    - `Codelist Code` = _(blank/null)_
-//!    - `Codelist Extensible (Yes/No)` = `Yes` or `No`
-//!    - `CDISC Submission Value` = the codelist short name (NOT a permissible dataset value)
+//!    - `Codelist Code` = blank (identifies this as a codelist row)
+//!    - `Codelist Extensible` = `Yes` or `No`
 //!
-//! 2. **Codelist term rows** (the children)
+//! 2. **Term rows** (children)
 //!    - `Code` = the term's NCI concept code (e.g., `C20197`)
 //!    - `Codelist Code` = parent codelist code (e.g., `C66731`)
-//!    - `CDISC Submission Value` = the **permissible value in datasets**
-//!    - `CDISC Synonym(s)` = alternative spellings/aliases to normalize
+//!    - `CDISC Submission Value` = the permissible value in datasets
 //!
-//! ## Example: `DM.SEX` (Codelist C66731)
+//! # Example: `DM.SEX` (Codelist C66731)
 //!
 //! ```text
-//! Codelist row:  Code=C66731, Codelist Code="", Extensible=No, Name=Sex
-//! Term rows:     Codelist Code=C66731, submission values: F, M, INTERSEX, U
+//! Codelist row:  Code=C66731, Extensible=No, Name=Sex
+//! Term rows:     submission values: F, M, INTERSEX, U
 //! ```
 //!
-//! ## Validation Rules
+//! # Validation Rules
 //!
-//! - **Extensible=No**: Value not in allowed set = **Error**
-//! - **Extensible=Yes**: Value not in allowed set = **Warning** (sponsors may extend)
-
-use std::collections::BTreeMap;
+//! - **Extensible=No**: Value not in codelist = **Error**
+//! - **Extensible=Yes**: Value not in codelist = **Warning**
 
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 /// A single term within a codelist.
 ///
-/// Per SDTM_CT_relationships.md, term rows have:
-/// - `Code` = term's NCI concept code
-/// - `Codelist Code` = parent codelist code
-/// - `CDISC Submission Value` = the permissible dataset value
+/// Term rows in CT CSVs have:
+/// - `Code`: Term's NCI concept code
+/// - `Codelist Code`: Parent codelist code
+/// - `CDISC Submission Value`: The permissible dataset value
+///
+/// # Example
+///
+/// ```
+/// use sdtm_model::Term;
+///
+/// let term = Term {
+///     code: "C20197".to_string(),
+///     submission_value: "M".to_string(),
+///     synonyms: vec!["MALE".to_string()],
+///     definition: Some("Male gender".to_string()),
+///     preferred_term: Some("Male".to_string()),
+/// };
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Term {
     /// NCI concept code for this term (e.g., "C20197" for Male).
     pub code: String,
 
     /// The permissible value in datasets (e.g., "M" for Male).
-    /// This is what should appear in actual SDTM data.
     pub submission_value: String,
 
-    /// Alternative spellings/aliases that should normalize to submission_value.
-    /// Parsed from `CDISC Synonym(s)` column (semicolon-separated).
+    /// Alternative spellings/aliases that normalize to this term.
     pub synonyms: Vec<String>,
 
-    /// Definition from `CDISC Definition` column.
+    /// Definition from CDISC.
     pub definition: Option<String>,
 
-    /// NCI preferred term from `NCI Preferred Term` column.
+    /// NCI preferred term.
     pub preferred_term: Option<String>,
 }
 
-/// A codelist containing multiple terms.
+/// A codelist containing permissible terms.
 ///
-/// Per SDTM_CT_relationships.md, codelist rows have:
-/// - `Code` = codelist's NCI code (e.g., "C66731")
-/// - `Codelist Code` = blank (identifies this as a codelist row)
-/// - `Codelist Extensible (Yes/No)` = extensibility flag
+/// Codelist rows in CT CSVs have:
+/// - `Code`: The codelist's NCI code (e.g., "C66731")
+/// - `Codelist Code`: Blank (identifies this as a codelist row)
+/// - `Codelist Extensible`: Whether sponsors can extend
+///
+/// # Example
+///
+/// ```
+/// use sdtm_model::{Codelist, Term};
+///
+/// let mut codelist = Codelist::new(
+///     "C66731".to_string(),
+///     "Sex".to_string(),
+///     false, // non-extensible
+/// );
+///
+/// codelist.add_term(Term {
+///     code: "C20197".to_string(),
+///     submission_value: "M".to_string(),
+///     synonyms: vec!["MALE".to_string()],
+///     definition: None,
+///     preferred_term: None,
+/// });
+///
+/// assert!(codelist.is_valid("M"));
+/// assert!(codelist.is_valid("MALE")); // synonym
+/// assert_eq!(codelist.normalize("male"), "M");
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Codelist {
     /// NCI code for this codelist (e.g., "C66731" for Sex).
     pub code: String,
 
-    /// Human-readable name (e.g., "Sex", "No Yes Response").
+    /// Human-readable name (e.g., "Sex").
     pub name: String,
 
     /// Whether sponsors can add values not in this codelist.
-    /// - `false` (Non-extensible): Invalid values are **errors**
-    /// - `true` (Extensible): Invalid values are **warnings**
+    /// - `false`: Invalid values are errors
+    /// - `true`: Invalid values are warnings
     pub extensible: bool,
 
-    /// Terms belonging to this codelist.
-    /// Key: uppercase submission value for case-insensitive lookup.
+    /// Terms indexed by uppercase submission value.
     pub terms: BTreeMap<String, Term>,
 
-    /// Synonym lookup: maps uppercase alias -> uppercase submission value.
-    /// Built from all terms' synonyms for fast normalization.
+    /// Synonym lookup: uppercase alias -> uppercase submission value.
     synonyms: BTreeMap<String, String>,
 }
 
@@ -105,19 +135,16 @@ impl Codelist {
     /// Add a term to this codelist.
     pub fn add_term(&mut self, term: Term) {
         let key = term.submission_value.to_uppercase();
-
-        // Build synonym lookup
         for synonym in &term.synonyms {
             let syn_key = synonym.to_uppercase();
             if syn_key != key {
                 self.synonyms.insert(syn_key, key.clone());
             }
         }
-
         self.terms.insert(key, term);
     }
 
-    /// Get all valid submission values (for validation).
+    /// Get all valid submission values.
     pub fn submission_values(&self) -> Vec<&str> {
         self.terms
             .values()
@@ -132,28 +159,37 @@ impl Codelist {
     }
 
     /// Normalize a value to its canonical submission value.
+    ///
     /// Returns the original value if not found (for extensible codelists).
     pub fn normalize(&self, value: &str) -> String {
         let key = value.to_uppercase();
-
-        // Check if it's already a valid submission value
         if let Some(term) = self.terms.get(&key) {
             return term.submission_value.clone();
         }
-
-        // Check if it's a synonym
         if let Some(canonical_key) = self.synonyms.get(&key) {
             if let Some(term) = self.terms.get(canonical_key) {
                 return term.submission_value.clone();
             }
         }
-
-        // Return original for extensible codelists
         value.to_string()
     }
 }
 
-/// A CT catalog (e.g., "SDTM CT 2024-03-29").
+/// A CT catalog representing a specific CT release.
+///
+/// For example: "SDTM CT 2024-03-29"
+///
+/// # Example
+///
+/// ```
+/// use sdtm_model::TerminologyCatalog;
+///
+/// let catalog = TerminologyCatalog::new(
+///     "SDTM CT".to_string(),
+///     Some("2024-03-29".to_string()),
+///     Some("SDTM".to_string()),
+/// );
+/// ```
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct TerminologyCatalog {
     /// Display label (e.g., "SDTM CT").
@@ -197,6 +233,27 @@ impl TerminologyCatalog {
 }
 
 /// Registry of all loaded CT catalogs.
+///
+/// Supports resolving codelists across multiple catalogs with
+/// configurable priority order.
+///
+/// # Example
+///
+/// ```
+/// use sdtm_model::{TerminologyRegistry, TerminologyCatalog};
+///
+/// let mut registry = TerminologyRegistry::new();
+/// registry.add_catalog(TerminologyCatalog::new(
+///     "SDTM CT".to_string(),
+///     Some("2024-03-29".to_string()),
+///     Some("SDTM".to_string()),
+/// ));
+///
+/// // Resolve a codelist by NCI code
+/// if let Some(resolved) = registry.resolve("C66731", None) {
+///     println!("Found codelist: {}", resolved.codelist.name);
+/// }
+/// ```
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct TerminologyRegistry {
     /// Catalogs by label (uppercase).
@@ -216,8 +273,11 @@ impl TerminologyRegistry {
 
     /// Resolve a codelist by NCI code.
     ///
-    /// Searches catalogs in priority order: SDTM CT, SEND CT, others.
-    /// Use `preferred` to specify catalog preference (e.g., for SEND studies).
+    /// Searches catalogs in priority order:
+    /// 1. Preferred catalogs (if specified)
+    /// 2. SDTM CT
+    /// 3. SEND CT
+    /// 4. Others alphabetically
     pub fn resolve(
         &self,
         code: &str,
@@ -225,7 +285,6 @@ impl TerminologyRegistry {
     ) -> Option<ResolvedCodelist<'_>> {
         let catalogs = self.catalogs_in_order(preferred);
         let key = code.to_uppercase();
-
         for catalog in catalogs {
             if let Some(codelist) = catalog.codelists.get(&key) {
                 return Some(ResolvedCodelist { codelist, catalog });
@@ -234,7 +293,6 @@ impl TerminologyRegistry {
         None
     }
 
-    /// Get catalogs in priority order.
     fn catalogs_in_order(&self, preferred: Option<&[String]>) -> Vec<&TerminologyCatalog> {
         if let Some(preferred) = preferred {
             return preferred
@@ -242,8 +300,6 @@ impl TerminologyRegistry {
                 .filter_map(|label| self.catalogs.get(&label.to_uppercase()))
                 .collect();
         }
-
-        // Default order: SDTM CT first, then SEND CT, then others alphabetically
         let mut catalogs: Vec<&TerminologyCatalog> = self.catalogs.values().collect();
         catalogs.sort_by_key(|c| {
             let label = c.label.to_uppercase();
@@ -258,9 +314,13 @@ impl TerminologyRegistry {
 }
 
 /// A resolved codelist with its source catalog.
+///
+/// Provides access to both the codelist and information about
+/// which catalog it came from.
 pub struct ResolvedCodelist<'a> {
     /// Reference to the resolved codelist.
     pub codelist: &'a Codelist,
+
     /// Reference to the catalog containing this codelist.
     pub catalog: &'a TerminologyCatalog,
 }

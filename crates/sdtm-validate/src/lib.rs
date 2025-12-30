@@ -18,20 +18,21 @@
 //! - Chapter 10: Controlled Terminology
 //! - Appendix C: Validation Rules
 
+pub mod lookup;
+pub mod p21;
 pub mod types;
 
 use polars::prelude::{AnyValue, DataFrame, DataType as PolarsDataType};
 use regex::Regex;
 use sdtm_ingest::any_to_string;
 use sdtm_model::ct::{Codelist, ResolvedCodelist, TerminologyRegistry};
-use sdtm_model::p21::rule_ids;
-use sdtm_model::{
-    CaseInsensitiveSet, CheckType, Domain, Severity, ValidationIssue, ValidationReport, Variable,
-    VariableType,
-};
+use sdtm_model::{CoreDesignation, Domain, Variable, VariableRole, VariableType};
 use std::collections::{BTreeSet, HashSet};
 use std::sync::LazyLock;
 
+// Re-export types from submodules
+pub use lookup::CaseInsensitiveSet;
+pub use p21::{P21Category, P21Rule, P21RuleRegistry, P21Severity, rule_ids};
 pub use types::{CheckType, Severity, ValidationIssue, ValidationReport};
 
 /// ISO 8601 date patterns per SDTMIG Chapter 7.
@@ -115,10 +116,7 @@ fn check_required_variables(
     let mut issues = Vec::new();
 
     for variable in &domain.variables {
-        let is_required = variable
-            .core
-            .as_ref()
-            .is_some_and(|c| c.eq_ignore_ascii_case("Req"));
+        let is_required = variable.core == Some(CoreDesignation::Required);
 
         if !is_required {
             continue;
@@ -182,10 +180,7 @@ fn check_expected_variables(
     let mut issues = Vec::new();
 
     for variable in &domain.variables {
-        let is_expected = variable
-            .core
-            .as_ref()
-            .is_some_and(|c| c.eq_ignore_ascii_case("Exp"));
+        let is_expected = variable.core == Some(CoreDesignation::Expected);
 
         if !is_expected {
             continue;
@@ -465,10 +460,7 @@ fn check_identifier_nulls(
     let mut issues = Vec::new();
 
     for variable in &domain.variables {
-        let is_identifier = variable
-            .role
-            .as_ref()
-            .is_some_and(|r| r.eq_ignore_ascii_case("Identifier"));
+        let is_identifier = variable.role == Some(VariableRole::Identifier);
 
         if !is_identifier {
             continue;

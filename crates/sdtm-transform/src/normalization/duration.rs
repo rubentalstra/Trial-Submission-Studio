@@ -131,7 +131,9 @@ fn try_parse_text_duration(value: &str) -> Option<String> {
                     u if u.starts_with("month") => months = num,
                     u if u.starts_with("week") => weeks = num,
                     u if u.starts_with("day") => days = num,
-                    u if u.starts_with("hour") || u == "h" || u == "hr" || u == "hrs" => hours = num,
+                    u if u.starts_with("hour") || u == "h" || u == "hr" || u == "hrs" => {
+                        hours = num
+                    }
                     u if u.starts_with("minute") || u == "min" || u == "mins" => minutes = num,
                     u if u.starts_with("second") || u == "sec" || u == "secs" || u == "s" => {
                         seconds = num
@@ -177,7 +179,10 @@ enum DurationComponent {
 /// Parse combined format like "5days", "2h", "30min".
 fn parse_combined_duration(part: &str) -> Option<DurationComponent> {
     let patterns = [
-        ("years", DurationComponent::Years as fn(i64) -> DurationComponent),
+        (
+            "years",
+            DurationComponent::Years as fn(i64) -> DurationComponent,
+        ),
         ("year", DurationComponent::Years),
         ("months", DurationComponent::Months),
         ("month", DurationComponent::Months),
@@ -284,8 +289,14 @@ mod tests {
     #[test]
     fn test_already_iso8601() {
         assert_eq!(format_iso8601_duration("P5D"), Some("P5D".to_string()));
-        assert_eq!(format_iso8601_duration("PT2H30M"), Some("PT2H30M".to_string()));
-        assert_eq!(format_iso8601_duration("P1Y2M3D"), Some("P1Y2M3D".to_string()));
+        assert_eq!(
+            format_iso8601_duration("PT2H30M"),
+            Some("PT2H30M".to_string())
+        );
+        assert_eq!(
+            format_iso8601_duration("P1Y2M3D"),
+            Some("P1Y2M3D".to_string())
+        );
         assert_eq!(format_iso8601_duration("P2W"), Some("P2W".to_string()));
     }
 

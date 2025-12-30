@@ -1,8 +1,8 @@
 //! Unit tests for validation functions.
 
 use polars::prelude::*;
-use sdtm_model::{CheckType, Domain, Severity, Variable, VariableType};
-use sdtm_validate::validate_domain;
+use sdtm_model::{CoreDesignation, Domain, Variable, VariableType};
+use sdtm_validate::{CheckType, Severity, validate_domain};
 
 fn make_domain(variables: Vec<Variable>) -> Domain {
     Domain {
@@ -17,14 +17,14 @@ fn make_domain(variables: Vec<Variable>) -> Domain {
     }
 }
 
-fn make_variable(name: &str, core: Option<&str>, data_type: VariableType) -> Variable {
+fn make_variable(name: &str, core: Option<CoreDesignation>, data_type: VariableType) -> Variable {
     Variable {
         name: name.to_string(),
         label: None,
         data_type,
         length: None,
         role: None,
-        core: core.map(String::from),
+        core,
         codelist_code: None,
         order: None,
         described_value_domain: None,
@@ -35,7 +35,7 @@ fn make_variable(name: &str, core: Option<&str>, data_type: VariableType) -> Var
 fn test_required_variable_missing() {
     let domain = make_domain(vec![make_variable(
         "USUBJID",
-        Some("Req"),
+        Some(CoreDesignation::Required),
         VariableType::Char,
     )]);
 
@@ -53,7 +53,7 @@ fn test_required_variable_missing() {
 fn test_required_variable_empty() {
     let domain = make_domain(vec![make_variable(
         "USUBJID",
-        Some("Req"),
+        Some(CoreDesignation::Required),
         VariableType::Char,
     )]);
 
@@ -71,7 +71,7 @@ fn test_required_variable_empty() {
 fn test_expected_variable_missing() {
     let domain = make_domain(vec![make_variable(
         "AETERM",
-        Some("Exp"),
+        Some(CoreDesignation::Expected),
         VariableType::Char,
     )]);
 

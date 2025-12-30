@@ -12,6 +12,7 @@ polars.workspace = true
 regex = "1.11"
 sdtm-ingest = { path = "../sdtm-ingest" }
 sdtm-model = { path = "../sdtm-model" }
+serde = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
 sdtm-standards = { path = "../sdtm-standards" }

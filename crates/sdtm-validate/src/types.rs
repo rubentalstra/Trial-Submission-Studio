@@ -9,7 +9,7 @@
 //! See the `p21` module for rule definitions and the `p21::rule_ids` module
 //! for compile-time rule ID constants.
 
-use crate::p21::{rule_ids, P21Category};
+use crate::p21::{P21Category, rule_ids};
 use serde::{Deserialize, Serialize};
 
 /// Severity level for validation issues.
@@ -205,7 +205,9 @@ impl ValidationReport {
     }
 
     /// Group issues by P21 category.
-    pub fn issues_by_category(&self) -> std::collections::HashMap<P21Category, Vec<&ValidationIssue>> {
+    pub fn issues_by_category(
+        &self,
+    ) -> std::collections::HashMap<P21Category, Vec<&ValidationIssue>> {
         let mut map = std::collections::HashMap::new();
         for issue in &self.issues {
             if let Some(cat) = issue.p21_category() {

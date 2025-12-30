@@ -6,7 +6,7 @@
 use std::collections::{BTreeMap, HashSet};
 
 use crate::types::{ColumnHint, MappingConfig, MappingSuggestion};
-use sdtm_model::{Domain, Variable};
+use sdtm_model::{CoreDesignation, Domain, Variable};
 
 use crate::engine::{MappingEngine, MappingResult};
 
@@ -192,13 +192,15 @@ impl MappingState {
             .sdtm_domain
             .variables
             .iter()
-            .filter(|v| v.core.as_deref() == Some("Req"))
+            .filter(|v| v.core == Some(CoreDesignation::Required))
             .count();
         let required_mapped = self
             .sdtm_domain
             .variables
             .iter()
-            .filter(|v| v.core.as_deref() == Some("Req") && self.accepted.contains_key(&v.name))
+            .filter(|v| {
+                v.core == Some(CoreDesignation::Required) && self.accepted.contains_key(&v.name)
+            })
             .count();
 
         MappingSummary {

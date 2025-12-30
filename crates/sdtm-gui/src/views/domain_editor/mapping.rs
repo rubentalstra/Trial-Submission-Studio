@@ -8,6 +8,7 @@ use crate::services::{
 use crate::state::{AppState, DomainStatus};
 use crate::theme::{colors, spacing};
 use egui::{RichText, Ui};
+use sdtm_model::{CoreDesignation, VariableRole};
 use sdtm_standards::load_default_sdtm_ig_domains;
 use std::collections::BTreeMap;
 
@@ -291,7 +292,7 @@ fn show_variable_list(
                 let is_selected = selected_idx == Some(*idx);
 
                 // Check if this is an auto-generated variable using role from standards
-                let is_auto = is_auto_generated_variable(name, role.as_deref())
+                let is_auto = is_auto_generated_variable(name, *role)
                     || (has_subjid_var && name.eq_ignore_ascii_case("USUBJID"));
 
                 let status_color = if is_auto {
@@ -304,11 +305,11 @@ fn show_variable_list(
                     }
                 };
 
-                let core_text = match core.as_deref() {
-                    Some("Req") => "Req",
-                    Some("Exp") => "Exp",
-                    Some("Perm") => "Perm",
-                    _ => "—",
+                let core_text = match core {
+                    Some(CoreDesignation::Required) => "Req",
+                    Some(CoreDesignation::Expected) => "Exp",
+                    Some(CoreDesignation::Permissible) => "Perm",
+                    None => "—",
                 };
 
                 // Name column (clickable)
@@ -388,8 +389,7 @@ fn show_variable_detail(
         let study_id = study.study_id.clone();
         let has_subjid_var = ms.sdtm_domain.column_name("SUBJID").is_some();
         let is_usubjid_derived = has_subjid_var && var_name.eq_ignore_ascii_case("USUBJID");
-        let is_auto =
-            is_auto_generated_variable(&var_name, var_role.as_deref()) || is_usubjid_derived;
+        let is_auto = is_auto_generated_variable(&var_name, var_role) || is_usubjid_derived;
 
         let suggestion = ms.get_suggestion_for(&var_name).cloned();
         let accepted = ms
@@ -558,7 +558,7 @@ fn show_variable_detail(
             .spacing([20.0, 4.0])
             .show(ui, |ui| {
                 ui.label(RichText::new("Core").color(theme.text_muted));
-                ui.label(var_core.as_deref().unwrap_or("—"));
+                ui.label(var_core.map(|c| c.as_code()).unwrap_or("—"));
                 ui.end_row();
 
                 ui.label(RichText::new("Type").color(theme.text_muted));
@@ -566,7 +566,7 @@ fn show_variable_detail(
                 ui.end_row();
 
                 ui.label(RichText::new("Role").color(theme.text_muted));
-                ui.label(var_role.as_deref().unwrap_or("—"));
+                ui.label(var_role.map(|r| r.as_str()).unwrap_or("—"));
                 ui.end_row();
 
                 ui.label(RichText::new("Codelist").color(theme.text_muted));
@@ -996,13 +996,9 @@ fn show_variable_detail(
 /// - --SEQ: Sequence numbers assigned per subject
 ///
 /// This uses the Variable's role field from the SDTM standards.
-fn is_auto_generated_variable(name: &str, role: Option<&str>) -> bool {
+fn is_auto_generated_variable(name: &str, role: Option<VariableRole>) -> bool {
     // Only Identifier role variables can be auto-generated
-    let is_identifier = role
-        .map(|r| r.eq_ignore_ascii_case("Identifier"))
-        .unwrap_or(false);
-
-    if !is_identifier {
+    if role != Some(VariableRole::Identifier) {
         return false;
     }
 

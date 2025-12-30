@@ -1,6 +1,6 @@
 //! Tests for Pinnacle 21 rule loader.
 
-use sdtm_standards::{load_default_p21_rules, P21Category};
+use sdtm_standards::{P21Category, load_default_p21_rules};
 
 #[test]
 fn test_load_default_p21_rules() {

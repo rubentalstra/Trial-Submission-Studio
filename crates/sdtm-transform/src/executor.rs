@@ -446,7 +446,7 @@ fn any_value_to_string(value: AnyValue<'_>) -> String {
 mod tests {
     use super::*;
     use crate::inference::build_pipeline_from_domain;
-    use sdtm_model::domain::{Domain, Variable, VariableType};
+    use sdtm_model::{CoreDesignation, Domain, Variable, VariableRole, VariableType};
 
     fn create_test_domain() -> Domain {
         Domain {
@@ -463,8 +463,8 @@ mod tests {
                     label: Some("Study Identifier".to_string()),
                     data_type: VariableType::Char,
                     length: None,
-                    role: Some("Identifier".to_string()),
-                    core: Some("Req".to_string()),
+                    role: Some(VariableRole::Identifier),
+                    core: Some(CoreDesignation::Required),
                     codelist_code: None,
                     described_value_domain: None,
                     order: Some(1),
@@ -474,8 +474,8 @@ mod tests {
                     label: Some("Domain Abbreviation".to_string()),
                     data_type: VariableType::Char,
                     length: None,
-                    role: Some("Identifier".to_string()),
-                    core: Some("Req".to_string()),
+                    role: Some(VariableRole::Identifier),
+                    core: Some(CoreDesignation::Required),
                     codelist_code: None,
                     described_value_domain: None,
                     order: Some(2),
@@ -485,8 +485,8 @@ mod tests {
                     label: Some("Unique Subject Identifier".to_string()),
                     data_type: VariableType::Char,
                     length: None,
-                    role: Some("Identifier".to_string()),
-                    core: Some("Req".to_string()),
+                    role: Some(VariableRole::Identifier),
+                    core: Some(CoreDesignation::Required),
                     codelist_code: None,
                     described_value_domain: None,
                     order: Some(3),
@@ -496,8 +496,8 @@ mod tests {
                     label: Some("Sequence Number".to_string()),
                     data_type: VariableType::Num,
                     length: None,
-                    role: Some("Identifier".to_string()),
-                    core: Some("Req".to_string()),
+                    role: Some(VariableRole::Identifier),
+                    core: Some(CoreDesignation::Required),
                     codelist_code: None,
                     described_value_domain: None,
                     order: Some(4),

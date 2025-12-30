@@ -14,10 +14,10 @@ pub mod numeric;
 pub mod studyday;
 
 // Re-export commonly used items
-pub use ct::{normalize_ct_value, normalize_without_codelist, CtNormalizationResult};
+pub use ct::{CtNormalizationResult, normalize_ct_value, normalize_without_codelist};
 pub use datetime::{
-    format_iso8601_date, format_iso8601_datetime, parse_date, parse_date_precision,
-    transform_to_iso8601, DateTimePrecision,
+    DateTimePrecision, format_iso8601_date, format_iso8601_datetime, parse_date,
+    parse_date_precision, transform_to_iso8601,
 };
 pub use duration::format_iso8601_duration;
 pub use numeric::{is_numeric, parse_numeric, transform_to_numeric};

@@ -10,7 +10,7 @@ use quick_xml::Writer;
 use quick_xml::events::{BytesEnd, BytesStart, BytesText, Event};
 
 use sdtm_ingest::any_to_string;
-use sdtm_model::{Domain, Variable, VariableType};
+use sdtm_model::{CoreDesignation, Domain, Variable, VariableRole, VariableType};
 
 /// SAS numeric length constant (8 bytes).
 pub const SAS_NUMERIC_LEN: u16 = 8;
@@ -121,22 +121,14 @@ pub fn variable_length(variable: &Variable, df: &DataFrame) -> Result<u16> {
     }
 }
 
-/// Check if variable is required (Core = "Req").
+/// Check if variable is required (Core = Required).
 pub fn is_required(variable: &Variable) -> bool {
-    variable
-        .core
-        .as_deref()
-        .map(|v| v.eq_ignore_ascii_case("req"))
-        .unwrap_or(false)
+    variable.core == Some(CoreDesignation::Required)
 }
 
 /// Check if variable is an identifier.
 pub fn is_identifier(variable: &Variable) -> bool {
-    variable
-        .role
-        .as_deref()
-        .map(|v| v.eq_ignore_ascii_case("identifier"))
-        .unwrap_or(false)
+    variable.role == Some(VariableRole::Identifier)
 }
 
 /// Check if variable should be upcased.
@@ -144,10 +136,9 @@ pub fn should_upcase(variable: &Variable) -> bool {
     is_identifier(variable) || variable.codelist_code.is_some()
 }
 
-/// Check if variable is expected (Core = "Exp").
-pub fn is_expected(core: Option<&str>) -> bool {
-    core.map(|v| v.trim().eq_ignore_ascii_case("exp"))
-        .unwrap_or(false)
+/// Check if variable is expected (Core = Expected).
+pub fn is_expected(core: Option<CoreDesignation>) -> bool {
+    core == Some(CoreDesignation::Expected)
 }
 
 /// Check if a variable column has any non-null/non-empty values (i.e., was "collected").

@@ -4,7 +4,7 @@ use super::TransformState;
 use crate::services::MappingState;
 use polars::prelude::DataFrame;
 use sdtm_ingest::StudyMetadata;
-use sdtm_model::ValidationReport;
+use sdtm_validate::ValidationReport;
 use std::collections::HashMap;
 use std::path::PathBuf;
 

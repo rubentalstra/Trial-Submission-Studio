@@ -3,8 +3,8 @@
 //! This module defines structures for representing study-specific metadata,
 //! including source column definitions and study-specific codelists.
 
-use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 /// Definition of a source column from study metadata.
 #[derive(Debug, Clone, Serialize, Deserialize)]

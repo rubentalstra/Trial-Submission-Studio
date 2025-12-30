@@ -129,7 +129,7 @@ fn extract_reference_date(dm_df: &DataFrame) -> Option<chrono::NaiveDate> {
 mod tests {
     use super::*;
     use polars::prelude::*;
-    use sdtm_model::domain::{Variable, VariableType};
+    use sdtm_model::{CoreDesignation, Variable, VariableRole, VariableType};
 
     fn create_test_domain() -> Domain {
         Domain {
@@ -146,8 +146,8 @@ mod tests {
                     label: Some("Study Identifier".to_string()),
                     data_type: VariableType::Char,
                     length: None,
-                    role: Some("Identifier".to_string()),
-                    core: Some("Req".to_string()),
+                    role: Some(VariableRole::Identifier),
+                    core: Some(CoreDesignation::Required),
                     codelist_code: None,
                     described_value_domain: None,
                     order: Some(1),
@@ -157,8 +157,8 @@ mod tests {
                     label: Some("Unique Subject Identifier".to_string()),
                     data_type: VariableType::Char,
                     length: None,
-                    role: Some("Identifier".to_string()),
-                    core: Some("Req".to_string()),
+                    role: Some(VariableRole::Identifier),
+                    core: Some(CoreDesignation::Required),
                     codelist_code: None,
                     described_value_domain: None,
                     order: Some(2),
@@ -168,8 +168,8 @@ mod tests {
                     label: Some("Reported Term".to_string()),
                     data_type: VariableType::Char,
                     length: None,
-                    role: Some("Topic".to_string()),
-                    core: Some("Req".to_string()),
+                    role: Some(VariableRole::Topic),
+                    core: Some(CoreDesignation::Required),
                     codelist_code: None,
                     described_value_domain: None,
                     order: Some(3),
