@@ -437,22 +437,24 @@ impl DomainEditorView {
             let accepted = ms.get_accepted_for(&var_name).map(|(c, f)| (c.to_string(), f));
             let status = ms.variable_status(&var_name);
 
-            // Get available columns with confidence scores for this variable
-            // Calculate a similarity score for each column against the selected variable
-            let available_cols_with_confidence: Vec<(String, f32)> = ms
+            // Get available columns with confidence scores and labels for this variable
+            // Tuple: (column_id, optional_label, confidence)
+            let available_cols_with_info: Vec<(String, Option<String>, f32)> = ms
                 .available_columns()
                 .iter()
                 .map(|col| {
                     // Calculate name similarity between column and variable
                     let similarity = calculate_name_similarity(col, &var_name);
-                    (col.to_string(), similarity)
+                    // Get label from study metadata (Items.csv)
+                    let label = study.get_column_label(col).map(String::from);
+                    (col.to_string(), label, similarity)
                 })
                 .collect();
 
             // Sort by confidence (highest first), then by name
-            let mut available_cols_sorted = available_cols_with_confidence;
+            let mut available_cols_sorted = available_cols_with_info;
             available_cols_sorted.sort_by(|a, b| {
-                b.1.partial_cmp(&a.1)
+                b.2.partial_cmp(&a.2)
                     .unwrap_or(std::cmp::Ordering::Equal)
                     .then_with(|| a.0.cmp(&b.0))
             });
@@ -795,35 +797,58 @@ impl DomainEditorView {
                 ui.label(RichText::new("Select column:").color(theme.text_muted));
 
                 let mut selected_new_col: Option<String> = None;
+
+                // Calculate popup width based on longest item
+                let max_text_len = available_cols
+                    .iter()
+                    .map(|(col, label, _)| {
+                        if let Some(lbl) = label {
+                            format!("{} ({}) 100%", col, lbl).len()
+                        } else {
+                            format!("{} 100%", col).len()
+                        }
+                    })
+                    .max()
+                    .unwrap_or(20);
+                let popup_width = (max_text_len as f32 * 7.5).max(250.0).min(450.0);
+
                 egui::ComboBox::from_id_salt("col_select")
                     .selected_text("Choose a column...")
-                    .width(280.0)
+                    .width(popup_width)
                     .show_ui(ui, |ui| {
-                        for (col, confidence) in &available_cols {
-                            ui.horizontal(|ui| {
-                                // Column name
-                                let response = ui.selectable_label(false, col);
+                        ui.set_min_width(popup_width);
+                        for (col, label, confidence) in &available_cols {
+                            // Format: "ID (Label)" or just "ID" if no label
+                            let display_text = if let Some(lbl) = label {
+                                format!("{} ({})", col, lbl)
+                            } else {
+                                col.clone()
+                            };
 
-                                // Confidence indicator (always show for non-zero)
-                                if *confidence > 0.01 {
-                                    let conf_color = if *confidence >= 0.95 {
-                                        theme.success
-                                    } else if *confidence >= 0.70 {
-                                        theme.warning
-                                    } else {
-                                        theme.text_muted
-                                    };
-                                    ui.label(
-                                        RichText::new(format!("{:.0}%", confidence * 100.0))
-                                            .color(conf_color)
-                                            .small(),
-                                    );
-                                }
+                            // Build the full display with confidence
+                            let conf_text = if *confidence > 0.01 {
+                                format!(" — {:.0}%", confidence * 100.0)
+                            } else {
+                                String::new()
+                            };
 
-                                if response.clicked() {
-                                    selected_new_col = Some(col.clone());
-                                }
-                            });
+                            let full_text = format!("{}{}", display_text, conf_text);
+
+                            // Color based on confidence
+                            let text_color = if *confidence >= 0.95 {
+                                theme.success
+                            } else if *confidence >= 0.70 {
+                                theme.warning
+                            } else {
+                                theme.text_primary
+                            };
+
+                            if ui
+                                .selectable_label(false, RichText::new(&full_text).color(text_color))
+                                .clicked()
+                            {
+                                selected_new_col = Some(col.clone());
+                            }
                         }
                     });
 
