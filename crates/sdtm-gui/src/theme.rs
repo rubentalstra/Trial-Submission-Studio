@@ -2,8 +2,9 @@
 //!
 //! Colors, spacing, and visual constants for the application.
 
-#[allow(dead_code)]
 use egui::Color32;
+
+#[allow(dead_code)]
 
 /// Light mode colors
 pub mod light {
@@ -87,6 +88,7 @@ pub fn colors(dark_mode: bool) -> ThemeColors {
 
 /// Theme colors struct for easy access
 #[derive(Clone, Copy)]
+#[warn(dead_code)]
 pub struct ThemeColors {
     pub bg_primary: Color32,
     pub bg_secondary: Color32,
