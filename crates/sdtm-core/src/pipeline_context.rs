@@ -24,6 +24,7 @@ use std::collections::BTreeMap;
 
 use sdtm_model::Domain;
 use sdtm_model::ct::{Codelist, TerminologyRegistry};
+pub use sdtm_normalization::normalization::options::{CtMatchingMode, NormalizationOptions};
 
 /// Mode for applying STUDYID prefixes to USUBJID values.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -43,17 +44,8 @@ pub enum SequenceAssignmentMode {
     Assign,
 }
 
-/// Mode for controlled terminology matching.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CtMatchingMode {
-    /// Require exact or synonym matches only.
-    Strict,
-    /// Allow compact-key matching for normalization.
-    Lenient,
-}
-
 /// Options controlling SDTM processing behavior.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct ProcessingOptions {
     /// Add STUDYID prefix to USUBJID values.
     ///
@@ -70,8 +62,8 @@ pub struct ProcessingOptions {
     /// Log warnings when values are rewritten/normalized.
     pub warn_on_rewrite: bool,
 
-    /// Controlled terminology matching mode.
-    pub ct_matching: CtMatchingMode,
+    /// Normalization options (CT, Date, etc.)
+    pub normalization: NormalizationOptions,
 }
 
 impl Default for ProcessingOptions {
@@ -80,7 +72,7 @@ impl Default for ProcessingOptions {
             usubjid_prefix: UsubjidPrefixMode::Prefix,
             sequence_assignment: SequenceAssignmentMode::Assign,
             warn_on_rewrite: true,
-            ct_matching: CtMatchingMode::Lenient,
+            normalization: NormalizationOptions::default(),
         }
     }
 }
@@ -95,7 +87,10 @@ impl ProcessingOptions {
             usubjid_prefix: UsubjidPrefixMode::Prefix,
             sequence_assignment: SequenceAssignmentMode::Assign,
             warn_on_rewrite: true,
-            ct_matching: CtMatchingMode::Strict,
+            normalization: NormalizationOptions {
+                matching_mode: CtMatchingMode::Strict,
+                ..Default::default()
+            },
         }
     }
 }

@@ -49,7 +49,7 @@ pub fn mapping_source_for_target(mapping: &MappingConfig, target: &str) -> Optio
 /// # Examples
 ///
 /// ```
-/// use sdtm_transform::data_utils::strip_quotes;
+/// use sdtm_normalization::data_utils::strip_quotes;
 ///
 /// assert_eq!(strip_quotes("\"hello\""), "hello");
 /// assert_eq!(strip_quotes("  \"world\"  "), "world");
@@ -73,7 +73,7 @@ pub fn strip_quotes(value: &str) -> String {
 /// # Examples
 ///
 /// ```
-/// use sdtm_transform::data_utils::strip_all_quotes;
+/// use sdtm_normalization::data_utils::strip_all_quotes;
 ///
 /// assert_eq!(strip_all_quotes("\"hello\""), "hello");
 /// assert_eq!(strip_all_quotes("he\"llo"), "hello");

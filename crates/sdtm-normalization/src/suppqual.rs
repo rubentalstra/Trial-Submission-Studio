@@ -64,7 +64,7 @@ pub struct SuppqualInput<'a> {
 ///
 /// # Examples
 /// ```
-/// use sdtm_transform::suppqual::suppqual_dataset_code;
+/// use sdtm_normalization::suppqual::suppqual_dataset_code;
 ///
 /// // Simple domain
 /// assert_eq!(suppqual_dataset_code("LB"), "SUPPLB");

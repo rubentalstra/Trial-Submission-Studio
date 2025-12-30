@@ -117,13 +117,13 @@ fn process_aeacndev(domain: &Domain, df: &mut DataFrame, context: &PipelineConte
         }
 
         // Check if valid in AEACNDEV codelist
-        if resolve_ct_value(ct_dev, &dev_vals[idx], context.options.ct_matching).is_some() {
+        if resolve_ct_value(ct_dev, &dev_vals[idx], &context.options.normalization).is_some() {
             continue;
         }
 
         // Try to move to AEACN if valid there
         let moved = ct_acn
-            .and_then(|ct| resolve_ct_value(ct, &dev_vals[idx], context.options.ct_matching))
+            .and_then(|ct| resolve_ct_value(ct, &dev_vals[idx], &context.options.normalization))
             .map(|_| {
                 if acn_vals[idx].trim().is_empty() {
                     acn_vals[idx] = dev_vals[idx].clone();

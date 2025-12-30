@@ -191,7 +191,7 @@ pub fn normalize_ct_columns(
         {
             let mut values = string_column(df, name)?;
             for value in &mut values {
-                *value = normalize_ct_value(ct, value, context.options.ct_matching);
+                *value = normalize_ct_value(ct, value, &context.options.normalization);
             }
             set_string_column(df, name, values)?;
         }
@@ -246,7 +246,7 @@ pub fn derive_test_from_testcd(
         let needs_label = test.is_empty() || test.eq_ignore_ascii_case(testcd);
         let valid_name = ct_names
             .map(|ct| {
-                let canonical = normalize_ct_value(ct, test, context.options.ct_matching);
+                let canonical = normalize_ct_value(ct, test, &context.options.normalization);
                 ct.submission_values().iter().any(|val| val == &canonical)
             })
             .unwrap_or(true);
@@ -309,7 +309,7 @@ pub fn resolve_testcd_from_test(
             continue;
         }
 
-        if let Some(mapped) = resolve_ct_value(ct, test, context.options.ct_matching) {
+        if let Some(mapped) = resolve_ct_value(ct, test, &context.options.normalization) {
             *testcd = mapped;
         }
     }

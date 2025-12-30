@@ -9,7 +9,7 @@
 
 use anyhow::Result;
 use polars::prelude::DataFrame;
-use sdtm_core::pipeline_context::CtMatchingMode;
+use sdtm_core::pipeline_context::{CtMatchingMode, NormalizationOptions};
 use sdtm_core::transforms::{
     apply_usubjid_prefix, assign_sequence_numbers, get_ct_columns, normalize_ct_column,
 };
@@ -75,8 +75,12 @@ impl ProcessingService {
 
         for (column_name, codelist_code) in ct_columns {
             if let Some(resolved) = ct_registry.resolve(&codelist_code, None) {
+                let options = NormalizationOptions {
+                    matching_mode,
+                    ..Default::default()
+                };
                 let modified =
-                    normalize_ct_column(df, &column_name, resolved.codelist, matching_mode)?;
+                    normalize_ct_column(df, &column_name, resolved.codelist, &options)?;
 
                 if modified > 0 {
                     results.push(TransformResult {

@@ -14,10 +14,10 @@ use anyhow::Result;
 use polars::prelude::*;
 use sdtm_model::CaseInsensitiveSet;
 use sdtm_model::ct::Codelist;
-use sdtm_transform::data_utils::strip_all_quotes;
+use sdtm_normalization::data_utils::strip_all_quotes;
 
-use crate::ct_utils::normalize_ct_value;
-use crate::pipeline_context::CtMatchingMode;
+use sdtm_normalization::normalization::ct::normalize_ct_value;
+use sdtm_normalization::normalization::options::{CtMatchingMode, NormalizationOptions};
 
 /// Apply STUDYID prefix to USUBJID column.
 ///
@@ -158,7 +158,7 @@ pub fn assign_sequence_numbers(
 /// * `df` - DataFrame to modify (in place)
 /// * `column_name` - Name of the column to normalize
 /// * `codelist` - The controlled terminology codelist to use
-/// * `matching_mode` - Strict or lenient matching
+/// * `options` - Normalization options
 ///
 /// # Returns
 ///
@@ -167,7 +167,7 @@ pub fn normalize_ct_column(
     df: &mut DataFrame,
     column_name: &str,
     codelist: &Codelist,
-    matching_mode: CtMatchingMode,
+    options: &NormalizationOptions,
 ) -> Result<usize> {
     let column_lookup = CaseInsensitiveSet::new(df.get_column_names_owned());
 
@@ -193,7 +193,7 @@ pub fn normalize_ct_column(
         if let Some(val) = opt_val {
             let trimmed = val.trim();
             if !trimmed.is_empty() {
-                let normalized = normalize_ct_value(&codelist_clone, trimmed, matching_mode);
+                let normalized = normalize_ct_value(&codelist_clone, trimmed, options);
                 if normalized != trimmed {
                     normalized_count += 1;
                 }
@@ -207,6 +207,7 @@ pub fn normalize_ct_column(
 
     // Apply normalization
     let codelist_for_expr = codelist.clone();
+    let options_for_expr = options.clone();
     let expr = col(col_name)
         .map(
             move |c: Column| {
@@ -218,7 +219,7 @@ pub fn normalize_ct_column(
                         std::borrow::Cow::Owned(normalize_ct_value(
                             &codelist_for_expr,
                             s,
-                            matching_mode,
+                            &options_for_expr,
                         ))
                     }
                 });
@@ -355,7 +356,10 @@ pub fn build_preview_dataframe(
                 &mut preview_df,
                 &variable.name,
                 resolved.codelist,
-                CtMatchingMode::Lenient,
+                &NormalizationOptions {
+                    matching_mode: CtMatchingMode::Lenient,
+                    ..Default::default()
+                },
             );
         }
     }

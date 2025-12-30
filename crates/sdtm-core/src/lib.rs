@@ -44,10 +44,7 @@
 //! process_domain(input)?;
 //! ```
 
-mod ct_utils;
 pub mod domain_processors;
-
-// Internal modules - public for sdtm-cli but not part of stable API
 
 pub mod frame_builder;
 

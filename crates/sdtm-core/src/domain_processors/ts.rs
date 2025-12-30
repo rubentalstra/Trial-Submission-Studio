@@ -46,7 +46,7 @@ fn normalize_ts_ct_column(
 
     let mut values = string_column(df, col_ref)?;
     for value in &mut values {
-        *value = normalize_ct_value(ct, value, context.options.ct_matching);
+        *value = normalize_ct_value(ct, value, &context.options.normalization);
     }
     set_string_column(df, col_ref, values)
 }

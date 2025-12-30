@@ -6,7 +6,7 @@ use anyhow::Result;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
 
-use crate::ct_utils::is_yes_no_token;
+use sdtm_normalization::normalization::ct::is_yes_no_token;
 use crate::pipeline_context::PipelineContext;
 
 use super::common::{

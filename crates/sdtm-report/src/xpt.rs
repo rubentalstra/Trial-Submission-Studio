@@ -7,8 +7,8 @@ use polars::prelude::{AnyValue, DataFrame};
 
 use sdtm_ingest::{any_to_f64, any_to_string};
 use sdtm_model::{Domain, VariableType};
-use sdtm_transform::domain_sets::domain_map_by_code;
-use sdtm_transform::frame::DomainFrame;
+use sdtm_normalization::domain_sets::domain_map_by_code;
+use sdtm_normalization::frame::DomainFrame;
 use sdtm_xpt::{XptColumn, XptDataset, XptType, XptValue, XptWriterOptions, write_xpt};
 
 use crate::common::{ensure_output_dir, variable_length};

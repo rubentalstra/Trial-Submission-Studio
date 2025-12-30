@@ -23,11 +23,11 @@ use tracing::warn;
 
 use sdtm_model::{CaseInsensitiveSet, Domain, VariableType};
 
-use crate::ct_utils::normalize_ct_value;
 use crate::domain_processors;
 use crate::pipeline_context::{PipelineContext, SequenceAssignmentMode, UsubjidPrefixMode};
 use polars::lazy::dsl::{cols, int_range};
-use sdtm_transform::data_utils::{column_trimmed_values, strip_all_quotes};
+use sdtm_normalization::data_utils::{column_trimmed_values, strip_all_quotes};
+use sdtm_normalization::normalization::ct::normalize_ct_value;
 
 /// Input for domain processing operations.
 ///
@@ -78,7 +78,7 @@ fn normalize_ct_columns(
         }
 
         let ct_clone = ct.clone();
-        let matching_mode = context.options.ct_matching;
+        let options = context.options.normalization.clone();
 
         let expr = col(column_name)
             .map(
@@ -88,7 +88,7 @@ fn normalize_ct_columns(
                         if s.trim().is_empty() {
                             std::borrow::Cow::Borrowed("")
                         } else {
-                            std::borrow::Cow::Owned(normalize_ct_value(&ct_clone, s, matching_mode))
+                            std::borrow::Cow::Owned(normalize_ct_value(&ct_clone, s, &options))
                         }
                     });
                     Ok(out.into_column())

@@ -36,7 +36,7 @@ pub(super) fn process_pr(
             .collect();
         if let Some(ct) = context.resolve_ct(domain, "PRDECOD") {
             for value in &mut values {
-                *value = normalize_ct_value(ct, value, context.options.ct_matching);
+                *value = normalize_ct_value(ct, value, &context.options.normalization);
             }
         }
         set_string_column(df, prdecod, values)?;
