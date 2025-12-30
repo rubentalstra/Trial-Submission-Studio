@@ -16,18 +16,18 @@ impl ExportView {
 
         // Top bar
         ui.horizontal(|ui| {
-            if ui.button("← Back").clicked() {
+            if ui.button(format!("{} Back", egui_phosphor::regular::ARROW_LEFT)).clicked() {
                 state.go_home();
             }
             ui.separator();
-            ui.heading("Export");
+            ui.heading(format!("{} Export", egui_phosphor::regular::EXPORT));
         });
 
         ui.add_space(spacing::MD);
 
         if let Some(study) = &state.study {
             // Domain selection
-            ui.label(RichText::new("Select Domains to Export").strong());
+            ui.label(RichText::new(format!("{} Select Domains to Export", egui_phosphor::regular::LIST_CHECKS)).strong());
             ui.add_space(spacing::SM);
 
             let ready_domains: Vec<_> = study
@@ -54,7 +54,7 @@ impl ExportView {
             ui.add_space(spacing::LG);
 
             // Output format selection
-            ui.label(RichText::new("Output Format").strong());
+            ui.label(RichText::new(format!("{} Output Format", egui_phosphor::regular::FILE)).strong());
             ui.add_space(spacing::SM);
 
             ui.horizontal(|ui| {
@@ -70,7 +70,7 @@ impl ExportView {
             ui.add_space(spacing::LG);
 
             // Output directory
-            ui.label(RichText::new("Output Directory").strong());
+            ui.label(RichText::new(format!("{} Output Directory", egui_phosphor::regular::FOLDER)).strong());
             ui.add_space(spacing::SM);
 
             ui.horizontal(|ui| {
@@ -78,7 +78,7 @@ impl ExportView {
                     RichText::new(study.study_folder.join("output").display().to_string())
                         .color(theme.text_secondary),
                 );
-                if ui.button("Change...").clicked() {
+                if ui.button(format!("{} Change...", egui_phosphor::regular::FOLDER_OPEN)).clicked() {
                     if let Some(_folder) = rfd::FileDialog::new().pick_folder() {
                         // TODO: Set output directory
                     }
@@ -91,7 +91,7 @@ impl ExportView {
             let can_export = !ready_domains.is_empty();
             ui.add_enabled_ui(can_export, |ui| {
                 if ui
-                    .button(RichText::new("Export Selected Domains").size(16.0))
+                    .button(RichText::new(format!("{} Export Selected Domains", egui_phosphor::regular::EXPORT)).size(16.0))
                     .clicked()
                 {
                     // TODO: Trigger export

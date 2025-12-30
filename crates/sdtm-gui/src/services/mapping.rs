@@ -334,12 +334,12 @@ pub enum VariableMappingStatus {
 }
 
 impl VariableMappingStatus {
-    /// Get status icon
+    /// Get status icon (phosphor icon)
     pub fn icon(&self) -> &'static str {
         match self {
-            Self::Accepted => "✓",
-            Self::Suggested => "○",
-            Self::Unmapped => "—",
+            Self::Accepted => egui_phosphor::regular::CHECK,
+            Self::Suggested => egui_phosphor::regular::CIRCLE_DASHED,
+            Self::Unmapped => egui_phosphor::regular::MINUS,
         }
     }
 }

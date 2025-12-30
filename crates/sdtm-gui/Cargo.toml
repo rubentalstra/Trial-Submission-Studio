@@ -35,8 +35,9 @@ tracing-subscriber.workspace = true
 chrono.workspace = true
 
 # GUI-specific
-rfd = "0.16.0"  # Native file dialogs
-lru = "0.16.2"  # LRU cache
+rfd = "0.16.0"           # Native file dialogs
+lru = "0.16.2"           # LRU cache
+egui-phosphor = "0.11.0" # Icon set
 
 [lints]
 workspace = true

@@ -45,14 +45,30 @@ pub enum EditorTab {
 }
 
 impl EditorTab {
-    /// Get display name for the tab
-    pub fn label(&self) -> &'static str {
+    /// Get display name for the tab (with icon)
+    pub fn label(&self) -> String {
+        format!("{} {}", self.icon(), self.name())
+    }
+
+    /// Get just the tab name without icon
+    pub fn name(&self) -> &'static str {
         match self {
             Self::Mapping => "Mapping",
             Self::Transform => "Transform",
             Self::Validation => "Validation",
             Self::Preview => "Preview",
             Self::Supp => "SUPP",
+        }
+    }
+
+    /// Get tab icon (phosphor icon)
+    pub fn icon(&self) -> &'static str {
+        match self {
+            Self::Mapping => egui_phosphor::regular::ARROWS_LEFT_RIGHT,
+            Self::Transform => egui_phosphor::regular::SHUFFLE,
+            Self::Validation => egui_phosphor::regular::CHECK_SQUARE,
+            Self::Preview => egui_phosphor::regular::EYE,
+            Self::Supp => egui_phosphor::regular::PLUS_SQUARE,
         }
     }
 

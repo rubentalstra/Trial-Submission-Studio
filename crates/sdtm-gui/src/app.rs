@@ -12,9 +12,11 @@ pub struct CdiscApp {
 
 impl CdiscApp {
     /// Create a new application instance
-    pub fn new(_cc: &eframe::CreationContext<'_>) -> Self {
-        // TODO: Load preferences from disk
-        // TODO: Set up custom fonts/styles
+    pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
+        // Initialize Phosphor icons font
+        let mut fonts = egui::FontDefinitions::default();
+        egui_phosphor::add_to_fonts(&mut fonts, egui_phosphor::Variant::Regular);
+        cc.egui_ctx.set_fonts(fonts);
 
         Self {
             state: AppState::default(),

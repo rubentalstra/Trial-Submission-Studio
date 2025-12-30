@@ -19,7 +19,7 @@ impl DomainEditorView {
 
         // Top bar with domain info and back button
         ui.horizontal(|ui| {
-            if ui.button("← Back").clicked() {
+            if ui.button(format!("{} Back", egui_phosphor::regular::ARROW_LEFT)).clicked() {
                 state.go_home();
             }
 
@@ -114,7 +114,7 @@ impl DomainEditorView {
             // No mapping state but not in loading flow - error
             (false, _) => {
                 ui.centered_and_justified(|ui| {
-                    ui.label(RichText::new("Failed to initialize mapping").color(theme.error));
+                    ui.label(RichText::new(format!("{} Failed to initialize mapping", egui_phosphor::regular::WARNING)).color(theme.error));
                 });
                 return;
             }
@@ -301,7 +301,7 @@ impl DomainEditorView {
 
         // Search box
         ui.horizontal(|ui| {
-            ui.label("🔍");
+            ui.label(egui_phosphor::regular::MAGNIFYING_GLASS);
             let response = ui.text_edit_singleline(&mut search_text);
             if response.changed() {
                 if let Some(study) = &mut state.study {
@@ -544,7 +544,7 @@ impl DomainEditorView {
 
         egui::ScrollArea::vertical().show(ui, |ui| {
             // SDTM Target section
-            ui.label(RichText::new("SDTM Target").strong().color(theme.text_muted));
+            ui.label(RichText::new(format!("{} SDTM Target", egui_phosphor::regular::CROSSHAIR)).strong().color(theme.text_muted));
             ui.separator();
             ui.add_space(spacing::SM);
 
@@ -582,7 +582,7 @@ impl DomainEditorView {
                 ui.add_space(spacing::MD);
 
                 ui.label(
-                    RichText::new("Controlled Terminology")
+                    RichText::new(format!("{} Controlled Terminology", egui_phosphor::regular::LIST_BULLETS))
                         .strong()
                         .color(theme.text_muted),
                 );
@@ -660,7 +660,7 @@ impl DomainEditorView {
             if is_auto {
                 // Auto-generated variable section
                 ui.label(
-                    RichText::new("Value Source")
+                    RichText::new(format!("{} Value Source", egui_phosphor::regular::LIGHTNING))
                         .strong()
                         .color(theme.text_muted),
                 );
@@ -668,7 +668,7 @@ impl DomainEditorView {
                 ui.add_space(spacing::SM);
 
                 ui.horizontal(|ui| {
-                    ui.label(RichText::new("⚙").color(theme.accent));
+                    ui.label(RichText::new(egui_phosphor::regular::GEAR).color(theme.accent));
                     ui.label(RichText::new("Auto-generated").strong().color(theme.accent));
                 });
 
@@ -698,7 +698,7 @@ impl DomainEditorView {
             } else {
                 // Source Column section for mappable variables
                 ui.label(
-                    RichText::new("Source Column")
+                    RichText::new(format!("{} Source Column", egui_phosphor::regular::TABLE))
                         .strong()
                         .color(theme.text_muted),
                 );
@@ -762,7 +762,7 @@ impl DomainEditorView {
                     }
                 } else {
                     ui.label(
-                        RichText::new("No mapping")
+                        RichText::new(format!("{} No mapping", egui_phosphor::regular::LINK_BREAK))
                             .color(theme.text_muted)
                             .italics(),
                     );
@@ -850,7 +850,7 @@ impl DomainEditorView {
                     match status {
                         VariableMappingStatus::Suggested => {
                             if ui
-                                .button(RichText::new("Accept").color(theme.success))
+                                .button(RichText::new(format!("{} Accept", egui_phosphor::regular::CHECK)).color(theme.success))
                                 .clicked()
                             {
                                 if let Some(study) = &mut state.study {
@@ -863,7 +863,7 @@ impl DomainEditorView {
                             }
                         }
                         VariableMappingStatus::Accepted => {
-                            if ui.button("Clear").clicked() {
+                            if ui.button(format!("{} Clear", egui_phosphor::regular::X)).clicked() {
                                 if let Some(study) = &mut state.study {
                                     if let Some(domain) = study.get_domain_mut(domain_code) {
                                         if let Some(ms) = &mut domain.mapping_state {
@@ -875,7 +875,7 @@ impl DomainEditorView {
                         }
                         VariableMappingStatus::Unmapped => {
                             ui.label(
-                                RichText::new("Select a source column above")
+                                RichText::new(format!("{} Select a source column above", egui_phosphor::regular::INFO))
                                     .color(theme.text_muted)
                                     .small(),
                             );

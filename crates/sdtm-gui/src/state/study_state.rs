@@ -165,15 +165,15 @@ impl DomainStatus {
         }
     }
 
-    /// Get status icon
+    /// Get status icon (phosphor icon)
     pub fn icon(&self) -> &'static str {
         match self {
-            Self::NotStarted => "○",
-            Self::Loading => "◐",
-            Self::MappingInProgress => "◐",
-            Self::MappingComplete => "●",
-            Self::ValidationFailed => "✕",
-            Self::ReadyForExport => "✓",
+            Self::NotStarted => egui_phosphor::regular::CIRCLE,
+            Self::Loading => egui_phosphor::regular::SPINNER_GAP,
+            Self::MappingInProgress => egui_phosphor::regular::CIRCLE_HALF,
+            Self::MappingComplete => egui_phosphor::regular::CIRCLE_WAVY_CHECK,
+            Self::ValidationFailed => egui_phosphor::regular::X_CIRCLE,
+            Self::ReadyForExport => egui_phosphor::regular::CHECK_CIRCLE,
         }
     }
 }

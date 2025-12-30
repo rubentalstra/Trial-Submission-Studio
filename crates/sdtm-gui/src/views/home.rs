@@ -37,7 +37,7 @@ impl HomeView {
 
             // Open study button
             if ui
-                .button(RichText::new("Open Study Folder").size(16.0))
+                .button(RichText::new(format!("{} Open Study Folder", egui_phosphor::regular::FOLDER_OPEN)).size(16.0))
                 .clicked()
             {
                 if let Some(folder) = rfd::FileDialog::new().pick_folder() {
@@ -63,7 +63,7 @@ impl HomeView {
                 ui.add_space(spacing::MD);
 
                 // Domain list
-                ui.label(RichText::new("Discovered Domains").strong());
+                ui.label(RichText::new(format!("{} Discovered Domains", egui_phosphor::regular::DATABASE)).strong());
                 ui.add_space(spacing::SM);
 
                 // Collect domain info for rendering
@@ -112,7 +112,7 @@ impl HomeView {
                 ui.add_space(spacing::MD);
 
                 // Export button
-                if ui.button("Go to Export").clicked() {
+                if ui.button(format!("{} Go to Export", egui_phosphor::regular::EXPORT)).clicked() {
                     go_to_export = true;
                 }
             }
@@ -123,13 +123,13 @@ impl HomeView {
                 ui.separator();
                 ui.add_space(spacing::MD);
 
-                ui.label(RichText::new("Recent Studies").strong());
+                ui.label(RichText::new(format!("{} Recent Studies", egui_phosphor::regular::CLOCK_COUNTER_CLOCKWISE)).strong());
                 ui.add_space(spacing::SM);
 
                 let recent_paths: Vec<_> = state.preferences.recent_studies.clone();
                 for path in recent_paths {
                     if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                        if ui.button(name).clicked() {
+                        if ui.button(format!("{} {}", egui_phosphor::regular::FOLDER, name)).clicked() {
                             // TODO: Load recent study
                             tracing::info!("Opening recent study: {:?}", path);
                         }
