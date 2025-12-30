@@ -1,8 +1,8 @@
 //! Standalone SDTM transformation functions.
 //!
 //! This module provides pure, standalone functions for SDTM transformations
-//! that can be used independently of the pipeline context. These are designed
-//! for use in the GUI where transformations are applied incrementally.
+//! that can be used independently. These are designed for use in the GUI
+//! where transformations are applied incrementally.
 //!
 //! # SDTMIG v3.4 Reference
 //!
@@ -14,10 +14,10 @@ use anyhow::Result;
 use polars::prelude::*;
 use sdtm_model::CaseInsensitiveSet;
 use sdtm_model::ct::Codelist;
-use sdtm_transform::data_utils::strip_all_quotes;
 
+use crate::data_utils::strip_all_quotes;
+use crate::normalization::ct::normalize_ct_value;
 use sdtm_model::options::{CtMatchingMode, NormalizationOptions};
-use sdtm_transform::normalization::ct::normalize_ct_value;
 
 /// Apply STUDYID prefix to USUBJID column.
 ///

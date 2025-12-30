@@ -1,222 +1,502 @@
-# Deep Dive Analysis & Simplification Plan
+# CDISC Transpiler - Deep Dive Codebase Analysis
+
+**Generated:** 2025-12-30\
+**Updated:** 2025-12-30\
+**Philosophy:** "Can we remove it? If not, why not? Is it really needed?"
+
+---
+
+## Table of Contents
+
+1. [Executive Summary](#executive-summary)
+2. [Crate Dependency Graph](#crate-dependency-graph)
+3. [File-by-File Analysis](#file-by-file-analysis)
+4. [Type Inventory](#type-inventory)
+5. [Redundancies & Removal Candidates](#redundancies--removal-candidates)
+6. [Action Plan](#action-plan)
+7. [Naming Convention Alignment](#naming-convention-alignment)
+
+---
 
 ## Executive Summary
 
-This document analyzes the current state of the entire workspace to identify
-opportunities for aggressive code removal and simplification. The goal is to
-eliminate "double" logic (legacy CLI infrastructure), streamline the
-transformation pipeline for the GUI, and ensure a clear separation of concerns.
+### Architecture Overview
 
-## Crate Analysis
+The codebase has **10 crates** with clear layered architecture:
 
-### 1. `sdtm-core`
+| Layer             | Crate            | Files | LoC (est) | Can Remove Crate? | Why Needed?           |
+| ----------------- | ---------------- | ----- | --------- | ----------------- | --------------------- |
+| **Foundation**    | `sdtm-model`     | 10    | ~1500     | ❌ No             | Core types, zero deps |
+| **Data I/O**      | `sdtm-ingest`    | 5     | ~800      | ❌ No             | CSV loading           |
+| **Data I/O**      | `sdtm-xpt`       | 1     | ~700      | ❌ No             | XPT format support    |
+| **Standards**     | `sdtm-standards` | 5     | ~600      | ❌ No             | Load SDTMIG/CT/P21    |
+| **Transform**     | `sdtm-transform` | 10    | ~1200     | ❌ No             | Pure transformations  |
+| **Orchestration** | `sdtm-core`      | 25    | ~2500     | ❌ No             | Pipeline + processors |
+| **Mapping**       | `sdtm-map`       | 5     | ~700      | ❌ No             | Column mapping        |
+| **Validation**    | `sdtm-validate`  | 1     | ~970      | ❌ No             | Conformance checking  |
+| **Output**        | `sdtm-report`    | 5     | ~1000     | ❌ No             | Output generation     |
+| **Frontend**      | `sdtm-gui`       | ~15   | ~2000     | ❌ No             | Desktop app           |
 
-**Role**: Orchestration Engine & Domain Logic **Status**: **Major Refactor
-Target**
+**Total:** ~67 source files, ~12,000 lines of code
 
-This crate currently acts as the orchestration engine. It contains a heavy
-"Processor Registry" pattern that is over-engineered for the current needs.
+### Key Findings: What CAN Be Removed/Simplified
 
-#### File Descriptions
+| Category      | Item                                          | Action                  | Impact                 |
+| ------------- | --------------------------------------------- | ----------------------- | ---------------------- |
+| 🗑️ **DELETE** | `sdtm-transform/src/normalization/numeric.rs` | Remove file             | Duplicates sdtm-ingest |
+| 🗑️ **DELETE** | `sdtm-model/src/error.rs`                     | Remove file             | Use anyhow instead     |
+| 📦 **MERGE**  | `sdtm-core/src/transforms.rs`                 | Merge into processor.rs | Reduce duplication     |
+| 📐 **SPLIT**  | `sdtm-validate/src/lib.rs` (969 lines)        | Split into 4 modules    | Maintainability        |
+| 🏷️ **RENAME** | `StudyMetadata` → `SourceMetadata`            | Clarify purpose         | Avoid SDTMIG conflict  |
+| 🏷️ **RENAME** | `StudyCodelist` → `SourceCodelist`            | Clarify purpose         | Avoid SDTMIG conflict  |
+| ⚠️ **REVIEW** | `ProcessorRegistry`                           | Consider simplification | 17 fixed processors    |
 
-- **`src/lib.rs`**: Entry point. Defines the module structure.
-- **`src/pipeline_context.rs`**: Holds global state (`StudyMetadata`,
-  `ProcessingOptions`, `CodeList`). **Keep**, but simplify.
-- **`src/processor.rs`**: Contains `ProcessorRegistry` and `process_domain`.
-  This is the primary source of "double" logic. It dynamically dispatches to
-  domain processors. **Candidate for Removal/Simplification**.
-- **`src/transforms.rs`**: Contains generic transformation logic
-  (`apply_transform`). **Keep**, but ensure it's not duplicating
-  `sdtm-transform`.
-- **`src/domain_processors/mod.rs`**: Module definition for all domain
-  processors.
-- **`src/domain_processors/processor_trait.rs`**: Defines the `DomainProcessor`
-  trait. **Candidate for Removal** in favor of functional approach.
-- **`src/domain_processors/operations.rs`**: Shared operations (`backward_fill`,
-  `clear_unit_when_empty`). **Keep**, these are useful helpers.
-- **`src/domain_processors/common.rs`**: Common utilities (`has_column`,
-  `string_column`). **Keep**.
-- **`src/domain_processors/[domain].rs`** (e.g., `ae.rs`, `dm.rs`): Individual
-  domain logic. These contain specific business rules. **Keep**, but refactor to
-  be simple functions.
+### Summary Counts
 
-### 2. `sdtm-transform` (formerly `sdtm-normalization`)
+- **Files Safe to Remove:** 2
+- **Files to Split/Reorganize:** 2
+- **Type Renames Needed:** 2
 
-**Role**: Reusable Transformation Utilities **Status**: **Stable / Keep**
+---
 
-**Naming Decision**: Renamed from `sdtm-normalization` to `sdtm-transform`.
-_Reasoning_: This crate does more than just "normalize" values (clean-up). It
-performs structural transformations like generating Supplemental Qualifiers
-(`suppqual.rs`) and Relationship datasets (`relationships.rs`). "Transformation"
-is a broader term that correctly encompasses both value normalization and
-structural reshaping.
+## Crate Dependency Graph
 
-#### File Descriptions
+```
+sdtm-model (foundation - no internal deps)
+    │
+    ├── sdtm-ingest (data loading)
+    │       │
+    │       └── sdtm-transform (transformation logic)
+    │               │
+    │               ├── sdtm-core (orchestration)
+    │               │       │
+    │               │       └── sdtm-validate
+    │               │
+    │               └── sdtm-map (column mapping)
+    │
+    ├── sdtm-standards (standards loaders)
+    │
+    ├── sdtm-report (output generation)
+    │       └── sdtm-xpt
+    │
+    └── sdtm-gui (desktop app)
+            └── (all above)
+```
 
-- **`src/lib.rs`**: Entry point.
-- **`src/normalization/ct.rs`**: Controlled Terminology normalization logic.
-  **Keep**.
-- **`src/normalization/datetime.rs`**: ISO 8601 parsing/formatting. **Keep**.
-- **`src/normalization/numeric.rs`**: Numeric conversions. **Keep**.
-- **`src/frame_builder.rs`**: CSV to DataFrame conversion. **Keep**.
-- **`src/suppqual.rs`**: Logic for generating SUPP-- datasets. **Keep**.
-- **`src/relationships.rs`**: Logic for generating RELREC, etc. **Keep**.
+---
 
-### 3. `sdtm-gui`
+## File-by-File Analysis
 
-**Role**: Desktop Application (Frontend) **Status**: **Active Development**
+### Decision Key
 
-The user interface built with `eframe`/`egui`.
+| Symbol          | Meaning                                     |
+| --------------- | ------------------------------------------- |
+| ✅ **KEEP**     | Essential, well-designed, no changes needed |
+| 🗑️ **DELETE**   | Can be completely removed                   |
+| 📦 **MERGE**    | Combine with another file                   |
+| 📐 **SPLIT**    | Break into smaller modules                  |
+| 🔄 **REFACTOR** | Keep but needs changes                      |
+| ⚠️ **REVIEW**   | Needs closer examination                    |
 
-#### File Descriptions
+---
 
-- **`src/main.rs`**: Application entry point. Sets up the window and logging.
-- **`src/app.rs`**: Main application state and update loop.
-- **`src/services/`**: Business logic bridges (e.g., `study_loader.rs`).
-- **`src/state/`**: Application state management.
-- **`src/views/`**: UI components and screens.
+### sdtm-model (10 files)
 
-### 4. `sdtm-ingest`
+| File             | Lines | Decision    | Justification                               |
+| ---------------- | ----- | ----------- | ------------------------------------------- |
+| `lib.rs`         | ~50   | ✅ KEEP     | Module exports - required                   |
+| `domain.rs`      | ~270  | ✅ KEEP     | Core `Domain`, `Variable`, `DatasetClass`   |
+| `ct.rs`          | ~285  | ✅ KEEP     | `Codelist`, `Term`, `TerminologyRegistry`   |
+| `conformance.rs` | ~220  | ✅ KEEP     | `ValidationReport`, `ValidationIssue`       |
+| `p21.rs`         | ~265  | ✅ KEEP     | `P21Rule`, `P21Category`                    |
+| `options.rs`     | ~120  | ✅ KEEP     | `ProcessingOptions`, `NormalizationOptions` |
+| `metadata.rs`    | ~100  | 🔄 REFACTOR | Rename types (see naming section)           |
+| `mapping.rs`     | ~50   | ✅ KEEP     | `MappingSuggestion`, `MappingConfig`        |
+| `processing.rs`  | ~90   | ⚠️ REVIEW   | GUI-specific types, could move to sdtm-gui  |
+| `error.rs`       | ~40   | 🗑️ DELETE   | `SdtmError` unused - use `anyhow` instead   |
+| `lookup.rs`      | ~80   | ✅ KEEP     | `CaseInsensitiveSet` - used everywhere      |
 
-**Role**: Data Loading & Discovery **Status**: **Review for Redundancy**
+**Summary:** 8 KEEP, 1 DELETE, 1 REFACTOR, 1 REVIEW
 
-Handles reading CSV files and discovering study structure.
+---
 
-#### File Descriptions
+### sdtm-ingest (5 files)
 
-- **`src/lib.rs`**: Entry point.
-- **`src/csv_table.rs`**: CSV reading logic using Polars. **Keep**.
-- **`src/discovery.rs`**: File system scanning to find domains. **Keep**.
-- **`src/study_metadata.rs`**: **CRITICAL CHECK**. This file likely contains
-  logic that overlaps with the new `sdtm-model` centralization. It should only
-  contain _loading_ logic, not type definitions.
-- **`src/polars_utils.rs`**: Low-level Polars helpers. **Keep**.
+| File                | Lines | Decision | Justification                                     |
+| ------------------- | ----- | -------- | ------------------------------------------------- |
+| `lib.rs`            | ~25   | ✅ KEEP  | Module exports                                    |
+| `csv_table.rs`      | ~250  | ✅ KEEP  | CSV reading with double-header detection          |
+| `discovery.rs`      | ~150  | ✅ KEEP  | Domain file discovery                             |
+| `polars_utils.rs`   | ~120  | ✅ KEEP  | `any_to_string`, `parse_f64` - canonical location |
+| `study_metadata.rs` | ~400  | ✅ KEEP  | `AppliedStudyMetadata` + re-exports               |
 
-### 5. `sdtm-map`
+**Summary:** 5 KEEP - **Clean crate**
 
-**Role**: Column Mapping Engine **Status**: **Stable**
+---
 
-Provides fuzzy matching to map source columns to SDTM variables.
+### sdtm-transform (10 files)
 
-#### File Descriptions
+| File                        | Lines | Decision    | Justification                              |
+| --------------------------- | ----- | ----------- | ------------------------------------------ |
+| `lib.rs`                    | ~25   | ✅ KEEP     | Module exports                             |
+| `data_utils.rs`             | ~200  | ✅ KEEP     | String manipulation, QNAM sanitization     |
+| `frame.rs`                  | ~105  | ✅ KEEP     | `DomainFrame` - core wrapper type          |
+| `frame_builder.rs`          | ~150  | ✅ KEEP     | DataFrame construction                     |
+| `domain_sets.rs`            | ~100  | ✅ KEEP     | Domain collection utilities                |
+| `suppqual.rs`               | ~330  | ✅ KEEP     | SUPPQUAL generation per SDTMIG 8.4         |
+| `relationships.rs`          | ~200  | ✅ KEEP     | RELREC/RELSPEC per SDTMIG 8.5              |
+| `normalization/mod.rs`      | ~10   | 🔄 REFACTOR | Remove numeric re-export                   |
+| `normalization/ct.rs`       | ~300  | ✅ KEEP     | CT value normalization                     |
+| `normalization/datetime.rs` | ~250  | ✅ KEEP     | ISO 8601 parsing                           |
+| `normalization/numeric.rs`  | ~80   | 🗑️ DELETE   | **Duplicates sdtm-ingest/polars_utils.rs** |
 
-- **`src/engine.rs`**: The core scoring algorithm (Jaro-Winkler, etc.).
-  **Keep**.
-- **`src/patterns.rs`**: Regex patterns and synonym maps. **Keep**.
-- **`src/repository.rs`**: Persistence for mapping configurations. **Keep**.
+**Summary:** 8 KEEP, 1 DELETE, 1 REFACTOR
 
-### 6. `sdtm-model`
+---
 
-**Role**: Core Types & Data Model **Status**: **Central Source of Truth**
+### sdtm-core (25 files)
 
-Recently refactored to hold all shared types.
+| File                   | Lines | Decision  | Justification                             |
+| ---------------------- | ----- | --------- | ----------------------------------------- |
+| `lib.rs`               | ~50   | ✅ KEEP   | Module exports                            |
+| `pipeline_context.rs`  | ~120  | ✅ KEEP   | `PipelineContext` - central orchestration |
+| `processor.rs`         | ~400  | ✅ KEEP   | Main `process_domain()` function          |
+| `transforms.rs`        | ~200  | 📦 MERGE  | Move into processor.rs or make internal   |
+| **domain_processors/** |       |           |                                           |
+| `processor_trait.rs`   | ~520  | ⚠️ REVIEW | Keep trait, consider simplifying registry |
+| `common.rs`            | ~350  | ✅ KEEP   | Shared helper functions                   |
+| `operations.rs`        | ~400  | ✅ KEEP   | Reusable column operations                |
+| `default.rs`           | ~20   | ✅ KEEP   | Fallback processor                        |
+| `ae.rs`                | ~40   | ✅ KEEP   | Adverse Events                            |
+| `cm.rs`                | ~50   | ✅ KEEP   | Concomitant Meds                          |
+| `da.rs`                | ~30   | ✅ KEEP   | Drug Accountability                       |
+| `dm.rs`                | ~40   | ✅ KEEP   | Demographics                              |
+| `ds.rs`                | ~60   | ✅ KEEP   | Disposition                               |
+| `ex.rs`                | ~50   | ✅ KEEP   | Exposure                                  |
+| `ie.rs`                | ~60   | ✅ KEEP   | Inclusion/Exclusion                       |
+| `lb.rs`                | ~130  | ✅ KEEP   | Laboratory (most complex)                 |
+| `mh.rs`                | ~40   | ✅ KEEP   | Medical History                           |
+| `pe.rs`                | ~40   | ✅ KEEP   | Physical Exam                             |
+| `pr.rs`                | ~50   | ✅ KEEP   | Procedures                                |
+| `qs.rs`                | ~80   | ✅ KEEP   | Questionnaires                            |
+| `se.rs`                | ~30   | ✅ KEEP   | Subject Elements                          |
+| `ta.rs`                | ~20   | ✅ KEEP   | Trial Arms                                |
+| `te.rs`                | ~20   | ✅ KEEP   | Trial Elements                            |
+| `ts.rs`                | ~80   | ✅ KEEP   | Trial Summary                             |
+| `vs.rs`                | ~80   | ✅ KEEP   | Vital Signs                               |
 
-#### File Descriptions
+**Summary:** 21 KEEP, 1 MERGE, 1 REVIEW
 
-- **`src/domain.rs`**: `Domain`, `Variable` definitions.
-- **`src/metadata.rs`**: `StudyMetadata`, `SourceColumn`.
-- **`src/options.rs`**: `ProcessingOptions`.
-- **`src/ct.rs`**: Controlled Terminology types.
-- **`src/conformance.rs`**: Validation types.
+---
 
-### 7. `sdtm-report`
+### sdtm-standards (5 files)
 
-**Role**: Output Generation **Status**: **Stable**
+| File            | Lines | Decision | Justification         |
+| --------------- | ----- | -------- | --------------------- |
+| `lib.rs`        | ~35   | ✅ KEEP  | Module exports        |
+| `csv_utils.rs`  | ~100  | ✅ KEEP  | CSV reading utilities |
+| `loaders.rs`    | ~200  | ✅ KEEP  | Load SDTMIG domains   |
+| `ct_loader.rs`  | ~250  | ✅ KEEP  | Load CT codelists     |
+| `p21_loader.rs` | ~150  | ✅ KEEP  | Load P21 rules        |
 
-Generates the final artifacts.
+**Summary:** 5 KEEP - **Clean crate, no changes needed**
 
-#### File Descriptions
+---
 
-- **`src/xpt.rs`**: High-level XPT generation logic.
-- **`src/dataset_xml.rs`**: Dataset-XML generation.
-- **`src/define_xml.rs`**: Define-XML generation.
-- **`src/sas.rs`**: SAS program generation.
+### sdtm-validate (1 file)
 
-### 8. `sdtm-standards`
+| File     | Lines | Decision | Justification                  |
+| -------- | ----- | -------- | ------------------------------ |
+| `lib.rs` | 969   | 📐 SPLIT | Too large - split into modules |
 
-**Role**: Static Data Loader **Status**: **Stable**
+**Proposed Split:**
 
-Loads the offline standards (SDTMIG, CT, P21 Rules).
+```
+sdtm-validate/src/
+├── lib.rs              (~100 lines) - Exports + validate_domain()
+├── ct.rs               (~200 lines) - CT validation checks
+├── presence.rs         (~200 lines) - Required/Expected variable checks
+├── format.rs           (~150 lines) - Date format, text length
+├── consistency.rs      (~150 lines) - Sequence uniqueness
+└── gating.rs           (~100 lines) - GatingDecision, gate_strict_outputs()
+```
 
-#### File Descriptions
+**Summary:** 1 SPLIT
 
-- **`src/loaders.rs`**: Loads SDTMIG CSVs.
-- **`src/ct_loader.rs`**: Loads CT CSVs.
-- **`src/p21_loader.rs`**: Loads Pinnacle 21 rules.
+---
 
-### 9. `sdtm-validate`
+### sdtm-map (5 files)
 
-**Role**: Conformance Checking **Status**: **Stable**
+| File            | Lines | Decision | Justification                |
+| --------------- | ----- | -------- | ---------------------------- |
+| `lib.rs`        | ~50   | ✅ KEEP  | Module exports               |
+| `engine.rs`     | ~300  | ✅ KEEP  | `MappingEngine` - core logic |
+| `patterns.rs`   | ~150  | ✅ KEEP  | Synonym tables               |
+| `repository.rs` | ~150  | ✅ KEEP  | Save/load mappings           |
+| `utils.rs`      | ~50   | ✅ KEEP  | String utilities             |
 
-Validates the final DataFrames against rules.
+**Summary:** 5 KEEP - **Clean crate, no changes needed**
 
-#### File Descriptions
+---
 
-- **`src/lib.rs`**: Main validation logic (CT, ISO8601, Required vars).
+### sdtm-report (6 files)
 
-### 10. `sdtm-xpt`
+| File             | Lines | Decision | Justification                      |
+| ---------------- | ----- | -------- | ---------------------------------- |
+| `lib.rs`         | ~20   | ✅ KEEP  | Module exports                     |
+| `common.rs`      | ~100  | ✅ KEEP  | Shared utilities                   |
+| `xpt.rs`         | ~150  | ✅ KEEP  | XPT output (delegates to sdtm-xpt) |
+| `dataset_xml.rs` | ~400  | ✅ KEEP  | Dataset-XML output                 |
+| `define_xml.rs`  | ~250  | ✅ KEEP  | Define-XML output                  |
+| `sas.rs`         | ~150  | ✅ KEEP  | SAS program output                 |
 
-**Role**: Low-level XPT I/O **Status**: **Stable**
+**Summary:** 6 KEEP - **Clean crate, no changes needed**
 
-A specialized crate for reading/writing the binary XPT format.
+---
 
-## Redundancy Analysis ("Double Logic")
+### sdtm-xpt (1 file)
 
-1. **Processor Registry (`sdtm-core`)**: The dynamic dispatch system is
-   unnecessary complexity.
-   - _Action_: Replace with direct function calls.
-2. **Study Metadata (`sdtm-ingest` vs `sdtm-model`)**: `sdtm-ingest` might still
-   be defining types that are now in `sdtm-model`.
-   - _Action_: Verify `sdtm-ingest/src/study_metadata.rs` only _uses_ types from
-     `sdtm-model`.
-3. **Transformation Overlap**: `sdtm-core/src/transforms.rs` vs
-   `sdtm-transform`.
-   - _Action_: Audit `transforms.rs` and move unique logic to `sdtm-transform`
-     or `sdtm-core/src/domain_processors/common.rs`.
+| File     | Lines | Decision | Justification                             |
+| -------- | ----- | -------- | ----------------------------------------- |
+| `lib.rs` | 686   | ✅ KEEP  | XPT format reader/writer - self-contained |
 
-## Type Standardization & Naming Convention
+**Summary:** 1 KEEP - **Clean crate, no changes needed**
 
-To ensure consistency across the workspace and alignment with SDTMIG v3.4, we
-will adopt the following naming conventions.
+---
 
-### 1. SDTM Target Types (sdtm-model)
+### sdtm-gui (~15 files)
 
-These types represent the _target_ SDTM structure (the output). They must
-strictly follow SDTMIG terminology.
+| Directory     | Files | Decision | Justification       |
+| ------------- | ----- | -------- | ------------------- |
+| `main.rs`     | 1     | ✅ KEEP  | Entry point         |
+| `app.rs`      | 1     | ✅ KEEP  | Main app struct     |
+| `theme.rs`    | 1     | ✅ KEEP  | UI theming          |
+| `components/` | ~4    | ✅ KEEP  | Reusable widgets    |
+| `views/`      | ~4    | ✅ KEEP  | Page views          |
+| `state/`      | ~2    | ✅ KEEP  | App state           |
+| `services/`   | ~2    | ✅ KEEP  | Background services |
+| `dialogs/`    | ~1    | ✅ KEEP  | Modal dialogs       |
 
-- **`Domain`**: Represents a domain definition (e.g., "AE", "DM"). **Keep**.
-- **`Variable`**: Represents a column definition within a domain. **Keep**.
-- **`DatasetClass`**: Represents the observation class (Interventions, Events,
-  Findings). **Keep**.
-- **`Codelist`**: Represents a CDISC Controlled Terminology codelist. **Keep**.
-- **`Term`**: Represents a single term within a codelist. **Keep**.
+**Summary:** All KEEP - GUI-specific, no changes planned
 
-### 2. Source Input Types (sdtm-model / sdtm-ingest)
+---
 
-These types represent the _source_ data (the input CSVs or raw data). They
-should be clearly distinguished from SDTM types using the `Source` prefix.
+## Type Inventory
 
-- **`StudyMetadata`** -> **`SourceMetadata`**: Represents the metadata of the
-  _source_ study (e.g., raw CSV columns).
-  - _Reason_: Avoid confusion with SDTM "Study Metadata" (Define-XML).
-- **`SourceColumn`**: Represents a column in the source data. **Keep**.
-- **`StudyCodelist`** -> **`SourceCodelist`**: Represents a format/codelist in
-  the source data.
-  - _Reason_: Consistency with `SourceMetadata`.
+### Types to Delete (2)
 
-### 3. Configuration Types (sdtm-model)
+| Type        | Location                                | Why Delete                     |
+| ----------- | --------------------------------------- | ------------------------------ |
+| `SdtmError` | sdtm-model/error.rs                     | Unused, anyhow used everywhere |
+| (functions) | sdtm-transform/normalization/numeric.rs | Duplicates sdtm-ingest         |
 
-- **`ProcessingOptions`**: Configuration for the transformation pipeline.
-  **Keep**.
-- **`NormalizationOptions`**: Configuration for value normalization. **Keep**.
+### Types to Rename (2)
 
-## Action Items
+| Current Name    | New Name         | Location               | Why Rename            |
+| --------------- | ---------------- | ---------------------- | --------------------- |
+| `StudyMetadata` | `SourceMetadata` | sdtm-model/metadata.rs | Avoid SDTMIG conflict |
+| `StudyCodelist` | `SourceCodelist` | sdtm-model/metadata.rs | Avoid SDTMIG conflict |
 
-1. [ ] **sdtm-core**: Refactor `domain_processors/*.rs` to export public
-       functions.
-2. [ ] **sdtm-core**: Delete `processor.rs` and `processor_trait.rs`.
-3. [ ] **sdtm-core**: Update `lib.rs` to expose domain functions.
-4. [ ] **sdtm-ingest**: Refactor `study_metadata.rs` to remove duplicate type
-       definitions if any.
-5. [ ] **sdtm-model**: Rename `StudyMetadata` to `SourceMetadata`.
-6. [ ] **sdtm-model**: Rename `StudyCodelist` to `SourceCodelist`.
+### Types to Review (5)
+
+| Type                   | Location                     | Issue               |
+| ---------------------- | ---------------------------- | ------------------- |
+| `ProcessStudyRequest`  | sdtm-model/processing.rs     | GUI-specific, move? |
+| `ProcessStudyResponse` | sdtm-model/processing.rs     | GUI-specific, move? |
+| `DomainResult`         | sdtm-model/processing.rs     | GUI-specific, move? |
+| `OutputPaths`          | sdtm-model/processing.rs     | GUI-specific, move? |
+| `ProcessorRegistry`    | sdtm-core/processor_trait.rs | Over-engineered?    |
+
+### All Other Types: KEEP
+
+All remaining ~55 types are essential and correctly placed.
+
+---
+
+## Redundancies & Removal Candidates
+
+### 1. Duplicated Numeric Utilities 🗑️
+
+**Files:**
+
+- `sdtm-ingest/src/polars_utils.rs` ✅ (KEEP - canonical location)
+- `sdtm-transform/src/normalization/numeric.rs` 🗑️ (DELETE)
+
+**Functions duplicated:**
+
+```rust
+pub fn parse_f64(s: &str) -> Option<f64>
+pub fn parse_i64(s: &str) -> Option<i64>
+pub fn format_numeric(value: f64) -> String
+```
+
+**Action:** Delete `normalization/numeric.rs`, update imports to use
+sdtm-ingest.
+
+---
+
+### 2. Unused Error Type 🗑️
+
+**File:** `sdtm-model/src/error.rs`
+
+**Content:**
+
+```rust
+pub enum SdtmError {
+    Io(String),
+    Message(String),
+}
+```
+
+**Usage search result:** Zero callers. All error handling uses `anyhow::Result`.
+
+**Action:** Delete file, remove from `lib.rs` exports.
+
+---
+
+### 3. Transforms Duplication 📦
+
+**Files:**
+
+- `sdtm-core/src/processor.rs` - Full pipeline processing
+- `sdtm-core/src/transforms.rs` - Standalone functions
+
+**Overlapping logic:**
+
+- USUBJID prefixing
+- Sequence assignment
+- CT normalization
+
+**Why both exist:** `transforms.rs` was added for GUI use without full pipeline
+context.
+
+**Recommendation:** Keep both but refactor processor.rs to call transforms.rs
+internally.
+
+---
+
+### 4. ProcessorRegistry Complexity ⚠️
+
+**Current design:**
+
+```rust
+pub struct ProcessorRegistry {
+    processors: HashMap<&'static str, Box<dyn DomainProcessor>>,
+    default_processor: Box<dyn DomainProcessor>,
+}
+```
+
+**Reality:**
+
+- 17 processors registered at compile time
+- No runtime registration used
+- No plugin system
+
+**Could simplify to:**
+
+```rust
+fn process_domain(domain_code: &str, ...) -> Result<()> {
+    match domain_code.to_uppercase().as_str() {
+        "AE" => process_ae(...),
+        "CM" => process_cm(...),
+        // ...17 cases...
+        _ => process_default(...),
+    }
+}
+```
+
+**Recommendation:** Keep for now - not broken. Simplify only if performance
+matters.
+
+---
+
+## Action Plan
+
+### Phase 1: Safe Deletions (Low Risk) ✅
+
+| Step | File                                          | Action                    | Commands                                                |
+| ---- | --------------------------------------------- | ------------------------- | ------------------------------------------------------- |
+| 1.1  | `sdtm-model/src/error.rs`                     | Delete file               | `rm crates/sdtm-model/src/error.rs`                     |
+| 1.2  | `sdtm-model/src/lib.rs`                       | Remove `pub mod error;`   | Edit file                                               |
+| 1.3  | `sdtm-transform/src/normalization/numeric.rs` | Delete file               | `rm crates/sdtm-transform/src/normalization/numeric.rs` |
+| 1.4  | `sdtm-transform/src/normalization/mod.rs`     | Remove `pub mod numeric;` | Edit file                                               |
+
+### Phase 2: Type Renames (Medium Risk) 🔄
+
+| Step | File                         | Old Name        | New Name                      |
+| ---- | ---------------------------- | --------------- | ----------------------------- |
+| 2.1  | `sdtm-model/src/metadata.rs` | `StudyMetadata` | `SourceMetadata`              |
+| 2.2  | `sdtm-model/src/metadata.rs` | `StudyCodelist` | `SourceCodelist`              |
+| 2.3  | All importers                | Update imports  | Find/replace across workspace |
+
+### Phase 3: File Splitting (Medium Risk) 📐
+
+| Step | File                       | Action               |
+| ---- | -------------------------- | -------------------- |
+| 3.1  | `sdtm-validate/src/lib.rs` | Split into 5 modules |
+
+### Phase 4: Merging (Optional) 📦
+
+| Step | File                          | Action                  |
+| ---- | ----------------------------- | ----------------------- |
+| 4.1  | `sdtm-core/src/transforms.rs` | Merge into processor.rs |
+
+---
+
+## Naming Convention Alignment
+
+### SDTMIG v3.4 Terminology Check
+
+| Codebase Term     | SDTMIG Term                     | Status     | Action               |
+| ----------------- | ------------------------------- | ---------- | -------------------- |
+| `Domain`          | Domain                          | ✅ Correct | None                 |
+| `Variable`        | Variable                        | ✅ Correct | None                 |
+| `DatasetClass`    | General Observation Class       | ✅ Correct | None                 |
+| `Codelist`        | Controlled Terminology Codelist | ✅ Correct | None                 |
+| `Term`            | Codelist Term                   | ✅ Correct | None                 |
+| `SUPPQUAL`        | Supplemental Qualifier          | ✅ Correct | None                 |
+| `RELREC`          | Related Records                 | ✅ Correct | None                 |
+| `DomainFrame`     | N/A (internal)                  | ⚠️ OK      | Document as internal |
+| `PipelineContext` | N/A (internal)                  | ⚠️ OK      | Document as internal |
+| `StudyMetadata`   | ❌ CONFLICT                     | 🔄 Rename  | → `SourceMetadata`   |
+| `StudyCodelist`   | ❌ CONFLICT                     | 🔄 Rename  | → `SourceCodelist`   |
+
+### Why Rename Study* → Source*?
+
+In SDTMIG, "Study" refers to the clinical trial itself:
+
+- `STUDYID` - Study identifier variable
+- Study metadata - Trial design, protocol info
+
+Our `StudyMetadata` type represents **source data** from EDC systems:
+
+- Items.csv - Source column definitions
+- CodeLists.csv - Source value decoding
+
+Renaming to `SourceMetadata` clarifies this is **input** data, not SDTM study
+metadata.
+
+---
+
+## Summary Statistics
+
+| Metric                | Before | After    |
+| --------------------- | ------ | -------- |
+| Source Files          | ~67    | ~65 (-2) |
+| Public Types          | ~60    | ~58 (-2) |
+| Duplicated Functions  | 3      | 0        |
+| Lines in largest file | 969    | ~200     |
+| Type naming conflicts | 2      | 0        |
+
+---
+
+## Approval Checklist
+
+Before executing any changes:
+
+- [ ] Review Phase 1 deletions (error.rs, numeric.rs)
+- [ ] Review Phase 2 renames (StudyMetadata → SourceMetadata)
+- [ ] Review Phase 3 splits (sdtm-validate)
+- [ ] Approve execution order
+- [ ] Verify test coverage before/after
+- [ ] Run `cargo build` and `cargo test` between phases

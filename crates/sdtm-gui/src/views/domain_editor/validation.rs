@@ -6,10 +6,10 @@
 use crate::state::{AppState, DomainStatus};
 use crate::theme::{ThemeColors, colors, spacing};
 use egui::{RichText, Ui};
-use sdtm_core::transforms::build_preview_dataframe;
 use sdtm_model::p21::P21Category;
 use sdtm_model::{CheckType, Severity, ValidationIssue};
 use sdtm_standards::load_default_ct_registry;
+use sdtm_transform::transforms::build_preview_dataframe;
 use sdtm_validate::validate_domain;
 use std::collections::BTreeMap;
 

@@ -4495,20 +4495,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "sdtm-core"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "polars",
- "sdtm-ingest",
- "sdtm-map",
- "sdtm-model",
- "sdtm-transform",
- "tracing",
-]
-
-[[package]]
 name = "sdtm-gui"
 version = "0.1.0"
 dependencies = [
@@ -4521,12 +4507,12 @@ dependencies = [
  "lru",
  "polars",
  "rfd",
- "sdtm-core",
  "sdtm-ingest",
  "sdtm-map",
  "sdtm-model",
  "sdtm-report",
  "sdtm-standards",
+ "sdtm-transform",
  "sdtm-validate",
  "serde",
  "serde_json",

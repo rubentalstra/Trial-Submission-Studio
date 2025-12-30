@@ -21,7 +21,7 @@ sdtm-model = { path = "../sdtm-model" }
 sdtm-standards = { path = "../sdtm-standards" }
 sdtm-ingest = { path = "../sdtm-ingest" }
 sdtm-map = { path = "../sdtm-map" }
-sdtm-core = { path = "../sdtm-core" }
+sdtm-transform = { path = "../sdtm-transform" }
 sdtm-validate = { path = "../sdtm-validate" }
 sdtm-report = { path = "../sdtm-report" }
 

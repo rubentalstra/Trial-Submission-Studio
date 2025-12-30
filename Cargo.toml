@@ -1,7 +1,6 @@
 [workspace]
 members = [
     "crates/sdtm-gui",
-    "crates/sdtm-core",
     "crates/sdtm-ingest",
     "crates/sdtm-map",
     "crates/sdtm-model",
