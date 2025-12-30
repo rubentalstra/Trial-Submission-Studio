@@ -725,24 +725,20 @@ fn show_ct_detail(
             );
             ui.add_space(spacing::SM);
 
-            // Get valid terms from cache for case-insensitive lookup
-            let valid_terms: Vec<String> = mapping_state
+            // Get lookup map from cache (includes synonyms → submission_value)
+            let lookup = mapping_state
                 .ct_cache
                 .get(codelist_code)
-                .map(|info| info.terms.iter().map(|(v, _)| v.clone()).collect())
-                .unwrap_or_default();
+                .map(|info| &info.lookup);
 
             for val in &samples {
-                // Simple normalization: uppercase and check against valid terms
+                // Normalize using the lookup map (handles synonyms properly)
                 let normalized = {
                     let trimmed = val.trim();
                     let upper = trimmed.to_uppercase();
-                    // Check if value matches any valid term (case-insensitive)
-                    valid_terms
-                        .iter()
-                        .find(|t| t.to_uppercase() == upper)
-                        .cloned()
-                        .unwrap_or_else(|| trimmed.to_uppercase())
+                    lookup
+                        .and_then(|m| m.get(&upper).cloned())
+                        .unwrap_or_else(|| trimmed.to_string())
                 };
 
                 let is_changed = val != &normalized;

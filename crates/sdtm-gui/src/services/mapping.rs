@@ -17,10 +17,13 @@ pub struct CodelistDisplayInfo {
     pub code: String,
     pub name: String,
     pub extensible: bool,
-    /// (submission_value, definition) - limited to 8 terms
+    /// (submission_value, definition) - limited to 8 terms for display
     pub terms: Vec<(String, Option<String>)>,
     pub total_terms: usize,
     pub found: bool,
+    /// Lookup map: uppercase(synonym or submission_value) → submission_value
+    /// Used for normalization preview in the UI.
+    pub lookup: BTreeMap<String, String>,
 }
 
 /// GUI mapping state with CT caching.
@@ -98,12 +101,24 @@ fn load_ct_cache(domain: &Domain) -> BTreeMap<String, CodelistDisplayInfo> {
             let info = match registry.resolve(&code, None) {
                 Some(resolved) => {
                     let cl = resolved.codelist;
-                    let terms = cl
+                    let terms: Vec<_> = cl
                         .terms
                         .values()
                         .take(8)
                         .map(|t| (t.submission_value.clone(), t.definition.clone()))
                         .collect();
+
+                    // Build lookup map: uppercase(synonym or submission_value) → submission_value
+                    let mut lookup = BTreeMap::new();
+                    for term in cl.terms.values() {
+                        let sv = &term.submission_value;
+                        // Map the submission value itself
+                        lookup.insert(sv.to_uppercase(), sv.clone());
+                        // Map all synonyms
+                        for syn in &term.synonyms {
+                            lookup.insert(syn.to_uppercase(), sv.clone());
+                        }
+                    }
 
                     CodelistDisplayInfo {
                         code: code.clone(),
@@ -112,6 +127,7 @@ fn load_ct_cache(domain: &Domain) -> BTreeMap<String, CodelistDisplayInfo> {
                         terms,
                         total_terms: cl.terms.len(),
                         found: true,
+                        lookup,
                     }
                 }
                 None => CodelistDisplayInfo {
@@ -121,6 +137,7 @@ fn load_ct_cache(domain: &Domain) -> BTreeMap<String, CodelistDisplayInfo> {
                     terms: Vec::new(),
                     total_terms: 0,
                     found: false,
+                    lookup: BTreeMap::new(),
                 },
             };
             (code, info)
