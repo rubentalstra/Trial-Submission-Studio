@@ -5,7 +5,8 @@
 
 use std::collections::{BTreeMap, HashSet};
 
-use sdtm_model::{ColumnHint, Domain, MappingConfig, MappingSuggestion, Variable};
+use crate::types::{ColumnHint, MappingConfig, MappingSuggestion};
+use sdtm_model::{Domain, Variable};
 
 use crate::engine::{MappingEngine, MappingResult};
 
@@ -65,8 +66,7 @@ impl MappingState {
         column_hints: BTreeMap<String, ColumnHint>,
         min_confidence: f32,
     ) -> Self {
-        let engine =
-            MappingEngine::new(sdtm_domain.clone(), min_confidence, column_hints.clone());
+        let engine = MappingEngine::new(sdtm_domain.clone(), min_confidence, column_hints.clone());
         let result = engine.suggest(source_columns);
         let domain_code = sdtm_domain.code.clone();
         Self::new(&domain_code, study_id, sdtm_domain, result, column_hints)

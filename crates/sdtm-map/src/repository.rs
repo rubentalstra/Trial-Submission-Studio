@@ -22,7 +22,7 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
-use sdtm_model::MappingConfig;
+use crate::types::MappingConfig;
 
 /// Repository for storing and retrieving mapping configurations.
 ///

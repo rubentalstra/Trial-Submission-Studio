@@ -13,6 +13,7 @@ fn test_variable(name: &str, data_type: VariableType) -> Variable {
         core: None,
         codelist_code: None,
         order: None,
+        described_value_domain: None,
     }
 }
 

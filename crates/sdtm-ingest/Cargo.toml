@@ -11,4 +11,5 @@ workspace = true
 anyhow.workspace = true
 polars.workspace = true
 sdtm-model = { path = "../sdtm-model" }
+sdtm-map = { path = "../sdtm-map" }
 tracing.workspace = true

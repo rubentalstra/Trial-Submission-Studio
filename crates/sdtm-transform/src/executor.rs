@@ -50,9 +50,7 @@ fn execute_rule(
 
     match &rule.transform_type {
         TransformType::Constant => execute_constant(target_name, context, row_count),
-        TransformType::UsubjidPrefix => {
-            execute_usubjid(source_df, target_name, context, row_count)
-        }
+        TransformType::UsubjidPrefix => execute_usubjid(source_df, target_name, context, row_count),
         TransformType::SequenceNumber => {
             execute_sequence(source_df, target_name, context, row_count)
         }
@@ -66,9 +64,14 @@ fn execute_rule(
         TransformType::StudyDay { reference_dtc } => {
             execute_study_day(source_df, target_name, reference_dtc, context, row_count)
         }
-        TransformType::CtNormalization { codelist_code } => {
-            execute_ct_normalization(source_df, target_name, codelist_code, source_col, context, row_count)
-        }
+        TransformType::CtNormalization { codelist_code } => execute_ct_normalization(
+            source_df,
+            target_name,
+            codelist_code,
+            source_col,
+            context,
+            row_count,
+        ),
         TransformType::NumericConversion => {
             execute_numeric(source_df, target_name, source_col, row_count)
         }
@@ -537,7 +540,11 @@ mod tests {
         assert_eq!(result.height(), 3);
 
         // Check column names
-        let names: Vec<&str> = result.get_column_names().into_iter().collect();
+        let names: Vec<&str> = result
+            .get_column_names()
+            .iter()
+            .map(|s| s.as_str())
+            .collect();
         assert!(names.contains(&"STUDYID"));
         assert!(names.contains(&"DOMAIN"));
         assert!(names.contains(&"USUBJID"));

@@ -1,6 +1,6 @@
 //! Utility functions for mapping operations.
 
-use sdtm_model::{MappingConfig, MappingSuggestion};
+use crate::types::{MappingConfig, MappingSuggestion};
 
 /// Normalizes text for comparison by lowercasing and replacing separators with spaces.
 pub fn normalize_text(raw: &str) -> String {

@@ -4,7 +4,8 @@
 
 use polars::prelude::DataFrame;
 use sdtm_ingest::{build_column_hints, get_sample_values};
-use sdtm_model::{ColumnHint, Domain};
+use sdtm_map::types::ColumnHint;
+use sdtm_model::Domain;
 use sdtm_standards::load_default_ct_registry;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -49,7 +50,13 @@ impl MappingState {
         source_columns: &[String],
         column_hints: BTreeMap<String, ColumnHint>,
     ) -> Self {
-        let inner = sdtm_map::MappingState::from_domain(sdtm_domain, study_id, source_columns, column_hints, 0.6);
+        let inner = sdtm_map::MappingState::from_domain(
+            sdtm_domain,
+            study_id,
+            source_columns,
+            column_hints,
+            0.6,
+        );
         let ct_cache = load_ct_cache(&inner.sdtm_domain);
         Self { inner, ct_cache }
     }
@@ -120,7 +127,11 @@ fn load_ct_cache(domain: &Domain) -> BTreeMap<String, CodelistDisplayInfo> {
         })
         .collect();
 
-    tracing::info!("Pre-loaded {} codelists for domain {}", cache.len(), domain.code);
+    tracing::info!(
+        "Pre-loaded {} codelists for domain {}",
+        cache.len(),
+        domain.code
+    );
     cache
 }
 

@@ -3,7 +3,7 @@ use std::path::Path;
 
 use anyhow::{Context, Result};
 use polars::prelude::*;
-use sdtm_model::ColumnHint;
+use sdtm_map::types::ColumnHint;
 
 #[derive(Debug, Clone)]
 pub struct CsvSchema {

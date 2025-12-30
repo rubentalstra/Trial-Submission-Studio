@@ -16,6 +16,7 @@ fn make_variable(name: &str, label: &str, core: Option<&str>) -> Variable {
         core: core.map(String::from),
         codelist_code: None,
         order: None,
+        described_value_domain: None,
     }
 }
 
@@ -107,6 +108,7 @@ fn test_ct_variable_mapping_and_detection() {
             core: Some("Exp".to_string()),
             codelist_code: Some("C66742".to_string()),
             order: None,
+            described_value_domain: None,
         }],
     };
 

@@ -4556,6 +4556,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "polars",
+ "sdtm-map",
  "sdtm-model",
  "tracing",
 ]
@@ -4590,6 +4591,7 @@ dependencies = [
  "polars",
  "quick-xml 0.38.4",
  "sdtm-ingest",
+ "sdtm-map",
  "sdtm-model",
  "sdtm-standards",
  "sdtm-xpt",

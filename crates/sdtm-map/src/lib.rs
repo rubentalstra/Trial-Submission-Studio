@@ -50,6 +50,7 @@ pub mod engine;
 pub mod patterns;
 pub mod repository;
 pub mod state;
+pub mod types;
 pub mod utils;
 
 pub use engine::{ConfidenceLevel, ConfidenceThresholds, MappingEngine, MappingResult};
@@ -58,4 +59,5 @@ pub use repository::{
     MappingConfigLoader, MappingMetadata, MappingRepository, StoredMappingConfig,
 };
 pub use state::{MappingState, MappingSummary, VariableMappingStatus};
+pub use types::{ColumnHint, MappingConfig, MappingSuggestion};
 pub use utils::{merge_mapping_configs, merge_mappings};

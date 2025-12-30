@@ -5,7 +5,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use rapidfuzz::distance::jaro_winkler::similarity as jaro_similarity;
 
-use sdtm_model::{ColumnHint, Domain, MappingConfig, MappingSuggestion, Variable};
+use crate::types::{ColumnHint, MappingConfig, MappingSuggestion};
+use sdtm_model::{Domain, Variable};
 
 use crate::patterns::{build_synonym_map, build_variable_patterns, match_synonyms};
 use crate::utils::{normalize_text, safe_column_name};

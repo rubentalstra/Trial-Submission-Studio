@@ -6,8 +6,9 @@ use std::path::{Path, PathBuf};
 use anyhow::{Context, Result, anyhow};
 use chrono::{SecondsFormat, Utc};
 
-use sdtm_model::{Domain, MappingConfig, MappingSuggestion, Variable, VariableType};
 use crate::types::{DomainFrame, domain_map_by_code};
+use sdtm_map::types::{MappingConfig, MappingSuggestion};
+use sdtm_model::{Domain, Variable, VariableType};
 
 use crate::common::{dataset_name, ensure_output_dir, is_required, should_upcase, variable_length};
 
