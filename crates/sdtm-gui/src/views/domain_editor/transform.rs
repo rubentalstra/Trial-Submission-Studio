@@ -2,6 +2,7 @@
 //!
 //! Displays SDTM transformations derived from mappings and domain metadata.
 //! Transform list is built from the sdtm-transform pipeline using variable metadata.
+//! Shows before→after previews for each transformation.
 
 use crate::services::{MappingService, MappingState};
 use crate::state::{
@@ -606,7 +607,7 @@ fn show_sequence_detail(
     }
 }
 
-/// Show details for CT normalization
+/// Show details for CT normalization with before→after preview
 fn show_ct_detail(
     ui: &mut Ui,
     variable: &str,
@@ -690,23 +691,53 @@ fn show_ct_detail(
             }
         }
 
+        // Show transformation preview with before→after
         if !samples.is_empty() {
             ui.add_space(spacing::MD);
             ui.label(
-                RichText::new("Source Values")
+                RichText::new("Transformation Preview")
                     .strong()
                     .color(theme.text_muted),
             );
             ui.add_space(spacing::SM);
 
+            // Get valid terms from cache for case-insensitive lookup
+            let valid_terms: Vec<String> = mapping_state
+                .ct_cache
+                .get(codelist_code)
+                .map(|info| info.terms.iter().map(|(v, _)| v.clone()).collect())
+                .unwrap_or_default();
+
             for val in &samples {
-                ui.label(RichText::new(format!("• {}", val)).code());
+                // Simple normalization: uppercase and check against valid terms
+                let normalized = {
+                    let trimmed = val.trim();
+                    let upper = trimmed.to_uppercase();
+                    // Check if value matches any valid term (case-insensitive)
+                    valid_terms
+                        .iter()
+                        .find(|t| t.to_uppercase() == upper)
+                        .cloned()
+                        .unwrap_or_else(|| trimmed.to_uppercase())
+                };
+
+                let is_changed = val != &normalized;
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new(val).code());
+                    ui.label(RichText::new("→").color(theme.text_muted));
+                    if is_changed {
+                        ui.label(RichText::new(&normalized).code().color(theme.accent));
+                    } else {
+                        ui.label(RichText::new(&normalized).code().color(theme.text_muted));
+                        ui.label(RichText::new("(unchanged)").small().color(theme.text_muted));
+                    }
+                });
             }
         }
     }
 }
 
-/// Show details for ISO 8601 datetime transformation
+/// Show details for ISO 8601 datetime transformation with before→after preview
 fn show_datetime_detail(
     ui: &mut Ui,
     variable: &str,
@@ -739,20 +770,39 @@ fn show_datetime_detail(
         if !samples.is_empty() {
             ui.add_space(spacing::MD);
             ui.label(
-                RichText::new("Sample Values")
+                RichText::new("Transformation Preview")
                     .strong()
                     .color(theme.text_muted),
             );
             ui.add_space(spacing::SM);
 
             for val in &samples {
-                ui.label(RichText::new(format!("• {}", val)).code());
+                // Try to parse and format as ISO 8601
+                let normalized = sdtm_transform::normalization::datetime::parse_date(val)
+                    .map(|dt| dt.format("%Y-%m-%dT%H:%M:%S").to_string())
+                    .unwrap_or_else(|| val.to_string());
+
+                let is_changed = val != &normalized;
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new(val).code());
+                    ui.label(RichText::new("→").color(theme.text_muted));
+                    if is_changed {
+                        ui.label(RichText::new(&normalized).code().color(theme.accent));
+                    } else {
+                        ui.label(RichText::new(&normalized).code());
+                        ui.label(
+                            RichText::new("(already ISO 8601)")
+                                .small()
+                                .color(theme.text_muted),
+                        );
+                    }
+                });
             }
         }
     }
 }
 
-/// Show details for ISO 8601 duration transformation
+/// Show details for ISO 8601 duration transformation with before→after preview
 fn show_duration_detail(
     ui: &mut Ui,
     variable: &str,
@@ -785,14 +835,31 @@ fn show_duration_detail(
         if !samples.is_empty() {
             ui.add_space(spacing::MD);
             ui.label(
-                RichText::new("Sample Values")
+                RichText::new("Transformation Preview")
                     .strong()
                     .color(theme.text_muted),
             );
             ui.add_space(spacing::SM);
 
             for val in &samples {
-                ui.label(RichText::new(format!("• {}", val)).code());
+                // Duration values typically pass through or get formatted
+                let normalized = val.trim().to_string();
+                let is_duration_format = normalized.starts_with('P')
+                    || normalized.contains("day")
+                    || normalized.contains("hour");
+
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new(val).code());
+                    ui.label(RichText::new("→").color(theme.text_muted));
+                    ui.label(RichText::new(&normalized).code().color(theme.accent));
+                    if !is_duration_format {
+                        ui.label(
+                            RichText::new("(needs formatting)")
+                                .small()
+                                .color(theme.warning),
+                        );
+                    }
+                });
             }
         }
     }
@@ -837,7 +904,7 @@ fn show_study_day_detail(
     );
 }
 
-/// Show details for numeric conversion
+/// Show details for numeric conversion with before→after preview
 fn show_numeric_detail(
     ui: &mut Ui,
     variable: &str,
@@ -870,20 +937,34 @@ fn show_numeric_detail(
         if !samples.is_empty() {
             ui.add_space(spacing::MD);
             ui.label(
-                RichText::new("Sample Values")
+                RichText::new("Transformation Preview")
                     .strong()
                     .color(theme.text_muted),
             );
             ui.add_space(spacing::SM);
 
             for val in &samples {
-                ui.label(RichText::new(format!("• {}", val)).code());
+                // Try to parse as number
+                let parsed: Result<f64, _> = val.trim().parse();
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new(val).code());
+                    ui.label(RichText::new("→").color(theme.text_muted));
+                    match parsed {
+                        Ok(num) => {
+                            ui.label(RichText::new(format!("{}", num)).code().color(theme.accent));
+                        }
+                        Err(_) => {
+                            ui.label(RichText::new("null").code().color(theme.warning));
+                            ui.label(RichText::new("(not a number)").small().color(theme.warning));
+                        }
+                    }
+                });
             }
         }
     }
 }
 
-/// Show details for direct copy (passthrough)
+/// Show details for direct copy (passthrough) with before→after preview
 fn show_copy_detail(
     ui: &mut Ui,
     variable: &str,
@@ -916,23 +997,34 @@ fn show_copy_detail(
         if !samples.is_empty() {
             ui.add_space(spacing::MD);
             ui.label(
-                RichText::new("Sample Values")
+                RichText::new("Transformation Preview")
                     .strong()
                     .color(theme.text_muted),
             );
             ui.add_space(spacing::SM);
 
             for val in &samples {
-                ui.label(RichText::new(format!("• {}", val)).code());
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new(val).code());
+                    ui.label(RichText::new("→").color(theme.text_muted));
+                    ui.label(RichText::new(val).code().color(theme.accent));
+                    ui.label(
+                        RichText::new("(copied as-is)")
+                            .small()
+                            .color(theme.text_muted),
+                    );
+                });
             }
         }
     } else {
         ui.label(RichText::new(format!("Target: {}", variable)).color(theme.text_muted));
         ui.add_space(spacing::SM);
         ui.label(
-            RichText::new("No mapping - values will be empty")
-                .color(theme.warning)
-                .small(),
+            RichText::new(format!(
+                "{} No mapping - values will be empty",
+                egui_phosphor::regular::WARNING
+            ))
+            .color(theme.warning),
         );
     }
 }

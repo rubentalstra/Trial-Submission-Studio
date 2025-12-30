@@ -3,9 +3,8 @@
 use polars::prelude::{Column, DataFrame, IntoColumn, NamedFrom, Series};
 use sdtm_model::{Domain, Variable, VariableType};
 use sdtm_output::{
-    dataset_name, has_collected_data, is_expected, is_identifier, is_reference_domain,
-    is_required, normalize_study_id, should_upcase, variable_length, VariableTypeExt,
-    SAS_NUMERIC_LEN,
+    SAS_NUMERIC_LEN, VariableTypeExt, dataset_name, has_collected_data, is_expected, is_identifier,
+    is_reference_domain, is_required, normalize_study_id, should_upcase, variable_length,
 };
 
 fn test_df(columns: Vec<(&str, Vec<&str>)>) -> DataFrame {
@@ -32,6 +31,7 @@ fn test_variable(name: &str, data_type: VariableType) -> Variable {
         core: None,
         codelist_code: None,
         order: None,
+        described_value_domain: None,
     }
 }
 
