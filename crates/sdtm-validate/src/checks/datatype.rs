@@ -2,8 +2,8 @@
 //!
 //! Checks that Num variables contain only numeric values.
 
-use polars::prelude::{AnyValue, DataFrame, DataType as PolarsDataType};
-use sdtm_ingest::any_to_string;
+use polars::prelude::{AnyValue, DataFrame, DataType};
+use sdtm_common::any_to_string;
 use sdtm_model::{Domain, VariableType};
 
 use crate::issue::Issue;
@@ -30,16 +30,16 @@ pub fn check(domain: &Domain, df: &DataFrame, columns: &CaseInsensitiveSet) -> V
         let dtype = series.dtype();
         let is_numeric = matches!(
             dtype,
-            PolarsDataType::Int8
-                | PolarsDataType::Int16
-                | PolarsDataType::Int32
-                | PolarsDataType::Int64
-                | PolarsDataType::UInt8
-                | PolarsDataType::UInt16
-                | PolarsDataType::UInt32
-                | PolarsDataType::UInt64
-                | PolarsDataType::Float32
-                | PolarsDataType::Float64
+            DataType::Int8
+                | DataType::Int16
+                | DataType::Int32
+                | DataType::Int64
+                | DataType::UInt8
+                | DataType::UInt16
+                | DataType::UInt32
+                | DataType::UInt64
+                | DataType::Float32
+                | DataType::Float64
         );
 
         if is_numeric {

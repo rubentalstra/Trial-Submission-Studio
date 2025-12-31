@@ -4526,6 +4526,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "sdtm-common"
+version = "0.1.0"
+dependencies = [
+ "polars",
+]
+
+[[package]]
 name = "sdtm-gui"
 version = "0.1.0"
 dependencies = [
@@ -4554,10 +4561,12 @@ dependencies = [
 name = "sdtm-ingest"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "polars",
+ "sdtm-common",
  "sdtm-map",
  "serde",
+ "tempfile",
+ "thiserror 2.0.17",
  "tracing",
 ]
 
@@ -4590,7 +4599,7 @@ dependencies = [
  "chrono",
  "polars",
  "quick-xml 0.38.4",
- "sdtm-ingest",
+ "sdtm-common",
  "sdtm-map",
  "sdtm-model",
  "sdtm-standards",
@@ -4627,7 +4636,7 @@ dependencies = [
  "csv",
  "polars",
  "regex",
- "sdtm-ingest",
+ "sdtm-common",
  "sdtm-model",
  "sdtm-standards",
  "serde",

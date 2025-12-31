@@ -9,7 +9,7 @@ use polars::prelude::{AnyValue, DataFrame};
 use quick_xml::Writer;
 use quick_xml::events::{BytesEnd, BytesStart, BytesText, Event};
 
-use sdtm_ingest::any_to_string;
+use sdtm_common::any_to_string;
 use sdtm_model::{CoreDesignation, Domain, Variable, VariableRole, VariableType};
 
 /// SAS numeric length constant (8 bytes).

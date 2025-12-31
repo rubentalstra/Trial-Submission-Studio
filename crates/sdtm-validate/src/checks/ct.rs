@@ -5,7 +5,7 @@
 use std::collections::BTreeSet;
 
 use polars::prelude::{AnyValue, DataFrame};
-use sdtm_ingest::any_to_string;
+use sdtm_common::any_to_string;
 use sdtm_model::ct::{Codelist, ResolvedCodelist, TerminologyRegistry};
 use sdtm_model::{Domain, Variable};
 

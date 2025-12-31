@@ -6,7 +6,7 @@ use std::sync::LazyLock;
 
 use polars::prelude::{AnyValue, DataFrame};
 use regex::Regex;
-use sdtm_ingest::any_to_string;
+use sdtm_common::any_to_string;
 use sdtm_model::Domain;
 
 use crate::issue::Issue;

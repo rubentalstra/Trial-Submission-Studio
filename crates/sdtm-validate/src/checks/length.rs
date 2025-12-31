@@ -3,7 +3,7 @@
 //! Checks that character variables don't exceed their defined length.
 
 use polars::prelude::{AnyValue, DataFrame};
-use sdtm_ingest::any_to_string;
+use sdtm_common::any_to_string;
 use sdtm_model::{Domain, VariableType};
 
 use crate::issue::Issue;

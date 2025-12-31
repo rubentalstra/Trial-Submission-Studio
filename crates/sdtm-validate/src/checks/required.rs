@@ -3,7 +3,7 @@
 //! Checks that all Required (Req) variables are present and populated.
 
 use polars::prelude::{AnyValue, DataFrame};
-use sdtm_ingest::any_to_string;
+use sdtm_common::any_to_string;
 use sdtm_model::{CoreDesignation, Domain};
 
 use crate::issue::Issue;

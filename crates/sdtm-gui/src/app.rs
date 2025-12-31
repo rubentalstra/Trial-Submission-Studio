@@ -55,7 +55,9 @@ impl eframe::App for CdiscApp {
 impl CdiscApp {
     /// Load a study from a folder
     fn load_study(&mut self, folder: &std::path::Path) {
-        match StudyLoader::load_study(folder) {
+        // TODO: Make header_rows configurable via GUI settings
+        let header_rows = 2; // Default to single header
+        match StudyLoader::load_study(folder, header_rows) {
             Ok(study) => {
                 let domain_count = study.domains.len();
                 tracing::info!(

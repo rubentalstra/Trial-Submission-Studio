@@ -3,7 +3,7 @@
 //! Checks that Identifier role variables have no null values.
 
 use polars::prelude::{AnyValue, DataFrame};
-use sdtm_ingest::any_to_string;
+use sdtm_common::any_to_string;
 use sdtm_model::{Domain, VariableRole};
 
 use crate::issue::Issue;

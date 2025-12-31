@@ -3,13 +3,18 @@ name = "sdtm-ingest"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+description = "SDTM data ingestion: CSV loading, metadata handling, and domain discovery"
 
 [lints]
 workspace = true
 
 [dependencies]
-anyhow.workspace = true
 polars.workspace = true
+sdtm-common = { path = "../sdtm-common" }
 sdtm-map = { path = "../sdtm-map" }
 serde = { workspace = true, features = ["derive"] }
+thiserror.workspace = true
 tracing.workspace = true
+
+[dev-dependencies]
+tempfile = "3"

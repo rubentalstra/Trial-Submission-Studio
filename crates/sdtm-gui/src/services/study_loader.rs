@@ -15,7 +15,11 @@ impl StudyLoader {
     /// Load a study from a folder
     ///
     /// Discovers CSV files and matches them to SDTM domains.
-    pub fn load_study(study_folder: &Path) -> Result<StudyState> {
+    ///
+    /// # Arguments
+    /// - `study_folder`: Path to the study folder
+    /// - `header_rows`: Number of header rows in CSV files (1 = single, 2 = double with labels)
+    pub fn load_study(study_folder: &Path, header_rows: usize) -> Result<StudyState> {
         // Create the study state
         let mut study = StudyState::new(study_folder.to_path_buf());
 
@@ -44,7 +48,7 @@ impl StudyLoader {
         tracing::info!("Discovered {} domains", domain_files.len());
 
         // Load study metadata (Items.csv, CodeLists.csv)
-        match load_study_metadata(study_folder) {
+        match load_study_metadata(study_folder, header_rows) {
             Ok(metadata) => {
                 if !metadata.is_empty() {
                     tracing::info!(
@@ -65,8 +69,8 @@ impl StudyLoader {
             // For now, just use the first file for each domain
             // TODO: Handle multiple files per domain (e.g., split datasets)
             if let Some((file_path, _variant)) = files.first() {
-                match read_csv_table(file_path) {
-                    Ok(df) => {
+                match read_csv_table(file_path, header_rows) {
+                    Ok((df, _headers)) => {
                         tracing::info!(
                             "Loaded domain {} from {} ({} rows, {} columns)",
                             domain_code,

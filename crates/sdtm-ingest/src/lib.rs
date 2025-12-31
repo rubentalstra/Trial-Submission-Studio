@@ -2,29 +2,52 @@
 //!
 //! This crate provides functionality for discovering, parsing, and loading
 //! clinical trial source data (CSV files) into Polars DataFrames.
+//!
+//! # Features
+//!
+//! - **CSV Loading**: Read CSV files with explicit header row configuration
+//! - **Domain Discovery**: Find and classify CSV files by SDTM domain
+//! - **Metadata Loading**: Load Items.csv and CodeLists.csv with dynamic schema detection
+//! - **Column Hints**: Extract column statistics for mapping suggestions
+//!
+//! # Example
+//!
+//! ```ignore
+//! use std::path::Path;
+//! use sdtm_ingest::{list_csv_files, discover_domain_files, load_study_metadata, read_csv_table};
+//!
+//! let study_dir = Path::new("mockdata/STUDY001");
+//!
+//! // Discover CSV files
+//! let csv_files = list_csv_files(study_dir)?;
+//!
+//! // Load study metadata
+//! let metadata = load_study_metadata(study_dir)?;
+//!
+//! // Read a domain CSV (1 = single header, 2 = double header)
+//! let (df, headers) = read_csv_table(study_dir.join("DM.csv").as_path(), 1)?;
+//! ```
 
-pub mod csv_table;
-pub mod discovery;
-pub mod metadata;
-pub mod study_metadata;
+mod csv;
+mod discovery;
+mod error;
+mod hints;
+mod metadata;
 
-// Internal utilities for Polars AnyValue conversions.
-// These are re-exported for workspace use but may be refactored in the future.
-pub mod polars_utils;
+// === Error Types ===
+pub use error::{IngestError, Result};
 
-pub use csv_table::{
-    CsvSchema, build_column_hints, get_sample_values, looks_like_label, looks_like_variable_code,
-    parse_csv_line, read_csv_schema, read_csv_table,
+// === CSV Reading ===
+pub use csv::{CsvHeaders, read_csv_schema, read_csv_table};
+
+// === File Discovery ===
+pub use discovery::{DiscoveredFile, discover_domain_files, discover_files, list_csv_files};
+
+// === Metadata Types ===
+pub use metadata::{
+    AppliedStudyMetadata, SourceColumn, StudyCodelist, StudyMetadata, apply_study_metadata,
+    load_study_metadata,
 };
-pub use discovery::{discover_domain_files, list_csv_files};
-pub use metadata::{SourceColumn, StudyCodelist, StudyMetadata};
-pub use study_metadata::{
-    AppliedStudyMetadata, CodeList, apply_study_metadata, load_study_metadata,
-};
 
-// Re-export polars utilities for internal workspace use.
-// Note: These are low-level utilities and may be restructured.
-pub use polars_utils::{
-    any_to_f64, any_to_i64, any_to_string, any_to_string_non_empty, format_numeric, parse_f64,
-    parse_i64,
-};
+// === Column Hints ===
+pub use hints::{build_column_hints, get_sample_values};

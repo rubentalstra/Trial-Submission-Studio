@@ -20,6 +20,7 @@
       <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-report/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-transform/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-gui/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-common/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-gui/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-normalization/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-output/src" isTestSource="false" />
