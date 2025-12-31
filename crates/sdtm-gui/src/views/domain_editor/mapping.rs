@@ -871,129 +871,43 @@ fn show_variable_detail(
             let is_subjid = var_name.eq_ignore_ascii_case("SUBJID");
             ui.add_space(spacing::MD);
 
-            // Column selection dropdown with confidence display
-            ui.label(RichText::new("Select column:").color(theme.text_muted));
-
-            let mut selected_new_col: Option<String> = None;
-
-            // Calculate popup width based on longest item
-            let max_text_len = available_cols
-                .iter()
-                .map(|(col, label, _)| {
-                    if let Some(lbl) = label {
-                        format!("{} ({}) 100%", col, lbl).len()
-                    } else {
-                        format!("{} 100%", col).len()
-                    }
-                })
-                .max()
-                .unwrap_or(20);
-            let popup_width = (max_text_len as f32 * 7.5).max(250.0).min(450.0);
-
-            egui::ComboBox::from_id_salt("col_select")
-                .selected_text("Choose a column...")
-                .width(popup_width)
-                .show_ui(ui, |ui| {
-                    ui.set_min_width(popup_width);
-                    for (col, label, conf) in &available_cols {
-                        // Format: "ID (Label)" or just "ID" if no label
-                        let display_text = if let Some(lbl) = label {
-                            format!("{} ({})", col, lbl)
-                        } else {
-                            col.clone()
-                        };
-
-                        // Build the full display with confidence
-                        let conf_text = if *conf > 0.01 {
-                            format!(" — {:.0}%", conf * 100.0)
-                        } else {
-                            String::new()
-                        };
-
-                        let full_text = format!("{}{}", display_text, conf_text);
-
-                        // Color based on confidence
-                        let text_color = if *conf >= 0.95 {
-                            theme.success
-                        } else if *conf >= 0.70 {
-                            theme.warning
-                        } else {
-                            theme.text_primary
-                        };
-
-                        if ui
-                            .selectable_label(false, RichText::new(&full_text).color(text_color))
-                            .clicked()
-                        {
-                            selected_new_col = Some(col.clone());
-                        }
-                    }
-                });
-
-            // Apply manual selection
-            if let Some(col) = selected_new_col {
-                with_mapping_state_mut(state, domain_code, |ms| {
-                    let _ = ms.accept_manual(&var_name, &col);
-                    if is_subjid {
-                        sync_usubjid_from_subjid(ms);
-                    }
-                });
-                // Invalidate cached validation/preview when mappings change
-                if let Some(study) = &mut state.study {
-                    if let Some(domain) = study.get_domain_mut(domain_code) {
-                        domain.invalidate_mapping_dependents();
-                    }
-                }
-            }
-
-            ui.add_space(spacing::LG);
+            // Determine Core designation for showing appropriate options
+            let is_required = var_core == Some(CoreDesignation::Required);
+            let is_permissible = var_core != Some(CoreDesignation::Required)
+                && var_core != Some(CoreDesignation::Expected);
 
             // Action buttons based on status
             match status {
-                VariableStatus::Suggested => {
-                    ui.horizontal(|ui| {
-                        if ui
-                            .button(
-                                RichText::new(format!("{} Accept", egui_phosphor::regular::CHECK))
-                                    .color(theme.success),
-                            )
-                            .clicked()
-                        {
-                            with_mapping_state_mut(state, domain_code, |ms| {
-                                let _ = ms.accept_suggestion(&var_name);
-                                if is_subjid {
-                                    sync_usubjid_from_subjid(ms);
-                                }
-                            });
-                            // Invalidate cached validation/preview when mappings change
-                            if let Some(study) = &mut state.study {
-                                if let Some(domain) = study.get_domain_mut(domain_code) {
-                                    domain.invalidate_mapping_dependents();
-                                }
-                            }
-                        }
-                    });
-                }
                 VariableStatus::Accepted => {
+                    // Show accepted status with clear option
                     ui.horizontal(|ui| {
-                        if ui
-                            .button(format!("{} Clear", egui_phosphor::regular::X))
-                            .clicked()
-                        {
-                            with_mapping_state_mut(state, domain_code, |ms| {
-                                ms.clear(&var_name);
-                                if is_subjid {
-                                    sync_usubjid_from_subjid(ms);
-                                }
-                            });
-                            // Invalidate cached validation/preview when mappings change
-                            if let Some(study) = &mut state.study {
-                                if let Some(domain) = study.get_domain_mut(domain_code) {
-                                    domain.invalidate_mapping_dependents();
-                                }
+                        ui.label(
+                            RichText::new(format!(
+                                "{} Mapped",
+                                egui_phosphor::regular::CHECK_CIRCLE
+                            ))
+                            .color(theme.success),
+                        );
+                    });
+                    ui.add_space(spacing::SM);
+
+                    if ui
+                        .small_button(format!("{} Clear", egui_phosphor::regular::X))
+                        .on_hover_text("Remove this mapping to select a different column")
+                        .clicked()
+                    {
+                        with_mapping_state_mut(state, domain_code, |ms| {
+                            ms.clear(&var_name);
+                            if is_subjid {
+                                sync_usubjid_from_subjid(ms);
+                            }
+                        });
+                        if let Some(study) = &mut state.study {
+                            if let Some(domain) = study.get_domain_mut(domain_code) {
+                                domain.invalidate_mapping_dependents();
                             }
                         }
-                    });
+                    }
                 }
                 VariableStatus::NotCollected => {
                     // Show current "not collected" status with reason
@@ -1003,7 +917,7 @@ fn show_variable_detail(
                                 "{} Marked as Not Collected",
                                 egui_phosphor::regular::PROHIBIT
                             ))
-                            .color(theme.text_muted),
+                            .color(theme.warning),
                         );
                     });
 
@@ -1012,11 +926,12 @@ fn show_variable_detail(
                         if let Some(domain) = study.get_domain(domain_code) {
                             if let Some(ms) = &domain.mapping_state {
                                 if let Some(reason) = ms.not_collected_reason(&var_name) {
-                                    ui.add_space(spacing::SM);
+                                    ui.add_space(spacing::XS);
                                     ui.label(
                                         RichText::new(format!("Reason: {}", reason))
                                             .color(theme.text_secondary)
-                                            .italics(),
+                                            .italics()
+                                            .small(),
                                     );
                                 }
                             }
@@ -1031,7 +946,6 @@ fn show_variable_detail(
                         with_mapping_state_mut(state, domain_code, |ms| {
                             ms.clear_assignment(&var_name);
                         });
-                        // Invalidate cached validation/preview when mappings change
                         if let Some(study) = &mut state.study {
                             if let Some(domain) = study.get_domain_mut(domain_code) {
                                 domain.invalidate_mapping_dependents();
@@ -1047,7 +961,7 @@ fn show_variable_detail(
                                 "{} Omitted from Output",
                                 egui_phosphor::regular::MINUS_CIRCLE
                             ))
-                            .color(theme.text_muted),
+                            .color(theme.warning),
                         );
                     });
 
@@ -1059,7 +973,6 @@ fn show_variable_detail(
                         with_mapping_state_mut(state, domain_code, |ms| {
                             ms.clear_assignment(&var_name);
                         });
-                        // Invalidate cached validation/preview when mappings change
                         if let Some(study) = &mut state.study {
                             if let Some(domain) = study.get_domain_mut(domain_code) {
                                 domain.invalidate_mapping_dependents();
@@ -1067,45 +980,143 @@ fn show_variable_detail(
                         }
                     }
                 }
-                VariableStatus::Unmapped => {
-                    // Show options based on Core designation
-                    let is_required = var_core == Some(CoreDesignation::Required);
-                    let is_permissible = var_core != Some(CoreDesignation::Required)
-                        && var_core != Some(CoreDesignation::Expected);
+                VariableStatus::Suggested | VariableStatus::Unmapped => {
+                    // For Suggested: show accept button first
+                    if status == VariableStatus::Suggested {
+                        ui.horizontal(|ui| {
+                            ui.label(
+                                RichText::new(format!(
+                                    "{} Suggestion available",
+                                    egui_phosphor::regular::LIGHTBULB
+                                ))
+                                .color(theme.warning),
+                            );
+                        });
+                        ui.add_space(spacing::SM);
+                        if ui
+                            .button(
+                                RichText::new(format!(
+                                    "{} Accept Suggestion",
+                                    egui_phosphor::regular::CHECK
+                                ))
+                                .color(theme.success),
+                            )
+                            .clicked()
+                        {
+                            with_mapping_state_mut(state, domain_code, |ms| {
+                                let _ = ms.accept_suggestion(&var_name);
+                                if is_subjid {
+                                    sync_usubjid_from_subjid(ms);
+                                }
+                            });
+                            if let Some(study) = &mut state.study {
+                                if let Some(domain) = study.get_domain_mut(domain_code) {
+                                    domain.invalidate_mapping_dependents();
+                                }
+                            }
+                        }
+                        ui.add_space(spacing::SM);
+                    }
 
+                    // Column selection dropdown for manual mapping
+                    let select_label = if status == VariableStatus::Suggested {
+                        "Or select different column:"
+                    } else {
+                        "Select source column:"
+                    };
+                    ui.label(RichText::new(select_label).color(theme.text_muted).small());
+
+                    let mut selected_new_col: Option<String> = None;
+
+                    // Calculate popup width based on longest item
+                    let max_text_len = available_cols
+                        .iter()
+                        .map(|(col, label, _)| {
+                            if let Some(lbl) = label {
+                                format!("{} ({}) 100%", col, lbl).len()
+                            } else {
+                                format!("{} 100%", col).len()
+                            }
+                        })
+                        .max()
+                        .unwrap_or(20);
+                    let popup_width = (max_text_len as f32 * 7.5).max(250.0).min(450.0);
+
+                    egui::ComboBox::from_id_salt("col_select")
+                        .selected_text("Choose a column...")
+                        .width(popup_width)
+                        .show_ui(ui, |ui| {
+                            ui.set_min_width(popup_width);
+                            for (col, label, conf) in &available_cols {
+                                let display_text = if let Some(lbl) = label {
+                                    format!("{} ({})", col, lbl)
+                                } else {
+                                    col.clone()
+                                };
+
+                                let conf_text = if *conf > 0.01 {
+                                    format!(" — {:.0}%", conf * 100.0)
+                                } else {
+                                    String::new()
+                                };
+
+                                let full_text = format!("{}{}", display_text, conf_text);
+
+                                let text_color = if *conf >= 0.95 {
+                                    theme.success
+                                } else if *conf >= 0.70 {
+                                    theme.warning
+                                } else {
+                                    theme.text_primary
+                                };
+
+                                if ui
+                                    .selectable_label(
+                                        false,
+                                        RichText::new(&full_text).color(text_color),
+                                    )
+                                    .clicked()
+                                {
+                                    selected_new_col = Some(col.clone());
+                                }
+                            }
+                        });
+
+                    // Apply manual selection
+                    if let Some(col) = selected_new_col {
+                        with_mapping_state_mut(state, domain_code, |ms| {
+                            let _ = ms.accept_manual(&var_name, &col);
+                            if is_subjid {
+                                sync_usubjid_from_subjid(ms);
+                            }
+                        });
+                        if let Some(study) = &mut state.study {
+                            if let Some(domain) = study.get_domain_mut(domain_code) {
+                                domain.invalidate_mapping_dependents();
+                            }
+                        }
+                    }
+
+                    // Show alternative options for non-Required variables
                     if is_required {
-                        // Required variable - show warning
+                        ui.add_space(spacing::SM);
                         ui.label(
                             RichText::new(format!(
-                                "{} Required variable - must map a source column",
+                                "{} Required - must map a source column",
                                 egui_phosphor::regular::WARNING
                             ))
-                            .color(theme.error),
-                        );
-                    } else {
-                        ui.label(
-                            RichText::new(format!(
-                                "{} Select a source column above, or:",
-                                egui_phosphor::regular::INFO
-                            ))
-                            .color(theme.text_muted)
+                            .color(theme.error)
                             .small(),
                         );
-
+                    } else {
+                        // Show separator and alternative options
                         ui.add_space(spacing::MD);
+                        ui.separator();
+                        ui.add_space(spacing::SM);
 
-                        // "Mark as Not Collected" section (Expected and Permissible)
                         ui.label(
-                            RichText::new(format!(
-                                "{} Mark as Not Collected",
-                                egui_phosphor::regular::PROHIBIT
-                            ))
-                            .strong()
-                            .color(theme.text_muted),
-                        );
-                        ui.label(
-                            RichText::new("Creates null column with Define-XML comment")
-                                .color(theme.text_secondary)
+                            RichText::new("If source data is not available:")
+                                .color(theme.text_muted)
                                 .small(),
                         );
 
@@ -1128,11 +1139,17 @@ fn show_variable_detail(
                             }
                         }
 
-                        ui.label(RichText::new("Reason for Define-XML:").color(theme.text_muted));
-                        let text_response =
-                            ui.add(egui::TextEdit::singleline(&mut reason_text).hint_text(
-                                "Enter reason (e.g., 'Data not collected in this study')",
-                            ));
+                        // Reason text input
+                        ui.label(
+                            RichText::new("Define-XML reason:")
+                                .color(theme.text_muted)
+                                .small(),
+                        );
+                        let text_response = ui.add(
+                            egui::TextEdit::singleline(&mut reason_text)
+                                .hint_text("e.g., 'Data not collected in this study'")
+                                .desired_width(ui.available_width()),
+                        );
 
                         if text_response.changed() {
                             with_mapping_state_mut(state, domain_code, |ms| {
@@ -1143,18 +1160,19 @@ fn show_variable_detail(
 
                         ui.add_space(spacing::SM);
 
+                        // Action buttons
                         ui.horizontal(|ui| {
                             if ui
                                 .button(
                                     RichText::new(format!(
-                                        "{} Mark as Not Collected",
+                                        "{} Not Collected",
                                         egui_phosphor::regular::PROHIBIT
                                     ))
                                     .color(theme.text_secondary),
                                 )
+                                .on_hover_text("Creates null column with Define-XML comment")
                                 .clicked()
                             {
-                                // Get the reason from the edit state
                                 let reason = {
                                     if let Some(study) = &state.study {
                                         if let Some(domain) = study.get_domain(domain_code) {
@@ -1180,7 +1198,6 @@ fn show_variable_detail(
                                 with_mapping_state_mut(state, domain_code, |ms| {
                                     let _ = ms.mark_not_collected(&var_name, &reason);
                                 });
-                                // Invalidate cached validation/preview when mappings change
                                 if let Some(study) = &mut state.study {
                                     if let Some(domain) = study.get_domain_mut(domain_code) {
                                         domain.invalidate_mapping_dependents();
@@ -1193,17 +1210,17 @@ fn show_variable_detail(
                                 if ui
                                     .button(
                                         RichText::new(format!(
-                                            "{} Omit from Output",
+                                            "{} Omit",
                                             egui_phosphor::regular::MINUS_CIRCLE
                                         ))
                                         .color(theme.text_secondary),
                                     )
+                                    .on_hover_text("Exclude variable from output entirely")
                                     .clicked()
                                 {
                                     with_mapping_state_mut(state, domain_code, |ms| {
                                         let _ = ms.mark_omit(&var_name);
                                     });
-                                    // Invalidate cached validation/preview when mappings change
                                     if let Some(study) = &mut state.study {
                                         if let Some(domain) = study.get_domain_mut(domain_code) {
                                             domain.invalidate_mapping_dependents();
@@ -1213,18 +1230,19 @@ fn show_variable_detail(
                             }
                         });
 
-                        // Show explanation for Permissible
-                        if is_permissible {
-                            ui.add_space(spacing::SM);
-                            ui.label(
-                                RichText::new(
-                                    "Permissible variables can be omitted entirely from output",
-                                )
+                        // Explanation text
+                        ui.add_space(spacing::XS);
+                        let explanation = if is_permissible {
+                            "Not Collected = null column with Define-XML comment | Omit = exclude from output"
+                        } else {
+                            "Creates null column with Define-XML comment for documentation"
+                        };
+                        ui.label(
+                            RichText::new(explanation)
                                 .color(theme.text_muted)
                                 .small()
                                 .italics(),
-                            );
-                        }
+                        );
                     }
                 }
             }
