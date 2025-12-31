@@ -7,9 +7,9 @@ use crate::state::{AppState, DomainStatus};
 use crate::theme::{ThemeColors, colors, spacing};
 use egui::{RichText, Ui};
 use sdtm_standards::load_default_ct_registry;
-use sdtm_transform::build_preview_dataframe;
-use sdtm_validate::{Issue, Severity, validate_domain};
-use std::collections::BTreeMap;
+use sdtm_transform::build_preview_dataframe_with_omitted;
+use sdtm_validate::{Issue, Severity, validate_domain_with_not_collected};
+use std::collections::{BTreeMap, BTreeSet};
 
 use super::mapping::{initialize_mapping, show_loading_indicator};
 
@@ -196,26 +196,43 @@ fn rebuild_validation_if_needed(state: &mut AppState, domain_code: &str) {
             .map(|(var, (col, _))| (var.clone(), col.clone()))
             .collect();
 
+        // Get omitted variables (to exclude from output)
+        let omitted_vars: BTreeSet<String> = ms.all_omitted().clone();
+
+        // Get not_collected variables (to suppress ExpectedMissing warnings)
+        let not_collected_vars: BTreeSet<String> = ms.all_not_collected().keys().cloned().collect();
+
         // Clone what we need for validation
         Some((
             ms.domain().clone(),
             ms.study_id().to_string(),
             domain.source_data.clone(),
             accepted_mappings,
+            omitted_vars,
+            not_collected_vars,
         ))
     };
 
-    let Some((sdtm_domain, study_id, source_df, accepted_mappings)) = validation_data else {
+    let Some((
+        sdtm_domain,
+        study_id,
+        source_df,
+        accepted_mappings,
+        omitted_vars,
+        not_collected_vars,
+    )) = validation_data
+    else {
         return;
     };
 
     // Load CT registry
     let ct_registry = load_default_ct_registry().ok();
 
-    // Build preview DataFrame with mappings applied and CT normalized
-    let preview_df = match build_preview_dataframe(
+    // Build preview DataFrame with mappings applied, CT normalized, and omitted vars excluded
+    let preview_df = match build_preview_dataframe_with_omitted(
         &source_df,
         &accepted_mappings,
+        &omitted_vars,
         &sdtm_domain,
         &study_id,
         ct_registry.as_ref(),
@@ -229,7 +246,13 @@ fn rebuild_validation_if_needed(state: &mut AppState, domain_code: &str) {
     };
 
     // Run validation on the transformed preview data
-    let report = validate_domain(&sdtm_domain, &preview_df, ct_registry.as_ref());
+    // Pass not_collected vars to suppress ExpectedMissing warnings for acknowledged missing data
+    let report = validate_domain_with_not_collected(
+        &sdtm_domain,
+        &preview_df,
+        ct_registry.as_ref(),
+        &not_collected_vars,
+    );
 
     // Store result
     if let Some(study) = &mut state.study {

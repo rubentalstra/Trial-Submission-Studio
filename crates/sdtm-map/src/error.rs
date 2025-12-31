@@ -11,6 +11,10 @@ pub enum MappingError {
     ColumnNotFound(String),
     /// Column already mapped to another variable.
     ColumnAlreadyUsed { column: String, variable: String },
+    /// Cannot mark Required variable as not collected.
+    CannotSetNullOnRequired(String),
+    /// Cannot omit non-Permissible variable (only Permissible vars can be omitted).
+    CannotOmitNonPermissible(String),
 }
 
 impl fmt::Display for MappingError {
@@ -20,6 +24,15 @@ impl fmt::Display for MappingError {
             Self::ColumnNotFound(c) => write!(f, "Column not found: {c}"),
             Self::ColumnAlreadyUsed { column, variable } => {
                 write!(f, "Column '{column}' already mapped to '{variable}'")
+            }
+            Self::CannotSetNullOnRequired(v) => {
+                write!(f, "Cannot mark Required variable '{v}' as not collected")
+            }
+            Self::CannotOmitNonPermissible(v) => {
+                write!(
+                    f,
+                    "Cannot omit variable '{v}': only Permissible variables can be omitted"
+                )
             }
         }
     }

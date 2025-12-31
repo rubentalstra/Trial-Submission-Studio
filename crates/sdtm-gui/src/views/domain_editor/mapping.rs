@@ -244,6 +244,24 @@ fn show_variable_list(
                     .small(),
             );
         }
+
+        if summary.not_collected > 0 {
+            ui.separator();
+            ui.label(
+                RichText::new(format!("{} not collected", summary.not_collected))
+                    .color(theme.text_muted)
+                    .small(),
+            );
+        }
+
+        if summary.omitted > 0 {
+            ui.separator();
+            ui.label(
+                RichText::new(format!("{} omitted", summary.omitted))
+                    .color(theme.text_muted)
+                    .small(),
+            );
+        }
     });
 
     ui.add_space(spacing::SM);
@@ -299,6 +317,8 @@ fn show_variable_list(
                     match status {
                         VariableStatus::Accepted => theme.success,
                         VariableStatus::Suggested => theme.warning,
+                        VariableStatus::NotCollected => theme.text_muted,
+                        VariableStatus::Omitted => theme.text_muted,
                         VariableStatus::Unmapped => theme.text_muted,
                     }
                 };
@@ -928,21 +948,88 @@ fn show_variable_detail(
 
             ui.add_space(spacing::LG);
 
-            // Action buttons
-            ui.horizontal(|ui| match status {
+            // Action buttons based on status
+            match status {
                 VariableStatus::Suggested => {
+                    ui.horizontal(|ui| {
+                        if ui
+                            .button(
+                                RichText::new(format!("{} Accept", egui_phosphor::regular::CHECK))
+                                    .color(theme.success),
+                            )
+                            .clicked()
+                        {
+                            with_mapping_state_mut(state, domain_code, |ms| {
+                                let _ = ms.accept_suggestion(&var_name);
+                                if is_subjid {
+                                    sync_usubjid_from_subjid(ms);
+                                }
+                            });
+                            // Invalidate cached validation/preview when mappings change
+                            if let Some(study) = &mut state.study {
+                                if let Some(domain) = study.get_domain_mut(domain_code) {
+                                    domain.invalidate_mapping_dependents();
+                                }
+                            }
+                        }
+                    });
+                }
+                VariableStatus::Accepted => {
+                    ui.horizontal(|ui| {
+                        if ui
+                            .button(format!("{} Clear", egui_phosphor::regular::X))
+                            .clicked()
+                        {
+                            with_mapping_state_mut(state, domain_code, |ms| {
+                                ms.clear(&var_name);
+                                if is_subjid {
+                                    sync_usubjid_from_subjid(ms);
+                                }
+                            });
+                            // Invalidate cached validation/preview when mappings change
+                            if let Some(study) = &mut state.study {
+                                if let Some(domain) = study.get_domain_mut(domain_code) {
+                                    domain.invalidate_mapping_dependents();
+                                }
+                            }
+                        }
+                    });
+                }
+                VariableStatus::NotCollected => {
+                    // Show current "not collected" status with reason
+                    ui.horizontal(|ui| {
+                        ui.label(
+                            RichText::new(format!(
+                                "{} Marked as Not Collected",
+                                egui_phosphor::regular::PROHIBIT
+                            ))
+                            .color(theme.text_muted),
+                        );
+                    });
+
+                    // Show the reason
+                    if let Some(study) = &state.study {
+                        if let Some(domain) = study.get_domain(domain_code) {
+                            if let Some(ms) = &domain.mapping_state {
+                                if let Some(reason) = ms.not_collected_reason(&var_name) {
+                                    ui.add_space(spacing::SM);
+                                    ui.label(
+                                        RichText::new(format!("Reason: {}", reason))
+                                            .color(theme.text_secondary)
+                                            .italics(),
+                                    );
+                                }
+                            }
+                        }
+                    }
+
+                    ui.add_space(spacing::SM);
                     if ui
-                        .button(
-                            RichText::new(format!("{} Accept", egui_phosphor::regular::CHECK))
-                                .color(theme.success),
-                        )
+                        .button(format!("{} Clear", egui_phosphor::regular::X))
                         .clicked()
                     {
                         with_mapping_state_mut(state, domain_code, |ms| {
-                            let _ = ms.accept_suggestion(&var_name);
-                            if is_subjid {
-                                sync_usubjid_from_subjid(ms);
-                            }
+                            ms.clear_assignment(&var_name);
                         });
                         // Invalidate cached validation/preview when mappings change
                         if let Some(study) = &mut state.study {
@@ -952,16 +1039,25 @@ fn show_variable_detail(
                         }
                     }
                 }
-                VariableStatus::Accepted => {
+                VariableStatus::Omitted => {
+                    // Show current "omitted" status
+                    ui.horizontal(|ui| {
+                        ui.label(
+                            RichText::new(format!(
+                                "{} Omitted from Output",
+                                egui_phosphor::regular::MINUS_CIRCLE
+                            ))
+                            .color(theme.text_muted),
+                        );
+                    });
+
+                    ui.add_space(spacing::SM);
                     if ui
                         .button(format!("{} Clear", egui_phosphor::regular::X))
                         .clicked()
                     {
                         with_mapping_state_mut(state, domain_code, |ms| {
-                            ms.clear(&var_name);
-                            if is_subjid {
-                                sync_usubjid_from_subjid(ms);
-                            }
+                            ms.clear_assignment(&var_name);
                         });
                         // Invalidate cached validation/preview when mappings change
                         if let Some(study) = &mut state.study {
@@ -972,16 +1068,166 @@ fn show_variable_detail(
                     }
                 }
                 VariableStatus::Unmapped => {
-                    ui.label(
-                        RichText::new(format!(
-                            "{} Select a source column above",
-                            egui_phosphor::regular::INFO
-                        ))
-                        .color(theme.text_muted)
-                        .small(),
-                    );
+                    // Show options based on Core designation
+                    let is_required = var_core == Some(CoreDesignation::Required);
+                    let is_permissible = var_core != Some(CoreDesignation::Required)
+                        && var_core != Some(CoreDesignation::Expected);
+
+                    if is_required {
+                        // Required variable - show warning
+                        ui.label(
+                            RichText::new(format!(
+                                "{} Required variable - must map a source column",
+                                egui_phosphor::regular::WARNING
+                            ))
+                            .color(theme.error),
+                        );
+                    } else {
+                        ui.label(
+                            RichText::new(format!(
+                                "{} Select a source column above, or:",
+                                egui_phosphor::regular::INFO
+                            ))
+                            .color(theme.text_muted)
+                            .small(),
+                        );
+
+                        ui.add_space(spacing::MD);
+
+                        // "Mark as Not Collected" section (Expected and Permissible)
+                        ui.label(
+                            RichText::new(format!(
+                                "{} Mark as Not Collected",
+                                egui_phosphor::regular::PROHIBIT
+                            ))
+                            .strong()
+                            .color(theme.text_muted),
+                        );
+                        ui.label(
+                            RichText::new("Creates null column with Define-XML comment")
+                                .color(theme.text_secondary)
+                                .small(),
+                        );
+
+                        ui.add_space(spacing::SM);
+
+                        // Get/initialize the reason text for this variable
+                        let mut reason_text = String::new();
+                        if let Some(study) = &state.study {
+                            if let Some(domain) = study.get_domain(domain_code) {
+                                if let Some(ms) = &domain.mapping_state {
+                                    if let Some(existing) =
+                                        ms.not_collected_reason_edit.get(&var_name)
+                                    {
+                                        reason_text = existing.clone();
+                                    } else {
+                                        reason_text =
+                                            "Data not collected in this study".to_string();
+                                    }
+                                }
+                            }
+                        }
+
+                        ui.label(RichText::new("Reason for Define-XML:").color(theme.text_muted));
+                        let text_response =
+                            ui.add(egui::TextEdit::singleline(&mut reason_text).hint_text(
+                                "Enter reason (e.g., 'Data not collected in this study')",
+                            ));
+
+                        if text_response.changed() {
+                            with_mapping_state_mut(state, domain_code, |ms| {
+                                ms.not_collected_reason_edit
+                                    .insert(var_name.clone(), reason_text.clone());
+                            });
+                        }
+
+                        ui.add_space(spacing::SM);
+
+                        ui.horizontal(|ui| {
+                            if ui
+                                .button(
+                                    RichText::new(format!(
+                                        "{} Mark as Not Collected",
+                                        egui_phosphor::regular::PROHIBIT
+                                    ))
+                                    .color(theme.text_secondary),
+                                )
+                                .clicked()
+                            {
+                                // Get the reason from the edit state
+                                let reason = {
+                                    if let Some(study) = &state.study {
+                                        if let Some(domain) = study.get_domain(domain_code) {
+                                            if let Some(ms) = &domain.mapping_state {
+                                                ms.not_collected_reason_edit
+                                                    .get(&var_name)
+                                                    .cloned()
+                                                    .unwrap_or_else(|| {
+                                                        "Data not collected in this study"
+                                                            .to_string()
+                                                    })
+                                            } else {
+                                                "Data not collected in this study".to_string()
+                                            }
+                                        } else {
+                                            "Data not collected in this study".to_string()
+                                        }
+                                    } else {
+                                        "Data not collected in this study".to_string()
+                                    }
+                                };
+
+                                with_mapping_state_mut(state, domain_code, |ms| {
+                                    let _ = ms.mark_not_collected(&var_name, &reason);
+                                });
+                                // Invalidate cached validation/preview when mappings change
+                                if let Some(study) = &mut state.study {
+                                    if let Some(domain) = study.get_domain_mut(domain_code) {
+                                        domain.invalidate_mapping_dependents();
+                                    }
+                                }
+                            }
+
+                            // "Omit from Output" button (only for Permissible)
+                            if is_permissible {
+                                if ui
+                                    .button(
+                                        RichText::new(format!(
+                                            "{} Omit from Output",
+                                            egui_phosphor::regular::MINUS_CIRCLE
+                                        ))
+                                        .color(theme.text_secondary),
+                                    )
+                                    .clicked()
+                                {
+                                    with_mapping_state_mut(state, domain_code, |ms| {
+                                        let _ = ms.mark_omit(&var_name);
+                                    });
+                                    // Invalidate cached validation/preview when mappings change
+                                    if let Some(study) = &mut state.study {
+                                        if let Some(domain) = study.get_domain_mut(domain_code) {
+                                            domain.invalidate_mapping_dependents();
+                                        }
+                                    }
+                                }
+                            }
+                        });
+
+                        // Show explanation for Permissible
+                        if is_permissible {
+                            ui.add_space(spacing::SM);
+                            ui.label(
+                                RichText::new(
+                                    "Permissible variables can be omitted entirely from output",
+                                )
+                                .color(theme.text_muted)
+                                .small()
+                                .italics(),
+                            );
+                        }
+                    }
                 }
-            });
+            }
         }
     });
 }

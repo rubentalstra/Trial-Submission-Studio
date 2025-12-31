@@ -5,21 +5,42 @@
 //! A variable is considered "missing" if:
 //! - The column doesn't exist in the DataFrame, OR
 //! - The column exists but ALL values are null/empty (unmapped)
+//!
+//! Variables marked as "not collected" are exempt from these checks,
+//! as the user has explicitly acknowledged the data was not collected.
 
 use polars::prelude::{AnyValue, DataFrame};
 use sdtm_ingest::any_to_string;
 use sdtm_model::{CoreDesignation, Domain};
+use std::collections::BTreeSet;
 
 use crate::issue::Issue;
 use crate::util::CaseInsensitiveSet;
 
 /// Check expected variables are present.
-pub fn check(domain: &Domain, df: &DataFrame, columns: &CaseInsensitiveSet) -> Vec<Issue> {
+///
+/// # Arguments
+/// * `domain` - SDTM domain definition
+/// * `df` - DataFrame to validate
+/// * `columns` - Case-insensitive column name lookup
+/// * `not_collected` - Variables explicitly marked as "not collected" by user
+pub fn check(
+    domain: &Domain,
+    df: &DataFrame,
+    columns: &CaseInsensitiveSet,
+    not_collected: &BTreeSet<String>,
+) -> Vec<Issue> {
     let mut issues = Vec::new();
     let row_count = df.height();
 
     for variable in &domain.variables {
         if variable.core != Some(CoreDesignation::Expected) {
+            continue;
+        }
+
+        // Skip variables explicitly marked as "not collected"
+        // The user has acknowledged this data was not collected in the study
+        if not_collected.contains(&variable.name) {
             continue;
         }
 

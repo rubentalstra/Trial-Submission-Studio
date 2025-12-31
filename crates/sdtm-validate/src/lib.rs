@@ -39,6 +39,7 @@ mod util;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
 use sdtm_model::ct::TerminologyRegistry;
+use std::collections::BTreeSet;
 
 // Re-export public types
 pub use checks::dates::is_date_variable;
@@ -63,5 +64,24 @@ pub fn validate_domain(
     df: &DataFrame,
     ct_registry: Option<&TerminologyRegistry>,
 ) -> ValidationReport {
-    checks::run_all(domain, df, ct_registry)
+    validate_domain_with_not_collected(domain, df, ct_registry, &BTreeSet::new())
+}
+
+/// Validate a single domain with support for "not collected" variables.
+///
+/// Variables in the `not_collected` set are exempt from ExpectedMissing warnings
+/// because the user has explicitly acknowledged they were not collected.
+///
+/// # Arguments
+/// * `domain` - SDTM domain definition
+/// * `df` - DataFrame to validate
+/// * `ct_registry` - Optional CT registry for terminology validation
+/// * `not_collected` - Variables explicitly marked as "not collected" by user
+pub fn validate_domain_with_not_collected(
+    domain: &Domain,
+    df: &DataFrame,
+    ct_registry: Option<&TerminologyRegistry>,
+    not_collected: &BTreeSet<String>,
+) -> ValidationReport {
+    checks::run_all(domain, df, ct_registry, not_collected)
 }

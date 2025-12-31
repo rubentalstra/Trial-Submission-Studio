@@ -14,6 +14,7 @@ mod sequence;
 use polars::prelude::DataFrame;
 use sdtm_model::Domain;
 use sdtm_model::ct::TerminologyRegistry;
+use std::collections::BTreeSet;
 
 use crate::report::ValidationReport;
 use crate::util::CaseInsensitiveSet;
@@ -23,6 +24,7 @@ pub fn run_all(
     domain: &Domain,
     df: &DataFrame,
     ct_registry: Option<&TerminologyRegistry>,
+    not_collected: &BTreeSet<String>,
 ) -> ValidationReport {
     let column_lookup = build_column_lookup(df);
     let mut report = ValidationReport::new(&domain.name);
@@ -33,7 +35,8 @@ pub fn run_all(
     }
 
     // 2. Expected variable checks (presence only, warnings)
-    for issue in expected::check(domain, df, &column_lookup) {
+    // Skip variables marked as "not collected" by user
+    for issue in expected::check(domain, df, &column_lookup, not_collected) {
         report.add(issue);
     }
 

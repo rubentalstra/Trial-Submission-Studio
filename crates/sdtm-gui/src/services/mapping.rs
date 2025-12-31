@@ -35,6 +35,8 @@ pub struct MappingState {
     pub selected_variable_idx: Option<usize>,
     /// UI state: search filter text
     pub search_filter: String,
+    /// UI state: reason text being edited for "not collected" (per variable)
+    pub not_collected_reason_edit: BTreeMap<String, String>,
 }
 
 impl std::ops::Deref for MappingState {
@@ -65,6 +67,7 @@ impl MappingState {
             ct_cache,
             selected_variable_idx: None,
             search_filter: String::new(),
+            not_collected_reason_edit: BTreeMap::new(),
         }
     }
 
@@ -204,6 +207,8 @@ impl VariableStatusIcon for VariableStatus {
         match self {
             Self::Accepted => egui_phosphor::regular::CHECK,
             Self::Suggested => egui_phosphor::regular::CIRCLE_DASHED,
+            Self::NotCollected => egui_phosphor::regular::PROHIBIT,
+            Self::Omitted => egui_phosphor::regular::MINUS_CIRCLE,
             Self::Unmapped => egui_phosphor::regular::MINUS,
         }
     }

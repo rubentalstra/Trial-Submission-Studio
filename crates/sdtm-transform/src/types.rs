@@ -3,7 +3,7 @@
 //! All transformation logic is derived from Variable metadata - no hardcoded domain rules.
 
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use chrono::NaiveDate;
 use sdtm_model::ct::TerminologyRegistry;
@@ -161,6 +161,10 @@ pub struct TransformContext {
 
     /// Column mappings: target_variable -> source_column.
     pub mappings: BTreeMap<String, String>,
+
+    /// Variables to omit from output (Permissible only).
+    /// These variables will be completely excluded from the output DataFrame.
+    pub omitted: BTreeSet<String>,
 }
 
 impl TransformContext {
@@ -172,6 +176,7 @@ impl TransformContext {
             reference_date: None,
             ct_registry: None,
             mappings: BTreeMap::new(),
+            omitted: BTreeSet::new(),
         }
     }
 
@@ -193,8 +198,19 @@ impl TransformContext {
         self
     }
 
+    /// Set the omitted variables.
+    pub fn with_omitted(mut self, omitted: BTreeSet<String>) -> Self {
+        self.omitted = omitted;
+        self
+    }
+
     /// Get the source column for a target variable.
     pub fn get_source_column(&self, target: &str) -> Option<&str> {
         self.mappings.get(target).map(String::as_str)
+    }
+
+    /// Check if a variable is marked as omitted.
+    pub fn is_omitted(&self, target: &str) -> bool {
+        self.omitted.contains(target)
     }
 }

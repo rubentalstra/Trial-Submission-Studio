@@ -4,7 +4,7 @@
 //! using column mappings and domain metadata.
 
 use polars::prelude::DataFrame;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use sdtm_model::ct::TerminologyRegistry;
 use sdtm_model::domain::Domain;
@@ -37,6 +37,43 @@ pub fn build_preview_dataframe(
     study_id: &str,
     ct_registry: Option<&TerminologyRegistry>,
 ) -> Result<DataFrame, TransformError> {
+    // Call the extended version with empty omitted set
+    build_preview_dataframe_with_omitted(
+        source_df,
+        mappings,
+        &BTreeSet::new(),
+        domain,
+        study_id,
+        ct_registry,
+    )
+}
+
+/// Build preview DataFrame with support for omitted variables.
+///
+/// Creates a transformed DataFrame by:
+/// 1. Building a transformation pipeline from domain metadata
+/// 2. Applying column mappings
+/// 3. Excluding omitted variables from output
+/// 4. Executing transformations on source data
+///
+/// # Arguments
+/// * `source_df` - Source DataFrame with raw data
+/// * `mappings` - Column mappings (target SDTM variable -> source column)
+/// * `omitted` - Variables to exclude from output (Permissible only)
+/// * `domain` - SDTM domain definition
+/// * `study_id` - Study identifier
+/// * `ct_registry` - Optional CT registry for normalization
+///
+/// # Returns
+/// Transformed DataFrame with SDTM-compliant columns (excluding omitted variables)
+pub fn build_preview_dataframe_with_omitted(
+    source_df: &DataFrame,
+    mappings: &BTreeMap<String, String>,
+    omitted: &BTreeSet<String>,
+    domain: &Domain,
+    study_id: &str,
+    ct_registry: Option<&TerminologyRegistry>,
+) -> Result<DataFrame, TransformError> {
     // Build pipeline from domain metadata
     let pipeline = build_pipeline_from_domain(domain);
 
@@ -46,7 +83,8 @@ pub fn build_preview_dataframe(
     // Create execution context
     let context = TransformContext::new(study_id, &domain.name)
         .with_ct_registry(ct_registry.cloned())
-        .with_mappings(mappings.clone());
+        .with_mappings(mappings.clone())
+        .with_omitted(omitted.clone());
 
     // Execute pipeline
     execute_pipeline(source_df, &pipeline_with_mappings, &context)
@@ -82,6 +120,37 @@ pub fn build_preview_dataframe_with_dm(
     dm_df: Option<&DataFrame>,
     ct_registry: Option<&TerminologyRegistry>,
 ) -> Result<DataFrame, TransformError> {
+    // Call the extended version with empty omitted set
+    build_preview_dataframe_with_dm_and_omitted(
+        source_df,
+        mappings,
+        &BTreeSet::new(),
+        domain,
+        study_id,
+        dm_df,
+        ct_registry,
+    )
+}
+
+/// Build preview DataFrame with reference date and omitted variable support.
+///
+/// # Arguments
+/// * `source_df` - Source DataFrame with raw data
+/// * `mappings` - Column mappings (target SDTM variable -> source column)
+/// * `omitted` - Variables to exclude from output
+/// * `domain` - SDTM domain definition
+/// * `study_id` - Study identifier
+/// * `dm_df` - Optional DM domain DataFrame for RFSTDTC extraction
+/// * `ct_registry` - Optional CT registry for normalization
+pub fn build_preview_dataframe_with_dm_and_omitted(
+    source_df: &DataFrame,
+    mappings: &BTreeMap<String, String>,
+    omitted: &BTreeSet<String>,
+    domain: &Domain,
+    study_id: &str,
+    dm_df: Option<&DataFrame>,
+    ct_registry: Option<&TerminologyRegistry>,
+) -> Result<DataFrame, TransformError> {
     // Build pipeline from domain metadata
     let pipeline = build_pipeline_from_domain(domain);
 
@@ -95,7 +164,8 @@ pub fn build_preview_dataframe_with_dm(
     let context = TransformContext::new(study_id, &domain.name)
         .with_reference_date(reference_date)
         .with_ct_registry(ct_registry.cloned())
-        .with_mappings(mappings.clone());
+        .with_mappings(mappings.clone())
+        .with_omitted(omitted.clone());
 
     // Execute pipeline
     execute_pipeline(source_df, &pipeline_with_mappings, &context)

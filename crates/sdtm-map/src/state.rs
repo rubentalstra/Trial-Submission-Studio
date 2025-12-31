@@ -18,6 +18,10 @@ pub enum VariableStatus {
     Accepted,
     /// Engine suggested a mapping (not yet accepted).
     Suggested,
+    /// Explicitly marked as not collected (creates null column with Define-XML comment).
+    NotCollected,
+    /// Marked to omit from output (Permissible only).
+    Omitted,
     /// No mapping or suggestion.
     Unmapped,
 }
@@ -31,6 +35,10 @@ pub struct MappingSummary {
     pub mapped: usize,
     /// Number of variables with suggestions (not yet accepted).
     pub suggested: usize,
+    /// Number of variables marked as not collected.
+    pub not_collected: usize,
+    /// Number of variables marked to omit.
+    pub omitted: usize,
     /// Number of required variables.
     pub required_total: usize,
     /// Number of required variables that are mapped.
@@ -57,6 +65,10 @@ pub struct MappingConfig {
     pub study_id: String,
     /// List of accepted mappings.
     pub mappings: Vec<Mapping>,
+    /// Variables marked as "not collected" with Define-XML reasons.
+    pub not_collected: BTreeMap<String, String>,
+    /// Variables marked to be omitted from output.
+    pub omitted: BTreeSet<String>,
 }
 
 /// Mapping state for a domain (session-only, no persistence).
@@ -64,7 +76,8 @@ pub struct MappingConfig {
 /// Manages the interactive workflow where users:
 /// 1. View auto-generated suggestions
 /// 2. Accept suggestions or manually select columns
-/// 3. Clear mappings as needed
+/// 3. Mark variables as "not collected" or "omit"
+/// 4. Clear mappings as needed
 #[derive(Debug, Clone)]
 pub struct MappingState {
     domain: Domain,
@@ -78,6 +91,14 @@ pub struct MappingState {
 
     /// User-accepted mappings: variable_name -> (column, confidence).
     accepted: BTreeMap<String, (String, f32)>,
+
+    /// Variables marked as "not collected" with Define-XML reason.
+    /// Only allowed for Expected and Permissible variables.
+    not_collected: BTreeMap<String, String>,
+
+    /// Variables marked to be omitted from output.
+    /// Only allowed for Permissible variables.
+    omitted: BTreeSet<String>,
 
     /// All source columns.
     source_columns: Vec<String>,
@@ -116,6 +137,8 @@ impl MappingState {
             scorer,
             suggestions,
             accepted: BTreeMap::new(),
+            not_collected: BTreeMap::new(),
+            omitted: BTreeSet::new(),
             source_columns: source_columns.to_vec(),
             column_hints: hints,
         }
@@ -145,6 +168,10 @@ impl MappingState {
     pub fn status(&self, variable_name: &str) -> VariableStatus {
         if self.accepted.contains_key(variable_name) {
             VariableStatus::Accepted
+        } else if self.not_collected.contains_key(variable_name) {
+            VariableStatus::NotCollected
+        } else if self.omitted.contains(variable_name) {
+            VariableStatus::Omitted
         } else if self.suggestions.contains_key(variable_name) {
             VariableStatus::Suggested
         } else {
@@ -227,6 +254,107 @@ impl MappingState {
         self.accepted.remove(variable_name).is_some()
     }
 
+    /// Clear any assignment (mapping, not_collected, or omit) for a variable.
+    ///
+    /// Returns `true` if any assignment was removed.
+    pub fn clear_assignment(&mut self, variable_name: &str) -> bool {
+        let a = self.accepted.remove(variable_name).is_some();
+        let b = self.not_collected.remove(variable_name).is_some();
+        let c = self.omitted.remove(variable_name);
+        a || b || c
+    }
+
+    /// Mark a variable as "not collected" with a Define-XML reason.
+    ///
+    /// Only allowed for Expected and Permissible variables.
+    /// Required variables cannot be marked as not collected.
+    ///
+    /// # Errors
+    /// - `MappingError::VariableNotFound` if variable doesn't exist in domain
+    /// - `MappingError::CannotSetNullOnRequired` if variable is Required
+    pub fn mark_not_collected(
+        &mut self,
+        variable_name: &str,
+        reason: &str,
+    ) -> Result<(), MappingError> {
+        // Find the variable
+        let variable = self
+            .domain
+            .variables
+            .iter()
+            .find(|v| v.name == variable_name)
+            .ok_or_else(|| MappingError::VariableNotFound(variable_name.into()))?;
+
+        // Check core designation - Required cannot be not collected
+        if variable.core == Some(CoreDesignation::Required) {
+            return Err(MappingError::CannotSetNullOnRequired(variable_name.into()));
+        }
+
+        // Clear any existing assignment
+        self.accepted.remove(variable_name);
+        self.omitted.remove(variable_name);
+
+        // Mark as not collected
+        self.not_collected
+            .insert(variable_name.to_string(), reason.to_string());
+
+        Ok(())
+    }
+
+    /// Mark a variable to be omitted from output.
+    ///
+    /// Only allowed for Permissible variables.
+    ///
+    /// # Errors
+    /// - `MappingError::VariableNotFound` if variable doesn't exist in domain
+    /// - `MappingError::CannotOmitNonPermissible` if variable is Required or Expected
+    pub fn mark_omit(&mut self, variable_name: &str) -> Result<(), MappingError> {
+        // Find the variable
+        let variable = self
+            .domain
+            .variables
+            .iter()
+            .find(|v| v.name == variable_name)
+            .ok_or_else(|| MappingError::VariableNotFound(variable_name.into()))?;
+
+        // Check core designation - only Permissible can be omitted
+        match variable.core {
+            Some(CoreDesignation::Required) | Some(CoreDesignation::Expected) => {
+                return Err(MappingError::CannotOmitNonPermissible(variable_name.into()));
+            }
+            _ => {} // Permissible or None - allow omit
+        }
+
+        // Clear any existing assignment
+        self.accepted.remove(variable_name);
+        self.not_collected.remove(variable_name);
+
+        // Mark as omitted
+        self.omitted.insert(variable_name.to_string());
+
+        Ok(())
+    }
+
+    /// Get the "not collected" reason for a variable.
+    pub fn not_collected_reason(&self, variable_name: &str) -> Option<&str> {
+        self.not_collected.get(variable_name).map(String::as_str)
+    }
+
+    /// Check if a variable is marked as omitted.
+    pub fn is_omitted(&self, variable_name: &str) -> bool {
+        self.omitted.contains(variable_name)
+    }
+
+    /// Get all "not collected" entries (for Define-XML export).
+    pub fn all_not_collected(&self) -> &BTreeMap<String, String> {
+        &self.not_collected
+    }
+
+    /// Get all omitted variables.
+    pub fn all_omitted(&self) -> &BTreeSet<String> {
+        &self.omitted
+    }
+
     /// Get all source columns.
     pub fn source_columns(&self) -> &[String] {
         &self.source_columns
@@ -263,17 +391,23 @@ impl MappingState {
             .filter(|v| self.accepted.contains_key(&v.name))
             .count();
 
-        // Count suggestions that haven't been accepted yet
+        // Count suggestions that haven't been accepted or otherwise assigned
         let pending_suggestions = self
             .suggestions
             .keys()
-            .filter(|var| !self.accepted.contains_key(*var))
+            .filter(|var| {
+                !self.accepted.contains_key(*var)
+                    && !self.not_collected.contains_key(*var)
+                    && !self.omitted.contains(*var)
+            })
             .count();
 
         MappingSummary {
             total_variables: self.domain.variables.len(),
             mapped: self.accepted.len(),
             suggested: pending_suggestions,
+            not_collected: self.not_collected.len(),
+            omitted: self.omitted.len(),
             required_total: required_vars.len(),
             required_mapped,
         }
@@ -293,6 +427,8 @@ impl MappingState {
                     confidence: *conf,
                 })
                 .collect(),
+            not_collected: self.not_collected.clone(),
+            omitted: self.omitted.clone(),
         }
     }
 
@@ -465,5 +601,167 @@ mod tests {
             result,
             Err(MappingError::ColumnAlreadyUsed { .. })
         ));
+    }
+
+    #[test]
+    fn test_mark_not_collected_expected() {
+        let domain = make_domain(vec![
+            make_variable("USUBJID", Some(CoreDesignation::Required)),
+            make_variable("RFSTDTC", Some(CoreDesignation::Expected)),
+        ]);
+        let columns = vec!["USUBJID".to_string()];
+        let mut state = MappingState::new(domain, "STUDY01", &columns, BTreeMap::new(), 0.5);
+
+        // Expected variable can be marked as not collected
+        state
+            .mark_not_collected("RFSTDTC", "Data not collected in this study")
+            .unwrap();
+
+        assert_eq!(state.status("RFSTDTC"), VariableStatus::NotCollected);
+        assert_eq!(
+            state.not_collected_reason("RFSTDTC"),
+            Some("Data not collected in this study")
+        );
+    }
+
+    #[test]
+    fn test_mark_not_collected_required_fails() {
+        let domain = make_domain(vec![make_variable(
+            "USUBJID",
+            Some(CoreDesignation::Required),
+        )]);
+        let columns = vec![];
+        let mut state = MappingState::new(domain, "STUDY01", &columns, BTreeMap::new(), 0.5);
+
+        // Required variable cannot be marked as not collected
+        let result = state.mark_not_collected("USUBJID", "Some reason");
+        assert!(matches!(
+            result,
+            Err(MappingError::CannotSetNullOnRequired(_))
+        ));
+    }
+
+    #[test]
+    fn test_mark_omit_permissible() {
+        let domain = make_domain(vec![
+            make_variable("USUBJID", Some(CoreDesignation::Required)),
+            make_variable("DMXFN", None), // Permissible (no core designation)
+        ]);
+        let columns = vec!["USUBJID".to_string()];
+        let mut state = MappingState::new(domain, "STUDY01", &columns, BTreeMap::new(), 0.5);
+
+        // Permissible variable can be omitted
+        state.mark_omit("DMXFN").unwrap();
+
+        assert_eq!(state.status("DMXFN"), VariableStatus::Omitted);
+        assert!(state.is_omitted("DMXFN"));
+    }
+
+    #[test]
+    fn test_mark_omit_expected_fails() {
+        let domain = make_domain(vec![make_variable(
+            "RFSTDTC",
+            Some(CoreDesignation::Expected),
+        )]);
+        let columns = vec![];
+        let mut state = MappingState::new(domain, "STUDY01", &columns, BTreeMap::new(), 0.5);
+
+        // Expected variable cannot be omitted
+        let result = state.mark_omit("RFSTDTC");
+        assert!(matches!(
+            result,
+            Err(MappingError::CannotOmitNonPermissible(_))
+        ));
+    }
+
+    #[test]
+    fn test_clear_assignment() {
+        let domain = make_domain(vec![
+            make_variable("RFSTDTC", Some(CoreDesignation::Expected)),
+            make_variable("DMXFN", None),
+        ]);
+        // Use high min_confidence so no suggestions are generated
+        let columns = vec!["SOURCE_COL".to_string()];
+        let mut state = MappingState::new(domain, "STUDY01", &columns, BTreeMap::new(), 0.99);
+
+        // Verify no suggestions exist initially
+        assert_eq!(state.status("RFSTDTC"), VariableStatus::Unmapped);
+        assert_eq!(state.status("DMXFN"), VariableStatus::Unmapped);
+
+        // Accept a manual mapping
+        state.accept_manual("RFSTDTC", "SOURCE_COL").unwrap();
+        assert_eq!(state.status("RFSTDTC"), VariableStatus::Accepted);
+
+        // Clear the assignment - should go to Unmapped (no suggestion for this var)
+        assert!(state.clear_assignment("RFSTDTC"));
+        assert_eq!(state.status("RFSTDTC"), VariableStatus::Unmapped);
+
+        // Mark as not collected
+        state
+            .mark_not_collected("RFSTDTC", "Not collected")
+            .unwrap();
+        assert_eq!(state.status("RFSTDTC"), VariableStatus::NotCollected);
+
+        // Clear again
+        assert!(state.clear_assignment("RFSTDTC"));
+        assert_eq!(state.status("RFSTDTC"), VariableStatus::Unmapped);
+
+        // Mark as omit
+        state.mark_omit("DMXFN").unwrap();
+        assert_eq!(state.status("DMXFN"), VariableStatus::Omitted);
+
+        // Clear
+        assert!(state.clear_assignment("DMXFN"));
+        assert_eq!(state.status("DMXFN"), VariableStatus::Unmapped);
+    }
+
+    #[test]
+    fn test_summary_with_not_collected_and_omitted() {
+        let domain = make_domain(vec![
+            make_variable("USUBJID", Some(CoreDesignation::Required)),
+            make_variable("RFSTDTC", Some(CoreDesignation::Expected)),
+            make_variable("DMXFN", None),
+        ]);
+        let columns = vec!["USUBJID".to_string()];
+        let mut state = MappingState::new(domain, "STUDY01", &columns, BTreeMap::new(), 0.5);
+
+        state.accept_suggestion("USUBJID").unwrap();
+        state
+            .mark_not_collected("RFSTDTC", "Not collected")
+            .unwrap();
+        state.mark_omit("DMXFN").unwrap();
+
+        let summary = state.summary();
+        assert_eq!(summary.total_variables, 3);
+        assert_eq!(summary.mapped, 1);
+        assert_eq!(summary.not_collected, 1);
+        assert_eq!(summary.omitted, 1);
+        assert_eq!(summary.suggested, 0); // No pending suggestions
+    }
+
+    #[test]
+    fn test_to_config_includes_not_collected_and_omitted() {
+        let domain = make_domain(vec![
+            make_variable("USUBJID", Some(CoreDesignation::Required)),
+            make_variable("RFSTDTC", Some(CoreDesignation::Expected)),
+            make_variable("DMXFN", None),
+        ]);
+        let columns = vec!["USUBJID".to_string()];
+        let mut state = MappingState::new(domain, "STUDY01", &columns, BTreeMap::new(), 0.5);
+
+        state.accept_suggestion("USUBJID").unwrap();
+        state
+            .mark_not_collected("RFSTDTC", "Not collected")
+            .unwrap();
+        state.mark_omit("DMXFN").unwrap();
+
+        let config = state.to_config();
+        assert_eq!(config.mappings.len(), 1);
+        assert_eq!(config.not_collected.len(), 1);
+        assert_eq!(
+            config.not_collected.get("RFSTDTC"),
+            Some(&"Not collected".to_string())
+        );
+        assert!(config.omitted.contains("DMXFN"));
     }
 }

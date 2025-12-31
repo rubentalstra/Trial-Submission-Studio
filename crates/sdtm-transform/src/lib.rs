@@ -57,4 +57,7 @@ pub use inference::build_pipeline_from_domain;
 pub use executor::execute_pipeline;
 
 // Preview for validation
-pub use preview::{build_preview_dataframe, build_preview_dataframe_with_dm};
+pub use preview::{
+    build_preview_dataframe, build_preview_dataframe_with_dm,
+    build_preview_dataframe_with_dm_and_omitted, build_preview_dataframe_with_omitted,
+};

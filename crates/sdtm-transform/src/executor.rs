@@ -17,6 +17,7 @@ use crate::types::{DomainPipeline, TransformContext, TransformRule, TransformTyp
 ///
 /// Returns a new DataFrame with only SDTM-compliant columns.
 /// The output DataFrame contains columns in the order defined by the pipeline rules.
+/// Variables marked as omitted in the context are excluded from output.
 pub fn execute_pipeline(
     source_df: &DataFrame,
     pipeline: &DomainPipeline,
@@ -26,6 +27,15 @@ pub fn execute_pipeline(
     let row_count = source_df.height();
 
     for rule in pipeline.rules_ordered() {
+        // Skip omitted variables
+        if context.is_omitted(&rule.target_variable) {
+            tracing::debug!(
+                target = %rule.target_variable,
+                "Skipping omitted variable"
+            );
+            continue;
+        }
+
         let series = execute_rule(source_df, rule, context, row_count)?;
         columns.push(series.into_column());
     }
