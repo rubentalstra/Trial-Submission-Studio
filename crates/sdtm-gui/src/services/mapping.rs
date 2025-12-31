@@ -4,12 +4,12 @@
 
 use polars::prelude::DataFrame;
 use sdtm_ingest::{build_column_hints, get_sample_values};
-use sdtm_map::types::ColumnHint;
-use sdtm_model::Domain;
+use sdtm_map::ColumnHint;
+use sdtm_model::{Domain, Variable};
 use sdtm_standards::load_default_ct_registry;
 use std::collections::{BTreeMap, BTreeSet};
 
-pub use sdtm_map::VariableMappingStatus;
+pub use sdtm_map::VariableStatus;
 
 /// Pre-fetched codelist display info for UI rendering.
 #[derive(Debug, Clone)]
@@ -26,11 +26,15 @@ pub struct CodelistDisplayInfo {
     pub lookup: BTreeMap<String, String>,
 }
 
-/// GUI mapping state with CT caching.
+/// GUI mapping state with CT caching and UI state.
 #[derive(Debug, Clone)]
 pub struct MappingState {
     pub inner: sdtm_map::MappingState,
     pub ct_cache: BTreeMap<String, CodelistDisplayInfo>,
+    /// UI state: currently selected variable index
+    pub selected_variable_idx: Option<usize>,
+    /// UI state: search filter text
+    pub search_filter: String,
 }
 
 impl std::ops::Deref for MappingState {
@@ -53,15 +57,53 @@ impl MappingState {
         source_columns: &[String],
         column_hints: BTreeMap<String, ColumnHint>,
     ) -> Self {
-        let inner = sdtm_map::MappingState::from_domain(
-            sdtm_domain,
-            study_id,
-            source_columns,
-            column_hints,
-            0.6,
-        );
-        let ct_cache = load_ct_cache(&inner.sdtm_domain);
-        Self { inner, ct_cache }
+        let inner =
+            sdtm_map::MappingState::new(sdtm_domain, study_id, source_columns, column_hints, 0.6);
+        let ct_cache = load_ct_cache(inner.domain());
+        Self {
+            inner,
+            ct_cache,
+            selected_variable_idx: None,
+            search_filter: String::new(),
+        }
+    }
+
+    /// Get filtered variables based on search text.
+    pub fn filtered_variables(&self) -> Vec<(usize, &Variable)> {
+        let filter = self.search_filter.to_lowercase();
+        self.inner
+            .domain()
+            .variables
+            .iter()
+            .enumerate()
+            .filter(|(_, v)| {
+                if filter.is_empty() {
+                    true
+                } else {
+                    let matches_name = v.name.to_lowercase().contains(&filter);
+                    let matches_label = v
+                        .label
+                        .as_ref()
+                        .is_some_and(|l| l.to_lowercase().contains(&filter));
+                    let matches_subjid = v.name.eq_ignore_ascii_case("USUBJID")
+                        && (filter.contains("subjid")
+                            || filter.contains("subject id")
+                            || filter.contains("subject"));
+                    matches_name || matches_label || matches_subjid
+                }
+            })
+            .collect()
+    }
+
+    /// Get the currently selected variable.
+    pub fn selected_variable(&self) -> Option<&Variable> {
+        self.selected_variable_idx
+            .and_then(|idx| self.inner.domain().variables.get(idx))
+    }
+
+    /// Get number of suggestions (for summary display).
+    pub fn suggestions_count(&self) -> usize {
+        self.inner.all_suggestions().len()
     }
 
     /// Get CT display info for a variable's codelist codes.
@@ -152,12 +194,12 @@ fn load_ct_cache(domain: &Domain) -> BTreeMap<String, CodelistDisplayInfo> {
     cache
 }
 
-/// GUI extension trait for VariableMappingStatus icons.
-pub trait VariableMappingStatusIcon {
+/// GUI extension trait for VariableStatus icons.
+pub trait VariableStatusIcon {
     fn icon(&self) -> &'static str;
 }
 
-impl VariableMappingStatusIcon for VariableMappingStatus {
+impl VariableStatusIcon for VariableStatus {
     fn icon(&self) -> &'static str {
         match self {
             Self::Accepted => egui_phosphor::regular::CHECK,

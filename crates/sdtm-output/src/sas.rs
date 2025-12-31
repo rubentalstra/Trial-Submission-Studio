@@ -7,7 +7,7 @@ use anyhow::{Context, Result, anyhow};
 use chrono::{SecondsFormat, Utc};
 
 use crate::types::{DomainFrame, domain_map_by_code};
-use sdtm_map::types::{MappingConfig, MappingSuggestion};
+use sdtm_map::{Mapping, MappingConfig};
 use sdtm_model::{Domain, Variable, VariableType};
 
 use crate::common::{dataset_name, ensure_output_dir, is_required, should_upcase, variable_length};
@@ -134,11 +134,8 @@ fn build_assignment_map(domain: &Domain, mapping: &MappingConfig) -> Vec<String>
 }
 
 /// Render a single assignment statement.
-fn render_assignment(mapping: &MappingSuggestion, variable: Option<&Variable>) -> String {
-    let mut expr = mapping
-        .transformation
-        .clone()
-        .unwrap_or_else(|| mapping.source_column.clone());
+fn render_assignment(mapping: &Mapping, variable: Option<&Variable>) -> String {
+    let mut expr = mapping.source_column.clone();
     if let Some(var) = variable
         && var.data_type == VariableType::Char
     {

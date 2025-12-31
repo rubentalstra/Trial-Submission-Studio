@@ -1,63 +1,50 @@
-//! SDTM column mapping engine using fuzzy matching.
+//! Minimal SDTM column-to-variable mapping for manual workflows.
 //!
-//! This crate provides automated mapping between source data columns and SDTM
-//! domain variables using a combination of:
+//! This crate provides fuzzy matching and scoring to help users manually map
+//! source data columns to SDTM domain variables. It uses Jaro-Winkler similarity
+//! as the base algorithm with adjustments for label matching, suffix patterns,
+//! and type compatibility.
 //!
-//! - **Jaro-Winkler similarity** for name matching
-//! - **Synonym matching** from variable metadata
-//! - **Label comparison** for semantic similarity
-//! - **Token-based overlap** for partial matches
-//! - **Hint-based adjustments** for data type and pattern matching
+//! # Design Philosophy
 //!
-//! # Scoring Algorithm
-//!
-//! The mapping engine calculates confidence scores (0.0 to 1.0+) using:
-//!
-//! 1. **Base score**: Jaro-Winkler similarity between column name and variable name
-//! 2. **Synonym boost** (+15%): Applied when column matches a variable's known synonyms
-//! 3. **Label boost** (+10%): Applied when column label closely matches variable label
-//! 4. **Penalties**: Applied for type mismatches, missing codes, or low-quality data
-//!
-//! Scores above 1.0 are possible due to multiplicative boosts.
-//!
-//! # Confidence Levels
-//!
-//! Mappings are categorized into confidence levels:
-//!
-//! - **High** (≥0.95): Excellent match, likely correct
-//! - **Medium** (≥0.80): Good match, should be reviewed
-//! - **Low** (≥0.60): Weak match, needs manual verification
-//! - **Rejected** (<0.60): Below threshold, not included in results
+//! - **Simple**: Pure Jaro-Winkler scoring with minimal adjustments
+//! - **Explainable**: Score breakdowns show why a match scored as it did
+//! - **Session-only**: No persistence, mappings live for the session duration
+//! - **Centralized**: GUI calls this crate for scoring instead of reimplementing
 //!
 //! # Example
 //!
 //! ```ignore
-//! use sdtm_map::{MappingEngine, MappingState, ConfidenceLevel};
+//! use sdtm_map::{MappingState, VariableStatus};
 //! use std::collections::BTreeMap;
 //!
-//! // Create state directly from domain
-//! let state = MappingState::from_domain(domain, "STUDY01", &columns, hints, 0.6);
+//! // Create mapping state with auto-suggestions
+//! let mut state = MappingState::new(domain, "STUDY01", &columns, hints, 0.6);
 //!
-//! // Or use the engine directly
-//! let engine = MappingEngine::new(domain, 0.6, BTreeMap::new());
-//! let result = engine.suggest(&columns);
+//! // Check status
+//! match state.status("USUBJID") {
+//!     VariableStatus::Suggested => {
+//!         // Accept the suggestion
+//!         state.accept_suggestion("USUBJID").unwrap();
+//!     }
+//!     VariableStatus::Unmapped => {
+//!         // Manual mapping
+//!         state.accept_manual("USUBJID", "SUBJECT_ID").unwrap();
+//!     }
+//!     VariableStatus::Accepted => {}
+//! }
 //!
-//! // Get only high-confidence mappings
-//! let high = result.filter_by_level(ConfidenceLevel::High);
+//! // Use scorer for dropdown sorting
+//! let scores = state.scorer().score_all_for_variable("AETERM", &available_cols);
+//!
+//! // Export final config
+//! let config = state.to_config();
 //! ```
 
-pub mod engine;
-pub mod patterns;
-pub mod repository;
-pub mod state;
-pub mod types;
-pub mod utils;
+mod error;
+mod score;
+mod state;
 
-pub use engine::{ConfidenceLevel, ConfidenceThresholds, MappingEngine, MappingResult};
-pub use patterns::{build_synonym_map, build_variable_patterns, match_synonyms};
-pub use repository::{
-    MappingConfigLoader, MappingMetadata, MappingRepository, StoredMappingConfig,
-};
-pub use state::{MappingState, MappingSummary, VariableMappingStatus};
-pub use types::{ColumnHint, MappingConfig, MappingSuggestion};
-pub use utils::{merge_mapping_configs, merge_mappings};
+pub use error::MappingError;
+pub use score::{ColumnHint, ColumnScore, ScoreComponent, ScoringEngine, Suggestion};
+pub use state::{Mapping, MappingConfig, MappingState, MappingSummary, VariableStatus};

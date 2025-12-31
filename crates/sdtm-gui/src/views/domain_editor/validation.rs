@@ -191,15 +191,15 @@ fn rebuild_validation_if_needed(state: &mut AppState, domain_code: &str) {
 
         // Build accepted mappings map: SDTM variable -> source column
         let accepted_mappings: BTreeMap<String, String> = ms
-            .accepted
+            .all_accepted()
             .iter()
             .map(|(var, (col, _))| (var.clone(), col.clone()))
             .collect();
 
         // Clone what we need for validation
         Some((
-            ms.sdtm_domain.clone(),
-            ms.study_id.clone(),
+            ms.domain().clone(),
+            ms.study_id().to_string(),
             domain.source_data.clone(),
             accepted_mappings,
         ))

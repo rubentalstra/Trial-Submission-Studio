@@ -2,7 +2,7 @@
 
 use polars::prelude::*;
 use sdtm_model::{CoreDesignation, Domain, Variable, VariableType};
-use sdtm_validate::{validate_domain, CheckType, Severity};
+use sdtm_validate::{CheckType, Severity, validate_domain};
 
 fn make_domain(variables: Vec<Variable>) -> Domain {
     Domain {

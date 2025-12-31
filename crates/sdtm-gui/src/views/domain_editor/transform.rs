@@ -191,7 +191,7 @@ fn rebuild_transforms_if_needed(state: &mut AppState, domain_code: &str) {
     let pipeline = if let Some(study) = &state.study {
         if let Some(domain) = study.get_domain(domain_code) {
             if let Some(ms) = &domain.mapping_state {
-                Some(build_pipeline_from_domain(&ms.sdtm_domain))
+                Some(build_pipeline_from_domain(ms.domain()))
             } else {
                 None
             }
@@ -286,9 +286,9 @@ fn show_transform_list(
 }
 
 fn subject_id_mapping<'a>(ms: &'a MappingState) -> Option<(&'a str, &'static str)> {
-    if let Some((col, _)) = ms.get_accepted_for("SUBJID") {
+    if let Some((col, _)) = ms.accepted("SUBJID") {
         Some((col, "SUBJID"))
-    } else if let Some((col, _)) = ms.get_accepted_for("USUBJID") {
+    } else if let Some((col, _)) = ms.accepted("USUBJID") {
         Some((col, "Subject ID"))
     } else {
         None
@@ -629,7 +629,7 @@ fn show_ct_detail(
     source_data: &polars::prelude::DataFrame,
     theme: &crate::theme::ThemeColors,
 ) {
-    if let Some((source_col, _)) = mapping_state.get_accepted_for(variable) {
+    if let Some((source_col, _)) = mapping_state.accepted(variable) {
         let samples = MappingService::get_sample_values(source_data, source_col, 5);
 
         ui.label(RichText::new("Mapping").strong().color(theme.text_muted));
@@ -785,7 +785,7 @@ fn show_datetime_detail(
             ui.end_row();
         });
 
-    if let Some((source_col, _)) = mapping_state.get_accepted_for(variable) {
+    if let Some((source_col, _)) = mapping_state.accepted(variable) {
         let samples = MappingService::get_sample_values(source_data, source_col, 3);
         if !samples.is_empty() {
             ui.add_space(spacing::MD);
@@ -850,7 +850,7 @@ fn show_duration_detail(
             ui.end_row();
         });
 
-    if let Some((source_col, _)) = mapping_state.get_accepted_for(variable) {
+    if let Some((source_col, _)) = mapping_state.accepted(variable) {
         let samples = MappingService::get_sample_values(source_data, source_col, 3);
         if !samples.is_empty() {
             ui.add_space(spacing::MD);
@@ -952,7 +952,7 @@ fn show_numeric_detail(
             ui.end_row();
         });
 
-    if let Some((source_col, _)) = mapping_state.get_accepted_for(variable) {
+    if let Some((source_col, _)) = mapping_state.accepted(variable) {
         let samples = MappingService::get_sample_values(source_data, source_col, 3);
         if !samples.is_empty() {
             ui.add_space(spacing::MD);
@@ -999,7 +999,7 @@ fn show_copy_detail(
     );
     ui.add_space(spacing::SM);
 
-    if let Some((source_col, _)) = mapping_state.get_accepted_for(variable) {
+    if let Some((source_col, _)) = mapping_state.accepted(variable) {
         egui::Grid::new("copy_detail")
             .num_columns(2)
             .spacing([20.0, 4.0])
