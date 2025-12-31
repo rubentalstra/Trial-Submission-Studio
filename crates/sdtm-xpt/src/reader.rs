@@ -9,7 +9,8 @@ use std::path::Path;
 use crate::error::{Result, XptError};
 use crate::float::{ibm_to_ieee, is_missing};
 use crate::header::{
-    RECORD_LEN, align_to_record, parse_dataset_label, parse_dataset_name, parse_dataset_type,
+    LabelSectionType, RECORD_LEN, align_to_record, is_label_header, parse_dataset_label,
+    parse_dataset_name, parse_dataset_type, parse_labelv8_data, parse_labelv9_data,
     parse_namestr_len, parse_namestr_records, parse_variable_count, validate_dscrptr_header,
     validate_library_header, validate_member_header, validate_namestr_header, validate_obs_header,
 };
@@ -19,7 +20,7 @@ use crate::types::{
 
 /// XPT file reader.
 ///
-/// Reads SAS Transport V5 format files.
+/// Reads SAS Transport V5 or V8 format files with auto-detection.
 pub struct XptReader<R: Read> {
     reader: BufReader<R>,
     options: XptReaderOptions,
@@ -126,23 +127,23 @@ fn parse_xpt_data(data: &[u8], options: &XptReaderOptions) -> Result<XptDataset>
 
     let mut offset = 0usize;
 
-    // Library header
+    // Library header - auto-detect version from header prefix
     let library_header = read_record(data, offset)?;
-    validate_library_header(library_header)?;
+    let version = validate_library_header(library_header)?;
     offset += RECORD_LEN;
 
     // Skip library real header and modified header
     offset += RECORD_LEN * 2;
 
-    // Member header
+    // Member header - validate against detected version
     let member_header = read_record(data, offset)?;
-    validate_member_header(member_header)?;
+    let _member_version = validate_member_header(member_header)?;
     let namestr_len = parse_namestr_len(member_header)?;
     offset += RECORD_LEN;
 
-    // DSCRPTR header
+    // DSCRPTR header - validate against detected version
     let dscrptr_header = read_record(data, offset)?;
-    validate_dscrptr_header(dscrptr_header)?;
+    let _dscrptr_version = validate_dscrptr_header(dscrptr_header)?;
     offset += RECORD_LEN;
 
     // Member data
@@ -156,9 +157,9 @@ fn parse_xpt_data(data: &[u8], options: &XptReaderOptions) -> Result<XptDataset>
     let dataset_type = parse_dataset_type(member_second);
     offset += RECORD_LEN;
 
-    // NAMESTR header
+    // NAMESTR header - validate against detected version
     let namestr_header = read_record(data, offset)?;
-    validate_namestr_header(namestr_header)?;
+    let _namestr_version = validate_namestr_header(namestr_header)?;
     let var_count = parse_variable_count(namestr_header)?;
     offset += RECORD_LEN;
 
@@ -170,13 +171,44 @@ fn parse_xpt_data(data: &[u8], options: &XptReaderOptions) -> Result<XptDataset>
     offset += namestr_total;
     offset = align_to_record(offset);
 
-    // OBS header
-    let obs_header = read_record(data, offset)?;
-    validate_obs_header(obs_header)?;
-    offset += RECORD_LEN;
+    // Parse NAMESTR records into columns (using detected version)
+    let mut columns = parse_namestr_records(namestr_data, var_count, namestr_len, version)?;
 
-    // Parse NAMESTR records into columns
-    let columns = parse_namestr_records(namestr_data, var_count, namestr_len)?;
+    // V8: Check for optional LABELV8/V9 section before OBS header
+    let next_record = read_record(data, offset)?;
+    if let Some(label_type) = is_label_header(next_record) {
+        offset += RECORD_LEN;
+
+        // Find the OBS header to determine label section length
+        let mut label_end = offset;
+        while label_end + RECORD_LEN <= data.len() {
+            let check_record = read_record(data, label_end)?;
+            if validate_obs_header(check_record).is_ok() {
+                break;
+            }
+            label_end += RECORD_LEN;
+        }
+
+        // Parse label data if present
+        if label_end > offset {
+            let label_data = &data[offset..label_end];
+            match label_type {
+                LabelSectionType::V8 => {
+                    let _ = parse_labelv8_data(label_data, &mut columns);
+                }
+                LabelSectionType::V9 => {
+                    let _ = parse_labelv9_data(label_data, &mut columns);
+                }
+                LabelSectionType::None => {}
+            }
+            offset = label_end;
+        }
+    }
+
+    // OBS header - validate against detected version
+    let obs_header = read_record(data, offset)?;
+    let _obs_version = validate_obs_header(obs_header)?;
+    offset += RECORD_LEN;
 
     // Calculate observation length
     let obs_len = observation_length(&columns)?;

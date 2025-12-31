@@ -3,6 +3,8 @@
 use std::path::PathBuf;
 use thiserror::Error;
 
+use crate::types::XptVersion;
+
 /// Errors that can occur when reading or writing XPT files.
 #[derive(Debug, Error)]
 pub enum XptError {
@@ -66,6 +68,47 @@ pub enum XptError {
     #[error("unexpected trailing bytes in observations")]
     TrailingBytes,
 
+    // --- Version-aware validation errors ---
+    /// Dataset name exceeds version limit.
+    #[error("dataset name '{name}' exceeds {version} limit of {limit} characters")]
+    DatasetNameTooLong {
+        name: String,
+        version: XptVersion,
+        limit: usize,
+    },
+
+    /// Variable name exceeds version limit.
+    #[error("variable name '{name}' exceeds {version} limit of {limit} characters")]
+    VariableNameTooLong {
+        name: String,
+        version: XptVersion,
+        limit: usize,
+    },
+
+    /// Variable label exceeds version limit.
+    #[error("variable label for '{name}' exceeds {version} limit of {limit} characters")]
+    VariableLabelTooLong {
+        name: String,
+        version: XptVersion,
+        limit: usize,
+    },
+
+    /// Format name exceeds version limit.
+    #[error("format name '{format}' exceeds {version} limit of {limit} characters")]
+    FormatNameTooLong {
+        format: String,
+        version: XptVersion,
+        limit: usize,
+    },
+
+    /// Informat name exceeds version limit.
+    #[error("informat name '{informat}' exceeds {version} limit of {limit} characters")]
+    InformatNameTooLong {
+        informat: String,
+        version: XptVersion,
+        limit: usize,
+    },
+
     /// I/O error from underlying operations.
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
@@ -114,6 +157,51 @@ impl XptError {
     pub fn zero_length(name: impl Into<String>) -> Self {
         Self::ZeroLength { name: name.into() }
     }
+
+    /// Create a DatasetNameTooLong error.
+    pub fn dataset_name_too_long(name: impl Into<String>, version: XptVersion) -> Self {
+        Self::DatasetNameTooLong {
+            name: name.into(),
+            version,
+            limit: version.dataset_name_limit(),
+        }
+    }
+
+    /// Create a VariableNameTooLong error.
+    pub fn variable_name_too_long(name: impl Into<String>, version: XptVersion) -> Self {
+        Self::VariableNameTooLong {
+            name: name.into(),
+            version,
+            limit: version.name_limit(),
+        }
+    }
+
+    /// Create a VariableLabelTooLong error.
+    pub fn variable_label_too_long(name: impl Into<String>, version: XptVersion) -> Self {
+        Self::VariableLabelTooLong {
+            name: name.into(),
+            version,
+            limit: version.label_limit(),
+        }
+    }
+
+    /// Create a FormatNameTooLong error.
+    pub fn format_name_too_long(format: impl Into<String>, version: XptVersion) -> Self {
+        Self::FormatNameTooLong {
+            format: format.into(),
+            version,
+            limit: version.format_limit(),
+        }
+    }
+
+    /// Create an InformatNameTooLong error.
+    pub fn informat_name_too_long(informat: impl Into<String>, version: XptVersion) -> Self {
+        Self::InformatNameTooLong {
+            informat: informat.into(),
+            version,
+            limit: version.format_limit(),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -140,5 +228,45 @@ mod tests {
         let io_err = std::io::Error::new(std::io::ErrorKind::NotFound, "test");
         let xpt_err: XptError = io_err.into();
         assert!(matches!(xpt_err, XptError::Io(_)));
+    }
+
+    #[test]
+    fn test_version_aware_errors() {
+        // V5 errors
+        let err = XptError::dataset_name_too_long("LONGDATASETNAME", XptVersion::V5);
+        assert!(format!("{err}").contains("V5"));
+        assert!(format!("{err}").contains("8 characters"));
+
+        let err = XptError::variable_name_too_long("LONGVARNAME", XptVersion::V5);
+        assert!(format!("{err}").contains("V5"));
+        assert!(format!("{err}").contains("8 characters"));
+
+        let err = XptError::variable_label_too_long("VAR", XptVersion::V5);
+        assert!(format!("{err}").contains("V5"));
+        assert!(format!("{err}").contains("40 characters"));
+
+        // V8 errors
+        let err = XptError::dataset_name_too_long("VERYLONGDATASETNAME", XptVersion::V8);
+        assert!(format!("{err}").contains("V8"));
+        assert!(format!("{err}").contains("32 characters"));
+
+        let err = XptError::variable_name_too_long("VERYLONGVARNAME", XptVersion::V8);
+        assert!(format!("{err}").contains("V8"));
+        assert!(format!("{err}").contains("32 characters"));
+
+        let err = XptError::variable_label_too_long("VAR", XptVersion::V8);
+        assert!(format!("{err}").contains("V8"));
+        assert!(format!("{err}").contains("256 characters"));
+    }
+
+    #[test]
+    fn test_format_errors() {
+        let err = XptError::format_name_too_long("VERYLONGFORMAT", XptVersion::V5);
+        assert!(format!("{err}").contains("format"));
+        assert!(format!("{err}").contains("8 characters"));
+
+        let err = XptError::informat_name_too_long("VERYLONGINFORMAT", XptVersion::V8);
+        assert!(format!("{err}").contains("informat"));
+        assert!(format!("{err}").contains("32 characters"));
     }
 }

@@ -12,5 +12,5 @@ mod value;
 pub use column::{Justification, XptColumn, XptType};
 pub use dataset::{RowLengthError, XptDataset, XptLibrary};
 pub use missing::MissingValue;
-pub use options::{XptReaderOptions, XptWriterOptions};
+pub use options::{XptReaderOptions, XptVersion, XptWriterOptions};
 pub use value::{NumericValue, XptValue};

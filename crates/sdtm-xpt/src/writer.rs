@@ -10,15 +10,19 @@ use std::path::Path;
 use crate::error::{Result, XptError};
 use crate::float::{encode_missing, ieee_to_ibm, truncate_ibm};
 use crate::header::{
-    LibraryInfo, RECORD_LEN, build_dscrptr_header, build_library_header, build_member_data,
-    build_member_header, build_member_second, build_namestr, build_namestr_header,
-    build_obs_header, build_real_header, build_second_header,
+    LabelSectionType, LibraryInfo, RECORD_LEN, build_dscrptr_header, build_labelv8_data,
+    build_labelv8_header, build_labelv9_data, build_labelv9_header, build_library_header,
+    build_member_data, build_member_header, build_member_second, build_namestr,
+    build_namestr_header, build_obs_header, build_real_header, build_second_header,
+    determine_label_section,
 };
-use crate::types::{NumericValue, XptColumn, XptDataset, XptType, XptValue, XptWriterOptions};
+use crate::types::{
+    NumericValue, XptColumn, XptDataset, XptType, XptValue, XptVersion, XptWriterOptions,
+};
 
 /// XPT file writer.
 ///
-/// Writes SAS Transport V5 format files.
+/// Writes SAS Transport V5 or V8 format files.
 pub struct XptWriter<W: Write> {
     writer: BufWriter<W>,
     options: XptWriterOptions,
@@ -43,20 +47,21 @@ impl<W: Write> XptWriter<W> {
 
     /// Write a dataset to the XPT file.
     pub fn write_dataset(mut self, dataset: &XptDataset) -> Result<()> {
-        validate_dataset(dataset)?;
+        let version = self.options.version;
+        validate_dataset(dataset, version)?;
 
         let info: LibraryInfo = (&self.options).into();
 
         // Library headers
-        self.writer.write_all(&build_library_header())?;
+        self.writer.write_all(&build_library_header(version))?;
         self.writer.write_all(&build_real_header(&info))?;
         self.writer
             .write_all(&build_second_header(&info.modified))?;
 
         // Member headers
         self.writer
-            .write_all(&build_member_header(self.options.namestr_length))?;
-        self.writer.write_all(&build_dscrptr_header())?;
+            .write_all(&build_member_header(version, self.options.namestr_length))?;
+        self.writer.write_all(&build_dscrptr_header(version))?;
         self.writer
             .write_all(&build_member_data(dataset, &self.options))?;
         self.writer
@@ -64,11 +69,16 @@ impl<W: Write> XptWriter<W> {
 
         // NAMESTR header and records
         self.writer
-            .write_all(&build_namestr_header(dataset.columns.len()))?;
-        self.write_namestr_records(&dataset.columns)?;
+            .write_all(&build_namestr_header(version, dataset.columns.len()))?;
+        self.write_namestr_records(&dataset.columns, version)?;
+
+        // V8: Write LABELV8/V9 section if needed
+        if version.supports_label_section() {
+            self.write_label_section(&dataset.columns)?;
+        }
 
         // OBS header and data
-        self.writer.write_all(&build_obs_header())?;
+        self.writer.write_all(&build_obs_header(version))?;
         self.write_observations(dataset)?;
 
         self.writer.flush()?;
@@ -76,18 +86,45 @@ impl<W: Write> XptWriter<W> {
     }
 
     /// Write NAMESTR records for all columns.
-    fn write_namestr_records(&mut self, columns: &[XptColumn]) -> Result<()> {
+    fn write_namestr_records(&mut self, columns: &[XptColumn], version: XptVersion) -> Result<()> {
         let mut record_writer = RecordWriter::new(&mut self.writer);
         let mut position = 0u32;
 
         for (idx, column) in columns.iter().enumerate() {
-            let namestr = build_namestr(column, (idx + 1) as u16, position);
+            let namestr = build_namestr(column, (idx + 1) as u16, position, version);
             record_writer.write_bytes(&namestr)?;
             position = position.saturating_add(column.length as u32);
         }
 
         record_writer.finish()?;
         Ok(())
+    }
+
+    /// Write LABELV8 or LABELV9 section if needed (V8 format only).
+    fn write_label_section(&mut self, columns: &[XptColumn]) -> Result<()> {
+        match determine_label_section(columns) {
+            LabelSectionType::None => Ok(()),
+            LabelSectionType::V8 => {
+                self.writer.write_all(&build_labelv8_header())?;
+                let data = build_labelv8_data(columns);
+                if !data.is_empty() {
+                    let mut record_writer = RecordWriter::new(&mut self.writer);
+                    record_writer.write_bytes(&data)?;
+                    record_writer.finish()?;
+                }
+                Ok(())
+            }
+            LabelSectionType::V9 => {
+                self.writer.write_all(&build_labelv9_header())?;
+                let data = build_labelv9_data(columns);
+                if !data.is_empty() {
+                    let mut record_writer = RecordWriter::new(&mut self.writer);
+                    record_writer.write_bytes(&data)?;
+                    record_writer.finish()?;
+                }
+                Ok(())
+            }
+        }
     }
 
     /// Write observation data.
@@ -159,20 +196,26 @@ pub fn write_xpt_with_options(
 }
 
 /// Validate a dataset before writing.
-fn validate_dataset(dataset: &XptDataset) -> Result<()> {
+fn validate_dataset(dataset: &XptDataset, version: XptVersion) -> Result<()> {
     // Validate dataset name
     let name = normalize_name(&dataset.name);
-    if name.is_empty() || name.len() > 8 {
+    if name.is_empty() {
         return Err(XptError::invalid_dataset_name(&dataset.name));
     }
+    if name.len() > version.dataset_name_limit() {
+        return Err(XptError::dataset_name_too_long(&dataset.name, version));
+    }
 
-    // Check for duplicate column names
+    // Check for duplicate column names and validate each column
     let mut seen = BTreeSet::new();
     for column in &dataset.columns {
         let col_name = normalize_name(&column.name);
 
-        if col_name.is_empty() || col_name.len() > 8 {
+        if col_name.is_empty() {
             return Err(XptError::invalid_variable_name(&column.name));
+        }
+        if col_name.len() > version.name_limit() {
+            return Err(XptError::variable_name_too_long(&column.name, version));
         }
 
         if !seen.insert(col_name.clone()) {
@@ -181,6 +224,27 @@ fn validate_dataset(dataset: &XptDataset) -> Result<()> {
 
         if column.length == 0 {
             return Err(XptError::zero_length(&column.name));
+        }
+
+        // Validate label length
+        if let Some(label) = &column.label {
+            if label.len() > version.label_limit() {
+                return Err(XptError::variable_label_too_long(&column.name, version));
+            }
+        }
+
+        // Validate format name length
+        if let Some(format) = &column.format {
+            if format.len() > version.format_limit() {
+                return Err(XptError::format_name_too_long(format, version));
+            }
+        }
+
+        // Validate informat name length
+        if let Some(informat) = &column.informat {
+            if informat.len() > version.format_limit() {
+                return Err(XptError::informat_name_too_long(informat, version));
+            }
         }
     }
 
@@ -341,24 +405,46 @@ mod tests {
     }
 
     #[test]
-    fn test_validate_dataset_valid() {
+    fn test_validate_dataset_valid_v5() {
         let dataset = XptDataset::with_columns(
             "TEST",
             vec![XptColumn::numeric("AGE"), XptColumn::character("NAME", 20)],
         );
-        assert!(validate_dataset(&dataset).is_ok());
+        assert!(validate_dataset(&dataset, XptVersion::V5).is_ok());
+    }
+
+    #[test]
+    fn test_validate_dataset_valid_v8() {
+        let dataset = XptDataset::with_columns(
+            "TEST",
+            vec![XptColumn::numeric("AGE"), XptColumn::character("NAME", 20)],
+        );
+        assert!(validate_dataset(&dataset, XptVersion::V8).is_ok());
     }
 
     #[test]
     fn test_validate_dataset_empty_name() {
         let dataset = XptDataset::new("");
-        assert!(validate_dataset(&dataset).is_err());
+        assert!(validate_dataset(&dataset, XptVersion::V5).is_err());
+        assert!(validate_dataset(&dataset, XptVersion::V8).is_err());
     }
 
     #[test]
-    fn test_validate_dataset_long_name() {
+    fn test_validate_dataset_long_name_v5() {
+        // V5 limit is 8 characters
         let dataset = XptDataset::new("VERYLONGNAME");
-        assert!(validate_dataset(&dataset).is_err());
+        assert!(validate_dataset(&dataset, XptVersion::V5).is_err());
+    }
+
+    #[test]
+    fn test_validate_dataset_long_name_v8() {
+        // V8 limit is 32 characters
+        let dataset = XptDataset::new("VERYLONGNAME"); // 12 chars, OK for V8
+        assert!(validate_dataset(&dataset, XptVersion::V8).is_ok());
+
+        // Create a name that exceeds V8 limit (33 chars)
+        let dataset = XptDataset::new("ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567");
+        assert!(validate_dataset(&dataset, XptVersion::V8).is_err());
     }
 
     #[test]
@@ -367,7 +453,7 @@ mod tests {
             "TEST",
             vec![XptColumn::numeric("AGE"), XptColumn::numeric("AGE")],
         );
-        assert!(validate_dataset(&dataset).is_err());
+        assert!(validate_dataset(&dataset, XptVersion::V5).is_err());
     }
 
     #[test]
@@ -375,7 +461,26 @@ mod tests {
         let mut col = XptColumn::numeric("X");
         col.length = 0;
         let dataset = XptDataset::with_columns("TEST", vec![col]);
-        assert!(validate_dataset(&dataset).is_err());
+        assert!(validate_dataset(&dataset, XptVersion::V5).is_err());
+    }
+
+    #[test]
+    fn test_validate_dataset_long_variable_name() {
+        // V5 limit is 8 characters
+        let dataset = XptDataset::with_columns("TEST", vec![XptColumn::numeric("VERYLONGVARNAME")]);
+        assert!(validate_dataset(&dataset, XptVersion::V5).is_err());
+        assert!(validate_dataset(&dataset, XptVersion::V8).is_ok()); // V8 allows up to 32
+    }
+
+    #[test]
+    fn test_validate_dataset_long_label() {
+        // V5 limit is 40 characters, V8 is 256
+        let long_label = "A".repeat(50);
+        let mut col = XptColumn::numeric("AGE");
+        col.label = Some(long_label);
+        let dataset = XptDataset::with_columns("TEST", vec![col]);
+        assert!(validate_dataset(&dataset, XptVersion::V5).is_err());
+        assert!(validate_dataset(&dataset, XptVersion::V8).is_ok());
     }
 
     #[test]

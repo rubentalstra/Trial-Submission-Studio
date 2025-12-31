@@ -1,15 +1,28 @@
 //! SAS Transport (XPT) file format reader and writer.
 //!
-//! This crate provides functionality to read and write SAS Transport V5 format files,
+//! This crate provides functionality to read and write SAS Transport V5 and V8 format files,
 //! commonly used for SDTM datasets in regulatory submissions.
 //!
 //! # Features
 //!
-//! - Full SAS Transport V5 format support per official specification
+//! - Full SAS Transport V5 format support (default, for maximum compatibility)
+//! - SAS Transport V8 format support (longer names, labels, and formats)
 //! - IEEE ↔ IBM mainframe floating-point conversion
 //! - Support for all 28 SAS missing value codes (`.`, `._`, `.A`-`.Z`)
 //! - Variable metadata including formats and informats
 //! - Optional Polars DataFrame integration (with `polars` feature)
+//!
+//! # Format Versions
+//!
+//! | Feature | V5 Limit | V8 Limit |
+//! |---------|----------|----------|
+//! | Variable name | 8 chars | 32 chars |
+//! | Variable label | 40 chars | 256 chars |
+//! | Format name | 8 chars | 32 chars |
+//! | Dataset name | 8 chars | 32 chars |
+//!
+//! By default, files are written in V5 format. Use [`XptWriterOptions::with_version`]
+//! to write V8 format files. When reading, the format is auto-detected.
 //!
 //! # Example
 //!
@@ -71,7 +84,7 @@ pub use error::{Result, XptError};
 // Re-export core types
 pub use types::{
     Justification, MissingValue, NumericValue, RowLengthError, XptColumn, XptDataset, XptLibrary,
-    XptReaderOptions, XptType, XptValue, XptWriterOptions,
+    XptReaderOptions, XptType, XptValue, XptVersion, XptWriterOptions,
 };
 
 // Re-export reader functionality

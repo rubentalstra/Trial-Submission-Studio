@@ -4,20 +4,24 @@
 //!
 //! # Structure
 //!
-//! 1. Fixed header: `HEADER RECORD*******LIBRARY HEADER RECORD!!!!!!!...`
+//! 1. Fixed header: `HEADER RECORD*******LIBRARY HEADER RECORD!!!!!!!...` (V5)
+//!    or `HEADER RECORD*******LIBV8   HEADER RECORD!!!!!!!...` (V8)
 //! 2. Real header (80 bytes): SAS version, OS, created datetime
 //! 3. Second header (80 bytes): Modified datetime
 
 use crate::error::{Result, XptError};
-use crate::types::XptWriterOptions;
+use crate::types::{XptVersion, XptWriterOptions};
 
 use super::datetime::parse_xpt_datetime;
 
 /// Record length in bytes.
 pub const RECORD_LEN: usize = 80;
 
-/// Library header prefix.
+/// Library header prefix (V5).
 pub const LIBRARY_HEADER_PREFIX: &str = "HEADER RECORD*******LIBRARY HEADER RECORD!!!!!!!";
+
+/// Library header prefix (V8).
+pub const LIBV8_HEADER_PREFIX: &str = "HEADER RECORD*******LIBV8   HEADER RECORD!!!!!!!";
 
 /// Library header information parsed from real headers.
 #[derive(Debug, Clone)]
@@ -54,19 +58,60 @@ impl From<&XptWriterOptions> for LibraryInfo {
     }
 }
 
-/// Validate that a record starts with the library header prefix.
+/// Detect the XPT format version from the library header record.
+///
+/// Auto-detects whether the file is V5 or V8 format based on the header prefix.
+///
+/// # Arguments
+/// * `record` - First 80-byte record from the XPT file
+///
+/// # Returns
+/// `Some(XptVersion)` if a valid library header is detected, `None` otherwise.
+#[must_use]
+pub fn detect_version(record: &[u8]) -> Option<XptVersion> {
+    if record.len() < RECORD_LEN {
+        return None;
+    }
+    if record.starts_with(LIBRARY_HEADER_PREFIX.as_bytes()) {
+        Some(XptVersion::V5)
+    } else if record.starts_with(LIBV8_HEADER_PREFIX.as_bytes()) {
+        Some(XptVersion::V8)
+    } else {
+        None
+    }
+}
+
+/// Validate that a record starts with a valid library header prefix.
 ///
 /// # Arguments
 /// * `record` - 80-byte record
 ///
 /// # Returns
-/// Ok(()) if valid, error otherwise.
-pub fn validate_library_header(record: &[u8]) -> Result<()> {
+/// Ok(detected_version) if valid, error otherwise.
+pub fn validate_library_header(record: &[u8]) -> Result<XptVersion> {
     if record.len() < RECORD_LEN {
         return Err(XptError::invalid_format("record too short"));
     }
-    if !record.starts_with(LIBRARY_HEADER_PREFIX.as_bytes()) {
-        return Err(XptError::missing_header("LIBRARY HEADER"));
+    detect_version(record).ok_or_else(|| XptError::missing_header("LIBRARY or LIBV8 HEADER"))
+}
+
+/// Validate that a record starts with a library header for a specific version.
+///
+/// # Arguments
+/// * `record` - 80-byte record
+/// * `version` - Expected version
+///
+/// # Returns
+/// Ok(()) if valid for the specified version, error otherwise.
+pub fn validate_library_header_version(record: &[u8], version: XptVersion) -> Result<()> {
+    if record.len() < RECORD_LEN {
+        return Err(XptError::invalid_format("record too short"));
+    }
+    if !record.starts_with(version.library_prefix().as_bytes()) {
+        return Err(XptError::missing_header(match version {
+            XptVersion::V5 => "LIBRARY HEADER",
+            XptVersion::V8 => "LIBV8 HEADER",
+        }));
     }
     Ok(())
 }
@@ -111,10 +156,13 @@ pub fn parse_second_header(record: &[u8]) -> String {
     read_string(record, 0, 16)
 }
 
-/// Build the fixed library header record.
+/// Build the fixed library header record for the specified version.
+///
+/// # Arguments
+/// * `version` - XPT format version (V5 or V8)
 #[must_use]
-pub fn build_library_header() -> [u8; RECORD_LEN] {
-    build_fixed_header(LIBRARY_HEADER_PREFIX)
+pub fn build_library_header(version: XptVersion) -> [u8; RECORD_LEN] {
+    build_fixed_header(version.library_prefix())
 }
 
 /// Build the real header record with library info.
@@ -204,12 +252,45 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_detect_version() {
+        // V5 header
+        let v5_header = build_library_header(XptVersion::V5);
+        assert_eq!(detect_version(&v5_header), Some(XptVersion::V5));
+
+        // V8 header
+        let v8_header = build_library_header(XptVersion::V8);
+        assert_eq!(detect_version(&v8_header), Some(XptVersion::V8));
+
+        // Invalid header
+        let invalid = [b'X'; RECORD_LEN];
+        assert_eq!(detect_version(&invalid), None);
+
+        // Too short
+        let short = [b' '; 10];
+        assert_eq!(detect_version(&short), None);
+    }
+
+    #[test]
     fn test_validate_library_header() {
-        let header = build_library_header();
-        assert!(validate_library_header(&header).is_ok());
+        let v5_header = build_library_header(XptVersion::V5);
+        assert_eq!(validate_library_header(&v5_header).unwrap(), XptVersion::V5);
+
+        let v8_header = build_library_header(XptVersion::V8);
+        assert_eq!(validate_library_header(&v8_header).unwrap(), XptVersion::V8);
 
         let invalid = [b'X'; RECORD_LEN];
         assert!(validate_library_header(&invalid).is_err());
+    }
+
+    #[test]
+    fn test_validate_library_header_version() {
+        let v5_header = build_library_header(XptVersion::V5);
+        assert!(validate_library_header_version(&v5_header, XptVersion::V5).is_ok());
+        assert!(validate_library_header_version(&v5_header, XptVersion::V8).is_err());
+
+        let v8_header = build_library_header(XptVersion::V8);
+        assert!(validate_library_header_version(&v8_header, XptVersion::V8).is_ok());
+        assert!(validate_library_header_version(&v8_header, XptVersion::V5).is_err());
     }
 
     #[test]
@@ -238,11 +319,28 @@ mod tests {
     }
 
     #[test]
-    fn test_fixed_header_structure() {
-        let header = build_library_header();
+    fn test_fixed_header_structure_v5() {
+        let header = build_library_header(XptVersion::V5);
 
         // Check prefix
         assert!(header.starts_with(LIBRARY_HEADER_PREFIX.as_bytes()));
+
+        // Check zeros section
+        for i in 48..78 {
+            assert_eq!(header[i], b'0', "byte {i} should be '0'");
+        }
+
+        // Check trailing spaces
+        assert_eq!(header[78], b' ');
+        assert_eq!(header[79], b' ');
+    }
+
+    #[test]
+    fn test_fixed_header_structure_v8() {
+        let header = build_library_header(XptVersion::V8);
+
+        // Check prefix
+        assert!(header.starts_with(LIBV8_HEADER_PREFIX.as_bytes()));
 
         // Check zeros section
         for i in 48..78 {

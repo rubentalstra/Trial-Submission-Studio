@@ -5,6 +5,8 @@
 //!
 //! # NAMESTR Structure (140 bytes)
 //!
+//! ## V5 Structure
+//!
 //! | Offset | Field   | Type     | Description                    |
 //! |--------|---------|----------|--------------------------------|
 //! | 0-1    | ntype   | short    | 1=NUMERIC, 2=CHAR              |
@@ -23,9 +25,19 @@
 //! | 82-83  | nifd    | short    | Informat decimals              |
 //! | 84-87  | npos    | long     | Position in observation        |
 //! | 88-139 | rest    | char[52] | Reserved                       |
+//!
+//! ## V8 Extended Structure
+//!
+//! V8 uses the reserved area for extended fields:
+//!
+//! | Offset  | Field    | Type     | Description                   |
+//! |---------|----------|----------|-------------------------------|
+//! | 88-119  | longname | char[32] | Long variable name (if > 8)   |
+//! | 120-121 | lablen   | short    | Label length indicator        |
+//! | 122-139 | rest     | char[18] | Reserved                      |
 
 use crate::error::{Result, XptError};
-use crate::types::{Justification, XptColumn, XptType};
+use crate::types::{Justification, XptColumn, XptType, XptVersion};
 
 /// Standard NAMESTR length.
 pub const NAMESTR_LEN: usize = 140;
@@ -39,10 +51,16 @@ pub const NAMESTR_LEN_VAX: usize = 136;
 /// * `data` - Byte slice containing the NAMESTR data
 /// * `namestr_len` - Length of NAMESTR (140 or 136 for VAX/VMS)
 /// * `index` - Variable index (for error messages)
+/// * `version` - XPT version (V5 or V8) for extended field support
 ///
 /// # Returns
 /// Parsed `XptColumn` on success.
-pub fn parse_namestr(data: &[u8], namestr_len: usize, index: usize) -> Result<XptColumn> {
+pub fn parse_namestr(
+    data: &[u8],
+    namestr_len: usize,
+    index: usize,
+    version: XptVersion,
+) -> Result<XptColumn> {
     if data.len() < namestr_len.min(88) {
         return Err(XptError::InvalidNamestr {
             index,
@@ -67,13 +85,25 @@ pub fn parse_namestr(data: &[u8], namestr_len: usize, index: usize) -> Result<Xp
     }
 
     // nname: variable name (8 chars)
-    let name = read_string(data, 8, 8);
-    if name.is_empty() {
+    let short_name = read_string(data, 8, 8);
+    if short_name.is_empty() {
         return Err(XptError::InvalidNamestr {
             index,
             message: "empty variable name".to_string(),
         });
     }
+
+    // V8: Check for long name in extended area (offset 88-119)
+    let name = if version.supports_long_names() && data.len() >= 120 {
+        let long_name = read_string(data, 88, 32);
+        if long_name.is_empty() {
+            short_name
+        } else {
+            long_name
+        }
+    } else {
+        short_name
+    };
 
     // nlabel: variable label (40 chars)
     let label = read_string(data, 16, 40);
@@ -124,11 +154,17 @@ pub fn parse_namestr(data: &[u8], namestr_len: usize, index: usize) -> Result<Xp
 /// * `column` - The column definition
 /// * `varnum` - Variable number (1-based)
 /// * `position` - Position in observation (byte offset)
+/// * `version` - XPT version (V5 or V8) for extended field support
 ///
 /// # Returns
 /// 140-byte NAMESTR record.
 #[must_use]
-pub fn build_namestr(column: &XptColumn, varnum: u16, position: u32) -> [u8; NAMESTR_LEN] {
+pub fn build_namestr(
+    column: &XptColumn,
+    varnum: u16,
+    position: u32,
+    version: XptVersion,
+) -> [u8; NAMESTR_LEN] {
     let mut buf = [0u8; NAMESTR_LEN];
 
     // ntype: variable type
@@ -144,7 +180,13 @@ pub fn build_namestr(column: &XptColumn, varnum: u16, position: u32) -> [u8; NAM
     write_i16(&mut buf, 6, varnum as i16);
 
     // nname: variable name (8 chars, space-padded)
-    write_string(&mut buf, 8, &column.name, 8);
+    // For V8, if name > 8 chars, truncate here and write full name to extended area
+    let short_name = if column.name.len() > 8 {
+        &column.name[..8]
+    } else {
+        &column.name
+    };
+    write_string(&mut buf, 8, short_name, 8);
 
     // nlabel: variable label (40 chars, space-padded)
     let label = column.label.as_deref().unwrap_or("");
@@ -180,7 +222,20 @@ pub fn build_namestr(column: &XptColumn, varnum: u16, position: u32) -> [u8; NAM
     // npos: position in observation
     write_i32(&mut buf, 84, position as i32);
 
-    // rest: reserved (52 bytes, zeros) - already zero from initialization
+    // V8 extended fields (offset 88-139)
+    if version.supports_long_names() {
+        // longname: long variable name (32 chars, space-padded) at offset 88-119
+        if column.name.len() > 8 {
+            write_string(&mut buf, 88, &column.name, 32);
+        }
+
+        // lablen: label length indicator at offset 120-121
+        if let Some(lbl) = &column.label {
+            if lbl.len() > 40 {
+                write_i16(&mut buf, 120, lbl.len() as i16);
+            }
+        }
+    }
 
     buf
 }
@@ -191,6 +246,7 @@ pub fn build_namestr(column: &XptColumn, varnum: u16, position: u32) -> [u8; NAM
 /// * `data` - Byte slice containing all NAMESTR data
 /// * `var_count` - Number of variables
 /// * `namestr_len` - Length of each NAMESTR (140 or 136)
+/// * `version` - XPT version (V5 or V8) for extended field support
 ///
 /// # Returns
 /// Vector of parsed columns.
@@ -198,6 +254,7 @@ pub fn parse_namestr_records(
     data: &[u8],
     var_count: usize,
     namestr_len: usize,
+    version: XptVersion,
 ) -> Result<Vec<XptColumn>> {
     let mut columns = Vec::with_capacity(var_count);
 
@@ -213,7 +270,7 @@ pub fn parse_namestr_records(
                     message: "NAMESTR data out of bounds".to_string(),
                 })?;
 
-        columns.push(parse_namestr(record, namestr_len, idx)?);
+        columns.push(parse_namestr(record, namestr_len, idx, version)?);
     }
 
     Ok(columns)
@@ -237,10 +294,14 @@ fn read_i32(data: &[u8], offset: usize) -> i32 {
     i32::from_be_bytes(bytes)
 }
 
-/// Read a string from data, trimming trailing spaces.
+/// Read a string from data, trimming trailing spaces and null bytes.
 fn read_string(data: &[u8], offset: usize, len: usize) -> String {
     data.get(offset..offset + len)
-        .map(|slice| String::from_utf8_lossy(slice).trim_end().to_string())
+        .map(|slice| {
+            String::from_utf8_lossy(slice)
+                .trim_end_matches(|c: char| c.is_whitespace() || c == '\0')
+                .to_string()
+        })
         .unwrap_or_default()
 }
 
@@ -275,13 +336,13 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_build_and_parse_numeric() {
+    fn test_build_and_parse_numeric_v5() {
         let col = XptColumn::numeric("AGE")
             .with_label("Age in Years")
             .with_length(8);
 
-        let namestr = build_namestr(&col, 1, 0);
-        let parsed = parse_namestr(&namestr, NAMESTR_LEN, 0).unwrap();
+        let namestr = build_namestr(&col, 1, 0, XptVersion::V5);
+        let parsed = parse_namestr(&namestr, NAMESTR_LEN, 0, XptVersion::V5).unwrap();
 
         assert_eq!(parsed.name, "AGE");
         assert_eq!(parsed.label, Some("Age in Years".to_string()));
@@ -290,13 +351,13 @@ mod tests {
     }
 
     #[test]
-    fn test_build_and_parse_character() {
+    fn test_build_and_parse_character_v5() {
         let col = XptColumn::character("USUBJID", 20)
             .with_label("Unique Subject ID")
             .with_format("$20", 20, 0);
 
-        let namestr = build_namestr(&col, 1, 0);
-        let parsed = parse_namestr(&namestr, NAMESTR_LEN, 0).unwrap();
+        let namestr = build_namestr(&col, 1, 0, XptVersion::V5);
+        let parsed = parse_namestr(&namestr, NAMESTR_LEN, 0, XptVersion::V5).unwrap();
 
         assert_eq!(parsed.name, "USUBJID");
         assert_eq!(parsed.data_type, XptType::Char);
@@ -311,7 +372,7 @@ mod tests {
         namestr[0] = 0;
         namestr[1] = 5; // Invalid ntype
 
-        let result = parse_namestr(&namestr, NAMESTR_LEN, 0);
+        let result = parse_namestr(&namestr, NAMESTR_LEN, 0, XptVersion::V5);
         assert!(result.is_err());
     }
 
@@ -322,20 +383,20 @@ mod tests {
         namestr[4] = 0;
         namestr[5] = 0; // length = 0
 
-        let result = parse_namestr(&namestr, NAMESTR_LEN, 0);
+        let result = parse_namestr(&namestr, NAMESTR_LEN, 0, XptVersion::V5);
         assert!(result.is_err());
     }
 
     #[test]
-    fn test_roundtrip_with_format() {
+    fn test_roundtrip_with_format_v5() {
         let col = XptColumn::numeric("VISIT")
             .with_label("Visit Number")
             .with_format("BEST", 8, 2)
             .with_informat("F", 8, 2)
             .with_justification(Justification::Right);
 
-        let namestr = build_namestr(&col, 5, 100);
-        let parsed = parse_namestr(&namestr, NAMESTR_LEN, 0).unwrap();
+        let namestr = build_namestr(&col, 5, 100, XptVersion::V5);
+        let parsed = parse_namestr(&namestr, NAMESTR_LEN, 0, XptVersion::V5).unwrap();
 
         assert_eq!(parsed.name, col.name);
         assert_eq!(parsed.label, col.label);
@@ -349,7 +410,7 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_multiple_namestr() {
+    fn test_parse_multiple_namestr_v5() {
         let cols = vec![
             XptColumn::numeric("AGE"),
             XptColumn::character("SEX", 1),
@@ -359,12 +420,12 @@ mod tests {
         let mut data = Vec::new();
         let mut position = 0u32;
         for (i, col) in cols.iter().enumerate() {
-            let namestr = build_namestr(col, (i + 1) as u16, position);
+            let namestr = build_namestr(col, (i + 1) as u16, position, XptVersion::V5);
             data.extend_from_slice(&namestr);
             position += col.length as u32;
         }
 
-        let parsed = parse_namestr_records(&data, 3, NAMESTR_LEN).unwrap();
+        let parsed = parse_namestr_records(&data, 3, NAMESTR_LEN, XptVersion::V5).unwrap();
         assert_eq!(parsed.len(), 3);
         assert_eq!(parsed[0].name, "AGE");
         assert_eq!(parsed[1].name, "SEX");
@@ -372,12 +433,69 @@ mod tests {
     }
 
     #[test]
-    fn test_string_padding() {
+    fn test_string_padding_v5() {
         let col = XptColumn::numeric("X");
-        let namestr = build_namestr(&col, 1, 0);
+        let namestr = build_namestr(&col, 1, 0, XptVersion::V5);
 
         // Name should be "X" followed by 7 spaces
         let name_bytes = &namestr[8..16];
         assert_eq!(name_bytes, b"X       ");
+    }
+
+    // V8 tests for long names
+
+    #[test]
+    fn test_build_and_parse_long_name_v8() {
+        // Create a column with a long name (> 8 chars)
+        let mut col = XptColumn::numeric("VERYLONGVARIABLENAME");
+        col.name = "VERYLONGVARIABLENAME".to_string(); // Ensure full name
+        col.label = Some("A Long Variable".to_string());
+
+        let namestr = build_namestr(&col, 1, 0, XptVersion::V8);
+
+        // Verify short name is truncated in base area
+        let short_name = &namestr[8..16];
+        assert_eq!(&short_name[..8], b"VERYLONG");
+
+        // Verify long name is written to extended area (offset 88-119)
+        let long_name_bytes = &namestr[88..120];
+        let long_name = String::from_utf8_lossy(long_name_bytes)
+            .trim_end()
+            .to_string();
+        assert_eq!(long_name, "VERYLONGVARIABLENAME");
+
+        // Parse and verify
+        let parsed = parse_namestr(&namestr, NAMESTR_LEN, 0, XptVersion::V8).unwrap();
+        assert_eq!(parsed.name, "VERYLONGVARIABLENAME");
+    }
+
+    #[test]
+    fn test_v8_short_name_no_extended() {
+        // Short name should not use extended area
+        let col = XptColumn::numeric("AGE");
+
+        let namestr = build_namestr(&col, 1, 0, XptVersion::V8);
+
+        // Extended area should be zeros (no long name written)
+        let long_name_bytes = &namestr[88..120];
+        assert!(long_name_bytes.iter().all(|&b| b == 0));
+
+        // Parse and verify short name is used
+        let parsed = parse_namestr(&namestr, NAMESTR_LEN, 0, XptVersion::V8).unwrap();
+        assert_eq!(parsed.name, "AGE");
+    }
+
+    #[test]
+    fn test_v5_ignores_extended_area() {
+        // V5 should ignore extended area even if data is there
+        let mut col = XptColumn::numeric("VERYLONGVARIABLENAME");
+        col.name = "VERYLONGVARIABLENAME".to_string();
+
+        // Build with V8 (writes long name)
+        let namestr = build_namestr(&col, 1, 0, XptVersion::V8);
+
+        // Parse with V5 should use truncated short name
+        let parsed = parse_namestr(&namestr, NAMESTR_LEN, 0, XptVersion::V5).unwrap();
+        assert_eq!(parsed.name, "VERYLONG");
     }
 }

@@ -187,13 +187,16 @@ impl XptColumn {
     }
 
     /// Set the variable label.
+    ///
+    /// Note: Labels are NOT truncated here. Validation against version-specific
+    /// limits (40 chars for V5, 256 chars for V8) happens at write time.
     #[must_use]
     pub fn with_label(mut self, label: impl Into<String>) -> Self {
         let label_str = label.into();
         self.label = if label_str.is_empty() {
             None
         } else {
-            Some(truncate_string(label_str, 40))
+            Some(label_str)
         };
         self
     }
@@ -275,11 +278,10 @@ impl Default for XptColumn {
     }
 }
 
-/// Normalize a variable name: trim, uppercase, truncate to 8 chars.
+/// Normalize a name: trim and uppercase.
+/// Note: Does NOT truncate; validation will catch names that exceed limits.
 fn normalize_name(name: String) -> String {
-    let trimmed = name.trim();
-    let upper = trimmed.to_uppercase();
-    truncate_string(upper, 8)
+    name.trim().to_uppercase()
 }
 
 /// Truncate a string to maximum length.
@@ -360,18 +362,23 @@ mod tests {
 
     #[test]
     fn test_name_normalization() {
+        // Trimming and uppercasing
         let col = XptColumn::numeric("  test  ");
         assert_eq!(col.name, "TEST");
 
+        // Long names are NOT truncated (validation catches limit violations)
+        // This supports V8 format which allows up to 32 characters
         let col = XptColumn::numeric("verylongname");
-        assert_eq!(col.name, "VERYLONG");
+        assert_eq!(col.name, "VERYLONGNAME");
     }
 
     #[test]
-    fn test_label_truncation() {
-        let long_label = "A".repeat(50);
-        let col = XptColumn::numeric("x").with_label(long_label);
-        assert_eq!(col.label.as_ref().map(|s| s.len()), Some(40));
+    fn test_label_not_truncated() {
+        // Labels are no longer truncated in with_label; validation handles limits
+        let long_label = "A".repeat(100);
+        let col = XptColumn::numeric("x").with_label(&long_label);
+        assert_eq!(col.label.as_ref().map(|s| s.len()), Some(100));
+        assert_eq!(col.label, Some(long_label));
     }
 
     #[test]

@@ -7,12 +7,18 @@
 //! - OBS header (marks start of observation data)
 
 pub mod datetime;
+pub mod label;
 pub mod library;
 pub mod member;
 pub mod namestr;
 
 // Re-export commonly used items
 pub use datetime::{format_xpt_datetime, parse_xpt_datetime};
+pub use label::{
+    LABELV8_HEADER_PREFIX, LABELV9_HEADER_PREFIX, LabelSectionType, build_labelv8_data,
+    build_labelv8_header, build_labelv9_data, build_labelv9_header, determine_label_section,
+    is_label_header, is_labelv8_header, is_labelv9_header, parse_labelv8_data, parse_labelv9_data,
+};
 pub use library::{
     LIBRARY_HEADER_PREFIX, LibraryInfo, RECORD_LEN, build_library_header, build_real_header,
     build_second_header, validate_library_header,

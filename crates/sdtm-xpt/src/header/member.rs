@@ -14,62 +14,151 @@
 //! 8. Observation data
 
 use crate::error::{Result, XptError};
-use crate::types::{XptDataset, XptWriterOptions};
+use crate::types::{XptDataset, XptVersion, XptWriterOptions};
 
 use super::library::RECORD_LEN;
 
-/// Member header prefix.
+/// Member header prefix (V5).
 pub const MEMBER_HEADER_PREFIX: &str = "HEADER RECORD*******MEMBER  HEADER RECORD!!!!!!!";
 
-/// DSCRPTR header prefix.
+/// Member header prefix (V8).
+pub const MEMBV8_HEADER_PREFIX: &str = "HEADER RECORD*******MEMBV8  HEADER RECORD!!!!!!!";
+
+/// DSCRPTR header prefix (V5).
 pub const DSCRPTR_HEADER_PREFIX: &str = "HEADER RECORD*******DSCRPTR HEADER RECORD!!!!!!!";
 
-/// NAMESTR header prefix.
+/// DSCRPTR header prefix (V8).
+pub const DSCPTV8_HEADER_PREFIX: &str = "HEADER RECORD*******DSCPTV8 HEADER RECORD!!!!!!!";
+
+/// NAMESTR header prefix (V5).
 pub const NAMESTR_HEADER_PREFIX: &str = "HEADER RECORD*******NAMESTR HEADER RECORD!!!!!!!";
 
-/// OBS header prefix.
+/// NAMESTR header prefix (V8).
+pub const NAMSTV8_HEADER_PREFIX: &str = "HEADER RECORD*******NAMSTV8 HEADER RECORD!!!!!!!";
+
+/// OBS header prefix (V5).
 pub const OBS_HEADER_PREFIX: &str = "HEADER RECORD*******OBS     HEADER RECORD!!!!!!!";
 
-/// Validate a member header record.
-pub fn validate_member_header(record: &[u8]) -> Result<()> {
+/// OBS header prefix (V8).
+pub const OBSV8_HEADER_PREFIX: &str = "HEADER RECORD*******OBSV8   HEADER RECORD!!!!!!!";
+
+/// Detect the member header version from record prefix.
+#[must_use]
+pub fn detect_member_version(record: &[u8]) -> Option<XptVersion> {
+    if record.len() < RECORD_LEN {
+        return None;
+    }
+    if record.starts_with(MEMBER_HEADER_PREFIX.as_bytes()) {
+        Some(XptVersion::V5)
+    } else if record.starts_with(MEMBV8_HEADER_PREFIX.as_bytes()) {
+        Some(XptVersion::V8)
+    } else {
+        None
+    }
+}
+
+/// Validate a member header record (auto-detect version).
+pub fn validate_member_header(record: &[u8]) -> Result<XptVersion> {
     if record.len() < RECORD_LEN {
         return Err(XptError::invalid_format("member header too short"));
     }
-    if !record.starts_with(MEMBER_HEADER_PREFIX.as_bytes()) {
-        return Err(XptError::missing_header("MEMBER HEADER"));
+    detect_member_version(record).ok_or_else(|| XptError::missing_header("MEMBER or MEMBV8 HEADER"))
+}
+
+/// Validate a member header for a specific version.
+pub fn validate_member_header_version(record: &[u8], version: XptVersion) -> Result<()> {
+    if record.len() < RECORD_LEN {
+        return Err(XptError::invalid_format("member header too short"));
+    }
+    if !record.starts_with(version.member_prefix().as_bytes()) {
+        return Err(XptError::missing_header(match version {
+            XptVersion::V5 => "MEMBER HEADER",
+            XptVersion::V8 => "MEMBV8 HEADER",
+        }));
     }
     Ok(())
 }
 
-/// Validate a DSCRPTR header record.
-pub fn validate_dscrptr_header(record: &[u8]) -> Result<()> {
+/// Validate a DSCRPTR header record (auto-detect version).
+pub fn validate_dscrptr_header(record: &[u8]) -> Result<XptVersion> {
     if record.len() < RECORD_LEN {
         return Err(XptError::invalid_format("dscrptr header too short"));
     }
-    if !record.starts_with(DSCRPTR_HEADER_PREFIX.as_bytes()) {
-        return Err(XptError::missing_header("DSCRPTR HEADER"));
+    if record.starts_with(DSCRPTR_HEADER_PREFIX.as_bytes()) {
+        Ok(XptVersion::V5)
+    } else if record.starts_with(DSCPTV8_HEADER_PREFIX.as_bytes()) {
+        Ok(XptVersion::V8)
+    } else {
+        Err(XptError::missing_header("DSCRPTR or DSCPTV8 HEADER"))
+    }
+}
+
+/// Validate a DSCRPTR header for a specific version.
+pub fn validate_dscrptr_header_version(record: &[u8], version: XptVersion) -> Result<()> {
+    if record.len() < RECORD_LEN {
+        return Err(XptError::invalid_format("dscrptr header too short"));
+    }
+    if !record.starts_with(version.dscrptr_prefix().as_bytes()) {
+        return Err(XptError::missing_header(match version {
+            XptVersion::V5 => "DSCRPTR HEADER",
+            XptVersion::V8 => "DSCPTV8 HEADER",
+        }));
     }
     Ok(())
 }
 
-/// Validate a NAMESTR header record.
-pub fn validate_namestr_header(record: &[u8]) -> Result<()> {
+/// Validate a NAMESTR header record (auto-detect version).
+pub fn validate_namestr_header(record: &[u8]) -> Result<XptVersion> {
     if record.len() < RECORD_LEN {
         return Err(XptError::invalid_format("namestr header too short"));
     }
-    if !record.starts_with(NAMESTR_HEADER_PREFIX.as_bytes()) {
-        return Err(XptError::missing_header("NAMESTR HEADER"));
+    if record.starts_with(NAMESTR_HEADER_PREFIX.as_bytes()) {
+        Ok(XptVersion::V5)
+    } else if record.starts_with(NAMSTV8_HEADER_PREFIX.as_bytes()) {
+        Ok(XptVersion::V8)
+    } else {
+        Err(XptError::missing_header("NAMESTR or NAMSTV8 HEADER"))
+    }
+}
+
+/// Validate a NAMESTR header for a specific version.
+pub fn validate_namestr_header_version(record: &[u8], version: XptVersion) -> Result<()> {
+    if record.len() < RECORD_LEN {
+        return Err(XptError::invalid_format("namestr header too short"));
+    }
+    if !record.starts_with(version.namestr_prefix().as_bytes()) {
+        return Err(XptError::missing_header(match version {
+            XptVersion::V5 => "NAMESTR HEADER",
+            XptVersion::V8 => "NAMSTV8 HEADER",
+        }));
     }
     Ok(())
 }
 
-/// Validate an OBS header record.
-pub fn validate_obs_header(record: &[u8]) -> Result<()> {
+/// Validate an OBS header record (auto-detect version).
+pub fn validate_obs_header(record: &[u8]) -> Result<XptVersion> {
     if record.len() < RECORD_LEN {
         return Err(XptError::invalid_format("obs header too short"));
     }
-    if !record.starts_with(OBS_HEADER_PREFIX.as_bytes()) {
-        return Err(XptError::missing_header("OBS HEADER"));
+    if record.starts_with(OBS_HEADER_PREFIX.as_bytes()) {
+        Ok(XptVersion::V5)
+    } else if record.starts_with(OBSV8_HEADER_PREFIX.as_bytes()) {
+        Ok(XptVersion::V8)
+    } else {
+        Err(XptError::missing_header("OBS or OBSV8 HEADER"))
+    }
+}
+
+/// Validate an OBS header for a specific version.
+pub fn validate_obs_header_version(record: &[u8], version: XptVersion) -> Result<()> {
+    if record.len() < RECORD_LEN {
+        return Err(XptError::invalid_format("obs header too short"));
+    }
+    if !record.starts_with(version.obs_prefix().as_bytes()) {
+        return Err(XptError::missing_header(match version {
+            XptVersion::V5 => "OBS HEADER",
+            XptVersion::V8 => "OBSV8 HEADER",
+        }));
     }
     Ok(())
 }
@@ -108,10 +197,24 @@ pub fn parse_variable_count(record: &[u8]) -> Result<usize> {
 /// Parse dataset name from member data record.
 ///
 /// Dataset name is at offset 8-15 (8 characters).
+/// Parse dataset name from member data record.
+///
+/// For V8 format, checks for extended name at offset 40-63 first.
+/// Falls back to short name at offset 8-15.
 pub fn parse_dataset_name(record: &[u8]) -> Result<String> {
     if record.len() < 16 {
         return Err(XptError::invalid_format("member data too short"));
     }
+
+    // V8: Check for extended name at offset 40-63 (24 chars)
+    if record.len() >= 64 {
+        let extended_name = read_string(record, 40, 24);
+        if !extended_name.is_empty() {
+            return Ok(extended_name);
+        }
+    }
+
+    // Fall back to short name at offset 8-15
     let name = read_string(record, 8, 8);
     if name.is_empty() {
         return Err(XptError::invalid_format("empty dataset name"));
@@ -141,10 +244,10 @@ pub fn parse_dataset_type(record: &[u8]) -> Option<String> {
     if dtype.is_empty() { None } else { Some(dtype) }
 }
 
-/// Build member header record with NAMESTR length.
+/// Build member header record with NAMESTR length for specified version.
 #[must_use]
-pub fn build_member_header(namestr_len: usize) -> [u8; RECORD_LEN] {
-    let mut record = build_fixed_header(MEMBER_HEADER_PREFIX);
+pub fn build_member_header(version: XptVersion, namestr_len: usize) -> [u8; RECORD_LEN] {
+    let mut record = build_fixed_header(version.member_prefix());
 
     // Observation header size at offset 64-67: "0160"
     write_string(&mut record, 64, "0160", 4);
@@ -156,10 +259,10 @@ pub fn build_member_header(namestr_len: usize) -> [u8; RECORD_LEN] {
     record
 }
 
-/// Build DSCRPTR header record.
+/// Build DSCRPTR header record for specified version.
 #[must_use]
-pub fn build_dscrptr_header() -> [u8; RECORD_LEN] {
-    build_fixed_header(DSCRPTR_HEADER_PREFIX)
+pub fn build_dscrptr_header(version: XptVersion) -> [u8; RECORD_LEN] {
+    build_fixed_header(version.dscrptr_prefix())
 }
 
 /// Build member data record.
@@ -170,8 +273,14 @@ pub fn build_member_data(dataset: &XptDataset, options: &XptWriterOptions) -> [u
     // sas_symbol: "SAS     "
     write_string(&mut record, 0, "SAS", 8);
 
-    // dsname: dataset name
-    write_string(&mut record, 8, &dataset.name, 8);
+    // dsname: dataset name (short, 8 chars)
+    // For V8 with long names, the full name goes at offset 40
+    let short_name = if dataset.name.len() > 8 {
+        &dataset.name[..8]
+    } else {
+        &dataset.name
+    };
+    write_string(&mut record, 8, short_name, 8);
 
     // sasdata: "SASDATA "
     write_string(&mut record, 16, "SASDATA", 8);
@@ -182,7 +291,12 @@ pub fn build_member_data(dataset: &XptDataset, options: &XptWriterOptions) -> [u
     // sas_os: Operating system
     write_string(&mut record, 32, &options.os_name, 8);
 
-    // blanks: 24 spaces (already set)
+    // V8: Write long dataset name at offset 40-63 (24 chars max)
+    // Combined with short name at offset 8, this gives us the full 32-char limit
+    if options.version.supports_long_names() && dataset.name.len() > 8 {
+        write_string(&mut record, 40, &dataset.name, 24);
+    }
+    // Otherwise: blanks (already set)
 
     // created: datetime
     write_string(&mut record, 64, &options.format_created(), 16);
@@ -211,10 +325,10 @@ pub fn build_member_second(dataset: &XptDataset, options: &XptWriterOptions) -> 
     record
 }
 
-/// Build NAMESTR header record with variable count.
+/// Build NAMESTR header record with variable count for specified version.
 #[must_use]
-pub fn build_namestr_header(var_count: usize) -> [u8; RECORD_LEN] {
-    let mut record = build_fixed_header(NAMESTR_HEADER_PREFIX);
+pub fn build_namestr_header(version: XptVersion, var_count: usize) -> [u8; RECORD_LEN] {
+    let mut record = build_fixed_header(version.namestr_prefix());
 
     // Variable count at offset 54-57
     let count_str = format!("{:04}", var_count);
@@ -223,10 +337,10 @@ pub fn build_namestr_header(var_count: usize) -> [u8; RECORD_LEN] {
     record
 }
 
-/// Build OBS header record.
+/// Build OBS header record for specified version.
 #[must_use]
-pub fn build_obs_header() -> [u8; RECORD_LEN] {
-    build_fixed_header(OBS_HEADER_PREFIX)
+pub fn build_obs_header(version: XptVersion) -> [u8; RECORD_LEN] {
+    build_fixed_header(version.obs_prefix())
 }
 
 /// Build a fixed header record.
@@ -283,29 +397,77 @@ mod tests {
     use crate::header::NAMESTR_LEN;
 
     #[test]
-    fn test_validate_headers() {
-        assert!(validate_member_header(&build_member_header(NAMESTR_LEN)).is_ok());
-        assert!(validate_dscrptr_header(&build_dscrptr_header()).is_ok());
-        assert!(validate_namestr_header(&build_namestr_header(5)).is_ok());
-        assert!(validate_obs_header(&build_obs_header()).is_ok());
+    fn test_validate_headers_v5() {
+        let version = XptVersion::V5;
+        assert_eq!(
+            validate_member_header(&build_member_header(version, NAMESTR_LEN)).unwrap(),
+            version
+        );
+        assert_eq!(
+            validate_dscrptr_header(&build_dscrptr_header(version)).unwrap(),
+            version
+        );
+        assert_eq!(
+            validate_namestr_header(&build_namestr_header(version, 5)).unwrap(),
+            version
+        );
+        assert_eq!(
+            validate_obs_header(&build_obs_header(version)).unwrap(),
+            version
+        );
 
         let invalid = [b'X'; RECORD_LEN];
         assert!(validate_member_header(&invalid).is_err());
     }
 
     #[test]
+    fn test_validate_headers_v8() {
+        let version = XptVersion::V8;
+        assert_eq!(
+            validate_member_header(&build_member_header(version, NAMESTR_LEN)).unwrap(),
+            version
+        );
+        assert_eq!(
+            validate_dscrptr_header(&build_dscrptr_header(version)).unwrap(),
+            version
+        );
+        assert_eq!(
+            validate_namestr_header(&build_namestr_header(version, 5)).unwrap(),
+            version
+        );
+        assert_eq!(
+            validate_obs_header(&build_obs_header(version)).unwrap(),
+            version
+        );
+    }
+
+    #[test]
+    fn test_validate_header_version_mismatch() {
+        // V5 header should fail V8 validation
+        let v5_member = build_member_header(XptVersion::V5, NAMESTR_LEN);
+        assert!(validate_member_header_version(&v5_member, XptVersion::V8).is_err());
+
+        // V8 header should fail V5 validation
+        let v8_member = build_member_header(XptVersion::V8, NAMESTR_LEN);
+        assert!(validate_member_header_version(&v8_member, XptVersion::V5).is_err());
+    }
+
+    #[test]
     fn test_parse_namestr_len() {
-        let header = build_member_header(140);
+        let header = build_member_header(XptVersion::V5, 140);
         assert_eq!(parse_namestr_len(&header).unwrap(), 140);
 
-        let header = build_member_header(136);
+        let header = build_member_header(XptVersion::V8, 136);
         assert_eq!(parse_namestr_len(&header).unwrap(), 136);
     }
 
     #[test]
     fn test_parse_variable_count() {
-        let header = build_namestr_header(25);
+        let header = build_namestr_header(XptVersion::V5, 25);
         assert_eq!(parse_variable_count(&header).unwrap(), 25);
+
+        let header = build_namestr_header(XptVersion::V8, 50);
+        assert_eq!(parse_variable_count(&header).unwrap(), 50);
     }
 
     #[test]

@@ -4,6 +4,152 @@ use chrono::NaiveDateTime;
 
 use super::MissingValue;
 
+/// SAS Transport format version.
+///
+/// Determines the header prefixes and field length limits used when
+/// reading and writing XPT files.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum XptVersion {
+    /// Version 5/6 format (default, maximum compatibility).
+    ///
+    /// - Dataset names: max 8 characters
+    /// - Variable names: max 8 characters
+    /// - Labels: max 40 characters
+    /// - Format names: max 8 characters
+    #[default]
+    V5,
+
+    /// Version 8/9 format (extended names and labels).
+    ///
+    /// - Dataset names: max 32 characters
+    /// - Variable names: max 32 characters
+    /// - Labels: max 256 characters
+    /// - Format names: max 32 characters
+    V8,
+}
+
+impl XptVersion {
+    // --- Limits (parameterized by version) ---
+
+    /// Maximum length for variable names.
+    #[must_use]
+    pub const fn name_limit(&self) -> usize {
+        match self {
+            Self::V5 => 8,
+            Self::V8 => 32,
+        }
+    }
+
+    /// Maximum length for variable labels.
+    #[must_use]
+    pub const fn label_limit(&self) -> usize {
+        match self {
+            Self::V5 => 40,
+            Self::V8 => 256,
+        }
+    }
+
+    /// Maximum length for format names.
+    #[must_use]
+    pub const fn format_limit(&self) -> usize {
+        match self {
+            Self::V5 => 8,
+            Self::V8 => 32,
+        }
+    }
+
+    /// Maximum length for dataset names.
+    #[must_use]
+    pub const fn dataset_name_limit(&self) -> usize {
+        match self {
+            Self::V5 => 8,
+            Self::V8 => 32,
+        }
+    }
+
+    // --- Header prefixes (parameterized by version) ---
+
+    /// Library header prefix.
+    #[must_use]
+    pub const fn library_prefix(&self) -> &'static str {
+        match self {
+            Self::V5 => "HEADER RECORD*******LIBRARY HEADER RECORD!!!!!!!",
+            Self::V8 => "HEADER RECORD*******LIBV8   HEADER RECORD!!!!!!!",
+        }
+    }
+
+    /// Member header prefix.
+    #[must_use]
+    pub const fn member_prefix(&self) -> &'static str {
+        match self {
+            Self::V5 => "HEADER RECORD*******MEMBER  HEADER RECORD!!!!!!!",
+            Self::V8 => "HEADER RECORD*******MEMBV8  HEADER RECORD!!!!!!!",
+        }
+    }
+
+    /// Descriptor header prefix.
+    #[must_use]
+    pub const fn dscrptr_prefix(&self) -> &'static str {
+        match self {
+            Self::V5 => "HEADER RECORD*******DSCRPTR HEADER RECORD!!!!!!!",
+            Self::V8 => "HEADER RECORD*******DSCPTV8 HEADER RECORD!!!!!!!",
+        }
+    }
+
+    /// NAMESTR header prefix.
+    #[must_use]
+    pub const fn namestr_prefix(&self) -> &'static str {
+        match self {
+            Self::V5 => "HEADER RECORD*******NAMESTR HEADER RECORD!!!!!!!",
+            Self::V8 => "HEADER RECORD*******NAMSTV8 HEADER RECORD!!!!!!!",
+        }
+    }
+
+    /// OBS header prefix.
+    #[must_use]
+    pub const fn obs_prefix(&self) -> &'static str {
+        match self {
+            Self::V5 => "HEADER RECORD*******OBS     HEADER RECORD!!!!!!!",
+            Self::V8 => "HEADER RECORD*******OBSV8   HEADER RECORD!!!!!!!",
+        }
+    }
+
+    /// LABELV8 header prefix (V8 only).
+    #[must_use]
+    pub const fn labelv8_prefix(&self) -> &'static str {
+        "HEADER RECORD*******LABELV8 HEADER RECORD!!!!!!!"
+    }
+
+    /// LABELV9 header prefix (V8 only).
+    #[must_use]
+    pub const fn labelv9_prefix(&self) -> &'static str {
+        "HEADER RECORD*******LABELV9 HEADER RECORD!!!!!!!"
+    }
+
+    // --- Feature checks ---
+
+    /// Whether this version supports long names (> 8 characters).
+    #[must_use]
+    pub const fn supports_long_names(&self) -> bool {
+        matches!(self, Self::V8)
+    }
+
+    /// Whether this version supports LABELV8/V9 sections.
+    #[must_use]
+    pub const fn supports_label_section(&self) -> bool {
+        matches!(self, Self::V8)
+    }
+}
+
+impl std::fmt::Display for XptVersion {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::V5 => write!(f, "V5"),
+            Self::V8 => write!(f, "V8"),
+        }
+    }
+}
+
 /// Options for reading XPT files.
 #[derive(Debug, Clone)]
 pub struct XptReaderOptions {
@@ -50,6 +196,11 @@ impl XptReaderOptions {
 /// Options for writing XPT files.
 #[derive(Debug, Clone)]
 pub struct XptWriterOptions {
+    /// XPT format version to write.
+    ///
+    /// Default: V5 (maximum compatibility)
+    pub version: XptVersion,
+
     /// SAS version string (max 8 characters).
     ///
     /// Default: "9.4"
@@ -84,6 +235,7 @@ pub struct XptWriterOptions {
 impl Default for XptWriterOptions {
     fn default() -> Self {
         Self {
+            version: XptVersion::V5,
             sas_version: "9.4".to_string(),
             os_name: "RUST".to_string(),
             created: None,
@@ -99,6 +251,20 @@ impl XptWriterOptions {
     #[must_use]
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Set the XPT format version.
+    #[must_use]
+    pub fn with_version(mut self, version: XptVersion) -> Self {
+        self.version = version;
+        self
+    }
+
+    /// Use V8 format (extended names and labels).
+    #[must_use]
+    pub fn v8(mut self) -> Self {
+        self.version = XptVersion::V8;
+        self
     }
 
     /// Set the SAS version string.
@@ -251,5 +417,65 @@ mod tests {
 
         assert_eq!(opts.sas_version.len(), 8);
         assert_eq!(opts.os_name.len(), 8);
+    }
+
+    #[test]
+    fn test_xpt_version_default() {
+        assert_eq!(XptVersion::default(), XptVersion::V5);
+    }
+
+    #[test]
+    fn test_xpt_version_limits() {
+        // V5 limits
+        assert_eq!(XptVersion::V5.name_limit(), 8);
+        assert_eq!(XptVersion::V5.label_limit(), 40);
+        assert_eq!(XptVersion::V5.format_limit(), 8);
+        assert_eq!(XptVersion::V5.dataset_name_limit(), 8);
+
+        // V8 limits
+        assert_eq!(XptVersion::V8.name_limit(), 32);
+        assert_eq!(XptVersion::V8.label_limit(), 256);
+        assert_eq!(XptVersion::V8.format_limit(), 32);
+        assert_eq!(XptVersion::V8.dataset_name_limit(), 32);
+    }
+
+    #[test]
+    fn test_xpt_version_prefixes() {
+        // V5 prefixes
+        assert!(XptVersion::V5.library_prefix().contains("LIBRARY"));
+        assert!(XptVersion::V5.member_prefix().contains("MEMBER"));
+        assert!(XptVersion::V5.namestr_prefix().contains("NAMESTR"));
+
+        // V8 prefixes
+        assert!(XptVersion::V8.library_prefix().contains("LIBV8"));
+        assert!(XptVersion::V8.member_prefix().contains("MEMBV8"));
+        assert!(XptVersion::V8.namestr_prefix().contains("NAMSTV8"));
+    }
+
+    #[test]
+    fn test_xpt_version_features() {
+        assert!(!XptVersion::V5.supports_long_names());
+        assert!(!XptVersion::V5.supports_label_section());
+
+        assert!(XptVersion::V8.supports_long_names());
+        assert!(XptVersion::V8.supports_label_section());
+    }
+
+    #[test]
+    fn test_writer_options_version() {
+        let opts = XptWriterOptions::default();
+        assert_eq!(opts.version, XptVersion::V5);
+
+        let opts = XptWriterOptions::new().v8();
+        assert_eq!(opts.version, XptVersion::V8);
+
+        let opts = XptWriterOptions::new().with_version(XptVersion::V8);
+        assert_eq!(opts.version, XptVersion::V8);
+    }
+
+    #[test]
+    fn test_xpt_version_display() {
+        assert_eq!(format!("{}", XptVersion::V5), "V5");
+        assert_eq!(format!("{}", XptVersion::V8), "V8");
     }
 }
