@@ -33,7 +33,7 @@ pub fn run_all(
     }
 
     // 2. Expected variable checks (presence only, warnings)
-    for issue in expected::check(domain, &column_lookup) {
+    for issue in expected::check(domain, df, &column_lookup) {
         report.add(issue);
     }
 
