@@ -107,8 +107,12 @@ impl Issue {
             Issue::TextTooLong { .. } => "SD0017",
             Issue::DataTypeMismatch { .. } => "SD0055",
             Issue::DuplicateSequence { .. } => "SD0005",
-            Issue::CtViolation { extensible: false, .. } => "CT2001",
-            Issue::CtViolation { extensible: true, .. } => "CT2002",
+            Issue::CtViolation {
+                extensible: false, ..
+            } => "CT2001",
+            Issue::CtViolation {
+                extensible: true, ..
+            } => "CT2002",
         }
     }
 
@@ -151,7 +155,9 @@ impl Issue {
         match self {
             Issue::ExpectedMissing { .. } => Severity::Warning,
             Issue::TextTooLong { .. } => Severity::Warning,
-            Issue::CtViolation { extensible: true, .. } => Severity::Warning,
+            Issue::CtViolation {
+                extensible: true, ..
+            } => Severity::Warning,
             _ => Severity::Error,
         }
     }

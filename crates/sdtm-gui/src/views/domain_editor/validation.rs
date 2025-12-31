@@ -1,6 +1,6 @@
 //! Validation tab
 //!
-//! Displays CT validation issues derived from current mapping state.
+//! Displays validation issues derived from current mapping state.
 //! Read-only display - issues are shown for user awareness, not resolution.
 
 use crate::state::{AppState, DomainStatus};
@@ -8,7 +8,7 @@ use crate::theme::{ThemeColors, colors, spacing};
 use egui::{RichText, Ui};
 use sdtm_standards::load_default_ct_registry;
 use sdtm_transform::build_preview_dataframe;
-use sdtm_validate::{CheckType, P21Category, Severity, ValidationIssue, validate_domain};
+use sdtm_validate::{Issue, Severity, validate_domain};
 use std::collections::BTreeMap;
 
 use super::mapping::{initialize_mapping, show_loading_indicator};
@@ -77,8 +77,8 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
             let (issues, error_count, warning_count) = match &domain.validation {
                 Some(report) => (
                     report.issues.as_slice(),
-                    report.error_count(),
-                    report.warning_count(),
+                    report.error_count(None),
+                    report.warning_count(None),
                 ),
                 None => (&[][..], 0, 0),
             };
@@ -282,26 +282,46 @@ fn show_summary_bar(ui: &mut Ui, error_count: usize, warning_count: usize, theme
     });
 }
 
+/// Get severity for an issue
+fn get_severity(issue: &Issue) -> Severity {
+    issue.default_severity()
+}
+
+/// Get check type label for an issue
+fn get_check_label(issue: &Issue) -> &'static str {
+    match issue {
+        Issue::RequiredMissing { .. } => "Required Variable Missing",
+        Issue::RequiredEmpty { .. } => "Required Variable Empty",
+        Issue::ExpectedMissing { .. } => "Expected Variable Missing",
+        Issue::IdentifierNull { .. } => "Identifier Null",
+        Issue::InvalidDate { .. } => "Invalid Date Format",
+        Issue::TextTooLong { .. } => "Text Length Exceeded",
+        Issue::DataTypeMismatch { .. } => "Data Type Mismatch",
+        Issue::DuplicateSequence { .. } => "Duplicate Sequence",
+        Issue::CtViolation { .. } => "Controlled Terminology",
+    }
+}
+
 /// Show list of validation issues grouped by severity
 fn show_issue_list(
     ui: &mut Ui,
-    issues: &[ValidationIssue],
+    issues: &[Issue],
     selected_idx: Option<usize>,
     theme: &ThemeColors,
 ) -> Option<usize> {
     let mut new_selection = None;
 
     // Separate errors and warnings
-    let errors: Vec<(usize, &ValidationIssue)> = issues
+    let errors: Vec<(usize, &Issue)> = issues
         .iter()
         .enumerate()
-        .filter(|(_, i)| matches!(i.severity, Severity::Error | Severity::Reject))
+        .filter(|(_, i)| matches!(get_severity(i), Severity::Error | Severity::Reject))
         .collect();
 
-    let warnings: Vec<(usize, &ValidationIssue)> = issues
+    let warnings: Vec<(usize, &Issue)> = issues
         .iter()
         .enumerate()
-        .filter(|(_, i)| matches!(i.severity, Severity::Warning))
+        .filter(|(_, i)| matches!(get_severity(i), Severity::Warning))
         .collect();
 
     // Errors section
@@ -345,26 +365,23 @@ fn show_issue_list(
 fn show_issue_row(
     ui: &mut Ui,
     idx: usize,
-    issue: &ValidationIssue,
+    issue: &Issue,
     selected_idx: Option<usize>,
     theme: &ThemeColors,
 ) -> bool {
     let is_selected = selected_idx == Some(idx);
+    let severity = get_severity(issue);
 
-    let (icon, icon_color) = match issue.severity {
+    let (icon, icon_color) = match severity {
         Severity::Error | Severity::Reject => (egui_phosphor::regular::X_CIRCLE, theme.error),
         Severity::Warning => (egui_phosphor::regular::WARNING, theme.warning),
-        _ => (egui_phosphor::regular::INFO, theme.text_muted),
     };
 
-    let variable_name = issue.variable.as_deref().unwrap_or("Unknown");
-    let p21_rule_id = &issue.code; // P21 rule ID (e.g., CT2001, SD0002)
-    let check_label = issue
-        .check_type
-        .map(|ct| ct.label())
-        .unwrap_or("Validation");
+    let variable_name = issue.variable();
+    let p21_rule_id = issue.rule_id();
+    let check_label = get_check_label(issue);
     let count_text = issue
-        .count
+        .count()
         .map(|c| format!("{} issue(s)", c))
         .unwrap_or_default();
 
@@ -413,7 +430,7 @@ fn show_issue_row(
 }
 
 /// Show details for a selected validation issue
-fn show_issue_detail(ui: &mut Ui, issue: Option<&ValidationIssue>, theme: &ThemeColors) {
+fn show_issue_detail(ui: &mut Ui, issue: Option<&Issue>, theme: &ThemeColors) {
     let Some(issue) = issue else {
         ui.centered_and_justified(|ui| {
             ui.label(RichText::new("Select an issue to view details").color(theme.text_muted));
@@ -421,30 +438,21 @@ fn show_issue_detail(ui: &mut Ui, issue: Option<&ValidationIssue>, theme: &Theme
         return;
     };
 
-    let variable_name = issue.variable.as_deref().unwrap_or("Unknown");
-    let check_label = issue
-        .check_type
-        .map(|ct| ct.label())
-        .unwrap_or("Validation");
-    let p21_rule_id = &issue.code;
-    let p21_category = issue.p21_category();
+    let variable_name = issue.variable();
+    let check_label = get_check_label(issue);
+    let p21_rule_id = issue.rule_id();
+    let severity = get_severity(issue);
 
     // Header with variable name and severity
     ui.label(
         RichText::new(format!(
             "{} {} — {}",
-            match issue.severity {
+            match severity {
                 Severity::Error | Severity::Reject => egui_phosphor::regular::X_CIRCLE,
                 Severity::Warning => egui_phosphor::regular::WARNING,
-                _ => egui_phosphor::regular::INFO,
             },
             variable_name,
-            match issue.severity {
-                Severity::Error => "Error",
-                Severity::Reject => "Reject",
-                Severity::Warning => "Warning",
-                _ => "Info",
-            }
+            severity.label()
         ))
         .strong()
         .size(16.0),
@@ -452,9 +460,8 @@ fn show_issue_detail(ui: &mut Ui, issue: Option<&ValidationIssue>, theme: &Theme
 
     ui.add_space(spacing::XS);
 
-    // P21 Rule ID and Category
+    // P21 Rule ID badge
     ui.horizontal(|ui| {
-        // P21 Rule ID badge
         egui::Frame::new()
             .fill(theme.accent.gamma_multiply(0.2))
             .inner_margin(egui::Margin::symmetric(6, 2))
@@ -467,31 +474,6 @@ fn show_issue_detail(ui: &mut Ui, issue: Option<&ValidationIssue>, theme: &Theme
                         .color(theme.accent),
                 );
             });
-
-        // P21 Category badge
-        if let Some(category) = p21_category {
-            let category_label = match category {
-                P21Category::Terminology => "Terminology",
-                P21Category::Presence => "Presence",
-                P21Category::Format => "Format",
-                P21Category::Consistency => "Consistency",
-                P21Category::Limit => "Limit",
-                P21Category::Metadata => "Metadata",
-                P21Category::CrossReference => "Cross-reference",
-                P21Category::Structure => "Structure",
-            };
-            egui::Frame::new()
-                .fill(theme.bg_secondary)
-                .inner_margin(egui::Margin::symmetric(6, 2))
-                .corner_radius(4.0)
-                .show(ui, |ui| {
-                    ui.label(
-                        RichText::new(category_label)
-                            .small()
-                            .color(theme.text_muted),
-                    );
-                });
-        }
     });
 
     ui.add_space(spacing::XS);
@@ -505,343 +487,251 @@ fn show_issue_detail(ui: &mut Ui, issue: Option<&ValidationIssue>, theme: &Theme
 
     ui.add_space(spacing::MD);
 
-    // Show context based on check type
-    show_check_type_context(ui, issue, theme);
+    // Show context based on issue type
+    show_issue_context(ui, issue, theme);
 
     ui.add_space(spacing::MD);
 
     // Message
-    ui.label(&issue.message);
+    ui.label(issue.message(None));
 
     ui.add_space(spacing::MD);
 
-    // Invalid values found
-    if let Some(observed) = &issue.observed_values {
-        if !observed.is_empty() {
-            ui.label(
-                RichText::new(format!(
-                    "{} Invalid Values Found",
-                    egui_phosphor::regular::LIST_DASHES
-                ))
-                .strong(),
-            );
-            ui.add_space(spacing::XS);
+    // Show issue-specific details
+    show_issue_specific_details(ui, issue, theme);
+}
 
+/// Show context-specific information based on issue type
+fn show_issue_context(ui: &mut Ui, issue: &Issue, theme: &ThemeColors) {
+    match issue {
+        Issue::CtViolation {
+            codelist_name,
+            extensible,
+            ..
+        } => {
             egui::Frame::new()
                 .fill(theme.bg_secondary)
                 .inner_margin(spacing::SM as f32)
                 .corner_radius(4.0)
                 .show(ui, |ui| {
-                    for value in observed {
-                        ui.horizontal(|ui| {
-                            ui.label(RichText::new("•").color(theme.error));
-                            ui.label(
-                                RichText::new(format!("\"{}\"", value))
-                                    .monospace()
-                                    .color(theme.text_primary),
-                            );
-                        });
-                    }
+                    ui.horizontal(|ui| {
+                        ui.label(RichText::new("Codelist").color(theme.text_muted));
+                        ui.label(RichText::new(codelist_name).strong());
+                    });
+                    ui.add_space(spacing::XS);
+                    let ext_text = if *extensible {
+                        "This codelist is extensible. Values are flagged but allowed."
+                    } else {
+                        "This codelist is non-extensible. Invalid values will block XPT export."
+                    };
+                    ui.label(RichText::new(ext_text).small().color(theme.text_muted));
                 });
         }
-    }
-
-    ui.add_space(spacing::MD);
-
-    // Allowed values
-    if let Some(allowed) = &issue.allowed_values {
-        if !allowed.is_empty() {
-            ui.label(
-                RichText::new(format!(
-                    "{} Allowed Values (from CT)",
-                    egui_phosphor::regular::LIST_CHECKS
-                ))
-                .strong(),
+        Issue::RequiredMissing { .. } => {
+            show_context_frame(
+                ui,
+                theme,
+                egui_phosphor::regular::INFO,
+                theme.accent,
+                "Required variables (Req) must be present in the dataset.",
+                "SDTMIG 4.1: Required variables are essential for submission.",
             );
-            ui.add_space(spacing::XS);
-
-            egui::Frame::new()
-                .fill(theme.bg_secondary)
-                .inner_margin(spacing::SM as f32)
-                .corner_radius(4.0)
-                .show(ui, |ui| {
-                    // Show up to 10 values
-                    let display_values: Vec<_> = allowed.iter().take(10).collect();
-                    let remaining = allowed.len().saturating_sub(10);
-
-                    for value in &display_values {
-                        ui.horizontal(|ui| {
-                            ui.label(RichText::new("•").color(theme.success));
-                            ui.label(RichText::new(*value).monospace().color(theme.text_primary));
-                        });
-                    }
-
-                    if remaining > 0 {
-                        ui.label(
-                            RichText::new(format!("... and {} more", remaining))
-                                .small()
-                                .color(theme.text_muted),
-                        );
-                    }
-                });
         }
-    } else if let Some(ct_examples) = &issue.ct_examples {
-        // Show examples for large codelists
-        if !ct_examples.is_empty() {
-            let total = issue.allowed_count.unwrap_or(0);
-            ui.label(
-                RichText::new(format!(
-                    "{} Allowed Values ({} total)",
-                    egui_phosphor::regular::LIST_CHECKS,
-                    total
-                ))
-                .strong(),
+        Issue::RequiredEmpty { .. } => {
+            show_context_frame(
+                ui,
+                theme,
+                egui_phosphor::regular::INFO,
+                theme.accent,
+                "Required variables must have values for all records.",
+                "SDTMIG 4.1: Null values are not permitted for Req variables.",
             );
-            ui.add_space(spacing::XS);
-
-            egui::Frame::new()
-                .fill(theme.bg_secondary)
-                .inner_margin(spacing::SM as f32)
-                .corner_radius(4.0)
-                .show(ui, |ui| {
-                    for value in ct_examples {
-                        ui.horizontal(|ui| {
-                            ui.label(RichText::new("•").color(theme.success));
-                            ui.label(RichText::new(value).monospace().color(theme.text_primary));
-                        });
-                    }
-                    ui.label(
-                        RichText::new("(showing examples)")
-                            .small()
-                            .color(theme.text_muted),
-                    );
-                });
+        }
+        Issue::ExpectedMissing { .. } => {
+            show_context_frame(
+                ui,
+                theme,
+                egui_phosphor::regular::INFO,
+                theme.warning,
+                "Expected variables should be included when applicable.",
+                "SDTMIG 4.1: Expected variables are included when data is collected.",
+            );
+        }
+        Issue::DataTypeMismatch { .. } => {
+            show_context_frame(
+                ui,
+                theme,
+                egui_phosphor::regular::INFO,
+                theme.error,
+                "Numeric (Num) variables must contain valid numeric data.",
+                "SDTMIG 2.4: Values must match the specified data type.",
+            );
+        }
+        Issue::InvalidDate { .. } => {
+            show_context_frame(
+                ui,
+                theme,
+                egui_phosphor::regular::CALENDAR,
+                theme.error,
+                "Date/time values must use ISO 8601 format.",
+                "SDTMIG Ch.7: Use YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS format.",
+            );
+        }
+        Issue::DuplicateSequence { .. } => {
+            show_context_frame(
+                ui,
+                theme,
+                egui_phosphor::regular::HASH,
+                theme.error,
+                "Sequence numbers must be unique per subject.",
+                "SDTMIG 4.1.5: --SEQ uniquely identifies records within USUBJID.",
+            );
+        }
+        Issue::TextTooLong { .. } => {
+            show_context_frame(
+                ui,
+                theme,
+                egui_phosphor::regular::TEXT_AA,
+                theme.warning,
+                "Character value exceeds the defined maximum length.",
+                "SDTMIG 2.4: Values may be truncated in XPT output.",
+            );
+        }
+        Issue::IdentifierNull { .. } => {
+            show_context_frame(
+                ui,
+                theme,
+                egui_phosphor::regular::IDENTIFICATION_CARD,
+                theme.error,
+                "Identifier variables must not contain null values.",
+                "SDTMIG 4.1.2: Identifiers uniquely identify subject observations.",
+            );
         }
     }
 }
 
-/// Show context-specific information based on check type
-fn show_check_type_context(ui: &mut Ui, issue: &ValidationIssue, theme: &ThemeColors) {
-    let Some(check_type) = issue.check_type else {
-        // Fallback: show codelist info if available
-        show_codelist_context(ui, issue, theme);
-        return;
-    };
-
-    match check_type {
-        CheckType::ControlledTerminology => {
-            show_codelist_context(ui, issue, theme);
-        }
-        CheckType::RequiredVariableMissing => {
-            egui::Frame::new()
-                .fill(theme.bg_secondary)
-                .inner_margin(spacing::SM as f32)
-                .corner_radius(4.0)
-                .show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.label(RichText::new(egui_phosphor::regular::INFO).color(theme.accent));
-                        ui.label("Required variables (Req) must be present in the dataset.");
-                    });
-                    ui.add_space(spacing::XS);
-                    ui.label(
-                        RichText::new(
-                            "SDTMIG 4.1: Required variables are essential for submission.",
-                        )
-                        .small()
-                        .color(theme.text_muted),
-                    );
-                });
-        }
-        CheckType::RequiredVariableEmpty => {
-            egui::Frame::new()
-                .fill(theme.bg_secondary)
-                .inner_margin(spacing::SM as f32)
-                .corner_radius(4.0)
-                .show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.label(RichText::new(egui_phosphor::regular::INFO).color(theme.accent));
-                        ui.label("Required variables must have values for all records.");
-                    });
-                    ui.add_space(spacing::XS);
-                    ui.label(
-                        RichText::new(
-                            "SDTMIG 4.1: Null values are not permitted for Req variables.",
-                        )
-                        .small()
-                        .color(theme.text_muted),
-                    );
-                });
-        }
-        CheckType::ExpectedVariableMissing => {
-            egui::Frame::new()
-                .fill(theme.bg_secondary)
-                .inner_margin(spacing::SM as f32)
-                .corner_radius(4.0)
-                .show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.label(RichText::new(egui_phosphor::regular::INFO).color(theme.warning));
-                        ui.label("Expected variables should be included when applicable.");
-                    });
-                    ui.add_space(spacing::XS);
-                    ui.label(
-                        RichText::new(
-                            "SDTMIG 4.1: Expected variables are included when data is collected.",
-                        )
-                        .small()
-                        .color(theme.text_muted),
-                    );
-                });
-        }
-        CheckType::DataTypeMismatch => {
-            egui::Frame::new()
-                .fill(theme.bg_secondary)
-                .inner_margin(spacing::SM as f32)
-                .corner_radius(4.0)
-                .show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.label(RichText::new(egui_phosphor::regular::INFO).color(theme.error));
-                        ui.label("Numeric (Num) variables must contain valid numeric data.");
-                    });
-                    ui.add_space(spacing::XS);
-                    ui.label(
-                        RichText::new("SDTMIG 2.4: Values must match the specified data type.")
-                            .small()
-                            .color(theme.text_muted),
-                    );
-                });
-        }
-        CheckType::InvalidDateFormat => {
-            egui::Frame::new()
-                .fill(theme.bg_secondary)
-                .inner_margin(spacing::SM as f32)
-                .corner_radius(4.0)
-                .show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.label(
-                            RichText::new(egui_phosphor::regular::CALENDAR).color(theme.error),
-                        );
-                        ui.label("Date/time values must use ISO 8601 format.");
-                    });
-                    ui.add_space(spacing::XS);
-                    ui.label(
-                        RichText::new("SDTMIG Ch.7: Use YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS format.")
-                            .small()
-                            .color(theme.text_muted),
-                    );
-                });
-        }
-        CheckType::DuplicateSequence => {
-            egui::Frame::new()
-                .fill(theme.bg_secondary)
-                .inner_margin(spacing::SM as f32)
-                .corner_radius(4.0)
-                .show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.label(RichText::new(egui_phosphor::regular::HASH).color(theme.error));
-                        ui.label("Sequence numbers must be unique per subject.");
-                    });
-                    ui.add_space(spacing::XS);
-                    ui.label(
-                        RichText::new(
-                            "SDTMIG 4.1.5: --SEQ uniquely identifies records within USUBJID.",
-                        )
-                        .small()
-                        .color(theme.text_muted),
-                    );
-                });
-        }
-        CheckType::TextLengthExceeded => {
-            egui::Frame::new()
-                .fill(theme.bg_secondary)
-                .inner_margin(spacing::SM as f32)
-                .corner_radius(4.0)
-                .show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.label(
-                            RichText::new(egui_phosphor::regular::TEXT_AA).color(theme.warning),
-                        );
-                        ui.label("Character value exceeds the defined maximum length.");
-                    });
-                    ui.add_space(spacing::XS);
-                    ui.label(
-                        RichText::new("SDTMIG 2.4: Values may be truncated in XPT output.")
-                            .small()
-                            .color(theme.text_muted),
-                    );
-                });
-        }
-        CheckType::IdentifierNull => {
-            egui::Frame::new()
-                .fill(theme.bg_secondary)
-                .inner_margin(spacing::SM as f32)
-                .corner_radius(4.0)
-                .show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.label(
-                            RichText::new(egui_phosphor::regular::IDENTIFICATION_CARD)
-                                .color(theme.error),
-                        );
-                        ui.label("Identifier variables must not contain null values.");
-                    });
-                    ui.add_space(spacing::XS);
-                    ui.label(
-                        RichText::new(
-                            "SDTMIG 4.1.2: Identifiers uniquely identify subject observations.",
-                        )
-                        .small()
-                        .color(theme.text_muted),
-                    );
-                });
-        }
-        _ => {
-            // Fallback for any new check types
-            show_codelist_context(ui, issue, theme);
-        }
-    }
-}
-
-/// Show codelist-specific context for CT validation
-fn show_codelist_context(ui: &mut Ui, issue: &ValidationIssue, theme: &ThemeColors) {
-    if issue.ct_source.is_none() {
-        return;
-    }
-
+/// Helper to show a context frame
+fn show_context_frame(
+    ui: &mut Ui,
+    theme: &ThemeColors,
+    icon: &str,
+    icon_color: egui::Color32,
+    main_text: &str,
+    ref_text: &str,
+) {
     egui::Frame::new()
         .fill(theme.bg_secondary)
         .inner_margin(spacing::SM as f32)
         .corner_radius(4.0)
         .show(ui, |ui| {
-            // P21 Rule explanation
-            let p21_explanation = match issue.code.as_str() {
-                "CT2001" => "Non-extensible codelist violation",
-                "CT2002" => "Extensible codelist violation",
-                _ => "Controlled terminology check",
-            };
             ui.horizontal(|ui| {
-                ui.label(RichText::new("P21 Rule").color(theme.text_muted));
-                ui.label(RichText::new(p21_explanation).strong());
+                ui.label(RichText::new(icon).color(icon_color));
+                ui.label(main_text);
             });
+            ui.add_space(spacing::XS);
+            ui.label(RichText::new(ref_text).small().color(theme.text_muted));
+        });
+}
 
-            if let Some(ct_source) = &issue.ct_source {
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new("CT Source").color(theme.text_muted));
-                    ui.label(ct_source);
-                });
+/// Show issue-specific details (samples, allowed values, etc.)
+fn show_issue_specific_details(ui: &mut Ui, issue: &Issue, theme: &ThemeColors) {
+    match issue {
+        Issue::InvalidDate { samples, .. } | Issue::DataTypeMismatch { samples, .. } => {
+            if !samples.is_empty() {
+                ui.label(
+                    RichText::new(format!(
+                        "{} Invalid Values Found",
+                        egui_phosphor::regular::LIST_DASHES
+                    ))
+                    .strong(),
+                );
+                ui.add_space(spacing::XS);
+                show_value_list(ui, samples, theme.error, theme);
+            }
+        }
+        Issue::CtViolation {
+            invalid_values,
+            allowed_count,
+            ..
+        } => {
+            if !invalid_values.is_empty() {
+                ui.label(
+                    RichText::new(format!(
+                        "{} Invalid Values Found",
+                        egui_phosphor::regular::LIST_DASHES
+                    ))
+                    .strong(),
+                );
+                ui.add_space(spacing::XS);
+                show_value_list(ui, invalid_values, theme.error, theme);
             }
 
-            // Show extensibility info based on severity
-            ui.add_space(spacing::XS);
-            let extensible_text = match issue.severity {
-                Severity::Error | Severity::Reject => {
-                    "This codelist is non-extensible. Invalid values will block XPT export."
-                }
-                Severity::Warning => "This codelist is extensible. Values are flagged but allowed.",
-                _ => "Informational notice.",
-            };
+            ui.add_space(spacing::MD);
             ui.label(
-                RichText::new(extensible_text)
-                    .small()
-                    .color(theme.text_muted),
+                RichText::new(format!(
+                    "{} Codelist has {} allowed values",
+                    egui_phosphor::regular::LIST_CHECKS,
+                    allowed_count
+                ))
+                .color(theme.text_muted),
             );
+        }
+        Issue::TextTooLong {
+            max_found,
+            max_allowed,
+            ..
+        } => {
+            egui::Frame::new()
+                .fill(theme.bg_secondary)
+                .inner_margin(spacing::SM as f32)
+                .corner_radius(4.0)
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label(RichText::new("Max allowed:").color(theme.text_muted));
+                        ui.label(RichText::new(format!("{} chars", max_allowed)).strong());
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label(RichText::new("Max found:").color(theme.text_muted));
+                        ui.label(
+                            RichText::new(format!("{} chars", max_found))
+                                .strong()
+                                .color(theme.error),
+                        );
+                    });
+                });
+        }
+        _ => {}
+    }
+}
+
+/// Show a list of values in a frame
+fn show_value_list(
+    ui: &mut Ui,
+    values: &[String],
+    bullet_color: egui::Color32,
+    theme: &ThemeColors,
+) {
+    egui::Frame::new()
+        .fill(theme.bg_secondary)
+        .inner_margin(spacing::SM as f32)
+        .corner_radius(4.0)
+        .show(ui, |ui| {
+            for value in values.iter().take(10) {
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("•").color(bullet_color));
+                    ui.label(
+                        RichText::new(format!("\"{}\"", value))
+                            .monospace()
+                            .color(theme.text_primary),
+                    );
+                });
+            }
+            if values.len() > 10 {
+                ui.label(
+                    RichText::new(format!("... and {} more", values.len() - 10))
+                        .small()
+                        .color(theme.text_muted),
+                );
+            }
         });
 }

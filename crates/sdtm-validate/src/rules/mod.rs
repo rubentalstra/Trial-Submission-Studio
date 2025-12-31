@@ -8,5 +8,5 @@ mod loader;
 mod registry;
 
 pub use category::Category;
-pub use loader::{load_default_rules, load_rules, LoadError};
+pub use loader::{LoadError, load_default_rules, load_rules};
 pub use registry::{Rule, RuleRegistry};

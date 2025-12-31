@@ -46,7 +46,9 @@ impl CaseInsensitiveSet {
 
     /// Get the original column name for a variable (case-insensitive lookup).
     pub fn get(&self, value: impl AsRef<str>) -> Option<&str> {
-        self.inner.get(&value.as_ref().to_uppercase()).map(|s| s.as_str())
+        self.inner
+            .get(&value.as_ref().to_uppercase())
+            .map(|s| s.as_str())
     }
 
     /// Number of elements in the set.

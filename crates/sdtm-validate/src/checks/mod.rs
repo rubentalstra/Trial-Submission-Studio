@@ -12,8 +12,8 @@ mod required;
 mod sequence;
 
 use polars::prelude::DataFrame;
-use sdtm_model::ct::TerminologyRegistry;
 use sdtm_model::Domain;
+use sdtm_model::ct::TerminologyRegistry;
 
 use crate::report::ValidationReport;
 use crate::util::CaseInsensitiveSet;

@@ -37,14 +37,14 @@ pub mod rules;
 mod util;
 
 use polars::prelude::DataFrame;
-use sdtm_model::ct::TerminologyRegistry;
 use sdtm_model::Domain;
+use sdtm_model::ct::TerminologyRegistry;
 
 // Re-export public types
 pub use checks::dates::is_date_variable;
 pub use issue::{Issue, Severity};
 pub use report::ValidationReport;
-pub use rules::{load_default_rules, load_rules, Category, LoadError, Rule, RuleRegistry};
+pub use rules::{Category, LoadError, Rule, RuleRegistry, load_default_rules, load_rules};
 pub use util::CaseInsensitiveSet;
 
 /// Validate a single domain against SDTM conformance rules.
