@@ -73,6 +73,7 @@ pub mod float;
 pub mod header;
 mod reader;
 mod types;
+pub mod validate;
 mod writer;
 
 #[cfg(feature = "polars")]
@@ -92,6 +93,11 @@ pub use reader::{XptReader, read_xpt, read_xpt_with_options};
 
 // Re-export writer functionality
 pub use writer::{XptWriter, write_xpt, write_xpt_with_options};
+
+// Re-export validation functionality
+pub use validate::{
+    ValidationIssue, ValidationLocation, ValidationResult, ValidationSeverity, XptValidator,
+};
 
 // Re-export Polars integration
 #[cfg(feature = "polars")]
