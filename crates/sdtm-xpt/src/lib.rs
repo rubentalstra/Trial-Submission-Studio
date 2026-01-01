@@ -73,18 +73,26 @@ pub mod float;
 pub mod header;
 mod reader;
 mod types;
+mod version;
 mod writer;
 
 #[cfg(feature = "polars")]
 mod polars_ext;
 
 // Re-export error types
-pub use error::{Result, XptError};
+pub use error::{
+    ErrorLocation, IoResult, Result, Severity, ValidationError, ValidationErrorCode,
+    ValidationResult, XptError, XptIoError,
+};
+
+// Re-export version
+pub use version::XptVersion;
 
 // Re-export core types
 pub use types::{
-    Justification, MissingValue, NumericValue, RowLengthError, XptColumn, XptDataset, XptLibrary,
-    XptReaderOptions, XptType, XptValue, XptVersion, XptWriterOptions,
+    FormatSpec, InformatSpec, Justification, MissingValue, NumericValue, Observation,
+    RowLengthError, XptColumn, XptDataset, XptLibrary, XptReaderOptions, XptType, XptValue,
+    XptWriterOptions,
 };
 
 // Re-export reader functionality

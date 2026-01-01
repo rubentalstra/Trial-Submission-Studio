@@ -6,7 +6,7 @@ use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
 
-use crate::error::{Result, XptError};
+use crate::error::{Result, XptIoError};
 use crate::float::{ibm_to_ieee, is_missing};
 use crate::header::{
     LabelSectionType, RECORD_LEN, align_to_record, is_label_header, parse_dataset_label,
@@ -68,11 +68,11 @@ impl XptReader<File> {
     pub fn open(path: &Path) -> Result<Self> {
         let file = File::open(path).map_err(|e| {
             if e.kind() == std::io::ErrorKind::NotFound {
-                XptError::FileNotFound {
+                XptIoError::FileNotFound {
                     path: path.to_path_buf(),
                 }
             } else {
-                XptError::Io(e)
+                XptIoError::Io(e)
             }
         })?;
         Ok(Self::new(file))
@@ -82,11 +82,11 @@ impl XptReader<File> {
     pub fn open_with_options(path: &Path, options: XptReaderOptions) -> Result<Self> {
         let file = File::open(path).map_err(|e| {
             if e.kind() == std::io::ErrorKind::NotFound {
-                XptError::FileNotFound {
+                XptIoError::FileNotFound {
                     path: path.to_path_buf(),
                 }
             } else {
-                XptError::Io(e)
+                XptIoError::Io(e)
             }
         })?;
         Ok(Self::with_options(file, options))
@@ -115,14 +115,14 @@ pub fn read_xpt_with_options(path: &Path, options: XptReaderOptions) -> Result<X
 fn parse_xpt_data(data: &[u8], options: &XptReaderOptions) -> Result<XptDataset> {
     // Minimum file size check
     if data.len() < RECORD_LEN * 8 {
-        return Err(XptError::invalid_format("file too small"));
+        return Err(XptIoError::invalid_format("file too small").into());
     }
 
     // Check record alignment
     if !data.len().is_multiple_of(RECORD_LEN) {
-        return Err(XptError::invalid_format(
+        return Err(XptIoError::invalid_format(
             "file length is not a multiple of 80",
-        ));
+        ).into());
     }
 
     let mut offset = 0usize;
@@ -166,7 +166,7 @@ fn parse_xpt_data(data: &[u8], options: &XptReaderOptions) -> Result<XptDataset>
     // NAMESTR records
     let namestr_total = var_count
         .checked_mul(namestr_len)
-        .ok_or(XptError::ObservationOverflow)?;
+        .ok_or(XptIoError::ObservationOverflow)?;
     let namestr_data = read_block(data, offset, namestr_total)?;
     offset += namestr_total;
     offset = align_to_record(offset);
@@ -228,13 +228,13 @@ fn parse_xpt_data(data: &[u8], options: &XptReaderOptions) -> Result<XptDataset>
 /// Read a single 80-byte record.
 fn read_record(data: &[u8], offset: usize) -> Result<&[u8]> {
     data.get(offset..offset + RECORD_LEN)
-        .ok_or(XptError::RecordOutOfBounds { offset })
+        .ok_or_else(|| XptIoError::RecordOutOfBounds { offset }.into())
 }
 
 /// Read a block of bytes.
 fn read_block(data: &[u8], offset: usize, len: usize) -> Result<&[u8]> {
     data.get(offset..offset + len)
-        .ok_or(XptError::RecordOutOfBounds { offset })
+        .ok_or_else(|| XptIoError::RecordOutOfBounds { offset }.into())
 }
 
 /// Calculate observation length from columns.
@@ -243,7 +243,7 @@ fn observation_length(columns: &[XptColumn]) -> Result<usize> {
     for column in columns {
         total = total
             .checked_add(column.length as usize)
-            .ok_or(XptError::ObservationOverflow)?;
+            .ok_or(XptIoError::ObservationOverflow)?;
     }
     Ok(total)
 }
@@ -261,7 +261,7 @@ fn parse_observations(
     }
 
     if offset > data.len() {
-        return Err(XptError::RecordOutOfBounds { offset });
+        return Err(XptIoError::RecordOutOfBounds { offset }.into());
     }
 
     let data_len = data.len().saturating_sub(offset);
@@ -273,7 +273,7 @@ fn parse_observations(
         let start = offset + rows_total * obs_len;
         let rem_bytes = &data[start..offset + data_len];
         if rem_bytes.iter().any(|&b| b != b' ') {
-            return Err(XptError::TrailingBytes);
+            return Err(XptIoError::TrailingBytes.into());
         }
     }
 

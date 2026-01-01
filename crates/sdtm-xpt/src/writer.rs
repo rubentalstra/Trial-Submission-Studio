@@ -7,7 +7,7 @@ use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
 
-use crate::error::{Result, XptError};
+use crate::error::{Result, XptIoError};
 use crate::float::{encode_missing, ieee_to_ibm, truncate_ibm};
 use crate::header::{
     LabelSectionType, LibraryInfo, RECORD_LEN, build_dscrptr_header, build_labelv8_data,
@@ -132,12 +132,13 @@ impl<W: Write> XptWriter<W> {
         let obs_len = dataset.observation_length();
         let mut record_writer = RecordWriter::new(&mut self.writer);
 
-        for row in dataset.rows.iter() {
+        for (row_idx, row) in dataset.rows.iter().enumerate() {
             if row.len() != dataset.columns.len() {
-                return Err(XptError::RowLengthMismatch {
-                    expected: dataset.columns.len(),
-                    actual: row.len(),
-                });
+                return Err(XptIoError::row_length_mismatch(
+                    row_idx,
+                    dataset.columns.len(),
+                    row.len(),
+                ).into());
             }
 
             let mut obs = vec![b' '; obs_len];
@@ -200,17 +201,17 @@ fn validate_dataset(dataset: &XptDataset, version: XptVersion) -> Result<()> {
     // Validate dataset name
     let name = normalize_name(&dataset.name);
     if name.is_empty() {
-        return Err(XptError::invalid_dataset_name(&dataset.name));
+        return Err(XptIoError::invalid_dataset_name(&dataset.name).into());
     }
     if name.len() > version.dataset_name_limit() {
-        return Err(XptError::dataset_name_too_long(&dataset.name, version));
+        return Err(XptIoError::dataset_name_too_long(&dataset.name, version.dataset_name_limit()).into());
     }
 
     // Validate dataset label (always max 40 chars)
     if let Some(label) = &dataset.label
         && label.len() > 40
     {
-        return Err(XptError::dataset_label_too_long(&dataset.name));
+        return Err(XptIoError::dataset_label_too_long(&dataset.name).into());
     }
 
     // Check for duplicate column names and validate each column
@@ -219,49 +220,50 @@ fn validate_dataset(dataset: &XptDataset, version: XptVersion) -> Result<()> {
         let col_name = normalize_name(&column.name);
 
         if col_name.is_empty() {
-            return Err(XptError::invalid_variable_name(&column.name));
+            return Err(XptIoError::invalid_variable_name(&column.name).into());
         }
         if col_name.len() > version.name_limit() {
-            return Err(XptError::variable_name_too_long(&column.name, version));
+            return Err(XptIoError::variable_name_too_long(&column.name, version.name_limit()).into());
         }
 
         if !seen.insert(col_name.clone()) {
-            return Err(XptError::duplicate_variable(&column.name));
+            return Err(XptIoError::duplicate_variable(&column.name).into());
         }
 
         if column.length == 0 {
-            return Err(XptError::zero_length(&column.name));
+            return Err(XptIoError::zero_length(&column.name).into());
         }
 
         // Validate label length
         if let Some(label) = &column.label
             && label.len() > version.label_limit()
         {
-            return Err(XptError::variable_label_too_long(&column.name, version));
+            return Err(XptIoError::variable_label_too_long(&column.name, version.label_limit()).into());
         }
 
         // Validate format name length
         if let Some(format) = &column.format
             && format.len() > version.format_limit()
         {
-            return Err(XptError::format_name_too_long(format, version));
+            return Err(XptIoError::format_name_too_long(format, version.format_limit()).into());
         }
 
         // Validate informat name length
         if let Some(informat) = &column.informat
             && informat.len() > version.format_limit()
         {
-            return Err(XptError::informat_name_too_long(informat, version));
+            return Err(XptIoError::format_name_too_long(informat, version.format_limit()).into());
         }
     }
 
     // Validate row lengths
-    for row in dataset.rows.iter() {
+    for (row_idx, row) in dataset.rows.iter().enumerate() {
         if row.len() != dataset.columns.len() {
-            return Err(XptError::RowLengthMismatch {
-                expected: dataset.columns.len(),
-                actual: row.len(),
-            });
+            return Err(XptIoError::row_length_mismatch(
+                row_idx,
+                dataset.columns.len(),
+                row.len(),
+            ).into());
         }
     }
 
