@@ -43,5 +43,15 @@ rfd = "0.16.0"           # Native file dialogs
 lru = "0.16.2"           # LRU cache
 egui-phosphor = "0.11.0" # Icon set
 
+# Settings & menu
+directories = "6.0"      # Cross-platform app directories
+toml = "0.9.8"           # Config file format
+muda = "0.17.1"          # Native menu bar (by Tauri team)
+crossbeam-channel = "0.5" # For muda menu events
+
+# Platform-specific
+[target.'cfg(target_os = "macos")'.dependencies]
+winit = "0.30.12"        # Needed for EventLoopBuilderExtMacOS trait
+
 [lints]
 workspace = true

@@ -15,7 +15,7 @@ impl HomeView {
     ///
     /// Returns a folder path if the user selected one to load.
     pub fn show(ui: &mut Ui, state: &mut AppState) -> Option<PathBuf> {
-        let theme = colors(state.preferences.dark_mode);
+        let theme = colors(state.settings.general.dark_mode);
 
         // Track which domain was clicked (if any)
         let mut clicked_domain: Option<String> = None;
@@ -130,7 +130,7 @@ impl HomeView {
             }
 
             // Recent studies
-            if !state.preferences.recent_studies.is_empty() && state.study.is_none() {
+            if !state.settings.recent_studies.is_empty() && state.study.is_none() {
                 ui.add_space(spacing::XL);
                 ui.separator();
                 ui.add_space(spacing::MD);
@@ -144,7 +144,7 @@ impl HomeView {
                 );
                 ui.add_space(spacing::SM);
 
-                let recent_paths: Vec<_> = state.preferences.recent_studies.clone();
+                let recent_paths: Vec<_> = state.settings.recent_studies.clone();
                 for path in recent_paths {
                     if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
                         if ui

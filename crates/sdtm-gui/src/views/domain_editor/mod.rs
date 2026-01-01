@@ -19,7 +19,7 @@ pub struct DomainEditorView;
 impl DomainEditorView {
     /// Render the domain editor
     pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str, active_tab: EditorTab) {
-        let theme = colors(state.preferences.dark_mode);
+        let theme = colors(state.settings.general.dark_mode);
 
         // Top bar with domain info and back button
         ui.horizontal(|ui| {

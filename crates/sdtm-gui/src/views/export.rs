@@ -12,7 +12,7 @@ pub struct ExportView;
 impl ExportView {
     /// Render the export screen
     pub fn show(ui: &mut Ui, state: &mut AppState) {
-        let theme = colors(state.preferences.dark_mode);
+        let theme = colors(state.settings.general.dark_mode);
 
         // Top bar
         ui.horizontal(|ui| {

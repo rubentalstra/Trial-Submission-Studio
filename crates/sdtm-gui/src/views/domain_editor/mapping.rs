@@ -12,7 +12,7 @@ use std::collections::BTreeMap;
 
 /// Render the mapping tab
 pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
-    let theme = colors(state.preferences.dark_mode);
+    let theme = colors(state.settings.general.dark_mode);
 
     // Check domain status for loading state
     let (has_mapping_state, status) = state

@@ -1,16 +1,49 @@
 //! Application-level state
 
 use super::StudyState;
+use crate::settings::{ui::SettingsWindow, Settings};
 
 /// Top-level application state
-#[derive(Default)]
 pub struct AppState {
     /// Current view/screen
     pub view: View,
     /// Loaded study (None if no study loaded)
     pub study: Option<StudyState>,
-    /// User preferences
-    pub preferences: Preferences,
+    /// Application settings (persisted)
+    pub settings: Settings,
+    /// Settings window visibility
+    pub settings_open: bool,
+    /// Pending settings (for cancel functionality)
+    pub settings_pending: Option<Settings>,
+    /// Settings window UI state
+    pub settings_window: SettingsWindow,
+}
+
+impl Default for AppState {
+    fn default() -> Self {
+        Self {
+            view: View::default(),
+            study: None,
+            settings: Settings::default(),
+            settings_open: false,
+            settings_pending: None,
+            settings_window: SettingsWindow::default(),
+        }
+    }
+}
+
+impl AppState {
+    /// Create new app state with loaded settings
+    pub fn new(settings: Settings) -> Self {
+        Self {
+            view: View::default(),
+            study: None,
+            settings,
+            settings_open: false,
+            settings_pending: None,
+            settings_window: SettingsWindow::default(),
+        }
+    }
 }
 
 /// Current view in the application
@@ -81,24 +114,6 @@ impl EditorTab {
     }
 }
 
-/// User preferences (persisted to disk)
-#[derive(Clone)]
-pub struct Preferences {
-    /// Dark mode enabled
-    pub dark_mode: bool,
-    /// Recent study folders
-    pub recent_studies: Vec<std::path::PathBuf>,
-}
-
-impl Default for Preferences {
-    fn default() -> Self {
-        Self {
-            dark_mode: false,
-            recent_studies: Vec::new(),
-        }
-    }
-}
-
 impl AppState {
     /// Navigate to home screen
     pub fn go_home(&mut self) {
@@ -126,5 +141,25 @@ impl AppState {
         {
             *current_tab = tab;
         }
+    }
+
+    /// Open the settings window
+    pub fn open_settings(&mut self) {
+        self.settings_pending = Some(self.settings.clone());
+        self.settings_open = true;
+    }
+
+    /// Close the settings window
+    ///
+    /// If `apply` is true, the pending settings are applied and saved.
+    /// If `apply` is false, the pending settings are discarded.
+    pub fn close_settings(&mut self, apply: bool) {
+        if apply {
+            if let Some(pending) = self.settings_pending.take() {
+                self.settings = pending;
+            }
+        }
+        self.settings_pending = None;
+        self.settings_open = false;
     }
 }

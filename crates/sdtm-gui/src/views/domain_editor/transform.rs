@@ -15,7 +15,7 @@ use egui::{RichText, Ui};
 use super::mapping::{initialize_mapping, show_loading_indicator};
 
 pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
-    let theme = colors(state.preferences.dark_mode);
+    let theme = colors(state.settings.general.dark_mode);
 
     // Ensure mapping state is initialized so transforms can be derived accurately.
     let (has_mapping_state, status) = state
