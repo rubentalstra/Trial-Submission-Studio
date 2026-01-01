@@ -119,7 +119,7 @@ fn parse_xpt_data(data: &[u8], options: &XptReaderOptions) -> Result<XptDataset>
     }
 
     // Check record alignment
-    if data.len() % RECORD_LEN != 0 {
+    if !data.len().is_multiple_of(RECORD_LEN) {
         return Err(XptError::invalid_format(
             "file length is not a multiple of 80",
         ));
@@ -148,7 +148,7 @@ fn parse_xpt_data(data: &[u8], options: &XptReaderOptions) -> Result<XptDataset>
 
     // Member data
     let member_data = read_record(data, offset)?;
-    let dataset_name = parse_dataset_name(member_data)?;
+    let dataset_name = parse_dataset_name(member_data, version)?;
     offset += RECORD_LEN;
 
     // Member second
@@ -160,7 +160,7 @@ fn parse_xpt_data(data: &[u8], options: &XptReaderOptions) -> Result<XptDataset>
     // NAMESTR header - validate against detected version
     let namestr_header = read_record(data, offset)?;
     let _namestr_version = validate_namestr_header(namestr_header)?;
-    let var_count = parse_variable_count(namestr_header)?;
+    let var_count = parse_variable_count(namestr_header, version)?;
     offset += RECORD_LEN;
 
     // NAMESTR records

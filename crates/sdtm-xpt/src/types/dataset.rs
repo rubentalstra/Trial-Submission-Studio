@@ -169,7 +169,7 @@ impl XptDataset {
     /// Get a row by index.
     #[must_use]
     pub fn row(&self, index: usize) -> Option<&[XptValue]> {
-        self.rows.get(index).map(|r| r.as_slice())
+        self.rows.get(index).map(Vec::as_slice)
     }
 
     /// Calculate the observation (row) length in bytes.
@@ -186,7 +186,7 @@ impl XptDataset {
 
     /// Iterate over rows.
     pub fn iter_rows(&self) -> impl Iterator<Item = &[XptValue]> {
-        self.rows.iter().map(|r| r.as_slice())
+        self.rows.iter().map(Vec::as_slice)
     }
 
     /// Get column names.

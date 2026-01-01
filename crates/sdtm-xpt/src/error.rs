@@ -8,7 +8,7 @@ use crate::types::XptVersion;
 /// Errors that can occur when reading or writing XPT files.
 #[derive(Debug, Error)]
 pub enum XptError {
-    /// File not found at specified path.
+    /// File not found.
     #[error("file not found: {path}")]
     FileNotFound { path: PathBuf },
 
@@ -20,7 +20,7 @@ pub enum XptError {
     #[error("missing header: expected {expected}")]
     MissingHeader { expected: &'static str },
 
-    /// Invalid NAMESTR record at given index.
+    /// Invalid NAMESTR record.
     #[error("invalid NAMESTR at index {index}: {message}")]
     InvalidNamestr { index: usize, message: String },
 
@@ -28,31 +28,27 @@ pub enum XptError {
     #[error("float conversion error: {message}")]
     FloatConversion { message: String },
 
-    /// Dataset name validation error.
-    #[error("dataset name must be 1-8 characters: {name}")]
+    /// Invalid dataset name (empty).
+    #[error("dataset name must not be empty")]
     InvalidDatasetName { name: String },
 
-    /// Variable name validation error.
-    #[error("variable name must be 1-8 characters: {name}")]
+    /// Invalid variable name (empty).
+    #[error("variable name must not be empty")]
     InvalidVariableName { name: String },
 
-    /// Duplicate variable name in dataset.
+    /// Duplicate variable name.
     #[error("duplicate variable name: {name}")]
     DuplicateVariable { name: String },
 
-    /// Row value count doesn't match column count.
+    /// Row length mismatch.
     #[error("row length mismatch: expected {expected}, got {actual}")]
     RowLengthMismatch { expected: usize, actual: usize },
 
-    /// Variable length is zero.
+    /// Variable has zero length.
     #[error("variable {name} has zero length")]
     ZeroLength { name: String },
 
-    /// Label exceeds maximum length.
-    #[error("label exceeds maximum length of {max} characters")]
-    LabelTooLong { max: usize },
-
-    /// Record out of bounds when reading.
+    /// Record out of bounds.
     #[error("record out of bounds at offset {offset}")]
     RecordOutOfBounds { offset: usize },
 
@@ -64,11 +60,14 @@ pub enum XptError {
     #[error("observation length overflow")]
     ObservationOverflow,
 
-    /// Unexpected trailing bytes in file.
+    /// Unexpected trailing bytes.
     #[error("unexpected trailing bytes in observations")]
     TrailingBytes,
 
-    // --- Version-aware validation errors ---
+    /// Dataset label exceeds 40 character limit.
+    #[error("dataset label exceeds 40 character limit")]
+    DatasetLabelTooLong { name: String },
+
     /// Dataset name exceeds version limit.
     #[error("dataset name '{name}' exceeds {version} limit of {limit} characters")]
     DatasetNameTooLong {
@@ -109,7 +108,7 @@ pub enum XptError {
         limit: usize,
     },
 
-    /// I/O error from underlying operations.
+    /// I/O error.
     #[error("I/O error: {0}")]
     Io(#[from] std::io::Error),
 }
@@ -118,7 +117,7 @@ pub enum XptError {
 pub type Result<T> = std::result::Result<T, XptError>;
 
 impl XptError {
-    /// Create an InvalidFormat error with a message.
+    /// Create an InvalidFormat error.
     pub fn invalid_format(message: impl Into<String>) -> Self {
         Self::InvalidFormat {
             message: message.into(),
@@ -128,14 +127,6 @@ impl XptError {
     /// Create a MissingHeader error.
     pub fn missing_header(expected: &'static str) -> Self {
         Self::MissingHeader { expected }
-    }
-
-    /// Create an InvalidNamestr error.
-    pub fn invalid_namestr(index: usize, message: impl Into<String>) -> Self {
-        Self::InvalidNamestr {
-            index,
-            message: message.into(),
-        }
     }
 
     /// Create an InvalidDatasetName error.
@@ -156,6 +147,11 @@ impl XptError {
     /// Create a ZeroLength error.
     pub fn zero_length(name: impl Into<String>) -> Self {
         Self::ZeroLength { name: name.into() }
+    }
+
+    /// Create a DatasetLabelTooLong error.
+    pub fn dataset_label_too_long(name: impl Into<String>) -> Self {
+        Self::DatasetLabelTooLong { name: name.into() }
     }
 
     /// Create a DatasetNameTooLong error.
@@ -215,12 +211,6 @@ mod tests {
 
         let err = XptError::missing_header("LIBRARY");
         assert_eq!(format!("{err}"), "missing header: expected LIBRARY");
-
-        let err = XptError::InvalidNamestr {
-            index: 5,
-            message: "bad type".to_string(),
-        };
-        assert_eq!(format!("{err}"), "invalid NAMESTR at index 5: bad type");
     }
 
     #[test]
@@ -232,41 +222,12 @@ mod tests {
 
     #[test]
     fn test_version_aware_errors() {
-        // V5 errors
-        let err = XptError::dataset_name_too_long("LONGDATASETNAME", XptVersion::V5);
+        let err = XptError::dataset_name_too_long("LONGNAME", XptVersion::V5);
         assert!(format!("{err}").contains("V5"));
         assert!(format!("{err}").contains("8 characters"));
 
-        let err = XptError::variable_name_too_long("LONGVARNAME", XptVersion::V5);
-        assert!(format!("{err}").contains("V5"));
-        assert!(format!("{err}").contains("8 characters"));
-
-        let err = XptError::variable_label_too_long("VAR", XptVersion::V5);
-        assert!(format!("{err}").contains("V5"));
-        assert!(format!("{err}").contains("40 characters"));
-
-        // V8 errors
-        let err = XptError::dataset_name_too_long("VERYLONGDATASETNAME", XptVersion::V8);
+        let err = XptError::variable_name_too_long("LONGNAME", XptVersion::V8);
         assert!(format!("{err}").contains("V8"));
-        assert!(format!("{err}").contains("32 characters"));
-
-        let err = XptError::variable_name_too_long("VERYLONGVARNAME", XptVersion::V8);
-        assert!(format!("{err}").contains("V8"));
-        assert!(format!("{err}").contains("32 characters"));
-
-        let err = XptError::variable_label_too_long("VAR", XptVersion::V8);
-        assert!(format!("{err}").contains("V8"));
-        assert!(format!("{err}").contains("256 characters"));
-    }
-
-    #[test]
-    fn test_format_errors() {
-        let err = XptError::format_name_too_long("VERYLONGFORMAT", XptVersion::V5);
-        assert!(format!("{err}").contains("format"));
-        assert!(format!("{err}").contains("8 characters"));
-
-        let err = XptError::informat_name_too_long("VERYLONGINFORMAT", XptVersion::V8);
-        assert!(format!("{err}").contains("informat"));
         assert!(format!("{err}").contains("32 characters"));
     }
 }

@@ -180,12 +180,23 @@ pub fn parse_namestr_len(record: &[u8]) -> Result<usize> {
 
 /// Parse variable count from NAMESTR header record.
 ///
-/// The variable count is at offset 54-57 (4 ASCII digits).
-pub fn parse_variable_count(record: &[u8]) -> Result<usize> {
-    if record.len() < 58 {
+/// V5 format: 4 digits at offset 54-57
+/// V8 format: 6 digits at offset 54-59
+///
+/// # Arguments
+/// * `record` - The NAMESTR header record
+/// * `version` - XPT version (V5 or V8)
+pub fn parse_variable_count(record: &[u8], version: XptVersion) -> Result<usize> {
+    let len = match version {
+        XptVersion::V5 => 4,
+        XptVersion::V8 => 6,
+    };
+
+    if record.len() < 54 + len {
         return Err(XptError::invalid_format("namestr header too short"));
     }
-    let text = read_string(record, 54, 4);
+
+    let text = read_string(record, 54, len);
     text.trim()
         .parse::<usize>()
         .map_err(|_| XptError::NumericParse {
@@ -195,26 +206,23 @@ pub fn parse_variable_count(record: &[u8]) -> Result<usize> {
 
 /// Parse dataset name from member data record.
 ///
-/// Dataset name is at offset 8-15 (8 characters).
-/// Parse dataset name from member data record.
+/// V5: Name at offset 8-15 (8 chars)
+/// V8: Name at offset 8-39 (32 chars)
 ///
-/// For V8 format, checks for extended name at offset 40-63 first.
-/// Falls back to short name at offset 8-15.
-pub fn parse_dataset_name(record: &[u8]) -> Result<String> {
-    if record.len() < 16 {
+/// # Arguments
+/// * `record` - The member data record
+/// * `version` - XPT version (V5 or V8)
+pub fn parse_dataset_name(record: &[u8], version: XptVersion) -> Result<String> {
+    let (offset, len) = match version {
+        XptVersion::V5 => (8, 8),
+        XptVersion::V8 => (8, 32),
+    };
+
+    if record.len() < offset + len {
         return Err(XptError::invalid_format("member data too short"));
     }
 
-    // V8: Check for extended name at offset 40-63 (24 chars)
-    if record.len() >= 64 {
-        let extended_name = read_string(record, 40, 24);
-        if !extended_name.is_empty() {
-            return Ok(extended_name);
-        }
-    }
-
-    // Fall back to short name at offset 8-15
-    let name = read_string(record, 8, 8);
+    let name = read_string(record, offset, len);
     if name.is_empty() {
         return Err(XptError::invalid_format("empty dataset name"));
     }
@@ -285,9 +293,14 @@ pub fn build_namestr_header(version: XptVersion, var_count: usize) -> [u8; RECOR
     };
     let mut record = build_header_record(prefix);
 
-    // Variable count at offset 54-57 (4 chars, right-justified)
-    let count_str = format!("{:>4}", var_count);
-    write_string(&mut record, 54, &count_str, 4);
+    // Variable count:
+    // - V5: 4 chars at offset 54-57
+    // - V8: 6 chars at offset 54-59
+    let (count_str, width) = match version {
+        XptVersion::V5 => (format!("{:>4}", var_count), 4),
+        XptVersion::V8 => (format!("{:>6}", var_count), 6),
+    };
+    write_string(&mut record, 54, &count_str, width);
 
     record
 }
@@ -303,40 +316,74 @@ pub fn build_obs_header(version: XptVersion) -> [u8; RECORD_LEN] {
 }
 
 /// Build member data record.
+///
+/// V5 layout (80 bytes):
+/// - 0-7: sas_symbol ("SAS     ")
+/// - 8-15: sas_dsname (8 chars)
+/// - 16-23: sasdata ("SASDATA ")
+/// - 24-31: sasver (8 chars)
+/// - 32-39: sas_osname (8 chars)
+/// - 40-63: blanks (24 chars)
+/// - 64-79: sas_create (16 chars)
+///
+/// V8 layout (80 bytes):
+/// - 0-7: sas_symbol ("SAS     ")
+/// - 8-39: sas_dsname (32 chars)
+/// - 40-47: sasdata ("SASDATA ")
+/// - 48-55: sasver (8 chars)
+/// - 56-63: sas_osname (8 chars)
+/// - 64-79: sas_create (16 chars)
 #[must_use]
 pub fn build_member_data(dataset: &XptDataset, options: &XptWriterOptions) -> [u8; RECORD_LEN] {
     let mut record = [b' '; RECORD_LEN];
 
-    // sas_symbol: "SAS     "
-    write_string(&mut record, 0, "SAS", 8);
+    match options.version {
+        XptVersion::V5 => {
+            // sas_symbol: "SAS     " at 0-7
+            write_string(&mut record, 0, "SAS", 8);
 
-    // dsname: dataset name (short, 8 chars)
-    // For V8 with long names, the full name goes at offset 40
-    let short_name = if dataset.name.len() > 8 {
-        &dataset.name[..8]
-    } else {
-        &dataset.name
-    };
-    write_string(&mut record, 8, short_name, 8);
+            // dsname: dataset name (8 chars) at 8-15
+            let name = if dataset.name.len() > 8 {
+                &dataset.name[..8]
+            } else {
+                &dataset.name
+            };
+            write_string(&mut record, 8, name, 8);
 
-    // sasdata: "SASDATA "
-    write_string(&mut record, 16, "SASDATA", 8);
+            // sasdata: "SASDATA " at 16-23
+            write_string(&mut record, 16, "SASDATA", 8);
 
-    // sasver: SAS version
-    write_string(&mut record, 24, &options.sas_version, 8);
+            // sasver: SAS version at 24-31
+            write_string(&mut record, 24, &options.sas_version, 8);
 
-    // sas_os: Operating system
-    write_string(&mut record, 32, &options.os_name, 8);
+            // sas_os: Operating system at 32-39
+            write_string(&mut record, 32, &options.os_name, 8);
 
-    // V8: Write long dataset name at offset 40-63 (24 chars max)
-    // Combined with short name at offset 8, this gives us the full 32-char limit
-    if options.version.supports_long_names() && dataset.name.len() > 8 {
-        write_string(&mut record, 40, &dataset.name, 24);
+            // blanks: 40-63 (already spaces)
+
+            // created: datetime at 64-79
+            write_string(&mut record, 64, &options.format_created(), 16);
+        }
+        XptVersion::V8 => {
+            // sas_symbol: "SAS     " at 0-7
+            write_string(&mut record, 0, "SAS", 8);
+
+            // dsname: dataset name (32 chars) at 8-39
+            write_string(&mut record, 8, &dataset.name, 32);
+
+            // sasdata: "SASDATA " at 40-47
+            write_string(&mut record, 40, "SASDATA", 8);
+
+            // sasver: SAS version at 48-55
+            write_string(&mut record, 48, &options.sas_version, 8);
+
+            // sas_os: Operating system at 56-63
+            write_string(&mut record, 56, &options.os_name, 8);
+
+            // created: datetime at 64-79
+            write_string(&mut record, 64, &options.format_created(), 16);
+        }
     }
-    // Otherwise: blanks (already set)
-
-    // created: datetime
-    write_string(&mut record, 64, &options.format_created(), 16);
 
     record
 }
@@ -442,10 +489,17 @@ mod tests {
     #[test]
     fn test_parse_variable_count() {
         let header = build_namestr_header(XptVersion::V5, 25);
-        assert_eq!(parse_variable_count(&header).unwrap(), 25);
+        assert_eq!(parse_variable_count(&header, XptVersion::V5).unwrap(), 25);
 
         let header = build_namestr_header(XptVersion::V8, 50);
-        assert_eq!(parse_variable_count(&header).unwrap(), 50);
+        assert_eq!(parse_variable_count(&header, XptVersion::V8).unwrap(), 50);
+
+        // Test larger counts (V8 supports up to 999999)
+        let header = build_namestr_header(XptVersion::V8, 12345);
+        assert_eq!(
+            parse_variable_count(&header, XptVersion::V8).unwrap(),
+            12345
+        );
     }
 
     #[test]
@@ -457,8 +511,21 @@ mod tests {
         let options = XptWriterOptions::default();
         let record = build_member_data(&dataset, &options);
 
-        let name = parse_dataset_name(&record).unwrap();
+        let name = parse_dataset_name(&record, options.version).unwrap();
         assert_eq!(name, "DM");
+    }
+
+    #[test]
+    fn test_build_and_parse_member_data_v8() {
+        let dataset = XptDataset::new("VERYLONGDATASETNAME")
+            .with_label("Demographics")
+            .with_type("DATA");
+
+        let options = XptWriterOptions::default().with_version(XptVersion::V8);
+        let record = build_member_data(&dataset, &options);
+
+        let name = parse_dataset_name(&record, options.version).unwrap();
+        assert_eq!(name, "VERYLONGDATASETNAME");
     }
 
     #[test]

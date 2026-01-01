@@ -206,6 +206,13 @@ fn validate_dataset(dataset: &XptDataset, version: XptVersion) -> Result<()> {
         return Err(XptError::dataset_name_too_long(&dataset.name, version));
     }
 
+    // Validate dataset label (always max 40 chars)
+    if let Some(label) = &dataset.label
+        && label.len() > 40
+    {
+        return Err(XptError::dataset_label_too_long(&dataset.name));
+    }
+
     // Check for duplicate column names and validate each column
     let mut seen = BTreeSet::new();
     for column in &dataset.columns {
@@ -227,24 +234,24 @@ fn validate_dataset(dataset: &XptDataset, version: XptVersion) -> Result<()> {
         }
 
         // Validate label length
-        if let Some(label) = &column.label {
-            if label.len() > version.label_limit() {
-                return Err(XptError::variable_label_too_long(&column.name, version));
-            }
+        if let Some(label) = &column.label
+            && label.len() > version.label_limit()
+        {
+            return Err(XptError::variable_label_too_long(&column.name, version));
         }
 
         // Validate format name length
-        if let Some(format) = &column.format {
-            if format.len() > version.format_limit() {
-                return Err(XptError::format_name_too_long(format, version));
-            }
+        if let Some(format) = &column.format
+            && format.len() > version.format_limit()
+        {
+            return Err(XptError::format_name_too_long(format, version));
         }
 
         // Validate informat name length
-        if let Some(informat) = &column.informat {
-            if informat.len() > version.format_limit() {
-                return Err(XptError::informat_name_too_long(informat, version));
-            }
+        if let Some(informat) = &column.informat
+            && informat.len() > version.format_limit()
+        {
+            return Err(XptError::informat_name_too_long(informat, version));
         }
     }
 

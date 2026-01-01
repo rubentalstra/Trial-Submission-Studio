@@ -41,10 +41,6 @@ pub const DSCRPTR_HEADER_V8: &str = "HEADER RECORD*******DSCPTV8 HEADER RECORD!!
 pub const NAMESTR_HEADER_V8: &str = "HEADER RECORD*******NAMSTV8 HEADER RECORD!!!!!!!";
 /// OBS header prefix (V8).
 pub const OBS_HEADER_V8: &str = "HEADER RECORD*******OBSV8   HEADER RECORD!!!!!!!";
-/// LABELV8 header prefix.
-pub const LABELV8_HEADER: &str = "HEADER RECORD*******LABELV8 HEADER RECORD!!!!!!!";
-/// LABELV9 header prefix.
-pub const LABELV9_HEADER: &str = "HEADER RECORD*******LABELV9 HEADER RECORD!!!!!!!";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Byte I/O Utilities
@@ -198,7 +194,7 @@ pub fn build_header_record(prefix: &str) -> [u8; RECORD_LEN] {
 #[inline]
 #[must_use]
 pub const fn align_to_record(offset: usize) -> usize {
-    if offset % RECORD_LEN == 0 {
+    if offset.is_multiple_of(RECORD_LEN) {
         offset
     } else {
         offset + (RECORD_LEN - (offset % RECORD_LEN))
@@ -212,7 +208,7 @@ pub const fn records_needed(bytes: usize) -> usize {
     if bytes == 0 {
         0
     } else {
-        (bytes + RECORD_LEN - 1) / RECORD_LEN
+        bytes.div_ceil(RECORD_LEN)
     }
 }
 

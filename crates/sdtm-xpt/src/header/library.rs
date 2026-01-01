@@ -102,7 +102,11 @@ pub fn validate_library_header_version(record: &[u8], version: XptVersion) -> Re
     if record.len() < RECORD_LEN {
         return Err(XptError::invalid_format("record too short"));
     }
-    if !record.starts_with(version.library_prefix().as_bytes()) {
+    let prefix = match version {
+        XptVersion::V5 => LIBRARY_HEADER_V5,
+        XptVersion::V8 => LIBRARY_HEADER_V8,
+    };
+    if !record.starts_with(prefix.as_bytes()) {
         return Err(XptError::missing_header(match version {
             XptVersion::V5 => "LIBRARY HEADER",
             XptVersion::V8 => "LIBV8 HEADER",
@@ -157,7 +161,11 @@ pub fn parse_second_header(record: &[u8]) -> String {
 /// * `version` - XPT format version (V5 or V8)
 #[must_use]
 pub fn build_library_header(version: XptVersion) -> [u8; RECORD_LEN] {
-    build_header_record(version.library_prefix())
+    let prefix = match version {
+        XptVersion::V5 => LIBRARY_HEADER_V5,
+        XptVersion::V8 => LIBRARY_HEADER_V8,
+    };
+    build_header_record(prefix)
 }
 
 /// Build the real header record with library info.

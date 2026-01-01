@@ -100,24 +100,35 @@ fn build_label_header(prefix: &[u8; 48]) -> [u8; RECORD_LEN] {
 /// Build LABELV8 section data for columns with long labels.
 ///
 /// Returns the data bytes to write after the LABELV8 header.
-/// Each entry is: varnum (2 bytes) + lablen (2 bytes) + label (lablen bytes)
+///
+/// Per SAS V8 spec, each entry is:
+/// - varnum (2 bytes): Variable number (1-based)
+/// - namelen (2 bytes): Length of name
+/// - lablen (2 bytes): Length of label
+/// - name (namelen bytes): Variable name text
+/// - label (lablen bytes): Label text
 #[must_use]
 pub fn build_labelv8_data(columns: &[XptColumn]) -> Vec<u8> {
     let mut data = Vec::new();
 
     for (idx, col) in columns.iter().enumerate() {
-        if let Some(label) = &col.label {
-            if label.len() > 40 {
-                let varnum = (idx + 1) as u16;
-                let lablen = label.len() as u16;
+        if let Some(label) = &col.label
+            && label.len() > 40
+        {
+            let varnum = (idx + 1) as u16;
+            let namelen = col.name.len() as u16;
+            let lablen = label.len() as u16;
 
-                // varnum (2 bytes, big-endian)
-                data.extend_from_slice(&varnum.to_be_bytes());
-                // lablen (2 bytes, big-endian)
-                data.extend_from_slice(&lablen.to_be_bytes());
-                // label text
-                data.extend_from_slice(label.as_bytes());
-            }
+            // varnum (2 bytes, big-endian)
+            data.extend_from_slice(&varnum.to_be_bytes());
+            // namelen (2 bytes, big-endian)
+            data.extend_from_slice(&namelen.to_be_bytes());
+            // lablen (2 bytes, big-endian)
+            data.extend_from_slice(&lablen.to_be_bytes());
+            // name text
+            data.extend_from_slice(col.name.as_bytes());
+            // label text
+            data.extend_from_slice(label.as_bytes());
         }
     }
 
@@ -127,7 +138,17 @@ pub fn build_labelv8_data(columns: &[XptColumn]) -> Vec<u8> {
 /// Build LABELV9 section data for columns with long labels or formats.
 ///
 /// Returns the data bytes to write after the LABELV9 header.
-/// Each entry contains variable-length fields for long formats, labels, and informats.
+///
+/// Per SAS V8/9 spec, each entry is:
+/// - varnum (2 bytes): Variable number (1-based)
+/// - namelen (2 bytes): Length of name
+/// - lablen (2 bytes): Length of label (0 if ≤40)
+/// - fmtlen (2 bytes): Length of format description (0 if ≤8)
+/// - inflen (2 bytes): Length of informat description (0 if ≤8)
+/// - name (namelen bytes): Variable name text
+/// - label (lablen bytes): Label text (if lablen > 0)
+/// - format (fmtlen bytes): Format description (if fmtlen > 0)
+/// - informat (inflen bytes): Informat description (if inflen > 0)
 #[must_use]
 pub fn build_labelv9_data(columns: &[XptColumn]) -> Vec<u8> {
     let mut data = Vec::new();
@@ -139,18 +160,19 @@ pub fn build_labelv9_data(columns: &[XptColumn]) -> Vec<u8> {
 
         if format_long || label_long || informat_long {
             let varnum = (idx + 1) as u16;
-            let namelen = if format_long {
-                col.format.as_ref().map(|f| f.len()).unwrap_or(0) as u16
+            let namelen = col.name.len() as u16;
+            let lablen = if label_long {
+                col.label.as_ref().map(String::len).unwrap_or(0) as u16
             } else {
                 0
             };
-            let lablen = if label_long {
-                col.label.as_ref().map(|l| l.len()).unwrap_or(0) as u16
+            let fmtlen = if format_long {
+                col.format.as_ref().map(String::len).unwrap_or(0) as u16
             } else {
                 0
             };
             let inflen = if informat_long {
-                col.informat.as_ref().map(|f| f.len()).unwrap_or(0) as u16
+                col.informat.as_ref().map(String::len).unwrap_or(0) as u16
             } else {
                 0
             };
@@ -161,28 +183,33 @@ pub fn build_labelv9_data(columns: &[XptColumn]) -> Vec<u8> {
             data.extend_from_slice(&namelen.to_be_bytes());
             // lablen (2 bytes)
             data.extend_from_slice(&lablen.to_be_bytes());
+            // fmtlen (2 bytes)
+            data.extend_from_slice(&fmtlen.to_be_bytes());
             // inflen (2 bytes)
             data.extend_from_slice(&inflen.to_be_bytes());
 
-            // format (if namelen > 0)
-            if namelen > 0 {
-                if let Some(format) = &col.format {
-                    data.extend_from_slice(format.as_bytes());
-                }
-            }
+            // name (always present)
+            data.extend_from_slice(col.name.as_bytes());
 
             // label (if lablen > 0)
-            if lablen > 0 {
-                if let Some(label) = &col.label {
-                    data.extend_from_slice(label.as_bytes());
-                }
+            if lablen > 0
+                && let Some(label) = &col.label
+            {
+                data.extend_from_slice(label.as_bytes());
+            }
+
+            // format (if fmtlen > 0)
+            if fmtlen > 0
+                && let Some(format) = &col.format
+            {
+                data.extend_from_slice(format.as_bytes());
             }
 
             // informat (if inflen > 0)
-            if inflen > 0 {
-                if let Some(informat) = &col.informat {
-                    data.extend_from_slice(informat.as_bytes());
-                }
+            if inflen > 0
+                && let Some(informat) = &col.informat
+            {
+                data.extend_from_slice(informat.as_bytes());
             }
         }
     }
@@ -192,15 +219,26 @@ pub fn build_labelv9_data(columns: &[XptColumn]) -> Vec<u8> {
 
 /// Parse LABELV8 section data and update columns with long labels.
 ///
+/// Per SAS V8 spec, each entry is:
+/// - varnum (2 bytes): Variable number (1-based)
+/// - namelen (2 bytes): Length of name
+/// - lablen (2 bytes): Length of label
+/// - name (namelen bytes): Variable name text
+/// - label (lablen bytes): Label text
+///
 /// # Arguments
 /// * `data` - The label section data (after the header)
 /// * `columns` - Mutable slice of columns to update
 pub fn parse_labelv8_data(data: &[u8], columns: &mut [XptColumn]) -> Result<()> {
     let mut pos = 0;
 
-    while pos + 4 <= data.len() {
+    while pos + 6 <= data.len() {
         // varnum (2 bytes)
         let varnum = u16::from_be_bytes([data[pos], data[pos + 1]]) as usize;
+        pos += 2;
+
+        // namelen (2 bytes)
+        let namelen = u16::from_be_bytes([data[pos], data[pos + 1]]) as usize;
         pos += 2;
 
         // lablen (2 bytes)
@@ -211,6 +249,12 @@ pub fn parse_labelv8_data(data: &[u8], columns: &mut [XptColumn]) -> Result<()> 
         if varnum == 0 || varnum > columns.len() {
             break; // Invalid varnum, stop parsing
         }
+
+        // Skip name (we already have it from NAMESTR)
+        if pos + namelen > data.len() {
+            break; // Not enough data
+        }
+        pos += namelen;
 
         // Read label
         if pos + lablen > data.len() {
@@ -233,13 +277,24 @@ pub fn parse_labelv8_data(data: &[u8], columns: &mut [XptColumn]) -> Result<()> 
 
 /// Parse LABELV9 section data and update columns with long labels/formats.
 ///
+/// Per SAS V8/9 spec, each entry is:
+/// - varnum (2 bytes): Variable number (1-based)
+/// - namelen (2 bytes): Length of name
+/// - lablen (2 bytes): Length of label (0 if ≤40)
+/// - fmtlen (2 bytes): Length of format description (0 if ≤8)
+/// - inflen (2 bytes): Length of informat description (0 if ≤8)
+/// - name (namelen bytes): Variable name text
+/// - label (lablen bytes): Label text (if lablen > 0)
+/// - format (fmtlen bytes): Format description (if fmtlen > 0)
+/// - informat (inflen bytes): Informat description (if inflen > 0)
+///
 /// # Arguments
 /// * `data` - The label section data (after the header)
 /// * `columns` - Mutable slice of columns to update
 pub fn parse_labelv9_data(data: &[u8], columns: &mut [XptColumn]) -> Result<()> {
     let mut pos = 0;
 
-    while pos + 8 <= data.len() {
+    while pos + 10 <= data.len() {
         // varnum (2 bytes)
         let varnum = u16::from_be_bytes([data[pos], data[pos + 1]]) as usize;
         pos += 2;
@@ -250,6 +305,10 @@ pub fn parse_labelv9_data(data: &[u8], columns: &mut [XptColumn]) -> Result<()> 
 
         // lablen (2 bytes)
         let lablen = u16::from_be_bytes([data[pos], data[pos + 1]]) as usize;
+        pos += 2;
+
+        // fmtlen (2 bytes)
+        let fmtlen = u16::from_be_bytes([data[pos], data[pos + 1]]) as usize;
         pos += 2;
 
         // inflen (2 bytes)
@@ -263,19 +322,11 @@ pub fn parse_labelv9_data(data: &[u8], columns: &mut [XptColumn]) -> Result<()> 
 
         let col = &mut columns[varnum - 1];
 
-        // Read format (if namelen > 0)
-        if namelen > 0 {
-            if pos + namelen > data.len() {
-                break;
-            }
-            let format = String::from_utf8_lossy(&data[pos..pos + namelen])
-                .trim_end()
-                .to_string();
-            pos += namelen;
-            if !format.is_empty() {
-                col.format = Some(format);
-            }
+        // Skip name (we already have it from NAMESTR)
+        if pos + namelen > data.len() {
+            break;
         }
+        pos += namelen;
 
         // Read label (if lablen > 0)
         if lablen > 0 {
@@ -288,6 +339,20 @@ pub fn parse_labelv9_data(data: &[u8], columns: &mut [XptColumn]) -> Result<()> 
             pos += lablen;
             if !label.is_empty() {
                 col.label = Some(label);
+            }
+        }
+
+        // Read format (if fmtlen > 0)
+        if fmtlen > 0 {
+            if pos + fmtlen > data.len() {
+                break;
+            }
+            let format = String::from_utf8_lossy(&data[pos..pos + fmtlen])
+                .trim_end()
+                .to_string();
+            pos += fmtlen;
+            if !format.is_empty() {
+                col.format = Some(format);
             }
         }
 

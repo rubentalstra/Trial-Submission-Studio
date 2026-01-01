@@ -122,7 +122,7 @@ fn convert_to_ibm(sign: u8, binary_exp: i32, fraction: u64, has_implicit_one: bo
     let ibm_exp = (total_bit_pos - shift) / 4 + 65;
 
     // Check exponent range (IBM has 7-bit exponent: 0-127)
-    if ibm_exp < 0 || ibm_exp > 127 {
+    if !(0..=127).contains(&ibm_exp) {
         // Underflow or overflow - return zero
         return [0u8; 8];
     }
@@ -180,7 +180,7 @@ pub fn ibm_to_ieee(bytes: [u8; 8]) -> f64 {
     }
 
     // Extract IBM components
-    let sign = (bits >> 63) as u64;
+    let sign = bits >> 63;
     let ibm_exp = ((bits >> 56) & 0x7F) as i32;
     let ibm_frac = bits & 0x00FF_FFFF_FFFF_FFFF;
 

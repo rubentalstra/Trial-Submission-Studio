@@ -11,11 +11,12 @@ use std::fmt;
 ///
 /// In SAS, missing values are represented differently than in most systems.
 /// A missing numeric value has a special first byte followed by zeros.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub enum MissingValue {
     /// Standard missing value (`.`)
     ///
     /// Encoded as `0x2e` followed by 7 zero bytes.
+    #[default]
     Standard,
 
     /// Underscore missing value (`._`)
@@ -138,12 +139,6 @@ impl MissingValue {
             Self::Special(c) => Some(c),
             _ => None,
         }
-    }
-}
-
-impl Default for MissingValue {
-    fn default() -> Self {
-        Self::Standard
     }
 }
 

@@ -36,15 +36,9 @@
 //! | 120-121 | lablen   | short    | Label length indicator        |
 //! | 122-139 | rest     | char[18] | Reserved                      |
 
-use super::common::{read_i16, read_string, write_i16, write_i32, write_string};
+use super::common::{NAMESTR_LEN, read_i16, read_string, write_i16, write_i32, write_string};
 use crate::error::{Result, XptError};
 use crate::types::{Justification, XptColumn, XptType, XptVersion};
-
-/// Standard NAMESTR length.
-pub const NAMESTR_LEN: usize = 140;
-
-/// VAX/VMS NAMESTR length (shorter reserved section).
-pub const NAMESTR_LEN_VAX: usize = 136;
 
 /// Parse a single NAMESTR record into an XptColumn.
 ///
@@ -231,10 +225,10 @@ pub fn build_namestr(
         }
 
         // lablen: label length indicator at offset 120-121
-        if let Some(lbl) = &column.label {
-            if lbl.len() > 40 {
-                write_i16(&mut buf, 120, lbl.len() as i16);
-            }
+        if let Some(lbl) = &column.label
+            && lbl.len() > 40
+        {
+            write_i16(&mut buf, 120, lbl.len() as i16);
         }
     }
 
