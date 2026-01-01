@@ -57,35 +57,24 @@ pub fn parse_namestr(
     version: XptVersion,
 ) -> Result<XptColumn> {
     if data.len() < namestr_len.min(88) {
-        return Err(XptError::InvalidNamestr {
-            index,
-            message: format!("data too short: {} bytes", data.len()),
-        });
+        return Err(XptError::invalid_namestr(index, format!("data too short: {} bytes", data.len())));
     }
 
     // ntype: variable type (1=NUM, 2=CHAR)
     let ntype = read_i16(data, 0);
-    let data_type = XptType::from_ntype(ntype).ok_or_else(|| XptError::InvalidNamestr {
-        index,
-        message: format!("invalid ntype: {ntype}"),
-    })?;
+    let data_type = XptType::from_ntype(ntype)
+        .ok_or_else(|| XptError::invalid_namestr(index, format!("invalid ntype: {ntype}")))?;
 
     // nlng: variable length
     let length = read_i16(data, 4) as u16;
     if length == 0 {
-        return Err(XptError::InvalidNamestr {
-            index,
-            message: "variable length is zero".to_string(),
-        });
+        return Err(XptError::invalid_namestr(index, "variable length is zero"));
     }
 
     // nname: variable name (8 chars)
     let short_name = read_string(data, 8, 8);
     if short_name.is_empty() {
-        return Err(XptError::InvalidNamestr {
-            index,
-            message: "empty variable name".to_string(),
-        });
+        return Err(XptError::invalid_namestr(index, "empty variable name"));
     }
 
     // V8: Check for long name in extended area (offset 88-119)
@@ -260,10 +249,7 @@ pub fn parse_namestr_records(
 
         let record =
             data.get(offset..offset + namestr_len)
-                .ok_or_else(|| XptError::InvalidNamestr {
-                    index: idx,
-                    message: "NAMESTR data out of bounds".to_string(),
-                })?;
+                .ok_or_else(|| XptError::invalid_namestr(idx, "NAMESTR data out of bounds"))?;
 
         columns.push(parse_namestr(record, namestr_len, idx, version)?);
     }

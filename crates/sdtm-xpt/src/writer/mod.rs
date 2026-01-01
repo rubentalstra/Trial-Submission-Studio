@@ -208,8 +208,7 @@ impl<W: Write> XptWriter<W> {
                     row_idx,
                     dataset.columns.len(),
                     row.len(),
-                )
-                .into());
+                ));
             }
 
             let mut obs = vec![b' '; obs_len];

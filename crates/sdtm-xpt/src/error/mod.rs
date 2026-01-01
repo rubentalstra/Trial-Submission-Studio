@@ -230,6 +230,14 @@ impl XptError {
         }
     }
 
+    /// Create a numeric parse error.
+    #[must_use]
+    pub fn numeric_parse(field: impl Into<String>) -> Self {
+        Self::NumericParse {
+            field: field.into(),
+        }
+    }
+
     /// Create a file not found error.
     #[must_use]
     pub fn file_not_found(path: impl Into<PathBuf>) -> Self {

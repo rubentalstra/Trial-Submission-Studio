@@ -173,9 +173,7 @@ pub fn parse_namestr_len(record: &[u8]) -> Result<usize> {
     let text = read_string(record, 74, 4);
     text.trim()
         .parse::<usize>()
-        .map_err(|_| XptError::NumericParse {
-            field: "NAMESTR length".to_string(),
-        })
+        .map_err(|_| XptError::numeric_parse("NAMESTR length"))
 }
 
 /// Parse variable count from NAMESTR header record.
@@ -199,9 +197,7 @@ pub fn parse_variable_count(record: &[u8], version: XptVersion) -> Result<usize>
     let text = read_string(record, 54, len);
     text.trim()
         .parse::<usize>()
-        .map_err(|_| XptError::NumericParse {
-            field: "variable count".to_string(),
-        })
+        .map_err(|_| XptError::numeric_parse("variable count"))
 }
 
 /// Parse dataset name from member data record.

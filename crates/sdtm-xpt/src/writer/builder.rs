@@ -128,10 +128,7 @@ impl XptWriterBuilder {
         if !validated.is_valid() {
             // Return the first error
             if let Some(error) = validated.result.errors.first() {
-                return Err(XptError::InvalidFormat {
-                    message: error.to_string(),
-                }
-                .into());
+                return Err(XptError::invalid_format(error.to_string()));
             }
         }
 
@@ -183,15 +180,9 @@ impl ValidatedWriter {
     pub fn write_to_file(self, path: &Path, dataset: &XptDataset) -> crate::Result<()> {
         if !self.is_valid() {
             if let Some(error) = self.result.errors.first() {
-                return Err(XptError::InvalidFormat {
-                    message: error.to_string(),
-                }
-                .into());
+                return Err(XptError::invalid_format(error.to_string()));
             }
-            return Err(XptError::InvalidFormat {
-                message: "Validation failed".to_string(),
-            }
-            .into());
+            return Err(XptError::invalid_format("Validation failed"));
         }
 
         let file = File::create(path)?;
@@ -202,15 +193,9 @@ impl ValidatedWriter {
     pub fn write_to<W: Write>(self, writer: W, dataset: &XptDataset) -> crate::Result<()> {
         if !self.is_valid() {
             if let Some(error) = self.result.errors.first() {
-                return Err(XptError::InvalidFormat {
-                    message: error.to_string(),
-                }
-                .into());
+                return Err(XptError::invalid_format(error.to_string()));
             }
-            return Err(XptError::InvalidFormat {
-                message: "Validation failed".to_string(),
-            }
-            .into());
+            return Err(XptError::invalid_format("Validation failed"));
         }
 
         use super::XptWriter;
