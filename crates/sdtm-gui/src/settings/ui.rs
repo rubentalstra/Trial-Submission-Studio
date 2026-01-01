@@ -1,6 +1,6 @@
 //! Settings window UI implementation.
 //!
-//! Provides a modal settings window with tabbed categories:
+//! Provides a native settings window with tabbed categories following macOS HIG:
 //! - General (dark mode, CT version)
 //! - Validation (mode, XPT version, custom rules)
 //! - Developer (bypass rules, allow export with errors)
@@ -14,7 +14,7 @@ use super::{
     ValidationSettings, XptValidationRule, XptVersionSetting,
 };
 use crate::theme::{colors, ThemeColors};
-use eframe::egui;
+use eframe::egui::{self, Color32, CornerRadius, Stroke, Vec2};
 
 /// Settings category tabs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -97,409 +97,743 @@ impl SettingsWindow {
         Self::default()
     }
 
-    /// Show the settings window.
-    ///
-    /// Returns the result of the window interaction.
-    pub fn show(&mut self, ctx: &egui::Context, settings: &mut Settings, dark_mode: bool) -> SettingsResult {
+    /// Show the settings as a separate native window using viewports.
+    pub fn show(
+        &mut self,
+        ctx: &egui::Context,
+        settings: &mut Settings,
+        dark_mode: bool,
+    ) -> SettingsResult {
         let theme = colors(dark_mode);
         let mut result = SettingsResult::Open;
 
-        egui::Window::new("Settings")
-            .collapsible(false)
-            .resizable(true)
-            .default_width(700.0)
-            .default_height(500.0)
-            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
-            .show(ctx, |ui| {
-                result = self.show_content(ui, settings, &theme);
-            });
+        // Use a native window viewport for settings
+        let viewport_id = egui::ViewportId::from_hash_of("settings_window");
+
+        ctx.show_viewport_immediate(
+            viewport_id,
+            egui::ViewportBuilder::default()
+                .with_title("Settings")
+                .with_inner_size([720.0, 520.0])
+                .with_min_inner_size([600.0, 400.0])
+                .with_resizable(true),
+            |ctx, _class| {
+                // Apply native styling
+                self.apply_native_style(ctx, &theme);
+
+                egui::CentralPanel::default()
+                    .frame(egui::Frame::central_panel(&ctx.style()).inner_margin(0.0))
+                    .show(ctx, |ui| {
+                        result = self.show_native_layout(ui, settings, &theme);
+                    });
+
+                // Handle window close
+                if ctx.input(|i| i.viewport().close_requested()) {
+                    result = SettingsResult::Cancel;
+                }
+            },
+        );
 
         result
     }
 
-    /// Show the window content.
-    fn show_content(&mut self, ui: &mut egui::Ui, settings: &mut Settings, theme: &ThemeColors) -> SettingsResult {
+    /// Apply native-looking style to the context.
+    fn apply_native_style(&self, ctx: &egui::Context, theme: &ThemeColors) {
+        let mut style = (*ctx.style()).clone();
+
+        // Use native-looking visuals
+        style.visuals.widgets.noninteractive.bg_fill = theme.bg_secondary;
+        style.visuals.widgets.inactive.bg_fill = theme.bg_secondary;
+        style.visuals.widgets.hovered.bg_fill = theme.accent.linear_multiply(0.1);
+        style.visuals.widgets.active.bg_fill = theme.accent.linear_multiply(0.2);
+
+        // Subtle borders
+        style.visuals.widgets.inactive.bg_stroke = Stroke::new(1.0, theme.border);
+        style.visuals.widgets.hovered.bg_stroke =
+            Stroke::new(1.0, theme.accent.linear_multiply(0.5));
+
+        // Use rounded corners globally
+        style.visuals.window_corner_radius = CornerRadius::same(8);
+        style.visuals.menu_corner_radius = CornerRadius::same(6);
+
+        ctx.set_style(style);
+    }
+
+    /// Show the native macOS-style layout with sidebar.
+    fn show_native_layout(
+        &mut self,
+        ui: &mut egui::Ui,
+        settings: &mut Settings,
+        theme: &ThemeColors,
+    ) -> SettingsResult {
         let mut result = SettingsResult::Open;
 
-        // Horizontal layout: sidebar + content
+        // Main horizontal split: sidebar + content
         ui.horizontal(|ui| {
-            // Left sidebar with category tabs
+            // Left sidebar with category navigation
+            self.show_sidebar(ui, theme);
+
+            // Vertical separator
+            ui.add(egui::Separator::default().vertical());
+
+            // Right content area
             ui.vertical(|ui| {
-                ui.set_min_width(150.0);
-                ui.add_space(8.0);
+                ui.set_min_width(ui.available_width());
 
-                for category in SettingsCategory::all() {
-                    let selected = self.category == *category;
-                    let button = egui::Button::new(
-                        egui::RichText::new(format!("{} {}", category.icon(), category.name()))
-                            .color(if selected { theme.accent } else { theme.text_primary }),
-                    )
-                    .fill(if selected {
-                        theme.accent.linear_multiply(0.15)
-                    } else {
-                        egui::Color32::TRANSPARENT
-                    })
-                    .min_size(egui::vec2(140.0, 32.0));
+                // Content area with scroll
+                egui::ScrollArea::vertical()
+                    .auto_shrink([false, false])
+                    .show(ui, |ui| {
+                        ui.add_space(20.0);
+                        ui.horizontal(|ui| {
+                            ui.add_space(24.0);
+                            ui.vertical(|ui| {
+                                ui.set_max_width(500.0);
+                                match self.category {
+                                    SettingsCategory::General => {
+                                        self.show_general(ui, &mut settings.general, theme)
+                                    }
+                                    SettingsCategory::Validation => {
+                                        self.show_validation(ui, &mut settings.validation, theme)
+                                    }
+                                    SettingsCategory::Developer => {
+                                        self.show_developer(ui, &mut settings.developer, theme)
+                                    }
+                                    SettingsCategory::Export => {
+                                        self.show_export(ui, &mut settings.export, theme)
+                                    }
+                                    SettingsCategory::Display => {
+                                        self.show_display(ui, &mut settings.display, theme)
+                                    }
+                                    SettingsCategory::Shortcuts => {
+                                        self.show_shortcuts(ui, settings, theme)
+                                    }
+                                }
+                            });
+                        });
+                    });
 
-                    if ui.add(button).clicked() {
-                        self.category = *category;
-                    }
-                }
-            });
+                // Bottom button bar
+                ui.with_layout(egui::Layout::bottom_up(egui::Align::RIGHT), |ui| {
+                    ui.add_space(12.0);
+                    ui.horizontal(|ui| {
+                        ui.add_space(16.0);
 
-            ui.separator();
-
-            // Right content panel
-            ui.vertical(|ui| {
-                ui.set_min_width(400.0);
-                ui.add_space(8.0);
-
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    match self.category {
-                        SettingsCategory::General => self.show_general(ui, &mut settings.general, theme),
-                        SettingsCategory::Validation => {
-                            self.show_validation(ui, &mut settings.validation, theme)
+                        // Reset button on left
+                        if ui.button("Reset to Defaults").clicked() {
+                            *settings = Settings::default();
                         }
-                        SettingsCategory::Developer => {
-                            self.show_developer(ui, &mut settings.developer, theme)
-                        }
-                        SettingsCategory::Export => self.show_export(ui, &mut settings.export, theme),
-                        SettingsCategory::Display => self.show_display(ui, &mut settings.display, theme),
-                        SettingsCategory::Shortcuts => self.show_shortcuts(ui, settings, theme),
-                    }
+
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            ui.add_space(16.0);
+
+                            // Primary action button (Apply)
+                            if ui
+                                .add(
+                                    egui::Button::new("Apply")
+                                        .fill(theme.accent)
+                                        .min_size(Vec2::new(80.0, 28.0)),
+                                )
+                                .clicked()
+                            {
+                                result = SettingsResult::Apply;
+                            }
+
+                            ui.add_space(8.0);
+
+                            // Cancel button
+                            if ui
+                                .add(egui::Button::new("Cancel").min_size(Vec2::new(80.0, 28.0)))
+                                .clicked()
+                            {
+                                result = SettingsResult::Cancel;
+                            }
+                        });
+                    });
+                    ui.add_space(8.0);
+                    ui.separator();
                 });
             });
         });
 
-        ui.add_space(16.0);
-        ui.separator();
-        ui.add_space(8.0);
+        result
+    }
 
-        // Bottom buttons
-        ui.horizontal(|ui| {
-            if ui.button("Reset to Defaults").clicked() {
-                *settings = Settings::default();
-            }
+    /// Show the sidebar with category navigation.
+    fn show_sidebar(&mut self, ui: &mut egui::Ui, theme: &ThemeColors) {
+        ui.vertical(|ui| {
+            ui.set_min_width(180.0);
+            ui.set_max_width(180.0);
 
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                if ui.button("Apply").clicked() {
-                    result = SettingsResult::Apply;
+            // Sidebar background
+            let rect = ui.available_rect_before_wrap();
+            ui.painter()
+                .rect_filled(rect, CornerRadius::ZERO, theme.bg_secondary);
+
+            ui.add_space(16.0);
+
+            for category in SettingsCategory::all() {
+                let selected = self.category == *category;
+
+                // Create a selectable row
+                let response = ui.allocate_response(
+                    Vec2::new(ui.available_width() - 16.0, 32.0),
+                    egui::Sense::click(),
+                );
+
+                // Draw background for selected/hovered
+                let bg_rect = response.rect.expand2(Vec2::new(8.0, 0.0));
+                if selected {
+                    ui.painter().rect_filled(
+                        bg_rect,
+                        CornerRadius::same(6),
+                        theme.accent.linear_multiply(0.15),
+                    );
+                } else if response.hovered() {
+                    ui.painter().rect_filled(
+                        bg_rect,
+                        CornerRadius::same(6),
+                        Color32::from_white_alpha(10),
+                    );
                 }
-                if ui.button("Cancel").clicked() {
-                    result = SettingsResult::Cancel;
+
+                // Draw icon and text
+                let text_color = if selected {
+                    theme.accent
+                } else {
+                    theme.text_primary
+                };
+
+                ui.painter().text(
+                    response.rect.left_center() + Vec2::new(12.0, 0.0),
+                    egui::Align2::LEFT_CENTER,
+                    format!("{} {}", category.icon(), category.name()),
+                    egui::FontId::proportional(14.0),
+                    text_color,
+                );
+
+                if response.clicked() {
+                    self.category = *category;
+                }
+            }
+        });
+    }
+
+    /// Show a section header.
+    fn section_header(&self, ui: &mut egui::Ui, title: &str, theme: &ThemeColors) {
+        ui.label(
+            egui::RichText::new(title)
+                .size(20.0)
+                .strong()
+                .color(theme.text_primary),
+        );
+        ui.add_space(16.0);
+    }
+
+    /// Show a setting row with label and widget.
+    fn setting_row<R>(
+        &self,
+        ui: &mut egui::Ui,
+        label: &str,
+        description: Option<&str>,
+        theme: &ThemeColors,
+        add_widget: impl FnOnce(&mut egui::Ui) -> R,
+    ) {
+        ui.horizontal(|ui| {
+            ui.vertical(|ui| {
+                ui.set_min_width(200.0);
+                ui.label(egui::RichText::new(label).color(theme.text_primary));
+                if let Some(desc) = description {
+                    ui.label(
+                        egui::RichText::new(desc)
+                            .small()
+                            .color(theme.text_muted),
+                    );
                 }
             });
-        });
 
-        result
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                add_widget(ui);
+            });
+        });
+        ui.add_space(12.0);
+    }
+
+    /// Show a group box for related settings.
+    fn setting_group(
+        &self,
+        ui: &mut egui::Ui,
+        title: Option<&str>,
+        theme: &ThemeColors,
+        add_content: impl FnOnce(&mut egui::Ui),
+    ) {
+        if let Some(t) = title {
+            ui.label(
+                egui::RichText::new(t)
+                    .size(13.0)
+                    .strong()
+                    .color(theme.text_muted),
+            );
+            ui.add_space(8.0);
+        }
+
+        egui::Frame::none()
+            .fill(theme.bg_secondary)
+            .rounding(CornerRadius::same(8))
+            .inner_margin(16.0)
+            .show(ui, |ui| {
+                add_content(ui);
+            });
+
+        ui.add_space(20.0);
     }
 
     /// Show general settings.
     fn show_general(&self, ui: &mut egui::Ui, general: &mut GeneralSettings, theme: &ThemeColors) {
-        ui.heading("General Settings");
-        ui.add_space(12.0);
+        self.section_header(ui, "General", theme);
 
-        // Dark mode toggle
-        ui.horizontal(|ui| {
-            ui.label("Theme:");
-            ui.checkbox(&mut general.dark_mode, "Dark Mode");
+        self.setting_group(ui, Some("APPEARANCE"), theme, |ui| {
+            self.setting_row(ui, "Dark Mode", Some("Use dark color scheme"), theme, |ui| {
+                ui.add(toggle(&mut general.dark_mode));
+            });
         });
 
-        ui.add_space(8.0);
+        self.setting_group(ui, Some("DATA IMPORT"), theme, |ui| {
+            self.setting_row(
+                ui,
+                "Controlled Terminology",
+                Some("CDISC CT version for validation"),
+                theme,
+                |ui| {
+                    egui::ComboBox::from_id_salt("ct_version")
+                        .width(180.0)
+                        .selected_text(general.ct_version.display_name())
+                        .show_ui(ui, |ui| {
+                            for version in CtVersionSetting::all() {
+                                ui.selectable_value(
+                                    &mut general.ct_version,
+                                    *version,
+                                    version.display_name(),
+                                );
+                            }
+                        });
+                },
+            );
 
-        // CT Version
-        ui.horizontal(|ui| {
-            ui.label("Controlled Terminology:");
-            egui::ComboBox::from_id_salt("ct_version")
-                .selected_text(general.ct_version.display_name())
-                .show_ui(ui, |ui| {
-                    for version in CtVersionSetting::all() {
-                        ui.selectable_value(&mut general.ct_version, *version, version.display_name());
-                    }
-                });
+            ui.separator();
+            ui.add_space(8.0);
+
+            self.setting_row(
+                ui,
+                "CSV Header Rows",
+                Some("Number of header rows to skip"),
+                theme,
+                |ui| {
+                    ui.add(
+                        egui::DragValue::new(&mut general.header_rows)
+                            .range(1..=10)
+                            .speed(0.1),
+                    );
+                },
+            );
         });
-
-        ui.add_space(8.0);
-
-        // Header rows
-        ui.horizontal(|ui| {
-            ui.label("CSV Header Rows:");
-            ui.add(egui::DragValue::new(&mut general.header_rows).range(1..=10));
-        });
-
-        ui.add_space(8.0);
-        ui.label(
-            egui::RichText::new("Number of header rows to skip when reading source CSV files.")
-                .color(theme.text_muted)
-                .small(),
-        );
     }
 
     /// Show validation settings.
-    fn show_validation(&self, ui: &mut egui::Ui, validation: &mut ValidationSettings, _theme: &ThemeColors) {
-        ui.heading("Validation Settings");
-        ui.add_space(12.0);
+    fn show_validation(
+        &self,
+        ui: &mut egui::Ui,
+        validation: &mut ValidationSettings,
+        theme: &ThemeColors,
+    ) {
+        self.section_header(ui, "Validation", theme);
 
-        // Validation mode
-        ui.label("Validation Mode:");
-        ui.add_space(4.0);
-
-        for mode in ValidationModeSetting::all() {
-            let selected = validation.mode == *mode;
-            if ui
-                .radio(selected, format!("{} - {}", mode.display_name(), mode.description()))
-                .clicked()
-            {
-                validation.mode = *mode;
+        self.setting_group(ui, Some("VALIDATION MODE"), theme, |ui| {
+            for mode in ValidationModeSetting::all() {
+                let selected = validation.mode == *mode;
+                if ui
+                    .add(egui::RadioButton::new(selected, mode.display_name()))
+                    .clicked()
+                {
+                    validation.mode = *mode;
+                }
+                ui.label(
+                    egui::RichText::new(mode.description())
+                        .small()
+                        .color(theme.text_muted),
+                );
+                ui.add_space(8.0);
             }
-        }
+        });
 
-        ui.add_space(12.0);
-
-        // XPT Version
-        ui.horizontal(|ui| {
-            ui.label("XPT Format Version:");
-            egui::ComboBox::from_id_salt("xpt_version")
-                .selected_text(validation.xpt_version.display_name())
-                .show_ui(ui, |ui| {
-                    for version in XptVersionSetting::all() {
-                        ui.selectable_value(
-                            &mut validation.xpt_version,
-                            *version,
-                            format!("{} - {}", version.display_name(), version.description()),
-                        );
-                    }
-                });
+        self.setting_group(ui, Some("XPT FORMAT"), theme, |ui| {
+            self.setting_row(
+                ui,
+                "XPT Version",
+                Some("Transport file format version"),
+                theme,
+                |ui| {
+                    egui::ComboBox::from_id_salt("xpt_version")
+                        .width(200.0)
+                        .selected_text(validation.xpt_version.display_name())
+                        .show_ui(ui, |ui| {
+                            for version in XptVersionSetting::all() {
+                                ui.selectable_value(
+                                    &mut validation.xpt_version,
+                                    *version,
+                                    format!("{} - {}", version.display_name(), version.description()),
+                                );
+                            }
+                        });
+                },
+            );
         });
 
         // Custom rules (only shown when Custom mode is selected)
         if validation.mode == ValidationModeSetting::Custom {
-            ui.add_space(16.0);
-            ui.separator();
-            ui.add_space(8.0);
-            ui.label("Enabled Validation Rules:");
-            ui.add_space(8.0);
-
-            for rule in XptValidationRule::all() {
-                let mut enabled = validation.custom_enabled_rules.contains(rule);
-                let label = format!(
-                    "{}{} - {}",
-                    rule.display_name(),
-                    if rule.is_fda_only() { " (FDA)" } else { "" },
-                    rule.description()
-                );
-
-                if ui.checkbox(&mut enabled, label).changed() {
-                    if enabled {
-                        validation.custom_enabled_rules.insert(*rule);
+            self.setting_group(ui, Some("ENABLED RULES"), theme, |ui| {
+                for rule in XptValidationRule::all() {
+                    let mut enabled = validation.custom_enabled_rules.contains(rule);
+                    let label = if rule.is_fda_only() {
+                        format!("{} (FDA)", rule.display_name())
                     } else {
-                        validation.custom_enabled_rules.remove(rule);
-                    }
+                        rule.display_name().to_string()
+                    };
+
+                    ui.horizontal(|ui| {
+                        if ui.checkbox(&mut enabled, label).changed() {
+                            if enabled {
+                                validation.custom_enabled_rules.insert(*rule);
+                            } else {
+                                validation.custom_enabled_rules.remove(rule);
+                            }
+                        }
+                    });
+                    ui.label(
+                        egui::RichText::new(rule.description())
+                            .small()
+                            .color(theme.text_muted),
+                    );
+                    ui.add_space(4.0);
                 }
-            }
+            });
         }
     }
 
     /// Show developer settings.
-    fn show_developer(&self, ui: &mut egui::Ui, developer: &mut DeveloperSettings, theme: &ThemeColors) {
-        ui.heading("Developer Settings");
-        ui.add_space(12.0);
+    fn show_developer(
+        &self,
+        ui: &mut egui::Ui,
+        developer: &mut DeveloperSettings,
+        theme: &ThemeColors,
+    ) {
+        self.section_header(ui, "Developer", theme);
 
-        ui.label(
-            egui::RichText::new(
-                "Developer mode allows you to bypass validation checks for testing purposes.",
-            )
-            .color(theme.text_muted),
-        );
+        self.setting_group(ui, None, theme, |ui| {
+            ui.label(
+                egui::RichText::new(
+                    "Developer mode allows you to bypass validation checks for testing.",
+                )
+                .color(theme.text_muted),
+            );
+            ui.add_space(12.0);
 
-        ui.add_space(12.0);
-
-        // Enable developer mode
-        ui.checkbox(&mut developer.enabled, "Enable Developer Mode");
+            self.setting_row(ui, "Developer Mode", None, theme, |ui| {
+                ui.add(toggle(&mut developer.enabled));
+            });
+        });
 
         if developer.enabled {
-            ui.add_space(16.0);
+            self.setting_group(ui, Some("OPTIONS"), theme, |ui| {
+                self.setting_row(
+                    ui,
+                    "Export with Errors",
+                    Some("Allow export even with validation errors"),
+                    theme,
+                    |ui| {
+                        ui.add(toggle(&mut developer.allow_export_with_errors));
+                    },
+                );
 
-            // Allow export with errors
-            ui.checkbox(
-                &mut developer.allow_export_with_errors,
-                "Allow export with validation errors",
-            );
+                ui.separator();
+                ui.add_space(8.0);
 
-            ui.add_space(8.0);
+                self.setting_row(
+                    ui,
+                    "Debug Info",
+                    Some("Show debug information in UI"),
+                    theme,
+                    |ui| {
+                        ui.add(toggle(&mut developer.show_debug_info));
+                    },
+                );
+            });
 
-            // Show debug info
-            ui.checkbox(&mut developer.show_debug_info, "Show debug information in UI");
+            self.setting_group(ui, Some("BYPASS RULES"), theme, |ui| {
+                ui.label(
+                    egui::RichText::new("Selected rules will be skipped during validation.")
+                        .small()
+                        .color(theme.text_muted),
+                );
+                ui.add_space(8.0);
 
-            ui.add_space(16.0);
-            ui.separator();
-            ui.add_space(8.0);
-
-            ui.label("Bypass Validation Rules:");
-            ui.label(
-                egui::RichText::new("Selected rules will be skipped during validation.")
-                    .color(theme.text_muted)
-                    .small(),
-            );
-            ui.add_space(8.0);
-
-            for rule in XptValidationRule::all() {
-                let mut bypassed = developer.bypassed_rules.contains(rule);
-                let label = format!("{} - {}", rule.display_name(), rule.description());
-
-                if ui.checkbox(&mut bypassed, label).changed() {
-                    if bypassed {
-                        developer.bypassed_rules.insert(*rule);
-                    } else {
-                        developer.bypassed_rules.remove(rule);
+                for rule in XptValidationRule::all() {
+                    let mut bypassed = developer.bypassed_rules.contains(rule);
+                    if ui.checkbox(&mut bypassed, rule.display_name()).changed() {
+                        if bypassed {
+                            developer.bypassed_rules.insert(*rule);
+                        } else {
+                            developer.bypassed_rules.remove(rule);
+                        }
                     }
                 }
-            }
+            });
         }
     }
 
     /// Show export settings.
     fn show_export(&self, ui: &mut egui::Ui, export: &mut ExportSettings, theme: &ThemeColors) {
-        ui.heading("Export Settings");
-        ui.add_space(12.0);
+        self.section_header(ui, "Export", theme);
 
-        // Default output directory
-        ui.horizontal(|ui| {
-            ui.label("Default Output Directory:");
+        self.setting_group(ui, Some("OUTPUT"), theme, |ui| {
+            ui.horizontal(|ui| {
+                ui.label("Default Directory:");
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    if export.default_output_dir.is_some() && ui.button("Clear").clicked() {
+                        export.default_output_dir = None;
+                    }
+                    if ui.button("Browse...").clicked() {
+                        if let Some(folder) = rfd::FileDialog::new().pick_folder() {
+                            export.default_output_dir = Some(folder);
+                        }
+                    }
+                });
+            });
+
             if let Some(ref dir) = export.default_output_dir {
-                ui.label(dir.display().to_string());
+                ui.label(
+                    egui::RichText::new(dir.display().to_string())
+                        .small()
+                        .color(theme.text_muted),
+                );
             } else {
-                ui.label(egui::RichText::new("(Study folder)").color(theme.text_muted));
+                ui.label(
+                    egui::RichText::new("Uses study folder by default")
+                        .small()
+                        .color(theme.text_muted),
+                );
             }
+        });
 
-            if ui.button("Browse...").clicked() {
-                if let Some(folder) = rfd::FileDialog::new().pick_folder() {
-                    export.default_output_dir = Some(folder);
+        self.setting_group(ui, Some("DATA FORMAT"), theme, |ui| {
+            for format in ExportFormat::all() {
+                let selected = export.default_format == *format;
+                if ui
+                    .add(egui::RadioButton::new(selected, format.display_name()))
+                    .clicked()
+                {
+                    export.default_format = *format;
                 }
+                ui.label(
+                    egui::RichText::new(format.description())
+                        .small()
+                        .color(theme.text_muted),
+                );
+                ui.add_space(4.0);
             }
 
-            if export.default_output_dir.is_some() && ui.button("Clear").clicked() {
-                export.default_output_dir = None;
-            }
+            ui.add_space(8.0);
+            ui.separator();
+            ui.add_space(8.0);
+
+            ui.horizontal(|ui| {
+                ui.checkbox(&mut export.generate_define_xml, "Generate Define-XML");
+            });
+            ui.label(
+                egui::RichText::new("Metadata documentation generated with exports")
+                    .small()
+                    .color(theme.text_muted),
+            );
         });
 
-        ui.add_space(12.0);
+        self.setting_group(ui, Some("FILE OPTIONS"), theme, |ui| {
+            self.setting_row(ui, "Filename Template", None, theme, |ui| {
+                ui.add(
+                    egui::TextEdit::singleline(&mut export.filename_template)
+                        .desired_width(150.0),
+                );
+            });
+            ui.label(
+                egui::RichText::new("Use {domain} for domain code, {studyid} for study ID")
+                    .small()
+                    .color(theme.text_muted),
+            );
 
-        // Default format
-        ui.label("Data Format:");
-        ui.add_space(4.0);
-        for format in ExportFormat::all() {
-            let selected = export.default_format == *format;
-            if ui
-                .radio(selected, format!("{} - {}", format.display_name(), format.description()))
-                .clicked()
-            {
-                export.default_format = *format;
-            }
-        }
+            ui.add_space(8.0);
+            ui.separator();
+            ui.add_space(8.0);
 
-        ui.add_space(12.0);
-
-        // Define-XML generation
-        ui.checkbox(
-            &mut export.generate_define_xml,
-            "Generate Define-XML (metadata documentation)",
-        );
-        ui.label(
-            egui::RichText::new("Define-XML is always generated alongside XPT or Dataset-XML exports.")
-                .color(theme.text_muted)
-                .small(),
-        );
-
-        ui.add_space(12.0);
-        ui.separator();
-        ui.add_space(12.0);
-
-        // Filename template
-        ui.horizontal(|ui| {
-            ui.label("Filename Template:");
-            ui.text_edit_singleline(&mut export.filename_template);
+            self.setting_row(
+                ui,
+                "Overwrite Files",
+                Some("Skip confirmation when overwriting"),
+                theme,
+                |ui| {
+                    ui.add(toggle(&mut export.overwrite_without_prompt));
+                },
+            );
         });
-        ui.label(
-            egui::RichText::new("Use {domain} for domain code, {studyid} for study ID.")
-                .color(theme.text_muted)
-                .small(),
-        );
-
-        ui.add_space(12.0);
-
-        // Overwrite without prompt
-        ui.checkbox(
-            &mut export.overwrite_without_prompt,
-            "Overwrite existing files without prompting",
-        );
     }
 
     /// Show display settings.
-    fn show_display(&self, ui: &mut egui::Ui, display: &mut DisplaySettings, _theme: &ThemeColors) {
-        ui.heading("Display Settings");
-        ui.add_space(12.0);
+    fn show_display(
+        &self,
+        ui: &mut egui::Ui,
+        display: &mut DisplaySettings,
+        theme: &ThemeColors,
+    ) {
+        self.section_header(ui, "Display", theme);
 
-        // Max preview rows
-        ui.horizontal(|ui| {
-            ui.label("Preview Row Limit:");
-            egui::ComboBox::from_id_salt("preview_rows")
-                .selected_text(display.max_preview_rows.display_name())
-                .show_ui(ui, |ui| {
-                    for limit in PreviewRowLimit::all() {
-                        ui.selectable_value(&mut display.max_preview_rows, *limit, limit.display_name());
-                    }
-                });
+        self.setting_group(ui, Some("DATA PREVIEW"), theme, |ui| {
+            self.setting_row(
+                ui,
+                "Row Limit",
+                Some("Maximum rows shown in preview"),
+                theme,
+                |ui| {
+                    egui::ComboBox::from_id_salt("preview_rows")
+                        .width(120.0)
+                        .selected_text(display.max_preview_rows.display_name())
+                        .show_ui(ui, |ui| {
+                            for limit in PreviewRowLimit::all() {
+                                ui.selectable_value(
+                                    &mut display.max_preview_rows,
+                                    *limit,
+                                    limit.display_name(),
+                                );
+                            }
+                        });
+                },
+            );
+
+            ui.separator();
+            ui.add_space(8.0);
+
+            self.setting_row(
+                ui,
+                "Decimal Precision",
+                Some("Digits after decimal point"),
+                theme,
+                |ui| {
+                    ui.add(
+                        egui::DragValue::new(&mut display.decimal_precision)
+                            .range(0..=10)
+                            .speed(0.1),
+                    );
+                },
+            );
+
+            ui.separator();
+            ui.add_space(8.0);
+
+            self.setting_row(
+                ui,
+                "Truncate Text",
+                Some("Maximum characters before truncation"),
+                theme,
+                |ui| {
+                    ui.add(
+                        egui::DragValue::new(&mut display.truncate_long_text)
+                            .range(10..=500)
+                            .speed(1.0),
+                    );
+                },
+            );
         });
 
-        ui.add_space(12.0);
-
-        // Decimal precision
-        ui.horizontal(|ui| {
-            ui.label("Decimal Precision:");
-            ui.add(egui::DragValue::new(&mut display.decimal_precision).range(0..=10));
+        self.setting_group(ui, Some("TABLE OPTIONS"), theme, |ui| {
+            self.setting_row(
+                ui,
+                "Row Numbers",
+                Some("Show row numbers in data tables"),
+                theme,
+                |ui| {
+                    ui.add(toggle(&mut display.show_row_numbers));
+                },
+            );
         });
-
-        ui.add_space(12.0);
-
-        // Truncate long text
-        ui.horizontal(|ui| {
-            ui.label("Truncate Text After:");
-            ui.add(egui::DragValue::new(&mut display.truncate_long_text).range(10..=500));
-            ui.label("characters");
-        });
-
-        ui.add_space(12.0);
-
-        // Show row numbers
-        ui.checkbox(&mut display.show_row_numbers, "Show row numbers in tables");
     }
 
     /// Show shortcuts settings.
     fn show_shortcuts(&self, ui: &mut egui::Ui, settings: &mut Settings, theme: &ThemeColors) {
-        ui.heading("Keyboard Shortcuts");
-        ui.add_space(12.0);
+        self.section_header(ui, "Keyboard Shortcuts", theme);
 
-        ui.label(
-            egui::RichText::new("Current keyboard shortcuts (read-only in this version):")
-                .color(theme.text_muted),
-        );
+        self.setting_group(ui, None, theme, |ui| {
+            ui.label(
+                egui::RichText::new("Current keyboard shortcuts (read-only in this version)")
+                    .color(theme.text_muted),
+            );
+            ui.add_space(12.0);
 
-        ui.add_space(8.0);
-
-        egui::Grid::new("shortcuts_grid")
-            .num_columns(2)
-            .spacing([40.0, 8.0])
-            .show(ui, |ui| {
-                for action in ShortcutAction::all() {
-                    ui.label(action.display_name());
-                    if let Some(binding) = settings.shortcuts.bindings.get(action) {
-                        ui.label(egui::RichText::new(binding.display()).monospace());
-                    } else {
-                        ui.label(egui::RichText::new("-").color(theme.text_muted));
+            egui::Grid::new("shortcuts_grid")
+                .num_columns(2)
+                .spacing([40.0, 12.0])
+                .show(ui, |ui| {
+                    for action in ShortcutAction::all() {
+                        ui.label(
+                            egui::RichText::new(action.display_name()).color(theme.text_primary),
+                        );
+                        if let Some(binding) = settings.shortcuts.bindings.get(action) {
+                            ui.label(
+                                egui::RichText::new(binding.display())
+                                    .monospace()
+                                    .color(theme.text_muted),
+                            );
+                        } else {
+                            ui.label(egui::RichText::new("-").color(theme.text_muted));
+                        }
+                        ui.end_row();
                     }
-                    ui.end_row();
-                }
-            });
+                });
+        });
+    }
+}
+
+/// A toggle switch widget (iOS-style).
+fn toggle(value: &mut bool) -> impl egui::Widget + '_ {
+    move |ui: &mut egui::Ui| -> egui::Response {
+        let desired_size = Vec2::new(44.0, 24.0);
+        let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
+
+        if response.clicked() {
+            *value = !*value;
+        }
+
+        if ui.is_rect_visible(rect) {
+            let how_on = ui.ctx().animate_bool_responsive(response.id, *value);
+
+            let bg_color = if *value {
+                Color32::from_rgb(52, 199, 89) // iOS green
+            } else {
+                Color32::from_gray(180)
+            };
+
+            // Background pill
+            ui.painter()
+                .rect_filled(rect, CornerRadius::same(12), bg_color);
+
+            // Knob
+            let knob_radius = 10.0;
+            let knob_x = egui::lerp(
+                (rect.left() + knob_radius + 2.0)..=(rect.right() - knob_radius - 2.0),
+                how_on,
+            );
+            let knob_center = egui::pos2(knob_x, rect.center().y);
+
+            ui.painter()
+                .circle_filled(knob_center, knob_radius, Color32::WHITE);
+        }
+
+        response
     }
 }
