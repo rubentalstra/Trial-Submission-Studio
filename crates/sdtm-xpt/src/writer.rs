@@ -14,7 +14,7 @@ use crate::header::{
     build_labelv8_header, build_labelv9_data, build_labelv9_header, build_library_header,
     build_member_data, build_member_header, build_member_second, build_namestr,
     build_namestr_header, build_obs_header, build_real_header, build_second_header,
-    determine_label_section,
+    determine_label_section, normalize_name,
 };
 use crate::types::{
     NumericValue, XptColumn, XptDataset, XptType, XptValue, XptVersion, XptWriterOptions,
@@ -259,11 +259,6 @@ fn validate_dataset(dataset: &XptDataset, version: XptVersion) -> Result<()> {
     }
 
     Ok(())
-}
-
-/// Normalize a name (trim, uppercase).
-fn normalize_name(name: &str) -> String {
-    name.trim().to_uppercase()
 }
 
 /// Encode a value for writing.

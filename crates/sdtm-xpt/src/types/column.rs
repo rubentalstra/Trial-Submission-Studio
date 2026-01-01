@@ -3,6 +3,7 @@
 //! Represents the metadata for a single variable in an XPT dataset,
 //! corresponding to the NAMESTR record in the file format.
 
+use crate::header::{normalize_name, truncate_str};
 use std::fmt;
 
 /// Variable data type in XPT format.
@@ -147,7 +148,7 @@ impl XptColumn {
     #[must_use]
     pub fn numeric(name: impl Into<String>) -> Self {
         Self {
-            name: normalize_name(name.into()),
+            name: normalize_name(&name.into()),
             label: None,
             data_type: XptType::Num,
             length: 8,
@@ -172,7 +173,7 @@ impl XptColumn {
     #[must_use]
     pub fn character(name: impl Into<String>, length: u16) -> Self {
         Self {
-            name: normalize_name(name.into()),
+            name: normalize_name(&name.into()),
             label: None,
             data_type: XptType::Char,
             length,
@@ -213,7 +214,7 @@ impl XptColumn {
         self.format = if name_str.is_empty() {
             None
         } else {
-            Some(truncate_string(name_str.to_uppercase(), 8))
+            Some(truncate_str(&name_str.to_uppercase(), 8))
         };
         self.format_length = length;
         self.format_decimals = decimals;
@@ -232,7 +233,7 @@ impl XptColumn {
         self.informat = if name_str.is_empty() {
             None
         } else {
-            Some(truncate_string(name_str.to_uppercase(), 8))
+            Some(truncate_str(&name_str.to_uppercase(), 8))
         };
         self.informat_length = length;
         self.informat_decimals = decimals;
@@ -275,21 +276,6 @@ impl XptColumn {
 impl Default for XptColumn {
     fn default() -> Self {
         Self::numeric("VAR")
-    }
-}
-
-/// Normalize a name: trim and uppercase.
-/// Note: Does NOT truncate; validation will catch names that exceed limits.
-fn normalize_name(name: String) -> String {
-    name.trim().to_uppercase()
-}
-
-/// Truncate a string to maximum length.
-fn truncate_string(s: String, max_len: usize) -> String {
-    if s.len() <= max_len {
-        s
-    } else {
-        s.chars().take(max_len).collect()
     }
 }
 

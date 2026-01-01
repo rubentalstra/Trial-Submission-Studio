@@ -28,10 +28,9 @@
 //! | ...    | label   | char[n]  | Label text (if lablen > 0)     |
 //! | ...    | informat| char[n]  | Informat name (if inflen > 0)  |
 
+use super::common::RECORD_LEN;
 use crate::error::Result;
 use crate::types::XptColumn;
-
-use super::library::RECORD_LEN;
 
 /// LABELV8 header prefix.
 pub const LABELV8_HEADER_PREFIX: &[u8; 48] = b"HEADER RECORD*******LABELV8 HEADER RECORD!!!!!!!";

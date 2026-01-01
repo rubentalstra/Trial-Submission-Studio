@@ -12,16 +12,11 @@
 use crate::error::{Result, XptError};
 use crate::types::{XptVersion, XptWriterOptions};
 
+use super::common::{
+    LIBRARY_HEADER_V5, LIBRARY_HEADER_V8, RECORD_LEN, build_header_record, read_string,
+    write_string,
+};
 use super::datetime::parse_xpt_datetime;
-
-/// Record length in bytes.
-pub const RECORD_LEN: usize = 80;
-
-/// Library header prefix (V5).
-pub const LIBRARY_HEADER_PREFIX: &str = "HEADER RECORD*******LIBRARY HEADER RECORD!!!!!!!";
-
-/// Library header prefix (V8).
-pub const LIBV8_HEADER_PREFIX: &str = "HEADER RECORD*******LIBV8   HEADER RECORD!!!!!!!";
 
 /// Library header information parsed from real headers.
 #[derive(Debug, Clone)]
@@ -72,9 +67,9 @@ pub fn detect_version(record: &[u8]) -> Option<XptVersion> {
     if record.len() < RECORD_LEN {
         return None;
     }
-    if record.starts_with(LIBRARY_HEADER_PREFIX.as_bytes()) {
+    if record.starts_with(LIBRARY_HEADER_V5.as_bytes()) {
         Some(XptVersion::V5)
-    } else if record.starts_with(LIBV8_HEADER_PREFIX.as_bytes()) {
+    } else if record.starts_with(LIBRARY_HEADER_V8.as_bytes()) {
         Some(XptVersion::V8)
     } else {
         None
@@ -162,7 +157,7 @@ pub fn parse_second_header(record: &[u8]) -> String {
 /// * `version` - XPT format version (V5 or V8)
 #[must_use]
 pub fn build_library_header(version: XptVersion) -> [u8; RECORD_LEN] {
-    build_fixed_header(version.library_prefix())
+    build_header_record(version.library_prefix())
 }
 
 /// Build the real header record with library info.
@@ -199,40 +194,6 @@ pub fn build_second_header(modified: &str) -> [u8; RECORD_LEN] {
     let mut record = [b' '; RECORD_LEN];
     write_string(&mut record, 0, modified, 16);
     record
-}
-
-/// Build a fixed header record with the given prefix.
-fn build_fixed_header(prefix: &str) -> [u8; RECORD_LEN] {
-    let mut record = [b' '; RECORD_LEN];
-
-    // Copy prefix (48 bytes)
-    let prefix_bytes = prefix.as_bytes();
-    let copy_len = prefix_bytes.len().min(48);
-    record[..copy_len].copy_from_slice(&prefix_bytes[..copy_len]);
-
-    // Fill with '0' characters from offset 48 to 78
-    for i in 48..78 {
-        record[i] = b'0';
-    }
-
-    // Last 2 bytes are spaces (already set)
-
-    record
-}
-
-/// Read a string from a byte slice, trimming trailing spaces.
-fn read_string(data: &[u8], offset: usize, len: usize) -> String {
-    data.get(offset..offset + len)
-        .map(|slice| String::from_utf8_lossy(slice).trim_end().to_string())
-        .unwrap_or_default()
-}
-
-/// Write a string to a buffer, space-padded.
-fn write_string(buf: &mut [u8], offset: usize, value: &str, len: usize) {
-    let bytes = value.as_bytes();
-    let copy_len = bytes.len().min(len);
-    buf[offset..offset + copy_len].copy_from_slice(&bytes[..copy_len]);
-    // Remaining bytes are already spaces from initialization
 }
 
 /// Extract created datetime from library info.
@@ -323,7 +284,7 @@ mod tests {
         let header = build_library_header(XptVersion::V5);
 
         // Check prefix
-        assert!(header.starts_with(LIBRARY_HEADER_PREFIX.as_bytes()));
+        assert!(header.starts_with(LIBRARY_HEADER_V5.as_bytes()));
 
         // Check zeros section
         for i in 48..78 {
@@ -340,7 +301,7 @@ mod tests {
         let header = build_library_header(XptVersion::V8);
 
         // Check prefix
-        assert!(header.starts_with(LIBV8_HEADER_PREFIX.as_bytes()));
+        assert!(header.starts_with(LIBRARY_HEADER_V8.as_bytes()));
 
         // Check zeros section
         for i in 48..78 {

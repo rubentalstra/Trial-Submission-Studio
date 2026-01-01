@@ -6,6 +6,7 @@
 use chrono::NaiveDateTime;
 
 use super::{XptColumn, XptValue};
+use crate::header::{normalize_name, truncate_str};
 
 /// A single dataset (member) in an XPT file.
 ///
@@ -38,7 +39,7 @@ impl XptDataset {
     #[must_use]
     pub fn new(name: impl Into<String>) -> Self {
         Self {
-            name: normalize_name(name.into()),
+            name: normalize_name(&name.into()),
             label: None,
             dataset_type: None,
             columns: Vec::new(),
@@ -54,7 +55,7 @@ impl XptDataset {
     #[must_use]
     pub fn with_columns(name: impl Into<String>, columns: Vec<XptColumn>) -> Self {
         Self {
-            name: normalize_name(name.into()),
+            name: normalize_name(&name.into()),
             label: None,
             dataset_type: None,
             columns,
@@ -69,7 +70,7 @@ impl XptDataset {
         self.label = if label_str.is_empty() {
             None
         } else {
-            Some(truncate_string(label_str, 40))
+            Some(truncate_str(&label_str, 40))
         };
         self
     }
@@ -81,7 +82,7 @@ impl XptDataset {
         self.dataset_type = if type_str.is_empty() {
             None
         } else {
-            Some(truncate_string(type_str.to_uppercase(), 8))
+            Some(truncate_str(&type_str.to_uppercase(), 8))
         };
         self
     }
@@ -272,14 +273,14 @@ impl XptLibrary {
     /// Set the SAS version.
     #[must_use]
     pub fn with_sas_version(mut self, version: impl Into<String>) -> Self {
-        self.sas_version = truncate_string(version.into(), 8);
+        self.sas_version = truncate_str(&version.into(), 8);
         self
     }
 
     /// Set the OS name.
     #[must_use]
     pub fn with_os_name(mut self, os: impl Into<String>) -> Self {
-        self.os_name = truncate_string(os.into(), 8);
+        self.os_name = truncate_str(&os.into(), 8);
         self
     }
 
@@ -360,21 +361,6 @@ impl Default for XptLibrary {
 impl From<XptDataset> for XptLibrary {
     fn from(dataset: XptDataset) -> Self {
         Self::single(dataset)
-    }
-}
-
-/// Normalize a dataset name: trim and uppercase.
-/// Note: Does NOT truncate; validation will catch names > 8 chars.
-fn normalize_name(name: String) -> String {
-    name.trim().to_uppercase()
-}
-
-/// Truncate a string to maximum length.
-fn truncate_string(s: String, max_len: usize) -> String {
-    if s.len() <= max_len {
-        s
-    } else {
-        s.chars().take(max_len).collect()
     }
 }
 

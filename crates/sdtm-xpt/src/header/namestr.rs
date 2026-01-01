@@ -36,6 +36,7 @@
 //! | 120-121 | lablen   | short    | Label length indicator        |
 //! | 122-139 | rest     | char[18] | Reserved                      |
 
+use super::common::{read_i16, read_string, write_i16, write_i32, write_string};
 use crate::error::{Result, XptError};
 use crate::types::{Justification, XptColumn, XptType, XptVersion};
 
@@ -274,61 +275,6 @@ pub fn parse_namestr_records(
     }
 
     Ok(columns)
-}
-
-/// Read a big-endian i16 from data.
-fn read_i16(data: &[u8], offset: usize) -> i16 {
-    let bytes = [data[offset], data[offset + 1]];
-    i16::from_be_bytes(bytes)
-}
-
-/// Read a big-endian i32 from data.
-#[allow(dead_code)]
-fn read_i32(data: &[u8], offset: usize) -> i32 {
-    let bytes = [
-        data[offset],
-        data[offset + 1],
-        data[offset + 2],
-        data[offset + 3],
-    ];
-    i32::from_be_bytes(bytes)
-}
-
-/// Read a string from data, trimming trailing spaces and null bytes.
-fn read_string(data: &[u8], offset: usize, len: usize) -> String {
-    data.get(offset..offset + len)
-        .map(|slice| {
-            String::from_utf8_lossy(slice)
-                .trim_end_matches(|c: char| c.is_whitespace() || c == '\0')
-                .to_string()
-        })
-        .unwrap_or_default()
-}
-
-/// Write a big-endian i16 to buffer.
-fn write_i16(buf: &mut [u8], offset: usize, value: i16) {
-    let bytes = value.to_be_bytes();
-    buf[offset] = bytes[0];
-    buf[offset + 1] = bytes[1];
-}
-
-/// Write a big-endian i32 to buffer.
-fn write_i32(buf: &mut [u8], offset: usize, value: i32) {
-    let bytes = value.to_be_bytes();
-    buf[offset] = bytes[0];
-    buf[offset + 1] = bytes[1];
-    buf[offset + 2] = bytes[2];
-    buf[offset + 3] = bytes[3];
-}
-
-/// Write a string to buffer, space-padded to length.
-fn write_string(buf: &mut [u8], offset: usize, value: &str, len: usize) {
-    for (i, ch) in value.chars().take(len).enumerate() {
-        buf[offset + i] = if ch.is_ascii() { ch as u8 } else { b'?' };
-    }
-    for i in value.len()..len {
-        buf[offset + i] = b' ';
-    }
 }
 
 #[cfg(test)]

@@ -3,6 +3,7 @@
 use chrono::NaiveDateTime;
 
 use super::MissingValue;
+use crate::header::truncate_str;
 
 /// SAS Transport format version.
 ///
@@ -270,14 +271,14 @@ impl XptWriterOptions {
     /// Set the SAS version string.
     #[must_use]
     pub fn with_sas_version(mut self, version: impl Into<String>) -> Self {
-        self.sas_version = truncate_string(version.into(), 8);
+        self.sas_version = truncate_str(&version.into(), 8);
         self
     }
 
     /// Set the operating system name.
     #[must_use]
     pub fn with_os_name(mut self, os: impl Into<String>) -> Self {
-        self.os_name = truncate_string(os.into(), 8);
+        self.os_name = truncate_str(&os.into(), 8);
         self
     }
 
@@ -332,15 +333,6 @@ impl XptWriterOptions {
     #[must_use]
     pub fn format_modified(&self) -> String {
         format_xpt_datetime(self.get_modified())
-    }
-}
-
-/// Truncate a string to maximum length.
-fn truncate_string(s: String, max_len: usize) -> String {
-    if s.len() <= max_len {
-        s
-    } else {
-        s.chars().take(max_len).collect()
     }
 }
 
