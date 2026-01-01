@@ -93,7 +93,11 @@ mod tests {
         let ctx = make_context(XptVersion::V5);
 
         let errors = rule.validate_column(&column, 0, "DM", &ctx);
-        assert!(errors.iter().any(|e| e.code == ValidationErrorCode::FormatNameTooLong));
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.code == ValidationErrorCode::FormatNameTooLong)
+        );
     }
 
     #[test]
@@ -104,7 +108,11 @@ mod tests {
         let ctx = make_context(XptVersion::V8);
 
         let errors = rule.validate_column(&column, 0, "DM", &ctx);
-        assert!(errors.iter().all(|e| e.code != ValidationErrorCode::FormatNameTooLong));
+        assert!(
+            errors
+                .iter()
+                .all(|e| e.code != ValidationErrorCode::FormatNameTooLong)
+        );
     }
 
     #[test]
@@ -115,6 +123,10 @@ mod tests {
         let ctx = make_context(XptVersion::V5);
 
         let errors = rule.validate_column(&column, 0, "DM", &ctx);
-        assert!(errors.iter().any(|e| e.code == ValidationErrorCode::InformatNameTooLong));
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.code == ValidationErrorCode::InformatNameTooLong)
+        );
     }
 }

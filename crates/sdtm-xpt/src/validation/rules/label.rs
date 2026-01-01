@@ -27,7 +27,7 @@ impl ValidationRule for DatasetLabelRule {
 
         if let Some(label) = &dataset.label {
             let limit = ctx.dataset_label_limit();
-            
+
             // Check length
             if label.len() > limit {
                 errors.push(ValidationError::new(
@@ -139,7 +139,11 @@ mod tests {
     fn make_context(version: XptVersion, fda: bool) -> ValidationContext {
         ValidationContext::new(
             version,
-            if fda { ValidationMode::FdaCompliant } else { ValidationMode::Basic },
+            if fda {
+                ValidationMode::FdaCompliant
+            } else {
+                ValidationMode::Basic
+            },
         )
     }
 
@@ -162,7 +166,11 @@ mod tests {
         let ctx = make_context(XptVersion::V5, false);
 
         let errors = rule.validate_dataset(&dataset, &ctx);
-        assert!(errors.iter().any(|e| e.code == ValidationErrorCode::LabelTooLong));
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.code == ValidationErrorCode::LabelTooLong)
+        );
     }
 
     #[test]
@@ -170,15 +178,23 @@ mod tests {
         let rule = VariableLabelRule;
         let mut column = XptColumn::character("USUBJID", 20);
         column.label = Some("A".repeat(100)); // > 40 but < 256
-        
+
         let ctx_v5 = make_context(XptVersion::V5, false);
         let ctx_v8 = make_context(XptVersion::V8, false);
 
         let errors_v5 = rule.validate_column(&column, 0, "DM", &ctx_v5);
         let errors_v8 = rule.validate_column(&column, 0, "DM", &ctx_v8);
 
-        assert!(errors_v5.iter().any(|e| e.code == ValidationErrorCode::LabelTooLong));
-        assert!(errors_v8.iter().all(|e| e.code != ValidationErrorCode::LabelTooLong));
+        assert!(
+            errors_v5
+                .iter()
+                .any(|e| e.code == ValidationErrorCode::LabelTooLong)
+        );
+        assert!(
+            errors_v8
+                .iter()
+                .all(|e| e.code != ValidationErrorCode::LabelTooLong)
+        );
     }
 
     #[test]
@@ -186,7 +202,7 @@ mod tests {
         let rule = VariableLabelRule;
         let mut column = XptColumn::character("USUBJID", 20);
         column.label = Some("Subject Idéntifier".to_string()); // non-ASCII 'é'
-        
+
         let ctx_fda = make_context(XptVersion::V5, true);
         let ctx_basic = make_context(XptVersion::V5, false);
 
@@ -194,12 +210,15 @@ mod tests {
         let errors_basic = rule.validate_column(&column, 0, "DM", &ctx_basic);
 
         // FDA mode: error
-        assert!(errors_fda.iter().any(|e| 
-            e.code == ValidationErrorCode::NonAsciiLabel && e.severity == Severity::Error
-        ));
+        assert!(
+            errors_fda
+                .iter()
+                .any(|e| e.code == ValidationErrorCode::NonAsciiLabel
+                    && e.severity == Severity::Error)
+        );
         // Basic mode: warning
-        assert!(errors_basic.iter().any(|e| 
-            e.code == ValidationErrorCode::NonAsciiLabel && e.severity == Severity::Warning
+        assert!(errors_basic.iter().any(
+            |e| e.code == ValidationErrorCode::NonAsciiLabel && e.severity == Severity::Warning
         ));
     }
 }

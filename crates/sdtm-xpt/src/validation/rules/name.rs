@@ -203,7 +203,11 @@ mod tests {
         let ctx = make_context(XptVersion::V5);
 
         let errors = rule.validate_dataset(&dataset, &ctx);
-        assert!(errors.iter().any(|e| e.code == ValidationErrorCode::NameTooLong));
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.code == ValidationErrorCode::NameTooLong)
+        );
     }
 
     #[test]
@@ -213,7 +217,11 @@ mod tests {
         let ctx = make_context(XptVersion::V8);
 
         let errors = rule.validate_dataset(&dataset, &ctx);
-        assert!(errors.iter().all(|e| e.code != ValidationErrorCode::NameTooLong));
+        assert!(
+            errors
+                .iter()
+                .all(|e| e.code != ValidationErrorCode::NameTooLong)
+        );
     }
 
     #[test]
@@ -233,6 +241,10 @@ mod tests {
         let ctx = make_context(XptVersion::V5);
 
         let errors = rule.validate_column(&column, 0, "DM", &ctx);
-        assert!(errors.iter().any(|e| e.code == ValidationErrorCode::InvalidNameCharacter));
+        assert!(
+            errors
+                .iter()
+                .any(|e| e.code == ValidationErrorCode::InvalidNameCharacter)
+        );
     }
 }

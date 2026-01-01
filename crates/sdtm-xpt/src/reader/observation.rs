@@ -64,7 +64,11 @@ pub fn decode_numeric(bytes: &[u8]) -> NumericValue {
 /// # Returns
 /// Parsed observation with typed values.
 #[must_use]
-pub fn parse_observation(row_bytes: &[u8], columns: &[XptColumn], trim_strings: bool) -> Observation {
+pub fn parse_observation(
+    row_bytes: &[u8],
+    columns: &[XptColumn],
+    trim_strings: bool,
+) -> Observation {
     let mut values = Vec::with_capacity(columns.len());
     let mut pos = 0usize;
 
@@ -151,10 +155,7 @@ mod tests {
 
     #[test]
     fn test_parse_observation() {
-        let columns = vec![
-            XptColumn::character("NAME", 8),
-            XptColumn::numeric("AGE"),
-        ];
+        let columns = vec![XptColumn::character("NAME", 8), XptColumn::numeric("AGE")];
 
         // "JOHN    " + IBM 1.0
         let mut row_bytes = Vec::new();

@@ -22,7 +22,6 @@ pub use validation::{
 #[derive(Debug, Error)]
 pub enum XptError {
     // === I/O Errors ===
-    
     /// File not found at the specified path.
     #[error("file not found: {}", path.display())]
     FileNotFound {
@@ -108,7 +107,6 @@ pub enum XptError {
     },
 
     // === Data Validation Errors ===
-
     /// Invalid dataset name.
     #[error("invalid dataset name: '{name}'")]
     InvalidDatasetName {
@@ -192,7 +190,6 @@ pub enum XptError {
     },
 
     // === Collected Validation Errors ===
-
     /// Multiple validation errors (collected).
     #[error("{} validation error(s)", .0.len())]
     Validation(Vec<ValidationError>),

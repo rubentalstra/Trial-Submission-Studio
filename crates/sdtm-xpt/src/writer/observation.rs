@@ -144,16 +144,10 @@ mod tests {
 
     #[test]
     fn test_encode_observation() {
-        let columns = vec![
-            XptColumn::character("NAME", 8),
-            XptColumn::numeric("AGE"),
-        ];
-        let obs = Observation::new(vec![
-            XptValue::character("JOHN"),
-            XptValue::numeric(30.0),
-        ]);
+        let columns = vec![XptColumn::character("NAME", 8), XptColumn::numeric("AGE")];
+        let obs = Observation::new(vec![XptValue::character("JOHN"), XptValue::numeric(30.0)]);
         let options = XptWriterOptions::default();
-        
+
         let encoded = encode_observation(&obs, &columns, &options);
         assert_eq!(encoded.len(), 16); // 8 + 8
         assert_eq!(&encoded[0..8], b"JOHN    ");

@@ -88,7 +88,10 @@ impl XptDataset {
 }
 
 /// Convert a Polars Series to an XPT column and values.
-pub(crate) fn series_to_xpt_column(series: &Series, name: &str) -> Result<(XptColumn, Vec<XptValue>)> {
+pub(crate) fn series_to_xpt_column(
+    series: &Series,
+    name: &str,
+) -> Result<(XptColumn, Vec<XptValue>)> {
     let dtype = series.dtype();
 
     match dtype {

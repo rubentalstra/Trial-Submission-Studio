@@ -7,17 +7,17 @@
 //! - Dataset structure validation
 //! - FDA-specific rules
 
-mod name;
-mod label;
-mod format;
 mod dataset;
 mod fda;
+mod format;
+mod label;
+mod name;
 
-pub use name::{DatasetNameRule, VariableNameRule};
-pub use label::{DatasetLabelRule, VariableLabelRule};
-pub use format::FormatNameRule;
 pub use dataset::{DuplicateVariableRule, VariableLengthRule};
-pub use fda::{FdaVersionRule, FdaAsciiRule};
+pub use fda::{FdaAsciiRule, FdaVersionRule};
+pub use format::FormatNameRule;
+pub use label::{DatasetLabelRule, VariableLabelRule};
+pub use name::{DatasetNameRule, VariableNameRule};
 
 use crate::header::normalize_name;
 

@@ -171,10 +171,7 @@ mod tests {
 
     #[test]
     fn test_observation_new() {
-        let obs = Observation::new(vec![
-            XptValue::character("test"),
-            XptValue::numeric(42.0),
-        ]);
+        let obs = Observation::new(vec![XptValue::character("test"), XptValue::numeric(42.0)]);
         assert_eq!(obs.len(), 2);
         assert!(!obs.is_empty());
     }
@@ -188,10 +185,7 @@ mod tests {
 
     #[test]
     fn test_observation_get() {
-        let obs = Observation::new(vec![
-            XptValue::character("a"),
-            XptValue::numeric(1.0),
-        ]);
+        let obs = Observation::new(vec![XptValue::character("a"), XptValue::numeric(1.0)]);
         assert_eq!(obs.get(0).unwrap().as_str(), Some("a"));
         assert_eq!(obs.get(1).unwrap().as_f64(), Some(1.0));
         assert!(obs.get(2).is_none());
@@ -207,10 +201,7 @@ mod tests {
 
     #[test]
     fn test_observation_iter() {
-        let obs = Observation::new(vec![
-            XptValue::numeric(1.0),
-            XptValue::numeric(2.0),
-        ]);
+        let obs = Observation::new(vec![XptValue::numeric(1.0), XptValue::numeric(2.0)]);
         let sum: f64 = obs.iter().filter_map(|v| v.as_f64()).sum();
         assert_eq!(sum, 3.0);
     }
@@ -237,10 +228,7 @@ mod tests {
 
     #[test]
     fn test_observation_index() {
-        let obs = Observation::new(vec![
-            XptValue::numeric(1.0),
-            XptValue::numeric(2.0),
-        ]);
+        let obs = Observation::new(vec![XptValue::numeric(1.0), XptValue::numeric(2.0)]);
         assert_eq!(obs[0].as_f64(), Some(1.0));
         assert_eq!(obs[1].as_f64(), Some(2.0));
     }
@@ -254,10 +242,7 @@ mod tests {
 
     #[test]
     fn test_observation_into_iter() {
-        let obs = Observation::new(vec![
-            XptValue::numeric(1.0),
-            XptValue::numeric(2.0),
-        ]);
+        let obs = Observation::new(vec![XptValue::numeric(1.0), XptValue::numeric(2.0)]);
         let collected: Vec<_> = obs.into_iter().collect();
         assert_eq!(collected.len(), 2);
     }

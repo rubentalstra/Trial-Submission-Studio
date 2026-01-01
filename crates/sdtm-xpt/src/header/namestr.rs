@@ -57,7 +57,10 @@ pub fn parse_namestr(
     version: XptVersion,
 ) -> Result<XptColumn> {
     if data.len() < namestr_len.min(88) {
-        return Err(XptError::invalid_namestr(index, format!("data too short: {} bytes", data.len())));
+        return Err(XptError::invalid_namestr(
+            index,
+            format!("data too short: {} bytes", data.len()),
+        ));
     }
 
     // ntype: variable type (1=NUM, 2=CHAR)
@@ -247,9 +250,9 @@ pub fn parse_namestr_records(
             .checked_mul(namestr_len)
             .ok_or(XptError::ObservationOverflow)?;
 
-        let record =
-            data.get(offset..offset + namestr_len)
-                .ok_or_else(|| XptError::invalid_namestr(idx, "NAMESTR data out of bounds"))?;
+        let record = data
+            .get(offset..offset + namestr_len)
+            .ok_or_else(|| XptError::invalid_namestr(idx, "NAMESTR data out of bounds"))?;
 
         columns.push(parse_namestr(record, namestr_len, idx, version)?);
     }

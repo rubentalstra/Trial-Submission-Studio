@@ -215,7 +215,9 @@ fn parse_xpt_data(data: &[u8], options: &XptReaderOptions) -> Result<XptDataset>
 
     // Check record alignment
     if !data.len().is_multiple_of(RECORD_LEN) {
-        return Err(XptError::invalid_format("file length is not a multiple of 80"));
+        return Err(XptError::invalid_format(
+            "file length is not a multiple of 80",
+        ));
     }
 
     let mut offset = 0usize;

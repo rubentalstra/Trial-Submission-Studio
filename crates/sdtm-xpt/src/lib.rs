@@ -98,14 +98,14 @@ pub use types::{
 
 // Re-export reader functionality
 pub use reader::{
-    read_xpt, read_xpt_streaming, read_xpt_streaming_with_options, read_xpt_with_options, DatasetMeta, ObservationIter,
-    StreamingReader, XptReader,
+    DatasetMeta, ObservationIter, StreamingReader, XptReader, read_xpt, read_xpt_streaming,
+    read_xpt_streaming_with_options, read_xpt_with_options,
 };
 
 // Re-export writer functionality
 pub use writer::{
-    write_xpt, write_xpt_with_options, DatasetInfo, StreamingWriter, ValidatedWriter, XptWriter,
-    XptWriterBuilder,
+    DatasetInfo, StreamingWriter, ValidatedWriter, XptWriter, XptWriterBuilder, write_xpt,
+    write_xpt_with_options,
 };
 
 // Re-export Polars integration

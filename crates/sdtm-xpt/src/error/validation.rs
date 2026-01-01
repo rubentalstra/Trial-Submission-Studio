@@ -75,7 +75,10 @@ impl fmt::Display for ErrorLocation {
                 column,
                 index,
             } => {
-                write!(f, "column '{column}' (index {index}) in dataset '{dataset}'")
+                write!(
+                    f,
+                    "column '{column}' (index {index}) in dataset '{dataset}'"
+                )
             }
             Self::Observation { dataset, row } => {
                 write!(f, "row {row} in dataset '{dataset}'")
@@ -85,7 +88,10 @@ impl fmt::Display for ErrorLocation {
                 column,
                 row,
             } => {
-                write!(f, "value at column '{column}', row {row} in dataset '{dataset}'")
+                write!(
+                    f,
+                    "value at column '{column}', row {row} in dataset '{dataset}'"
+                )
             }
             Self::File { filename } => write!(f, "file '{filename}'"),
         }
@@ -414,9 +420,7 @@ mod tests {
         result.add_warning(ValidationError::warning(
             ValidationErrorCode::LowercaseName,
             "Name should be uppercase",
-            ErrorLocation::Dataset {
-                name: "dm".into(),
-            },
+            ErrorLocation::Dataset { name: "dm".into() },
         ));
 
         assert!(result.is_valid());
