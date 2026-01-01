@@ -175,6 +175,14 @@ impl XptVersion {
         matches!(self, Self::V5)
     }
 
+    /// Whether this version supports long names (>8 chars).
+    ///
+    /// V8 supports names up to 32 characters.
+    #[must_use]
+    pub const fn supports_long_names(&self) -> bool {
+        matches!(self, Self::V8)
+    }
+
     // ============ Detection ============
 
     /// Detect version from library header prefix.
@@ -255,14 +263,22 @@ mod tests {
 
     #[test]
     fn test_version_detection_v5() {
-        let header = b"HEADER RECORD*******LIBRARY HEADER RECORD!!!!!!!000000000000000000000000000000  ";
-        assert_eq!(XptVersion::from_library_header(header), Some(XptVersion::V5));
+        let header =
+            b"HEADER RECORD*******LIBRARY HEADER RECORD!!!!!!!000000000000000000000000000000  ";
+        assert_eq!(
+            XptVersion::from_library_header(header),
+            Some(XptVersion::V5)
+        );
     }
 
     #[test]
     fn test_version_detection_v8() {
-        let header = b"HEADER RECORD*******LIBV8 HEADER RECORD!!!!!!!000000000000000000000000000000  ";
-        assert_eq!(XptVersion::from_library_header(header), Some(XptVersion::V8));
+        let header =
+            b"HEADER RECORD*******LIBV8 HEADER RECORD!!!!!!!000000000000000000000000000000  ";
+        assert_eq!(
+            XptVersion::from_library_header(header),
+            Some(XptVersion::V8)
+        );
     }
 
     #[test]

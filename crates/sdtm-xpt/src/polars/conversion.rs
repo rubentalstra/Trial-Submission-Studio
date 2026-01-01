@@ -1,65 +1,12 @@
-//! Optional Polars DataFrame integration.
+//! DataFrame ↔ XPT conversion utilities.
 //!
-//! This module provides conversion between XPT datasets and Polars DataFrames.
-//! Enable with the `polars` feature.
-
-use std::path::Path;
+//! This module provides the internal conversion logic between
+//! Polars Series/DataFrames and XPT types.
 
 use polars::prelude::*;
 
 use crate::error::{Result, XptError};
-use crate::reader::read_xpt;
-use crate::types::{NumericValue, XptColumn, XptDataset, XptType, XptValue, XptWriterOptions};
-use crate::writer::write_xpt_with_options;
-
-/// Read an XPT file directly to a Polars DataFrame.
-///
-/// # Arguments
-/// * `path` - Path to the XPT file
-///
-/// # Returns
-/// A Polars DataFrame containing the XPT data.
-///
-/// # Example
-/// ```no_run
-/// use std::path::Path;
-/// use sdtm_xpt::read_xpt_to_dataframe;
-///
-/// let df = read_xpt_to_dataframe(Path::new("dm.xpt")).unwrap();
-/// println!("{}", df);
-/// ```
-pub fn read_xpt_to_dataframe(path: &Path) -> Result<DataFrame> {
-    let dataset = read_xpt(path)?;
-    dataset.to_dataframe()
-}
-
-/// Write a Polars DataFrame to an XPT file.
-///
-/// # Arguments
-/// * `path` - Output path for the XPT file
-/// * `df` - The DataFrame to write
-/// * `name` - Dataset name (1-8 characters)
-///
-/// # Returns
-/// Ok(()) on success.
-///
-/// # Example
-/// ```no_run
-/// use std::path::Path;
-/// use polars::prelude::*;
-/// use sdtm_xpt::write_dataframe_to_xpt;
-///
-/// let df = df! {
-///     "USUBJID" => &["001", "002", "003"],
-///     "AGE" => &[25i64, 30, 35],
-/// }.unwrap();
-///
-/// write_dataframe_to_xpt(Path::new("out.xpt"), &df, "DM").unwrap();
-/// ```
-pub fn write_dataframe_to_xpt(path: &Path, df: &DataFrame, name: &str) -> Result<()> {
-    let dataset = XptDataset::from_dataframe(df, name)?;
-    write_xpt_with_options(path, &dataset, &XptWriterOptions::default())
-}
+use crate::types::{NumericValue, XptColumn, XptDataset, XptType, XptValue};
 
 impl XptDataset {
     /// Convert this XPT dataset to a Polars DataFrame.
@@ -141,7 +88,7 @@ impl XptDataset {
 }
 
 /// Convert a Polars Series to an XPT column and values.
-fn series_to_xpt_column(series: &Series, name: &str) -> Result<(XptColumn, Vec<XptValue>)> {
+pub(crate) fn series_to_xpt_column(series: &Series, name: &str) -> Result<(XptColumn, Vec<XptValue>)> {
     let dtype = series.dtype();
 
     match dtype {
@@ -184,7 +131,6 @@ fn series_to_xpt_column(series: &Series, name: &str) -> Result<(XptColumn, Vec<X
 
 /// Convert float series to XPT values.
 fn float_series_to_values(series: &Series) -> Vec<XptValue> {
-    // Cast to Float64 if needed, then iterate
     let float_series = if series.dtype() == &DataType::Float64 {
         series.clone()
     } else {
@@ -220,7 +166,6 @@ fn bool_series_to_values(series: &Series) -> Vec<XptValue> {
 
 /// Convert string series to XPT column and values.
 fn string_series_to_column(series: &Series, name: &str) -> (XptColumn, Vec<XptValue>) {
-    // Cast to String if needed
     let str_series = if series.dtype() == &DataType::String {
         series.clone()
     } else {

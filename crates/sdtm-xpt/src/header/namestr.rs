@@ -37,7 +37,7 @@
 //! | 122-139 | rest     | char[18] | Reserved                      |
 
 use super::common::{NAMESTR_LEN, read_i16, read_string, write_i16, write_i32, write_string};
-use crate::error::{IoResult, XptIoError};
+use crate::error::{Result, XptError};
 use crate::types::{Justification, XptColumn, XptType, XptVersion};
 
 /// Parse a single NAMESTR record into an XptColumn.
@@ -55,9 +55,9 @@ pub fn parse_namestr(
     namestr_len: usize,
     index: usize,
     version: XptVersion,
-) -> IoResult<XptColumn> {
+) -> Result<XptColumn> {
     if data.len() < namestr_len.min(88) {
-        return Err(XptIoError::InvalidNamestr {
+        return Err(XptError::InvalidNamestr {
             index,
             message: format!("data too short: {} bytes", data.len()),
         });
@@ -65,7 +65,7 @@ pub fn parse_namestr(
 
     // ntype: variable type (1=NUM, 2=CHAR)
     let ntype = read_i16(data, 0);
-    let data_type = XptType::from_ntype(ntype).ok_or_else(|| XptIoError::InvalidNamestr {
+    let data_type = XptType::from_ntype(ntype).ok_or_else(|| XptError::InvalidNamestr {
         index,
         message: format!("invalid ntype: {ntype}"),
     })?;
@@ -73,7 +73,7 @@ pub fn parse_namestr(
     // nlng: variable length
     let length = read_i16(data, 4) as u16;
     if length == 0 {
-        return Err(XptIoError::InvalidNamestr {
+        return Err(XptError::InvalidNamestr {
             index,
             message: "variable length is zero".to_string(),
         });
@@ -82,7 +82,7 @@ pub fn parse_namestr(
     // nname: variable name (8 chars)
     let short_name = read_string(data, 8, 8);
     if short_name.is_empty() {
-        return Err(XptIoError::InvalidNamestr {
+        return Err(XptError::InvalidNamestr {
             index,
             message: "empty variable name".to_string(),
         });
@@ -250,17 +250,17 @@ pub fn parse_namestr_records(
     var_count: usize,
     namestr_len: usize,
     version: XptVersion,
-) -> IoResult<Vec<XptColumn>> {
+) -> Result<Vec<XptColumn>> {
     let mut columns = Vec::with_capacity(var_count);
 
     for idx in 0..var_count {
         let offset = idx
             .checked_mul(namestr_len)
-            .ok_or(XptIoError::ObservationOverflow)?;
+            .ok_or(XptError::ObservationOverflow)?;
 
         let record =
             data.get(offset..offset + namestr_len)
-                .ok_or_else(|| XptIoError::InvalidNamestr {
+                .ok_or_else(|| XptError::InvalidNamestr {
                     index: idx,
                     message: "NAMESTR data out of bounds".to_string(),
                 })?;

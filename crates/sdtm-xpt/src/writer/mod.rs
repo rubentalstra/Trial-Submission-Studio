@@ -1,24 +1,94 @@
 //! XPT file writer.
 //!
-//! Provides functionality to write SAS Transport (XPT) files.
+//! This module provides functionality to write SAS Transport (XPT) files
+//! with both buffered and streaming approaches.
+//!
+//! # Usage
+//!
+//! ## Simple Writing
+//!
+//! ```no_run
+//! use std::path::Path;
+//! use sdtm_xpt::{XptDataset, XptColumn, XptValue, write_xpt};
+//!
+//! let mut dataset = XptDataset::with_columns("DM", vec![
+//!     XptColumn::character("USUBJID", 20),
+//!     XptColumn::numeric("AGE"),
+//! ]);
+//! dataset.add_row(vec![
+//!     XptValue::character("STUDY-001"),
+//!     XptValue::numeric(35.0),
+//! ]);
+//!
+//! write_xpt(Path::new("dm.xpt"), &dataset).unwrap();
+//! ```
+//!
+//! ## With Validation
+//!
+//! ```no_run
+//! use std::path::Path;
+//! use sdtm_xpt::{XptDataset, XptColumn, XptWriterBuilder};
+//!
+//! let dataset = XptDataset::with_columns("DM", vec![
+//!     XptColumn::character("USUBJID", 20),
+//! ]);
+//!
+//! let result = XptWriterBuilder::new()
+//!     .fda_compliant()
+//!     .validate(&dataset);
+//!
+//! if result.is_valid() {
+//!     result.write_to_file(Path::new("dm.xpt"), &dataset).unwrap();
+//! }
+//! ```
+//!
+//! ## Streaming Writing (constant memory)
+//!
+//! ```no_run
+//! use std::path::Path;
+//! use sdtm_xpt::{XptColumn, Observation, XptValue};
+//! use sdtm_xpt::writer::{DatasetInfo, StreamingWriter};
+//!
+//! let info = DatasetInfo::new("DM", vec![
+//!     XptColumn::character("USUBJID", 20),
+//!     XptColumn::numeric("AGE"),
+//! ]);
+//!
+//! let mut writer = StreamingWriter::create(Path::new("dm.xpt"), info).unwrap();
+//!
+//! for i in 0..1000 {
+//!     let obs = Observation::new(vec![
+//!         XptValue::character(format!("SUBJ-{:03}", i)),
+//!         XptValue::numeric(30.0 + (i % 50) as f64),
+//!     ]);
+//!     writer.write_observation(&obs).unwrap();
+//! }
+//!
+//! writer.finish().unwrap();
+//! ```
 
-use std::collections::BTreeSet;
+pub mod builder;
+pub mod observation;
+pub mod streaming;
+
 use std::fs::File;
 use std::io::{BufWriter, Write};
 use std::path::Path;
 
-use crate::error::{Result, XptIoError};
-use crate::float::{encode_missing, ieee_to_ibm, truncate_ibm};
+use crate::XptVersion;
+use crate::error::{Result, XptError};
 use crate::header::{
     LabelSectionType, LibraryInfo, RECORD_LEN, build_dscrptr_header, build_labelv8_data,
     build_labelv8_header, build_labelv9_data, build_labelv9_header, build_library_header,
     build_member_data, build_member_header, build_member_second, build_namestr,
     build_namestr_header, build_obs_header, build_real_header, build_second_header,
-    determine_label_section, normalize_name,
+    determine_label_section,
 };
-use crate::types::{
-    NumericValue, XptColumn, XptDataset, XptType, XptValue, XptVersion, XptWriterOptions,
-};
+use crate::types::{XptColumn, XptDataset, XptWriterOptions};
+
+pub use builder::{ValidatedWriter, XptWriterBuilder, validate_dataset};
+pub use observation::{encode_char, encode_numeric, encode_observation, encode_value};
+pub use streaming::{DatasetInfo, StreamingWriter};
 
 /// XPT file writer.
 ///
@@ -48,7 +118,7 @@ impl<W: Write> XptWriter<W> {
     /// Write a dataset to the XPT file.
     pub fn write_dataset(mut self, dataset: &XptDataset) -> Result<()> {
         let version = self.options.version;
-        validate_dataset(dataset, version)?;
+        builder::validate_dataset_quick(dataset, version)?;
 
         let info: LibraryInfo = (&self.options).into();
 
@@ -134,11 +204,12 @@ impl<W: Write> XptWriter<W> {
 
         for (row_idx, row) in dataset.rows.iter().enumerate() {
             if row.len() != dataset.columns.len() {
-                return Err(XptIoError::row_length_mismatch(
+                return Err(XptError::row_length_mismatch(
                     row_idx,
                     dataset.columns.len(),
                     row.len(),
-                ).into());
+                )
+                .into());
             }
 
             let mut obs = vec![b' '; obs_len];
@@ -196,146 +267,15 @@ pub fn write_xpt_with_options(
     XptWriter::create_with_options(path, options.clone())?.write_dataset(dataset)
 }
 
-/// Validate a dataset before writing.
-fn validate_dataset(dataset: &XptDataset, version: XptVersion) -> Result<()> {
-    // Validate dataset name
-    let name = normalize_name(&dataset.name);
-    if name.is_empty() {
-        return Err(XptIoError::invalid_dataset_name(&dataset.name).into());
-    }
-    if name.len() > version.dataset_name_limit() {
-        return Err(XptIoError::dataset_name_too_long(&dataset.name, version.dataset_name_limit()).into());
-    }
-
-    // Validate dataset label (always max 40 chars)
-    if let Some(label) = &dataset.label
-        && label.len() > 40
-    {
-        return Err(XptIoError::dataset_label_too_long(&dataset.name).into());
-    }
-
-    // Check for duplicate column names and validate each column
-    let mut seen = BTreeSet::new();
-    for column in &dataset.columns {
-        let col_name = normalize_name(&column.name);
-
-        if col_name.is_empty() {
-            return Err(XptIoError::invalid_variable_name(&column.name).into());
-        }
-        if col_name.len() > version.name_limit() {
-            return Err(XptIoError::variable_name_too_long(&column.name, version.name_limit()).into());
-        }
-
-        if !seen.insert(col_name.clone()) {
-            return Err(XptIoError::duplicate_variable(&column.name).into());
-        }
-
-        if column.length == 0 {
-            return Err(XptIoError::zero_length(&column.name).into());
-        }
-
-        // Validate label length
-        if let Some(label) = &column.label
-            && label.len() > version.label_limit()
-        {
-            return Err(XptIoError::variable_label_too_long(&column.name, version.label_limit()).into());
-        }
-
-        // Validate format name length
-        if let Some(format) = &column.format
-            && format.len() > version.format_limit()
-        {
-            return Err(XptIoError::format_name_too_long(format, version.format_limit()).into());
-        }
-
-        // Validate informat name length
-        if let Some(informat) = &column.informat
-            && informat.len() > version.format_limit()
-        {
-            return Err(XptIoError::format_name_too_long(informat, version.format_limit()).into());
-        }
-    }
-
-    // Validate row lengths
-    for (row_idx, row) in dataset.rows.iter().enumerate() {
-        if row.len() != dataset.columns.len() {
-            return Err(XptIoError::row_length_mismatch(
-                row_idx,
-                dataset.columns.len(),
-                row.len(),
-            ).into());
-        }
-    }
-
-    Ok(())
-}
-
-/// Encode a value for writing.
-fn encode_value(value: &XptValue, column: &XptColumn, options: &XptWriterOptions) -> Vec<u8> {
-    match (value, column.data_type) {
-        (XptValue::Char(s), XptType::Char) => encode_char(s, column.length),
-        (XptValue::Num(n), XptType::Num) => encode_numeric(n, column.length, options),
-        (XptValue::Char(s), XptType::Num) => {
-            // Try to parse string as number
-            let num = s.trim().parse::<f64>().ok().map(NumericValue::Value);
-            let num = num.unwrap_or(NumericValue::Missing(options.default_missing));
-            encode_numeric(&num, column.length, options)
-        }
-        (XptValue::Num(n), XptType::Char) => {
-            // Convert number to string
-            let s = n.to_string();
-            encode_char(&s, column.length)
-        }
-    }
-}
-
-/// Encode a character value.
-fn encode_char(value: &str, length: u16) -> Vec<u8> {
-    let len = length as usize;
-    let mut out = Vec::with_capacity(len);
-
-    for ch in value.chars().take(len) {
-        if ch.is_ascii() {
-            out.push(ch as u8);
-        } else {
-            out.push(b'?');
-        }
-    }
-
-    // Pad with spaces
-    while out.len() < len {
-        out.push(b' ');
-    }
-
-    out
-}
-
-/// Encode a numeric value.
-fn encode_numeric(value: &NumericValue, length: u16, options: &XptWriterOptions) -> Vec<u8> {
-    let bytes = match value {
-        NumericValue::Missing(m) => encode_missing(*m),
-        NumericValue::Value(v) => {
-            if !v.is_finite() {
-                // Non-finite values become missing
-                encode_missing(options.default_missing)
-            } else {
-                ieee_to_ibm(*v)
-            }
-        }
-    };
-
-    truncate_ibm(bytes, length as usize)
-}
-
 /// Helper for writing 80-byte records with overflow handling.
-struct RecordWriter<'a, W: Write> {
+pub(crate) struct RecordWriter<'a, W: Write> {
     writer: &'a mut W,
     record: [u8; RECORD_LEN],
     pos: usize,
 }
 
 impl<'a, W: Write> RecordWriter<'a, W> {
-    fn new(writer: &'a mut W) -> Self {
+    pub fn new(writer: &'a mut W) -> Self {
         Self {
             writer,
             record: [b' '; RECORD_LEN],
@@ -343,7 +283,7 @@ impl<'a, W: Write> RecordWriter<'a, W> {
         }
     }
 
-    fn write_bytes(&mut self, mut bytes: &[u8]) -> Result<()> {
+    pub fn write_bytes(&mut self, mut bytes: &[u8]) -> Result<()> {
         while !bytes.is_empty() {
             let remaining = RECORD_LEN - self.pos;
             let take = remaining.min(bytes.len());
@@ -361,7 +301,7 @@ impl<'a, W: Write> RecordWriter<'a, W> {
         Ok(())
     }
 
-    fn finish(&mut self) -> Result<()> {
+    pub fn finish(&mut self) -> Result<()> {
         if self.pos > 0 {
             // Pad remaining bytes with spaces
             for idx in self.pos..RECORD_LEN {
@@ -377,7 +317,7 @@ impl<'a, W: Write> RecordWriter<'a, W> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::MissingValue;
+    use crate::types::{MissingValue, NumericValue};
 
     #[test]
     fn test_encode_char() {

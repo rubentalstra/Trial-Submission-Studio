@@ -38,7 +38,10 @@ pub use missing::MissingValue;
 pub use observation::Observation;
 
 // Reader/Writer options
-pub use options::{XptReaderOptions, XptVersion, XptWriterOptions};
+pub use options::{XptReaderOptions, XptWriterOptions};
+
+// Re-export XptVersion from the version module for backward compatibility
+pub use crate::version::XptVersion;
 
 // Value types
 pub use value::{NumericValue, XptValue};

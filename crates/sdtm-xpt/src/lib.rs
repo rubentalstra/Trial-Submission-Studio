@@ -71,18 +71,19 @@
 mod error;
 pub mod float;
 pub mod header;
-mod reader;
+pub mod reader;
 mod types;
+pub mod validation;
 mod version;
-mod writer;
+pub mod writer;
 
 #[cfg(feature = "polars")]
-mod polars_ext;
+pub mod polars;
 
 // Re-export error types
 pub use error::{
-    ErrorLocation, IoResult, Result, Severity, ValidationError, ValidationErrorCode,
-    ValidationResult, XptError, XptIoError,
+    ErrorLocation, Result, Severity, ValidationError, ValidationErrorCode, ValidationResult,
+    XptError,
 };
 
 // Re-export version
@@ -96,14 +97,20 @@ pub use types::{
 };
 
 // Re-export reader functionality
-pub use reader::{XptReader, read_xpt, read_xpt_with_options};
+pub use reader::{
+    read_xpt, read_xpt_streaming, read_xpt_streaming_with_options, read_xpt_with_options, DatasetMeta, ObservationIter,
+    StreamingReader, XptReader,
+};
 
 // Re-export writer functionality
-pub use writer::{XptWriter, write_xpt, write_xpt_with_options};
+pub use writer::{
+    write_xpt, write_xpt_with_options, DatasetInfo, StreamingWriter, ValidatedWriter, XptWriter,
+    XptWriterBuilder,
+};
 
 // Re-export Polars integration
 #[cfg(feature = "polars")]
-pub use polars_ext::{read_xpt_to_dataframe, write_dataframe_to_xpt};
+pub use polars::{read_xpt_to_dataframe, write_dataframe_to_xpt};
 
 /// Crate version.
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

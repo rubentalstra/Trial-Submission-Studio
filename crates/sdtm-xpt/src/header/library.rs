@@ -9,7 +9,7 @@
 //! 2. Real header (80 bytes): SAS version, OS, created datetime
 //! 3. Second header (80 bytes): Modified datetime
 
-use crate::error::{IoResult, XptIoError};
+use crate::error::{Result, XptError};
 use crate::types::{XptVersion, XptWriterOptions};
 
 use super::common::{
@@ -83,11 +83,11 @@ pub fn detect_version(record: &[u8]) -> Option<XptVersion> {
 ///
 /// # Returns
 /// Ok(detected_version) if valid, error otherwise.
-pub fn validate_library_header(record: &[u8]) -> IoResult<XptVersion> {
+pub fn validate_library_header(record: &[u8]) -> Result<XptVersion> {
     if record.len() < RECORD_LEN {
-        return Err(XptIoError::invalid_format("record too short"));
+        return Err(XptError::invalid_format("record too short"));
     }
-    detect_version(record).ok_or_else(|| XptIoError::missing_header("LIBRARY or LIBV8 HEADER"))
+    detect_version(record).ok_or_else(|| XptError::missing_header("LIBRARY or LIBV8 HEADER"))
 }
 
 /// Validate that a record starts with a library header for a specific version.
@@ -98,16 +98,16 @@ pub fn validate_library_header(record: &[u8]) -> IoResult<XptVersion> {
 ///
 /// # Returns
 /// Ok(()) if valid for the specified version, error otherwise.
-pub fn validate_library_header_version(record: &[u8], version: XptVersion) -> IoResult<()> {
+pub fn validate_library_header_version(record: &[u8], version: XptVersion) -> Result<()> {
     if record.len() < RECORD_LEN {
-        return Err(XptIoError::invalid_format("record too short"));
+        return Err(XptError::invalid_format("record too short"));
     }
     let prefix = match version {
         XptVersion::V5 => LIBRARY_HEADER_V5,
         XptVersion::V8 => LIBRARY_HEADER_V8,
     };
     if !record.starts_with(prefix.as_bytes()) {
-        return Err(XptIoError::missing_header(match version {
+        return Err(XptError::missing_header(match version {
             XptVersion::V5 => "LIBRARY HEADER",
             XptVersion::V8 => "LIBV8 HEADER",
         }));
@@ -128,9 +128,9 @@ pub fn validate_library_header_version(record: &[u8], version: XptVersion) -> Io
 /// | 32-39  | 8      | sas_os      | Operating system         |
 /// | 40-63  | 24     | blanks      | Spaces                   |
 /// | 64-79  | 16     | created     | Created datetime         |
-pub fn parse_real_header(record: &[u8]) -> IoResult<LibraryInfo> {
+pub fn parse_real_header(record: &[u8]) -> Result<LibraryInfo> {
     if record.len() < RECORD_LEN {
-        return Err(XptIoError::invalid_format("real header too short"));
+        return Err(XptError::invalid_format("real header too short"));
     }
 
     let sas_version = read_string(record, 24, 8);

@@ -29,7 +29,7 @@
 //! | ...    | informat| char[n]  | Informat name (if inflen > 0)  |
 
 use super::common::RECORD_LEN;
-use crate::error::IoResult;
+use crate::error::Result;
 use crate::types::XptColumn;
 
 /// LABELV8 header prefix.
@@ -229,7 +229,7 @@ pub fn build_labelv9_data(columns: &[XptColumn]) -> Vec<u8> {
 /// # Arguments
 /// * `data` - The label section data (after the header)
 /// * `columns` - Mutable slice of columns to update
-pub fn parse_labelv8_data(data: &[u8], columns: &mut [XptColumn]) -> IoResult<()> {
+pub fn parse_labelv8_data(data: &[u8], columns: &mut [XptColumn]) -> Result<()> {
     let mut pos = 0;
 
     while pos + 6 <= data.len() {
@@ -291,7 +291,7 @@ pub fn parse_labelv8_data(data: &[u8], columns: &mut [XptColumn]) -> IoResult<()
 /// # Arguments
 /// * `data` - The label section data (after the header)
 /// * `columns` - Mutable slice of columns to update
-pub fn parse_labelv9_data(data: &[u8], columns: &mut [XptColumn]) -> IoResult<()> {
+pub fn parse_labelv9_data(data: &[u8], columns: &mut [XptColumn]) -> Result<()> {
     let mut pos = 0;
 
     while pos + 10 <= data.len() {

@@ -1,26 +1,58 @@
 //! XPT file reader.
 //!
-//! Provides functionality to read SAS Transport (XPT) files.
+//! This module provides functionality to read SAS Transport (XPT) files
+//! with both buffered (in-memory) and streaming approaches.
+//!
+//! # Usage
+//!
+//! ## Simple Reading (load all into memory)
+//!
+//! ```no_run
+//! use std::path::Path;
+//! use sdtm_xpt::read_xpt;
+//!
+//! let dataset = read_xpt(Path::new("dm.xpt")).unwrap();
+//! println!("Dataset: {} ({} rows)", dataset.name, dataset.num_rows());
+//! ```
+//!
+//! ## Streaming Reading (constant memory)
+//!
+//! ```no_run
+//! use std::fs::File;
+//! use sdtm_xpt::reader::StreamingReader;
+//!
+//! let file = File::open("large.xpt").unwrap();
+//! let mut reader = StreamingReader::new(file).unwrap();
+//!
+//! for obs in reader.observations() {
+//!     let obs = obs.unwrap();
+//!     // Process one observation at a time...
+//! }
+//! ```
+
+mod observation;
+pub mod streaming;
 
 use std::fs::File;
 use std::io::{BufReader, Read};
 use std::path::Path;
 
-use crate::error::{Result, XptIoError};
-use crate::float::{ibm_to_ieee, is_missing};
+use crate::error::{Result, XptError};
 use crate::header::{
     LabelSectionType, RECORD_LEN, align_to_record, is_label_header, parse_dataset_label,
     parse_dataset_name, parse_dataset_type, parse_labelv8_data, parse_labelv9_data,
     parse_namestr_len, parse_namestr_records, parse_variable_count, validate_dscrptr_header,
     validate_library_header, validate_member_header, validate_namestr_header, validate_obs_header,
 };
-use crate::types::{
-    MissingValue, NumericValue, XptColumn, XptDataset, XptReaderOptions, XptType, XptValue,
-};
+use crate::types::{XptDataset, XptReaderOptions, XptValue};
 
-/// XPT file reader.
+pub use observation::{decode_char, decode_numeric, observation_length, parse_observation};
+pub use streaming::{DatasetMeta, ObservationIter, StreamingReader};
+
+/// XPT file reader for buffered (in-memory) reading.
 ///
-/// Reads SAS Transport V5 or V8 format files with auto-detection.
+/// This reader loads the entire file into memory for parsing.
+/// For large files, consider using [`StreamingReader`] instead.
 pub struct XptReader<R: Read> {
     reader: BufReader<R>,
     options: XptReaderOptions,
@@ -68,11 +100,11 @@ impl XptReader<File> {
     pub fn open(path: &Path) -> Result<Self> {
         let file = File::open(path).map_err(|e| {
             if e.kind() == std::io::ErrorKind::NotFound {
-                XptIoError::FileNotFound {
+                XptError::FileNotFound {
                     path: path.to_path_buf(),
                 }
             } else {
-                XptIoError::Io(e)
+                XptError::Io(e)
             }
         })?;
         Ok(Self::new(file))
@@ -82,11 +114,11 @@ impl XptReader<File> {
     pub fn open_with_options(path: &Path, options: XptReaderOptions) -> Result<Self> {
         let file = File::open(path).map_err(|e| {
             if e.kind() == std::io::ErrorKind::NotFound {
-                XptIoError::FileNotFound {
+                XptError::FileNotFound {
                     path: path.to_path_buf(),
                 }
             } else {
-                XptIoError::Io(e)
+                XptError::Io(e)
             }
         })?;
         Ok(Self::with_options(file, options))
@@ -102,6 +134,16 @@ impl XptReader<File> {
 ///
 /// # Returns
 /// The parsed dataset.
+///
+/// # Example
+///
+/// ```no_run
+/// use std::path::Path;
+/// use sdtm_xpt::read_xpt;
+///
+/// let dataset = read_xpt(Path::new("dm.xpt")).unwrap();
+/// println!("Dataset: {}", dataset.name);
+/// ```
 pub fn read_xpt(path: &Path) -> Result<XptDataset> {
     XptReader::open(path)?.read_dataset()
 }
@@ -111,18 +153,69 @@ pub fn read_xpt_with_options(path: &Path, options: XptReaderOptions) -> Result<X
     XptReader::open_with_options(path, options)?.read_dataset()
 }
 
+/// Open an XPT file for streaming reading.
+///
+/// Returns a streaming reader that can iterate over observations
+/// without loading all data into memory.
+///
+/// # Example
+///
+/// ```no_run
+/// use std::path::Path;
+/// use sdtm_xpt::read_xpt_streaming;
+///
+/// let mut reader = read_xpt_streaming(Path::new("large.xpt")).unwrap();
+/// println!("Dataset: {}", reader.meta().name);
+///
+/// for obs in reader.observations() {
+///     let obs = obs.unwrap();
+///     // Process observation...
+/// }
+/// ```
+pub fn read_xpt_streaming(path: &Path) -> Result<StreamingReader<File>> {
+    let file = File::open(path).map_err(|e| {
+        if e.kind() == std::io::ErrorKind::NotFound {
+            XptError::FileNotFound {
+                path: path.to_path_buf(),
+            }
+        } else {
+            XptError::Io(e)
+        }
+    })?;
+    StreamingReader::new(file)
+}
+
+/// Open an XPT file for streaming with options.
+pub fn read_xpt_streaming_with_options(
+    path: &Path,
+    options: XptReaderOptions,
+) -> Result<StreamingReader<File>> {
+    let file = File::open(path).map_err(|e| {
+        if e.kind() == std::io::ErrorKind::NotFound {
+            XptError::FileNotFound {
+                path: path.to_path_buf(),
+            }
+        } else {
+            XptError::Io(e)
+        }
+    })?;
+    StreamingReader::with_options(file, options)
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Internal parsing functions
+// ─────────────────────────────────────────────────────────────────────────────
+
 /// Parse XPT data from bytes.
 fn parse_xpt_data(data: &[u8], options: &XptReaderOptions) -> Result<XptDataset> {
     // Minimum file size check
     if data.len() < RECORD_LEN * 8 {
-        return Err(XptIoError::invalid_format("file too small").into());
+        return Err(XptError::invalid_format("file too small"));
     }
 
     // Check record alignment
     if !data.len().is_multiple_of(RECORD_LEN) {
-        return Err(XptIoError::invalid_format(
-            "file length is not a multiple of 80",
-        ).into());
+        return Err(XptError::invalid_format("file length is not a multiple of 80"));
     }
 
     let mut offset = 0usize;
@@ -166,7 +259,7 @@ fn parse_xpt_data(data: &[u8], options: &XptReaderOptions) -> Result<XptDataset>
     // NAMESTR records
     let namestr_total = var_count
         .checked_mul(namestr_len)
-        .ok_or(XptIoError::ObservationOverflow)?;
+        .ok_or(XptError::ObservationOverflow)?;
     let namestr_data = read_block(data, offset, namestr_total)?;
     offset += namestr_total;
     offset = align_to_record(offset);
@@ -211,7 +304,7 @@ fn parse_xpt_data(data: &[u8], options: &XptReaderOptions) -> Result<XptDataset>
     offset += RECORD_LEN;
 
     // Calculate observation length
-    let obs_len = observation_length(&columns)?;
+    let obs_len = observation_length(&columns).ok_or(XptError::ObservationOverflow)?;
 
     // Parse observations
     let rows = parse_observations(data, offset, obs_len, &columns, options)?;
@@ -228,24 +321,13 @@ fn parse_xpt_data(data: &[u8], options: &XptReaderOptions) -> Result<XptDataset>
 /// Read a single 80-byte record.
 fn read_record(data: &[u8], offset: usize) -> Result<&[u8]> {
     data.get(offset..offset + RECORD_LEN)
-        .ok_or_else(|| XptIoError::RecordOutOfBounds { offset }.into())
+        .ok_or_else(|| XptError::RecordOutOfBounds { offset })
 }
 
 /// Read a block of bytes.
 fn read_block(data: &[u8], offset: usize, len: usize) -> Result<&[u8]> {
     data.get(offset..offset + len)
-        .ok_or_else(|| XptIoError::RecordOutOfBounds { offset }.into())
-}
-
-/// Calculate observation length from columns.
-fn observation_length(columns: &[XptColumn]) -> Result<usize> {
-    let mut total = 0usize;
-    for column in columns {
-        total = total
-            .checked_add(column.length as usize)
-            .ok_or(XptIoError::ObservationOverflow)?;
-    }
-    Ok(total)
+        .ok_or_else(|| XptError::RecordOutOfBounds { offset })
 }
 
 /// Parse observation data into rows.
@@ -253,7 +335,7 @@ fn parse_observations(
     data: &[u8],
     offset: usize,
     obs_len: usize,
-    columns: &[XptColumn],
+    columns: &[crate::types::XptColumn],
     options: &XptReaderOptions,
 ) -> Result<Vec<Vec<XptValue>>> {
     if obs_len == 0 {
@@ -261,7 +343,7 @@ fn parse_observations(
     }
 
     if offset > data.len() {
-        return Err(XptIoError::RecordOutOfBounds { offset }.into());
+        return Err(XptError::RecordOutOfBounds { offset });
     }
 
     let data_len = data.len().saturating_sub(offset);
@@ -273,7 +355,7 @@ fn parse_observations(
         let start = offset + rows_total * obs_len;
         let rem_bytes = &data[start..offset + data_len];
         if rem_bytes.iter().any(|&b| b != b' ') {
-            return Err(XptIoError::TrailingBytes.into());
+            return Err(XptError::TrailingBytes);
         }
     }
 
@@ -293,74 +375,17 @@ fn parse_observations(
     for row_idx in 0..rows_total {
         let start = offset + row_idx * obs_len;
         let row_bytes = &data[start..start + obs_len];
-        let row = parse_row(row_bytes, columns, options);
-        output.push(row);
+        let obs = parse_observation(row_bytes, columns, options.trim_strings);
+        output.push(obs.into_values());
     }
 
     Ok(output)
 }
 
-/// Parse a single row of observation data.
-fn parse_row(row_bytes: &[u8], columns: &[XptColumn], options: &XptReaderOptions) -> Vec<XptValue> {
-    let mut values = Vec::with_capacity(columns.len());
-    let mut pos = 0usize;
-
-    for column in columns {
-        let len = column.length as usize;
-        let slice = &row_bytes[pos..pos + len];
-
-        let value = match column.data_type {
-            XptType::Char => {
-                let s = decode_char(slice, options.trim_strings);
-                XptValue::Char(s)
-            }
-            XptType::Num => {
-                let num = decode_numeric(slice);
-                XptValue::Num(num)
-            }
-        };
-
-        values.push(value);
-        pos += len;
-    }
-
-    values
-}
-
-/// Decode a character value.
-fn decode_char(bytes: &[u8], trim: bool) -> String {
-    let text = String::from_utf8_lossy(bytes);
-    if trim {
-        text.trim_end().to_string()
-    } else {
-        text.to_string()
-    }
-}
-
-/// Decode a numeric value.
-fn decode_numeric(bytes: &[u8]) -> NumericValue {
-    if bytes.is_empty() {
-        return NumericValue::Missing(MissingValue::Standard);
-    }
-
-    // Check for missing value
-    if let Some(missing) = is_missing(bytes) {
-        return NumericValue::Missing(missing);
-    }
-
-    // Expand to 8 bytes if needed
-    let mut buf = [0u8; 8];
-    let len = bytes.len().min(8);
-    buf[..len].copy_from_slice(&bytes[..len]);
-
-    // Convert IBM to IEEE
-    let value = ibm_to_ieee(buf);
-    NumericValue::Value(value)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::types::XptColumn;
 
     #[test]
     fn test_decode_char() {
@@ -371,6 +396,7 @@ mod tests {
 
     #[test]
     fn test_decode_numeric_missing() {
+        use crate::types::MissingValue;
         let missing_standard = [0x2e, 0, 0, 0, 0, 0, 0, 0];
         let result = decode_numeric(&missing_standard);
         assert!(result.is_missing());
@@ -398,6 +424,6 @@ mod tests {
             XptColumn::numeric("A"),       // 8 bytes
             XptColumn::character("B", 20), // 20 bytes
         ];
-        assert_eq!(observation_length(&columns).unwrap(), 28);
+        assert_eq!(observation_length(&columns), Some(28));
     }
 }

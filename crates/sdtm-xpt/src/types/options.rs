@@ -3,83 +3,10 @@
 use chrono::NaiveDateTime;
 
 use super::MissingValue;
-use crate::header::truncate_str;
-
-/// SAS Transport format version.
-///
-/// | Feature | V5 Limit | V8 Limit |
-/// |---------|----------|----------|
-/// | Variable name | 8 chars | 32 chars |
-/// | Variable label | 40 chars | 256 chars |
-/// | Format name | 8 chars | 32 chars |
-/// | Dataset name | 8 chars | 32 chars |
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum XptVersion {
-    /// V5/V6 format (default, maximum compatibility).
-    #[default]
-    V5,
-    /// V8/V9 format (extended names and labels).
-    V8,
-}
-
-impl XptVersion {
-    /// Maximum length for variable names.
-    #[must_use]
-    pub const fn name_limit(self) -> usize {
-        match self {
-            Self::V5 => 8,
-            Self::V8 => 32,
-        }
-    }
-
-    /// Maximum length for variable labels.
-    #[must_use]
-    pub const fn label_limit(self) -> usize {
-        match self {
-            Self::V5 => 40,
-            Self::V8 => 256,
-        }
-    }
-
-    /// Maximum length for format names.
-    #[must_use]
-    pub const fn format_limit(self) -> usize {
-        match self {
-            Self::V5 => 8,
-            Self::V8 => 32,
-        }
-    }
-
-    /// Maximum length for dataset names.
-    #[must_use]
-    pub const fn dataset_name_limit(self) -> usize {
-        match self {
-            Self::V5 => 8,
-            Self::V8 => 32,
-        }
-    }
-
-    /// Whether this version supports long names (> 8 characters).
-    #[must_use]
-    pub const fn supports_long_names(self) -> bool {
-        matches!(self, Self::V8)
-    }
-
-    /// Whether this version supports LABELV8/V9 sections.
-    #[must_use]
-    pub const fn supports_label_section(self) -> bool {
-        matches!(self, Self::V8)
-    }
-}
-
-impl std::fmt::Display for XptVersion {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::V5 => write!(f, "V5"),
-            Self::V8 => write!(f, "V8"),
-        }
-    }
-}
+use crate::{
+    XptVersion,
+    header::{format_xpt_datetime, truncate_str},
+};
 
 /// Options for reading XPT files.
 #[derive(Debug, Clone)]
@@ -226,50 +153,5 @@ impl XptWriterOptions {
     #[must_use]
     pub fn format_modified(&self) -> String {
         format_xpt_datetime(self.get_modified())
-    }
-}
-
-/// Format datetime as SAS format: ddMMMyy:hh:mm:ss
-fn format_xpt_datetime(dt: NaiveDateTime) -> String {
-    dt.format("%d%b%y:%H:%M:%S").to_string().to_uppercase()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use chrono::NaiveDate;
-
-    #[test]
-    fn test_version_limits() {
-        assert_eq!(XptVersion::V5.name_limit(), 8);
-        assert_eq!(XptVersion::V5.label_limit(), 40);
-        assert_eq!(XptVersion::V8.name_limit(), 32);
-        assert_eq!(XptVersion::V8.label_limit(), 256);
-    }
-
-    #[test]
-    fn test_writer_options() {
-        let dt = NaiveDate::from_ymd_opt(2024, 1, 15)
-            .unwrap()
-            .and_hms_opt(10, 30, 0)
-            .unwrap();
-
-        let opts = XptWriterOptions::new()
-            .v8()
-            .with_sas_version("9.3")
-            .with_created(dt);
-
-        assert_eq!(opts.version, XptVersion::V8);
-        assert_eq!(opts.sas_version, "9.3");
-        assert_eq!(opts.created, Some(dt));
-    }
-
-    #[test]
-    fn test_format_datetime() {
-        let dt = NaiveDate::from_ymd_opt(2024, 3, 15)
-            .unwrap()
-            .and_hms_opt(14, 30, 45)
-            .unwrap();
-        assert_eq!(format_xpt_datetime(dt), "15MAR24:14:30:45");
     }
 }
