@@ -1,6 +1,7 @@
 //! Home screen view
 //!
 //! Study folder selection with CDISC standard selection (SDTM, ADaM, SEND).
+//! TODO: We will only Support SDTM initially, so ADaM and SEND options will be disabled. will be added in future releases.
 
 use crate::state::{AppState, WorkflowMode};
 use crate::theme::spacing;
@@ -308,27 +309,11 @@ impl HomeView {
         ui.add_space(spacing::MD);
 
         // Extract data needed for rendering before borrowing state mutably
-        let has_dm = study.has_dm_domain();
-        let dm_ready = study.is_dm_ready();
         let domain_codes: Vec<String> = study
             .domain_codes_dm_first()
             .into_iter()
             .map(|s| s.to_string())
             .collect();
-
-        // DM dependency notice if DM exists but not ready
-        if has_dm && !dm_ready {
-            ui.horizontal(|ui| {
-                ui.label(
-                    RichText::new(format!(
-                        "{} Complete DM domain first to unlock other domains",
-                        egui_phosphor::regular::INFO
-                    ))
-                    .color(ui.visuals().warn_fg_color),
-                );
-            });
-            ui.add_space(spacing::SM);
-        }
 
         // Domain list
         ui.label(
@@ -353,13 +338,9 @@ impl HomeView {
 
                     let display_name = domain.display_name(code);
                     let row_count = domain.row_count();
-                    let is_accessible = state.is_domain_accessible(code);
-                    let lock_reason = state.domain_lock_reason(code);
                     let is_mapping_complete = domain.is_mapping_complete();
 
-                    let (status_icon, status_color) = if !is_accessible {
-                        (egui_phosphor::regular::LOCK, ui.visuals().weak_text_color())
-                    } else if is_mapping_complete {
+                    let (status_icon, status_color) = if is_mapping_complete {
                         (egui_phosphor::regular::CHECK_CIRCLE, Color32::GREEN)
                     } else if domain.is_touched() {
                         (egui_phosphor::regular::PENCIL, ui.visuals().warn_fg_color)
@@ -370,26 +351,13 @@ impl HomeView {
                     ui.horizontal(|ui| {
                         ui.label(RichText::new(status_icon).color(status_color));
 
-                        let button =
-                            ui.add_enabled(is_accessible, egui::Button::new(&display_name));
+                        let button = ui.button(&display_name);
 
-                        if button.clicked() && is_accessible {
+                        if button.clicked() {
                             *clicked_domain = Some(code.to_string());
                         }
 
-                        if let Some(reason) = lock_reason {
-                            button.on_hover_text(reason);
-                        }
-
                         ui.label(RichText::new(format!("{} rows", row_count)).weak().small());
-
-                        if !is_accessible {
-                            ui.label(
-                                RichText::new("Requires DM")
-                                    .small()
-                                    .color(ui.visuals().warn_fg_color),
-                            );
-                        }
                     });
                 }
             });

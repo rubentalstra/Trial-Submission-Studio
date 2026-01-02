@@ -5,14 +5,14 @@
 //! Unmapped source columns can be added to a SUPP-- dataset.
 
 use crate::state::{
-    AppState, SuppAction, SuppColumnConfig, SuppConfig, Versioned, suggest_qnam, validate_qnam,
+    AppState, SuppAction, SuppColumnConfig, SuppConfig, suggest_qnam, validate_qnam,
 };
 use crate::theme::spacing;
 use egui::{Color32, RichText, Ui};
 
 /// Render the SUPP tab
 pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
-    // Check if domain is accessible (DM check)
+    // Check if domain exists
     let Some(domain) = state.domain(domain_code) else {
         ui.centered_and_justified(|ui| {
             ui.label(RichText::new("Domain not accessible").color(ui.visuals().error_fg_color));
@@ -20,18 +20,11 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
         return;
     };
 
-    let domain_version = domain.version;
+    // Check if SUPP config needs building
+    let has_supp = domain.derived.supp.is_some();
 
-    // Check if SUPP config needs rebuilding
-    let needs_rebuild = domain
-        .derived
-        .supp
-        .as_ref()
-        .map(|v| v.is_stale(domain_version))
-        .unwrap_or(true);
-
-    if needs_rebuild {
-        // Trigger rebuild
+    if !has_supp {
+        // Build SUPP config
         rebuild_supp_config(state, domain_code);
     }
 
@@ -39,7 +32,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
     let supp_config = state
         .domain(domain_code)
         .and_then(|d| d.derived.supp.as_ref())
-        .map(|v| v.data.clone());
+        .cloned();
 
     let Some(supp_config) = supp_config else {
         ui.centered_and_justified(|ui| {
@@ -59,8 +52,8 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
 
     egui_extras::StripBuilder::new(ui)
         .size(egui_extras::Size::exact(280.0)) // Left panel fixed width
-        .size(egui_extras::Size::exact(1.0))   // Separator
-        .size(egui_extras::Size::remainder())  // Right panel takes rest
+        .size(egui_extras::Size::exact(1.0)) // Separator
+        .size(egui_extras::Size::remainder()) // Right panel takes rest
         .horizontal(|mut strip| {
             // Left: Column list
             strip.cell(|ui| {
@@ -153,9 +146,9 @@ fn show_column_list(
     egui_extras::TableBuilder::new(ui)
         .striped(true)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-        .column(egui_extras::Column::exact(24.0))                // Status icon
+        .column(egui_extras::Column::exact(24.0)) // Status icon
         .column(egui_extras::Column::remainder().at_least(80.0)) // Column name
-        .column(egui_extras::Column::exact(60.0))                // QNAM preview
+        .column(egui_extras::Column::exact(60.0)) // QNAM preview
         .header(text_height + 4.0, |mut header| {
             header.col(|_ui| {});
             header.col(|ui| {
@@ -412,12 +405,10 @@ fn show_editing_form(
     // QNAM input
     ui.horizontal(|ui| {
         ui.label(RichText::new("QNAM:").strong());
-        ui.label(
-            RichText::new(egui_phosphor::regular::INFO).color(Color32::BLUE),
-        )
-        .on_hover_text(
-            "Maximum 8 characters\nUppercase letters and numbers only\nCannot start with a number",
-        );
+        ui.label(RichText::new(egui_phosphor::regular::INFO).color(Color32::BLUE))
+            .on_hover_text(
+                "Maximum 8 characters\nUppercase letters and numbers only\nCannot start with a number",
+            );
     });
 
     let qnam_response = ui.add(
@@ -571,30 +562,6 @@ fn show_editing_form(
             state.ui.domain_editor(domain_code).supp.cancel_editing();
         }
     });
-
-    // ui.add_space(spacing::LG);
-    //
-    // // SUPP Requirements info section (only shown when editing)
-    // ui.label(
-    //     RichText::new(format!("{} SUPP Requirements", egui_phosphor::regular::INFO))
-    //         .strong()
-    //         .weak(),
-    // );
-    // ui.separator();
-    // ui.add_space(spacing::SM);
-    //
-    // egui::Grid::new("supp_requirements")
-    //     .num_columns(2)
-    //     .spacing([12.0, 4.0])
-    //     .show(ui, |ui| {
-    //         ui.label(RichText::new("QNAM").weak());
-    //         ui.label("8 chars max, uppercase, no leading digit");
-    //         ui.end_row();
-    //
-    //         ui.label(RichText::new("QLABEL").weak());
-    //         ui.label("40 chars max, descriptive label (required)");
-    //         ui.end_row();
-    //     });
 }
 
 /// Get icon and color for action
@@ -628,8 +595,7 @@ fn apply_supp_action_change(
         .study_mut()
         .and_then(|s| s.get_domain_mut(domain_code))
     {
-        let version = domain.version;
-        if let Some(supp) = domain.derived.supp_mut(version) {
+        if let Some(supp) = domain.derived.supp_mut() {
             if let Some(config) = supp.get_mut(column_name) {
                 config.action = new_action;
                 if new_action == SuppAction::AddToSupp {
@@ -677,15 +643,11 @@ fn rebuild_supp_config(state: &mut AppState, domain_code: &str) {
         SuppConfig::from_unmapped(&unmapped, domain_code)
     };
 
-    // Store the result in derived state
+    // Store the result in derived state (directly, no versioning)
     if let Some(domain) = state
         .study_mut()
         .and_then(|s| s.get_domain_mut(domain_code))
     {
-        let version = domain.version;
-        domain.derived.supp = Some(Versioned {
-            data: supp_config,
-            source_version: version,
-        });
+        domain.derived.supp = Some(supp_config);
     }
 }

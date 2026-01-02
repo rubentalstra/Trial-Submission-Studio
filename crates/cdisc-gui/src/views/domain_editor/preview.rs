@@ -1,9 +1,8 @@
 //! Preview tab
 //!
 //! Shows transformed data before export with pagination.
-//! The preview is rebuilt automatically when the domain version changes.
+//! The preview is rebuilt automatically when mappings change.
 
-use crate::services::{ensure_preview, get_preview};
 use crate::state::AppState;
 use crate::theme::spacing;
 use cdisc_common::any_to_string;
@@ -12,24 +11,13 @@ use polars::prelude::DataFrame;
 
 /// Render the preview tab
 pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
-    // Check if domain is accessible (DM check)
-    if state.domain(domain_code).is_none() {
+    // Check if domain exists
+    let Some(domain) = state.domain(domain_code) else {
         ui.centered_and_justified(|ui| {
             ui.label(RichText::new("Domain not accessible").color(ui.visuals().error_fg_color));
         });
         return;
-    }
-
-    // Ensure preview is up-to-date
-    if !ensure_preview(state, domain_code) {
-        // Still building
-        ui.centered_and_justified(|ui| {
-            ui.spinner();
-            ui.label("Building preview...");
-        });
-        ui.ctx().request_repaint();
-        return;
-    }
+    };
 
     // Get preview error if any
     let preview_error = state
@@ -42,13 +30,16 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
         return;
     }
 
-    // Get preview DataFrame
-    let Some(preview_df) = get_preview(state, domain_code) else {
+    // Get preview DataFrame directly from derived state
+    let Some(preview_df) = domain.derived.preview.as_ref() else {
         ui.centered_and_justified(|ui| {
-            ui.label(RichText::new("No preview data available").weak());
+            ui.label(RichText::new("Configure mappings to see preview").weak());
         });
         return;
     };
+
+    // Clone the DataFrame for rendering (needed because we borrow state mutably later)
+    let preview_df = preview_df.clone();
 
     // Render the preview UI
     show_preview_content(ui, state, domain_code, &preview_df);

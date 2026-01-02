@@ -2,11 +2,6 @@
 //!
 //! Main editing interface with tabs: Mapping, Transform, Validation, Preview, SUPP.
 //! Each tab is implemented in its own module for maintainability.
-//!
-//! # DM Dependency
-//!
-//! Non-DM domains are only accessible when DM has a valid preview.
-//! If accessed while locked, this view redirects to home.
 
 mod mapping;
 mod preview;
@@ -24,20 +19,18 @@ pub struct DomainEditorView;
 impl DomainEditorView {
     /// Render the domain editor
     pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str, active_tab: EditorTab) {
-        // Check if domain is accessible (DM check)
+        // Check if domain exists
         if !state.is_domain_accessible(domain_code) {
-            // Show locked message and redirect
             ui.vertical_centered(|ui| {
                 ui.add_space(ui.available_height() / 3.0);
                 ui.label(
-                    RichText::new(format!("{} Domain Locked", egui_phosphor::regular::LOCK))
-                        .size(24.0)
-                        .color(ui.visuals().warn_fg_color),
+                    RichText::new(format!(
+                        "{} Domain Not Found",
+                        egui_phosphor::regular::WARNING
+                    ))
+                    .size(24.0)
+                    .color(ui.visuals().warn_fg_color),
                 );
-                ui.add_space(spacing::MD);
-                if let Some(reason) = state.domain_lock_reason(domain_code) {
-                    ui.label(RichText::new(reason).size(16.0));
-                }
                 ui.add_space(spacing::LG);
                 if ui.button("Go to Home").clicked() {
                     state.go_home();

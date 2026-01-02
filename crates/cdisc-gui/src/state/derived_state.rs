@@ -1,10 +1,8 @@
-//! Derived state - cached computations with version tracking.
+//! Derived state - cached computations.
 //!
 //! This module contains `DerivedState` which holds cached derived data
 //! (preview DataFrame, validation report, SUPP config).
-//! Each cached item is wrapped in `Versioned<T>` for automatic invalidation.
 
-use super::Versioned;
 use cdisc_validate::ValidationReport;
 use polars::prelude::DataFrame;
 use std::collections::BTreeMap;
@@ -15,25 +13,21 @@ use std::collections::BTreeMap;
 
 /// Cached derived state for a domain.
 ///
-/// All fields are version-tracked. When `DomainState.version` changes,
-/// cached data becomes stale and will be rebuilt on next access.
+/// Fields are rebuilt immediately when mappings change.
 #[derive(Default)]
 pub struct DerivedState {
     /// Validation report (issues found in mapping/data)
-    pub validation: Option<Versioned<ValidationReport>>,
+    pub validation: Option<ValidationReport>,
     /// Preview DataFrame (transformed output)
-    pub preview: Option<Versioned<DataFrame>>,
+    pub preview: Option<DataFrame>,
     /// SUPP configuration (for unmapped columns)
-    pub supp: Option<Versioned<SuppConfig>>,
+    pub supp: Option<SuppConfig>,
 }
 
 impl DerivedState {
-    /// Get mutable SUPP config if valid for current version.
-    pub fn supp_mut(&mut self, version: u64) -> Option<&mut SuppConfig> {
-        self.supp
-            .as_mut()
-            .filter(|v| v.is_current(version))
-            .map(|v| &mut v.data)
+    /// Get mutable SUPP config.
+    pub fn supp_mut(&mut self) -> Option<&mut SuppConfig> {
+        self.supp.as_mut()
     }
 }
 

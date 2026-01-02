@@ -4,7 +4,6 @@
 //! Uses a 2-column layout: transformation list on left, details on right.
 //! Automatically ensures preview is up-to-date to show transformed values.
 
-use crate::services::ensure_preview;
 use crate::state::AppState;
 use crate::theme::spacing;
 use cdisc_common::any_to_string;
@@ -13,22 +12,11 @@ use polars::prelude::*;
 
 /// Render the transform tab
 pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
-    // Check if domain is accessible (DM check)
+    // Check if domain exists
     if state.domain(domain_code).is_none() {
         ui.centered_and_justified(|ui| {
             ui.label(RichText::new("Domain not accessible").color(ui.visuals().error_fg_color));
         });
-        return;
-    }
-
-    // Ensure preview is up-to-date (this triggers rebuild if stale)
-    if !ensure_preview(state, domain_code) {
-        // Still building
-        ui.centered_and_justified(|ui| {
-            ui.spinner();
-            ui.label("Building transformation preview...");
-        });
-        ui.ctx().request_repaint();
         return;
     }
 
@@ -307,7 +295,7 @@ fn show_transform_detail(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
         let source_column = accepted.get(&var.name).map(|(col, _)| col.clone());
         let is_auto = auto_generated.contains(&var.name);
         let source_df = &domain.source.data;
-        let preview_df = domain.derived.preview.as_ref().map(|v| &v.data);
+        let preview_df = domain.derived.preview.as_ref();
 
         // Get source samples
         let source_samples: Vec<String> = source_column

@@ -1,7 +1,6 @@
 //! Study-level runtime state.
 //!
-//! This module contains `StudyState` which holds all domain states
-//! and tracks DM domain readiness for dependency enforcement.
+//! This module contains `StudyState` which holds all domain states.
 
 use super::DomainState;
 use cdisc_ingest::StudyMetadata;
@@ -9,10 +8,6 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 /// Runtime state for a loaded study.
-///
-/// The `dm_preview_version` field is critical for DM dependency enforcement.
-/// When set, it indicates that the DM domain has a valid preview with USUBJID,
-/// which unlocks access to other domains.
 pub struct StudyState {
     /// Study identifier (derived from folder name)
     pub study_id: String,
@@ -22,11 +17,6 @@ pub struct StudyState {
     pub domains: HashMap<String, DomainState>,
     /// Source metadata (Items.csv, CodeLists.csv)
     pub metadata: Option<StudyMetadata>,
-    /// DM preview version - set when DM generates valid preview.
-    ///
-    /// When this is `Some`, other domains are unlocked for editing.
-    /// When this is `None`, only DM can be accessed.
-    pub dm_preview_version: Option<u64>,
 }
 
 impl StudyState {
@@ -37,7 +27,6 @@ impl StudyState {
             study_folder,
             domains: HashMap::new(),
             metadata: None,
-            dm_preview_version: None,
         }
     }
 
@@ -53,38 +42,15 @@ impl StudyState {
     }
 
     // ========================================================================
-    // DM Dependency Methods
-    // ========================================================================
-
-    /// Check if DM domain exists in this study.
-    pub fn has_dm_domain(&self) -> bool {
-        self.domains.contains_key("DM")
-    }
-
-    /// Check if DM domain has a valid preview (USUBJID generated).
-    ///
-    /// This is the primary check for unlocking other domains.
-    pub fn is_dm_ready(&self) -> bool {
-        self.dm_preview_version.is_some()
-    }
-
-    /// Update DM preview version when DM preview is generated.
-    ///
-    /// This should be called after successfully building DM's preview DataFrame.
-    pub fn set_dm_ready(&mut self, version: u64) {
-        self.dm_preview_version = Some(version);
-    }
-
-    // ========================================================================
     // Domain Access
     // ========================================================================
 
-    /// Get a domain by code (no DM check - use AppState.domain() for that).
+    /// Get a domain by code.
     pub fn get_domain(&self, code: &str) -> Option<&DomainState> {
         self.domains.get(code)
     }
 
-    /// Get a mutable domain by code (no DM check).
+    /// Get a mutable domain by code.
     pub fn get_domain_mut(&mut self, code: &str) -> Option<&mut DomainState> {
         self.domains.get_mut(code)
     }
@@ -134,7 +100,7 @@ impl StudyState {
     /// Used for passing DM data to other domains (for RFSTDTC reference).
     pub fn dm_preview_data(&self) -> Option<&polars::prelude::DataFrame> {
         let dm = self.domains.get("DM")?;
-        dm.derived.preview.as_ref().map(|v| &v.data)
+        dm.derived.preview.as_ref()
     }
 }
 
@@ -145,7 +111,6 @@ impl std::fmt::Debug for StudyState {
             .field("study_folder", &self.study_folder)
             .field("domain_count", &self.domains.len())
             .field("has_metadata", &self.metadata.is_some())
-            .field("dm_preview_version", &self.dm_preview_version)
             .finish()
     }
 }

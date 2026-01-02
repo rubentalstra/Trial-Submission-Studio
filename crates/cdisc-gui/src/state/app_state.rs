@@ -1,7 +1,6 @@
 //! Application-level state.
 //!
 //! This module contains `AppState` which is the root of all state.
-//! Domain access is DM-enforced through the `domain()` method.
 
 use cdisc_model::TerminologyRegistry;
 
@@ -10,8 +9,7 @@ use crate::settings::Settings;
 
 /// Top-level application state.
 ///
-/// This is the root of all state in the application. Use the provided
-/// accessor methods for domain access - they enforce DM dependency.
+/// This is the root of all state in the application.
 pub struct AppState {
     /// Current view/screen
     pub view: View,
@@ -66,96 +64,27 @@ impl AppState {
     }
 
     // ========================================================================
-    // Domain Access (DM-Enforced)
+    // Domain Access
     // ========================================================================
 
-    /// Get domain state with DM dependency check.
+    /// Get domain state.
     ///
-    /// Returns `None` if:
-    /// - No study is loaded
-    /// - Domain doesn't exist
-    /// - Domain is locked (DM not ready)
-    ///
-    /// Use `study.get_domain()` to bypass DM check (not recommended).
+    /// Returns `None` if no study is loaded or domain doesn't exist.
     pub fn domain(&self, code: &str) -> Option<&DomainState> {
-        let study = self.study.as_ref()?;
-
-        // DM is always accessible
-        if code.eq_ignore_ascii_case("DM") {
-            return study.get_domain(code);
-        }
-
-        // Other domains require DM preview
-        if study.dm_preview_version.is_none() && study.has_dm_domain() {
-            return None;
-        }
-
-        study.get_domain(code)
+        self.study.as_ref()?.get_domain(code)
     }
 
-    /// Get mutable domain state with DM dependency check.
+    /// Get mutable domain state.
     pub fn domain_mut(&mut self, code: &str) -> Option<&mut DomainState> {
-        // Check DM readiness first (immutable borrow)
-        let is_accessible = {
-            let study = self.study.as_ref()?;
-            if code.eq_ignore_ascii_case("DM") {
-                true
-            } else if study.has_dm_domain() {
-                study.dm_preview_version.is_some()
-            } else {
-                true
-            }
-        };
-
-        if !is_accessible {
-            return None;
-        }
-
         self.study.as_mut()?.get_domain_mut(code)
     }
 
-    /// Check if a domain is accessible (for UI to show lock icons).
+    /// Check if a domain exists.
     pub fn is_domain_accessible(&self, code: &str) -> bool {
-        let Some(study) = &self.study else {
-            return false;
-        };
-
-        // DM is always accessible if it exists
-        if code.eq_ignore_ascii_case("DM") {
-            return study.has_domain(code);
-        }
-
-        // If no DM domain exists, all domains are accessible
-        if !study.has_dm_domain() {
-            return study.has_domain(code);
-        }
-
-        // Other domains require DM to have preview
-        study.dm_preview_version.is_some() && study.has_domain(code)
-    }
-
-    /// Get the reason a domain is locked, if any.
-    pub fn domain_lock_reason(&self, code: &str) -> Option<&'static str> {
-        let Some(study) = &self.study else {
-            return None;
-        };
-
-        // DM is never locked
-        if code.eq_ignore_ascii_case("DM") {
-            return None;
-        }
-
-        // If no DM domain exists, nothing is locked
-        if !study.has_dm_domain() {
-            return None;
-        }
-
-        // Lock reason if DM is not ready
-        if study.dm_preview_version.is_none() {
-            return Some("Complete DM domain first");
-        }
-
-        None
+        self.study
+            .as_ref()
+            .map(|s| s.has_domain(code))
+            .unwrap_or(false)
     }
 
     // ========================================================================
@@ -168,19 +97,11 @@ impl AppState {
     }
 
     /// Navigate to domain editor.
-    ///
-    /// Returns `true` if navigation succeeded, `false` if domain is locked.
-    pub fn open_domain(&mut self, domain: String) -> bool {
-        // Check if domain is accessible
-        if !self.is_domain_accessible(&domain) {
-            return false;
-        }
-
+    pub fn open_domain(&mut self, domain: String) {
         self.view = View::DomainEditor {
             domain,
             tab: EditorTab::Mapping,
         };
-        true
     }
 
     /// Navigate to export screen.

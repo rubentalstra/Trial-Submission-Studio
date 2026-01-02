@@ -4,7 +4,7 @@
 //! Uses a 2-column layout: issues list on left, details on right.
 //! Validation is run automatically when mappings change.
 
-use crate::state::{AppState, Versioned};
+use crate::state::AppState;
 use crate::theme::spacing;
 use cdisc_standards::{CtVersion, load_ct};
 use cdisc_validate::{Issue, Severity, ValidationReport, validate_domain_with_not_collected};
@@ -13,7 +13,7 @@ use std::collections::BTreeSet;
 
 /// Render the validation tab
 pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
-    // Check if domain is accessible (DM check)
+    // Check if domain exists
     let Some(domain) = state.domain(domain_code) else {
         ui.centered_and_justified(|ui| {
             ui.label(RichText::new("Domain not accessible").color(ui.visuals().error_fg_color));
@@ -21,17 +21,11 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
         return;
     };
 
-    let domain_version = domain.version;
+    // Check if we need to build validation report
+    let has_report = domain.derived.validation.is_some();
+    let has_preview = domain.derived.preview.is_some();
 
-    // Check if validation report needs rebuilding
-    let needs_rebuild = domain
-        .derived
-        .validation
-        .as_ref()
-        .map(|v| v.is_stale(domain_version))
-        .unwrap_or(true);
-
-    if needs_rebuild {
+    if !has_report && has_preview {
         // Show loading and trigger rebuild
         ui.centered_and_justified(|ui| {
             ui.spinner();
@@ -46,11 +40,11 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
     let report = state
         .domain(domain_code)
         .and_then(|d| d.derived.validation.as_ref())
-        .map(|v| v.data.clone());
+        .cloned();
 
     let Some(report) = report else {
         ui.centered_and_justified(|ui| {
-            ui.label(RichText::new("No validation report available").weak());
+            ui.label(RichText::new("Configure mappings to see validation results").weak());
         });
         return;
     };
@@ -66,8 +60,8 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
 
     egui_extras::StripBuilder::new(ui)
         .size(egui_extras::Size::exact(320.0)) // Left panel fixed width
-        .size(egui_extras::Size::exact(1.0))   // Separator
-        .size(egui_extras::Size::remainder())  // Right panel takes rest
+        .size(egui_extras::Size::exact(1.0)) // Separator
+        .size(egui_extras::Size::remainder()) // Right panel takes rest
         .horizontal(|mut strip| {
             // Left: Issues list
             strip.cell(|ui| {
@@ -167,8 +161,8 @@ fn show_issues_list(
     egui_extras::TableBuilder::new(ui)
         .striped(true)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-        .column(egui_extras::Column::exact(24.0))                // Severity icon
-        .column(egui_extras::Column::exact(70.0))                // Rule ID
+        .column(egui_extras::Column::exact(24.0)) // Severity icon
+        .column(egui_extras::Column::exact(70.0)) // Rule ID
         .column(egui_extras::Column::remainder().at_least(80.0)) // Variable
         .header(text_height + 4.0, |mut header| {
             header.col(|_ui| {});
@@ -194,11 +188,7 @@ fn show_issues_list(
 
                 // Rule ID column
                 row.col(|ui| {
-                    ui.label(
-                        RichText::new(issue.rule_id())
-                            .monospace()
-                            .small(),
-                    );
+                    ui.label(RichText::new(issue.rule_id()).monospace().small());
                 });
 
                 // Variable column (clickable)
@@ -518,7 +508,7 @@ fn rebuild_validation_report(state: &mut AppState, domain_code: &str) {
         let sdtm_domain = domain.mapping.domain();
 
         // Get preview DataFrame if available
-        let preview_df = domain.derived.preview.as_ref().map(|v| &v.data);
+        let preview_df = domain.derived.preview.as_ref();
 
         // Get "not collected" variables (omitted but intentionally so)
         let not_collected: BTreeSet<String> = domain.mapping.all_omitted().clone();
@@ -539,15 +529,11 @@ fn rebuild_validation_report(state: &mut AppState, domain_code: &str) {
         }
     };
 
-    // Store the result in derived state
+    // Store the result in derived state (directly, no versioning)
     if let Some(domain) = state
         .study_mut()
         .and_then(|s| s.get_domain_mut(domain_code))
     {
-        let version = domain.version;
-        domain.derived.validation = Some(Versioned {
-            data: report_result,
-            source_version: version,
-        });
+        domain.derived.validation = Some(report_result);
     }
 }
