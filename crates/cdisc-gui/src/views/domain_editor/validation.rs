@@ -6,9 +6,9 @@
 
 use crate::state::{AppState, Versioned};
 use crate::theme::spacing;
-use egui::{Color32, RichText, Ui};
-use cdisc_standards::{load_ct, CtVersion};
+use cdisc_standards::{CtVersion, load_ct};
 use cdisc_validate::{Issue, Severity, ValidationReport, validate_domain_with_not_collected};
+use egui::{Color32, RichText, Ui};
 use std::collections::BTreeSet;
 
 /// Render the validation tab

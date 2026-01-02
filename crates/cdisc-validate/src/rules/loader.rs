@@ -96,7 +96,8 @@ pub fn load_default_rules() -> Result<RuleRegistry, LoadError> {
         .join("..")
         .join("..")
         .join("standards")
-        .join("pinnacle21")
+        .join("validation")
+        .join("sdtm")
         .join("Rules.csv");
 
     load_rules(&path)

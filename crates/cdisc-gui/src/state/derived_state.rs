@@ -5,8 +5,8 @@
 //! Each cached item is wrapped in `Versioned<T>` for automatic invalidation.
 
 use super::Versioned;
-use polars::prelude::DataFrame;
 use cdisc_validate::ValidationReport;
+use polars::prelude::DataFrame;
 use std::collections::BTreeMap;
 
 // ============================================================================

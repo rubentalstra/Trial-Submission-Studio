@@ -2,9 +2,9 @@
 //!
 //! Checks that Num variables contain only numeric values.
 
-use polars::prelude::{AnyValue, DataFrame, DataType};
 use cdisc_common::any_to_string;
 use cdisc_model::{Domain, VariableType};
+use polars::prelude::{AnyValue, DataFrame, DataType};
 
 use crate::issue::Issue;
 use crate::util::CaseInsensitiveSet;

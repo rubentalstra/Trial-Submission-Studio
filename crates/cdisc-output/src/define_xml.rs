@@ -13,7 +13,7 @@ use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, Event};
 use crate::types::{DomainFrame, domain_map_by_code};
 use cdisc_model::ct::{Codelist, TerminologyCatalog, TerminologyRegistry};
 use cdisc_model::{Domain, Variable, VariableType};
-use cdisc_standards::{load_ct, CtVersion};
+use cdisc_standards::{CtVersion, load_ct};
 
 use crate::common::{
     DEFINE_XML_NS, DEFINE_XML_VERSION, ODM_NS, VariableTypeExt, XLINK_NS, ensure_parent_dir,

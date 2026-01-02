@@ -4,9 +4,9 @@
 //! the Preview and Transform tabs.
 
 use crate::state::{AppState, Versioned};
-use polars::prelude::DataFrame;
-use cdisc_standards::{load_ct, CtVersion};
+use cdisc_standards::{CtVersion, load_ct};
 use cdisc_transform::build_preview_dataframe_with_dm_and_omitted;
+use polars::prelude::DataFrame;
 use std::collections::{BTreeMap, BTreeSet};
 
 /// Ensure the preview is up-to-date for the given domain.

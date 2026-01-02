@@ -15,6 +15,8 @@ use crate::settings::Settings;
 pub struct AppState {
     /// Current view/screen
     pub view: View,
+    /// Workflow mode (SDTM, ADaM, SEND)
+    pub workflow_mode: WorkflowMode,
     /// Loaded study (None if no study loaded)
     pub study: Option<StudyState>,
     /// Application settings (persisted)
@@ -29,6 +31,7 @@ impl Default for AppState {
     fn default() -> Self {
         Self {
             view: View::default(),
+            workflow_mode: WorkflowMode::default(),
             study: None,
             settings: Settings::default(),
             ui: UiState::default(),
@@ -42,11 +45,17 @@ impl AppState {
     pub fn new(settings: Settings) -> Self {
         Self {
             view: View::default(),
+            workflow_mode: WorkflowMode::default(),
             study: None,
             settings,
             ui: UiState::default(),
             ct_registry: None,
         }
+    }
+
+    /// Set the workflow mode.
+    pub fn set_workflow_mode(&mut self, mode: WorkflowMode) {
+        self.workflow_mode = mode;
     }
 
     /// Get the cached CT registry.
@@ -250,6 +259,53 @@ impl AppState {
         self.ui.clear_domain_editors();
         self.ui.export.reset();
         self.view = View::Home;
+    }
+}
+
+// ============================================================================
+// Workflow Mode Enum
+// ============================================================================
+
+/// CDISC standard workflow mode.
+///
+/// Determines which Implementation Guide is used for the current study.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum WorkflowMode {
+    /// SDTM - Study Data Tabulation Model (clinical trials)
+    #[default]
+    Sdtm,
+    /// ADaM - Analysis Data Model (analysis-ready datasets)
+    Adam,
+    /// SEND - Standard for Exchange of Nonclinical Data (animal studies)
+    Send,
+}
+
+impl WorkflowMode {
+    /// Display name for the workflow mode.
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            Self::Sdtm => "SDTM",
+            Self::Adam => "ADaM",
+            Self::Send => "SEND",
+        }
+    }
+
+    /// Full description of the workflow mode.
+    pub fn description(&self) -> &'static str {
+        match self {
+            Self::Sdtm => "Study Data Tabulation Model",
+            Self::Adam => "Analysis Data Model",
+            Self::Send => "Standard for Exchange of Nonclinical Data",
+        }
+    }
+
+    /// Short tagline for UI cards.
+    pub fn tagline(&self) -> &'static str {
+        match self {
+            Self::Sdtm => "Clinical Trial Tabulation",
+            Self::Adam => "Analysis Datasets",
+            Self::Send => "Nonclinical Studies",
+        }
     }
 }
 

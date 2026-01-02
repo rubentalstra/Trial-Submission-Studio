@@ -2,8 +2,8 @@
 //!
 //! This module provides types for representing ADaM analysis datasets.
 
-use crate::traits::{CoreDesignation, DataType};
 use super::enums::{AdamDatasetType, AdamVariableSource};
+use crate::traits::{CoreDesignation, DataType};
 use serde::{Deserialize, Serialize};
 
 /// ADaM variable definition per ADaMIG v1.3.
@@ -81,7 +81,10 @@ impl AdamDataset {
 
     /// Returns true if this is a BDS (Basic Data Structure) dataset.
     pub fn is_bds(&self) -> bool {
-        matches!(self.dataset_type, AdamDatasetType::Bds | AdamDatasetType::Tte)
+        matches!(
+            self.dataset_type,
+            AdamDatasetType::Bds | AdamDatasetType::Tte
+        )
     }
 
     /// Find a variable by name (case-insensitive).

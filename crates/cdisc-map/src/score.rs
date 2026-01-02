@@ -6,8 +6,8 @@
 use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
-use rapidfuzz::distance::jaro_winkler;
 use cdisc_model::{Domain, Variable};
+use rapidfuzz::distance::jaro_winkler;
 use serde::{Deserialize, Serialize};
 
 /// Hints about a source column's characteristics.

@@ -4,10 +4,10 @@
 
 use std::collections::BTreeSet;
 
-use polars::prelude::{AnyValue, DataFrame};
 use cdisc_common::any_to_string;
 use cdisc_model::ct::{Codelist, ResolvedCodelist, TerminologyRegistry};
 use cdisc_model::{Domain, Variable};
+use polars::prelude::{AnyValue, DataFrame};
 
 use crate::issue::Issue;
 use crate::util::CaseInsensitiveSet;

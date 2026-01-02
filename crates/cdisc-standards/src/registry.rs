@@ -4,8 +4,8 @@
 
 use cdisc_model::adam::AdamDataset;
 use cdisc_model::ct::TerminologyRegistry;
-use cdisc_model::send::SendDomain;
 use cdisc_model::sdtm::Domain as SdtmDomain;
+use cdisc_model::send::SendDomain;
 use cdisc_model::traits::Standard;
 
 use crate::ct::CtVersion;

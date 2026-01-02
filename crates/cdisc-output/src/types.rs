@@ -2,8 +2,8 @@
 
 use std::collections::HashMap;
 
-use polars::prelude::DataFrame;
 use cdisc_model::Domain;
+use polars::prelude::DataFrame;
 
 /// A transformed domain with its data.
 ///

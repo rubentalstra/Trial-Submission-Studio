@@ -13,11 +13,11 @@
 //! - [`send`]: SEND domains and variables per SENDIG v3.1
 //! - [`ct`]: Controlled Terminology types
 
-pub mod ct;
-pub mod traits;
-pub mod sdtm;
 pub mod adam;
+pub mod ct;
+pub mod sdtm;
 pub mod send;
+pub mod traits;
 
 // Re-export CT types
 pub use ct::{Codelist, ResolvedCodelist, Term, TerminologyCatalog, TerminologyRegistry};

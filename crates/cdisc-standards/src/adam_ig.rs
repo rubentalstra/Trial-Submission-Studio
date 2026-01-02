@@ -9,7 +9,7 @@ use std::path::Path;
 use serde::Deserialize;
 
 use cdisc_model::adam::{AdamDataset, AdamDatasetType, AdamVariable, AdamVariableSource};
-use cdisc_model::traits::{CoreDesignation, DataType};
+use cdisc_model::traits::DataType;
 
 use crate::error::{Result, StandardsError};
 use crate::paths::adam_ig_path;
@@ -36,8 +36,8 @@ pub fn load_from(base_dir: &Path) -> Result<Vec<AdamDataset>> {
     let datasets_path = base_dir.join("DataStructures.csv");
     let variables_path = base_dir.join("Variables.csv");
 
-    let datasets = load_data_structures(&datasets_path)?;
-    let variables = load_variables(&variables_path)?;
+    let (datasets, long_to_short) = load_data_structures(&datasets_path)?;
+    let variables = load_variables(&variables_path, &long_to_short)?;
 
     build_datasets(datasets, variables)
 }
@@ -64,8 +64,6 @@ struct DataStructureCsvRow {
 struct VariableCsvRow {
     #[serde(rename = "Data Structure Name")]
     data_structure: String,
-    #[serde(rename = "Variable Set")]
-    variable_set: String,
     #[serde(rename = "Variable Name")]
     variable_name: String,
     #[serde(rename = "Variable Label")]
@@ -92,7 +90,10 @@ struct DatasetMeta {
 }
 
 /// Load DataStructures.csv into a map of dataset metadata.
-fn load_data_structures(path: &Path) -> Result<BTreeMap<String, DatasetMeta>> {
+/// Also returns a map from long names (description) to short names.
+fn load_data_structures(
+    path: &Path,
+) -> Result<(BTreeMap<String, DatasetMeta>, BTreeMap<String, String>)> {
     if !path.exists() {
         return Err(StandardsError::FileNotFound {
             path: path.to_path_buf(),
@@ -108,6 +109,7 @@ fn load_data_structures(path: &Path) -> Result<BTreeMap<String, DatasetMeta>> {
         })?;
 
     let mut datasets = BTreeMap::new();
+    let mut long_to_short = BTreeMap::new();
 
     for result in reader.deserialize::<DataStructureCsvRow>() {
         let row = result.map_err(|e| StandardsError::CsvRead {
@@ -115,15 +117,29 @@ fn load_data_structures(path: &Path) -> Result<BTreeMap<String, DatasetMeta>> {
             source: e,
         })?;
 
-        let name = row.name.trim().to_uppercase();
-        if name.is_empty() {
+        let short_name = row.name.trim().to_uppercase();
+        if short_name.is_empty() {
             continue;
         }
 
         let dataset_type = parse_dataset_type(&row.class);
 
+        // Create mapping from description to short name
+        // e.g., "SUBJECT-LEVEL ANALYSIS DATASET STRUCTURE" -> "ADSL"
+        let long_name = row.description.trim().to_uppercase();
+        if !long_name.is_empty() {
+            long_to_short.insert(long_name.clone(), short_name.clone());
+            // Also map without "Structure" suffix for Variables.csv compatibility
+            // Variables.csv uses "Subject-Level Analysis Dataset" while
+            // DataStructures.csv uses "Subject-Level Analysis Dataset Structure"
+            if long_name.ends_with(" STRUCTURE") {
+                let without_structure = long_name.trim_end_matches(" STRUCTURE").to_string();
+                long_to_short.insert(without_structure, short_name.clone());
+            }
+        }
+
         datasets.insert(
-            name,
+            short_name,
             DatasetMeta {
                 dataset_type,
                 label: non_empty(&row.description),
@@ -132,11 +148,14 @@ fn load_data_structures(path: &Path) -> Result<BTreeMap<String, DatasetMeta>> {
         );
     }
 
-    Ok(datasets)
+    Ok((datasets, long_to_short))
 }
 
-/// Load Variables.csv into a map of variables grouped by data structure.
-fn load_variables(path: &Path) -> Result<BTreeMap<String, Vec<AdamVariable>>> {
+/// Load Variables.csv into a map of variables grouped by dataset short name.
+fn load_variables(
+    path: &Path,
+    long_to_short: &BTreeMap<String, String>,
+) -> Result<BTreeMap<String, Vec<AdamVariable>>> {
     if !path.exists() {
         return Err(StandardsError::FileNotFound {
             path: path.to_path_buf(),
@@ -160,14 +179,17 @@ fn load_variables(path: &Path) -> Result<BTreeMap<String, Vec<AdamVariable>>> {
             source: e,
         })?;
 
-        let data_structure = row.data_structure.trim().to_uppercase();
+        let long_name = row.data_structure.trim().to_uppercase();
         let name = row.variable_name.trim().to_string();
-        if data_structure.is_empty() || name.is_empty() {
+        if long_name.is_empty() || name.is_empty() {
             continue;
         }
 
-        // Auto-increment order per data structure
-        let order = order_counter.entry(data_structure.clone()).or_insert(0);
+        // Map long name to short name, or use the long name as-is if not found
+        let dataset_name = long_to_short.get(&long_name).cloned().unwrap_or(long_name);
+
+        // Auto-increment order per dataset
+        let order = order_counter.entry(dataset_name.clone()).or_insert(0);
         *order += 1;
         let current_order = *order;
 
@@ -185,7 +207,7 @@ fn load_variables(path: &Path) -> Result<BTreeMap<String, Vec<AdamVariable>>> {
             order: Some(current_order),
         };
 
-        grouped.entry(data_structure).or_default().push(variable);
+        grouped.entry(dataset_name).or_default().push(variable);
     }
 
     Ok(grouped)
@@ -208,7 +230,9 @@ fn build_datasets(
         result.push(AdamDataset {
             name: name.clone(),
             label: meta.and_then(|m| m.label.clone()),
-            dataset_type: meta.map(|m| m.dataset_type).unwrap_or(AdamDatasetType::Other),
+            dataset_type: meta
+                .map(|m| m.dataset_type)
+                .unwrap_or(AdamDatasetType::Other),
             structure: meta.and_then(|m| m.structure.clone()),
             variables: std::mem::take(vars),
         });
@@ -284,12 +308,17 @@ mod tests {
         let datasets = load().expect("load ADaM-IG");
         assert!(!datasets.is_empty(), "Should load datasets");
 
-        // Check for ADSL structure
+        // Check for ADSL structure (mapped from "Subject-Level Analysis Dataset")
         let adsl = datasets.iter().find(|d| d.name == "ADSL");
-        assert!(adsl.is_some(), "ADSL structure should exist");
+        assert!(
+            adsl.is_some(),
+            "ADSL structure should exist, got: {:?}",
+            datasets.iter().map(|d| &d.name).collect::<Vec<_>>()
+        );
 
         let adsl = adsl.unwrap();
         assert_eq!(adsl.dataset_type, AdamDatasetType::Adsl);
+        assert!(!adsl.variables.is_empty(), "ADSL should have variables");
     }
 
     #[test]

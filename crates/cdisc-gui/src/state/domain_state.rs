@@ -4,8 +4,8 @@
 //! `DomainState` (mutable mapping with version tracking).
 
 use super::DerivedState;
-use polars::prelude::DataFrame;
 use cdisc_map::MappingState as CoreMappingState;
+use polars::prelude::DataFrame;
 use std::path::PathBuf;
 
 // ============================================================================

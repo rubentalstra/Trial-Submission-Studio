@@ -2,8 +2,8 @@
 //!
 //! This module provides types for representing SEND nonclinical study domains.
 
-use crate::traits::{CoreDesignation, DataType};
 use super::enums::{SendDatasetClass, SendStudyType};
+use crate::traits::{CoreDesignation, DataType};
 use serde::{Deserialize, Serialize};
 
 /// SEND variable definition per SENDIG v3.1.

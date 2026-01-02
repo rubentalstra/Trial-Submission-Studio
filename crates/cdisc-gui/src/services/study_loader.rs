@@ -29,8 +29,7 @@ impl StudyLoader {
         let mut study = StudyState::from_folder(study_folder.to_path_buf());
 
         // Get supported domain codes from SDTM-IG
-        let sdtm_domains =
-            load_sdtm_ig().context("Failed to load SDTM-IG domain definitions")?;
+        let sdtm_domains = load_sdtm_ig().context("Failed to load SDTM-IG domain definitions")?;
 
         // Build lookup: domain code -> (label, domain definition)
         let domain_map: HashMap<String, (Option<String>, cdisc_model::Domain)> = sdtm_domains

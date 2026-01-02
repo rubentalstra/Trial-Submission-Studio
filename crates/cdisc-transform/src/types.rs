@@ -5,8 +5,8 @@
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 
-use chrono::NaiveDate;
 use cdisc_model::ct::TerminologyRegistry;
+use chrono::NaiveDate;
 
 /// Transformation type inferred from Variable metadata.
 ///

@@ -9,7 +9,7 @@ use std::path::Path;
 use serde::Deserialize;
 
 use cdisc_model::send::{SendDatasetClass, SendDomain, SendVariable};
-use cdisc_model::traits::{CoreDesignation, DataType};
+use cdisc_model::traits::DataType;
 
 use crate::error::{Result, StandardsError};
 use crate::paths::send_ig_path;

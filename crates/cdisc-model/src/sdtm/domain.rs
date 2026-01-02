@@ -8,8 +8,8 @@
 //! - Section 2.1: General Observation Classes
 //! - Section 4.1: Variable Naming Conventions
 
-use crate::traits::CoreDesignation;
 use super::enums::VariableRole;
+use crate::traits::CoreDesignation;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;

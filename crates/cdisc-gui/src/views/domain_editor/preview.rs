@@ -6,9 +6,9 @@
 use crate::services::{ensure_preview, get_preview};
 use crate::state::AppState;
 use crate::theme::spacing;
+use cdisc_common::any_to_string;
 use egui::{RichText, Ui};
 use polars::prelude::DataFrame;
-use cdisc_common::any_to_string;
 
 /// Render the preview tab
 pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {

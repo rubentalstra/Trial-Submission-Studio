@@ -9,9 +9,9 @@
 //! Variables marked as "not collected" are exempt from these checks,
 //! as the user has explicitly acknowledged the data was not collected.
 
-use polars::prelude::{AnyValue, DataFrame};
 use cdisc_common::any_to_string;
 use cdisc_model::{CoreDesignation, Domain};
+use polars::prelude::{AnyValue, DataFrame};
 use std::collections::BTreeSet;
 
 use crate::issue::Issue;

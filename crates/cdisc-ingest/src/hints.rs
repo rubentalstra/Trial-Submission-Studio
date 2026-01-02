@@ -2,9 +2,9 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use polars::prelude::*;
 use cdisc_common::any_to_string;
 use cdisc_map::ColumnHint;
+use polars::prelude::*;
 
 /// Builds column hints from a DataFrame.
 ///

@@ -4,10 +4,10 @@
 
 use std::sync::LazyLock;
 
-use polars::prelude::{AnyValue, DataFrame};
-use regex::Regex;
 use cdisc_common::any_to_string;
 use cdisc_model::Domain;
+use polars::prelude::{AnyValue, DataFrame};
+use regex::Regex;
 
 use crate::issue::Issue;
 use crate::util::CaseInsensitiveSet;

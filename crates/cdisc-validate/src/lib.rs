@@ -36,9 +36,9 @@ mod report;
 pub mod rules;
 mod util;
 
-use polars::prelude::DataFrame;
 use cdisc_model::Domain;
 use cdisc_model::ct::TerminologyRegistry;
+use polars::prelude::DataFrame;
 use std::collections::BTreeSet;
 
 // Re-export public types

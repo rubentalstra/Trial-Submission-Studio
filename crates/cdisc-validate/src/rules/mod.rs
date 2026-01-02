@@ -1,7 +1,7 @@
 //! P21 validation rules loaded from CSV.
 //!
 //! The rules module provides access to Pinnacle 21 validation rules
-//! loaded from `standards/pinnacle21/Rules.csv`.
+//! loaded from `standards/validation/sdtm/Rules.csv`.
 
 mod category;
 mod loader;

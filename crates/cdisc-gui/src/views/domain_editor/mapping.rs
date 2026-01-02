@@ -5,9 +5,9 @@
 
 use crate::state::AppState;
 use crate::theme::spacing;
-use egui::{Color32, RichText, Ui};
 use cdisc_map::VariableStatus;
 use cdisc_model::{CoreDesignation, VariableRole};
+use egui::{Color32, RichText, Ui};
 
 /// Info about a codelist for display.
 #[derive(Clone)]

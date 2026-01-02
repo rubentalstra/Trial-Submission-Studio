@@ -4,9 +4,9 @@
 
 use std::collections::HashSet;
 
-use polars::prelude::{AnyValue, DataFrame};
 use cdisc_common::any_to_string;
 use cdisc_model::Domain;
+use polars::prelude::{AnyValue, DataFrame};
 
 use crate::issue::Issue;
 use crate::util::CaseInsensitiveSet;

@@ -107,8 +107,12 @@ impl SendStudyType {
             SendStudyType::SingleDoseToxicology => "Single-dose general toxicology studies",
             SendStudyType::RepeatDoseToxicology => "Repeat-dose general toxicology studies",
             SendStudyType::Carcinogenicity => "Long-term carcinogenicity studies",
-            SendStudyType::SafetyPharmacology => "Respiratory and cardiovascular safety pharmacology",
-            SendStudyType::ReproductiveToxicology => "Embryo-fetal development and juvenile animal studies",
+            SendStudyType::SafetyPharmacology => {
+                "Respiratory and cardiovascular safety pharmacology"
+            }
+            SendStudyType::ReproductiveToxicology => {
+                "Embryo-fetal development and juvenile animal studies"
+            }
             SendStudyType::GeneticToxicology => "In vivo genetic toxicology studies",
             SendStudyType::AnimalRule => "Studies conducted under the Animal Rule",
             SendStudyType::Other => "Other nonclinical study type",

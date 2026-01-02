@@ -11,9 +11,9 @@ mod length;
 mod required;
 mod sequence;
 
-use polars::prelude::DataFrame;
 use cdisc_model::Domain;
 use cdisc_model::ct::TerminologyRegistry;
+use polars::prelude::DataFrame;
 use std::collections::BTreeSet;
 
 use crate::report::ValidationReport;

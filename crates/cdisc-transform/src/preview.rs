@@ -6,8 +6,8 @@
 use polars::prelude::DataFrame;
 use std::collections::{BTreeMap, BTreeSet};
 
-use cdisc_model::ct::TerminologyRegistry;
 use cdisc_model::Domain;
+use cdisc_model::ct::TerminologyRegistry;
 
 use crate::error::TransformError;
 use crate::executor::execute_pipeline;
@@ -198,8 +198,8 @@ fn extract_reference_date(dm_df: &DataFrame) -> Option<chrono::NaiveDate> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use polars::prelude::*;
     use cdisc_model::{CoreDesignation, Variable, VariableRole, VariableType};
+    use polars::prelude::*;
 
     fn create_test_domain() -> Domain {
         Domain {

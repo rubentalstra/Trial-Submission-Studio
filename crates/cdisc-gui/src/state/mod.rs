@@ -28,7 +28,7 @@ mod ui_state;
 mod versioned;
 
 // App state
-pub use app_state::{AppState, EditorTab, View};
+pub use app_state::{AppState, EditorTab, View, WorkflowMode};
 
 // Study state
 pub use study_state::StudyState;

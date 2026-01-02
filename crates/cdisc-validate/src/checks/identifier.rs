@@ -2,9 +2,9 @@
 //!
 //! Checks that Identifier role variables have no null values.
 
-use polars::prelude::{AnyValue, DataFrame};
 use cdisc_common::any_to_string;
 use cdisc_model::{Domain, VariableRole};
+use polars::prelude::{AnyValue, DataFrame};
 
 use crate::issue::Issue;
 use crate::util::CaseInsensitiveSet;
