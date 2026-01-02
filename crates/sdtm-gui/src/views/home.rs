@@ -105,19 +105,19 @@ impl HomeView {
                             let lock_reason = state.domain_lock_reason(code);
                             let is_mapping_complete = domain.is_mapping_complete();
 
-                            // Determine status icon and color
+                            // Determine status icon and color (4 states)
                             let (status_icon, status_color) = if !is_accessible {
-                                // Locked - requires DM
+                                // State 1: Locked - requires DM
                                 (egui_phosphor::regular::LOCK, ui.visuals().weak_text_color())
                             } else if is_mapping_complete {
-                                // Mapping complete
+                                // State 2: Complete - all required mappings done
                                 (egui_phosphor::regular::CHECK_CIRCLE, Color32::GREEN)
+                            } else if domain.is_touched() {
+                                // State 3: In Progress - user has started working
+                                (egui_phosphor::regular::PENCIL, ui.visuals().warn_fg_color)
                             } else {
-                                // In progress
-                                (
-                                    egui_phosphor::regular::CIRCLE_DASHED,
-                                    ui.visuals().warn_fg_color,
-                                )
+                                // State 4: Ready - unlocked but not started
+                                (egui_phosphor::regular::CIRCLE, ui.visuals().text_color())
                             };
 
                             ui.horizontal(|ui| {

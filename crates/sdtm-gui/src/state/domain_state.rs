@@ -94,6 +94,8 @@ pub struct DomainState {
     pub version: u64,
     /// Cached derived state (transform, preview, validation, supp)
     pub derived: DerivedState,
+    /// Whether the user has opened/interacted with this domain
+    user_touched: bool,
 }
 
 impl DomainState {
@@ -104,7 +106,13 @@ impl DomainState {
             mapping,
             version: 0,
             derived: DerivedState::default(),
+            user_touched: false,
         }
+    }
+
+    /// Check if the user has made mapping changes to this domain.
+    pub fn is_touched(&self) -> bool {
+        self.user_touched
     }
 
     /// Mutate the mapping state and auto-increment version.
@@ -112,6 +120,8 @@ impl DomainState {
     /// This is the ONLY way to mutate the mapping state. It ensures
     /// the version is always incremented, causing derived state to
     /// be considered stale and rebuilt on next access.
+    ///
+    /// Also marks the domain as touched (user has made changes).
     ///
     /// # Example
     ///
@@ -126,6 +136,7 @@ impl DomainState {
     {
         let result = f(&mut self.mapping);
         self.version += 1;
+        self.user_touched = true; // Mark as touched when any mapping change is made
         result
     }
 

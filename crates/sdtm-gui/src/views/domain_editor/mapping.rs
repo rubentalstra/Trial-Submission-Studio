@@ -74,7 +74,7 @@ fn show_variable_list(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
     let mut search_text = ui_state.mapping.search_filter.clone();
 
     // Collect data we need from domain (immutable borrow)
-    let (summary, filtered_vars, has_subjid_var) = {
+    let (summary, filtered_vars, has_subjid_mapping) = {
         let Some(study) = state.study() else {
             ui.label("No study loaded");
             return;
@@ -86,7 +86,8 @@ fn show_variable_list(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
 
         let ms = &domain.mapping;
         let summary = ms.summary();
-        let has_subjid_var = ms.domain().column_name("SUBJID").is_some();
+        // Check if SUBJID has been mapped (accepted), not just if it exists
+        let has_subjid_mapping = ms.accepted("SUBJID").is_some();
         
         // Filter variables by search text
         let search_lower = search_text.to_lowercase();
@@ -106,7 +107,7 @@ fn show_variable_list(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
             })
             .collect();
         
-        (summary, filtered, has_subjid_var)
+        (summary, filtered, has_subjid_mapping)
     };
 
     // Summary header
@@ -184,8 +185,9 @@ fn show_variable_list(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                 let is_selected = selected_idx == Some(idx);
 
                 // Check if this is an auto-generated variable
+                // USUBJID is only auto-generated if SUBJID has been mapped
                 let is_auto = is_auto_generated_variable(name, role)
-                    || (has_subjid_var && name.eq_ignore_ascii_case("USUBJID"));
+                    || (has_subjid_mapping && name.eq_ignore_ascii_case("USUBJID"));
 
                 let core_text = match core {
                     Some(CoreDesignation::Required) => "Req",
@@ -260,9 +262,11 @@ fn show_variable_detail(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
         };
 
         let var_name = variable.name.clone();
-        let has_subjid = ms.domain().column_name("SUBJID").is_some();
-        let is_auto = is_auto_generated(&var_name, variable.role, has_subjid);
-        let is_usubjid_derived = has_subjid && var_name.eq_ignore_ascii_case("USUBJID");
+        // Check if SUBJID has been mapped (accepted) in this domain
+        let has_subjid_mapping = ms.accepted("SUBJID").is_some();
+        let is_auto = is_auto_generated(&var_name, variable.role, domain_code, has_subjid_mapping);
+        // USUBJID is derived when SUBJID is mapped
+        let is_usubjid_derived = has_subjid_mapping && var_name.eq_ignore_ascii_case("USUBJID");
         let status = ms.status(&var_name);
         let study_id = study.study_id.clone();
 
@@ -523,8 +527,11 @@ fn is_auto_generated_variable(name: &str, role: Option<VariableRole>) -> bool {
     matches!(name, "STUDYID" | "DOMAIN") || (name.ends_with("SEQ") && name.len() >= 4)
 }
 
-/// Check if a variable is auto-generated based on role and name
-fn is_auto_generated(name: &str, role: Option<VariableRole>, has_subjid: bool) -> bool {
+/// Check if a variable is auto-generated based on role, name, and SUBJID mapping.
+///
+/// USUBJID is auto-generated when SUBJID has been mapped (in any domain).
+fn is_auto_generated(name: &str, role: Option<VariableRole>, _domain_code: &str, has_subjid: bool) -> bool {
+    // USUBJID is auto-generated when SUBJID is mapped (derives as STUDYID-SUBJID)
     if has_subjid && name.eq_ignore_ascii_case("USUBJID") {
         return true;
     }

@@ -105,6 +105,7 @@ fn show_domain_selection(ui: &mut Ui, state: &mut AppState) {
     ui.add_space(spacing::SM);
 
     // Extract domain info before mutable borrows
+    // Tuple: (is_complete, is_touched, row_count)
     let domain_info: Vec<_> = {
         let Some(study) = state.study() else {
             return;
@@ -117,7 +118,7 @@ fn show_domain_selection(ui: &mut Ui, state: &mut AppState) {
                 let code = code.to_string();
                 let info = study
                     .get_domain(&code)
-                    .map(|d| (d.is_mapping_complete(), d.row_count()));
+                    .map(|d| (d.is_mapping_complete(), d.is_touched(), d.row_count()));
                 (code, info)
             })
             .collect()
@@ -166,22 +167,31 @@ fn show_domain_selection(ui: &mut Ui, state: &mut AppState) {
                 };
                 ui.label(code_text);
 
-                // Status icon
-                if let Some((is_complete, row_count)) = info {
+                // Status icon (4 states: locked, ready, in progress, complete)
+                if let Some((is_complete, is_touched, row_count)) = info {
                     if !is_accessible {
+                        // State 1: Locked
                         ui.label(
                             RichText::new(egui_phosphor::regular::LOCK)
                                 .color(ui.visuals().weak_text_color()),
                         );
                     } else if *is_complete {
+                        // State 2: Complete
                         ui.label(
                             RichText::new(egui_phosphor::regular::CHECK_CIRCLE)
                                 .color(Color32::GREEN),
                         );
-                    } else {
+                    } else if *is_touched {
+                        // State 3: In Progress
                         ui.label(
-                            RichText::new(egui_phosphor::regular::CIRCLE_DASHED)
+                            RichText::new(egui_phosphor::regular::PENCIL)
                                 .color(ui.visuals().warn_fg_color),
+                        );
+                    } else {
+                        // State 4: Ready (unlocked but not started)
+                        ui.label(
+                            RichText::new(egui_phosphor::regular::CIRCLE)
+                                .color(ui.visuals().text_color()),
                         );
                     }
 
