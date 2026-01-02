@@ -3,7 +3,7 @@ name = "cdisc-output"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
-description = "CDISC output generation: XPT, Dataset-XML, Define-XML, SAS"
+description = "CDISC output generation: XPT, Dataset-XML, Define-XML"
 
 [lints]
 workspace = true
