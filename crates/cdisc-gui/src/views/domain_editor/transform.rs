@@ -2,8 +2,9 @@
 //!
 //! Shows source data being transformed to SDTM-compliant data.
 //! Uses a 2-column layout: transformation list on left, details on right.
-//! Automatically ensures preview is up-to-date to show transformed values.
+//! Preview is computed lazily when this tab is opened.
 
+use crate::services::{PreviewState, ensure_preview};
 use crate::state::AppState;
 use crate::theme::spacing;
 use cdisc_common::any_to_string;
@@ -12,7 +13,27 @@ use polars::prelude::*;
 
 /// Render the transform tab
 pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
-    // Check if domain exists
+    // Step 1: Ensure preview is ready
+    match ensure_preview(state, domain_code) {
+        PreviewState::Rebuilding => {
+            show_spinner(ui, "Building preview...");
+            ui.ctx().request_repaint();
+            return;
+        }
+        PreviewState::NotConfigured => {
+            show_not_configured(ui);
+            return;
+        }
+        PreviewState::Error(e) => {
+            show_error(ui, &e);
+            return;
+        }
+        PreviewState::Ready => {
+            // Continue to render content
+        }
+    }
+
+    // Step 2: Check domain accessibility
     if state.domain(domain_code).is_none() {
         ui.centered_and_justified(|ui| {
             ui.label(RichText::new("Domain not accessible").color(ui.visuals().error_fg_color));
@@ -20,36 +41,13 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
         return;
     }
 
-    // Check for preview error
-    let preview_error = state
-        .ui
-        .get_domain_editor(domain_code)
-        .and_then(|ui| ui.preview.error.clone());
-
-    if let Some(error) = preview_error {
-        ui.vertical_centered(|ui| {
-            ui.add_space(spacing::XL);
-            ui.label(
-                RichText::new(format!(
-                    "{} Transform Error",
-                    egui_phosphor::regular::WARNING
-                ))
-                .color(ui.visuals().error_fg_color)
-                .size(18.0),
-            );
-            ui.add_space(spacing::MD);
-            ui.label(RichText::new(&error).weak());
-        });
-        return;
-    }
-
-    // Master-detail layout using StripBuilder
+    // Step 3: Master-detail layout
     let available_height = ui.available_height();
 
     egui_extras::StripBuilder::new(ui)
         .size(egui_extras::Size::exact(300.0)) // Left panel fixed width
-        .size(egui_extras::Size::exact(1.0))   // Separator
-        .size(egui_extras::Size::remainder())  // Right panel takes rest
+        .size(egui_extras::Size::exact(1.0)) // Separator
+        .size(egui_extras::Size::remainder()) // Right panel takes rest
         .horizontal(|mut strip| {
             // Left: Transformation list
             strip.cell(|ui| {
@@ -74,6 +72,57 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                     });
             });
         });
+}
+
+/// Show spinner with message
+fn show_spinner(ui: &mut Ui, message: &str) {
+    ui.centered_and_justified(|ui| {
+        ui.vertical_centered(|ui| {
+            ui.spinner();
+            ui.add_space(spacing::SM);
+            ui.label(RichText::new(message).weak());
+        });
+    });
+}
+
+/// Show "not configured" message
+fn show_not_configured(ui: &mut Ui) {
+    ui.centered_and_justified(|ui| {
+        ui.vertical_centered(|ui| {
+            ui.label(
+                RichText::new(egui_phosphor::regular::INFO)
+                    .size(24.0)
+                    .weak(),
+            );
+            ui.add_space(spacing::SM);
+            ui.label(RichText::new("No transformations yet").weak());
+            ui.add_space(spacing::XS);
+            ui.label(
+                RichText::new(
+                    "Map variables in the Mapping tab to see their transformations here.",
+                )
+                .weak()
+                .small(),
+            );
+        });
+    });
+}
+
+/// Show error state
+fn show_error(ui: &mut Ui, error: &str) {
+    ui.vertical_centered(|ui| {
+        ui.add_space(spacing::XL);
+        ui.label(
+            RichText::new(format!(
+                "{} Transform Error",
+                egui_phosphor::regular::WARNING
+            ))
+            .color(ui.visuals().error_fg_color)
+            .size(18.0),
+        );
+        ui.add_space(spacing::MD);
+        ui.label(RichText::new(error).weak());
+    });
 }
 
 /// Data for a single transformation row
@@ -133,25 +182,7 @@ fn show_transform_list(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
     };
 
     if rows.is_empty() {
-        ui.centered_and_justified(|ui| {
-            ui.vertical_centered(|ui| {
-                ui.label(
-                    RichText::new(egui_phosphor::regular::INFO)
-                        .size(24.0)
-                        .weak(),
-                );
-                ui.add_space(spacing::SM);
-                ui.label(RichText::new("No transformations yet").weak());
-                ui.add_space(spacing::XS);
-                ui.label(
-                    RichText::new(
-                        "Map variables in the Mapping tab to see their transformations here.",
-                    )
-                    .weak()
-                    .small(),
-                );
-            });
-        });
+        show_not_configured(ui);
         return;
     }
 
@@ -185,9 +216,9 @@ fn show_transform_list(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
     egui_extras::TableBuilder::new(ui)
         .striped(true)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-        .column(egui_extras::Column::exact(24.0))                // Icon
+        .column(egui_extras::Column::exact(24.0)) // Icon
         .column(egui_extras::Column::remainder().at_least(80.0)) // Target var
-        .column(egui_extras::Column::exact(60.0))                // Category
+        .column(egui_extras::Column::exact(60.0)) // Category
         .header(text_height + 4.0, |mut header| {
             header.col(|_ui| {});
             header.col(|ui| {
@@ -206,7 +237,8 @@ fn show_transform_list(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
 
                 // Icon column
                 row.col(|ui| {
-                    let (icon, color) = get_category_icon_color(&transform_row.category, is_auto, ui);
+                    let (icon, color) =
+                        get_category_icon_color(&transform_row.category, is_auto, ui);
                     ui.label(RichText::new(icon).color(color));
                 });
 

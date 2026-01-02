@@ -48,6 +48,9 @@ impl CdiscApp {
 
 impl eframe::App for CdiscApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+        // Handle preview results from background threads
+        self.handle_preview_results(ctx);
+
         // Handle menu events
         self.handle_menu_events(ctx);
 
@@ -242,5 +245,45 @@ impl CdiscApp {
                 }
             }
         });
+    }
+}
+
+impl CdiscApp {
+    /// Handle preview results from background threads.
+    ///
+    /// Preview computation runs in background threads and sends results
+    /// via channel. This method receives those results and updates state.
+    fn handle_preview_results(&mut self, ctx: &egui::Context) {
+        while let Ok(result) = self.state.preview_receiver.try_recv() {
+            let domain_code = &result.domain_code;
+
+            // Update preview state
+            match result.result {
+                Ok(df) => {
+                    if let Some(domain) = self
+                        .state
+                        .study_mut()
+                        .and_then(|s| s.get_domain_mut(domain_code))
+                    {
+                        domain.derived.preview = Some(df);
+                    }
+                    // Clear error on success
+                    self.state.ui.domain_editor(domain_code).preview.error = None;
+                }
+                Err(e) => {
+                    self.state.ui.domain_editor(domain_code).preview.error = Some(e);
+                }
+            }
+
+            // Clear rebuilding flag
+            self.state
+                .ui
+                .domain_editor(domain_code)
+                .preview
+                .is_rebuilding = false;
+
+            // Request repaint to show the new preview
+            ctx.request_repaint();
+        }
     }
 }

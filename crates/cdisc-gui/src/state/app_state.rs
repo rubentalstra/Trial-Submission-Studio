@@ -3,8 +3,10 @@
 //! This module contains `AppState` which is the root of all state.
 
 use cdisc_model::TerminologyRegistry;
+use crossbeam_channel::{Receiver, Sender};
 
 use super::{DomainState, StudyState, UiState};
+use crate::services::PreviewResult;
 use crate::settings::Settings;
 
 /// Top-level application state.
@@ -23,10 +25,15 @@ pub struct AppState {
     pub ui: UiState,
     /// Cached CT registry (loaded lazily)
     ct_registry: Option<TerminologyRegistry>,
+    /// Channel for receiving preview results from background threads
+    pub preview_receiver: Receiver<PreviewResult>,
+    /// Sender for spawning preview tasks (cloned to background threads)
+    pub preview_sender: Sender<PreviewResult>,
 }
 
 impl Default for AppState {
     fn default() -> Self {
+        let (preview_sender, preview_receiver) = crossbeam_channel::unbounded();
         Self {
             view: View::default(),
             workflow_mode: WorkflowMode::default(),
@@ -34,6 +41,8 @@ impl Default for AppState {
             settings: Settings::default(),
             ui: UiState::default(),
             ct_registry: None,
+            preview_receiver,
+            preview_sender,
         }
     }
 }
@@ -41,6 +50,7 @@ impl Default for AppState {
 impl AppState {
     /// Create new app state with loaded settings.
     pub fn new(settings: Settings) -> Self {
+        let (preview_sender, preview_receiver) = crossbeam_channel::unbounded();
         Self {
             view: View::default(),
             workflow_mode: WorkflowMode::default(),
@@ -48,6 +58,8 @@ impl AppState {
             settings,
             ui: UiState::default(),
             ct_registry: None,
+            preview_receiver,
+            preview_sender,
         }
     }
 
@@ -85,6 +97,22 @@ impl AppState {
             .as_ref()
             .map(|s| s.has_domain(code))
             .unwrap_or(false)
+    }
+
+    /// Invalidate preview and all dependent data.
+    ///
+    /// Called by mapping tab when user makes changes. This clears cached data
+    /// immediately (instant, no computation). The actual rebuild happens lazily
+    /// when user switches to Preview/Transform/Validation tabs.
+    pub fn invalidate_preview(&mut self, domain_code: &str) {
+        // Clear domain data
+        if let Some(domain) = self.study_mut().and_then(|s| s.get_domain_mut(domain_code)) {
+            domain.derived.preview = None;
+            domain.derived.validation = None;
+        }
+        // Clear UI state (in case of rapid changes while rebuilding)
+        self.ui.domain_editor(domain_code).preview.is_rebuilding = false;
+        self.ui.domain_editor(domain_code).preview.error = None;
     }
 
     // ========================================================================

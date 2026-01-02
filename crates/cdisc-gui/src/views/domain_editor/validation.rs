@@ -2,8 +2,17 @@
 //!
 //! Shows validation results for the mapped data.
 //! Uses a 2-column layout: issues list on left, details on right.
-//! Validation is run automatically when mappings change.
+//!
+//! ## Architecture
+//!
+//! Validation depends on preview data. The flow is:
+//! 1. `ensure_preview()` - wait for preview to be ready
+//! 2. If preview is Ready, run validation if not already cached
+//! 3. Display validation results
+//!
+//! This ensures validation NEVER runs on stale preview data.
 
+use crate::services::{PreviewState, ensure_preview};
 use crate::state::AppState;
 use crate::theme::spacing;
 use cdisc_standards::{CtVersion, load_ct};
@@ -13,7 +22,27 @@ use std::collections::BTreeSet;
 
 /// Render the validation tab
 pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
-    // Check if domain exists
+    // Step 1: Ensure preview is ready (this is critical for correctness)
+    match ensure_preview(state, domain_code) {
+        PreviewState::Rebuilding => {
+            show_spinner(ui, "Building preview...");
+            ui.ctx().request_repaint();
+            return;
+        }
+        PreviewState::NotConfigured => {
+            show_message(ui, "Configure mappings to see validation results");
+            return;
+        }
+        PreviewState::Error(e) => {
+            show_error(ui, &e);
+            return;
+        }
+        PreviewState::Ready => {
+            // Continue - preview is fresh, safe to run validation
+        }
+    }
+
+    // Step 2: Check domain accessibility
     let Some(domain) = state.domain(domain_code) else {
         ui.centered_and_justified(|ui| {
             ui.label(RichText::new("Domain not accessible").color(ui.visuals().error_fg_color));
@@ -21,35 +50,36 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
         return;
     };
 
-    // Check if we need to build validation report
-    let has_report = domain.derived.validation.is_some();
-    let has_preview = domain.derived.preview.is_some();
+    // Step 3: Ensure validation is up to date
+    // Since preview is Ready and fresh, we can run validation if not cached
+    let needs_validation = domain.derived.validation.is_none();
 
-    if !has_report && has_preview {
-        // Show loading and trigger rebuild
+    if needs_validation {
+        // Show brief loading indicator and run validation (sync, fast)
         ui.centered_and_justified(|ui| {
-            ui.spinner();
-            ui.label("Running validation checks...");
+            ui.vertical_centered(|ui| {
+                ui.spinner();
+                ui.add_space(spacing::SM);
+                ui.label(RichText::new("Running validation checks...").weak());
+            });
         });
         ui.ctx().request_repaint();
         rebuild_validation_report(state, domain_code);
         return;
     }
 
-    // Get validation report (clone to avoid borrow issues)
+    // Step 4: Get validation report (clone to avoid borrow issues)
     let report = state
         .domain(domain_code)
         .and_then(|d| d.derived.validation.as_ref())
         .cloned();
 
     let Some(report) = report else {
-        ui.centered_and_justified(|ui| {
-            ui.label(RichText::new("Configure mappings to see validation results").weak());
-        });
+        show_message(ui, "Validation results not available");
         return;
     };
 
-    // If no issues, show full-width success message
+    // Step 5: Display validation results
     if report.issues.is_empty() {
         show_no_issues(ui);
         return;
@@ -86,6 +116,41 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                     });
             });
         });
+}
+
+/// Show spinner with message
+fn show_spinner(ui: &mut Ui, message: &str) {
+    ui.centered_and_justified(|ui| {
+        ui.vertical_centered(|ui| {
+            ui.spinner();
+            ui.add_space(spacing::SM);
+            ui.label(RichText::new(message).weak());
+        });
+    });
+}
+
+/// Show informational message
+fn show_message(ui: &mut Ui, message: &str) {
+    ui.centered_and_justified(|ui| {
+        ui.label(RichText::new(message).weak());
+    });
+}
+
+/// Show error state
+fn show_error(ui: &mut Ui, error: &str) {
+    ui.vertical_centered(|ui| {
+        ui.add_space(spacing::XL);
+        ui.label(
+            RichText::new(format!(
+                "{} Validation Error",
+                egui_phosphor::regular::WARNING
+            ))
+            .color(ui.visuals().error_fg_color)
+            .size(18.0),
+        );
+        ui.add_space(spacing::MD);
+        ui.label(RichText::new(error).weak());
+    });
 }
 
 /// Show "no issues" success state
@@ -494,7 +559,7 @@ fn severity_icon_color(severity: Severity, ui: &Ui) -> (&'static str, Color32) {
     }
 }
 
-/// Rebuild the validation report
+/// Rebuild the validation report (synchronous, fast)
 fn rebuild_validation_report(state: &mut AppState, domain_code: &str) {
     let report_result = {
         let Some(study) = state.study() else {
@@ -507,7 +572,7 @@ fn rebuild_validation_report(state: &mut AppState, domain_code: &str) {
         // Get the SDTM domain definition
         let sdtm_domain = domain.mapping.domain();
 
-        // Get preview DataFrame if available
+        // Get preview DataFrame (guaranteed to exist after ensure_preview returns Ready)
         let preview_df = domain.derived.preview.as_ref();
 
         // Get "not collected" variables (omitted but intentionally so)
@@ -529,7 +594,7 @@ fn rebuild_validation_report(state: &mut AppState, domain_code: &str) {
         }
     };
 
-    // Store the result in derived state (directly, no versioning)
+    // Store the result in derived state
     if let Some(domain) = state
         .study_mut()
         .and_then(|s| s.get_domain_mut(domain_code))

@@ -1,8 +1,9 @@
 //! Preview tab
 //!
 //! Shows transformed data before export with pagination.
-//! The preview is rebuilt automatically when mappings change.
+//! Preview is computed lazily when this tab is opened.
 
+use crate::services::{PreviewState, ensure_preview};
 use crate::state::AppState;
 use crate::theme::spacing;
 use cdisc_common::any_to_string;
@@ -11,7 +12,27 @@ use polars::prelude::DataFrame;
 
 /// Render the preview tab
 pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
-    // Check if domain exists
+    // Step 1: Ensure preview is ready
+    match ensure_preview(state, domain_code) {
+        PreviewState::Rebuilding => {
+            show_spinner(ui, "Building preview...");
+            ui.ctx().request_repaint();
+            return;
+        }
+        PreviewState::NotConfigured => {
+            show_message(ui, "Configure mappings to see preview");
+            return;
+        }
+        PreviewState::Error(e) => {
+            show_error(ui, &e);
+            return;
+        }
+        PreviewState::Ready => {
+            // Continue to render content
+        }
+    }
+
+    // Step 2: Check domain accessibility
     let Some(domain) = state.domain(domain_code) else {
         ui.centered_and_justified(|ui| {
             ui.label(RichText::new("Domain not accessible").color(ui.visuals().error_fg_color));
@@ -19,34 +40,40 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
         return;
     };
 
-    // Get preview error if any
-    let preview_error = state
-        .ui
-        .get_domain_editor(domain_code)
-        .and_then(|ui| ui.preview.error.clone());
-
-    if let Some(error) = preview_error {
-        show_error_state(ui, &error);
-        return;
-    }
-
-    // Get preview DataFrame directly from derived state
+    // Step 3: Get preview DataFrame (guaranteed to exist after PreviewState::Ready)
     let Some(preview_df) = domain.derived.preview.as_ref() else {
-        ui.centered_and_justified(|ui| {
-            ui.label(RichText::new("Configure mappings to see preview").weak());
-        });
+        // This shouldn't happen, but handle gracefully
+        show_message(ui, "Preview data not available");
         return;
     };
 
-    // Clone the DataFrame for rendering (needed because we borrow state mutably later)
+    // Clone DataFrame for rendering (needed because we borrow state mutably later)
     let preview_df = preview_df.clone();
 
-    // Render the preview UI
+    // Step 4: Render the preview UI
     show_preview_content(ui, state, domain_code, &preview_df);
 }
 
+/// Show spinner with message
+fn show_spinner(ui: &mut Ui, message: &str) {
+    ui.centered_and_justified(|ui| {
+        ui.vertical_centered(|ui| {
+            ui.spinner();
+            ui.add_space(spacing::SM);
+            ui.label(RichText::new(message).weak());
+        });
+    });
+}
+
+/// Show informational message
+fn show_message(ui: &mut Ui, message: &str) {
+    ui.centered_and_justified(|ui| {
+        ui.label(RichText::new(message).weak());
+    });
+}
+
 /// Show error state
-fn show_error_state(ui: &mut Ui, error: &str) {
+fn show_error(ui: &mut Ui, error: &str) {
     ui.vertical_centered(|ui| {
         ui.add_space(spacing::XL);
         ui.label(

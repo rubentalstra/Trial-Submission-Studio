@@ -13,8 +13,9 @@ use std::collections::BTreeMap;
 
 /// Cached derived state for a domain.
 ///
-/// Fields are rebuilt immediately when mappings change.
-#[derive(Default)]
+/// Preview is lazily computed when user switches to Preview/Transform/Validation tabs.
+/// When mappings change, both `preview` and `validation` are set to `None` to
+/// invalidate cached data.
 pub struct DerivedState {
     /// Validation report (issues found in mapping/data)
     pub validation: Option<ValidationReport>,
@@ -22,6 +23,16 @@ pub struct DerivedState {
     pub preview: Option<DataFrame>,
     /// SUPP configuration (for unmapped columns)
     pub supp: Option<SuppConfig>,
+}
+
+impl Default for DerivedState {
+    fn default() -> Self {
+        Self {
+            validation: None,
+            preview: None,
+            supp: None,
+        }
+    }
 }
 
 impl DerivedState {

@@ -145,6 +145,8 @@ pub struct PreviewUiState {
     pub rows_per_page: usize,
     /// Error message if preview generation failed
     pub error: Option<String>,
+    /// Whether preview is currently being rebuilt in background
+    pub is_rebuilding: bool,
 }
 
 impl Default for PreviewUiState {
@@ -153,6 +155,7 @@ impl Default for PreviewUiState {
             current_page: 0,
             rows_per_page: 50,
             error: None,
+            is_rebuilding: false,
         }
     }
 }
@@ -166,26 +169,6 @@ impl PreviewUiState {
     /// Go to the previous page.
     pub fn prev_page(&mut self) {
         self.current_page = self.current_page.saturating_sub(1);
-    }
-
-    /// Reset to first page.
-    pub fn reset(&mut self) {
-        self.current_page = 0;
-        self.error = None;
-    }
-
-    /// Calculate total pages for a given row count.
-    #[allow(dead_code)]
-    pub fn total_pages(&self, total_rows: usize) -> usize {
-        (total_rows + self.rows_per_page - 1).max(1) / self.rows_per_page.max(1)
-    }
-
-    /// Get the range of rows for the current page.
-    #[allow(dead_code)]
-    pub fn row_range(&self, total_rows: usize) -> (usize, usize) {
-        let start = self.current_page * self.rows_per_page;
-        let end = (start + self.rows_per_page).min(total_rows);
-        (start, end)
     }
 }
 
