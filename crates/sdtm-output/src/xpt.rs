@@ -8,7 +8,7 @@ use polars::prelude::{AnyValue, DataFrame};
 use crate::types::{DomainFrame, domain_map_by_code};
 use sdtm_common::{any_to_f64, any_to_string};
 use sdtm_model::{Domain, VariableType};
-use sdtm_xpt::{XptColumn, XptDataset, XptType, XptValue, XptWriterOptions, write_xpt};
+use sdtm_xpt::{NumericValue, XptColumn, XptDataset, XptType, XptValue, write_xpt};
 
 use crate::common::{ensure_output_dir, variable_length};
 
@@ -17,7 +17,6 @@ pub fn write_xpt_outputs(
     output_dir: &Path,
     domains: &[Domain],
     frames: &[DomainFrame],
-    options: &XptWriterOptions,
 ) -> Result<Vec<PathBuf>> {
     let domain_lookup = domain_map_by_code(domains);
     let mut frames_sorted: Vec<&DomainFrame> = frames.iter().collect();
@@ -37,7 +36,7 @@ pub fn write_xpt_outputs(
         let disk_name = output_dataset_name.to_lowercase();
         let filename = format!("{disk_name}.xpt");
         let path = xpt_dir.join(filename);
-        write_xpt(&path, &dataset, options)?;
+        write_xpt(&path, &dataset)?;
         outputs.push(path);
     }
     Ok(outputs)
@@ -59,6 +58,7 @@ pub fn build_xpt_dataset_with_name(
     Ok(XptDataset {
         name: dataset_name.to_uppercase(),
         label: domain.label.clone(),
+        dataset_type: None, // TODO Could be set to Some("SDTM") if desired
         columns,
         rows,
     })
@@ -78,6 +78,14 @@ fn build_xpt_columns(domain: &Domain, df: &DataFrame) -> Result<Vec<XptColumn>> 
                 VariableType::Char | _ => XptType::Char,
             },
             length,
+            // TODO please fix these format/informat fields
+            format: None,
+            format_length: 0,
+            format_decimals: 0,
+            informat: None,
+            informat_length: 0,
+            informat_decimals: 0,
+            justification: Default::default(),
         });
     }
     Ok(columns)
@@ -100,7 +108,7 @@ fn build_xpt_rows(domain: &Domain, df: &DataFrame) -> Result<Vec<Vec<XptValue>>>
         for (variable, column) in domain.variables.iter().zip(series.iter()) {
             let value = column.get(row_idx).unwrap_or(AnyValue::Null);
             let cell = match variable.data_type {
-                VariableType::Num => XptValue::Num(any_to_f64(value)),
+                VariableType::Num => XptValue::Num(NumericValue::from(any_to_f64(value))),
                 // Treat Char and future types as Char
                 VariableType::Char | _ => XptValue::Char(any_to_string(value)),
             };

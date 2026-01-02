@@ -4,8 +4,8 @@
 
 use crate::settings::ExportFormat;
 use crate::state::{AppState, DomainStatus, ExportDomainStep, ExportProgress};
-use crate::theme::{colors, spacing};
-use egui::{RichText, Ui};
+use crate::theme::spacing;
+use egui::{Color32, RichText, Ui};
 
 /// Export view
 pub struct ExportView;
@@ -284,7 +284,7 @@ fn show_export_layout(ui: &mut Ui, state: &mut AppState) {
                         ui.horizontal(|ui| {
                             ui.label(
                                 RichText::new(egui_phosphor::regular::CHECK_CIRCLE)
-                                    .color(colors::SUCCESS),
+                                    .color(Color32::GREEN),
                             );
                             let format_name = current_format.display_name();
                             let define_suffix = if state.settings.export.generate_define_xml {
@@ -402,7 +402,7 @@ fn show_export_progress(ui: &mut Ui, state: &mut AppState, progress: ExportProgr
             ui.label(
                 RichText::new(egui_phosphor::regular::CHECK_CIRCLE)
                     .size(56.0)
-                    .color(colors::SUCCESS),
+                    .color(Color32::GREEN),
             );
             ui.add_space(spacing::MD);
             ui.label(RichText::new("Export Complete").size(22.0).strong());
@@ -464,7 +464,7 @@ fn show_export_progress(ui: &mut Ui, state: &mut AppState, progress: ExportProgr
                             ui.visuals().hyperlink_color,
                         )
                     } else if (progress.domain_step as u8) > (*step as u8) {
-                        (egui_phosphor::regular::CHECK, colors::SUCCESS)
+                        (egui_phosphor::regular::CHECK, Color32::GREEN)
                     } else {
                         (
                             egui_phosphor::regular::CIRCLE,
@@ -558,7 +558,7 @@ fn can_export_domain(status: DomainStatus, allow_with_errors: bool) -> bool {
 
 fn domain_status_icon(status: DomainStatus) -> (&'static str, egui::Color32) {
     match status {
-        DomainStatus::ReadyForExport => (egui_phosphor::regular::CHECK_CIRCLE, colors::SUCCESS),
+        DomainStatus::ReadyForExport => (egui_phosphor::regular::CHECK_CIRCLE, Color32::GREEN),
         DomainStatus::ValidationFailed => (
             egui_phosphor::regular::WARNING,
             egui::Color32::from_rgb(239, 68, 68),

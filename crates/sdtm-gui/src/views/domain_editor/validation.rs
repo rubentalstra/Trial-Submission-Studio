@@ -1,8 +1,8 @@
 //! Validation tab - Displays validation issues from current mapping state
 
 use crate::state::AppState;
-use crate::theme::{colors, spacing};
-use egui::{RichText, Ui};
+use crate::theme::spacing;
+use egui::{Color32, RichText, Ui};
 use sdtm_standards::load_default_ct_registry;
 use sdtm_transform::build_preview_dataframe_with_omitted;
 use sdtm_validate::{Issue, Severity, validate_domain_with_not_collected};
@@ -53,7 +53,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                     "{} No validation issues",
                     egui_phosphor::regular::CHECK_CIRCLE
                 ))
-                .color(colors::SUCCESS),
+                .color(Color32::GREEN),
             );
         });
         return;
@@ -194,7 +194,7 @@ fn show_summary(ui: &mut Ui, errors: usize, warnings: usize) {
                     "{} No issues",
                     egui_phosphor::regular::CHECK_CIRCLE
                 ))
-                .color(colors::SUCCESS),
+                .color(Color32::GREEN),
             );
         }
     });

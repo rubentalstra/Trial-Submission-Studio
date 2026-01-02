@@ -5,8 +5,197 @@ use crate::services::MappingState;
 use polars::prelude::DataFrame;
 use sdtm_ingest::StudyMetadata;
 use sdtm_validate::ValidationReport;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
+
+// ============================================================================
+// Preview Tab State
+// ============================================================================
+
+/// State for Preview tab display
+#[derive(Debug, Clone)]
+pub struct PreviewState {
+    /// Current page number (0-indexed)
+    pub current_page: usize,
+    /// Rows per page
+    pub rows_per_page: usize,
+    /// Error message if preview generation failed
+    pub error: Option<String>,
+}
+
+impl Default for PreviewState {
+    fn default() -> Self {
+        Self {
+            current_page: 0,
+            rows_per_page: 50,
+            error: None,
+        }
+    }
+}
+
+// ============================================================================
+// SUPP Tab State
+// ============================================================================
+
+/// State for SUPP (Supplemental Qualifiers) configuration
+#[derive(Debug, Clone, Default)]
+pub struct SuppState {
+    /// Configuration for each unmapped source column
+    pub columns: BTreeMap<String, SuppColumnConfig>,
+    /// Currently selected column for detail view
+    pub selected_column: Option<String>,
+}
+
+impl SuppState {
+    /// Count columns by action
+    pub fn count_by_action(&self) -> (usize, usize, usize) {
+        let mut pending = 0;
+        let mut added = 0;
+        let mut skipped = 0;
+        for config in self.columns.values() {
+            match config.action {
+                SuppAction::Pending => pending += 1,
+                SuppAction::AddToSupp => added += 1,
+                SuppAction::Skip => skipped += 1,
+            }
+        }
+        (pending, added, skipped)
+    }
+
+    /// Get all columns configured as AddToSupp
+    pub fn supp_columns(&self) -> Vec<&SuppColumnConfig> {
+        self.columns
+            .values()
+            .filter(|c| c.action == SuppAction::AddToSupp)
+            .collect()
+    }
+}
+
+/// Configuration for a single source column in SUPP
+#[derive(Debug, Clone)]
+pub struct SuppColumnConfig {
+    /// Action: Add to SUPP or Skip
+    pub action: SuppAction,
+    /// QNAM value (max 8 chars, uppercase, no leading numbers)
+    pub qnam: String,
+    /// QLABEL value (max 40 chars)
+    pub qlabel: String,
+    /// Original column name (for reference)
+    pub source_column: String,
+    /// Auto-suggested QNAM (for "Suggest" button)
+    pub suggested_qnam: String,
+}
+
+impl SuppColumnConfig {
+    /// Create a new config with auto-suggested QNAM
+    pub fn new(source_column: String, domain_code: &str) -> Self {
+        let suggested = suggest_qnam(&source_column, domain_code);
+        Self {
+            action: SuppAction::Pending,
+            qnam: suggested.clone(),
+            qlabel: String::new(),
+            source_column,
+            suggested_qnam: suggested,
+        }
+    }
+
+    /// Validate QNAM according to SDTMIG rules
+    pub fn validate_qnam(&self) -> Result<(), String> {
+        validate_qnam(&self.qnam)
+    }
+}
+
+/// Action for a SUPP column
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SuppAction {
+    /// Not yet decided
+    #[default]
+    Pending,
+    /// Include in SUPP-- dataset
+    AddToSupp,
+    /// Exclude from export
+    Skip,
+}
+
+impl SuppAction {
+    /// Get icon for this action
+    pub fn icon(&self) -> &'static str {
+        match self {
+            Self::Pending => egui_phosphor::regular::CIRCLE_DASHED,
+            Self::AddToSupp => egui_phosphor::regular::CHECK,
+            Self::Skip => egui_phosphor::regular::MINUS,
+        }
+    }
+}
+
+/// Suggest a QNAM from a source column name
+///
+/// Rules:
+/// - Uppercase only
+/// - Max 8 characters
+/// - No leading numbers
+/// - Prefix with domain code
+fn suggest_qnam(column_name: &str, domain_code: &str) -> String {
+    // Clean up the column name
+    let clean = column_name
+        .to_uppercase()
+        .replace('_', "")
+        .replace('-', "")
+        .replace(' ', "");
+
+    // Strip common prefixes
+    let base = clean
+        .strip_prefix("EXTRA")
+        .or_else(|| clean.strip_prefix("ADDITIONAL"))
+        .or_else(|| clean.strip_prefix("OTHER"))
+        .or_else(|| clean.strip_prefix("CUSTOM"))
+        .unwrap_or(&clean);
+
+    // If base is empty or starts with a number, use column name chars
+    let base = if base.is_empty()
+        || base
+            .chars()
+            .next()
+            .map(|c| c.is_ascii_digit())
+            .unwrap_or(false)
+    {
+        &clean
+    } else {
+        base
+    };
+
+    // Calculate how many chars we can use from base (max 8 - domain_code.len())
+    let max_base_len = 8usize.saturating_sub(domain_code.len());
+    let truncated_base: String = base.chars().take(max_base_len).collect();
+
+    // Combine domain code and truncated base
+    let suggested = format!("{}{}", domain_code.to_uppercase(), truncated_base);
+
+    // Final truncation to ensure max 8 chars
+    suggested.chars().take(8).collect()
+}
+
+/// Validate a QNAM according to SDTMIG rules
+pub fn validate_qnam(qnam: &str) -> Result<(), String> {
+    if qnam.is_empty() {
+        return Err("QNAM cannot be empty".to_string());
+    }
+    if qnam.len() > 8 {
+        return Err("QNAM must be 8 characters or less".to_string());
+    }
+    if qnam
+        .chars()
+        .next()
+        .map(|c| c.is_ascii_digit())
+        .unwrap_or(false)
+    {
+        return Err("QNAM cannot start with a number".to_string());
+    }
+    if !qnam.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
+        return Err("QNAM can only contain letters, numbers, and underscores".to_string());
+    }
+    Ok(())
+}
 
 /// Result of checking domain initialization state
 pub enum DomainInitState {
@@ -116,6 +305,10 @@ pub struct DomainState {
     pub validation_selected_idx: Option<usize>,
     /// Preview of processed data
     pub preview_data: Option<DataFrame>,
+    /// Preview tab UI state (pagination, etc.)
+    pub preview_state: PreviewState,
+    /// SUPP configuration state (unmapped columns)
+    pub supp_state: Option<SuppState>,
 }
 
 impl DomainState {
@@ -131,6 +324,8 @@ impl DomainState {
             validation: None,
             validation_selected_idx: None,
             preview_data: None,
+            preview_state: PreviewState::default(),
+            supp_state: None,
         }
     }
 

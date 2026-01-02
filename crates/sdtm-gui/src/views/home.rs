@@ -3,8 +3,8 @@
 //! Study folder selection and domain discovery.
 
 use crate::state::{AppState, DomainStatus};
-use crate::theme::{colors, spacing};
-use egui::{RichText, Ui};
+use crate::theme::spacing;
+use egui::{Color32, RichText, Ui};
 use std::path::PathBuf;
 
 /// Home screen view
@@ -101,7 +101,7 @@ impl HomeView {
                                 DomainStatus::MappingInProgress => ui.visuals().warn_fg_color,
                                 DomainStatus::MappingComplete => ui.visuals().hyperlink_color,
                                 DomainStatus::ValidationFailed => ui.visuals().error_fg_color,
-                                DomainStatus::ReadyForExport => colors::SUCCESS,
+                                DomainStatus::ReadyForExport => Color32::GREEN,
                             };
 
                             ui.horizontal(|ui| {

@@ -109,12 +109,23 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
 }
 
 fn rebuild_transforms_if_needed(state: &mut AppState, domain_code: &str) {
-    let pipeline = state
+    // Get the full pipeline and mapping state to filter
+    let pipeline_and_excluded = state
         .study
         .as_ref()
         .and_then(|s| s.get_domain(domain_code))
         .and_then(|d| d.mapping_state.as_ref())
-        .map(|ms| build_pipeline_from_domain(ms.domain()));
+        .map(|ms| {
+            let pipeline = build_pipeline_from_domain(ms.domain());
+            // Collect variables that are omitted or not collected
+            let excluded: std::collections::BTreeSet<String> = ms
+                .all_omitted()
+                .iter()
+                .cloned()
+                .chain(ms.all_not_collected().keys().cloned())
+                .collect();
+            (pipeline, excluded)
+        });
 
     if let Some(study) = &mut state.study {
         if let Some(domain) = study.get_domain_mut(domain_code) {
@@ -122,8 +133,23 @@ fn rebuild_transforms_if_needed(state: &mut AppState, domain_code: &str) {
                 .transform_state
                 .as_ref()
                 .and_then(|ts| ts.selected_idx);
+
+            // Filter the pipeline to exclude omitted/not collected variables
+            let filtered_pipeline = pipeline_and_excluded.map(|(pipeline, excluded)| {
+                let filtered_rules: Vec<_> = pipeline
+                    .rules
+                    .into_iter()
+                    .filter(|rule| !excluded.contains(&rule.target_variable))
+                    .collect();
+                sdtm_transform::DomainPipeline {
+                    domain_code: pipeline.domain_code,
+                    study_id: pipeline.study_id,
+                    rules: filtered_rules,
+                }
+            });
+
             domain.transform_state = Some(TransformState {
-                pipeline,
+                pipeline: filtered_pipeline,
                 selected_idx: selected,
             });
         }

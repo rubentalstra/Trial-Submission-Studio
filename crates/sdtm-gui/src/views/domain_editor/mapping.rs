@@ -4,8 +4,8 @@
 
 use crate::services::{MappingService, MappingState, VariableStatus, VariableStatusIcon};
 use crate::state::{AppState, DomainStatus};
-use crate::theme::{colors, spacing};
-use egui::{RichText, Ui};
+use crate::theme::spacing;
+use egui::{Color32, RichText, Ui};
 use sdtm_model::{CoreDesignation, VariableRole};
 use sdtm_standards::load_default_sdtm_ig_domains;
 use std::collections::BTreeMap;
@@ -335,7 +335,7 @@ fn show_variable_list(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                         ui.visuals().hyperlink_color
                     } else {
                         match status {
-                            VariableStatus::Accepted => colors::SUCCESS,
+                            VariableStatus::Accepted => Color32::GREEN,
                             VariableStatus::Suggested => ui.visuals().warn_fg_color,
                             VariableStatus::NotCollected => ui.visuals().weak_text_color(),
                             VariableStatus::Omitted => ui.visuals().weak_text_color(),
@@ -623,6 +623,7 @@ where
             domain.validation_selected_idx = None;
             domain.transform_state = None;
             domain.preview_data = None;
+            domain.supp_state = None;
         }
     }
 }
@@ -753,7 +754,7 @@ fn show_source_mapping_inline(
         ui.horizontal(|ui| {
             ui.label(RichText::new(col).strong());
             let color = if *conf >= 0.95_f32 {
-                colors::SUCCESS
+                Color32::GREEN
             } else if *conf >= 0.80_f32 {
                 ui.visuals().warn_fg_color
             } else {
@@ -786,7 +787,7 @@ fn show_source_mapping_inline(
             ui.horizontal(|ui| {
                 ui.label(
                     RichText::new(format!("{} Mapped", egui_phosphor::regular::CHECK_CIRCLE))
-                        .color(colors::SUCCESS),
+                        .color(Color32::GREEN),
                 );
             });
             if ui
@@ -852,7 +853,7 @@ fn show_source_mapping_inline(
             if ui
                 .button(
                     RichText::new(format!("{} Accept", egui_phosphor::regular::CHECK))
-                        .color(colors::SUCCESS),
+                        .color(Color32::GREEN),
                 )
                 .clicked()
             {
@@ -927,16 +928,132 @@ fn show_alternative_actions(
         core,
         Some(CoreDesignation::Required) | Some(CoreDesignation::Expected)
     ) {
-        if ui
-            .button(format!(
-                "{} Mark Not Collected",
-                egui_phosphor::regular::PROHIBIT
-            ))
-            .clicked()
-        {
-            with_mapping_state_mut(state, domain_code, |ms| {
-                let _ = ms.mark_not_collected(&var_name_owned, "Not available in source data");
+        // Check if we're editing a reason for this variable
+        let is_editing = state
+            .study
+            .as_ref()
+            .and_then(|s| s.get_domain(domain_code))
+            .and_then(|d| d.mapping_state.as_ref())
+            .map(|ms| ms.not_collected_reason_edit.contains_key(var_name))
+            .unwrap_or(false);
+
+        if is_editing {
+            // Show reason input UI
+            ui.label(
+                RichText::new(format!(
+                    "{} Not Collected Reason",
+                    egui_phosphor::regular::PROHIBIT
+                ))
+                .strong(),
+            );
+            ui.label(
+                RichText::new("Please provide a reason why this variable was not collected")
+                    .weak()
+                    .small(),
+            );
+            ui.add_space(spacing::XS);
+
+            // Get the current reason text
+            let current_reason = state
+                .study
+                .as_ref()
+                .and_then(|s| s.get_domain(domain_code))
+                .and_then(|d| d.mapping_state.as_ref())
+                .and_then(|ms| ms.not_collected_reason_edit.get(var_name))
+                .cloned()
+                .unwrap_or_default();
+
+            let mut reason = current_reason.clone();
+            let response = ui.add(
+                egui::TextEdit::multiline(&mut reason)
+                    .desired_width(f32::INFINITY)
+                    .desired_rows(2)
+                    .hint_text("Enter reason..."),
+            );
+
+            if response.changed() {
+                // Update the reason text
+                if let Some(study) = &mut state.study {
+                    if let Some(domain) = study.get_domain_mut(domain_code) {
+                        if let Some(ms) = &mut domain.mapping_state {
+                            ms.not_collected_reason_edit
+                                .insert(var_name.to_string(), reason.clone());
+                        }
+                    }
+                }
+            }
+
+            ui.add_space(spacing::SM);
+            let reason_valid = !current_reason.trim().is_empty();
+            ui.horizontal(|ui| {
+                ui.add_enabled_ui(reason_valid, |ui| {
+                    if ui
+                        .button(format!("{} Confirm", egui_phosphor::regular::CHECK))
+                        .clicked()
+                    {
+                        let reason_to_use = current_reason.trim().to_string();
+                        // Remove from editing state and mark as not collected
+                        if let Some(study) = &mut state.study {
+                            if let Some(domain) = study.get_domain_mut(domain_code) {
+                                if let Some(ms) = &mut domain.mapping_state {
+                                    ms.not_collected_reason_edit.remove(&var_name_owned);
+                                    let _ = ms.mark_not_collected(&var_name_owned, &reason_to_use);
+                                    // Invalidate dependent states
+                                    domain.validation = None;
+                                    domain.validation_selected_idx = None;
+                                    domain.transform_state = None;
+                                    domain.preview_data = None;
+                                    domain.supp_state = None;
+                                }
+                            }
+                        }
+                    }
+                });
+
+                if ui
+                    .button(format!("{} Cancel", egui_phosphor::regular::X))
+                    .clicked()
+                {
+                    // Remove from editing state
+                    if let Some(study) = &mut state.study {
+                        if let Some(domain) = study.get_domain_mut(domain_code) {
+                            if let Some(ms) = &mut domain.mapping_state {
+                                ms.not_collected_reason_edit.remove(&var_name_owned);
+                            }
+                        }
+                    }
+                }
             });
+
+            if !reason_valid {
+                ui.label(
+                    RichText::new(format!(
+                        "{} Reason is required",
+                        egui_phosphor::regular::WARNING
+                    ))
+                    .color(ui.visuals().error_fg_color)
+                    .small(),
+                );
+            }
+        } else {
+            // Show initial button to start editing
+            if ui
+                .button(format!(
+                    "{} Mark Not Collected",
+                    egui_phosphor::regular::PROHIBIT
+                ))
+                .clicked()
+            {
+                // Start editing - add empty reason
+                if let Some(study) = &mut state.study {
+                    if let Some(domain) = study.get_domain_mut(domain_code) {
+                        if let Some(ms) = &mut domain.mapping_state {
+                            ms.not_collected_reason_edit
+                                .insert(var_name.to_string(), String::new());
+                        }
+                    }
+                }
+            }
         }
     }
 
