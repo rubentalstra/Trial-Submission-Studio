@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
 
-/// SEND dataset class per SENDIG v3.1.
+/// SEND dataset class per SENDIG v3.1.1.
 ///
 /// Similar to SDTM but adapted for nonclinical studies.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]

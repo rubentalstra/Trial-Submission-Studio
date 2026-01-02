@@ -1,7 +1,7 @@
 //! SEND-IG domain and variable loading.
 //!
-//! Loads SEND Implementation Guide v3.1 definitions from CSV files
-//! in the `standards/send/ig/v3.1/` directory.
+//! Loads SEND Implementation Guide v3.1.1 definitions from CSV files
+//! in the `standards/send/ig/v3.1.1/` directory.
 
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -16,7 +16,7 @@ use crate::paths::send_ig_path;
 
 /// Load SEND-IG domains from the default location.
 ///
-/// Loads from `standards/send/ig/v3.1/` relative to the standards root.
+/// Loads from `standards/send/ig/v3.1.1/` relative to the standards root.
 pub fn load() -> Result<Vec<SendDomain>> {
     load_from(&send_ig_path())
 }
@@ -269,7 +269,7 @@ mod tests {
     #[test]
     fn test_domain_count() {
         let domains = load().expect("load SEND-IG");
-        // SEND-IG v3.1 has multiple domains
+        // SEND-IG v3.1.1 has multiple domains
         assert!(
             domains.len() >= 10,
             "Expected at least 10 domains, got {}",

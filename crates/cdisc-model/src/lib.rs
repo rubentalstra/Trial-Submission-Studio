@@ -10,7 +10,7 @@
 //! - [`traits`]: Common types shared across standards (Standard, DataType, CoreDesignation)
 //! - [`sdtm`]: SDTM domains and variables per SDTMIG v3.4
 //! - [`adam`]: ADaM datasets and variables per ADaMIG v1.3
-//! - [`send`]: SEND domains and variables per SENDIG v3.1
+//! - [`send`]: SEND domains and variables per SENDIG v3.1.1
 //! - [`ct`]: Controlled Terminology types
 
 pub mod adam;

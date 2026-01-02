@@ -1,4 +1,4 @@
-//! SEND domain and variable definitions per SENDIG v3.1.
+//! SEND domain and variable definitions per SENDIG v3.1.1.
 //!
 //! This module provides types for representing SEND nonclinical study domains.
 
@@ -6,7 +6,7 @@ use super::enums::{SendDatasetClass, SendStudyType};
 use crate::traits::{CoreDesignation, DataType};
 use serde::{Deserialize, Serialize};
 
-/// SEND variable definition per SENDIG v3.1.
+/// SEND variable definition per SENDIG v3.1.1.
 ///
 /// Represents a single variable (column) within a SEND domain dataset.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -38,7 +38,7 @@ pub struct SendVariable {
     pub order: Option<u32>,
 }
 
-/// SEND domain definition per SENDIG v3.1.
+/// SEND domain definition per SENDIG v3.1.1.
 ///
 /// A domain represents a collection of nonclinical observations.
 /// SEND uses similar structure to SDTM but with animal-study-specific domains.

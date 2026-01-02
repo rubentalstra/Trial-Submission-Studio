@@ -34,9 +34,9 @@ pub fn adam_ig_path() -> PathBuf {
     standards_root().join("adam/ig/v1.3")
 }
 
-/// SEND-IG v3.1 directory path.
+/// SEND-IG v3.1.1 directory path.
 pub fn send_ig_path() -> PathBuf {
-    standards_root().join("send/ig/v3.1")
+    standards_root().join("send/ig/v3.1.1")
 }
 
 /// Controlled terminology directory for a specific version.
