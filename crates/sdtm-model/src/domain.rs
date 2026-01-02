@@ -194,7 +194,7 @@ pub struct Variable {
 /// use sdtm_model::{Domain, DatasetClass};
 ///
 /// let domain = Domain {
-///     code: "AE".to_string(),
+///     name: "AE".to_string(),
 ///     label: Some("Adverse Events".to_string()),
 ///     class: Some(DatasetClass::Events),
 ///     structure: Some("One record per adverse event per subject".to_string()),

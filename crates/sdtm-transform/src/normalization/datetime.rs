@@ -54,6 +54,11 @@ pub fn parse_date(value: &str) -> Option<NaiveDateTime> {
     match precision {
         DateTimePrecision::DateTime(dt) => Some(dt),
         DateTimePrecision::Date(d) => Some(d.and_time(NaiveTime::MIN)),
+        DateTimePrecision::Iso8601(s) => {
+            // Try to parse ISO 8601 string into NaiveDateTime
+            try_parse_datetime(&s)
+                .or_else(|| try_parse_date(&s).map(|d| d.and_time(NaiveTime::MIN)))
+        }
         _ => None,
     }
 }
