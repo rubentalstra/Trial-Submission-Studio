@@ -4,7 +4,7 @@
 //! Read-only display - issues are shown for user awareness, not resolution.
 
 use crate::state::{AppState, DomainStatus};
-use crate::theme::{ThemeColors, colors, spacing};
+use crate::theme::{colors, spacing};
 use egui::{RichText, Ui};
 use sdtm_standards::load_default_ct_registry;
 use sdtm_transform::build_preview_dataframe_with_omitted;
@@ -15,8 +15,6 @@ use super::mapping::{initialize_mapping, show_loading_indicator};
 
 /// Render the validation tab
 pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
-    let theme = colors(state.settings.general.dark_mode);
-
     // Ensure mapping state is initialized so validation can run
     let (has_mapping_state, status) = state
         .study
@@ -32,12 +30,12 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                     domain.status = DomainStatus::Loading;
                 }
             }
-            show_loading_indicator(ui, &theme);
+            show_loading_indicator(ui);
             ui.ctx().request_repaint();
             return;
         }
         (false, DomainStatus::Loading) => {
-            show_loading_indicator(ui, &theme);
+            show_loading_indicator(ui);
             initialize_mapping(state, domain_code);
             ui.ctx().request_repaint();
             return;
@@ -49,7 +47,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                         "{} Failed to initialize mapping",
                         egui_phosphor::regular::WARNING
                     ))
-                    .color(theme.error),
+                    .color(ui.visuals().error_fg_color),
                 );
             });
             return;
@@ -102,7 +100,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
 
         // Summary bar
         ui.add_space(spacing::XS);
-        show_summary_bar(ui, error_count, warning_count, &theme);
+        show_summary_bar(ui, error_count, warning_count);
         ui.add_space(spacing::SM);
         ui.separator();
 
@@ -114,7 +112,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                         "{} No validation issues found",
                         egui_phosphor::regular::CHECK_CIRCLE
                     ))
-                    .color(theme.success),
+                    .color(colors::SUCCESS),
                 );
             });
             return;
@@ -131,7 +129,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                     egui::ScrollArea::vertical()
                         .max_height(available_height)
                         .show(ui, |ui| {
-                            new_selection = show_issue_list(ui, issues, selected_idx, &theme);
+                            new_selection = show_issue_list(ui, issues, selected_idx);
                         });
                 });
 
@@ -146,7 +144,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                             let effective_selection = new_selection.or(selected_idx);
                             let selected_issue =
                                 effective_selection.and_then(|idx| issues.get(idx));
-                            show_issue_detail(ui, selected_issue, &theme);
+                            show_issue_detail(ui, selected_issue);
                         });
                 });
             });
@@ -263,7 +261,7 @@ fn rebuild_validation_if_needed(state: &mut AppState, domain_code: &str) {
 }
 
 /// Show summary bar with error/warning counts
-fn show_summary_bar(ui: &mut Ui, error_count: usize, warning_count: usize, theme: &ThemeColors) {
+fn show_summary_bar(ui: &mut Ui, error_count: usize, warning_count: usize) {
     ui.horizontal(|ui| {
         if error_count > 0 {
             ui.label(
@@ -273,12 +271,12 @@ fn show_summary_bar(ui: &mut Ui, error_count: usize, warning_count: usize, theme
                     error_count,
                     if error_count == 1 { "" } else { "s" }
                 ))
-                .color(theme.error),
+                .color(ui.visuals().error_fg_color),
             );
         }
 
         if error_count > 0 && warning_count > 0 {
-            ui.label(RichText::new(" · ").color(theme.text_muted));
+            ui.label(RichText::new(" · ").weak());
         }
 
         if warning_count > 0 {
@@ -289,7 +287,7 @@ fn show_summary_bar(ui: &mut Ui, error_count: usize, warning_count: usize, theme
                     warning_count,
                     if warning_count == 1 { "" } else { "s" }
                 ))
-                .color(theme.warning),
+                .color(ui.visuals().warn_fg_color),
             );
         }
 
@@ -299,7 +297,7 @@ fn show_summary_bar(ui: &mut Ui, error_count: usize, warning_count: usize, theme
                     "{} No issues",
                     egui_phosphor::regular::CHECK_CIRCLE
                 ))
-                .color(theme.success),
+                .color(colors::SUCCESS),
             );
         }
     });
@@ -326,12 +324,7 @@ fn get_check_label(issue: &Issue) -> &'static str {
 }
 
 /// Show list of validation issues grouped by severity
-fn show_issue_list(
-    ui: &mut Ui,
-    issues: &[Issue],
-    selected_idx: Option<usize>,
-    theme: &ThemeColors,
-) -> Option<usize> {
+fn show_issue_list(ui: &mut Ui, issues: &[Issue], selected_idx: Option<usize>) -> Option<usize> {
     let mut new_selection = None;
 
     // Separate errors and warnings
@@ -351,13 +344,13 @@ fn show_issue_list(
     if !errors.is_empty() {
         ui.label(
             RichText::new(format!("Errors ({})", errors.len()))
-                .color(theme.error)
+                .color(ui.visuals().error_fg_color)
                 .strong(),
         );
         ui.add_space(spacing::XS);
 
         for (idx, issue) in errors {
-            if show_issue_row(ui, idx, issue, selected_idx, theme) {
+            if show_issue_row(ui, idx, issue, selected_idx) {
                 new_selection = Some(idx);
             }
         }
@@ -369,13 +362,13 @@ fn show_issue_list(
     if !warnings.is_empty() {
         ui.label(
             RichText::new(format!("Warnings ({})", warnings.len()))
-                .color(theme.warning)
+                .color(ui.visuals().warn_fg_color)
                 .strong(),
         );
         ui.add_space(spacing::XS);
 
         for (idx, issue) in warnings {
-            if show_issue_row(ui, idx, issue, selected_idx, theme) {
+            if show_issue_row(ui, idx, issue, selected_idx) {
                 new_selection = Some(idx);
             }
         }
@@ -385,19 +378,15 @@ fn show_issue_list(
 }
 
 /// Show a single issue row in the list
-fn show_issue_row(
-    ui: &mut Ui,
-    idx: usize,
-    issue: &Issue,
-    selected_idx: Option<usize>,
-    theme: &ThemeColors,
-) -> bool {
+fn show_issue_row(ui: &mut Ui, idx: usize, issue: &Issue, selected_idx: Option<usize>) -> bool {
     let is_selected = selected_idx == Some(idx);
     let severity = get_severity(issue);
 
     let (icon, icon_color) = match severity {
-        Severity::Error | Severity::Reject => (egui_phosphor::regular::X_CIRCLE, theme.error),
-        Severity::Warning => (egui_phosphor::regular::WARNING, theme.warning),
+        Severity::Error | Severity::Reject => {
+            (egui_phosphor::regular::X_CIRCLE, ui.visuals().error_fg_color)
+        }
+        Severity::Warning => (egui_phosphor::regular::WARNING, ui.visuals().warn_fg_color),
     };
 
     let variable_name = issue.variable();
@@ -410,7 +399,7 @@ fn show_issue_row(
 
     let frame = egui::Frame::new()
         .fill(if is_selected {
-            theme.bg_hover
+            ui.visuals().widgets.hovered.bg_fill
         } else {
             egui::Color32::TRANSPARENT
         })
@@ -428,21 +417,16 @@ fn show_issue_row(
                 ui.vertical(|ui| {
                     ui.horizontal(|ui| {
                         ui.label(RichText::new(variable_name).strong().color(if is_selected {
-                            theme.accent
+                            ui.visuals().hyperlink_color
                         } else {
-                            theme.text_primary
+                            ui.visuals().text_color()
                         }));
                         // Show P21 rule ID badge
-                        ui.label(
-                            RichText::new(p21_rule_id)
-                                .small()
-                                .monospace()
-                                .color(theme.text_muted),
-                        );
+                        ui.label(RichText::new(p21_rule_id).small().monospace().weak());
                     });
-                    ui.label(RichText::new(check_label).small().color(theme.text_muted));
+                    ui.label(RichText::new(check_label).small().weak());
                     if !count_text.is_empty() {
-                        ui.label(RichText::new(&count_text).small().color(theme.text_muted));
+                        ui.label(RichText::new(&count_text).small().weak());
                     }
                 });
             });
@@ -453,10 +437,10 @@ fn show_issue_row(
 }
 
 /// Show details for a selected validation issue
-fn show_issue_detail(ui: &mut Ui, issue: Option<&Issue>, theme: &ThemeColors) {
+fn show_issue_detail(ui: &mut Ui, issue: Option<&Issue>) {
     let Some(issue) = issue else {
         ui.centered_and_justified(|ui| {
-            ui.label(RichText::new("Select an issue to view details").color(theme.text_muted));
+            ui.label(RichText::new("Select an issue to view details").weak());
         });
         return;
     };
@@ -486,7 +470,7 @@ fn show_issue_detail(ui: &mut Ui, issue: Option<&Issue>, theme: &ThemeColors) {
     // P21 Rule ID badge
     ui.horizontal(|ui| {
         egui::Frame::new()
-            .fill(theme.accent.gamma_multiply(0.2))
+            .fill(ui.visuals().selection.bg_fill)
             .inner_margin(egui::Margin::symmetric(6, 2))
             .corner_radius(4.0)
             .show(ui, |ui| {
@@ -494,7 +478,7 @@ fn show_issue_detail(ui: &mut Ui, issue: Option<&Issue>, theme: &ThemeColors) {
                     RichText::new(p21_rule_id)
                         .monospace()
                         .strong()
-                        .color(theme.accent),
+                        .color(ui.visuals().hyperlink_color),
                 );
             });
     });
@@ -505,13 +489,13 @@ fn show_issue_detail(ui: &mut Ui, issue: Option<&Issue>, theme: &ThemeColors) {
     ui.label(
         RichText::new(format!("{} {}", egui_phosphor::regular::TAG, check_label))
             .small()
-            .color(theme.text_muted),
+            .weak(),
     );
 
     ui.add_space(spacing::MD);
 
     // Show context based on issue type
-    show_issue_context(ui, issue, theme);
+    show_issue_context(ui, issue);
 
     ui.add_space(spacing::MD);
 
@@ -521,11 +505,11 @@ fn show_issue_detail(ui: &mut Ui, issue: Option<&Issue>, theme: &ThemeColors) {
     ui.add_space(spacing::MD);
 
     // Show issue-specific details
-    show_issue_specific_details(ui, issue, theme);
+    show_issue_specific_details(ui, issue);
 }
 
 /// Show context-specific information based on issue type
-fn show_issue_context(ui: &mut Ui, issue: &Issue, theme: &ThemeColors) {
+fn show_issue_context(ui: &mut Ui, issue: &Issue) {
     match issue {
         Issue::CtViolation {
             codelist_name,
@@ -533,12 +517,12 @@ fn show_issue_context(ui: &mut Ui, issue: &Issue, theme: &ThemeColors) {
             ..
         } => {
             egui::Frame::new()
-                .fill(theme.bg_secondary)
+                .fill(ui.visuals().faint_bg_color)
                 .inner_margin(spacing::SM as f32)
                 .corner_radius(4.0)
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        ui.label(RichText::new("Codelist").color(theme.text_muted));
+                        ui.label(RichText::new("Codelist").weak());
                         ui.label(RichText::new(codelist_name).strong());
                     });
                     ui.add_space(spacing::XS);
@@ -547,15 +531,14 @@ fn show_issue_context(ui: &mut Ui, issue: &Issue, theme: &ThemeColors) {
                     } else {
                         "This codelist is non-extensible. Invalid values will block XPT export."
                     };
-                    ui.label(RichText::new(ext_text).small().color(theme.text_muted));
+                    ui.label(RichText::new(ext_text).small().weak());
                 });
         }
         Issue::RequiredMissing { .. } => {
             show_context_frame(
                 ui,
-                theme,
                 egui_phosphor::regular::INFO,
-                theme.accent,
+                ui.visuals().hyperlink_color,
                 "Required variables (Req) must be present in the dataset.",
                 "SDTMIG 4.1: Required variables are essential for submission.",
             );
@@ -563,9 +546,8 @@ fn show_issue_context(ui: &mut Ui, issue: &Issue, theme: &ThemeColors) {
         Issue::RequiredEmpty { .. } => {
             show_context_frame(
                 ui,
-                theme,
                 egui_phosphor::regular::INFO,
-                theme.accent,
+                ui.visuals().hyperlink_color,
                 "Required variables must have values for all records.",
                 "SDTMIG 4.1: Null values are not permitted for Req variables.",
             );
@@ -573,9 +555,8 @@ fn show_issue_context(ui: &mut Ui, issue: &Issue, theme: &ThemeColors) {
         Issue::ExpectedMissing { .. } => {
             show_context_frame(
                 ui,
-                theme,
                 egui_phosphor::regular::INFO,
-                theme.warning,
+                ui.visuals().warn_fg_color,
                 "Expected variables should be included when applicable.",
                 "SDTMIG 4.1: Expected variables are included when data is collected.",
             );
@@ -583,9 +564,8 @@ fn show_issue_context(ui: &mut Ui, issue: &Issue, theme: &ThemeColors) {
         Issue::DataTypeMismatch { .. } => {
             show_context_frame(
                 ui,
-                theme,
                 egui_phosphor::regular::INFO,
-                theme.error,
+                ui.visuals().error_fg_color,
                 "Numeric (Num) variables must contain valid numeric data.",
                 "SDTMIG 2.4: Values must match the specified data type.",
             );
@@ -593,9 +573,8 @@ fn show_issue_context(ui: &mut Ui, issue: &Issue, theme: &ThemeColors) {
         Issue::InvalidDate { .. } => {
             show_context_frame(
                 ui,
-                theme,
                 egui_phosphor::regular::CALENDAR,
-                theme.error,
+                ui.visuals().error_fg_color,
                 "Date/time values must use ISO 8601 format.",
                 "SDTMIG Ch.7: Use YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS format.",
             );
@@ -603,9 +582,8 @@ fn show_issue_context(ui: &mut Ui, issue: &Issue, theme: &ThemeColors) {
         Issue::DuplicateSequence { .. } => {
             show_context_frame(
                 ui,
-                theme,
                 egui_phosphor::regular::HASH,
-                theme.error,
+                ui.visuals().error_fg_color,
                 "Sequence numbers must be unique per subject.",
                 "SDTMIG 4.1.5: --SEQ uniquely identifies records within USUBJID.",
             );
@@ -613,9 +591,8 @@ fn show_issue_context(ui: &mut Ui, issue: &Issue, theme: &ThemeColors) {
         Issue::TextTooLong { .. } => {
             show_context_frame(
                 ui,
-                theme,
                 egui_phosphor::regular::TEXT_AA,
-                theme.warning,
+                ui.visuals().warn_fg_color,
                 "Character value exceeds the defined maximum length.",
                 "SDTMIG 2.4: Values may be truncated in XPT output.",
             );
@@ -623,9 +600,8 @@ fn show_issue_context(ui: &mut Ui, issue: &Issue, theme: &ThemeColors) {
         Issue::IdentifierNull { .. } => {
             show_context_frame(
                 ui,
-                theme,
                 egui_phosphor::regular::IDENTIFICATION_CARD,
-                theme.error,
+                ui.visuals().error_fg_color,
                 "Identifier variables must not contain null values.",
                 "SDTMIG 4.1.2: Identifiers uniquely identify subject observations.",
             );
@@ -636,14 +612,13 @@ fn show_issue_context(ui: &mut Ui, issue: &Issue, theme: &ThemeColors) {
 /// Helper to show a context frame
 fn show_context_frame(
     ui: &mut Ui,
-    theme: &ThemeColors,
     icon: &str,
     icon_color: egui::Color32,
     main_text: &str,
     ref_text: &str,
 ) {
     egui::Frame::new()
-        .fill(theme.bg_secondary)
+        .fill(ui.visuals().faint_bg_color)
         .inner_margin(spacing::SM as f32)
         .corner_radius(4.0)
         .show(ui, |ui| {
@@ -652,12 +627,12 @@ fn show_context_frame(
                 ui.label(main_text);
             });
             ui.add_space(spacing::XS);
-            ui.label(RichText::new(ref_text).small().color(theme.text_muted));
+            ui.label(RichText::new(ref_text).small().weak());
         });
 }
 
 /// Show issue-specific details (samples, allowed values, etc.)
-fn show_issue_specific_details(ui: &mut Ui, issue: &Issue, theme: &ThemeColors) {
+fn show_issue_specific_details(ui: &mut Ui, issue: &Issue) {
     match issue {
         Issue::InvalidDate { samples, .. } | Issue::DataTypeMismatch { samples, .. } => {
             if !samples.is_empty() {
@@ -669,7 +644,7 @@ fn show_issue_specific_details(ui: &mut Ui, issue: &Issue, theme: &ThemeColors) 
                     .strong(),
                 );
                 ui.add_space(spacing::XS);
-                show_value_list(ui, samples, theme.error, theme);
+                show_value_list(ui, samples, ui.visuals().error_fg_color);
             }
         }
         Issue::CtViolation {
@@ -686,7 +661,7 @@ fn show_issue_specific_details(ui: &mut Ui, issue: &Issue, theme: &ThemeColors) 
                     .strong(),
                 );
                 ui.add_space(spacing::XS);
-                show_value_list(ui, invalid_values, theme.error, theme);
+                show_value_list(ui, invalid_values, ui.visuals().error_fg_color);
             }
 
             ui.add_space(spacing::MD);
@@ -696,7 +671,7 @@ fn show_issue_specific_details(ui: &mut Ui, issue: &Issue, theme: &ThemeColors) 
                     egui_phosphor::regular::LIST_CHECKS,
                     allowed_count
                 ))
-                .color(theme.text_muted),
+                .weak(),
             );
         }
         Issue::TextTooLong {
@@ -705,20 +680,20 @@ fn show_issue_specific_details(ui: &mut Ui, issue: &Issue, theme: &ThemeColors) 
             ..
         } => {
             egui::Frame::new()
-                .fill(theme.bg_secondary)
+                .fill(ui.visuals().faint_bg_color)
                 .inner_margin(spacing::SM as f32)
                 .corner_radius(4.0)
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        ui.label(RichText::new("Max allowed:").color(theme.text_muted));
+                        ui.label(RichText::new("Max allowed:").weak());
                         ui.label(RichText::new(format!("{} chars", max_allowed)).strong());
                     });
                     ui.horizontal(|ui| {
-                        ui.label(RichText::new("Max found:").color(theme.text_muted));
+                        ui.label(RichText::new("Max found:").weak());
                         ui.label(
                             RichText::new(format!("{} chars", max_found))
                                 .strong()
-                                .color(theme.error),
+                                .color(ui.visuals().error_fg_color),
                         );
                     });
                 });
@@ -728,32 +703,23 @@ fn show_issue_specific_details(ui: &mut Ui, issue: &Issue, theme: &ThemeColors) 
 }
 
 /// Show a list of values in a frame
-fn show_value_list(
-    ui: &mut Ui,
-    values: &[String],
-    bullet_color: egui::Color32,
-    theme: &ThemeColors,
-) {
+fn show_value_list(ui: &mut Ui, values: &[String], bullet_color: egui::Color32) {
     egui::Frame::new()
-        .fill(theme.bg_secondary)
+        .fill(ui.visuals().faint_bg_color)
         .inner_margin(spacing::SM as f32)
         .corner_radius(4.0)
         .show(ui, |ui| {
             for value in values.iter().take(10) {
                 ui.horizontal(|ui| {
                     ui.label(RichText::new("•").color(bullet_color));
-                    ui.label(
-                        RichText::new(format!("\"{}\"", value))
-                            .monospace()
-                            .color(theme.text_primary),
-                    );
+                    ui.label(RichText::new(format!("\"{}\"", value)).monospace());
                 });
             }
             if values.len() > 10 {
                 ui.label(
                     RichText::new(format!("... and {} more", values.len() - 10))
                         .small()
-                        .color(theme.text_muted),
+                        .weak(),
                 );
             }
         });

@@ -15,8 +15,6 @@ impl HomeView {
     ///
     /// Returns a folder path if the user selected one to load.
     pub fn show(ui: &mut Ui, state: &mut AppState) -> Option<PathBuf> {
-        let theme = colors(state.settings.general.dark_mode);
-
         // Track which domain was clicked (if any)
         let mut clicked_domain: Option<String> = None;
         let mut go_to_export = false;
@@ -28,10 +26,7 @@ impl HomeView {
             // Title
             ui.heading(RichText::new("CDISC Transpiler").size(32.0));
             ui.add_space(spacing::SM);
-            ui.label(
-                RichText::new("Convert clinical trial data to SDTM format")
-                    .color(theme.text_secondary),
-            );
+            ui.label(RichText::new("Convert clinical trial data to SDTM format").weak());
 
             ui.add_space(spacing::XL);
 
@@ -62,7 +57,7 @@ impl HomeView {
                 ui.heading(&study.study_id);
                 ui.label(
                     RichText::new(study.study_folder.display().to_string())
-                        .color(theme.text_muted)
+                        .weak()
                         .small(),
                 );
 
@@ -96,12 +91,12 @@ impl HomeView {
                         for (code, status, row_count) in &domain_info {
                             let status_icon = status.icon();
                             let status_color = match status {
-                                DomainStatus::NotStarted => theme.text_muted,
-                                DomainStatus::Loading => theme.accent,
-                                DomainStatus::MappingInProgress => theme.warning,
-                                DomainStatus::MappingComplete => theme.accent,
-                                DomainStatus::ValidationFailed => theme.error,
-                                DomainStatus::ReadyForExport => theme.success,
+                                DomainStatus::NotStarted => ui.visuals().weak_text_color(),
+                                DomainStatus::Loading => ui.visuals().hyperlink_color,
+                                DomainStatus::MappingInProgress => ui.visuals().warn_fg_color,
+                                DomainStatus::MappingComplete => ui.visuals().hyperlink_color,
+                                DomainStatus::ValidationFailed => ui.visuals().error_fg_color,
+                                DomainStatus::ReadyForExport => colors::SUCCESS,
                             };
 
                             ui.horizontal(|ui| {
@@ -111,7 +106,7 @@ impl HomeView {
                                 }
                                 ui.label(
                                     RichText::new(format!("{} rows", row_count))
-                                        .color(theme.text_muted)
+                                        .weak()
                                         .small(),
                                 );
                             });

@@ -12,8 +12,6 @@ use std::collections::BTreeMap;
 
 /// Render the mapping tab
 pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
-    let theme = colors(state.settings.general.dark_mode);
-
     // Check domain status for loading state
     let (has_mapping_state, status) = state
         .study
@@ -34,7 +32,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                 }
             }
             // Show spinner immediately
-            show_loading_indicator(ui, &theme);
+            show_loading_indicator(ui);
             // Request repaint to process loading on next frame
             ui.ctx().request_repaint();
             return;
@@ -42,7 +40,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
 
         // Loading: show spinner and do initialization
         (false, DomainStatus::Loading) => {
-            show_loading_indicator(ui, &theme);
+            show_loading_indicator(ui);
             // Do the actual initialization (this takes time)
             initialize_mapping(state, domain_code);
             // Request repaint to show the result
@@ -58,7 +56,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                         "{} Failed to initialize mapping",
                         egui_phosphor::regular::WARNING
                     ))
-                    .color(theme.error),
+                    .color(ui.visuals().error_fg_color),
                 );
             });
             return;
@@ -81,7 +79,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                 egui::ScrollArea::vertical()
                     .max_height(available_height)
                     .show(ui, |ui| {
-                        show_variable_list(ui, state, domain_code, &theme);
+                        show_variable_list(ui, state, domain_code);
                     });
             });
 
@@ -95,7 +93,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                 egui::ScrollArea::vertical()
                     .max_height(available_height)
                     .show(ui, |ui| {
-                        show_variable_detail(ui, state, domain_code, &theme);
+                        show_variable_detail(ui, state, domain_code);
                     });
             });
         });
@@ -170,31 +168,22 @@ pub(super) fn initialize_mapping(state: &mut AppState, domain_code: &str) {
 }
 
 /// Show loading indicator with spinner
-pub(super) fn show_loading_indicator(ui: &mut Ui, theme: &crate::theme::ThemeColors) {
+pub(super) fn show_loading_indicator(ui: &mut Ui) {
     ui.vertical_centered(|ui| {
         ui.add_space(ui.available_height() / 3.0);
         ui.spinner();
         ui.add_space(spacing::MD);
-        ui.label(
-            RichText::new("Loading mapping configuration...")
-                .size(16.0)
-                .color(theme.text_secondary),
-        );
+        ui.label(RichText::new("Loading mapping configuration...").size(16.0));
         ui.add_space(spacing::SM);
         ui.label(
             RichText::new("Loading SDTM standards and controlled terminology")
-                .color(theme.text_muted)
+                .weak()
                 .small(),
         );
     });
 }
 
-fn show_variable_list(
-    ui: &mut Ui,
-    state: &mut AppState,
-    domain_code: &str,
-    theme: &crate::theme::ThemeColors,
-) {
+fn show_variable_list(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
     // Collect data we need
     let (summary, filtered_vars, selected_idx, mut search_text, has_subjid_var) = {
         let Some(study) = &state.study else {
@@ -234,13 +223,13 @@ fn show_variable_list(
     // Summary header
     ui.horizontal(|ui| {
         ui.label(RichText::new(format!("{}/{}", summary.mapped, summary.total_variables)).strong());
-        ui.label(RichText::new("mapped").color(theme.text_muted).small());
+        ui.label(RichText::new("mapped").weak().small());
 
         if summary.suggested > 0 {
             ui.separator();
             ui.label(
                 RichText::new(format!("{} suggested", summary.suggested))
-                    .color(theme.warning)
+                    .color(ui.visuals().warn_fg_color)
                     .small(),
             );
         }
@@ -249,18 +238,14 @@ fn show_variable_list(
             ui.separator();
             ui.label(
                 RichText::new(format!("{} not collected", summary.not_collected))
-                    .color(theme.text_muted)
+                    .weak()
                     .small(),
             );
         }
 
         if summary.omitted > 0 {
             ui.separator();
-            ui.label(
-                RichText::new(format!("{} omitted", summary.omitted))
-                    .color(theme.text_muted)
-                    .small(),
-            );
+            ui.label(RichText::new(format!("{} omitted", summary.omitted)).weak().small());
         }
     });
 
@@ -311,18 +296,6 @@ fn show_variable_list(
                 let is_auto = is_auto_generated_variable(name, *role)
                     || (has_subjid_var && name.eq_ignore_ascii_case("USUBJID"));
 
-                let status_color = if is_auto {
-                    theme.accent
-                } else {
-                    match status {
-                        VariableStatus::Accepted => theme.success,
-                        VariableStatus::Suggested => theme.warning,
-                        VariableStatus::NotCollected => theme.text_muted,
-                        VariableStatus::Omitted => theme.text_muted,
-                        VariableStatus::Unmapped => theme.text_muted,
-                    }
-                };
-
                 let core_text = match core {
                     Some(CoreDesignation::Required) => "Req",
                     Some(CoreDesignation::Expected) => "Exp",
@@ -345,11 +318,22 @@ fn show_variable_list(
 
                 // Core column
                 row.col(|ui| {
-                    ui.label(RichText::new(core_text).color(theme.text_muted).small());
+                    ui.label(RichText::new(core_text).weak().small());
                 });
 
-                // Status column
+                // Status column - compute color inside the col callback
                 row.col(|ui| {
+                    let status_color = if is_auto {
+                        ui.visuals().hyperlink_color
+                    } else {
+                        match status {
+                            VariableStatus::Accepted => colors::SUCCESS,
+                            VariableStatus::Suggested => ui.visuals().warn_fg_color,
+                            VariableStatus::NotCollected => ui.visuals().weak_text_color(),
+                            VariableStatus::Omitted => ui.visuals().weak_text_color(),
+                            VariableStatus::Unmapped => ui.visuals().weak_text_color(),
+                        }
+                    };
                     if is_auto {
                         ui.label(RichText::new("AUTO").color(status_color).small());
                     } else {
@@ -367,12 +351,7 @@ fn show_variable_list(
     }
 }
 
-fn show_variable_detail(
-    ui: &mut Ui,
-    state: &mut AppState,
-    domain_code: &str,
-    theme: &crate::theme::ThemeColors,
-) {
+fn show_variable_detail(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
     // Collect all data we need first
     let detail_data = {
         let Some(study) = &state.study else {
@@ -391,9 +370,7 @@ fn show_variable_detail(
         let Some(variable) = ms.selected_variable() else {
             // No variable selected - show help text
             ui.centered_and_justified(|ui| {
-                ui.label(
-                    egui::RichText::new("Select a variable from the list").color(theme.text_muted),
-                );
+                ui.label(egui::RichText::new("Select a variable from the list").weak());
             });
             return;
         };
@@ -553,19 +530,19 @@ fn show_variable_detail(
         ui.label(
             RichText::new(format!("{} SDTM Target", egui_phosphor::regular::CROSSHAIR))
                 .strong()
-                .color(theme.text_muted),
+                .weak(),
         );
         ui.separator();
         ui.add_space(spacing::SM);
 
         ui.heading(&var_name);
         if let Some(label) = &var_label {
-            ui.label(RichText::new(label).color(theme.text_secondary));
+            ui.label(RichText::new(label).weak());
         }
         if is_usubjid_derived {
             ui.label(
                 RichText::new("Derived as STUDYID-SUBJID from the mapped SUBJID column.")
-                    .color(theme.text_secondary)
+                    .weak()
                     .small(),
             );
         }
@@ -577,19 +554,19 @@ fn show_variable_detail(
             .num_columns(2)
             .spacing([20.0, 4.0])
             .show(ui, |ui| {
-                ui.label(RichText::new("Core").color(theme.text_muted));
+                ui.label(RichText::new("Core").weak());
                 ui.label(var_core.map(|c| c.as_code()).unwrap_or("—"));
                 ui.end_row();
 
-                ui.label(RichText::new("Type").color(theme.text_muted));
+                ui.label(RichText::new("Type").weak());
                 ui.label(&var_data_type);
                 ui.end_row();
 
-                ui.label(RichText::new("Role").color(theme.text_muted));
+                ui.label(RichText::new("Role").weak());
                 ui.label(var_role.map(|r| r.as_str()).unwrap_or("—"));
                 ui.end_row();
 
-                ui.label(RichText::new("Codelist").color(theme.text_muted));
+                ui.label(RichText::new("Codelist").weak());
                 ui.label(var_codelist.as_deref().unwrap_or("—"));
                 ui.end_row();
             });
@@ -604,7 +581,7 @@ fn show_variable_detail(
                     egui_phosphor::regular::LIST_BULLETS
                 ))
                 .strong()
-                .color(theme.text_muted),
+                .weak(),
             );
             ui.separator();
             ui.add_space(spacing::SM);
@@ -619,10 +596,14 @@ fn show_variable_detail(
                 if cl_info.found {
                     // Show codelist code, name, and extensibility
                     ui.horizontal_wrapped(|ui| {
-                        ui.label(RichText::new(&cl_info.code).color(theme.text_muted).small());
+                        ui.label(RichText::new(&cl_info.code).weak().small());
                         ui.add(egui::Label::new(RichText::new(&cl_info.name).strong()).wrap());
                         if cl_info.extensible {
-                            ui.label(RichText::new("(Extensible)").color(theme.warning).small());
+                            ui.label(
+                                RichText::new("(Extensible)")
+                                    .color(ui.visuals().warn_fg_color)
+                                    .small(),
+                            );
                         }
                     });
 
@@ -631,7 +612,7 @@ fn show_variable_detail(
                         ui.add_space(spacing::SM);
                         ui.label(
                             RichText::new(format!("Valid values ({}):", cl_info.total_terms))
-                                .color(theme.text_muted)
+                                .weak()
                                 .small(),
                         );
 
@@ -639,16 +620,15 @@ fn show_variable_detail(
                             ui.vertical(|ui| {
                                 ui.add(
                                     egui::Label::new(
-                                        RichText::new(value).strong().color(theme.accent),
+                                        RichText::new(value)
+                                            .strong()
+                                            .color(ui.visuals().hyperlink_color),
                                     )
                                     .wrap(),
                                 );
                                 if let Some(d) = def {
                                     ui.add(
-                                        egui::Label::new(
-                                            RichText::new(d).color(theme.text_secondary).small(),
-                                        )
-                                        .wrap(),
+                                        egui::Label::new(RichText::new(d).weak().small()).wrap(),
                                     );
                                 }
                             });
@@ -663,7 +643,7 @@ fn show_variable_detail(
                                     "... and {} more values",
                                     cl_info.total_terms - cl_info.terms.len()
                                 ))
-                                .color(theme.text_muted)
+                                .weak()
                                 .small()
                                 .italics(),
                             );
@@ -672,7 +652,7 @@ fn show_variable_detail(
                 } else {
                     ui.label(
                         RichText::new(format!("{} - not found in CT", cl_info.code))
-                            .color(theme.warning)
+                            .color(ui.visuals().warn_fg_color)
                             .small(),
                     );
                 }
@@ -690,14 +670,18 @@ fn show_variable_detail(
                     egui_phosphor::regular::LIGHTNING
                 ))
                 .strong()
-                .color(theme.text_muted),
+                .weak(),
             );
             ui.separator();
             ui.add_space(spacing::SM);
 
             ui.horizontal(|ui| {
-                ui.label(RichText::new(egui_phosphor::regular::GEAR).color(theme.accent));
-                ui.label(RichText::new("Auto-generated").strong().color(theme.accent));
+                ui.label(RichText::new(egui_phosphor::regular::GEAR).color(ui.visuals().hyperlink_color));
+                ui.label(
+                    RichText::new("Auto-generated")
+                        .strong()
+                        .color(ui.visuals().hyperlink_color),
+                );
             });
 
             ui.add_space(spacing::SM);
@@ -711,67 +695,55 @@ fn show_variable_detail(
                 _ => "Generated by the system",
             };
 
-            ui.label(
-                RichText::new(description)
-                    .color(theme.text_secondary)
-                    .italics(),
-            );
+            ui.label(RichText::new(description).weak().italics());
 
             if is_usubjid_derived {
                 ui.add_space(spacing::MD);
-                ui.label(RichText::new("Derivation").strong().color(theme.text_muted));
+                ui.label(RichText::new("Derivation").strong().weak());
                 ui.add_space(spacing::SM);
 
                 egui::Grid::new("usubjid_derive")
                     .num_columns(2)
                     .spacing([20.0, 4.0])
                     .show(ui, |ui| {
-                        ui.label(RichText::new("Formula").color(theme.text_muted));
+                        ui.label(RichText::new("Formula").weak());
                         ui.label("STUDYID-SUBJID");
                         ui.end_row();
 
-                        ui.label(RichText::new("Study ID").color(theme.text_muted));
-                        ui.label(RichText::new(&study_id).color(theme.accent));
+                        ui.label(RichText::new("Study ID").weak());
+                        ui.label(RichText::new(&study_id).color(ui.visuals().hyperlink_color));
                         ui.end_row();
                     });
 
                 if let Some(subjid_col) = &subjid_mapping {
                     ui.add_space(spacing::SM);
-                    ui.label(
-                        RichText::new("Source Mapping")
-                            .strong()
-                            .color(theme.text_muted),
-                    );
+                    ui.label(RichText::new("Source Mapping").strong().weak());
                     ui.add_space(spacing::SM);
 
                     egui::Grid::new("usubjid_source")
                         .num_columns(2)
                         .spacing([20.0, 4.0])
                         .show(ui, |ui| {
-                            ui.label(RichText::new("SUBJID").color(theme.text_muted));
+                            ui.label(RichText::new("SUBJID").weak());
                             ui.label(subjid_col);
                             ui.end_row();
 
-                            ui.label(RichText::new("Label").color(theme.text_muted));
+                            ui.label(RichText::new("Label").weak());
                             ui.label(subjid_label.as_deref().unwrap_or("—"));
                             ui.end_row();
                         });
 
                     if !subjid_samples.is_empty() {
                         ui.add_space(spacing::SM);
-                        ui.label(
-                            RichText::new("Sample Values")
-                                .color(theme.text_muted)
-                                .small(),
-                        );
+                        ui.label(RichText::new("Sample Values").weak().small());
                         for val in &subjid_samples {
                             ui.horizontal(|ui| {
                                 ui.label(RichText::new(val).code());
-                                ui.label(RichText::new("→").color(theme.text_muted));
+                                ui.label(RichText::new("→").weak());
                                 ui.label(
                                     RichText::new(format!("{}-{}", study_id, val))
                                         .code()
-                                        .color(theme.accent),
+                                        .color(ui.visuals().hyperlink_color),
                                 );
                             });
                         }
@@ -783,7 +755,7 @@ fn show_variable_detail(
                             "{} Map SUBJID to generate USUBJID",
                             egui_phosphor::regular::INFO
                         ))
-                        .color(theme.warning)
+                        .color(ui.visuals().warn_fg_color)
                         .small(),
                     );
                 }
@@ -791,7 +763,7 @@ fn show_variable_detail(
                 ui.add_space(spacing::MD);
                 ui.label(
                     RichText::new("This variable cannot be mapped manually.")
-                        .color(theme.text_muted)
+                        .weak()
                         .small(),
                 );
             }
@@ -800,7 +772,7 @@ fn show_variable_detail(
             ui.label(
                 RichText::new(format!("{} Source Column", egui_phosphor::regular::TABLE))
                     .strong()
-                    .color(theme.text_muted),
+                    .weak(),
             );
             ui.separator();
             ui.add_space(spacing::SM);
@@ -812,11 +784,11 @@ fn show_variable_detail(
 
                     if let Some(conf) = confidence {
                         let conf_color = if conf >= 0.95 {
-                            theme.success
+                            colors::SUCCESS
                         } else if conf >= 0.80 {
-                            theme.warning
+                            ui.visuals().warn_fg_color
                         } else {
-                            theme.text_muted
+                            ui.visuals().weak_text_color()
                         };
                         ui.label(RichText::new(format!("{:.0}%", conf * 100.0)).color(conf_color));
                     }
@@ -824,7 +796,7 @@ fn show_variable_detail(
 
                 // Show source column label from metadata if available
                 if let Some(label) = &source_col_label {
-                    ui.label(RichText::new(label).color(theme.text_secondary).italics());
+                    ui.label(RichText::new(label).weak().italics());
                 }
 
                 ui.add_space(spacing::SM);
@@ -834,15 +806,15 @@ fn show_variable_detail(
                     .num_columns(2)
                     .spacing([20.0, 4.0])
                     .show(ui, |ui| {
-                        ui.label(RichText::new("Type").color(theme.text_muted));
+                        ui.label(RichText::new("Type").weak());
                         ui.label(if is_numeric { "Numeric" } else { "Text" });
                         ui.end_row();
 
-                        ui.label(RichText::new("Unique").color(theme.text_muted));
+                        ui.label(RichText::new("Unique").weak());
                         ui.label(format!("{:.0}%", unique_ratio * 100.0));
                         ui.end_row();
 
-                        ui.label(RichText::new("Missing").color(theme.text_muted));
+                        ui.label(RichText::new("Missing").weak());
                         ui.label(format!("{:.1}%", null_ratio * 100.0));
                         ui.end_row();
                     });
@@ -850,17 +822,13 @@ fn show_variable_detail(
                 // Sample values
                 if !samples.is_empty() {
                     ui.add_space(spacing::SM);
-                    ui.label(RichText::new("Sample Values").color(theme.text_muted));
-                    ui.label(
-                        RichText::new(samples.join(" · "))
-                            .color(theme.text_secondary)
-                            .small(),
-                    );
+                    ui.label(RichText::new("Sample Values").weak());
+                    ui.label(RichText::new(samples.join(" · ")).weak().small());
                 }
             } else {
                 ui.label(
                     RichText::new(format!("{} No mapping", egui_phosphor::regular::LINK_BREAK))
-                        .color(theme.text_muted)
+                        .weak()
                         .italics(),
                 );
             }
@@ -886,7 +854,7 @@ fn show_variable_detail(
                                 "{} Mapped",
                                 egui_phosphor::regular::CHECK_CIRCLE
                             ))
-                            .color(theme.success),
+                            .color(colors::SUCCESS),
                         );
                     });
                     ui.add_space(spacing::SM);
@@ -917,7 +885,7 @@ fn show_variable_detail(
                                 "{} Marked as Not Collected",
                                 egui_phosphor::regular::PROHIBIT
                             ))
-                            .color(theme.warning),
+                            .color(ui.visuals().warn_fg_color),
                         );
                     });
 
@@ -929,7 +897,7 @@ fn show_variable_detail(
                                     ui.add_space(spacing::XS);
                                     ui.label(
                                         RichText::new(format!("Reason: {}", reason))
-                                            .color(theme.text_secondary)
+                                            .weak()
                                             .italics()
                                             .small(),
                                     );
@@ -961,7 +929,7 @@ fn show_variable_detail(
                                 "{} Omitted from Output",
                                 egui_phosphor::regular::MINUS_CIRCLE
                             ))
-                            .color(theme.warning),
+                            .color(ui.visuals().warn_fg_color),
                         );
                     });
 
@@ -989,7 +957,7 @@ fn show_variable_detail(
                                     "{} Suggestion available",
                                     egui_phosphor::regular::LIGHTBULB
                                 ))
-                                .color(theme.warning),
+                                .color(ui.visuals().warn_fg_color),
                             );
                         });
                         ui.add_space(spacing::SM);
@@ -999,7 +967,7 @@ fn show_variable_detail(
                                     "{} Accept Suggestion",
                                     egui_phosphor::regular::CHECK
                                 ))
-                                .color(theme.success),
+                                .color(colors::SUCCESS),
                             )
                             .clicked()
                         {
@@ -1024,7 +992,7 @@ fn show_variable_detail(
                     } else {
                         "Select source column:"
                     };
-                    ui.label(RichText::new(select_label).color(theme.text_muted).small());
+                    ui.label(RichText::new(select_label).weak().small());
 
                     let mut selected_new_col: Option<String> = None;
 
@@ -1063,11 +1031,11 @@ fn show_variable_detail(
                                 let full_text = format!("{}{}", display_text, conf_text);
 
                                 let text_color = if *conf >= 0.95 {
-                                    theme.success
+                                    colors::SUCCESS
                                 } else if *conf >= 0.70 {
-                                    theme.warning
+                                    ui.visuals().warn_fg_color
                                 } else {
-                                    theme.text_primary
+                                    ui.visuals().text_color()
                                 };
 
                                 if ui
@@ -1105,7 +1073,7 @@ fn show_variable_detail(
                                 "{} Required - must map a source column",
                                 egui_phosphor::regular::WARNING
                             ))
-                            .color(theme.error)
+                            .color(ui.visuals().error_fg_color)
                             .small(),
                         );
                     } else {
@@ -1116,7 +1084,7 @@ fn show_variable_detail(
 
                         ui.label(
                             RichText::new("If source data is not available:")
-                                .color(theme.text_muted)
+                                .weak()
                                 .small(),
                         );
 
@@ -1140,11 +1108,7 @@ fn show_variable_detail(
                         }
 
                         // Reason text input
-                        ui.label(
-                            RichText::new("Define-XML reason:")
-                                .color(theme.text_muted)
-                                .small(),
-                        );
+                        ui.label(RichText::new("Define-XML reason:").weak().small());
                         let text_response = ui.add(
                             egui::TextEdit::singleline(&mut reason_text)
                                 .hint_text("e.g., 'Data not collected in this study'")
@@ -1163,13 +1127,10 @@ fn show_variable_detail(
                         // Action buttons
                         ui.horizontal(|ui| {
                             if ui
-                                .button(
-                                    RichText::new(format!(
-                                        "{} Not Collected",
-                                        egui_phosphor::regular::PROHIBIT
-                                    ))
-                                    .color(theme.text_secondary),
-                                )
+                                .button(RichText::new(format!(
+                                    "{} Not Collected",
+                                    egui_phosphor::regular::PROHIBIT
+                                )))
                                 .on_hover_text("Creates null column with Define-XML comment")
                                 .clicked()
                             {
@@ -1208,13 +1169,10 @@ fn show_variable_detail(
                             // "Omit from Output" button (only for Permissible)
                             if is_permissible {
                                 if ui
-                                    .button(
-                                        RichText::new(format!(
-                                            "{} Omit",
-                                            egui_phosphor::regular::MINUS_CIRCLE
-                                        ))
-                                        .color(theme.text_secondary),
-                                    )
+                                    .button(RichText::new(format!(
+                                        "{} Omit",
+                                        egui_phosphor::regular::MINUS_CIRCLE
+                                    )))
                                     .on_hover_text("Exclude variable from output entirely")
                                     .clicked()
                                 {
@@ -1237,12 +1195,7 @@ fn show_variable_detail(
                         } else {
                             "Creates null column with Define-XML comment for documentation"
                         };
-                        ui.label(
-                            RichText::new(explanation)
-                                .color(theme.text_muted)
-                                .small()
-                                .italics(),
-                        );
+                        ui.label(RichText::new(explanation).weak().small().italics());
                     }
                 }
             }

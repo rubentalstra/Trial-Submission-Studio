@@ -10,7 +10,7 @@ mod transform;
 mod validation;
 
 use crate::state::{AppState, EditorTab};
-use crate::theme::{colors, spacing};
+use crate::theme::spacing;
 use egui::{RichText, Ui};
 
 /// Domain editor view
@@ -19,8 +19,6 @@ pub struct DomainEditorView;
 impl DomainEditorView {
     /// Render the domain editor
     pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str, active_tab: EditorTab) {
-        let theme = colors(state.settings.general.dark_mode);
-
         // Top bar with domain info and back button
         ui.horizontal(|ui| {
             if ui
@@ -42,7 +40,7 @@ impl DomainEditorView {
                             domain.source_file.display(),
                             domain.row_count()
                         ))
-                        .color(theme.text_muted),
+                        .weak(),
                     );
                 }
             }
@@ -55,9 +53,11 @@ impl DomainEditorView {
             for tab in EditorTab::all() {
                 let is_active = *tab == active_tab;
                 let text = if is_active {
-                    RichText::new(tab.label()).strong().color(theme.accent)
+                    RichText::new(tab.label())
+                        .strong()
+                        .color(ui.visuals().hyperlink_color)
                 } else {
-                    RichText::new(tab.label()).color(theme.text_secondary)
+                    RichText::new(tab.label()).weak()
                 };
 
                 if ui.selectable_label(is_active, text).clicked() {

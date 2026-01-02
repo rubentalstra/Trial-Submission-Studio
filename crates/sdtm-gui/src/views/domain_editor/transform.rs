@@ -9,14 +9,12 @@ use crate::state::{
     AppState, DomainStatus, TransformRule, TransformRuleDisplay, TransformState, TransformType,
     TransformTypeDisplay, build_pipeline_from_domain,
 };
-use crate::theme::{colors, spacing};
+use crate::theme::spacing;
 use egui::{RichText, Ui};
 
 use super::mapping::{initialize_mapping, show_loading_indicator};
 
 pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
-    let theme = colors(state.settings.general.dark_mode);
-
     // Ensure mapping state is initialized so transforms can be derived accurately.
     let (has_mapping_state, status) = state
         .study
@@ -32,12 +30,12 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                     domain.status = DomainStatus::Loading;
                 }
             }
-            show_loading_indicator(ui, &theme);
+            show_loading_indicator(ui);
             ui.ctx().request_repaint();
             return;
         }
         (false, DomainStatus::Loading) => {
-            show_loading_indicator(ui, &theme);
+            show_loading_indicator(ui);
             initialize_mapping(state, domain_code);
             ui.ctx().request_repaint();
             return;
@@ -49,7 +47,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                         "{} Failed to initialize mapping",
                         egui_phosphor::regular::WARNING
                     ))
-                    .color(theme.error),
+                    .color(ui.visuals().error_fg_color),
                 );
             });
             return;
@@ -108,7 +106,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
             ui.add_space(spacing::XS);
             ui.label(
                 RichText::new(format!("{} generated · {} CT", generated_count, ct_count))
-                    .color(theme.text_muted)
+                    .weak()
                     .small(),
             );
         }
@@ -123,7 +121,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                         "{} No transformations available for this domain",
                         egui_phosphor::regular::INFO
                     ))
-                    .color(theme.text_muted),
+                    .weak(),
                 );
             });
             return;
@@ -147,7 +145,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                                 has_subject_id_mapping,
                                 generated_count,
                                 ct_count,
-                                &theme,
                             );
                         });
                 });
@@ -167,7 +164,6 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                                 domain_code,
                                 rules,
                                 effective_selection,
-                                &theme,
                             );
                         });
                 });
@@ -224,7 +220,6 @@ fn show_transform_list(
     has_subject_id_mapping: bool,
     generated_count: usize,
     ct_count: usize,
-    theme: &crate::theme::ThemeColors,
 ) -> Option<usize> {
     let mut new_selection: Option<usize> = None;
 
@@ -235,7 +230,7 @@ fn show_transform_list(
                 egui_phosphor::regular::LIGHTNING
             ))
             .strong()
-            .color(theme.text_muted),
+            .weak(),
         );
         ui.add_space(spacing::SM);
 
@@ -247,7 +242,6 @@ fn show_transform_list(
                 rule,
                 selected_idx == Some(idx),
                 status_suffix,
-                theme,
             ) {
                 new_selection = Some(idx);
             }
@@ -267,7 +261,7 @@ fn show_transform_list(
                 egui_phosphor::regular::LIST_CHECKS
             ))
             .strong()
-            .color(theme.text_muted),
+            .weak(),
         );
         ui.add_space(spacing::SM);
 
@@ -276,7 +270,7 @@ fn show_transform_list(
             .enumerate()
             .filter(|(_, r)| matches!(r.transform_type, TransformType::CtNormalization { .. }))
         {
-            if render_row(ui, idx, rule, selected_idx == Some(idx), None, theme) {
+            if render_row(ui, idx, rule, selected_idx == Some(idx), None) {
                 new_selection = Some(idx);
             }
         }
@@ -317,12 +311,11 @@ fn render_row(
     rule: &TransformRule,
     is_selected: bool,
     status_suffix: Option<&'static str>,
-    theme: &crate::theme::ThemeColors,
 ) -> bool {
     let mut clicked = false;
 
     ui.horizontal(|ui| {
-        ui.label(RichText::new(rule.icon()).color(theme.accent));
+        ui.label(RichText::new(rule.icon()).color(ui.visuals().hyperlink_color));
 
         let text = if is_selected {
             RichText::new(&rule.target_variable).strong()
@@ -341,9 +334,9 @@ fn render_row(
                 rule.category().to_string()
             };
             let right_color = if status_suffix.is_some() {
-                theme.warning
+                ui.visuals().warn_fg_color
             } else {
-                theme.text_muted
+                ui.visuals().weak_text_color()
             };
 
             ui.label(RichText::new(right_text).color(right_color).small());
@@ -359,7 +352,6 @@ fn show_transform_detail(
     domain_code: &str,
     rules: &[TransformRule],
     selected_idx: Option<usize>,
-    theme: &crate::theme::ThemeColors,
 ) {
     let Some(idx) = selected_idx else {
         ui.centered_and_justified(|ui| {
@@ -368,7 +360,7 @@ fn show_transform_detail(
                     "{} Select a transformation",
                     egui_phosphor::regular::INFO
                 ))
-                .color(theme.text_muted),
+                .weak(),
             );
         });
         return;
@@ -392,12 +384,12 @@ fn show_transform_detail(
 
     // Header
     ui.horizontal(|ui| {
-        ui.label(RichText::new(rule.icon()).size(24.0).color(theme.accent));
+        ui.label(RichText::new(rule.icon()).size(24.0).color(ui.visuals().hyperlink_color));
         ui.vertical(|ui| {
             ui.heading(&rule.target_variable);
             ui.label(
                 RichText::new(rule.category())
-                    .color(theme.text_muted)
+                    .weak()
                     .small(),
             );
         });
@@ -410,13 +402,13 @@ fn show_transform_detail(
     // Show details based on transform type
     match &rule.transform_type {
         TransformType::Constant => {
-            show_constant_detail(ui, &rule.target_variable, study_id, domain_code, theme);
+            show_constant_detail(ui, &rule.target_variable, study_id, domain_code);
         }
         TransformType::UsubjidPrefix => {
-            show_usubjid_detail(ui, study_id, mapping_state, source_data, theme);
+            show_usubjid_detail(ui, study_id, mapping_state, source_data);
         }
         TransformType::SequenceNumber => {
-            show_sequence_detail(ui, &rule.target_variable, mapping_state, theme);
+            show_sequence_detail(ui, &rule.target_variable, mapping_state);
         }
         TransformType::CtNormalization { codelist_code } => {
             show_ct_detail(
@@ -425,30 +417,29 @@ fn show_transform_detail(
                 codelist_code,
                 mapping_state,
                 source_data,
-                theme,
             );
         }
         TransformType::Iso8601DateTime | TransformType::Iso8601Date => {
-            show_datetime_detail(ui, &rule.target_variable, mapping_state, source_data, theme);
+            show_datetime_detail(ui, &rule.target_variable, mapping_state, source_data);
         }
         TransformType::Iso8601Duration => {
-            show_duration_detail(ui, &rule.target_variable, mapping_state, source_data, theme);
+            show_duration_detail(ui, &rule.target_variable, mapping_state, source_data);
         }
         TransformType::StudyDay { reference_dtc } => {
-            show_study_day_detail(ui, &rule.target_variable, reference_dtc, theme);
+            show_study_day_detail(ui, &rule.target_variable, reference_dtc);
         }
         TransformType::NumericConversion => {
-            show_numeric_detail(ui, &rule.target_variable, mapping_state, source_data, theme);
+            show_numeric_detail(ui, &rule.target_variable, mapping_state, source_data);
         }
         TransformType::CopyDirect => {
-            show_copy_detail(ui, &rule.target_variable, mapping_state, source_data, theme);
+            show_copy_detail(ui, &rule.target_variable, mapping_state, source_data);
         }
         // Handle future transform types
         _ => {
             ui.label(
                 RichText::new("Transform Details")
                     .strong()
-                    .color(theme.text_muted),
+                    .weak(),
             );
             ui.add_space(spacing::SM);
             ui.label(format!(
@@ -465,12 +456,11 @@ fn show_constant_detail(
     target: &str,
     study_id: &str,
     domain_code: &str,
-    theme: &crate::theme::ThemeColors,
 ) {
     ui.label(
         RichText::new("Value Source")
             .strong()
-            .color(theme.text_muted),
+            .weak(),
     );
     ui.add_space(spacing::SM);
 
@@ -486,16 +476,16 @@ fn show_constant_detail(
         .num_columns(2)
         .spacing([20.0, 4.0])
         .show(ui, |ui| {
-            ui.label(RichText::new("Source").color(theme.text_muted));
+            ui.label(RichText::new("Source").weak());
             ui.label(source_desc);
             ui.end_row();
 
-            ui.label(RichText::new("Target").color(theme.text_muted));
+            ui.label(RichText::new("Target").weak());
             ui.label(target);
             ui.end_row();
 
-            ui.label(RichText::new("Value").color(theme.text_muted));
-            ui.label(RichText::new(value).color(theme.accent));
+            ui.label(RichText::new("Value").weak());
+            ui.label(RichText::new(value).color(ui.visuals().hyperlink_color));
             ui.end_row();
         });
 }
@@ -506,20 +496,19 @@ fn show_usubjid_detail(
     study_id: &str,
     mapping_state: &MappingState,
     source_data: &polars::prelude::DataFrame,
-    theme: &crate::theme::ThemeColors,
 ) {
-    ui.label(RichText::new("Derivation").strong().color(theme.text_muted));
+    ui.label(RichText::new("Derivation").strong().weak());
     ui.add_space(spacing::SM);
 
     egui::Grid::new("usubjid_detail")
         .num_columns(2)
         .spacing([20.0, 4.0])
         .show(ui, |ui| {
-            ui.label(RichText::new("Target").color(theme.text_muted));
+            ui.label(RichText::new("Target").weak());
             ui.label("USUBJID");
             ui.end_row();
 
-            ui.label(RichText::new("Formula").color(theme.text_muted));
+            ui.label(RichText::new("Formula").weak());
             ui.label("STUDYID-SUBJID");
             ui.end_row();
         });
@@ -528,19 +517,19 @@ fn show_usubjid_detail(
         let samples = MappingService::get_sample_values(source_data, source_col, 3);
 
         ui.add_space(spacing::MD);
-        ui.label(RichText::new("Mapping").strong().color(theme.text_muted));
+        ui.label(RichText::new("Mapping").strong().weak());
         ui.add_space(spacing::SM);
 
         egui::Grid::new("usubjid_mapping")
             .num_columns(2)
             .spacing([20.0, 4.0])
             .show(ui, |ui| {
-                ui.label(RichText::new(source_label).color(theme.text_muted));
+                ui.label(RichText::new(source_label).weak());
                 ui.label(source_col);
                 ui.end_row();
 
-                ui.label(RichText::new("Study ID").color(theme.text_muted));
-                ui.label(RichText::new(study_id).color(theme.accent));
+                ui.label(RichText::new("Study ID").weak());
+                ui.label(RichText::new(study_id).color(ui.visuals().hyperlink_color));
                 ui.end_row();
             });
 
@@ -549,18 +538,18 @@ fn show_usubjid_detail(
             ui.label(
                 RichText::new("Sample Values")
                     .strong()
-                    .color(theme.text_muted),
+                    .weak(),
             );
             ui.add_space(spacing::SM);
 
             for val in &samples {
                 ui.horizontal(|ui| {
                     ui.label(RichText::new(val).code());
-                    ui.label(RichText::new("→").color(theme.text_muted));
+                    ui.label(RichText::new("→").weak());
                     ui.label(
                         RichText::new(format!("{}-{}", study_id, val))
                             .code()
-                            .color(theme.accent),
+                            .color(ui.visuals().hyperlink_color),
                     );
                 });
             }
@@ -572,7 +561,7 @@ fn show_usubjid_detail(
                 "{} Map the SUBJID column in Mapping to build USUBJID",
                 egui_phosphor::regular::INFO
             ))
-            .color(theme.warning),
+            .color(ui.visuals().warn_fg_color),
         );
     }
 }
@@ -582,12 +571,11 @@ fn show_sequence_detail(
     ui: &mut Ui,
     seq_column: &str,
     mapping_state: &MappingState,
-    theme: &crate::theme::ThemeColors,
 ) {
     ui.label(
         RichText::new("Configuration")
             .strong()
-            .color(theme.text_muted),
+            .weak(),
     );
     ui.add_space(spacing::SM);
 
@@ -595,15 +583,15 @@ fn show_sequence_detail(
         .num_columns(2)
         .spacing([20.0, 4.0])
         .show(ui, |ui| {
-            ui.label(RichText::new("Column").color(theme.text_muted));
+            ui.label(RichText::new("Column").weak());
             ui.label(RichText::new(seq_column).strong());
             ui.end_row();
 
-            ui.label(RichText::new("Group By").color(theme.text_muted));
+            ui.label(RichText::new("Group By").weak());
             ui.label("USUBJID");
             ui.end_row();
 
-            ui.label(RichText::new("Values").color(theme.text_muted));
+            ui.label(RichText::new("Values").weak());
             ui.label("1, 2, 3... per subject");
             ui.end_row();
         });
@@ -615,7 +603,7 @@ fn show_sequence_detail(
                 "{} Requires SUBJID mapping to derive USUBJID",
                 egui_phosphor::regular::INFO
             ))
-            .color(theme.warning),
+            .color(ui.visuals().warn_fg_color),
         );
     }
 }
@@ -627,42 +615,41 @@ fn show_ct_detail(
     codelist_code: &str,
     mapping_state: &MappingState,
     source_data: &polars::prelude::DataFrame,
-    theme: &crate::theme::ThemeColors,
 ) {
     if let Some((source_col, _)) = mapping_state.accepted(variable) {
         let samples = MappingService::get_sample_values(source_data, source_col, 5);
 
-        ui.label(RichText::new("Mapping").strong().color(theme.text_muted));
+        ui.label(RichText::new("Mapping").strong().weak());
         ui.add_space(spacing::SM);
 
         egui::Grid::new("ct_detail")
             .num_columns(2)
             .spacing([20.0, 4.0])
             .show(ui, |ui| {
-                ui.label(RichText::new("Source").color(theme.text_muted));
+                ui.label(RichText::new("Source").weak());
                 ui.label(source_col);
                 ui.end_row();
 
-                ui.label(RichText::new("Target").color(theme.text_muted));
+                ui.label(RichText::new("Target").weak());
                 ui.label(variable);
                 ui.end_row();
 
-                ui.label(RichText::new("Codelist").color(theme.text_muted));
-                ui.label(RichText::new(codelist_code).color(theme.accent));
+                ui.label(RichText::new("Codelist").weak());
+                ui.label(RichText::new(codelist_code).color(ui.visuals().hyperlink_color));
                 ui.end_row();
             });
 
         if let Some(ct_info) = mapping_state.ct_cache.get(codelist_code) {
             ui.add_space(spacing::MD);
-            ui.label(RichText::new("Codelist").strong().color(theme.text_muted));
+            ui.label(RichText::new("Codelist").strong().weak());
             ui.add_space(spacing::SM);
 
             if ct_info.found {
                 ui.horizontal_wrapped(|ui| {
-                    ui.label(RichText::new(&ct_info.code).color(theme.text_muted).small());
+                    ui.label(RichText::new(&ct_info.code).weak().small());
                     ui.add(egui::Label::new(RichText::new(&ct_info.name).strong()).wrap());
                     if ct_info.extensible {
-                        ui.label(RichText::new("(Extensible)").color(theme.warning).small());
+                        ui.label(RichText::new("(Extensible)").color(ui.visuals().warn_fg_color).small());
                     }
                 });
 
@@ -670,20 +657,20 @@ fn show_ct_detail(
                     ui.add_space(spacing::SM);
                     ui.label(
                         RichText::new(format!("Valid values ({}):", ct_info.total_terms))
-                            .color(theme.text_muted)
+                            .weak()
                             .small(),
                     );
 
                     for (idx, (value, def)) in ct_info.terms.iter().enumerate() {
                         ui.vertical(|ui| {
                             ui.add(
-                                egui::Label::new(RichText::new(value).strong().color(theme.accent))
+                                egui::Label::new(RichText::new(value).strong().color(ui.visuals().hyperlink_color))
                                     .wrap(),
                             );
                             if let Some(d) = def {
                                 ui.add(
                                     egui::Label::new(
-                                        RichText::new(d).color(theme.text_secondary).small(),
+                                        RichText::new(d).weak().small(),
                                     )
                                     .wrap(),
                                 );
@@ -700,7 +687,7 @@ fn show_ct_detail(
                                 "... and {} more values",
                                 ct_info.total_terms - ct_info.terms.len()
                             ))
-                            .color(theme.text_muted)
+                            .weak()
                             .small()
                             .italics(),
                         );
@@ -709,7 +696,7 @@ fn show_ct_detail(
             } else {
                 ui.label(
                     RichText::new(format!("{} - not found in CT registry", ct_info.code))
-                        .color(theme.warning)
+                        .color(ui.visuals().warn_fg_color)
                         .small(),
                 );
             }
@@ -721,7 +708,7 @@ fn show_ct_detail(
             ui.label(
                 RichText::new("Transformation Preview")
                     .strong()
-                    .color(theme.text_muted),
+                    .weak(),
             );
             ui.add_space(spacing::SM);
 
@@ -744,12 +731,12 @@ fn show_ct_detail(
                 let is_changed = val != &normalized;
                 ui.horizontal(|ui| {
                     ui.label(RichText::new(val).code());
-                    ui.label(RichText::new("→").color(theme.text_muted));
+                    ui.label(RichText::new("→").weak());
                     if is_changed {
-                        ui.label(RichText::new(&normalized).code().color(theme.accent));
+                        ui.label(RichText::new(&normalized).code().color(ui.visuals().hyperlink_color));
                     } else {
-                        ui.label(RichText::new(&normalized).code().color(theme.text_muted));
-                        ui.label(RichText::new("(unchanged)").small().color(theme.text_muted));
+                        ui.label(RichText::new(&normalized).code().weak());
+                        ui.label(RichText::new("(unchanged)").small().weak());
                     }
                 });
             }
@@ -763,12 +750,11 @@ fn show_datetime_detail(
     variable: &str,
     mapping_state: &MappingState,
     source_data: &polars::prelude::DataFrame,
-    theme: &crate::theme::ThemeColors,
 ) {
     ui.label(
         RichText::new("ISO 8601 DateTime")
             .strong()
-            .color(theme.text_muted),
+            .weak(),
     );
     ui.add_space(spacing::SM);
 
@@ -776,11 +762,11 @@ fn show_datetime_detail(
         .num_columns(2)
         .spacing([20.0, 4.0])
         .show(ui, |ui| {
-            ui.label(RichText::new("Target").color(theme.text_muted));
+            ui.label(RichText::new("Target").weak());
             ui.label(variable);
             ui.end_row();
 
-            ui.label(RichText::new("Format").color(theme.text_muted));
+            ui.label(RichText::new("Format").weak());
             ui.label("YYYY-MM-DDTHH:MM:SS");
             ui.end_row();
         });
@@ -792,7 +778,7 @@ fn show_datetime_detail(
             ui.label(
                 RichText::new("Transformation Preview")
                     .strong()
-                    .color(theme.text_muted),
+                    .weak(),
             );
             ui.add_space(spacing::SM);
 
@@ -805,15 +791,15 @@ fn show_datetime_detail(
                 let is_changed = val != &normalized;
                 ui.horizontal(|ui| {
                     ui.label(RichText::new(val).code());
-                    ui.label(RichText::new("→").color(theme.text_muted));
+                    ui.label(RichText::new("→").weak());
                     if is_changed {
-                        ui.label(RichText::new(&normalized).code().color(theme.accent));
+                        ui.label(RichText::new(&normalized).code().color(ui.visuals().hyperlink_color));
                     } else {
                         ui.label(RichText::new(&normalized).code());
                         ui.label(
                             RichText::new("(already ISO 8601)")
                                 .small()
-                                .color(theme.text_muted),
+                                .weak(),
                         );
                     }
                 });
@@ -828,12 +814,11 @@ fn show_duration_detail(
     variable: &str,
     mapping_state: &MappingState,
     source_data: &polars::prelude::DataFrame,
-    theme: &crate::theme::ThemeColors,
 ) {
     ui.label(
         RichText::new("ISO 8601 Duration")
             .strong()
-            .color(theme.text_muted),
+            .weak(),
     );
     ui.add_space(spacing::SM);
 
@@ -841,11 +826,11 @@ fn show_duration_detail(
         .num_columns(2)
         .spacing([20.0, 4.0])
         .show(ui, |ui| {
-            ui.label(RichText::new("Target").color(theme.text_muted));
+            ui.label(RichText::new("Target").weak());
             ui.label(variable);
             ui.end_row();
 
-            ui.label(RichText::new("Format").color(theme.text_muted));
+            ui.label(RichText::new("Format").weak());
             ui.label("PnYnMnDTnHnMnS");
             ui.end_row();
         });
@@ -857,7 +842,7 @@ fn show_duration_detail(
             ui.label(
                 RichText::new("Transformation Preview")
                     .strong()
-                    .color(theme.text_muted),
+                    .weak(),
             );
             ui.add_space(spacing::SM);
 
@@ -870,13 +855,13 @@ fn show_duration_detail(
 
                 ui.horizontal(|ui| {
                     ui.label(RichText::new(val).code());
-                    ui.label(RichText::new("→").color(theme.text_muted));
-                    ui.label(RichText::new(&normalized).code().color(theme.accent));
+                    ui.label(RichText::new("→").weak());
+                    ui.label(RichText::new(&normalized).code().color(ui.visuals().hyperlink_color));
                     if !is_duration_format {
                         ui.label(
                             RichText::new("(needs formatting)")
                                 .small()
-                                .color(theme.warning),
+                                .color(ui.visuals().warn_fg_color),
                         );
                     }
                 });
@@ -890,12 +875,11 @@ fn show_study_day_detail(
     ui: &mut Ui,
     variable: &str,
     reference_dtc: &str,
-    theme: &crate::theme::ThemeColors,
 ) {
     ui.label(
         RichText::new("Study Day Calculation")
             .strong()
-            .color(theme.text_muted),
+            .weak(),
     );
     ui.add_space(spacing::SM);
 
@@ -903,15 +887,15 @@ fn show_study_day_detail(
         .num_columns(2)
         .spacing([20.0, 4.0])
         .show(ui, |ui| {
-            ui.label(RichText::new("Target").color(theme.text_muted));
+            ui.label(RichText::new("Target").weak());
             ui.label(variable);
             ui.end_row();
 
-            ui.label(RichText::new("Reference").color(theme.text_muted));
+            ui.label(RichText::new("Reference").weak());
             ui.label(reference_dtc);
             ui.end_row();
 
-            ui.label(RichText::new("Formula").color(theme.text_muted));
+            ui.label(RichText::new("Formula").weak());
             ui.label(format!("{} - RFSTDTC + 1 (if after)", reference_dtc));
             ui.end_row();
         });
@@ -919,7 +903,7 @@ fn show_study_day_detail(
     ui.add_space(spacing::MD);
     ui.label(
         RichText::new("Per SDTMIG 4.4.4: Study day is relative to RFSTDTC")
-            .color(theme.text_muted)
+            .weak()
             .small(),
     );
 }
@@ -930,12 +914,11 @@ fn show_numeric_detail(
     variable: &str,
     mapping_state: &MappingState,
     source_data: &polars::prelude::DataFrame,
-    theme: &crate::theme::ThemeColors,
 ) {
     ui.label(
         RichText::new("Numeric Conversion")
             .strong()
-            .color(theme.text_muted),
+            .weak(),
     );
     ui.add_space(spacing::SM);
 
@@ -943,11 +926,11 @@ fn show_numeric_detail(
         .num_columns(2)
         .spacing([20.0, 4.0])
         .show(ui, |ui| {
-            ui.label(RichText::new("Target").color(theme.text_muted));
+            ui.label(RichText::new("Target").weak());
             ui.label(variable);
             ui.end_row();
 
-            ui.label(RichText::new("Type").color(theme.text_muted));
+            ui.label(RichText::new("Type").weak());
             ui.label("Float64");
             ui.end_row();
         });
@@ -959,7 +942,7 @@ fn show_numeric_detail(
             ui.label(
                 RichText::new("Transformation Preview")
                     .strong()
-                    .color(theme.text_muted),
+                    .weak(),
             );
             ui.add_space(spacing::SM);
 
@@ -968,14 +951,14 @@ fn show_numeric_detail(
                 let parsed: Result<f64, _> = val.trim().parse();
                 ui.horizontal(|ui| {
                     ui.label(RichText::new(val).code());
-                    ui.label(RichText::new("→").color(theme.text_muted));
+                    ui.label(RichText::new("→").weak());
                     match parsed {
                         Ok(num) => {
-                            ui.label(RichText::new(format!("{}", num)).code().color(theme.accent));
+                            ui.label(RichText::new(format!("{}", num)).code().color(ui.visuals().hyperlink_color));
                         }
                         Err(_) => {
-                            ui.label(RichText::new("null").code().color(theme.warning));
-                            ui.label(RichText::new("(not a number)").small().color(theme.warning));
+                            ui.label(RichText::new("null").code().color(ui.visuals().warn_fg_color));
+                            ui.label(RichText::new("(not a number)").small().color(ui.visuals().warn_fg_color));
                         }
                     }
                 });
@@ -990,12 +973,11 @@ fn show_copy_detail(
     variable: &str,
     mapping_state: &MappingState,
     source_data: &polars::prelude::DataFrame,
-    theme: &crate::theme::ThemeColors,
 ) {
     ui.label(
         RichText::new("Direct Copy")
             .strong()
-            .color(theme.text_muted),
+            .weak(),
     );
     ui.add_space(spacing::SM);
 
@@ -1004,11 +986,11 @@ fn show_copy_detail(
             .num_columns(2)
             .spacing([20.0, 4.0])
             .show(ui, |ui| {
-                ui.label(RichText::new("Source").color(theme.text_muted));
+                ui.label(RichText::new("Source").weak());
                 ui.label(source_col);
                 ui.end_row();
 
-                ui.label(RichText::new("Target").color(theme.text_muted));
+                ui.label(RichText::new("Target").weak());
                 ui.label(variable);
                 ui.end_row();
             });
@@ -1019,32 +1001,32 @@ fn show_copy_detail(
             ui.label(
                 RichText::new("Transformation Preview")
                     .strong()
-                    .color(theme.text_muted),
+                    .weak(),
             );
             ui.add_space(spacing::SM);
 
             for val in &samples {
                 ui.horizontal(|ui| {
                     ui.label(RichText::new(val).code());
-                    ui.label(RichText::new("→").color(theme.text_muted));
-                    ui.label(RichText::new(val).code().color(theme.accent));
+                    ui.label(RichText::new("→").weak());
+                    ui.label(RichText::new(val).code().color(ui.visuals().hyperlink_color));
                     ui.label(
                         RichText::new("(copied as-is)")
                             .small()
-                            .color(theme.text_muted),
+                            .weak(),
                     );
                 });
             }
         }
     } else {
-        ui.label(RichText::new(format!("Target: {}", variable)).color(theme.text_muted));
+        ui.label(RichText::new(format!("Target: {}", variable)).weak());
         ui.add_space(spacing::SM);
         ui.label(
             RichText::new(format!(
                 "{} No mapping - values will be empty",
                 egui_phosphor::regular::WARNING
             ))
-            .color(theme.warning),
+            .color(ui.visuals().warn_fg_color),
         );
     }
 }

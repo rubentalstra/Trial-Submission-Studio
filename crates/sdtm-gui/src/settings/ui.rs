@@ -1,6 +1,6 @@
 //! Settings window UI implementation.
 //!
-//! Provides a native settings window with tabbed categories following macOS HIG:
+//! Provides a settings window with tabbed categories:
 //! - General (dark mode, CT version)
 //! - Validation (mode, XPT version, custom rules)
 //! - Developer (bypass rules, allow export with errors)
@@ -13,8 +13,7 @@ use super::{
     GeneralSettings, PreviewRowLimit, Settings, ShortcutAction, ValidationModeSetting,
     ValidationSettings, XptValidationRule, XptVersionSetting,
 };
-use crate::theme::{colors, ThemeColors};
-use eframe::egui::{self, Color32, CornerRadius, Stroke, Vec2};
+use eframe::egui::{self, CornerRadius, Vec2};
 
 /// Settings category tabs.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -92,19 +91,13 @@ impl Default for SettingsWindow {
 }
 
 impl SettingsWindow {
-    /// Create a new settings window.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     /// Show the settings as a separate native window using viewports.
     pub fn show(
         &mut self,
         ctx: &egui::Context,
         settings: &mut Settings,
-        dark_mode: bool,
+        _dark_mode: bool,
     ) -> SettingsResult {
-        let theme = colors(dark_mode);
         let mut result = SettingsResult::Open;
 
         // Use a native window viewport for settings
@@ -118,13 +111,10 @@ impl SettingsWindow {
                 .with_min_inner_size([600.0, 400.0])
                 .with_resizable(true),
             |ctx, _class| {
-                // Apply native styling
-                self.apply_native_style(ctx, &theme);
-
                 egui::CentralPanel::default()
                     .frame(egui::Frame::central_panel(&ctx.style()).inner_margin(0.0))
                     .show(ctx, |ui| {
-                        result = self.show_native_layout(ui, settings, &theme);
+                        result = self.show_layout(ui, settings);
                     });
 
                 // Handle window close
@@ -137,196 +127,178 @@ impl SettingsWindow {
         result
     }
 
-    /// Apply native-looking style to the context.
-    fn apply_native_style(&self, ctx: &egui::Context, theme: &ThemeColors) {
-        let mut style = (*ctx.style()).clone();
-
-        // Use native-looking visuals
-        style.visuals.widgets.noninteractive.bg_fill = theme.bg_secondary;
-        style.visuals.widgets.inactive.bg_fill = theme.bg_secondary;
-        style.visuals.widgets.hovered.bg_fill = theme.accent.linear_multiply(0.1);
-        style.visuals.widgets.active.bg_fill = theme.accent.linear_multiply(0.2);
-
-        // Subtle borders
-        style.visuals.widgets.inactive.bg_stroke = Stroke::new(1.0, theme.border);
-        style.visuals.widgets.hovered.bg_stroke =
-            Stroke::new(1.0, theme.accent.linear_multiply(0.5));
-
-        // Use rounded corners globally
-        style.visuals.window_corner_radius = CornerRadius::same(8);
-        style.visuals.menu_corner_radius = CornerRadius::same(6);
-
-        ctx.set_style(style);
-    }
-
-    /// Show the native macOS-style layout with sidebar.
-    fn show_native_layout(
-        &mut self,
-        ui: &mut egui::Ui,
-        settings: &mut Settings,
-        theme: &ThemeColors,
-    ) -> SettingsResult {
+    /// Show the layout with sidebar.
+    fn show_layout(&mut self, ui: &mut egui::Ui, settings: &mut Settings) -> SettingsResult {
         let mut result = SettingsResult::Open;
+        let available_rect = ui.available_rect_before_wrap();
 
-        // Main horizontal split: sidebar + content
-        ui.horizontal(|ui| {
-            // Left sidebar with category navigation
-            self.show_sidebar(ui, theme);
+        // Calculate layout dimensions
+        let sidebar_width = 180.0;
+        let button_bar_height = 56.0;
 
-            // Vertical separator
-            ui.add(egui::Separator::default().vertical());
+        // Draw sidebar background
+        let sidebar_rect = egui::Rect::from_min_size(
+            available_rect.min,
+            Vec2::new(sidebar_width, available_rect.height()),
+        );
+        ui.painter().rect_filled(
+            sidebar_rect,
+            CornerRadius::ZERO,
+            ui.visuals().faint_bg_color,
+        );
 
-            // Right content area
-            ui.vertical(|ui| {
-                ui.set_min_width(ui.available_width());
+        // Main vertical layout
+        ui.vertical(|ui| {
+            // Top area: sidebar + content
+            let content_height = available_rect.height() - button_bar_height;
 
-                // Content area with scroll
-                egui::ScrollArea::vertical()
-                    .auto_shrink([false, false])
-                    .show(ui, |ui| {
-                        ui.add_space(20.0);
-                        ui.horizontal(|ui| {
-                            ui.add_space(24.0);
-                            ui.vertical(|ui| {
-                                ui.set_max_width(500.0);
-                                match self.category {
-                                    SettingsCategory::General => {
-                                        self.show_general(ui, &mut settings.general, theme)
+            ui.horizontal(|ui| {
+                ui.set_height(content_height);
+
+                // Left sidebar
+                ui.allocate_ui_with_layout(
+                    Vec2::new(sidebar_width, content_height),
+                    egui::Layout::top_down(egui::Align::LEFT),
+                    |ui| {
+                        self.show_sidebar_content(ui);
+                    },
+                );
+
+                // Separator line
+                let sep_rect = egui::Rect::from_min_size(
+                    egui::pos2(sidebar_width, available_rect.min.y),
+                    Vec2::new(1.0, content_height),
+                );
+                ui.painter().rect_filled(
+                    sep_rect,
+                    0.0,
+                    ui.visuals().widgets.inactive.bg_stroke.color,
+                );
+
+                // Right content area
+                ui.vertical(|ui| {
+                    egui::ScrollArea::vertical()
+                        .auto_shrink([false, false])
+                        .show(ui, |ui| {
+                            ui.add_space(20.0);
+                            ui.horizontal(|ui| {
+                                ui.add_space(24.0);
+                                ui.vertical(|ui| {
+                                    ui.set_max_width(480.0);
+                                    match self.category {
+                                        SettingsCategory::General => {
+                                            self.show_general(ui, &mut settings.general)
+                                        }
+                                        SettingsCategory::Validation => {
+                                            self.show_validation(ui, &mut settings.validation)
+                                        }
+                                        SettingsCategory::Developer => {
+                                            self.show_developer(ui, &mut settings.developer)
+                                        }
+                                        SettingsCategory::Export => {
+                                            self.show_export(ui, &mut settings.export)
+                                        }
+                                        SettingsCategory::Display => {
+                                            self.show_display(ui, &mut settings.display)
+                                        }
+                                        SettingsCategory::Shortcuts => {
+                                            self.show_shortcuts(ui, settings)
+                                        }
                                     }
-                                    SettingsCategory::Validation => {
-                                        self.show_validation(ui, &mut settings.validation, theme)
-                                    }
-                                    SettingsCategory::Developer => {
-                                        self.show_developer(ui, &mut settings.developer, theme)
-                                    }
-                                    SettingsCategory::Export => {
-                                        self.show_export(ui, &mut settings.export, theme)
-                                    }
-                                    SettingsCategory::Display => {
-                                        self.show_display(ui, &mut settings.display, theme)
-                                    }
-                                    SettingsCategory::Shortcuts => {
-                                        self.show_shortcuts(ui, settings, theme)
-                                    }
-                                }
+                                    ui.add_space(20.0);
+                                });
                             });
                         });
-                    });
-
-                // Bottom button bar
-                ui.with_layout(egui::Layout::bottom_up(egui::Align::RIGHT), |ui| {
-                    ui.add_space(12.0);
-                    ui.horizontal(|ui| {
-                        ui.add_space(16.0);
-
-                        // Reset button on left
-                        if ui.button("Reset to Defaults").clicked() {
-                            *settings = Settings::default();
-                        }
-
-                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                            ui.add_space(16.0);
-
-                            // Primary action button (Apply)
-                            if ui
-                                .add(
-                                    egui::Button::new("Apply")
-                                        .fill(theme.accent)
-                                        .min_size(Vec2::new(80.0, 28.0)),
-                                )
-                                .clicked()
-                            {
-                                result = SettingsResult::Apply;
-                            }
-
-                            ui.add_space(8.0);
-
-                            // Cancel button
-                            if ui
-                                .add(egui::Button::new("Cancel").min_size(Vec2::new(80.0, 28.0)))
-                                .clicked()
-                            {
-                                result = SettingsResult::Cancel;
-                            }
-                        });
-                    });
-                    ui.add_space(8.0);
-                    ui.separator();
                 });
             });
+
+            // Bottom button bar - fixed at bottom
+            ui.add_space(4.0);
+            ui.separator();
+            ui.add_space(8.0);
+
+            ui.horizontal(|ui| {
+                ui.add_space(16.0);
+
+                // Reset button on left
+                if ui.button("Reset to Defaults").clicked() {
+                    *settings = Settings::default();
+                }
+
+                // Spacer to push buttons to the right
+                ui.add_space(ui.available_width() - 200.0);
+
+                // Cancel button
+                if ui
+                    .add(egui::Button::new("Cancel").min_size(Vec2::new(80.0, 28.0)))
+                    .clicked()
+                {
+                    result = SettingsResult::Cancel;
+                }
+
+                ui.add_space(8.0);
+
+                // Apply button (primary action)
+                if ui
+                    .add(
+                        egui::Button::new("Apply")
+                            .fill(ui.visuals().selection.bg_fill)
+                            .min_size(Vec2::new(80.0, 28.0)),
+                    )
+                    .clicked()
+                {
+                    result = SettingsResult::Apply;
+                }
+
+                ui.add_space(16.0);
+            });
+
+            ui.add_space(12.0);
         });
 
         result
     }
 
-    /// Show the sidebar with category navigation.
-    fn show_sidebar(&mut self, ui: &mut egui::Ui, theme: &ThemeColors) {
-        ui.vertical(|ui| {
-            ui.set_min_width(180.0);
-            ui.set_max_width(180.0);
+    /// Show sidebar content (navigation items).
+    fn show_sidebar_content(&mut self, ui: &mut egui::Ui) {
+        ui.add_space(16.0);
 
-            // Sidebar background
-            let rect = ui.available_rect_before_wrap();
-            ui.painter()
-                .rect_filled(rect, CornerRadius::ZERO, theme.bg_secondary);
+        for category in SettingsCategory::all() {
+            let selected = self.category == *category;
 
-            ui.add_space(16.0);
+            let text_color = if selected {
+                ui.visuals().hyperlink_color
+            } else {
+                ui.visuals().text_color()
+            };
 
-            for category in SettingsCategory::all() {
-                let selected = self.category == *category;
+            let bg_fill = if selected {
+                ui.visuals().selection.bg_fill
+            } else {
+                egui::Color32::TRANSPARENT
+            };
 
-                // Create a selectable row
-                let response = ui.allocate_response(
-                    Vec2::new(ui.available_width() - 16.0, 32.0),
-                    egui::Sense::click(),
-                );
+            let button = egui::Button::new(
+                egui::RichText::new(format!("{} {}", category.icon(), category.name()))
+                    .color(text_color),
+            )
+            .fill(bg_fill)
+            .stroke(egui::Stroke::NONE)
+            .min_size(Vec2::new(160.0, 32.0));
 
-                // Draw background for selected/hovered
-                let bg_rect = response.rect.expand2(Vec2::new(8.0, 0.0));
-                if selected {
-                    ui.painter().rect_filled(
-                        bg_rect,
-                        CornerRadius::same(6),
-                        theme.accent.linear_multiply(0.15),
-                    );
-                } else if response.hovered() {
-                    ui.painter().rect_filled(
-                        bg_rect,
-                        CornerRadius::same(6),
-                        Color32::from_white_alpha(10),
-                    );
-                }
-
-                // Draw icon and text
-                let text_color = if selected {
-                    theme.accent
-                } else {
-                    theme.text_primary
-                };
-
-                ui.painter().text(
-                    response.rect.left_center() + Vec2::new(12.0, 0.0),
-                    egui::Align2::LEFT_CENTER,
-                    format!("{} {}", category.icon(), category.name()),
-                    egui::FontId::proportional(14.0),
-                    text_color,
-                );
-
-                if response.clicked() {
+            ui.add_space(2.0);
+            ui.horizontal(|ui| {
+                ui.add_space(8.0);
+                if ui.add(button).clicked() {
                     self.category = *category;
                 }
-            }
-        });
+            });
+        }
     }
 
     /// Show a section header.
-    fn section_header(&self, ui: &mut egui::Ui, title: &str, theme: &ThemeColors) {
-        ui.label(
-            egui::RichText::new(title)
-                .size(20.0)
-                .strong()
-                .color(theme.text_primary),
-        );
+    fn section_header(&self, ui: &mut egui::Ui, title: &str) {
+        ui.label(egui::RichText::new(title).size(20.0).strong());
         ui.add_space(16.0);
     }
 
@@ -336,19 +308,14 @@ impl SettingsWindow {
         ui: &mut egui::Ui,
         label: &str,
         description: Option<&str>,
-        theme: &ThemeColors,
         add_widget: impl FnOnce(&mut egui::Ui) -> R,
     ) {
         ui.horizontal(|ui| {
             ui.vertical(|ui| {
                 ui.set_min_width(200.0);
-                ui.label(egui::RichText::new(label).color(theme.text_primary));
+                ui.label(label);
                 if let Some(desc) = description {
-                    ui.label(
-                        egui::RichText::new(desc)
-                            .small()
-                            .color(theme.text_muted),
-                    );
+                    ui.label(egui::RichText::new(desc).small().weak());
                 }
             });
 
@@ -364,22 +331,16 @@ impl SettingsWindow {
         &self,
         ui: &mut egui::Ui,
         title: Option<&str>,
-        theme: &ThemeColors,
         add_content: impl FnOnce(&mut egui::Ui),
     ) {
         if let Some(t) = title {
-            ui.label(
-                egui::RichText::new(t)
-                    .size(13.0)
-                    .strong()
-                    .color(theme.text_muted),
-            );
+            ui.label(egui::RichText::new(t).size(13.0).strong().weak());
             ui.add_space(8.0);
         }
 
-        egui::Frame::none()
-            .fill(theme.bg_secondary)
-            .rounding(CornerRadius::same(8))
+        egui::Frame::default()
+            .fill(ui.visuals().faint_bg_color)
+            .corner_radius(CornerRadius::same(8))
             .inner_margin(16.0)
             .show(ui, |ui| {
                 add_content(ui);
@@ -389,21 +350,20 @@ impl SettingsWindow {
     }
 
     /// Show general settings.
-    fn show_general(&self, ui: &mut egui::Ui, general: &mut GeneralSettings, theme: &ThemeColors) {
-        self.section_header(ui, "General", theme);
+    fn show_general(&self, ui: &mut egui::Ui, general: &mut GeneralSettings) {
+        self.section_header(ui, "General");
 
-        self.setting_group(ui, Some("APPEARANCE"), theme, |ui| {
-            self.setting_row(ui, "Dark Mode", Some("Use dark color scheme"), theme, |ui| {
-                ui.add(toggle(&mut general.dark_mode));
+        self.setting_group(ui, Some("APPEARANCE"), |ui| {
+            self.setting_row(ui, "Dark Mode", Some("Use dark color scheme"), |ui| {
+                ui.checkbox(&mut general.dark_mode, "");
             });
         });
 
-        self.setting_group(ui, Some("DATA IMPORT"), theme, |ui| {
+        self.setting_group(ui, Some("DATA IMPORT"), |ui| {
             self.setting_row(
                 ui,
                 "Controlled Terminology",
                 Some("CDISC CT version for validation"),
-                theme,
                 |ui| {
                     egui::ComboBox::from_id_salt("ct_version")
                         .width(180.0)
@@ -427,7 +387,6 @@ impl SettingsWindow {
                 ui,
                 "CSV Header Rows",
                 Some("Number of header rows to skip"),
-                theme,
                 |ui| {
                     ui.add(
                         egui::DragValue::new(&mut general.header_rows)
@@ -440,15 +399,10 @@ impl SettingsWindow {
     }
 
     /// Show validation settings.
-    fn show_validation(
-        &self,
-        ui: &mut egui::Ui,
-        validation: &mut ValidationSettings,
-        theme: &ThemeColors,
-    ) {
-        self.section_header(ui, "Validation", theme);
+    fn show_validation(&self, ui: &mut egui::Ui, validation: &mut ValidationSettings) {
+        self.section_header(ui, "Validation");
 
-        self.setting_group(ui, Some("VALIDATION MODE"), theme, |ui| {
+        self.setting_group(ui, Some("VALIDATION MODE"), |ui| {
             for mode in ValidationModeSetting::all() {
                 let selected = validation.mode == *mode;
                 if ui
@@ -457,21 +411,16 @@ impl SettingsWindow {
                 {
                     validation.mode = *mode;
                 }
-                ui.label(
-                    egui::RichText::new(mode.description())
-                        .small()
-                        .color(theme.text_muted),
-                );
+                ui.label(egui::RichText::new(mode.description()).small().weak());
                 ui.add_space(8.0);
             }
         });
 
-        self.setting_group(ui, Some("XPT FORMAT"), theme, |ui| {
+        self.setting_group(ui, Some("XPT FORMAT"), |ui| {
             self.setting_row(
                 ui,
                 "XPT Version",
                 Some("Transport file format version"),
-                theme,
                 |ui| {
                     egui::ComboBox::from_id_salt("xpt_version")
                         .width(200.0)
@@ -481,7 +430,11 @@ impl SettingsWindow {
                                 ui.selectable_value(
                                     &mut validation.xpt_version,
                                     *version,
-                                    format!("{} - {}", version.display_name(), version.description()),
+                                    format!(
+                                        "{} - {}",
+                                        version.display_name(),
+                                        version.description()
+                                    ),
                                 );
                             }
                         });
@@ -491,7 +444,7 @@ impl SettingsWindow {
 
         // Custom rules (only shown when Custom mode is selected)
         if validation.mode == ValidationModeSetting::Custom {
-            self.setting_group(ui, Some("ENABLED RULES"), theme, |ui| {
+            self.setting_group(ui, Some("ENABLED RULES"), |ui| {
                 for rule in XptValidationRule::all() {
                     let mut enabled = validation.custom_enabled_rules.contains(rule);
                     let label = if rule.is_fda_only() {
@@ -509,11 +462,7 @@ impl SettingsWindow {
                             }
                         }
                     });
-                    ui.label(
-                        egui::RichText::new(rule.description())
-                            .small()
-                            .color(theme.text_muted),
-                    );
+                    ui.label(egui::RichText::new(rule.description()).small().weak());
                     ui.add_space(4.0);
                 }
             });
@@ -521,37 +470,28 @@ impl SettingsWindow {
     }
 
     /// Show developer settings.
-    fn show_developer(
-        &self,
-        ui: &mut egui::Ui,
-        developer: &mut DeveloperSettings,
-        theme: &ThemeColors,
-    ) {
-        self.section_header(ui, "Developer", theme);
+    fn show_developer(&self, ui: &mut egui::Ui, developer: &mut DeveloperSettings) {
+        self.section_header(ui, "Developer");
 
-        self.setting_group(ui, None, theme, |ui| {
-            ui.label(
-                egui::RichText::new(
-                    "Developer mode allows you to bypass validation checks for testing.",
-                )
-                .color(theme.text_muted),
-            );
+        self.setting_group(ui, None, |ui| {
+            ui.label(egui::RichText::new(
+                "Developer mode allows you to bypass validation checks for testing.",
+            ).weak());
             ui.add_space(12.0);
 
-            self.setting_row(ui, "Developer Mode", None, theme, |ui| {
-                ui.add(toggle(&mut developer.enabled));
+            self.setting_row(ui, "Developer Mode", None, |ui| {
+                ui.checkbox(&mut developer.enabled, "");
             });
         });
 
         if developer.enabled {
-            self.setting_group(ui, Some("OPTIONS"), theme, |ui| {
+            self.setting_group(ui, Some("OPTIONS"), |ui| {
                 self.setting_row(
                     ui,
                     "Export with Errors",
                     Some("Allow export even with validation errors"),
-                    theme,
                     |ui| {
-                        ui.add(toggle(&mut developer.allow_export_with_errors));
+                        ui.checkbox(&mut developer.allow_export_with_errors, "");
                     },
                 );
 
@@ -562,18 +502,17 @@ impl SettingsWindow {
                     ui,
                     "Debug Info",
                     Some("Show debug information in UI"),
-                    theme,
                     |ui| {
-                        ui.add(toggle(&mut developer.show_debug_info));
+                        ui.checkbox(&mut developer.show_debug_info, "");
                     },
                 );
             });
 
-            self.setting_group(ui, Some("BYPASS RULES"), theme, |ui| {
+            self.setting_group(ui, Some("BYPASS RULES"), |ui| {
                 ui.label(
                     egui::RichText::new("Selected rules will be skipped during validation.")
                         .small()
-                        .color(theme.text_muted),
+                        .weak(),
                 );
                 ui.add_space(8.0);
 
@@ -592,10 +531,10 @@ impl SettingsWindow {
     }
 
     /// Show export settings.
-    fn show_export(&self, ui: &mut egui::Ui, export: &mut ExportSettings, theme: &ThemeColors) {
-        self.section_header(ui, "Export", theme);
+    fn show_export(&self, ui: &mut egui::Ui, export: &mut ExportSettings) {
+        self.section_header(ui, "Export");
 
-        self.setting_group(ui, Some("OUTPUT"), theme, |ui| {
+        self.setting_group(ui, Some("OUTPUT"), |ui| {
             ui.horizontal(|ui| {
                 ui.label("Default Directory:");
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -611,21 +550,13 @@ impl SettingsWindow {
             });
 
             if let Some(ref dir) = export.default_output_dir {
-                ui.label(
-                    egui::RichText::new(dir.display().to_string())
-                        .small()
-                        .color(theme.text_muted),
-                );
+                ui.label(egui::RichText::new(dir.display().to_string()).small().weak());
             } else {
-                ui.label(
-                    egui::RichText::new("Uses study folder by default")
-                        .small()
-                        .color(theme.text_muted),
-                );
+                ui.label(egui::RichText::new("Uses study folder by default").small().weak());
             }
         });
 
-        self.setting_group(ui, Some("DATA FORMAT"), theme, |ui| {
+        self.setting_group(ui, Some("DATA FORMAT"), |ui| {
             for format in ExportFormat::all() {
                 let selected = export.default_format == *format;
                 if ui
@@ -634,11 +565,7 @@ impl SettingsWindow {
                 {
                     export.default_format = *format;
                 }
-                ui.label(
-                    egui::RichText::new(format.description())
-                        .small()
-                        .color(theme.text_muted),
-                );
+                ui.label(egui::RichText::new(format.description()).small().weak());
                 ui.add_space(4.0);
             }
 
@@ -652,21 +579,20 @@ impl SettingsWindow {
             ui.label(
                 egui::RichText::new("Metadata documentation generated with exports")
                     .small()
-                    .color(theme.text_muted),
+                    .weak(),
             );
         });
 
-        self.setting_group(ui, Some("FILE OPTIONS"), theme, |ui| {
-            self.setting_row(ui, "Filename Template", None, theme, |ui| {
+        self.setting_group(ui, Some("FILE OPTIONS"), |ui| {
+            self.setting_row(ui, "Filename Template", None, |ui| {
                 ui.add(
-                    egui::TextEdit::singleline(&mut export.filename_template)
-                        .desired_width(150.0),
+                    egui::TextEdit::singleline(&mut export.filename_template).desired_width(150.0),
                 );
             });
             ui.label(
                 egui::RichText::new("Use {domain} for domain code, {studyid} for study ID")
                     .small()
-                    .color(theme.text_muted),
+                    .weak(),
             );
 
             ui.add_space(8.0);
@@ -677,29 +603,22 @@ impl SettingsWindow {
                 ui,
                 "Overwrite Files",
                 Some("Skip confirmation when overwriting"),
-                theme,
                 |ui| {
-                    ui.add(toggle(&mut export.overwrite_without_prompt));
+                    ui.checkbox(&mut export.overwrite_without_prompt, "");
                 },
             );
         });
     }
 
     /// Show display settings.
-    fn show_display(
-        &self,
-        ui: &mut egui::Ui,
-        display: &mut DisplaySettings,
-        theme: &ThemeColors,
-    ) {
-        self.section_header(ui, "Display", theme);
+    fn show_display(&self, ui: &mut egui::Ui, display: &mut DisplaySettings) {
+        self.section_header(ui, "Display");
 
-        self.setting_group(ui, Some("DATA PREVIEW"), theme, |ui| {
+        self.setting_group(ui, Some("DATA PREVIEW"), |ui| {
             self.setting_row(
                 ui,
                 "Row Limit",
                 Some("Maximum rows shown in preview"),
-                theme,
                 |ui| {
                     egui::ComboBox::from_id_salt("preview_rows")
                         .width(120.0)
@@ -723,7 +642,6 @@ impl SettingsWindow {
                 ui,
                 "Decimal Precision",
                 Some("Digits after decimal point"),
-                theme,
                 |ui| {
                     ui.add(
                         egui::DragValue::new(&mut display.decimal_precision)
@@ -740,7 +658,6 @@ impl SettingsWindow {
                 ui,
                 "Truncate Text",
                 Some("Maximum characters before truncation"),
-                theme,
                 |ui| {
                     ui.add(
                         egui::DragValue::new(&mut display.truncate_long_text)
@@ -751,28 +668,26 @@ impl SettingsWindow {
             );
         });
 
-        self.setting_group(ui, Some("TABLE OPTIONS"), theme, |ui| {
+        self.setting_group(ui, Some("TABLE OPTIONS"), |ui| {
             self.setting_row(
                 ui,
                 "Row Numbers",
                 Some("Show row numbers in data tables"),
-                theme,
                 |ui| {
-                    ui.add(toggle(&mut display.show_row_numbers));
+                    ui.checkbox(&mut display.show_row_numbers, "");
                 },
             );
         });
     }
 
     /// Show shortcuts settings.
-    fn show_shortcuts(&self, ui: &mut egui::Ui, settings: &mut Settings, theme: &ThemeColors) {
-        self.section_header(ui, "Keyboard Shortcuts", theme);
+    fn show_shortcuts(&self, ui: &mut egui::Ui, settings: &mut Settings) {
+        self.section_header(ui, "Keyboard Shortcuts");
 
-        self.setting_group(ui, None, theme, |ui| {
-            ui.label(
-                egui::RichText::new("Current keyboard shortcuts (read-only in this version)")
-                    .color(theme.text_muted),
-            );
+        self.setting_group(ui, None, |ui| {
+            ui.label(egui::RichText::new(
+                "Current keyboard shortcuts (read-only in this version)",
+            ).weak());
             ui.add_space(12.0);
 
             egui::Grid::new("shortcuts_grid")
@@ -780,60 +695,15 @@ impl SettingsWindow {
                 .spacing([40.0, 12.0])
                 .show(ui, |ui| {
                     for action in ShortcutAction::all() {
-                        ui.label(
-                            egui::RichText::new(action.display_name()).color(theme.text_primary),
-                        );
+                        ui.label(action.display_name());
                         if let Some(binding) = settings.shortcuts.bindings.get(action) {
-                            ui.label(
-                                egui::RichText::new(binding.display())
-                                    .monospace()
-                                    .color(theme.text_muted),
-                            );
+                            ui.label(egui::RichText::new(binding.display()).monospace().weak());
                         } else {
-                            ui.label(egui::RichText::new("-").color(theme.text_muted));
+                            ui.label(egui::RichText::new("-").weak());
                         }
                         ui.end_row();
                     }
                 });
         });
-    }
-}
-
-/// A toggle switch widget (iOS-style).
-fn toggle(value: &mut bool) -> impl egui::Widget + '_ {
-    move |ui: &mut egui::Ui| -> egui::Response {
-        let desired_size = Vec2::new(44.0, 24.0);
-        let (rect, response) = ui.allocate_exact_size(desired_size, egui::Sense::click());
-
-        if response.clicked() {
-            *value = !*value;
-        }
-
-        if ui.is_rect_visible(rect) {
-            let how_on = ui.ctx().animate_bool_responsive(response.id, *value);
-
-            let bg_color = if *value {
-                Color32::from_rgb(52, 199, 89) // iOS green
-            } else {
-                Color32::from_gray(180)
-            };
-
-            // Background pill
-            ui.painter()
-                .rect_filled(rect, CornerRadius::same(12), bg_color);
-
-            // Knob
-            let knob_radius = 10.0;
-            let knob_x = egui::lerp(
-                (rect.left() + knob_radius + 2.0)..=(rect.right() - knob_radius - 2.0),
-                how_on,
-            );
-            let knob_center = egui::pos2(knob_x, rect.center().y);
-
-            ui.painter()
-                .circle_filled(knob_center, knob_radius, Color32::WHITE);
-        }
-
-        response
     }
 }

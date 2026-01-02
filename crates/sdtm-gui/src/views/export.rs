@@ -3,7 +3,7 @@
 //! Configure and execute export to various formats.
 
 use crate::state::{AppState, DomainStatus};
-use crate::theme::{colors, spacing};
+use crate::theme::spacing;
 use egui::{RichText, Ui};
 
 /// Export view
@@ -12,8 +12,6 @@ pub struct ExportView;
 impl ExportView {
     /// Render the export screen
     pub fn show(ui: &mut Ui, state: &mut AppState) {
-        let theme = colors(state.settings.general.dark_mode);
-
         // Top bar
         ui.horizontal(|ui| {
             if ui
@@ -54,7 +52,7 @@ impl ExportView {
                     RichText::new(
                         "No domains ready for export. Complete mapping and validation first.",
                     )
-                    .color(theme.text_muted),
+                    .weak(),
                 );
             } else {
                 for code in &ready_domains {
@@ -94,8 +92,7 @@ impl ExportView {
 
             ui.horizontal(|ui| {
                 ui.label(
-                    RichText::new(study.study_folder.join("output").display().to_string())
-                        .color(theme.text_secondary),
+                    RichText::new(study.study_folder.join("output").display().to_string()).weak(),
                 );
                 if ui
                     .button(format!("{} Change...", egui_phosphor::regular::FOLDER_OPEN))
@@ -128,8 +125,7 @@ impl ExportView {
             });
         } else {
             ui.label(
-                RichText::new("No study loaded. Go back and open a study folder first.")
-                    .color(theme.text_muted),
+                RichText::new("No study loaded. Go back and open a study folder first.").weak(),
             );
         }
     }
