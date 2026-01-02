@@ -1,11 +1,17 @@
-//! Application-level state
+//! Application-level state.
+//!
+//! This module contains `AppState` which is the root of all state.
+//! Domain access is DM-enforced through the `domain()` method.
 
-use super::StudyState;
-use crate::settings::{ExportFormat, Settings, ui::SettingsWindow};
-use std::collections::HashSet;
-use std::path::PathBuf;
+use sdtm_model::TerminologyRegistry;
 
-/// Top-level application state
+use super::{DomainState, StudyState, UiState};
+use crate::settings::Settings;
+
+/// Top-level application state.
+///
+/// This is the root of all state in the application. Use the provided
+/// accessor methods for domain access - they enforce DM dependency.
 pub struct AppState {
     /// Current view/screen
     pub view: View,
@@ -13,116 +19,10 @@ pub struct AppState {
     pub study: Option<StudyState>,
     /// Application settings (persisted)
     pub settings: Settings,
-    /// Settings window visibility
-    pub settings_open: bool,
-    /// Pending settings (for cancel functionality)
-    pub settings_pending: Option<Settings>,
-    /// Settings window UI state
-    pub settings_window: SettingsWindow,
-    /// Export state
-    pub export_state: ExportState,
-}
-
-/// Export operation state
-#[derive(Default, Clone)]
-pub struct ExportState {
-    /// Domains selected for export (domain codes)
-    pub selected_domains: HashSet<String>,
-    /// Override output directory (if different from default)
-    pub output_dir_override: Option<PathBuf>,
-    /// Override export format (if different from settings default)
-    pub format_override: Option<ExportFormat>,
-    /// Current export progress (None if not exporting)
-    pub progress: Option<ExportProgress>,
-}
-
-/// Export progress tracking
-#[derive(Clone)]
-pub struct ExportProgress {
-    /// Current step description
-    pub current_step: String,
-    /// Current domain being processed
-    pub current_domain: Option<String>,
-    /// Total domains to process
-    pub total_domains: usize,
-    /// Completed domains count
-    pub completed_domains: usize,
-    /// Individual step within current domain
-    pub domain_step: ExportDomainStep,
-    /// Any error that occurred
-    pub error: Option<String>,
-    /// Export completed successfully
-    pub completed: bool,
-    /// Output files created
-    pub output_files: Vec<PathBuf>,
-}
-
-/// Steps within a domain export
-#[derive(Clone, Copy, PartialEq, Eq, Default)]
-pub enum ExportDomainStep {
-    #[default]
-    Pending,
-    ApplyingMappings,
-    NormalizingCT,
-    GeneratingVariables,
-    ValidatingOutput,
-    WritingXpt,
-    WritingDefineXml,
-    #[allow(dead_code)] // Used when export flow is fully implemented
-    Complete,
-}
-
-impl ExportDomainStep {
-    /// Get display label for this step
-    pub fn label(&self) -> &'static str {
-        match self {
-            Self::Pending => "Pending",
-            Self::ApplyingMappings => "Applying mappings",
-            Self::NormalizingCT => "Normalizing terminology",
-            Self::GeneratingVariables => "Generating derived variables",
-            Self::ValidatingOutput => "Validating output",
-            Self::WritingXpt => "Writing XPT file",
-            Self::WritingDefineXml => "Generating Define-XML",
-            Self::Complete => "Complete",
-        }
-    }
-}
-
-impl ExportProgress {
-    /// Create a new export progress tracker
-    pub fn new(total_domains: usize) -> Self {
-        Self {
-            current_step: "Preparing export...".to_string(),
-            current_domain: None,
-            total_domains,
-            completed_domains: 0,
-            domain_step: ExportDomainStep::Pending,
-            error: None,
-            completed: false,
-            output_files: Vec::new(),
-        }
-    }
-
-    /// Get overall progress as a fraction (0.0 to 1.0)
-    pub fn fraction(&self) -> f32 {
-        if self.total_domains == 0 {
-            return 1.0;
-        }
-        let domain_fraction = self.completed_domains as f32 / self.total_domains as f32;
-        let step_fraction = match self.domain_step {
-            ExportDomainStep::Pending => 0.0,
-            ExportDomainStep::ApplyingMappings => 0.15,
-            ExportDomainStep::NormalizingCT => 0.30,
-            ExportDomainStep::GeneratingVariables => 0.45,
-            ExportDomainStep::ValidatingOutput => 0.60,
-            ExportDomainStep::WritingXpt => 0.80,
-            ExportDomainStep::WritingDefineXml => 0.95,
-            ExportDomainStep::Complete => 1.0,
-        };
-        // Each domain contributes equally to overall progress
-        let per_domain = 1.0 / self.total_domains as f32;
-        domain_fraction + (step_fraction * per_domain)
-    }
+    /// All UI state (separated from domain data)
+    pub ui: UiState,
+    /// Cached CT registry (loaded lazily)
+    ct_registry: Option<TerminologyRegistry>,
 }
 
 impl Default for AppState {
@@ -131,30 +31,233 @@ impl Default for AppState {
             view: View::default(),
             study: None,
             settings: Settings::default(),
-            settings_open: false,
-            settings_pending: None,
-            settings_window: SettingsWindow::default(),
-            export_state: ExportState::default(),
+            ui: UiState::default(),
+            ct_registry: None,
         }
     }
 }
 
 impl AppState {
-    /// Create new app state with loaded settings
+    /// Create new app state with loaded settings.
     pub fn new(settings: Settings) -> Self {
         Self {
             view: View::default(),
             study: None,
             settings,
-            settings_open: false,
-            settings_pending: None,
-            settings_window: SettingsWindow::default(),
-            export_state: ExportState::default(),
+            ui: UiState::default(),
+            ct_registry: None,
         }
+    }
+    
+    /// Get the cached CT registry.
+    /// 
+    /// CT is loaded automatically when a study is loaded via `set_study()`.
+    pub fn ct_registry(&self) -> Option<&TerminologyRegistry> {
+        self.ct_registry.as_ref()
+    }
+
+    // ========================================================================
+    // Domain Access (DM-Enforced)
+    // ========================================================================
+
+    /// Get domain state with DM dependency check.
+    ///
+    /// Returns `None` if:
+    /// - No study is loaded
+    /// - Domain doesn't exist
+    /// - Domain is locked (DM not ready)
+    ///
+    /// Use `study.get_domain()` to bypass DM check (not recommended).
+    pub fn domain(&self, code: &str) -> Option<&DomainState> {
+        let study = self.study.as_ref()?;
+
+        // DM is always accessible
+        if code.eq_ignore_ascii_case("DM") {
+            return study.get_domain(code);
+        }
+
+        // Other domains require DM preview
+        if study.dm_preview_version.is_none() && study.has_dm_domain() {
+            return None;
+        }
+
+        study.get_domain(code)
+    }
+
+    /// Get mutable domain state with DM dependency check.
+    pub fn domain_mut(&mut self, code: &str) -> Option<&mut DomainState> {
+        // Check DM readiness first (immutable borrow)
+        let is_accessible = {
+            let study = self.study.as_ref()?;
+            if code.eq_ignore_ascii_case("DM") {
+                true
+            } else if study.has_dm_domain() {
+                study.dm_preview_version.is_some()
+            } else {
+                true
+            }
+        };
+
+        if !is_accessible {
+            return None;
+        }
+
+        self.study.as_mut()?.get_domain_mut(code)
+    }
+
+    /// Check if a domain is accessible (for UI to show lock icons).
+    pub fn is_domain_accessible(&self, code: &str) -> bool {
+        let Some(study) = &self.study else {
+            return false;
+        };
+
+        // DM is always accessible if it exists
+        if code.eq_ignore_ascii_case("DM") {
+            return study.has_domain(code);
+        }
+
+        // If no DM domain exists, all domains are accessible
+        if !study.has_dm_domain() {
+            return study.has_domain(code);
+        }
+
+        // Other domains require DM to have preview
+        study.dm_preview_version.is_some() && study.has_domain(code)
+    }
+
+    /// Get the reason a domain is locked, if any.
+    pub fn domain_lock_reason(&self, code: &str) -> Option<&'static str> {
+        let Some(study) = &self.study else {
+            return None;
+        };
+
+        // DM is never locked
+        if code.eq_ignore_ascii_case("DM") {
+            return None;
+        }
+
+        // If no DM domain exists, nothing is locked
+        if !study.has_dm_domain() {
+            return None;
+        }
+
+        // Lock reason if DM is not ready
+        if study.dm_preview_version.is_none() {
+            return Some("Complete DM domain first");
+        }
+
+        None
+    }
+
+    // ========================================================================
+    // Navigation
+    // ========================================================================
+
+    /// Navigate to home screen.
+    pub fn go_home(&mut self) {
+        self.view = View::Home;
+    }
+
+    /// Navigate to domain editor.
+    ///
+    /// Returns `true` if navigation succeeded, `false` if domain is locked.
+    pub fn open_domain(&mut self, domain: String) -> bool {
+        // Check if domain is accessible
+        if !self.is_domain_accessible(&domain) {
+            return false;
+        }
+
+        self.view = View::DomainEditor {
+            domain,
+            tab: EditorTab::Mapping,
+        };
+        true
+    }
+
+    /// Navigate to export screen.
+    pub fn go_export(&mut self) {
+        self.view = View::Export;
+    }
+
+    /// Switch tab in domain editor.
+    pub fn switch_tab(&mut self, tab: EditorTab) {
+        if let View::DomainEditor {
+            tab: current_tab, ..
+        } = &mut self.view
+        {
+            *current_tab = tab;
+        }
+    }
+
+    // ========================================================================
+    // Convenience Accessors
+    // ========================================================================
+
+    /// Get study reference.
+    pub fn study(&self) -> Option<&StudyState> {
+        self.study.as_ref()
+    }
+
+    /// Get mutable study reference.
+    pub fn study_mut(&mut self) -> Option<&mut StudyState> {
+        self.study.as_mut()
+    }
+
+    // ========================================================================
+    // Settings Management
+    // ========================================================================
+
+    /// Open the settings window.
+    pub fn open_settings(&mut self) {
+        self.ui.settings.open(&self.settings);
+    }
+
+    /// Close the settings window.
+    ///
+    /// If `apply` is true, the pending settings are applied.
+    /// If `apply` is false, the pending settings are discarded.
+    pub fn close_settings(&mut self, apply: bool) {
+        if let Some(new_settings) = self.ui.settings.close(apply) {
+            self.settings = new_settings;
+        }
+    }
+
+    /// Check if settings window is open.
+    pub fn is_settings_open(&self) -> bool {
+        self.ui.settings.is_open()
+    }
+
+    // ========================================================================
+    // Study Management
+    // ========================================================================
+
+    /// Set a new study, resetting UI state.
+    pub fn set_study(&mut self, study: StudyState) {
+        self.study = Some(study);
+        self.ui.clear_domain_editors();
+        self.ui.export.reset();
+        self.view = View::Home;
+        // Load CT registry for the study
+        if self.ct_registry.is_none() {
+            self.ct_registry = sdtm_standards::load_default_ct_registry().ok();
+        }
+    }
+
+    /// Clear the current study.
+    #[allow(dead_code)]
+    pub fn clear_study(&mut self) {
+        self.study = None;
+        self.ui.clear_domain_editors();
+        self.ui.export.reset();
+        self.view = View::Home;
     }
 }
 
-/// Current view in the application
+// ============================================================================
+// View Enum
+// ============================================================================
+
+/// Current view in the application.
 #[derive(Default, Clone, PartialEq)]
 pub enum View {
     /// Home screen - study selection
@@ -171,8 +274,12 @@ pub enum View {
     Export,
 }
 
-/// Tabs in the domain editor
-#[derive(Default, Clone, Copy, PartialEq)]
+// ============================================================================
+// Editor Tab Enum
+// ============================================================================
+
+/// Tabs in the domain editor.
+#[derive(Default, Clone, Copy, PartialEq, Eq)]
 pub enum EditorTab {
     #[default]
     Mapping,
@@ -183,12 +290,12 @@ pub enum EditorTab {
 }
 
 impl EditorTab {
-    /// Get display name for the tab (with icon)
+    /// Get display name for the tab (with icon).
     pub fn label(&self) -> String {
         format!("{} {}", self.icon(), self.name())
     }
 
-    /// Get just the tab name without icon
+    /// Get just the tab name without icon.
     pub fn name(&self) -> &'static str {
         match self {
             Self::Mapping => "Mapping",
@@ -199,7 +306,7 @@ impl EditorTab {
         }
     }
 
-    /// Get tab icon (phosphor icon)
+    /// Get tab icon (phosphor icon).
     pub fn icon(&self) -> &'static str {
         match self {
             Self::Mapping => egui_phosphor::regular::ARROWS_LEFT_RIGHT,
@@ -210,7 +317,7 @@ impl EditorTab {
         }
     }
 
-    /// Get all tabs in order
+    /// Get all tabs in order.
     pub fn all() -> &'static [EditorTab] {
         &[
             Self::Mapping,
@@ -219,55 +326,5 @@ impl EditorTab {
             Self::Preview,
             Self::Supp,
         ]
-    }
-}
-
-impl AppState {
-    /// Navigate to home screen
-    pub fn go_home(&mut self) {
-        self.view = View::Home;
-    }
-
-    /// Navigate to domain editor
-    pub fn open_domain(&mut self, domain: String) {
-        self.view = View::DomainEditor {
-            domain,
-            tab: EditorTab::Mapping,
-        };
-    }
-
-    /// Navigate to export screen
-    pub fn go_export(&mut self) {
-        self.view = View::Export;
-    }
-
-    /// Switch tab in domain editor
-    pub fn switch_tab(&mut self, tab: EditorTab) {
-        if let View::DomainEditor {
-            tab: current_tab, ..
-        } = &mut self.view
-        {
-            *current_tab = tab;
-        }
-    }
-
-    /// Open the settings window
-    pub fn open_settings(&mut self) {
-        self.settings_pending = Some(self.settings.clone());
-        self.settings_open = true;
-    }
-
-    /// Close the settings window
-    ///
-    /// If `apply` is true, the pending settings are applied and saved.
-    /// If `apply` is false, the pending settings are discarded.
-    pub fn close_settings(&mut self, apply: bool) {
-        if apply {
-            if let Some(pending) = self.settings_pending.take() {
-                self.settings = pending;
-            }
-        }
-        self.settings_pending = None;
-        self.settings_open = false;
     }
 }

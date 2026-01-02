@@ -57,7 +57,10 @@ pub fn any_to_string_non_empty(value: AnyValue<'_>) -> Option<String> {
     if s.trim().is_empty() { None } else { Some(s) }
 }
 
-/// Formats a floating-point number as a string without trailing zeros.
+/// Formats a floating-point number as a string without trailing zeros after decimal.
+///
+/// Only trims trailing zeros if the number contains a decimal point.
+/// Integer-valued floats like 40.0 are formatted as "40", not "4".
 ///
 /// # Examples
 ///
@@ -68,14 +71,22 @@ pub fn any_to_string_non_empty(value: AnyValue<'_>) -> Option<String> {
 /// assert_eq!(format_numeric(1.5), "1.5");
 /// assert_eq!(format_numeric(1.50), "1.5");
 /// assert_eq!(format_numeric(0.0), "0");
+/// assert_eq!(format_numeric(40.0), "40");
+/// assert_eq!(format_numeric(100.0), "100");
 /// ```
 pub fn format_numeric(v: f64) -> String {
     let s = format!("{v}");
-    let trimmed = s.trim_end_matches('0').trim_end_matches('.');
-    if trimmed.is_empty() {
-        "0".to_string()
+    // Only trim trailing zeros if there's a decimal point
+    if s.contains('.') {
+        let trimmed = s.trim_end_matches('0').trim_end_matches('.');
+        if trimmed.is_empty() {
+            "0".to_string()
+        } else {
+            trimmed.to_string()
+        }
     } else {
-        trimmed.to_string()
+        // No decimal point - return as-is (integer representation)
+        s
     }
 }
 
@@ -192,6 +203,12 @@ mod tests {
         assert_eq!(format_numeric(1.5), "1.5");
         assert_eq!(format_numeric(1.50), "1.5");
         assert_eq!(format_numeric(0.0), "0");
+        // Ensure trailing zeros in integer part are NOT trimmed
+        assert_eq!(format_numeric(40.0), "40");
+        assert_eq!(format_numeric(100.0), "100");
+        assert_eq!(format_numeric(1000.0), "1000");
+        assert_eq!(format_numeric(10.5), "10.5");
+        assert_eq!(format_numeric(40.50), "40.5");
     }
 
     #[test]

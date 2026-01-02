@@ -1,555 +1,507 @@
-//! Transform tab - Displays SDTM transformations derived from mappings
+//! Transform tab
+//!
+//! Shows source data being transformed to SDTM-compliant data.
+//! Uses a 2-column layout: transformation list on left, details on right.
+//! Automatically ensures preview is up-to-date to show transformed values.
 
-use crate::services::{MappingService, MappingState};
-use crate::state::{
-    AppState, TransformRule, TransformRuleDisplay, TransformState, TransformType,
-    TransformTypeDisplay, build_pipeline_from_domain,
-};
+use crate::services::ensure_preview;
+use crate::state::AppState;
 use crate::theme::spacing;
-use egui::{RichText, Ui};
+use egui::{Color32, RichText, Ui};
+use polars::prelude::*;
+use sdtm_common::any_to_string;
 
-use super::ensure_mapping_initialized;
-
+/// Render the transform tab
 pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
-    if !ensure_mapping_initialized(ui, state, domain_code) {
-        return;
-    }
-
-    rebuild_transforms_if_needed(state, domain_code);
-
-    let Some(study) = &state.study else { return };
-    let Some(domain) = study.get_domain(domain_code) else {
-        return;
-    };
-    let Some(ts) = &domain.transform_state else {
-        return;
-    };
-    let Some(ms) = &domain.mapping_state else {
-        return;
-    };
-
-    let rules = ts.rules();
-    let selected_idx = ts.selected_idx;
-    let has_subjid = ms.accepted("SUBJID").is_some() || ms.accepted("USUBJID").is_some();
-
-    // Header
-    ui.label(
-        RichText::new(format!(
-            "{} Transformations",
-            egui_phosphor::regular::SHUFFLE
-        ))
-        .strong(),
-    );
-    if !rules.is_empty() {
-        ui.add_space(spacing::XS);
-        ui.label(
-            RichText::new(format!(
-                "{} generated · {} CT",
-                ts.generated_count(),
-                ts.ct_count()
-            ))
-            .weak()
-            .small(),
-        );
-    }
-    ui.add_space(spacing::SM);
-    ui.separator();
-
-    if rules.is_empty() {
-        ui.add_space(spacing::LG);
+    // Check if domain is accessible (DM check)
+    if state.domain(domain_code).is_none() {
         ui.centered_and_justified(|ui| {
-            ui.label(
-                RichText::new(format!(
-                    "{} No transformations",
-                    egui_phosphor::regular::INFO
-                ))
-                .weak(),
-            );
+            ui.label(RichText::new("Domain not accessible").color(ui.visuals().error_fg_color));
         });
         return;
     }
 
-    let mut new_selection: Option<usize> = None;
+    // Ensure preview is up-to-date (this triggers rebuild if stale)
+    if !ensure_preview(state, domain_code) {
+        // Still building
+        ui.centered_and_justified(|ui| {
+            ui.spinner();
+            ui.label("Building transformation preview...");
+        });
+        ui.ctx().request_repaint();
+        return;
+    }
+
+    // Check for preview error
+    let preview_error = state
+        .ui
+        .get_domain_editor(domain_code)
+        .and_then(|ui| ui.preview.error.clone());
+
+    if let Some(error) = preview_error {
+        ui.vertical_centered(|ui| {
+            ui.add_space(spacing::XL);
+            ui.label(
+                RichText::new(format!("{} Transform Error", egui_phosphor::regular::WARNING))
+                    .color(ui.visuals().error_fg_color)
+                    .size(18.0),
+            );
+            ui.add_space(spacing::MD);
+            ui.label(RichText::new(&error).weak());
+        });
+        return;
+    }
+
+    // Master-detail layout using StripBuilder
     let available_height = ui.available_height();
 
     egui_extras::StripBuilder::new(ui)
-        .size(egui_extras::Size::exact(300.0))
-        .size(egui_extras::Size::exact(1.0))
-        .size(egui_extras::Size::remainder())
+        .size(egui_extras::Size::exact(300.0)) // Left panel fixed width
+        .size(egui_extras::Size::exact(1.0))   // Separator
+        .size(egui_extras::Size::remainder())  // Right panel takes rest
         .horizontal(|mut strip| {
+            // Left: Transformation list
             strip.cell(|ui| {
                 egui::ScrollArea::vertical()
                     .max_height(available_height)
                     .show(ui, |ui| {
-                        new_selection = show_list(ui, rules, selected_idx, has_subjid)
+                        show_transform_list(ui, state, domain_code);
                     });
             });
+
+            // Separator
             strip.cell(|ui| {
                 ui.separator();
             });
+
+            // Right: Detail panel
             strip.cell(|ui| {
                 egui::ScrollArea::vertical()
                     .max_height(available_height)
                     .show(ui, |ui| {
-                        let sel = new_selection.or(selected_idx);
-                        show_detail(ui, state, domain_code, rules, sel);
+                        show_transform_detail(ui, state, domain_code);
                     });
             });
         });
-
-    if let Some(idx) = new_selection {
-        if let Some(study) = &mut state.study {
-            if let Some(domain) = study.get_domain_mut(domain_code) {
-                if let Some(ts) = &mut domain.transform_state {
-                    ts.selected_idx = Some(idx);
-                }
-            }
-        }
-    }
 }
 
-fn rebuild_transforms_if_needed(state: &mut AppState, domain_code: &str) {
-    // Get the full pipeline and mapping state to filter
-    let pipeline_and_excluded = state
-        .study
-        .as_ref()
-        .and_then(|s| s.get_domain(domain_code))
-        .and_then(|d| d.mapping_state.as_ref())
-        .map(|ms| {
-            let pipeline = build_pipeline_from_domain(ms.domain());
-            // Collect variables that are omitted or not collected
-            let excluded: std::collections::BTreeSet<String> = ms
-                .all_omitted()
-                .iter()
-                .cloned()
-                .chain(ms.all_not_collected().keys().cloned())
-                .collect();
-            (pipeline, excluded)
-        });
+/// Data for a single transformation row
+struct TransformRow {
+    target_variable: String,
+    source_column: Option<String>,
+    category: String,
+}
 
-    if let Some(study) = &mut state.study {
-        if let Some(domain) = study.get_domain_mut(domain_code) {
-            let selected = domain
-                .transform_state
-                .as_ref()
-                .and_then(|ts| ts.selected_idx);
+/// Show the transformation list (left panel)
+fn show_transform_list(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
+    // Get selected index from UI state
+    let selected_idx = state
+        .ui
+        .get_domain_editor(domain_code)
+        .and_then(|ui| ui.transform.selected_idx);
 
-            // Filter the pipeline to exclude omitted/not collected variables
-            let filtered_pipeline = pipeline_and_excluded.map(|(pipeline, excluded)| {
-                let filtered_rules: Vec<_> = pipeline
-                    .rules
-                    .into_iter()
-                    .filter(|rule| !excluded.contains(&rule.target_variable))
-                    .collect();
-                sdtm_transform::DomainPipeline {
-                    domain_code: pipeline.domain_code,
-                    study_id: pipeline.study_id,
-                    rules: filtered_rules,
+    // Collect transformation info from mappings (only accepted + auto-generated)
+    let rows: Vec<TransformRow> = {
+        let Some(study) = state.study() else { return };
+        let Some(domain) = study.get_domain(domain_code) else { return };
+
+        let mapping = &domain.mapping;
+        let sdtm_domain = mapping.domain();
+
+        // Get all accepted mappings and auto-generated set
+        let accepted = mapping.all_accepted();
+        let auto_generated = mapping.all_auto_generated();
+
+        // Build rows only for variables that are accepted OR auto-generated
+        sdtm_domain
+            .variables
+            .iter()
+            .filter_map(|var| {
+                let source_column = accepted.get(&var.name).map(|(col, _)| col.clone());
+                let is_auto = auto_generated.contains(&var.name);
+
+                // Only include if accepted (has source) or auto-generated
+                if source_column.is_none() && !is_auto {
+                    return None;
                 }
+
+                let category = infer_category(&var.name, source_column.is_some(), var.codelist_code.is_some());
+                Some(TransformRow {
+                    target_variable: var.name.clone(),
+                    source_column,
+                    category,
+                })
+            })
+            .collect()
+    };
+
+    if rows.is_empty() {
+        ui.centered_and_justified(|ui| {
+            ui.vertical_centered(|ui| {
+                ui.label(RichText::new(egui_phosphor::regular::INFO).size(24.0).weak());
+                ui.add_space(spacing::SM);
+                ui.label(RichText::new("No transformations yet").weak());
+                ui.add_space(spacing::XS);
+                ui.label(RichText::new("Map variables in the Mapping tab to see their transformations here.").weak().small());
             });
-
-            domain.transform_state = Some(TransformState {
-                pipeline: filtered_pipeline,
-                selected_idx: selected,
-            });
-        }
-    }
-}
-
-fn show_list(
-    ui: &mut Ui,
-    rules: &[TransformRule],
-    selected_idx: Option<usize>,
-    has_subjid: bool,
-) -> Option<usize> {
-    let mut selection: Option<usize> = None;
-
-    // Generated section
-    let generated: Vec<_> = rules
-        .iter()
-        .enumerate()
-        .filter(|(_, r)| r.is_generated())
-        .collect();
-    if !generated.is_empty() {
-        ui.label(
-            RichText::new(format!("{} Generated", egui_phosphor::regular::LIGHTNING))
-                .strong()
-                .weak(),
-        );
-        ui.add_space(spacing::SM);
-        for (idx, rule) in &generated {
-            let status = match &rule.transform_type {
-                TransformType::UsubjidPrefix | TransformType::SequenceNumber if !has_subjid => {
-                    Some("Needs SUBJID")
-                }
-                _ => None,
-            };
-            if show_row(ui, rule, selected_idx == Some(*idx), status) {
-                selection = Some(*idx);
-            }
-        }
-    }
-
-    // CT section
-    let ct: Vec<_> = rules
-        .iter()
-        .enumerate()
-        .filter(|(_, r)| matches!(r.transform_type, TransformType::CtNormalization { .. }))
-        .collect();
-    if !ct.is_empty() {
-        if !generated.is_empty() {
-            ui.add_space(spacing::MD);
-            ui.separator();
-            ui.add_space(spacing::SM);
-        }
-        ui.label(
-            RichText::new(format!(
-                "{} Controlled Terminology",
-                egui_phosphor::regular::LIST_CHECKS
-            ))
-            .strong()
-            .weak(),
-        );
-        ui.add_space(spacing::SM);
-        for (idx, rule) in ct {
-            if show_row(ui, rule, selected_idx == Some(idx), None) {
-                selection = Some(idx);
-            }
-        }
-    }
-
-    selection
-}
-
-fn show_row(ui: &mut Ui, rule: &TransformRule, is_selected: bool, status: Option<&str>) -> bool {
-    let mut clicked = false;
-    ui.horizontal(|ui| {
-        ui.label(RichText::new(rule.icon()).color(ui.visuals().hyperlink_color));
-        let text = if is_selected {
-            RichText::new(&rule.target_variable).strong()
-        } else {
-            RichText::new(&rule.target_variable)
-        };
-        if ui.selectable_label(is_selected, text).clicked() {
-            clicked = true;
-        }
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            let label = if let Some(s) = status {
-                format!("{} · {}", rule.category(), s)
-            } else {
-                rule.category().to_string()
-            };
-            let color = if status.is_some() {
-                ui.visuals().warn_fg_color
-            } else {
-                ui.visuals().weak_text_color()
-            };
-            ui.label(RichText::new(label).color(color).small());
         });
-    });
-    clicked
-}
+        return;
+    }
 
-fn show_detail(
-    ui: &mut Ui,
-    state: &AppState,
-    domain_code: &str,
-    rules: &[TransformRule],
-    selected: Option<usize>,
-) {
-    let Some(idx) = selected else {
-        ui.centered_and_justified(|ui| ui.label(RichText::new("Select a transformation").weak()));
-        return;
-    };
-    let Some(rule) = rules.get(idx) else { return };
-    let Some(study) = &state.study else { return };
-    let Some(domain) = study.get_domain(domain_code) else {
-        return;
-    };
-    let Some(ms) = &domain.mapping_state else {
-        return;
-    };
+    // Summary counts
+    let mapped_count = rows.iter().filter(|r| r.source_column.is_some()).count();
+    let auto_count = rows.iter().filter(|r| r.source_column.is_none()).count();
+    let total = rows.len();
 
     // Header
     ui.horizontal(|ui| {
-        ui.label(
-            RichText::new(rule.icon())
-                .size(24.0)
-                .color(ui.visuals().hyperlink_color),
-        );
-        ui.vertical(|ui| {
-            ui.heading(&rule.target_variable);
-            ui.label(RichText::new(rule.category()).weak().small());
-        });
+        ui.label(RichText::new(format!("{}", total)).strong());
+        ui.label(RichText::new("variables").weak().small());
+        ui.separator();
+        ui.label(RichText::new(format!("{} mapped", mapped_count)).small().color(Color32::from_rgb(100, 180, 100)));
+        if auto_count > 0 {
+            ui.label(RichText::new(format!("{} auto", auto_count)).small().weak());
+        }
     });
+
+    ui.add_space(spacing::SM);
+    ui.separator();
+
+    // Transform list using TableBuilder
+    let mut new_selection: Option<usize> = None;
+    let text_height = egui::TextStyle::Body.resolve(ui.style()).size;
+
+    egui_extras::TableBuilder::new(ui)
+        .striped(true)
+        .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+        .column(egui_extras::Column::exact(24.0))                // Icon
+        .column(egui_extras::Column::remainder().at_least(80.0)) // Target var
+        .column(egui_extras::Column::exact(60.0))                // Category
+        .header(text_height + 4.0, |mut header| {
+            header.col(|_ui| {});
+            header.col(|ui| {
+                ui.label(RichText::new("Variable").small().strong());
+            });
+            header.col(|ui| {
+                ui.label(RichText::new("Type").small().strong());
+            });
+        })
+        .body(|body| {
+            body.rows(text_height + 8.0, rows.len(), |mut row| {
+                let row_idx = row.index();
+                let transform_row = &rows[row_idx];
+                let is_selected = selected_idx == Some(row_idx);
+                let is_auto = transform_row.source_column.is_none();
+
+                // Icon column
+                row.col(|ui| {
+                    let (icon, color) = get_category_icon_color(&transform_row.category, is_auto, ui);
+                    ui.label(RichText::new(icon).color(color));
+                });
+
+                // Target variable column (clickable)
+                row.col(|ui| {
+                    let mut label_text = RichText::new(&transform_row.target_variable).monospace();
+                    if is_selected {
+                        label_text = label_text.strong();
+                    }
+                    if is_auto {
+                        label_text = label_text.weak();
+                    }
+
+                    let response = ui.selectable_label(is_selected, label_text);
+                    if response.clicked() {
+                        new_selection = Some(row_idx);
+                    }
+
+                    if let Some(src) = &transform_row.source_column {
+                        response.on_hover_text(format!("← {}", src));
+                    }
+                });
+
+                // Category column
+                row.col(|ui| {
+                    let cat_short = match transform_row.category.as_str() {
+                        "CT Normalization" => "CT",
+                        "Copy" => "Copy",
+                        "Auto" => "Auto",
+                        _ => "—",
+                    };
+                    ui.label(RichText::new(cat_short).weak().small());
+                });
+            });
+        });
+
+    // Apply selection change
+    if let Some(idx) = new_selection {
+        state.ui.domain_editor(domain_code).transform.select(Some(idx));
+    }
+}
+
+/// Show the transformation detail (right panel)
+fn show_transform_detail(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
+    // Get selected index
+    let selected_idx = state
+        .ui
+        .get_domain_editor(domain_code)
+        .and_then(|ui| ui.transform.selected_idx);
+
+    let Some(idx) = selected_idx else {
+        ui.centered_and_justified(|ui| {
+            ui.label(RichText::new("Select a variable from the list").weak());
+        });
+        return;
+    };
+
+    // Extract detail data
+    let detail = {
+        let Some(study) = state.study() else { return };
+        let Some(domain) = study.get_domain(domain_code) else { return };
+
+        let mapping = &domain.mapping;
+        let sdtm_domain = mapping.domain();
+        let accepted = mapping.all_accepted();
+        let auto_generated = mapping.all_auto_generated();
+
+        // Build filtered list (same as left panel) to get correct variable by index
+        let filtered_vars: Vec<_> = sdtm_domain
+            .variables
+            .iter()
+            .filter(|var| {
+                accepted.contains_key(&var.name) || auto_generated.contains(&var.name)
+            })
+            .collect();
+
+        let Some(var) = filtered_vars.get(idx) else {
+            ui.label(RichText::new("Variable not found").weak());
+            return;
+        };
+
+        let source_column = accepted.get(&var.name).map(|(col, _)| col.clone());
+        let is_auto = auto_generated.contains(&var.name);
+        let source_df = &domain.source.data;
+        let preview_df = domain.derived.preview.as_ref().map(|v| &v.data);
+
+        // Get source samples
+        let source_samples: Vec<String> = source_column
+            .as_ref()
+            .and_then(|col| source_df.column(col).ok())
+            .map(|col| get_unique_samples(col.as_materialized_series(), 10))
+            .unwrap_or_default();
+
+        // Get transformed samples from preview
+        let transformed_samples: Vec<String> = preview_df
+            .and_then(|df| df.column(&var.name).ok())
+            .map(|col| get_unique_samples(col.as_materialized_series(), 10))
+            .unwrap_or_default();
+
+        let category = if is_auto {
+            "Auto".to_string()
+        } else {
+            infer_category(&var.name, source_column.is_some(), var.codelist_code.is_some())
+        };
+
+        TransformDetail {
+            target_variable: var.name.clone(),
+            target_label: var.label.clone(),
+            source_column,
+            category,
+            codelist_code: var.codelist_code.clone(),
+            source_samples,
+            transformed_samples,
+            is_auto,
+        }
+    };
+
+    // Render detail view
+    show_detail_content(ui, &detail);
+}
+
+/// Data for displaying transformation details
+struct TransformDetail {
+    target_variable: String,
+    target_label: Option<String>,
+    source_column: Option<String>,
+    category: String,
+    codelist_code: Option<String>,
+    source_samples: Vec<String>,
+    transformed_samples: Vec<String>,
+    is_auto: bool,
+}
+
+fn show_detail_content(ui: &mut Ui, detail: &TransformDetail) {
+    let is_auto = detail.is_auto;
+
+    // Header with variable name and label
+    ui.heading(&detail.target_variable);
+    if let Some(label) = &detail.target_label {
+        ui.label(RichText::new(label).weak().italics());
+    }
+
     ui.add_space(spacing::MD);
+
+    // Metadata grid
+    egui::Grid::new("transform_metadata")
+        .num_columns(2)
+        .spacing([20.0, 4.0])
+        .show(ui, |ui| {
+            ui.label(RichText::new("Transform").weak());
+            let (icon, color) = get_category_icon_color(&detail.category, is_auto, ui);
+            ui.horizontal(|ui| {
+                ui.label(RichText::new(icon).color(color));
+                ui.label(&detail.category);
+            });
+            ui.end_row();
+
+            if let Some(src) = &detail.source_column {
+                ui.label(RichText::new("Source").weak());
+                ui.label(RichText::new(src).monospace());
+                ui.end_row();
+            }
+
+            if let Some(cl) = &detail.codelist_code {
+                ui.label(RichText::new("Codelist").weak());
+                ui.label(RichText::new(cl).monospace().small());
+                ui.end_row();
+            }
+        });
+
+    ui.add_space(spacing::LG);
+
+    // Auto-generated explanation
+    if is_auto {
+        ui.horizontal(|ui| {
+            ui.label(RichText::new(egui_phosphor::regular::MAGIC_WAND).color(Color32::from_rgb(100, 180, 100)));
+            ui.label(RichText::new("Auto-generated value").weak().italics());
+        });
+        ui.add_space(spacing::SM);
+        let explanation = match detail.target_variable.as_str() {
+            "STUDYID" => "Populated from study configuration",
+            "DOMAIN" => "Set to the domain code",
+            "USUBJID" => "Derived from STUDYID + SUBJID",
+            name if name.ends_with("SEQ") => "Assigned sequentially per subject",
+            _ => "Generated by the system",
+        };
+        ui.label(RichText::new(explanation).weak().small());
+        return;
+    }
+
+    // Before → After section (only for mapped variables)
+    ui.label(
+        RichText::new(format!("{} Before → After", egui_phosphor::regular::ARROWS_LEFT_RIGHT))
+            .strong()
+            .weak(),
+    );
     ui.separator();
     ui.add_space(spacing::SM);
 
-    match &rule.transform_type {
-        TransformType::Constant => {
-            show_constant(ui, &rule.target_variable, &study.study_id, domain_code);
-        }
-        TransformType::UsubjidPrefix => {
-            show_usubjid(ui, &study.study_id, ms, &domain.source_data);
-        }
-        TransformType::SequenceNumber => {
-            show_sequence(ui, &rule.target_variable, ms);
-        }
-        TransformType::CtNormalization { codelist_code } => {
-            show_ct(
-                ui,
-                &rule.target_variable,
-                codelist_code,
-                ms,
-                &domain.source_data,
+    if detail.source_samples.is_empty() {
+        ui.horizontal(|ui| {
+            ui.label(RichText::new(egui_phosphor::regular::WARNING).color(ui.visuals().warn_fg_color));
+            ui.label(
+                RichText::new(format!("Column '{}' not found in source data",
+                    detail.source_column.as_ref().unwrap_or(&"?".to_string())))
+                    .weak()
+                    .italics(),
             );
-        }
-        TransformType::Iso8601DateTime | TransformType::Iso8601Date => {
-            show_datetime(ui, &rule.target_variable, ms, &domain.source_data);
-        }
-        TransformType::CopyDirect | TransformType::NumericConversion => {
-            show_copy(ui, &rule.target_variable, ms, &domain.source_data);
-        }
-        _ => {
-            ui.label(format!("Transform: {}", rule.transform_type.category()));
-        }
+        });
+        return;
     }
-}
 
-fn show_constant(ui: &mut Ui, target: &str, study_id: &str, domain_code: &str) {
-    ui.label(RichText::new("Value Source").strong().weak());
-    ui.add_space(spacing::SM);
-    let (source, value) = match target {
-        "STUDYID" => ("Study configuration", study_id),
-        "DOMAIN" => ("Domain code", domain_code),
-        _ => ("Constant", ""),
-    };
-    egui::Grid::new("const")
-        .num_columns(2)
-        .spacing([20.0, 4.0])
-        .show(ui, |ui| {
-            ui.label(RichText::new("Source").weak());
-            ui.label(source);
-            ui.end_row();
-            ui.label(RichText::new("Value").weak());
-            ui.label(RichText::new(value).color(ui.visuals().hyperlink_color));
-            ui.end_row();
-        });
-}
-
-fn show_usubjid(
-    ui: &mut Ui,
-    study_id: &str,
-    ms: &MappingState,
-    source_data: &polars::prelude::DataFrame,
-) {
-    ui.label(RichText::new("Derivation").strong().weak());
-    ui.add_space(spacing::SM);
-    egui::Grid::new("usubjid")
-        .num_columns(2)
-        .spacing([20.0, 4.0])
-        .show(ui, |ui| {
-            ui.label(RichText::new("Formula").weak());
-            ui.label("STUDYID-SUBJID");
-            ui.end_row();
-        });
-
-    if let Some((col, _)) = ms.accepted("SUBJID") {
-        let samples = MappingService::get_sample_values(source_data, col, 3);
-        ui.add_space(spacing::MD);
-        ui.label(RichText::new(format!("SUBJID → {}", col)).weak().small());
-        for val in samples {
-            ui.horizontal(|ui| {
-                ui.label(RichText::new(&val).code());
-                ui.label(RichText::new("→").weak());
-                ui.label(
-                    RichText::new(format!("{}-{}", study_id, val))
-                        .code()
-                        .color(ui.visuals().hyperlink_color),
-                );
-            });
-        }
-    } else {
-        ui.add_space(spacing::MD);
+    let has_change = detail.source_samples != detail.transformed_samples;
+    if has_change {
         ui.label(
-            RichText::new(format!("{} Map SUBJID first", egui_phosphor::regular::INFO))
-                .color(ui.visuals().warn_fg_color),
+            RichText::new(format!("{} Values transformed", egui_phosphor::regular::CHECK))
+                .color(Color32::from_rgb(100, 180, 100)),
         );
-    }
-}
-
-fn show_sequence(ui: &mut Ui, seq_col: &str, ms: &MappingState) {
-    ui.label(RichText::new("Configuration").strong().weak());
-    ui.add_space(spacing::SM);
-    egui::Grid::new("seq")
-        .num_columns(2)
-        .spacing([20.0, 4.0])
-        .show(ui, |ui| {
-            ui.label(RichText::new("Column").weak());
-            ui.label(seq_col);
-            ui.end_row();
-            ui.label(RichText::new("Group By").weak());
-            ui.label("USUBJID");
-            ui.end_row();
-            ui.label(RichText::new("Values").weak());
-            ui.label("1, 2, 3... per subject");
-            ui.end_row();
-        });
-    if ms.accepted("SUBJID").is_none() {
-        ui.add_space(spacing::MD);
-        ui.label(
-            RichText::new(format!(
-                "{} Requires SUBJID mapping",
-                egui_phosphor::regular::INFO
-            ))
-            .color(ui.visuals().warn_fg_color),
-        );
-    }
-}
-
-fn show_ct(
-    ui: &mut Ui,
-    variable: &str,
-    codelist: &str,
-    ms: &MappingState,
-    source_data: &polars::prelude::DataFrame,
-) {
-    if let Some((col, _)) = ms.accepted(variable) {
-        egui::Grid::new("ct_map")
-            .num_columns(2)
-            .spacing([20.0, 4.0])
-            .show(ui, |ui| {
-                ui.label(RichText::new("Source").weak());
-                ui.label(col);
-                ui.end_row();
-                ui.label(RichText::new("Codelist").weak());
-                ui.label(RichText::new(codelist).color(ui.visuals().hyperlink_color));
-                ui.end_row();
-            });
-
-        if let Some(info) = ms.ct_cache.get(codelist) {
-            if info.found {
-                ui.add_space(spacing::MD);
-                ui.horizontal_wrapped(|ui| {
-                    ui.label(RichText::new(&info.name).strong());
-                    if info.extensible {
-                        ui.label(
-                            RichText::new("(Extensible)")
-                                .color(ui.visuals().warn_fg_color)
-                                .small(),
-                        );
-                    }
-                });
-                ui.label(
-                    RichText::new(format!("{} terms", info.total_terms))
-                        .weak()
-                        .small(),
-                );
-            }
-        }
-
-        // Preview
-        let samples = MappingService::get_sample_values(source_data, col, 4);
-        if !samples.is_empty() {
-            let lookup = ms.ct_cache.get(codelist).map(|i| &i.lookup);
-            ui.add_space(spacing::MD);
-            ui.label(RichText::new("Preview").strong().weak());
-            ui.add_space(spacing::SM);
-            for val in samples {
-                let normalized = lookup
-                    .and_then(|m| m.get(&val.trim().to_uppercase()).cloned())
-                    .unwrap_or_else(|| val.trim().to_string());
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new(&val).code());
-                    ui.label(RichText::new("→").weak());
-                    let color = if val.trim() != normalized {
-                        ui.visuals().hyperlink_color
-                    } else {
-                        ui.visuals().text_color()
-                    };
-                    ui.label(RichText::new(&normalized).code().color(color));
-                });
-            }
-        }
-    }
-}
-
-fn show_datetime(
-    ui: &mut Ui,
-    variable: &str,
-    ms: &MappingState,
-    source_data: &polars::prelude::DataFrame,
-) {
-    ui.label(RichText::new("ISO 8601 DateTime").strong().weak());
-    ui.add_space(spacing::SM);
-    egui::Grid::new("dt")
-        .num_columns(2)
-        .spacing([20.0, 4.0])
-        .show(ui, |ui| {
-            ui.label(RichText::new("Target").weak());
-            ui.label(variable);
-            ui.end_row();
-            ui.label(RichText::new("Format").weak());
-            ui.label("YYYY-MM-DDTHH:MM:SS");
-            ui.end_row();
-        });
-
-    if let Some((col, _)) = ms.accepted(variable) {
-        let samples = MappingService::get_sample_values(source_data, col, 3);
-        if !samples.is_empty() {
-            ui.add_space(spacing::MD);
-            ui.label(RichText::new("Preview").strong().weak());
-            ui.add_space(spacing::SM);
-            for val in samples {
-                let normalized = sdtm_transform::normalization::datetime::parse_date(&val)
-                    .map(|dt| dt.format("%Y-%m-%dT%H:%M:%S").to_string())
-                    .unwrap_or_else(|| val.to_string());
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new(&val).code());
-                    ui.label(RichText::new("→").weak());
-                    ui.label(
-                        RichText::new(&normalized)
-                            .code()
-                            .color(ui.visuals().hyperlink_color),
-                    );
-                });
-            }
-        }
-    }
-}
-
-fn show_copy(
-    ui: &mut Ui,
-    variable: &str,
-    ms: &MappingState,
-    source_data: &polars::prelude::DataFrame,
-) {
-    ui.label(RichText::new("Direct Copy").strong().weak());
-    ui.add_space(spacing::SM);
-    if let Some((col, _)) = ms.accepted(variable) {
-        egui::Grid::new("copy")
-            .num_columns(2)
-            .spacing([20.0, 4.0])
-            .show(ui, |ui| {
-                ui.label(RichText::new("Source").weak());
-                ui.label(col);
-                ui.end_row();
-                ui.label(RichText::new("Target").weak());
-                ui.label(variable);
-                ui.end_row();
-            });
-        let samples = MappingService::get_sample_values(source_data, col, 3);
-        if !samples.is_empty() {
-            ui.add_space(spacing::MD);
-            for val in samples {
-                ui.label(RichText::new(&val).code());
-            }
-        }
     } else {
         ui.label(
-            RichText::new(format!("{} No mapping", egui_phosphor::regular::WARNING))
-                .color(ui.visuals().warn_fg_color),
+            RichText::new(format!("{} Values unchanged", egui_phosphor::regular::EQUALS))
+                .weak(),
+        );
+    }
+
+    ui.add_space(spacing::SM);
+
+    // Show side-by-side comparison (max 10 examples, no truncation)
+    let pairs: Vec<_> = detail.source_samples.iter()
+        .zip(detail.transformed_samples.iter())
+        .take(10)
+        .collect();
+
+    for (src, dst) in pairs {
+        ui.horizontal_wrapped(|ui| {
+            ui.label(RichText::new(src).monospace().weak());
+
+            if src != dst {
+                ui.label(
+                    RichText::new(format!(" {} ", egui_phosphor::regular::ARROW_RIGHT))
+                        .color(Color32::from_rgb(100, 180, 100)),
+                );
+                ui.label(
+                    RichText::new(dst)
+                        .monospace()
+                        .color(Color32::from_rgb(100, 180, 100)),
+                );
+            } else {
+                ui.label(RichText::new(" = ").weak());
+                ui.label(RichText::new(dst).monospace().weak());
+            }
+        });
+    }
+
+    // Show note if there are more examples
+    if detail.source_samples.len() > 10 {
+        ui.add_space(spacing::SM);
+        ui.label(
+            RichText::new(format!("... and {} more values", detail.source_samples.len() - 10))
+                .weak()
+                .small()
+                .italics(),
         );
     }
 }
+
+/// Get unique sample values from a series
+fn get_unique_samples(series: &Series, limit: usize) -> Vec<String> {
+    let mut seen = std::collections::HashSet::new();
+    let mut samples = Vec::new();
+
+    for i in 0..series.len().min(100) {
+        if let Ok(val) = series.get(i) {
+            let s = any_to_string(val);
+            if !s.is_empty() && s != "null" && seen.insert(s.clone()) {
+                samples.push(s);
+                if samples.len() >= limit {
+                    break;
+                }
+            }
+        }
+    }
+    samples
+}
+
+/// Infer the transformation category
+fn infer_category(_var_name: &str, has_source: bool, has_codelist: bool) -> String {
+    if !has_source {
+        return "Auto".to_string();
+    }
+    if has_codelist {
+        return "CT Normalization".to_string();
+    }
+    "Copy".to_string()
+}
+
+/// Get icon and color for category
+fn get_category_icon_color(category: &str, is_auto: bool, ui: &Ui) -> (&'static str, Color32) {
+    if is_auto {
+        (egui_phosphor::regular::MAGIC_WAND, Color32::from_rgb(100, 180, 100))
+    } else {
+        match category {
+            "CT Normalization" => (egui_phosphor::regular::LIST_CHECKS, Color32::from_rgb(100, 150, 220)),
+            "Copy" => (egui_phosphor::regular::COPY, ui.visuals().weak_text_color()),
+            _ => (egui_phosphor::regular::GEAR, ui.visuals().text_color()),
+        }
+    }
+}
+

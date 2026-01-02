@@ -1,8 +1,8 @@
 //! Home screen view
 //!
-//! Study folder selection and domain discovery.
+//! Study folder selection and domain discovery with DM dependency display.
 
-use crate::state::{AppState, DomainStatus};
+use crate::state::AppState;
 use crate::theme::spacing;
 use egui::{Color32, RichText, Ui};
 use std::path::PathBuf;
@@ -50,7 +50,7 @@ impl HomeView {
             ui.add_space(spacing::LG);
 
             // Show loaded study if any
-            if let Some(study) = &state.study {
+            if let Some(study) = state.study() {
                 ui.separator();
                 ui.add_space(spacing::MD);
 
@@ -63,6 +63,20 @@ impl HomeView {
 
                 ui.add_space(spacing::MD);
 
+                // DM dependency notice if DM exists but not ready
+                if study.has_dm_domain() && !study.is_dm_ready() {
+                    ui.horizontal(|ui| {
+                        ui.label(
+                            RichText::new(format!(
+                                "{} Complete DM domain first to unlock other domains",
+                                egui_phosphor::regular::INFO
+                            ))
+                            .color(ui.visuals().warn_fg_color),
+                        );
+                    });
+                    ui.add_space(spacing::SM);
+                }
+
                 // Domain list
                 ui.label(
                     RichText::new(format!(
@@ -73,45 +87,66 @@ impl HomeView {
                 );
                 ui.add_space(spacing::SM);
 
-                // Collect domain info for rendering
-                let domain_info: Vec<_> = study
-                    .domain_codes()
-                    .into_iter()
-                    .filter_map(|code| {
-                        study.domains.get(code).map(|domain| {
-                            let display_name = domain.display_name(code);
-                            (
-                                code.to_string(),
-                                display_name,
-                                domain.status,
-                                domain.row_count(),
-                            )
-                        })
-                    })
-                    .collect();
+                // Get domain codes with DM first
+                let domain_codes = study.domain_codes_dm_first();
 
                 egui::ScrollArea::vertical()
                     .max_height(400.0)
                     .show(ui, |ui| {
-                        for (code, display_name, status, row_count) in &domain_info {
-                            let status_icon = status.icon();
-                            let status_color = match status {
-                                DomainStatus::NotStarted => ui.visuals().weak_text_color(),
-                                DomainStatus::Loading => ui.visuals().hyperlink_color,
-                                DomainStatus::MappingInProgress => ui.visuals().warn_fg_color,
-                                DomainStatus::MappingComplete => ui.visuals().hyperlink_color,
-                                DomainStatus::ValidationFailed => ui.visuals().error_fg_color,
-                                DomainStatus::ReadyForExport => Color32::GREEN,
+                        for code in domain_codes {
+                            // Get domain info (bypassing DM check since we're just displaying)
+                            let Some(domain) = study.get_domain(code) else {
+                                continue;
+                            };
+
+                            let display_name = domain.display_name(code);
+                            let row_count = domain.row_count();
+                            let is_accessible = state.is_domain_accessible(code);
+                            let lock_reason = state.domain_lock_reason(code);
+                            let is_mapping_complete = domain.is_mapping_complete();
+
+                            // Determine status icon and color
+                            let (status_icon, status_color) = if !is_accessible {
+                                // Locked - requires DM
+                                (egui_phosphor::regular::LOCK, ui.visuals().weak_text_color())
+                            } else if is_mapping_complete {
+                                // Mapping complete
+                                (egui_phosphor::regular::CHECK_CIRCLE, Color32::GREEN)
+                            } else {
+                                // In progress
+                                (
+                                    egui_phosphor::regular::CIRCLE_DASHED,
+                                    ui.visuals().warn_fg_color,
+                                )
                             };
 
                             ui.horizontal(|ui| {
                                 ui.label(RichText::new(status_icon).color(status_color));
-                                if ui.button(display_name).clicked() {
-                                    clicked_domain = Some(code.clone());
+
+                                let button =
+                                    ui.add_enabled(is_accessible, egui::Button::new(&display_name));
+
+                                if button.clicked() && is_accessible {
+                                    clicked_domain = Some(code.to_string());
                                 }
+
+                                // Show tooltip for locked domains
+                                if let Some(reason) = lock_reason {
+                                    button.on_hover_text(reason);
+                                }
+
                                 ui.label(
                                     RichText::new(format!("{} rows", row_count)).weak().small(),
                                 );
+
+                                // Show lock badge for non-DM domains when DM not ready
+                                if !is_accessible {
+                                    ui.label(
+                                        RichText::new("Requires DM")
+                                            .small()
+                                            .color(ui.visuals().warn_fg_color),
+                                    );
+                                }
                             });
                         }
                     });
@@ -149,8 +184,7 @@ impl HomeView {
                             .button(format!("{} {}", egui_phosphor::regular::FOLDER, name))
                             .clicked()
                         {
-                            // TODO: Load recent study
-                            tracing::info!("Opening recent study: {:?}", path);
+                            selected_folder = Some(path);
                         }
                     }
                 }

@@ -1,568 +1,541 @@
-//! Validation tab - Displays validation issues from current mapping state
+//! Validation tab
+//!
+//! Shows validation results for the mapped data.
+//! Uses a 2-column layout: issues list on left, details on right.
+//! Validation is run automatically when mappings change.
 
-use crate::state::AppState;
+use crate::state::{AppState, Versioned};
 use crate::theme::spacing;
 use egui::{Color32, RichText, Ui};
 use sdtm_standards::load_default_ct_registry;
-use sdtm_transform::build_preview_dataframe_with_omitted;
-use sdtm_validate::{Issue, Severity, validate_domain_with_not_collected};
-use std::collections::{BTreeMap, BTreeSet};
+use sdtm_validate::{validate_domain_with_not_collected, Issue, Severity, ValidationReport};
+use std::collections::BTreeSet;
 
-use super::ensure_mapping_initialized;
-
+/// Render the validation tab
 pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
-    if !ensure_mapping_initialized(ui, state, domain_code) {
-        return;
-    }
-
-    rebuild_validation_if_needed(state, domain_code);
-
-    let Some(study) = &state.study else { return };
-    let Some(domain) = study.get_domain(domain_code) else {
-        return;
-    };
-
-    let (issues, selected_idx, error_count, warning_count) = match &domain.validation {
-        Some(report) => (
-            report.issues.as_slice(),
-            domain.validation_selected_idx,
-            report.error_count(None),
-            report.warning_count(None),
-        ),
-        None => (&[][..], None, 0, 0),
-    };
-
-    // Header
-    ui.label(
-        RichText::new(format!(
-            "{} Validation Issues",
-            egui_phosphor::regular::CHECK_SQUARE
-        ))
-        .strong(),
-    );
-    ui.add_space(spacing::XS);
-    show_summary(ui, error_count, warning_count);
-    ui.add_space(spacing::SM);
-    ui.separator();
-
-    if issues.is_empty() {
-        ui.add_space(spacing::LG);
+    // Check if domain is accessible (DM check)
+    let Some(domain) = state.domain(domain_code) else {
         ui.centered_and_justified(|ui| {
-            ui.label(
-                RichText::new(format!(
-                    "{} No validation issues",
-                    egui_phosphor::regular::CHECK_CIRCLE
-                ))
-                .color(Color32::GREEN),
-            );
+            ui.label(RichText::new("Domain not accessible").color(ui.visuals().error_fg_color));
         });
         return;
+    };
+
+    let domain_version = domain.version;
+
+    // Check if validation report needs rebuilding
+    let needs_rebuild = domain
+        .derived
+        .validation
+        .as_ref()
+        .map(|v| v.is_stale(domain_version))
+        .unwrap_or(true);
+
+    if needs_rebuild {
+        // Show loading and trigger rebuild
+        ui.centered_and_justified(|ui| {
+            ui.spinner();
+            ui.label("Running validation checks...");
+        });
+        ui.ctx().request_repaint();
+        rebuild_validation_report(state, domain_code);
+        return;
     }
 
-    let mut new_selection: Option<usize> = None;
+    // Get validation report (clone to avoid borrow issues)
+    let report = state
+        .domain(domain_code)
+        .and_then(|d| d.derived.validation.as_ref())
+        .map(|v| v.data.clone());
+
+    let Some(report) = report else {
+        ui.centered_and_justified(|ui| {
+            ui.label(RichText::new("No validation report available").weak());
+        });
+        return;
+    };
+
+    // If no issues, show full-width success message
+    if report.issues.is_empty() {
+        show_no_issues(ui);
+        return;
+    }
+
+    // 2-column layout using StripBuilder
     let available_height = ui.available_height();
 
     egui_extras::StripBuilder::new(ui)
-        .size(egui_extras::Size::exact(300.0))
-        .size(egui_extras::Size::exact(1.0))
-        .size(egui_extras::Size::remainder())
+        .size(egui_extras::Size::exact(320.0)) // Left panel fixed width
+        .size(egui_extras::Size::exact(1.0))   // Separator
+        .size(egui_extras::Size::remainder())  // Right panel takes rest
         .horizontal(|mut strip| {
+            // Left: Issues list
             strip.cell(|ui| {
                 egui::ScrollArea::vertical()
                     .max_height(available_height)
                     .show(ui, |ui| {
-                        new_selection = show_list(ui, issues, selected_idx);
+                        show_issues_list(ui, state, domain_code, &report);
                     });
             });
+
+            // Separator
             strip.cell(|ui| {
                 ui.separator();
             });
+
+            // Right: Detail panel
             strip.cell(|ui| {
                 egui::ScrollArea::vertical()
                     .max_height(available_height)
                     .show(ui, |ui| {
-                        show_detail(
-                            ui,
-                            new_selection.or(selected_idx).and_then(|i| issues.get(i)),
-                        );
+                        show_issue_detail(ui, state, domain_code, &report);
                     });
             });
         });
-
-    if let Some(idx) = new_selection {
-        if let Some(study) = &mut state.study {
-            if let Some(domain) = study.get_domain_mut(domain_code) {
-                domain.validation_selected_idx = Some(idx);
-            }
-        }
-    }
 }
 
-fn rebuild_validation_if_needed(state: &mut AppState, domain_code: &str) {
-    let needs_rebuild = state
-        .study
-        .as_ref()
-        .and_then(|s| s.get_domain(domain_code))
-        .map(|d| d.mapping_state.is_some() && d.validation.is_none())
-        .unwrap_or(false);
-
-    if !needs_rebuild {
-        return;
-    }
-
-    let data = {
-        let Some(study) = &state.study else { return };
-        let Some(domain) = study.get_domain(domain_code) else {
-            return;
-        };
-        let Some(ms) = &domain.mapping_state else {
-            return;
-        };
-
-        let accepted: BTreeMap<String, String> = ms
-            .all_accepted()
-            .iter()
-            .map(|(var, (col, _))| (var.clone(), col.clone()))
-            .collect();
-        let omitted: BTreeSet<String> = ms.all_omitted().clone();
-        let not_collected: BTreeSet<String> = ms.all_not_collected().keys().cloned().collect();
-
-        Some((
-            ms.domain().clone(),
-            ms.study_id().to_string(),
-            domain.source_data.clone(),
-            accepted,
-            omitted,
-            not_collected,
-        ))
-    };
-
-    let Some((sdtm_domain, study_id, source_df, accepted, omitted, not_collected)) = data else {
-        return;
-    };
-
-    let ct = load_default_ct_registry().ok();
-    let preview_df = build_preview_dataframe_with_omitted(
-        &source_df,
-        &accepted,
-        &omitted,
-        &sdtm_domain,
-        &study_id,
-        ct.as_ref(),
-    )
-    .unwrap_or(source_df);
-    let report =
-        validate_domain_with_not_collected(&sdtm_domain, &preview_df, ct.as_ref(), &not_collected);
-
-    if let Some(study) = &mut state.study {
-        if let Some(domain) = study.get_domain_mut(domain_code) {
-            domain.validation = Some(report);
-        }
-    }
-}
-
-fn show_summary(ui: &mut Ui, errors: usize, warnings: usize) {
-    ui.horizontal(|ui| {
-        if errors > 0 {
-            ui.label(
-                RichText::new(format!(
-                    "{} {} Error{}",
-                    egui_phosphor::regular::X_CIRCLE,
-                    errors,
-                    if errors == 1 { "" } else { "s" }
-                ))
-                .color(ui.visuals().error_fg_color),
-            );
-        }
-        if errors > 0 && warnings > 0 {
-            ui.label(RichText::new(" · ").weak());
-        }
-        if warnings > 0 {
-            ui.label(
-                RichText::new(format!(
-                    "{} {} Warning{}",
-                    egui_phosphor::regular::WARNING,
-                    warnings,
-                    if warnings == 1 { "" } else { "s" }
-                ))
-                .color(ui.visuals().warn_fg_color),
-            );
-        }
-        if errors == 0 && warnings == 0 {
-            ui.label(
-                RichText::new(format!(
-                    "{} No issues",
-                    egui_phosphor::regular::CHECK_CIRCLE
-                ))
-                .color(Color32::GREEN),
-            );
-        }
+/// Show "no issues" success state
+fn show_no_issues(ui: &mut Ui) {
+    ui.vertical_centered(|ui| {
+        ui.add_space(spacing::XL);
+        ui.label(
+            RichText::new(egui_phosphor::regular::CHECK_CIRCLE)
+                .size(48.0)
+                .color(Color32::from_rgb(100, 180, 100)),
+        );
+        ui.add_space(spacing::MD);
+        ui.label(RichText::new("All Checks Passed").size(18.0).strong());
+        ui.add_space(spacing::SM);
+        ui.label(RichText::new("No validation issues found in the current mapping.").weak());
     });
 }
 
-fn show_list(ui: &mut Ui, issues: &[Issue], selected: Option<usize>) -> Option<usize> {
-    let mut selection = None;
-    let errors: Vec<_> = issues
+/// Show the issues list (left panel)
+fn show_issues_list(
+    ui: &mut Ui,
+    state: &mut AppState,
+    domain_code: &str,
+    report: &ValidationReport,
+) {
+    let selected_idx = state
+        .ui
+        .get_domain_editor(domain_code)
+        .and_then(|ui| ui.validation.selected_idx);
+
+    // Count by severity
+    let issues = &report.issues;
+    let error_count = issues
         .iter()
-        .enumerate()
-        .filter(|(_, i)| matches!(i.default_severity(), Severity::Error | Severity::Reject))
-        .collect();
-    let warnings: Vec<_> = issues
+        .filter(|i| matches!(i.default_severity(), Severity::Error | Severity::Reject))
+        .count();
+    let warning_count = issues
         .iter()
-        .enumerate()
-        .filter(|(_, i)| matches!(i.default_severity(), Severity::Warning))
-        .collect();
+        .filter(|i| matches!(i.default_severity(), Severity::Warning))
+        .count();
 
-    if !errors.is_empty() {
-        ui.label(
-            RichText::new(format!("Errors ({})", errors.len()))
-                .color(ui.visuals().error_fg_color)
-                .strong(),
-        );
-        ui.add_space(spacing::XS);
-        for (idx, issue) in errors {
-            if show_row(ui, idx, issue, selected) {
-                selection = Some(idx);
-            }
+    // Header
+    ui.horizontal(|ui| {
+        ui.label(RichText::new(format!("{}", issues.len())).strong());
+        ui.label(RichText::new("issues").weak().small());
+        ui.separator();
+        if error_count > 0 {
+            ui.label(
+                RichText::new(format!("{} errors", error_count))
+                    .small()
+                    .color(ui.visuals().error_fg_color),
+            );
         }
-        ui.add_space(spacing::MD);
-    }
-
-    if !warnings.is_empty() {
-        ui.label(
-            RichText::new(format!("Warnings ({})", warnings.len()))
-                .color(ui.visuals().warn_fg_color)
-                .strong(),
-        );
-        ui.add_space(spacing::XS);
-        for (idx, issue) in warnings {
-            if show_row(ui, idx, issue, selected) {
-                selection = Some(idx);
-            }
+        if warning_count > 0 {
+            ui.label(
+                RichText::new(format!("{} warnings", warning_count))
+                    .small()
+                    .color(ui.visuals().warn_fg_color),
+            );
         }
-    }
+    });
 
-    selection
-}
+    ui.add_space(spacing::SM);
+    ui.separator();
 
-fn show_row(ui: &mut Ui, idx: usize, issue: &Issue, selected: Option<usize>) -> bool {
-    let is_selected = selected == Some(idx);
-    let severity = issue.default_severity();
-    let (icon, color) = match severity {
-        Severity::Error | Severity::Reject => (
-            egui_phosphor::regular::X_CIRCLE,
-            ui.visuals().error_fg_color,
-        ),
-        Severity::Warning => (egui_phosphor::regular::WARNING, ui.visuals().warn_fg_color),
-    };
+    // Sort issues by severity
+    let sorted_issues = report.sorted_by_severity(None);
 
-    let frame = egui::Frame::new()
-        .fill(if is_selected {
-            ui.visuals().widgets.hovered.bg_fill
-        } else {
-            egui::Color32::TRANSPARENT
-        })
-        .inner_margin(egui::Margin::symmetric(
-            spacing::SM as i8,
-            spacing::XS as i8,
-        ))
-        .corner_radius(4.0);
+    // Build table
+    let mut new_selection: Option<usize> = None;
+    let text_height = egui::TextStyle::Body.resolve(ui.style()).size;
 
-    let response = frame
-        .show(ui, |ui| {
-            ui.set_width(ui.available_width());
-            ui.horizontal(|ui| {
-                ui.label(RichText::new(icon).color(color));
-                ui.vertical(|ui| {
-                    ui.horizontal(|ui| {
-                        ui.label(RichText::new(issue.variable()).strong());
-                        ui.label(RichText::new(issue.rule_id()).small().monospace().weak());
-                    });
-                    ui.label(RichText::new(check_label(issue)).small().weak());
-                });
+    egui_extras::TableBuilder::new(ui)
+        .striped(true)
+        .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+        .column(egui_extras::Column::exact(24.0))                // Severity icon
+        .column(egui_extras::Column::exact(70.0))                // Rule ID
+        .column(egui_extras::Column::remainder().at_least(80.0)) // Variable
+        .header(text_height + 4.0, |mut header| {
+            header.col(|_ui| {});
+            header.col(|ui| {
+                ui.label(RichText::new("Rule").small().strong());
+            });
+            header.col(|ui| {
+                ui.label(RichText::new("Variable").small().strong());
             });
         })
-        .response;
+        .body(|body| {
+            body.rows(text_height + 8.0, sorted_issues.len(), |mut row| {
+                let row_idx = row.index();
+                let issue = &sorted_issues[row_idx];
+                let is_selected = selected_idx == Some(row_idx);
+                let severity = issue.default_severity();
 
-    response.interact(egui::Sense::click()).clicked()
+                // Severity icon column
+                row.col(|ui| {
+                    let (icon, color) = severity_icon_color(severity, ui);
+                    ui.label(RichText::new(icon).color(color));
+                });
+
+                // Rule ID column
+                row.col(|ui| {
+                    ui.label(
+                        RichText::new(issue.rule_id())
+                            .monospace()
+                            .small(),
+                    );
+                });
+
+                // Variable column (clickable)
+                row.col(|ui| {
+                    let mut label_text = RichText::new(issue.variable()).monospace();
+                    if is_selected {
+                        label_text = label_text.strong();
+                    }
+
+                    let response = ui.selectable_label(is_selected, label_text);
+                    if response.clicked() {
+                        new_selection = Some(row_idx);
+                    }
+
+                    // Show count on hover
+                    if let Some(count) = issue.count() {
+                        response.on_hover_text(format!("{} occurrences", count));
+                    }
+                });
+            });
+        });
+
+    // Apply selection change
+    if let Some(idx) = new_selection {
+        let selection = if selected_idx == Some(idx) {
+            None // Toggle off
+        } else {
+            Some(idx)
+        };
+        state.ui.domain_editor(domain_code).validation.select(selection);
+    }
 }
 
-fn show_detail(ui: &mut Ui, issue: Option<&Issue>) {
-    let Some(issue) = issue else {
-        ui.centered_and_justified(|ui| ui.label(RichText::new("Select an issue").weak()));
+/// Show the issue detail (right panel)
+fn show_issue_detail(
+    ui: &mut Ui,
+    state: &mut AppState,
+    domain_code: &str,
+    report: &ValidationReport,
+) {
+    let selected_idx = state
+        .ui
+        .get_domain_editor(domain_code)
+        .and_then(|ui| ui.validation.selected_idx);
+
+    let Some(idx) = selected_idx else {
+        ui.centered_and_justified(|ui| {
+            ui.label(RichText::new("Select an issue from the list").weak());
+        });
+        return;
+    };
+
+    // Get sorted issues (same order as list)
+    let sorted_issues = report.sorted_by_severity(None);
+    let Some(issue) = sorted_issues.get(idx) else {
+        ui.label(RichText::new("Issue not found").weak());
         return;
     };
 
     let severity = issue.default_severity();
-    let (icon, _) = match severity {
-        Severity::Error | Severity::Reject => (
+    let (icon, color) = severity_icon_color(severity, ui);
+
+    // Header with severity and variable
+    ui.horizontal(|ui| {
+        ui.label(RichText::new(icon).color(color).size(20.0));
+        ui.heading(issue.variable());
+    });
+
+    ui.add_space(spacing::SM);
+
+    // Severity badge
+    let severity_label = match severity {
+        Severity::Reject => "REJECT",
+        Severity::Error => "ERROR",
+        Severity::Warning => "WARNING",
+    };
+    ui.label(
+        RichText::new(severity_label)
+            .small()
+            .color(color)
+            .strong(),
+    );
+
+    ui.add_space(spacing::MD);
+
+    // Metadata grid
+    egui::Grid::new("issue_metadata")
+        .num_columns(2)
+        .spacing([20.0, 4.0])
+        .show(ui, |ui| {
+            ui.label(RichText::new("Rule ID").weak());
+            ui.label(RichText::new(issue.rule_id()).monospace());
+            ui.end_row();
+
+            if let Some(count) = issue.count() {
+                ui.label(RichText::new("Occurrences").weak());
+                ui.label(RichText::new(format!("{}", count)).strong());
+                ui.end_row();
+            }
+        });
+
+    ui.add_space(spacing::LG);
+
+    // Message section
+    ui.label(
+        RichText::new(format!("{} Message", egui_phosphor::regular::CHAT_TEXT))
+            .strong()
+            .weak(),
+    );
+    ui.separator();
+    ui.add_space(spacing::SM);
+
+    ui.label(issue.message(None));
+
+    // Issue-specific details
+    match issue {
+        Issue::CtViolation {
+            invalid_values,
+            codelist_name,
+            codelist_code,
+            extensible,
+            ..
+        } => {
+            ui.add_space(spacing::LG);
+
+            ui.label(
+                RichText::new(format!("{} Controlled Terminology", egui_phosphor::regular::LIST_CHECKS))
+                    .strong()
+                    .weak(),
+            );
+            ui.separator();
+            ui.add_space(spacing::SM);
+
+            egui::Grid::new("ct_details")
+                .num_columns(2)
+                .spacing([20.0, 4.0])
+                .show(ui, |ui| {
+                    ui.label(RichText::new("Codelist").weak());
+                    ui.label(RichText::new(codelist_name).monospace());
+                    ui.end_row();
+
+                    ui.label(RichText::new("Code").weak());
+                    ui.label(RichText::new(codelist_code).monospace().small());
+                    ui.end_row();
+
+                    ui.label(RichText::new("Extensible").weak());
+                    ui.label(if *extensible { "Yes" } else { "No" });
+                    ui.end_row();
+                });
+
+            if !invalid_values.is_empty() {
+                ui.add_space(spacing::MD);
+                ui.label(RichText::new("Invalid Values:").weak());
+                ui.add_space(spacing::XS);
+
+                egui::Frame::new()
+                    .fill(ui.visuals().extreme_bg_color)
+                    .inner_margin(egui::Margin::same(8))
+                    .corner_radius(4.0)
+                    .show(ui, |ui| {
+                        for (i, value) in invalid_values.iter().take(10).enumerate() {
+                            ui.label(
+                                RichText::new(format!("{}. {}", i + 1, value))
+                                    .monospace()
+                                    .color(ui.visuals().error_fg_color),
+                            );
+                        }
+                        if invalid_values.len() > 10 {
+                            ui.label(
+                                RichText::new(format!("... and {} more", invalid_values.len() - 10))
+                                    .weak()
+                                    .small()
+                                    .italics(),
+                            );
+                        }
+                    });
+            }
+        }
+
+        Issue::RequiredMissing { .. } => {
+            ui.add_space(spacing::LG);
+
+            ui.label(
+                RichText::new(format!("{} How to Fix", egui_phosphor::regular::LIGHTBULB))
+                    .strong()
+                    .weak(),
+            );
+            ui.separator();
+            ui.add_space(spacing::SM);
+
+            ui.label("This variable is Required per SDTMIG and must be populated.");
+            ui.add_space(spacing::XS);
+            ui.label(RichText::new("Options:").weak());
+            ui.label("• Map a source column to this variable in the Mapping tab");
+            ui.label("• If the value can be derived, it may be auto-generated");
+        }
+
+        Issue::RequiredEmpty { null_count, .. } => {
+            ui.add_space(spacing::LG);
+
+            ui.label(
+                RichText::new(format!("{} Details", egui_phosphor::regular::INFO))
+                    .strong()
+                    .weak(),
+            );
+            ui.separator();
+            ui.add_space(spacing::SM);
+
+            ui.label(format!(
+                "Found {} null/empty values in a Required variable.",
+                null_count
+            ));
+            ui.add_space(spacing::XS);
+            ui.label(RichText::new("Required variables must be populated for every record.").weak());
+        }
+
+        Issue::ExpectedMissing { .. } => {
+            ui.add_space(spacing::LG);
+
+            ui.label(
+                RichText::new(format!("{} Details", egui_phosphor::regular::INFO))
+                    .strong()
+                    .weak(),
+            );
+            ui.separator();
+            ui.add_space(spacing::SM);
+
+            ui.label("This variable is Expected per SDTMIG.");
+            ui.add_space(spacing::XS);
+            ui.label(
+                RichText::new("Expected variables should be included when data is available.")
+                    .weak(),
+            );
+        }
+
+        Issue::IdentifierNull { null_count, .. } => {
+            ui.add_space(spacing::LG);
+
+            ui.label(
+                RichText::new(format!("{} Details", egui_phosphor::regular::INFO))
+                    .strong()
+                    .weak(),
+            );
+            ui.separator();
+            ui.add_space(spacing::SM);
+
+            ui.label(format!(
+                "Found {} null/empty values in an identifier variable.",
+                null_count
+            ));
+            ui.add_space(spacing::XS);
+            ui.label(RichText::new("Identifier variables must be populated for every record.").weak());
+        }
+
+        _ => {
+            // Generic issue - no additional details needed
+        }
+    }
+
+    ui.add_space(spacing::LG);
+
+    // Recommendation section
+    ui.label(
+        RichText::new(format!("{} Recommendation", egui_phosphor::regular::ARROW_RIGHT))
+            .strong()
+            .weak(),
+    );
+    ui.separator();
+    ui.add_space(spacing::SM);
+
+    let recommendation = match severity {
+        Severity::Reject => "This issue will cause submission rejection. Must be resolved.",
+        Severity::Error => "This is a significant issue that should be fixed before submission.",
+        Severity::Warning => "Review this issue and fix if applicable to your study.",
+    };
+    ui.label(RichText::new(recommendation).italics());
+}
+
+/// Get icon and color for severity
+fn severity_icon_color(severity: Severity, ui: &Ui) -> (&'static str, Color32) {
+    match severity {
+        Severity::Reject => (
+            egui_phosphor::regular::PROHIBIT,
+            ui.visuals().error_fg_color,
+        ),
+        Severity::Error => (
             egui_phosphor::regular::X_CIRCLE,
             ui.visuals().error_fg_color,
         ),
         Severity::Warning => (egui_phosphor::regular::WARNING, ui.visuals().warn_fg_color),
+    }
+}
+
+/// Rebuild the validation report
+fn rebuild_validation_report(state: &mut AppState, domain_code: &str) {
+    let report_result = {
+        let Some(study) = state.study() else {
+            return;
+        };
+        let Some(domain) = study.get_domain(domain_code) else {
+            return;
+        };
+
+        // Get the SDTM domain definition
+        let sdtm_domain = domain.mapping.domain();
+
+        // Get preview DataFrame if available
+        let preview_df = domain.derived.preview.as_ref().map(|v| &v.data);
+
+        // Get "not collected" variables (omitted but intentionally so)
+        let not_collected: BTreeSet<String> = domain.mapping.all_omitted().clone();
+
+        // Run validation if we have preview data
+        if let Some(df) = preview_df {
+            // Load CT registry for terminology validation
+            let ct_registry = load_default_ct_registry().ok();
+            validate_domain_with_not_collected(
+                sdtm_domain,
+                df,
+                ct_registry.as_ref(),
+                &not_collected,
+            )
+        } else {
+            // No preview data, return empty report
+            ValidationReport::new(domain_code)
+        }
     };
 
-    // Header
-    ui.label(
-        RichText::new(format!(
-            "{} {} — {}",
-            icon,
-            issue.variable(),
-            severity.label()
-        ))
-        .strong()
-        .size(16.0),
-    );
-    ui.add_space(spacing::XS);
-
-    // Rule ID badge
-    egui::Frame::new()
-        .fill(ui.visuals().selection.bg_fill)
-        .inner_margin(egui::Margin::symmetric(6, 2))
-        .corner_radius(4.0)
-        .show(ui, |ui| {
-            ui.label(
-                RichText::new(issue.rule_id())
-                    .monospace()
-                    .strong()
-                    .color(ui.visuals().hyperlink_color),
-            );
+    // Store the result in derived state
+    if let Some(domain) = state
+        .study_mut()
+        .and_then(|s| s.get_domain_mut(domain_code))
+    {
+        let version = domain.version;
+        domain.derived.validation = Some(Versioned {
+            data: report_result,
+            source_version: version,
         });
-
-    ui.add_space(spacing::XS);
-    ui.label(
-        RichText::new(format!(
-            "{} {}",
-            egui_phosphor::regular::TAG,
-            check_label(issue)
-        ))
-        .small()
-        .weak(),
-    );
-    ui.add_space(spacing::MD);
-
-    // Context
-    show_context(ui, issue);
-    ui.add_space(spacing::MD);
-
-    // Message
-    ui.label(issue.message(None));
-    ui.add_space(spacing::MD);
-
-    // Details
-    show_specifics(ui, issue);
-}
-
-fn check_label(issue: &Issue) -> &'static str {
-    match issue {
-        Issue::RequiredMissing { .. } => "Required Variable Missing",
-        Issue::RequiredEmpty { .. } => "Required Variable Empty",
-        Issue::ExpectedMissing { .. } => "Expected Variable Missing",
-        Issue::IdentifierNull { .. } => "Identifier Null",
-        Issue::InvalidDate { .. } => "Invalid Date Format",
-        Issue::TextTooLong { .. } => "Text Length Exceeded",
-        Issue::DataTypeMismatch { .. } => "Data Type Mismatch",
-        Issue::DuplicateSequence { .. } => "Duplicate Sequence",
-        Issue::CtViolation { .. } => "Controlled Terminology",
     }
-}
-
-fn show_context(ui: &mut Ui, issue: &Issue) {
-    match issue {
-        Issue::CtViolation {
-            codelist_name,
-            extensible,
-            ..
-        } => {
-            context_frame(
-                ui,
-                egui_phosphor::regular::LIST_CHECKS,
-                ui.visuals().hyperlink_color,
-                &format!("Codelist: {}", codelist_name),
-                if *extensible {
-                    "Extensible codelist - values flagged but allowed"
-                } else {
-                    "Non-extensible - invalid values block export"
-                },
-            );
-        }
-        Issue::RequiredMissing { .. } => {
-            context_frame(
-                ui,
-                egui_phosphor::regular::INFO,
-                ui.visuals().hyperlink_color,
-                "Required variables (Req) must be present",
-                "SDTMIG 4.1",
-            );
-        }
-        Issue::RequiredEmpty { .. } => {
-            context_frame(
-                ui,
-                egui_phosphor::regular::INFO,
-                ui.visuals().hyperlink_color,
-                "Required variables must have values for all records",
-                "SDTMIG 4.1",
-            );
-        }
-        Issue::ExpectedMissing { .. } => {
-            context_frame(
-                ui,
-                egui_phosphor::regular::INFO,
-                ui.visuals().warn_fg_color,
-                "Expected variables should be included when applicable",
-                "SDTMIG 4.1",
-            );
-        }
-        Issue::InvalidDate { .. } => {
-            context_frame(
-                ui,
-                egui_phosphor::regular::CALENDAR,
-                ui.visuals().error_fg_color,
-                "Date/time values must use ISO 8601 format",
-                "YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS",
-            );
-        }
-        Issue::DataTypeMismatch { .. } => {
-            context_frame(
-                ui,
-                egui_phosphor::regular::INFO,
-                ui.visuals().error_fg_color,
-                "Numeric variables must contain valid numeric data",
-                "SDTMIG 2.4",
-            );
-        }
-        Issue::DuplicateSequence { .. } => {
-            context_frame(
-                ui,
-                egui_phosphor::regular::HASH,
-                ui.visuals().error_fg_color,
-                "Sequence numbers must be unique per subject",
-                "SDTMIG 4.1.5",
-            );
-        }
-        Issue::TextTooLong { .. } => {
-            context_frame(
-                ui,
-                egui_phosphor::regular::TEXT_AA,
-                ui.visuals().warn_fg_color,
-                "Character value exceeds maximum length",
-                "Values may be truncated",
-            );
-        }
-        Issue::IdentifierNull { .. } => {
-            context_frame(
-                ui,
-                egui_phosphor::regular::IDENTIFICATION_CARD,
-                ui.visuals().error_fg_color,
-                "Identifier variables must not contain null values",
-                "SDTMIG 4.1.2",
-            );
-        }
-    }
-}
-
-fn context_frame(ui: &mut Ui, icon: &str, color: egui::Color32, main: &str, sub: &str) {
-    egui::Frame::new()
-        .fill(ui.visuals().faint_bg_color)
-        .inner_margin(spacing::SM as f32)
-        .corner_radius(4.0)
-        .show(ui, |ui| {
-            ui.horizontal(|ui| {
-                ui.label(RichText::new(icon).color(color));
-                ui.label(main);
-            });
-            ui.add_space(spacing::XS);
-            ui.label(RichText::new(sub).small().weak());
-        });
-}
-
-fn show_specifics(ui: &mut Ui, issue: &Issue) {
-    match issue {
-        Issue::InvalidDate { samples, .. } | Issue::DataTypeMismatch { samples, .. } => {
-            if !samples.is_empty() {
-                ui.label(
-                    RichText::new(format!(
-                        "{} Invalid Values",
-                        egui_phosphor::regular::LIST_DASHES
-                    ))
-                    .strong(),
-                );
-                ui.add_space(spacing::XS);
-                value_list(ui, samples, ui.visuals().error_fg_color);
-            }
-        }
-        Issue::CtViolation {
-            invalid_values,
-            allowed_count,
-            ..
-        } => {
-            if !invalid_values.is_empty() {
-                ui.label(
-                    RichText::new(format!(
-                        "{} Invalid Values",
-                        egui_phosphor::regular::LIST_DASHES
-                    ))
-                    .strong(),
-                );
-                ui.add_space(spacing::XS);
-                value_list(ui, invalid_values, ui.visuals().error_fg_color);
-            }
-            ui.add_space(spacing::MD);
-            ui.label(
-                RichText::new(format!(
-                    "{} {} allowed values",
-                    egui_phosphor::regular::LIST_CHECKS,
-                    allowed_count
-                ))
-                .weak(),
-            );
-        }
-        Issue::TextTooLong {
-            max_found,
-            max_allowed,
-            ..
-        } => {
-            egui::Frame::new()
-                .fill(ui.visuals().faint_bg_color)
-                .inner_margin(spacing::SM as f32)
-                .corner_radius(4.0)
-                .show(ui, |ui| {
-                    ui.horizontal(|ui| {
-                        ui.label(RichText::new("Max allowed:").weak());
-                        ui.label(RichText::new(format!("{} chars", max_allowed)).strong());
-                    });
-                    ui.horizontal(|ui| {
-                        ui.label(RichText::new("Max found:").weak());
-                        ui.label(
-                            RichText::new(format!("{} chars", max_found))
-                                .strong()
-                                .color(ui.visuals().error_fg_color),
-                        );
-                    });
-                });
-        }
-        _ => {}
-    }
-}
-
-fn value_list(ui: &mut Ui, values: &[String], color: egui::Color32) {
-    egui::Frame::new()
-        .fill(ui.visuals().faint_bg_color)
-        .inner_margin(spacing::SM as f32)
-        .corner_radius(4.0)
-        .show(ui, |ui| {
-            for val in values.iter().take(10) {
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new("•").color(color));
-                    ui.label(RichText::new(format!("\"{}\"", val)).monospace());
-                });
-            }
-            if values.len() > 10 {
-                ui.label(
-                    RichText::new(format!("... and {} more", values.len() - 10))
-                        .small()
-                        .weak(),
-                );
-            }
-        });
 }

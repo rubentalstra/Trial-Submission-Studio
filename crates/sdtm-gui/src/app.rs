@@ -2,7 +2,8 @@
 
 use crate::menu;
 use crate::services::StudyLoader;
-use crate::settings::{load_settings, save_settings, ui::SettingsResult};
+use crate::settings::ui::{SettingsResult, SettingsWindow};
+use crate::settings::{load_settings, save_settings};
 use crate::state::{AppState, EditorTab, View};
 use crate::views::{DomainEditorView, ExportView, HomeView};
 use crossbeam_channel::Receiver;
@@ -16,6 +17,8 @@ pub struct CdiscApp {
     /// Keep the menu alive for the lifetime of the app
     #[allow(dead_code)]
     menu: Menu,
+    /// Settings window UI component
+    settings_window: SettingsWindow,
 }
 
 impl CdiscApp {
@@ -38,6 +41,7 @@ impl CdiscApp {
             state: AppState::new(settings),
             menu_receiver,
             menu,
+            settings_window: SettingsWindow::default(),
         }
     }
 }
@@ -54,10 +58,10 @@ impl eframe::App for CdiscApp {
         let mut folder_to_load = None;
 
         // Show settings window if open
-        if self.state.settings_open {
-            if let Some(ref mut pending) = self.state.settings_pending {
+        if self.state.is_settings_open() {
+            if let Some(ref mut pending) = self.state.ui.settings.pending {
                 let dark_mode = pending.general.dark_mode;
-                let result = self.state.settings_window.show(ctx, pending, dark_mode);
+                let result = self.settings_window.show(ctx, pending, dark_mode);
 
                 match result {
                     SettingsResult::Open => {}
@@ -140,7 +144,7 @@ impl CdiscApp {
                     study.study_id,
                     domain_count
                 );
-                self.state.study = Some(study);
+                self.state.set_study(study);
 
                 // Add to recent studies
                 let path = folder.to_path_buf();
@@ -186,7 +190,7 @@ impl CdiscApp {
 
             // Cmd/Ctrl+, - Open settings
             if cmd_or_ctrl && i.key_pressed(egui::Key::Comma) {
-                if !self.state.settings_open {
+                if !self.state.is_settings_open() {
                     self.state.open_settings();
                 }
             }
@@ -200,7 +204,7 @@ impl CdiscApp {
 
             // Escape - Go back or close settings
             if i.key_pressed(egui::Key::Escape) {
-                if self.state.settings_open {
+                if self.state.is_settings_open() {
                     self.state.close_settings(false);
                 } else {
                     match &self.state.view {

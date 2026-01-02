@@ -1,17 +1,48 @@
-//! Application state management
+//! Application state management.
 //!
-//! Contains all runtime state types for the GUI application.
+//! This module contains all runtime state types for the GUI application.
+//! The architecture separates concerns into:
+//!
+//! - **AppState**: Root state with DM-enforced domain access
+//! - **StudyState**: Study-level state with DM dependency tracking
+//! - **DomainState**: Domain data with version tracking
+//! - **DerivedState**: Cached computed state with version-based invalidation
+//! - **UiState**: All UI state (separated from domain data)
+//!
+//! # DM Dependency Enforcement
+//!
+//! The DM domain must have a valid preview before other domains can be accessed.
+//! This is enforced at the `AppState` level through the `domain()` method.
+//!
+//! # Version-Based Cache Invalidation
+//!
+//! Each `DomainState` has a `version` counter that increments on mutation.
+//! Derived state (`DerivedState`) stores the version it was computed from,
+//! enabling automatic staleness detection.
 
 mod app_state;
+mod derived_state;
+mod domain_state;
 mod study_state;
-mod transform_state;
+mod ui_state;
+mod versioned;
 
-pub use app_state::{AppState, EditorTab, ExportDomainStep, ExportProgress, View};
-pub use study_state::{
-    DomainInitState, DomainState, DomainStatus, PreviewState, StudyState, SuppAction,
-    SuppColumnConfig, SuppState,
+// App state
+pub use app_state::{AppState, EditorTab, View};
+
+// Study state
+pub use study_state::StudyState;
+
+// Domain state
+pub use domain_state::{DomainSource, DomainState};
+
+// Derived state
+pub use derived_state::{
+    suggest_qnam, validate_qnam, DerivedState, SuppAction, SuppColumnConfig, SuppConfig,
 };
-pub use transform_state::{
-    TransformRule, TransformRuleDisplay, TransformState, TransformType, TransformTypeDisplay,
-    build_pipeline_from_domain,
-};
+
+// UI state
+pub use ui_state::UiState;
+
+// Versioned wrapper
+pub use versioned::Versioned;
