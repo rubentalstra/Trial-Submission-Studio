@@ -4,6 +4,7 @@
 //! SDTM-compliant output DataFrames.
 
 use polars::prelude::*;
+use sdtm_common::any_to_string;
 use std::collections::BTreeMap;
 
 use crate::error::TransformError;
@@ -132,7 +133,7 @@ fn execute_usubjid(
     let mut values = Vec::with_capacity(row_count);
 
     for idx in 0..row_count {
-        let subjid = any_value_to_string(source_series.get(idx)?);
+        let subjid = any_to_string(source_series.get(idx)?);
         if subjid.trim().is_empty() {
             values.push(String::new());
         } else {
@@ -173,7 +174,7 @@ fn execute_sequence(
     let mut values = Vec::with_capacity(row_count);
 
     for idx in 0..row_count {
-        let usubjid = any_value_to_string(source_series.get(idx)?);
+        let usubjid = any_to_string(source_series.get(idx)?);
         let key = usubjid.trim().to_string();
         let count = counters.entry(key).or_insert(0);
         *count += 1;
@@ -201,7 +202,7 @@ fn execute_datetime(
     let mut values = Vec::with_capacity(row_count);
 
     for idx in 0..row_count {
-        let raw = any_value_to_string(source_series.get(idx)?);
+        let raw = any_to_string(source_series.get(idx)?);
         let trimmed = raw.trim();
 
         if trimmed.is_empty() {
@@ -244,7 +245,7 @@ fn execute_duration(
     let mut values = Vec::with_capacity(row_count);
 
     for idx in 0..row_count {
-        let raw = any_value_to_string(source_series.get(idx)?);
+        let raw = any_to_string(source_series.get(idx)?);
         let trimmed = raw.trim();
 
         if trimmed.is_empty() {
@@ -305,7 +306,7 @@ fn execute_study_day(
     let mut values: Vec<Option<i32>> = Vec::with_capacity(row_count);
 
     for idx in 0..row_count {
-        let event_date_str = any_value_to_string(source_series.get(idx)?);
+        let event_date_str = any_to_string(source_series.get(idx)?);
         let trimmed = event_date_str.trim();
 
         if trimmed.is_empty() {
@@ -347,7 +348,7 @@ fn execute_ct_normalization(
     let mut values = Vec::with_capacity(row_count);
 
     for idx in 0..row_count {
-        let raw = any_value_to_string(source_series.get(idx)?);
+        let raw = any_to_string(source_series.get(idx)?);
         let trimmed = raw.trim();
 
         if trimmed.is_empty() {
@@ -384,7 +385,7 @@ fn execute_numeric(
     let mut values: Vec<Option<f64>> = Vec::with_capacity(row_count);
 
     for idx in 0..row_count {
-        let raw = any_value_to_string(source_series.get(idx)?);
+        let raw = any_to_string(source_series.get(idx)?);
         let trimmed = raw.trim();
 
         if trimmed.is_empty() {
@@ -425,31 +426,11 @@ fn execute_copy(
     let mut values = Vec::with_capacity(row_count);
 
     for idx in 0..row_count {
-        let raw = any_value_to_string(source_series.get(idx)?);
+        let raw = any_to_string(source_series.get(idx)?);
         values.push(raw);
     }
 
     Ok(Series::new(target_name.into(), values))
-}
-
-/// Convert any Polars value to a string.
-fn any_value_to_string(value: AnyValue<'_>) -> String {
-    match value {
-        AnyValue::Null => String::new(),
-        AnyValue::String(s) => s.to_string(),
-        AnyValue::Int8(n) => n.to_string(),
-        AnyValue::Int16(n) => n.to_string(),
-        AnyValue::Int32(n) => n.to_string(),
-        AnyValue::Int64(n) => n.to_string(),
-        AnyValue::UInt8(n) => n.to_string(),
-        AnyValue::UInt16(n) => n.to_string(),
-        AnyValue::UInt32(n) => n.to_string(),
-        AnyValue::UInt64(n) => n.to_string(),
-        AnyValue::Float32(n) => n.to_string(),
-        AnyValue::Float64(n) => n.to_string(),
-        AnyValue::Boolean(b) => if b { "Y" } else { "N" }.to_string(),
-        _ => format!("{value}"),
-    }
 }
 
 #[cfg(test)]

@@ -10,6 +10,7 @@ workspace = true
 
 [dependencies]
 # Workspace crates
+sdtm-common = { path = "../sdtm-common" }
 sdtm-model = { path = "../sdtm-model" }
 
 # Core dependencies

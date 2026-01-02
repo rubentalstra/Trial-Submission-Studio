@@ -36,7 +36,16 @@ pub fn any_to_string(value: AnyValue<'_>) -> String {
         AnyValue::String(s) => s.to_string(),
         AnyValue::StringOwned(s) => s.to_string(),
         AnyValue::Boolean(b) => if b { "Y" } else { "N" }.to_string(),
-        other => other.to_string(),
+        // For any other type, use Display but strip outer quotes if present
+        other => {
+            let s = other.to_string();
+            // Strip surrounding quotes that might come from formatting
+            if s.starts_with('"') && s.ends_with('"') && s.len() >= 2 {
+                s[1..s.len() - 1].to_string()
+            } else {
+                s
+            }
+        }
     }
 }
 

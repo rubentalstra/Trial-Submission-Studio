@@ -7,6 +7,7 @@ use crate::theme::spacing;
 use crate::views::domain_editor::ensure_mapping_initialized;
 use egui::{RichText, Ui};
 use polars::prelude::DataFrame;
+use sdtm_common::any_to_string;
 use sdtm_standards::load_default_ct_registry;
 use sdtm_transform::build_preview_dataframe_with_omitted;
 use std::collections::{BTreeMap, BTreeSet};
@@ -196,34 +197,17 @@ fn show_data_table(ui: &mut Ui, df: &DataFrame, start_row: usize, end_row: usize
                 let row_idx = start_row + row.index();
                 for col_name in &column_names {
                     row.col(|ui| {
-                        let value = get_cell_value(df, col_name, row_idx);
+                        let value = df
+                            .column(col_name)
+                            .ok()
+                            .and_then(|s| s.get(row_idx).ok())
+                            .map(any_to_string)
+                            .unwrap_or_default();
                         ui.label(RichText::new(value).monospace().small());
                     });
                 }
             });
         });
-}
-
-/// Get cell value as string
-fn get_cell_value(df: &DataFrame, col_name: &str, row_idx: usize) -> String {
-    let Some(series) = df.column(col_name).ok() else {
-        return String::new();
-    };
-
-    series
-        .get(row_idx)
-        .map(|v| {
-            use polars::prelude::AnyValue;
-            match v {
-                AnyValue::Null => String::new(),
-                AnyValue::String(s) => s.to_string(),
-                AnyValue::Int64(i) => i.to_string(),
-                AnyValue::Float64(f) => format!("{:.2}", f),
-                AnyValue::Boolean(b) => if b { "Y" } else { "N" }.to_string(),
-                other => format!("{}", other),
-            }
-        })
-        .unwrap_or_default()
 }
 
 /// Show pagination controls

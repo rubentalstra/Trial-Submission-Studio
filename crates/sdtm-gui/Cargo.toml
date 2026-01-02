@@ -21,6 +21,7 @@ egui = "0.33.3"
 egui_extras = { version = "0.33.3", features = ["all_loaders"] }
 
 # Workspace dependencies
+sdtm-common = { path = "../sdtm-common" }
 sdtm-model = { path = "../sdtm-model" }
 sdtm-standards = { path = "../sdtm-standards" }
 sdtm-ingest = { path = "../sdtm-ingest" }
