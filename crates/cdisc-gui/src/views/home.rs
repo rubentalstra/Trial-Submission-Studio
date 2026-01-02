@@ -7,18 +7,29 @@ use crate::theme::spacing;
 use egui::{Color32, RichText, Ui, Vec2};
 use std::path::PathBuf;
 
+/// Action returned from the home view.
+pub enum HomeAction {
+    /// No action
+    None,
+    /// Load a new study from folder
+    LoadStudy(PathBuf),
+    /// Close the current study
+    CloseStudy,
+}
+
 /// Home screen view
 pub struct HomeView;
 
 impl HomeView {
     /// Render the home screen
     ///
-    /// Returns a folder path if the user selected one to load.
-    pub fn show(ui: &mut Ui, state: &mut AppState) -> Option<PathBuf> {
+    /// Returns an action if user triggered something.
+    pub fn show(ui: &mut Ui, state: &mut AppState) -> HomeAction {
         let mut clicked_domain: Option<String> = None;
         let mut go_to_export = false;
         let mut selected_folder: Option<PathBuf> = None;
         let mut new_workflow_mode: Option<WorkflowMode> = None;
+        let mut close_study = false;
 
         ui.vertical_centered(|ui| {
             ui.add_space(spacing::XL);
@@ -35,15 +46,8 @@ impl HomeView {
             ui.add_space(spacing::XL);
 
             // Show study info if loaded, otherwise show standard selector
-            if let Some(study) = state.study() {
-                Self::show_loaded_study(
-                    ui,
-                    state,
-                    study,
-                    &mut clicked_domain,
-                    &mut go_to_export,
-                    &mut selected_folder,
-                );
+            if state.study.is_some() {
+                Self::show_loaded_study(ui, state, &mut clicked_domain, &mut go_to_export);
             } else {
                 Self::show_standard_selector(
                     ui,
@@ -82,6 +86,11 @@ impl HomeView {
             }
         });
 
+        // Show close study confirmation modal
+        if state.ui.close_study_confirm {
+            close_study = Self::show_close_confirm_modal(ui, state);
+        }
+
         // Handle workflow mode change
         if let Some(mode) = new_workflow_mode {
             state.set_workflow_mode(mode);
@@ -95,119 +104,154 @@ impl HomeView {
             state.go_export();
         }
 
-        selected_folder
+        // Return appropriate action
+        if close_study {
+            HomeAction::CloseStudy
+        } else if let Some(folder) = selected_folder {
+            HomeAction::LoadStudy(folder)
+        } else {
+            HomeAction::None
+        }
     }
 
-    /// Show the standard selector cards (SDTM, ADaM, SEND)
+    /// Show the close study confirmation modal.
+    /// Returns true if user confirmed closing.
+    fn show_close_confirm_modal(ui: &mut Ui, state: &mut AppState) -> bool {
+        let mut confirmed = false;
+
+        egui::Window::new("Close Study")
+            .collapsible(false)
+            .resizable(false)
+            .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+            .show(ui.ctx(), |ui| {
+                ui.set_min_width(350.0);
+
+                ui.vertical_centered(|ui| {
+                    ui.add_space(spacing::MD);
+
+                    ui.label(
+                        RichText::new(egui_phosphor::regular::WARNING)
+                            .size(48.0)
+                            .color(ui.visuals().warn_fg_color),
+                    );
+
+                    ui.add_space(spacing::MD);
+
+                    ui.label(
+                        RichText::new("Are you sure you want to close this study?")
+                            .strong()
+                            .size(16.0),
+                    );
+
+                    ui.add_space(spacing::SM);
+
+                    ui.label(
+                        RichText::new("All unsaved mapping progress will be lost.")
+                            .weak()
+                            .color(ui.visuals().warn_fg_color),
+                    );
+
+                    ui.add_space(spacing::LG);
+
+                    ui.horizontal(|ui| {
+                        ui.add_space(40.0);
+
+                        if ui
+                            .button(format!("{} Cancel", egui_phosphor::regular::X))
+                            .clicked()
+                        {
+                            state.ui.close_study_confirm = false;
+                        }
+
+                        ui.add_space(spacing::MD);
+
+                        let close_btn = ui.add(
+                            egui::Button::new(RichText::new(format!(
+                                "{} Close Study",
+                                egui_phosphor::regular::TRASH
+                            )))
+                            .fill(Color32::from_rgb(192, 57, 43)),
+                        );
+
+                        if close_btn.clicked() {
+                            state.ui.close_study_confirm = false;
+                            confirmed = true;
+                        }
+
+                        ui.add_space(40.0);
+                    });
+
+                    ui.add_space(spacing::MD);
+                });
+            });
+
+        confirmed
+    }
+
+    /// Show the standard selector with dropdown and open button
     fn show_standard_selector(
         ui: &mut Ui,
         state: &AppState,
         new_mode: &mut Option<WorkflowMode>,
         selected_folder: &mut Option<PathBuf>,
     ) {
-        ui.label(RichText::new("Select a CDISC Standard").strong().size(16.0));
-        ui.add_space(spacing::MD);
-
-        // Standard cards in horizontal layout
-        ui.horizontal(|ui| {
-            ui.add_space(spacing::MD);
-
-            // SDTM Card
-            Self::show_standard_card(
-                ui,
-                WorkflowMode::Sdtm,
-                state.workflow_mode,
-                "63 domains",
-                "DM, AE, LB, VS...",
-                new_mode,
-                selected_folder,
-            );
-
-            ui.add_space(spacing::MD);
-
-            // ADaM Card
-            Self::show_standard_card(
-                ui,
-                WorkflowMode::Adam,
-                state.workflow_mode,
-                "3 structures",
-                "ADSL, BDS, OCCDS",
-                new_mode,
-                selected_folder,
-            );
-
-            ui.add_space(spacing::MD);
-
-            // SEND Card
-            Self::show_standard_card(
-                ui,
-                WorkflowMode::Send,
-                state.workflow_mode,
-                "30+ domains",
-                "EX, BW, LB, MI...",
-                new_mode,
-                selected_folder,
-            );
-
-            ui.add_space(spacing::MD);
-        });
-    }
-
-    /// Show a single standard card
-    fn show_standard_card(
-        ui: &mut Ui,
-        mode: WorkflowMode,
-        current_mode: WorkflowMode,
-        stat_line: &str,
-        examples: &str,
-        new_mode: &mut Option<WorkflowMode>,
-        selected_folder: &mut Option<PathBuf>,
-    ) {
-        let is_selected = mode == current_mode;
-        let card_color = if is_selected {
-            ui.visuals().selection.bg_fill
-        } else {
-            ui.visuals().widgets.noninteractive.bg_fill
-        };
-
-        egui::Frame::none()
-            .fill(card_color)
+        // Container frame for the selector
+        egui::Frame::new()
+            .fill(ui.visuals().widgets.noninteractive.bg_fill)
             .corner_radius(8.0)
-            .inner_margin(spacing::MD)
+            .inner_margin(spacing::LG)
             .show(ui, |ui| {
-                ui.set_min_size(Vec2::new(180.0, 200.0));
-                ui.vertical_centered(|ui| {
-                    // Standard name
-                    ui.heading(RichText::new(mode.display_name()).size(24.0));
-                    ui.add_space(spacing::XS);
+                ui.set_min_width(400.0);
 
-                    // Tagline
-                    ui.label(RichText::new(mode.tagline()).weak());
-                    ui.add_space(spacing::SM);
+                let mut selected = state.workflow_mode;
 
-                    // Statistics
-                    ui.label(RichText::new(stat_line).strong());
-                    ui.label(RichText::new(examples).weak().small());
-
+                ui.with_layout(egui::Layout::top_down(egui::Align::Center), |ui| {
+                    ui.label(RichText::new("Select a CDISC Standard").strong().size(16.0));
                     ui.add_space(spacing::MD);
 
-                    // Select/Open button
-                    let button_text = if is_selected {
-                        format!("{} Open Study...", egui_phosphor::regular::FOLDER_OPEN)
-                    } else {
-                        format!("{} Select", egui_phosphor::regular::CHECK)
-                    };
+                    // Standard dropdown - centered
+                    ui.horizontal(|ui| {
+                        ui.add_space((ui.available_width() - 300.0) / 2.0);
+                        egui::ComboBox::from_id_salt("standard_selector")
+                            .width(300.0)
+                            .selected_text(format!(
+                                "{} - {}",
+                                selected.display_name(),
+                                selected.tagline()
+                            ))
+                            .show_ui(ui, |ui| {
+                                for mode in
+                                    [WorkflowMode::Sdtm, WorkflowMode::Adam, WorkflowMode::Send]
+                                {
+                                    let label =
+                                        format!("{} - {}", mode.display_name(), mode.tagline());
+                                    if ui.selectable_value(&mut selected, mode, label).changed() {
+                                        *new_mode = Some(mode);
+                                    }
+                                }
+                            });
+                    });
 
-                    if ui.button(button_text).clicked() {
-                        if is_selected {
-                            // Open file dialog
-                            if let Some(folder) = rfd::FileDialog::new().pick_folder() {
-                                tracing::info!("Selected folder: {:?}", folder);
-                                *selected_folder = Some(folder);
-                            }
-                        } else {
-                            // Select this mode
-                            *new_mode = Some(mode);
+                    ui.add_space(spacing::SM);
+
+                    // Description for selected standard
+                    ui.label(RichText::new(selected.description()).weak().small());
+
+                    ui.add_space(spacing::LG);
+
+                    // Open folder button
+                    let button = ui.add_sized(
+                        Vec2::new(200.0, 40.0),
+                        egui::Button::new(RichText::new(format!(
+                            "{} Open Study Folder",
+                            egui_phosphor::regular::FOLDER_OPEN
+                        ))),
+                    );
+
+                    if button.clicked() {
+                        if let Some(folder) = rfd::FileDialog::new().pick_folder() {
+                            tracing::info!("Selected folder: {:?}", folder);
+                            *selected_folder = Some(folder);
                         }
                     }
                 });
@@ -217,16 +261,16 @@ impl HomeView {
     /// Show loaded study information
     fn show_loaded_study(
         ui: &mut Ui,
-        state: &AppState,
-        study: &crate::state::StudyState,
+        state: &mut AppState,
         clicked_domain: &mut Option<String>,
         go_to_export: &mut bool,
-        selected_folder: &mut Option<PathBuf>,
     ) {
+        let study = state.study.as_ref().unwrap();
+
         ui.separator();
         ui.add_space(spacing::MD);
 
-        // Study header with mode badge
+        // Study header with mode badge and close button
         ui.horizontal(|ui| {
             ui.heading(&study.study_id);
             ui.add_space(spacing::SM);
@@ -242,8 +286,19 @@ impl HomeView {
                     .color(badge_color)
                     .strong(),
             );
+
+            // Push close button to the right
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                if ui
+                    .small_button(format!("{} Close Study", egui_phosphor::regular::X))
+                    .clicked()
+                {
+                    state.ui.close_study_confirm = true;
+                }
+            });
         });
 
+        let study = state.study.as_ref().unwrap();
         ui.label(
             RichText::new(study.study_folder.display().to_string())
                 .weak()
@@ -252,21 +307,17 @@ impl HomeView {
 
         ui.add_space(spacing::MD);
 
-        // Back to home button
-        if ui
-            .button(format!(
-                "{} Change Standard",
-                egui_phosphor::regular::ARROW_LEFT
-            ))
-            .clicked()
-        {
-            // This will be handled by clearing study
-        }
-
-        ui.add_space(spacing::MD);
+        // Extract data needed for rendering before borrowing state mutably
+        let has_dm = study.has_dm_domain();
+        let dm_ready = study.is_dm_ready();
+        let domain_codes: Vec<String> = study
+            .domain_codes_dm_first()
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect();
 
         // DM dependency notice if DM exists but not ready
-        if study.has_dm_domain() && !study.is_dm_ready() {
+        if has_dm && !dm_ready {
             ui.horizontal(|ui| {
                 ui.label(
                     RichText::new(format!(
@@ -289,13 +340,13 @@ impl HomeView {
         );
         ui.add_space(spacing::SM);
 
-        // Get domain codes with DM first
-        let domain_codes = study.domain_codes_dm_first();
-
         egui::ScrollArea::vertical()
             .max_height(400.0)
             .show(ui, |ui| {
-                for code in domain_codes {
+                for code in &domain_codes {
+                    let Some(study) = state.study.as_ref() else {
+                        continue;
+                    };
                     let Some(domain) = study.get_domain(code) else {
                         continue;
                     };

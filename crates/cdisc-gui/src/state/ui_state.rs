@@ -21,6 +21,8 @@ pub struct UiState {
     pub export: ExportUiState,
     /// Per-domain editor UI state
     pub domain_editors: HashMap<String, DomainEditorUiState>,
+    /// Close study confirmation modal
+    pub close_study_confirm: bool,
 }
 
 impl UiState {

@@ -8,4 +8,4 @@ mod home;
 
 pub use domain_editor::DomainEditorView;
 pub use export::ExportView;
-pub use home::HomeView;
+pub use home::{HomeAction, HomeView};

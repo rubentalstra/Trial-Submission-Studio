@@ -54,7 +54,7 @@ pub mod send_ig;
 // Re-export main types
 pub use ct::CtVersion;
 pub use error::{Result, StandardsError};
-pub use paths::{standards_root, STANDARDS_ENV_VAR};
+pub use paths::{STANDARDS_ENV_VAR, standards_root};
 pub use registry::{StandardsConfig, StandardsRegistry};
 
 // Convenience re-exports for common operations

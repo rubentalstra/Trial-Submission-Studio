@@ -4,7 +4,7 @@ A Rust-first CLI tool for transpiling clinical trial source data into CDISC SDTM
 outputs (XPT, Dataset-XML, Define-XML) with strict, offline validation.
 
 ```bash
-cargo run --package sdtm-gui 
+cargo run --package cdisc-gui 
 ```
 
 ## Target Features

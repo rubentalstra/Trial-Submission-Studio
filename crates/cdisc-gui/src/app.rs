@@ -5,7 +5,7 @@ use crate::services::StudyLoader;
 use crate::settings::ui::{SettingsResult, SettingsWindow};
 use crate::settings::{load_settings, save_settings};
 use crate::state::{AppState, EditorTab, View};
-use crate::views::{DomainEditorView, ExportView, HomeView};
+use crate::views::{DomainEditorView, ExportView, HomeAction, HomeView};
 use crossbeam_channel::Receiver;
 use eframe::egui;
 use muda::{Menu, MenuEvent};
@@ -54,8 +54,8 @@ impl eframe::App for CdiscApp {
         // Handle keyboard shortcuts
         self.handle_shortcuts(ctx);
 
-        // Track if we need to load a study
-        let mut folder_to_load = None;
+        // Track home view action
+        let mut home_action = HomeAction::None;
 
         // Show settings window if open
         if self.state.is_settings_open() {
@@ -82,7 +82,7 @@ impl eframe::App for CdiscApp {
         // Main panel
         egui::CentralPanel::default().show(ctx, |ui| match self.state.view.clone() {
             View::Home => {
-                folder_to_load = HomeView::show(ui, &mut self.state);
+                home_action = HomeView::show(ui, &mut self.state);
             }
             View::DomainEditor { domain, tab } => {
                 DomainEditorView::show(ui, &mut self.state, &domain, tab);
@@ -92,9 +92,15 @@ impl eframe::App for CdiscApp {
             }
         });
 
-        // Load study if folder was selected
-        if let Some(folder) = folder_to_load {
-            self.load_study(&folder);
+        // Handle home view actions
+        match home_action {
+            HomeAction::LoadStudy(folder) => {
+                self.load_study(&folder);
+            }
+            HomeAction::CloseStudy => {
+                self.state.clear_study();
+            }
+            HomeAction::None => {}
         }
     }
 }
