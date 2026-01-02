@@ -72,6 +72,8 @@ pub struct DomainState {
     pub source_data: DataFrame,
     /// Current status
     pub status: DomainStatus,
+    /// Human-readable domain label (e.g., "Demographics" for DM)
+    pub domain_label: Option<String>,
     /// Interactive mapping state (for GUI)
     pub mapping_state: Option<MappingState>,
     /// Transform display state (read-only, shows what will be applied)
@@ -85,17 +87,26 @@ pub struct DomainState {
 }
 
 impl DomainState {
-    /// Create a new domain state
-    pub fn new(source_file: PathBuf, source_data: DataFrame) -> Self {
+    /// Create a new domain state with optional label
+    pub fn new(source_file: PathBuf, source_data: DataFrame, label: Option<String>) -> Self {
         Self {
             source_file,
             source_data,
             status: DomainStatus::NotStarted,
+            domain_label: label,
             mapping_state: None,
             transform_state: None,
             validation: None,
             validation_selected_idx: None,
             preview_data: None,
+        }
+    }
+
+    /// Get display name: "DM (Demographics)" or just "DM" if no label
+    pub fn display_name(&self, code: &str) -> String {
+        match &self.domain_label {
+            Some(label) => format!("{} ({})", code, label),
+            None => code.to_string(),
         }
     }
 

@@ -5,8 +5,8 @@
 //! - Windows/Linux: File menu with Open Study, Settings, Exit
 
 use muda::{
-    accelerator::{Accelerator, Code, Modifiers},
     Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu,
+    accelerator::{Accelerator, Code, Modifiers},
 };
 
 /// Menu action identifiers.
@@ -144,12 +144,7 @@ pub fn create_menu() -> Menu {
     #[cfg(target_os = "macos")]
     {
         help_menu
-            .append(&MenuItem::with_id(
-                "help_docs",
-                "Documentation",
-                true,
-                None,
-            ))
+            .append(&MenuItem::with_id("help_docs", "Documentation", true, None))
             .expect("Failed to add Documentation menu item");
     }
 

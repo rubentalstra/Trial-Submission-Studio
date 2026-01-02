@@ -1,7 +1,9 @@
 //! Application-level state
 
 use super::StudyState;
-use crate::settings::{ui::SettingsWindow, Settings};
+use crate::settings::{ExportFormat, Settings, ui::SettingsWindow};
+use std::collections::HashSet;
+use std::path::PathBuf;
 
 /// Top-level application state
 pub struct AppState {
@@ -17,6 +19,109 @@ pub struct AppState {
     pub settings_pending: Option<Settings>,
     /// Settings window UI state
     pub settings_window: SettingsWindow,
+    /// Export state
+    pub export_state: ExportState,
+}
+
+/// Export operation state
+#[derive(Default, Clone)]
+pub struct ExportState {
+    /// Domains selected for export (domain codes)
+    pub selected_domains: HashSet<String>,
+    /// Override output directory (if different from default)
+    pub output_dir_override: Option<PathBuf>,
+    /// Override export format (if different from settings default)
+    pub format_override: Option<ExportFormat>,
+    /// Current export progress (None if not exporting)
+    pub progress: Option<ExportProgress>,
+}
+
+/// Export progress tracking
+#[derive(Clone)]
+pub struct ExportProgress {
+    /// Current step description
+    pub current_step: String,
+    /// Current domain being processed
+    pub current_domain: Option<String>,
+    /// Total domains to process
+    pub total_domains: usize,
+    /// Completed domains count
+    pub completed_domains: usize,
+    /// Individual step within current domain
+    pub domain_step: ExportDomainStep,
+    /// Any error that occurred
+    pub error: Option<String>,
+    /// Export completed successfully
+    pub completed: bool,
+    /// Output files created
+    pub output_files: Vec<PathBuf>,
+}
+
+/// Steps within a domain export
+#[derive(Clone, Copy, PartialEq, Eq, Default)]
+pub enum ExportDomainStep {
+    #[default]
+    Pending,
+    ApplyingMappings,
+    NormalizingCT,
+    GeneratingVariables,
+    ValidatingOutput,
+    WritingXpt,
+    WritingDefineXml,
+    Complete,
+}
+
+impl ExportDomainStep {
+    /// Get display label for this step
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::Pending => "Pending",
+            Self::ApplyingMappings => "Applying mappings",
+            Self::NormalizingCT => "Normalizing terminology",
+            Self::GeneratingVariables => "Generating derived variables",
+            Self::ValidatingOutput => "Validating output",
+            Self::WritingXpt => "Writing XPT file",
+            Self::WritingDefineXml => "Generating Define-XML",
+            Self::Complete => "Complete",
+        }
+    }
+}
+
+impl ExportProgress {
+    /// Create a new export progress tracker
+    pub fn new(total_domains: usize) -> Self {
+        Self {
+            current_step: "Preparing export...".to_string(),
+            current_domain: None,
+            total_domains,
+            completed_domains: 0,
+            domain_step: ExportDomainStep::Pending,
+            error: None,
+            completed: false,
+            output_files: Vec::new(),
+        }
+    }
+
+    /// Get overall progress as a fraction (0.0 to 1.0)
+    pub fn fraction(&self) -> f32 {
+        if self.total_domains == 0 {
+            return 1.0;
+        }
+        let domain_fraction = self.completed_domains as f32 / self.total_domains as f32;
+        let step_fraction = match self.domain_step {
+            ExportDomainStep::Pending => 0.0,
+            ExportDomainStep::ApplyingMappings => 0.15,
+            ExportDomainStep::NormalizingCT => 0.30,
+            ExportDomainStep::GeneratingVariables => 0.45,
+            ExportDomainStep::ValidatingOutput => 0.60,
+            ExportDomainStep::WritingXpt => 0.80,
+            ExportDomainStep::WritingDefineXml => 0.95,
+            ExportDomainStep::Complete => 1.0,
+        };
+        // Each domain contributes equally to overall progress
+        let per_domain = 1.0 / self.total_domains as f32;
+        domain_fraction + (step_fraction * per_domain)
+    }
 }
 
 impl Default for AppState {
@@ -28,6 +133,7 @@ impl Default for AppState {
             settings_open: false,
             settings_pending: None,
             settings_window: SettingsWindow::default(),
+            export_state: ExportState::default(),
         }
     }
 }
@@ -42,6 +148,7 @@ impl AppState {
             settings_open: false,
             settings_pending: None,
             settings_window: SettingsWindow::default(),
+            export_state: ExportState::default(),
         }
     }
 }

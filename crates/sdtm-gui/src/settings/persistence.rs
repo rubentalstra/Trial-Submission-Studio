@@ -72,8 +72,8 @@ pub fn save_settings(settings: &Settings) -> Result<(), String> {
     }
 
     // Serialize to TOML
-    let content =
-        toml::to_string_pretty(settings).map_err(|e| format!("Failed to serialize settings: {}", e))?;
+    let content = toml::to_string_pretty(settings)
+        .map_err(|e| format!("Failed to serialize settings: {}", e))?;
 
     // Write to file
     fs::write(&path, content).map_err(|e| format!("Failed to write settings file: {}", e))?;

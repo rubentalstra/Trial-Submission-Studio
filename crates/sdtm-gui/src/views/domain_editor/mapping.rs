@@ -245,7 +245,11 @@ fn show_variable_list(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
 
         if summary.omitted > 0 {
             ui.separator();
-            ui.label(RichText::new(format!("{} omitted", summary.omitted)).weak().small());
+            ui.label(
+                RichText::new(format!("{} omitted", summary.omitted))
+                    .weak()
+                    .small(),
+            );
         }
     });
 

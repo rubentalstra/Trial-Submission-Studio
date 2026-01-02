@@ -20,12 +20,21 @@ impl StudyLoader {
     /// - `study_folder`: Path to the study folder
     /// - `header_rows`: Number of header rows in CSV files (1 = single, 2 = double with labels)
     pub fn load_study(study_folder: &Path, header_rows: usize) -> Result<StudyState> {
+        use std::collections::HashMap;
+
         // Create the study state
         let mut study = StudyState::new(study_folder.to_path_buf());
 
         // Get supported domain codes from SDTM-IG
         let domains =
             load_default_sdtm_ig_domains().context("Failed to load SDTM-IG domain definitions")?;
+
+        // Build lookup: domain code -> label
+        let domain_labels: HashMap<String, String> = domains
+            .iter()
+            .filter_map(|d| d.label.clone().map(|label| (d.name.clone(), label)))
+            .collect();
+
         let domain_codes: Vec<String> = domains.iter().map(|d| d.name.clone()).collect();
 
         // Find all CSV files
@@ -79,7 +88,8 @@ impl StudyLoader {
                             df.width()
                         );
 
-                        let domain_state = DomainState::new(file_path.clone(), df);
+                        let label = domain_labels.get(&domain_code).cloned();
+                        let domain_state = DomainState::new(file_path.clone(), df, label);
                         study.domains.insert(domain_code, domain_state);
                     }
                     Err(e) => {

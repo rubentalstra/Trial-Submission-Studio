@@ -78,17 +78,22 @@ impl HomeView {
                     .domain_codes()
                     .into_iter()
                     .filter_map(|code| {
-                        study
-                            .domains
-                            .get(code)
-                            .map(|domain| (code.to_string(), domain.status, domain.row_count()))
+                        study.domains.get(code).map(|domain| {
+                            let display_name = domain.display_name(code);
+                            (
+                                code.to_string(),
+                                display_name,
+                                domain.status,
+                                domain.row_count(),
+                            )
+                        })
                     })
                     .collect();
 
                 egui::ScrollArea::vertical()
                     .max_height(400.0)
                     .show(ui, |ui| {
-                        for (code, status, row_count) in &domain_info {
+                        for (code, display_name, status, row_count) in &domain_info {
                             let status_icon = status.icon();
                             let status_color = match status {
                                 DomainStatus::NotStarted => ui.visuals().weak_text_color(),
@@ -101,13 +106,11 @@ impl HomeView {
 
                             ui.horizontal(|ui| {
                                 ui.label(RichText::new(status_icon).color(status_color));
-                                if ui.button(code).clicked() {
+                                if ui.button(display_name).clicked() {
                                     clicked_domain = Some(code.clone());
                                 }
                                 ui.label(
-                                    RichText::new(format!("{} rows", row_count))
-                                        .weak()
-                                        .small(),
+                                    RichText::new(format!("{} rows", row_count)).weak().small(),
                                 );
                             });
                         }

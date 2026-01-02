@@ -474,9 +474,12 @@ impl SettingsWindow {
         self.section_header(ui, "Developer");
 
         self.setting_group(ui, None, |ui| {
-            ui.label(egui::RichText::new(
-                "Developer mode allows you to bypass validation checks for testing.",
-            ).weak());
+            ui.label(
+                egui::RichText::new(
+                    "Developer mode allows you to bypass validation checks for testing.",
+                )
+                .weak(),
+            );
             ui.add_space(12.0);
 
             self.setting_row(ui, "Developer Mode", None, |ui| {
@@ -550,9 +553,17 @@ impl SettingsWindow {
             });
 
             if let Some(ref dir) = export.default_output_dir {
-                ui.label(egui::RichText::new(dir.display().to_string()).small().weak());
+                ui.label(
+                    egui::RichText::new(dir.display().to_string())
+                        .small()
+                        .weak(),
+                );
             } else {
-                ui.label(egui::RichText::new("Uses study folder by default").small().weak());
+                ui.label(
+                    egui::RichText::new("Uses study folder by default")
+                        .small()
+                        .weak(),
+                );
             }
         });
 
@@ -685,9 +696,10 @@ impl SettingsWindow {
         self.section_header(ui, "Keyboard Shortcuts");
 
         self.setting_group(ui, None, |ui| {
-            ui.label(egui::RichText::new(
-                "Current keyboard shortcuts (read-only in this version)",
-            ).weak());
+            ui.label(
+                egui::RichText::new("Current keyboard shortcuts (read-only in this version)")
+                    .weak(),
+            );
             ui.add_space(12.0);
 
             egui::Grid::new("shortcuts_grid")

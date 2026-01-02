@@ -236,13 +236,7 @@ fn show_transform_list(
 
         for (idx, rule) in rules.iter().enumerate().filter(|(_, r)| r.is_generated()) {
             let status_suffix = transform_status_suffix(rule, has_subject_id_mapping);
-            if render_row(
-                ui,
-                idx,
-                rule,
-                selected_idx == Some(idx),
-                status_suffix,
-            ) {
+            if render_row(ui, idx, rule, selected_idx == Some(idx), status_suffix) {
                 new_selection = Some(idx);
             }
         }
@@ -384,14 +378,14 @@ fn show_transform_detail(
 
     // Header
     ui.horizontal(|ui| {
-        ui.label(RichText::new(rule.icon()).size(24.0).color(ui.visuals().hyperlink_color));
+        ui.label(
+            RichText::new(rule.icon())
+                .size(24.0)
+                .color(ui.visuals().hyperlink_color),
+        );
         ui.vertical(|ui| {
             ui.heading(&rule.target_variable);
-            ui.label(
-                RichText::new(rule.category())
-                    .weak()
-                    .small(),
-            );
+            ui.label(RichText::new(rule.category()).weak().small());
         });
     });
 
@@ -436,11 +430,7 @@ fn show_transform_detail(
         }
         // Handle future transform types
         _ => {
-            ui.label(
-                RichText::new("Transform Details")
-                    .strong()
-                    .weak(),
-            );
+            ui.label(RichText::new("Transform Details").strong().weak());
             ui.add_space(spacing::SM);
             ui.label(format!(
                 "Transform type: {}",
@@ -451,17 +441,8 @@ fn show_transform_detail(
 }
 
 /// Show details for STUDYID/DOMAIN constants
-fn show_constant_detail(
-    ui: &mut Ui,
-    target: &str,
-    study_id: &str,
-    domain_code: &str,
-) {
-    ui.label(
-        RichText::new("Value Source")
-            .strong()
-            .weak(),
-    );
+fn show_constant_detail(ui: &mut Ui, target: &str, study_id: &str, domain_code: &str) {
+    ui.label(RichText::new("Value Source").strong().weak());
     ui.add_space(spacing::SM);
 
     let (source_desc, value) = if target == "STUDYID" {
@@ -535,11 +516,7 @@ fn show_usubjid_detail(
 
         if !samples.is_empty() {
             ui.add_space(spacing::MD);
-            ui.label(
-                RichText::new("Sample Values")
-                    .strong()
-                    .weak(),
-            );
+            ui.label(RichText::new("Sample Values").strong().weak());
             ui.add_space(spacing::SM);
 
             for val in &samples {
@@ -567,16 +544,8 @@ fn show_usubjid_detail(
 }
 
 /// Show details for sequence number generation
-fn show_sequence_detail(
-    ui: &mut Ui,
-    seq_column: &str,
-    mapping_state: &MappingState,
-) {
-    ui.label(
-        RichText::new("Configuration")
-            .strong()
-            .weak(),
-    );
+fn show_sequence_detail(ui: &mut Ui, seq_column: &str, mapping_state: &MappingState) {
+    ui.label(RichText::new("Configuration").strong().weak());
     ui.add_space(spacing::SM);
 
     egui::Grid::new("seq_detail")
@@ -649,7 +618,11 @@ fn show_ct_detail(
                     ui.label(RichText::new(&ct_info.code).weak().small());
                     ui.add(egui::Label::new(RichText::new(&ct_info.name).strong()).wrap());
                     if ct_info.extensible {
-                        ui.label(RichText::new("(Extensible)").color(ui.visuals().warn_fg_color).small());
+                        ui.label(
+                            RichText::new("(Extensible)")
+                                .color(ui.visuals().warn_fg_color)
+                                .small(),
+                        );
                     }
                 });
 
@@ -664,16 +637,15 @@ fn show_ct_detail(
                     for (idx, (value, def)) in ct_info.terms.iter().enumerate() {
                         ui.vertical(|ui| {
                             ui.add(
-                                egui::Label::new(RichText::new(value).strong().color(ui.visuals().hyperlink_color))
-                                    .wrap(),
+                                egui::Label::new(
+                                    RichText::new(value)
+                                        .strong()
+                                        .color(ui.visuals().hyperlink_color),
+                                )
+                                .wrap(),
                             );
                             if let Some(d) = def {
-                                ui.add(
-                                    egui::Label::new(
-                                        RichText::new(d).weak().small(),
-                                    )
-                                    .wrap(),
-                                );
+                                ui.add(egui::Label::new(RichText::new(d).weak().small()).wrap());
                             }
                         });
                         if idx + 1 < ct_info.terms.len() {
@@ -705,11 +677,7 @@ fn show_ct_detail(
         // Show transformation preview with before→after
         if !samples.is_empty() {
             ui.add_space(spacing::MD);
-            ui.label(
-                RichText::new("Transformation Preview")
-                    .strong()
-                    .weak(),
-            );
+            ui.label(RichText::new("Transformation Preview").strong().weak());
             ui.add_space(spacing::SM);
 
             // Get lookup map from cache (includes synonyms → submission_value)
@@ -733,7 +701,11 @@ fn show_ct_detail(
                     ui.label(RichText::new(val).code());
                     ui.label(RichText::new("→").weak());
                     if is_changed {
-                        ui.label(RichText::new(&normalized).code().color(ui.visuals().hyperlink_color));
+                        ui.label(
+                            RichText::new(&normalized)
+                                .code()
+                                .color(ui.visuals().hyperlink_color),
+                        );
                     } else {
                         ui.label(RichText::new(&normalized).code().weak());
                         ui.label(RichText::new("(unchanged)").small().weak());
@@ -751,11 +723,7 @@ fn show_datetime_detail(
     mapping_state: &MappingState,
     source_data: &polars::prelude::DataFrame,
 ) {
-    ui.label(
-        RichText::new("ISO 8601 DateTime")
-            .strong()
-            .weak(),
-    );
+    ui.label(RichText::new("ISO 8601 DateTime").strong().weak());
     ui.add_space(spacing::SM);
 
     egui::Grid::new("datetime_detail")
@@ -775,11 +743,7 @@ fn show_datetime_detail(
         let samples = MappingService::get_sample_values(source_data, source_col, 3);
         if !samples.is_empty() {
             ui.add_space(spacing::MD);
-            ui.label(
-                RichText::new("Transformation Preview")
-                    .strong()
-                    .weak(),
-            );
+            ui.label(RichText::new("Transformation Preview").strong().weak());
             ui.add_space(spacing::SM);
 
             for val in &samples {
@@ -793,14 +757,14 @@ fn show_datetime_detail(
                     ui.label(RichText::new(val).code());
                     ui.label(RichText::new("→").weak());
                     if is_changed {
-                        ui.label(RichText::new(&normalized).code().color(ui.visuals().hyperlink_color));
+                        ui.label(
+                            RichText::new(&normalized)
+                                .code()
+                                .color(ui.visuals().hyperlink_color),
+                        );
                     } else {
                         ui.label(RichText::new(&normalized).code());
-                        ui.label(
-                            RichText::new("(already ISO 8601)")
-                                .small()
-                                .weak(),
-                        );
+                        ui.label(RichText::new("(already ISO 8601)").small().weak());
                     }
                 });
             }
@@ -815,11 +779,7 @@ fn show_duration_detail(
     mapping_state: &MappingState,
     source_data: &polars::prelude::DataFrame,
 ) {
-    ui.label(
-        RichText::new("ISO 8601 Duration")
-            .strong()
-            .weak(),
-    );
+    ui.label(RichText::new("ISO 8601 Duration").strong().weak());
     ui.add_space(spacing::SM);
 
     egui::Grid::new("duration_detail")
@@ -839,11 +799,7 @@ fn show_duration_detail(
         let samples = MappingService::get_sample_values(source_data, source_col, 3);
         if !samples.is_empty() {
             ui.add_space(spacing::MD);
-            ui.label(
-                RichText::new("Transformation Preview")
-                    .strong()
-                    .weak(),
-            );
+            ui.label(RichText::new("Transformation Preview").strong().weak());
             ui.add_space(spacing::SM);
 
             for val in &samples {
@@ -856,7 +812,11 @@ fn show_duration_detail(
                 ui.horizontal(|ui| {
                     ui.label(RichText::new(val).code());
                     ui.label(RichText::new("→").weak());
-                    ui.label(RichText::new(&normalized).code().color(ui.visuals().hyperlink_color));
+                    ui.label(
+                        RichText::new(&normalized)
+                            .code()
+                            .color(ui.visuals().hyperlink_color),
+                    );
                     if !is_duration_format {
                         ui.label(
                             RichText::new("(needs formatting)")
@@ -871,16 +831,8 @@ fn show_duration_detail(
 }
 
 /// Show details for study day calculation
-fn show_study_day_detail(
-    ui: &mut Ui,
-    variable: &str,
-    reference_dtc: &str,
-) {
-    ui.label(
-        RichText::new("Study Day Calculation")
-            .strong()
-            .weak(),
-    );
+fn show_study_day_detail(ui: &mut Ui, variable: &str, reference_dtc: &str) {
+    ui.label(RichText::new("Study Day Calculation").strong().weak());
     ui.add_space(spacing::SM);
 
     egui::Grid::new("studyday_detail")
@@ -915,11 +867,7 @@ fn show_numeric_detail(
     mapping_state: &MappingState,
     source_data: &polars::prelude::DataFrame,
 ) {
-    ui.label(
-        RichText::new("Numeric Conversion")
-            .strong()
-            .weak(),
-    );
+    ui.label(RichText::new("Numeric Conversion").strong().weak());
     ui.add_space(spacing::SM);
 
     egui::Grid::new("numeric_detail")
@@ -939,11 +887,7 @@ fn show_numeric_detail(
         let samples = MappingService::get_sample_values(source_data, source_col, 3);
         if !samples.is_empty() {
             ui.add_space(spacing::MD);
-            ui.label(
-                RichText::new("Transformation Preview")
-                    .strong()
-                    .weak(),
-            );
+            ui.label(RichText::new("Transformation Preview").strong().weak());
             ui.add_space(spacing::SM);
 
             for val in &samples {
@@ -954,11 +898,23 @@ fn show_numeric_detail(
                     ui.label(RichText::new("→").weak());
                     match parsed {
                         Ok(num) => {
-                            ui.label(RichText::new(format!("{}", num)).code().color(ui.visuals().hyperlink_color));
+                            ui.label(
+                                RichText::new(format!("{}", num))
+                                    .code()
+                                    .color(ui.visuals().hyperlink_color),
+                            );
                         }
                         Err(_) => {
-                            ui.label(RichText::new("null").code().color(ui.visuals().warn_fg_color));
-                            ui.label(RichText::new("(not a number)").small().color(ui.visuals().warn_fg_color));
+                            ui.label(
+                                RichText::new("null")
+                                    .code()
+                                    .color(ui.visuals().warn_fg_color),
+                            );
+                            ui.label(
+                                RichText::new("(not a number)")
+                                    .small()
+                                    .color(ui.visuals().warn_fg_color),
+                            );
                         }
                     }
                 });
@@ -974,11 +930,7 @@ fn show_copy_detail(
     mapping_state: &MappingState,
     source_data: &polars::prelude::DataFrame,
 ) {
-    ui.label(
-        RichText::new("Direct Copy")
-            .strong()
-            .weak(),
-    );
+    ui.label(RichText::new("Direct Copy").strong().weak());
     ui.add_space(spacing::SM);
 
     if let Some((source_col, _)) = mapping_state.accepted(variable) {
@@ -998,23 +950,19 @@ fn show_copy_detail(
         let samples = MappingService::get_sample_values(source_data, source_col, 3);
         if !samples.is_empty() {
             ui.add_space(spacing::MD);
-            ui.label(
-                RichText::new("Transformation Preview")
-                    .strong()
-                    .weak(),
-            );
+            ui.label(RichText::new("Transformation Preview").strong().weak());
             ui.add_space(spacing::SM);
 
             for val in &samples {
                 ui.horizontal(|ui| {
                     ui.label(RichText::new(val).code());
                     ui.label(RichText::new("→").weak());
-                    ui.label(RichText::new(val).code().color(ui.visuals().hyperlink_color));
                     ui.label(
-                        RichText::new("(copied as-is)")
-                            .small()
-                            .weak(),
+                        RichText::new(val)
+                            .code()
+                            .color(ui.visuals().hyperlink_color),
                     );
+                    ui.label(RichText::new("(copied as-is)").small().weak());
                 });
             }
         }

@@ -383,9 +383,10 @@ fn show_issue_row(ui: &mut Ui, idx: usize, issue: &Issue, selected_idx: Option<u
     let severity = get_severity(issue);
 
     let (icon, icon_color) = match severity {
-        Severity::Error | Severity::Reject => {
-            (egui_phosphor::regular::X_CIRCLE, ui.visuals().error_fg_color)
-        }
+        Severity::Error | Severity::Reject => (
+            egui_phosphor::regular::X_CIRCLE,
+            ui.visuals().error_fg_color,
+        ),
         Severity::Warning => (egui_phosphor::regular::WARNING, ui.visuals().warn_fg_color),
     };
 
