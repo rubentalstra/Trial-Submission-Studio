@@ -626,48 +626,139 @@ fn show_source_mapping_inline(
     sample_values: &[String],
     not_collected_reason: &Option<String>,
 ) {
-    ui.label(
-        RichText::new(format!("{} Source Column", egui_phosphor::regular::TABLE))
-            .strong()
-            .weak(),
-    );
-    ui.separator();
-    ui.add_space(spacing::SM);
-
     let is_subjid = var_name.eq_ignore_ascii_case("SUBJID");
+    let is_usubjid = var_name.eq_ignore_ascii_case("USUBJID");
+    let is_dm = domain_code.eq_ignore_ascii_case("DM");
     let var_name_owned = var_name.to_string();
 
-    // Show current mapping if any
-    if let Some((col, conf)) = current_mapping {
+    // Special header for USUBJID in non-DM domains
+    if is_usubjid && !is_dm {
+        // Get study_id for formula display
+        let study_id = state
+            .study()
+            .map(|s| s.study_id.clone())
+            .unwrap_or_default();
+
+        ui.label(
+            RichText::new(format!(
+                "{} USUBJID Derivation",
+                egui_phosphor::regular::LIGHTNING
+            ))
+            .strong()
+            .weak(),
+        );
+        ui.separator();
+        ui.add_space(spacing::SM);
+
+        // Explain the formula
         ui.horizontal(|ui| {
-            ui.label(RichText::new(col).strong());
-            let color = if *conf >= 0.95_f32 {
-                Color32::GREEN
-            } else if *conf >= 0.80_f32 {
-                ui.visuals().warn_fg_color
-            } else {
-                ui.visuals().weak_text_color()
-            };
-            ui.label(RichText::new(format!("{:.0}%", conf * 100.0)).color(color));
+            ui.label(RichText::new("Formula:").weak());
+            ui.label(
+                RichText::new("STUDYID")
+                    .code()
+                    .color(ui.visuals().hyperlink_color),
+            );
+            ui.label(RichText::new("-").weak());
+            ui.label(
+                RichText::new("Subject ID")
+                    .code()
+                    .color(ui.visuals().warn_fg_color),
+            );
         });
 
-        if let Some(label) = column_label {
-            ui.label(RichText::new(label).weak().italics());
+        ui.add_space(spacing::XS);
+        ui.label(
+            RichText::new("Map the subject identifier column from your source data.")
+                .weak()
+                .italics()
+                .small(),
+        );
+
+        ui.add_space(spacing::MD);
+
+        // Show mapping status
+        if let Some((col, _conf)) = current_mapping {
+            ui.horizontal(|ui| {
+                ui.label(
+                    RichText::new(format!(
+                        "{} Subject ID column:",
+                        egui_phosphor::regular::CHECK_CIRCLE
+                    ))
+                    .color(Color32::GREEN),
+                );
+                ui.label(RichText::new(col).strong());
+            });
+
+            // Show sample transformations
+            if !sample_values.is_empty() {
+                ui.add_space(spacing::SM);
+                ui.label(RichText::new("Sample transformations:").weak().small());
+                for val in sample_values.iter().take(3) {
+                    ui.horizontal(|ui| {
+                        ui.label(RichText::new(val).code());
+                        ui.label(RichText::new("→").weak());
+                        ui.label(
+                            RichText::new(format!("{}-{}", study_id, val))
+                                .code()
+                                .color(ui.visuals().hyperlink_color),
+                        );
+                    });
+                }
+            }
+        } else {
+            ui.label(
+                RichText::new(format!(
+                    "{} No subject ID column mapped",
+                    egui_phosphor::regular::WARNING
+                ))
+                .color(ui.visuals().warn_fg_color),
+            );
         }
 
-        if !sample_values.is_empty() {
-            ui.add_space(spacing::SM);
-            ui.label(RichText::new(sample_values.join(" · ")).weak().small());
-        }
+        ui.add_space(spacing::MD);
     } else {
         ui.label(
-            RichText::new(format!("{} No mapping", egui_phosphor::regular::LINK_BREAK))
-                .weak()
-                .italics(),
+            RichText::new(format!("{} Source Column", egui_phosphor::regular::TABLE))
+                .strong()
+                .weak(),
         );
+        ui.separator();
+        ui.add_space(spacing::SM);
     }
 
-    ui.add_space(spacing::MD);
+    // Show current mapping if any (skip for USUBJID in non-DM since we already showed it above)
+    if !(is_usubjid && !is_dm) {
+        if let Some((col, conf)) = current_mapping {
+            ui.horizontal(|ui| {
+                ui.label(RichText::new(col).strong());
+                let color = if *conf >= 0.95_f32 {
+                    Color32::GREEN
+                } else if *conf >= 0.80_f32 {
+                    ui.visuals().warn_fg_color
+                } else {
+                    ui.visuals().weak_text_color()
+                };
+                ui.label(RichText::new(format!("{:.0}%", conf * 100.0)).color(color));
+            });
+
+            if let Some(label) = column_label {
+                ui.label(RichText::new(label).weak().italics());
+            }
+
+            if !sample_values.is_empty() {
+                ui.add_space(spacing::SM);
+                ui.label(RichText::new(sample_values.join(" · ")).weak().small());
+            }
+        } else {
+            ui.label(
+                RichText::new(format!("{} No mapping", egui_phosphor::regular::LINK_BREAK))
+                    .weak()
+                    .italics(),
+            );
+        }
+
+        ui.add_space(spacing::MD);
+    }
 
     // Action buttons based on status
     match status {
@@ -811,12 +902,28 @@ fn show_manual_mapping_ui(
         .map(|d| d.source.columns())
         .unwrap_or_default();
 
+    let is_usubjid = var_name.eq_ignore_ascii_case("USUBJID");
+    let is_dm = domain_code.eq_ignore_ascii_case("DM");
+
     ui.add_space(spacing::MD);
-    ui.label(RichText::new("Or select manually:").weak());
+
+    // Show appropriate label based on variable type
+    let label = if is_usubjid && !is_dm {
+        "Select subject identifier column:"
+    } else {
+        "Or select manually:"
+    };
+    ui.label(RichText::new(label).weak());
 
     let var_name_owned = var_name.to_string();
+    let placeholder = if is_usubjid && !is_dm {
+        "Choose subject ID column..."
+    } else {
+        "Choose column..."
+    };
+
     egui::ComboBox::from_id_salt(format!("map_{}", var_name))
-        .selected_text("Choose column...")
+        .selected_text(placeholder)
         .show_ui(ui, |ui| {
             for col in source_columns {
                 if ui.selectable_label(false, &col).clicked() {
