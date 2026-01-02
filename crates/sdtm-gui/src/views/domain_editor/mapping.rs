@@ -126,6 +126,9 @@ pub(super) fn initialize_mapping(state: &mut AppState, domain_code: &str) {
                     sdtm_domain.variables.len()
                 );
 
+                // Extract domain label before moving sdtm_domain
+                let domain_label = sdtm_domain.label.clone();
+
                 // Get column hints from source data
                 let hints = if let Some(study) = &state.study {
                     if let Some(domain) = study.get_domain(domain_code) {
@@ -153,6 +156,7 @@ pub(super) fn initialize_mapping(state: &mut AppState, domain_code: &str) {
                 // Store it
                 if let Some(study) = &mut state.study {
                     if let Some(domain) = study.get_domain_mut(domain_code) {
+                        domain.domain_label = domain_label;
                         domain.mapping_state = Some(mapping_state);
                         domain.status = DomainStatus::MappingInProgress;
                     }
@@ -356,178 +360,108 @@ fn show_variable_list(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
 }
 
 fn show_variable_detail(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
-    // Collect all data we need first
-    let detail_data = {
-        let Some(study) = &state.study else {
-            ui.label("No study");
-            return;
-        };
+    // Extract all needed data before entering closures to avoid borrow conflicts
+    let data = {
+        let Some(study) = &state.study else { return };
         let Some(domain) = study.get_domain(domain_code) else {
-            ui.label("Domain not found");
             return;
         };
         let Some(ms) = &domain.mapping_state else {
-            ui.label("No mapping state");
             return;
         };
-
         let Some(variable) = ms.selected_variable() else {
-            // No variable selected - show help text
             ui.centered_and_justified(|ui| {
-                ui.label(egui::RichText::new("Select a variable from the list").weak());
+                ui.label(RichText::new("Select a variable from the list").weak());
             });
             return;
         };
 
         let var_name = variable.name.clone();
-        let var_label = variable.label.clone();
-        let var_core = variable.core.clone();
-        let var_data_type = format!("{:?}", variable.data_type);
-        let var_role = variable.role.clone();
-        let var_codelist = variable.codelist_code.clone();
-        let study_id = study.study_id.clone();
-        let has_subjid_var = ms.domain().column_name("SUBJID").is_some();
-        let is_usubjid_derived = has_subjid_var && var_name.eq_ignore_ascii_case("USUBJID");
-        let is_auto = is_auto_generated_variable(&var_name, var_role) || is_usubjid_derived;
-
-        let suggestion = ms.suggestion(&var_name).map(|(c, f)| (c.to_string(), f));
-        let accepted = ms.accepted(&var_name).map(|(c, f)| (c.to_string(), f));
+        let has_subjid = ms.domain().column_name("SUBJID").is_some();
+        let is_auto = is_auto_generated(&var_name, variable.role, has_subjid);
+        let is_usubjid_derived = has_subjid && var_name.eq_ignore_ascii_case("USUBJID");
         let status = ms.status(&var_name);
+        let study_id = study.study_id.clone();
 
-        let (source_info, source_col_label, confidence, available_cols_sorted) = if is_auto {
-            (
-                None,
-                None,
-                None,
-                Vec::<(String, Option<String>, f32)>::new(),
-            )
-        } else {
-            // Get available columns with confidence scores and labels for this variable
-            // Tuple: (column_id, optional_label, confidence)
-            let available_cols_with_info: Vec<(String, Option<String>, f32)> = ms
-                .available_columns()
-                .iter()
-                .map(|col| {
-                    // Use centralized scoring from sdtm-map
-                    let score = ms
-                        .scorer()
-                        .score(col, &var_name)
-                        .map(|s| s.score)
-                        .unwrap_or(0.0);
-                    // Get label from study metadata (Items.csv)
-                    let label = study.get_column_label(col).map(String::from);
-                    (col.to_string(), label, score)
-                })
-                .collect();
+        // Extract data for display
+        let variable_label: Option<String> = variable.label.clone();
+        let variable_core: Option<CoreDesignation> = variable.core;
+        let variable_data_type: String = format!("{:?}", variable.data_type);
+        let variable_role: Option<String> = variable.role.map(|r| r.as_str().to_string());
+        let codelist_code: Option<String> = variable.codelist_code.clone();
 
-            // Sort by confidence (highest first), then by name
-            let mut available_cols_sorted = available_cols_with_info;
-            available_cols_sorted.sort_by(|a, b| {
-                b.2.partial_cmp(&a.2)
-                    .unwrap_or(std::cmp::Ordering::Equal)
-                    .then_with(|| a.0.cmp(&b.0))
-            });
-
-            // Get source column info if mapped/suggested
-            let source_col_name = accepted
-                .as_ref()
-                .map(|(c, _)| c.clone())
-                .or_else(|| suggestion.as_ref().map(|(c, _)| c.clone()));
-
-            // Get source column label from study metadata (Items.csv)
-            let source_col_label = source_col_name
-                .as_ref()
-                .and_then(|col| study.get_column_label(col).map(String::from));
-
-            let source_info = source_col_name.as_ref().and_then(|col| {
-                ms.column_hints().get(col).map(|hint| {
-                    let samples = MappingService::get_sample_values(&domain.source_data, col, 5);
-                    (
-                        col.clone(),
-                        hint.is_numeric,
-                        hint.unique_ratio,
-                        hint.null_ratio,
-                        samples,
-                    )
-                })
-            });
-
-            let confidence = accepted
-                .as_ref()
-                .map(|(_, c)| *c)
-                .or_else(|| suggestion.as_ref().map(|(_, c)| *c));
-
-            (
-                source_info,
-                source_col_label,
-                confidence,
-                available_cols_sorted,
-            )
-        };
-
-        let (subjid_mapping, subjid_label, subjid_samples) = if is_usubjid_derived {
-            let subjid_mapping = ms.accepted("SUBJID").map(|(c, _)| c.to_string());
-            let subjid_label = subjid_mapping
-                .as_ref()
-                .and_then(|col| study.get_column_label(col).map(String::from));
-            let subjid_samples = subjid_mapping
-                .as_ref()
-                .map(|col| MappingService::get_sample_values(&domain.source_data, col, 3))
-                .unwrap_or_default();
-            (subjid_mapping, subjid_label, subjid_samples)
-        } else {
-            (None, None, Vec::new())
-        };
-
-        // Get CT data from pre-loaded cache (loaded when domain opened)
-        // Clone to avoid borrow issues with state mutations in render loop
-        let ct_data: Vec<_> = var_codelist
+        // CT info - clone to owned values
+        let ct_info: Vec<crate::services::CodelistDisplayInfo> = codelist_code
             .as_ref()
-            .map(|codes| ms.get_ct_for_variable(codes).into_iter().cloned().collect())
+            .map(|c| ms.get_ct_for_variable(c).into_iter().cloned().collect())
             .unwrap_or_default();
 
-        (
+        // Source mapping data
+        let current_mapping = ms
+            .accepted(&var_name)
+            .or(ms.suggestion(&var_name))
+            .map(|(col, conf)| (col.to_string(), conf));
+        let column_label = current_mapping
+            .as_ref()
+            .and_then(|(col, _)| study.get_column_label(col).map(|s| s.to_string()));
+        let sample_values: Vec<String> = current_mapping
+            .as_ref()
+            .map(|(col, _)| MappingService::get_sample_values(&domain.source_data, col, 5))
+            .unwrap_or_default();
+
+        // USUBJID derivation info
+        let subjid_info = if is_usubjid_derived {
+            ms.accepted("SUBJID").map(|(col, _)| {
+                let samples = MappingService::get_sample_values(&domain.source_data, col, 3);
+                (col.to_string(), samples)
+            })
+        } else {
+            None
+        };
+
+        let not_collected_reason = ms.not_collected_reason(&var_name).map(|s| s.to_string());
+
+        Some((
             var_name,
-            var_label,
-            var_core,
-            var_data_type,
-            var_role,
-            var_codelist,
-            study_id,
             is_auto,
             is_usubjid_derived,
-            subjid_mapping,
-            subjid_label,
-            subjid_samples,
             status,
-            source_info,
-            source_col_label,
-            confidence,
-            available_cols_sorted,
-            ct_data,
-        )
+            study_id,
+            variable_label,
+            variable_core,
+            variable_data_type,
+            variable_role,
+            codelist_code,
+            ct_info,
+            current_mapping,
+            column_label,
+            sample_values,
+            subjid_info,
+            not_collected_reason,
+        ))
     };
 
-    let (
+    let Some((
         var_name,
-        var_label,
-        var_core,
-        var_data_type,
-        var_role,
-        var_codelist,
-        study_id,
         is_auto,
         is_usubjid_derived,
-        subjid_mapping,
-        subjid_label,
-        subjid_samples,
         status,
-        source_info,
-        source_col_label,
-        confidence,
-        available_cols,
-        ct_data,
-    ) = detail_data;
+        study_id,
+        variable_label,
+        variable_core,
+        variable_data_type,
+        variable_role,
+        codelist_code,
+        ct_info,
+        current_mapping,
+        column_label,
+        sample_values,
+        subjid_info,
+        not_collected_reason,
+    )) = data
+    else {
+        return;
+    };
 
     egui::ScrollArea::vertical().show(ui, |ui| {
         // SDTM Target section
@@ -540,45 +474,45 @@ fn show_variable_detail(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
         ui.add_space(spacing::SM);
 
         ui.heading(&var_name);
-        if let Some(label) = &var_label {
+        if let Some(label) = &variable_label {
             ui.label(RichText::new(label).weak());
-        }
-        if is_usubjid_derived {
-            ui.label(
-                RichText::new("Derived as STUDYID-SUBJID from the mapped SUBJID column.")
-                    .weak()
-                    .small(),
-            );
         }
 
         ui.add_space(spacing::MD);
 
-        // Metadata table
+        // Metadata grid
         egui::Grid::new("var_metadata")
             .num_columns(2)
             .spacing([20.0, 4.0])
             .show(ui, |ui| {
                 ui.label(RichText::new("Core").weak());
-                ui.label(var_core.map(|c| c.as_code()).unwrap_or("—"));
+                ui.label(
+                    variable_core
+                        .map(|c: CoreDesignation| c.as_code())
+                        .unwrap_or("—"),
+                );
                 ui.end_row();
 
                 ui.label(RichText::new("Type").weak());
-                ui.label(&var_data_type);
+                ui.label(&variable_data_type);
                 ui.end_row();
 
                 ui.label(RichText::new("Role").weak());
-                ui.label(var_role.map(|r| r.as_str()).unwrap_or("—"));
+                let role_str: &str = variable_role.as_deref().unwrap_or("—");
+                ui.label(role_str);
                 ui.end_row();
 
-                ui.label(RichText::new("Codelist").weak());
-                ui.label(var_codelist.as_deref().unwrap_or("—"));
-                ui.end_row();
+                if let Some(cl) = &codelist_code {
+                    ui.label(RichText::new("Codelist").weak());
+                    ui.label(cl);
+                    ui.end_row();
+                }
             });
 
-        // Show codelist details using pre-fetched data (no loading during render)
-        if !ct_data.is_empty() {
+        // Show CT values if available
+        let ct_info: &Vec<crate::services::CodelistDisplayInfo> = &ct_info;
+        if !ct_info.is_empty() {
             ui.add_space(spacing::MD);
-
             ui.label(
                 RichText::new(format!(
                     "{} Controlled Terminology",
@@ -590,19 +524,11 @@ fn show_variable_detail(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
             ui.separator();
             ui.add_space(spacing::SM);
 
-            for (cl_idx, cl_info) in ct_data.iter().enumerate() {
-                if cl_idx > 0 {
-                    ui.add_space(spacing::SM);
-                    ui.separator();
-                    ui.add_space(spacing::SM);
-                }
-
-                if cl_info.found {
-                    // Show codelist code, name, and extensibility
+            for info in ct_info {
+                if info.found {
                     ui.horizontal_wrapped(|ui| {
-                        ui.label(RichText::new(&cl_info.code).weak().small());
-                        ui.add(egui::Label::new(RichText::new(&cl_info.name).strong()).wrap());
-                        if cl_info.extensible {
+                        ui.label(RichText::new(&info.name).strong());
+                        if info.extensible {
                             ui.label(
                                 RichText::new("(Extensible)")
                                     .color(ui.visuals().warn_fg_color)
@@ -610,599 +536,51 @@ fn show_variable_detail(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                             );
                         }
                     });
-
-                    // Show valid values
-                    if !cl_info.terms.is_empty() {
-                        ui.add_space(spacing::SM);
+                    ui.label(
+                        RichText::new(format!("{} terms", info.total_terms))
+                            .weak()
+                            .small(),
+                    );
+                    for (val, def) in info.terms.iter().take(5) {
                         ui.label(
-                            RichText::new(format!("Valid values ({}):", cl_info.total_terms))
-                                .weak()
-                                .small(),
+                            RichText::new(val)
+                                .strong()
+                                .color(ui.visuals().hyperlink_color),
                         );
-
-                        for (idx, (value, def)) in cl_info.terms.iter().enumerate() {
-                            ui.vertical(|ui| {
-                                ui.add(
-                                    egui::Label::new(
-                                        RichText::new(value)
-                                            .strong()
-                                            .color(ui.visuals().hyperlink_color),
-                                    )
-                                    .wrap(),
-                                );
-                                if let Some(d) = def {
-                                    ui.add(
-                                        egui::Label::new(RichText::new(d).weak().small()).wrap(),
-                                    );
-                                }
-                            });
-                            if idx + 1 < cl_info.terms.len() {
-                                ui.add_space(spacing::XS);
-                            }
+                        if let Some(d) = def {
+                            ui.label(RichText::new(d).weak().small());
                         }
-
-                        if cl_info.total_terms > cl_info.terms.len() {
-                            ui.label(
-                                RichText::new(format!(
-                                    "... and {} more values",
-                                    cl_info.total_terms - cl_info.terms.len()
-                                ))
+                    }
+                    if info.total_terms > 5 {
+                        ui.label(
+                            RichText::new(format!("... and {} more", info.total_terms - 5))
                                 .weak()
                                 .small()
                                 .italics(),
-                            );
-                        }
+                        );
                     }
-                } else {
-                    ui.label(
-                        RichText::new(format!("{} - not found in CT", cl_info.code))
-                            .color(ui.visuals().warn_fg_color)
-                            .small(),
-                    );
                 }
             }
         }
 
         ui.add_space(spacing::LG);
 
-        // Check if this is an auto-generated variable using role from standards
+        // Source section
         if is_auto {
-            // Auto-generated variable section
-            ui.label(
-                RichText::new(format!(
-                    "{} Value Source",
-                    egui_phosphor::regular::LIGHTNING
-                ))
-                .strong()
-                .weak(),
-            );
-            ui.separator();
-            ui.add_space(spacing::SM);
-
-            ui.horizontal(|ui| {
-                ui.label(RichText::new(egui_phosphor::regular::GEAR).color(ui.visuals().hyperlink_color));
-                ui.label(
-                    RichText::new("Auto-generated")
-                        .strong()
-                        .color(ui.visuals().hyperlink_color),
-                );
-            });
-
-            ui.add_space(spacing::SM);
-
-            // Explain what this variable contains
-            let description = match var_name.as_str() {
-                "DOMAIN" => "Set to the domain code (e.g., \"DM\", \"AE\")",
-                "STUDYID" => "Populated from study configuration",
-                "USUBJID" => "Derived from STUDYID and SUBJID",
-                name if name.ends_with("SEQ") => "Assigned sequentially per subject (1, 2, 3...)",
-                _ => "Generated by the system",
-            };
-
-            ui.label(RichText::new(description).weak().italics());
-
-            if is_usubjid_derived {
-                ui.add_space(spacing::MD);
-                ui.label(RichText::new("Derivation").strong().weak());
-                ui.add_space(spacing::SM);
-
-                egui::Grid::new("usubjid_derive")
-                    .num_columns(2)
-                    .spacing([20.0, 4.0])
-                    .show(ui, |ui| {
-                        ui.label(RichText::new("Formula").weak());
-                        ui.label("STUDYID-SUBJID");
-                        ui.end_row();
-
-                        ui.label(RichText::new("Study ID").weak());
-                        ui.label(RichText::new(&study_id).color(ui.visuals().hyperlink_color));
-                        ui.end_row();
-                    });
-
-                if let Some(subjid_col) = &subjid_mapping {
-                    ui.add_space(spacing::SM);
-                    ui.label(RichText::new("Source Mapping").strong().weak());
-                    ui.add_space(spacing::SM);
-
-                    egui::Grid::new("usubjid_source")
-                        .num_columns(2)
-                        .spacing([20.0, 4.0])
-                        .show(ui, |ui| {
-                            ui.label(RichText::new("SUBJID").weak());
-                            ui.label(subjid_col);
-                            ui.end_row();
-
-                            ui.label(RichText::new("Label").weak());
-                            ui.label(subjid_label.as_deref().unwrap_or("—"));
-                            ui.end_row();
-                        });
-
-                    if !subjid_samples.is_empty() {
-                        ui.add_space(spacing::SM);
-                        ui.label(RichText::new("Sample Values").weak().small());
-                        for val in &subjid_samples {
-                            ui.horizontal(|ui| {
-                                ui.label(RichText::new(val).code());
-                                ui.label(RichText::new("→").weak());
-                                ui.label(
-                                    RichText::new(format!("{}-{}", study_id, val))
-                                        .code()
-                                        .color(ui.visuals().hyperlink_color),
-                                );
-                            });
-                        }
-                    }
-                } else {
-                    ui.add_space(spacing::SM);
-                    ui.label(
-                        RichText::new(format!(
-                            "{} Map SUBJID to generate USUBJID",
-                            egui_phosphor::regular::INFO
-                        ))
-                        .color(ui.visuals().warn_fg_color)
-                        .small(),
-                    );
-                }
-            } else {
-                ui.add_space(spacing::MD);
-                ui.label(
-                    RichText::new("This variable cannot be mapped manually.")
-                        .weak()
-                        .small(),
-                );
-            }
+            show_auto_generated_info(ui, &var_name, &study_id, is_usubjid_derived, &subjid_info);
         } else {
-            // Source Column section for mappable variables
-            ui.label(
-                RichText::new(format!("{} Source Column", egui_phosphor::regular::TABLE))
-                    .strong()
-                    .weak(),
+            show_source_mapping_inline(
+                ui,
+                state,
+                domain_code,
+                &var_name,
+                status,
+                variable_core,
+                &current_mapping,
+                &column_label,
+                &sample_values,
+                &not_collected_reason,
             );
-            ui.separator();
-            ui.add_space(spacing::SM);
-
-            if let Some((col_name, is_numeric, unique_ratio, null_ratio, samples)) = source_info {
-                // Show mapped/suggested column
-                ui.horizontal(|ui| {
-                    ui.label(RichText::new(&col_name).strong());
-
-                    if let Some(conf) = confidence {
-                        let conf_color = if conf >= 0.95 {
-                            colors::SUCCESS
-                        } else if conf >= 0.80 {
-                            ui.visuals().warn_fg_color
-                        } else {
-                            ui.visuals().weak_text_color()
-                        };
-                        ui.label(RichText::new(format!("{:.0}%", conf * 100.0)).color(conf_color));
-                    }
-                });
-
-                // Show source column label from metadata if available
-                if let Some(label) = &source_col_label {
-                    ui.label(RichText::new(label).weak().italics());
-                }
-
-                ui.add_space(spacing::SM);
-
-                // Source column metadata
-                egui::Grid::new("source_metadata")
-                    .num_columns(2)
-                    .spacing([20.0, 4.0])
-                    .show(ui, |ui| {
-                        ui.label(RichText::new("Type").weak());
-                        ui.label(if is_numeric { "Numeric" } else { "Text" });
-                        ui.end_row();
-
-                        ui.label(RichText::new("Unique").weak());
-                        ui.label(format!("{:.0}%", unique_ratio * 100.0));
-                        ui.end_row();
-
-                        ui.label(RichText::new("Missing").weak());
-                        ui.label(format!("{:.1}%", null_ratio * 100.0));
-                        ui.end_row();
-                    });
-
-                // Sample values
-                if !samples.is_empty() {
-                    ui.add_space(spacing::SM);
-                    ui.label(RichText::new("Sample Values").weak());
-                    ui.label(RichText::new(samples.join(" · ")).weak().small());
-                }
-            } else {
-                ui.label(
-                    RichText::new(format!("{} No mapping", egui_phosphor::regular::LINK_BREAK))
-                        .weak()
-                        .italics(),
-                );
-            }
-        }
-
-        // Only show column selection and action buttons for non-auto variables
-        if !is_auto {
-            let is_subjid = var_name.eq_ignore_ascii_case("SUBJID");
-            ui.add_space(spacing::MD);
-
-            // Determine Core designation for showing appropriate options
-            let is_required = var_core == Some(CoreDesignation::Required);
-            let is_permissible = var_core != Some(CoreDesignation::Required)
-                && var_core != Some(CoreDesignation::Expected);
-
-            // Action buttons based on status
-            match status {
-                VariableStatus::Accepted => {
-                    // Show accepted status with clear option
-                    ui.horizontal(|ui| {
-                        ui.label(
-                            RichText::new(format!(
-                                "{} Mapped",
-                                egui_phosphor::regular::CHECK_CIRCLE
-                            ))
-                            .color(colors::SUCCESS),
-                        );
-                    });
-                    ui.add_space(spacing::SM);
-
-                    if ui
-                        .small_button(format!("{} Clear", egui_phosphor::regular::X))
-                        .on_hover_text("Remove this mapping to select a different column")
-                        .clicked()
-                    {
-                        with_mapping_state_mut(state, domain_code, |ms| {
-                            ms.clear(&var_name);
-                            if is_subjid {
-                                sync_usubjid_from_subjid(ms);
-                            }
-                        });
-                        if let Some(study) = &mut state.study {
-                            if let Some(domain) = study.get_domain_mut(domain_code) {
-                                domain.invalidate_mapping_dependents();
-                            }
-                        }
-                    }
-                }
-                VariableStatus::NotCollected => {
-                    // Show current "not collected" status with reason
-                    ui.horizontal(|ui| {
-                        ui.label(
-                            RichText::new(format!(
-                                "{} Marked as Not Collected",
-                                egui_phosphor::regular::PROHIBIT
-                            ))
-                            .color(ui.visuals().warn_fg_color),
-                        );
-                    });
-
-                    // Show the reason
-                    if let Some(study) = &state.study {
-                        if let Some(domain) = study.get_domain(domain_code) {
-                            if let Some(ms) = &domain.mapping_state {
-                                if let Some(reason) = ms.not_collected_reason(&var_name) {
-                                    ui.add_space(spacing::XS);
-                                    ui.label(
-                                        RichText::new(format!("Reason: {}", reason))
-                                            .weak()
-                                            .italics()
-                                            .small(),
-                                    );
-                                }
-                            }
-                        }
-                    }
-
-                    ui.add_space(spacing::SM);
-                    if ui
-                        .button(format!("{} Clear", egui_phosphor::regular::X))
-                        .clicked()
-                    {
-                        with_mapping_state_mut(state, domain_code, |ms| {
-                            ms.clear_assignment(&var_name);
-                        });
-                        if let Some(study) = &mut state.study {
-                            if let Some(domain) = study.get_domain_mut(domain_code) {
-                                domain.invalidate_mapping_dependents();
-                            }
-                        }
-                    }
-                }
-                VariableStatus::Omitted => {
-                    // Show current "omitted" status
-                    ui.horizontal(|ui| {
-                        ui.label(
-                            RichText::new(format!(
-                                "{} Omitted from Output",
-                                egui_phosphor::regular::MINUS_CIRCLE
-                            ))
-                            .color(ui.visuals().warn_fg_color),
-                        );
-                    });
-
-                    ui.add_space(spacing::SM);
-                    if ui
-                        .button(format!("{} Clear", egui_phosphor::regular::X))
-                        .clicked()
-                    {
-                        with_mapping_state_mut(state, domain_code, |ms| {
-                            ms.clear_assignment(&var_name);
-                        });
-                        if let Some(study) = &mut state.study {
-                            if let Some(domain) = study.get_domain_mut(domain_code) {
-                                domain.invalidate_mapping_dependents();
-                            }
-                        }
-                    }
-                }
-                VariableStatus::Suggested | VariableStatus::Unmapped => {
-                    // For Suggested: show accept button first
-                    if status == VariableStatus::Suggested {
-                        ui.horizontal(|ui| {
-                            ui.label(
-                                RichText::new(format!(
-                                    "{} Suggestion available",
-                                    egui_phosphor::regular::LIGHTBULB
-                                ))
-                                .color(ui.visuals().warn_fg_color),
-                            );
-                        });
-                        ui.add_space(spacing::SM);
-                        if ui
-                            .button(
-                                RichText::new(format!(
-                                    "{} Accept Suggestion",
-                                    egui_phosphor::regular::CHECK
-                                ))
-                                .color(colors::SUCCESS),
-                            )
-                            .clicked()
-                        {
-                            with_mapping_state_mut(state, domain_code, |ms| {
-                                let _ = ms.accept_suggestion(&var_name);
-                                if is_subjid {
-                                    sync_usubjid_from_subjid(ms);
-                                }
-                            });
-                            if let Some(study) = &mut state.study {
-                                if let Some(domain) = study.get_domain_mut(domain_code) {
-                                    domain.invalidate_mapping_dependents();
-                                }
-                            }
-                        }
-                        ui.add_space(spacing::SM);
-                    }
-
-                    // Column selection dropdown for manual mapping
-                    let select_label = if status == VariableStatus::Suggested {
-                        "Or select different column:"
-                    } else {
-                        "Select source column:"
-                    };
-                    ui.label(RichText::new(select_label).weak().small());
-
-                    let mut selected_new_col: Option<String> = None;
-
-                    // Calculate popup width based on longest item
-                    let max_text_len = available_cols
-                        .iter()
-                        .map(|(col, label, _)| {
-                            if let Some(lbl) = label {
-                                format!("{} ({}) 100%", col, lbl).len()
-                            } else {
-                                format!("{} 100%", col).len()
-                            }
-                        })
-                        .max()
-                        .unwrap_or(20);
-                    let popup_width = (max_text_len as f32 * 7.5).max(250.0).min(450.0);
-
-                    egui::ComboBox::from_id_salt("col_select")
-                        .selected_text("Choose a column...")
-                        .width(popup_width)
-                        .show_ui(ui, |ui| {
-                            ui.set_min_width(popup_width);
-                            for (col, label, conf) in &available_cols {
-                                let display_text = if let Some(lbl) = label {
-                                    format!("{} ({})", col, lbl)
-                                } else {
-                                    col.clone()
-                                };
-
-                                let conf_text = if *conf > 0.01 {
-                                    format!(" — {:.0}%", conf * 100.0)
-                                } else {
-                                    String::new()
-                                };
-
-                                let full_text = format!("{}{}", display_text, conf_text);
-
-                                let text_color = if *conf >= 0.95 {
-                                    colors::SUCCESS
-                                } else if *conf >= 0.70 {
-                                    ui.visuals().warn_fg_color
-                                } else {
-                                    ui.visuals().text_color()
-                                };
-
-                                if ui
-                                    .selectable_label(
-                                        false,
-                                        RichText::new(&full_text).color(text_color),
-                                    )
-                                    .clicked()
-                                {
-                                    selected_new_col = Some(col.clone());
-                                }
-                            }
-                        });
-
-                    // Apply manual selection
-                    if let Some(col) = selected_new_col {
-                        with_mapping_state_mut(state, domain_code, |ms| {
-                            let _ = ms.accept_manual(&var_name, &col);
-                            if is_subjid {
-                                sync_usubjid_from_subjid(ms);
-                            }
-                        });
-                        if let Some(study) = &mut state.study {
-                            if let Some(domain) = study.get_domain_mut(domain_code) {
-                                domain.invalidate_mapping_dependents();
-                            }
-                        }
-                    }
-
-                    // Show alternative options for non-Required variables
-                    if is_required {
-                        ui.add_space(spacing::SM);
-                        ui.label(
-                            RichText::new(format!(
-                                "{} Required - must map a source column",
-                                egui_phosphor::regular::WARNING
-                            ))
-                            .color(ui.visuals().error_fg_color)
-                            .small(),
-                        );
-                    } else {
-                        // Show separator and alternative options
-                        ui.add_space(spacing::MD);
-                        ui.separator();
-                        ui.add_space(spacing::SM);
-
-                        ui.label(
-                            RichText::new("If source data is not available:")
-                                .weak()
-                                .small(),
-                        );
-
-                        ui.add_space(spacing::SM);
-
-                        // Get/initialize the reason text for this variable
-                        let mut reason_text = String::new();
-                        if let Some(study) = &state.study {
-                            if let Some(domain) = study.get_domain(domain_code) {
-                                if let Some(ms) = &domain.mapping_state {
-                                    if let Some(existing) =
-                                        ms.not_collected_reason_edit.get(&var_name)
-                                    {
-                                        reason_text = existing.clone();
-                                    } else {
-                                        reason_text =
-                                            "Data not collected in this study".to_string();
-                                    }
-                                }
-                            }
-                        }
-
-                        // Reason text input
-                        ui.label(RichText::new("Define-XML reason:").weak().small());
-                        let text_response = ui.add(
-                            egui::TextEdit::singleline(&mut reason_text)
-                                .hint_text("e.g., 'Data not collected in this study'")
-                                .desired_width(ui.available_width()),
-                        );
-
-                        if text_response.changed() {
-                            with_mapping_state_mut(state, domain_code, |ms| {
-                                ms.not_collected_reason_edit
-                                    .insert(var_name.clone(), reason_text.clone());
-                            });
-                        }
-
-                        ui.add_space(spacing::SM);
-
-                        // Action buttons
-                        ui.horizontal(|ui| {
-                            if ui
-                                .button(RichText::new(format!(
-                                    "{} Not Collected",
-                                    egui_phosphor::regular::PROHIBIT
-                                )))
-                                .on_hover_text("Creates null column with Define-XML comment")
-                                .clicked()
-                            {
-                                let reason = {
-                                    if let Some(study) = &state.study {
-                                        if let Some(domain) = study.get_domain(domain_code) {
-                                            if let Some(ms) = &domain.mapping_state {
-                                                ms.not_collected_reason_edit
-                                                    .get(&var_name)
-                                                    .cloned()
-                                                    .unwrap_or_else(|| {
-                                                        "Data not collected in this study"
-                                                            .to_string()
-                                                    })
-                                            } else {
-                                                "Data not collected in this study".to_string()
-                                            }
-                                        } else {
-                                            "Data not collected in this study".to_string()
-                                        }
-                                    } else {
-                                        "Data not collected in this study".to_string()
-                                    }
-                                };
-
-                                with_mapping_state_mut(state, domain_code, |ms| {
-                                    let _ = ms.mark_not_collected(&var_name, &reason);
-                                });
-                                if let Some(study) = &mut state.study {
-                                    if let Some(domain) = study.get_domain_mut(domain_code) {
-                                        domain.invalidate_mapping_dependents();
-                                    }
-                                }
-                            }
-
-                            // "Omit from Output" button (only for Permissible)
-                            if is_permissible {
-                                if ui
-                                    .button(RichText::new(format!(
-                                        "{} Omit",
-                                        egui_phosphor::regular::MINUS_CIRCLE
-                                    )))
-                                    .on_hover_text("Exclude variable from output entirely")
-                                    .clicked()
-                                {
-                                    with_mapping_state_mut(state, domain_code, |ms| {
-                                        let _ = ms.mark_omit(&var_name);
-                                    });
-                                    if let Some(study) = &mut state.study {
-                                        if let Some(domain) = study.get_domain_mut(domain_code) {
-                                            domain.invalidate_mapping_dependents();
-                                        }
-                                    }
-                                }
-                            }
-                        });
-
-                        // Explanation text
-                        ui.add_space(spacing::XS);
-                        let explanation = if is_permissible {
-                            "Not Collected = null column with Define-XML comment | Omit = exclude from output"
-                        } else {
-                            "Creates null column with Define-XML comment for documentation"
-                        };
-                        ui.label(RichText::new(explanation).weak().small().italics());
-                    }
-                }
-            }
         }
     });
 }
@@ -1230,6 +608,7 @@ fn is_auto_generated_variable(name: &str, role: Option<VariableRole>) -> bool {
     matches!(name, "STUDYID" | "DOMAIN") || (name.ends_with("SEQ") && name.len() >= 4)
 }
 
+/// Mutate mapping state and invalidate dependent state (validation, transform, preview)
 fn with_mapping_state_mut<F>(state: &mut AppState, domain_code: &str, f: F)
 where
     F: FnOnce(&mut MappingState),
@@ -1239,6 +618,11 @@ where
             if let Some(ms) = &mut domain.mapping_state {
                 f(ms);
             }
+            // Invalidate cached state that depends on mappings
+            domain.validation = None;
+            domain.validation_selected_idx = None;
+            domain.transform_state = None;
+            domain.preview_data = None;
         }
     }
 }
@@ -1252,5 +636,322 @@ fn sync_usubjid_from_subjid(ms: &mut MappingState) {
         let _ = ms.accept_manual("USUBJID", &col);
     } else {
         ms.clear("USUBJID");
+    }
+}
+
+/// Check if a variable is auto-generated based on role and name
+fn is_auto_generated(name: &str, role: Option<VariableRole>, has_subjid: bool) -> bool {
+    // USUBJID is derived from SUBJID when SUBJID is available
+    if has_subjid && name.eq_ignore_ascii_case("USUBJID") {
+        return true;
+    }
+
+    // Only Identifier role variables can be auto-generated
+    if role != Some(VariableRole::Identifier) {
+        return false;
+    }
+
+    // These specific Identifier variables are auto-generated per SDTMIG
+    matches!(name, "STUDYID" | "DOMAIN") || (name.ends_with("SEQ") && name.len() >= 4)
+}
+
+fn show_auto_generated_info(
+    ui: &mut Ui,
+    var_name: &str,
+    study_id: &str,
+    is_usubjid: bool,
+    subjid_info: &Option<(String, Vec<String>)>,
+) {
+    ui.label(
+        RichText::new(format!(
+            "{} Value Source",
+            egui_phosphor::regular::LIGHTNING
+        ))
+        .strong()
+        .weak(),
+    );
+    ui.separator();
+    ui.add_space(spacing::SM);
+
+    ui.horizontal(|ui| {
+        ui.label(RichText::new(egui_phosphor::regular::GEAR).color(ui.visuals().hyperlink_color));
+        ui.label(
+            RichText::new("Auto-generated")
+                .strong()
+                .color(ui.visuals().hyperlink_color),
+        );
+    });
+
+    ui.add_space(spacing::SM);
+
+    let desc = match var_name {
+        "DOMAIN" => "Set to the domain code (e.g., \"DM\", \"AE\")",
+        "STUDYID" => "Populated from study configuration",
+        "USUBJID" => "Derived from STUDYID and SUBJID",
+        name if name.ends_with("SEQ") => "Assigned sequentially per subject",
+        _ => "Generated by the system",
+    };
+    ui.label(RichText::new(desc).weak().italics());
+
+    if is_usubjid {
+        ui.add_space(spacing::MD);
+        egui::Grid::new("usubjid_derive")
+            .num_columns(2)
+            .spacing([20.0, 4.0])
+            .show(ui, |ui| {
+                ui.label(RichText::new("Formula").weak());
+                ui.label("STUDYID-SUBJID");
+                ui.end_row();
+                ui.label(RichText::new("Study ID").weak());
+                ui.label(RichText::new(study_id).color(ui.visuals().hyperlink_color));
+                ui.end_row();
+            });
+
+        if let Some((col, samples)) = subjid_info {
+            ui.add_space(spacing::SM);
+            ui.label(RichText::new(format!("SUBJID → {}", col)).weak().small());
+            for val in samples {
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new(val).code());
+                    ui.label(RichText::new("→").weak());
+                    ui.label(
+                        RichText::new(format!("{}-{}", study_id, val))
+                            .code()
+                            .color(ui.visuals().hyperlink_color),
+                    );
+                });
+            }
+        }
+    }
+}
+
+fn show_source_mapping_inline(
+    ui: &mut Ui,
+    state: &mut AppState,
+    domain_code: &str,
+    var_name: &str,
+    status: VariableStatus,
+    core: Option<CoreDesignation>,
+    current_mapping: &Option<(String, f32)>,
+    column_label: &Option<String>,
+    sample_values: &[String],
+    not_collected_reason: &Option<String>,
+) {
+    ui.label(
+        RichText::new(format!("{} Source Column", egui_phosphor::regular::TABLE))
+            .strong()
+            .weak(),
+    );
+    ui.separator();
+    ui.add_space(spacing::SM);
+
+    let is_subjid = var_name.eq_ignore_ascii_case("SUBJID");
+    let var_name_owned = var_name.to_string();
+
+    // Show current mapping if any
+    if let Some((col, conf)) = current_mapping {
+        ui.horizontal(|ui| {
+            ui.label(RichText::new(col).strong());
+            let color = if *conf >= 0.95_f32 {
+                colors::SUCCESS
+            } else if *conf >= 0.80_f32 {
+                ui.visuals().warn_fg_color
+            } else {
+                ui.visuals().weak_text_color()
+            };
+            ui.label(RichText::new(format!("{:.0}%", conf * 100.0)).color(color));
+        });
+
+        if let Some(label) = column_label {
+            ui.label(RichText::new(label).weak().italics());
+        }
+
+        if !sample_values.is_empty() {
+            ui.add_space(spacing::SM);
+            ui.label(RichText::new(sample_values.join(" · ")).weak().small());
+        }
+    } else {
+        ui.label(
+            RichText::new(format!("{} No mapping", egui_phosphor::regular::LINK_BREAK))
+                .weak()
+                .italics(),
+        );
+    }
+
+    ui.add_space(spacing::MD);
+
+    // Action buttons based on status
+    match status {
+        VariableStatus::Accepted => {
+            ui.horizontal(|ui| {
+                ui.label(
+                    RichText::new(format!("{} Mapped", egui_phosphor::regular::CHECK_CIRCLE))
+                        .color(colors::SUCCESS),
+                );
+            });
+            if ui
+                .small_button(format!("{} Clear", egui_phosphor::regular::X))
+                .clicked()
+            {
+                with_mapping_state_mut(state, domain_code, |ms| {
+                    ms.clear(&var_name_owned);
+                    if is_subjid {
+                        sync_usubjid_from_subjid(ms);
+                    }
+                });
+            }
+        }
+        VariableStatus::NotCollected => {
+            ui.label(
+                RichText::new(format!(
+                    "{} Not Collected",
+                    egui_phosphor::regular::PROHIBIT
+                ))
+                .color(ui.visuals().warn_fg_color),
+            );
+            if let Some(reason) = not_collected_reason {
+                ui.label(
+                    RichText::new(format!("Reason: {}", reason))
+                        .weak()
+                        .italics()
+                        .small(),
+                );
+            }
+            if ui
+                .button(format!("{} Clear", egui_phosphor::regular::X))
+                .clicked()
+            {
+                with_mapping_state_mut(state, domain_code, |ms| {
+                    ms.clear_assignment(&var_name_owned);
+                });
+            }
+        }
+        VariableStatus::Omitted => {
+            ui.label(
+                RichText::new(format!("{} Omitted", egui_phosphor::regular::MINUS_CIRCLE))
+                    .color(ui.visuals().warn_fg_color),
+            );
+            if ui
+                .button(format!("{} Clear", egui_phosphor::regular::X))
+                .clicked()
+            {
+                with_mapping_state_mut(state, domain_code, |ms| {
+                    ms.clear_assignment(&var_name_owned);
+                });
+            }
+        }
+        VariableStatus::Suggested => {
+            ui.label(
+                RichText::new(format!(
+                    "{} Suggestion available",
+                    egui_phosphor::regular::LIGHTBULB
+                ))
+                .color(ui.visuals().warn_fg_color),
+            );
+            ui.add_space(spacing::SM);
+            if ui
+                .button(
+                    RichText::new(format!("{} Accept", egui_phosphor::regular::CHECK))
+                        .color(colors::SUCCESS),
+                )
+                .clicked()
+            {
+                with_mapping_state_mut(state, domain_code, |ms| {
+                    let _ = ms.accept_suggestion(&var_name_owned);
+                    if is_subjid {
+                        sync_usubjid_from_subjid(ms);
+                    }
+                });
+            }
+            show_manual_mapping_ui(ui, state, domain_code, &var_name_owned, is_subjid, core);
+            show_alternative_actions(ui, state, domain_code, &var_name_owned, core);
+        }
+        VariableStatus::Unmapped => {
+            show_manual_mapping_ui(ui, state, domain_code, &var_name_owned, is_subjid, core);
+            show_alternative_actions(ui, state, domain_code, &var_name_owned, core);
+        }
+    }
+}
+
+fn show_manual_mapping_ui(
+    ui: &mut Ui,
+    state: &mut AppState,
+    domain_code: &str,
+    var_name: &str,
+    is_subjid: bool,
+    _core: Option<CoreDesignation>,
+) {
+    // Get source columns for combo box
+    let source_columns: Vec<String> = state
+        .study
+        .as_ref()
+        .and_then(|s| s.get_domain(domain_code))
+        .map(|d| d.source_columns())
+        .unwrap_or_default();
+
+    ui.add_space(spacing::MD);
+    ui.label(RichText::new("Or select manually:").weak());
+
+    let var_name_owned = var_name.to_string();
+    egui::ComboBox::from_id_salt(format!("map_{}", var_name))
+        .selected_text("Choose column...")
+        .show_ui(ui, |ui| {
+            for col in source_columns {
+                if ui.selectable_label(false, &col).clicked() {
+                    with_mapping_state_mut(state, domain_code, |ms| {
+                        let _ = ms.accept_manual(&var_name_owned, &col);
+                        if is_subjid {
+                            sync_usubjid_from_subjid(ms);
+                        }
+                    });
+                }
+            }
+        });
+}
+
+fn show_alternative_actions(
+    ui: &mut Ui,
+    state: &mut AppState,
+    domain_code: &str,
+    var_name: &str,
+    core: Option<CoreDesignation>,
+) {
+    ui.add_space(spacing::MD);
+    ui.separator();
+    ui.add_space(spacing::SM);
+
+    let var_name_owned = var_name.to_string();
+
+    // "Mark as Not Collected" for Req/Exp variables
+    if matches!(
+        core,
+        Some(CoreDesignation::Required) | Some(CoreDesignation::Expected)
+    ) {
+        if ui
+            .button(format!(
+                "{} Mark Not Collected",
+                egui_phosphor::regular::PROHIBIT
+            ))
+            .clicked()
+        {
+            with_mapping_state_mut(state, domain_code, |ms| {
+                let _ = ms.mark_not_collected(&var_name_owned, "Not available in source data");
+            });
+        }
+    }
+
+    // "Omit" for Perm variables
+    if core == Some(CoreDesignation::Permissible) {
+        if ui
+            .button(format!(
+                "{} Omit Variable",
+                egui_phosphor::regular::MINUS_CIRCLE
+            ))
+            .clicked()
+        {
+            with_mapping_state_mut(state, domain_code, |ms| {
+                let _ = ms.mark_omit(&var_name_owned);
+            });
+        }
     }
 }

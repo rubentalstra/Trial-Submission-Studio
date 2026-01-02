@@ -14,6 +14,7 @@ pub use sdtm_map::VariableStatus;
 /// Pre-fetched codelist display info for UI rendering.
 #[derive(Debug, Clone)]
 pub struct CodelistDisplayInfo {
+    #[allow(dead_code)] // May be used for debugging/display
     pub code: String,
     pub name: String,
     pub extensible: bool,
@@ -36,6 +37,7 @@ pub struct MappingState {
     /// UI state: search filter text
     pub search_filter: String,
     /// UI state: reason text being edited for "not collected" (per variable)
+    #[allow(dead_code)] // Planned feature for custom "not collected" reasons
     pub not_collected_reason_edit: BTreeMap<String, String>,
 }
 

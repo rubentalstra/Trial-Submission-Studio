@@ -8,6 +8,18 @@ use sdtm_validate::ValidationReport;
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+/// Result of checking domain initialization state
+pub enum DomainInitState {
+    /// Domain has mapping state, ready to display
+    Ready,
+    /// Just set to Loading, need repaint
+    StartLoading,
+    /// In Loading state, need to run initialization
+    DoInitialize,
+    /// Failed to find domain or other error
+    Error,
+}
+
 /// Runtime state for a loaded study
 pub struct StudyState {
     /// Study identifier (derived from folder name)
@@ -62,6 +74,26 @@ impl StudyState {
         codes.sort();
         codes
     }
+
+    /// Check domain init state and transition if needed (mutable version)
+    pub fn check_domain_init(&mut self, domain_code: &str) -> DomainInitState {
+        let Some(domain) = self.domains.get_mut(domain_code) else {
+            return DomainInitState::Error;
+        };
+
+        if domain.mapping_state.is_some() {
+            return DomainInitState::Ready;
+        }
+
+        match domain.status {
+            DomainStatus::NotStarted => {
+                domain.status = DomainStatus::Loading;
+                DomainInitState::StartLoading
+            }
+            DomainStatus::Loading => DomainInitState::DoInitialize,
+            _ => DomainInitState::Error,
+        }
+    }
 }
 
 /// State for a single domain
@@ -108,19 +140,6 @@ impl DomainState {
             Some(label) => format!("{} ({})", code, label),
             None => code.to_string(),
         }
-    }
-
-    /// Invalidate cached data that depends on mappings.
-    ///
-    /// Call this whenever accepted mappings change to ensure:
-    /// - Validation is re-run on the new mapped data
-    /// - Transform state is regenerated
-    /// - Preview data is regenerated
-    pub fn invalidate_mapping_dependents(&mut self) {
-        self.validation = None;
-        self.validation_selected_idx = None;
-        self.transform_state = None;
-        self.preview_data = None;
     }
 
     /// Get source column names

@@ -17,6 +17,7 @@ pub trait TransformTypeDisplay {
     fn category(&self) -> &'static str;
 
     /// Whether this is an auto-generated transform (not CT normalization)
+    #[allow(dead_code)] // May be used for filtering transforms in UI
     fn is_generated(&self) -> bool;
 }
 
@@ -97,6 +98,7 @@ pub struct TransformState {
 
 impl TransformState {
     /// Create a new transform state from a pipeline
+    #[allow(dead_code)] // Available for future use
     pub fn new(pipeline: DomainPipeline) -> Self {
         Self {
             pipeline: Some(pipeline),

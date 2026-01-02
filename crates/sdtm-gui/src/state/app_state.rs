@@ -68,6 +68,7 @@ pub enum ExportDomainStep {
     ValidatingOutput,
     WritingXpt,
     WritingDefineXml,
+    #[allow(dead_code)] // Used when export flow is fully implemented
     Complete,
 }
 

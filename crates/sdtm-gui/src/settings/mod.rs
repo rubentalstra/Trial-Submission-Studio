@@ -402,6 +402,7 @@ impl PreviewRowLimit {
     }
 
     /// Get the actual row limit value.
+    #[allow(dead_code)] // Will be used when preview tab implements row limits
     pub const fn value(&self) -> Option<usize> {
         match self {
             Self::Rows100 => Some(100),

@@ -9,9 +9,62 @@ mod supp;
 mod transform;
 mod validation;
 
-use crate::state::{AppState, EditorTab};
+use crate::state::{AppState, DomainInitState, EditorTab};
 use crate::theme::spacing;
 use egui::{RichText, Ui};
+
+/// Ensure domain mapping is initialized, showing loading UI if needed.
+/// Returns true if ready to render tab content, false if still loading.
+pub fn ensure_mapping_initialized(ui: &mut Ui, state: &mut AppState, domain_code: &str) -> bool {
+    let init_state = state
+        .study
+        .as_mut()
+        .map(|s| s.check_domain_init(domain_code))
+        .unwrap_or(DomainInitState::Error);
+
+    match init_state {
+        DomainInitState::Ready => true,
+        DomainInitState::StartLoading => {
+            show_loading_spinner(ui);
+            ui.ctx().request_repaint();
+            false
+        }
+        DomainInitState::DoInitialize => {
+            show_loading_spinner(ui);
+            mapping::initialize_mapping(state, domain_code);
+            ui.ctx().request_repaint();
+            false
+        }
+        DomainInitState::Error => {
+            ui.centered_and_justified(|ui| {
+                ui.label(
+                    RichText::new(format!(
+                        "{} Failed to initialize mapping",
+                        egui_phosphor::regular::WARNING
+                    ))
+                    .color(ui.visuals().error_fg_color),
+                );
+            });
+            false
+        }
+    }
+}
+
+/// Show loading spinner with message
+fn show_loading_spinner(ui: &mut Ui) {
+    ui.vertical_centered(|ui| {
+        ui.add_space(ui.available_height() / 3.0);
+        ui.spinner();
+        ui.add_space(spacing::MD);
+        ui.label(RichText::new("Loading mapping configuration...").size(16.0));
+        ui.add_space(spacing::SM);
+        ui.label(
+            RichText::new("Loading SDTM standards and controlled terminology")
+                .weak()
+                .small(),
+        );
+    });
+}
 
 /// Domain editor view
 pub struct DomainEditorView;
