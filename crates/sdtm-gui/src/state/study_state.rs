@@ -3,8 +3,6 @@
 //! This module contains `StudyState` which holds all domain states
 //! and tracks DM domain readiness for dependency enforcement.
 
-
-
 use super::DomainState;
 use sdtm_ingest::StudyMetadata;
 use std::collections::HashMap;

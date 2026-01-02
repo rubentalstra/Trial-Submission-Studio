@@ -8,7 +8,7 @@ use crate::state::{AppState, Versioned};
 use crate::theme::spacing;
 use egui::{Color32, RichText, Ui};
 use sdtm_standards::load_default_ct_registry;
-use sdtm_validate::{validate_domain_with_not_collected, Issue, Severity, ValidationReport};
+use sdtm_validate::{Issue, Severity, ValidationReport, validate_domain_with_not_collected};
 use std::collections::BTreeSet;
 
 /// Render the validation tab
@@ -228,7 +228,11 @@ fn show_issues_list(
         } else {
             Some(idx)
         };
-        state.ui.domain_editor(domain_code).validation.select(selection);
+        state
+            .ui
+            .domain_editor(domain_code)
+            .validation
+            .select(selection);
     }
 }
 
@@ -275,12 +279,7 @@ fn show_issue_detail(
         Severity::Error => "ERROR",
         Severity::Warning => "WARNING",
     };
-    ui.label(
-        RichText::new(severity_label)
-            .small()
-            .color(color)
-            .strong(),
-    );
+    ui.label(RichText::new(severity_label).small().color(color).strong());
 
     ui.add_space(spacing::MD);
 
@@ -325,9 +324,12 @@ fn show_issue_detail(
             ui.add_space(spacing::LG);
 
             ui.label(
-                RichText::new(format!("{} Controlled Terminology", egui_phosphor::regular::LIST_CHECKS))
-                    .strong()
-                    .weak(),
+                RichText::new(format!(
+                    "{} Controlled Terminology",
+                    egui_phosphor::regular::LIST_CHECKS
+                ))
+                .strong()
+                .weak(),
             );
             ui.separator();
             ui.add_space(spacing::SM);
@@ -368,10 +370,13 @@ fn show_issue_detail(
                         }
                         if invalid_values.len() > 10 {
                             ui.label(
-                                RichText::new(format!("... and {} more", invalid_values.len() - 10))
-                                    .weak()
-                                    .small()
-                                    .italics(),
+                                RichText::new(format!(
+                                    "... and {} more",
+                                    invalid_values.len() - 10
+                                ))
+                                .weak()
+                                .small()
+                                .italics(),
                             );
                         }
                     });
@@ -412,7 +417,9 @@ fn show_issue_detail(
                 null_count
             ));
             ui.add_space(spacing::XS);
-            ui.label(RichText::new("Required variables must be populated for every record.").weak());
+            ui.label(
+                RichText::new("Required variables must be populated for every record.").weak(),
+            );
         }
 
         Issue::ExpectedMissing { .. } => {
@@ -450,7 +457,9 @@ fn show_issue_detail(
                 null_count
             ));
             ui.add_space(spacing::XS);
-            ui.label(RichText::new("Identifier variables must be populated for every record.").weak());
+            ui.label(
+                RichText::new("Identifier variables must be populated for every record.").weak(),
+            );
         }
 
         _ => {
@@ -462,9 +471,12 @@ fn show_issue_detail(
 
     // Recommendation section
     ui.label(
-        RichText::new(format!("{} Recommendation", egui_phosphor::regular::ARROW_RIGHT))
-            .strong()
-            .weak(),
+        RichText::new(format!(
+            "{} Recommendation",
+            egui_phosphor::regular::ARROW_RIGHT
+        ))
+        .strong()
+        .weak(),
     );
     ui.separator();
     ui.add_space(spacing::SM);

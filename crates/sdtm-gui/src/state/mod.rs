@@ -38,7 +38,7 @@ pub use domain_state::{DomainSource, DomainState};
 
 // Derived state
 pub use derived_state::{
-    suggest_qnam, validate_qnam, DerivedState, SuppAction, SuppColumnConfig, SuppConfig,
+    DerivedState, SuppAction, SuppColumnConfig, SuppConfig, suggest_qnam, validate_qnam,
 };
 
 // UI state

@@ -42,9 +42,12 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
         ui.vertical_centered(|ui| {
             ui.add_space(spacing::XL);
             ui.label(
-                RichText::new(format!("{} Transform Error", egui_phosphor::regular::WARNING))
-                    .color(ui.visuals().error_fg_color)
-                    .size(18.0),
+                RichText::new(format!(
+                    "{} Transform Error",
+                    egui_phosphor::regular::WARNING
+                ))
+                .color(ui.visuals().error_fg_color)
+                .size(18.0),
             );
             ui.add_space(spacing::MD);
             ui.label(RichText::new(&error).weak());
@@ -103,7 +106,9 @@ fn show_transform_list(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
     // Collect transformation info from mappings (only accepted + auto-generated)
     let rows: Vec<TransformRow> = {
         let Some(study) = state.study() else { return };
-        let Some(domain) = study.get_domain(domain_code) else { return };
+        let Some(domain) = study.get_domain(domain_code) else {
+            return;
+        };
 
         let mapping = &domain.mapping;
         let sdtm_domain = mapping.domain();
@@ -125,7 +130,11 @@ fn show_transform_list(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                     return None;
                 }
 
-                let category = infer_category(&var.name, source_column.is_some(), var.codelist_code.is_some());
+                let category = infer_category(
+                    &var.name,
+                    source_column.is_some(),
+                    var.codelist_code.is_some(),
+                );
                 Some(TransformRow {
                     target_variable: var.name.clone(),
                     source_column,
@@ -138,11 +147,21 @@ fn show_transform_list(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
     if rows.is_empty() {
         ui.centered_and_justified(|ui| {
             ui.vertical_centered(|ui| {
-                ui.label(RichText::new(egui_phosphor::regular::INFO).size(24.0).weak());
+                ui.label(
+                    RichText::new(egui_phosphor::regular::INFO)
+                        .size(24.0)
+                        .weak(),
+                );
                 ui.add_space(spacing::SM);
                 ui.label(RichText::new("No transformations yet").weak());
                 ui.add_space(spacing::XS);
-                ui.label(RichText::new("Map variables in the Mapping tab to see their transformations here.").weak().small());
+                ui.label(
+                    RichText::new(
+                        "Map variables in the Mapping tab to see their transformations here.",
+                    )
+                    .weak()
+                    .small(),
+                );
             });
         });
         return;
@@ -158,7 +177,11 @@ fn show_transform_list(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
         ui.label(RichText::new(format!("{}", total)).strong());
         ui.label(RichText::new("variables").weak().small());
         ui.separator();
-        ui.label(RichText::new(format!("{} mapped", mapped_count)).small().color(Color32::from_rgb(100, 180, 100)));
+        ui.label(
+            RichText::new(format!("{} mapped", mapped_count))
+                .small()
+                .color(Color32::from_rgb(100, 180, 100)),
+        );
         if auto_count > 0 {
             ui.label(RichText::new(format!("{} auto", auto_count)).small().weak());
         }
@@ -234,7 +257,11 @@ fn show_transform_list(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
 
     // Apply selection change
     if let Some(idx) = new_selection {
-        state.ui.domain_editor(domain_code).transform.select(Some(idx));
+        state
+            .ui
+            .domain_editor(domain_code)
+            .transform
+            .select(Some(idx));
     }
 }
 
@@ -256,7 +283,9 @@ fn show_transform_detail(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
     // Extract detail data
     let detail = {
         let Some(study) = state.study() else { return };
-        let Some(domain) = study.get_domain(domain_code) else { return };
+        let Some(domain) = study.get_domain(domain_code) else {
+            return;
+        };
 
         let mapping = &domain.mapping;
         let sdtm_domain = mapping.domain();
@@ -267,9 +296,7 @@ fn show_transform_detail(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
         let filtered_vars: Vec<_> = sdtm_domain
             .variables
             .iter()
-            .filter(|var| {
-                accepted.contains_key(&var.name) || auto_generated.contains(&var.name)
-            })
+            .filter(|var| accepted.contains_key(&var.name) || auto_generated.contains(&var.name))
             .collect();
 
         let Some(var) = filtered_vars.get(idx) else {
@@ -298,7 +325,11 @@ fn show_transform_detail(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
         let category = if is_auto {
             "Auto".to_string()
         } else {
-            infer_category(&var.name, source_column.is_some(), var.codelist_code.is_some())
+            infer_category(
+                &var.name,
+                source_column.is_some(),
+                var.codelist_code.is_some(),
+            )
         };
 
         TransformDetail {
@@ -371,7 +402,10 @@ fn show_detail_content(ui: &mut Ui, detail: &TransformDetail) {
     // Auto-generated explanation
     if is_auto {
         ui.horizontal(|ui| {
-            ui.label(RichText::new(egui_phosphor::regular::MAGIC_WAND).color(Color32::from_rgb(100, 180, 100)));
+            ui.label(
+                RichText::new(egui_phosphor::regular::MAGIC_WAND)
+                    .color(Color32::from_rgb(100, 180, 100)),
+            );
             ui.label(RichText::new("Auto-generated value").weak().italics());
         });
         ui.add_space(spacing::SM);
@@ -388,21 +422,28 @@ fn show_detail_content(ui: &mut Ui, detail: &TransformDetail) {
 
     // Before → After section (only for mapped variables)
     ui.label(
-        RichText::new(format!("{} Before → After", egui_phosphor::regular::ARROWS_LEFT_RIGHT))
-            .strong()
-            .weak(),
+        RichText::new(format!(
+            "{} Before → After",
+            egui_phosphor::regular::ARROWS_LEFT_RIGHT
+        ))
+        .strong()
+        .weak(),
     );
     ui.separator();
     ui.add_space(spacing::SM);
 
     if detail.source_samples.is_empty() {
         ui.horizontal(|ui| {
-            ui.label(RichText::new(egui_phosphor::regular::WARNING).color(ui.visuals().warn_fg_color));
             ui.label(
-                RichText::new(format!("Column '{}' not found in source data",
-                    detail.source_column.as_ref().unwrap_or(&"?".to_string())))
-                    .weak()
-                    .italics(),
+                RichText::new(egui_phosphor::regular::WARNING).color(ui.visuals().warn_fg_color),
+            );
+            ui.label(
+                RichText::new(format!(
+                    "Column '{}' not found in source data",
+                    detail.source_column.as_ref().unwrap_or(&"?".to_string())
+                ))
+                .weak()
+                .italics(),
             );
         });
         return;
@@ -411,20 +452,28 @@ fn show_detail_content(ui: &mut Ui, detail: &TransformDetail) {
     let has_change = detail.source_samples != detail.transformed_samples;
     if has_change {
         ui.label(
-            RichText::new(format!("{} Values transformed", egui_phosphor::regular::CHECK))
-                .color(Color32::from_rgb(100, 180, 100)),
+            RichText::new(format!(
+                "{} Values transformed",
+                egui_phosphor::regular::CHECK
+            ))
+            .color(Color32::from_rgb(100, 180, 100)),
         );
     } else {
         ui.label(
-            RichText::new(format!("{} Values unchanged", egui_phosphor::regular::EQUALS))
-                .weak(),
+            RichText::new(format!(
+                "{} Values unchanged",
+                egui_phosphor::regular::EQUALS
+            ))
+            .weak(),
         );
     }
 
     ui.add_space(spacing::SM);
 
     // Show side-by-side comparison (max 10 examples, no truncation)
-    let pairs: Vec<_> = detail.source_samples.iter()
+    let pairs: Vec<_> = detail
+        .source_samples
+        .iter()
         .zip(detail.transformed_samples.iter())
         .take(10)
         .collect();
@@ -454,10 +503,13 @@ fn show_detail_content(ui: &mut Ui, detail: &TransformDetail) {
     if detail.source_samples.len() > 10 {
         ui.add_space(spacing::SM);
         ui.label(
-            RichText::new(format!("... and {} more values", detail.source_samples.len() - 10))
-                .weak()
-                .small()
-                .italics(),
+            RichText::new(format!(
+                "... and {} more values",
+                detail.source_samples.len() - 10
+            ))
+            .weak()
+            .small()
+            .italics(),
         );
     }
 }
@@ -495,13 +547,18 @@ fn infer_category(_var_name: &str, has_source: bool, has_codelist: bool) -> Stri
 /// Get icon and color for category
 fn get_category_icon_color(category: &str, is_auto: bool, ui: &Ui) -> (&'static str, Color32) {
     if is_auto {
-        (egui_phosphor::regular::MAGIC_WAND, Color32::from_rgb(100, 180, 100))
+        (
+            egui_phosphor::regular::MAGIC_WAND,
+            Color32::from_rgb(100, 180, 100),
+        )
     } else {
         match category {
-            "CT Normalization" => (egui_phosphor::regular::LIST_CHECKS, Color32::from_rgb(100, 150, 220)),
+            "CT Normalization" => (
+                egui_phosphor::regular::LIST_CHECKS,
+                Color32::from_rgb(100, 150, 220),
+            ),
             "Copy" => (egui_phosphor::regular::COPY, ui.visuals().weak_text_color()),
             _ => (egui_phosphor::regular::GEAR, ui.visuals().text_color()),
         }
     }
 }
-

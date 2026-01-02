@@ -89,23 +89,13 @@ fn show_preview_content(ui: &mut Ui, state: &mut AppState, domain_code: &str, df
 
     // Header
     ui.horizontal(|ui| {
-        ui.label(
-            RichText::new(format!(
-                "{} SDTM Preview",
-                egui_phosphor::regular::TABLE
-            ))
-            .strong(),
-        );
+        ui.label(RichText::new(format!("{} SDTM Preview", egui_phosphor::regular::TABLE)).strong());
 
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             ui.label(
-                RichText::new(format!(
-                    "{} rows × {} columns",
-                    total_rows,
-                    df.width()
-                ))
-                .weak()
-                .small(),
+                RichText::new(format!("{} rows × {} columns", total_rows, df.width()))
+                    .weak()
+                    .small(),
             );
         });
     });
@@ -115,12 +105,23 @@ fn show_preview_content(ui: &mut Ui, state: &mut AppState, domain_code: &str, df
     ui.add_space(spacing::SM);
 
     // Pagination controls at top
-    show_pagination_controls(ui, state, domain_code, total_rows, current_page, total_pages);
+    show_pagination_controls(
+        ui,
+        state,
+        domain_code,
+        total_rows,
+        current_page,
+        total_pages,
+    );
 
     ui.add_space(spacing::SM);
 
     // Data table
-    let column_names: Vec<String> = df.get_column_names().into_iter().map(|s| s.to_string()).collect();
+    let column_names: Vec<String> = df
+        .get_column_names()
+        .into_iter()
+        .map(|s| s.to_string())
+        .collect();
     let available_height = ui.available_height() - 40.0; // Reserve space for bottom pagination
 
     egui::ScrollArea::horizontal()
@@ -132,7 +133,14 @@ fn show_preview_content(ui: &mut Ui, state: &mut AppState, domain_code: &str, df
     ui.add_space(spacing::SM);
 
     // Pagination controls at bottom
-    show_pagination_controls(ui, state, domain_code, total_rows, current_page, total_pages);
+    show_pagination_controls(
+        ui,
+        state,
+        domain_code,
+        total_rows,
+        current_page,
+        total_pages,
+    );
 }
 
 /// Show the data table

@@ -154,6 +154,8 @@ pub enum SuppAction {
 /// - No leading numbers
 /// - Prefix with domain code
 pub fn suggest_qnam(column_name: &str, domain_code: &str) -> String {
+    let domain_upper = domain_code.to_uppercase();
+
     // Clean up the column name
     let clean = column_name
         .to_uppercase()
@@ -169,6 +171,10 @@ pub fn suggest_qnam(column_name: &str, domain_code: &str) -> String {
         .or_else(|| clean.strip_prefix("CUSTOM"))
         .unwrap_or(&clean);
 
+    // If column already starts with domain code, don't add it again
+    // e.g., "AEACNIMPNA" for domain "AE" should stay "AEACNIMP" not become "AEAEACNI"
+    let already_has_prefix = base.starts_with(&domain_upper);
+
     // If base is empty or starts with a number, use column name chars
     let base = if base.is_empty()
         || base
@@ -182,15 +188,16 @@ pub fn suggest_qnam(column_name: &str, domain_code: &str) -> String {
         base
     };
 
-    // Calculate how many chars we can use from base (max 8 - domain_code.len())
-    let max_base_len = 8usize.saturating_sub(domain_code.len());
-    let truncated_base: String = base.chars().take(max_base_len).collect();
-
-    // Combine domain code and truncated base
-    let suggested = format!("{}{}", domain_code.to_uppercase(), truncated_base);
-
-    // Final truncation to ensure max 8 chars
-    suggested.chars().take(8).collect()
+    if already_has_prefix {
+        // Column already has domain prefix, just truncate to 8 chars
+        base.chars().take(8).collect()
+    } else {
+        // Add domain prefix
+        let max_base_len = 8usize.saturating_sub(domain_upper.len());
+        let truncated_base: String = base.chars().take(max_base_len).collect();
+        let suggested = format!("{}{}", domain_upper, truncated_base);
+        suggested.chars().take(8).collect()
+    }
 }
 
 /// Validate a QNAM according to SDTMIG rules.
@@ -224,6 +231,11 @@ mod tests {
         assert_eq!(suggest_qnam("extra_data", "AE"), "AEDATA");
         assert_eq!(suggest_qnam("custom_field", "DM"), "DMFIELD");
         assert_eq!(suggest_qnam("SUBJECT_ID", "AE"), "AESUBJEC");
+
+        // Don't add domain prefix if column already starts with it
+        assert_eq!(suggest_qnam("AEACNIMPNA", "AE"), "AEACNIMP");
+        assert_eq!(suggest_qnam("AETERM", "AE"), "AETERM");
+        assert_eq!(suggest_qnam("DMRACE", "DM"), "DMRACE");
     }
 
     #[test]

@@ -23,10 +23,7 @@ pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
     // Use DM-enforced access via state.domain()
     let Some(domain) = state.domain(domain_code) else {
         ui.centered_and_justified(|ui| {
-            ui.label(
-                RichText::new("Domain not accessible")
-                    .color(ui.visuals().error_fg_color),
-            );
+            ui.label(RichText::new("Domain not accessible").color(ui.visuals().error_fg_color));
         });
         return;
     };
@@ -88,7 +85,7 @@ fn show_variable_list(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
         let summary = ms.summary();
         // Check if SUBJID has been mapped (accepted), not just if it exists
         let has_subjid_mapping = ms.accepted("SUBJID").is_some();
-        
+
         // Filter variables by search text
         let search_lower = search_text.to_lowercase();
         let filtered: Vec<_> = ms
@@ -106,7 +103,7 @@ fn show_variable_list(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                 (idx, v.name.clone(), core, role, status)
             })
             .collect();
-        
+
         (summary, filtered, has_subjid_mapping)
     };
 
@@ -235,7 +232,11 @@ fn show_variable_list(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
 
     // Apply selection change
     if let Some(idx) = new_selection {
-        state.ui.domain_editor(domain_code).mapping.select(Some(idx));
+        state
+            .ui
+            .domain_editor(domain_code)
+            .mapping
+            .select(Some(idx));
     }
 }
 
@@ -245,7 +246,7 @@ fn show_variable_detail(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
         .ui
         .get_domain_editor(domain_code)
         .and_then(|ui| ui.mapping.selected_idx);
-    
+
     // Extract all needed data before entering closures
     let data = {
         let Some(study) = state.study() else { return };
@@ -284,7 +285,12 @@ fn show_variable_detail(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
             Some(CodelistDisplayInfo {
                 name: resolved.codelist.name.clone(),
                 extensible: resolved.codelist.extensible,
-                values: resolved.codelist.submission_values().iter().map(|s| s.to_string()).collect(),
+                values: resolved
+                    .codelist
+                    .submission_values()
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect(),
             })
         });
 
@@ -293,11 +299,11 @@ fn show_variable_detail(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
             .accepted(&var_name)
             .or(ms.suggestion(&var_name))
             .map(|(col, conf)| (col.to_string(), conf));
-        
+
         let column_label = current_mapping
             .as_ref()
             .and_then(|(col, _)| study.column_label(col).map(|s| s.to_string()));
-        
+
         let sample_values: Vec<String> = current_mapping
             .as_ref()
             .map(|(col, _)| get_sample_values(&domain.source.data, col, 5))
@@ -380,11 +386,7 @@ fn show_variable_detail(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
             .spacing([20.0, 4.0])
             .show(ui, |ui| {
                 ui.label(RichText::new("Core").weak());
-                ui.label(
-                    variable_core
-                        .map(|c| c.as_code())
-                        .unwrap_or("—"),
-                );
+                ui.label(variable_core.map(|c| c.as_code()).unwrap_or("—"));
                 ui.end_row();
 
                 ui.label(RichText::new("Type").weak());
@@ -415,26 +417,21 @@ fn show_variable_detail(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
             );
             ui.separator();
             ui.add_space(spacing::SM);
-            
+
             // Codelist header with name and extensibility
             ui.horizontal(|ui| {
                 ui.label(RichText::new(&ct.name).strong());
                 if ct.extensible {
-                    ui.label(
-                        RichText::new("(extensible)")
-                            .small()
-                            .weak()
-                            .italics(),
-                    );
+                    ui.label(RichText::new("(extensible)").small().weak().italics());
                 }
             });
-            
+
             if let Some(code) = &codelist_code {
                 ui.label(RichText::new(format!("Code: {}", code)).weak().small());
             }
-            
+
             ui.add_space(spacing::SM);
-            
+
             // Show valid values in a scrollable area
             let max_height = 120.0;
             egui::ScrollArea::vertical()
@@ -454,7 +451,7 @@ fn show_variable_detail(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                         }
                     });
                 });
-            
+
             ui.add_space(spacing::SM);
             ui.label(
                 RichText::new(format!("{} valid values", ct.values.len()))
@@ -474,7 +471,7 @@ fn show_variable_detail(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
             );
             ui.separator();
             ui.add_space(spacing::SM);
-            
+
             ui.label(
                 RichText::new(format!("Codelist: {}", codelist_code.as_ref().unwrap()))
                     .weak()
@@ -505,7 +502,11 @@ fn show_variable_detail(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
 }
 
 /// Get sample values from a DataFrame column
-fn get_sample_values(df: &polars::prelude::DataFrame, column_name: &str, limit: usize) -> Vec<String> {
+fn get_sample_values(
+    df: &polars::prelude::DataFrame,
+    column_name: &str,
+    limit: usize,
+) -> Vec<String> {
     use sdtm_common::any_to_string;
 
     df.column(column_name)
@@ -530,7 +531,12 @@ fn is_auto_generated_variable(name: &str, role: Option<VariableRole>) -> bool {
 /// Check if a variable is auto-generated based on role, name, and SUBJID mapping.
 ///
 /// USUBJID is auto-generated when SUBJID has been mapped (in any domain).
-fn is_auto_generated(name: &str, role: Option<VariableRole>, _domain_code: &str, has_subjid: bool) -> bool {
+fn is_auto_generated(
+    name: &str,
+    role: Option<VariableRole>,
+    _domain_code: &str,
+    has_subjid: bool,
+) -> bool {
     // USUBJID is auto-generated when SUBJID is mapped (derives as STUDYID-SUBJID)
     if has_subjid && name.eq_ignore_ascii_case("USUBJID") {
         return true;

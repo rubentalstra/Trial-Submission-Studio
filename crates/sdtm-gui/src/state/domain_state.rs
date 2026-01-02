@@ -3,8 +3,6 @@
 //! This module contains `DomainSource` (immutable source data) and
 //! `DomainState` (mutable mapping with version tracking).
 
-
-
 use super::DerivedState;
 use polars::prelude::DataFrame;
 use sdtm_map::MappingState as CoreMappingState;
@@ -163,7 +161,6 @@ impl DomainState {
         let summary = self.summary();
         summary.required_mapped == summary.required_total
     }
-
 }
 
 impl std::fmt::Debug for DomainState {

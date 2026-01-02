@@ -48,9 +48,9 @@ impl AppState {
             ct_registry: None,
         }
     }
-    
+
     /// Get the cached CT registry.
-    /// 
+    ///
     /// CT is loaded automatically when a study is loaded via `set_study()`.
     pub fn ct_registry(&self) -> Option<&TerminologyRegistry> {
         self.ct_registry.as_ref()

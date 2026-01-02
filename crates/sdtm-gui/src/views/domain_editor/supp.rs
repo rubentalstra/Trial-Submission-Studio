@@ -5,7 +5,7 @@
 //! Unmapped source columns can be added to a SUPP-- dataset.
 
 use crate::state::{
-    suggest_qnam, validate_qnam, AppState, SuppAction, SuppColumnConfig, SuppConfig, Versioned,
+    AppState, SuppAction, SuppColumnConfig, SuppConfig, Versioned, suggest_qnam, validate_qnam,
 };
 use crate::theme::spacing;
 use egui::{Color32, RichText, Ui};
