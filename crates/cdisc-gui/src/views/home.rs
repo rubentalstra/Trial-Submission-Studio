@@ -1,7 +1,7 @@
 //! Home screen view
 //!
-//! Study folder selection with CDISC standard selection (SDTM, ADaM, SEND).
-//! TODO: We will only Support SDTM initially, so ADaM and SEND options will be disabled. will be added in future releases.
+//! Study folder selection with CDISC standard selection.
+//! Currently focused on SDTM. ADaM and SEND are not available.
 
 use crate::state::{AppState, WorkflowMode};
 use crate::theme::spacing;
@@ -221,15 +221,42 @@ impl HomeView {
                                 selected.tagline()
                             ))
                             .show_ui(ui, |ui| {
-                                for mode in
-                                    [WorkflowMode::Sdtm, WorkflowMode::Adam, WorkflowMode::Send]
+                                // SDTM - fully supported
+                                let sdtm_label = format!(
+                                    "{} - {}",
+                                    WorkflowMode::Sdtm.display_name(),
+                                    WorkflowMode::Sdtm.tagline()
+                                );
+                                if ui
+                                    .selectable_value(&mut selected, WorkflowMode::Sdtm, sdtm_label)
+                                    .changed()
                                 {
-                                    let label =
-                                        format!("{} - {}", mode.display_name(), mode.tagline());
-                                    if ui.selectable_value(&mut selected, mode, label).changed() {
-                                        *new_mode = Some(mode);
-                                    }
+                                    *new_mode = Some(WorkflowMode::Sdtm);
                                 }
+
+                                // ADaM - not yet available
+                                let adam_label = format!(
+                                    "{} - {} (Not Available)",
+                                    WorkflowMode::Adam.display_name(),
+                                    WorkflowMode::Adam.tagline()
+                                );
+                                ui.add_enabled(
+                                    false,
+                                    egui::Button::new(RichText::new(adam_label).weak())
+                                        .frame(false),
+                                );
+
+                                // SEND - not yet available
+                                let send_label = format!(
+                                    "{} - {} (Not Available)",
+                                    WorkflowMode::Send.display_name(),
+                                    WorkflowMode::Send.tagline()
+                                );
+                                ui.add_enabled(
+                                    false,
+                                    egui::Button::new(RichText::new(send_label).weak())
+                                        .frame(false),
+                                );
                             });
                     });
 
