@@ -20,6 +20,25 @@
       <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-report/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-transform/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-gui/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-common/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-gui/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-gui/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-ingest/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-ingest/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-map/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-map/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-model/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-model/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-output/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-output/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-standards/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-standards/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-transform/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-transform/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-validate/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-validate/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-xpt/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-xpt/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-common/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-gui/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-normalization/src" isTestSource="false" />

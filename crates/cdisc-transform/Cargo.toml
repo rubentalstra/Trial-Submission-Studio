@@ -1,0 +1,24 @@
+[package]
+name = "cdisc-transform"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Data-driven, variable-level transformation system for CDISC standards"
+
+[lints]
+workspace = true
+
+[dependencies]
+# Workspace crates
+cdisc-common = { path = "../cdisc-common" }
+cdisc-model = { path = "../cdisc-model" }
+
+# Core dependencies
+chrono.workspace = true
+polars.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+insta.workspace = true

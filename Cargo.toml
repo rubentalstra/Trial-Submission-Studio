@@ -1,15 +1,15 @@
 [workspace]
 members = [
-    "crates/sdtm-common",
-    "crates/sdtm-gui",
-    "crates/sdtm-ingest",
-    "crates/sdtm-map",
-    "crates/sdtm-model",
-    "crates/sdtm-output",
-    "crates/sdtm-standards",
-    "crates/sdtm-transform",
-    "crates/sdtm-validate",
-    "crates/sdtm-xpt",
+    "crates/cdisc-common",
+    "crates/cdisc-gui",
+    "crates/cdisc-ingest",
+    "crates/cdisc-map",
+    "crates/cdisc-model",
+    "crates/cdisc-output",
+    "crates/cdisc-standards",
+    "crates/cdisc-transform",
+    "crates/cdisc-validate",
+    "crates/cdisc-xpt",
 ]
 resolver = "3"
 

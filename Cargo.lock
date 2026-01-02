@@ -806,6 +806,142 @@ dependencies = [
 ]
 
 [[package]]
+name = "cdisc-common"
+version = "0.1.0"
+dependencies = [
+ "polars",
+]
+
+[[package]]
+name = "cdisc-gui"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cdisc-common",
+ "cdisc-ingest",
+ "cdisc-map",
+ "cdisc-model",
+ "cdisc-standards",
+ "cdisc-transform",
+ "cdisc-validate",
+ "chrono",
+ "crossbeam-channel",
+ "directories",
+ "eframe",
+ "egui",
+ "egui-phosphor",
+ "egui_extras",
+ "lru",
+ "muda",
+ "polars",
+ "rfd",
+ "serde",
+ "serde_json",
+ "toml 0.9.10+spec-1.1.0",
+ "tracing",
+ "tracing-subscriber",
+ "winit",
+]
+
+[[package]]
+name = "cdisc-ingest"
+version = "0.1.0"
+dependencies = [
+ "cdisc-common",
+ "cdisc-map",
+ "polars",
+ "serde",
+ "tempfile",
+ "thiserror 2.0.17",
+ "tracing",
+]
+
+[[package]]
+name = "cdisc-map"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cdisc-model",
+ "cdisc-standards",
+ "rapidfuzz",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "cdisc-model"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 2.0.17",
+]
+
+[[package]]
+name = "cdisc-output"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "cdisc-common",
+ "cdisc-map",
+ "cdisc-model",
+ "cdisc-standards",
+ "cdisc-xpt",
+ "chrono",
+ "polars",
+ "quick-xml 0.38.4",
+]
+
+[[package]]
+name = "cdisc-standards"
+version = "0.1.0"
+dependencies = [
+ "cdisc-model",
+ "csv",
+ "serde",
+ "thiserror 2.0.17",
+ "toml 0.8.2",
+]
+
+[[package]]
+name = "cdisc-transform"
+version = "0.1.0"
+dependencies = [
+ "cdisc-common",
+ "cdisc-model",
+ "chrono",
+ "insta",
+ "polars",
+ "serde",
+ "thiserror 2.0.17",
+ "tracing",
+]
+
+[[package]]
+name = "cdisc-validate"
+version = "0.1.0"
+dependencies = [
+ "cdisc-common",
+ "cdisc-model",
+ "cdisc-standards",
+ "csv",
+ "polars",
+ "regex",
+ "serde",
+]
+
+[[package]]
+name = "cdisc-xpt"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "polars",
+ "proptest",
+ "tempfile",
+ "thiserror 2.0.17",
+]
+
+[[package]]
 name = "cesu8"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4964,141 +5100,6 @@ dependencies = [
  "memmap2",
  "smithay-client-toolkit 0.19.2",
  "tiny-skia",
-]
-
-[[package]]
-name = "sdtm-common"
-version = "0.1.0"
-dependencies = [
- "polars",
-]
-
-[[package]]
-name = "sdtm-gui"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "crossbeam-channel",
- "directories",
- "eframe",
- "egui",
- "egui-phosphor",
- "egui_extras",
- "lru",
- "muda",
- "polars",
- "rfd",
- "sdtm-common",
- "sdtm-ingest",
- "sdtm-map",
- "sdtm-model",
- "sdtm-standards",
- "sdtm-transform",
- "sdtm-validate",
- "serde",
- "serde_json",
- "toml 0.9.10+spec-1.1.0",
- "tracing",
- "tracing-subscriber",
- "winit",
-]
-
-[[package]]
-name = "sdtm-ingest"
-version = "0.1.0"
-dependencies = [
- "polars",
- "sdtm-common",
- "sdtm-map",
- "serde",
- "tempfile",
- "thiserror 2.0.17",
- "tracing",
-]
-
-[[package]]
-name = "sdtm-map"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "rapidfuzz",
- "sdtm-model",
- "sdtm-standards",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "sdtm-model"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "thiserror 2.0.17",
-]
-
-[[package]]
-name = "sdtm-output"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "chrono",
- "polars",
- "quick-xml 0.38.4",
- "sdtm-common",
- "sdtm-map",
- "sdtm-model",
- "sdtm-standards",
- "sdtm-xpt",
-]
-
-[[package]]
-name = "sdtm-standards"
-version = "0.1.0"
-dependencies = [
- "csv",
- "sdtm-model",
- "serde",
- "thiserror 2.0.17",
-]
-
-[[package]]
-name = "sdtm-transform"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "insta",
- "polars",
- "sdtm-common",
- "sdtm-model",
- "serde",
- "thiserror 2.0.17",
- "tracing",
-]
-
-[[package]]
-name = "sdtm-validate"
-version = "0.1.0"
-dependencies = [
- "csv",
- "polars",
- "regex",
- "sdtm-common",
- "sdtm-model",
- "sdtm-standards",
- "serde",
-]
-
-[[package]]
-name = "sdtm-xpt"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "polars",
- "proptest",
- "tempfile",
- "thiserror 2.0.17",
 ]
 
 [[package]]
