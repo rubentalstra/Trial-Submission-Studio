@@ -13,12 +13,16 @@ use egui::{Color32, RichText, Ui};
 use polars::prelude::AnyValue;
 use sdtm_model::CoreDesignation;
 
-/// Check if mapping is complete for the domain.
-/// Returns (is_complete, pending_required, pending_expected, pending_permissible) where:
-/// - is_complete: all variables needing resolution are resolved
-/// - pending_required: count of Required variables still needing resolution
-/// - pending_expected: count of Expected variables still needing resolution
-/// - pending_permissible: count of Permissible variables with suggestions still pending
+/// Check if all SDTM variables have a mapping decision.
+///
+/// This check is based ONLY on mapping status, NOT on validation results.
+/// A variable is considered "resolved" if it has status: Accepted, NotCollected, or Omitted.
+///
+/// Note: Auto-generated variables (STUDYID, DOMAIN, --SEQ) are auto-accepted at
+/// initialization time. USUBJID is auto-accepted when SUBJID is accepted.
+/// So this check simply looks at the status without needing special filtering.
+///
+/// Returns (is_complete, pending_required, pending_expected, pending_permissible)
 fn check_mapping_complete(state: &AppState, domain_code: &str) -> (bool, usize, usize, usize) {
     let Some(study) = &state.study else {
         return (false, 0, 0, 0);

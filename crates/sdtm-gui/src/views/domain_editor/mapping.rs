@@ -141,16 +141,22 @@ pub(super) fn initialize_mapping(state: &mut AppState, domain_code: &str) {
                 };
 
                 // Create mapping state
-                let mapping_state = MappingService::create_mapping_state(
-                    sdtm_domain,
+                let mut mapping_state = MappingService::create_mapping_state(
+                    sdtm_domain.clone(),
                     &study_id,
                     &source_columns,
                     hints,
                 );
 
+                // Auto-mark auto-generated variables as accepted
+                // These variables are populated automatically by the transform system
+                // and don't need user decisions
+                let auto_generated_count =
+                    auto_accept_generated_variables(&mut mapping_state, &sdtm_domain);
                 tracing::info!(
-                    "Created mapping state with {} suggestions",
-                    mapping_state.suggestions_count()
+                    "Created mapping state with {} suggestions, {} auto-generated",
+                    mapping_state.suggestions_count(),
+                    auto_generated_count
                 );
 
                 // Store it
@@ -608,6 +614,31 @@ fn is_auto_generated_variable(name: &str, role: Option<VariableRole>) -> bool {
     matches!(name, "STUDYID" | "DOMAIN") || (name.ends_with("SEQ") && name.len() >= 4)
 }
 
+/// Auto-accept auto-generated variables during mapping initialization.
+///
+/// These variables are populated automatically by the transform system:
+/// - STUDYID: From study configuration
+/// - DOMAIN: Set to domain code  
+/// - --SEQ: Sequence number per subject
+///
+/// By marking them as Accepted upfront, we don't need to filter them
+/// in every tab that checks mapping status.
+fn auto_accept_generated_variables(
+    mapping_state: &mut MappingState,
+    domain: &sdtm_model::Domain,
+) -> usize {
+    let mut count = 0;
+    for var in &domain.variables {
+        if is_auto_generated_variable(&var.name, var.role) {
+            // Use a special marker value for auto-generated variables
+            // The column name "__AUTO__" indicates this is auto-generated
+            let _ = mapping_state.accept_manual(&var.name, "__AUTO__");
+            count += 1;
+        }
+    }
+    count
+}
+
 /// Mutate mapping state and invalidate dependent state (validation, transform, preview)
 fn with_mapping_state_mut<F>(state: &mut AppState, domain_code: &str, f: F)
 where
@@ -923,11 +954,9 @@ fn show_alternative_actions(
 
     let var_name_owned = var_name.to_string();
 
-    // "Mark as Not Collected" for Req/Exp variables
-    if matches!(
-        core,
-        Some(CoreDesignation::Required) | Some(CoreDesignation::Expected)
-    ) {
+    // "Mark as Not Collected" for Expected variables only
+    // Required variables cannot be marked as not collected - they are always required
+    if core == Some(CoreDesignation::Expected) {
         // Check if we're editing a reason for this variable
         let is_editing = state
             .study
