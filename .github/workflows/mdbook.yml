@@ -26,8 +26,6 @@ concurrency:
 
 env:
   MDBOOK_VERSION: "0.5.2"
-  MDBOOK_LINKCHECK_VERSION: "0.11.0"
-  MDBOOK_MERMAID_VERSION: "0.14.0"
 
 jobs:
   build:
@@ -44,7 +42,7 @@ jobs:
             ~/.cargo/bin/mdbook
             ~/.cargo/bin/mdbook-linkcheck
             ~/.cargo/bin/mdbook-mermaid
-          key: mdbook-${{ env.MDBOOK_VERSION }}-linkcheck-${{ env.MDBOOK_LINKCHECK_VERSION }}-mermaid-${{ env.MDBOOK_MERMAID_VERSION }}
+          key: mdbook-${{ env.MDBOOK_VERSION }}-linkcheck2-mermaid-v2
 
       - name: Install mdBook
         if: steps.cache-mdbook.outputs.cache-hit != 'true'
@@ -52,28 +50,19 @@ jobs:
           curl -sSL https://github.com/rust-lang/mdBook/releases/download/v${MDBOOK_VERSION}/mdbook-v${MDBOOK_VERSION}-x86_64-unknown-linux-gnu.tar.gz | tar -xz
           mv mdbook ~/.cargo/bin/
 
-      - name: Install mdbook-linkcheck
+      - name: Install mdbook-linkcheck2
         if: steps.cache-mdbook.outputs.cache-hit != 'true'
-        run: |
-          curl -sSL https://github.com/Michael-F-Bryan/mdbook-linkcheck2/releases/download/v${MDBOOK_LINKCHECK_VERSION}/mdbook-linkcheck2.x86_64-unknown-linux-gnu.zip -o linkcheck.zip
-          unzip linkcheck.zip
-          chmod +x mdbook-linkcheck
-          mv mdbook-linkcheck ~/.cargo/bin/
+        run: cargo install mdbook-linkcheck2 --locked
 
       - name: Install mdbook-mermaid
         if: steps.cache-mdbook.outputs.cache-hit != 'true'
-        run: |
-          curl -sSL https://github.com/badboy/mdbook-mermaid/releases/download/v${MDBOOK_MERMAID_VERSION}/mdbook-mermaid-v${MDBOOK_MERMAID_VERSION}-x86_64-unknown-linux-gnu.tar.gz | tar -xz
-          mv mdbook-mermaid ~/.cargo/bin/
+        run: cargo install mdbook-mermaid --locked
 
       - name: Setup Mermaid
         run: mdbook-mermaid install docs
 
       - name: Build documentation
         run: mdbook build docs
-
-      - name: Check links
-        run: mdbook-linkcheck docs --standalone
 
       - name: Setup Pages
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'

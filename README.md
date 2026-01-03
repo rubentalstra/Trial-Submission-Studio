@@ -9,6 +9,7 @@
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"/></a>
     <a href="https://www.rust-lang.org/"><img src="https://img.shields.io/badge/Rust-1.92+-orange.svg" alt="Rust 1.92+"/></a>
     <a href="https://github.com/rubentalstra/trial-submission-studio/actions"><img src="https://github.com/rubentalstra/trial-submission-studio/workflows/CI/badge.svg" alt="CI Status"/></a>
+   <!--- <a href="https://docs.rs/trial-submission-studio/"><img src="https://docs.rs/trial-submission-studio/badge.svg" alt="Docs.rs"/></a> -->
     <a href="https://github.com/rubentalstra/trial-submission-studio/releases"><img src="https://img.shields.io/github/v/release/rubentalstra/trial-submission-studio" alt="Latest Release"/></a>
     <a href="https://deps.rs/repo/github/rubentalstra/trial-submission-studio"><img src="https://deps.rs/repo/github/rubentalstra/trial-submission-studio/status.svg" alt="Dependency Status"/></a>
   </p>

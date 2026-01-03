@@ -11,18 +11,23 @@ build-dir = "book"
 create-missing = false
 extra-watch-dirs = ["theme"]
 
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
 [output.html]
 default-theme = "light"
 preferred-dark-theme = "navy"
 smart-punctuation = true
 git-repository-url = "https://github.com/rubentalstra/Trial-Submission-Studio"
+git-repository-icon = "fab-github"
 edit-url-template = "https://github.com/rubentalstra/Trial-Submission-Studio/edit/main/docs/{path}"
 site-url = "/Trial-Submission-Studio/"
 additional-css = ["theme/css/custom.css"]
+additional-js = ["theme/js/mermaid.min.js", "theme/js/mermaid-init.js"]
 
 [output.html.fold]
-enable = true
-level = 1
+enable = true    # whether or not to enable section folding
+level = 1         # the depth to start folding
 
 [output.html.search]
 enable = true
@@ -34,10 +39,14 @@ expand = true
 heading-split-level = 2
 
 [output.html.print]
-enable = true
+enable = true     # include support for printable output
+page-break = true # insert page-break after each chapter
+
+[output.linkcheck2]
+optional = true
+follow-web-links = true
+warning-policy = "error"
+exclude = ["localhost", "127.0.0.1"]
 
 [preprocessor.links]
 
-[preprocessor.mermaid]
-command = "mdbook-mermaid"
-optional = true
