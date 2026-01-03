@@ -2,9 +2,8 @@
 
 This document outlines the planned development of Trial Submission Studio.
 
-> **Note:** This roadmap reflects current plans and priorities. Items may change
-> based on community feedback and project needs. No specific timelines are
-> provided.
+> **Note:** This roadmap reflects current plans and priorities. Items may change based on
+> community feedback and project needs. No specific timelines are provided.
 
 ## Current Focus
 
