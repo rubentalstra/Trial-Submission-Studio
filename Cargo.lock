@@ -6184,6 +6184,7 @@ dependencies = [
  "egui-phosphor",
  "egui_commonmark",
  "egui_extras",
+ "image",
  "muda",
  "open",
  "polars",

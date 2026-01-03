@@ -42,6 +42,7 @@ tracing-subscriber.workspace = true
 chrono.workspace = true
 
 # GUI-specific
+image = { version = "0.25", default-features = false, features = ["png"] } # Icon loading
 rfd = "0.16.0"             # Native file dialogs
 egui-phosphor = "0.11.0"   # Icon set
 egui_commonmark = "0.22.0" # Markdown rendering
