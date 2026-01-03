@@ -51,7 +51,7 @@ open = "5.3"               # Open URLs in browser
 directories = "6.0"          # Cross-platform app directories
 toml = "0.9.8"               # Config file format
 muda = "0.17.1"              # Native menu bar (by Tauri team)
-crossbeam-channel = "0.5.15" # For muda menu events
+crossbeam-channel = "0.5.15" # Required by muda for menu event receiver
 
 # Platform-specific
 [target.'cfg(target_os = "macos")'.dependencies]

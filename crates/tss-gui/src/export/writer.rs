@@ -8,10 +8,10 @@ use super::types::{
 };
 use crate::settings::ExportFormat;
 use crate::state::StudyState;
-use crossbeam_channel::Sender;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use tss_model::Domain;
