@@ -15,9 +15,8 @@ polars = ["dep:polars"]
 
 [dependencies]
 thiserror.workspace = true
-chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+chrono = { version = "0.4.42", default-features = false, features = ["std", "clock"] }
 polars = { workspace = true, optional = true }
 
 [dev-dependencies]
-proptest.workspace = true
 tempfile = "3"
