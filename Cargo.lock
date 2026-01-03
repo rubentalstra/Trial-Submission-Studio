@@ -806,144 +806,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cdisc-common"
-version = "0.1.0"
-dependencies = [
- "polars",
-]
-
-[[package]]
-name = "cdisc-gui"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "cdisc-common",
- "cdisc-ingest",
- "cdisc-map",
- "cdisc-model",
- "cdisc-output",
- "cdisc-standards",
- "cdisc-transform",
- "cdisc-validate",
- "cdisc-xpt",
- "chrono",
- "crossbeam-channel",
- "directories",
- "eframe",
- "egui",
- "egui-phosphor",
- "egui_extras",
- "lru",
- "muda",
- "polars",
- "rfd",
- "serde",
- "serde_json",
- "toml 0.9.10+spec-1.1.0",
- "tracing",
- "tracing-subscriber",
- "winit",
-]
-
-[[package]]
-name = "cdisc-ingest"
-version = "0.1.0"
-dependencies = [
- "cdisc-common",
- "cdisc-map",
- "polars",
- "serde",
- "tempfile",
- "thiserror 2.0.17",
- "tracing",
-]
-
-[[package]]
-name = "cdisc-map"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "cdisc-model",
- "cdisc-standards",
- "rapidfuzz",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "cdisc-model"
-version = "0.1.0"
-dependencies = [
- "serde",
- "serde_json",
- "thiserror 2.0.17",
-]
-
-[[package]]
-name = "cdisc-output"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "cdisc-common",
- "cdisc-map",
- "cdisc-model",
- "cdisc-standards",
- "cdisc-xpt",
- "chrono",
- "polars",
- "quick-xml 0.38.4",
-]
-
-[[package]]
-name = "cdisc-standards"
-version = "0.1.0"
-dependencies = [
- "cdisc-model",
- "csv",
- "serde",
- "thiserror 2.0.17",
- "toml 0.8.2",
-]
-
-[[package]]
-name = "cdisc-transform"
-version = "0.1.0"
-dependencies = [
- "cdisc-common",
- "cdisc-model",
- "chrono",
- "insta",
- "polars",
- "serde",
- "thiserror 2.0.17",
- "tracing",
-]
-
-[[package]]
-name = "cdisc-validate"
-version = "0.1.0"
-dependencies = [
- "cdisc-common",
- "cdisc-model",
- "cdisc-standards",
- "csv",
- "polars",
- "regex",
- "serde",
-]
-
-[[package]]
-name = "cdisc-xpt"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "polars",
- "proptest",
- "tempfile",
- "thiserror 2.0.17",
-]
-
-[[package]]
 name = "cesu8"
 version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2399,8 +2261,6 @@ version = "0.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "841d1cc9bed7f9236f321df977030373f4a4163ae1a7dbfe1a51a2c1a51d9100"
 dependencies = [
- "allocator-api2",
- "equivalent",
  "foldhash 0.2.0",
 ]
 
@@ -2943,15 +2803,6 @@ name = "log"
 version = "0.4.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5e5032e24019045c762d3c0f28f5b6b8bbf38563a65908389bf7978758920897"
-
-[[package]]
-name = "lru"
-version = "0.16.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "96051b46fc183dc9cd4a223960ef37b9af631b55191852a8274bfef064cda20f"
-dependencies = [
- "hashbrown 0.16.1",
-]
 
 [[package]]
 name = "lru-slab"
@@ -5988,6 +5839,143 @@ name = "try-lock"
 version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
+
+[[package]]
+name = "tss-common"
+version = "0.1.0"
+dependencies = [
+ "polars",
+]
+
+[[package]]
+name = "tss-gui"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "crossbeam-channel",
+ "directories",
+ "eframe",
+ "egui",
+ "egui-phosphor",
+ "egui_extras",
+ "muda",
+ "polars",
+ "rfd",
+ "serde",
+ "serde_json",
+ "toml 0.9.10+spec-1.1.0",
+ "tracing",
+ "tracing-subscriber",
+ "tss-common",
+ "tss-ingest",
+ "tss-map",
+ "tss-model",
+ "tss-output",
+ "tss-standards",
+ "tss-transform",
+ "tss-validate",
+ "tss-xpt",
+ "winit",
+]
+
+[[package]]
+name = "tss-ingest"
+version = "0.1.0"
+dependencies = [
+ "polars",
+ "serde",
+ "tempfile",
+ "thiserror 2.0.17",
+ "tracing",
+ "tss-common",
+ "tss-map",
+]
+
+[[package]]
+name = "tss-map"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "rapidfuzz",
+ "serde",
+ "serde_json",
+ "tss-model",
+ "tss-standards",
+]
+
+[[package]]
+name = "tss-model"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 2.0.17",
+]
+
+[[package]]
+name = "tss-output"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "polars",
+ "quick-xml 0.38.4",
+ "tss-common",
+ "tss-map",
+ "tss-model",
+ "tss-standards",
+ "tss-xpt",
+]
+
+[[package]]
+name = "tss-standards"
+version = "0.1.0"
+dependencies = [
+ "csv",
+ "serde",
+ "thiserror 2.0.17",
+ "toml 0.8.2",
+ "tss-model",
+]
+
+[[package]]
+name = "tss-transform"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "insta",
+ "polars",
+ "serde",
+ "thiserror 2.0.17",
+ "tracing",
+ "tss-common",
+ "tss-model",
+]
+
+[[package]]
+name = "tss-validate"
+version = "0.1.0"
+dependencies = [
+ "csv",
+ "polars",
+ "regex",
+ "serde",
+ "tss-common",
+ "tss-model",
+ "tss-standards",
+]
+
+[[package]]
+name = "tss-xpt"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "polars",
+ "proptest",
+ "tempfile",
+ "thiserror 2.0.17",
+]
 
 [[package]]
 name = "ttf-parser"

@@ -1,0 +1,12 @@
+[package]
+name = "tss-common"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Shared utilities for Trial Submission Studio crates"
+
+[lints]
+workspace = true
+
+[dependencies]
+polars.workspace = true

@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/.idea/cdisc-transpiler.iml" filepath="$PROJECT_DIR$/.idea/cdisc-transpiler.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/trial-submission-studio.iml" filepath="$PROJECT_DIR$/.idea/trial-submission-studio.iml" />
     </modules>
   </component>
 </project>

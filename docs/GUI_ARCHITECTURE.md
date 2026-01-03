@@ -1,8 +1,8 @@
-# CDISC Transpiler — GUI Architecture
+# Trial Submission Studio — GUI Architecture
 
 ## Executive Summary
 
-The CDISC Transpiler GUI transforms clinical trial source data into
+The Trial Submission Studio GUI transforms clinical trial source data into
 SDTM-compliant formats. This document defines the user experience, information
 architecture, technical implementation, and necessary architectural refactoring
 for a desktop application built with egui + eframe.
@@ -90,19 +90,19 @@ The GUI requires **independent, reusable components** with **shared runtime stat
 ## Crate Structure
 
 ```
-sdtm-transpiler/
+trial-submission-studio/
 ├── crates/
-│   ├── sdtm-model/          # Core types (NO changes needed)
-│   ├── sdtm-standards/      # Standards loading (NO changes needed)
-│   ├── sdtm-xpt/            # XPT format (NO changes needed)
+│   ├── tss-model/           # Core types (NO changes needed)
+│   ├── tss-standards/       # Standards loading (NO changes needed)
+│   ├── tss-xpt/             # XPT format (NO changes needed)
 │   │
-│   ├── sdtm-ingest/         # CSV reading (minor: add preview methods)
-│   ├── sdtm-map/            # Mapping engine (split suggest/apply)
-│   ├── sdtm-core/           # Domain processing (extract pure functions)
-│   ├── sdtm-validate/       # Validation (support incremental)
-│   ├── sdtm-report/         # Output generation (support selective export)
+│   ├── tss-ingest/          # CSV reading (minor: add preview methods)
+│   ├── tss-map/             # Mapping engine (split suggest/apply)
+│   ├── tss-transform/           # Domain processing (extract pure functions)
+│   ├── tss-validate/       # Validation (support incremental)
+│   ├── tss-output/         # Output generation (support selective export)
 │   │
-│   └── sdtm-gui/            # NEW: egui application + runtime state
+│   └── tss-gui/            # NEW: egui application + runtime state
 ```
 
 ### Crate Responsibilities
@@ -113,11 +113,11 @@ sdtm-transpiler/
 | `sdtm-standards` | Load SDTM/CT from offline CSV files.                   |
 | `sdtm-ingest`    | CSV discovery, parsing, schema detection.              |
 | `sdtm-map`       | Fuzzy column mapping with suggest/apply separation.    |
-| `sdtm-core`      | Pure domain processing functions (USUBJID, --SEQ, CT). |
-| `sdtm-validate`  | Incremental conformance checks.                        |
-| `sdtm-report`    | Multi-format output generation.                        |
+| `tss-transform`      | Pure domain processing functions (USUBJID, --SEQ, CT). |
+| `tss-validate`  | Incremental conformance checks.                        |
+| `tss-output`    | Multi-format output generation.                        |
 | `sdtm-xpt`       | SAS Transport v5 format writer.                        |
-| `sdtm-gui`       | egui + eframe app, runtime state, services, undo/redo. |
+| `tss-gui`       | egui + eframe app, runtime state, services, undo/redo. |
 
 ---
 
@@ -928,7 +928,7 @@ fn main() -> Result<(), eframe::Error> {
     };
 
     eframe::run_native(
-        "CDISC Transpiler",
+        "Trial Submission Studio",
         options,
         Box::new(|cc| Ok(Box::new(CdiscApp::new(cc)))),
     )
@@ -1633,19 +1633,19 @@ All color combinations meet WCAG 2.1 AA (4.5:1 for normal text, 3:1 for large):
 **Goal:** Set up infrastructure
 
 **Status:**
-- [x] Create `sdtm-gui` crate with egui 0.33.3
+- [x] Create `tss-gui` crate with egui 0.33.3
 - [x] Set up eframe application structure
 - [x] Define `AppState`, `StudyState`, `DomainState`
 - [x] Implement `StudyLoader` service for loading studies from folders
 - [x] Implement basic navigation (Home ↔ Domain Editor ↔ Export)
-- [x] Replace `sdtm-cli` with `sdtm-gui` in workspace
+- [x] Replace `sdtm-cli` with `tss-gui` in workspace
 - [ ] Implement undo/redo stack (deferred to later phase)
 
 **Deliverable:** GUI shell that compiles, runs, and loads study folders ✅
 
 ### Phase 2: Extract Core Functions ✅ COMPLETE
 
-**Goal:** Refactor `sdtm-core` into standalone functions
+**Goal:** Refactor `tss-transform` into standalone functions
 
 **Status:**
 - [x] Extract `apply_usubjid_prefix` from `processor.rs`
@@ -1653,11 +1653,11 @@ All color combinations meet WCAG 2.1 AA (4.5:1 for normal text, 3:1 for large):
 - [x] Extract `normalize_ct_column` from `processor.rs`
 - [x] Add `get_ct_columns` helper function
 - [x] Keep `domain_processors/` as-is (pure business logic)
-- [x] Implement `ProcessingService` in `sdtm-gui`
+- [x] Implement `ProcessingService` in `tss-gui`
 
 **Implementation:**
-- Created `crates/sdtm-core/src/transforms.rs` with standalone SDTM transformation functions
-- Created `crates/sdtm-gui/src/services/processing.rs` with ProcessingService wrapper
+- Created `crates/tss-transform/src/transforms.rs` with standalone SDTM transformation functions
+- Created `crates/tss-gui/src/services/processing.rs` with ProcessingService wrapper
 - All functions operate on `&mut DataFrame` and return modification counts
 - Includes unit tests for all transformations
 
@@ -1671,7 +1671,7 @@ All color combinations meet WCAG 2.1 AA (4.5:1 for normal text, 3:1 for large):
 - [x] Use existing `sdtm-map::MappingEngine::suggest()` for column suggestions
 - [x] Create `MappingState` for interactive accept/reject workflow
 - [x] Extract column hints from DataFrame (is_numeric, null_ratio, unique_ratio)
-- [x] Implement `MappingService` in `sdtm-gui`
+- [x] Implement `MappingService` in `tss-gui`
 - [x] Build Mapping tab in GUI with:
   - Generate suggestions button
   - Pending/Accepted/Unmapped grouping
@@ -1680,7 +1680,7 @@ All color combinations meet WCAG 2.1 AA (4.5:1 for normal text, 3:1 for large):
   - Confidence indicators with color coding
 
 **Implementation:**
-- Created `crates/sdtm-gui/src/services/mapping.rs` with MappingService and MappingState
+- Created `crates/tss-gui/src/services/mapping.rs` with MappingService and MappingState
 - Added `mapping_state` field to DomainState for interactive editing
 - Implemented full Mapping tab UI in domain_editor.rs
 
@@ -1698,7 +1698,7 @@ All color combinations meet WCAG 2.1 AA (4.5:1 for normal text, 3:1 for large):
 
 **Implementation:**
 - Transform tab derives rules from MappingState using `rebuild_transforms_if_needed()`
-- Validation tab will use existing `sdtm-validate::validate_domain()` function
+- Validation tab will use existing `tss-validate::validate_domain()` function
 - Both tabs are reactive: auto-update when mapping changes
 
 **Deliverable:** CT validation issues visible to user
@@ -1720,7 +1720,7 @@ All color combinations meet WCAG 2.1 AA (4.5:1 for normal text, 3:1 for large):
 **Goal:** Export functionality and UX refinement
 
 **Status:**
-- [ ] Enhance `sdtm-report` for selective export
+- [ ] Enhance `tss-output` for selective export
 - [ ] Implement Export screen
 - [ ] Polish UI (keyboard shortcuts, toasts, help)
 
@@ -1785,7 +1785,7 @@ All color combinations meet WCAG 2.1 AA (4.5:1 for normal text, 3:1 for large):
 
 ```
 crates/
-└── sdtm-gui/
+└── tss-gui/
     ├── Cargo.toml
     └── src/
         ├── main.rs              # Entry point, font loading
@@ -1802,7 +1802,7 @@ crates/
         │   ├── mod.rs           # Re-exports
         │   ├── study_loader.rs  # StudyLoader - domain discovery
         │   ├── mapping.rs       # MappingService, MappingState, ColumnHint
-        │   └── processing.rs    # ProcessingService (wraps sdtm-core transforms)
+        │   └── processing.rs    # ProcessingService (wraps tss-transform transforms)
         │
         └── views/
             ├── mod.rs           # Re-exports

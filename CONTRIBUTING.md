@@ -1,7 +1,7 @@
-# Contributing to CDISC Transpiler
+# Contributing to Trial Submission Studio
 
-Thank you for your interest in contributing to CDISC Transpiler. This project
-is transitioning from a Python CLI to a Rust-first CLI. The Python implementation
+Thank you for your interest in contributing to Trial Submission Studio. This project
+is transitioning from a Python CLI to a Rust-first GUI. The Python implementation
 remains as a reference until Rust parity is achieved.
 
 ## Table of Contents
@@ -48,10 +48,10 @@ Please keep collaboration respectful and constructive:
 ### 1. Fork and Clone
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/cdisc-transpiler.git
-cd cdisc-transpiler
+git clone https://github.com/YOUR_USERNAME/trial-submission-studio.git
+cd trial-submission-studio
 
-git remote add upstream https://github.com/rubentalstra/cdisc-transpiler.git
+git remote add upstream https://github.com/rubentalstra/trial-submission-studio.git
 ```
 
 ### 2. Install Rust Toolchain

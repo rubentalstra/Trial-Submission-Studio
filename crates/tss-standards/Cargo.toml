@@ -1,0 +1,16 @@
+[package]
+name = "tss-standards"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "CDISC standards loading for SDTM, ADaM, and SEND"
+
+[lints]
+workspace = true
+
+[dependencies]
+csv.workspace = true
+tss-model = { path = "../tss-model" }
+serde = { workspace = true, features = ["derive"] }
+thiserror = "2.0"
+toml = "0.8"
