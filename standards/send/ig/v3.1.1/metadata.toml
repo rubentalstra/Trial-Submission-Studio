@@ -1,0 +1,25 @@
+[standard]
+name = "SEND-IG"
+version = "3.1.1"
+full_name = "Standard for Exchange of Nonclinical Data Implementation Guide"
+publishing_set = "SEND"
+effective_date = "2023-03-31"
+
+[dependencies]
+ct_version = "2024-03-29"
+ct_catalogs = ["SEND CT"]
+
+[files]
+datasets = "Datasets.csv"
+variables = "Variables.csv"
+
+[description]
+purpose = "Nonclinical/animal study tabulation data for regulatory submissions"
+submission_types = ["IND", "NDA"]
+regulatory_agencies = ["FDA"]
+
+[study_types]
+toxicology = "Single and repeat-dose toxicology studies"
+carcinogenicity = "Carcinogenicity studies"
+safety_pharmacology = "Respiratory and cardiovascular safety pharmacology"
+reproductive_toxicology = "Embryo-fetal development and juvenile animal studies"

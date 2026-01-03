@@ -1,0 +1,12 @@
+[package]
+name = "cdisc-common"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Shared utilities for CDISC crates"
+
+[lints]
+workspace = true
+
+[dependencies]
+polars.workspace = true

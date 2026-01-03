@@ -1,0 +1,19 @@
+[package]
+name = "cdisc-map"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "CDISC fuzzy column-to-variable mapping engine"
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow.workspace = true
+rapidfuzz = "0.5.0"
+serde.workspace = true
+serde_json.workspace = true
+cdisc-model = { path = "../cdisc-model" }
+
+[dev-dependencies]
+cdisc-standards = { path = "../cdisc-standards" }

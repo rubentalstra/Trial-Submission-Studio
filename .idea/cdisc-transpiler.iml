@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="EMPTY_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-core/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-core/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-ingest/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-ingest/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-map/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-map/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-model/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-model/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-report/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-standards/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-standards/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-validate/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-validate/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-xpt/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-xpt/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-report/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-transform/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-gui/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-common/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-gui/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-gui/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-ingest/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-ingest/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-map/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-map/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-model/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-model/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-output/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-output/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-standards/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-standards/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-transform/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-transform/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-validate/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-validate/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-xpt/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/cdisc-xpt/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-common/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-gui/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-normalization/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-output/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-output/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/sdtm-transform/tests" isTestSource="true" />
+      <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_CF1234_NL_20250120_104838/output/dataset-xml" />
+      <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_CF1234_NL_20250120_104838/output/sas" />
+      <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_CF1234_NL_20250120_104838/output/xpt" />
+      <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_GDISC_20240903_072908/output/dataset-xml" />
+      <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_GDISC_20240903_072908/output/sas" />
+      <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_GDISC_20240903_072908/output/xpt" />
+      <excludeFolder url="file://$MODULE_DIR$/target" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>

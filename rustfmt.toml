@@ -1,0 +1,18 @@
+# Workspace-wide rustfmt configuration (stable only)
+# See: https://rust-lang.github.io/rustfmt/
+
+edition = "2024"
+
+# Line width
+max_width = 100
+use_small_heuristics = "Default"
+
+# Functions
+fn_params_layout = "Tall"
+
+# Miscellaneous
+use_field_init_shorthand = true
+use_try_shorthand = true
+force_explicit_abi = true
+reorder_imports = true
+reorder_modules = true

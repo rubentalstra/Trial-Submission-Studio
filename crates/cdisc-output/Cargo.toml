@@ -1,0 +1,20 @@
+[package]
+name = "cdisc-output"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "CDISC output generation: XPT, Dataset-XML, Define-XML"
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+polars.workspace = true
+quick-xml.workspace = true
+cdisc-common = { path = "../cdisc-common" }
+cdisc-model = { path = "../cdisc-model" }
+cdisc-map = { path = "../cdisc-map" }
+cdisc-xpt = { path = "../cdisc-xpt" }
+cdisc-standards = { path = "../cdisc-standards" }

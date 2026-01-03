@@ -1,0 +1,67 @@
+[workspace]
+members = [
+    "crates/cdisc-common",
+    "crates/cdisc-gui",
+    "crates/cdisc-ingest",
+    "crates/cdisc-map",
+    "crates/cdisc-model",
+    "crates/cdisc-output",
+    "crates/cdisc-standards",
+    "crates/cdisc-transform",
+    "crates/cdisc-validate",
+    "crates/cdisc-xpt",
+]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.92"
+
+[workspace.dependencies]
+anyhow = "1.0.100"
+chrono = "0.4.42"
+csv = "1.4.0"
+hex = "0.4.3"
+insta = { version = "1.45.1", features = ["json"] }
+proptest = "1.9.0"
+polars = { version = "0.51.0", features = [
+    "lazy",
+    "csv",
+    "strings",
+    "range",
+    "dtype-array",
+] }
+quick-xml = "0.38.4"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.148"
+sha2 = "0.10.9"
+thiserror = "2.0.17"
+tracing = "0.1.44"
+indicatif = "0.18.3"
+tracing-subscriber = { version = "0.3.22", features = ["env-filter", "json"] }
+
+[workspace.lints.rust]
+# Safety and correctness
+unsafe_code = "warn"
+# missing_docs = "warn"
+
+[workspace.lints.clippy]
+# Correctness
+enum_glob_use = "warn"
+wildcard_imports = "warn"
+
+# Style
+needless_pass_by_value = "warn"
+cloned_instead_of_copied = "warn"
+redundant_closure_for_method_calls = "warn"
+
+# Performance
+inefficient_to_string = "warn"
+
+# Pedantic (useful but noisy - enable selectively)
+# must_use_candidate = "warn"
+# missing_panics_doc = "warn"
+
+[profile.dev]
+debug = 1

@@ -1,339 +1,71 @@
-# CDISC Transpiler
+# CDISC Transpiler (Rust)
 
-[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/downloads/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Tests](https://img.shields.io/badge/tests-485%20passing-brightgreen.svg)](tests/)
-[![Coverage](https://img.shields.io/badge/coverage-76%25-green.svg)](tests/)
-
-A modern Python tool for transpiling clinical trial data to CDISC SDTM format with support for multiple output formats (XPT, Dataset-XML, Define-XML, and SAS).
-
-## ✨ Features
-
-- 🔄 **Multiple Output Formats**: Generate XPT, Dataset-XML, Define-XML 2.1, and SAS programs
-- 📊 **SDTM Compliance**: Automatic transformation to SDTM 3.2/3.4 standards
-- 🏗️ **Clean Architecture**: Ports & Adapters (Hexagonal) architecture for maintainability
-- ⚡ **High Performance**: Process studies with 18+ domains in ~2 seconds
-- 🧪 **Comprehensive Testing**: 485+ tests with 76% code coverage
-- ✅ **Validation Suite**: 42 tests for SDTM compliance and file format validation
-- 📈 **Performance Benchmarks**: Track and prevent performance regressions
-- 🎯 **Domain Synthesis**: Automatic generation of supplemental and variant domains
-
-## 🏗️ Architecture
-
-This project follows **Ports & Adapters (Hexagonal Architecture)** for clean separation of concerns.
-
-For the current boundaries, known violations, and the migration plan, see `docs/ARCHITECTURE.md`.
-
-```
-cdisc_transpiler/
-├── cli/                      # Driver adapter (Click)
-│   ├── commands/             # Thin CLI commands (args → request DTO → use case)
-│   └── presenters/           # Output formatting (Rich)
-├── application/              # Use cases + ports + DTOs
-│   ├── ports/                # Protocols (interfaces)
-│   ├── models.py             # Request/response DTOs
-│   ├── study_processing_use_case.py
-│   └── domain_processing_use_case.py
-├── domain/                   # Entities + domain services (pure, no I/O)
-│   ├── entities/
-│   └── services/
-└── infrastructure/           # Adapters + DI wiring
-    ├── container.py          # Composition root
-    ├── io/                   # Writers/generators (XPT/XML/Define-XML/SAS)
-    ├── repositories/         # CSV/Excel/SAS + metadata/CT/spec access
-    └── logging/
-```
-
-**Benefits:**
-- ✅ **Testability**: Business logic isolated from I/O and CLI
-- ✅ **Maintainability**: Clear boundaries and single responsibility
-- ✅ **Flexibility**: Easy to swap implementations (e.g., different file formats)
-- ✅ **Scalability**: Can add new features without touching core logic
-
-## 📦 Installation
-
-### Prerequisites
-
-- Python 3.12 or higher
-- pip package manager
-
-### Standard Installation
+A Rust-first CLI tool for transpiling clinical trial source data into CDISC SDTM
+outputs (XPT, Dataset-XML, Define-XML) with strict, offline validation.
 
 ```bash
-pip install cdisc-transpiler
+cargo run --package cdisc-gui 
 ```
 
-### Development Installation
+## Target Features
+
+- Fully offline operation with committed standards and CT
+- Deterministic, auditable output generation
+- Validation-first pipeline with conformance gating
+- Outputs: XPT (SAS V5), Dataset-XML 1.0, Define-XML 2.1
+
+## Rust CLI (Planned Interface)
 
 ```bash
-# Clone the repository
-git clone https://github.com/rubentalstra/cdisc-transpiler.git
-cd cdisc-transpiler
+cdisc-transpiler study <study_folder> [options]
+cdisc-transpiler domains
+```
 
+Minimal options (v1):
+
+- `--output-dir`
+- `--format xpt,xml,sas` (comma-separated list; default includes all)
+- `-v` / `-vv` verbosity, `-q` / `-qq` quieter
+- `--log-level [error|warn|info|debug|trace]`
+- `--log-format [pretty|compact|json]`
+- `--color [auto|always|never]`
+- `--log-file <path>`
+
+No config file in v1; defaults are compiled.
+
+## Logging and PHI
+
+- Logs avoid row-level values; only counts and metadata are logged.
+- Prefer `--log-level` (or `-v`/`-vv`) for verbosity control; `--quiet` limits
+  logs to errors.
+- Use `--log-format` for JSON/compact output, `--color` to control ANSI output,
+  and `--log-file` to persist logs.
+
+## Legacy Python CLI (Current Implementation)
+
+If you need a working CLI right now, the Python tool is available:
+
+```bash
 # Create and activate virtual environment
 python -m venv .venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# Install with development dependencies
+# Install with dev dependencies
 pip install -e .[dev]
-```
 
-## 🚀 Usage
-
-### Quick Start
-
-Process a study folder to generate all output formats:
-
-```bash
-# Activate virtual environment
-source .venv/bin/activate
-
-# Process study with default settings (XPT + Dataset-XML + Define-XML)
+# Run
 cdisc-transpiler study mockdata/DEMO_GDISC_20240903_072908/
-
-# Verbose output for debugging
-cdisc-transpiler study mockdata/DEMO_GDISC_20240903_072908/ -vv
-```
-
-### Output Formats
-
-```bash
-# Generate only XPT files
-cdisc-transpiler study mockdata/DEMO_CF1234_NL_20250120_104838/ --format xpt
-
-# Generate only Dataset-XML
-cdisc-transpiler study mockdata/DEMO_GDISC_20240903_072908/ --format xml
-
-# Generate both XPT and XML
-cdisc-transpiler study mockdata/DEMO_GDISC_20240903_072908/ --format both
-
-# Include SAS programs
-cdisc-transpiler study mockdata/DEMO_GDISC_20240903_072908/ --sas
-
-# Generate Define-XML 2.1
-cdisc-transpiler study mockdata/DEMO_GDISC_20240903_072908/ --define-xml
-```
-
-### List Supported Domains
-
-```bash
 cdisc-transpiler domains
 ```
 
-### Example Output
+## Project Docs
 
-```
-📊 Study Processing Summary
-┏━━━━━━━━━┳━━━━━━━━━━━┳━━━━━━━┳━━━━━━━━━━━━━━━┳━━━━━━━┓
-┃ Domain  ┃   Records ┃  XPT  ┃  Dataset-XML  ┃  SAS  ┃
-┡━━━━━━━━━╇━━━━━━━━━━━╇━━━━━━━╇━━━━━━━━━━━━━━━╇━━━━━━━┩
-│ AE      │         8 │   ✓   │       ✓       │   ✓   │
-│ DM      │        10 │   ✓   │       ✓       │   ✓   │
-│ EX      │        15 │   ✓   │       ✓       │   ✓   │
-│ LB      │        42 │   ✓   │       ✓       │   ✓   │
-│ VS      │        38 │   ✓   │       ✓       │   ✓   │
-└─────────┴───────────┴───────┴───────────────┴───────┘
-✓ 5 domains processed successfully
-```
+- Strategy and architecture: `docs/REFRACTOR_PLAN.md`
+- Task tracker: `docs/RUST_CLI_TASKS.md`
+- Standards assets: `standards/` (offline, committed source of truth)
 
-## 🧪 Testing
+## References
 
-The project has comprehensive test coverage across multiple test suites:
+Record Layout of a SAS® Version 5 or 6 Data Set in SAS® Transport (Xport) Format
 
-### Test Suites
-
-| Suite | Tests | Coverage | Purpose |
-|-------|-------|----------|---------|
-| **Unit Tests** | 440+ | 76% | Core business logic, transformations, presenters |
-| **Integration Tests** | 40+ | - | End-to-end workflows with real data |
-| **Validation Tests** | 42 | - | SDTM compliance, XPT/XML/Define-XML format validation |
-| **Performance Benchmarks** | 3 | - | Track and prevent performance regressions |
-
-### Running Tests
-
-```bash
-# Run all tests
-pytest
-
-# Run only unit tests (fast)
-pytest tests/unit/
-
-# Run integration tests
-pytest tests/integration/
-
-# Run validation tests (SDTM compliance, file formats)
-pytest -m validation
-
-# Run performance benchmarks
-pytest -m benchmark --benchmark-only
-
-# Run with coverage report
-pytest --cov=cdisc_transpiler --cov-report=html
-
-# Run specific test file
-pytest tests/unit/cli/presenters/test_summary.py -v
-```
-
-### Test Markers
-
-```bash
-# Skip slow tests
-pytest -m "not slow"
-
-# Only validation tests
-pytest -m validation
-
-# Only benchmark tests
-pytest -m benchmark
-```
-
-### Test Organization
-
-```
-tests/
-├── unit/                  # Unit tests (440+ tests)
-│   ├── application/      # Use case tests
-│   ├── cli/              # Presenter and command tests
-│   ├── domain/           # Domain logic tests
-│   └── infrastructure/   # File generation, transformation tests
-├── integration/          # Integration tests (40+ tests)
-│   ├── test_cli.py       # CLI end-to-end tests
-│   ├── test_study_workflow.py
-│   ├── test_domain_workflow.py
-│   └── test_performance_benchmarks.py
-└── validation/           # Validation tests (42 tests)
-    ├── test_sdtm_compliance.py      # SDTM standards validation
-    ├── test_xpt_format.py           # XPT format validation
-    ├── test_xml_format.py           # Dataset-XML validation
-    └── test_define_xml_format.py    # Define-XML validation
-```
-
-## 💻 Development
-
-### Setup Development Environment
-
-```bash
-# Install development dependencies
-pip install -e .[dev]
-
-# Install pre-commit hooks (optional)
-pre-commit install
-```
-
-### Code Quality Tools
-
-```bash
-# Type checking with pyright
-pyright
-
-# Linting with ruff
-ruff check .
-
-# Format code with ruff
-ruff format .
-
-# Run all quality checks
-pyright && ruff check . && pytest
-```
-
-### Development Workflow
-
-1. **Write tests first** (TDD approach)
-2. **Implement feature** in appropriate layer
-3. **Run tests** to verify
-4. **Check code quality** with pyright and ruff
-5. **Commit changes** with descriptive message
-
-### Performance Benchmarking
-
-```bash
-# Run benchmarks and save baseline
-pytest -m benchmark --benchmark-only --benchmark-save=baseline
-
-# Compare against baseline
-pytest -m benchmark --benchmark-only --benchmark-compare=baseline
-
-# Fail if >10% slower
-pytest -m benchmark --benchmark-only --benchmark-compare=baseline --benchmark-compare-fail=mean:10%
-```
-
-## 📁 Project Structure
-
-```
-cdisc-transpiler/
-├── cdisc_transpiler/           # Main package
-│   ├── __init__.py
-│   ├── cli/                    # CLI layer (Ports & Adapters)
-│   │   ├── commands/          # Click commands (study, domains)
-│   │   │   ├── study.py       # Study processing command (thin adapter)
-│   │   │   └── domains.py     # List domains command
-│   │   ├── presenters/        # Output formatting
-│   │   │   ├── summary.py     # SummaryPresenter (table formatting)
-│   │   │   └── progress.py    # ProgressPresenter (progress tracking)
-│   │   └── helpers.py         # CLI utilities
-│   ├── application/           # Application layer (Use Cases + Ports)
-│   │   ├── ports/             # Interfaces (Protocols)
-│   │   ├── models.py          # DTOs (ProcessStudyRequest/Response, etc.)
-│   │   ├── study_processing_use_case.py
-│   │   └── domain_processing_use_case.py
-│   ├── domain/                # Domain layer (Business Logic)
-│   │   ├── entities/
-│   │   └── services/
-│   ├── infrastructure/        # Infrastructure layer (Adapters + DI wiring)
-│   │   ├── container.py       # DI container / composition root
-│   │   ├── io/                # XPT/XML/Define-XML/SAS generators/writers
-│   │   ├── logging/
-│   │   └── repositories/      # CSV/Excel/SAS + metadata/CT/spec access
-│   ├── domains_module/        # SDTM domain metadata registry (compat layer)
-│   ├── terminology_module/    # Controlled terminology helpers (mid-migration)
-│   ├── transformations/       # Transformation pipeline (VS/LB wide-to-long)
-│   ├── mapping_module/        # Mapping engine (fuzzy + metadata-aware)
-│   ├── metadata_module/       # Metadata loading (compat layer)
-│   ├── legacy/                # Deprecated legacy coordinators (compat)
-│   └── services/              # Layer-ambiguous services (mid-migration)
-├── tests/                    # Test suites
-├── mockdata/                 # Test data (DEMO studies)
-├── pyproject.toml           # Project configuration
-└── README.md                # This file
-```
-
-## 🤝 Contributing
-
-We welcome contributions! Here's how you can help:
-
-1. **Report bugs** via GitHub Issues
-2. **Suggest features** or improvements
-3. **Submit pull requests** with bug fixes or new features
-4. **Improve documentation**
-5. **Add test coverage**
-
-### Contribution Guidelines
-
-- Follow the existing code style (ruff formatting)
-- Write tests for new features
-- Ensure all tests pass (`pytest`)
-- Run type checking (`pyright`)
-- Update documentation as needed
-
-See [implementation_tickets.md](implementation_tickets.md) for planned features and tasks.
-
-## 📚 Documentation
-
-- **CDISC SDTM Standards**: https://library.cdisc.org/browser/#/mdr/sdtmig/3-4
-- **Test Coverage Report**: [TEST_COVERAGE_REPORT.md](TEST_COVERAGE_REPORT.md)
-- **Integration Test Report**: [TEST_INTEGRATION_REPORT.md](TEST_INTEGRATION_REPORT.md)
-- **Performance Benchmarks**: [tests/integration/BENCHMARK_README.md](tests/integration/BENCHMARK_README.md)
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🔗 Links
-
-- **Repository**: https://github.com/rubentalstra/cdisc-transpiler
-- **Issues**: https://github.com/rubentalstra/cdisc-transpiler/issues
-- **CDISC Library**: https://www.cdisc.org/standards/foundational/sdtm
-
----
-
-**Built with ❤️ for the clinical research community**
+- https://support.sas.com/content/dam/SAS/support/en/technical-papers/record-layout-of-a-sas-version-5-or-6-data-set-in-sas-transport-xport-format.pdf

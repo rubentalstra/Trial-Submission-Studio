@@ -1,0 +1,26 @@
+[standard]
+name = "ADaM-IG"
+version = "1.3"
+full_name = "Analysis Data Model Implementation Guide"
+publishing_set = "ADaM"
+effective_date = "2021-11-12"
+
+[dependencies]
+ct_version = "2024-03-29"
+ct_catalogs = ["ADaM CT"]
+
+[files]
+data_structures = "DataStructures.csv"
+variables = "Variables.csv"
+
+[description]
+purpose = "Analysis-ready Data Structures derived from SDTM for statistical analysis"
+submission_types = ["NDA", "BLA", "ANDA"]
+regulatory_agencies = ["FDA", "PMDA"]
+
+[dataset_types]
+adsl = "Subject-Level Analysis Dataset"
+bds = "Basic Data Structure"
+occds = "Occurrence Data Structure"
+
+# NOTE: User must provide DataStructures.csv and Variables.csv from CDISC library

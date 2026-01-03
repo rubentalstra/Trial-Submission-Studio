@@ -1,0 +1,4 @@
+"Version","Data Structure Name","Data Structure Description","Class","Subclass","CDISC Notes"
+"ADaMIG v1.3","ADSL","Subject-Level Analysis Dataset Structure","SUBJECT LEVEL ANALYSIS DATASET","","One record per subject."
+"ADaMIG v1.3","BDS","Basic Data Structure","BASIC DATA STRUCTURE","","One or more records per subject, per analysis parameter, per analysis timepoint. Analysis timepoint is not required."
+"ADaMIG v1.3","TTE","Basic Data Structure Time-to-Event","BASIC DATA STRUCTURE","TIME-TO-EVENT","Datasets in the SubClass TIME-TO-EVENT must have a Class of BASIC DATA STRUCTURE and meet all the principles of that class. A TTE dataset is used specifically for survival or time-to-event analyses and includes the following: (1) time from a defined starting point (e.g., the date of randomization or of an intervention) to the time of occurrence of the event of interest, and (2) an indication that a subject's time to event has been censored and for what"

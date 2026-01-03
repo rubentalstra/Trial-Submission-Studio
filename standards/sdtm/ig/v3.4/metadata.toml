@@ -1,0 +1,19 @@
+[standard]
+name = "SDTM-IG"
+version = "3.4"
+full_name = "Study Data Tabulation Model Implementation Guide"
+publishing_set = "SDTM"
+effective_date = "2019-11-22"
+
+[dependencies]
+ct_version = "2024-03-29"
+ct_catalogs = ["SDTM CT"]
+
+[files]
+datasets = "Datasets.csv"
+variables = "Variables.csv"
+
+[description]
+purpose = "Clinical trial tabulation data for regulatory submissions"
+submission_types = ["NDA", "BLA", "ANDA"]
+regulatory_agencies = ["FDA", "PMDA"]
