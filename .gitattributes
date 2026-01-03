@@ -2,10 +2,10 @@
 * text=auto
 
 # ===== Source Code =====
-*.rs        text diff=rust linguist-language=Rust
-*.toml      text linguist-language=TOML
+*.rs        text diff=rust
 
 # ===== Configuration =====
+*.toml      text
 *.yml       text
 *.yaml      text
 *.json      text
@@ -15,9 +15,9 @@
 *.txt       text
 
 # ===== Templates =====
-*.hbs       text linguist-language=Handlebars
+*.hbs       text
 
-# ===== Data Files (CDISC Standards) =====
+# ===== Data Files (CDISC Standards - vendored) =====
 *.xml       text linguist-vendored
 *.xsl       text linguist-vendored
 *.csv       text linguist-vendored
@@ -25,9 +25,12 @@
 
 # ===== Generated / Vendored (exclude from language stats) =====
 *.html      linguist-generated
+*.js        linguist-vendored
+*.css       linguist-vendored
 resources/  linguist-vendored
 standards/  linguist-vendored
 mockdata/   linguist-vendored
+docs/theme/ linguist-vendored
 
 # ===== Binary Files =====
 *.png       binary

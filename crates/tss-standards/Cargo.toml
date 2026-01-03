@@ -13,5 +13,4 @@ workspace = true
 csv.workspace = true
 tss-model = { path = "../tss-model" }
 serde = { workspace = true, features = ["derive"] }
-thiserror = "2.0"
-toml = "0.8"
+thiserror = "2.0.17"
