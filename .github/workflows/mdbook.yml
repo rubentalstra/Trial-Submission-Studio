@@ -72,7 +72,7 @@ jobs:
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v4
         with:
-          path: docs/book
+          path: docs/book/html
 
   deploy:
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
