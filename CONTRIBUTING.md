@@ -1,18 +1,22 @@
 # Contributing to Trial Submission Studio
 
-Thank you for your interest in contributing! This guide will help you get
-started.
+Thank you for your interest in contributing to Trial Submission Studio. This project
+is transitioning from a Python CLI to a Rust-first GUI. The Python implementation
+remains as a reference until Rust parity is achieved.
 
 ## Table of Contents
 
-- [Code of Conduct](#code-of-conduct)
-- [Getting Started](#getting-started)
-- [Development Setup](#development-setup)
-- [Project Architecture](#project-architecture)
-- [Development Workflow](#development-workflow)
-- [Coding Standards](#coding-standards)
-- [Testing](#testing)
-- [Submitting Changes](#submitting-changes)
+- Code of Conduct
+- Getting Started
+- Development Setup
+- Development Workflow
+- Coding Standards
+- Testing Guidelines
+- Submitting Changes
+- Issue Guidelines
+- Pull Request Process
+- Architecture Guidelines
+- Documentation
 
 ## Code of Conduct
 
@@ -27,15 +31,17 @@ Please keep collaboration respectful and constructive:
 
 ### Prerequisites
 
-- Rust 1.92+ (see `rust-toolchain.toml`)
+- Rust toolchain (see `rust-toolchain.toml` for version)
 - Git
-- (Optional) Basic familiarity with CDISC SDTM standards
+- Basic familiarity with CDISC SDTM standards
+- Python only if working on legacy code or parity tests
 
-### Finding Issues
+### Finding Issues to Work On
 
-1. Check GitHub Issues
-2. Look for `good-first-issue` or `help-wanted` labels
-3. Comment on an issue before starting work
+1. Check the GitHub issues page
+2. Look for `good-first-issue` or `help-wanted`
+3. Review `docs/REFRACTOR_PLAN.md` and `docs/RUST_CLI_TASKS.md`
+4. Comment on an issue before starting work
 
 ## Development Setup
 
@@ -48,65 +54,36 @@ cd trial-submission-studio
 git remote add upstream https://github.com/rubentalstra/trial-submission-studio.git
 ```
 
-### 2. Install Rust
+### 2. Install Rust Toolchain
 
 ```bash
 rustup show
 rustup toolchain install 1.92
 ```
 
-### 3. Build and Run
+### 3. Build and Test
 
 ```bash
-# Build all crates
 cargo build
-
-# Run the GUI application
-cargo run --package tss-gui
-
-# Run tests
 cargo test
-
-# Run lints
-cargo clippy
 ```
 
-## Project Architecture
+### 4. Legacy Python (Optional)
 
-Trial Submission Studio is organized as a 10-crate Rust workspace:
-
-| Crate           | Purpose                               |
-| --------------- | ------------------------------------- |
-| `tss-gui`       | Desktop GUI application (egui/eframe) |
-| `tss-xpt`       | XPT (SAS Transport) file I/O          |
-| `tss-validate`  | CDISC conformance validation          |
-| `tss-map`       | Fuzzy column mapping engine           |
-| `tss-transform` | Data transformation rules             |
-| `tss-ingest`    | CSV discovery and parsing             |
-| `tss-output`    | Multi-format export (XPT, XML)        |
-| `tss-standards` | CDISC standards loader                |
-| `tss-model`     | Core domain types                     |
-| `tss-common`    | Shared utilities                      |
-
-### Key Directories
-
-- `crates/` - All Rust crates
-- `standards/` - Embedded CDISC standards (SDTM, ADaM, SEND, CT)
-- `mockdata/` - Test datasets
-- `docs/` - Technical documentation
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -e .[dev]
+pytest
+```
 
 ## Development Workflow
 
-1. Create a branch from `main`
-2. Make changes in the appropriate crate
+1. Create a branch off `main`
+2. Implement changes in the appropriate crate
 3. Add or update tests
-4. Run quality checks:
-   ```bash
-   cargo fmt
-   cargo clippy
-   cargo test
-   ```
-5. Open a pull request
+4. Run `cargo fmt`, `cargo clippy`, and `cargo test`
+5. Open a pull request with a clear description
 
 ## Coding Standards
 
@@ -115,40 +92,34 @@ Trial Submission Studio is organized as a 10-crate Rust workspace:
 - Use `cargo fmt` for formatting
 - Address all `cargo clippy` warnings
 - Prefer explicit types for public APIs
-- Write actionable, user-facing error messages
+- Keep error messages actionable and user-facing
 
-### Architecture Principles
+### Code Organization
 
-- Keep business logic out of GUI and I/O layers
-- Maintain deterministic, auditable behavior
-- Prefer pure functions in mapping and validation
-- Standards are embedded locally (no external API calls during validation)
+Follow the workspace crate boundaries:
 
-## Testing
+- `sdtm-cli`: CLI parsing and dependency wiring
+- `sdtm-core`: use cases and orchestration
+- `sdtm-map`: mapping engine and heuristics
+- `sdtm-standards`: SDTM/CT loaders
+- `sdtm-validate`: conformance checks
+- `sdtm-report`: output writers and summaries
 
-### Test Types
+## Testing Guidelines
 
-- **Unit tests**: Per-function/module tests
-- **Integration tests**: End-to-end workflows
-- **Snapshot tests**: Using `insta` for output stability
-- **Property tests**: Using `proptest` for edge cases
+- Unit tests for mapping, transformers, and processors
+- Integration tests for end-to-end study processing
+- Golden tests for output parity
+- Performance tests for regression detection
 
-### Running Tests
+Run:
 
 ```bash
-# All tests
 cargo test
-
-# Specific crate
-cargo test --package tss-xpt
-
-# With output
-cargo test -- --nocapture
+cargo clippy
 ```
 
 ## Submitting Changes
-
-### Commit Messages
 
 Use conventional commits:
 
@@ -156,17 +127,29 @@ Use conventional commits:
 - `fix:` bug fixes
 - `docs:` documentation
 - `test:` tests
-- `refactor:` code refactoring
-- `perf:` performance improvements
+- `refactor:` refactors
+- `perf:` performance
 - `chore:` maintenance
 
-### Pull Request Guidelines
+## Issue Guidelines
+
+- Provide a clear, reproducible description
+- Include sample inputs when possible
+- Note expected vs actual behavior
+
+## Pull Request Process
 
 - Keep PRs focused and scoped
-- Reference related issues
-- Include tests for new functionality
-- Update documentation if needed
+- Reference issues in the PR description
+- Include tests or explain why not
 
-## Questions?
+## Architecture Guidelines
 
-Open an issue or start a discussion on GitHub.
+- Keep business logic out of CLI and I/O layers
+- Maintain deterministic behavior and offline constraints
+- Prefer pure functions in mapping and validation stages
+
+## Documentation
+
+- Update `docs/REFRACTOR_PLAN.md` for strategy changes
+- Update `docs/RUST_CLI_TASKS.md` when adding or finishing tasks

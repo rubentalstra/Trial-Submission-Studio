@@ -67,6 +67,12 @@ Requires Rust 1.92+
 git clone https://github.com/rubentalstra/trial-submission-studio.git
 cd trial-submission-studio
 cargo build --release
+=======
+A Rust-first GUI application for transforming clinical trial source data into CDISC SDTM
+outputs (XPT, Dataset-XML, Define-XML) with strict, offline validation.
+
+```bash
+>>>>>>> 6978fab (refactored the whole codebase to the new name.  (#41))
 cargo run --package tss-gui
 ```
 
@@ -109,6 +115,7 @@ Our goal is full FDA compliance for regulatory submissions:
 - XPT V5 format (FDA standard)
 - Define-XML 2.1 generation
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 
 > **Note:** Currently in alpha. Validate all outputs with qualified
@@ -251,5 +258,10 @@ MIT License - see [LICENSE](LICENSE)
 
 ## References
 
+=======
+
+## References
+
+> > > > > > > 6978fab (refactored the whole codebase to the new name.  (#41))
 [record-layout-of-a-sas-version-5-or-6-data-set-in-sas-transport-xport-format.pdf](crates/tss-xpt/record-layout-of-a-sas-version-5-or-6-data-set-in-sas-transport-xport-format.pdf)
 [record-layout-of-a-sas-version-8-or-9-data-set-in-sas-transport-format.pdf](crates/tss-xpt/record-layout-of-a-sas-version-8-or-9-data-set-in-sas-transport-format.pdf)
