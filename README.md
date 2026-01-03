@@ -43,11 +43,11 @@ into CDISC-compliant submission formats.
 
 Download the latest release for your platform:
 
-| Platform | Download |
-|----------|----------|
-| macOS | [Trial-Submission-Studio.dmg](https://github.com/rubentalstra/trial-submission-studio/releases/latest) |
-| Windows | [Trial-Submission-Studio.exe](https://github.com/rubentalstra/trial-submission-studio/releases/latest) |
-| Linux | [Trial-Submission-Studio.AppImage](https://github.com/rubentalstra/trial-submission-studio/releases/latest) |
+| Platform | Download                                                                                                    |
+|----------|-------------------------------------------------------------------------------------------------------------|
+| macOS    | [Trial-Submission-Studio.dmg](https://github.com/rubentalstra/trial-submission-studio/releases/latest)      |
+| Windows  | [Trial-Submission-Studio.exe](https://github.com/rubentalstra/trial-submission-studio/releases/latest)      |
+| Linux    | [Trial-Submission-Studio.AppImage](https://github.com/rubentalstra/trial-submission-studio/releases/latest) |
 
 > **Note:** Releases coming soon! See [Releases](https://github.com/rubentalstra/trial-submission-studio/releases) page.
 
@@ -75,20 +75,22 @@ cargo run --package tss-gui
 
 ### Output Formats
 
-| Format | Version | Description |
-|--------|---------|-------------|
-| XPT | V5 (default) | FDA-standard SAS Transport |
-| XPT | V8 | Extended names/labels |
-| Dataset-XML | 1.0 | CDISC data exchange |
-| Define-XML | 2.1 | Metadata documentation |
+| Format      | Version      | Description                |
+|-------------|--------------|----------------------------|
+| XPT         | V5 (default) | FDA-standard SAS Transport |
+| XPT         | V8           | Extended names/labels      |
+| Dataset-XML | 1.0          | CDISC data exchange        |
+| Define-XML  | 2.1          | Metadata documentation     |
 
 ### CDISC Standards
 
 **Currently supported:**
+
 - SDTM-IG v3.4
 - Controlled Terminology (2024-2025 versions)
 
 **Planned support:**
+
 - ADaM-IG v1.3
 - SEND-IG v3.1.1
 
@@ -106,26 +108,29 @@ Our goal is full FDA compliance for regulatory submissions:
 
 ## Why Trial Submission Studio?
 
-| Feature | Trial Submission Studio | SAS | Pinnacle 21 Community | Pinnacle 21 Enterprise |
-|---------|------------------------|-----|----------------------|------------------------|
-| **Cost** | Free & Open Source | Licensed | Free | Licensed |
-| **License** | MIT (open source) | Proprietary | Proprietary | Proprietary |
-| **Platforms** | macOS, Windows, Linux | Windows, Unix, Linux | Windows, macOS | Cloud/Hosted |
-| **Primary Use** | Source to SDTM transformation | Full data processing | Validation & QC | Team validation & governance |
-| **CT Validation** | Built-in | Via custom code | Built-in | Built-in |
-| **Dependencies** | Standalone | SAS installation | Minimal | Browser-based |
+| Feature           | Trial Submission Studio       | SAS                  | Pinnacle 21 Community | Pinnacle 21 Enterprise       |
+|-------------------|-------------------------------|----------------------|-----------------------|------------------------------|
+| **Cost**          | Free & Open Source            | Licensed             | Free                  | Licensed                     |
+| **License**       | MIT (open source)             | Proprietary          | Proprietary           | Proprietary                  |
+| **Platforms**     | macOS, Windows, Linux         | Windows, Unix, Linux | Windows, macOS        | Cloud/Hosted                 |
+| **Primary Use**   | Source to SDTM transformation | Full data processing | Validation & QC       | Team validation & governance |
+| **CT Validation** | Built-in                      | Via custom code      | Built-in              | Built-in                     |
+| **Dependencies**  | Standalone                    | SAS installation     | Minimal               | Browser-based                |
 
-**Our focus:** Trial Submission Studio is a free, open-source tool for transforming source data into SDTM-compliant formats. Currently focused on SDTM, with ADaM and SEND planned for future releases. Best suited for individual users and small teams who want an accessible alternative without license costs.
+**Our focus:** Trial Submission Studio is a free, open-source tool for transforming source data into SDTM-compliant
+formats. Currently focused on SDTM, with ADaM and SEND planned for future releases. Best suited for individual users and
+small teams who want an accessible alternative without license costs.
 
-**Note:** Each tool has different strengths. SAS excels in programmable data processing. Pinnacle 21 is the industry standard for validation and QC. Trial Submission Studio focuses on accessible CDISC data transformation.
+**Note:** Each tool has different strengths. SAS excels in programmable data processing. Pinnacle 21 is the industry
+standard for validation and QC. Trial Submission Studio focuses on accessible CDISC data transformation.
 
 ## System Requirements
 
-| Platform | Minimum Version | RAM | Disk Space |
-|----------|----------------|-----|------------|
-| macOS | 10.15+ (Catalina) | 4 GB | 200 MB |
-| Windows | Windows 10+ | 4 GB | 200 MB |
-| Linux | Ubuntu 20.04+ / equivalent | 4 GB | 200 MB |
+| Platform | Minimum Version            | RAM  | Disk Space |
+|----------|----------------------------|------|------------|
+| macOS    | 10.15+ (Catalina)          | 4 GB | 200 MB     |
+| Windows  | Windows 10+                | 4 GB | 200 MB     |
+| Linux    | Ubuntu 20.04+ / equivalent | 4 GB | 200 MB     |
 
 ## Project Status
 
@@ -149,6 +154,7 @@ Our goal is full FDA compliance for regulatory submissions:
 ### Roadmap
 
 See [ROADMAP.md](ROADMAP.md) for planned features including:
+
 - ADaM (Analysis Data Model) support
 - SEND (Standard for Exchange of Nonclinical Data) support
 
@@ -171,7 +177,6 @@ See [ROADMAP.md](ROADMAP.md) for planned features including:
 
 - [Contributing Guide](CONTRIBUTING.md)
 - [Project Roadmap](ROADMAP.md)
-- [XPT Library API](crates/tss-xpt/README.md)
 - [Technical Docs](docs/)
 
 ## FAQ
@@ -187,12 +192,15 @@ and all CDISC standards are embedded in the application.
 <summary><strong>Which CDISC standards are supported?</strong></summary>
 
 **Currently:**
+
 - SDTM-IG v3.4
 - Controlled Terminology (2024-2025 versions)
 
 **Planned:**
+
 - ADaM-IG v1.3
 - SEND-IG v3.1.1
+
 </details>
 
 <details>

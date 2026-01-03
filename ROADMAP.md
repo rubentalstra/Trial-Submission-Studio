@@ -62,6 +62,7 @@ Features that have been implemented:
 We welcome contributions! See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
 If you'd like to work on a roadmap item:
+
 1. Check if there's an existing issue for it
 2. Comment to express interest
 3. Wait for maintainer feedback before starting work
