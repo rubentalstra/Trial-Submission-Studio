@@ -43,10 +43,10 @@ pub fn dataset_name(domain: &Domain) -> String {
 
 /// Ensure a parent directory exists for a file path.
 pub fn ensure_parent_dir(path: &Path) -> Result<()> {
-    if let Some(parent) = path.parent() {
-        if !parent.as_os_str().is_empty() {
-            fs::create_dir_all(parent).with_context(|| format!("create {}", parent.display()))?;
-        }
+    if let Some(parent) = path.parent()
+        && !parent.as_os_str().is_empty()
+    {
+        fs::create_dir_all(parent).with_context(|| format!("create {}", parent.display()))?;
     }
     Ok(())
 }
@@ -86,8 +86,8 @@ pub fn variable_length(variable: &Variable, df: &DataFrame) -> Result<u16> {
     }
     match variable.data_type {
         VariableType::Num => Ok(SAS_NUMERIC_LEN),
-        VariableType::Char | _ => {
-            // Treat Char and any future types as variable-length strings
+        VariableType::Char => {
+            // Treat Char as variable-length strings
             let series = df
                 .column(variable.name.as_str())
                 .with_context(|| format!("missing column {}", variable.name))?;
@@ -183,8 +183,6 @@ impl VariableTypeExt for VariableType {
         match self {
             VariableType::Char => "text",
             VariableType::Num => "float",
-            // Future types default to text
-            _ => "text",
         }
     }
 }

@@ -83,7 +83,7 @@ pub struct StandardsRegistry {
 
 impl StandardsRegistry {
     /// Load standards with the given configuration.
-    pub fn load(config: StandardsConfig) -> Result<Self> {
+    pub fn load(config: &StandardsConfig) -> Result<Self> {
         let ct = ct::load(config.ct_version)?;
 
         let sdtm_domains = if config.load_sdtm {
@@ -114,22 +114,22 @@ impl StandardsRegistry {
 
     /// Load all standards with default configuration.
     pub fn load_all() -> Result<Self> {
-        Self::load(StandardsConfig::default())
+        Self::load(&StandardsConfig::default())
     }
 
     /// Load SDTM standards only.
     pub fn load_sdtm_only() -> Result<Self> {
-        Self::load(StandardsConfig::sdtm_only())
+        Self::load(&StandardsConfig::sdtm_only())
     }
 
     /// Load ADaM standards only.
     pub fn load_adam_only() -> Result<Self> {
-        Self::load(StandardsConfig::adam_only())
+        Self::load(&StandardsConfig::adam_only())
     }
 
     /// Load SEND standards only.
     pub fn load_send_only() -> Result<Self> {
-        Self::load(StandardsConfig::send_only())
+        Self::load(&StandardsConfig::send_only())
     }
 
     /// Check if a standard is loaded.

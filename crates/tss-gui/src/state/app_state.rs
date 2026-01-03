@@ -2,7 +2,7 @@
 //!
 //! This module contains `AppState` which is the root of all state.
 
-use crossbeam_channel::{Receiver, Sender};
+use std::sync::mpsc::{Receiver, Sender};
 use tss_model::TerminologyRegistry;
 
 use super::{DomainState, StudyState, UiState};
@@ -38,8 +38,8 @@ pub struct AppState {
 
 impl Default for AppState {
     fn default() -> Self {
-        let (preview_sender, preview_receiver) = crossbeam_channel::unbounded();
-        let (export_sender, export_receiver) = crossbeam_channel::unbounded();
+        let (preview_sender, preview_receiver) = std::sync::mpsc::channel();
+        let (export_sender, export_receiver) = std::sync::mpsc::channel();
         Self {
             view: View::default(),
             workflow_mode: WorkflowMode::default(),
@@ -58,8 +58,8 @@ impl Default for AppState {
 impl AppState {
     /// Create new app state with loaded settings.
     pub fn new(settings: Settings) -> Self {
-        let (preview_sender, preview_receiver) = crossbeam_channel::unbounded();
-        let (export_sender, export_receiver) = crossbeam_channel::unbounded();
+        let (preview_sender, preview_receiver) = std::sync::mpsc::channel();
+        let (export_sender, export_receiver) = std::sync::mpsc::channel();
         Self {
             view: View::default(),
             workflow_mode: WorkflowMode::default(),

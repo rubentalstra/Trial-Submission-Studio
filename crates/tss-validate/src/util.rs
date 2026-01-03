@@ -20,7 +20,7 @@ impl CaseInsensitiveSet {
     }
 
     /// Create a set from an iterator of strings.
-    pub fn from_iter<I, S>(iter: I) -> Self
+    pub fn from_names<I, S>(iter: I) -> Self
     where
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
@@ -48,7 +48,7 @@ impl CaseInsensitiveSet {
     pub fn get(&self, value: impl AsRef<str>) -> Option<&str> {
         self.inner
             .get(&value.as_ref().to_uppercase())
-            .map(|s| s.as_str())
+            .map(String::as_str)
     }
 
     /// Number of elements in the set.
@@ -68,7 +68,7 @@ mod tests {
 
     #[test]
     fn test_case_insensitive_set() {
-        let set = CaseInsensitiveSet::from_iter(["USUBJID", "STUDYID", "Domain"]);
+        let set = CaseInsensitiveSet::from_names(["USUBJID", "STUDYID", "Domain"]);
 
         assert!(set.contains("USUBJID"));
         assert!(set.contains("usubjid"));

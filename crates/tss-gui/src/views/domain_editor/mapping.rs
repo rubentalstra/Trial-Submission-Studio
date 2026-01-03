@@ -289,7 +289,7 @@ fn show_variable_detail(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                     .codelist
                     .submission_values()
                     .iter()
-                    .map(|s| s.to_string())
+                    .map(ToString::to_string)
                     .collect(),
             })
         });
@@ -302,7 +302,7 @@ fn show_variable_detail(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
 
         let column_label = current_mapping
             .as_ref()
-            .and_then(|(col, _)| study.column_label(col).map(|s| s.to_string()));
+            .and_then(|(col, _)| study.column_label(col).map(ToString::to_string));
 
         let sample_values: Vec<String> = current_mapping
             .as_ref()
@@ -319,7 +319,7 @@ fn show_variable_detail(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
             None
         };
 
-        let not_collected_reason = ms.not_collected_reason(&var_name).map(|s| s.to_string());
+        let not_collected_reason = ms.not_collected_reason(&var_name).map(ToString::to_string);
 
         Some((
             var_name,
@@ -458,7 +458,7 @@ fn show_variable_detail(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
                     .weak()
                     .small(),
             );
-        } else if codelist_code.is_some() {
+        } else if let Some(code) = &codelist_code {
             // Fallback: show just the codelist code if CT couldn't be loaded
             ui.add_space(spacing::MD);
             ui.label(
@@ -472,11 +472,7 @@ fn show_variable_detail(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
             ui.separator();
             ui.add_space(spacing::SM);
 
-            ui.label(
-                RichText::new(format!("Codelist: {}", codelist_code.as_ref().unwrap()))
-                    .weak()
-                    .small(),
-            );
+            ui.label(RichText::new(format!("Codelist: {}", code)).weak().small());
         }
 
         ui.add_space(spacing::LG);
@@ -614,6 +610,7 @@ fn show_auto_generated_info(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 fn show_source_mapping_inline(
     ui: &mut Ui,
     state: &mut AppState,
@@ -727,7 +724,7 @@ fn show_source_mapping_inline(
     }
 
     // Show current mapping if any (skip for USUBJID in non-DM since we already showed it above)
-    if !(is_usubjid && !is_dm) {
+    if !is_usubjid || is_dm {
         if let Some((col, conf)) = current_mapping {
             ui.horizontal(|ui| {
                 ui.label(RichText::new(col).strong());
@@ -950,17 +947,17 @@ fn show_manual_mapping_ui(
                         egui::Button::new(RichText::new(format!("{} (in use)", col)).weak())
                             .frame(false),
                     );
-                } else if ui.selectable_label(false, &col).clicked() {
-                    if let Some(domain) = state.domain_mut(domain_code) {
-                        let col_clone = col.clone();
-                        domain.with_mapping(|ms| {
-                            let _ = ms.accept_manual(&var_name_owned, &col_clone);
-                            if is_subjid {
-                                sync_usubjid_from_subjid(ms);
-                            }
-                        });
-                        mapping_changed = true;
-                    }
+                } else if ui.selectable_label(false, &col).clicked()
+                    && let Some(domain) = state.domain_mut(domain_code)
+                {
+                    let col_clone = col.clone();
+                    domain.with_mapping(|ms| {
+                        let _ = ms.accept_manual(&var_name_owned, &col_clone);
+                        if is_subjid {
+                            sync_usubjid_from_subjid(ms);
+                        }
+                    });
+                    mapping_changed = true;
                 }
             }
         });
@@ -1074,38 +1071,35 @@ fn show_alternative_actions(
                     .small(),
                 );
             }
-        } else {
-            if ui
-                .button(format!(
-                    "{} Mark Not Collected",
-                    egui_phosphor::regular::PROHIBIT
-                ))
-                .clicked()
-            {
-                state
-                    .ui
-                    .domain_editor(domain_code)
-                    .mapping
-                    .set_editing_reason(var_name, "");
-            }
+        } else if ui
+            .button(format!(
+                "{} Mark Not Collected",
+                egui_phosphor::regular::PROHIBIT
+            ))
+            .clicked()
+        {
+            state
+                .ui
+                .domain_editor(domain_code)
+                .mapping
+                .set_editing_reason(var_name, "");
         }
     }
 
     // "Omit" for Perm variables
-    if core == Some(CoreDesignation::Permissible) {
-        if ui
+    if core == Some(CoreDesignation::Permissible)
+        && ui
             .button(format!(
                 "{} Omit Variable",
                 egui_phosphor::regular::MINUS_CIRCLE
             ))
             .clicked()
-        {
-            if let Some(domain) = state.domain_mut(domain_code) {
-                domain.with_mapping(|ms| {
-                    let _ = ms.mark_omit(&var_name_owned);
-                });
-            }
-            state.invalidate_preview(domain_code);
+    {
+        if let Some(domain) = state.domain_mut(domain_code) {
+            domain.with_mapping(|ms| {
+                let _ = ms.mark_omit(&var_name_owned);
+            });
         }
+        state.invalidate_preview(domain_code);
     }
 }

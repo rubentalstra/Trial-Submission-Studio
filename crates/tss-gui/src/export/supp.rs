@@ -125,7 +125,7 @@ pub fn build_supp_frame(
 
     for (col_name, config) in &supp_columns {
         // QVAL comes from SOURCE data (unmapped columns)
-        let Ok(values) = source_data.column(*col_name) else {
+        let Ok(values) = source_data.column(col_name) else {
             continue;
         };
 
@@ -133,7 +133,7 @@ pub fn build_supp_frame(
             let value = values.get(idx).ok();
 
             // Skip null values
-            if value.as_ref().map(|v| v.is_null()).unwrap_or(true) {
+            if value.as_ref().map(AnyValue::is_null).unwrap_or(true) {
                 continue;
             }
 

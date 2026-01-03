@@ -32,33 +32,33 @@ impl ValidationRule for FormatNameRule {
         };
 
         // Validate format name
-        if let Some(format) = &column.format {
-            if format.len() > limit {
-                errors.push(ValidationError::new(
-                    ValidationErrorCode::FormatNameTooLong,
-                    format!(
-                        "Format name '{}' for variable '{}' exceeds {} character limit",
-                        format, column.name, limit
-                    ),
-                    location.clone(),
-                    Severity::Error,
-                ));
-            }
+        if let Some(format) = &column.format
+            && format.len() > limit
+        {
+            errors.push(ValidationError::new(
+                ValidationErrorCode::FormatNameTooLong,
+                format!(
+                    "Format name '{}' for variable '{}' exceeds {} character limit",
+                    format, column.name, limit
+                ),
+                location.clone(),
+                Severity::Error,
+            ));
         }
 
         // Validate informat name
-        if let Some(informat) = &column.informat {
-            if informat.len() > limit {
-                errors.push(ValidationError::new(
-                    ValidationErrorCode::InformatNameTooLong,
-                    format!(
-                        "Informat name '{}' for variable '{}' exceeds {} character limit",
-                        informat, column.name, limit
-                    ),
-                    location,
-                    Severity::Error,
-                ));
-            }
+        if let Some(informat) = &column.informat
+            && informat.len() > limit
+        {
+            errors.push(ValidationError::new(
+                ValidationErrorCode::InformatNameTooLong,
+                format!(
+                    "Informat name '{}' for variable '{}' exceeds {} character limit",
+                    informat, column.name, limit
+                ),
+                location,
+                Severity::Error,
+            ));
         }
 
         errors

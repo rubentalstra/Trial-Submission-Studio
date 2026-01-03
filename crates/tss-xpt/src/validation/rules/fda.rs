@@ -70,28 +70,28 @@ impl ValidationRule for FdaAsciiRule {
         // Check character data in rows
         for (row_idx, row) in dataset.rows.iter().enumerate() {
             for (col_idx, value) in row.iter().enumerate() {
-                if let XptValue::Char(s) = value {
-                    if !is_ascii_printable(s) {
-                        let col_name = dataset
-                            .columns
-                            .get(col_idx)
-                            .map(|c| c.name.as_str())
-                            .unwrap_or("unknown");
+                if let XptValue::Char(s) = value
+                    && !is_ascii_printable(s)
+                {
+                    let col_name = dataset
+                        .columns
+                        .get(col_idx)
+                        .map(|c| c.name.as_str())
+                        .unwrap_or("unknown");
 
-                        errors.push(ValidationError::new(
-                            ValidationErrorCode::NonAsciiValue,
-                            format!(
-                                "Non-ASCII character in column '{}' at row {}",
-                                col_name, row_idx
-                            ),
-                            ErrorLocation::Value {
-                                dataset: dataset.name.clone(),
-                                column: col_name.to_string(),
-                                row: row_idx,
-                            },
-                            Severity::Error,
-                        ));
-                    }
+                    errors.push(ValidationError::new(
+                        ValidationErrorCode::NonAsciiValue,
+                        format!(
+                            "Non-ASCII character in column '{}' at row {}",
+                            col_name, row_idx
+                        ),
+                        ErrorLocation::Value {
+                            dataset: dataset.name.clone(),
+                            column: col_name.to_string(),
+                            row: row_idx,
+                        },
+                        Severity::Error,
+                    ));
                 }
             }
         }

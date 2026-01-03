@@ -325,7 +325,8 @@ jobs:
             libxcb-shape0-dev \
             libxcb-xfixes0-dev \
             libxkbcommon-dev \
-            libssl-dev
+            libssl-dev \
+            libxdo-dev
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable

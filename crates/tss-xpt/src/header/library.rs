@@ -295,8 +295,8 @@ mod tests {
         assert!(header.starts_with(LIBRARY_HEADER_V5.as_bytes()));
 
         // Check zeros section
-        for i in 48..78 {
-            assert_eq!(header[i], b'0', "byte {i} should be '0'");
+        for (i, byte) in header.iter().enumerate().take(78).skip(48) {
+            assert_eq!(*byte, b'0', "byte {i} should be '0'");
         }
 
         // Check trailing spaces
@@ -312,8 +312,8 @@ mod tests {
         assert!(header.starts_with(LIBRARY_HEADER_V8.as_bytes()));
 
         // Check zeros section
-        for i in 48..78 {
-            assert_eq!(header[i], b'0', "byte {i} should be '0'");
+        for (i, byte) in header.iter().enumerate().take(78).skip(48) {
+            assert_eq!(*byte, b'0', "byte {i} should be '0'");
         }
 
         // Check trailing spaces

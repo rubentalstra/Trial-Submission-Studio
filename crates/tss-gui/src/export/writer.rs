@@ -8,10 +8,10 @@ use super::types::{
 };
 use crate::settings::ExportFormat;
 use crate::state::StudyState;
-use crossbeam_channel::Sender;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::mpsc::Sender;
 use std::sync::{Arc, Mutex};
 use std::time::Instant;
 use tss_model::Domain;
@@ -395,11 +395,10 @@ fn write_xpt_file(
                 let max_len = if let Ok(str_col) = col.str() {
                     str_col
                         .into_iter()
-                        .filter_map(|s| s.map(|s| s.len()))
+                        .filter_map(|s| s.map(str::len))
                         .max()
                         .unwrap_or(8)
-                        .max(1)
-                        .min(200) // Cap at 200 for XPT
+                        .clamp(1, 200) // Cap at 200 for XPT
                 } else {
                     8
                 };

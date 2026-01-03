@@ -340,7 +340,7 @@ mod tests {
 
     #[test]
     fn test_parse_multiple_namestr_v5() {
-        let cols = vec![
+        let cols = [
             XptColumn::numeric("AGE"),
             XptColumn::character("SEX", 1),
             XptColumn::character("RACE", 40),

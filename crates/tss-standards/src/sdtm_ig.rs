@@ -46,7 +46,7 @@ pub fn load_from(base_dir: &Path) -> Result<Vec<Domain>> {
     let datasets = load_datasets(&datasets_path)?;
     let variables = load_variables(&variables_path)?;
 
-    build_domains(datasets, variables)
+    build_domains(&datasets, variables)
 }
 
 // =============================================================================
@@ -200,7 +200,7 @@ struct DatasetMeta {
 
 /// Build Domain structs from loaded data.
 fn build_domains(
-    datasets: BTreeMap<String, DatasetMeta>,
+    datasets: &BTreeMap<String, DatasetMeta>,
     mut variables: BTreeMap<String, Vec<Variable>>,
 ) -> Result<Vec<Domain>> {
     let mut domains = Vec::new();

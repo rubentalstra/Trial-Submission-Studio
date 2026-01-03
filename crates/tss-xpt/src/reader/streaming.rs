@@ -273,10 +273,10 @@ impl<R: Read + Seek> StreamingReader<R> {
         }
 
         // Check if we've reached the expected end
-        if let Some(total) = self.total_obs {
-            if self.current_obs >= total {
-                return Ok(None);
-            }
+        if let Some(total) = self.total_obs
+            && self.current_obs >= total
+        {
+            return Ok(None);
         }
 
         // Read observation bytes

@@ -28,10 +28,10 @@ pub fn check(
             continue;
         };
 
-        if let Some(resolved) = resolve_ct(ct_registry, variable) {
-            if let Some(issue) = check_ct_values(variable, df, column, &resolved) {
-                issues.push(issue);
-            }
+        if let Some(resolved) = resolve_ct(ct_registry, variable)
+            && let Some(issue) = check_ct_values(variable, df, column, &resolved)
+        {
+            issues.push(issue);
         }
     }
 

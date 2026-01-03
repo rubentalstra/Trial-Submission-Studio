@@ -72,7 +72,7 @@ pub fn load_rules(path: &Path) -> Result<RuleRegistry, LoadError> {
 
         let message = record.get(message_idx).unwrap_or("").trim().to_string();
         let description = record.get(description_idx).unwrap_or("").trim().to_string();
-        let category = Category::from_str(record.get(category_idx).unwrap_or(""));
+        let category = Category::parse(record.get(category_idx).unwrap_or(""));
         let severity = parse_severity(record.get(severity_idx).unwrap_or(""));
 
         let rule = Rule {
@@ -126,7 +126,7 @@ mod tests {
     #[test]
     fn test_load_default_rules() {
         let registry = load_default_rules().expect("Failed to load rules");
-        assert!(registry.len() > 0, "Should have loaded some rules");
+        assert!(!registry.is_empty(), "Should have loaded some rules");
 
         // Check a known rule exists
         let ct2001 = registry.get("CT2001");

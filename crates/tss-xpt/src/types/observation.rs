@@ -202,7 +202,7 @@ mod tests {
     #[test]
     fn test_observation_iter() {
         let obs = Observation::new(vec![XptValue::numeric(1.0), XptValue::numeric(2.0)]);
-        let sum: f64 = obs.iter().filter_map(|v| v.as_f64()).sum();
+        let sum: f64 = obs.iter().filter_map(XptValue::as_f64).sum();
         assert_eq!(sum, 3.0);
     }
 

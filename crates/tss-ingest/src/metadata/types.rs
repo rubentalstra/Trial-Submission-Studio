@@ -117,10 +117,10 @@ impl StudyCodelist {
         }
 
         // Numeric-normalized match
-        if let Some(normalized) = normalize_numeric_key(raw) {
-            if let Some(decode) = self.values_numeric.get(&normalized) {
-                return Some(decode);
-            }
+        if let Some(normalized) = normalize_numeric_key(raw)
+            && let Some(decode) = self.values_numeric.get(&normalized)
+        {
+            return Some(decode);
         }
 
         None

@@ -13,6 +13,21 @@ mod theme;
 mod views;
 
 use eframe::egui;
+use std::sync::Arc;
+
+/// Load the application icon from embedded PNG data.
+fn load_icon() -> egui::IconData {
+    let icon_data = include_bytes!("../assets/icon.png");
+    let image = image::load_from_memory(icon_data)
+        .expect("Failed to load icon")
+        .into_rgba8();
+    let (width, height) = image.dimensions();
+    egui::IconData {
+        rgba: image.into_raw(),
+        width,
+        height,
+    }
+}
 
 fn main() -> eframe::Result<()> {
     // Initialize logging
@@ -28,6 +43,7 @@ fn main() -> eframe::Result<()> {
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("Trial Submission Studio")
+            .with_icon(Arc::new(load_icon()))
             .with_inner_size([1280.0, 800.0])
             .with_min_inner_size([1024.0, 600.0]),
         #[cfg(target_os = "macos")]

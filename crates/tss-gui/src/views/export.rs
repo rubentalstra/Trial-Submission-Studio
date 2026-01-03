@@ -287,10 +287,10 @@ fn show_export_config(ui: &mut Ui, state: &mut AppState) {
     if let Some(dir) = &output_dir {
         ui.horizontal(|ui| {
             ui.label(RichText::new(dir.display().to_string()).monospace().small());
-            if ui.small_button("Change").clicked() {
-                if let Some(folder) = rfd::FileDialog::new().pick_folder() {
-                    state.ui.export.output_dir = Some(folder);
-                }
+            if ui.small_button("Change").clicked()
+                && let Some(folder) = rfd::FileDialog::new().pick_folder()
+            {
+                state.ui.export.output_dir = Some(folder);
             }
         });
     }
@@ -421,10 +421,10 @@ fn start_export(state: &mut AppState) {
     let mut expected_files = 1; // define.xml
     for code in &config.selected_domains {
         expected_files += 1; // domain file
-        if let Some(domain) = study.get_domain(code) {
-            if count_supp_columns(domain) > 0 {
-                expected_files += 1; // SUPP file
-            }
+        if let Some(domain) = study.get_domain(code)
+            && count_supp_columns(domain) > 0
+        {
+            expected_files += 1; // SUPP file
         }
     }
 

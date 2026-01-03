@@ -194,15 +194,13 @@ impl<W: Write> StreamingWriter<W> {
     ///
     /// This must be called after all observations have been written.
     pub fn finish(mut self) -> Result<()> {
-        if let Some(state) = self.record_writer.take() {
-            if state.pos > 0 {
-                // Pad remaining bytes with spaces
-                let mut record = state.record;
-                for idx in state.pos..RECORD_LEN {
-                    record[idx] = b' ';
-                }
-                self.writer.write_all(&record)?;
-            }
+        if let Some(state) = self.record_writer.take()
+            && state.pos > 0
+        {
+            // Pad remaining bytes with spaces
+            let mut record = state.record;
+            record[state.pos..RECORD_LEN].fill(b' ');
+            self.writer.write_all(&record)?;
         }
         self.writer.flush()?;
         Ok(())
@@ -276,9 +274,7 @@ fn write_namestr_records<W: Write>(
 
     // Flush remaining
     if pos > 0 {
-        for idx in pos..RECORD_LEN {
-            record[idx] = b' ';
-        }
+        record[pos..RECORD_LEN].fill(b' ');
         writer.write_all(&record)?;
     }
 
@@ -330,9 +326,7 @@ fn write_with_padding<W: Write>(writer: &mut W, data: &[u8]) -> Result<()> {
     }
 
     if pos > 0 {
-        for idx in pos..RECORD_LEN {
-            record[idx] = b' ';
-        }
+        record[pos..RECORD_LEN].fill(b' ');
         writer.write_all(&record)?;
     }
 

@@ -178,17 +178,12 @@ fn extract_reference_date(dm_df: &DataFrame) -> Option<chrono::NaiveDate> {
 
     // Get first non-null value
     for idx in 0..rfstdtc.len() {
-        if let Ok(value) = rfstdtc.get(idx) {
-            if let polars::prelude::AnyValue::String(s) = value {
-                if !s.is_empty() {
-                    // Parse ISO 8601 date
-                    if s.len() >= 10 {
-                        if let Ok(date) = chrono::NaiveDate::parse_from_str(&s[..10], "%Y-%m-%d") {
-                            return Some(date);
-                        }
-                    }
-                }
-            }
+        if let Ok(polars::prelude::AnyValue::String(s)) = rfstdtc.get(idx)
+            && !s.is_empty()
+            && s.len() >= 10
+            && let Ok(date) = chrono::NaiveDate::parse_from_str(&s[..10], "%Y-%m-%d")
+        {
+            return Some(date);
         }
     }
 

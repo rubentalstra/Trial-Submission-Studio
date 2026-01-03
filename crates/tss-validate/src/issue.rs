@@ -20,7 +20,7 @@ pub enum Severity {
 
 impl Severity {
     /// Parse severity from string.
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse(s: &str) -> Option<Self> {
         match s.trim().to_lowercase().as_str() {
             "reject" => Some(Self::Reject),
             "error" => Some(Self::Error),

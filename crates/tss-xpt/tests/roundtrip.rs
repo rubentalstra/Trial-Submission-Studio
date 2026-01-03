@@ -397,9 +397,9 @@ fn test_v5_roundtrip_many_columns() {
     let columns: Vec<XptColumn> = (0..50)
         .map(|i| {
             if i % 2 == 0 {
-                XptColumn::numeric(&format!("N{:02}", i))
+                XptColumn::numeric(format!("N{:02}", i))
             } else {
-                XptColumn::character(&format!("C{:02}", i), 10)
+                XptColumn::character(format!("C{:02}", i), 10)
             }
         })
         .collect();
@@ -413,7 +413,7 @@ fn test_v5_roundtrip_many_columns() {
                 if i % 2 == 0 {
                     XptValue::numeric((row_num * 50 + i) as f64)
                 } else {
-                    XptValue::character(&format!("R{}C{}", row_num, i))
+                    XptValue::character(format!("R{}C{}", row_num, i))
                 }
             })
             .collect();
@@ -448,7 +448,7 @@ fn test_v5_roundtrip_many_rows() {
     // Add 1000 rows
     for i in 0..1000 {
         original.add_row(vec![
-            XptValue::character(&format!("SUBJ{:04}", i)),
+            XptValue::character(format!("SUBJ{:04}", i)),
             XptValue::numeric(i as f64),
             XptValue::numeric((i as f64) * 1.5),
         ]);
@@ -597,7 +597,7 @@ fn test_v8_roundtrip_many_rows() {
     // Add 1000 rows
     for i in 0..1000 {
         original.add_row(vec![
-            XptValue::character(&format!("SUBJECT{:06}", i)),
+            XptValue::character(format!("SUBJECT{:06}", i)),
             XptValue::numeric(i as f64),
             XptValue::numeric((i as f64).sqrt()),
         ]);

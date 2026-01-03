@@ -6166,14 +6166,14 @@ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 
 [[package]]
 name = "tss-common"
-version = "0.0.1"
+version = "0.0.1-alpha.1"
 dependencies = [
  "polars",
 ]
 
 [[package]]
 name = "tss-gui"
-version = "0.0.1"
+version = "0.0.1-alpha.1"
 dependencies = [
  "anyhow",
  "chrono",
@@ -6184,6 +6184,7 @@ dependencies = [
  "egui-phosphor",
  "egui_commonmark",
  "egui_extras",
+ "image",
  "muda",
  "open",
  "polars",
@@ -6208,7 +6209,7 @@ dependencies = [
 
 [[package]]
 name = "tss-ingest"
-version = "0.0.1"
+version = "0.0.1-alpha.1"
 dependencies = [
  "polars",
  "serde",
@@ -6221,7 +6222,7 @@ dependencies = [
 
 [[package]]
 name = "tss-map"
-version = "0.0.1"
+version = "0.0.1-alpha.1"
 dependencies = [
  "anyhow",
  "rapidfuzz",
@@ -6233,7 +6234,7 @@ dependencies = [
 
 [[package]]
 name = "tss-model"
-version = "0.0.1"
+version = "0.0.1-alpha.1"
 dependencies = [
  "serde",
  "serde_json",
@@ -6242,7 +6243,7 @@ dependencies = [
 
 [[package]]
 name = "tss-output"
-version = "0.0.1"
+version = "0.0.1-alpha.1"
 dependencies = [
  "anyhow",
  "chrono",
@@ -6257,7 +6258,7 @@ dependencies = [
 
 [[package]]
 name = "tss-standards"
-version = "0.0.1"
+version = "0.0.1-alpha.1"
 dependencies = [
  "csv",
  "serde",
@@ -6268,7 +6269,7 @@ dependencies = [
 
 [[package]]
 name = "tss-transform"
-version = "0.0.1"
+version = "0.0.1-alpha.1"
 dependencies = [
  "chrono",
  "insta",
@@ -6282,7 +6283,7 @@ dependencies = [
 
 [[package]]
 name = "tss-updater"
-version = "0.0.1"
+version = "0.0.1-alpha.1"
 dependencies = [
  "chrono",
  "self_update",
@@ -6293,7 +6294,7 @@ dependencies = [
 
 [[package]]
 name = "tss-validate"
-version = "0.0.1"
+version = "0.0.1-alpha.1"
 dependencies = [
  "csv",
  "polars",
@@ -6306,7 +6307,7 @@ dependencies = [
 
 [[package]]
 name = "tss-xpt"
-version = "0.0.1"
+version = "0.0.1-alpha.1"
 dependencies = [
  "chrono",
  "polars",

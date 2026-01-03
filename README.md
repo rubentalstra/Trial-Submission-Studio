@@ -43,13 +43,25 @@ into CDISC-compliant submission formats.
 
 Download the latest release for your platform:
 
-| Platform | Download                                                                                                    |
-|----------|-------------------------------------------------------------------------------------------------------------|
-| macOS    | [Trial-Submission-Studio.dmg](https://github.com/rubentalstra/trial-submission-studio/releases/latest)      |
-| Windows  | [Trial-Submission-Studio.exe](https://github.com/rubentalstra/trial-submission-studio/releases/latest)      |
-| Linux    | [Trial-Submission-Studio.AppImage](https://github.com/rubentalstra/trial-submission-studio/releases/latest) |
+| Platform | Architecture              | Format           |
+|----------|---------------------------|------------------|
+| macOS    | Apple Silicon (M1/M2/M3+) | `.dmg` or `.zip` |
+| macOS    | Intel (x86_64)            | `.dmg` or `.zip` |
+| Windows  | x86_64 (64-bit)           | `.zip`           |
+| Linux    | x86_64 (64-bit)           | `.tar.gz`        |
 
-> **Note:** Releases coming soon! See [Releases](https://github.com/rubentalstra/trial-submission-studio/releases) page.
+> **Tip:** Download from the [Releases](https://github.com/rubentalstra/trial-submission-studio/releases/latest) page.
+> SHA256 checksums (`.sha256` files) are provided for verification.
+
+<details>
+<summary><strong>Which macOS version should I download?</strong></summary>
+
+1. Click the Apple menu () > **About This Mac**
+2. Look for:
+    - **Chip: Apple M1/M2/M3** → Download **Apple Silicon** version
+    - **Processor: Intel** → Download **Intel** version
+
+</details>
 
 ### Build from Source (Developers)
 
@@ -126,11 +138,12 @@ standard for validation and QC. Trial Submission Studio focuses on accessible CD
 
 ## System Requirements
 
-| Platform | Minimum Version            | RAM  | Disk Space |
-|----------|----------------------------|------|------------|
-| macOS    | 10.15+ (Catalina)          | 4 GB | 200 MB     |
-| Windows  | Windows 10+                | 4 GB | 200 MB     |
-| Linux    | Ubuntu 20.04+ / equivalent | 4 GB | 200 MB     |
+| Platform | Architecture  | Minimum Version            | RAM  | Disk Space |
+|----------|---------------|----------------------------|------|------------|
+| macOS    | Apple Silicon | 11.0+ (Big Sur)            | 4 GB | 200 MB     |
+| macOS    | Intel         | 10.15+ (Catalina)          | 4 GB | 200 MB     |
+| Windows  | x86_64        | Windows 10+                | 4 GB | 200 MB     |
+| Linux    | x86_64        | Ubuntu 20.04+ / equivalent | 4 GB | 200 MB     |
 
 ## Project Status
 

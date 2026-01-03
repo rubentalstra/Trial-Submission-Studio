@@ -363,7 +363,7 @@ mod tests {
         // Labels are no longer truncated in with_label; validation handles limits
         let long_label = "A".repeat(100);
         let col = XptColumn::numeric("x").with_label(&long_label);
-        assert_eq!(col.label.as_ref().map(|s| s.len()), Some(100));
+        assert_eq!(col.label.as_ref().map(String::len), Some(100));
         assert_eq!(col.label, Some(long_label));
     }
 

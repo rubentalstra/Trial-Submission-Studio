@@ -44,7 +44,7 @@ fn analyze_column_for_hint(col: &Column) -> ColumnHint {
     // Cast to string for analysis
     let str_col = col
         .cast(&DataType::String)
-        .map(|c| c.take_materialized_series())
+        .map(Column::take_materialized_series)
         .unwrap_or_else(|_| col.as_materialized_series().clone());
     let str_chunked = str_col.str().ok();
 
@@ -121,14 +121,12 @@ pub fn get_sample_values(df: &DataFrame, column: &str, limit: usize) -> Vec<Stri
 
     let mut unique: BTreeSet<String> = BTreeSet::new();
 
-    for opt_val in str_chunked.iter() {
-        if let Some(val) = opt_val {
-            let trimmed = val.trim();
-            if !trimmed.is_empty() {
-                unique.insert(trimmed.to_string());
-                if unique.len() >= limit {
-                    break;
-                }
+    for val in str_chunked.iter().flatten() {
+        let trimmed = val.trim();
+        if !trimmed.is_empty() {
+            unique.insert(trimmed.to_string());
+            if unique.len() >= limit {
+                break;
             }
         }
     }

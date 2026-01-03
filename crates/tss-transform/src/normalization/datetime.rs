@@ -115,7 +115,7 @@ fn is_valid_iso8601(value: &str) -> bool {
     }
 
     // Check year digits
-    if !chars[0..4].iter().all(|c| c.is_ascii_digit()) {
+    if !chars[0..4].iter().all(char::is_ascii_digit) {
         return false;
     }
 
@@ -240,21 +240,20 @@ fn try_parse_date(value: &str) -> Option<NaiveDate> {
 /// Try to parse partial formats (year-month or year only).
 fn try_parse_year_month(value: &str) -> Option<DateTimePrecision> {
     // YYYY-MM format
-    if value.len() == 7 && value.chars().nth(4) == Some('-') {
-        if let (Ok(year), Ok(month)) = (value[0..4].parse::<i32>(), value[5..7].parse::<u32>()) {
-            if (1..=12).contains(&month) {
-                return Some(DateTimePrecision::YearMonth { year, month });
-            }
-        }
+    if value.len() == 7
+        && value.chars().nth(4) == Some('-')
+        && let (Ok(year), Ok(month)) = (value[0..4].parse::<i32>(), value[5..7].parse::<u32>())
+        && (1..=12).contains(&month)
+    {
+        return Some(DateTimePrecision::YearMonth { year, month });
     }
 
     // YYYY format
-    if value.len() == 4 {
-        if let Ok(year) = value.parse::<i32>() {
-            if (1900..=2100).contains(&year) {
-                return Some(DateTimePrecision::Year(year));
-            }
-        }
+    if value.len() == 4
+        && let Ok(year) = value.parse::<i32>()
+        && (1900..=2100).contains(&year)
+    {
+        return Some(DateTimePrecision::Year(year));
     }
 
     // Month-Year formats

@@ -20,10 +20,7 @@ pub fn parse_numeric(value: &str) -> Option<f64> {
     }
 
     // Remove thousands separators and whitespace
-    let cleaned = trimmed
-        .replace(',', "")
-        .replace(' ', "")
-        .replace('\u{a0}', ""); // Non-breaking space
+    let cleaned = trimmed.replace([',', ' ', '\u{a0}'], ""); // Non-breaking space
 
     // Handle special cases
     if cleaned.eq_ignore_ascii_case("nan") {

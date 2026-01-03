@@ -77,5 +77,5 @@ pub fn run_all(
 
 /// Build case-insensitive column name lookup.
 fn build_column_lookup(df: &DataFrame) -> CaseInsensitiveSet {
-    CaseInsensitiveSet::from_iter(df.get_column_names_owned())
+    CaseInsensitiveSet::from_names(df.get_column_names_owned())
 }
