@@ -31,4 +31,4 @@ pub use derived_state::{
 };
 
 // UI state
-pub use ui_state::{AboutUiState, UiState, UpdatePhase, UpdateUiState};
+pub use ui_state::{AboutUiState, UiState, UpdateDialogState};

@@ -151,7 +151,12 @@ pub fn create_menu() -> Menu {
     #[cfg(not(target_os = "macos"))]
     {
         help_menu
-            .append(&MenuItem::with_id(ids::CHECK_UPDATES, "Check for Updates...", true, None))
+            .append(&MenuItem::with_id(
+                ids::CHECK_UPDATES,
+                "Check for Updates...",
+                true,
+                None,
+            ))
             .expect("Failed to add Check for Updates menu item");
 
         help_menu

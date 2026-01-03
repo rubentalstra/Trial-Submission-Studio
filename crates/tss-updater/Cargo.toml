@@ -7,32 +7,19 @@ description = "Auto-update functionality for Trial Submission Studio"
 license.workspace = true
 
 [dependencies]
-# HTTP client
-reqwest = { version = "0.13.1", default-features = false, features = [
-    "blocking",
-    "json",
-    "rustls",
-] }
-
-# Self-update with all needed features
+# Self-update handles everything: GitHub API, download, checksum, install
 self_update = { version = "0.42", default-features = false, features = [
     "archive-zip",
     "archive-tar",
     "compression-flate2",
     "compression-zip-deflate",
     "rustls",
-    "signatures",
 ] }
 
-# Serialization
+# Serialization (for config)
 serde = { workspace = true }
-serde_json = { workspace = true }
 
-# Hashing
-sha2 = { workspace = true }
-hex = { workspace = true }
-
-# Date/time
+# Date/time (for config)
 chrono = { workspace = true }
 
 # Error handling
@@ -40,11 +27,3 @@ thiserror = { workspace = true }
 
 # Logging
 tracing = { workspace = true }
-
-# Archive extraction
-zip = "7.0.0"
-flate2 = "1.1"
-tar = "0.4"
-
-[dev-dependencies]
-tokio = { version = "1", features = ["rt", "macros"] }

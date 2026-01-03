@@ -8,7 +8,6 @@ use crate::export::ExportUiState;
 use crate::settings::Settings;
 use crate::state::derived_state::QualifierOrigin;
 use std::collections::HashMap;
-use std::path::PathBuf;
 
 // ============================================================================
 // Top-Level UI State
@@ -26,7 +25,7 @@ pub struct UiState {
     /// Close study confirmation modal
     pub close_study_confirm: bool,
     /// Update dialog UI state
-    pub update: UpdateUiState,
+    pub update: UpdateDialogState,
     /// About dialog UI state
     pub about: AboutUiState,
 }
@@ -292,104 +291,45 @@ impl SettingsUiState {
 // Note: ExportUiState is now in crate::export::types
 
 // ============================================================================
-// Update Dialog UI State
+// Update Dialog State
 // ============================================================================
 
-/// Phase of the update process.
-#[derive(Debug, Clone, Default, PartialEq, Eq)]
-pub enum UpdatePhase {
-    /// No update activity.
-    #[default]
-    Idle,
-    /// Checking for updates.
-    Checking,
-    /// Update is available.
-    UpdateAvailable,
-    /// Downloading the update.
-    Downloading,
-    /// Download complete.
-    Downloaded,
-    /// Ready to install.
-    ReadyToInstall,
-    /// An error occurred.
-    Error,
-}
-
-/// UI state for the update dialog.
+/// Single source of truth for update dialog state.
+///
+/// This enum replaces the previous `UpdateUiState` struct with phase + separate fields.
+/// Each variant contains exactly the data needed for that state.
 #[derive(Debug, Clone, Default)]
-pub struct UpdateUiState {
-    /// Is the update dialog open.
-    pub open: bool,
-    /// Current phase of the update process.
-    pub phase: UpdatePhase,
-    /// Information about the available release (version, changelog, etc.).
-    pub available_version: Option<String>,
-    /// Release changelog (markdown).
-    pub changelog: Option<String>,
-    /// Download progress (0.0 to 1.0).
-    pub download_progress: f32,
-    /// Download speed in bytes per second.
-    pub download_speed: u64,
-    /// Error message if any.
-    pub error: Option<String>,
-    /// Path to the downloaded update file.
-    pub downloaded_path: Option<PathBuf>,
+pub enum UpdateDialogState {
+    /// Dialog is closed.
+    #[default]
+    Closed,
+    /// Checking for updates (shows spinner).
+    Checking,
+    /// No update available (current version is latest).
+    NoUpdate,
+    /// Update is available.
+    UpdateAvailable {
+        /// The new version string.
+        version: String,
+        /// Changelog/release notes in markdown.
+        changelog: String,
+    },
+    /// Installing update (download + extract + replace).
+    Installing,
+    /// An error occurred.
+    Error(String),
 }
 
-impl UpdateUiState {
-    /// Reset to initial state.
-    pub fn reset(&mut self) {
-        *self = Self::default();
+impl UpdateDialogState {
+    /// Check if the dialog should be displayed.
+    #[must_use]
+    pub fn is_open(&self) -> bool {
+        !matches!(self, Self::Closed)
     }
 
-    /// Open the dialog and start checking for updates.
-    pub fn open_checking(&mut self) {
-        self.open = true;
-        self.phase = UpdatePhase::Checking;
-        self.error = None;
-    }
-
-    /// Set update available state.
-    pub fn set_update_available(&mut self, version: String, changelog: String) {
-        self.phase = UpdatePhase::UpdateAvailable;
-        self.available_version = Some(version);
-        self.changelog = Some(changelog);
-    }
-
-    /// Set error state.
-    pub fn set_error(&mut self, error: String) {
-        self.phase = UpdatePhase::Error;
-        self.error = Some(error);
-    }
-
-    /// Set downloading state.
-    pub fn set_downloading(&mut self) {
-        self.phase = UpdatePhase::Downloading;
-        self.download_progress = 0.0;
-        self.download_speed = 0;
-    }
-
-    /// Update download progress.
-    pub fn update_progress(&mut self, progress: f32, speed: u64) {
-        self.download_progress = progress;
-        self.download_speed = speed;
-    }
-
-    /// Set download complete.
-    pub fn set_downloaded(&mut self, path: PathBuf) {
-        self.phase = UpdatePhase::Downloaded;
-        self.downloaded_path = Some(path);
-        self.download_progress = 1.0;
-    }
-
-    /// Set ready to install.
-    pub fn set_ready_to_install(&mut self) {
-        self.phase = UpdatePhase::ReadyToInstall;
-    }
-
-    /// Close the dialog.
+    /// Close the dialog (reset to Closed state).
     pub fn close(&mut self) {
-        self.open = false;
+        *self = Self::Closed;
     }
 }
 

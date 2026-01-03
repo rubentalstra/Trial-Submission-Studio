@@ -1,7 +1,7 @@
 //! Auto-update system for Trial Submission Studio.
 //!
-//! This crate provides functionality for checking for updates, downloading them,
-//! verifying their integrity, and seamlessly installing them.
+//! This crate provides functionality for checking for updates and installing them
+//! using the `self_update` crate for all the heavy lifting.
 //!
 //! # Overview
 //!
@@ -9,85 +9,42 @@
 //!
 //! - Semantic versioning with pre-release tags (alpha, beta, rc)
 //! - Configurable update channels (stable, beta)
-//! - SHA256 checksum verification
-//! - Cryptographic signature verification (via zipsign)
-//! - Download progress reporting
-//! - Seamless in-place updates
+//! - Automatic platform detection
+//! - Seamless in-place updates via self_update
 //!
 //! # Example
 //!
 //! ```no_run
-//! use tss_updater::{
-//!     GitHubClient, UpdateSettings, UpdateChannel, Platform, Version,
-//!     Downloader, checksum, installer,
-//! };
+//! use tss_updater::{UpdateService, UpdateSettings};
+//!
+//! let settings = UpdateSettings::default();
 //!
 //! // Check for updates
-//! let client = GitHubClient::new().unwrap();
-//! let current = Version::current();
-//! let platform = Platform::current();
+//! if let Ok(Some(update)) = UpdateService::check_for_update(&settings) {
+//!     println!("Update available: {}", update.version);
+//!     println!("Changelog: {}", update.changelog);
 //!
-//! if let Some(update) = client.check_for_update(&current, UpdateChannel::Stable, &platform).unwrap() {
-//!     println!("Update available: {} -> {}", update.current_version, update.new_version);
-//!     println!("Changelog: {}", update.changelog());
-//!
-//!     // Download the update
-//!     let downloader = Downloader::new().unwrap();
-//!     let path = downloader.download(&update, |progress| {
-//!         println!("{}% ({}/{})",
-//!             progress.percentage(),
-//!             progress.human_downloaded(),
-//!             progress.human_total()
-//!         );
-//!     }).unwrap();
-//!
-//!     // Verify checksum
-//!     if let Some(ref checksum_asset) = update.checksum_asset {
-//!         let expected = client.fetch_checksum(&checksum_asset.browser_download_url).unwrap();
-//!         checksum::verify_sha256(&path, &expected).unwrap();
-//!     }
-//!
-//!     // Install and restart
-//!     installer::install_from_archive(&path, &update).unwrap();
-//!     installer::restart_application().unwrap();
+//!     // Download and install (app will restart automatically)
+//!     UpdateService::download_and_install().unwrap();
 //! }
 //! ```
-//!
-//! # Modules
-//!
-//! - [`error`] - Error types for update operations
-//! - [`version`] - Semantic version parsing and comparison
-//! - [`config`] - Update settings and configuration
-//! - [`release`] - GitHub release and asset types
-//! - [`platform`] - Platform detection and asset matching
-//! - [`client`] - GitHub API client
-//! - [`download`] - Download with progress reporting
-//! - [`checksum`] - SHA256 verification
-//! - [`installer`] - Update installation
 
 #![warn(missing_docs)]
 #![warn(clippy::all)]
 
-pub mod checksum;
-pub mod client;
 pub mod config;
-pub mod download;
 pub mod error;
-pub mod installer;
-pub mod platform;
 pub mod release;
 pub mod version;
 
 // Re-export main types for convenience
-pub use checksum::{compute_file_sha256, verify_sha256};
-pub use client::GitHubClient;
 pub use config::{UpdateChannel, UpdateCheckFrequency, UpdateSettings};
-pub use download::{DownloadProgress, Downloader};
 pub use error::{Result, UpdateError};
-pub use installer::{install_from_archive, install_update, restart_application};
-pub use platform::{Arch, Os, Platform};
-pub use release::{Asset, Release, UpdateInfo};
+pub use release::UpdateInfo;
 pub use version::{PreRelease, Version};
+
+use self_update::backends::github::Update;
+use self_update::cargo_crate_version;
 
 /// The current version of this crate (from Cargo.toml).
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -98,113 +55,115 @@ pub const REPO_OWNER: &str = "rubentalstra";
 /// GitHub repository name.
 pub const REPO_NAME: &str = "Trial-Submission-Studio";
 
-/// High-level update service that coordinates checking, downloading, and installing updates.
-pub struct UpdateService {
-    /// GitHub API client.
-    client: GitHubClient,
-    /// Downloader for release assets.
-    downloader: Downloader,
-    /// Current platform.
-    platform: Platform,
-}
+/// Binary name.
+pub const BIN_NAME: &str = "trial-submission-studio";
+
+/// High-level update service that uses self_update for all operations.
+pub struct UpdateService;
 
 impl UpdateService {
-    /// Create a new update service.
-    pub fn new() -> Result<Self> {
-        Ok(Self {
-            client: GitHubClient::new()?,
-            downloader: Downloader::new()?,
-            platform: Platform::current(),
-        })
-    }
-
-    /// Get a reference to the GitHub client.
-    #[must_use]
-    pub fn client(&self) -> &GitHubClient {
-        &self.client
-    }
-
-    /// Get a reference to the downloader.
-    #[must_use]
-    pub fn downloader(&self) -> &Downloader {
-        &self.downloader
-    }
-
     /// Check for available updates.
     ///
     /// Returns `Some(UpdateInfo)` if an update is available, `None` otherwise.
-    pub fn check_for_update(
-        &self,
-        settings: &UpdateSettings,
-    ) -> Result<Option<UpdateInfo>> {
+    /// Uses self_update's GitHub backend to fetch releases.
+    pub fn check_for_update(settings: &UpdateSettings) -> Result<Option<UpdateInfo>> {
+        let update = Update::configure()
+            .repo_owner(REPO_OWNER)
+            .repo_name(REPO_NAME)
+            .bin_name(BIN_NAME)
+            .current_version(cargo_crate_version!())
+            .build()
+            .map_err(|e| UpdateError::SelfUpdate(e.to_string()))?;
+
+        let latest = match update.get_latest_release() {
+            Ok(release) => release,
+            Err(e) => {
+                tracing::debug!("Failed to get latest release: {}", e);
+                return Err(UpdateError::Network(e.to_string()));
+            }
+        };
+
+        // Parse version from tag (e.g., "v1.2.3" or "v1.2.3-beta.1")
+        let latest_version = Version::from_tag(&latest.version)?;
         let current = Version::current();
-        self.client
-            .check_for_update(&current, settings.channel, &self.platform)
-    }
 
-    /// Check for updates, forcing a fresh API call (bypassing cache).
-    pub fn check_for_update_fresh(
-        &self,
-        settings: &UpdateSettings,
-    ) -> Result<Option<UpdateInfo>> {
-        let current = Version::current();
-        self.client
-            .check_for_update_fresh(&current, settings.channel, &self.platform)
-    }
+        tracing::debug!(
+            "Current version: {}, Latest version: {}",
+            current,
+            latest_version
+        );
 
-    /// Download an update and return the path to the downloaded file.
-    ///
-    /// The progress callback is called periodically with download progress.
-    pub fn download_update<F>(
-        &self,
-        update: &UpdateInfo,
-        progress_callback: F,
-    ) -> Result<std::path::PathBuf>
-    where
-        F: Fn(DownloadProgress),
-    {
-        self.downloader.download(update, progress_callback)
-    }
-
-    /// Verify the downloaded update's checksum.
-    pub fn verify_update(&self, path: &std::path::Path, update: &UpdateInfo) -> Result<()> {
-        if let Some(ref checksum_asset) = update.checksum_asset {
-            let expected = self.client.fetch_checksum(&checksum_asset.browser_download_url)?;
-            verify_sha256(path, &expected)?;
+        // Check if update is newer
+        if latest_version <= current {
+            tracing::debug!("Already up to date");
+            return Ok(None);
         }
+
+        // Filter by channel (stable users shouldn't see beta releases)
+        if !settings.channel.includes(&latest_version) {
+            tracing::debug!(
+                "Skipping {} - not allowed by channel {:?}",
+                latest_version,
+                settings.channel
+            );
+            return Ok(None);
+        }
+
+        // Check if user has skipped this version
+        if settings.should_skip_version(&latest_version) {
+            tracing::debug!("User has skipped version {}", latest_version);
+            return Ok(None);
+        }
+
+        Ok(Some(UpdateInfo {
+            version: latest.version,
+            changelog: latest.body.unwrap_or_default(),
+        }))
+    }
+
+    /// Download, verify, install, and restart the application.
+    ///
+    /// This function uses self_update to handle the entire update process:
+    /// - Downloads the correct platform-specific asset
+    /// - Verifies the download
+    /// - Extracts and replaces the binary
+    /// - The application should be restarted after this returns successfully
+    ///
+    /// Note: This function blocks during download. Progress is shown via self_update's
+    /// built-in progress indicator.
+    pub fn download_and_install() -> Result<()> {
+        tracing::info!("Starting update download and installation...");
+
+        let status = Update::configure()
+            .repo_owner(REPO_OWNER)
+            .repo_name(REPO_NAME)
+            .bin_name(BIN_NAME)
+            .show_download_progress(true)
+            .current_version(cargo_crate_version!())
+            .build()
+            .map_err(|e| UpdateError::SelfUpdate(e.to_string()))?
+            .update()
+            .map_err(|e| UpdateError::SelfUpdate(e.to_string()))?;
+
+        tracing::info!("Update installed successfully: {:?}", status);
+
         Ok(())
     }
 
-    /// Install the update and restart the application.
+    /// Restart the application after an update.
     ///
-    /// This function does not return on success - the application is restarted.
-    pub fn install_and_restart(
-        &self,
-        path: &std::path::Path,
-        update: &UpdateInfo,
-    ) -> Result<()> {
-        install_from_archive(path, update)?;
-        restart_application()?;
-        Ok(())
-    }
+    /// This spawns the current executable as a new process and exits.
+    /// Call this after `download_and_install` returns successfully.
+    pub fn restart() -> Result<()> {
+        let exe = std::env::current_exe().map_err(|e| UpdateError::Io(e.to_string()))?;
 
-    /// Get a cancellation handle for the downloader.
-    ///
-    /// This can be used to cancel an ongoing download from another thread.
-    #[must_use]
-    pub fn cancellation_handle(&self) -> std::sync::Arc<std::sync::atomic::AtomicBool> {
-        self.downloader.cancellation_handle()
-    }
+        tracing::info!("Restarting application: {:?}", exe);
 
-    /// Cancel any ongoing download.
-    pub fn cancel_download(&self) {
-        self.downloader.cancel();
-    }
-}
+        std::process::Command::new(&exe)
+            .spawn()
+            .map_err(|e| UpdateError::Io(e.to_string()))?;
 
-impl Default for UpdateService {
-    fn default() -> Self {
-        Self::new().expect("Failed to create UpdateService")
+        std::process::exit(0);
     }
 }
 
@@ -221,12 +180,6 @@ mod tests {
     fn test_repo_constants() {
         assert_eq!(REPO_OWNER, "rubentalstra");
         assert_eq!(REPO_NAME, "Trial-Submission-Studio");
-    }
-
-    #[test]
-    fn test_update_service_creation() {
-        // This may fail if there's no network, but it shouldn't panic
-        let service = UpdateService::new();
-        assert!(service.is_ok());
+        assert_eq!(BIN_NAME, "trial-submission-studio");
     }
 }

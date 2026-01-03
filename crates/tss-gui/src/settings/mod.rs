@@ -18,7 +18,7 @@ use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
 // Re-export update settings from tss-updater
-pub use tss_updater::{UpdateSettings, UpdateCheckFrequency, UpdateChannel};
+pub use tss_updater::{UpdateChannel, UpdateCheckFrequency, UpdateSettings};
 
 // ============================================================================
 // Main Settings Struct

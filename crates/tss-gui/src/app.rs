@@ -4,26 +4,24 @@ use crate::menu;
 use crate::services::StudyLoader;
 use crate::settings::ui::{SettingsResult, SettingsWindow};
 use crate::settings::{load_settings, save_settings};
-use crate::state::{AppState, EditorTab, UpdatePhase, View};
+use crate::state::{AppState, EditorTab, UpdateDialogState, View};
 use crate::views::{
-    show_about_dialog, show_update_dialog, CommonMarkCache, DomainEditorView, ExportView,
-    HomeAction, HomeView, UpdateDialogAction,
+    CommonMarkCache, DomainEditorView, ExportView, HomeAction, HomeView, UpdateDialogAction,
+    show_about_dialog, show_update_dialog,
 };
 use crossbeam_channel::Receiver;
 use eframe::egui;
 use muda::{Menu, MenuEvent};
 use std::sync::mpsc;
 use std::thread;
-use tss_updater::{DownloadProgress, UpdateInfo, UpdateService};
+use tss_updater::UpdateService;
 
 /// Message sent from update background thread.
-pub enum UpdateMessage {
-    /// Update check completed with result.
-    CheckComplete(Result<Option<UpdateInfo>, String>),
-    /// Download progress update.
-    DownloadProgress { progress: f32, speed: u64 },
-    /// Download completed with path and update info.
-    DownloadComplete(Result<(std::path::PathBuf, UpdateInfo), String>),
+enum UpdateMessage {
+    /// Update check completed: Ok(Some((version, changelog))) if available, Ok(None) if up-to-date.
+    CheckResult(Result<Option<(String, String)>, String>),
+    /// Install failed with error (success means app restarted).
+    InstallFailed(String),
 }
 
 /// Main application struct
@@ -43,8 +41,6 @@ pub struct CdiscApp {
     update_receiver: mpsc::Receiver<UpdateMessage>,
     /// Sender for update messages (cloned for background threads)
     update_sender: mpsc::Sender<UpdateMessage>,
-    /// Current update info (if an update is available)
-    pending_update: Option<UpdateInfo>,
 }
 
 impl CdiscApp {
@@ -75,7 +71,6 @@ impl CdiscApp {
             startup_check_done: false,
             update_receiver,
             update_sender,
-            pending_update: None,
         }
     }
 }
@@ -123,11 +118,8 @@ impl eframe::App for CdiscApp {
         }
 
         // Show update dialog if open
-        let update_action = show_update_dialog(
-            ctx,
-            &mut self.state.ui.update,
-            &mut self.markdown_cache,
-        );
+        let update_action =
+            show_update_dialog(ctx, &mut self.state.ui.update, &mut self.markdown_cache);
         self.handle_update_action(update_action, ctx);
 
         // Show about dialog if open
@@ -346,32 +338,25 @@ impl CdiscApp {
     fn handle_update_messages(&mut self, ctx: &egui::Context) {
         while let Ok(msg) = self.update_receiver.try_recv() {
             match msg {
-                UpdateMessage::CheckComplete(result) => {
+                UpdateMessage::CheckResult(result) => {
                     match result {
-                        Ok(Some(update_info)) => {
-                            tracing::info!(
-                                "Update available: {}",
-                                update_info.new_version.to_string()
-                            );
-                            self.state.ui.update.set_update_available(
-                                update_info.new_version.to_string(),
-                                update_info.changelog().to_string(),
-                            );
-                            self.pending_update = Some(update_info);
-                            self.state.ui.update.open = true;
+                        Ok(Some((version, changelog))) => {
+                            tracing::info!("Update available: {}", version);
+                            self.state.ui.update =
+                                UpdateDialogState::UpdateAvailable { version, changelog };
                         }
                         Ok(None) => {
                             tracing::info!("No update available");
-                            // If dialog was opened for manual check, show "up to date" briefly
-                            if self.state.ui.update.open {
-                                self.state.ui.update.phase = UpdatePhase::Idle;
+                            // Show "up to date" only if dialog was opened (manual check)
+                            if self.state.ui.update.is_open() {
+                                self.state.ui.update = UpdateDialogState::NoUpdate;
                             }
                         }
                         Err(e) => {
                             tracing::error!("Update check failed: {}", e);
-                            // Only show error if dialog is open (manual check)
-                            if self.state.ui.update.open {
-                                self.state.ui.update.set_error(e);
+                            // Show error only if dialog is open (manual check)
+                            if self.state.ui.update.is_open() {
+                                self.state.ui.update = UpdateDialogState::Error(e);
                             }
                         }
                     }
@@ -381,21 +366,9 @@ impl CdiscApp {
                         tracing::error!("Failed to save settings: {}", e);
                     }
                 }
-                UpdateMessage::DownloadProgress { progress, speed } => {
-                    self.state.ui.update.update_progress(progress, speed);
-                }
-                UpdateMessage::DownloadComplete(result) => {
-                    match result {
-                        Ok((path, update_info)) => {
-                            tracing::info!("Download complete: {:?}", path);
-                            self.state.ui.update.set_downloaded(path);
-                            self.pending_update = Some(update_info);
-                        }
-                        Err(e) => {
-                            tracing::error!("Download failed: {}", e);
-                            self.state.ui.update.set_error(e);
-                        }
-                    }
+                UpdateMessage::InstallFailed(error) => {
+                    tracing::error!("Update installation failed: {}", error);
+                    self.state.ui.update = UpdateDialogState::Error(error);
                 }
             }
             ctx.request_repaint();
@@ -416,59 +389,44 @@ impl CdiscApp {
         }
 
         tracing::info!("Performing startup update check");
-        self.start_update_check_background(ctx, false);
+        self.start_update_check_background(ctx);
     }
 
     /// Start an update check (opens dialog for manual check).
     fn start_update_check(&mut self, ctx: &egui::Context) {
         // Check rate limiting for manual checks
         if !self.state.settings.updates.can_check_manually() {
-            if let Some(secs) = self.state.settings.updates.seconds_until_manual_check_allowed() {
-                tracing::info!(
-                    "Manual check rate limited, {} seconds until allowed",
-                    secs
-                );
-                // TODO: Show a toast message instead
+            if let Some(secs) = self
+                .state
+                .settings
+                .updates
+                .seconds_until_manual_check_allowed()
+            {
+                tracing::info!("Manual check rate limited, {} seconds until allowed", secs);
             }
             return;
         }
 
-        self.state.ui.update.open_checking();
-        self.start_update_check_background(ctx, true);
+        self.state.ui.update = UpdateDialogState::Checking;
+        self.start_update_check_background(ctx);
     }
 
     /// Start update check in background thread.
-    fn start_update_check_background(&mut self, ctx: &egui::Context, open_dialog: bool) {
+    fn start_update_check_background(&mut self, ctx: &egui::Context) {
         let sender = self.update_sender.clone();
         let settings = self.state.settings.updates.clone();
         let ctx = ctx.clone();
 
         thread::spawn(move || {
-            let result: Result<Option<UpdateInfo>, String> = (|| {
-                let service = UpdateService::new().map_err(|e| e.to_string())?;
+            let result = match UpdateService::check_for_update(&settings) {
+                Ok(Some(info)) => Ok(Some((info.version, info.changelog))),
+                Ok(None) => Ok(None),
+                Err(e) => Err(e.to_string()),
+            };
 
-                match service.check_for_update(&settings) {
-                    Ok(Some(update_info)) => {
-                        // Check if this version is skipped
-                        if let Some(ref skip_ver) = settings.skipped_version {
-                            if skip_ver == &update_info.new_version.to_string() {
-                                return Ok(None);
-                            }
-                        }
-                        Ok(Some(update_info))
-                    }
-                    Ok(None) => Ok(None),
-                    Err(e) => Err(e.to_string()),
-                }
-            })();
-
-            let _ = sender.send(UpdateMessage::CheckComplete(result));
+            let _ = sender.send(UpdateMessage::CheckResult(result));
             ctx.request_repaint();
         });
-
-        if open_dialog && !self.state.ui.update.open {
-            self.state.ui.update.open_checking();
-        }
     }
 
     /// Handle actions from the update dialog.
@@ -476,93 +434,51 @@ impl CdiscApp {
         match action {
             UpdateDialogAction::None => {}
             UpdateDialogAction::SkipVersion => {
-                if let Some(ref version) = self.state.ui.update.available_version {
+                // Extract version from current state
+                if let UpdateDialogState::UpdateAvailable { ref version, .. } = self.state.ui.update
+                {
                     self.state.settings.updates.skipped_version = Some(version.clone());
                     if let Err(e) = save_settings(&self.state.settings) {
                         tracing::error!("Failed to save settings: {}", e);
                     }
                 }
+                self.state.ui.update.close();
             }
             UpdateDialogAction::RemindLater => {
-                // Just close the dialog, nothing else to do
-            }
-            UpdateDialogAction::Download => {
-                self.start_download(ctx);
+                self.state.ui.update.close();
             }
             UpdateDialogAction::InstallAndRestart => {
-                self.install_and_restart();
+                self.start_install(ctx);
             }
             UpdateDialogAction::Cancel => {
-                // Dialog will handle closing itself
+                self.state.ui.update.close();
             }
         }
     }
 
-    /// Start downloading the update.
-    fn start_download(&mut self, ctx: &egui::Context) {
-        let Some(update_info) = self.pending_update.clone() else {
-            tracing::error!("No pending update to download");
-            return;
-        };
-
-        self.state.ui.update.set_downloading();
+    /// Download, install update, and restart the application.
+    ///
+    /// Uses self_update for the entire process. On success, the app will restart.
+    fn start_install(&mut self, ctx: &egui::Context) {
+        self.state.ui.update = UpdateDialogState::Installing;
 
         let sender = self.update_sender.clone();
         let ctx = ctx.clone();
 
         thread::spawn(move || {
-            let result: Result<(std::path::PathBuf, UpdateInfo), String> = (|| {
-                let service = UpdateService::new().map_err(|e| e.to_string())?;
+            // Download and install - self_update handles everything
+            if let Err(e) = UpdateService::download_and_install() {
+                let _ = sender.send(UpdateMessage::InstallFailed(e.to_string()));
+                ctx.request_repaint();
+                return;
+            }
 
-                // Download with progress
-                let sender_clone = sender.clone();
-                let ctx_clone = ctx.clone();
-                let path = service
-                    .download_update(&update_info, move |progress: DownloadProgress| {
-                        let _ = sender_clone.send(UpdateMessage::DownloadProgress {
-                            progress: f32::from(progress.percentage()) / 100.0,
-                            speed: progress.speed_bps,
-                        });
-                        ctx_clone.request_repaint();
-                    })
-                    .map_err(|e| e.to_string())?;
-
-                // Verify checksum if available
-                service.verify_update(&path, &update_info).map_err(|e| e.to_string())?;
-
-                Ok((path, update_info))
-            })();
-
-            let _ = sender.send(UpdateMessage::DownloadComplete(result));
-            ctx.request_repaint();
+            // Restart the application
+            if let Err(e) = UpdateService::restart() {
+                let _ = sender.send(UpdateMessage::InstallFailed(e.to_string()));
+                ctx.request_repaint();
+            }
+            // On success, the app restarts and this thread ends
         });
-    }
-
-    /// Install the downloaded update and restart.
-    fn install_and_restart(&mut self) {
-        let Some(ref path) = self.state.ui.update.downloaded_path else {
-            tracing::error!("No downloaded update path");
-            return;
-        };
-        let Some(ref update_info) = self.pending_update else {
-            tracing::error!("No pending update info");
-            return;
-        };
-
-        tracing::info!("Installing update from {:?}", path);
-
-        // Install and restart - this function may not return on success
-        match tss_updater::install_from_archive(path, update_info) {
-            Ok(()) => {
-                if let Err(e) = tss_updater::restart_application() {
-                    tracing::error!("Failed to restart application: {}", e);
-                    self.state.ui.update.set_error(e.to_string());
-                }
-            }
-            Err(e) => {
-                tracing::error!("Failed to install update: {}", e);
-                self.state.ui.update.set_error(e.to_string());
-            }
-        }
     }
 }

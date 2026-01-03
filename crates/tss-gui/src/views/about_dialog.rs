@@ -42,7 +42,11 @@ pub fn show_about_dialog(ctx: &Context, state: &mut AboutUiState) {
                     ui.add_space(8.0);
 
                     // TSS abbreviation with styling
-                    ui.label(RichText::new("TSS").size(18.0).color(egui::Color32::from_rgb(40, 79, 119)));
+                    ui.label(
+                        RichText::new("TSS")
+                            .size(18.0)
+                            .color(egui::Color32::from_rgb(40, 79, 119)),
+                    );
 
                     ui.add_space(16.0);
 
@@ -76,15 +80,21 @@ pub fn show_about_dialog(ctx: &Context, state: &mut AboutUiState) {
                         ui.spacing_mut().item_spacing.x = 16.0;
 
                         if ui.link("GitHub").clicked() {
-                            let _ = open::that("https://github.com/rubentalstra/Trial-Submission-Studio");
+                            let _ = open::that(
+                                "https://github.com/rubentalstra/Trial-Submission-Studio",
+                            );
                         }
 
                         if ui.link("Documentation").clicked() {
-                            let _ = open::that("https://github.com/rubentalstra/Trial-Submission-Studio#readme");
+                            let _ = open::that(
+                                "https://github.com/rubentalstra/Trial-Submission-Studio#readme",
+                            );
                         }
 
                         if ui.link("Report Issue").clicked() {
-                            let _ = open::that("https://github.com/rubentalstra/Trial-Submission-Studio/issues");
+                            let _ = open::that(
+                                "https://github.com/rubentalstra/Trial-Submission-Studio/issues",
+                            );
                         }
                     });
 

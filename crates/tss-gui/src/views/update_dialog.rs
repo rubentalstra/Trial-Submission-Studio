@@ -1,11 +1,11 @@
 //! Update dialog viewport.
 //!
-//! Displays update status, changelog, and controls for downloading/installing updates.
+//! Displays update status, changelog, and controls for installing updates.
 
 use egui::{Context, Vec2, ViewportBuilder, ViewportId};
 use egui_commonmark::{CommonMarkCache, CommonMarkViewer};
 
-use crate::state::{UpdatePhase, UpdateUiState};
+use crate::state::UpdateDialogState;
 
 /// The viewport ID for the update dialog.
 const UPDATE_VIEWPORT_ID: &str = "update_dialog";
@@ -19,8 +19,6 @@ pub enum UpdateDialogAction {
     SkipVersion,
     /// User clicked "Remind Me Later".
     RemindLater,
-    /// User clicked "Download Update".
-    Download,
     /// User clicked "Install and Restart".
     InstallAndRestart,
     /// User cancelled/closed the dialog.
@@ -32,10 +30,10 @@ pub enum UpdateDialogAction {
 /// Returns an action if the user clicked a button.
 pub fn show_update_dialog(
     ctx: &Context,
-    state: &mut UpdateUiState,
+    state: &mut UpdateDialogState,
     markdown_cache: &mut CommonMarkCache,
 ) -> UpdateDialogAction {
-    if !state.open {
+    if !state.is_open() {
         return UpdateDialogAction::None;
     }
 
@@ -58,15 +56,12 @@ pub fn show_update_dialog(
             }
 
             egui::CentralPanel::default().show(ctx, |ui| {
-                match state.phase {
-                    UpdatePhase::Idle => {
-                        // Should not normally be shown in idle state
-                        ui.centered_and_justified(|ui| {
-                            ui.label("No update information available.");
-                        });
+                match state {
+                    UpdateDialogState::Closed => {
+                        // Should not happen since we check is_open() above
                     }
 
-                    UpdatePhase::Checking => {
+                    UpdateDialogState::Checking => {
                         ui.centered_and_justified(|ui| {
                             ui.vertical_centered(|ui| {
                                 ui.spinner();
@@ -76,27 +71,41 @@ pub fn show_update_dialog(
                         });
                     }
 
-                    UpdatePhase::UpdateAvailable => {
-                        action = show_update_available(ui, state, markdown_cache);
-                        if action != UpdateDialogAction::None {
-                            should_close = action == UpdateDialogAction::SkipVersion
-                                || action == UpdateDialogAction::RemindLater;
-                        }
+                    UpdateDialogState::NoUpdate => {
+                        ui.centered_and_justified(|ui| {
+                            ui.vertical_centered(|ui| {
+                                ui.heading("You're up to date!");
+                                ui.add_space(16.0);
+                                ui.label(format!(
+                                    "Version {} is the latest version.",
+                                    env!("CARGO_PKG_VERSION")
+                                ));
+                                ui.add_space(24.0);
+                                if ui.button("Close").clicked() {
+                                    action = UpdateDialogAction::Cancel;
+                                    should_close = true;
+                                }
+                            });
+                        });
                     }
 
-                    UpdatePhase::Downloading => {
-                        show_downloading(ui, state);
-                    }
-
-                    UpdatePhase::Downloaded | UpdatePhase::ReadyToInstall => {
-                        action = show_ready_to_install(ui, state);
-                        if action == UpdateDialogAction::Cancel {
+                    UpdateDialogState::UpdateAvailable { version, changelog } => {
+                        let (ver, cl) = (version.clone(), changelog.clone());
+                        action = show_update_available(ui, &ver, &cl, markdown_cache);
+                        if action == UpdateDialogAction::SkipVersion
+                            || action == UpdateDialogAction::RemindLater
+                        {
                             should_close = true;
                         }
                     }
 
-                    UpdatePhase::Error => {
-                        action = show_error(ui, state);
+                    UpdateDialogState::Installing => {
+                        show_installing(ui);
+                    }
+
+                    UpdateDialogState::Error(error) => {
+                        let err = error.clone();
+                        action = show_error(ui, &err);
                         if action == UpdateDialogAction::Cancel {
                             should_close = true;
                         }
@@ -116,17 +125,15 @@ pub fn show_update_dialog(
 /// Show the "update available" screen.
 fn show_update_available(
     ui: &mut egui::Ui,
-    state: &UpdateUiState,
+    version: &str,
+    changelog: &str,
     markdown_cache: &mut CommonMarkCache,
 ) -> UpdateDialogAction {
     let mut action = UpdateDialogAction::None;
 
     ui.vertical(|ui| {
         // Header
-        ui.horizontal(|ui| {
-            ui.heading("A new version is available!");
-        });
-
+        ui.heading("A new version is available!");
         ui.add_space(8.0);
 
         // Version info
@@ -135,12 +142,10 @@ fn show_update_available(
             ui.strong(env!("CARGO_PKG_VERSION"));
         });
 
-        if let Some(ref version) = state.available_version {
-            ui.horizontal(|ui| {
-                ui.label("New version:");
-                ui.strong(version);
-            });
-        }
+        ui.horizontal(|ui| {
+            ui.label("New version:");
+            ui.strong(version.strip_prefix('v').unwrap_or(version));
+        });
 
         ui.add_space(16.0);
 
@@ -151,10 +156,10 @@ fn show_update_available(
         egui::ScrollArea::vertical()
             .max_height(200.0)
             .show(ui, |ui| {
-                if let Some(ref changelog) = state.changelog {
-                    CommonMarkViewer::new().show(ui, markdown_cache, changelog);
-                } else {
+                if changelog.is_empty() {
                     ui.label("No release notes available.");
+                } else {
+                    CommonMarkViewer::new().show(ui, markdown_cache, changelog);
                 }
             });
 
@@ -173,10 +178,10 @@ fn show_update_available(
 
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 if ui
-                    .button(egui::RichText::new("Download Update").strong())
+                    .button(egui::RichText::new("Install and Restart").strong())
                     .clicked()
                 {
-                    action = UpdateDialogAction::Download;
+                    action = UpdateDialogAction::InstallAndRestart;
                 }
             });
         });
@@ -185,75 +190,25 @@ fn show_update_available(
     action
 }
 
-/// Show the downloading progress screen.
-fn show_downloading(ui: &mut egui::Ui, state: &UpdateUiState) {
+/// Show the installing/downloading screen with indeterminate progress.
+fn show_installing(ui: &mut egui::Ui) {
     ui.vertical_centered(|ui| {
         ui.add_space(40.0);
 
-        ui.heading("Downloading Update...");
+        ui.heading("Installing Update...");
         ui.add_space(16.0);
 
-        // Progress bar
-        let progress = state.download_progress;
-        ui.add(
-            egui::ProgressBar::new(progress)
-                .show_percentage()
-                .animate(true),
-        );
-
-        ui.add_space(8.0);
-
-        // Speed info
-        if state.download_speed > 0 {
-            let speed = format_speed(state.download_speed);
-            ui.label(format!("Speed: {speed}"));
-        }
+        // Indeterminate progress bar (animated, no percentage)
+        ui.add(egui::ProgressBar::new(0.0).animate(true));
 
         ui.add_space(16.0);
-        ui.label("Please wait while the update is being downloaded...");
+        ui.label("Downloading and installing update...");
+        ui.label("The application will restart automatically.");
     });
-}
-
-/// Show the "ready to install" screen.
-fn show_ready_to_install(ui: &mut egui::Ui, state: &UpdateUiState) -> UpdateDialogAction {
-    let mut action = UpdateDialogAction::None;
-
-    ui.vertical_centered(|ui| {
-        ui.add_space(40.0);
-
-        ui.heading("Download Complete!");
-        ui.add_space(16.0);
-
-        if let Some(ref version) = state.available_version {
-            ui.label(format!("Version {version} is ready to install."));
-        }
-
-        ui.add_space(8.0);
-        ui.label("The application will restart after the update is installed.");
-
-        ui.add_space(24.0);
-
-        ui.horizontal(|ui| {
-            if ui.button("Later").clicked() {
-                action = UpdateDialogAction::Cancel;
-            }
-
-            ui.add_space(16.0);
-
-            if ui
-                .button(egui::RichText::new("Install and Restart").strong())
-                .clicked()
-            {
-                action = UpdateDialogAction::InstallAndRestart;
-            }
-        });
-    });
-
-    action
 }
 
 /// Show the error screen.
-fn show_error(ui: &mut egui::Ui, state: &UpdateUiState) -> UpdateDialogAction {
+fn show_error(ui: &mut egui::Ui, error: &str) -> UpdateDialogAction {
     let mut action = UpdateDialogAction::None;
 
     ui.vertical_centered(|ui| {
@@ -262,11 +217,7 @@ fn show_error(ui: &mut egui::Ui, state: &UpdateUiState) -> UpdateDialogAction {
         ui.heading("Update Error");
         ui.add_space(16.0);
 
-        if let Some(ref error) = state.error {
-            ui.colored_label(egui::Color32::RED, error);
-        } else {
-            ui.label("An unknown error occurred while checking for updates.");
-        }
+        ui.colored_label(egui::Color32::RED, error);
 
         ui.add_space(24.0);
 
@@ -277,18 +228,3 @@ fn show_error(ui: &mut egui::Ui, state: &UpdateUiState) -> UpdateDialogAction {
 
     action
 }
-
-/// Format download speed as human-readable string.
-fn format_speed(bytes_per_sec: u64) -> String {
-    const KB: u64 = 1024;
-    const MB: u64 = KB * 1024;
-
-    if bytes_per_sec >= MB {
-        format!("{:.2} MB/s", bytes_per_sec as f64 / MB as f64)
-    } else if bytes_per_sec >= KB {
-        format!("{:.2} KB/s", bytes_per_sec as f64 / KB as f64)
-    } else {
-        format!("{} B/s", bytes_per_sec)
-    }
-}
-

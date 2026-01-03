@@ -117,7 +117,7 @@ jobs:
             --icon "${BUNDLE_NAME}.app" 150 190 \
             --hide-extension "${BUNDLE_NAME}.app" \
             --app-drop-link 450 190 \
-            "${APP_NAME}-${VERSION}-macos-arm64.dmg" \
+            "${APP_NAME}-${VERSION}-aarch64-apple-darwin.dmg" \
             "${BUNDLE_NAME}.app" || true
 
       - name: Create ZIP for auto-update
@@ -125,16 +125,16 @@ jobs:
           VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
           ditto -c -k --keepParent "${BUNDLE_NAME}.app" \
-            "${APP_NAME}-${VERSION}-macos-arm64.zip"
+            "${APP_NAME}-${VERSION}-aarch64-apple-darwin.zip"
 
       - name: Generate checksums
         env:
           VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
-          shasum -a 256 "${APP_NAME}-${VERSION}-macos-arm64.dmg" > \
-            "${APP_NAME}-${VERSION}-macos-arm64.dmg.sha256"
-          shasum -a 256 "${APP_NAME}-${VERSION}-macos-arm64.zip" > \
-            "${APP_NAME}-${VERSION}-macos-arm64.zip.sha256"
+          shasum -a 256 "${APP_NAME}-${VERSION}-aarch64-apple-darwin.dmg" > \
+            "${APP_NAME}-${VERSION}-aarch64-apple-darwin.dmg.sha256"
+          shasum -a 256 "${APP_NAME}-${VERSION}-aarch64-apple-darwin.zip" > \
+            "${APP_NAME}-${VERSION}-aarch64-apple-darwin.zip.sha256"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
@@ -143,10 +143,10 @@ jobs:
         with:
           name: macos-arm64
           path: |
-            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-macos-arm64.dmg
-            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-macos-arm64.dmg.sha256
-            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-macos-arm64.zip
-            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-macos-arm64.zip.sha256
+            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-aarch64-apple-darwin.dmg
+            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-aarch64-apple-darwin.dmg.sha256
+            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-aarch64-apple-darwin.zip
+            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-aarch64-apple-darwin.zip.sha256
 
   # Build for macOS x86_64 (Intel)
   build-macos-x86_64:
@@ -237,7 +237,7 @@ jobs:
             --icon "${BUNDLE_NAME}.app" 150 190 \
             --hide-extension "${BUNDLE_NAME}.app" \
             --app-drop-link 450 190 \
-            "${APP_NAME}-${VERSION}-macos-x86_64.dmg" \
+            "${APP_NAME}-${VERSION}-x86_64-apple-darwin.dmg" \
             "${BUNDLE_NAME}.app" || true
 
       - name: Create ZIP for auto-update
@@ -245,26 +245,26 @@ jobs:
           VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
           ditto -c -k --keepParent "${BUNDLE_NAME}.app" \
-            "${APP_NAME}-${VERSION}-macos-x86_64.zip"
+            "${APP_NAME}-${VERSION}-x86_64-apple-darwin.zip"
 
       - name: Generate checksums
         env:
           VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
-          shasum -a 256 "${APP_NAME}-${VERSION}-macos-x86_64.dmg" > \
-            "${APP_NAME}-${VERSION}-macos-x86_64.dmg.sha256"
-          shasum -a 256 "${APP_NAME}-${VERSION}-macos-x86_64.zip" > \
-            "${APP_NAME}-${VERSION}-macos-x86_64.zip.sha256"
+          shasum -a 256 "${APP_NAME}-${VERSION}-x86_64-apple-darwin.dmg" > \
+            "${APP_NAME}-${VERSION}-x86_64-apple-darwin.dmg.sha256"
+          shasum -a 256 "${APP_NAME}-${VERSION}-x86_64-apple-darwin.zip" > \
+            "${APP_NAME}-${VERSION}-x86_64-apple-darwin.zip.sha256"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
           name: macos-x86_64
           path: |
-            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-macos-x86_64.dmg
-            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-macos-x86_64.dmg.sha256
-            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-macos-x86_64.zip
-            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-macos-x86_64.zip.sha256
+            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-x86_64-apple-darwin.dmg
+            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-x86_64-apple-darwin.dmg.sha256
+            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-x86_64-apple-darwin.zip
+            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-x86_64-apple-darwin.zip.sha256
 
   # Build for Windows
   build-windows:
@@ -291,24 +291,24 @@ jobs:
           VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
           Compress-Archive -Path "target\x86_64-pc-windows-msvc\release\$env:APP_NAME.exe" `
-            -DestinationPath "$env:APP_NAME-$env:VERSION-windows-x86_64.zip"
+            -DestinationPath "$env:APP_NAME-$env:VERSION-x86_64-pc-windows-msvc.zip"
 
       - name: Generate checksum
         shell: pwsh
         env:
           VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
-          $hash = Get-FileHash "$env:APP_NAME-$env:VERSION-windows-x86_64.zip" -Algorithm SHA256
-          "$($hash.Hash.ToLower())  $env:APP_NAME-$env:VERSION-windows-x86_64.zip" | `
-            Out-File -FilePath "$env:APP_NAME-$env:VERSION-windows-x86_64.zip.sha256" -Encoding utf8
+          $hash = Get-FileHash "$env:APP_NAME-$env:VERSION-x86_64-pc-windows-msvc.zip" -Algorithm SHA256
+          "$($hash.Hash.ToLower())  $env:APP_NAME-$env:VERSION-x86_64-pc-windows-msvc.zip" | `
+            Out-File -FilePath "$env:APP_NAME-$env:VERSION-x86_64-pc-windows-msvc.zip.sha256" -Encoding utf8
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
           name: windows-x86_64
           path: |
-            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-windows-x86_64.zip
-            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-windows-x86_64.zip.sha256
+            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-x86_64-pc-windows-msvc.zip
+            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-x86_64-pc-windows-msvc.zip.sha256
 
   # Build for Linux
   build-linux:
@@ -345,22 +345,22 @@ jobs:
         run: |
           mkdir -p release
           cp "target/x86_64-unknown-linux-gnu/release/${APP_NAME}" release/
-          tar -czvf "${APP_NAME}-${VERSION}-linux-x86_64.tar.gz" -C release .
+          tar -czvf "${APP_NAME}-${VERSION}-x86_64-unknown-linux-gnu.tar.gz" -C release .
 
       - name: Generate checksum
         env:
           VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
-          sha256sum "${APP_NAME}-${VERSION}-linux-x86_64.tar.gz" > \
-            "${APP_NAME}-${VERSION}-linux-x86_64.tar.gz.sha256"
+          sha256sum "${APP_NAME}-${VERSION}-x86_64-unknown-linux-gnu.tar.gz" > \
+            "${APP_NAME}-${VERSION}-x86_64-unknown-linux-gnu.tar.gz.sha256"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
           name: linux-x86_64
           path: |
-            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-linux-x86_64.tar.gz
-            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-linux-x86_64.tar.gz.sha256
+            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-x86_64-unknown-linux-gnu.tar.gz
+            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-x86_64-unknown-linux-gnu.tar.gz.sha256
 
   # Create GitHub Release
   release:
