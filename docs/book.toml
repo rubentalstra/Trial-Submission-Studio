@@ -1,6 +1,54 @@
 [book]
+title = "Trial Submission Studio Documentation"
 authors = ["Ruben Talstra"]
-language = "en"
-multilingual = false
+description = "Transform clinical trial data into FDA-compliant CDISC SDTM formats"
 src = "src"
-title = "Trial Submission Studio"
+language = "en"
+text-direction = "ltr"
+
+[build]
+build-dir = "book"
+create-missing = false
+extra-watch-dirs = ["theme"]
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
+[output.html]
+default-theme = "light"
+preferred-dark-theme = "navy"
+smart-punctuation = true
+git-repository-url = "https://github.com/rubentalstra/Trial-Submission-Studio"
+git-repository-icon = "fab-github"
+edit-url-template = "https://github.com/rubentalstra/Trial-Submission-Studio/edit/main/docs/{path}"
+site-url = "/Trial-Submission-Studio/"
+additional-css = ["theme/css/custom.css"]
+additional-js = ["theme/js/mermaid.min.js", "theme/js/mermaid-init.js"]
+
+[output.html.fold]
+enable = true    # whether or not to enable section folding
+level = 1         # the depth to start folding
+
+[output.html.search]
+enable = true
+limit-results = 20
+teaser-word-count = 30
+boost-title = 2
+boost-hierarchy = 1
+expand = true
+heading-split-level = 2
+
+[output.html.print]
+enable = true     # include support for printable output
+page-break = true # insert page-break after each chapter
+
+[output.linkcheck2]
+optional = true
+# Should we check links on the internet? Enabling this option adds a
+# non-negligible performance impact
+follow-web-links = false
+warning-policy = "warn"
+exclude = ["localhost", "127.0.0.1"]
+
+[preprocessor.links]
+

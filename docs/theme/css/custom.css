@@ -1,0 +1,89 @@
+/* Trial Submission Studio - Professional Blue Theme
+   Minimal overrides for mdBook defaults */
+
+:root {
+    /* Primary blue palette */
+    --tss-primary: #1e3a5f;
+    --tss-primary-light: #2c5282;
+    --tss-accent: #3182ce;
+    --tss-accent-light: #63b3ed;
+}
+
+/* LIGHT THEME */
+.light {
+    --sidebar-bg: var(--tss-primary);
+    --sidebar-fg: #ffffff;
+    --sidebar-active: var(--tss-accent-light);
+    --links: var(--tss-primary-light);
+    --inline-code-color: var(--tss-primary);
+    --quote-border: var(--tss-primary-light);
+}
+
+/* NAVY/DARK THEME */
+.navy {
+    --sidebar-bg: #1b2838;
+    --sidebar-fg: #e2e8f0;
+    --sidebar-active: var(--tss-accent-light);
+    --links: var(--tss-accent-light);
+    --inline-code-color: #90cdf4;
+    --quote-border: var(--tss-primary-light);
+}
+
+/* Sidebar active item highlight */
+.sidebar ol.chapter li.chapter-item a.active {
+    border-left: 3px solid var(--tss-accent-light);
+    padding-left: 12px;
+}
+
+/* Part titles in sidebar */
+.sidebar .chapter li.part-title {
+    color: var(--tss-accent-light);
+    font-size: 0.8em;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* H1 styling */
+.light .content main h1 {
+    color: var(--tss-primary);
+    border-bottom: 2px solid var(--tss-primary-light);
+}
+
+.navy .content main h1 {
+    color: var(--tss-accent-light);
+    border-bottom: 2px solid var(--tss-primary-light);
+}
+
+/* H2 styling */
+.light .content main h2 {
+    color: var(--tss-primary);
+}
+
+.navy .content main h2 {
+    color: var(--tss-accent-light);
+}
+
+/* Table header */
+.light .content main table th {
+    background-color: #edf2f7;
+    color: var(--tss-primary);
+}
+
+.navy .content main table th {
+    background-color: #1b2838;
+    color: var(--tss-accent-light);
+}
+
+/* Search focus */
+#searchbar:focus {
+    border-color: var(--tss-accent);
+    outline: none;
+}
+
+/* Print styles */
+@media print {
+    .content main h1 {
+        color: #000;
+        border-bottom-color: #000;
+    }
+}

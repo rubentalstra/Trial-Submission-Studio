@@ -1,0 +1,46 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# ===== Source Code =====
+*.rs        text diff=rust linguist-language=Rust
+*.toml      text linguist-language=TOML
+
+# ===== Configuration =====
+*.yml       text
+*.yaml      text
+*.json      text
+
+# ===== Documentation =====
+*.md        text diff=markdown linguist-documentation
+*.txt       text
+
+# ===== Templates =====
+*.hbs       text linguist-language=Handlebars
+
+# ===== Data Files (CDISC Standards) =====
+*.xml       text linguist-vendored
+*.xsl       text linguist-vendored
+*.csv       text linguist-vendored
+*.sas       text linguist-vendored
+
+# ===== Generated / Vendored (exclude from language stats) =====
+*.html      linguist-generated
+resources/  linguist-vendored
+standards/  linguist-vendored
+mockdata/   linguist-vendored
+
+# ===== Binary Files =====
+*.png       binary
+*.ico       binary
+*.icns      binary
+*.svg       text
+
+# ===== Cargo lock file =====
+Cargo.lock  text -diff linguist-generated
+
+# ===== Shell scripts =====
+*.sh        text eol=lf
+
+# ===== Windows specific =====
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
