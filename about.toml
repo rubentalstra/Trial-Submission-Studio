@@ -1,0 +1,50 @@
+# cargo-about configuration for third-party license compliance
+# Documentation: https://embarkstudios.github.io/cargo-about/
+
+# Accepted open source licenses
+accepted = [
+    "MIT",
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "CC0-1.0",
+    "Unlicense",
+    "MPL-2.0",
+    "Unicode-3.0",
+    "Unicode-DFS-2016",
+    "BSL-1.0",              # Boost Software License (clipboard-win, etc.)
+    "OFL-1.1",              # Open Font License (epaint fonts)
+    "Ubuntu-font-1.0",      # Ubuntu font license
+    "CDLA-Permissive-2.0",  # webpki-roots
+]
+
+# Target platforms (matches our release CI)
+targets = [
+    "aarch64-apple-darwin",
+    "x86_64-apple-darwin",
+    "x86_64-pc-windows-msvc",
+    "x86_64-unknown-linux-gnu",
+]
+
+# Skip non-runtime dependencies (we only need to attribute runtime deps)
+ignore-build-dependencies = true
+ignore-dev-dependencies = true
+
+# Filter crates without license assertions
+filter-noassertion = true
+
+# Skip our own workspace crates
+[private]
+ignore = true
+
+# Package-specific license clarifications
+# Add entries here if cargo-about flags ambiguous licenses
+# Use [[clarify]] array syntax with name field
+
+# [[clarify]]
+# name = "ring"
+# expression = "ISC AND MIT AND OpenSSL"
+# license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]

@@ -7,7 +7,7 @@ use crate::settings::{load_settings, save_settings};
 use crate::state::{AppState, EditorTab, UpdateDialogState, View};
 use crate::views::{
     CommonMarkCache, DomainEditorView, ExportView, HomeAction, HomeView, UpdateDialogAction,
-    show_about_dialog, show_update_dialog,
+    show_about_dialog, show_third_party_dialog, show_update_dialog,
 };
 use crossbeam_channel::Receiver;
 use eframe::egui;
@@ -33,7 +33,7 @@ pub struct CdiscApp {
     menu: Menu,
     /// Settings window UI component
     settings_window: SettingsWindow,
-    /// Markdown cache for rendering changelogs
+    /// Markdown cache for rendering changelogs and licenses
     markdown_cache: CommonMarkCache,
     /// Whether we've performed the startup update check
     startup_check_done: bool,
@@ -54,6 +54,9 @@ impl CdiscApp {
         let mut fonts = egui::FontDefinitions::default();
         egui_phosphor::add_to_fonts(&mut fonts, egui_phosphor::Variant::Regular);
         cc.egui_ctx.set_fonts(fonts);
+
+        // Install image loaders (required for SVG support)
+        egui_extras::install_image_loaders(&cc.egui_ctx);
 
         // Load settings from disk
         let settings = load_settings();
@@ -125,6 +128,13 @@ impl eframe::App for CdiscApp {
         // Show about dialog if open
         show_about_dialog(ctx, &mut self.state.ui.about);
 
+        // Show third-party licenses dialog if open
+        show_third_party_dialog(
+            ctx,
+            &mut self.state.ui.third_party,
+            &mut self.markdown_cache,
+        );
+
         // Main panel
         egui::CentralPanel::default().show(ctx, |ui| match self.state.view.clone() {
             View::Home => {
@@ -176,6 +186,33 @@ impl CdiscApp {
                 }
                 menu::ids::CHECK_UPDATES => {
                     self.start_update_check(ctx);
+                }
+                // Help menu items
+                menu::ids::DOCUMENTATION => {
+                    let _ = open::that(
+                        "https://github.com/rubentalstra/Trial-Submission-Studio#readme",
+                    );
+                }
+                menu::ids::RELEASE_NOTES => {
+                    let _ = open::that(
+                        "https://github.com/rubentalstra/Trial-Submission-Studio/releases",
+                    );
+                }
+                menu::ids::VIEW_ON_GITHUB => {
+                    let _ = open::that("https://github.com/rubentalstra/Trial-Submission-Studio");
+                }
+                menu::ids::REPORT_ISSUE => {
+                    let _ = open::that(
+                        "https://github.com/rubentalstra/Trial-Submission-Studio/issues/new",
+                    );
+                }
+                menu::ids::VIEW_LICENSE => {
+                    let _ = open::that(
+                        "https://github.com/rubentalstra/Trial-Submission-Studio/blob/main/LICENSE",
+                    );
+                }
+                menu::ids::THIRD_PARTY_LICENSES => {
+                    self.state.ui.third_party.open();
                 }
                 _ => {
                     tracing::debug!("Unknown menu event: {}", id);

@@ -13,7 +13,7 @@ env:
 jobs:
   # Build for macOS ARM64 (Apple Silicon)
   build-macos-arm64:
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v6
 
@@ -310,6 +310,50 @@ jobs:
             ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-x86_64-pc-windows-msvc.zip
             ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-x86_64-pc-windows-msvc.zip.sha256
 
+  # Build for Windows ARM64
+  build-windows-arm64:
+    runs-on: windows-11-arm
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-pc-windows-msvc
+
+      - name: Build
+        run: cargo build --release --target aarch64-pc-windows-msvc
+
+      - name: Get version
+        id: version
+        shell: bash
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Create ZIP
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          Compress-Archive -Path "target\aarch64-pc-windows-msvc\release\$env:APP_NAME.exe" `
+            -DestinationPath "$env:APP_NAME-$env:VERSION-aarch64-pc-windows-msvc.zip"
+
+      - name: Generate checksum
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.VERSION }}
+        run: |
+          $hash = Get-FileHash "$env:APP_NAME-$env:VERSION-aarch64-pc-windows-msvc.zip" -Algorithm SHA256
+          "$($hash.Hash.ToLower())  $env:APP_NAME-$env:VERSION-aarch64-pc-windows-msvc.zip" | `
+            Out-File -FilePath "$env:APP_NAME-$env:VERSION-aarch64-pc-windows-msvc.zip.sha256" -Encoding utf8
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-arm64
+          path: |
+            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-aarch64-pc-windows-msvc.zip
+            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-aarch64-pc-windows-msvc.zip.sha256
+
   # Build for Linux
   build-linux:
     runs-on: ubuntu-22.04
@@ -365,7 +409,14 @@ jobs:
 
   # Create GitHub Release
   release:
-    needs: [build-macos-arm64, build-macos-x86_64, build-windows, build-linux]
+    needs:
+      [
+        build-macos-arm64,
+        build-macos-x86_64,
+        build-windows,
+        build-windows-arm64,
+        build-linux,
+      ]
     runs-on: ubuntu-latest
     permissions:
       contents: write

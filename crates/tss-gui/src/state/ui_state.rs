@@ -28,6 +28,8 @@ pub struct UiState {
     pub update: UpdateDialogState,
     /// About dialog UI state
     pub about: AboutUiState,
+    /// Third-party licenses dialog UI state
+    pub third_party: ThirdPartyUiState,
 }
 
 impl UiState {
@@ -349,6 +351,29 @@ impl AboutUiState {
     }
 
     /// Close the About dialog.
+    pub fn close(&mut self) {
+        self.open = false;
+    }
+}
+
+// ============================================================================
+// Third-Party Licenses Dialog UI State
+// ============================================================================
+
+/// UI state for the Third-Party Licenses dialog.
+#[derive(Debug, Clone, Default)]
+pub struct ThirdPartyUiState {
+    /// Is the dialog open.
+    pub open: bool,
+}
+
+impl ThirdPartyUiState {
+    /// Open the dialog.
+    pub fn open(&mut self) {
+        self.open = true;
+    }
+
+    /// Close the dialog.
     pub fn close(&mut self) {
         self.open = false;
     }

@@ -6,6 +6,7 @@ mod about_dialog;
 mod domain_editor;
 mod export;
 mod home;
+mod third_party_dialog;
 mod update_dialog;
 
 pub use about_dialog::show_about_dialog;
@@ -13,4 +14,5 @@ pub use domain_editor::DomainEditorView;
 pub use egui_commonmark::CommonMarkCache;
 pub use export::ExportView;
 pub use home::{HomeAction, HomeView};
+pub use third_party_dialog::show_third_party_dialog;
 pub use update_dialog::{UpdateDialogAction, show_update_dialog};

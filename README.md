@@ -4,27 +4,32 @@
 [![Rust](https://img.shields.io/badge/Rust-1.92+-orange.svg)](https://www.rust-lang.org/)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/rubentalstra/trial-submission-studio/ci.yml?branch=main)](https://github.com/rubentalstra/trial-submission-studio/actions)
 [![Latest Release](https://img.shields.io/github/v/release/rubentalstra/trial-submission-studio)](https://github.com/rubentalstra/trial-submission-studio/releases)
+[![dependency status](https://deps.rs/repo/github/rubentalstra/trial-submission-studio/status.svg)](https://deps.rs/repo/github/rubentalstra/trial-submission-studio)
+[![Build Status](https://github.com/rubentalstra/trial-submission-studio/workflows/CI/badge.svg)](https://github.com/rubentalstra/trial-submission-studio?workflow=CI)
 
-> Transform clinical trial data into FDA-compliant CDISC SDTM formats with confidence.
+> Transform clinical trial data into FDA-compliant CDISC SDTM formats with
+> confidence.
 
 ---
 
 > **ALPHA SOFTWARE - ACTIVE DEVELOPMENT**
 >
-> Trial Submission Studio is currently in **early development (alpha)**. Features are incomplete,
-> APIs may change, and bugs are expected. **Do not use for production regulatory submissions.**
+> Trial Submission Studio is currently in **early development (alpha)**.
+> Features are incomplete, APIs may change, and bugs are expected. **Do not use
+> for production regulatory submissions.**
 >
-> **Disclaimer:** This software is provided "as is" without warranty of any kind. It does not
-> constitute legal, regulatory, or compliance advice. The developers are not responsible for
-> any regulatory submissions made using this tool. Always consult with qualified regulatory
-> professionals and validate all outputs before submission to regulatory authorities.
+> **Disclaimer:** This software is provided "as is" without warranty of any
+> kind. It does not constitute legal, regulatory, or compliance advice. The
+> developers are not responsible for any regulatory submissions made using this
+> tool. Always consult with qualified regulatory professionals and validate all
+> outputs before submission to regulatory authorities.
 
 ---
 
 ## What is Trial Submission Studio?
 
-Trial Submission Studio is a desktop application for transforming clinical trial source data (CSV)
-into CDISC-compliant submission formats.
+Trial Submission Studio is a desktop application for transforming clinical trial
+source data (CSV) into CDISC-compliant submission formats.
 
 **Current focus:** SDTM (Study Data Tabulation Model)
 
@@ -44,22 +49,24 @@ into CDISC-compliant submission formats.
 Download the latest release for your platform:
 
 | Platform | Architecture              | Format           |
-|----------|---------------------------|------------------|
+| -------- | ------------------------- | ---------------- |
 | macOS    | Apple Silicon (M1/M2/M3+) | `.dmg` or `.zip` |
 | macOS    | Intel (x86_64)            | `.dmg` or `.zip` |
 | Windows  | x86_64 (64-bit)           | `.zip`           |
+| Windows  | ARM64                     | `.zip`           |
 | Linux    | x86_64 (64-bit)           | `.tar.gz`        |
 
-> **Tip:** Download from the [Releases](https://github.com/rubentalstra/trial-submission-studio/releases/latest) page.
-> SHA256 checksums (`.sha256` files) are provided for verification.
+> **Tip:** Download from the
+> [Releases](https://github.com/rubentalstra/trial-submission-studio/releases/latest)
+> page. SHA256 checksums (`.sha256` files) are provided for verification.
 
 <details>
 <summary><strong>Which macOS version should I download?</strong></summary>
 
 1. Click the Apple menu () > **About This Mac**
 2. Look for:
-    - **Chip: Apple M1/M2/M3** → Download **Apple Silicon** version
-    - **Processor: Intel** → Download **Intel** version
+   - **Chip: Apple M1/M2/M3** → Download **Apple Silicon** version
+   - **Processor: Intel** → Download **Intel** version
 
 </details>
 
@@ -88,7 +95,7 @@ cargo run --package tss-gui
 ### Output Formats
 
 | Format      | Version      | Description                |
-|-------------|--------------|----------------------------|
+| ----------- | ------------ | -------------------------- |
 | XPT         | V5 (default) | FDA-standard SAS Transport |
 | XPT         | V8           | Extended names/labels      |
 | Dataset-XML | 1.0          | CDISC data exchange        |
@@ -116,12 +123,13 @@ Our goal is full FDA compliance for regulatory submissions:
 - XPT V5 format (FDA standard)
 - Define-XML 2.1 generation
 
-> **Note:** Currently in alpha. Validate all outputs with qualified professionals before submission.
+> **Note:** Currently in alpha. Validate all outputs with qualified
+> professionals before submission.
 
 ## Why Trial Submission Studio?
 
 | Feature           | Trial Submission Studio       | SAS                  | Pinnacle 21 Community | Pinnacle 21 Enterprise       |
-|-------------------|-------------------------------|----------------------|-----------------------|------------------------------|
+| ----------------- | ----------------------------- | -------------------- | --------------------- | ---------------------------- |
 | **Cost**          | Free & Open Source            | Licensed             | Free                  | Licensed                     |
 | **License**       | MIT (open source)             | Proprietary          | Proprietary           | Proprietary                  |
 | **Platforms**     | macOS, Windows, Linux         | Windows, Unix, Linux | Windows, macOS        | Cloud/Hosted                 |
@@ -129,20 +137,23 @@ Our goal is full FDA compliance for regulatory submissions:
 | **CT Validation** | Built-in                      | Via custom code      | Built-in              | Built-in                     |
 | **Dependencies**  | Standalone                    | SAS installation     | Minimal               | Browser-based                |
 
-**Our focus:** Trial Submission Studio is a free, open-source tool for transforming source data into SDTM-compliant
-formats. Currently focused on SDTM, with ADaM and SEND planned for future releases. Best suited for individual users and
-small teams who want an accessible alternative without license costs.
+**Our focus:** Trial Submission Studio is a free, open-source tool for
+transforming source data into SDTM-compliant formats. Currently focused on SDTM,
+with ADaM and SEND planned for future releases. Best suited for individual users
+and small teams who want an accessible alternative without license costs.
 
-**Note:** Each tool has different strengths. SAS excels in programmable data processing. Pinnacle 21 is the industry
-standard for validation and QC. Trial Submission Studio focuses on accessible CDISC data transformation.
+**Note:** Each tool has different strengths. SAS excels in programmable data
+processing. Pinnacle 21 is the industry standard for validation and QC. Trial
+Submission Studio focuses on accessible CDISC data transformation.
 
 ## System Requirements
 
 | Platform | Architecture  | Minimum Version            | RAM  | Disk Space |
-|----------|---------------|----------------------------|------|------------|
+| -------- | ------------- | -------------------------- | ---- | ---------- |
 | macOS    | Apple Silicon | 11.0+ (Big Sur)            | 4 GB | 200 MB     |
 | macOS    | Intel         | 10.15+ (Catalina)          | 4 GB | 200 MB     |
 | Windows  | x86_64        | Windows 10+                | 4 GB | 200 MB     |
+| Windows  | ARM64         | Windows 11+                | 4 GB | 200 MB     |
 | Linux    | x86_64        | Ubuntu 20.04+ / equivalent | 4 GB | 200 MB     |
 
 ## Project Status
@@ -197,8 +208,9 @@ See [ROADMAP.md](ROADMAP.md) for planned features including:
 <details>
 <summary><strong>Is my data sent anywhere?</strong></summary>
 
-No. Your clinical trial data stays on your computer. Trial Submission Studio works offline
-and all CDISC standards are embedded in the application.
+No. Your clinical trial data stays on your computer. Trial Submission Studio
+works offline and all CDISC standards are embedded in the application.
+
 </details>
 
 <details>
@@ -219,16 +231,19 @@ and all CDISC standards are embedded in the application.
 <details>
 <summary><strong>Can I use this for FDA submissions?</strong></summary>
 
-**Not yet.** Our goal is to generate FDA-compliant XPT files (SAS Transport V5 format)
-and Define-XML 2.1 as required for regulatory submissions. The software is currently in
-alpha development. Once stable, outputs should still be validated by qualified professionals
-before regulatory submission.
+**Not yet.** Our goal is to generate FDA-compliant XPT files (SAS Transport V5
+format) and Define-XML 2.1 as required for regulatory submissions. The software
+is currently in alpha development. Once stable, outputs should still be
+validated by qualified professionals before regulatory submission.
+
 </details>
 
 <details>
 <summary><strong>Do I need SAS installed?</strong></summary>
 
-No. Trial Submission Studio is completely standalone and does not require SAS or any other software.
+No. Trial Submission Studio is completely standalone and does not require SAS or
+any other software.
+
 </details>
 
 ## Acknowledgments
