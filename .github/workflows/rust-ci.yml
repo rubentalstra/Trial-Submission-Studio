@@ -1,3 +1,5 @@
+name: CI
+
 on:
   push:
     branches:
@@ -10,7 +12,6 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
   cancel-in-progress: true
 
-name: CI
 jobs:
   lint:
     name: Lint
@@ -19,12 +20,15 @@ jobs:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "rust-ci"
+          cache-on-failure: true
 
-      # Install system dependencies
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libxdo-dev
+      # Install system dependencies (cached)
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: libgtk-3-dev libxdo-dev
+          version: 1.0
 
       # make sure all code has been formatted with rustfmt
       - run: rustup component add rustfmt
@@ -44,19 +48,22 @@ jobs:
     name: Test
     #    strategy:
     #      matrix:
-    #        os: [ubuntu-22.04, macos-14, windows-2022]
+    #        os: [ubuntu-22.04, macos-latest, windows-latest]
     #    runs-on: ${{ matrix.os }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "rust-ci"
+          cache-on-failure: true
 
-      # Install system dependencies
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libxdo-dev
+      # Install system dependencies (cached)
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: libgtk-3-dev libxdo-dev
+          version: 1.0
 
       - run: cargo fetch
       - name: cargo test build

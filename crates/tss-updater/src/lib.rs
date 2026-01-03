@@ -9,8 +9,14 @@
 //!
 //! - Semantic versioning with pre-release tags (alpha, beta, rc)
 //! - Configurable update channels (stable, beta)
-//! - Automatic platform detection
+//! - Automatic platform detection (macOS, Windows, Linux on x64 and ARM64)
 //! - Seamless in-place updates via self_update
+//!
+//! # Supported Platforms
+//!
+//! - macOS: x86_64 (Intel) and aarch64 (Apple Silicon)
+//! - Windows: x86_64 and aarch64
+//! - Linux: x86_64 and aarch64
 //!
 //! # Example
 //!
@@ -59,6 +65,9 @@ pub const REPO_NAME: &str = "Trial-Submission-Studio";
 pub const BIN_NAME: &str = "trial-submission-studio";
 
 /// High-level update service that uses self_update for all operations.
+///
+/// The update service automatically detects the current platform's target triple
+/// from the build target, so it will always download the correct asset.
 pub struct UpdateService;
 
 impl UpdateService {
@@ -124,7 +133,7 @@ impl UpdateService {
     /// Download, verify, install, and restart the application.
     ///
     /// This function uses self_update to handle the entire update process:
-    /// - Downloads the correct platform-specific asset
+    /// - Downloads the correct platform-specific asset (auto-detected from build target)
     /// - Verifies the download
     /// - Extracts and replaces the binary
     /// - The application should be restarted after this returns successfully

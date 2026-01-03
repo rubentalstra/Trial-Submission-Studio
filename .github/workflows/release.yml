@@ -5,25 +5,54 @@ on:
     tags:
       - "v*"
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   CARGO_TERM_COLOR: always
   APP_NAME: trial-submission-studio
   BUNDLE_NAME: "Trial Submission Studio"
 
 jobs:
-  # Build for macOS ARM64 (Apple Silicon)
-  build-macos-arm64:
-    runs-on: macos-latest
+  # Build for macOS (ARM64 and x86_64 via matrix)
+  build-macos:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            runner: macos-latest
+            artifact-name: macos-arm64
+          - target: x86_64-apple-darwin
+            runner: macos-15-intel
+            artifact-name: macos-x86_64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-apple-darwin
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "release-${{ matrix.artifact-name }}"
+          cache-on-failure: true
+
+      - name: Cache Homebrew packages
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/Library/Caches/Homebrew
+            /usr/local/Cellar/create-dmg
+            /opt/homebrew/Cellar/create-dmg
+          key: brew-create-dmg-${{ runner.os }}-${{ runner.arch }}
 
       - name: Build
-        run: cargo build --release --target aarch64-apple-darwin
+        run: cargo build --release --target ${{ matrix.target }}
 
       - name: Get version
         id: version
@@ -37,14 +66,11 @@ jobs:
           mkdir -p "$APP_DIR/Contents/MacOS"
           mkdir -p "$APP_DIR/Contents/Resources"
 
-          # Copy binary
-          cp "target/aarch64-apple-darwin/release/${APP_NAME}" "$APP_DIR/Contents/MacOS/"
+          cp "target/${{ matrix.target }}/release/${APP_NAME}" "$APP_DIR/Contents/MacOS/"
 
-          # Copy Info.plist and substitute version
           sed "s/\${VERSION}/${VERSION}/g" \
             packaging/macos/Info.plist > "$APP_DIR/Contents/Info.plist"
 
-          # Copy icon if exists
           if [ -f packaging/macos/AppIcon.icns ]; then
             cp packaging/macos/AppIcon.icns "$APP_DIR/Contents/Resources/"
           fi
@@ -56,12 +82,10 @@ jobs:
           MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
           KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
         run: |
-          # Create keychain
           security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
           security default-keychain -s build.keychain
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
 
-          # Import certificate
           echo "$MACOS_CERTIFICATE" | base64 --decode > certificate.p12
           security import certificate.p12 -k build.keychain -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
@@ -85,29 +109,23 @@ jobs:
           APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          # Create ZIP for notarization
           ditto -c -k --keepParent "${BUNDLE_NAME}.app" notarize.zip
 
-          # Submit for notarization
           xcrun notarytool submit notarize.zip \
             --apple-id "$APPLE_ID" \
             --password "$APPLE_ID_PASSWORD" \
             --team-id "$APPLE_TEAM_ID" \
             --wait
 
-          # Staple the notarization ticket
           xcrun stapler staple "${BUNDLE_NAME}.app"
-
           rm notarize.zip
 
       - name: Create DMG
         env:
           VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
-          # Install create-dmg
           brew install create-dmg
 
-          # Create DMG
           create-dmg \
             --volname "${BUNDLE_NAME}" \
             --volicon "packaging/macos/AppIcon.icns" \
@@ -117,7 +135,7 @@ jobs:
             --icon "${BUNDLE_NAME}.app" 150 190 \
             --hide-extension "${BUNDLE_NAME}.app" \
             --app-drop-link 450 190 \
-            "${APP_NAME}-${VERSION}-aarch64-apple-darwin.dmg" \
+            "${APP_NAME}-${VERSION}-${{ matrix.target }}.dmg" \
             "${BUNDLE_NAME}.app" || true
 
       - name: Create ZIP for auto-update
@@ -125,260 +143,106 @@ jobs:
           VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
           ditto -c -k --keepParent "${BUNDLE_NAME}.app" \
-            "${APP_NAME}-${VERSION}-aarch64-apple-darwin.zip"
-
-      - name: Generate checksums
-        env:
-          VERSION: ${{ steps.version.outputs.VERSION }}
-        run: |
-          shasum -a 256 "${APP_NAME}-${VERSION}-aarch64-apple-darwin.dmg" > \
-            "${APP_NAME}-${VERSION}-aarch64-apple-darwin.dmg.sha256"
-          shasum -a 256 "${APP_NAME}-${VERSION}-aarch64-apple-darwin.zip" > \
-            "${APP_NAME}-${VERSION}-aarch64-apple-darwin.zip.sha256"
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v6
-        env:
-          VERSION: ${{ steps.version.outputs.VERSION }}
-        with:
-          name: macos-arm64
-          path: |
-            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-aarch64-apple-darwin.dmg
-            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-aarch64-apple-darwin.dmg.sha256
-            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-aarch64-apple-darwin.zip
-            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-aarch64-apple-darwin.zip.sha256
-
-  # Build for macOS x86_64 (Intel)
-  build-macos-x86_64:
-    runs-on: macos-15-intel
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: x86_64-apple-darwin
-
-      - name: Build
-        run: cargo build --release --target x86_64-apple-darwin
-
-      - name: Get version
-        id: version
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Create App Bundle
-        env:
-          VERSION: ${{ steps.version.outputs.VERSION }}
-        run: |
-          APP_DIR="${BUNDLE_NAME}.app"
-          mkdir -p "$APP_DIR/Contents/MacOS"
-          mkdir -p "$APP_DIR/Contents/Resources"
-
-          cp "target/x86_64-apple-darwin/release/${APP_NAME}" "$APP_DIR/Contents/MacOS/"
-
-          sed "s/\${VERSION}/${VERSION}/g" \
-            packaging/macos/Info.plist > "$APP_DIR/Contents/Info.plist"
-
-          if [ -f packaging/macos/AppIcon.icns ]; then
-            cp packaging/macos/AppIcon.icns "$APP_DIR/Contents/Resources/"
-          fi
-
-      - name: Import Code Signing Certificate
-        if: env.MACOS_CERTIFICATE != ''
-        env:
-          MACOS_CERTIFICATE: ${{ secrets.MACOS_CERTIFICATE }}
-          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
-        run: |
-          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
-          echo "$MACOS_CERTIFICATE" | base64 --decode > certificate.p12
-          security import certificate.p12 -k build.keychain -P "$MACOS_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
-          rm certificate.p12
-
-      - name: Sign App Bundle
-        if: env.MACOS_SIGNING_IDENTITY != ''
-        env:
-          MACOS_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
-        run: |
-          codesign --force --options runtime \
-            --entitlements packaging/macos/entitlements.plist \
-            --sign "$MACOS_SIGNING_IDENTITY" \
-            "${BUNDLE_NAME}.app"
-
-      - name: Notarize App Bundle
-        if: env.APPLE_ID != ''
-        env:
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: |
-          ditto -c -k --keepParent "${BUNDLE_NAME}.app" notarize.zip
-          xcrun notarytool submit notarize.zip \
-            --apple-id "$APPLE_ID" \
-            --password "$APPLE_ID_PASSWORD" \
-            --team-id "$APPLE_TEAM_ID" \
-            --wait
-          xcrun stapler staple "${BUNDLE_NAME}.app"
-          rm notarize.zip
-
-      - name: Create DMG
-        env:
-          VERSION: ${{ steps.version.outputs.VERSION }}
-        run: |
-          brew install create-dmg
-          create-dmg \
-            --volname "${BUNDLE_NAME}" \
-            --window-pos 200 120 \
-            --window-size 600 400 \
-            --icon-size 100 \
-            --icon "${BUNDLE_NAME}.app" 150 190 \
-            --hide-extension "${BUNDLE_NAME}.app" \
-            --app-drop-link 450 190 \
-            "${APP_NAME}-${VERSION}-x86_64-apple-darwin.dmg" \
-            "${BUNDLE_NAME}.app" || true
-
-      - name: Create ZIP for auto-update
-        env:
-          VERSION: ${{ steps.version.outputs.VERSION }}
-        run: |
-          ditto -c -k --keepParent "${BUNDLE_NAME}.app" \
-            "${APP_NAME}-${VERSION}-x86_64-apple-darwin.zip"
-
-      - name: Generate checksums
-        env:
-          VERSION: ${{ steps.version.outputs.VERSION }}
-        run: |
-          shasum -a 256 "${APP_NAME}-${VERSION}-x86_64-apple-darwin.dmg" > \
-            "${APP_NAME}-${VERSION}-x86_64-apple-darwin.dmg.sha256"
-          shasum -a 256 "${APP_NAME}-${VERSION}-x86_64-apple-darwin.zip" > \
-            "${APP_NAME}-${VERSION}-x86_64-apple-darwin.zip.sha256"
+            "${APP_NAME}-${VERSION}-${{ matrix.target }}.zip"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: macos-x86_64
+          name: ${{ matrix.artifact-name }}
           path: |
-            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-x86_64-apple-darwin.dmg
-            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-x86_64-apple-darwin.dmg.sha256
-            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-x86_64-apple-darwin.zip
-            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-x86_64-apple-darwin.zip.sha256
+            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-${{ matrix.target }}.dmg
+            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-${{ matrix.target }}.zip
 
-  # Build for Windows
+  # Build for Windows (x64 and ARM64 via matrix)
   build-windows:
-    runs-on: windows-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-pc-windows-msvc
+            runner: windows-latest
+            artifact-name: windows-x86_64
+          - target: aarch64-pc-windows-msvc
+            runner: windows-11-arm
+            artifact-name: windows-arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: x86_64-pc-windows-msvc
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "release-${{ matrix.artifact-name }}"
+          cache-on-failure: true
 
       - name: Build
-        run: cargo build --release --target x86_64-pc-windows-msvc
+        run: cargo build --release --target ${{ matrix.target }}
 
       - name: Get version
         id: version
         shell: bash
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-      - name: Create ZIP
+      - name: Prepare artifacts
         shell: pwsh
         env:
           VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
-          Compress-Archive -Path "target\x86_64-pc-windows-msvc\release\$env:APP_NAME.exe" `
-            -DestinationPath "$env:APP_NAME-$env:VERSION-x86_64-pc-windows-msvc.zip"
+          # Create ZIP archive
+          Compress-Archive -Path "target\${{ matrix.target }}\release\$env:APP_NAME.exe" `
+            -DestinationPath "$env:APP_NAME-$env:VERSION-${{ matrix.target }}.zip"
 
-      - name: Generate checksum
-        shell: pwsh
-        env:
-          VERSION: ${{ steps.version.outputs.VERSION }}
-        run: |
-          $hash = Get-FileHash "$env:APP_NAME-$env:VERSION-x86_64-pc-windows-msvc.zip" -Algorithm SHA256
-          "$($hash.Hash.ToLower())  $env:APP_NAME-$env:VERSION-x86_64-pc-windows-msvc.zip" | `
-            Out-File -FilePath "$env:APP_NAME-$env:VERSION-x86_64-pc-windows-msvc.zip.sha256" -Encoding utf8
+          # Copy executable with version in filename
+          Copy-Item "target\${{ matrix.target }}\release\$env:APP_NAME.exe" `
+            "$env:APP_NAME-$env:VERSION-${{ matrix.target }}.exe"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: windows-x86_64
+          name: ${{ matrix.artifact-name }}
           path: |
-            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-x86_64-pc-windows-msvc.zip
-            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-x86_64-pc-windows-msvc.zip.sha256
+            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-${{ matrix.target }}.zip
+            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-${{ matrix.target }}.exe
 
-  # Build for Windows ARM64
-  build-windows-arm64:
-    runs-on: windows-11-arm
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-pc-windows-msvc
-
-      - name: Build
-        run: cargo build --release --target aarch64-pc-windows-msvc
-
-      - name: Get version
-        id: version
-        shell: bash
-        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Create ZIP
-        shell: pwsh
-        env:
-          VERSION: ${{ steps.version.outputs.VERSION }}
-        run: |
-          Compress-Archive -Path "target\aarch64-pc-windows-msvc\release\$env:APP_NAME.exe" `
-            -DestinationPath "$env:APP_NAME-$env:VERSION-aarch64-pc-windows-msvc.zip"
-
-      - name: Generate checksum
-        shell: pwsh
-        env:
-          VERSION: ${{ steps.version.outputs.VERSION }}
-        run: |
-          $hash = Get-FileHash "$env:APP_NAME-$env:VERSION-aarch64-pc-windows-msvc.zip" -Algorithm SHA256
-          "$($hash.Hash.ToLower())  $env:APP_NAME-$env:VERSION-aarch64-pc-windows-msvc.zip" | `
-            Out-File -FilePath "$env:APP_NAME-$env:VERSION-aarch64-pc-windows-msvc.zip.sha256" -Encoding utf8
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v6
-        with:
-          name: windows-arm64
-          path: |
-            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-aarch64-pc-windows-msvc.zip
-            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-aarch64-pc-windows-msvc.zip.sha256
-
-  # Build for Linux
+  # Build for Linux (x64 and ARM64 via matrix)
   build-linux:
-    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-latest
+            artifact-name: linux-x86_64
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-24.04-arm
+            artifact-name: linux-arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
 
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libgtk-3-dev \
-            libxcb-render0-dev \
-            libxcb-shape0-dev \
-            libxcb-xfixes0-dev \
-            libxkbcommon-dev \
-            libssl-dev \
-            libxdo-dev
+      - uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libxdo-dev libfuse2
+          version: 1.1
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: x86_64-unknown-linux-gnu
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "release-${{ matrix.artifact-name }}"
+          cache-on-failure: true
 
       - name: Build
-        run: cargo build --release --target x86_64-unknown-linux-gnu
+        run: cargo build --release --target ${{ matrix.target }}
 
       - name: Get version
         id: version
@@ -389,37 +253,56 @@ jobs:
           VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
           mkdir -p release
-          cp "target/x86_64-unknown-linux-gnu/release/${APP_NAME}" release/
-          tar -czvf "${APP_NAME}-${VERSION}-x86_64-unknown-linux-gnu.tar.gz" -C release .
+          cp "target/${{ matrix.target }}/release/${APP_NAME}" release/
+          tar -czvf "${APP_NAME}-${VERSION}-${{ matrix.target }}.tar.gz" -C release .
 
-      - name: Generate checksum
+      - name: Create AppImage
         env:
           VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
-          sha256sum "${APP_NAME}-${VERSION}-x86_64-unknown-linux-gnu.tar.gz" > \
-            "${APP_NAME}-${VERSION}-x86_64-unknown-linux-gnu.tar.gz.sha256"
+          # Download and extract appimagetool (extract to avoid FUSE issues in CI)
+          wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$(uname -m).AppImage" -O appimagetool
+          chmod +x appimagetool
+          ./appimagetool --appimage-extract
+          mv squashfs-root appimagetool-extracted
+
+          # Create AppDir structure
+          mkdir -p AppDir/usr/bin
+          mkdir -p AppDir/usr/share/applications
+          mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
+
+          # Copy binary
+          cp "target/${{ matrix.target }}/release/${APP_NAME}" AppDir/usr/bin/
+
+          # Copy desktop file and icon
+          cp packaging/linux/${APP_NAME}.desktop AppDir/usr/share/applications/
+          cp packaging/linux/${APP_NAME}.png AppDir/usr/share/icons/hicolor/256x256/apps/
+
+          # Create symlinks in AppDir root (required by AppImage)
+          ln -s usr/bin/${APP_NAME} AppDir/AppRun
+          ln -s usr/share/applications/${APP_NAME}.desktop AppDir/${APP_NAME}.desktop
+          ln -s usr/share/icons/hicolor/256x256/apps/${APP_NAME}.png AppDir/${APP_NAME}.png
+
+          # Build AppImage using extracted appimagetool
+          ARCH=$(uname -m) ./appimagetool-extracted/AppRun AppDir "${APP_NAME}-${VERSION}-${{ matrix.target }}.AppImage"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: linux-x86_64
+          name: ${{ matrix.artifact-name }}
           path: |
-            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-x86_64-unknown-linux-gnu.tar.gz
-            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-x86_64-unknown-linux-gnu.tar.gz.sha256
+            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-${{ matrix.target }}.tar.gz
+            ${{ env.APP_NAME }}-${{ steps.version.outputs.VERSION }}-${{ matrix.target }}.AppImage
 
-  # Create GitHub Release
+  # Create GitHub Release with attestations
   release:
-    needs:
-      [
-        build-macos-arm64,
-        build-macos-x86_64,
-        build-windows,
-        build-windows-arm64,
-        build-linux,
-      ]
+    needs: [build-macos, build-windows, build-linux]
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: write
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v6
 
@@ -428,19 +311,23 @@ jobs:
         run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v4
         with:
           path: artifacts
+          merge-multiple: true
 
       - name: List artifacts
-        run: find artifacts -type f
+        run: find artifacts -type f || ls -la artifacts/
+
+      - name: Generate artifact attestations
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: "artifacts/*"
 
       - name: Determine prerelease
         id: prerelease
-        env:
-          VERSION: ${{ steps.version.outputs.VERSION }}
         run: |
-          if [[ "$VERSION" == *"-"* ]]; then
+          if [[ "${{ steps.version.outputs.VERSION }}" == *"-"* ]]; then
             echo "PRERELEASE=true" >> $GITHUB_OUTPUT
           else
             echo "PRERELEASE=false" >> $GITHUB_OUTPUT
@@ -453,7 +340,6 @@ jobs:
           draft: false
           prerelease: ${{ steps.prerelease.outputs.PRERELEASE }}
           generate_release_notes: true
-          files: |
-            artifacts/**/*
+          files: artifacts/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Trial Submission Studio
+Comment=A tool for managing clinical trial submissions
+Exec=trial-submission-studio
+Icon=trial-submission-studio
+Terminal=false
+Categories=Office;Utility;
+StartupWMClass=trial-submission-studio
