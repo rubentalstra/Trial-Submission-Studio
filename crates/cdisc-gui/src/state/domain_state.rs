@@ -83,6 +83,7 @@ impl DomainSource {
 ///     m.accept_suggestion("USUBJID");
 /// });
 /// ```
+#[derive(Clone)]
 pub struct DomainState {
     /// Immutable source data (CSV)
     pub source: DomainSource,

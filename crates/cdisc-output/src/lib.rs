@@ -9,17 +9,17 @@
 mod common;
 mod dataset_xml;
 mod define_xml;
-mod types;
+pub mod types;
 mod xpt;
 
 // Re-export public types and functions
-pub use dataset_xml::{write_dataset_xml, write_dataset_xml_outputs, DatasetXmlOptions};
-pub use define_xml::{write_define_xml, DefineXmlOptions};
-pub use types::{domain_map_by_code, DomainFrame};
+pub use dataset_xml::{DatasetXmlOptions, write_dataset_xml, write_dataset_xml_outputs};
+pub use define_xml::{DefineXmlOptions, write_define_xml};
+pub use types::{DomainFrame, domain_map_by_code};
 pub use xpt::{build_xpt_dataset_with_name, write_xpt_outputs};
 
 // Re-export common utilities for external use
 pub use common::{
-    dataset_name, has_collected_data, is_expected, is_identifier, is_reference_domain, is_required,
-    normalize_study_id, should_upcase, variable_length, VariableTypeExt, SAS_NUMERIC_LEN,
+    SAS_NUMERIC_LEN, VariableTypeExt, dataset_name, has_collected_data, is_expected, is_identifier,
+    is_reference_domain, is_required, normalize_study_id, should_upcase, variable_length,
 };

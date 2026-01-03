@@ -13,20 +13,16 @@ use egui::{Color32, RichText, Ui};
 /// Render the SUPP tab
 pub fn show(ui: &mut Ui, state: &mut AppState, domain_code: &str) {
     // Check if domain exists
-    let Some(domain) = state.domain(domain_code) else {
+    if state.domain(domain_code).is_none() {
         ui.centered_and_justified(|ui| {
             ui.label(RichText::new("Domain not accessible").color(ui.visuals().error_fg_color));
         });
         return;
-    };
-
-    // Check if SUPP config needs building
-    let has_supp = domain.derived.supp.is_some();
-
-    if !has_supp {
-        // Build SUPP config
-        rebuild_supp_config(state, domain_code);
     }
+
+    // Always sync SUPP config with current unmapped columns
+    // This ensures columns that get mapped are removed from SUPP
+    sync_supp_config(state, domain_code);
 
     // Get SUPP config (clone to avoid borrow issues)
     let supp_config = state
@@ -299,7 +295,7 @@ fn show_column_detail(
         .is_some();
 
     if is_editing {
-        show_editing_form(ui, state, domain_code, &col_name, config);
+        show_editing_form(ui, state, domain_code, &col_name, &supp_config);
     } else {
         show_action_buttons(ui, state, domain_code, &col_name, config);
     }
@@ -378,7 +374,7 @@ fn show_editing_form(
     state: &mut AppState,
     domain_code: &str,
     col_name: &str,
-    _config: &SuppColumnConfig,
+    supp_config: &SuppConfig,
 ) {
     ui.label(
         RichText::new(format!(
@@ -402,12 +398,15 @@ fn show_editing_form(
     let mut qnam = current_qnam;
     let mut qlabel = current_qlabel;
 
+    // Check for duplicate QNAM (used by another column)
+    let is_qnam_duplicate = is_qnam_used_by_other(supp_config, col_name, &qnam);
+
     // QNAM input
     ui.horizontal(|ui| {
         ui.label(RichText::new("QNAM:").strong());
         ui.label(RichText::new(egui_phosphor::regular::INFO).color(Color32::BLUE))
             .on_hover_text(
-                "Maximum 8 characters\nUppercase letters and numbers only\nCannot start with a number",
+                "Maximum 8 characters\nUppercase letters and numbers only\nCannot start with a number\nMust be unique within SUPP domain",
             );
     });
 
@@ -442,8 +441,14 @@ fn show_editing_form(
                 .color(counter_color),
         );
 
-        // Validation status
-        if qnam_validation.is_ok() && !qnam.is_empty() {
+        // Validation status - check format first, then duplicates
+        if is_qnam_duplicate {
+            ui.label(
+                RichText::new("Already in use")
+                    .small()
+                    .color(ui.visuals().error_fg_color),
+            );
+        } else if qnam_validation.is_ok() && !qnam.is_empty() {
             ui.label(
                 RichText::new(egui_phosphor::regular::CHECK)
                     .small()
@@ -523,9 +528,12 @@ fn show_editing_form(
         }
     }
 
+    // Re-check duplicate after any edits (qnam may have changed)
+    let is_qnam_duplicate = is_qnam_used_by_other(supp_config, col_name, &qnam);
+
     // Action buttons
     ui.horizontal(|ui| {
-        let can_confirm = qnam_validation.is_ok() && qlabel_valid;
+        let can_confirm = qnam_validation.is_ok() && qlabel_valid && !is_qnam_duplicate;
 
         // Confirm button
         if ui
@@ -582,6 +590,28 @@ fn action_icon_color(action: SuppAction, ui: &Ui) -> (&'static str, Color32) {
     }
 }
 
+/// Check if a QNAM value is already used by another column in this SUPP config.
+/// Returns true if the QNAM is a duplicate (used by a different column with AddToSupp action).
+fn is_qnam_used_by_other(supp_config: &SuppConfig, current_col: &str, qnam: &str) -> bool {
+    if qnam.is_empty() {
+        return false;
+    }
+
+    for (col_name, config) in &supp_config.columns {
+        // Skip the current column we're editing
+        if col_name == current_col {
+            continue;
+        }
+
+        // Only check columns that are already added to SUPP
+        if config.action == SuppAction::AddToSupp && config.qnam.eq_ignore_ascii_case(qnam) {
+            return true;
+        }
+    }
+
+    false
+}
+
 /// Apply a SUPP action change with QNAM and QLABEL
 fn apply_supp_action_change(
     state: &mut AppState,
@@ -611,9 +641,11 @@ fn apply_supp_action_change(
     }
 }
 
-/// Rebuild the SUPP configuration
-fn rebuild_supp_config(state: &mut AppState, domain_code: &str) {
-    let supp_config = {
+/// Sync SUPP configuration with current unmapped columns.
+/// Preserves user decisions (AddToSupp, Skip) for columns still unmapped.
+fn sync_supp_config(state: &mut AppState, domain_code: &str) {
+    // Get current unmapped columns
+    let unmapped: Vec<String> = {
         let Some(study) = state.study() else {
             return;
         };
@@ -635,19 +667,23 @@ fn rebuild_supp_config(state: &mut AppState, domain_code: &str) {
             .collect();
 
         // Unmapped = source - mapped
-        let unmapped: Vec<String> = source_columns
+        source_columns
             .difference(&mapped_columns)
             .cloned()
-            .collect();
-
-        SuppConfig::from_unmapped(&unmapped, domain_code)
+            .collect()
     };
 
-    // Store the result in derived state (directly, no versioning)
+    // Sync existing config or create new one
     if let Some(domain) = state
         .study_mut()
         .and_then(|s| s.get_domain_mut(domain_code))
     {
-        domain.derived.supp = Some(supp_config);
+        if let Some(ref mut supp) = domain.derived.supp {
+            // Sync existing config - preserves user decisions
+            supp.sync_with_unmapped(&unmapped, domain_code);
+        } else {
+            // Create new config
+            domain.derived.supp = Some(SuppConfig::from_unmapped(&unmapped, domain_code));
+        }
     }
 }

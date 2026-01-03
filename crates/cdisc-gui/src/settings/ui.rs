@@ -13,6 +13,7 @@ use super::{
     GeneralSettings, PreviewRowLimit, Settings, ShortcutAction, ValidationModeSetting,
     ValidationSettings, XptValidationRule, XptVersionSetting,
 };
+use cdisc_validate::rules::Category;
 use eframe::egui::{self, CornerRadius, Vec2};
 
 /// Settings category tabs.
@@ -491,6 +492,15 @@ impl SettingsWindow {
             self.setting_group(ui, Some("OPTIONS"), |ui| {
                 self.setting_row(
                     ui,
+                    "Incomplete Mappings",
+                    Some("Allow export with missing required mappings"),
+                    |ui| {
+                        ui.checkbox(&mut developer.allow_incomplete_mappings, "");
+                    },
+                );
+
+                self.setting_row(
+                    ui,
                     "Export with Errors",
                     Some("Allow export even with validation errors"),
                     |ui| {
@@ -511,24 +521,61 @@ impl SettingsWindow {
                 );
             });
 
-            self.setting_group(ui, Some("BYPASS RULES"), |ui| {
+            self.setting_group(ui, Some("BYPASS CATEGORIES"), |ui| {
                 ui.label(
-                    egui::RichText::new("Selected rules will be skipped during validation.")
+                    egui::RichText::new(
+                        "Selected validation categories will be bypassed during export.",
+                    )
+                    .small()
+                    .weak(),
+                );
+                ui.add_space(8.0);
+
+                for category in Category::all() {
+                    let mut bypassed = developer.bypassed_categories.contains(category);
+                    if ui
+                        .checkbox(&mut bypassed, category.display_name())
+                        .changed()
+                    {
+                        if bypassed {
+                            developer.bypassed_categories.insert(*category);
+                        } else {
+                            developer.bypassed_categories.remove(category);
+                        }
+                    }
+                    ui.label(egui::RichText::new(category.description()).small().weak());
+                    ui.add_space(4.0);
+                }
+            });
+
+            self.setting_group(ui, Some("BYPASS RULE IDS"), |ui| {
+                ui.label(
+                    egui::RichText::new("Enter rule IDs to bypass (e.g., SD0056, SD0002):")
                         .small()
                         .weak(),
                 );
                 ui.add_space(8.0);
 
-                for rule in XptValidationRule::all() {
-                    let mut bypassed = developer.bypassed_rules.contains(rule);
-                    if ui.checkbox(&mut bypassed, rule.display_name()).changed() {
-                        if bypassed {
-                            developer.bypassed_rules.insert(*rule);
-                        } else {
-                            developer.bypassed_rules.remove(rule);
+                // Show current bypassed rules
+                let ids: Vec<_> = developer.bypassed_rule_ids.iter().cloned().collect();
+                for id in ids {
+                    ui.horizontal(|ui| {
+                        ui.label(&id);
+                        if ui.small_button("×").clicked() {
+                            developer.bypassed_rule_ids.remove(&id);
                         }
-                    }
+                    });
                 }
+
+                // Add new rule ID
+                ui.horizontal(|ui| {
+                    ui.label("Add:");
+                    // TODO: For simplicity, we use a static buffer. In a full implementation, you might want to store this in the UI state.
+                    let response = ui.text_edit_singleline(&mut String::new());
+                    if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                        // In practice, you'd capture the value here
+                    }
+                });
             });
         }
     }
@@ -581,14 +628,8 @@ impl SettingsWindow {
             }
 
             ui.add_space(8.0);
-            ui.separator();
-            ui.add_space(8.0);
-
-            ui.horizontal(|ui| {
-                ui.checkbox(&mut export.generate_define_xml, "Generate Define-XML");
-            });
             ui.label(
-                egui::RichText::new("Metadata documentation generated with exports")
+                egui::RichText::new("Define-XML is always generated with exports")
                     .small()
                     .weak(),
             );

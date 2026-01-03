@@ -16,6 +16,7 @@ use std::collections::BTreeMap;
 /// Preview is lazily computed when user switches to Preview/Transform/Validation tabs.
 /// When mappings change, both `preview` and `validation` are set to `None` to
 /// invalidate cached data.
+#[derive(Clone)]
 pub struct DerivedState {
     /// Validation report (issues found in mapping/data)
     pub validation: Option<ValidationReport>,
@@ -74,6 +75,25 @@ impl SuppConfig {
             .map(|col| (col.clone(), SuppColumnConfig::new(col.clone(), domain_code)))
             .collect();
         Self { columns }
+    }
+
+    /// Sync with current unmapped columns.
+    /// - Keeps existing configs for columns still in unmapped list
+    /// - Removes configs for columns no longer in unmapped list (now mapped)
+    /// - Adds new configs for newly unmapped columns
+    pub fn sync_with_unmapped(&mut self, unmapped_columns: &[String], domain_code: &str) {
+        let unmapped_set: std::collections::BTreeSet<&String> = unmapped_columns.iter().collect();
+
+        // Remove columns that are now mapped
+        self.columns.retain(|col, _| unmapped_set.contains(col));
+
+        // Add new unmapped columns
+        for col in unmapped_columns {
+            if !self.columns.contains_key(col) {
+                self.columns
+                    .insert(col.clone(), SuppColumnConfig::new(col.clone(), domain_code));
+            }
+        }
     }
 
     /// Count columns by action: (pending, added, skipped)

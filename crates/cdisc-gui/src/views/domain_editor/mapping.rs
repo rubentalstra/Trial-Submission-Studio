@@ -870,11 +870,11 @@ fn show_source_mapping_inline(
                 }
                 state.invalidate_preview(domain_code);
             }
-            show_manual_mapping_ui(ui, state, domain_code, &var_name_owned, is_subjid, core);
+            show_manual_mapping_ui(ui, state, domain_code, &var_name_owned, is_subjid);
             show_alternative_actions(ui, state, domain_code, &var_name_owned, core);
         }
         VariableStatus::Unmapped => {
-            show_manual_mapping_ui(ui, state, domain_code, &var_name_owned, is_subjid, core);
+            show_manual_mapping_ui(ui, state, domain_code, &var_name_owned, is_subjid);
             show_alternative_actions(ui, state, domain_code, &var_name_owned, core);
         }
     }
@@ -896,14 +896,24 @@ fn show_manual_mapping_ui(
     domain_code: &str,
     var_name: &str,
     is_subjid: bool,
-    _core: Option<CoreDesignation>,
 ) {
-    // Get source columns for combo box
-    let source_columns: Vec<String> = state
+    // Get source columns and already-mapped columns
+    let (source_columns, used_columns): (Vec<String>, std::collections::HashSet<String>) = state
         .study
         .as_ref()
         .and_then(|s| s.get_domain(domain_code))
-        .map(|d| d.source.columns())
+        .map(|d| {
+            let sources = d.source.columns();
+            // Get source columns that are already mapped to OTHER variables
+            let used: std::collections::HashSet<String> = d
+                .mapping
+                .all_accepted()
+                .iter()
+                .filter(|(target_var, _)| *target_var != var_name) // Exclude current variable
+                .map(|(_, (src_col, _))| src_col.clone())
+                .collect();
+            (sources, used)
+        })
         .unwrap_or_default();
 
     let is_usubjid = var_name.eq_ignore_ascii_case("USUBJID");
@@ -931,7 +941,16 @@ fn show_manual_mapping_ui(
         .selected_text(placeholder)
         .show_ui(ui, |ui| {
             for col in source_columns {
-                if ui.selectable_label(false, &col).clicked() {
+                let is_used = used_columns.contains(&col);
+
+                // Show used columns as disabled/grayed out
+                if is_used {
+                    ui.add_enabled(
+                        false,
+                        egui::Button::new(RichText::new(format!("{} (in use)", col)).weak())
+                            .frame(false),
+                    );
+                } else if ui.selectable_label(false, &col).clicked() {
                     if let Some(domain) = state.domain_mut(domain_code) {
                         let col_clone = col.clone();
                         domain.with_mapping(|ms| {

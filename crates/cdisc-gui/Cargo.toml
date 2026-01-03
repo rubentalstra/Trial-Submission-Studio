@@ -28,7 +28,8 @@ cdisc-ingest = { path = "../cdisc-ingest" }
 cdisc-map = { path = "../cdisc-map" }
 cdisc-transform = { path = "../cdisc-transform" }
 cdisc-validate = { path = "../cdisc-validate" }
-# cdisc-output = { path = "../cdisc-output" }  # TODO: Wire up when export is implemented
+cdisc-output = { path = "../cdisc-output" }
+cdisc-xpt = { path = "../cdisc-xpt" }
 
 # Common dependencies
 anyhow.workspace = true
@@ -48,7 +49,7 @@ egui-phosphor = "0.11.0" # Icon set
 directories = "6.0"      # Cross-platform app directories
 toml = "0.9.8"           # Config file format
 muda = "0.17.1"          # Native menu bar (by Tauri team)
-crossbeam-channel = "0.5" # For muda menu events
+crossbeam-channel = "0.5.15" # For muda menu events
 
 # Platform-specific
 [target.'cfg(target_os = "macos")'.dependencies]

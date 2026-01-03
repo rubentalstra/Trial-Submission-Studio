@@ -6,6 +6,7 @@ use cdisc_model::TerminologyRegistry;
 use crossbeam_channel::{Receiver, Sender};
 
 use super::{DomainState, StudyState, UiState};
+use crate::export::{ExportPhase, ExportUpdate};
 use crate::services::PreviewResult;
 use crate::settings::Settings;
 
@@ -29,11 +30,16 @@ pub struct AppState {
     pub preview_receiver: Receiver<PreviewResult>,
     /// Sender for spawning preview tasks (cloned to background threads)
     pub preview_sender: Sender<PreviewResult>,
+    /// Channel for receiving export updates from background threads
+    pub export_receiver: Receiver<ExportUpdate>,
+    /// Sender for spawning export tasks (cloned to background threads)
+    pub export_sender: Sender<ExportUpdate>,
 }
 
 impl Default for AppState {
     fn default() -> Self {
         let (preview_sender, preview_receiver) = crossbeam_channel::unbounded();
+        let (export_sender, export_receiver) = crossbeam_channel::unbounded();
         Self {
             view: View::default(),
             workflow_mode: WorkflowMode::default(),
@@ -43,6 +49,8 @@ impl Default for AppState {
             ct_registry: None,
             preview_receiver,
             preview_sender,
+            export_receiver,
+            export_sender,
         }
     }
 }
@@ -51,6 +59,7 @@ impl AppState {
     /// Create new app state with loaded settings.
     pub fn new(settings: Settings) -> Self {
         let (preview_sender, preview_receiver) = crossbeam_channel::unbounded();
+        let (export_sender, export_receiver) = crossbeam_channel::unbounded();
         Self {
             view: View::default(),
             workflow_mode: WorkflowMode::default(),
@@ -60,6 +69,36 @@ impl AppState {
             ct_registry: None,
             preview_receiver,
             preview_sender,
+            export_receiver,
+            export_sender,
+        }
+    }
+
+    /// Poll for export updates from background thread.
+    ///
+    /// Call this each frame when export is in progress.
+    pub fn poll_export_updates(&mut self) {
+        while let Ok(update) = self.export_receiver.try_recv() {
+            match update {
+                ExportUpdate::Progress { domain, step } => {
+                    self.ui.export.current_domain = Some(domain);
+                    self.ui.export.current_step = step;
+                }
+                ExportUpdate::FileWritten { path } => {
+                    self.ui.export.written_files.push(path);
+                }
+                ExportUpdate::Complete { result } => {
+                    self.ui.export.result = Some(Ok(result));
+                    self.ui.export.phase = ExportPhase::Complete;
+                }
+                ExportUpdate::Error { error } => {
+                    self.ui.export.result = Some(Err(error));
+                    self.ui.export.phase = ExportPhase::Complete;
+                }
+                ExportUpdate::Cancelled => {
+                    self.ui.export.reset();
+                }
+            }
         }
     }
 

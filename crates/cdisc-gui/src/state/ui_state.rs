@@ -4,9 +4,9 @@
 //! pagination, search filters) that was previously scattered
 //! throughout domain state.
 
-use crate::settings::{ExportFormat, Settings};
-use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
+use crate::export::ExportUiState;
+use crate::settings::Settings;
+use std::collections::HashMap;
 
 // ============================================================================
 // Top-Level UI State
@@ -270,120 +270,4 @@ impl SettingsUiState {
     }
 }
 
-// ============================================================================
-// Export UI State
-// ============================================================================
-
-/// UI state for the Export screen.
-#[derive(Debug, Clone, Default)]
-pub struct ExportUiState {
-    /// Domains selected for export (domain codes)
-    pub selected_domains: HashSet<String>,
-    /// Override output directory (if different from default)
-    pub output_dir_override: Option<PathBuf>,
-    /// Override export format (if different from settings default)
-    pub format_override: Option<ExportFormat>,
-    /// Current export progress (None if not exporting)
-    pub progress: Option<ExportProgress>,
-}
-
-impl ExportUiState {
-    /// Toggle domain selection.
-    pub fn toggle_domain(&mut self, code: &str) {
-        if self.selected_domains.contains(code) {
-            self.selected_domains.remove(code);
-        } else {
-            self.selected_domains.insert(code.to_string());
-        }
-    }
-
-    /// Select all domains from a list.
-    pub fn select_all(&mut self, codes: impl IntoIterator<Item = impl AsRef<str>>) {
-        for code in codes {
-            self.selected_domains.insert(code.as_ref().to_string());
-        }
-    }
-
-    /// Deselect all domains.
-    pub fn deselect_all(&mut self) {
-        self.selected_domains.clear();
-    }
-
-    /// Get the number of selected domains.
-    pub fn selection_count(&self) -> usize {
-        self.selected_domains.len()
-    }
-
-    /// Reset export state (e.g., when loading a new study).
-    pub fn reset(&mut self) {
-        self.selected_domains.clear();
-        self.output_dir_override = None;
-        self.format_override = None;
-        self.progress = None;
-    }
-}
-
-// ============================================================================
-// Export Progress
-// ============================================================================
-
-/// Export progress tracking.
-#[derive(Debug, Clone)]
-pub struct ExportProgress {
-    /// Current step description
-    pub current_step: String,
-    /// Total domains to process
-    pub total_domains: usize,
-    /// Completed domains count
-    pub completed_domains: usize,
-    /// Individual step within current domain
-    pub domain_step: ExportDomainStep,
-    /// Any error that occurred
-    pub error: Option<String>,
-    /// Export completed successfully
-    pub completed: bool,
-}
-
-impl ExportProgress {
-    /// Get overall progress as a fraction (0.0 to 1.0).
-    pub fn fraction(&self) -> f32 {
-        if self.total_domains == 0 {
-            return 1.0;
-        }
-        let domain_fraction = self.completed_domains as f32 / self.total_domains as f32;
-        let step_fraction = match self.domain_step {
-            ExportDomainStep::Pending => 0.0,
-            ExportDomainStep::ApplyingMappings => 0.15,
-            ExportDomainStep::NormalizingCT => 0.30,
-            ExportDomainStep::GeneratingVariables => 0.45,
-            ExportDomainStep::ValidatingOutput => 0.60,
-            ExportDomainStep::WritingXpt => 0.80,
-            ExportDomainStep::WritingDefineXml => 0.95,
-            ExportDomainStep::Complete => 1.0,
-        };
-        // Each domain contributes equally to overall progress
-        let per_domain = 1.0 / self.total_domains as f32;
-        domain_fraction + (step_fraction * per_domain)
-    }
-
-    /// Check if export is in progress.
-    pub fn is_in_progress(&self) -> bool {
-        !self.completed && self.error.is_none()
-    }
-}
-
-/// Steps within a domain export.
-/// Note: Variants are used in fraction() calculation even if not constructed yet.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[allow(dead_code)]
-pub enum ExportDomainStep {
-    #[default]
-    Pending,
-    ApplyingMappings,
-    NormalizingCT,
-    GeneratingVariables,
-    ValidatingOutput,
-    WritingXpt,
-    WritingDefineXml,
-    Complete,
-}
+// Note: ExportUiState is now in crate::export::types

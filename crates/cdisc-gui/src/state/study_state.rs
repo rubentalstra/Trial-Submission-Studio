@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 /// Runtime state for a loaded study.
+#[derive(Clone)]
 pub struct StudyState {
     /// Study identifier (derived from folder name)
     pub study_id: String,

@@ -292,10 +292,14 @@ impl Default for ValidationSettings {
 pub struct DeveloperSettings {
     /// Enable developer mode.
     pub enabled: bool,
-    /// Rules to bypass when developer mode is enabled.
-    pub bypassed_rules: HashSet<XptValidationRule>,
     /// Allow export even with validation errors.
     pub allow_export_with_errors: bool,
+    /// Allow export with incomplete required mappings.
+    pub allow_incomplete_mappings: bool,
+    /// Bypass entire validation categories.
+    pub bypassed_categories: HashSet<cdisc_validate::rules::Category>,
+    /// Bypass specific rule IDs (e.g., "SD0056").
+    pub bypassed_rule_ids: HashSet<String>,
     /// Show extra debug information in the UI.
     pub show_debug_info: bool,
 }
@@ -304,8 +308,10 @@ impl Default for DeveloperSettings {
     fn default() -> Self {
         Self {
             enabled: false,
-            bypassed_rules: HashSet::new(),
             allow_export_with_errors: false,
+            allow_incomplete_mappings: false,
+            bypassed_categories: HashSet::new(),
+            bypassed_rule_ids: HashSet::new(),
             show_debug_info: false,
         }
     }
@@ -350,6 +356,7 @@ impl ExportFormat {
 }
 
 /// Export default settings.
+/// Note: Define-XML is always generated alongside data files - no option to skip.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ExportSettings {
@@ -357,8 +364,6 @@ pub struct ExportSettings {
     pub default_output_dir: Option<PathBuf>,
     /// Default export format (XPT or Dataset-XML).
     pub default_format: ExportFormat,
-    /// Generate Define-XML alongside data export (always recommended).
-    pub generate_define_xml: bool,
     /// Filename template (e.g., "{domain}").
     pub filename_template: String,
     /// Overwrite existing files without prompting.
@@ -370,7 +375,6 @@ impl Default for ExportSettings {
         Self {
             default_output_dir: None,
             default_format: ExportFormat::Xpt,
-            generate_define_xml: true, // Always generate Define-XML by default
             filename_template: "{domain}".to_string(),
             overwrite_without_prompt: false,
         }

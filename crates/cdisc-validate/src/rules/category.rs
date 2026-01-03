@@ -17,6 +17,20 @@ pub enum Category {
 }
 
 impl Category {
+    /// Get all validation categories.
+    pub const fn all() -> &'static [Self] {
+        &[
+            Self::Terminology,
+            Self::Presence,
+            Self::Format,
+            Self::Consistency,
+            Self::Limit,
+            Self::Metadata,
+            Self::CrossReference,
+            Self::Structure,
+        ]
+    }
+
     /// Parse category from CSV string.
     pub fn from_str(s: &str) -> Self {
         match s.trim().to_lowercase().as_str() {
@@ -44,6 +58,26 @@ impl Category {
             Self::CrossReference => "Cross Reference",
             Self::Structure => "Structure",
             Self::Unknown => "Unknown",
+        }
+    }
+
+    /// Display name for UI.
+    pub fn display_name(&self) -> &'static str {
+        self.label()
+    }
+
+    /// Description for UI.
+    pub fn description(&self) -> &'static str {
+        match self {
+            Self::Terminology => "Controlled terminology and codelist checks",
+            Self::Presence => "Required and expected variable checks",
+            Self::Format => "Data format and type validation",
+            Self::Consistency => "Cross-variable consistency checks",
+            Self::Limit => "Value length and range limits",
+            Self::Metadata => "Metadata completeness checks",
+            Self::CrossReference => "Cross-domain reference checks",
+            Self::Structure => "Dataset structure validation",
+            Self::Unknown => "Uncategorized rules",
         }
     }
 }

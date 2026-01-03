@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::rules::{Rule, RuleRegistry};
+use crate::rules::{Category, Rule, RuleRegistry};
 
 /// Issue severity level.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -147,6 +147,26 @@ impl Issue {
                 duplicate_count, ..
             } => Some(*duplicate_count),
             Issue::CtViolation { invalid_count, .. } => Some(*invalid_count),
+        }
+    }
+
+    /// Category for this issue type.
+    pub fn category(&self) -> Category {
+        match self {
+            // Presence checks
+            Issue::RequiredMissing { .. } => Category::Presence,
+            Issue::RequiredEmpty { .. } => Category::Presence,
+            Issue::ExpectedMissing { .. } => Category::Presence,
+            Issue::IdentifierNull { .. } => Category::Presence,
+            // Format checks
+            Issue::InvalidDate { .. } => Category::Format,
+            Issue::TextTooLong { .. } => Category::Limit,
+            // Type checks
+            Issue::DataTypeMismatch { .. } => Category::Format,
+            // Consistency checks
+            Issue::DuplicateSequence { .. } => Category::Consistency,
+            // Terminology checks
+            Issue::CtViolation { .. } => Category::Terminology,
         }
     }
 
