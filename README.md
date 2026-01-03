@@ -1,4 +1,4 @@
-# CDISC Transpiler (Rust)
+# Trial Submission Studio (Rust)
 
 A Rust-first CLI tool for transpiling clinical trial source data into CDISC SDTM
 outputs (XPT, Dataset-XML, Define-XML) with strict, offline validation.
