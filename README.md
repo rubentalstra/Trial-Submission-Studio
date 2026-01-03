@@ -258,7 +258,12 @@ MIT License - see [LICENSE](LICENSE)
 
 ## References
 
-[record-layout-of-a-sas-version-5-or-6-data-set-in-sas-transport-xport-format.pdf](crates/tss-xpt/record-layout-of-a-sas-version-5-or-6-data-set-in-sas-transport-xport-format.pdf)
-[record-layout-of-a-sas-version-8-or-9-data-set-in-sas-transport-format.pdf](crates/tss-xpt/record-layout-of-a-sas-version-8-or-9-data-set-in-sas-transport-format.pdf)
+<<<<<<< HEAD
+
+=======
+
+>>>>>>> b0b8aa2 (Add roundtrip tests for XPT V5 and V8 formats)
+>>>>>>> [record-layout-of-a-sas-version-5-or-6-data-set-in-sas-transport-xport-format.pdf](crates/tss-xpt/record-layout-of-a-sas-version-5-or-6-data-set-in-sas-transport-xport-format.pdf)
+>>>>>>> [record-layout-of-a-sas-version-8-or-9-data-set-in-sas-transport-format.pdf](crates/tss-xpt/record-layout-of-a-sas-version-8-or-9-data-set-in-sas-transport-format.pdf)
 
 >>>>>>> 6978fab (refactored the whole codebase to the new name. (#41))
