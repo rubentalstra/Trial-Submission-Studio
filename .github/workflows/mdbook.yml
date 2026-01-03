@@ -1,15 +1,15 @@
 # mdBook Documentation Workflow
 # Builds and deploys documentation to GitHub Pages with caching and link checking
-name: Deploy mdBook site to Pages
+name: mdBook
 
 on:
   push:
-    branches: ["main"]
+    branches: [ "main" ]
     paths:
       - "docs/**"
       - ".github/workflows/mdbook.yml"
   pull_request:
-    branches: ["main"]
+    branches: [ "main" ]
     paths:
       - "docs/**"
       - ".github/workflows/mdbook.yml"
@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Cache mdBook binaries
         id: cache-mdbook
@@ -70,7 +70,7 @@ jobs:
 
       - name: Upload artifact
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v4
         with:
           path: docs/book
 
