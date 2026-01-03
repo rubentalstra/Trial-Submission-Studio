@@ -1,22 +1,17 @@
 # Contributing to Trial Submission Studio
 
-Thank you for your interest in contributing to Trial Submission Studio. This project
-is transitioning from a Python CLI to a Rust-first GUI. The Python implementation
-remains as a reference until Rust parity is achieved.
+Thank you for your interest in contributing! This guide will help you get started.
 
 ## Table of Contents
 
-- Code of Conduct
-- Getting Started
-- Development Setup
-- Development Workflow
-- Coding Standards
-- Testing Guidelines
-- Submitting Changes
-- Issue Guidelines
-- Pull Request Process
-- Architecture Guidelines
-- Documentation
+- [Code of Conduct](#code-of-conduct)
+- [Getting Started](#getting-started)
+- [Development Setup](#development-setup)
+- [Project Architecture](#project-architecture)
+- [Development Workflow](#development-workflow)
+- [Coding Standards](#coding-standards)
+- [Testing](#testing)
+- [Submitting Changes](#submitting-changes)
 
 ## Code of Conduct
 
@@ -31,17 +26,15 @@ Please keep collaboration respectful and constructive:
 
 ### Prerequisites
 
-- Rust toolchain (see `rust-toolchain.toml` for version)
+- Rust 1.92+ (see `rust-toolchain.toml`)
 - Git
-- Basic familiarity with CDISC SDTM standards
-- Python only if working on legacy code or parity tests
+- (Optional) Basic familiarity with CDISC SDTM standards
 
-### Finding Issues to Work On
+### Finding Issues
 
-1. Check the GitHub issues page
-2. Look for `good-first-issue` or `help-wanted`
-3. Review `docs/REFRACTOR_PLAN.md` and `docs/RUST_CLI_TASKS.md`
-4. Comment on an issue before starting work
+1. Check GitHub Issues
+2. Look for `good-first-issue` or `help-wanted` labels
+3. Comment on an issue before starting work
 
 ## Development Setup
 
@@ -54,36 +47,65 @@ cd trial-submission-studio
 git remote add upstream https://github.com/rubentalstra/trial-submission-studio.git
 ```
 
-### 2. Install Rust Toolchain
+### 2. Install Rust
 
 ```bash
 rustup show
 rustup toolchain install 1.92
 ```
 
-### 3. Build and Test
+### 3. Build and Run
 
 ```bash
+# Build all crates
 cargo build
+
+# Run the GUI application
+cargo run --package tss-gui
+
+# Run tests
 cargo test
+
+# Run lints
+cargo clippy
 ```
 
-### 4. Legacy Python (Optional)
+## Project Architecture
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -e .[dev]
-pytest
-```
+Trial Submission Studio is organized as a 10-crate Rust workspace:
+
+| Crate | Purpose |
+|-------|---------|
+| `tss-gui` | Desktop GUI application (egui/eframe) |
+| `tss-xpt` | XPT (SAS Transport) file I/O |
+| `tss-validate` | CDISC conformance validation |
+| `tss-map` | Fuzzy column mapping engine |
+| `tss-transform` | Data transformation rules |
+| `tss-ingest` | CSV discovery and parsing |
+| `tss-output` | Multi-format export (XPT, XML) |
+| `tss-standards` | CDISC standards loader |
+| `tss-model` | Core domain types |
+| `tss-common` | Shared utilities |
+
+### Key Directories
+
+- `crates/` - All Rust crates
+- `standards/` - Embedded CDISC standards (SDTM, ADaM, SEND, CT)
+- `mockdata/` - Test datasets
+- `docs/` - Technical documentation
 
 ## Development Workflow
 
-1. Create a branch off `main`
-2. Implement changes in the appropriate crate
+1. Create a branch from `main`
+2. Make changes in the appropriate crate
 3. Add or update tests
-4. Run `cargo fmt`, `cargo clippy`, and `cargo test`
-5. Open a pull request with a clear description
+4. Run quality checks:
+   ```bash
+   cargo fmt
+   cargo clippy
+   cargo test
+   ```
+5. Open a pull request
 
 ## Coding Standards
 
@@ -92,34 +114,40 @@ pytest
 - Use `cargo fmt` for formatting
 - Address all `cargo clippy` warnings
 - Prefer explicit types for public APIs
-- Keep error messages actionable and user-facing
+- Write actionable, user-facing error messages
 
-### Code Organization
+### Architecture Principles
 
-Follow the workspace crate boundaries:
+- Keep business logic out of GUI and I/O layers
+- Maintain deterministic, auditable behavior
+- Prefer pure functions in mapping and validation
+- Standards are embedded locally (no external API calls during validation)
 
-- `sdtm-cli`: CLI parsing and dependency wiring
-- `sdtm-core`: use cases and orchestration
-- `sdtm-map`: mapping engine and heuristics
-- `sdtm-standards`: SDTM/CT loaders
-- `sdtm-validate`: conformance checks
-- `sdtm-report`: output writers and summaries
+## Testing
 
-## Testing Guidelines
+### Test Types
 
-- Unit tests for mapping, transformers, and processors
-- Integration tests for end-to-end study processing
-- Golden tests for output parity
-- Performance tests for regression detection
+- **Unit tests**: Per-function/module tests
+- **Integration tests**: End-to-end workflows
+- **Snapshot tests**: Using `insta` for output stability
+- **Property tests**: Using `proptest` for edge cases
 
-Run:
+### Running Tests
 
 ```bash
+# All tests
 cargo test
-cargo clippy
+
+# Specific crate
+cargo test --package tss-xpt
+
+# With output
+cargo test -- --nocapture
 ```
 
 ## Submitting Changes
+
+### Commit Messages
 
 Use conventional commits:
 
@@ -127,29 +155,17 @@ Use conventional commits:
 - `fix:` bug fixes
 - `docs:` documentation
 - `test:` tests
-- `refactor:` refactors
-- `perf:` performance
+- `refactor:` code refactoring
+- `perf:` performance improvements
 - `chore:` maintenance
 
-## Issue Guidelines
-
-- Provide a clear, reproducible description
-- Include sample inputs when possible
-- Note expected vs actual behavior
-
-## Pull Request Process
+### Pull Request Guidelines
 
 - Keep PRs focused and scoped
-- Reference issues in the PR description
-- Include tests or explain why not
+- Reference related issues
+- Include tests for new functionality
+- Update documentation if needed
 
-## Architecture Guidelines
+## Questions?
 
-- Keep business logic out of CLI and I/O layers
-- Maintain deterministic behavior and offline constraints
-- Prefer pure functions in mapping and validation stages
-
-## Documentation
-
-- Update `docs/REFRACTOR_PLAN.md` for strategy changes
-- Update `docs/RUST_CLI_TASKS.md` when adding or finishing tasks
+Open an issue or start a discussion on GitHub.
