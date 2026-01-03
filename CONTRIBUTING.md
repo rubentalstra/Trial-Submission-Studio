@@ -1,12 +1,12 @@
 # Contributing to Trial Submission Studio
 
-<<<<<<< HEAD
-Thank you for your interest in contributing! This guide will help you get started.
-=======
-Thank you for your interest in contributing to Trial Submission Studio. This project
-is transitioning from a Python CLI to a Rust-first GUI. The Python implementation
-remains as a reference until Rust parity is achieved.
->>>>>>> 6978fab (refactored the whole codebase to the new name.  (#41))
+# <<<<<<< HEAD Thank you for your interest in contributing! This guide will help you get started.
+
+Thank you for your interest in contributing to Trial Submission Studio. This
+project is transitioning from a Python CLI to a Rust-first GUI. The Python
+implementation remains as a reference until Rust parity is achieved.
+
+>>>>>>> 6978fab (refactored the whole codebase to the new name. (#41))
 
 ## Table of Contents
 
@@ -81,7 +81,7 @@ cargo clippy
 Trial Submission Studio is organized as a 10-crate Rust workspace:
 
 | Crate           | Purpose                               |
-|-----------------|---------------------------------------|
+| --------------- | ------------------------------------- |
 | `tss-gui`       | Desktop GUI application (egui/eframe) |
 | `tss-xpt`       | XPT (SAS Transport) file I/O          |
 | `tss-validate`  | CDISC conformance validation          |
