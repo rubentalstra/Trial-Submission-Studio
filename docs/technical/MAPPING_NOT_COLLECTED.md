@@ -4,6 +4,7 @@ The `not_collected` map stores variable → reason pairs that will be used when
 generating Define-XML:
 
 ```xml
+
 <ItemDef OID="IT.DM.RFSTDTC" Name="RFSTDTC" ...>
 <Description>
 <TranslatedText xml:lang="en">Reference Start Date/Time</TranslatedText>
