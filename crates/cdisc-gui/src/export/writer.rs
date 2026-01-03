@@ -8,8 +8,10 @@ use super::types::{
 };
 use crate::settings::ExportFormat;
 use crate::state::StudyState;
+use cdisc_model::Domain;
 use cdisc_output::types::DomainFrame;
 use crossbeam_channel::Sender;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
@@ -101,6 +103,9 @@ fn execute_export(
 
         let frame = DomainFrame::new(domain_code.clone(), preview_df.clone());
 
+        // Build variable metadata from domain definition
+        let variable_metadata = build_variable_metadata(domain.mapping.domain());
+
         // Write data file (lowercase filename)
         sender
             .send(ExportUpdate::Progress {
@@ -115,7 +120,7 @@ fn execute_export(
             config.format.extension()
         );
         let path = datasets_dir.join(&filename);
-        write_data_file(&path, &frame, config.format)?;
+        write_data_file(&path, &frame, config.format, &variable_metadata)?;
 
         // Track written file
         if let Ok(mut files) = written_files.lock() {
@@ -139,7 +144,9 @@ fn execute_export(
                     config.format.extension()
                 );
                 let supp_path = datasets_dir.join(&supp_filename);
-                write_data_file(&supp_path, &supp_frame, config.format)?;
+                // Use SUPP-specific metadata (standard SUPP variables)
+                let supp_metadata = build_supp_variable_metadata();
+                write_data_file(&supp_path, &supp_frame, config.format, &supp_metadata)?;
 
                 if let Ok(mut files) = written_files.lock() {
                     files.push(supp_path.clone());
@@ -193,17 +200,130 @@ fn write_data_file(
     path: &Path,
     frame: &DomainFrame,
     format: ExportFormat,
+    variable_metadata: &HashMap<String, VariableMetadata>,
 ) -> Result<(), ExportError> {
     match format {
-        ExportFormat::Xpt => write_xpt_file(path, frame),
+        ExportFormat::Xpt => write_xpt_file(path, frame, variable_metadata),
         ExportFormat::DatasetXml => write_dataset_xml_file(path, frame),
     }
 }
 
+/// Variable metadata for XPT export.
+#[derive(Debug, Clone, Default)]
+struct VariableMetadata {
+    /// Human-readable label (max 40 chars).
+    label: Option<String>,
+    /// SAS format (e.g., "$200.", "8.", "DATE9.").
+    format: Option<String>,
+}
+
+/// Build variable metadata map from domain definition.
+fn build_variable_metadata(domain: &Domain) -> HashMap<String, VariableMetadata> {
+    domain
+        .variables
+        .iter()
+        .map(|v| {
+            let name = v.name.to_uppercase();
+            let label = v.label.clone();
+            // Derive SAS format from data type and length
+            let format = match v.data_type {
+                cdisc_model::VariableType::Char => {
+                    let len = v.length.unwrap_or(200).min(200);
+                    Some(format!("${len}."))
+                }
+                cdisc_model::VariableType::Num => Some("8.".to_string()),
+            };
+            (name, VariableMetadata { label, format })
+        })
+        .collect()
+}
+
+/// Parse a SAS format string into components.
+///
+/// Examples:
+/// - "$200." -> (Some("$"), 200, 0)
+/// - "8." -> (None, 8, 0)
+/// - "DATE9." -> (Some("DATE"), 9, 0)
+/// - "12.2" -> (None, 12, 2)
+fn parse_sas_format(format: &Option<String>) -> (Option<String>, u16, u16) {
+    let Some(fmt) = format else {
+        return (None, 0, 0);
+    };
+
+    let fmt = fmt.trim();
+    if fmt.is_empty() {
+        return (None, 0, 0);
+    }
+
+    // Character format: $<length>.
+    if fmt.starts_with('$') {
+        let len_str = fmt.trim_start_matches('$').trim_end_matches('.');
+        let length = len_str.parse::<u16>().unwrap_or(8);
+        return (Some("$".to_string()), length, 0);
+    }
+
+    // Named format: NAME<length>. or NAME<length>.<decimals>
+    // Find where digits start
+    let name_end = fmt.chars().position(|c| c.is_ascii_digit()).unwrap_or(0);
+
+    if name_end > 0 {
+        // Named format (e.g., DATE9., BEST12.)
+        let name = fmt[..name_end].to_string();
+        let rest = fmt[name_end..].trim_end_matches('.');
+        let parts: Vec<&str> = rest.split('.').collect();
+        let length = parts.first().and_then(|s| s.parse().ok()).unwrap_or(8);
+        let decimals = parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(0);
+        (Some(name), length, decimals)
+    } else {
+        // Numeric format: <length>. or <length>.<decimals>
+        let rest = fmt.trim_end_matches('.');
+        let parts: Vec<&str> = rest.split('.').collect();
+        let length = parts.first().and_then(|s| s.parse().ok()).unwrap_or(8);
+        let decimals = parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(0);
+        (None, length, decimals)
+    }
+}
+
+/// Build variable metadata for SUPP domains.
+///
+/// SUPP domains have standard variables per SDTM IG 3.4 Section 8.4.
+fn build_supp_variable_metadata() -> HashMap<String, VariableMetadata> {
+    let supp_vars = [
+        ("STUDYID", "Study Identifier", "$20."),
+        ("RDOMAIN", "Related Domain Abbreviation", "$2."),
+        ("USUBJID", "Unique Subject Identifier", "$40."),
+        ("IDVAR", "Identifying Variable", "$8."),
+        ("IDVARVAL", "Identifying Variable Value", "$40."),
+        ("QNAM", "Qualifier Variable Name", "$8."),
+        ("QLABEL", "Qualifier Variable Label", "$40."),
+        ("QVAL", "Data Value", "$200."),
+        ("QORIG", "Origin", "$40."),
+        ("QEVAL", "Evaluator", "$40."),
+    ];
+
+    supp_vars
+        .iter()
+        .map(|(name, label, format)| {
+            (
+                name.to_string(),
+                VariableMetadata {
+                    label: Some(label.to_string()),
+                    format: Some(format.to_string()),
+                },
+            )
+        })
+        .collect()
+}
+
 /// Write an XPT file.
-fn write_xpt_file(path: &Path, frame: &DomainFrame) -> Result<(), ExportError> {
+fn write_xpt_file(
+    path: &Path,
+    frame: &DomainFrame,
+    variable_metadata: &HashMap<String, VariableMetadata>,
+) -> Result<(), ExportError> {
     use cdisc_xpt::{
-        MissingValue, NumericValue, XptColumn, XptDataset, XptType, XptValue, write_xpt,
+        Justification, MissingValue, NumericValue, XptColumn, XptDataset, XptType, XptValue,
+        write_xpt,
     };
     use polars::prelude::{AnyValue, DataType};
 
@@ -212,6 +332,9 @@ fn write_xpt_file(path: &Path, frame: &DomainFrame) -> Result<(), ExportError> {
     for col in frame.data.get_columns() {
         let name = col.name().to_uppercase();
         let dtype = col.dtype();
+
+        // Look up variable metadata for label and format
+        let metadata = variable_metadata.get(&name);
 
         // Determine type and length
         let (data_type, length) = match dtype {
@@ -242,18 +365,41 @@ fn write_xpt_file(path: &Path, frame: &DomainFrame) -> Result<(), ExportError> {
             }
         };
 
+        // Get label from metadata, fall back to variable name
+        let label = metadata
+            .and_then(|m| m.label.clone())
+            .unwrap_or_else(|| name.clone());
+
+        // Get format from metadata, or derive default
+        let format = metadata
+            .and_then(|m| m.format.clone())
+            .or_else(|| match data_type {
+                XptType::Char => Some(format!("${length}.")),
+                XptType::Num => Some("8.".to_string()),
+            });
+
+        // Parse format into name, length, decimals
+        let (format_name, format_length, format_decimals) = parse_sas_format(&format);
+
+        // Justification: Left for character, Right for numeric
+        let justification = match data_type {
+            XptType::Char => Justification::Left,
+            XptType::Num => Justification::Right,
+        };
+
         columns.push(XptColumn {
             name: name.clone(),
-            label: Some(name), // Use name as label for now
+            label: Some(label),
             data_type,
             length,
-            format: None,
-            format_length: 0,
-            format_decimals: 0,
+            format: format_name,
+            format_length,
+            format_decimals,
+            // Informat: Not typically needed for export (data already in memory)
             informat: None,
             informat_length: 0,
             informat_decimals: 0,
-            justification: Default::default(),
+            justification,
         });
     }
 

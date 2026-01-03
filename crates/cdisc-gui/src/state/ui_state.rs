@@ -6,6 +6,7 @@
 
 use crate::export::ExportUiState;
 use crate::settings::Settings;
+use crate::state::derived_state::QualifierOrigin;
 use std::collections::HashMap;
 
 // ============================================================================
@@ -194,6 +195,10 @@ pub struct SuppEditingState {
     pub qnam: String,
     /// Pending QLABEL value
     pub qlabel: String,
+    /// Pending QORIG value
+    pub qorig: QualifierOrigin,
+    /// Pending QEVAL value
+    pub qeval: String,
 }
 
 impl SuppUiState {
@@ -205,11 +210,20 @@ impl SuppUiState {
     }
 
     /// Start editing a column with initial values.
-    pub fn start_editing(&mut self, column_name: &str, qnam: &str, qlabel: &str) {
+    pub fn start_editing(
+        &mut self,
+        column_name: &str,
+        qnam: &str,
+        qlabel: &str,
+        qorig: QualifierOrigin,
+        qeval: &str,
+    ) {
         self.editing = Some(SuppEditingState {
             column_name: column_name.to_string(),
             qnam: qnam.to_string(),
             qlabel: qlabel.to_string(),
+            qorig,
+            qeval: qeval.to_string(),
         });
     }
 

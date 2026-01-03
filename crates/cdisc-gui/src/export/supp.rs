@@ -175,11 +175,11 @@ pub fn build_supp_frame(
             // QVAL - the actual value
             qval_col.push(format_anyvalue(&value.unwrap()));
 
-            // QORIG - default to "CRF"
-            qorig_col.push("CRF".to_string());
+            // QORIG - from config (CRF, Derived, or Assigned)
+            qorig_col.push(config.qorig.value().to_string());
 
-            // QEVAL - typically empty
-            qeval_col.push(String::new());
+            // QEVAL - evaluator role from config (optional)
+            qeval_col.push(config.qeval.clone());
         }
     }
 

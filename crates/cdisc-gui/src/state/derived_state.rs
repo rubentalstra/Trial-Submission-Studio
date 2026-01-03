@@ -127,6 +127,50 @@ impl SuppConfig {
     }
 }
 
+/// Qualifier origin per SDTM IG 3.4.
+///
+/// Controlled terminology for QORIG variable in SUPP-- domains.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum QualifierOrigin {
+    /// Data collected on a case report form.
+    #[default]
+    Crf,
+    /// Data derived from other collected data.
+    Derived,
+    /// Data assigned by sponsor (e.g., protocol-defined values).
+    Assigned,
+}
+
+impl QualifierOrigin {
+    /// All possible values for iteration.
+    pub const ALL: [Self; 3] = [Self::Crf, Self::Derived, Self::Assigned];
+
+    /// Display name (mixed case per CDISC errata).
+    pub fn display_name(&self) -> &'static str {
+        match self {
+            Self::Crf => "CRF",
+            Self::Derived => "Derived",
+            Self::Assigned => "Assigned",
+        }
+    }
+
+    /// Value for export (matches display name).
+    pub fn value(&self) -> &'static str {
+        self.display_name()
+    }
+
+    /// Parse from string (case-insensitive).
+    #[allow(dead_code)]
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s.to_uppercase().as_str() {
+            "CRF" => Some(Self::Crf),
+            "DERIVED" => Some(Self::Derived),
+            "ASSIGNED" => Some(Self::Assigned),
+            _ => None,
+        }
+    }
+}
+
 /// Configuration for a single source column in SUPP.
 #[derive(Debug, Clone)]
 pub struct SuppColumnConfig {
@@ -136,6 +180,10 @@ pub struct SuppColumnConfig {
     pub qnam: String,
     /// QLABEL value (max 40 chars)
     pub qlabel: String,
+    /// QORIG value (Origin of the data: CRF, Derived, Assigned)
+    pub qorig: QualifierOrigin,
+    /// QEVAL value (Evaluator role, e.g., INVESTIGATOR, SPONSOR)
+    pub qeval: String,
 }
 
 impl SuppColumnConfig {
@@ -146,6 +194,8 @@ impl SuppColumnConfig {
             action: SuppAction::Pending,
             qnam: suggested,
             qlabel: String::new(),
+            qorig: QualifierOrigin::default(),
+            qeval: String::new(),
         }
     }
 

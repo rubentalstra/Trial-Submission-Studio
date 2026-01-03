@@ -81,12 +81,15 @@ pub enum SettingsResult {
 pub struct SettingsWindow {
     /// Currently selected category.
     category: SettingsCategory,
+    /// Buffer for new rule ID input.
+    new_rule_id_input: String,
 }
 
 impl Default for SettingsWindow {
     fn default() -> Self {
         Self {
             category: SettingsCategory::General,
+            new_rule_id_input: String::new(),
         }
     }
 }
@@ -471,7 +474,7 @@ impl SettingsWindow {
     }
 
     /// Show developer settings.
-    fn show_developer(&self, ui: &mut egui::Ui, developer: &mut DeveloperSettings) {
+    fn show_developer(&mut self, ui: &mut egui::Ui, developer: &mut DeveloperSettings) {
         self.section_header(ui, "Developer");
 
         self.setting_group(ui, None, |ui| {
@@ -548,35 +551,59 @@ impl SettingsWindow {
                 }
             });
 
-            self.setting_group(ui, Some("BYPASS RULE IDS"), |ui| {
-                ui.label(
-                    egui::RichText::new("Enter rule IDs to bypass (e.g., SD0056, SD0002):")
-                        .small()
-                        .weak(),
-                );
-                ui.add_space(8.0);
+            // BYPASS RULE IDS section (inlined to avoid borrow conflict with self.new_rule_id_input)
+            ui.label(
+                egui::RichText::new("BYPASS RULE IDS")
+                    .size(13.0)
+                    .strong()
+                    .weak(),
+            );
+            ui.add_space(8.0);
 
-                // Show current bypassed rules
-                let ids: Vec<_> = developer.bypassed_rule_ids.iter().cloned().collect();
-                for id in ids {
+            egui::Frame::default()
+                .fill(ui.visuals().faint_bg_color)
+                .corner_radius(egui::CornerRadius::same(8))
+                .inner_margin(16.0)
+                .show(ui, |ui| {
+                    ui.label(
+                        egui::RichText::new("Enter rule IDs to bypass (e.g., SD0056, SD0002):")
+                            .small()
+                            .weak(),
+                    );
+                    ui.add_space(8.0);
+
+                    // Show current bypassed rules
+                    let ids: Vec<_> = developer.bypassed_rule_ids.iter().cloned().collect();
+                    for id in ids {
+                        ui.horizontal(|ui| {
+                            ui.label(&id);
+                            if ui.small_button("×").clicked() {
+                                developer.bypassed_rule_ids.remove(&id);
+                            }
+                        });
+                    }
+
+                    // Add new rule ID
                     ui.horizontal(|ui| {
-                        ui.label(&id);
-                        if ui.small_button("×").clicked() {
-                            developer.bypassed_rule_ids.remove(&id);
+                        ui.label("Add:");
+                        let response = ui.add(
+                            egui::TextEdit::singleline(&mut self.new_rule_id_input)
+                                .desired_width(100.0)
+                                .hint_text("e.g. SD0056"),
+                        );
+
+                        let should_add = ui.button("+").clicked()
+                            || (response.lost_focus()
+                                && ui.input(|i| i.key_pressed(egui::Key::Enter)));
+
+                        if should_add && !self.new_rule_id_input.trim().is_empty() {
+                            let rule_id = self.new_rule_id_input.trim().to_uppercase();
+                            developer.bypassed_rule_ids.insert(rule_id);
+                            self.new_rule_id_input.clear();
                         }
                     });
-                }
-
-                // Add new rule ID
-                ui.horizontal(|ui| {
-                    ui.label("Add:");
-                    // TODO: For simplicity, we use a static buffer. In a full implementation, you might want to store this in the UI state.
-                    let response = ui.text_edit_singleline(&mut String::new());
-                    if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter)) {
-                        // In practice, you'd capture the value here
-                    }
                 });
-            });
+            ui.add_space(20.0);
         }
     }
 

@@ -5,7 +5,8 @@
 //! Unmapped source columns can be added to a SUPP-- dataset.
 
 use crate::state::{
-    AppState, SuppAction, SuppColumnConfig, SuppConfig, suggest_qnam, validate_qnam,
+    AppState, QualifierOrigin, SuppAction, SuppColumnConfig, SuppConfig, suggest_qnam,
+    validate_qnam,
 };
 use crate::theme::spacing;
 use egui::{Color32, RichText, Ui};
@@ -262,6 +263,7 @@ fn show_column_detail(
         .num_columns(2)
         .spacing([20.0, 4.0])
         .show(ui, |ui| {
+            // QNAM
             ui.label(RichText::new("QNAM").weak());
             if config.qnam.is_empty() {
                 ui.label(RichText::new("(not set)").weak().italics());
@@ -276,11 +278,26 @@ fn show_column_detail(
             }
             ui.end_row();
 
+            // QLABEL
             ui.label(RichText::new("QLABEL").weak());
             if config.qlabel.is_empty() {
                 ui.label(RichText::new("(not set)").weak().italics());
             } else {
                 ui.label(&config.qlabel);
+            }
+            ui.end_row();
+
+            // QORIG
+            ui.label(RichText::new("QORIG").weak());
+            ui.label(config.qorig.display_name());
+            ui.end_row();
+
+            // QEVAL
+            ui.label(RichText::new("QEVAL").weak());
+            if config.qeval.is_empty() {
+                ui.label(RichText::new("(not set)").weak().italics());
+            } else {
+                ui.label(&config.qeval);
             }
             ui.end_row();
         });
@@ -335,6 +352,8 @@ fn show_action_buttons(
                 col_name,
                 &config.qnam,
                 &config.qlabel,
+                config.qorig,
+                &config.qeval,
             );
         }
 
@@ -350,7 +369,16 @@ fn show_action_buttons(
             )
             .clicked()
         {
-            apply_supp_action_change(state, domain_code, col_name, SuppAction::Skip, "", "");
+            apply_supp_action_change(
+                state,
+                domain_code,
+                col_name,
+                SuppAction::Skip,
+                "",
+                "",
+                QualifierOrigin::default(),
+                "",
+            );
         }
 
         // Reset button (if not pending)
@@ -362,7 +390,16 @@ fn show_action_buttons(
                 )))
                 .clicked()
             {
-                apply_supp_action_change(state, domain_code, col_name, SuppAction::Pending, "", "");
+                apply_supp_action_change(
+                    state,
+                    domain_code,
+                    col_name,
+                    SuppAction::Pending,
+                    "",
+                    "",
+                    QualifierOrigin::default(),
+                    "",
+                );
             }
         }
     });
@@ -388,15 +425,17 @@ fn show_editing_form(
     ui.add_space(spacing::SM);
 
     // Get editing state values (we need to clone them to avoid borrow issues)
-    let (current_qnam, current_qlabel) = state
+    let (current_qnam, current_qlabel, current_qorig, current_qeval) = state
         .ui
         .get_domain_editor(domain_code)
         .and_then(|ui| ui.supp.editing_for(col_name))
-        .map(|e| (e.qnam.clone(), e.qlabel.clone()))
+        .map(|e| (e.qnam.clone(), e.qlabel.clone(), e.qorig, e.qeval.clone()))
         .unwrap_or_default();
 
     let mut qnam = current_qnam;
     let mut qlabel = current_qlabel;
+    let mut qorig = current_qorig;
+    let mut qeval = current_qeval;
 
     // Check for duplicate QNAM (used by another column)
     let is_qnam_duplicate = is_qnam_used_by_other(supp_config, col_name, &qnam);
@@ -513,10 +552,64 @@ fn show_editing_form(
         }
     });
 
+    ui.add_space(spacing::SM);
+
+    // QORIG dropdown (Origin of data)
+    ui.horizontal(|ui| {
+        ui.label(RichText::new("QORIG:").strong());
+        ui.label(RichText::new(egui_phosphor::regular::INFO).color(Color32::BLUE))
+            .on_hover_text(
+                "Origin of the data:\n• CRF - Collected on case report form\n• Derived - Calculated from other data\n• Assigned - Assigned by sponsor",
+            );
+    });
+
+    let mut qorig_changed = false;
+    egui::ComboBox::from_id_salt("qorig_combo")
+        .selected_text(qorig.display_name())
+        .width(120.0)
+        .show_ui(ui, |ui| {
+            for origin in QualifierOrigin::ALL {
+                if ui
+                    .selectable_label(qorig == origin, origin.display_name())
+                    .clicked()
+                {
+                    qorig = origin;
+                    qorig_changed = true;
+                }
+            }
+        });
+
+    ui.add_space(spacing::SM);
+
+    // QEVAL input (Evaluator role - optional)
+    ui.horizontal(|ui| {
+        ui.label(RichText::new("QEVAL:").strong());
+        ui.label(RichText::new(egui_phosphor::regular::INFO).color(Color32::BLUE))
+            .on_hover_text(
+                "Evaluator role (optional):\n• INVESTIGATOR\n• SPONSOR\n• ADJUDICATION COMMITTEE\n• Leave blank if not applicable",
+            );
+    });
+
+    let qeval_response = ui.add(
+        egui::TextEdit::singleline(&mut qeval)
+            .char_limit(40)
+            .desired_width(200.0)
+            .hint_text("e.g. INVESTIGATOR (optional)"),
+    );
+
+    // Auto-uppercase QEVAL
+    if qeval_response.changed() {
+        qeval = qeval.to_uppercase();
+    }
+
     ui.add_space(spacing::MD);
 
     // Update editing state if values changed
-    if qnam_response.changed() || qlabel_response.changed() {
+    if qnam_response.changed()
+        || qlabel_response.changed()
+        || qorig_changed
+        || qeval_response.changed()
+    {
         if let Some(editing) = state
             .ui
             .domain_editor(domain_code)
@@ -525,6 +618,8 @@ fn show_editing_form(
         {
             editing.qnam = qnam.clone();
             editing.qlabel = qlabel.clone();
+            editing.qorig = qorig;
+            editing.qeval = qeval.clone();
         }
     }
 
@@ -554,6 +649,8 @@ fn show_editing_form(
                 SuppAction::AddToSupp,
                 &qnam,
                 &qlabel,
+                qorig,
+                &qeval,
             );
             // Clear editing state
             state.ui.domain_editor(domain_code).supp.cancel_editing();
@@ -612,7 +709,7 @@ fn is_qnam_used_by_other(supp_config: &SuppConfig, current_col: &str, qnam: &str
     false
 }
 
-/// Apply a SUPP action change with QNAM and QLABEL
+/// Apply a SUPP action change with QNAM, QLABEL, QORIG, and QEVAL
 fn apply_supp_action_change(
     state: &mut AppState,
     domain_code: &str,
@@ -620,6 +717,8 @@ fn apply_supp_action_change(
     new_action: SuppAction,
     qnam: &str,
     qlabel: &str,
+    qorig: QualifierOrigin,
+    qeval: &str,
 ) {
     if let Some(domain) = state
         .study_mut()
@@ -631,10 +730,14 @@ fn apply_supp_action_change(
                 if new_action == SuppAction::AddToSupp {
                     config.qnam = qnam.to_string();
                     config.qlabel = qlabel.to_string();
+                    config.qorig = qorig;
+                    config.qeval = qeval.to_string();
                 } else if new_action == SuppAction::Pending {
-                    // Reset to suggested QNAM, clear QLABEL
+                    // Reset to suggested QNAM, clear all values
                     config.qnam = suggest_qnam(column_name, domain_code);
                     config.qlabel = String::new();
+                    config.qorig = QualifierOrigin::default();
+                    config.qeval = String::new();
                 }
             }
         }
