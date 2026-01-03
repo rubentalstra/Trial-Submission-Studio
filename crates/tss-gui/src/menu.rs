@@ -13,6 +13,7 @@ use muda::{
 pub mod ids {
     pub const OPEN_STUDY: &str = "open_study";
     pub const SETTINGS: &str = "settings";
+    pub const CHECK_UPDATES: &str = "check_updates";
     pub const ABOUT: &str = "about";
     pub const EXIT: &str = "exit";
 }
@@ -38,6 +39,20 @@ pub fn create_menu() -> Menu {
                 None,
             ))
             .expect("Failed to add About menu item");
+
+        app_menu
+            .append(&PredefinedMenuItem::separator())
+            .expect("Failed to add separator");
+
+        // Check for Updates
+        app_menu
+            .append(&MenuItem::with_id(
+                ids::CHECK_UPDATES,
+                "Check for Updates...",
+                true,
+                None,
+            ))
+            .expect("Failed to add Check for Updates menu item");
 
         app_menu
             .append(&PredefinedMenuItem::separator())
@@ -135,6 +150,19 @@ pub fn create_menu() -> Menu {
 
     #[cfg(not(target_os = "macos"))]
     {
+        help_menu
+            .append(&MenuItem::with_id(
+                ids::CHECK_UPDATES,
+                "Check for Updates...",
+                true,
+                None,
+            ))
+            .expect("Failed to add Check for Updates menu item");
+
+        help_menu
+            .append(&PredefinedMenuItem::separator())
+            .expect("Failed to add separator");
+
         help_menu
             .append(&MenuItem::with_id(ids::ABOUT, "About", true, None))
             .expect("Failed to add About menu item");

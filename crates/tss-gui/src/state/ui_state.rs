@@ -24,6 +24,10 @@ pub struct UiState {
     pub domain_editors: HashMap<String, DomainEditorUiState>,
     /// Close study confirmation modal
     pub close_study_confirm: bool,
+    /// Update dialog UI state
+    pub update: UpdateDialogState,
+    /// About dialog UI state
+    pub about: AboutUiState,
 }
 
 impl UiState {
@@ -285,3 +289,69 @@ impl SettingsUiState {
 }
 
 // Note: ExportUiState is now in crate::export::types
+
+// ============================================================================
+// Update Dialog State
+// ============================================================================
+
+/// Single source of truth for update dialog state.
+///
+/// This enum replaces the previous `UpdateUiState` struct with phase + separate fields.
+/// Each variant contains exactly the data needed for that state.
+#[derive(Debug, Clone, Default)]
+pub enum UpdateDialogState {
+    /// Dialog is closed.
+    #[default]
+    Closed,
+    /// Checking for updates (shows spinner).
+    Checking,
+    /// No update available (current version is latest).
+    NoUpdate,
+    /// Update is available.
+    UpdateAvailable {
+        /// The new version string.
+        version: String,
+        /// Changelog/release notes in markdown.
+        changelog: String,
+    },
+    /// Installing update (download + extract + replace).
+    Installing,
+    /// An error occurred.
+    Error(String),
+}
+
+impl UpdateDialogState {
+    /// Check if the dialog should be displayed.
+    #[must_use]
+    pub fn is_open(&self) -> bool {
+        !matches!(self, Self::Closed)
+    }
+
+    /// Close the dialog (reset to Closed state).
+    pub fn close(&mut self) {
+        *self = Self::Closed;
+    }
+}
+
+// ============================================================================
+// About Dialog UI State
+// ============================================================================
+
+/// UI state for the About dialog.
+#[derive(Debug, Clone, Default)]
+pub struct AboutUiState {
+    /// Is the About dialog open.
+    pub open: bool,
+}
+
+impl AboutUiState {
+    /// Open the About dialog.
+    pub fn open(&mut self) {
+        self.open = true;
+    }
+
+    /// Close the About dialog.
+    pub fn close(&mut self) {
+        self.open = false;
+    }
+}

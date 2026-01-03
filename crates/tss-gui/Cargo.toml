@@ -30,6 +30,7 @@ tss-transform = { path = "../tss-transform" }
 tss-validate = { path = "../tss-validate" }
 tss-output = { path = "../tss-output" }
 tss-xpt = { path = "../tss-xpt" }
+tss-updater = { path = "../tss-updater" }
 
 # Common dependencies
 anyhow.workspace = true
@@ -41,18 +42,20 @@ tracing-subscriber.workspace = true
 chrono.workspace = true
 
 # GUI-specific
-rfd = "0.16.0"           # Native file dialogs
-egui-phosphor = "0.11.0" # Icon set
+rfd = "0.16.0"             # Native file dialogs
+egui-phosphor = "0.11.0"   # Icon set
+egui_commonmark = "0.22.0" # Markdown rendering
+open = "5.3"               # Open URLs in browser
 
 # Settings & menu
-directories = "6.0"      # Cross-platform app directories
-toml = "0.9.8"           # Config file format
-muda = "0.17.1"          # Native menu bar (by Tauri team)
+directories = "6.0"          # Cross-platform app directories
+toml = "0.9.8"               # Config file format
+muda = "0.17.1"              # Native menu bar (by Tauri team)
 crossbeam-channel = "0.5.15" # For muda menu events
 
 # Platform-specific
 [target.'cfg(target_os = "macos")'.dependencies]
-winit = "0.30.12"        # Needed for EventLoopBuilderExtMacOS trait
+winit = "0.30.12" # Needed for EventLoopBuilderExtMacOS trait
 
 [lints]
 workspace = true

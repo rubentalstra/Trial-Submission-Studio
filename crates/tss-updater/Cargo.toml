@@ -1,0 +1,29 @@
+[package]
+name = "tss-updater"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Auto-update functionality for Trial Submission Studio"
+license.workspace = true
+
+[dependencies]
+# Self-update handles everything: GitHub API, download, checksum, install
+self_update = { version = "0.42", default-features = false, features = [
+    "archive-zip",
+    "archive-tar",
+    "compression-flate2",
+    "compression-zip-deflate",
+    "rustls",
+] }
+
+# Serialization (for config)
+serde = { workspace = true }
+
+# Date/time (for config)
+chrono = { workspace = true }
+
+# Error handling
+thiserror = { workspace = true }
+
+# Logging
+tracing = { workspace = true }
