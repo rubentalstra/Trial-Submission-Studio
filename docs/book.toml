@@ -1,6 +1,43 @@
 [book]
+title = "Trial Submission Studio Documentation"
 authors = ["Ruben Talstra"]
-language = "en"
-multilingual = false
+description = "Transform clinical trial data into FDA-compliant CDISC SDTM formats"
 src = "src"
-title = "Trial Submission Studio"
+language = "en"
+text-direction = "ltr"
+
+[build]
+build-dir = "book"
+create-missing = false
+extra-watch-dirs = ["theme"]
+
+[output.html]
+default-theme = "light"
+preferred-dark-theme = "navy"
+smart-punctuation = true
+git-repository-url = "https://github.com/rubentalstra/Trial-Submission-Studio"
+edit-url-template = "https://github.com/rubentalstra/Trial-Submission-Studio/edit/main/docs/{path}"
+site-url = "/Trial-Submission-Studio/"
+additional-css = ["theme/css/custom.css"]
+
+[output.html.fold]
+enable = true
+level = 1
+
+[output.html.search]
+enable = true
+limit-results = 20
+teaser-word-count = 30
+boost-title = 2
+boost-hierarchy = 1
+expand = true
+heading-split-level = 2
+
+[output.html.print]
+enable = true
+
+[preprocessor.links]
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+optional = true

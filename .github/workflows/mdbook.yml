@@ -1,54 +1,92 @@
-# Sample workflow for building and deploying a mdBook site to GitHub Pages
-#
-# To get started with mdBook see: https://rust-lang.github.io/mdBook/index.html
-#
+# mdBook Documentation Workflow
+# Builds and deploys documentation to GitHub Pages with caching and link checking
 name: Deploy mdBook site to Pages
 
 on:
-  # Runs on pushes targeting the default branch
   push:
     branches: ["main"]
-
-  # Allows you to run this workflow manually from the Actions tab
+    paths:
+      - "docs/**"
+      - ".github/workflows/mdbook.yml"
+  pull_request:
+    branches: ["main"]
+    paths:
+      - "docs/**"
+      - ".github/workflows/mdbook.yml"
   workflow_dispatch:
 
-# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
   contents: read
   pages: write
   id-token: write
 
-# Allow only one concurrent deployment, skipping runs queued between the run in-progress and latest queued.
-# However, do NOT cancel in-progress runs as we want to allow these production deployments to complete.
 concurrency:
-  group: "pages"
-  cancel-in-progress: false
+  group: "pages-${{ github.ref }}"
+  cancel-in-progress: true
+
+env:
+  MDBOOK_VERSION: "0.5.2"
+  MDBOOK_LINKCHECK_VERSION: "0.11.0"
+  MDBOOK_MERMAID_VERSION: "0.14.0"
 
 jobs:
-  # Build job
   build:
     runs-on: ubuntu-latest
-    env:
-      MDBOOK_VERSION: 0.5.2
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache mdBook binaries
+        id: cache-mdbook
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/mdbook
+            ~/.cargo/bin/mdbook-linkcheck
+            ~/.cargo/bin/mdbook-mermaid
+          key: mdbook-${{ env.MDBOOK_VERSION }}-linkcheck-${{ env.MDBOOK_LINKCHECK_VERSION }}-mermaid-${{ env.MDBOOK_MERMAID_VERSION }}
+
       - name: Install mdBook
+        if: steps.cache-mdbook.outputs.cache-hit != 'true'
         run: |
-          curl --proto '=https' --tlsv1.2 https://sh.rustup.rs -sSf -y | sh
-          rustup update
-          cargo install --version ${MDBOOK_VERSION} mdbook
+          curl -sSL https://github.com/rust-lang/mdBook/releases/download/v${MDBOOK_VERSION}/mdbook-v${MDBOOK_VERSION}-x86_64-unknown-linux-gnu.tar.gz | tar -xz
+          mv mdbook ~/.cargo/bin/
+
+      - name: Install mdbook-linkcheck
+        if: steps.cache-mdbook.outputs.cache-hit != 'true'
+        run: |
+          curl -sSL https://github.com/Michael-F-Bryan/mdbook-linkcheck2/releases/download/v${MDBOOK_LINKCHECK_VERSION}/mdbook-linkcheck2.x86_64-unknown-linux-gnu.zip -o linkcheck.zip
+          unzip linkcheck.zip
+          chmod +x mdbook-linkcheck
+          mv mdbook-linkcheck ~/.cargo/bin/
+
+      - name: Install mdbook-mermaid
+        if: steps.cache-mdbook.outputs.cache-hit != 'true'
+        run: |
+          curl -sSL https://github.com/badboy/mdbook-mermaid/releases/download/v${MDBOOK_MERMAID_VERSION}/mdbook-mermaid-v${MDBOOK_MERMAID_VERSION}-x86_64-unknown-linux-gnu.tar.gz | tar -xz
+          mv mdbook-mermaid ~/.cargo/bin/
+
+      - name: Setup Mermaid
+        run: mdbook-mermaid install docs
+
+      - name: Build documentation
+        run: mdbook build docs
+
+      - name: Check links
+        run: mdbook-linkcheck docs --standalone
+
       - name: Setup Pages
-        id: pages
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/configure-pages@v5
-      - name: Build with mdBook
-        run:  (cd docs && mdbook build)
+
       - name: Upload artifact
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-pages-artifact@v3
         with:
           path: docs/book
 
-  # Deployment job
   deploy:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
