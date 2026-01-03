@@ -1,0 +1,20 @@
+[package]
+name = "tss-ingest"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Data ingestion: CSV loading, metadata handling, and domain discovery"
+
+[lints]
+workspace = true
+
+[dependencies]
+polars.workspace = true
+tss-common = { path = "../tss-common" }
+tss-map = { path = "../tss-map" }
+serde = { workspace = true, features = ["derive"] }
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+tempfile = "3"

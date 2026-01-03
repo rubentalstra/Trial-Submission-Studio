@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module type="EMPTY_MODULE" version="4">
+  <component name="NewModuleRootManager">
+    <content url="file://$MODULE_DIR$">
+      <sourceFolder url="file://$MODULE_DIR$/crates/tss-common/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/tss-gui/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/tss-ingest/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/tss-map/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/tss-model/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/tss-output/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/tss-standards/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/tss-transform/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/tss-validate/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/tss-xpt/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/tss-xpt/tests" isTestSource="true" />
+      <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_CF1234_NL_20250120_104838/output/dataset-xml" />
+      <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_CF1234_NL_20250120_104838/output/sas" />
+      <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_CF1234_NL_20250120_104838/output/xpt" />
+      <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_GDISC_20240903_072908/output/dataset-xml" />
+      <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_GDISC_20240903_072908/output/sas" />
+      <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_GDISC_20240903_072908/output/xpt" />
+      <excludeFolder url="file://$MODULE_DIR$/target" />
+    </content>
+    <orderEntry type="inheritedJdk" />
+    <orderEntry type="sourceFolder" forTests="false" />
+  </component>
+</module>

@@ -1,0 +1,20 @@
+[package]
+name = "tss-output"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Output generation: XPT, Dataset-XML, Define-XML"
+
+[lints]
+workspace = true
+
+[dependencies]
+anyhow.workspace = true
+chrono.workspace = true
+polars.workspace = true
+quick-xml.workspace = true
+tss-common = { path = "../tss-common" }
+tss-model = { path = "../tss-model" }
+tss-map = { path = "../tss-map" }
+tss-xpt = { path = "../tss-xpt" }
+tss-standards = { path = "../tss-standards" }

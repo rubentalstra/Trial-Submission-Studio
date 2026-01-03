@@ -1,15 +1,15 @@
 [workspace]
 members = [
-    "crates/cdisc-common",
-    "crates/cdisc-gui",
-    "crates/cdisc-ingest",
-    "crates/cdisc-map",
-    "crates/cdisc-model",
-    "crates/cdisc-output",
-    "crates/cdisc-standards",
-    "crates/cdisc-transform",
-    "crates/cdisc-validate",
-    "crates/cdisc-xpt",
+    "crates/tss-common",
+    "crates/tss-gui",
+    "crates/tss-ingest",
+    "crates/tss-map",
+    "crates/tss-model",
+    "crates/tss-output",
+    "crates/tss-standards",
+    "crates/tss-transform",
+    "crates/tss-validate",
+    "crates/tss-xpt",
 ]
 resolver = "3"
 

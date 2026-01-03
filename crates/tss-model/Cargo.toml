@@ -1,0 +1,16 @@
+[package]
+name = "tss-model"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+description = "Data model definitions for SDTM, ADaM, and SEND standards"
+
+[lints]
+workspace = true
+
+[dependencies]
+thiserror.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

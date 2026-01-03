@@ -1,9 +1,9 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
-title: cdisc-transpiler
+title: Trial Submission Studio
 type: software
-url: https://github.com/rubentalstra/cdisc-transpiler
-repository-code: https://github.com/rubentalstra/cdisc-transpiler
+url: https://github.com/rubentalstra/trial-submission-studio
+repository-code: https://github.com/rubentalstra/trial-submission-studio
 version: "0.0.1"
 authors:
   - family-names: Talstra
