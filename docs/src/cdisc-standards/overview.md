@@ -1,12 +1,13 @@
 # CDISC Standards Overview
 
-Trial Submission Studio supports CDISC (Clinical Data Interchange Standards Consortium) standards for regulatory
-submissions.
+Trial Submission Studio supports CDISC (Clinical Data Interchange Standards
+Consortium) standards for regulatory submissions.
 
 ## What is CDISC?
 
-CDISC develops global data standards that streamline clinical research and enable connections to healthcare. These
-standards are required by regulatory agencies including the FDA and PMDA.
+CDISC develops global data standards that streamline clinical research and
+enable connections to healthcare. These standards are required by regulatory
+agencies including the FDA and PMDA.
 
 ## Supported Standards
 
@@ -26,7 +27,8 @@ standards are required by regulatory agencies including the FDA and PMDA.
 
 ## SDTM (Study Data Tabulation Model)
 
-SDTM is the standard structure for submitting study data to regulatory authorities.
+SDTM is the standard structure for submitting study data to regulatory
+authorities.
 
 ### Key Concepts
 
@@ -43,7 +45,8 @@ SDTM is the standard structure for submitting study data to regulatory authoriti
 
 ## Controlled Terminology
 
-CDISC Controlled Terminology (CT) provides standardized values for SDTM variables.
+CDISC Controlled Terminology (CT) provides standardized values for SDTM
+variables.
 
 ### Embedded Versions
 
@@ -87,7 +90,8 @@ The FDA requires CDISC standards for:
 
 ### Study Data Technical Conformance Guide
 
-Trial Submission Studio aligns with FDA's Study Data Technical Conformance Guide requirements:
+Trial Submission Studio aligns with FDA's Study Data Technical Conformance Guide
+requirements:
 
 - XPT V5 format
 - Define-XML 2.1
@@ -104,7 +108,7 @@ Trial Submission Studio aligns with FDA's Study Data Technical Conformance Guide
 ### FDA Resources
 
 - [FDA Study Data Standards](https://www.fda.gov/industry/fda-data-standards-advisory-board/study-data-standards-resources)
-- [Study Data Technical Conformance Guide](https://www.fda.gov/regulatory-information/search-fda-guidance-documents/study-data-technical-conformance-guide)
+- [Study Data Technical Conformance Guide](https://www.fda.gov/regulatory-information/search-fda-guidance-documents/study-data-technical-conformance-guide-technical-specifications-document)
 
 ## Next Steps
 

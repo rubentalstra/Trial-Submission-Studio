@@ -87,3 +87,4 @@
 # Legal
 
 - [Disclaimer](legal/disclaimer.md)
+- [Code of Conduct](legal/code-of-conduct.md)

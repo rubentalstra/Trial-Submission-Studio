@@ -3,7 +3,8 @@
 Development plans for Trial Submission Studio.
 
 > [!NOTE]
-> This roadmap reflects current plans and priorities. Items may change based on community feedback and project needs.
+> This roadmap reflects current plans and priorities. Items may change based on
+> community feedback and project needs.
 
 ## Current Focus
 
@@ -60,13 +61,15 @@ Features that have been implemented:
 
 ## How to Contribute
 
-We welcome contributions! See the [Contributing Guide](../contributing/getting-started.md) for details.
+We welcome contributions! See the
+[Contributing Guide](../contributing/getting-started.md) for details.
 
 ### Working on Roadmap Items
 
 If you'd like to work on a roadmap item:
 
-1. Check if there's an existing [GitHub Issue](https://github.com/rubentalstra/Trial-Submission-Studio/issues)
+1. Check if there's an existing
+   [GitHub Issue](https://github.com/rubentalstra/Trial-Submission-Studio/issues)
 2. Comment to express interest
 3. Wait for maintainer feedback before starting work
 4. Follow the [PR guidelines](../contributing/pull-requests.md)
@@ -75,8 +78,9 @@ If you'd like to work on a roadmap item:
 
 Have ideas for the roadmap?
 
-1. Check existing [issues](https://github.com/rubentalstra/Trial-Submission-Studio/issues)
-   and [discussions](https://github.com/rubentalstra/Trial-Submission-Studio/discussions)
+1. Check existing
+   [issues](https://github.com/rubentalstra/Trial-Submission-Studio/issues) and
+   [discussions](https://github.com/rubentalstra/Trial-Submission-Studio/discussions)
 2. Open a new issue or discussion
 3. Describe the feature and use case
 4. Engage with community feedback
@@ -102,6 +106,9 @@ Features are prioritized based on:
 
 ## Stay Updated
 
-- Watch the [GitHub repository](https://github.com/rubentalstra/Trial-Submission-Studio)
-- Check [Releases](https://github.com/rubentalstra/Trial-Submission-Studio/releases)
-- Follow [Discussions](https://github.com/rubentalstra/Trial-Submission-Studio/discussions)
+- Watch the
+  [GitHub repository](https://github.com/rubentalstra/Trial-Submission-Studio)
+- Check
+  [Releases](https://github.com/rubentalstra/Trial-Submission-Studio/releases)
+- Follow
+  [Discussions](https://github.com/rubentalstra/Trial-Submission-Studio/discussions)

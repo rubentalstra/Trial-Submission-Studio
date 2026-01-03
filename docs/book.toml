@@ -44,8 +44,10 @@ page-break = true # insert page-break after each chapter
 
 [output.linkcheck2]
 optional = true
-follow-web-links = true
-warning-policy = "error"
+# Should we check links on the internet? Enabling this option adds a
+# non-negligible performance impact
+follow-web-links = false
+warning-policy = "warn"
 exclude = ["localhost", "127.0.0.1"]
 
 [preprocessor.links]

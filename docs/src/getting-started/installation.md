@@ -1,12 +1,13 @@
 # Installation
 
-Download the latest release for your platform from
-our [GitHub Releases](https://github.com/rubentalstra/Trial-Submission-Studio/releases/latest) page.
+Download the latest release for your platform from our
+[GitHub Releases](https://github.com/rubentalstra/Trial-Submission-Studio/releases/latest)
+page.
 
 ## Download Options
 
 | Platform    | Architecture              | Format           | Download                                                                            |
-|-------------|---------------------------|------------------|-------------------------------------------------------------------------------------|
+| ----------- | ------------------------- | ---------------- | ----------------------------------------------------------------------------------- |
 | **macOS**   | Apple Silicon (M1/M2/M3+) | `.dmg` or `.zip` | [Download](https://github.com/rubentalstra/Trial-Submission-Studio/releases/latest) |
 | **macOS**   | Intel (x86_64)            | `.dmg` or `.zip` | [Download](https://github.com/rubentalstra/Trial-Submission-Studio/releases/latest) |
 | **Windows** | x86_64 (64-bit)           | `.zip`           | [Download](https://github.com/rubentalstra/Trial-Submission-Studio/releases/latest) |
@@ -15,7 +16,8 @@ our [GitHub Releases](https://github.com/rubentalstra/Trial-Submission-Studio/re
 
 ## Verifying Your Download
 
-Each release includes SHA256 checksum files (`.sha256`) for security verification.
+Each release includes SHA256 checksum files (`.sha256`) for security
+verification.
 
 ### macOS/Linux
 
@@ -38,12 +40,13 @@ Get-FileHash trial-submission-studio-*.zip -Algorithm SHA256
 1. Download the `.dmg` file for your architecture
 2. Open the `.dmg` file
 3. Drag **Trial Submission Studio** to your Applications folder
-4. On first launch, you may need to right-click and select "Open" to bypass Gatekeeper
+4. On first launch, you may need to right-click and select "Open" to bypass
+   Gatekeeper
 
-> [!TIP]
-> **Which version do I need?**
+> [!TIP] **Which version do I need?**
 >
 > Click the Apple menu () > **About This Mac**:
+>
 > - **Chip: Apple M1/M2/M3** → Download the **Apple Silicon** version
 > - **Processor: Intel** → Download the **Intel** version
 
@@ -62,5 +65,7 @@ Get-FileHash trial-submission-studio-*.zip -Algorithm SHA256
 ## Next Steps
 
 - [Quick Start Guide](quick-start.md) - Get up and running in 5 minutes
-- [System Requirements](system-requirements.md) - Verify your system meets the requirements
-- [Building from Source](build-from-source.md) - For developers who want to compile from source
+- [System Requirements](system-requirements.md) - Verify your system meets the
+  requirements
+- [Building from Source](build-from-source.md) - For developers who want to
+  compile from source

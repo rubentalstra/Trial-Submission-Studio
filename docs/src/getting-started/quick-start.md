@@ -15,7 +15,8 @@ This guide walks you through the basic workflow:
 
 ## Step 1: Launch the Application
 
-After [installing](installation.md) Trial Submission Studio, launch the application:
+After [installing](installation.md) Trial Submission Studio, launch the
+application:
 
 - **macOS**: Open from Applications folder
 - **Windows**: Run `trial-submission-studio.exe`
@@ -29,9 +30,9 @@ You'll see the main interface with the data import panel.
 
 1. Click **Import CSV** or drag and drop your CSV file
 2. Trial Submission Studio will automatically:
-    - Detect column types
-    - Identify potential SDTM domains
-    - Parse date formats
+   - Detect column types
+   - Identify potential SDTM domains
+   - Parse date formats
 
 > [!TIP]
 > Your data should have column headers in the first row.
@@ -41,7 +42,8 @@ You'll see the main interface with the data import panel.
 ## Step 3: Select SDTM Domain
 
 1. Choose the target SDTM domain (e.g., DM, AE, VS)
-2. The application will display the required and optional variables for that domain
+2. The application will display the required and optional variables for that
+   domain
 
 ---
 
@@ -63,9 +65,9 @@ The mapping interface shows:
 
 1. Click **Validate** to check your data against CDISC rules
 2. Review any validation messages:
-    - **Errors**: Must be fixed before export
-    - **Warnings**: Should be reviewed
-    - **Info**: Informational messages
+   - **Errors**: Must be fixed before export
+   - **Warnings**: Should be reviewed
+   - **Info**: Informational messages
 
 ---
 
@@ -73,9 +75,9 @@ The mapping interface shows:
 
 1. Click **Export**
 2. Choose your output format:
-    - **XPT V5** (FDA standard)
-    - **XPT V8** (extended names/labels)
-    - **Dataset-XML** (CDISC data exchange)
+   - **XPT V5** (FDA standard)
+   - **XPT V8** (extended names/labels)
+   - **Dataset-XML** (CDISC data exchange)
 3. Select the output location
 4. Click **Save**
 
@@ -86,6 +88,8 @@ The mapping interface shows:
 Now that you've completed the basic workflow:
 
 - [Interface Overview](../user-guide/ui-overview.md) - Learn about all features
-- [Column Mapping](../user-guide/column-mapping.md) - Advanced mapping techniques
+- [Column Mapping](../user-guide/column-mapping.md) - Advanced mapping
+  techniques
 - [Validation](../user-guide/validation.md) - Understanding validation rules
-- [SDTM Standards](../cdisc-standards/sdtm/introduction.md) - SDTM reference guide
+- [SDTM Standards](../cdisc-standards/sdtm/introduction.md) - SDTM reference
+  guide

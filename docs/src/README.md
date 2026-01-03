@@ -4,22 +4,24 @@
   <img src="images/logo.svg" alt="Trial Submission Studio" width="150"/>
 </div>
 
-**Transform clinical trial data into FDA-compliant CDISC formats with confidence.**
+**Transform clinical trial data into FDA-compliant CDISC formats with
+confidence.**
 
-Trial Submission Studio is a free, open-source desktop application for transforming clinical trial source data (CSV)
-into CDISC-compliant submission formats.
+Trial Submission Studio is a free, open-source desktop application for
+transforming clinical trial source data (CSV) into CDISC-compliant submission
+formats.
 
----
+
 
 > [!CAUTION]
 > **ALPHA SOFTWARE - ACTIVE DEVELOPMENT**
 >
-> Trial Submission Studio is currently in early development. Features are incomplete, APIs may change, and bugs are
-> expected. **Do not use for production regulatory submissions.**
+> Trial Submission Studio is currently in early development. Features are
+> incomplete, APIs may change, and bugs are expected. **Do not use for
+> production regulatory submissions.**
 >
-> Always validate all outputs with qualified regulatory professionals before submission to regulatory authorities.
-
----
+> Always validate all outputs with qualified regulatory professionals before
+> submission to regulatory authorities.
 
 ## Quick Links
 
@@ -60,16 +62,17 @@ into CDISC-compliant submission formats.
 ## Getting Help
 
 - **Documentation**: You're reading it! Use the sidebar to navigate.
-- **Issues**: [Report bugs on GitHub](https://github.com/rubentalstra/Trial-Submission-Studio/issues)
-- **Discussions
-  **: [Ask questions on GitHub Discussions](https://github.com/rubentalstra/Trial-Submission-Studio/discussions)
+- **Issues**:
+  [Report bugs on GitHub](https://github.com/rubentalstra/Trial-Submission-Studio/issues)
+- **Discussions**:
+  [Ask questions on GitHub Discussions](https://github.com/rubentalstra/Trial-Submission-Studio/discussions)
 
 ---
 
 ## License
 
-Trial Submission Studio is open source software licensed under
-the [MIT License](https://github.com/rubentalstra/Trial-Submission-Studio/blob/main/LICENSE).
+Trial Submission Studio is open source software licensed under the
+[MIT License](https://github.com/rubentalstra/Trial-Submission-Studio/blob/main/LICENSE).
 
 ---
 

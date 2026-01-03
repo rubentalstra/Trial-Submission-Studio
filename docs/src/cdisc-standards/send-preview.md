@@ -1,6 +1,7 @@
 # SEND (Preview)
 
-The Standard for Exchange of Nonclinical Data (SEND) extends SDTM for animal studies.
+The Standard for Exchange of Nonclinical Data (SEND) extends SDTM for animal
+studies.
 
 > [!NOTE]
 > SEND support is planned for a future release of Trial Submission Studio.
@@ -138,9 +139,10 @@ Until SEND support is available:
 
 ### FDA Resources
 
-- [FDA SEND Requirements](https://www.fda.gov/industry/study-data-standards-resources)
+- [FDA SEND Requirements](https://www.fda.gov/industry/fda-data-standards-advisory-board/study-data-standards-resources)
 
 ## Stay Updated
 
 - Check the [Roadmap](../reference/roadmap.md) for SEND progress
-- Watch for announcements on [GitHub](https://github.com/rubentalstra/Trial-Submission-Studio)
+- Watch for announcements on
+  [GitHub](https://github.com/rubentalstra/Trial-Submission-Studio)

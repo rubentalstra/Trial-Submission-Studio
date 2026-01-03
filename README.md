@@ -22,13 +22,10 @@
   </p>
 </div>
 
----
 
 > [!CAUTION]
 > **ALPHA SOFTWARE** - Active development. Not for production regulatory submissions.
 > See [Disclaimer](https://rubentalstra.github.io/Trial-Submission-Studio/legal/disclaimer.html).
-
----
 
 ## Features
 

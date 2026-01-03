@@ -106,10 +106,12 @@ ADaM support is on our [roadmap](../reference/roadmap.md). Priority features:
 ### CDISC ADaM Resources
 
 - [ADaM Implementation Guide](https://www.cdisc.org/standards/foundational/adam)
-- [ADaM Structure for Occurrence Data](https://www.cdisc.org/standards/foundational/adam/adam-occurrence-data-structure-occds-v10)
+- [ADaM Structure for Occurrence Data](https://www.cdisc.org/standards/foundational/adam/adam-structure-occurrence-data-occds-v1-0)
 - [CDISC Library - ADaM](https://library.cdisc.org/)
 
 ## Stay Updated
 
 - Check the [Roadmap](../reference/roadmap.md) for updates
-- Watch the [GitHub repository](https://github.com/rubentalstra/Trial-Submission-Studio) for releases
+- Watch the
+  [GitHub repository](https://github.com/rubentalstra/Trial-Submission-Studio)
+  for releases
