@@ -70,6 +70,23 @@ cargo test
 cargo clippy
 ```
 
+### 4. Third-Party Licenses
+
+When adding or updating dependencies, regenerate the third-party licenses file:
+
+```bash
+# Install cargo-about (one-time)
+cargo install cargo-about
+
+# Generate licenses (re-run when deps change)
+cargo about generate about.hbs -o THIRD_PARTY_LICENSES.md
+```
+
+> **Note:** You may see a warning about `GPL-2.0` being a deprecated license identifier.
+> This is from an upstream dependency and can be safely ignored—the file generates successfully.
+
+This file is embedded in the application and displayed in Help > Third-Party Licenses.
+
 ## Project Architecture
 
 Trial Submission Studio is organized as a 10-crate Rust workspace:

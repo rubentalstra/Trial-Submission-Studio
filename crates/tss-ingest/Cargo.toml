@@ -3,6 +3,7 @@ name = "tss-ingest"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+license.workspace = true
 description = "Data ingestion: CSV loading, metadata handling, and domain discovery"
 
 [lints]

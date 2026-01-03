@@ -3,6 +3,7 @@ name = "tss-transform"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+license.workspace = true
 description = "Data-driven, variable-level transformation system for CDISC standards"
 
 [lints]

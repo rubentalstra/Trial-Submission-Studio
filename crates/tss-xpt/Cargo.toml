@@ -3,6 +3,7 @@ name = "tss-xpt"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
+license.workspace = true
 description = "SAS Transport (XPT) V5/V8 format reader and writer"
 
 [lints]

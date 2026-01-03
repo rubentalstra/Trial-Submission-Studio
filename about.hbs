@@ -1,0 +1,36 @@
+# Third-Party Licenses
+
+Trial Submission Studio includes the following third-party open source software.
+
+## License Summary
+
+| License | Count |
+|---------|-------|
+{{#each overview}}
+| {{{name}}} | {{count}} |
+{{/each}}
+
+---
+
+{{#each licenses}}
+{{#if first_of_kind}}
+## {{{name}}}
+
+{{/if}}
+### Used by
+
+{{#each used_by}}
+- [{{{crate.name}}} v{{{crate.version}}}]({{#if crate.repository}}{{{crate.repository}}}{{else}}https://crates.io/crates/{{{crate.name}}}{{/if}})
+{{/each}}
+
+{{#if first_of_kind}}
+### License Text
+
+```text
+{{{text}}}
+```
+
+---
+
+{{/if}}
+{{/each}}
