@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Application bundle identifier -->
+    <key>CFBundleIdentifier</key>
+    <string>com.rubentalstra.trial-submission-studio</string>
+
+    <!-- Application name -->
+    <key>CFBundleName</key>
+    <string>Trial Submission Studio</string>
+
+    <!-- Display name -->
+    <key>CFBundleDisplayName</key>
+    <string>Trial Submission Studio</string>
+
+    <!-- Executable name -->
+    <key>CFBundleExecutable</key>
+    <string>trial-submission-studio</string>
+
+    <!-- Bundle version (build number) -->
+    <key>CFBundleVersion</key>
+    <string>${VERSION}</string>
+
+    <!-- Short version string (e.g., 1.0.0) -->
+    <key>CFBundleShortVersionString</key>
+    <string>${VERSION}</string>
+
+    <!-- Bundle package type -->
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+
+    <!-- Icon file name -->
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+
+    <!-- Copyright notice -->
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright Ruben Talstra. All rights reserved.</string>
+
+    <!-- Minimum macOS version -->
+    <key>LSMinimumSystemVersion</key>
+    <string>11.0</string>
+
+    <!-- High resolution capable -->
+    <key>NSHighResolutionCapable</key>
+    <true/>
+
+    <!-- Application category -->
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.healthcare-fitness</string>
+
+    <!-- Supports Secure Coding -->
+    <key>LSSupportsSecureStateRestoration</key>
+    <true/>
+
+    <!-- Principal class -->
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+
+    <!-- File type associations (optional, for future use) -->
+    <key>CFBundleDocumentTypes</key>
+    <array>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>CSV Document</string>
+            <key>CFBundleTypeRole</key>
+            <string>Viewer</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>public.comma-separated-values-text</string>
+            </array>
+        </dict>
+        <dict>
+            <key>CFBundleTypeName</key>
+            <string>XPT Document</string>
+            <key>CFBundleTypeRole</key>
+            <string>Editor</string>
+            <key>LSItemContentTypes</key>
+            <array>
+                <string>com.sas.xpt</string>
+            </array>
+        </dict>
+    </array>
+
+    <!-- Network access description -->
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSAllowsArbitraryLoads</key>
+        <false/>
+        <key>NSExceptionDomains</key>
+        <dict>
+            <key>github.com</key>
+            <dict>
+                <key>NSIncludesSubdomains</key>
+                <true/>
+                <key>NSExceptionAllowsInsecureHTTPLoads</key>
+                <false/>
+                <key>NSExceptionRequiresForwardSecrecy</key>
+                <true/>
+            </dict>
+            <key>api.github.com</key>
+            <dict>
+                <key>NSIncludesSubdomains</key>
+                <true/>
+                <key>NSExceptionAllowsInsecureHTTPLoads</key>
+                <false/>
+                <key>NSExceptionRequiresForwardSecrecy</key>
+                <true/>
+            </dict>
+        </dict>
+    </dict>
+</dict>
+</plist>

@@ -8,19 +8,21 @@ members = [
     "crates/tss-output",
     "crates/tss-standards",
     "crates/tss-transform",
+    "crates/tss-updater",
     "crates/tss-validate",
     "crates/tss-xpt",
 ]
 resolver = "3"
 
 [workspace.package]
-version = "0.1.0"
+version = "0.0.1"
 edition = "2024"
 rust-version = "1.92"
+license = "MIT"
 
 [workspace.dependencies]
 anyhow = "1.0.100"
-chrono = "0.4.42"
+chrono = { version = "0.4.42", features = ["serde"] }
 csv = "1.4.0"
 hex = "0.4.3"
 insta = { version = "1.45.1", features = ["json"] }

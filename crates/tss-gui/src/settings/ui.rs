@@ -10,8 +10,9 @@
 
 use super::{
     CtVersionSetting, DeveloperSettings, DisplaySettings, ExportFormat, ExportSettings,
-    GeneralSettings, PreviewRowLimit, Settings, ShortcutAction, ValidationModeSetting,
-    ValidationSettings, XptValidationRule, XptVersionSetting,
+    GeneralSettings, PreviewRowLimit, Settings, ShortcutAction, UpdateChannel,
+    UpdateCheckFrequency, UpdateSettings, ValidationModeSetting, ValidationSettings,
+    XptValidationRule, XptVersionSetting,
 };
 use eframe::egui::{self, CornerRadius, Vec2};
 use tss_validate::rules::Category;
@@ -25,6 +26,7 @@ pub enum SettingsCategory {
     Developer,
     Export,
     Display,
+    Updates,
     Shortcuts,
 }
 
@@ -37,6 +39,7 @@ impl SettingsCategory {
             Self::Developer,
             Self::Export,
             Self::Display,
+            Self::Updates,
             Self::Shortcuts,
         ]
     }
@@ -49,6 +52,7 @@ impl SettingsCategory {
             Self::Developer => "Developer",
             Self::Export => "Export",
             Self::Display => "Display",
+            Self::Updates => "Updates",
             Self::Shortcuts => "Shortcuts",
         }
     }
@@ -61,6 +65,7 @@ impl SettingsCategory {
             Self::Developer => egui_phosphor::regular::CODE,
             Self::Export => egui_phosphor::regular::EXPORT,
             Self::Display => egui_phosphor::regular::EYE,
+            Self::Updates => egui_phosphor::regular::CLOUD_ARROW_DOWN,
             Self::Shortcuts => egui_phosphor::regular::KEYBOARD,
         }
     }
@@ -204,6 +209,9 @@ impl SettingsWindow {
                                         }
                                         SettingsCategory::Display => {
                                             self.show_display(ui, &mut settings.display)
+                                        }
+                                        SettingsCategory::Updates => {
+                                            self.show_updates(ui, &mut settings.updates)
                                         }
                                         SettingsCategory::Shortcuts => {
                                             self.show_shortcuts(ui, settings)
@@ -756,6 +764,86 @@ impl SettingsWindow {
                     ui.checkbox(&mut display.show_row_numbers, "");
                 },
             );
+        });
+    }
+
+    /// Show update settings.
+    fn show_updates(&self, ui: &mut egui::Ui, updates: &mut UpdateSettings) {
+        self.section_header(ui, "Updates");
+
+        self.setting_group(ui, Some("AUTOMATIC UPDATES"), |ui| {
+            self.setting_row(
+                ui,
+                "Check for Updates",
+                Some("How often to check for new versions"),
+                |ui| {
+                    egui::ComboBox::from_id_salt("update_frequency")
+                        .width(140.0)
+                        .selected_text(updates.check_frequency.label())
+                        .show_ui(ui, |ui| {
+                            for freq in UpdateCheckFrequency::all() {
+                                ui.selectable_value(
+                                    &mut updates.check_frequency,
+                                    *freq,
+                                    freq.label(),
+                                );
+                            }
+                        });
+                },
+            );
+
+            ui.separator();
+            ui.add_space(8.0);
+
+            self.setting_row(
+                ui,
+                "Include Beta Releases",
+                Some("Receive pre-release updates"),
+                |ui| {
+                    let mut include_beta = updates.channel == UpdateChannel::Beta;
+                    if ui.checkbox(&mut include_beta, "").changed() {
+                        updates.channel = if include_beta {
+                            UpdateChannel::Beta
+                        } else {
+                            UpdateChannel::Stable
+                        };
+                    }
+                },
+            );
+        });
+
+        self.setting_group(ui, Some("VERSION INFO"), |ui| {
+            ui.horizontal(|ui| {
+                ui.label("Current Version:");
+                ui.strong(env!("CARGO_PKG_VERSION"));
+            });
+
+            ui.add_space(8.0);
+
+            let skipped_clone = updates.skipped_version.clone();
+            if let Some(skipped) = skipped_clone {
+                ui.horizontal(|ui| {
+                    ui.label("Skipped Version:");
+                    ui.strong(&skipped);
+                    if ui.small_button("Clear").clicked() {
+                        updates.skipped_version = None;
+                    }
+                });
+            }
+
+            ui.add_space(8.0);
+
+            if let Some(last_check) = updates.last_check_time {
+                ui.horizontal(|ui| {
+                    ui.label("Last Checked:");
+                    ui.label(
+                        egui::RichText::new(last_check.format("%Y-%m-%d %H:%M UTC").to_string())
+                            .weak(),
+                    );
+                });
+            } else {
+                ui.label(egui::RichText::new("Never checked for updates").weak());
+            }
         });
     }
 

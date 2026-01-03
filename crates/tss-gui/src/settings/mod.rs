@@ -17,6 +17,9 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
+// Re-export update settings from tss-updater
+pub use tss_updater::{UpdateSettings, UpdateCheckFrequency, UpdateChannel};
+
 // ============================================================================
 // Main Settings Struct
 // ============================================================================
@@ -31,6 +34,7 @@ pub struct Settings {
     pub export: ExportSettings,
     pub display: DisplaySettings,
     pub shortcuts: ShortcutSettings,
+    pub updates: UpdateSettings,
 
     /// Recent study folders (persisted for convenience).
     #[serde(default)]
@@ -46,6 +50,7 @@ impl Default for Settings {
             export: ExportSettings::default(),
             display: DisplaySettings::default(),
             shortcuts: ShortcutSettings::default(),
+            updates: UpdateSettings::default(),
             recent_studies: Vec::new(),
         }
     }

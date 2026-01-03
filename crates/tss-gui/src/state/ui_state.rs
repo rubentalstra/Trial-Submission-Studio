@@ -8,6 +8,7 @@ use crate::export::ExportUiState;
 use crate::settings::Settings;
 use crate::state::derived_state::QualifierOrigin;
 use std::collections::HashMap;
+use std::path::PathBuf;
 
 // ============================================================================
 // Top-Level UI State
@@ -24,6 +25,10 @@ pub struct UiState {
     pub domain_editors: HashMap<String, DomainEditorUiState>,
     /// Close study confirmation modal
     pub close_study_confirm: bool,
+    /// Update dialog UI state
+    pub update: UpdateUiState,
+    /// About dialog UI state
+    pub about: AboutUiState,
 }
 
 impl UiState {
@@ -285,3 +290,128 @@ impl SettingsUiState {
 }
 
 // Note: ExportUiState is now in crate::export::types
+
+// ============================================================================
+// Update Dialog UI State
+// ============================================================================
+
+/// Phase of the update process.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum UpdatePhase {
+    /// No update activity.
+    #[default]
+    Idle,
+    /// Checking for updates.
+    Checking,
+    /// Update is available.
+    UpdateAvailable,
+    /// Downloading the update.
+    Downloading,
+    /// Download complete.
+    Downloaded,
+    /// Ready to install.
+    ReadyToInstall,
+    /// An error occurred.
+    Error,
+}
+
+/// UI state for the update dialog.
+#[derive(Debug, Clone, Default)]
+pub struct UpdateUiState {
+    /// Is the update dialog open.
+    pub open: bool,
+    /// Current phase of the update process.
+    pub phase: UpdatePhase,
+    /// Information about the available release (version, changelog, etc.).
+    pub available_version: Option<String>,
+    /// Release changelog (markdown).
+    pub changelog: Option<String>,
+    /// Download progress (0.0 to 1.0).
+    pub download_progress: f32,
+    /// Download speed in bytes per second.
+    pub download_speed: u64,
+    /// Error message if any.
+    pub error: Option<String>,
+    /// Path to the downloaded update file.
+    pub downloaded_path: Option<PathBuf>,
+}
+
+impl UpdateUiState {
+    /// Reset to initial state.
+    pub fn reset(&mut self) {
+        *self = Self::default();
+    }
+
+    /// Open the dialog and start checking for updates.
+    pub fn open_checking(&mut self) {
+        self.open = true;
+        self.phase = UpdatePhase::Checking;
+        self.error = None;
+    }
+
+    /// Set update available state.
+    pub fn set_update_available(&mut self, version: String, changelog: String) {
+        self.phase = UpdatePhase::UpdateAvailable;
+        self.available_version = Some(version);
+        self.changelog = Some(changelog);
+    }
+
+    /// Set error state.
+    pub fn set_error(&mut self, error: String) {
+        self.phase = UpdatePhase::Error;
+        self.error = Some(error);
+    }
+
+    /// Set downloading state.
+    pub fn set_downloading(&mut self) {
+        self.phase = UpdatePhase::Downloading;
+        self.download_progress = 0.0;
+        self.download_speed = 0;
+    }
+
+    /// Update download progress.
+    pub fn update_progress(&mut self, progress: f32, speed: u64) {
+        self.download_progress = progress;
+        self.download_speed = speed;
+    }
+
+    /// Set download complete.
+    pub fn set_downloaded(&mut self, path: PathBuf) {
+        self.phase = UpdatePhase::Downloaded;
+        self.downloaded_path = Some(path);
+        self.download_progress = 1.0;
+    }
+
+    /// Set ready to install.
+    pub fn set_ready_to_install(&mut self) {
+        self.phase = UpdatePhase::ReadyToInstall;
+    }
+
+    /// Close the dialog.
+    pub fn close(&mut self) {
+        self.open = false;
+    }
+}
+
+// ============================================================================
+// About Dialog UI State
+// ============================================================================
+
+/// UI state for the About dialog.
+#[derive(Debug, Clone, Default)]
+pub struct AboutUiState {
+    /// Is the About dialog open.
+    pub open: bool,
+}
+
+impl AboutUiState {
+    /// Open the About dialog.
+    pub fn open(&mut self) {
+        self.open = true;
+    }
+
+    /// Close the About dialog.
+    pub fn close(&mut self) {
+        self.open = false;
+    }
+}
