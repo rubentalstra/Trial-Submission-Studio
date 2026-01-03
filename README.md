@@ -4,6 +4,8 @@
 [![Rust](https://img.shields.io/badge/Rust-1.92+-orange.svg)](https://www.rust-lang.org/)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/rubentalstra/trial-submission-studio/ci.yml?branch=main)](https://github.com/rubentalstra/trial-submission-studio/actions)
 [![Latest Release](https://img.shields.io/github/v/release/rubentalstra/trial-submission-studio)](https://github.com/rubentalstra/trial-submission-studio/releases)
+[![dependency status](https://deps.rs/repo/github/rubentalstra/trial-submission-studio/status.svg)](https://deps.rs/repo/github/rubentalstra/trial-submission-studio)
+[![Build Status](https://github.com/rubentalstra/trial-submission-studio/workflows/CI/badge.svg)](https://github.com/rubentalstra/trial-submission-studio?workflow=CI)
 
 > Transform clinical trial data into FDA-compliant CDISC SDTM formats with confidence.
 

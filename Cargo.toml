@@ -19,6 +19,9 @@ version = "0.0.1-alpha.1"
 edition = "2024"
 rust-version = "1.92"
 license = "MIT"
+readme = "README.md"
+exclude = ["resources/"]
+
 
 [workspace.dependencies]
 anyhow = "1.0.100"
