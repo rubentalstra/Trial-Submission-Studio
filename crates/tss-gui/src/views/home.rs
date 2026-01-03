@@ -74,13 +74,12 @@ impl HomeView {
 
                     let recent_paths: Vec<_> = state.settings.recent_studies.clone();
                     for path in recent_paths {
-                        if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                            if ui
+                        if let Some(name) = path.file_name().and_then(|n| n.to_str())
+                            && ui
                                 .button(format!("{} {}", egui_phosphor::regular::FOLDER, name))
                                 .clicked()
-                            {
-                                selected_folder = Some(path);
-                            }
+                        {
+                            selected_folder = Some(path);
                         }
                     }
                 }
@@ -276,11 +275,11 @@ impl HomeView {
                         ))),
                     );
 
-                    if button.clicked() {
-                        if let Some(folder) = rfd::FileDialog::new().pick_folder() {
-                            tracing::info!("Selected folder: {:?}", folder);
-                            *selected_folder = Some(folder);
-                        }
+                    if button.clicked()
+                        && let Some(folder) = rfd::FileDialog::new().pick_folder()
+                    {
+                        tracing::info!("Selected folder: {:?}", folder);
+                        *selected_folder = Some(folder);
                     }
                 });
             });
@@ -339,7 +338,7 @@ impl HomeView {
         let domain_codes: Vec<String> = study
             .domain_codes_dm_first()
             .into_iter()
-            .map(|s| s.to_string())
+            .map(ToString::to_string)
             .collect();
 
         // Domain list

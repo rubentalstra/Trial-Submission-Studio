@@ -22,7 +22,7 @@ impl XptDataset {
                     let values: Vec<Option<f64>> = self
                         .rows
                         .iter()
-                        .map(|row| row.get(col_idx).and_then(|v| v.as_f64()))
+                        .map(|row| row.get(col_idx).and_then(XptValue::as_f64))
                         .collect();
                     Series::new(column.name.clone().into(), values)
                 }
@@ -180,7 +180,7 @@ fn string_series_to_column(series: &Series, name: &str) -> (XptColumn, Vec<XptVa
     // Find max string length
     let max_len = ca
         .into_iter()
-        .filter_map(|opt| opt.map(|s| s.len()))
+        .filter_map(|opt| opt.map(str::len))
         .max()
         .unwrap_or(1)
         .max(1) as u16;

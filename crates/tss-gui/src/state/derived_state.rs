@@ -16,7 +16,7 @@ use tss_validate::ValidationReport;
 /// Preview is lazily computed when user switches to Preview/Transform/Validation tabs.
 /// When mappings change, both `preview` and `validation` are set to `None` to
 /// invalidate cached data.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct DerivedState {
     /// Validation report (issues found in mapping/data)
     pub validation: Option<ValidationReport>,
@@ -24,16 +24,6 @@ pub struct DerivedState {
     pub preview: Option<DataFrame>,
     /// SUPP configuration (for unmapped columns)
     pub supp: Option<SuppConfig>,
-}
-
-impl Default for DerivedState {
-    fn default() -> Self {
-        Self {
-            validation: None,
-            preview: None,
-            supp: None,
-        }
-    }
 }
 
 impl DerivedState {
@@ -72,7 +62,7 @@ impl SuppConfig {
     pub fn from_unmapped(unmapped_columns: &[String], domain_code: &str) -> Self {
         let columns = unmapped_columns
             .iter()
-            .map(|col| (col.clone(), SuppColumnConfig::new(col.clone(), domain_code)))
+            .map(|col| (col.clone(), SuppColumnConfig::new(col, domain_code)))
             .collect();
         Self { columns }
     }
@@ -91,7 +81,7 @@ impl SuppConfig {
         for col in unmapped_columns {
             if !self.columns.contains_key(col) {
                 self.columns
-                    .insert(col.clone(), SuppColumnConfig::new(col.clone(), domain_code));
+                    .insert(col.clone(), SuppColumnConfig::new(col, domain_code));
             }
         }
     }
@@ -113,7 +103,7 @@ impl SuppConfig {
 
     /// Get column names in sorted order.
     pub fn column_names(&self) -> Vec<&str> {
-        self.columns.keys().map(|s| s.as_str()).collect()
+        self.columns.keys().map(String::as_str).collect()
     }
 
     /// Get config for a specific column.
@@ -161,7 +151,7 @@ impl QualifierOrigin {
 
     /// Parse from string (case-insensitive).
     #[allow(dead_code)]
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse(s: &str) -> Option<Self> {
         match s.to_uppercase().as_str() {
             "CRF" => Some(Self::Crf),
             "DERIVED" => Some(Self::Derived),
@@ -188,8 +178,8 @@ pub struct SuppColumnConfig {
 
 impl SuppColumnConfig {
     /// Create a new config with auto-suggested QNAM.
-    pub fn new(source_column: String, domain_code: &str) -> Self {
-        let suggested = suggest_qnam(&source_column, domain_code);
+    pub fn new(source_column: &str, domain_code: &str) -> Self {
+        let suggested = suggest_qnam(source_column, domain_code);
         Self {
             action: SuppAction::Pending,
             qnam: suggested,
@@ -232,11 +222,7 @@ pub fn suggest_qnam(column_name: &str, domain_code: &str) -> String {
     let domain_upper = domain_code.to_uppercase();
 
     // Clean up the column name
-    let clean = column_name
-        .to_uppercase()
-        .replace('_', "")
-        .replace('-', "")
-        .replace(' ', "");
+    let clean = column_name.to_uppercase().replace(['_', '-', ' '], "");
 
     // Strip common prefixes
     let base = clean

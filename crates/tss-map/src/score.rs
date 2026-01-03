@@ -192,21 +192,21 @@ impl ScoringEngine {
         let mut score = base;
 
         // 2. Label similarity boost (+10%)
-        if let Some(hint) = self.hints.get(column) {
-            if let (Some(col_label), Some(var_label)) = (&hint.label, &variable.label) {
-                let label_sim = jaro_winkler::similarity(
-                    normalize(col_label).chars(),
-                    normalize(var_label).chars(),
-                ) as f32;
+        if let Some(hint) = self.hints.get(column)
+            && let (Some(col_label), Some(var_label)) = (&hint.label, &variable.label)
+        {
+            let label_sim = jaro_winkler::similarity(
+                normalize(col_label).chars(),
+                normalize(var_label).chars(),
+            ) as f32;
 
-                if label_sim > 0.85 {
-                    score *= 1.10;
-                    components.push(ScoreComponent {
-                        name: "Label match",
-                        value: 0.10,
-                        description: format!("Labels match {:.0}%", label_sim * 100.0),
-                    });
-                }
+            if label_sim > 0.85 {
+                score *= 1.10;
+                components.push(ScoreComponent {
+                    name: "Label match",
+                    value: 0.10,
+                    description: format!("Labels match {:.0}%", label_sim * 100.0),
+                });
             }
         }
 

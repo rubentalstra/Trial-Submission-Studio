@@ -52,8 +52,8 @@ fn is_iso8601_duration(value: &str) -> bool {
     let rest = &value[1..];
 
     // Week format: PnW
-    if rest.ends_with('W') {
-        return rest[..rest.len() - 1].parse::<f64>().is_ok();
+    if let Some(stripped) = rest.strip_suffix('W') {
+        return stripped.parse::<f64>().is_ok();
     }
 
     // Check for valid date/time components
@@ -210,10 +210,10 @@ fn parse_combined_duration(part: &str) -> Option<DurationComponent> {
     ];
 
     for (suffix, constructor) in &patterns {
-        if let Some(num_str) = part.strip_suffix(suffix) {
-            if let Ok(num) = num_str.parse::<i64>() {
-                return Some(constructor(num));
-            }
+        if let Some(num_str) = part.strip_suffix(suffix)
+            && let Ok(num) = num_str.parse::<i64>()
+        {
+            return Some(constructor(num));
         }
     }
 

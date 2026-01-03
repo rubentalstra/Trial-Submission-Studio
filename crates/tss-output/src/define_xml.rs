@@ -114,8 +114,6 @@ pub fn write_define_xml(
             let length = match variable.data_type {
                 VariableType::Char => Some(variable_length(variable, &frame.data)?),
                 VariableType::Num => None,
-                // Future types default to having a length
-                _ => Some(variable_length(variable, &frame.data)?),
             };
             let codelist_oid = resolve_codelist(
                 domain,

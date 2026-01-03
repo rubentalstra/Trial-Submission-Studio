@@ -166,10 +166,10 @@ impl Codelist {
         if let Some(term) = self.terms.get(&key) {
             return term.submission_value.clone();
         }
-        if let Some(canonical_key) = self.synonyms.get(&key) {
-            if let Some(term) = self.terms.get(canonical_key) {
-                return term.submission_value.clone();
-            }
+        if let Some(canonical_key) = self.synonyms.get(&key)
+            && let Some(term) = self.terms.get(canonical_key)
+        {
+            return term.submission_value.clone();
         }
         value.to_string()
     }

@@ -175,7 +175,10 @@ impl Validator {
 
     /// Register the default set of validation rules.
     fn register_default_rules(&mut self) {
-        use rules::*;
+        use rules::{
+            DatasetLabelRule, DatasetNameRule, DuplicateVariableRule, FdaAsciiRule, FdaVersionRule,
+            FormatNameRule, VariableLabelRule, VariableLengthRule, VariableNameRule,
+        };
 
         // Name validation rules
         self.rules.push(Box::new(DatasetNameRule));

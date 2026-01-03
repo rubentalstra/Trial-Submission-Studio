@@ -25,7 +25,7 @@ pub use tss_updater::{UpdateChannel, UpdateCheckFrequency, UpdateSettings};
 // ============================================================================
 
 /// Application settings (persisted to disk as TOML).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
     pub general: GeneralSettings,
@@ -39,21 +39,6 @@ pub struct Settings {
     /// Recent study folders (persisted for convenience).
     #[serde(default)]
     pub recent_studies: Vec<PathBuf>,
-}
-
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            general: GeneralSettings::default(),
-            validation: ValidationSettings::default(),
-            developer: DeveloperSettings::default(),
-            export: ExportSettings::default(),
-            display: DisplaySettings::default(),
-            shortcuts: ShortcutSettings::default(),
-            updates: UpdateSettings::default(),
-            recent_studies: Vec::new(),
-        }
-    }
 }
 
 // ============================================================================
@@ -292,7 +277,7 @@ impl Default for ValidationSettings {
 // ============================================================================
 
 /// Developer mode settings for testing and debugging.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct DeveloperSettings {
     /// Enable developer mode.
@@ -307,19 +292,6 @@ pub struct DeveloperSettings {
     pub bypassed_rule_ids: HashSet<String>,
     /// Show extra debug information in the UI.
     pub show_debug_info: bool,
-}
-
-impl Default for DeveloperSettings {
-    fn default() -> Self {
-        Self {
-            enabled: false,
-            allow_export_with_errors: false,
-            allow_incomplete_mappings: false,
-            bypassed_categories: HashSet::new(),
-            bypassed_rule_ids: HashSet::new(),
-            show_debug_info: false,
-        }
-    }
 }
 
 // ============================================================================

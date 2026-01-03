@@ -33,9 +33,7 @@ pub struct UiState {
 impl UiState {
     /// Get or create UI state for a domain editor.
     pub fn domain_editor(&mut self, code: &str) -> &mut DomainEditorUiState {
-        self.domain_editors
-            .entry(code.to_string())
-            .or_insert_with(DomainEditorUiState::default)
+        self.domain_editors.entry(code.to_string()).or_default()
     }
 
     /// Get existing UI state for a domain (immutable).

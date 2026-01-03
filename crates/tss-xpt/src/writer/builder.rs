@@ -233,10 +233,10 @@ pub(crate) fn validate_dataset_quick(dataset: &XptDataset, version: XptVersion) 
     }
 
     // Validate dataset label (always max 40 chars)
-    if let Some(label) = &dataset.label {
-        if label.len() > 40 {
-            return Err(XptError::dataset_label_too_long(&dataset.name));
-        }
+    if let Some(label) = &dataset.label
+        && label.len() > 40
+    {
+        return Err(XptError::dataset_label_too_long(&dataset.name));
     }
 
     // Check for duplicate column names and validate each column
@@ -263,33 +263,33 @@ pub(crate) fn validate_dataset_quick(dataset: &XptDataset, version: XptVersion) 
         }
 
         // Validate label length
-        if let Some(label) = &column.label {
-            if label.len() > version.variable_label_limit() {
-                return Err(XptError::variable_label_too_long(
-                    &column.name,
-                    version.variable_label_limit(),
-                ));
-            }
+        if let Some(label) = &column.label
+            && label.len() > version.variable_label_limit()
+        {
+            return Err(XptError::variable_label_too_long(
+                &column.name,
+                version.variable_label_limit(),
+            ));
         }
 
         // Validate format name length
-        if let Some(format) = &column.format {
-            if format.len() > version.format_name_limit() {
-                return Err(XptError::format_name_too_long(
-                    format,
-                    version.format_name_limit(),
-                ));
-            }
+        if let Some(format) = &column.format
+            && format.len() > version.format_name_limit()
+        {
+            return Err(XptError::format_name_too_long(
+                format,
+                version.format_name_limit(),
+            ));
         }
 
         // Validate informat name length
-        if let Some(informat) = &column.informat {
-            if informat.len() > version.format_name_limit() {
-                return Err(XptError::format_name_too_long(
-                    informat,
-                    version.format_name_limit(),
-                ));
-            }
+        if let Some(informat) = &column.informat
+            && informat.len() > version.format_name_limit()
+        {
+            return Err(XptError::format_name_too_long(
+                informat,
+                version.format_name_limit(),
+            ));
         }
     }
 

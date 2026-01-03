@@ -98,7 +98,12 @@ impl AdamDataset {
     pub fn derived_variables(&self) -> Vec<&AdamVariable> {
         self.variables
             .iter()
-            .filter(|v| v.source.as_ref().map(|s| s.is_derived()).unwrap_or(false))
+            .filter(|v| {
+                v.source
+                    .as_ref()
+                    .map(super::enums::AdamVariableSource::is_derived)
+                    .unwrap_or(false)
+            })
             .collect()
     }
 
@@ -106,7 +111,12 @@ impl AdamDataset {
     pub fn sdtm_sourced_variables(&self) -> Vec<&AdamVariable> {
         self.variables
             .iter()
-            .filter(|v| v.source.as_ref().map(|s| s.is_from_sdtm()).unwrap_or(false))
+            .filter(|v| {
+                v.source
+                    .as_ref()
+                    .map(super::enums::AdamVariableSource::is_from_sdtm)
+                    .unwrap_or(false)
+            })
             .collect()
     }
 }

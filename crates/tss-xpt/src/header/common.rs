@@ -296,8 +296,8 @@ mod tests {
         assert!(record.starts_with(LIBRARY_HEADER_V5.as_bytes()));
 
         // Check '0' section
-        for i in 48..78 {
-            assert_eq!(record[i], b'0');
+        for byte in &record[48..78] {
+            assert_eq!(*byte, b'0');
         }
 
         // Check trailing spaces

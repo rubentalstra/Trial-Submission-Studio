@@ -241,7 +241,7 @@ pub fn detect_items_schema(df: &DataFrame, path: &std::path::Path) -> Result<Ite
     // Mandatory column: binary/ternary (2-3 unique values), very short values
     let mandatory = scores
         .iter()
-        .filter(|s| {
+        .find(|s| {
             s.index != id.index
                 && s.index != label.index
                 && data_type.as_ref().is_none_or(|dt| s.index != dt.index)
@@ -249,7 +249,6 @@ pub fn detect_items_schema(df: &DataFrame, path: &std::path::Path) -> Result<Ite
                 && s.cardinality <= 3
                 && s.avg_length < 6.0
         })
-        .next()
         .map(|s| ColumnRole {
             index: s.index,
             name: s.name.clone(),
@@ -277,7 +276,7 @@ pub fn detect_items_schema(df: &DataFrame, path: &std::path::Path) -> Result<Ite
     // ContentLength column: all numeric, short values
     let content_length = scores
         .iter()
-        .filter(|s| {
+        .find(|s| {
             s.index != id.index
                 && s.index != label.index
                 && data_type.as_ref().is_none_or(|dt| s.index != dt.index)
@@ -286,7 +285,6 @@ pub fn detect_items_schema(df: &DataFrame, path: &std::path::Path) -> Result<Ite
                 && s.numeric_ratio > 0.9
                 && s.avg_length < 5.0
         })
-        .next()
         .map(|s| ColumnRole {
             index: s.index,
             name: s.name.clone(),

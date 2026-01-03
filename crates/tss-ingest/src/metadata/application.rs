@@ -46,7 +46,7 @@ pub fn apply_study_metadata(
     let column_names: Vec<String> = result_df
         .get_column_names()
         .iter()
-        .map(|s| s.to_string())
+        .map(ToString::to_string)
         .collect();
 
     for col_name in &column_names {
@@ -83,7 +83,7 @@ pub fn apply_study_metadata(
         // Check if the decoded column already exists
         if result_df.column(&decoded_col_name).is_ok() {
             // Update existing column with decoded values (fill empty cells)
-            result_df = fill_column_with_decoded(result_df, &decoded_col_name, decoded_series)?;
+            result_df = fill_column_with_decoded(result_df, &decoded_col_name, &decoded_series)?;
             applied.decoded_columns.insert(decoded_col_name);
         } else {
             // Create new derived column
@@ -115,7 +115,7 @@ fn decode_column(
                 if trimmed.is_empty() {
                     None
                 } else {
-                    codelist.lookup(trimmed).map(|s| s.to_string())
+                    codelist.lookup(trimmed).map(ToString::to_string)
                 }
             })
         })
@@ -128,7 +128,7 @@ fn decode_column(
 fn fill_column_with_decoded(
     mut df: DataFrame,
     col_name: &str,
-    decoded_series: Series,
+    decoded_series: &Series,
 ) -> Result<DataFrame> {
     let existing = df.column(col_name)?;
     let existing_str = existing.cast(&DataType::String)?;
@@ -141,7 +141,7 @@ fn fill_column_with_decoded(
         .zip(decoded_chunked.iter())
         .map(|(existing_val, decoded_val)| match existing_val {
             Some(v) if !v.trim().is_empty() => Some(v.to_string()),
-            _ => decoded_val.map(|s| s.to_string()),
+            _ => decoded_val.map(ToString::to_string),
         })
         .collect();
 

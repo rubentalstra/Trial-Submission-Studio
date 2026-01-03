@@ -215,7 +215,7 @@ mod tests {
     fn test_any_to_f64() {
         assert_eq!(any_to_f64(AnyValue::Null), None);
         assert_eq!(any_to_f64(AnyValue::Int32(42)), Some(42.0));
-        assert_eq!(any_to_f64(AnyValue::Float64(3.14)), Some(3.14));
+        assert_eq!(any_to_f64(AnyValue::Float64(3.15)), Some(3.15));
         assert_eq!(any_to_f64(AnyValue::String("2.5")), Some(2.5));
         assert_eq!(any_to_f64(AnyValue::String("invalid")), None);
     }
@@ -233,8 +233,8 @@ mod tests {
     fn test_parse_f64() {
         assert_eq!(parse_f64(""), None);
         assert_eq!(parse_f64("  "), None);
-        assert_eq!(parse_f64("3.14"), Some(3.14));
-        assert_eq!(parse_f64("  3.14  "), Some(3.14));
+        assert_eq!(parse_f64("3.15"), Some(3.15));
+        assert_eq!(parse_f64("  3.15  "), Some(3.15));
         assert_eq!(parse_f64("invalid"), None);
     }
 

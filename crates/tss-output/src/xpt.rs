@@ -81,8 +81,7 @@ fn build_xpt_columns(domain: &Domain, df: &DataFrame) -> Result<Vec<XptColumn>> 
             label: variable.label.clone(),
             data_type: match variable.data_type {
                 VariableType::Num => XptType::Num,
-                // Treat Char and future types as Char
-                VariableType::Char | _ => XptType::Char,
+                VariableType::Char => XptType::Char,
             },
             length,
             // TODO please fix these format/informat fields
@@ -123,8 +122,7 @@ fn build_xpt_rows(domain: &Domain, df: &DataFrame) -> Result<Vec<Vec<XptValue>>>
             let value = column.get(row_idx).unwrap_or(AnyValue::Null);
             let cell = match variable.data_type {
                 VariableType::Num => XptValue::Num(NumericValue::from(any_to_f64(value))),
-                // Treat Char and future types as Char
-                VariableType::Char | _ => XptValue::Char(any_to_string(value)),
+                VariableType::Char => XptValue::Char(any_to_string(value)),
             };
             row.push(cell);
         }

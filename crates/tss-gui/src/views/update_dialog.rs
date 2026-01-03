@@ -11,7 +11,7 @@ use crate::state::UpdateDialogState;
 const UPDATE_VIEWPORT_ID: &str = "update_dialog";
 
 /// Action returned from the update dialog.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UpdateDialogAction {
     /// No action.
     None,

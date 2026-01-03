@@ -31,7 +31,7 @@ fn is_valid_sas_name(name: &str) -> bool {
     let chars: Vec<char> = normalized.chars().collect();
 
     // Must start with a letter
-    if !chars.first().is_some_and(|c| c.is_ascii_alphabetic()) {
+    if !chars.first().is_some_and(char::is_ascii_alphabetic) {
         return false;
     }
 

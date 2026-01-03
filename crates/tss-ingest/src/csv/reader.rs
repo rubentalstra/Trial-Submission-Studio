@@ -62,7 +62,7 @@ pub fn read_csv_schema(path: &Path, header_rows: usize) -> Result<CsvHeaders> {
         }
         _ => {
             let columns = parse_csv_line(&lines[0]);
-            if columns.is_empty() || columns.iter().all(|s| s.is_empty()) {
+            if columns.is_empty() || columns.iter().all(String::is_empty) {
                 return Err(IngestError::NoHeaderDetected {
                     path: path.to_path_buf(),
                 });
@@ -82,7 +82,7 @@ pub fn read_csv_table(path: &Path, header_rows: usize) -> Result<(DataFrame, Csv
     let headers = read_csv_schema(path, header_rows)?;
 
     // Skip additional rows beyond the first header row
-    let skip_rows = if header_rows > 1 { header_rows - 1 } else { 0 };
+    let skip_rows = header_rows.saturating_sub(1);
 
     let df = CsvReadOptions::default()
         .with_has_header(true)

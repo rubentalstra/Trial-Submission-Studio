@@ -96,23 +96,23 @@ impl eframe::App for CdiscApp {
         let mut home_action = HomeAction::None;
 
         // Show settings window if open
-        if self.state.is_settings_open() {
-            if let Some(ref mut pending) = self.state.ui.settings.pending {
-                let dark_mode = pending.general.dark_mode;
-                let result = self.settings_window.show(ctx, pending, dark_mode);
+        if self.state.is_settings_open()
+            && let Some(ref mut pending) = self.state.ui.settings.pending
+        {
+            let dark_mode = pending.general.dark_mode;
+            let result = self.settings_window.show(ctx, pending, dark_mode);
 
-                match result {
-                    SettingsResult::Open => {}
-                    SettingsResult::Apply => {
-                        self.state.close_settings(true);
-                        // Save settings to disk
-                        if let Err(e) = save_settings(&self.state.settings) {
-                            tracing::error!("Failed to save settings: {}", e);
-                        }
+            match result {
+                SettingsResult::Open => {}
+                SettingsResult::Apply => {
+                    self.state.close_settings(true);
+                    // Save settings to disk
+                    if let Err(e) = save_settings(&self.state.settings) {
+                        tracing::error!("Failed to save settings: {}", e);
                     }
-                    SettingsResult::Cancel => {
-                        self.state.close_settings(false);
-                    }
+                }
+                SettingsResult::Cancel => {
+                    self.state.close_settings(false);
                 }
             }
         }
@@ -234,26 +234,23 @@ impl CdiscApp {
 
         ctx.input(|i| {
             // Cmd/Ctrl+O - Open study
-            if cmd_or_ctrl && i.key_pressed(egui::Key::O) {
-                if let Some(folder) = rfd::FileDialog::new().pick_folder() {
-                    tracing::info!("Opening study: {:?}", folder);
-                    // Note: Can't call load_study here due to borrow rules
-                    // The menu handles this instead
-                }
+            if cmd_or_ctrl
+                && i.key_pressed(egui::Key::O)
+                && let Some(folder) = rfd::FileDialog::new().pick_folder()
+            {
+                tracing::info!("Opening study: {:?}", folder);
+                // Note: Can't call load_study here due to borrow rules
+                // The menu handles this instead
             }
 
             // Cmd/Ctrl+, - Open settings
-            if cmd_or_ctrl && i.key_pressed(egui::Key::Comma) {
-                if !self.state.is_settings_open() {
-                    self.state.open_settings();
-                }
+            if cmd_or_ctrl && i.key_pressed(egui::Key::Comma) && !self.state.is_settings_open() {
+                self.state.open_settings();
             }
 
             // Cmd/Ctrl+E - Go to Export
-            if cmd_or_ctrl && i.key_pressed(egui::Key::E) {
-                if self.state.study.is_some() {
-                    self.state.go_export();
-                }
+            if cmd_or_ctrl && i.key_pressed(egui::Key::E) && self.state.study.is_some() {
+                self.state.go_export();
             }
 
             // Escape - Go back or close settings
@@ -276,17 +273,16 @@ impl CdiscApp {
                 let current_idx = tabs.iter().position(|t| t == tab).unwrap_or(0);
 
                 // Right arrow - next tab
-                if i.key_pressed(egui::Key::ArrowRight) && !modifiers.shift {
-                    if current_idx < tabs.len() - 1 {
-                        self.state.switch_tab(tabs[current_idx + 1]);
-                    }
+                if i.key_pressed(egui::Key::ArrowRight)
+                    && !modifiers.shift
+                    && current_idx < tabs.len() - 1
+                {
+                    self.state.switch_tab(tabs[current_idx + 1]);
                 }
 
                 // Left arrow - previous tab
-                if i.key_pressed(egui::Key::ArrowLeft) && !modifiers.shift {
-                    if current_idx > 0 {
-                        self.state.switch_tab(tabs[current_idx - 1]);
-                    }
+                if i.key_pressed(egui::Key::ArrowLeft) && !modifiers.shift && current_idx > 0 {
+                    self.state.switch_tab(tabs[current_idx - 1]);
                 }
             }
         });

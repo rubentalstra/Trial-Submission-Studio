@@ -47,15 +47,15 @@ fn find_metadata_file(dir: &Path, suffix: &str) -> Option<std::path::PathBuf> {
 
     for entry in entries.flatten() {
         let path = entry.path();
-        if path.is_file() {
-            if let Some(name) = path.file_name().and_then(|n| n.to_str()) {
-                let upper = name.to_uppercase();
-                // Match patterns like "STUDY_Items.csv", "Items.csv", "STUDY_ITEMS.CSV"
-                if upper.ends_with(&format!("{}.CSV", suffix.to_uppercase()))
-                    || upper.ends_with(&format!("_{}.CSV", suffix.to_uppercase()))
-                {
-                    return Some(path);
-                }
+        if path.is_file()
+            && let Some(name) = path.file_name().and_then(|n| n.to_str())
+        {
+            let upper = name.to_uppercase();
+            // Match patterns like "STUDY_Items.csv", "Items.csv", "STUDY_ITEMS.CSV"
+            if upper.ends_with(&format!("{}.CSV", suffix.to_uppercase()))
+                || upper.ends_with(&format!("_{}.CSV", suffix.to_uppercase()))
+            {
+                return Some(path);
             }
         }
     }

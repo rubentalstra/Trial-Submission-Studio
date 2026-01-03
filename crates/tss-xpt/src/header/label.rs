@@ -410,7 +410,7 @@ mod tests {
     fn make_column(name: &str, label: Option<&str>) -> XptColumn {
         XptColumn {
             name: name.to_string(),
-            label: label.map(|s| s.to_string()),
+            label: label.map(ToString::to_string),
             data_type: XptType::Num,
             length: 8,
             format: None,

@@ -53,14 +53,13 @@ impl DomainEditorView {
             ui.heading(domain_code);
 
             // Show domain info (use study.get_domain to bypass DM check - we already checked)
-            if let Some(study) = state.study() {
-                if let Some(domain) = study.get_domain(domain_code) {
-                    let file_name = domain.source.file_name().unwrap_or("unknown");
-                    ui.label(
-                        RichText::new(format!("{}  •  {} rows", file_name, domain.row_count()))
-                            .weak(),
-                    );
-                }
+            if let Some(study) = state.study()
+                && let Some(domain) = study.get_domain(domain_code)
+            {
+                let file_name = domain.source.file_name().unwrap_or("unknown");
+                ui.label(
+                    RichText::new(format!("{}  •  {} rows", file_name, domain.row_count())).weak(),
+                );
             }
         });
 

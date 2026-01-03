@@ -323,13 +323,13 @@ fn parse_xpt_data(data: &[u8], options: &XptReaderOptions) -> Result<XptDataset>
 /// Read a single 80-byte record.
 fn read_record(data: &[u8], offset: usize) -> Result<&[u8]> {
     data.get(offset..offset + RECORD_LEN)
-        .ok_or_else(|| XptError::RecordOutOfBounds { offset })
+        .ok_or(XptError::RecordOutOfBounds { offset })
 }
 
 /// Read a block of bytes.
 fn read_block(data: &[u8], offset: usize, len: usize) -> Result<&[u8]> {
     data.get(offset..offset + len)
-        .ok_or_else(|| XptError::RecordOutOfBounds { offset })
+        .ok_or(XptError::RecordOutOfBounds { offset })
 }
 
 /// Parse observation data into rows.

@@ -39,7 +39,7 @@ pub fn load_from(base_dir: &Path) -> Result<Vec<AdamDataset>> {
     let (datasets, long_to_short) = load_data_structures(&datasets_path)?;
     let variables = load_variables(&variables_path, &long_to_short)?;
 
-    build_datasets(datasets, variables)
+    build_datasets(&datasets, variables)
 }
 
 // =============================================================================
@@ -219,7 +219,7 @@ fn load_variables(
 
 /// Build AdamDataset structs from loaded data.
 fn build_datasets(
-    datasets: BTreeMap<String, DatasetMeta>,
+    datasets: &BTreeMap<String, DatasetMeta>,
     mut variables: BTreeMap<String, Vec<AdamVariable>>,
 ) -> Result<Vec<AdamDataset>> {
     let mut result = Vec::new();

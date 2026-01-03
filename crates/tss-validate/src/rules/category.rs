@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Validation rule category (parsed from CSV).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
 pub enum Category {
     Terminology,
     Presence,
@@ -13,6 +13,7 @@ pub enum Category {
     Metadata,
     CrossReference,
     Structure,
+    #[default]
     Unknown,
 }
 
@@ -32,7 +33,7 @@ impl Category {
     }
 
     /// Parse category from CSV string.
-    pub fn from_str(s: &str) -> Self {
+    pub fn parse(s: &str) -> Self {
         match s.trim().to_lowercase().as_str() {
             "terminology" => Self::Terminology,
             "presence" => Self::Presence,
@@ -79,11 +80,5 @@ impl Category {
             Self::Structure => "Dataset structure validation",
             Self::Unknown => "Uncategorized rules",
         }
-    }
-}
-
-impl Default for Category {
-    fn default() -> Self {
-        Self::Unknown
     }
 }

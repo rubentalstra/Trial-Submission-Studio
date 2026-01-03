@@ -4,7 +4,7 @@
 //! `DomainState` (mutable mapping with version tracking).
 
 use super::DerivedState;
-use polars::prelude::DataFrame;
+use polars::prelude::{DataFrame, PlSmallStr};
 use std::path::PathBuf;
 use tss_map::MappingState as CoreMappingState;
 
@@ -41,7 +41,7 @@ impl DomainSource {
         self.data
             .get_column_names()
             .into_iter()
-            .map(|s| s.to_string())
+            .map(PlSmallStr::to_string)
             .collect()
     }
 

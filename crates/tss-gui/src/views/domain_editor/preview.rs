@@ -101,7 +101,7 @@ fn show_preview_content(ui: &mut Ui, state: &mut AppState, domain_code: &str, df
     let current_page = ui_state.preview.current_page;
     let rows_per_page = ui_state.preview.rows_per_page;
 
-    let total_pages = (total_rows + rows_per_page - 1) / rows_per_page;
+    let total_pages = total_rows.div_ceil(rows_per_page);
     let start_row = current_page * rows_per_page;
     let row_count = rows_per_page.min(total_rows.saturating_sub(start_row));
 
@@ -138,7 +138,7 @@ fn show_preview_content(ui: &mut Ui, state: &mut AppState, domain_code: &str, df
     let column_names: Vec<String> = df
         .get_column_names()
         .into_iter()
-        .map(|s| s.to_string())
+        .map(polars::prelude::PlSmallStr::to_string)
         .collect();
     let available_height = ui.available_height() - 40.0; // Reserve space for bottom pagination
 

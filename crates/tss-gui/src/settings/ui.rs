@@ -626,10 +626,10 @@ impl SettingsWindow {
                     if export.default_output_dir.is_some() && ui.button("Clear").clicked() {
                         export.default_output_dir = None;
                     }
-                    if ui.button("Browse...").clicked() {
-                        if let Some(folder) = rfd::FileDialog::new().pick_folder() {
-                            export.default_output_dir = Some(folder);
-                        }
+                    if ui.button("Browse...").clicked()
+                        && let Some(folder) = rfd::FileDialog::new().pick_folder()
+                    {
+                        export.default_output_dir = Some(folder);
                     }
                 });
             });

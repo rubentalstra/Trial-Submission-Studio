@@ -312,7 +312,7 @@ fn show_column_detail(
         .is_some();
 
     if is_editing {
-        show_editing_form(ui, state, domain_code, &col_name, &supp_config);
+        show_editing_form(ui, state, domain_code, &col_name, supp_config);
     } else {
         show_action_buttons(ui, state, domain_code, &col_name, config);
     }
@@ -382,25 +382,24 @@ fn show_action_buttons(
         }
 
         // Reset button (if not pending)
-        if config.action != SuppAction::Pending {
-            if ui
+        if config.action != SuppAction::Pending
+            && ui
                 .button(RichText::new(format!(
                     "{} Reset",
                     egui_phosphor::regular::ARROW_COUNTER_CLOCKWISE
                 )))
                 .clicked()
-            {
-                apply_supp_action_change(
-                    state,
-                    domain_code,
-                    col_name,
-                    SuppAction::Pending,
-                    "",
-                    "",
-                    QualifierOrigin::default(),
-                    "",
-                );
-            }
+        {
+            apply_supp_action_change(
+                state,
+                domain_code,
+                col_name,
+                SuppAction::Pending,
+                "",
+                "",
+                QualifierOrigin::default(),
+                "",
+            );
         }
     });
 }
@@ -605,22 +604,20 @@ fn show_editing_form(
     ui.add_space(spacing::MD);
 
     // Update editing state if values changed
-    if qnam_response.changed()
+    if (qnam_response.changed()
         || qlabel_response.changed()
         || qorig_changed
-        || qeval_response.changed()
-    {
-        if let Some(editing) = state
+        || qeval_response.changed())
+        && let Some(editing) = state
             .ui
             .domain_editor(domain_code)
             .supp
             .editing_for_mut(col_name)
-        {
-            editing.qnam = qnam.clone();
-            editing.qlabel = qlabel.clone();
-            editing.qorig = qorig;
-            editing.qeval = qeval.clone();
-        }
+    {
+        editing.qnam = qnam.clone();
+        editing.qlabel = qlabel.clone();
+        editing.qorig = qorig;
+        editing.qeval = qeval.clone();
     }
 
     // Re-check duplicate after any edits (qnam may have changed)
@@ -710,6 +707,7 @@ fn is_qnam_used_by_other(supp_config: &SuppConfig, current_col: &str, qnam: &str
 }
 
 /// Apply a SUPP action change with QNAM, QLABEL, QORIG, and QEVAL
+#[allow(clippy::too_many_arguments)]
 fn apply_supp_action_change(
     state: &mut AppState,
     domain_code: &str,
@@ -723,23 +721,21 @@ fn apply_supp_action_change(
     if let Some(domain) = state
         .study_mut()
         .and_then(|s| s.get_domain_mut(domain_code))
+        && let Some(supp) = domain.derived.supp_mut()
+        && let Some(config) = supp.get_mut(column_name)
     {
-        if let Some(supp) = domain.derived.supp_mut() {
-            if let Some(config) = supp.get_mut(column_name) {
-                config.action = new_action;
-                if new_action == SuppAction::AddToSupp {
-                    config.qnam = qnam.to_string();
-                    config.qlabel = qlabel.to_string();
-                    config.qorig = qorig;
-                    config.qeval = qeval.to_string();
-                } else if new_action == SuppAction::Pending {
-                    // Reset to suggested QNAM, clear all values
-                    config.qnam = suggest_qnam(column_name, domain_code);
-                    config.qlabel = String::new();
-                    config.qorig = QualifierOrigin::default();
-                    config.qeval = String::new();
-                }
-            }
+        config.action = new_action;
+        if new_action == SuppAction::AddToSupp {
+            config.qnam = qnam.to_string();
+            config.qlabel = qlabel.to_string();
+            config.qorig = qorig;
+            config.qeval = qeval.to_string();
+        } else if new_action == SuppAction::Pending {
+            // Reset to suggested QNAM, clear all values
+            config.qnam = suggest_qnam(column_name, domain_code);
+            config.qlabel = String::new();
+            config.qorig = QualifierOrigin::default();
+            config.qeval = String::new();
         }
     }
 }

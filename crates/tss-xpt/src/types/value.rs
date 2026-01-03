@@ -300,11 +300,11 @@ mod tests {
 
     #[test]
     fn test_xpt_value_numeric() {
-        let v = XptValue::numeric(3.14);
+        let v = XptValue::numeric(3.15);
         assert!(v.is_numeric());
         assert!(!v.is_character());
         assert!(!v.is_missing());
-        assert_eq!(v.as_f64(), Some(3.14));
+        assert_eq!(v.as_f64(), Some(3.15));
         assert_eq!(v.as_str(), None);
     }
 

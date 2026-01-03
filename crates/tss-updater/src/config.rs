@@ -78,7 +78,7 @@ impl UpdateChannel {
 }
 
 /// User settings for the update system.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct UpdateSettings {
     /// How often to check for updates.
     pub check_frequency: UpdateCheckFrequency,
@@ -97,18 +97,6 @@ pub struct UpdateSettings {
     /// Last time we notified the user about an available update.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_notification_time: Option<DateTime<Utc>>,
-}
-
-impl Default for UpdateSettings {
-    fn default() -> Self {
-        Self {
-            check_frequency: UpdateCheckFrequency::default(),
-            channel: UpdateChannel::default(),
-            skipped_version: None,
-            last_check_time: None,
-            last_notification_time: None,
-        }
-    }
 }
 
 impl UpdateSettings {
