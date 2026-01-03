@@ -1,5 +1,6 @@
 # Trial Submission Studio
 
+<<<<<<< HEAD
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/Rust-1.92+-orange.svg)](https://www.rust-lang.org/)
 [![Build Status](https://img.shields.io/github/actions/workflow/status/rubentalstra/trial-submission-studio/ci.yml?branch=main)](https://github.com/rubentalstra/trial-submission-studio/actions)
@@ -62,6 +63,12 @@ Requires Rust 1.92+
 git clone https://github.com/rubentalstra/trial-submission-studio.git
 cd trial-submission-studio
 cargo build --release
+=======
+A Rust-first GUI application for transforming clinical trial source data into CDISC SDTM
+outputs (XPT, Dataset-XML, Define-XML) with strict, offline validation.
+
+```bash
+>>>>>>> 6978fab (refactored the whole codebase to the new name.  (#41))
 cargo run --package tss-gui
 ```
 
@@ -104,6 +111,7 @@ Our goal is full FDA compliance for regulatory submissions:
 - XPT V5 format (FDA standard)
 - Define-XML 2.1 generation
 
+<<<<<<< HEAD
 > **Note:** Currently in alpha. Validate all outputs with qualified professionals before submission.
 
 ## Why Trial Submission Studio?
@@ -234,3 +242,12 @@ MIT License - see [LICENSE](LICENSE)
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
+=======
+
+
+
+
+## References
+[record-layout-of-a-sas-version-5-or-6-data-set-in-sas-transport-xport-format.pdf](crates/tss-xpt/record-layout-of-a-sas-version-5-or-6-data-set-in-sas-transport-xport-format.pdf)
+[record-layout-of-a-sas-version-8-or-9-data-set-in-sas-transport-format.pdf](crates/tss-xpt/record-layout-of-a-sas-version-8-or-9-data-set-in-sas-transport-format.pdf)
+>>>>>>> 6978fab (refactored the whole codebase to the new name.  (#41))
