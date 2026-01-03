@@ -17,8 +17,7 @@ formats.
 > **ALPHA SOFTWARE - ACTIVE DEVELOPMENT**
 >
 > Trial Submission Studio is currently in early development. Features are
-> incomplete, APIs may change, and bugs are expected. **Do not use for
-> production regulatory submissions.**
+> incomplete, APIs may change, and bugs are expected. **Do not use for production regulatory submissions.**
 >
 > Always validate all outputs with qualified regulatory professionals before
 > submission to regulatory authorities.

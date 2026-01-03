@@ -7,8 +7,8 @@ Important notices about Trial Submission Studio.
 > [!WARNING]
 > **Trial Submission Studio is currently in alpha development.**
 
-This software is provided for **evaluation and development purposes only**. It
-is **not yet suitable for production use ** in regulatory submissions.
+This software is provided for **evaluation and development purposes only**. It is **not yet suitable for production use
+** in regulatory submissions.
 
 ### What This Means
 
@@ -19,9 +19,8 @@ is **not yet suitable for production use ** in regulatory submissions.
 
 ## Not for Production Submissions
 
-**Do not use Trial Submission Studio outputs for actual FDA, PMDA, or other
-regulatory submissions** until the software reaches stable release (version
-1.0.0 or later).
+**Do not use Trial Submission Studio outputs for actual FDA, PMDA, or other regulatory submissions** until the software
+reaches stable release (version 1.0.0 or later).
 
 ### Before Submission
 
