@@ -104,6 +104,12 @@ pub fn write_define_xml(
     for (domain, frame) in &entries {
         let output_dataset_name = frame.dataset_name();
         for variable in &domain.variables {
+            // Skip variables that don't exist in the DataFrame
+            // (they weren't mapped or generated in the transformation)
+            if frame.data.column(&variable.name).is_err() {
+                continue;
+            }
+
             let oid = format!("IT.{}.{}", output_dataset_name, variable.name);
             let length = match variable.data_type {
                 VariableType::Char => Some(variable_length(variable, &frame.data)?),
@@ -225,7 +231,12 @@ pub fn write_define_xml(
         }
         xml.write_event(Event::Start(ig))?;
 
-        let ordered_vars = domain.variables_by_role();
+        // Filter to only variables that exist in the DataFrame
+        let ordered_vars: Vec<_> = domain
+            .variables_by_role()
+            .into_iter()
+            .filter(|v| frame.data.column(&v.name).is_ok())
+            .collect();
 
         let mut key_sequence = 1usize;
         for (idx, variable) in ordered_vars.iter().enumerate() {

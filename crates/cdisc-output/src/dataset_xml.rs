@@ -125,8 +125,16 @@ pub fn write_dataset_xml(
     xml.write_event(Event::Start(container))?;
 
     let df = &frame.data;
-    let mut columns = Vec::with_capacity(domain.variables.len());
-    for variable in &domain.variables {
+
+    // Filter to only variables that exist in the DataFrame
+    let existing_vars: Vec<_> = domain
+        .variables
+        .iter()
+        .filter(|v| df.column(&v.name).is_ok())
+        .collect();
+
+    let mut columns = Vec::with_capacity(existing_vars.len());
+    for variable in &existing_vars {
         let series = df
             .column(variable.name.as_str())
             .with_context(|| format!("missing column {}", variable.name))?;
@@ -140,7 +148,7 @@ pub fn write_dataset_xml(
         group.push_attribute(("ItemGroupOID", group_oid.as_str()));
         group.push_attribute(("data:ItemGroupDataSeq", group_seq.as_str()));
         xml.write_event(Event::Start(group))?;
-        for (variable, column) in domain.variables.iter().zip(columns.iter()) {
+        for (variable, column) in existing_vars.iter().zip(columns.iter()) {
             let value = column.get(row_idx).unwrap_or(AnyValue::Null);
             if let Some(text) = any_to_string_non_empty(value) {
                 let mut item = BytesStart::new("ItemData");

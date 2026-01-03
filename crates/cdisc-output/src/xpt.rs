@@ -66,8 +66,15 @@ pub fn build_xpt_dataset_with_name(
 
 /// Build XPT columns from domain variables.
 fn build_xpt_columns(domain: &Domain, df: &DataFrame) -> Result<Vec<XptColumn>> {
-    let mut columns = Vec::with_capacity(domain.variables.len());
-    for variable in &domain.variables {
+    // Filter to only variables that exist in the DataFrame
+    let existing_vars: Vec<_> = domain
+        .variables
+        .iter()
+        .filter(|v| df.column(&v.name).is_ok())
+        .collect();
+
+    let mut columns = Vec::with_capacity(existing_vars.len());
+    for variable in &existing_vars {
         let length = variable_length(variable, df)?;
         columns.push(XptColumn {
             name: variable.name.clone(),
@@ -93,8 +100,15 @@ fn build_xpt_columns(domain: &Domain, df: &DataFrame) -> Result<Vec<XptColumn>> 
 
 /// Build XPT rows from DataFrame.
 fn build_xpt_rows(domain: &Domain, df: &DataFrame) -> Result<Vec<Vec<XptValue>>> {
-    let mut series = Vec::with_capacity(domain.variables.len());
-    for variable in &domain.variables {
+    // Filter to only variables that exist in the DataFrame
+    let existing_vars: Vec<_> = domain
+        .variables
+        .iter()
+        .filter(|v| df.column(&v.name).is_ok())
+        .collect();
+
+    let mut series = Vec::with_capacity(existing_vars.len());
+    for variable in &existing_vars {
         let col = df
             .column(variable.name.as_str())
             .with_context(|| format!("missing column {}", variable.name))?;
@@ -105,7 +119,7 @@ fn build_xpt_rows(domain: &Domain, df: &DataFrame) -> Result<Vec<Vec<XptValue>>>
     let mut rows = Vec::with_capacity(row_count);
     for row_idx in 0..row_count {
         let mut row = Vec::with_capacity(series.len());
-        for (variable, column) in domain.variables.iter().zip(series.iter()) {
+        for (variable, column) in existing_vars.iter().zip(series.iter()) {
             let value = column.get(row_idx).unwrap_or(AnyValue::Null);
             let cell = match variable.data_type {
                 VariableType::Num => XptValue::Num(NumericValue::from(any_to_f64(value))),

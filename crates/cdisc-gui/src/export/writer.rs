@@ -2,7 +2,7 @@
 //!
 //! Handles the actual export process in a background thread with cancellation support.
 
-use super::supp::{build_supp_frame, has_supp_columns};
+use super::supp::{build_supp_domain_definition, build_supp_frame, has_supp_columns};
 use super::types::{
     ExportConfig, ExportError, ExportHandle, ExportResult, ExportStep, ExportUpdate,
 };
@@ -10,6 +10,10 @@ use crate::settings::ExportFormat;
 use crate::state::StudyState;
 use cdisc_model::Domain;
 use cdisc_output::types::DomainFrame;
+use cdisc_output::{
+    DatasetXmlOptions, DefineXmlOptions, write_dataset_xml as write_dataset_xml_impl,
+    write_define_xml as write_define_xml_impl,
+};
 use crossbeam_channel::Sender;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -69,6 +73,18 @@ fn execute_export(
     std::fs::create_dir_all(&datasets_dir)
         .map_err(|e| ExportError::new(format!("Failed to create output directory: {}", e)))?;
 
+    // Extract study_id from the first selected domain's STUDYID column
+    let study_id = config
+        .selected_domains
+        .iter()
+        .next()
+        .and_then(|code| study.get_domain(code))
+        .and_then(|d| d.derived.preview.as_ref())
+        .and_then(|df| df.column("STUDYID").ok())
+        .and_then(|col| col.get(0).ok())
+        .map(|v| format!("{}", v).trim_matches('"').to_string())
+        .unwrap_or_else(|| "STUDY".to_string());
+
     let mut domain_frames: Vec<DomainFrame> = Vec::new();
     let mut supp_frames: Vec<DomainFrame> = Vec::new();
 
@@ -120,7 +136,15 @@ fn execute_export(
             config.format.extension()
         );
         let path = datasets_dir.join(&filename);
-        write_data_file(&path, &frame, config.format, &variable_metadata)?;
+        let domain_def = domain.mapping.domain();
+        write_data_file(
+            &path,
+            &frame,
+            domain_def,
+            &study_id,
+            config.format,
+            &variable_metadata,
+        )?;
 
         // Track written file
         if let Ok(mut files) = written_files.lock() {
@@ -146,7 +170,23 @@ fn execute_export(
                 let supp_path = datasets_dir.join(&supp_filename);
                 // Use SUPP-specific metadata (standard SUPP variables)
                 let supp_metadata = build_supp_variable_metadata();
-                write_data_file(&supp_path, &supp_frame, config.format, &supp_metadata)?;
+                // Get SUPP domain definition from standards for Dataset-XML
+                let supp_domain = build_supp_domain_definition(domain_code);
+                if let Some(ref supp_def) = supp_domain {
+                    write_data_file(
+                        &supp_path,
+                        &supp_frame,
+                        supp_def,
+                        &study_id,
+                        config.format,
+                        &supp_metadata,
+                    )?;
+                } else {
+                    // Fallback: XPT doesn't need domain definition
+                    if config.format == ExportFormat::Xpt {
+                        write_xpt_file(&supp_path, &supp_frame, &supp_metadata)?;
+                    }
+                }
 
                 if let Ok(mut files) = written_files.lock() {
                     files.push(supp_path.clone());
@@ -199,12 +239,14 @@ fn execute_export(
 fn write_data_file(
     path: &Path,
     frame: &DomainFrame,
+    domain: &Domain,
+    study_id: &str,
     format: ExportFormat,
     variable_metadata: &HashMap<String, VariableMetadata>,
 ) -> Result<(), ExportError> {
     match format {
         ExportFormat::Xpt => write_xpt_file(path, frame, variable_metadata),
-        ExportFormat::DatasetXml => write_dataset_xml_file(path, frame),
+        ExportFormat::DatasetXml => write_dataset_xml_file(path, frame, domain, study_id),
     }
 }
 
@@ -470,17 +512,29 @@ fn write_xpt_file(
 }
 
 /// Write a Dataset-XML file.
-fn write_dataset_xml_file(path: &Path, frame: &DomainFrame) -> Result<(), ExportError> {
-    // TODO: Implement Dataset-XML writing
-    // For now, create a placeholder file
-    std::fs::write(
+fn write_dataset_xml_file(
+    path: &Path,
+    frame: &DomainFrame,
+    domain: &Domain,
+    study_id: &str,
+) -> Result<(), ExportError> {
+    // TODO: SDTM-IG version (made configurable)
+    let sdtm_ig_version = "3.4";
+
+    let options = DatasetXmlOptions {
+        dataset_name: Some(frame.dataset_name()),
+        ..Default::default()
+    };
+
+    write_dataset_xml_impl(
         path,
-        format!(
-            "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!-- Dataset-XML for {} -->\n",
-            frame.domain_code
-        ),
+        domain,
+        frame,
+        study_id,
+        sdtm_ig_version,
+        Some(&options),
     )
-    .map_err(|e| ExportError::new(format!("Failed to write Dataset-XML file: {}", e)))?;
+    .map_err(|e| ExportError::new(format!("Failed to write Dataset-XML: {}", e)))?;
 
     Ok(())
 }
@@ -488,17 +542,58 @@ fn write_dataset_xml_file(path: &Path, frame: &DomainFrame) -> Result<(), Export
 /// Write Define-XML file.
 fn write_define_xml(
     path: &Path,
-    _study: &StudyState,
-    _domain_frames: &[DomainFrame],
-    _supp_frames: &[DomainFrame],
+    study: &StudyState,
+    domain_frames: &[DomainFrame],
+    supp_frames: &[DomainFrame],
 ) -> Result<(), ExportError> {
-    // TODO: Implement Define-XML generation
-    // For now, create a placeholder file
-    std::fs::write(
-        path,
-        "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<!-- Define-XML placeholder -->\n",
-    )
-    .map_err(|e| ExportError::new(format!("Failed to write Define-XML file: {}", e)))?;
+    // Collect domain definitions from the study
+    let mut domains: Vec<Domain> = Vec::new();
+    let mut all_frames: Vec<DomainFrame> = Vec::new();
+
+    // Add main domain definitions and frames
+    for frame in domain_frames {
+        if let Some(domain_state) = study.get_domain(&frame.domain_code) {
+            domains.push(domain_state.mapping.domain().clone());
+            all_frames.push(frame.clone());
+        }
+    }
+
+    // Add SUPP domain definitions and frames
+    for supp_frame in supp_frames {
+        // Extract parent domain code from SUPP frame (e.g., "suppdm" -> "DM")
+        let parent_code = supp_frame
+            .domain_code
+            .strip_prefix("SUPP")
+            .or_else(|| supp_frame.domain_code.strip_prefix("supp"))
+            .unwrap_or(&supp_frame.domain_code)
+            .to_uppercase();
+
+        // Create SUPP domain definition from standards
+        if let Some(supp_domain) = build_supp_domain_definition(&parent_code) {
+            domains.push(supp_domain);
+        }
+        all_frames.push(supp_frame.clone());
+    }
+
+    // Get study ID from the first domain's STUDYID column or use default
+    let study_id = domain_frames
+        .first()
+        .and_then(|f| {
+            f.data
+                .column("STUDYID")
+                .ok()
+                .and_then(|col| col.get(0).ok())
+                .map(|v| format!("{}", v).trim_matches('"').to_string())
+        })
+        .unwrap_or_else(|| "STUDY".to_string());
+
+    // Create options with SDTM IG version
+    // TODO: SDTM-IG version (made configurable)
+    let options = DefineXmlOptions::new("3.4", "Submission");
+
+    // Call the actual Define-XML writer
+    write_define_xml_impl(path, &study_id, &domains, &all_frames, &options)
+        .map_err(|e| ExportError::new(format!("Failed to write Define-XML: {}", e)))?;
 
     Ok(())
 }

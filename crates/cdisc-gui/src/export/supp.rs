@@ -5,7 +5,9 @@
 //! - Exception: For SUPPDM, IDVAR and IDVARVAL are null (USUBJID alone is key)
 
 use crate::state::{DomainState, SuppAction};
+use cdisc_model::Domain;
 use cdisc_output::types::DomainFrame;
+use cdisc_standards::sdtm_ig;
 use polars::prelude::*;
 
 /// Check if domain has any columns configured for SUPP.
@@ -229,4 +231,33 @@ fn format_anyvalue(value: &AnyValue) -> String {
         AnyValue::StringOwned(s) => s.to_string(),
         _ => format!("{}", value),
     }
+}
+
+/// Build a SUPP domain definition for Define-XML.
+///
+/// Loads the SUPPQUAL template from SDTM IG 3.4 standards and customizes it
+/// for the specific parent domain (e.g., SUPPAE for AE domain).
+///
+/// Returns None if SUPPQUAL cannot be loaded from standards.
+pub fn build_supp_domain_definition(parent_domain_code: &str) -> Option<Domain> {
+    // Load SDTM IG domains from standards
+    let domains = sdtm_ig::load().ok()?;
+
+    // Find the SUPPQUAL template domain
+    let suppqual = domains.iter().find(|d| d.name == "SUPPQUAL")?;
+
+    // Clone and customize for the specific parent domain
+    let supp_name = format!("SUPP{}", parent_domain_code.to_uppercase());
+
+    Some(Domain {
+        name: supp_name.clone(),
+        label: Some(format!(
+            "Supplemental Qualifiers for {}",
+            parent_domain_code.to_uppercase()
+        )),
+        class: suppqual.class,
+        structure: suppqual.structure.clone(),
+        dataset_name: Some(supp_name.to_lowercase()),
+        variables: suppqual.variables.clone(),
+    })
 }
