@@ -3,6 +3,3 @@ contact_links:
   - name: "\U0001F4AC GitHub Discussions"
     url: https://github.com/rubentalstra/Trial-Submission-Studio/discussions
     about: "Ask questions and discuss ideas with the community"
-  - name: "\U0001F512 Report a Security Vulnerability"
-    url: https://github.com/rubentalstra/Trial-Submission-Studio/security/policy
-    about: "Please report security vulnerabilities privately via our security policy"
