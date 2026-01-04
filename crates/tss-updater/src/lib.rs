@@ -64,10 +64,27 @@ pub const REPO_NAME: &str = "Trial-Submission-Studio";
 /// Binary name.
 pub const BIN_NAME: &str = "trial-submission-studio";
 
+/// Get the runtime target triple for asset matching.
+///
+/// This constructs the target triple at runtime using `std::env::consts`,
+/// ensuring we always download the correct architecture even if the binary
+/// was cross-compiled.
+fn get_runtime_target() -> String {
+    let arch = std::env::consts::ARCH; // "aarch64" or "x86_64"
+    let os_suffix = match std::env::consts::OS {
+        "macos" => "apple-darwin",
+        "windows" => "pc-windows-msvc",
+        "linux" => "unknown-linux-gnu",
+        _ => "unknown",
+    };
+    format!("{}-{}", arch, os_suffix)
+}
+
 /// High-level update service that uses self_update for all operations.
 ///
 /// The update service automatically detects the current platform's target triple
-/// from the build target, so it will always download the correct asset.
+/// at runtime using `std::env::consts`, ensuring the correct architecture is
+/// always downloaded regardless of how the binary was built.
 pub struct UpdateService;
 
 impl UpdateService {
@@ -76,10 +93,14 @@ impl UpdateService {
     /// Returns `Some(UpdateInfo)` if an update is available, `None` otherwise.
     /// Uses self_update's GitHub backend to fetch releases.
     pub fn check_for_update(settings: &UpdateSettings) -> Result<Option<UpdateInfo>> {
+        let target = get_runtime_target();
+        tracing::debug!("Using target for update check: {}", target);
+
         let update = Update::configure()
             .repo_owner(REPO_OWNER)
             .repo_name(REPO_NAME)
             .bin_name(BIN_NAME)
+            .target(&target)
             .current_version(cargo_crate_version!())
             .build()
             .map_err(|e| UpdateError::SelfUpdate(e.to_string()))?;
@@ -133,7 +154,7 @@ impl UpdateService {
     /// Download, verify, install, and restart the application.
     ///
     /// This function uses self_update to handle the entire update process:
-    /// - Downloads the correct platform-specific asset (auto-detected from build target)
+    /// - Downloads the correct platform-specific asset (detected at runtime)
     /// - Verifies the download
     /// - Extracts and replaces the binary
     /// - The application should be restarted after this returns successfully
@@ -141,12 +162,17 @@ impl UpdateService {
     /// Note: This function blocks during download. Progress is shown via self_update's
     /// built-in progress indicator.
     pub fn download_and_install() -> Result<()> {
-        tracing::info!("Starting update download and installation...");
+        let target = get_runtime_target();
+        tracing::info!(
+            "Starting update download and installation for target: {}",
+            target
+        );
 
         let status = Update::configure()
             .repo_owner(REPO_OWNER)
             .repo_name(REPO_NAME)
             .bin_name(BIN_NAME)
+            .target(&target)
             .show_download_progress(true)
             .current_version(cargo_crate_version!())
             .build()
@@ -190,5 +216,39 @@ mod tests {
         assert_eq!(REPO_OWNER, "rubentalstra");
         assert_eq!(REPO_NAME, "Trial-Submission-Studio");
         assert_eq!(BIN_NAME, "trial-submission-studio");
+    }
+
+    #[test]
+    fn test_runtime_target_detection() {
+        let target = get_runtime_target();
+
+        // Target should contain architecture
+        assert!(
+            target.contains("aarch64") || target.contains("x86_64"),
+            "Target should contain architecture: {}",
+            target
+        );
+
+        // Target should contain OS-specific suffix
+        #[cfg(target_os = "macos")]
+        assert!(
+            target.ends_with("apple-darwin"),
+            "macOS target should end with apple-darwin: {}",
+            target
+        );
+
+        #[cfg(target_os = "windows")]
+        assert!(
+            target.ends_with("pc-windows-msvc"),
+            "Windows target should end with pc-windows-msvc: {}",
+            target
+        );
+
+        #[cfg(target_os = "linux")]
+        assert!(
+            target.ends_with("unknown-linux-gnu"),
+            "Linux target should end with unknown-linux-gnu: {}",
+            target
+        );
     }
 }
