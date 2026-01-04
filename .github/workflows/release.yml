@@ -9,6 +9,9 @@ concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
   APP_NAME: trial-submission-studio
@@ -302,7 +305,7 @@ jobs:
 
   # Create GitHub Release with attestations
   release:
-    needs: [build-macos, build-windows, build-linux]
+    needs: [ build-macos, build-windows, build-linux ]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

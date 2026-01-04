@@ -8,6 +8,16 @@ on:
   schedule:
     - cron: "30 0 * * 6" # Weekly on Saturday at 00:30 UTC
 
+permissions:
+  contents: read
+  security-events: write
+  packages: read
+  actions: read
+
+concurrency:
+  group: codeql-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   # ============================================================
   # CodeQL Security Analysis
@@ -19,12 +29,6 @@ jobs:
   analyze:
     name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
-    permissions:
-      security-events: write
-      packages: read
-      actions: read # Required for private repos
-      contents: read
-
     strategy:
       fail-fast: false
       matrix:
