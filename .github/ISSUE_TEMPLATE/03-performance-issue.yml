@@ -1,0 +1,88 @@
+name: "\u26A1 Performance Issue"
+description: "Report slow operations or performance regressions"
+title: "[Performance]: "
+labels: [ "performance", "needs triage" ]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What operation is slow?
+      placeholder: Describe the slow operation...
+    validations:
+      required: true
+
+  - type: textarea
+    id: dataset
+    attributes:
+      label: Dataset Information
+      description: Provide details about the data being processed
+      placeholder: |
+        - File size: 50 MB
+        - Row count: 100,000
+        - Column count: 25
+        - File format: CSV
+    validations:
+      required: true
+
+  - type: input
+    id: expected
+    attributes:
+      label: Expected Performance
+      description: What timing did you expect?
+      placeholder: e.g., "Under 5 seconds"
+    validations:
+      required: false
+
+  - type: input
+    id: actual
+    attributes:
+      label: Actual Performance
+      description: How long did it actually take?
+      placeholder: e.g., "Over 2 minutes"
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment Info
+      description: |
+        Paste the information from Help > About in the application.
+      placeholder: Paste your environment info here...
+      render: text
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      description: Which operating system are you using?
+      options:
+        - macOS (Intel or Apple Silicon)
+        - Windows (x86_64 or ARM64)
+        - Linux (x86_64 or ARM64)
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce
+      description: How can we trigger the slow operation?
+      placeholder: |
+        1. Load file '...'
+        2. Click on '...'
+        3. Observe slow performance
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: coc
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our Code of Conduct
+      options:
+        - label: I have read and agree to the [Code of Conduct](https://github.com/rubentalstra/Trial-Submission-Studio/blob/main/CODE_OF_CONDUCT.md)
+          required: true

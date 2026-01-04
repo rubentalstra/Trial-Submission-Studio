@@ -1,0 +1,54 @@
+name: "\U0001F4DA Documentation Issue"
+description: "Report typos, unclear content, or missing documentation"
+title: "[Docs]: "
+labels: [ "documentation" ]
+body:
+  - type: dropdown
+    id: type
+    attributes:
+      label: Issue Type
+      description: What kind of documentation issue is this?
+      options:
+        - Typo or grammatical error
+        - Unclear or confusing content
+        - Missing documentation
+        - Broken link
+        - Outdated information
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: Location
+      description: URL or file path of the documentation
+      placeholder: e.g., https://rubentalstra.github.io/Trial-Submission-Studio/... or docs/guide.md
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: What's wrong or missing?
+      placeholder: Describe the documentation issue...
+    validations:
+      required: true
+
+  - type: textarea
+    id: suggestion
+    attributes:
+      label: Suggested Fix
+      description: Your proposed correction (if any)
+      placeholder: Suggest how to fix or improve the documentation...
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: coc
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our Code of Conduct
+      options:
+        - label: I have read and agree to the [Code of Conduct](https://github.com/rubentalstra/Trial-Submission-Studio/blob/main/CODE_OF_CONDUCT.md)
+          required: true

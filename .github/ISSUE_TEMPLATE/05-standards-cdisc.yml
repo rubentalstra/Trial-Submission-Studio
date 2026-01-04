@@ -1,0 +1,90 @@
+name: "\U0001F3E5 Standards/CDISC Issue"
+description: "Report CDISC standards compliance issues"
+title: "[Standards]: "
+labels: [ "standards", "needs triage" ]
+body:
+  - type: dropdown
+    id: standard
+    attributes:
+      label: Standard/Domain
+      description: Which standard is affected?
+      options:
+        - SDTM (Study Data Tabulation Model)
+        - ADaM (Analysis Data Model)
+        - SEND (Standard for Exchange of Nonclinical Data)
+        - Controlled Terminology
+        - Define-XML
+        - XPT Format (V5 or V8)
+        - Dataset-XML Format
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe the compliance issue
+      placeholder: Describe the standards compliance issue...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What does the standard specify?
+      placeholder: According to the standard, the expected behavior is...
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What does the application do?
+      placeholder: The application currently does...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reference
+    attributes:
+      label: Reference
+      description: Link to standard documentation
+      placeholder: e.g., CDISC SDTM IG 3.4 Section 4.1.2.1
+    validations:
+      required: false
+
+  - type: textarea
+    id: example
+    attributes:
+      label: Example Data
+      description: Sample data demonstrating the issue
+      placeholder: |
+        ```
+        STUDYID,DOMAIN,USUBJID,...
+        STUDY1,DM,SUBJ001,...
+        ```
+      render: text
+    validations:
+      required: false
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment Info
+      description: Paste the information from Help > About
+      placeholder: Paste your environment info here...
+      render: text
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: coc
+    attributes:
+      label: Code of Conduct
+      description: By submitting this issue, you agree to follow our Code of Conduct
+      options:
+        - label: I have read and agree to the [Code of Conduct](https://github.com/rubentalstra/Trial-Submission-Studio/blob/main/CODE_OF_CONDUCT.md)
+          required: true
