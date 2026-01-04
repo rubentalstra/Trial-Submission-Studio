@@ -141,22 +141,20 @@ fn embed_windows_resources(build_number: &str, build_date: &str, commit_count: &
 
     // Windows VERSIONINFO requires numeric version: MAJOR.MINOR.PATCH.BUILD
     // Each component is 16-bit, packed into 64-bit value
-    let file_version = ((major as u64) << 48)
-        | ((minor as u64) << 32)
-        | ((patch as u64) << 16)
-        | (build & 0xFFFF);
+    let file_version =
+        ((major as u64) << 48) | ((minor as u64) << 32) | ((patch as u64) << 16) | (build & 0xFFFF);
 
     res.set_version_info(winresource::VersionInfo::FILEVERSION, file_version);
     res.set_version_info(winresource::VersionInfo::PRODUCTVERSION, file_version);
 
     // String version info (shown in Windows Explorer Properties > Details)
-    res.set("FileDescription", "Trial Submission Studio - Clinical Trial Data Management");
+    res.set(
+        "FileDescription",
+        "Trial Submission Studio - Clinical Trial Data Management",
+    );
     res.set("ProductName", "Trial Submission Studio");
     res.set("ProductVersion", &format!("{version} ({build_number})"));
-    res.set(
-        "FileVersion",
-        &format!("{major}.{minor}.{patch}.{build}"),
-    );
+    res.set("FileVersion", &format!("{major}.{minor}.{patch}.{build}"));
     res.set("OriginalFilename", "trial-submission-studio.exe");
     res.set("LegalCopyright", "Copyright (c) 2024-2026 Ruben Talstra");
     res.set("CompanyName", "Ruben Talstra");
