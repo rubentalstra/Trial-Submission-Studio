@@ -6,6 +6,9 @@ on:
       version:
         required: true
         type: string
+      build_number:
+        required: true
+        type: string
     secrets:
       SIGNPATH_API_TOKEN:
         required: true
@@ -54,6 +57,8 @@ jobs:
           cache-on-failure: true
 
       - name: Build
+        env:
+          TSS_BUILD_NUMBER: ${{ inputs.build_number }}
         run: cargo build --release --target ${{ matrix.target }}
 
       - name: Prepare unsigned artifact

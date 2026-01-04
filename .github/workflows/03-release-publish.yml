@@ -43,15 +43,26 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.VERSION }}
+      build_number: ${{ steps.version.outputs.BUILD_NUMBER }}
       build_macos: ${{ steps.config.outputs.build_macos }}
       build_linux: ${{ steps.config.outputs.build_linux }}
       build_windows: ${{ steps.config.outputs.build_windows }}
     steps:
-      - name: Extract version
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0  # Need full history for commit count
+
+      - name: Extract version and build number
         id: version
         env:
           REF: ${{ github.ref }}
-        run: echo "VERSION=${REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          echo "VERSION=${REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+          # Calculate build number: TSS-{run_number}.{commit_count}
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          echo "BUILD_NUMBER=TSS-${RUN_NUMBER}.${COMMIT_COUNT}" >> $GITHUB_OUTPUT
 
       - name: Determine build configuration
         id: config
@@ -102,6 +113,7 @@ jobs:
     uses: ./.github/workflows/02-release-build-windows.yml
     with:
       version: ${{ needs.prepare.outputs.version }}
+      build_number: ${{ needs.prepare.outputs.build_number }}
     secrets: inherit
 
   build-linux:
@@ -111,6 +123,7 @@ jobs:
     uses: ./.github/workflows/02-release-build-linux.yml
     with:
       version: ${{ needs.prepare.outputs.version }}
+      build_number: ${{ needs.prepare.outputs.build_number }}
     secrets: inherit
 
   # Create GitHub Release with all artifacts

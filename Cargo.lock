@@ -6169,14 +6169,14 @@ checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 
 [[package]]
 name = "tss-common"
-version = "0.0.1-alpha.4"
+version = "0.0.1-alpha.5"
 dependencies = [
  "polars",
 ]
 
 [[package]]
 name = "tss-gui"
-version = "0.0.1-alpha.4"
+version = "0.0.1-alpha.5"
 dependencies = [
  "anyhow",
  "chrono",
@@ -6208,11 +6208,12 @@ dependencies = [
  "tss-validate",
  "tss-xpt",
  "winit",
+ "winresource",
 ]
 
 [[package]]
 name = "tss-ingest"
-version = "0.0.1-alpha.4"
+version = "0.0.1-alpha.5"
 dependencies = [
  "polars",
  "serde",
@@ -6225,7 +6226,7 @@ dependencies = [
 
 [[package]]
 name = "tss-map"
-version = "0.0.1-alpha.4"
+version = "0.0.1-alpha.5"
 dependencies = [
  "anyhow",
  "rapidfuzz",
@@ -6237,7 +6238,7 @@ dependencies = [
 
 [[package]]
 name = "tss-model"
-version = "0.0.1-alpha.4"
+version = "0.0.1-alpha.5"
 dependencies = [
  "serde",
  "serde_json",
@@ -6246,7 +6247,7 @@ dependencies = [
 
 [[package]]
 name = "tss-output"
-version = "0.0.1-alpha.4"
+version = "0.0.1-alpha.5"
 dependencies = [
  "anyhow",
  "chrono",
@@ -6261,7 +6262,7 @@ dependencies = [
 
 [[package]]
 name = "tss-standards"
-version = "0.0.1-alpha.4"
+version = "0.0.1-alpha.5"
 dependencies = [
  "csv",
  "serde",
@@ -6271,7 +6272,7 @@ dependencies = [
 
 [[package]]
 name = "tss-transform"
-version = "0.0.1-alpha.4"
+version = "0.0.1-alpha.5"
 dependencies = [
  "chrono",
  "insta",
@@ -6285,7 +6286,7 @@ dependencies = [
 
 [[package]]
 name = "tss-updater"
-version = "0.0.1-alpha.4"
+version = "0.0.1-alpha.5"
 dependencies = [
  "chrono",
  "self_update",
@@ -6296,7 +6297,7 @@ dependencies = [
 
 [[package]]
 name = "tss-validate"
-version = "0.0.1-alpha.4"
+version = "0.0.1-alpha.5"
 dependencies = [
  "csv",
  "polars",
@@ -6309,7 +6310,7 @@ dependencies = [
 
 [[package]]
 name = "tss-xpt"
-version = "0.0.1-alpha.4"
+version = "0.0.1-alpha.5"
 dependencies = [
  "chrono",
  "polars",
@@ -7538,6 +7539,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5a5364e9d77fcdeeaa6062ced926ee3381faa2ee02d3eb83a5c27a8825540829"
 dependencies = [
  "memchr",
+]
+
+[[package]]
+name = "winresource"
+version = "0.1.28"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6b021990998587d4438bb672b5c5f034cbc927f51b45e3807ab7323645ef4899"
+dependencies = [
+ "toml 0.9.10+spec-1.1.0",
+ "version_check",
 ]
 
 [[package]]

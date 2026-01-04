@@ -6,6 +6,9 @@ on:
       version:
         required: true
         type: string
+      build_number:
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -48,6 +51,8 @@ jobs:
           cache-on-failure: true
 
       - name: Build
+        env:
+          TSS_BUILD_NUMBER: ${{ inputs.build_number }}
         run: cargo build --release --target ${{ matrix.target }}
 
       - name: Create tarball

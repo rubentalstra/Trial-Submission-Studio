@@ -23,6 +23,9 @@ const BUILD_TARGET: &str = env!("BUILD_TARGET");
 /// Build date captured at build time.
 const BUILD_DATE: &str = env!("BUILD_DATE");
 
+/// Build number captured at build time (TSS-X.Y for CI, LOCAL.Y for local).
+const BUILD_NUMBER: &str = env!("BUILD_NUMBER");
+
 /// Show the about dialog as a viewport.
 pub fn show_about_dialog(ctx: &Context, state: &mut AboutUiState) {
     if !state.open {
@@ -58,7 +61,7 @@ pub fn show_about_dialog(ctx: &Context, state: &mut AboutUiState) {
                             if ui.button("Copy and Close").clicked() {
                                 let info = format!(
                                     "Trial Submission Studio {VERSION}\n\
-                                     Build: {BUILD_DATE}\n\
+                                     Build: {BUILD_NUMBER} ({BUILD_DATE})\n\
                                      Runtime: {RUST_VERSION}\n\
                                      Target: {BUILD_TARGET}"
                                 );
@@ -95,7 +98,7 @@ pub fn show_about_dialog(ctx: &Context, state: &mut AboutUiState) {
                         // Version + Build on same conceptual level
                         ui.label(format!("Version {VERSION}"));
                         ui.label(
-                            RichText::new(format!("Build {BUILD_DATE}"))
+                            RichText::new(format!("Build {BUILD_NUMBER} ({BUILD_DATE})"))
                                 .size(12.0)
                                 .color(ui.visuals().weak_text_color()),
                         );

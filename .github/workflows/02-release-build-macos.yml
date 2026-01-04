@@ -112,26 +112,6 @@ jobs:
               -e "s/\${MARKETING_VERSION}/${MARKETING_VERSION}/g" \
               packaging/macos/Info.plist > "$APP_DIR/Contents/Info.plist"
 
-          # Process version.plist template (enterprise build metadata)
-          # Note: Using | as delimiter for GIT_BRANCH since branch names can contain /
-          sed -e "s/\${MARKETING_VERSION}/${MARKETING_VERSION}/g" \
-              -e "s/\${FULL_VERSION}/${VERSION}/g" \
-              -e "s/\${BUILD_VERSION}/${BUILD_VERSION}/g" \
-              -e "s/\${GIT_COMMIT_SHA}/${GIT_COMMIT_SHA}/g" \
-              -e "s/\${GIT_COMMIT_SHORT}/${GIT_COMMIT_SHORT}/g" \
-              -e "s|\${GIT_BRANCH}|${GIT_BRANCH}|g" \
-              -e "s/\${GIT_COMMIT_COUNT}/${COMMIT_COUNT}/g" \
-              -e "s/\${GIT_CLEAN}/${GIT_CLEAN}/g" \
-              -e "s/\${BUILD_DATE}/${BUILD_DATE}/g" \
-              -e "s/\${BUILD_TIMESTAMP}/${BUILD_TIMESTAMP}/g" \
-              -e "s|\${TARGET_ARCH}|${{ matrix.target }}|g" \
-              -e "s/\${RUST_VERSION}/${RUST_VERSION}/g" \
-              -e "s/\${BUILD_TYPE}/release/g" \
-              -e "s/\${CI_PROVIDER}/github-actions/g" \
-              -e "s/\${CI_RUN_NUMBER}/${RUN_NUMBER}/g" \
-              -e "s/\${CI_RUN_ID}/${RUN_ID}/g" \
-              packaging/macos/version.plist > "$APP_DIR/Contents/Resources/version.plist"
-
           # Copy static files
           cp packaging/macos/AppIcon.icns "$APP_DIR/Contents/Resources/"
           cp packaging/macos/PkgInfo "$APP_DIR/Contents/"
@@ -168,20 +148,6 @@ jobs:
           echo "  CFBundleVersion: $BUNDLE_VERSION"
           echo "  CFBundleShortVersionString: $SHORT_VERSION"
 
-          # Validate version.plist
-          echo "Validating version.plist..."
-          plutil -lint "$APP_DIR/Contents/Resources/version.plist"
-
-          # Verify version.plist contains expected metadata
-          GIT_SHA=$(plutil -extract GitCommitSHA raw "$APP_DIR/Contents/Resources/version.plist")
-          if [[ -z "$GIT_SHA" || "$GIT_SHA" == *'${'* ]]; then
-            echo "ERROR: version.plist GitCommitSHA not properly substituted"
-            exit 1
-          fi
-
-          echo "version.plist validation passed"
-          echo "  GitCommitSHA: $GIT_SHA"
-
           # Validate PkgInfo
           echo "Validating PkgInfo..."
           PKGINFO=$(cat "$APP_DIR/Contents/PkgInfo")
@@ -196,7 +162,6 @@ jobs:
           test -f "$APP_DIR/Contents/MacOS/${APP_NAME}" || { echo "ERROR: Binary missing"; exit 1; }
           test -f "$APP_DIR/Contents/Info.plist" || { echo "ERROR: Info.plist missing"; exit 1; }
           test -f "$APP_DIR/Contents/Resources/AppIcon.icns" || { echo "ERROR: Icon missing"; exit 1; }
-          test -f "$APP_DIR/Contents/Resources/version.plist" || { echo "ERROR: version.plist missing"; exit 1; }
           test -f "$APP_DIR/Contents/PkgInfo" || { echo "ERROR: PkgInfo missing"; exit 1; }
 
           echo "Bundle structure validated"

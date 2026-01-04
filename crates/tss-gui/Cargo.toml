@@ -59,5 +59,8 @@ crossbeam-channel = "0.5.15" # Required by muda for menu event receiver
 [target.'cfg(target_os = "macos")'.dependencies]
 winit = "0.30.12" # Needed for EventLoopBuilderExtMacOS trait
 
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1"
+
 [lints]
 workspace = true
