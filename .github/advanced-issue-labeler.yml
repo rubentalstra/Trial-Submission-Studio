@@ -2,7 +2,7 @@ policy:
   # Bug Report - Platform labels from OS dropdown
   - template: [ '01-bug-report.yml' ]
     section:
-      - id: [ 'os' ]
+      - id: [ 'operating_system' ]
         block-list: [ ]
         label:
           - name: 'macos'
@@ -15,7 +15,7 @@ policy:
   # Performance Issue - Platform labels from OS dropdown
   - template: [ '03-performance-issue.yml' ]
     section:
-      - id: [ 'os' ]
+      - id: [ 'operating_system' ]
         block-list: [ ]
         label:
           - name: 'macos'
@@ -28,7 +28,7 @@ policy:
   # Standards/CDISC Issue - Standard labels from dropdown
   - template: [ '05-standards-cdisc.yml' ]
     section:
-      - id: [ 'standard' ]
+      - id: [ 'standarddomain' ]
         block-list: [ 'Other' ]
         label:
           - name: 'SDTM'
