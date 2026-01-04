@@ -58,7 +58,7 @@ jobs:
           REF: ${{ github.ref }}
           RUN_NUMBER: ${{ github.run_number }}
         run: |
-          echo "VERSION=${REF#refs/tags/v}" >> $GITHUB_OUTPUT
+          echo "VERSION=${REF#refs/tags/}" >> $GITHUB_OUTPUT
 
           # Calculate build number: TSS-{run_number}.{commit_count}
           COMMIT_COUNT=$(git rev-list --count HEAD)
@@ -175,7 +175,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          name: "v${{ needs.prepare.outputs.version }}"
+          name: "${{ needs.prepare.outputs.version }}"
           draft: false
           prerelease: ${{ steps.prerelease.outputs.PRERELEASE }}
           generate_release_notes: true
