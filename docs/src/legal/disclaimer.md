@@ -77,7 +77,7 @@ Trial Submission Studio:
 **Network communication** is limited to user-initiated update checks via GitHub
 API. No clinical data or personal information is ever transmitted.
 
-See our full [Privacy Policy](../../../PRIVACY.md) for details.
+See our full [Privacy Policy](privacy.md) for details.
 
 You are responsible for protecting any sensitive or confidential data processed
 with this software.

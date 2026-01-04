@@ -27,7 +27,7 @@ Only merged code is included in signed releases.
 
 ## Privacy & Network Communication
 
-See [Privacy Policy](../../PRIVACY.md) for full details.
+See [Privacy Policy](../legal/privacy.md) for full details.
 
 **Summary:** This application only connects to GitHub when you explicitly
 request an update check. No clinical data or personal information is ever
