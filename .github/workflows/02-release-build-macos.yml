@@ -22,6 +22,9 @@ on:
       CI_KEYCHAIN_PASSWORD:
         required: true
 
+permissions:
+  contents: read
+
 jobs:
   build:
     name: Build ${{ matrix.artifact-name }}

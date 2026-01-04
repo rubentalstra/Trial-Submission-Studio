@@ -16,6 +16,11 @@ on:
       SIGNPATH_SIGNING_POLICY_SLUG:
         required: true
 
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+
 env:
   CARGO_TERM_COLOR: always
   APP_NAME: trial-submission-studio
