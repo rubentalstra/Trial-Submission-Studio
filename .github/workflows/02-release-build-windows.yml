@@ -1,0 +1,65 @@
+name: Build Windows
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        required: true
+        type: string
+
+env:
+  CARGO_TERM_COLOR: always
+  APP_NAME: trial-submission-studio
+
+jobs:
+  build:
+    name: Build ${{ matrix.artifact-name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-pc-windows-msvc
+            runner: windows-latest
+            artifact-name: windows-x86_64
+          - target: aarch64-pc-windows-msvc
+            runner: windows-11-arm
+            artifact-name: windows-arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "release-${{ matrix.artifact-name }}"
+          cache-on-failure: true
+
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: Prepare artifacts
+        shell: pwsh
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          # Create ZIP archive
+          Compress-Archive -Path "target\${{ matrix.target }}\release\$env:APP_NAME.exe" `
+            -DestinationPath "$env:APP_NAME-$env:VERSION-${{ matrix.target }}.zip"
+
+          # Copy executable with version in filename
+          Copy-Item "target\${{ matrix.target }}\release\$env:APP_NAME.exe" `
+            "$env:APP_NAME-$env:VERSION-${{ matrix.target }}.exe"
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: |
+            ${{ env.APP_NAME }}-${{ inputs.version }}-${{ matrix.target }}.zip
+            ${{ env.APP_NAME }}-${{ inputs.version }}-${{ matrix.target }}.exe
+          if-no-files-found: error
