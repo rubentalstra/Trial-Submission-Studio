@@ -60,7 +60,7 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: |
           # Download and extract appimagetool (extract to avoid FUSE issues in CI)
-          wget -q "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-$(uname -m).AppImage" -O appimagetool
+          wget -q "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-$(uname -m).AppImage" -O appimagetool
           chmod +x appimagetool
           ./appimagetool --appimage-extract
           mv squashfs-root appimagetool-extracted

@@ -1,10 +1,45 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://citation-file-format.github.io/cff-initializer-javascript/#/ to generate yours today!
+
 cff-version: 1.2.0
-message: "If you use this software, please cite it as below."
 title: Trial Submission Studio
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
 type: software
-url: https://github.com/rubentalstra/trial-submission-studio
-repository-code: https://github.com/rubentalstra/trial-submission-studio
-version: "0.0.1"
 authors:
   - family-names: Talstra
     given-names: Ruben
+    orcid: 'https://orcid.org/0009-0009-2758-0141'
+    email: me@rubentalstra.nl
+repository-code: 'https://github.com/rubentalstra/trial-submission-studio'
+url: 'https://rubentalstra.github.io/Trial-Submission-Studio/'
+abstract: >-
+  Trial Submission Studio is an open-source desktop
+  application that transforms clinical trial data into
+  FDA-compliant CDISC formats. It provides multi-format
+  output support (XPT V5/V8, Dataset-XML, Define-XML 2.1),
+  intelligent fuzzy column matching with confidence scores,
+  built-in CDISC Controlled Terminology validation, and
+  cross-platform native applications for macOS, Windows, and
+  Linux. All standards are embedded for offline use.
+keywords:
+  - clinical-trials
+  - CDISC
+  - SDTM
+  - ADaM
+  - SEND
+  - XPT
+  - Dataset-XML
+  - Define-XML
+  - FDA
+  - regulatory-submission
+  - data-transformation
+  - pharmaceutical
+  - rust
+  - desktop-application
+  - ' cross-platform'
+license: MIT
+commit: f7355948a7a6e1a46aedc173e030265a54cd9940
+version: 0.0.1.alpha.2
+date-released: '2026-01-04'
