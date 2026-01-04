@@ -6,6 +6,9 @@ on:
       version:
         required: true
         type: string
+      build_number:
+        required: true
+        type: string
     secrets:
       APPLE_DEVELOPER_CERTIFICATE_P12_BASE64:
         required: true
@@ -72,24 +75,131 @@ jobs:
       - name: Create App Bundle
         env:
           VERSION: ${{ inputs.version }}
+          RUN_NUMBER: ${{ inputs.build_number }}
+          RUN_ID: ${{ github.run_id }}
         run: |
           APP_DIR="${BUNDLE_NAME}.app"
           mkdir -p "$APP_DIR/Contents/MacOS"
           mkdir -p "$APP_DIR/Contents/Resources"
 
+          # Copy binary
           cp "target/${{ matrix.target }}/release/${APP_NAME}" "$APP_DIR/Contents/MacOS/"
-          sed "s/\${VERSION}/${VERSION}/g" packaging/macos/Info.plist > "$APP_DIR/Contents/Info.plist"
+
+          # Extract marketing version (strip -alpha.X, -beta.X, -rc.X suffixes)
+          MARKETING_VERSION=$(echo "${VERSION}" | sed -E 's/-(alpha|beta|rc)\.[0-9]+$//')
+
+          # Generate JetBrains-style build version: TSS-{run_number}.{git_commit_count}
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          BUILD_VERSION="TSS-${RUN_NUMBER}.${COMMIT_COUNT}"
+
+          # Gather git metadata
+          GIT_COMMIT_SHA=$(git rev-parse HEAD)
+          GIT_COMMIT_SHORT=$(git rev-parse --short HEAD)
+          GIT_BRANCH="${GITHUB_REF_NAME:-$(git branch --show-current)}"
+          GIT_CLEAN=$(git diff --quiet && echo "true" || echo "false")
+
+          # Gather build environment metadata
+          BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          BUILD_TIMESTAMP=$(date +%s)
+          RUST_VERSION=$(rustc --version | cut -d' ' -f2)
+
+          echo "Marketing Version: $MARKETING_VERSION"
+          echo "Build Version: $BUILD_VERSION"
+          echo "Git SHA: $GIT_COMMIT_SHORT"
+
+          # Process Info.plist template
+          sed -e "s/\${BUILD_VERSION}/${BUILD_VERSION}/g" \
+              -e "s/\${MARKETING_VERSION}/${MARKETING_VERSION}/g" \
+              packaging/macos/Info.plist > "$APP_DIR/Contents/Info.plist"
+
+          # Process version.plist template (enterprise build metadata)
+          # Note: Using | as delimiter for GIT_BRANCH since branch names can contain /
+          sed -e "s/\${MARKETING_VERSION}/${MARKETING_VERSION}/g" \
+              -e "s/\${FULL_VERSION}/${VERSION}/g" \
+              -e "s/\${BUILD_VERSION}/${BUILD_VERSION}/g" \
+              -e "s/\${GIT_COMMIT_SHA}/${GIT_COMMIT_SHA}/g" \
+              -e "s/\${GIT_COMMIT_SHORT}/${GIT_COMMIT_SHORT}/g" \
+              -e "s|\${GIT_BRANCH}|${GIT_BRANCH}|g" \
+              -e "s/\${GIT_COMMIT_COUNT}/${COMMIT_COUNT}/g" \
+              -e "s/\${GIT_CLEAN}/${GIT_CLEAN}/g" \
+              -e "s/\${BUILD_DATE}/${BUILD_DATE}/g" \
+              -e "s/\${BUILD_TIMESTAMP}/${BUILD_TIMESTAMP}/g" \
+              -e "s|\${TARGET_ARCH}|${{ matrix.target }}|g" \
+              -e "s/\${RUST_VERSION}/${RUST_VERSION}/g" \
+              -e "s/\${BUILD_TYPE}/release/g" \
+              -e "s/\${CI_PROVIDER}/github-actions/g" \
+              -e "s/\${CI_RUN_NUMBER}/${RUN_NUMBER}/g" \
+              -e "s/\${CI_RUN_ID}/${RUN_ID}/g" \
+              packaging/macos/version.plist > "$APP_DIR/Contents/Resources/version.plist"
+
+          # Copy static files
           cp packaging/macos/AppIcon.icns "$APP_DIR/Contents/Resources/"
-          echo -n "APPL????" > "$APP_DIR/Contents/PkgInfo"
+          cp packaging/macos/PkgInfo "$APP_DIR/Contents/"
 
       - name: Validate App Bundle
         run: |
           APP_DIR="${BUNDLE_NAME}.app"
+
+          # Validate plist syntax
+          echo "Validating Info.plist..."
+          plutil -lint "$APP_DIR/Contents/Info.plist"
+
+          # Verify required keys exist
+          plutil -extract CFBundleIdentifier raw "$APP_DIR/Contents/Info.plist"
+          plutil -extract CFBundleVersion raw "$APP_DIR/Contents/Info.plist"
+          plutil -extract CFBundleShortVersionString raw "$APP_DIR/Contents/Info.plist"
+          plutil -extract LSMinimumSystemVersion raw "$APP_DIR/Contents/Info.plist"
+
+          # Verify JetBrains-style build version format: TSS-{number}.{number}
+          BUNDLE_VERSION=$(plutil -extract CFBundleVersion raw "$APP_DIR/Contents/Info.plist")
+          if ! [[ "$BUNDLE_VERSION" =~ ^TSS-[0-9]+\.[0-9]+$ ]]; then
+            echo "ERROR: CFBundleVersion must be TSS-X.Y format, got: $BUNDLE_VERSION"
+            exit 1
+          fi
+
+          # Verify marketing version is n.n.n format
+          SHORT_VERSION=$(plutil -extract CFBundleShortVersionString raw "$APP_DIR/Contents/Info.plist")
+          if ! [[ "$SHORT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "ERROR: CFBundleShortVersionString must be n.n.n format, got: $SHORT_VERSION"
+            exit 1
+          fi
+
+          echo "Info.plist validation passed"
+          echo "  CFBundleVersion: $BUNDLE_VERSION"
+          echo "  CFBundleShortVersionString: $SHORT_VERSION"
+
+          # Validate version.plist
+          echo "Validating version.plist..."
+          plutil -lint "$APP_DIR/Contents/Resources/version.plist"
+
+          # Verify version.plist contains expected metadata
+          GIT_SHA=$(plutil -extract GitCommitSHA raw "$APP_DIR/Contents/Resources/version.plist")
+          if [[ -z "$GIT_SHA" || "$GIT_SHA" == *'${'* ]]; then
+            echo "ERROR: version.plist GitCommitSHA not properly substituted"
+            exit 1
+          fi
+
+          echo "version.plist validation passed"
+          echo "  GitCommitSHA: $GIT_SHA"
+
+          # Validate PkgInfo
+          echo "Validating PkgInfo..."
+          PKGINFO=$(cat "$APP_DIR/Contents/PkgInfo")
+          if [[ "$PKGINFO" != "APPL????" ]]; then
+            echo "ERROR: PkgInfo invalid, expected 'APPL????' got '$PKGINFO'"
+            exit 1
+          fi
+          echo "PkgInfo validation passed"
+
+          # Validate bundle structure
+          echo "Validating bundle structure..."
           test -f "$APP_DIR/Contents/MacOS/${APP_NAME}" || { echo "ERROR: Binary missing"; exit 1; }
           test -f "$APP_DIR/Contents/Info.plist" || { echo "ERROR: Info.plist missing"; exit 1; }
           test -f "$APP_DIR/Contents/Resources/AppIcon.icns" || { echo "ERROR: Icon missing"; exit 1; }
+          test -f "$APP_DIR/Contents/Resources/version.plist" || { echo "ERROR: version.plist missing"; exit 1; }
           test -f "$APP_DIR/Contents/PkgInfo" || { echo "ERROR: PkgInfo missing"; exit 1; }
-          echo "Bundle structure valid"
+
+          echo "Bundle structure validated"
 
       - name: Import Certificate
         env:

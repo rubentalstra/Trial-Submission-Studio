@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- ═══════════════════════════════════════════════════════════════════
+         BUILD IDENTIFICATION (JetBrains-style enterprise metadata)
+         ═══════════════════════════════════════════════════════════════════ -->
+
+    <!-- Product identification -->
+    <key>ProductName</key>
+    <string>Trial Submission Studio</string>
+
+    <key>ProductCode</key>
+    <string>TSS</string>
+
+    <!-- Marketing version (matches CFBundleShortVersionString) -->
+    <key>ProductVersion</key>
+    <string>${MARKETING_VERSION}</string>
+
+    <!-- Full version from Cargo.toml (includes pre-release suffix) -->
+    <key>FullVersion</key>
+    <string>${FULL_VERSION}</string>
+
+    <!-- Build number (matches CFBundleVersion) -->
+    <key>BuildNumber</key>
+    <string>${BUILD_VERSION}</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         SOURCE CONTROL METADATA
+         ═══════════════════════════════════════════════════════════════════ -->
+
+    <!-- Git commit SHA (full 40-character hash) -->
+    <key>GitCommitSHA</key>
+    <string>${GIT_COMMIT_SHA}</string>
+
+    <!-- Git commit SHA (short 7-character hash) -->
+    <key>GitCommitShort</key>
+    <string>${GIT_COMMIT_SHORT}</string>
+
+    <!-- Git branch name -->
+    <key>GitBranch</key>
+    <string>${GIT_BRANCH}</string>
+
+    <!-- Total commit count -->
+    <key>GitCommitCount</key>
+    <string>${GIT_COMMIT_COUNT}</string>
+
+    <!-- Whether working directory was clean at build time -->
+    <key>GitClean</key>
+    <${GIT_CLEAN}/>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         BUILD ENVIRONMENT
+         ═══════════════════════════════════════════════════════════════════ -->
+
+    <!-- Build timestamp (ISO 8601 format) -->
+    <key>BuildDate</key>
+    <string>${BUILD_DATE}</string>
+
+    <!-- Build timestamp (Unix epoch seconds) -->
+    <key>BuildTimestamp</key>
+    <string>${BUILD_TIMESTAMP}</string>
+
+    <!-- Target architecture -->
+    <key>TargetArchitecture</key>
+    <string>${TARGET_ARCH}</string>
+
+    <!-- Rust compiler version -->
+    <key>RustVersion</key>
+    <string>${RUST_VERSION}</string>
+
+    <!-- Build type -->
+    <key>BuildType</key>
+    <string>${BUILD_TYPE}</string>
+
+    <!-- CI/CD information -->
+    <key>CIProvider</key>
+    <string>${CI_PROVIDER}</string>
+
+    <key>CIRunNumber</key>
+    <string>${CI_RUN_NUMBER}</string>
+
+    <key>CIRunID</key>
+    <string>${CI_RUN_ID}</string>
+</dict>
+</plist>
