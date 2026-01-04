@@ -70,13 +70,14 @@ jobs:
           key: brew-create-dmg-${{ runner.os }}-${{ runner.arch }}
 
       - name: Build
+        env:
+          TSS_BUILD_NUMBER: ${{ inputs.build_number }}
         run: cargo build --release --target ${{ matrix.target }}
 
       - name: Create App Bundle
         env:
           VERSION: ${{ inputs.version }}
-          RUN_NUMBER: ${{ inputs.build_number }}
-          RUN_ID: ${{ github.run_id }}
+          BUILD_VERSION: ${{ inputs.build_number }}
         run: |
           APP_DIR="${BUNDLE_NAME}.app"
           mkdir -p "$APP_DIR/Contents/MacOS"
@@ -88,24 +89,8 @@ jobs:
           # Extract marketing version (strip -alpha.X, -beta.X, -rc.X suffixes)
           MARKETING_VERSION=$(echo "${VERSION}" | sed -E 's/-(alpha|beta|rc)\.[0-9]+$//')
 
-          # Generate JetBrains-style build version: TSS-{run_number}.{git_commit_count}
-          COMMIT_COUNT=$(git rev-list --count HEAD)
-          BUILD_VERSION="TSS-${RUN_NUMBER}.${COMMIT_COUNT}"
-
-          # Gather git metadata
-          GIT_COMMIT_SHA=$(git rev-parse HEAD)
-          GIT_COMMIT_SHORT=$(git rev-parse --short HEAD)
-          GIT_BRANCH="${GITHUB_REF_NAME:-$(git branch --show-current)}"
-          GIT_CLEAN=$(git diff --quiet && echo "true" || echo "false")
-
-          # Gather build environment metadata
-          BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-          BUILD_TIMESTAMP=$(date +%s)
-          RUST_VERSION=$(rustc --version | cut -d' ' -f2)
-
           echo "Marketing Version: $MARKETING_VERSION"
           echo "Build Version: $BUILD_VERSION"
-          echo "Git SHA: $GIT_COMMIT_SHORT"
 
           # Process Info.plist template
           sed -e "s/\${BUILD_VERSION}/${BUILD_VERSION}/g" \

@@ -103,7 +103,7 @@ jobs:
     uses: ./.github/workflows/02-release-build-macos.yml
     with:
       version: ${{ needs.prepare.outputs.version }}
-      build_number: ${{ github.run_number }}
+      build_number: ${{ needs.prepare.outputs.build_number }}
     secrets: inherit
 
   build-windows:
