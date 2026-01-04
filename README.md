@@ -55,13 +55,14 @@
 
 Download the latest release for your platform:
 
-| Platform | Architecture              | Download                                                                             |
-|----------|---------------------------|--------------------------------------------------------------------------------------|
-| macOS    | Apple Silicon (M1/M2/M3+) | [`.dmg`](https://github.com/rubentalstra/trial-submission-studio/releases/latest)    |
-| macOS    | Intel (x86_64)            | [`.dmg`](https://github.com/rubentalstra/trial-submission-studio/releases/latest)    |
-| Windows  | x86_64                    | [`.zip`](https://github.com/rubentalstra/trial-submission-studio/releases/latest)    |
-| Windows  | ARM64                     | [`.zip`](https://github.com/rubentalstra/trial-submission-studio/releases/latest)    |
-| Linux    | x86_64                    | [`.tar.gz`](https://github.com/rubentalstra/trial-submission-studio/releases/latest) |
+| Platform | Architecture              | Download                                                                               |
+|----------|---------------------------|----------------------------------------------------------------------------------------|
+| macOS    | Apple Silicon (M1/M2/M3+) | [`.dmg`](https://github.com/rubentalstra/trial-submission-studio/releases/latest)      |
+| macOS    | Intel (x86_64)            | [`.dmg`](https://github.com/rubentalstra/trial-submission-studio/releases/latest)      |
+| Windows  | x86_64                    | [`.exe`](https://github.com/rubentalstra/trial-submission-studio/releases/latest)      |
+| Windows  | ARM64                     | [`.exe`](https://github.com/rubentalstra/trial-submission-studio/releases/latest)      |
+| Linux    | x86_64                    | [`.AppImage`](https://github.com/rubentalstra/trial-submission-studio/releases/latest) |
+| Linux    | ARM64                     | [`.AppImage`](https://github.com/rubentalstra/trial-submission-studio/releases/latest) |
 
 <details>
 <summary><strong>Build from Source</strong></summary>
