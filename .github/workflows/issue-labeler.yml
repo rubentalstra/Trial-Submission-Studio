@@ -8,24 +8,58 @@ permissions:
   contents: read
   issues: write
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.issue.number }}
-  cancel-in-progress: true
-
 jobs:
-  label-issues:
+  label-issue:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
       - name: Parse issue form
-        id: issue-parser
+        id: parser
         uses: stefanbuck/github-issue-parser@v3
 
-      - name: Apply labels from dropdown selections
-        uses: redhat-plumbers-in-action/advanced-issue-labeler@v3
-        with:
-          issue-form: ${{ steps.issue-parser.outputs.jsonString }}
-          template: ${{ steps.issue-parser.outputs.template }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Apply platform labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          OPERATING_SYSTEM: ${{ steps.parser.outputs.issueparser_operating_system }}
+        run: |
+          case "$OPERATING_SYSTEM" in
+            "macOS (Intel or Apple Silicon)")
+              gh issue edit "$ISSUE_NUMBER" --add-label "macos" -R "$GITHUB_REPOSITORY"
+              ;;
+            "Windows (x86_64 or ARM64)")
+              gh issue edit "$ISSUE_NUMBER" --add-label "windows" -R "$GITHUB_REPOSITORY"
+              ;;
+            "Linux (x86_64 or ARM64)")
+              gh issue edit "$ISSUE_NUMBER" --add-label "linux" -R "$GITHUB_REPOSITORY"
+              ;;
+          esac
+
+      - name: Apply standards labels
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          STANDARD: ${{ steps.parser.outputs.issueparser_standarddomain }}
+        run: |
+          case "$STANDARD" in
+            "SDTM (Study Data Tabulation Model)")
+              gh issue edit "$ISSUE_NUMBER" --add-label "SDTM" -R "$GITHUB_REPOSITORY"
+              ;;
+            "ADaM (Analysis Data Model)")
+              gh issue edit "$ISSUE_NUMBER" --add-label "ADaM" -R "$GITHUB_REPOSITORY"
+              ;;
+            "SEND (Standard for Exchange of Nonclinical Data)")
+              gh issue edit "$ISSUE_NUMBER" --add-label "SEND" -R "$GITHUB_REPOSITORY"
+              ;;
+            "Controlled Terminology")
+              gh issue edit "$ISSUE_NUMBER" --add-label "CT" -R "$GITHUB_REPOSITORY"
+              ;;
+            "Define-XML")
+              gh issue edit "$ISSUE_NUMBER" --add-label "Define-XML" -R "$GITHUB_REPOSITORY"
+              ;;
+            "XPT Format (V5 or V8)")
+              gh issue edit "$ISSUE_NUMBER" --add-label "XPT" -R "$GITHUB_REPOSITORY"
+              ;;
+            "Dataset-XML Format")
+              gh issue edit "$ISSUE_NUMBER" --add-label "Dataset-XML" -R "$GITHUB_REPOSITORY"
+              ;;
+          esac
