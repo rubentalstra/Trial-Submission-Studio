@@ -75,6 +75,19 @@
 
 ---
 
+# Development
+
+- [macOS Code Signing](development/macos-signing.md)
+- [Windows Code Signing](development/windows-signing.md)
+
+---
+
+# Troubleshooting
+
+- [macOS Gatekeeper Issues](troubleshooting/macos-gatekeeper.md)
+
+---
+
 # Reference
 
 - [FAQ](reference/faq.md)

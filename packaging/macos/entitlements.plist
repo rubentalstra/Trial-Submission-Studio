@@ -2,36 +2,20 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- Allow the app to be run as a hardened runtime app -->
+    <!-- App Sandbox: Disabled because app needs full file system access for clinical trial data -->
     <key>com.apple.security.app-sandbox</key>
     <false/>
 
-    <!-- Allow network access for update checking -->
+    <!-- Network: Required for GitHub update checking -->
     <key>com.apple.security.network.client</key>
     <true/>
 
-    <!-- Allow file access for reading/writing study data -->
+    <!-- File Access: Required for opening/saving study files via native dialogs -->
     <key>com.apple.security.files.user-selected.read-write</key>
     <true/>
 
-    <!-- Allow access to Downloads folder for exports -->
+    <!-- Downloads: Required for exporting XPT files to Downloads folder -->
     <key>com.apple.security.files.downloads.read-write</key>
-    <true/>
-
-    <!-- Allow executable memory (required for some Rust code) -->
-    <key>com.apple.security.cs.allow-jit</key>
-    <true/>
-
-    <!-- Allow unsigned executable memory (required for some dependencies) -->
-    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
-    <true/>
-
-    <!-- Disable library validation for third-party libraries -->
-    <key>com.apple.security.cs.disable-library-validation</key>
-    <true/>
-
-    <!-- Allow dyld environment variables (useful for debugging) -->
-    <key>com.apple.security.cs.allow-dyld-environment-variables</key>
     <true/>
 </dict>
 </plist>

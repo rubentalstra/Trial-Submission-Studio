@@ -30,6 +30,10 @@
     <key>CFBundlePackageType</key>
     <string>APPL</string>
 
+    <!-- Bundle signature (4-character creator code) -->
+    <key>CFBundleSignature</key>
+    <string>????</string>
+
     <!-- Icon file name -->
     <key>CFBundleIconFile</key>
     <string>AppIcon</string>

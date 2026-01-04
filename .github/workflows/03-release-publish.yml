@@ -1,0 +1,106 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+
+jobs:
+  # Extract version without 'v' prefix for file naming consistency
+  prepare:
+    name: Prepare Release
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.VERSION }}
+    steps:
+      - name: Extract version
+        id: version
+        env:
+          REF: ${{ github.ref }}
+        run: echo "VERSION=${REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+  # Validate all required secrets exist before building
+  validate:
+    name: Validate Secrets
+    uses: ./.github/workflows/01-release-validate.yml
+    secrets: inherit
+
+  # Build for all platforms in parallel
+  build-macos:
+    name: Build macOS
+    needs: [ prepare, validate ]
+    uses: ./.github/workflows/02-release-build-macos.yml
+    with:
+      version: ${{ needs.prepare.outputs.version }}
+    secrets: inherit
+
+  build-windows:
+    name: Build Windows
+    needs: [ prepare, validate ]
+    uses: ./.github/workflows/02-release-build-windows.yml
+    with:
+      version: ${{ needs.prepare.outputs.version }}
+    secrets: inherit
+
+  build-linux:
+    name: Build Linux
+    needs: [ prepare, validate ]
+    uses: ./.github/workflows/02-release-build-linux.yml
+    with:
+      version: ${{ needs.prepare.outputs.version }}
+    secrets: inherit
+
+  # Create GitHub Release with all artifacts
+  publish:
+    name: Publish Release
+    needs: [ prepare, build-macos, build-windows, build-linux ]
+    if: success()
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: find artifacts -type f || ls -la artifacts/
+
+      - name: Generate artifact attestations
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: "artifacts/*"
+
+      - name: Determine prerelease
+        id: prerelease
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          if [[ "$VERSION" == *"-"* ]]; then
+            echo "PRERELEASE=true" >> $GITHUB_OUTPUT
+          else
+            echo "PRERELEASE=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "v${{ needs.prepare.outputs.version }}"
+          draft: false
+          prerelease: ${{ steps.prerelease.outputs.PRERELEASE }}
+          generate_release_notes: true
+          files: artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
