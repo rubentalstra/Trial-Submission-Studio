@@ -155,6 +155,8 @@ jobs:
 
   # Build for Windows (x64 and ARM64 via matrix)
   build-windows:
+    permissions:
+      contents: read
     strategy:
       fail-fast: false
       matrix:
