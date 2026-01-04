@@ -2,6 +2,15 @@ name: Validate Release Secrets
 
 on:
   workflow_call:
+    inputs:
+      validate_macos:
+        description: 'Validate macOS secrets'
+        type: boolean
+        default: true
+      validate_windows:
+        description: 'Validate Windows secrets'
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -11,7 +20,8 @@ jobs:
     name: Validate Signing Secrets
     runs-on: ubuntu-latest
     steps:
-      - name: Check macOS secrets (REQUIRED)
+      - name: Check macOS secrets
+        if: inputs.validate_macos
         env:
           APPLE_DEVELOPER_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12_BASE64 }}
           APPLE_DEVELOPER_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_PASSWORD }}
@@ -49,7 +59,12 @@ jobs:
 
           echo "All macOS secrets configured"
 
-      - name: Check Windows secrets (REQUIRED)
+      - name: Skip macOS validation
+        if: ${{ !inputs.validate_macos }}
+        run: echo "macOS validation skipped (build disabled)"
+
+      - name: Check Windows secrets
+        if: inputs.validate_windows
         env:
           SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
           SIGNPATH_ORGANIZATION_ID: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
@@ -77,3 +92,7 @@ jobs:
           fi
 
           echo "All Windows SignPath secrets configured"
+
+      - name: Skip Windows validation
+        if: ${{ !inputs.validate_windows }}
+        run: echo "Windows validation skipped (build disabled)"

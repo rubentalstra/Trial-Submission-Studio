@@ -4,6 +4,27 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      build_macos:
+        description: 'Build macOS'
+        type: boolean
+        default: true
+      build_linux:
+        description: 'Build Linux'
+        type: boolean
+        default: true
+      build_windows:
+        description: 'Build Windows'
+        type: boolean
+        default: false  # Disabled until signing keys available
+
+# Default values for tag-triggered builds
+# To re-enable a platform, change its value to 'true'
+env:
+  DEFAULT_BUILD_MACOS: 'true'
+  DEFAULT_BUILD_LINUX: 'true'
+  DEFAULT_BUILD_WINDOWS: 'false'  # Set to 'true' when Windows signing keys are available
 
 concurrency:
   group: release-${{ github.ref }}
@@ -15,12 +36,15 @@ permissions:
   attestations: write
 
 jobs:
-  # Extract version without 'v' prefix for file naming consistency
+  # Extract version and determine which platforms to build
   prepare:
     name: Prepare Release
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.VERSION }}
+      build_macos: ${{ steps.config.outputs.build_macos }}
+      build_linux: ${{ steps.config.outputs.build_linux }}
+      build_windows: ${{ steps.config.outputs.build_windows }}
     steps:
       - name: Extract version
         id: version
@@ -28,24 +52,52 @@ jobs:
           REF: ${{ github.ref }}
         run: echo "VERSION=${REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-  # Validate all required secrets exist before building
+      - name: Determine build configuration
+        id: config
+        run: |
+          # Use workflow_dispatch inputs if available, otherwise use defaults
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "build_macos=${{ inputs.build_macos }}" >> $GITHUB_OUTPUT
+            echo "build_linux=${{ inputs.build_linux }}" >> $GITHUB_OUTPUT
+            echo "build_windows=${{ inputs.build_windows }}" >> $GITHUB_OUTPUT
+          else
+            echo "build_macos=${{ env.DEFAULT_BUILD_MACOS }}" >> $GITHUB_OUTPUT
+            echo "build_linux=${{ env.DEFAULT_BUILD_LINUX }}" >> $GITHUB_OUTPUT
+            echo "build_windows=${{ env.DEFAULT_BUILD_WINDOWS }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Log build configuration
+        run: |
+          echo "Build configuration:"
+          echo "  macOS: ${{ steps.config.outputs.build_macos }}"
+          echo "  Linux: ${{ steps.config.outputs.build_linux }}"
+          echo "  Windows: ${{ steps.config.outputs.build_windows }}"
+
+  # Validate required secrets for enabled platforms
   validate:
     name: Validate Secrets
+    needs: [ prepare ]
     uses: ./.github/workflows/01-release-validate.yml
+    with:
+      validate_macos: ${{ needs.prepare.outputs.build_macos == 'true' }}
+      validate_windows: ${{ needs.prepare.outputs.build_windows == 'true' }}
     secrets: inherit
 
-  # Build for all platforms in parallel
+  # Build for enabled platforms
   build-macos:
     name: Build macOS
     needs: [ prepare, validate ]
+    if: needs.prepare.outputs.build_macos == 'true'
     uses: ./.github/workflows/02-release-build-macos.yml
     with:
       version: ${{ needs.prepare.outputs.version }}
+      build_number: ${{ github.run_number }}
     secrets: inherit
 
   build-windows:
     name: Build Windows
     needs: [ prepare, validate ]
+    if: needs.prepare.outputs.build_windows == 'true'
     uses: ./.github/workflows/02-release-build-windows.yml
     with:
       version: ${{ needs.prepare.outputs.version }}
@@ -54,6 +106,7 @@ jobs:
   build-linux:
     name: Build Linux
     needs: [ prepare, validate ]
+    if: needs.prepare.outputs.build_linux == 'true'
     uses: ./.github/workflows/02-release-build-linux.yml
     with:
       version: ${{ needs.prepare.outputs.version }}
@@ -63,7 +116,18 @@ jobs:
   publish:
     name: Publish Release
     needs: [ prepare, build-macos, build-windows, build-linux ]
-    if: success()
+    # Run if at least one build was enabled and all enabled builds succeeded
+    if: |
+      always() &&
+      (needs.prepare.outputs.build_macos == 'true' ||
+       needs.prepare.outputs.build_linux == 'true' ||
+       needs.prepare.outputs.build_windows == 'true') &&
+      (needs.build-macos.result == 'success' || needs.build-macos.result == 'skipped') &&
+      (needs.build-windows.result == 'success' || needs.build-windows.result == 'skipped') &&
+      (needs.build-linux.result == 'success' || needs.build-linux.result == 'skipped') &&
+      !(needs.build-macos.result == 'skipped' &&
+        needs.build-windows.result == 'skipped' &&
+        needs.build-linux.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
