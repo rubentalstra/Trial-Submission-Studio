@@ -22,6 +22,17 @@ Please keep collaboration respectful and constructive:
 - Focus on constructive feedback
 - Assume good intentions
 
+## Security Best Practices
+
+### Multi-Factor Authentication (MFA)
+
+We strongly recommend enabling MFA on your GitHub account. SignPath Foundation
+requires MFA for SignPath access and recommends it for source code repository
+access as well.
+
+To enable MFA on GitHub:
+[GitHub Two-Factor Authentication](https://docs.github.com/en/authentication/securing-your-account-with-two-factor-authentication-2fa)
+
 ## Getting Started
 
 ### Prerequisites

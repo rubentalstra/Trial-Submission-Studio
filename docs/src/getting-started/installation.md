@@ -62,6 +62,27 @@ Get-FileHash trial-submission-studio-*.zip -Algorithm SHA256
 2. Extract: `tar -xzf trial-submission-studio-*.tar.gz`
 3. Run: `./trial-submission-studio`
 
+## Uninstalling
+
+Trial Submission Studio is a portable application that does not modify system
+settings or registry entries.
+
+### Windows
+
+1. Delete the extracted folder containing `trial-submission-studio.exe`
+2. Optionally delete settings from `%APPDATA%\trial-submission-studio\`
+
+### macOS
+
+1. Drag **Trial Submission Studio** from Applications to Trash
+2. Optionally delete settings from
+   `~/Library/Application Support/trial-submission-studio/`
+
+### Linux
+
+1. Delete the AppImage file or extracted folder
+2. Optionally delete settings from `~/.config/trial-submission-studio/`
+
 ## Next Steps
 
 - [Quick Start Guide](quick-start.md) - Get up and running in 5 minutes

@@ -14,7 +14,7 @@ authors:
     email: me@rubentalstra.nl
 identifiers:
   - type: doi
-    value: 10.5281/zenodo.18148150
+    value: '10.5281/zenodo.18148150'
     description: The concept DOI of the work.
 repository-code: 'https://github.com/rubentalstra/trial-submission-studio'
 url: 'https://rubentalstra.github.io/Trial-Submission-Studio/'
@@ -44,5 +44,5 @@ keywords:
   - desktop-application
   - cross-platform
 license: MIT
-version: 0.0.1.alpha.6
+version: '0.0.1-alpha.6'
 date-released: '2026-01-04'

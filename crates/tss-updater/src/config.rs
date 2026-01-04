@@ -9,10 +9,11 @@ use crate::version::Version;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum UpdateCheckFrequency {
-    /// Never automatically check for updates.
+    /// Never automatically check for updates (user must manually check).
+    /// This is the default to comply with SignPath Foundation privacy requirements.
+    #[default]
     Disabled,
     /// Check for updates when the application starts.
-    #[default]
     OnStartup,
     /// Check for updates once per day.
     Daily,
@@ -193,7 +194,8 @@ mod tests {
     #[test]
     fn test_default_settings() {
         let settings = UpdateSettings::default();
-        assert_eq!(settings.check_frequency, UpdateCheckFrequency::OnStartup);
+        // Default is Disabled to comply with SignPath privacy requirements
+        assert_eq!(settings.check_frequency, UpdateCheckFrequency::Disabled);
         assert_eq!(settings.channel, UpdateChannel::Stable);
         assert!(settings.skipped_version.is_none());
     }

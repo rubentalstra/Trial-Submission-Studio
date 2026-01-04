@@ -87,7 +87,7 @@ jobs:
           cp "target/${{ matrix.target }}/release/${APP_NAME}" "$APP_DIR/Contents/MacOS/"
 
           # Extract marketing version (strip -alpha.X, -beta.X, -rc.X suffixes)
-          MARKETING_VERSION=$(echo "${VERSION}" | sed -E 's/-(alpha|beta|rc)\.[0-9]+$//')
+          MARKETING_VERSION=$(echo "${VERSION}" | sed -E 's/^v//' | sed -E 's/-(alpha|beta|rc)\.[0-9]+$//')
 
           echo "Marketing Version: $MARKETING_VERSION"
           echo "Build Version: $BUILD_VERSION"
