@@ -11,6 +11,7 @@
     <a href="https://github.com/rubentalstra/trial-submission-studio/actions"><img src="https://github.com/rubentalstra/trial-submission-studio/workflows/CI/badge.svg" alt="CI Status"/></a>
    <!--- <a href="https://docs.rs/trial-submission-studio/"><img src="https://docs.rs/trial-submission-studio/badge.svg" alt="Docs.rs"/></a> -->
     <a href="https://github.com/rubentalstra/trial-submission-studio/releases"><img src="https://img.shields.io/github/v/release/rubentalstra/trial-submission-studio" alt="Latest Release"/></a>
+    <a href="https://doi.org/10.5281/zenodo.18148150"><img src="https://zenodo.org/badge/1115122337.svg" alt="DOI"></a>
     <a href="https://deps.rs/repo/github/rubentalstra/trial-submission-studio"><img src="https://deps.rs/repo/github/rubentalstra/trial-submission-studio/status.svg" alt="Dependency Status"/></a>
   </p>
 
