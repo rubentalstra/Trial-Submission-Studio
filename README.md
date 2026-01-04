@@ -144,3 +144,13 @@ Built with:
 ## License
 
 [MIT License](LICENSE) - Copyright (c) 2026 Ruben Talstra
+
+## Code Signing
+
+Windows releases are signed for security. Free code signing provided by
+[SignPath.io](https://signpath.io), certificate by
+[SignPath Foundation](https://signpath.org).
+
+See
+our [Code Signing Policy](https://rubentalstra.github.io/Trial-Submission-Studio/development/code-signing-policy.html)
+and [Privacy Policy](PRIVACY.md).

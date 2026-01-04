@@ -70,10 +70,14 @@ This software does not constitute regulatory advice. For guidance on:
 
 Trial Submission Studio:
 
-- Processes all data locally on your computer
-- Does not transmit data over the network
-- Does not collect usage analytics
-- Does not access external services during operation
+- Processes all clinical data locally on your computer
+- Does not collect usage analytics or telemetry
+- Does not transmit clinical data over the network
+
+**Network communication** is limited to user-initiated update checks via GitHub
+API. No clinical data or personal information is ever transmitted.
+
+See our full [Privacy Policy](../../../PRIVACY.md) for details.
 
 You are responsible for protecting any sensitive or confidential data processed
 with this software.

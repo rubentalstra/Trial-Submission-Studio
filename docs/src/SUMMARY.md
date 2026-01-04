@@ -79,6 +79,7 @@
 
 - [macOS Code Signing](development/macos-signing.md)
 - [Windows Code Signing](development/windows-signing.md)
+- [Code Signing Policy](development/code-signing-policy.md)
 
 ---
 
@@ -101,3 +102,4 @@
 
 - [Disclaimer](legal/disclaimer.md)
 - [Code of Conduct](legal/code-of-conduct.md)
+- [Privacy Policy](legal/privacy.md)

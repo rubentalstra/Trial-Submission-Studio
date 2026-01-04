@@ -17,11 +17,12 @@ We take security seriously, particularly given the sensitive nature of clinical 
 
 Trial Submission Studio is designed with privacy in mind:
 
-- **Local Processing Only**: All data transformation occurs locally on your machine. No data is transmitted to external
-  servers.
+- **Local Processing Only**: All clinical data processing occurs locally on your machine.
 - **No Telemetry**: The application does not collect or send usage data, analytics, or clinical information.
 - **Standard Export Formats**: Exported files (XPT, Dataset-XML, Define-XML) use industry-standard formats without
   additional encryption, as required by regulatory submission specifications.
+- **Limited Network Access**: Network communication is limited to user-initiated update checks via GitHub API.
+  No clinical data is ever transmitted. See [PRIVACY.md](PRIVACY.md) for full details.
 
 ### User Responsibility
 
@@ -99,3 +100,10 @@ The following are explicitly **not** provided by Trial Submission Studio:
 - **Network security**: The application is designed for offline use
 
 For production regulatory environments, implement appropriate controls at the infrastructure level.
+
+## Code Signing Compliance
+
+- **Windows signing**: Free code signing provided by [SignPath.io](https://signpath.io), certificate by
+  [SignPath Foundation](https://signpath.org). We cooperate with SignPath on any violation investigations as
+  required by their terms. Report Windows signing concerns to: [support@signpath.io](mailto:support@signpath.io)
+- **macOS signing**: Signed and notarized with Apple Developer ID Application certificate (independent of SignPath)
