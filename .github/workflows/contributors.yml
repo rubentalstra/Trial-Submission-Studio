@@ -35,23 +35,24 @@ jobs:
             exit 0
           fi
 
+          BRANCH="contributors/update-$(date +%Y-%m)"
+
           # Configure git
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Create branch with timestamp
-          BRANCH="contributors/update-$(date +%Y-%m)"
+          # Create branch, commit, and force push
           git checkout -b "$BRANCH"
-
-          # Commit changes
           git add CONTRIBUTORS.md
           git commit -m "docs: update contributors list"
+          git push --force origin "$BRANCH"
 
-          # Push branch
-          git push origin "$BRANCH"
-
-          # Create PR
-          gh pr create \
-            --title "docs: update contributors list" \
-            --body "Automated monthly update of the contributors list." \
-            --label "automated"
+          # Create PR if it doesn't exist
+          if ! gh pr list --head "$BRANCH" --json number --jq '.[0].number' | grep -q .; then
+            gh pr create \
+              --title "docs: update contributors list" \
+              --body "Automated monthly update of the contributors list." \
+              --label "automated"
+          else
+            echo "PR already exists for $BRANCH"
+          fi
