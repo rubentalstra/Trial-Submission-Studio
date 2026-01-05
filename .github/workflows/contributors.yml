@@ -36,31 +36,20 @@ jobs:
 
           BRANCH="contributors/update-$(date +%Y-%m)"
 
-          # Create branch from main if it doesn't exist
-          gh api repos/${{ github.repository }}/git/refs \
-            -f ref="refs/heads/$BRANCH" \
-            -f sha="$(gh api repos/${{ github.repository }}/git/ref/heads/main --jq '.object.sha')" \
-            2>/dev/null || true
+          # Get file SHA from branch (if exists) or main
+          FILE_SHA=$(gh api "repos/${{ github.repository }}/contents/CONTRIBUTORS.md?ref=$BRANCH" --jq '.sha' 2>/dev/null || \
+            gh api repos/${{ github.repository }}/contents/CONTRIBUTORS.md --jq '.sha')
 
-          # Get current file SHA on branch (if exists)
-          FILE_SHA=$(gh api "repos/${{ github.repository }}/contents/CONTRIBUTORS.md?ref=$BRANCH" --jq '.sha' 2>/dev/null || echo "")
-
-          # Create signed commit via Contents API
-          if [ -n "$FILE_SHA" ]; then
-            gh api repos/${{ github.repository }}/contents/CONTRIBUTORS.md -X PUT \
-              -f message="docs: update contributors list" \
-              -f content="$(base64 -i CONTRIBUTORS.md)" \
-              -f branch="$BRANCH" \
-              -f sha="$FILE_SHA"
-          else
-            gh api repos/${{ github.repository }}/contents/CONTRIBUTORS.md -X PUT \
-              -f message="docs: update contributors list" \
-              -f content="$(base64 -i CONTRIBUTORS.md)" \
-              -f branch="$BRANCH"
-          fi
+          # Create signed commit via Contents API (creates branch if needed)
+          gh api repos/${{ github.repository }}/contents/CONTRIBUTORS.md -X PUT \
+            -f message="docs: update contributors list" \
+            -f content="$(base64 -i CONTRIBUTORS.md)" \
+            -f branch="$BRANCH" \
+            -f sha="$FILE_SHA"
 
           # Create PR if it doesn't exist
           gh pr list --head "$BRANCH" --json number --jq '.[0].number' | grep -q . || \
-            gh pr create --title "docs: update contributors list" \
+            gh pr create --head "$BRANCH" \
+              --title "docs: update contributors list" \
               --body "Automated monthly update of the contributors list." \
               --label "automated"
