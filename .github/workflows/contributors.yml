@@ -36,16 +36,45 @@ jobs:
           fi
 
           BRANCH="contributors/update-$(date +%Y-%m)"
+          REPO="${{ github.repository }}"
 
-          # Configure git
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          # Get base branch SHA
+          BASE_SHA=$(gh api repos/$REPO/git/ref/heads/main --jq '.object.sha')
 
-          # Create branch, commit, and force push
-          git checkout -b "$BRANCH"
-          git add CONTRIBUTORS.md
-          git commit -m "docs: update contributors list"
-          git push --force origin "$BRANCH"
+          # Check if branch exists, get its SHA or use base
+          BRANCH_SHA=$(gh api repos/$REPO/git/ref/heads/$BRANCH --jq '.object.sha' 2>/dev/null || echo "$BASE_SHA")
+
+          # Get current tree SHA
+          TREE_SHA=$(gh api repos/$REPO/git/commits/$BRANCH_SHA --jq '.tree.sha')
+
+          # Create blob for CONTRIBUTORS.md
+          CONTENT=$(base64 -i CONTRIBUTORS.md)
+          BLOB_SHA=$(gh api repos/$REPO/git/blobs -f content="$CONTENT" -f encoding="base64" --jq '.sha')
+
+          # Create new tree with updated file
+          NEW_TREE=$(gh api repos/$REPO/git/trees \
+            -f base_tree="$TREE_SHA" \
+            -f "tree[][path]=CONTRIBUTORS.md" \
+            -f "tree[][mode]=100644" \
+            -f "tree[][type]=blob" \
+            -f "tree[][sha]=$BLOB_SHA" \
+            --jq '.sha')
+
+          # Create signed commit via API
+          NEW_COMMIT=$(gh api repos/$REPO/git/commits \
+            -f message="docs: update contributors list" \
+            -f tree="$NEW_TREE" \
+            -f "parents[]=$BRANCH_SHA" \
+            --jq '.sha')
+
+          # Create or update branch ref
+          if gh api repos/$REPO/git/ref/heads/$BRANCH --jq '.ref' 2>/dev/null; then
+            gh api repos/$REPO/git/refs/heads/$BRANCH -X PATCH -f sha="$NEW_COMMIT" -F force=true
+          else
+            gh api repos/$REPO/git/refs -f ref="refs/heads/$BRANCH" -f sha="$NEW_COMMIT"
+          fi
+
+          echo "Created verified commit: $NEW_COMMIT"
 
           # Create PR if it doesn't exist
           if ! gh pr list --head "$BRANCH" --json number --jq '.[0].number' | grep -q .; then
