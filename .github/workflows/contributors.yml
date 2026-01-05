@@ -29,59 +29,38 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Check if there are changes
           if git diff --quiet CONTRIBUTORS.md; then
             echo "No changes to commit"
             exit 0
           fi
 
           BRANCH="contributors/update-$(date +%Y-%m)"
-          REPO="${{ github.repository }}"
 
-          # Get base branch SHA
-          BASE_SHA=$(gh api repos/$REPO/git/ref/heads/main --jq '.object.sha')
+          # Create branch from main if it doesn't exist
+          gh api repos/${{ github.repository }}/git/refs \
+            -f ref="refs/heads/$BRANCH" \
+            -f sha="$(gh api repos/${{ github.repository }}/git/ref/heads/main --jq '.object.sha')" \
+            2>/dev/null || true
 
-          # Check if branch exists, get its SHA or use base
-          BRANCH_SHA=$(gh api repos/$REPO/git/ref/heads/$BRANCH --jq '.object.sha' 2>/dev/null || echo "$BASE_SHA")
+          # Get current file SHA on branch (if exists)
+          FILE_SHA=$(gh api "repos/${{ github.repository }}/contents/CONTRIBUTORS.md?ref=$BRANCH" --jq '.sha' 2>/dev/null || echo "")
 
-          # Get current tree SHA
-          TREE_SHA=$(gh api repos/$REPO/git/commits/$BRANCH_SHA --jq '.tree.sha')
-
-          # Create blob for CONTRIBUTORS.md
-          CONTENT=$(base64 -i CONTRIBUTORS.md)
-          BLOB_SHA=$(gh api repos/$REPO/git/blobs -f content="$CONTENT" -f encoding="base64" --jq '.sha')
-
-          # Create new tree with updated file
-          NEW_TREE=$(gh api repos/$REPO/git/trees \
-            -f base_tree="$TREE_SHA" \
-            -f "tree[][path]=CONTRIBUTORS.md" \
-            -f "tree[][mode]=100644" \
-            -f "tree[][type]=blob" \
-            -f "tree[][sha]=$BLOB_SHA" \
-            --jq '.sha')
-
-          # Create signed commit via API
-          NEW_COMMIT=$(gh api repos/$REPO/git/commits \
-            -f message="docs: update contributors list" \
-            -f tree="$NEW_TREE" \
-            -f "parents[]=$BRANCH_SHA" \
-            --jq '.sha')
-
-          # Create or update branch ref
-          if gh api repos/$REPO/git/ref/heads/$BRANCH --jq '.ref' 2>/dev/null; then
-            gh api repos/$REPO/git/refs/heads/$BRANCH -X PATCH -f sha="$NEW_COMMIT" -F force=true
+          # Create signed commit via Contents API
+          if [ -n "$FILE_SHA" ]; then
+            gh api repos/${{ github.repository }}/contents/CONTRIBUTORS.md -X PUT \
+              -f message="docs: update contributors list" \
+              -f content="$(base64 -i CONTRIBUTORS.md)" \
+              -f branch="$BRANCH" \
+              -f sha="$FILE_SHA"
           else
-            gh api repos/$REPO/git/refs -f ref="refs/heads/$BRANCH" -f sha="$NEW_COMMIT"
+            gh api repos/${{ github.repository }}/contents/CONTRIBUTORS.md -X PUT \
+              -f message="docs: update contributors list" \
+              -f content="$(base64 -i CONTRIBUTORS.md)" \
+              -f branch="$BRANCH"
           fi
-
-          echo "Created verified commit: $NEW_COMMIT"
 
           # Create PR if it doesn't exist
-          if ! gh pr list --head "$BRANCH" --json number --jq '.[0].number' | grep -q .; then
-            gh pr create \
-              --title "docs: update contributors list" \
+          gh pr list --head "$BRANCH" --json number --jq '.[0].number' | grep -q . || \
+            gh pr create --title "docs: update contributors list" \
               --body "Automated monthly update of the contributors list." \
               --label "automated"
-          else
-            echo "PR already exists for $BRANCH"
-          fi
