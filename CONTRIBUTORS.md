@@ -1,16 +1,8 @@
-# Contributors
+# Top Contributors: rubentalstra/Trial-Submission-Studio
+Shout out to our top contributors!
 
-Thank you to all the wonderful people who have contributed to Trial Submission Studio!
+- [rubentalstra](https://github.com/rubentalstra)
+- [Copilot](https://github.com/apps/copilot-swe-agent)
 
-## Monthly Reports
 
-Contributor reports are generated automatically on the 1st of each month.
-View them in the [issues with the `contributors` label](https://github.com/rubentalstra/Trial-Submission-Studio/issues?q=label%3Acontributors).
-
-## All-Time Contributors
-
-See the [revision history](https://github.com/rubentalstra/Trial-Submission-Studio/commits/main) for the complete list of contributions.
-
-| Contributor                                       | Role                         |
-|---------------------------------------------------|------------------------------|
-| [@rubentalstra](https://github.com/rubentalstra)  | Project Creator & Maintainer |
+_Last updated: Mon, 05 Jan 26 01:17:34 +0000_
