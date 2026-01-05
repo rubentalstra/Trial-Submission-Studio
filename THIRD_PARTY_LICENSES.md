@@ -6,7 +6,7 @@ Trial Submission Studio includes the following third-party open source software.
 
 | License | Count |
 |---------|-------|
-| MIT License | 512 |
+| MIT License | 510 |
 | Apache License 2.0 | 25 |
 | Unicode License v3 | 19 |
 | ISC License | 4 |
@@ -1042,9 +1042,7 @@ insights.
 
 ### Used by
 
-- [serde_spanned v0.6.9](https://github.com/toml-rs/toml)
 - [serde_spanned v1.0.4](https://github.com/toml-rs/toml)
-- [toml v0.8.2](https://github.com/toml-rs/toml)
 - [toml v0.9.10+spec-1.1.0](https://github.com/toml-rs/toml)
 - [toml_datetime v0.7.5+spec-1.1.0](https://github.com/toml-rs/toml)
 - [toml_edit v0.19.15](https://github.com/toml-rs/toml)
@@ -1256,17 +1254,17 @@ insights.
 
 ### Used by
 
-- [tss-common v0.0.1-alpha.1](https://crates.io/crates/tss-common)
-- [tss-gui v0.0.1-alpha.1](https://crates.io/crates/tss-gui)
-- [tss-ingest v0.0.1-alpha.1](https://crates.io/crates/tss-ingest)
-- [tss-map v0.0.1-alpha.1](https://crates.io/crates/tss-map)
-- [tss-model v0.0.1-alpha.1](https://crates.io/crates/tss-model)
-- [tss-output v0.0.1-alpha.1](https://crates.io/crates/tss-output)
-- [tss-standards v0.0.1-alpha.1](https://crates.io/crates/tss-standards)
-- [tss-transform v0.0.1-alpha.1](https://crates.io/crates/tss-transform)
-- [tss-updater v0.0.1-alpha.1](https://crates.io/crates/tss-updater)
-- [tss-validate v0.0.1-alpha.1](https://crates.io/crates/tss-validate)
-- [tss-xpt v0.0.1-alpha.1](https://crates.io/crates/tss-xpt)
+- [tss-common v0.0.1-alpha.8](https://crates.io/crates/tss-common)
+- [tss-gui v0.0.1-alpha.8](https://crates.io/crates/tss-gui)
+- [tss-ingest v0.0.1-alpha.8](https://crates.io/crates/tss-ingest)
+- [tss-map v0.0.1-alpha.8](https://crates.io/crates/tss-map)
+- [tss-model v0.0.1-alpha.8](https://crates.io/crates/tss-model)
+- [tss-output v0.0.1-alpha.8](https://crates.io/crates/tss-output)
+- [tss-standards v0.0.1-alpha.8](https://crates.io/crates/tss-standards)
+- [tss-transform v0.0.1-alpha.8](https://crates.io/crates/tss-transform)
+- [tss-updater v0.0.1-alpha.8](https://crates.io/crates/tss-updater)
+- [tss-validate v0.0.1-alpha.8](https://crates.io/crates/tss-validate)
+- [tss-xpt v0.0.1-alpha.8](https://crates.io/crates/tss-xpt)
 - [accesskit v0.21.1](https://github.com/AccessKit/accesskit)
 - [accesskit_atspi_common v0.14.2](https://github.com/AccessKit/accesskit)
 - [accesskit_consumer v0.31.0](https://github.com/AccessKit/accesskit)

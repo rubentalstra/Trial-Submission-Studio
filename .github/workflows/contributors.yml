@@ -1,0 +1,52 @@
+name: Monthly Contributor Report
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run monthly on the 1st at 02:03 UTC
+    - cron: "3 2 1 * *"
+
+permissions:
+  contents: read
+
+jobs:
+  contributor-report:
+    name: Generate Contributor Report
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+
+    steps:
+      - name: Get dates for last month
+        shell: bash
+        run: |
+          # Calculate the first day of the previous month
+          start_date=$(date -d "last month" +%Y-%m-01)
+
+          # Calculate the last day of the previous month
+          end_date=$(date -d "$start_date +1 month -1 day" +%Y-%m-%d)
+
+          #Set an environment variable with the date range
+          echo "START_DATE=$start_date" >> "$GITHUB_ENV"
+          echo "END_DATE=$end_date" >> "$GITHUB_ENV"
+
+      - name: Run contributor action
+        uses: github/contributors@v1
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          START_DATE: ${{ env.START_DATE }}
+          END_DATE: ${{ env.END_DATE }}
+          REPOSITORY: rubentalstra/Trial-Submission-Studio
+          LINK_TO_PROFILE: "true"
+          SPONSOR_INFO: "true"
+
+      - name: Create issue
+        uses: peter-evans/create-issue-from-file@v5
+        with:
+          title: "Monthly Contributor Report (${{ env.START_DATE }} - ${{ env.END_DATE }})"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          content-filepath: ./contributors.md
+          assignees: rubentalstra
+          labels: |
+            report
+            contributors
