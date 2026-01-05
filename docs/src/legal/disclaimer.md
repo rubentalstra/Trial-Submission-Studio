@@ -7,8 +7,8 @@ Important notices about Trial Submission Studio.
 > [!WARNING]
 > **Trial Submission Studio is currently in alpha development.**
 
-This software is provided for **evaluation and development purposes only**. It is **not yet suitable for production use
-** in regulatory submissions.
+This software is provided for **evaluation and development purposes only**. It is  **not yet suitable for production
+use** in regulatory submissions.
 
 ### What This Means
 
