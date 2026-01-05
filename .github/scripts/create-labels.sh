@@ -23,8 +23,7 @@ gh label create "good first issue" --color "7057ff" --description "Good for newc
 gh label create "help wanted" --color "008672" --description "Help is requested to fix this issue" --force
 
 # Automation labels
-gh label create "report" --color "0e8a16" --description "Automated report" --force
-gh label create "contributors" --color "c5def5" --description "Contributor recognition" --force
+gh label create "automated" --color "ededed" --description "Automated PR from GitHub Actions" --force
 
 # Platform labels
 gh label create "windows" --color "0078d4" --description "Windows-specific issue" --force
@@ -41,4 +40,4 @@ gh label create "Dataset-XML" --color "bfd4f2" --description "Dataset-XML format
 gh label create "XPT" --color "fef2c0" --description "XPT transport format (V5/V8)" --force
 
 echo ""
-echo "All 22 labels created successfully!"
+echo "All 21 labels created successfully!"

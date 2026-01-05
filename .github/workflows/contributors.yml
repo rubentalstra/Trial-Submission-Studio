@@ -1,4 +1,4 @@
-name: Monthly Contributor Report
+name: Update Contributors
 
 on:
   workflow_dispatch:
@@ -7,46 +7,51 @@ on:
     - cron: "3 2 1 * *"
 
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
 
 jobs:
-  contributor-report:
-    name: Generate Contributor Report
+  update-contributors:
+    name: Update Contributors
     runs-on: ubuntu-latest
-    permissions:
-      issues: write
 
     steps:
-      - name: Get dates for last month
-        shell: bash
-        run: |
-          # Calculate the first day of the previous month
-          start_date=$(date -d "last month" +%Y-%m-01)
+      - uses: actions/checkout@v6
 
-          # Calculate the last day of the previous month
-          end_date=$(date -d "$start_date +1 month -1 day" +%Y-%m-%d)
+      - name: Update contributors file
+        uses: minicli/action-contributors@v3.3
+        env:
+          CONTRIB_REPOSITORY: rubentalstra/Trial-Submission-Studio
+          CONTRIB_OUTPUT_FILE: CONTRIBUTORS.md
+          CONTRIB_IGNORE: "github-actions[bot],renovate-bot,dependabot[bot]"
 
-          #Set an environment variable with the date range
-          echo "START_DATE=$start_date" >> "$GITHUB_ENV"
-          echo "END_DATE=$end_date" >> "$GITHUB_ENV"
-
-      - name: Run contributor action
-        uses: github/contributors@v1
+      - name: Create Pull Request
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          START_DATE: ${{ env.START_DATE }}
-          END_DATE: ${{ env.END_DATE }}
-          REPOSITORY: rubentalstra/Trial-Submission-Studio
-          LINK_TO_PROFILE: "true"
-          SPONSOR_INFO: "true"
+        run: |
+          # Check if there are changes
+          if git diff --quiet CONTRIBUTORS.md; then
+            echo "No changes to commit"
+            exit 0
+          fi
 
-      - name: Create issue
-        uses: peter-evans/create-issue-from-file@v5
-        with:
-          title: "Monthly Contributor Report (${{ env.START_DATE }} - ${{ env.END_DATE }})"
-          token: ${{ secrets.GITHUB_TOKEN }}
-          content-filepath: ./contributors.md
-          assignees: rubentalstra
-          labels: |
-            report
-            contributors
+          # Configure git
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # Create branch with timestamp
+          BRANCH="contributors/update-$(date +%Y-%m)"
+          git checkout -b "$BRANCH"
+
+          # Commit changes
+          git add CONTRIBUTORS.md
+          git commit -m "docs: update contributors list"
+
+          # Push branch
+          git push origin "$BRANCH"
+
+          # Create PR
+          gh pr create \
+            --title "docs: update contributors list" \
+            --body "Automated monthly update of the contributors list." \
+            --label "automated"
