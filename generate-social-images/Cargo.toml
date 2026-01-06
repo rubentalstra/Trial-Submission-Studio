@@ -1,0 +1,17 @@
+[package]
+name = "generate-social-images"
+version = "0.1.0"
+edition = "2024"
+description = "Generate social preview images for Trial Submission Studio"
+rust-version = "1.92"
+readme = "README.md"
+
+[workspace]
+
+[dependencies]
+image = "0.25.9"
+imageproc = "0.26.0"
+swash = "0.2.6"
+resvg = "0.45.1"
+toml = "0.9.8"
+serde = { version = "1.0.228", features = ["derive"] }
