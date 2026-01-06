@@ -22,13 +22,15 @@ application:
 - **Windows**: Run `trial-submission-studio.exe`
 - **Linux**: Run `./trial-submission-studio`
 
-You'll see the main interface with the data import panel.
+You'll see the welcome screen where you can select your CDISC standard:
+
+![Welcome Screen](../images/screenshots/welcome-screen.png)
 
 ---
 
 ## Step 2: Import Your Data
 
-1. Click **Import CSV** or drag and drop your CSV file
+1. Click **Open Study Folder** and select your data folder
 2. Trial Submission Studio will automatically:
    - Detect column types
    - Identify potential SDTM domains
@@ -39,11 +41,14 @@ You'll see the main interface with the data import panel.
 
 ---
 
-## Step 3: Select SDTM Domain
+## Step 3: Review Discovered Domains
 
-1. Choose the target SDTM domain (e.g., DM, AE, VS)
-2. The application will display the required and optional variables for that
-   domain
+Trial Submission Studio automatically discovers domains from your source data:
+
+![Study Overview](../images/screenshots/study-overview.png)
+
+1. Review the list of discovered domains (DM, AE, VS, etc.)
+2. Click on a domain to configure its mappings
 
 ---
 
@@ -53,33 +58,40 @@ You'll see the main interface with the data import panel.
 2. For each source column, select the corresponding SDTM variable
 3. Use the fuzzy matching suggestions to speed up mapping
 
+![Column Mapping](../images/screenshots/column-mapping.png)
+
 The mapping interface shows:
 
 - **Source Column**: Your CSV column name
 - **Target Variable**: The SDTM variable
-- **Match Score**: Confidence of the suggested mapping
+- **Match Score**: Confidence of the suggested mapping (e.g., 93% match)
 
 ---
 
 ## Step 5: Validate
 
-1. Click **Validate** to check your data against CDISC rules
+1. Switch to the **Validation** tab to check your data against CDISC rules
 2. Review any validation messages:
    - **Errors**: Must be fixed before export
    - **Warnings**: Should be reviewed
    - **Info**: Informational messages
 
+![Validation Results](../images/screenshots/validation-errors.png)
+
+Each validation issue includes the rule ID, a description, and suggestions on how to fix it.
+
 ---
 
 ## Step 6: Export
 
-1. Click **Export**
-2. Choose your output format:
-   - **XPT V5** (FDA standard)
-   - **XPT V8** (extended names/labels)
+1. Click **Go to Export** or navigate to the Export screen
+2. Select which domains to export
+3. Choose your output format:
+   - **XPT (SAS Transport)** (FDA standard)
    - **Dataset-XML** (CDISC data exchange)
-3. Select the output location
-4. Click **Save**
+4. Click **Export**
+
+![Export Settings](../images/screenshots/export-settings.png)
 
 ---
 

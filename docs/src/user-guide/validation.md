@@ -2,8 +2,7 @@
 
 Trial Submission Studio validates your data against CDISC standards before export.
 
-<!-- TODO: Add screenshot of validation results -->
-<!-- ![Validation Results](../images/screenshots/validation-results.png) -->
+![Validation Results](../images/screenshots/validation-errors.png)
 
 ## Validation Overview
 

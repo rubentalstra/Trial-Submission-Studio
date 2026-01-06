@@ -2,8 +2,7 @@
 
 After mapping and validation, export your data to CDISC-compliant formats.
 
-<!-- TODO: Add screenshot of export dialog -->
-<!-- ![Export Dialog](../images/screenshots/export-dialog.png) -->
+![Export Dialog](../images/screenshots/export-settings.png)
 
 ## Export Formats
 

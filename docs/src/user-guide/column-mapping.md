@@ -2,8 +2,7 @@
 
 The mapping interface helps you connect your source CSV columns to SDTM variables.
 
-<!-- TODO: Add screenshot of mapping interface -->
-<!-- ![Mapping Interface](../images/screenshots/mapping-interface.png) -->
+![Mapping Interface](../images/screenshots/column-mapping.png)
 
 ## Overview
 
@@ -130,6 +129,22 @@ For variables with controlled terminology:
 - The interface shows valid values
 - Warns if source values don't match
 - Suggests value mappings
+
+### CT Normalization
+
+The Transform tab allows you to normalize values to CDISC Controlled Terminology:
+
+![CT Normalization](../images/screenshots/transform-ct-normalization.png)
+
+Values are automatically transformed to their standardized form (e.g., "Years" → "YEARS").
+
+## Supplemental Qualifiers (SUPP)
+
+For non-standard variables that need to be captured as supplemental qualifiers, use the SUPP tab:
+
+![SUPP Configuration](../images/screenshots/supp-configuration.png)
+
+Configure QNAM, QLABEL, QORIG, and QEVAL for each supplemental qualifier variable.
 
 ## Mapping Templates
 

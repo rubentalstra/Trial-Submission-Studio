@@ -2,8 +2,17 @@
 
 Trial Submission Studio features a clean, intuitive interface designed for clinical data programmers.
 
-<!-- TODO: Add screenshot of main application window -->
-<!-- ![Main Window](../images/screenshots/main-window.png) -->
+## Welcome Screen
+
+When you first launch the application, you'll see the welcome screen where you can select your target CDISC standard and open a study folder:
+
+![Welcome Screen](../images/screenshots/welcome-screen.png)
+
+## Study Overview
+
+After opening a study folder, Trial Submission Studio automatically discovers domains from your source data:
+
+![Study Overview](../images/screenshots/study-overview.png)
 
 ## Main Window Layout
 
@@ -49,6 +58,8 @@ The application is organized into several key areas:
 - **About** - Version and license information
 - **Third-Party Licenses** - Dependency attributions
 
+![About Dialog](../images/screenshots/about-dialog.png)
+
 ## Toolbar
 
 Quick access to common actions:
@@ -91,6 +102,14 @@ The central area displays context-sensitive content based on the current workflo
 - Error/warning/info messages
 - Affected rows and columns
 - Suggested fixes
+
+![Validation View](../images/screenshots/validation-errors.png)
+
+### Preview View
+
+Preview your SDTM-compliant data before export:
+
+![SDTM Preview](../images/screenshots/sdtm-preview.png)
 
 ### Export View
 
