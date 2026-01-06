@@ -28,7 +28,7 @@ cargo run --release
 
 ## Output
 
-By default, the tool generates two images in `resources/images/`:
+By default, the tool generates two images in `docs/src/images/` (for mdbook):
 
 | File                                                   | Dimensions | Use Case                 |
 |--------------------------------------------------------|------------|--------------------------|
@@ -63,7 +63,7 @@ The standards and output formats are displayed together, separated by `  |  `.
 ```toml
 [paths]
 logo_svg = "docs/src/images/logo.svg"
-output_dir = "resources/images"
+output_dir = "docs/src/images"
 filename_prefix = "trial-submission-studio-social-preview"
 ```
 
