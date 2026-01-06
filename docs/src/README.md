@@ -22,6 +22,28 @@ formats.
 > Always validate all outputs with qualified regulatory professionals before
 > submission to regulatory authorities.
 
+---
+
+## See It in Action
+
+<div align="center">
+
+**Select your CDISC standard and open your study data:**
+
+![Welcome Screen](images/screenshots/welcome-screen.png)
+
+**Automatic domain discovery with intelligent column mapping:**
+
+![Column Mapping](images/screenshots/column-mapping.png)
+
+**Built-in validation against CDISC standards:**
+
+![Validation](images/screenshots/validation-errors.png)
+
+</div>
+
+---
+
 ## Quick Links
 
 | New Users                                                     | Clinical Programmers                           | Developers                                             |
