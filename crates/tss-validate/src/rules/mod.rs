@@ -1,12 +1,8 @@
-//! P21 validation rules loaded from CSV.
+//! Validation rule categories.
 //!
-//! The rules module provides access to Pinnacle 21 validation rules
-//! loaded from `standards/validation/sdtm/Rules.csv`.
+//! Categories are used to classify validation issues and allow users
+//! to bypass certain categories of checks in settings.
 
 mod category;
-mod loader;
-mod registry;
 
 pub use category::Category;
-pub use loader::{LoadError, load_default_rules, load_rules};
-pub use registry::{Rule, RuleRegistry};

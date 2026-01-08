@@ -1,4 +1,6 @@
 //! P21 rule categories from CSV.
+//!
+//! TODO: refactor/ rewrite to remove this separate module because we removed the P21 Rules thing. and need to look what to do with this.
 
 use serde::{Deserialize, Serialize};
 

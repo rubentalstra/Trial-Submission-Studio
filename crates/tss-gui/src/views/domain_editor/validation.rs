@@ -185,11 +185,11 @@ fn show_issues_list(
     let issues = &report.issues;
     let error_count = issues
         .iter()
-        .filter(|i| matches!(i.default_severity(), Severity::Error | Severity::Reject))
+        .filter(|i| matches!(i.severity(), Severity::Error | Severity::Reject))
         .count();
     let warning_count = issues
         .iter()
-        .filter(|i| matches!(i.default_severity(), Severity::Warning))
+        .filter(|i| matches!(i.severity(), Severity::Warning))
         .count();
 
     // Header
@@ -217,7 +217,7 @@ fn show_issues_list(
     ui.separator();
 
     // Sort issues by severity
-    let sorted_issues = report.sorted_by_severity(None);
+    let sorted_issues = report.sorted_by_severity();
 
     // Build table
     let mut new_selection: Option<usize> = None;
@@ -243,7 +243,7 @@ fn show_issues_list(
                 let row_idx = row.index();
                 let issue = &sorted_issues[row_idx];
                 let is_selected = selected_idx == Some(row_idx);
-                let severity = issue.default_severity();
+                let severity = issue.severity();
 
                 // Severity icon column
                 row.col(|ui| {
@@ -311,13 +311,13 @@ fn show_issue_detail(
     };
 
     // Get sorted issues (same order as list)
-    let sorted_issues = report.sorted_by_severity(None);
+    let sorted_issues = report.sorted_by_severity();
     let Some(issue) = sorted_issues.get(idx) else {
         ui.label(RichText::new("Issue not found").weak());
         return;
     };
 
-    let severity = issue.default_severity();
+    let severity = issue.severity();
     let (icon, color) = severity_icon_color(severity, ui);
 
     // Header with severity and variable
@@ -365,7 +365,7 @@ fn show_issue_detail(
     ui.separator();
     ui.add_space(spacing::SM);
 
-    ui.label(issue.message(None));
+    ui.label(issue.message());
 
     // Issue-specific details
     match issue {

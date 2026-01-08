@@ -14,3 +14,4 @@ type-complexity-threshold = 250
 
 # Allowed names for variables (avoids false positives)
 allowed-idents-below-min-chars = ["i", "j", "k", "n", "x", "y", "df"]
+

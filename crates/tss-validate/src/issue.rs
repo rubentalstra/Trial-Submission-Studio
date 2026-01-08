@@ -5,7 +5,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::rules::{Category, Rule, RuleRegistry};
+use crate::rules::Category;
 
 /// Issue severity level.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -96,7 +96,7 @@ pub enum Issue {
 }
 
 impl Issue {
-    /// P21 rule ID for looking up in registry.
+    /// Rule ID for this issue type.
     pub fn rule_id(&self) -> &'static str {
         match self {
             Issue::RequiredMissing { .. } => "SD0056",
@@ -170,8 +170,8 @@ impl Issue {
         }
     }
 
-    /// Default severity (can be overridden by registry lookup).
-    pub fn default_severity(&self) -> Severity {
+    /// Severity for this issue type.
+    pub fn severity(&self) -> Severity {
         match self {
             Issue::ExpectedMissing { .. } => Severity::Warning,
             Issue::TextTooLong { .. } => Severity::Warning,
@@ -183,42 +183,35 @@ impl Issue {
     }
 
     /// Format message with issue-specific data.
-    pub fn format_message(&self, rule: Option<&Rule>) -> String {
-        // Use rule message as base if available, otherwise generate default
-        let base_msg = rule.map(|r| r.message.as_str());
-
+    pub fn message(&self) -> String {
         match self {
-            Issue::RequiredMissing { variable } => base_msg
-                .map(|m| m.replace("variable", variable))
-                .unwrap_or_else(|| format!("Required variable {} is missing", variable)),
+            Issue::RequiredMissing { variable } => {
+                format!("Required variable {} is missing", variable)
+            }
 
             Issue::RequiredEmpty {
                 variable,
                 null_count,
-            } => base_msg
-                .map(|m| m.replace("variable", variable))
-                .unwrap_or_else(|| {
-                    format!(
-                        "Required variable {} has {} null values",
-                        variable, null_count
-                    )
-                }),
+            } => {
+                format!(
+                    "Required variable {} has {} null values",
+                    variable, null_count
+                )
+            }
 
-            Issue::ExpectedMissing { variable } => base_msg
-                .map(|m| m.replace("variable", variable))
-                .unwrap_or_else(|| format!("Expected variable {} is missing", variable)),
+            Issue::ExpectedMissing { variable } => {
+                format!("Expected variable {} is missing", variable)
+            }
 
             Issue::IdentifierNull {
                 variable,
                 null_count,
-            } => base_msg
-                .map(|m| m.replace("variable", variable))
-                .unwrap_or_else(|| {
-                    format!(
-                        "Identifier variable {} has {} null values",
-                        variable, null_count
-                    )
-                }),
+            } => {
+                format!(
+                    "Identifier variable {} has {} null values",
+                    variable, null_count
+                )
+            }
 
             Issue::InvalidDate {
                 variable,
@@ -298,19 +291,5 @@ impl Issue {
                 )
             }
         }
-    }
-
-    /// Get severity using registry if available.
-    pub fn severity(&self, registry: Option<&RuleRegistry>) -> Severity {
-        registry
-            .and_then(|r| r.get(self.rule_id()))
-            .and_then(|rule| rule.severity)
-            .unwrap_or_else(|| self.default_severity())
-    }
-
-    /// Get formatted message using registry if available.
-    pub fn message(&self, registry: Option<&RuleRegistry>) -> String {
-        let rule = registry.and_then(|r| r.get(self.rule_id()));
-        self.format_message(rule)
     }
 }

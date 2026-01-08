@@ -10,11 +10,7 @@ description = "CDISC conformance validation for SDTM, ADaM, and SEND"
 workspace = true
 
 [dependencies]
-csv.workspace = true
 polars.workspace = true
-regex = "1.11"
+regex = "1.12.2"
 tss-model = { path = "../tss-model" }
 serde = { workspace = true, features = ["derive"] }
-
-[dev-dependencies]
-tss-standards = { path = "../tss-standards" }

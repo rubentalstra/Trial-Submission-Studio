@@ -14,19 +14,14 @@
 //! # Example
 //!
 //! ```ignore
-//! use tss_validate::{validate_domain, load_default_rules, Issue, Severity};
-//!
-//! // Load rules once at startup
-//! let rules = load_default_rules()?;
+//! use tss_validate::{validate_domain, Issue, Severity};
 //!
 //! // Validate a domain
 //! let report = validate_domain(&domain, &df, ct_registry.as_ref());
 //!
-//! // Display issues with rule metadata
+//! // Display issues
 //! for issue in &report.issues {
-//!     let severity = issue.severity(Some(&rules));
-//!     let message = issue.message(Some(&rules));
-//!     println!("[{:?}] {}: {}", severity, issue.rule_id(), message);
+//!     println!("[{:?}] {}: {}", issue.severity(), issue.rule_id(), issue.message());
 //! }
 //! ```
 
@@ -45,7 +40,7 @@ use tss_model::ct::TerminologyRegistry;
 pub use checks::dates::is_date_variable;
 pub use issue::{Issue, Severity};
 pub use report::ValidationReport;
-pub use rules::{Category, LoadError, Rule, RuleRegistry, load_default_rules, load_rules};
+pub use rules::Category;
 pub use util::CaseInsensitiveSet;
 
 /// Validate a single domain against SDTM conformance rules.

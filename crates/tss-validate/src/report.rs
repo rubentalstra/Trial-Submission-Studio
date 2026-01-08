@@ -3,7 +3,6 @@
 use serde::{Deserialize, Serialize};
 
 use crate::issue::{Issue, Severity};
-use crate::rules::RuleRegistry;
 
 /// Validation report for a domain.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
@@ -37,30 +36,30 @@ impl ValidationReport {
     }
 
     /// Count of errors (Error + Reject severity).
-    pub fn error_count(&self, registry: Option<&RuleRegistry>) -> usize {
+    pub fn error_count(&self) -> usize {
         self.issues
             .iter()
-            .filter(|i| matches!(i.severity(registry), Severity::Error | Severity::Reject))
+            .filter(|i| matches!(i.severity(), Severity::Error | Severity::Reject))
             .count()
     }
 
     /// Count of warnings.
-    pub fn warning_count(&self, registry: Option<&RuleRegistry>) -> usize {
+    pub fn warning_count(&self) -> usize {
         self.issues
             .iter()
-            .filter(|i| matches!(i.severity(registry), Severity::Warning))
+            .filter(|i| matches!(i.severity(), Severity::Warning))
             .count()
     }
 
     /// Check if report has any errors.
-    pub fn has_errors(&self, registry: Option<&RuleRegistry>) -> bool {
-        self.error_count(registry) > 0
+    pub fn has_errors(&self) -> bool {
+        self.error_count() > 0
     }
 
     /// Get issues sorted by severity (Reject first, then Error, then Warning).
-    pub fn sorted_by_severity(&self, registry: Option<&RuleRegistry>) -> Vec<&Issue> {
+    pub fn sorted_by_severity(&self) -> Vec<&Issue> {
         let mut issues: Vec<_> = self.issues.iter().collect();
-        issues.sort_by_key(|i| match i.severity(registry) {
+        issues.sort_by_key(|i| match i.severity() {
             Severity::Reject => 0,
             Severity::Error => 1,
             Severity::Warning => 2,

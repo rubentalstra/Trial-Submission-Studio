@@ -79,7 +79,7 @@ pub fn get_domain_status(domain: &DomainState, bypasses: &ExportBypasses) -> Dom
         let mut has_warnings = false;
 
         for issue in &report.issues {
-            let severity = issue.default_severity();
+            let severity = issue.severity();
 
             match severity {
                 Severity::Reject | Severity::Error => {
@@ -152,7 +152,7 @@ pub fn count_bypassed_issues(domain: &DomainState, bypasses: &ExportBypasses) ->
         .issues
         .iter()
         .filter(|issue| {
-            let severity = issue.default_severity();
+            let severity = issue.severity();
             matches!(severity, Severity::Reject | Severity::Error)
                 && is_issue_bypassed(issue, bypasses)
         })

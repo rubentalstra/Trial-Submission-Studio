@@ -6289,12 +6289,10 @@ dependencies = [
 name = "tss-validate"
 version = "0.0.1-alpha.8"
 dependencies = [
- "csv",
  "polars",
  "regex",
  "serde",
  "tss-model",
- "tss-standards",
 ]
 
 [[package]]
