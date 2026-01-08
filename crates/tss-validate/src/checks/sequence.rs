@@ -5,7 +5,7 @@
 use std::collections::HashSet;
 
 use polars::prelude::{AnyValue, DataFrame};
-use tss_common::any_to_string;
+use tss_model::any_to_string;
 use tss_model::Domain;
 
 use crate::issue::Issue;

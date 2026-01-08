@@ -32,7 +32,6 @@ Closes #
 - [ ] `tss-output`
 - [ ] `tss-standards`
 - [ ] `tss-model`
-- [ ] `tss-common`
 - [ ] `tss-updater`
 
 ## Breaking Changes

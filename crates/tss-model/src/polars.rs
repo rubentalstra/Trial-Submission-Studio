@@ -14,7 +14,7 @@ use polars::prelude::*;
 ///
 /// ```
 /// use polars::prelude::AnyValue;
-/// use tss_common::any_to_string;
+/// use tss_model::polars::any_to_string;
 ///
 /// assert_eq!(any_to_string(AnyValue::Null), "");
 /// assert_eq!(any_to_string(AnyValue::Int32(42)), "42");
@@ -65,7 +65,7 @@ pub fn any_to_string_non_empty(value: AnyValue<'_>) -> Option<String> {
 /// # Examples
 ///
 /// ```
-/// use tss_common::format_numeric;
+/// use tss_model::polars::format_numeric;
 ///
 /// assert_eq!(format_numeric(1.0), "1");
 /// assert_eq!(format_numeric(1.5), "1.5");

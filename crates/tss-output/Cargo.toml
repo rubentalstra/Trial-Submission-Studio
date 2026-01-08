@@ -14,7 +14,6 @@ anyhow.workspace = true
 chrono.workspace = true
 polars.workspace = true
 quick-xml.workspace = true
-tss-common = { path = "../tss-common" }
 tss-model = { path = "../tss-model" }
 tss-map = { path = "../tss-map" }
 xport = { path = "../xport" }

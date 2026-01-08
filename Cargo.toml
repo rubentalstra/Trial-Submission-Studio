@@ -1,6 +1,5 @@
 [workspace]
 members = [
-    "crates/tss-common",
     "crates/tss-gui",
     "crates/tss-ingest",
     "crates/tss-map",

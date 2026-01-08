@@ -3,7 +3,7 @@
 //! Checks that character variables don't exceed their defined length.
 
 use polars::prelude::{AnyValue, DataFrame};
-use tss_common::any_to_string;
+use tss_model::any_to_string;
 use tss_model::{Domain, VariableType};
 
 use crate::issue::Issue;

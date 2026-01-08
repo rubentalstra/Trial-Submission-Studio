@@ -11,7 +11,7 @@
 
 use polars::prelude::{AnyValue, DataFrame};
 use std::collections::BTreeSet;
-use tss_common::any_to_string;
+use tss_model::any_to_string;
 use tss_model::{CoreDesignation, Domain};
 
 use crate::issue::Issue;

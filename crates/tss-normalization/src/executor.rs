@@ -5,7 +5,7 @@
 
 use polars::prelude::*;
 use std::collections::BTreeMap;
-use tss_common::any_to_string;
+use tss_model::any_to_string;
 
 use crate::error::NormalizationError;
 use crate::normalization::{

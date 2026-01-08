@@ -59,7 +59,6 @@
     - [tss-output](architecture/crates/tss-output.md)
     - [tss-standards](architecture/crates/tss-standards.md)
     - [tss-model](architecture/crates/tss-model.md)
-    - [tss-common](architecture/crates/tss-common.md)
     - [tss-updater](architecture/crates/tss-updater.md)
 - [Design Decisions](architecture/design-decisions.md)
 

@@ -160,7 +160,6 @@ trial-submission-studio/
 ├── crates/                 # All crates
 │   ├── tss-gui/           # Main application
 │   ├── xport/             # XPT I/O
-│   ├── tss-validate/      # Validation
 │   └── ...                # Other crates
 ├── standards/             # Embedded CDISC data
 ├── mockdata/              # Test data

@@ -6,7 +6,7 @@ use std::sync::LazyLock;
 
 use polars::prelude::{AnyValue, DataFrame};
 use regex::Regex;
-use tss_common::any_to_string;
+use tss_model::any_to_string;
 use tss_model::Domain;
 
 use crate::issue::Issue;

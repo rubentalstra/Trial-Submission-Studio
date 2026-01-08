@@ -12,9 +12,11 @@
 //! - [`adam`]: ADaM datasets and variables per ADaMIG v1.3
 //! - [`send`]: SEND domains and variables per SENDIG v3.1.1
 //! - [`ct`]: Controlled Terminology types
+//! - [`polars`]: Polars AnyValue utility functions
 
 pub mod adam;
 pub mod ct;
+pub mod polars;
 pub mod sdtm;
 pub mod send;
 pub mod traits;
@@ -33,3 +35,9 @@ pub use adam::{AdamDataset, AdamDatasetType, AdamVariable, AdamVariableSource};
 
 // Re-export SEND types
 pub use send::{SendDatasetClass, SendDomain, SendStudyType, SendVariable};
+
+// Re-export Polars utility functions at crate root for convenience
+pub use polars::{
+    any_to_f64, any_to_i64, any_to_string, any_to_string_non_empty, format_numeric, parse_f64,
+    parse_i64,
+};

@@ -3,7 +3,7 @@
 //! Checks that Identifier role variables have no null values.
 
 use polars::prelude::{AnyValue, DataFrame};
-use tss_common::any_to_string;
+use tss_model::any_to_string;
 use tss_model::{Domain, VariableRole};
 
 use crate::issue::Issue;

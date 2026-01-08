@@ -11,7 +11,7 @@ use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, Event};
 
 use crate::types::{DomainFrame, domain_map_by_code};
-use tss_common::any_to_string_non_empty;
+use tss_model::any_to_string_non_empty;
 use tss_model::Domain;
 
 use crate::common::{

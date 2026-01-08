@@ -117,8 +117,7 @@ trial-submission-studio/
 │   ├── tss-ingest/       # CSV loading
 │   ├── tss-output/       # Multi-format export
 │   ├── tss-standards/    # CDISC standards loader
-│   ├── tss-model/        # Core types
-│   ├── tss-common/       # Shared utilities
+│   ├── tss-model/        # Core types + Polars utilities
 │   └── tss-updater/      # Update mechanism
 ├── standards/            # Embedded CDISC standards
 ├── mockdata/             # Test datasets

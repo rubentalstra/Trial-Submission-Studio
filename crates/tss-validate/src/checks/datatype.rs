@@ -3,7 +3,7 @@
 //! Checks that Num variables contain only numeric values.
 
 use polars::prelude::{AnyValue, DataFrame, DataType};
-use tss_common::any_to_string;
+use tss_model::any_to_string;
 use tss_model::{Domain, VariableType};
 
 use crate::issue::Issue;

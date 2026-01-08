@@ -3,7 +3,7 @@
 //! Checks that all Required (Req) variables are present and populated.
 
 use polars::prelude::{AnyValue, DataFrame};
-use tss_common::any_to_string;
+use tss_model::any_to_string;
 use tss_model::{CoreDesignation, Domain};
 
 use crate::issue::Issue;

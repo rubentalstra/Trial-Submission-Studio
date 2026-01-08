@@ -1,6 +1,6 @@
 # Architecture Overview
 
-Trial Submission Studio is built as a modular Rust workspace with 11 specialized crates.
+Trial Submission Studio is built as a modular Rust workspace with 10 specialized crates.
 
 ## Design Philosophy
 
@@ -32,8 +32,7 @@ trial-submission-studio/
 │   ├── tss-ingest/         # CSV loading
 │   ├── tss-output/         # Multi-format export
 │   ├── tss-standards/      # CDISC standards loader
-│   ├── tss-model/          # Core types
-│   ├── tss-common/         # Shared utilities
+│   ├── tss-model/          # Core types + Polars utilities
 │   └── tss-updater/        # App update mechanism
 ├── standards/              # Embedded CDISC data
 ├── mockdata/               # Test datasets
@@ -66,7 +65,6 @@ flowchart TD
     subgraph Core
         STANDARDS[tss-standards]
         MODEL[tss-model]
-        COMMON[tss-common]
     end
 
     subgraph Utility
@@ -84,7 +82,6 @@ flowchart TD
     INGEST --> STANDARDS
     VALIDATE --> STANDARDS
     STANDARDS --> MODEL
-    MODEL --> COMMON
     style GUI fill: #4a90d9, color: #fff
     style STANDARDS fill: #50c878, color: #fff
     style MODEL fill: #f5a623, color: #fff
@@ -102,8 +99,7 @@ flowchart TD
 | **tss-ingest**    | CSV loading            | csv, polars            |
 | **tss-output**    | Multi-format export    | quick-xml              |
 | **tss-standards** | CDISC standards loader | serde, serde_json      |
-| **tss-model**     | Core domain types      | chrono                 |
-| **tss-common**    | Shared utilities       | tracing                |
+| **tss-model**     | Core types + Polars utilities | chrono, polars    |
 | **tss-updater**   | App updates            | reqwest                |
 
 ## Data Flow
