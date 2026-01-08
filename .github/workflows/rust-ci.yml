@@ -46,8 +46,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-        with:
-          submodules: recursive
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
@@ -71,8 +69,6 @@ jobs:
     needs: [ format, clippy ]
     steps:
       - uses: actions/checkout@v6
-        with:
-          submodules: recursive
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
@@ -103,8 +99,6 @@ jobs:
       actions: read # Required for private repos by github/codeql-action/upload-sarif
     steps:
       - uses: actions/checkout@v6
-        with:
-          submodules: recursive
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: clippy
