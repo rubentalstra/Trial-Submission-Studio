@@ -6186,7 +6186,6 @@ dependencies = [
  "polars",
  "rfd",
  "serde",
- "serde_json",
  "toml 0.9.10+spec-1.1.0",
  "tracing",
  "tracing-subscriber",
@@ -6200,7 +6199,7 @@ dependencies = [
  "tss-validate",
  "winit",
  "winresource",
- "xport",
+ "xportrs",
 ]
 
 [[package]]
@@ -6258,10 +6257,9 @@ dependencies = [
  "chrono",
  "polars",
  "quick-xml 0.38.4",
- "tss-map",
  "tss-model",
  "tss-standards",
- "xport",
+ "xportrs",
 ]
 
 [[package]]
@@ -7630,8 +7628,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec7a2a501ed189703dba8b08142f057e887dfc4b2cc4db2d343ac6376ba3e0b9"
 
 [[package]]
-name = "xport"
-version = "0.0.1-alpha.8"
+name = "xportrs"
+version = "0.0.1"
 dependencies = [
  "chrono",
  "polars",
