@@ -8,7 +8,7 @@ use polars::prelude::{AnyValue, DataFrame};
 use crate::types::{DomainFrame, domain_map_by_code};
 use tss_model::{Domain, VariableType};
 use tss_model::{any_to_f64, any_to_string};
-use xport::{NumericValue, XptColumn, XptDataset, XptType, XptValue, write_xpt};
+use xportrs::{NumericValue, XptColumn, XptDataset, XptType, XptValue, write_xpt};
 
 use crate::common::{ensure_output_dir, variable_length};
 

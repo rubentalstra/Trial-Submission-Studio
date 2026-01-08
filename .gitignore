@@ -25,4 +25,4 @@ mockdata/*/output/*
 .DS_Store
 
 # exlcude Claude.md
-/Claude.md
+/CLAUDE.md

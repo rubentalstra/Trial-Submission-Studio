@@ -364,7 +364,7 @@ fn write_xpt_file(
     variable_metadata: &HashMap<String, VariableMetadata>,
 ) -> Result<(), ExportError> {
     use polars::prelude::{AnyValue, DataType};
-    use xport::{
+    use xportrs::{
         Justification, MissingValue, NumericValue, XptColumn, XptDataset, XptType, XptValue,
         write_xpt,
     };
@@ -394,8 +394,9 @@ fn write_xpt_file(
                 // String type - calculate max length
                 let max_len = if let Ok(str_col) = col.str() {
                     str_col
-                        .into_iter()
-                        .filter_map(|s| s.map(str::len))
+                        .iter()
+                        .flatten()
+                        .map(str::len)
                         .max()
                         .unwrap_or(8)
                         .clamp(1, 200) // Cap at 200 for XPT
