@@ -147,7 +147,9 @@ fn generate_description(var_name: &str, transform_type: &NormalizationType) -> S
         NormalizationType::Iso8601DateTime => {
             "Format as ISO 8601 datetime (preserves precision)".to_string()
         }
-        NormalizationType::Iso8601Date => "Format as ISO 8601 date (preserves precision)".to_string(),
+        NormalizationType::Iso8601Date => {
+            "Format as ISO 8601 date (preserves precision)".to_string()
+        }
         NormalizationType::Iso8601Duration => {
             "Format as ISO 8601 duration (PnYnMnDTnHnMnS)".to_string()
         }
@@ -183,13 +185,19 @@ mod tests {
     #[test]
     fn test_infer_studyid_constant() {
         let var = make_variable("STUDYID");
-        assert_eq!(infer_normalization_type(&var, "AE"), NormalizationType::Constant);
+        assert_eq!(
+            infer_normalization_type(&var, "AE"),
+            NormalizationType::Constant
+        );
     }
 
     #[test]
     fn test_infer_domain_constant() {
         let var = make_variable("DOMAIN");
-        assert_eq!(infer_normalization_type(&var, "DM"), NormalizationType::Constant);
+        assert_eq!(
+            infer_normalization_type(&var, "DM"),
+            NormalizationType::Constant
+        );
     }
 
     #[test]
@@ -222,7 +230,10 @@ mod tests {
     #[test]
     fn test_infer_date_from_suffix() {
         let var = make_variable("BRTHDTDT");
-        assert_eq!(infer_normalization_type(&var, "DM"), NormalizationType::Iso8601Date);
+        assert_eq!(
+            infer_normalization_type(&var, "DM"),
+            NormalizationType::Iso8601Date
+        );
     }
 
     #[test]
@@ -267,7 +278,10 @@ mod tests {
     #[test]
     fn test_infer_copy_default() {
         let var = make_variable("CUSTOMVAR");
-        assert_eq!(infer_normalization_type(&var, "AE"), NormalizationType::CopyDirect);
+        assert_eq!(
+            infer_normalization_type(&var, "AE"),
+            NormalizationType::CopyDirect
+        );
     }
 
     #[test]

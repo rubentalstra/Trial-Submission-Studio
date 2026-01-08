@@ -11,8 +11,8 @@ use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, Event};
 
 use crate::types::{DomainFrame, domain_map_by_code};
-use tss_model::any_to_string_non_empty;
 use tss_model::Domain;
+use tss_model::any_to_string_non_empty;
 
 use crate::common::{
     DATASET_XML_NS, DATASET_XML_VERSION, DEFINE_XML_VERSION, ODM_NS, XLINK_NS, ensure_output_dir,

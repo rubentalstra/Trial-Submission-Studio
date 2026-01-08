@@ -20,8 +20,8 @@
 use crate::state::AppState;
 use polars::prelude::DataFrame;
 use std::collections::{BTreeMap, BTreeSet};
-use tss_standards::{CtVersion, load_ct};
 use tss_normalization::build_preview_dataframe_with_dm_and_omitted;
+use tss_standards::{CtVersion, load_ct};
 
 // ============================================================================
 // Preview Result (sent from background thread)

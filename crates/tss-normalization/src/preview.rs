@@ -12,7 +12,7 @@ use tss_model::ct::TerminologyRegistry;
 use crate::error::NormalizationError;
 use crate::executor::execute_normalization;
 use crate::inference::infer_normalization_rules;
-use crate::types::{NormalizationPipeline, NormalizationContext};
+use crate::types::{NormalizationContext, NormalizationPipeline};
 
 /// Build preview DataFrame for validation tab.
 ///

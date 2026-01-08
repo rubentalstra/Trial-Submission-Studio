@@ -45,7 +45,9 @@ mod types;
 pub mod normalization;
 
 // Core types
-pub use types::{NormalizationContext, NormalizationPipeline, NormalizationRule, NormalizationType};
+pub use types::{
+    NormalizationContext, NormalizationPipeline, NormalizationRule, NormalizationType,
+};
 
 // Error type
 pub use error::NormalizationError;

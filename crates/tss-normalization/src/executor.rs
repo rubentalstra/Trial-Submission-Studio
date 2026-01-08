@@ -12,7 +12,9 @@ use crate::normalization::{
     calculate_study_day_from_strings, format_iso8601_duration, normalize_ct_value,
     normalize_without_codelist, parse_numeric, transform_to_iso8601,
 };
-use crate::types::{NormalizationPipeline, NormalizationContext, NormalizationRule, NormalizationType};
+use crate::types::{
+    NormalizationContext, NormalizationPipeline, NormalizationRule, NormalizationType,
+};
 
 /// Execute transformation pipeline on source DataFrame.
 ///
@@ -61,14 +63,18 @@ fn execute_rule(
 
     match &rule.transform_type {
         NormalizationType::Constant => execute_constant(target_name, context, row_count),
-        NormalizationType::UsubjidPrefix => execute_usubjid(source_df, target_name, context, row_count),
+        NormalizationType::UsubjidPrefix => {
+            execute_usubjid(source_df, target_name, context, row_count)
+        }
         NormalizationType::SequenceNumber => {
             execute_sequence(source_df, target_name, context, row_count)
         }
         NormalizationType::Iso8601DateTime => {
             execute_datetime(source_df, target_name, source_col, row_count)
         }
-        NormalizationType::Iso8601Date => execute_date(source_df, target_name, source_col, row_count),
+        NormalizationType::Iso8601Date => {
+            execute_date(source_df, target_name, source_col, row_count)
+        }
         NormalizationType::Iso8601Duration => {
             execute_duration(source_df, target_name, source_col, row_count)
         }
@@ -86,7 +92,9 @@ fn execute_rule(
         NormalizationType::NumericConversion => {
             execute_numeric(source_df, target_name, source_col, row_count)
         }
-        NormalizationType::CopyDirect => execute_copy(source_df, target_name, source_col, row_count),
+        NormalizationType::CopyDirect => {
+            execute_copy(source_df, target_name, source_col, row_count)
+        }
     }
 }
 
