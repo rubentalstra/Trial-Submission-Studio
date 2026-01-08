@@ -31,3 +31,7 @@ pub enum NormalizationError {
     #[error("Invalid normalization configuration: {0}")]
     InvalidConfig(String),
 }
+
+/// Result type for normalization operations.
+#[allow(dead_code)]
+pub type Result<T> = std::result::Result<T, NormalizationError>;

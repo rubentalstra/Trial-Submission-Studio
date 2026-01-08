@@ -4,6 +4,7 @@ use std::fmt;
 
 /// Errors from mapping operations.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum MappingError {
     /// Variable not found in domain.
     VariableNotFound(String),
@@ -39,3 +40,7 @@ impl fmt::Display for MappingError {
 }
 
 impl std::error::Error for MappingError {}
+
+/// Result type for mapping operations.
+#[allow(dead_code)]
+pub type Result<T> = std::result::Result<T, MappingError>;

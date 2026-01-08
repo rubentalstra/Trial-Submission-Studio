@@ -10,6 +10,7 @@ use std::fmt;
 
 /// Severity level for validation issues.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum Severity {
     /// Must be fixed before writing - file would be invalid or rejected
     Error,
@@ -28,6 +29,7 @@ impl fmt::Display for Severity {
 
 /// Location of a validation error within the dataset.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
 pub enum ErrorLocation {
     /// Error at the dataset level (e.g., dataset name)
     Dataset {
@@ -100,6 +102,7 @@ impl fmt::Display for ErrorLocation {
 
 /// Error codes for programmatic handling of validation errors.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[non_exhaustive]
 pub enum ValidationErrorCode {
     // ============ Name Validation ============
     /// Name is empty
