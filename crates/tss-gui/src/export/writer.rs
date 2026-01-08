@@ -364,7 +364,7 @@ fn write_xpt_file(
     variable_metadata: &HashMap<String, VariableMetadata>,
 ) -> Result<(), ExportError> {
     use polars::prelude::{AnyValue, DataType};
-    use tss_xpt::{
+    use xport::{
         Justification, MissingValue, NumericValue, XptColumn, XptDataset, XptType, XptValue,
         write_xpt,
     };
@@ -417,6 +417,7 @@ fn write_xpt_file(
             .or_else(|| match data_type {
                 XptType::Char => Some(format!("${length}.")),
                 XptType::Num => Some("8.".to_string()),
+                _ => Some("8.".to_string()), // Default for future XptType variants
             });
 
         // Parse format into name, length, decimals
@@ -426,6 +427,7 @@ fn write_xpt_file(
         let justification = match data_type {
             XptType::Char => Justification::Left,
             XptType::Num => Justification::Right,
+            _ => Justification::Right, // Default for future XptType variants
         };
 
         columns.push(XptColumn {
@@ -488,6 +490,7 @@ fn write_xpt_file(
                     XptValue::Char(String::new())
                 }
                 (XptType::Char, Some(other)) => XptValue::Char(format!("{}", other)),
+                (_, _) => XptValue::Num(NumericValue::Missing(MissingValue::Standard)), // Default for future variants
             };
             row.push(xpt_value);
         }

@@ -1,6 +1,6 @@
 # Architecture Overview
 
-Trial Submission Studio is built as a modular Rust workspace with 11 specialized crates.
+Trial Submission Studio is built as a modular Rust workspace with 10 specialized crates.
 
 ## Design Philosophy
 
@@ -25,15 +25,14 @@ trial-submission-studio/
 ├── Cargo.toml              # Workspace configuration
 ├── crates/
 │   ├── tss-gui/            # Desktop application
-│   ├── tss-xpt/            # XPT file I/O
+│   ├── xport/              # XPT file I/O
 │   ├── tss-validate/       # CDISC validation
 │   ├── tss-map/            # Column mapping
-│   ├── tss-transform/      # Data transformations
+│   ├── tss-normalization/      # Data transformations
 │   ├── tss-ingest/         # CSV loading
 │   ├── tss-output/         # Multi-format export
 │   ├── tss-standards/      # CDISC standards loader
-│   ├── tss-model/          # Core types
-│   ├── tss-common/         # Shared utilities
+│   ├── tss-model/          # Core types + Polars utilities
 │   └── tss-updater/        # App update mechanism
 ├── standards/              # Embedded CDISC data
 ├── mockdata/               # Test datasets
@@ -52,7 +51,7 @@ flowchart TD
         MAP[tss-map]
         OUTPUT[tss-output]
         INGEST[tss-ingest]
-        TRANSFORM[tss-transform]
+        TRANSFORM[tss-normalization]
     end
 
     subgraph Validation
@@ -60,13 +59,12 @@ flowchart TD
     end
 
     subgraph I/O
-        XPT[tss-xpt]
+        XPT[xport]
     end
 
     subgraph Core
         STANDARDS[tss-standards]
         MODEL[tss-model]
-        COMMON[tss-common]
     end
 
     subgraph Utility
@@ -84,7 +82,6 @@ flowchart TD
     INGEST --> STANDARDS
     VALIDATE --> STANDARDS
     STANDARDS --> MODEL
-    MODEL --> COMMON
     style GUI fill: #4a90d9, color: #fff
     style STANDARDS fill: #50c878, color: #fff
     style MODEL fill: #f5a623, color: #fff
@@ -95,15 +92,14 @@ flowchart TD
 | Crate             | Purpose                | Key Dependencies       |
 |-------------------|------------------------|------------------------|
 | **tss-gui**       | Desktop application    | egui, eframe           |
-| **tss-xpt**       | XPT file I/O           | byteorder, encoding_rs |
+| **xport**         | XPT file I/O           | byteorder, encoding_rs |
 | **tss-validate**  | CDISC validation       | tss-standards          |
 | **tss-map**       | Fuzzy column mapping   | rapidfuzz              |
-| **tss-transform** | Data transformations   | polars                 |
+| **tss-normalization** | Data transformations   | polars                 |
 | **tss-ingest**    | CSV loading            | csv, polars            |
 | **tss-output**    | Multi-format export    | quick-xml              |
 | **tss-standards** | CDISC standards loader | serde, serde_json      |
-| **tss-model**     | Core domain types      | chrono                 |
-| **tss-common**    | Shared utilities       | tracing                |
+| **tss-model**     | Core types + Polars utilities | chrono, polars    |
 | **tss-updater**   | App updates            | reqwest                |
 
 ## Data Flow
@@ -179,7 +175,7 @@ flowchart TB
 |----------------|------------------|
 | Fuzzy matching | rapidfuzz        |
 | XML processing | quick-xml        |
-| XPT handling   | Custom (tss-xpt) |
+| XPT handling   | Custom (xport)   |
 | Logging        | tracing          |
 | HTTP client    | reqwest          |
 
@@ -229,7 +225,7 @@ standards/
 |-------------|------------------|-----------------------|
 | Unit        | Function-level   | All                   |
 | Integration | Cross-crate      | tss-gui               |
-| Snapshot    | Output stability | tss-xpt, tss-output   |
+| Snapshot    | Output stability | xport, tss-output     |
 | Property    | Edge cases       | tss-map, tss-validate |
 
 ### Test Data

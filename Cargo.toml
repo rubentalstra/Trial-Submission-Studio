@@ -1,16 +1,15 @@
 [workspace]
 members = [
-    "crates/tss-common",
     "crates/tss-gui",
     "crates/tss-ingest",
     "crates/tss-map",
     "crates/tss-model",
     "crates/tss-output",
     "crates/tss-standards",
-    "crates/tss-transform",
+    "crates/tss-normalization",
     "crates/tss-updater",
     "crates/tss-validate",
-    "crates/tss-xpt",
+    "crates/xport",
 ]
 resolver = "3"
 

@@ -6,17 +6,18 @@ use std::sync::LazyLock;
 
 use polars::prelude::{AnyValue, DataFrame};
 use regex::Regex;
-use tss_common::any_to_string;
 use tss_model::Domain;
+use tss_model::any_to_string;
 
 use crate::issue::Issue;
 use crate::util::CaseInsensitiveSet;
 
 /// ISO 8601 date patterns per SDTMIG Chapter 7.
-/// Supports: YYYY, YYYY-MM, YYYY-MM-DD, YYYY-MM-DDTHH:MM:SS
+/// Supports partial precision: YYYY, YYYY-MM, YYYY-MM-DD, YYYY-MM-DDTHH:MM, YYYY-MM-DDTHH:MM:SS
+/// Optional fractional seconds allowed (e.g., 2024-01-15T10:30:00.123)
 static ISO8601_DATE_REGEX: LazyLock<Regex> = LazyLock::new(|| {
     Regex::new(
-        r"^(\d{4})(-((0[1-9]|1[0-2]))(-((0[1-9]|[12]\d|3[01]))(T(([01]\d|2[0-3]):([0-5]\d)(:([0-5]\d)(\.\d+)?)?)?)?)?)?$",
+        r"^\d{4}(?:-(?:0[1-9]|1[0-2])(?:-(?:0[1-9]|[12]\d|3[01])(?:T(?:[01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?)?)?)?$",
     )
     .expect("Invalid ISO 8601 regex")
 });

@@ -6168,13 +6168,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e421abadd41a4225275504ea4d6566923418b7f05506fbc9c0fe86ba7396114b"
 
 [[package]]
-name = "tss-common"
-version = "0.0.1-alpha.8"
-dependencies = [
- "polars",
-]
-
-[[package]]
 name = "tss-gui"
 version = "0.0.1-alpha.8"
 dependencies = [
@@ -6197,18 +6190,17 @@ dependencies = [
  "toml 0.9.10+spec-1.1.0",
  "tracing",
  "tracing-subscriber",
- "tss-common",
  "tss-ingest",
  "tss-map",
  "tss-model",
+ "tss-normalization",
  "tss-output",
  "tss-standards",
- "tss-transform",
  "tss-updater",
  "tss-validate",
- "tss-xpt",
  "winit",
  "winresource",
+ "xport",
 ]
 
 [[package]]
@@ -6220,8 +6212,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.17",
  "tracing",
- "tss-common",
- "tss-map",
+ "tss-model",
 ]
 
 [[package]]
@@ -6240,9 +6231,23 @@ dependencies = [
 name = "tss-model"
 version = "0.0.1-alpha.8"
 dependencies = [
+ "polars",
  "serde",
  "serde_json",
  "thiserror 2.0.17",
+]
+
+[[package]]
+name = "tss-normalization"
+version = "0.0.1-alpha.8"
+dependencies = [
+ "chrono",
+ "insta",
+ "polars",
+ "serde",
+ "thiserror 2.0.17",
+ "tracing",
+ "tss-model",
 ]
 
 [[package]]
@@ -6253,11 +6258,10 @@ dependencies = [
  "chrono",
  "polars",
  "quick-xml 0.38.4",
- "tss-common",
  "tss-map",
  "tss-model",
  "tss-standards",
- "tss-xpt",
+ "xport",
 ]
 
 [[package]]
@@ -6267,20 +6271,6 @@ dependencies = [
  "csv",
  "serde",
  "thiserror 2.0.17",
- "tss-model",
-]
-
-[[package]]
-name = "tss-transform"
-version = "0.0.1-alpha.8"
-dependencies = [
- "chrono",
- "insta",
- "polars",
- "serde",
- "thiserror 2.0.17",
- "tracing",
- "tss-common",
  "tss-model",
 ]
 
@@ -6303,19 +6293,8 @@ dependencies = [
  "polars",
  "regex",
  "serde",
- "tss-common",
  "tss-model",
  "tss-standards",
-]
-
-[[package]]
-name = "tss-xpt"
-version = "0.0.1-alpha.8"
-dependencies = [
- "chrono",
- "polars",
- "tempfile",
- "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -7651,6 +7630,17 @@ name = "xmlwriter"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec7a2a501ed189703dba8b08142f057e887dfc4b2cc4db2d343ac6376ba3e0b9"
+
+[[package]]
+name = "xport"
+version = "0.0.1-alpha.8"
+dependencies = [
+ "chrono",
+ "polars",
+ "serde",
+ "tempfile",
+ "thiserror 2.0.17",
+]
 
 [[package]]
 name = "xxhash-rust"

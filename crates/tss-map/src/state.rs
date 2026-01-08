@@ -6,10 +6,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
-use tss_model::{CoreDesignation, Domain};
+use tss_model::{ColumnHint, CoreDesignation, Domain};
 
 use crate::error::MappingError;
-use crate::score::{ColumnHint, ScoringEngine};
+use crate::score::ScoringEngine;
 
 /// Status of a variable's mapping.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

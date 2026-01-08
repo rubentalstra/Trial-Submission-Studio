@@ -13,7 +13,6 @@ workspace = true
 csv.workspace = true
 polars.workspace = true
 regex = "1.11"
-tss-common = { path = "../tss-common" }
 tss-model = { path = "../tss-model" }
 serde = { workspace = true, features = ["derive"] }
 

@@ -7,23 +7,7 @@ use std::cmp::Ordering;
 use std::collections::BTreeMap;
 
 use rapidfuzz::distance::jaro_winkler;
-use serde::{Deserialize, Serialize};
-use tss_model::{Domain, Variable};
-
-/// Hints about a source column's characteristics.
-///
-/// Used to improve scoring accuracy based on column metadata.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct ColumnHint {
-    /// Whether the column contains numeric data.
-    pub is_numeric: bool,
-    /// Ratio of unique values (0.0 to 1.0).
-    pub unique_ratio: f64,
-    /// Ratio of null/missing values (0.0 to 1.0).
-    pub null_ratio: f64,
-    /// Optional column label from source metadata.
-    pub label: Option<String>,
-}
+use tss_model::{ColumnHint, Domain, Variable};
 
 /// Score for a single column-variable pair.
 #[derive(Debug, Clone)]

@@ -5,6 +5,7 @@ use thiserror::Error;
 
 /// Errors that can occur when loading SDTM standards.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum StandardsError {
     /// Standards directory not found.
     #[error("Standards directory not found: {path}")]

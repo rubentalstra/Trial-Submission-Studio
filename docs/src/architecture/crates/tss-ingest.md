@@ -156,4 +156,4 @@ Located in `mockdata/`:
 ## See Also
 
 - [Importing Data](../../user-guide/importing-data.md) - User guide
-- [tss-transform](tss-transform.md) - Data transformation
+- [tss-normalization](tss-normalization.md) - Data transformation

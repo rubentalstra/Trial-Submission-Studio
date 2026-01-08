@@ -9,7 +9,7 @@ Multi-format export crate.
 ## Responsibilities
 
 - Coordinate export to multiple formats
-- Generate XPT files (via tss-xpt)
+- Generate XPT files (via xport)
 - Generate Dataset-XML
 - Generate Define-XML 2.1
 - Create checksums
@@ -19,7 +19,7 @@ Multi-format export crate.
 ```toml
 [dependencies]
 quick-xml = "0.36"
-tss-xpt = { path = "../tss-xpt" }
+xport = { path = "../xport" }
 tss-model = { path = "../tss-model" }
 tss-standards = { path = "../tss-standards" }
 sha2 = "0.10"
@@ -44,7 +44,7 @@ tss-output/
 
 ### XPT Export
 
-Delegates to `tss-xpt`:
+Delegates to `xport`:
 
 ```rust
 pub fn export_xpt(
@@ -158,4 +158,4 @@ cargo test --package tss-output
 - [Exporting Data](../../user-guide/exporting-data.md) - User guide
 - [XPT Format](../../output-formats/xpt-format.md) - XPT details
 - [Define-XML](../../output-formats/define-xml.md) - Define-XML details
-- [tss-xpt](tss-xpt.md) - XPT implementation
+- [xport](xport.md) - XPT implementation

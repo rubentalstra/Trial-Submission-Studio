@@ -102,18 +102,18 @@ This file is embedded in the application and displayed in Help > Third-Party Lic
 
 Trial Submission Studio is organized as a 10-crate Rust workspace:
 
-| Crate           | Purpose                               |
-|-----------------|---------------------------------------|
-| `tss-gui`       | Desktop GUI application (egui/eframe) |
-| `tss-xpt`       | XPT (SAS Transport) file I/O          |
-| `tss-validate`  | CDISC conformance validation          |
-| `tss-map`       | Fuzzy column mapping engine           |
-| `tss-transform` | Data transformation rules             |
-| `tss-ingest`    | CSV discovery and parsing             |
-| `tss-output`    | Multi-format export (XPT, XML)        |
-| `tss-standards` | CDISC standards loader                |
-| `tss-model`     | Core domain types                     |
-| `tss-common`    | Shared utilities                      |
+| Crate           | Purpose                                      |
+|-----------------|----------------------------------------------|
+| `tss-gui`       | Desktop GUI application (egui/eframe)        |
+| `xport`         | XPT (SAS Transport) file I/O                 |
+| `tss-validate`  | CDISC conformance validation                 |
+| `tss-map`       | Fuzzy column mapping engine                  |
+| `tss-normalization` | Data transformation rules                |
+| `tss-ingest`    | CSV discovery and parsing                    |
+| `tss-output`    | Multi-format export (XPT, XML)               |
+| `tss-standards` | CDISC standards loader                       |
+| `tss-model`     | Core domain types + Polars utilities         |
+| `tss-updater`   | Auto-update functionality                    |
 
 ### Key Directories
 
@@ -167,7 +167,7 @@ Trial Submission Studio is organized as a 10-crate Rust workspace:
 cargo test
 
 # Specific crate
-cargo test --package tss-xpt
+cargo test --package xport
 
 # With output
 cargo test -- --nocapture

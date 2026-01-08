@@ -1,0 +1,24 @@
+[package]
+name = "tss-normalization"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "CDISC data normalization for Trial Submission Studio"
+
+[lints]
+workspace = true
+
+[dependencies]
+# Workspace crates
+tss-model = { path = "../tss-model" }
+
+# Core dependencies
+chrono.workspace = true
+polars.workspace = true
+serde.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+insta.workspace = true

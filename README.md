@@ -113,19 +113,18 @@ cargo run --package tss-gui
 
 ## Architecture
 
-11-crate Rust workspace designed for modularity:
+10-crate Rust workspace designed for modularity:
 
 ```
 tss-gui         → Desktop application (egui/eframe)
-tss-xpt         → XPT format I/O
+xport           → XPT format I/O
 tss-validate    → Conformance validation
 tss-map         → Column mapping engine
-tss-transform   → Data transformations
+tss-normalization   → Data transformations
 tss-ingest      → CSV loading
 tss-output      → Multi-format export
 tss-standards   → CDISC standards loader
-tss-model       → Core types
-tss-common      → Shared utilities
+tss-model       → Core types + Polars utilities
 tss-updater     → Auto-update functionality
 ```
 

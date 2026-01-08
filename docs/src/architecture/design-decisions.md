@@ -100,7 +100,7 @@ Key architectural decisions and their rationale.
 | tss-model     | Core types, no dependencies on other crates |
 | tss-standards | Pure data loading, no transformation logic  |
 | tss-validate  | Rules only, no I/O                          |
-| tss-xpt       | XPT format only, no CDISC logic             |
+| xport         | XPT format only, no CDISC logic             |
 
 ## Data Processing Pipeline
 

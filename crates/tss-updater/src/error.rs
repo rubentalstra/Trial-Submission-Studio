@@ -4,6 +4,7 @@ use thiserror::Error;
 
 /// Errors that can occur during the update process.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum UpdateError {
     /// Failed to parse version string.
     #[error("invalid version format: {0}")]

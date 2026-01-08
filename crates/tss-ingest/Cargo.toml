@@ -11,8 +11,7 @@ workspace = true
 
 [dependencies]
 polars.workspace = true
-tss-common = { path = "../tss-common" }
-tss-map = { path = "../tss-map" }
+tss-model = { path = "../tss-model" }
 serde = { workspace = true, features = ["derive"] }
 thiserror.workspace = true
 tracing.workspace = true

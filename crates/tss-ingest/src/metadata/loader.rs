@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use tss_common::any_to_string;
+use tss_model::any_to_string;
 
 use crate::csv::read_csv_table;
 use crate::error::{IngestError, Result};

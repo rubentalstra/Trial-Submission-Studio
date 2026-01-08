@@ -9,6 +9,7 @@ use crate::issue::Severity;
 
 /// Error loading rules from CSV.
 #[derive(Debug)]
+#[non_exhaustive]
 pub enum LoadError {
     Io(std::io::Error),
     Csv(csv::Error),

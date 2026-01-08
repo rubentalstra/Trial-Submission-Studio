@@ -9,7 +9,7 @@ use polars::prelude::{AnyValue, DataFrame};
 use quick_xml::Writer;
 use quick_xml::events::{BytesEnd, BytesStart, BytesText, Event};
 
-use tss_common::any_to_string;
+use tss_model::any_to_string;
 use tss_model::{CoreDesignation, Domain, Variable, VariableRole, VariableType};
 
 /// SAS numeric length constant (8 bytes).

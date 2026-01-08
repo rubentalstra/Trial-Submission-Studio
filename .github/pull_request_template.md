@@ -24,15 +24,14 @@ Closes #
 <!-- Which workspace crates does this PR modify? -->
 
 - [ ] `tss-gui`
-- [ ] `tss-xpt`
+- [ ] `xport`
 - [ ] `tss-validate`
 - [ ] `tss-map`
-- [ ] `tss-transform`
+- [ ] `tss-normalization`
 - [ ] `tss-ingest`
 - [ ] `tss-output`
 - [ ] `tss-standards`
 - [ ] `tss-model`
-- [ ] `tss-common`
 - [ ] `tss-updater`
 
 ## Breaking Changes

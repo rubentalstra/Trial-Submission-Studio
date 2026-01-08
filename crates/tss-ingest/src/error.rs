@@ -5,6 +5,7 @@ use thiserror::Error;
 
 /// Errors that can occur during data ingestion operations.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum IngestError {
     // === File System Errors ===
     /// Directory not found or not readable.
