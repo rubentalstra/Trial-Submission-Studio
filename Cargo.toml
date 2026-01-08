@@ -10,7 +10,7 @@ members = [
     "crates/tss-normalization",
     "crates/tss-updater",
     "crates/tss-validate",
-    "crates/tss-xpt",
+    "crates/xport",
 ]
 resolver = "3"
 

@@ -44,7 +44,7 @@ pub struct DatasetMeta {
 ///
 /// ```no_run
 /// use std::fs::File;
-/// use tss_xpt::reader::StreamingReader;
+/// use xport::reader::StreamingReader;
 ///
 /// let file = File::open("large.xpt").unwrap();
 /// let mut reader = StreamingReader::new(file).unwrap();

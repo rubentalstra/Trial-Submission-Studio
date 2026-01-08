@@ -30,7 +30,7 @@ tss-map = { path = "../tss-map" }
 tss-normalization = { path = "../tss-normalization" }
 tss-validate = { path = "../tss-validate" }
 tss-output = { path = "../tss-output" }
-tss-xpt = { path = "../tss-xpt" }
+xport = { path = "../xport" }
 tss-updater = { path = "../tss-updater" }
 
 # Common dependencies

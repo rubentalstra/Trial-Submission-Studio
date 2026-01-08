@@ -24,7 +24,7 @@ Closes #
 <!-- Which workspace crates does this PR modify? -->
 
 - [ ] `tss-gui`
-- [ ] `tss-xpt`
+- [ ] `xport`
 - [ ] `tss-validate`
 - [ ] `tss-map`
 - [ ] `tss-normalization`

@@ -51,7 +51,7 @@
 - [Architecture Overview](architecture/overview.md)
 - [Crate Documentation]()
     - [tss-gui](architecture/crates/tss-gui.md)
-    - [tss-xpt](architecture/crates/tss-xpt.md)
+    - [xport](architecture/crates/xport.md)
     - [tss-validate](architecture/crates/tss-validate.md)
     - [tss-map](architecture/crates/tss-map.md)
     - [tss-normalization](architecture/crates/tss-normalization.md)

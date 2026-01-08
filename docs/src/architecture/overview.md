@@ -25,7 +25,7 @@ trial-submission-studio/
 ├── Cargo.toml              # Workspace configuration
 ├── crates/
 │   ├── tss-gui/            # Desktop application
-│   ├── tss-xpt/            # XPT file I/O
+│   ├── xport/              # XPT file I/O
 │   ├── tss-validate/       # CDISC validation
 │   ├── tss-map/            # Column mapping
 │   ├── tss-normalization/      # Data transformations
@@ -60,7 +60,7 @@ flowchart TD
     end
 
     subgraph I/O
-        XPT[tss-xpt]
+        XPT[xport]
     end
 
     subgraph Core
@@ -95,7 +95,7 @@ flowchart TD
 | Crate             | Purpose                | Key Dependencies       |
 |-------------------|------------------------|------------------------|
 | **tss-gui**       | Desktop application    | egui, eframe           |
-| **tss-xpt**       | XPT file I/O           | byteorder, encoding_rs |
+| **xport**         | XPT file I/O           | byteorder, encoding_rs |
 | **tss-validate**  | CDISC validation       | tss-standards          |
 | **tss-map**       | Fuzzy column mapping   | rapidfuzz              |
 | **tss-normalization** | Data transformations   | polars                 |
@@ -179,7 +179,7 @@ flowchart TB
 |----------------|------------------|
 | Fuzzy matching | rapidfuzz        |
 | XML processing | quick-xml        |
-| XPT handling   | Custom (tss-xpt) |
+| XPT handling   | Custom (xport)   |
 | Logging        | tracing          |
 | HTTP client    | reqwest          |
 
@@ -229,7 +229,7 @@ standards/
 |-------------|------------------|-----------------------|
 | Unit        | Function-level   | All                   |
 | Integration | Cross-crate      | tss-gui               |
-| Snapshot    | Output stability | tss-xpt, tss-output   |
+| Snapshot    | Output stability | xport, tss-output     |
 | Property    | Edge cases       | tss-map, tss-validate |
 
 ### Test Data

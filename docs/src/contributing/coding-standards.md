@@ -28,7 +28,7 @@ cargo clippy -- -D warnings
 
 ### Crates
 
-- Lowercase with hyphens: `tss-xpt`, `tss-validate`
+- Lowercase with hyphens: `xport`, `tss-validate`
 - Prefix with `tss-` for project crates
 
 ### Modules

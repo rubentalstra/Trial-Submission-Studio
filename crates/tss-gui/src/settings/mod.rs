@@ -177,7 +177,7 @@ impl XptVersionSetting {
     }
 }
 
-/// Validation rule identifiers (matches tss_xpt validation rules).
+/// Validation rule identifiers (matches xport validation rules).
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum XptValidationRule {
     DatasetName,

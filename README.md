@@ -117,7 +117,7 @@ cargo run --package tss-gui
 
 ```
 tss-gui         → Desktop application (egui/eframe)
-tss-xpt         → XPT format I/O
+xport           → XPT format I/O
 tss-validate    → Conformance validation
 tss-map         → Column mapping engine
 tss-normalization   → Data transformations

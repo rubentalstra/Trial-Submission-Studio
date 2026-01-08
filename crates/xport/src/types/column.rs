@@ -8,6 +8,7 @@ use std::fmt;
 
 /// Variable data type in XPT format.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[non_exhaustive]
 pub enum XptType {
     /// Numeric variable (1 in NAMESTR ntype field).
     ///
@@ -65,6 +66,7 @@ impl fmt::Display for XptType {
 
 /// Text justification for display.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[non_exhaustive]
 pub enum Justification {
     /// Left-justified (0 in NAMESTR nfj field).
     #[default]

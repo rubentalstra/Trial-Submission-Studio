@@ -1,26 +1,27 @@
-# tss-xpt
+# xport
 
-XPT (SAS Transport) file I/O crate.
+XPT (SAS Transport) file I/O crate. Designed for standalone use and publishing to crates.io.
 
 ## Overview
 
-`tss-xpt` provides reading and writing of XPT V5 and V8 format files.
+`xport` provides reading and writing of XPT V5 and V8 format files. It's designed to be used independently of the Trial Submission Studio application for general SAS Transport file handling.
 
-## Responsibilities
+## Features
 
-- Parse XPT file headers
-- Read XPT data records
-- Write XPT files
-- Handle numeric conversions
-- Manage missing value codes
+- Read XPT V5 and V8 format files
+- Write XPT V5 and V8 format files
+- Handle IBM mainframe to IEEE floating-point conversion
+- Support all 28 SAS missing value codes
+- Optional Polars DataFrame integration (`polars` feature)
+- Optional serde serialization (`serde` feature)
 
 ## Dependencies
 
 ```toml
 [dependencies]
-byteorder = "1.5"
-encoding_rs = "0.8"
-tss-model = { path = "../tss-model" }
+xport = { version = "0.1", features = ["polars"] }  # With DataFrame support
+# or
+xport = "0.1"  # Core functionality only
 ```
 
 ## Architecture
@@ -28,15 +29,15 @@ tss-model = { path = "../tss-model" }
 ### Module Structure
 
 ```
-tss-xpt/
+xport/
 ├── src/
 │   ├── lib.rs
-│   ├── reader.rs      # XPT file reading
-│   ├── writer.rs      # XPT file writing
-│   ├── header.rs      # Header parsing
-│   ├── namestr.rs     # Variable definitions
-│   ├── numeric.rs     # IEEE/SAS conversion
-│   └── missing.rs     # Missing value handling
+│   ├── reader/       # XPT file reading (streaming)
+│   ├── writer/       # XPT file writing (streaming)
+│   ├── header/       # Header parsing
+│   ├── types/        # Core types (column, value, missing)
+│   ├── error/        # Error handling
+│   └── version.rs    # V5/V8 version handling
 ```
 
 ## XPT Format Details
@@ -90,28 +91,50 @@ pub enum MissingValue {
 ### Reading
 
 ```rust
-use tss_xpt::XptReader;
+use xport::{read_xpt, XptDataset};
 
-let reader = XptReader::open("dm.xpt") ?;
-let metadata = reader.metadata();
-let records = reader.read_all() ?;
+let dataset: XptDataset = read_xpt("dm.xpt")?;
+println!("Variables: {}", dataset.columns.len());
+println!("Observations: {}", dataset.rows.len());
 ```
 
 ### Writing
 
 ```rust
-use tss_xpt::XptWriter;
+use xport::{write_xpt, XptDataset, XptColumn, XptVersion};
 
-let writer = XptWriter::new("dm.xpt", XptVersion::V5) ?;
-writer.write_metadata( & metadata) ?;
-writer.write_records( & records) ?;
-writer.finish() ?;
+let dataset = XptDataset {
+    name: "DM".to_string(),
+    label: Some("Demographics".to_string()),
+    columns: vec![
+        XptColumn::character("USUBJID", 20).with_label("Unique Subject ID"),
+        XptColumn::numeric("AGE").with_label("Age"),
+    ],
+    rows: vec![/* data rows */],
+    ..Default::default()
+};
+
+write_xpt("dm.xpt", &dataset)?;
+```
+
+### With Polars (optional feature)
+
+```rust
+use xport::polars::{read_xpt_to_dataframe, write_dataframe_to_xpt};
+use polars::prelude::*;
+
+// Read to DataFrame
+let df = read_xpt_to_dataframe("dm.xpt")?;
+
+// Write from DataFrame
+write_dataframe_to_xpt(&df, "output.xpt", XptVersion::V5)?;
 ```
 
 ## Testing
 
 ```bash
-cargo test --package tss-xpt
+cargo test --package xport
+cargo test --package xport --features polars
 ```
 
 ### Test Categories

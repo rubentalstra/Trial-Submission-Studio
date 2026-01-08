@@ -13,8 +13,8 @@
 //! # Example
 //!
 //! ```
-//! use tss_xpt::validation::{Validator, ValidationMode};
-//! use tss_xpt::{XptDataset, XptVersion};
+//! use xport::validation::{Validator, ValidationMode};
+//! use xport::{XptDataset, XptVersion};
 //!
 //! let dataset = XptDataset::new("DM");
 //! let validator = Validator::new(XptVersion::V5)

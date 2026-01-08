@@ -15,7 +15,7 @@ use super::XptValue;
 /// # Example
 ///
 /// ```
-/// use tss_xpt::{Observation, XptValue};
+/// use xport::{Observation, XptValue};
 ///
 /// let obs = Observation::new(vec![
 ///     XptValue::character("SUBJ001"),

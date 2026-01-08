@@ -23,7 +23,7 @@ use crate::validation::{ValidationMode, Validator};
 ///
 /// ```no_run
 /// use std::path::Path;
-/// use tss_xpt::{XptDataset, XptColumn, XptWriterBuilder};
+/// use xport::{XptDataset, XptColumn, XptWriterBuilder};
 ///
 /// let dataset = XptDataset::with_columns("DM", vec![
 ///     XptColumn::character("USUBJID", 20),

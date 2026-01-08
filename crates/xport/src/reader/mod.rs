@@ -9,7 +9,7 @@
 //!
 //! ```no_run
 //! use std::path::Path;
-//! use tss_xpt::read_xpt;
+//! use xport::read_xpt;
 //!
 //! let dataset = read_xpt(Path::new("dm.xpt")).unwrap();
 //! println!("Dataset: {} ({} rows)", dataset.name, dataset.num_rows());
@@ -19,7 +19,7 @@
 //!
 //! ```no_run
 //! use std::fs::File;
-//! use tss_xpt::reader::StreamingReader;
+//! use xport::reader::StreamingReader;
 //!
 //! let file = File::open("large.xpt").unwrap();
 //! let mut reader = StreamingReader::new(file).unwrap();
@@ -139,7 +139,7 @@ impl XptReader<File> {
 ///
 /// ```no_run
 /// use std::path::Path;
-/// use tss_xpt::read_xpt;
+/// use xport::read_xpt;
 ///
 /// let dataset = read_xpt(Path::new("dm.xpt")).unwrap();
 /// println!("Dataset: {}", dataset.name);
@@ -162,7 +162,7 @@ pub fn read_xpt_with_options(path: &Path, options: XptReaderOptions) -> Result<X
 ///
 /// ```no_run
 /// use std::path::Path;
-/// use tss_xpt::read_xpt_streaming;
+/// use xport::read_xpt_streaming;
 ///
 /// let mut reader = read_xpt_streaming(Path::new("large.xpt")).unwrap();
 /// println!("Dataset: {}", reader.meta().name);

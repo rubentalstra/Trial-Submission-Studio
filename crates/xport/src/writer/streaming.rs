@@ -68,8 +68,8 @@ impl DatasetInfo {
 ///
 /// ```no_run
 /// use std::fs::File;
-/// use tss_xpt::{XptColumn, Observation, XptValue};
-/// use tss_xpt::writer::{DatasetInfo, StreamingWriter};
+/// use xport::{XptColumn, Observation, XptValue};
+/// use xport::writer::{DatasetInfo, StreamingWriter};
 ///
 /// let file = File::create("large.xpt").unwrap();
 /// let info = DatasetInfo::new("DM", vec![

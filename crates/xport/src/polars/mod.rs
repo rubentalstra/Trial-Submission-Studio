@@ -7,7 +7,7 @@
 //!
 //! ```no_run
 //! use std::path::Path;
-//! use tss_xpt::read_xpt_to_dataframe;
+//! use xport::read_xpt_to_dataframe;
 //!
 //! let df = read_xpt_to_dataframe(Path::new("dm.xpt")).unwrap();
 //! println!("{}", df);
@@ -18,7 +18,7 @@
 //! ```no_run
 //! use std::path::Path;
 //! use polars::prelude::*;
-//! use tss_xpt::write_dataframe_to_xpt;
+//! use xport::write_dataframe_to_xpt;
 //!
 //! let df = df! {
 //!     "USUBJID" => &["001", "002", "003"],
@@ -50,7 +50,7 @@ use crate::writer::write_xpt_with_options;
 /// # Example
 /// ```no_run
 /// use std::path::Path;
-/// use tss_xpt::read_xpt_to_dataframe;
+/// use xport::read_xpt_to_dataframe;
 ///
 /// let df = read_xpt_to_dataframe(Path::new("dm.xpt")).unwrap();
 /// println!("{}", df);
@@ -74,7 +74,7 @@ pub fn read_xpt_to_dataframe(path: &Path) -> Result<DataFrame> {
 /// ```no_run
 /// use std::path::Path;
 /// use polars::prelude::*;
-/// use tss_xpt::write_dataframe_to_xpt;
+/// use xport::write_dataframe_to_xpt;
 ///
 /// let df = df! {
 ///     "USUBJID" => &["001", "002", "003"],

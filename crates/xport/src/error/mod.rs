@@ -20,6 +20,7 @@ pub use validation::{
 ///
 /// This enum covers I/O errors, format parsing errors, and validation errors.
 #[derive(Debug, Error)]
+#[non_exhaustive]
 pub enum XptError {
     // === I/O Errors ===
     /// File not found at the specified path.

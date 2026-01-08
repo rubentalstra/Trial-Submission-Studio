@@ -12,6 +12,7 @@ use std::fmt;
 /// In SAS, missing values are represented differently than in most systems.
 /// A missing numeric value has a special first byte followed by zeros.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[non_exhaustive]
 pub enum MissingValue {
     /// Standard missing value (`.`)
     ///

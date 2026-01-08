@@ -15,7 +15,7 @@ use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 ///
 /// # Examples
 /// ```
-/// use tss_xpt::header::parse_xpt_datetime;
+/// use xport::header::parse_xpt_datetime;
 /// use chrono::Datelike;
 ///
 /// let dt = parse_xpt_datetime("15MAR24:14:30:45").unwrap();
@@ -65,7 +65,7 @@ pub fn parse_xpt_datetime(s: &str) -> Option<NaiveDateTime> {
 /// # Examples
 /// ```
 /// use chrono::NaiveDate;
-/// use tss_xpt::header::format_xpt_datetime;
+/// use xport::header::format_xpt_datetime;
 ///
 /// let dt = NaiveDate::from_ymd_opt(2024, 3, 15)
 ///     .unwrap()

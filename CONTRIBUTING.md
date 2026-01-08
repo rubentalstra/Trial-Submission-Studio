@@ -105,7 +105,7 @@ Trial Submission Studio is organized as a 10-crate Rust workspace:
 | Crate           | Purpose                               |
 |-----------------|---------------------------------------|
 | `tss-gui`       | Desktop GUI application (egui/eframe) |
-| `tss-xpt`       | XPT (SAS Transport) file I/O          |
+| `xport`         | XPT (SAS Transport) file I/O          |
 | `tss-validate`  | CDISC conformance validation          |
 | `tss-map`       | Fuzzy column mapping engine           |
 | `tss-normalization` | Data transformation rules             |
@@ -167,7 +167,7 @@ Trial Submission Studio is organized as a 10-crate Rust workspace:
 cargo test
 
 # Specific crate
-cargo test --package tss-xpt
+cargo test --package xport
 
 # With output
 cargo test -- --nocapture

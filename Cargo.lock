@@ -6206,9 +6206,9 @@ dependencies = [
  "tss-standards",
  "tss-updater",
  "tss-validate",
- "tss-xpt",
  "winit",
  "winresource",
+ "xport",
 ]
 
 [[package]]
@@ -6271,7 +6271,7 @@ dependencies = [
  "tss-map",
  "tss-model",
  "tss-standards",
- "tss-xpt",
+ "xport",
 ]
 
 [[package]]
@@ -6306,16 +6306,6 @@ dependencies = [
  "tss-common",
  "tss-model",
  "tss-standards",
-]
-
-[[package]]
-name = "tss-xpt"
-version = "0.0.1-alpha.8"
-dependencies = [
- "chrono",
- "polars",
- "tempfile",
- "thiserror 2.0.17",
 ]
 
 [[package]]
@@ -7651,6 +7641,17 @@ name = "xmlwriter"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec7a2a501ed189703dba8b08142f057e887dfc4b2cc4db2d343ac6376ba3e0b9"
+
+[[package]]
+name = "xport"
+version = "0.0.1-alpha.8"
+dependencies = [
+ "chrono",
+ "polars",
+ "serde",
+ "tempfile",
+ "thiserror 2.0.17",
+]
 
 [[package]]
 name = "xxhash-rust"

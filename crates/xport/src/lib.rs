@@ -28,7 +28,7 @@
 //!
 //! ```no_run
 //! use std::path::Path;
-//! use tss_xpt::{XptDataset, XptColumn, XptValue, read_xpt, write_xpt};
+//! use xport::{XptDataset, XptColumn, XptValue, read_xpt, write_xpt};
 //!
 //! // Read an XPT file
 //! let dataset = read_xpt(Path::new("dm.xpt")).unwrap();
@@ -56,7 +56,7 @@
 //! SAS supports 28 different missing value codes:
 //!
 //! ```
-//! use tss_xpt::{MissingValue, NumericValue, XptValue};
+//! use xport::{MissingValue, NumericValue, XptValue};
 //!
 //! // Standard missing (.)
 //! let missing = XptValue::numeric_missing();

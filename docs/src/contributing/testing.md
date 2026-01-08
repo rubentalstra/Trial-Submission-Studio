@@ -80,7 +80,7 @@ cargo test
 ### Specific Crate
 
 ```bash
-cargo test --package tss-xpt
+cargo test --package xport
 ```
 
 ### Specific Test

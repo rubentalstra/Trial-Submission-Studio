@@ -6,7 +6,7 @@
 use std::path::Path;
 use tempfile::tempdir;
 
-use tss_xpt::{
+use xport::{
     MissingValue, XptColumn, XptDataset, XptValue, XptVersion, XptWriterOptions, read_xpt,
     write_xpt_with_options,
 };

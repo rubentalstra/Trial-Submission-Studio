@@ -86,7 +86,7 @@ Or run the compiled binary directly:
 cargo test
 
 # Specific crate
-cargo test --package tss-xpt
+cargo test --package xport
 
 # With output
 cargo test -- --nocapture
@@ -110,7 +110,7 @@ Trial Submission Studio is organized as a Rust workspace with multiple crates:
 trial-submission-studio/
 ├── crates/
 │   ├── tss-gui/          # Desktop application
-│   ├── tss-xpt/          # XPT file I/O
+│   ├── xport/            # XPT file I/O
 │   ├── tss-validate/     # CDISC validation
 │   ├── tss-map/          # Column mapping
 │   ├── tss-normalization/    # Data transformations

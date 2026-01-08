@@ -42,7 +42,7 @@ use crate::types::MissingValue;
 ///
 /// # Examples
 /// ```
-/// use tss_xpt::float::ieee_to_ibm;
+/// use xport::float::ieee_to_ibm;
 ///
 /// let ibm = ieee_to_ibm(1.0);
 /// assert_eq!(ibm, [0x41, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
@@ -162,7 +162,7 @@ fn convert_to_ibm(sign: u8, binary_exp: i32, fraction: u64, has_implicit_one: bo
 ///
 /// # Examples
 /// ```
-/// use tss_xpt::float::ibm_to_ieee;
+/// use xport::float::ibm_to_ieee;
 ///
 /// let value = ibm_to_ieee([0x41, 0x10, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00]);
 /// assert!((value - 1.0).abs() < 1e-15);
