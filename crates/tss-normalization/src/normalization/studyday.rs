@@ -20,7 +20,7 @@ use chrono::NaiveDate;
 /// # Examples
 /// ```
 /// use chrono::NaiveDate;
-/// use tss_transform::normalization::studyday::calculate_study_day;
+/// use tss_normalization::normalization::studyday::calculate_study_day;
 ///
 /// let ref_date = NaiveDate::from_ymd_opt(2024, 1, 15).unwrap();
 ///

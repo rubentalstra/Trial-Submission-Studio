@@ -1,11 +1,11 @@
-//! Error types for the SDTM transformation system.
+//! Error types for the SDTM normalization system.
 
 use thiserror::Error;
 
-/// Errors that can occur during transformation.
+/// Errors that can occur during normalization.
 #[derive(Error, Debug)]
 #[non_exhaustive]
-pub enum TransformError {
+pub enum NormalizationError {
     /// Column not found in source DataFrame.
     #[error("Column not found: {0}")]
     ColumnNotFound(String),
@@ -27,7 +27,7 @@ pub enum TransformError {
     #[error("Missing required context: {0}")]
     MissingContext(String),
 
-    /// Invalid transformation configuration.
-    #[error("Invalid transform configuration: {0}")]
+    /// Invalid normalization configuration.
+    #[error("Invalid normalization configuration: {0}")]
     InvalidConfig(String),
 }

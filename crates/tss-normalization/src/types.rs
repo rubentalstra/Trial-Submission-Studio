@@ -1,6 +1,6 @@
-//! Core types for the SDTM transformation system.
+//! Core types for the SDTM normalization system.
 //!
-//! All transformation logic is derived from Variable metadata - no hardcoded domain rules.
+//! All normalization logic is derived from Variable metadata - no hardcoded domain rules.
 
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
@@ -15,13 +15,13 @@ use tss_model::ct::TerminologyRegistry;
 /// `described_value_domain`, and `data_type`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[non_exhaustive]
-pub enum TransformType {
+pub enum NormalizationType {
     /// Direct copy from source column (passthrough).
     /// Default when no specific transformation is needed.
     CopyDirect,
 
     /// Constant value (STUDYID, DOMAIN).
-    /// Value comes from TransformContext, not source data.
+    /// Value comes from NormalizationContext, not source data.
     Constant,
 
     /// USUBJID derivation: STUDYID-SUBJID pattern.
@@ -63,18 +63,18 @@ pub enum TransformType {
     NumericConversion,
 }
 
-impl TransformType {
+impl NormalizationType {
     /// Returns true if this transform requires source data.
     /// Constants don't need source columns.
     pub fn requires_source(&self) -> bool {
-        !matches!(self, TransformType::Constant)
+        !matches!(self, NormalizationType::Constant)
     }
 
     /// Returns true if this is a generated/derived transform (not CT or copy).
     pub fn is_generated(&self) -> bool {
         !matches!(
             self,
-            TransformType::CtNormalization { .. } | TransformType::CopyDirect
+            NormalizationType::CtNormalization { .. } | NormalizationType::CopyDirect
         )
     }
 }
@@ -83,7 +83,7 @@ impl TransformType {
 ///
 /// Each rule specifies how to transform source data into an SDTM-compliant variable.
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct TransformRule {
+pub struct NormalizationRule {
     /// Target SDTM variable name (e.g., "AESTDTC", "SEX").
     pub target_variable: String,
 
@@ -92,7 +92,7 @@ pub struct TransformRule {
     pub source_column: Option<String>,
 
     /// Type of transformation to apply.
-    pub transform_type: TransformType,
+    pub transform_type: NormalizationType,
 
     /// Human-readable description of the transformation.
     pub description: String,
@@ -105,7 +105,7 @@ pub struct TransformRule {
 ///
 /// Contains all rules needed to transform source data into SDTM format.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
-pub struct DomainPipeline {
+pub struct NormalizationPipeline {
     /// Domain code (e.g., "AE", "DM").
     pub domain_code: String,
 
@@ -113,10 +113,10 @@ pub struct DomainPipeline {
     pub study_id: String,
 
     /// Ordered list of transformation rules.
-    pub rules: Vec<TransformRule>,
+    pub rules: Vec<NormalizationRule>,
 }
 
-impl DomainPipeline {
+impl NormalizationPipeline {
     /// Create a new empty pipeline for a domain.
     pub fn new(domain_code: impl Into<String>) -> Self {
         Self {
@@ -127,13 +127,13 @@ impl DomainPipeline {
     }
 
     /// Add a rule to the pipeline.
-    pub fn add_rule(&mut self, rule: TransformRule) {
+    pub fn add_rule(&mut self, rule: NormalizationRule) {
         self.rules.push(rule);
     }
 
     /// Get rules sorted by variable order.
-    pub fn rules_ordered(&self) -> Vec<&TransformRule> {
-        let mut rules: Vec<&TransformRule> = self.rules.iter().collect();
+    pub fn rules_ordered(&self) -> Vec<&NormalizationRule> {
+        let mut rules: Vec<&NormalizationRule> = self.rules.iter().collect();
         rules.sort_by_key(|r| r.order);
         rules
     }
@@ -144,7 +144,7 @@ impl DomainPipeline {
 /// Contains runtime data needed during transformation, including
 /// study configuration, reference dates, and CT registry.
 #[derive(Debug, Clone)]
-pub struct TransformContext {
+pub struct NormalizationContext {
     /// Study identifier (e.g., "CDISC01").
     pub study_id: String,
 
@@ -167,7 +167,7 @@ pub struct TransformContext {
     pub omitted: BTreeSet<String>,
 }
 
-impl TransformContext {
+impl NormalizationContext {
     /// Create a new transform context.
     pub fn new(study_id: impl Into<String>, domain_code: impl Into<String>) -> Self {
         Self {

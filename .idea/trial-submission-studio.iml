@@ -9,11 +9,11 @@
       <sourceFolder url="file://$MODULE_DIR$/crates/tss-model/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crates/tss-output/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crates/tss-standards/src" isTestSource="false" />
-      <sourceFolder url="file://$MODULE_DIR$/crates/tss-transform/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crates/tss-validate/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crates/tss-xpt/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crates/tss-xpt/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/crates/tss-updater/src" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/tss-normalization/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_CF1234_NL_20250120_104838/output/dataset-xml" />
       <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_CF1234_NL_20250120_104838/output/sas" />
       <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_CF1234_NL_20250120_104838/output/xpt" />

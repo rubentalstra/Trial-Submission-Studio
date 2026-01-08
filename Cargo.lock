@@ -6201,9 +6201,9 @@ dependencies = [
  "tss-ingest",
  "tss-map",
  "tss-model",
+ "tss-normalization",
  "tss-output",
  "tss-standards",
- "tss-transform",
  "tss-updater",
  "tss-validate",
  "tss-xpt",
@@ -6246,6 +6246,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "tss-normalization"
+version = "0.0.1-alpha.8"
+dependencies = [
+ "chrono",
+ "insta",
+ "polars",
+ "serde",
+ "thiserror 2.0.17",
+ "tracing",
+ "tss-common",
+ "tss-model",
+]
+
+[[package]]
 name = "tss-output"
 version = "0.0.1-alpha.8"
 dependencies = [
@@ -6267,20 +6281,6 @@ dependencies = [
  "csv",
  "serde",
  "thiserror 2.0.17",
- "tss-model",
-]
-
-[[package]]
-name = "tss-transform"
-version = "0.0.1-alpha.8"
-dependencies = [
- "chrono",
- "insta",
- "polars",
- "serde",
- "thiserror 2.0.17",
- "tracing",
- "tss-common",
  "tss-model",
 ]
 

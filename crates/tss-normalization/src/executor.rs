@@ -1,29 +1,29 @@
-//! DataFrame transformation execution.
+//! DataFrame normalization execution.
 //!
-//! Executes transformation pipelines on source DataFrames to produce
+//! Executes normalization pipelines on source DataFrames to produce
 //! SDTM-compliant output DataFrames.
 
 use polars::prelude::*;
 use std::collections::BTreeMap;
 use tss_common::any_to_string;
 
-use crate::error::TransformError;
+use crate::error::NormalizationError;
 use crate::normalization::{
     calculate_study_day_from_strings, format_iso8601_duration, normalize_ct_value,
     normalize_without_codelist, parse_numeric, transform_to_iso8601,
 };
-use crate::types::{DomainPipeline, TransformContext, TransformRule, TransformType};
+use crate::types::{NormalizationPipeline, NormalizationContext, NormalizationRule, NormalizationType};
 
 /// Execute transformation pipeline on source DataFrame.
 ///
 /// Returns a new DataFrame with only SDTM-compliant columns.
 /// The output DataFrame contains columns in the order defined by the pipeline rules.
 /// Variables marked as omitted in the context are excluded from output.
-pub fn execute_pipeline(
+pub fn execute_normalization(
     source_df: &DataFrame,
-    pipeline: &DomainPipeline,
-    context: &TransformContext,
-) -> Result<DataFrame, TransformError> {
+    pipeline: &NormalizationPipeline,
+    context: &NormalizationContext,
+) -> Result<DataFrame, NormalizationError> {
     let mut columns: Vec<Column> = Vec::with_capacity(pipeline.rules.len());
     let row_count = source_df.height();
 
@@ -41,16 +41,16 @@ pub fn execute_pipeline(
         columns.push(series.into_column());
     }
 
-    DataFrame::new(columns).map_err(TransformError::PolarsError)
+    DataFrame::new(columns).map_err(NormalizationError::PolarsError)
 }
 
 /// Execute a single transformation rule.
 fn execute_rule(
     source_df: &DataFrame,
-    rule: &TransformRule,
-    context: &TransformContext,
+    rule: &NormalizationRule,
+    context: &NormalizationContext,
     row_count: usize,
-) -> Result<Series, TransformError> {
+) -> Result<Series, NormalizationError> {
     let target_name = &rule.target_variable;
 
     // Get source column from rule or context mappings
@@ -60,22 +60,22 @@ fn execute_rule(
         .or_else(|| context.get_source_column(target_name));
 
     match &rule.transform_type {
-        TransformType::Constant => execute_constant(target_name, context, row_count),
-        TransformType::UsubjidPrefix => execute_usubjid(source_df, target_name, context, row_count),
-        TransformType::SequenceNumber => {
+        NormalizationType::Constant => execute_constant(target_name, context, row_count),
+        NormalizationType::UsubjidPrefix => execute_usubjid(source_df, target_name, context, row_count),
+        NormalizationType::SequenceNumber => {
             execute_sequence(source_df, target_name, context, row_count)
         }
-        TransformType::Iso8601DateTime => {
+        NormalizationType::Iso8601DateTime => {
             execute_datetime(source_df, target_name, source_col, row_count)
         }
-        TransformType::Iso8601Date => execute_date(source_df, target_name, source_col, row_count),
-        TransformType::Iso8601Duration => {
+        NormalizationType::Iso8601Date => execute_date(source_df, target_name, source_col, row_count),
+        NormalizationType::Iso8601Duration => {
             execute_duration(source_df, target_name, source_col, row_count)
         }
-        TransformType::StudyDay { reference_dtc } => {
+        NormalizationType::StudyDay { reference_dtc } => {
             execute_study_day(source_df, target_name, reference_dtc, context, row_count)
         }
-        TransformType::CtNormalization { codelist_code } => execute_ct_normalization(
+        NormalizationType::CtNormalization { codelist_code } => execute_ct_normalization(
             source_df,
             target_name,
             codelist_code,
@@ -83,19 +83,19 @@ fn execute_rule(
             context,
             row_count,
         ),
-        TransformType::NumericConversion => {
+        NormalizationType::NumericConversion => {
             execute_numeric(source_df, target_name, source_col, row_count)
         }
-        TransformType::CopyDirect => execute_copy(source_df, target_name, source_col, row_count),
+        NormalizationType::CopyDirect => execute_copy(source_df, target_name, source_col, row_count),
     }
 }
 
 /// Execute constant transformation (STUDYID, DOMAIN).
 fn execute_constant(
     target_name: &str,
-    context: &TransformContext,
+    context: &NormalizationContext,
     row_count: usize,
-) -> Result<Series, TransformError> {
+) -> Result<Series, NormalizationError> {
     let value = match target_name {
         "STUDYID" => &context.study_id,
         "DOMAIN" => &context.domain_code,
@@ -109,9 +109,9 @@ fn execute_constant(
 fn execute_usubjid(
     df: &DataFrame,
     target_name: &str,
-    context: &TransformContext,
+    context: &NormalizationContext,
     row_count: usize,
-) -> Result<Series, TransformError> {
+) -> Result<Series, NormalizationError> {
     // Try to find SUBJID or USUBJID mapping
     let source_col = context
         .get_source_column("SUBJID")
@@ -128,7 +128,7 @@ fn execute_usubjid(
 
     let source_series = df
         .column(source_col)
-        .map_err(|_| TransformError::ColumnNotFound(source_col.to_string()))?;
+        .map_err(|_| NormalizationError::ColumnNotFound(source_col.to_string()))?;
 
     let mut values = Vec::with_capacity(row_count);
 
@@ -148,9 +148,9 @@ fn execute_usubjid(
 fn execute_sequence(
     df: &DataFrame,
     target_name: &str,
-    context: &TransformContext,
+    context: &NormalizationContext,
     row_count: usize,
-) -> Result<Series, TransformError> {
+) -> Result<Series, NormalizationError> {
     // Get USUBJID column for grouping
     let usubjid_col = context
         .get_source_column("USUBJID")
@@ -168,7 +168,7 @@ fn execute_sequence(
 
     let source_series = df
         .column(source_col)
-        .map_err(|_| TransformError::ColumnNotFound(source_col.to_string()))?;
+        .map_err(|_| NormalizationError::ColumnNotFound(source_col.to_string()))?;
 
     let mut counters: BTreeMap<String, i64> = BTreeMap::new();
     let mut values = Vec::with_capacity(row_count);
@@ -190,14 +190,14 @@ fn execute_datetime(
     target_name: &str,
     source_col: Option<&str>,
     row_count: usize,
-) -> Result<Series, TransformError> {
+) -> Result<Series, NormalizationError> {
     let Some(source_col) = source_col else {
         return Ok(Series::new(target_name.into(), vec![""; row_count]));
     };
 
     let source_series = df
         .column(source_col)
-        .map_err(|_| TransformError::ColumnNotFound(source_col.to_string()))?;
+        .map_err(|_| NormalizationError::ColumnNotFound(source_col.to_string()))?;
 
     let mut values = Vec::with_capacity(row_count);
 
@@ -222,7 +222,7 @@ fn execute_date(
     target_name: &str,
     source_col: Option<&str>,
     row_count: usize,
-) -> Result<Series, TransformError> {
+) -> Result<Series, NormalizationError> {
     // Same as datetime but we might want to truncate time if present
     execute_datetime(df, target_name, source_col, row_count)
 }
@@ -233,14 +233,14 @@ fn execute_duration(
     target_name: &str,
     source_col: Option<&str>,
     row_count: usize,
-) -> Result<Series, TransformError> {
+) -> Result<Series, NormalizationError> {
     let Some(source_col) = source_col else {
         return Ok(Series::new(target_name.into(), vec![""; row_count]));
     };
 
     let source_series = df
         .column(source_col)
-        .map_err(|_| TransformError::ColumnNotFound(source_col.to_string()))?;
+        .map_err(|_| NormalizationError::ColumnNotFound(source_col.to_string()))?;
 
     let mut values = Vec::with_capacity(row_count);
 
@@ -272,9 +272,9 @@ fn execute_study_day(
     df: &DataFrame,
     target_name: &str,
     reference_dtc: &str,
-    context: &TransformContext,
+    context: &NormalizationContext,
     row_count: usize,
-) -> Result<Series, TransformError> {
+) -> Result<Series, NormalizationError> {
     // Get reference date from context (RFSTDTC from DM)
     let Some(ref_date) = context.reference_date else {
         tracing::warn!(
@@ -300,7 +300,7 @@ fn execute_study_day(
 
     let source_series = df
         .column(source_col)
-        .map_err(|_| TransformError::ColumnNotFound(source_col.to_string()))?;
+        .map_err(|_| NormalizationError::ColumnNotFound(source_col.to_string()))?;
 
     let ref_date_str = ref_date.format("%Y-%m-%d").to_string();
     let mut values: Vec<Option<i32>> = Vec::with_capacity(row_count);
@@ -327,16 +327,16 @@ fn execute_ct_normalization(
     target_name: &str,
     codelist_code: &str,
     source_col: Option<&str>,
-    context: &TransformContext,
+    context: &NormalizationContext,
     row_count: usize,
-) -> Result<Series, TransformError> {
+) -> Result<Series, NormalizationError> {
     let Some(source_col) = source_col else {
         return Ok(Series::new(target_name.into(), vec![""; row_count]));
     };
 
     let source_series = df
         .column(source_col)
-        .map_err(|_| TransformError::ColumnNotFound(source_col.to_string()))?;
+        .map_err(|_| NormalizationError::ColumnNotFound(source_col.to_string()))?;
 
     // Try to get the codelist from registry
     let codelist = context
@@ -372,7 +372,7 @@ fn execute_numeric(
     target_name: &str,
     source_col: Option<&str>,
     row_count: usize,
-) -> Result<Series, TransformError> {
+) -> Result<Series, NormalizationError> {
     let Some(source_col) = source_col else {
         let nulls: Vec<Option<f64>> = vec![None; row_count];
         return Ok(Series::new(target_name.into(), nulls));
@@ -380,7 +380,7 @@ fn execute_numeric(
 
     let source_series = df
         .column(source_col)
-        .map_err(|_| TransformError::ColumnNotFound(source_col.to_string()))?;
+        .map_err(|_| NormalizationError::ColumnNotFound(source_col.to_string()))?;
 
     let mut values: Vec<Option<f64>> = Vec::with_capacity(row_count);
 
@@ -414,14 +414,14 @@ fn execute_copy(
     target_name: &str,
     source_col: Option<&str>,
     row_count: usize,
-) -> Result<Series, TransformError> {
+) -> Result<Series, NormalizationError> {
     let Some(source_col) = source_col else {
         return Ok(Series::new(target_name.into(), vec![""; row_count]));
     };
 
     let source_series = df
         .column(source_col)
-        .map_err(|_| TransformError::ColumnNotFound(source_col.to_string()))?;
+        .map_err(|_| NormalizationError::ColumnNotFound(source_col.to_string()))?;
 
     let mut values = Vec::with_capacity(row_count);
 
@@ -436,7 +436,7 @@ fn execute_copy(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::inference::build_pipeline_from_domain;
+    use crate::inference::infer_normalization_rules;
     use tss_model::{CoreDesignation, Domain, Variable, VariableRole, VariableType};
 
     fn create_test_domain() -> Domain {
@@ -497,7 +497,7 @@ mod tests {
 
     #[test]
     fn test_execute_constant() {
-        let context = TransformContext::new("CDISC01", "AE");
+        let context = NormalizationContext::new("CDISC01", "AE");
         let result = execute_constant("STUDYID", &context, 3).unwrap();
 
         assert_eq!(result.len(), 3);
@@ -507,9 +507,9 @@ mod tests {
     }
 
     #[test]
-    fn test_execute_pipeline() {
+    fn test_execute_normalization() {
         let domain = create_test_domain();
-        let pipeline = build_pipeline_from_domain(&domain);
+        let pipeline = infer_normalization_rules(&domain);
 
         // Create source DataFrame
         let df = df! {
@@ -520,9 +520,9 @@ mod tests {
         let mut mappings = BTreeMap::new();
         mappings.insert("SUBJID".to_string(), "SUBJECT".to_string());
 
-        let context = TransformContext::new("CDISC01", "AE").with_mappings(mappings);
+        let context = NormalizationContext::new("CDISC01", "AE").with_mappings(mappings);
 
-        let result = execute_pipeline(&df, &pipeline, &context).unwrap();
+        let result = execute_normalization(&df, &pipeline, &context).unwrap();
 
         // Check structure
         assert_eq!(result.width(), 4); // STUDYID, DOMAIN, USUBJID, AESEQ

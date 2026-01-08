@@ -1,10 +1,10 @@
 [package]
-name = "tss-transform"
+name = "tss-normalization"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-description = "Data-driven, variable-level transformation system for CDISC standards"
+description = "CDISC data normalization for Trial Submission Studio"
 
 [lints]
 workspace = true

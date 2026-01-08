@@ -54,7 +54,7 @@
     - [tss-xpt](architecture/crates/tss-xpt.md)
     - [tss-validate](architecture/crates/tss-validate.md)
     - [tss-map](architecture/crates/tss-map.md)
-    - [tss-transform](architecture/crates/tss-transform.md)
+    - [tss-normalization](architecture/crates/tss-normalization.md)
     - [tss-ingest](architecture/crates/tss-ingest.md)
     - [tss-output](architecture/crates/tss-output.md)
     - [tss-standards](architecture/crates/tss-standards.md)

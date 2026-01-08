@@ -28,7 +28,7 @@ trial-submission-studio/
 │   ├── tss-xpt/            # XPT file I/O
 │   ├── tss-validate/       # CDISC validation
 │   ├── tss-map/            # Column mapping
-│   ├── tss-transform/      # Data transformations
+│   ├── tss-normalization/      # Data transformations
 │   ├── tss-ingest/         # CSV loading
 │   ├── tss-output/         # Multi-format export
 │   ├── tss-standards/      # CDISC standards loader
@@ -52,7 +52,7 @@ flowchart TD
         MAP[tss-map]
         OUTPUT[tss-output]
         INGEST[tss-ingest]
-        TRANSFORM[tss-transform]
+        TRANSFORM[tss-normalization]
     end
 
     subgraph Validation
@@ -98,7 +98,7 @@ flowchart TD
 | **tss-xpt**       | XPT file I/O           | byteorder, encoding_rs |
 | **tss-validate**  | CDISC validation       | tss-standards          |
 | **tss-map**       | Fuzzy column mapping   | rapidfuzz              |
-| **tss-transform** | Data transformations   | polars                 |
+| **tss-normalization** | Data transformations   | polars                 |
 | **tss-ingest**    | CSV loading            | csv, polars            |
 | **tss-output**    | Multi-format export    | quick-xml              |
 | **tss-standards** | CDISC standards loader | serde, serde_json      |

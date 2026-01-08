@@ -27,7 +27,7 @@ tss-model = { path = "../tss-model" }
 tss-standards = { path = "../tss-standards" }
 tss-ingest = { path = "../tss-ingest" }
 tss-map = { path = "../tss-map" }
-tss-transform = { path = "../tss-transform" }
+tss-normalization = { path = "../tss-normalization" }
 tss-validate = { path = "../tss-validate" }
 tss-output = { path = "../tss-output" }
 tss-xpt = { path = "../tss-xpt" }

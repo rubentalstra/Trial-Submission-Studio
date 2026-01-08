@@ -9,17 +9,17 @@ use std::collections::{BTreeMap, BTreeSet};
 use tss_model::Domain;
 use tss_model::ct::TerminologyRegistry;
 
-use crate::error::TransformError;
-use crate::executor::execute_pipeline;
-use crate::inference::build_pipeline_from_domain;
-use crate::types::{DomainPipeline, TransformContext};
+use crate::error::NormalizationError;
+use crate::executor::execute_normalization;
+use crate::inference::infer_normalization_rules;
+use crate::types::{NormalizationPipeline, NormalizationContext};
 
 /// Build preview DataFrame for validation tab.
 ///
 /// Creates a transformed DataFrame by:
-/// 1. Building a transformation pipeline from domain metadata
+/// 1. Building a normalization pipeline from domain metadata
 /// 2. Applying column mappings
-/// 3. Executing transformations on source data
+/// 3. Executing normalizations on source data
 ///
 /// # Arguments
 /// * `source_df` - Source DataFrame with raw data
@@ -36,7 +36,7 @@ pub fn build_preview_dataframe(
     domain: &Domain,
     study_id: &str,
     ct_registry: Option<&TerminologyRegistry>,
-) -> Result<DataFrame, TransformError> {
+) -> Result<DataFrame, NormalizationError> {
     // Call the extended version with empty omitted set
     build_preview_dataframe_with_omitted(
         source_df,
@@ -51,10 +51,10 @@ pub fn build_preview_dataframe(
 /// Build preview DataFrame with support for omitted variables.
 ///
 /// Creates a transformed DataFrame by:
-/// 1. Building a transformation pipeline from domain metadata
+/// 1. Building a normalization pipeline from domain metadata
 /// 2. Applying column mappings
 /// 3. Excluding omitted variables from output
-/// 4. Executing transformations on source data
+/// 4. Executing normalizations on source data
 ///
 /// # Arguments
 /// * `source_df` - Source DataFrame with raw data
@@ -73,28 +73,28 @@ pub fn build_preview_dataframe_with_omitted(
     domain: &Domain,
     study_id: &str,
     ct_registry: Option<&TerminologyRegistry>,
-) -> Result<DataFrame, TransformError> {
+) -> Result<DataFrame, NormalizationError> {
     // Build pipeline from domain metadata
-    let pipeline = build_pipeline_from_domain(domain);
+    let pipeline = infer_normalization_rules(domain);
 
     // Apply mappings to pipeline
     let pipeline_with_mappings = apply_mappings_to_pipeline(pipeline, mappings);
 
     // Create execution context
-    let context = TransformContext::new(study_id, &domain.name)
+    let context = NormalizationContext::new(study_id, &domain.name)
         .with_ct_registry(ct_registry.cloned())
         .with_mappings(mappings.clone())
         .with_omitted(omitted.clone());
 
     // Execute pipeline
-    execute_pipeline(source_df, &pipeline_with_mappings, &context)
+    execute_normalization(source_df, &pipeline_with_mappings, &context)
 }
 
 /// Apply column mappings to pipeline rules.
 fn apply_mappings_to_pipeline(
-    mut pipeline: DomainPipeline,
+    mut pipeline: NormalizationPipeline,
     mappings: &BTreeMap<String, String>,
-) -> DomainPipeline {
+) -> NormalizationPipeline {
     for rule in &mut pipeline.rules {
         rule.source_column = mappings.get(&rule.target_variable).cloned();
     }
@@ -119,7 +119,7 @@ pub fn build_preview_dataframe_with_dm(
     study_id: &str,
     dm_df: Option<&DataFrame>,
     ct_registry: Option<&TerminologyRegistry>,
-) -> Result<DataFrame, TransformError> {
+) -> Result<DataFrame, NormalizationError> {
     // Call the extended version with empty omitted set
     build_preview_dataframe_with_dm_and_omitted(
         source_df,
@@ -150,9 +150,9 @@ pub fn build_preview_dataframe_with_dm_and_omitted(
     study_id: &str,
     dm_df: Option<&DataFrame>,
     ct_registry: Option<&TerminologyRegistry>,
-) -> Result<DataFrame, TransformError> {
+) -> Result<DataFrame, NormalizationError> {
     // Build pipeline from domain metadata
-    let pipeline = build_pipeline_from_domain(domain);
+    let pipeline = infer_normalization_rules(domain);
 
     // Apply mappings to pipeline
     let pipeline_with_mappings = apply_mappings_to_pipeline(pipeline, mappings);
@@ -161,14 +161,14 @@ pub fn build_preview_dataframe_with_dm_and_omitted(
     let reference_date = dm_df.and_then(extract_reference_date);
 
     // Create execution context
-    let context = TransformContext::new(study_id, &domain.name)
+    let context = NormalizationContext::new(study_id, &domain.name)
         .with_reference_date(reference_date)
         .with_ct_registry(ct_registry.cloned())
         .with_mappings(mappings.clone())
         .with_omitted(omitted.clone());
 
     // Execute pipeline
-    execute_pipeline(source_df, &pipeline_with_mappings, &context)
+    execute_normalization(source_df, &pipeline_with_mappings, &context)
 }
 
 /// Extract RFSTDTC from DM domain DataFrame.

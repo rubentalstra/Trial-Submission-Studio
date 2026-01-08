@@ -1,6 +1,6 @@
 //! Preview generation service
 //!
-//! This module provides lazy preview computation for SDTM data transformation.
+//! This module provides lazy preview computation for SDTM data normalization.
 //!
 //! ## Architecture
 //!
@@ -21,7 +21,7 @@ use crate::state::AppState;
 use polars::prelude::DataFrame;
 use std::collections::{BTreeMap, BTreeSet};
 use tss_standards::{CtVersion, load_ct};
-use tss_transform::build_preview_dataframe_with_dm_and_omitted;
+use tss_normalization::build_preview_dataframe_with_dm_and_omitted;
 
 // ============================================================================
 // Preview Result (sent from background thread)

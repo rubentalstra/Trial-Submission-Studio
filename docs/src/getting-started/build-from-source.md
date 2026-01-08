@@ -113,7 +113,7 @@ trial-submission-studio/
 │   ├── tss-xpt/          # XPT file I/O
 │   ├── tss-validate/     # CDISC validation
 │   ├── tss-map/          # Column mapping
-│   ├── tss-transform/    # Data transformations
+│   ├── tss-normalization/    # Data transformations
 │   ├── tss-ingest/       # CSV loading
 │   ├── tss-output/       # Multi-format export
 │   ├── tss-standards/    # CDISC standards loader

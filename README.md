@@ -120,7 +120,7 @@ tss-gui         → Desktop application (egui/eframe)
 tss-xpt         → XPT format I/O
 tss-validate    → Conformance validation
 tss-map         → Column mapping engine
-tss-transform   → Data transformations
+tss-normalization   → Data transformations
 tss-ingest      → CSV loading
 tss-output      → Multi-format export
 tss-standards   → CDISC standards loader

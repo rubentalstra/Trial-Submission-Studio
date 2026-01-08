@@ -1,12 +1,12 @@
 //! Domain editor view
 //!
-//! Main editing interface with tabs: Mapping, Transform, Validation, Preview, SUPP.
+//! Main editing interface with tabs: Mapping, Normalization, Validation, Preview, SUPP.
 //! Each tab is implemented in its own module for maintainability.
 
 mod mapping;
+mod normalization;
 mod preview;
 mod supp;
-mod transform;
 mod validation;
 
 use crate::state::{AppState, EditorTab};
@@ -89,7 +89,7 @@ impl DomainEditorView {
         // Tab content - delegate to submodules
         match active_tab {
             EditorTab::Mapping => mapping::show(ui, state, domain_code),
-            EditorTab::Transform => transform::show(ui, state, domain_code),
+            EditorTab::Transform => normalization::show(ui, state, domain_code),
             EditorTab::Validation => validation::show(ui, state, domain_code),
             EditorTab::Preview => preview::show(ui, state, domain_code),
             EditorTab::Supp => supp::show(ui, state, domain_code),

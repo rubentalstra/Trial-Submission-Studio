@@ -27,7 +27,7 @@ Closes #
 - [ ] `tss-xpt`
 - [ ] `tss-validate`
 - [ ] `tss-map`
-- [ ] `tss-transform`
+- [ ] `tss-normalization`
 - [ ] `tss-ingest`
 - [ ] `tss-output`
 - [ ] `tss-standards`

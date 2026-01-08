@@ -108,7 +108,7 @@ Trial Submission Studio is organized as a 10-crate Rust workspace:
 | `tss-xpt`       | XPT (SAS Transport) file I/O          |
 | `tss-validate`  | CDISC conformance validation          |
 | `tss-map`       | Fuzzy column mapping engine           |
-| `tss-transform` | Data transformation rules             |
+| `tss-normalization` | Data transformation rules             |
 | `tss-ingest`    | CSV discovery and parsing             |
 | `tss-output`    | Multi-format export (XPT, XML)        |
 | `tss-standards` | CDISC standards loader                |

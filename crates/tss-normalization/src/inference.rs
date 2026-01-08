@@ -1,6 +1,6 @@
-//! Transformation type inference from SDTM Variable metadata.
+//! Normalization type inference from SDTM Variable metadata.
 //!
-//! All transformation logic is derived from Variable fields - no hardcoded domain rules.
+//! All normalization logic is derived from Variable fields - no hardcoded domain rules.
 //! Priority order for inference (highest to lowest):
 //! 1. Name-based patterns (STUDYID, DOMAIN, USUBJID, *SEQ, *DY, *DTC, *DT, *DUR)
 //! 2. Described value domain ("ISO 8601 datetime", "duration")
@@ -10,21 +10,21 @@
 
 use tss_model::{Domain, Variable, VariableType};
 
-use crate::types::{DomainPipeline, TransformRule, TransformType};
+use crate::types::{NormalizationPipeline, NormalizationRule, NormalizationType};
 
 /// Build transformation pipeline from domain metadata.
 ///
 /// This is the main entry point for pipeline creation. Each variable
 /// in the domain is analyzed to determine its transformation type.
-pub fn build_pipeline_from_domain(domain: &Domain) -> DomainPipeline {
-    let mut pipeline = DomainPipeline::new(&domain.name);
+pub fn infer_normalization_rules(domain: &Domain) -> NormalizationPipeline {
+    let mut pipeline = NormalizationPipeline::new(&domain.name);
 
     for variable in &domain.variables {
-        let transform_type = infer_transform_type(variable, &domain.name);
+        let transform_type = infer_normalization_type(variable, &domain.name);
         let description = generate_description(&variable.name, &transform_type);
         let order = variable.order.unwrap_or(999);
 
-        pipeline.add_rule(TransformRule {
+        pipeline.add_rule(NormalizationRule {
             target_variable: variable.name.clone(),
             source_column: None, // Set at execution time via mappings
             transform_type,
@@ -41,7 +41,7 @@ pub fn build_pipeline_from_domain(domain: &Domain) -> DomainPipeline {
 /// Uses a priority-based algorithm to determine the appropriate
 /// transformation based on variable name, described value domain,
 /// codelist code, and data type.
-fn infer_transform_type(variable: &Variable, domain_code: &str) -> TransformType {
+fn infer_normalization_type(variable: &Variable, domain_code: &str) -> NormalizationType {
     let name = &variable.name;
     let dvd = variable
         .described_value_domain
@@ -53,17 +53,17 @@ fn infer_transform_type(variable: &Variable, domain_code: &str) -> TransformType
 
     // Constants: STUDYID, DOMAIN
     if name == "STUDYID" || name == "DOMAIN" {
-        return TransformType::Constant;
+        return NormalizationType::Constant;
     }
 
     // USUBJID derivation
     if name == "USUBJID" {
-        return TransformType::UsubjidPrefix;
+        return NormalizationType::UsubjidPrefix;
     }
 
     // Sequence number: domain-prefixed SEQ (e.g., AESEQ, DMSEQ)
     if name.ends_with("SEQ") && name.starts_with(domain_code) && name.len() > 3 {
-        return TransformType::SequenceNumber;
+        return NormalizationType::SequenceNumber;
     }
 
     // Study day: *DY suffix (e.g., AESTDY, AEENDY)
@@ -71,34 +71,34 @@ fn infer_transform_type(variable: &Variable, domain_code: &str) -> TransformType
     if name.ends_with("DY") && name.len() > 2 {
         let prefix = &name[..name.len() - 2];
         let reference_dtc = format!("{prefix}DTC");
-        return TransformType::StudyDay { reference_dtc };
+        return NormalizationType::StudyDay { reference_dtc };
     }
 
     // ISO 8601 duration: *DUR suffix or described value domain
     if name.ends_with("DUR") || dvd.contains("duration") {
-        return TransformType::Iso8601Duration;
+        return NormalizationType::Iso8601Duration;
     }
 
     // ISO 8601 datetime: *DTC or *DTM suffix
     if name.ends_with("DTC") || name.ends_with("DTM") {
-        return TransformType::Iso8601DateTime;
+        return NormalizationType::Iso8601DateTime;
     }
 
     // ISO 8601 date: *DT suffix (but not *DTM or *DTC)
     if name.ends_with("DT") && !name.ends_with("DTM") && !name.ends_with("DTC") {
-        return TransformType::Iso8601Date;
+        return NormalizationType::Iso8601Date;
     }
 
     // 2. Described Value Domain patterns
 
     // ISO 8601 datetime from described value domain
     if dvd.contains("iso 8601") && dvd.contains("datetime") {
-        return TransformType::Iso8601DateTime;
+        return NormalizationType::Iso8601DateTime;
     }
 
     // ISO 8601 date/interval from described value domain
     if dvd.contains("iso 8601") && !dvd.contains("duration") {
-        return TransformType::Iso8601Date;
+        return NormalizationType::Iso8601Date;
     }
 
     // 3. Codelist Code -> CT Normalization
@@ -114,7 +114,7 @@ fn infer_transform_type(variable: &Variable, domain_code: &str) -> TransformType
                 .to_string();
 
             if !first_code.is_empty() {
-                return TransformType::CtNormalization {
+                return NormalizationType::CtNormalization {
                     codelist_code: first_code,
                 };
             }
@@ -123,17 +123,17 @@ fn infer_transform_type(variable: &Variable, domain_code: &str) -> TransformType
 
     // 4. Data Type -> Numeric Conversion
     if variable.data_type == VariableType::Num {
-        return TransformType::NumericConversion;
+        return NormalizationType::NumericConversion;
     }
 
     // 5. Default: Copy directly
-    TransformType::CopyDirect
+    NormalizationType::CopyDirect
 }
 
 /// Generate a human-readable description for a transformation.
-fn generate_description(var_name: &str, transform_type: &TransformType) -> String {
+fn generate_description(var_name: &str, transform_type: &NormalizationType) -> String {
     match transform_type {
-        TransformType::Constant => {
+        NormalizationType::Constant => {
             if var_name == "STUDYID" {
                 "Study identifier from configuration".to_string()
             } else if var_name == "DOMAIN" {
@@ -142,23 +142,23 @@ fn generate_description(var_name: &str, transform_type: &TransformType) -> Strin
                 "Constant value".to_string()
             }
         }
-        TransformType::UsubjidPrefix => "Derive as STUDYID-SUBJID".to_string(),
-        TransformType::SequenceNumber => "Generate unique sequence per USUBJID".to_string(),
-        TransformType::Iso8601DateTime => {
+        NormalizationType::UsubjidPrefix => "Derive as STUDYID-SUBJID".to_string(),
+        NormalizationType::SequenceNumber => "Generate unique sequence per USUBJID".to_string(),
+        NormalizationType::Iso8601DateTime => {
             "Format as ISO 8601 datetime (preserves precision)".to_string()
         }
-        TransformType::Iso8601Date => "Format as ISO 8601 date (preserves precision)".to_string(),
-        TransformType::Iso8601Duration => {
+        NormalizationType::Iso8601Date => "Format as ISO 8601 date (preserves precision)".to_string(),
+        NormalizationType::Iso8601Duration => {
             "Format as ISO 8601 duration (PnYnMnDTnHnMnS)".to_string()
         }
-        TransformType::StudyDay { reference_dtc } => {
+        NormalizationType::StudyDay { reference_dtc } => {
             format!("Calculate study day from {reference_dtc} relative to RFSTDTC")
         }
-        TransformType::CtNormalization { codelist_code } => {
+        NormalizationType::CtNormalization { codelist_code } => {
             format!("Normalize using codelist {codelist_code}")
         }
-        TransformType::NumericConversion => "Convert to numeric (Float64)".to_string(),
-        TransformType::CopyDirect => "Copy value directly".to_string(),
+        NormalizationType::NumericConversion => "Convert to numeric (Float64)".to_string(),
+        NormalizationType::CopyDirect => "Copy value directly".to_string(),
     }
 }
 
@@ -183,21 +183,21 @@ mod tests {
     #[test]
     fn test_infer_studyid_constant() {
         let var = make_variable("STUDYID");
-        assert_eq!(infer_transform_type(&var, "AE"), TransformType::Constant);
+        assert_eq!(infer_normalization_type(&var, "AE"), NormalizationType::Constant);
     }
 
     #[test]
     fn test_infer_domain_constant() {
         let var = make_variable("DOMAIN");
-        assert_eq!(infer_transform_type(&var, "DM"), TransformType::Constant);
+        assert_eq!(infer_normalization_type(&var, "DM"), NormalizationType::Constant);
     }
 
     #[test]
     fn test_infer_usubjid() {
         let var = make_variable("USUBJID");
         assert_eq!(
-            infer_transform_type(&var, "AE"),
-            TransformType::UsubjidPrefix
+            infer_normalization_type(&var, "AE"),
+            NormalizationType::UsubjidPrefix
         );
     }
 
@@ -205,8 +205,8 @@ mod tests {
     fn test_infer_sequence_number() {
         let var = make_variable("AESEQ");
         assert_eq!(
-            infer_transform_type(&var, "AE"),
-            TransformType::SequenceNumber
+            infer_normalization_type(&var, "AE"),
+            NormalizationType::SequenceNumber
         );
     }
 
@@ -214,24 +214,24 @@ mod tests {
     fn test_infer_datetime_from_suffix() {
         let var = make_variable("AESTDTC");
         assert_eq!(
-            infer_transform_type(&var, "AE"),
-            TransformType::Iso8601DateTime
+            infer_normalization_type(&var, "AE"),
+            NormalizationType::Iso8601DateTime
         );
     }
 
     #[test]
     fn test_infer_date_from_suffix() {
         let var = make_variable("BRTHDTDT");
-        assert_eq!(infer_transform_type(&var, "DM"), TransformType::Iso8601Date);
+        assert_eq!(infer_normalization_type(&var, "DM"), NormalizationType::Iso8601Date);
     }
 
     #[test]
     fn test_infer_studyday_from_suffix() {
         let var = make_variable("AESTDY");
-        let result = infer_transform_type(&var, "AE");
+        let result = infer_normalization_type(&var, "AE");
         assert!(matches!(
             result,
-            TransformType::StudyDay { ref reference_dtc } if reference_dtc == "AESTDTC"
+            NormalizationType::StudyDay { ref reference_dtc } if reference_dtc == "AESTDTC"
         ));
     }
 
@@ -239,8 +239,8 @@ mod tests {
     fn test_infer_duration_from_suffix() {
         let var = make_variable("AEDUR");
         assert_eq!(
-            infer_transform_type(&var, "AE"),
-            TransformType::Iso8601Duration
+            infer_normalization_type(&var, "AE"),
+            NormalizationType::Iso8601Duration
         );
     }
 
@@ -249,8 +249,8 @@ mod tests {
         let mut var = make_variable("SEX");
         var.codelist_code = Some("C66731".to_string());
         assert!(matches!(
-            infer_transform_type(&var, "DM"),
-            TransformType::CtNormalization { codelist_code } if codelist_code == "C66731"
+            infer_normalization_type(&var, "DM"),
+            NormalizationType::CtNormalization { codelist_code } if codelist_code == "C66731"
         ));
     }
 
@@ -259,15 +259,15 @@ mod tests {
         let mut var = make_variable("AGE");
         var.data_type = VariableType::Num;
         assert_eq!(
-            infer_transform_type(&var, "DM"),
-            TransformType::NumericConversion
+            infer_normalization_type(&var, "DM"),
+            NormalizationType::NumericConversion
         );
     }
 
     #[test]
     fn test_infer_copy_default() {
         let var = make_variable("CUSTOMVAR");
-        assert_eq!(infer_transform_type(&var, "AE"), TransformType::CopyDirect);
+        assert_eq!(infer_normalization_type(&var, "AE"), NormalizationType::CopyDirect);
     }
 
     #[test]
@@ -276,8 +276,8 @@ mod tests {
         var.described_value_domain = Some("ISO 8601 datetime or interval".to_string());
         // This should match the suffix first
         assert_eq!(
-            infer_transform_type(&var, "XX"),
-            TransformType::Iso8601DateTime
+            infer_normalization_type(&var, "XX"),
+            NormalizationType::Iso8601DateTime
         );
     }
 
@@ -286,8 +286,8 @@ mod tests {
         let mut var = make_variable("EXDURATION");
         var.described_value_domain = Some("ISO 8601 duration".to_string());
         assert_eq!(
-            infer_transform_type(&var, "EX"),
-            TransformType::Iso8601Duration
+            infer_normalization_type(&var, "EX"),
+            NormalizationType::Iso8601Duration
         );
     }
 }
