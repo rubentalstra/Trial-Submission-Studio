@@ -396,7 +396,7 @@ fn write_xpt_file(
                     str_col
                         .iter()
                         .flatten()
-                        .map(|s| s.len())
+                        .map(str::len)
                         .max()
                         .unwrap_or(8)
                         .clamp(1, 200) // Cap at 200 for XPT
