@@ -22,6 +22,8 @@
       <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_GDISC_20240903_072908/output/xpt" />
       <excludeFolder url="file://$MODULE_DIR$/target" />
       <excludeFolder url="file://$MODULE_DIR$/docs/book" />
+      <excludeFolder url="file://$MODULE_DIR$/.serena/cache" />
+      <excludeFolder url="file://$MODULE_DIR$/generate-social-images/target" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
