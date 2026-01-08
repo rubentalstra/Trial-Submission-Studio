@@ -46,5 +46,8 @@ mod score;
 mod state;
 
 pub use error::MappingError;
-pub use score::{ColumnHint, ColumnScore, ScoreComponent, ScoringEngine, Suggestion};
+pub use score::{ColumnScore, ScoreComponent, ScoringEngine, Suggestion};
 pub use state::{Mapping, MappingConfig, MappingState, MappingSummary, VariableStatus};
+
+// Re-export ColumnHint from tss-model for backward compatibility
+pub use tss_model::ColumnHint;

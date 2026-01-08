@@ -6212,7 +6212,6 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.17",
  "tracing",
- "tss-map",
  "tss-model",
 ]
 

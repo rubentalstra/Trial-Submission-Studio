@@ -14,12 +14,46 @@
 //! - [`ct`]: Controlled Terminology types
 //! - [`polars`]: Polars AnyValue utility functions
 
+use serde::{Deserialize, Serialize};
+
 pub mod adam;
 pub mod ct;
 pub mod polars;
 pub mod sdtm;
 pub mod send;
 pub mod traits;
+
+/// Hints about a source column's characteristics.
+///
+/// Used to improve mapping/scoring accuracy based on column metadata.
+/// This type is analyzed from source data during ingestion and used
+/// by the mapping engine to make better suggestions.
+///
+/// # Example
+///
+/// ```
+/// use tss_model::ColumnHint;
+///
+/// let hint = ColumnHint {
+///     is_numeric: true,
+///     unique_ratio: 0.95,
+///     null_ratio: 0.02,
+///     label: Some("Patient Age".to_string()),
+/// };
+///
+/// assert!(hint.is_numeric);
+/// ```
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ColumnHint {
+    /// Whether the column contains numeric data.
+    pub is_numeric: bool,
+    /// Ratio of unique values (0.0 to 1.0).
+    pub unique_ratio: f64,
+    /// Ratio of null/missing values (0.0 to 1.0).
+    pub null_ratio: f64,
+    /// Optional column label from source metadata.
+    pub label: Option<String>,
+}
 
 // Re-export CT types
 pub use ct::{Codelist, ResolvedCodelist, Term, TerminologyCatalog, TerminologyRegistry};

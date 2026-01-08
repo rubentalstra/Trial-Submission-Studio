@@ -13,12 +13,12 @@ SAS Transport (XPT) V5/V8 format reader and writer in pure Rust.
 
 ## Format Comparison
 
-| Feature | V5 Limit | V8 Limit |
-|---------|----------|----------|
-| Variable name | 8 chars | 32 chars |
+| Feature        | V5 Limit | V8 Limit  |
+|----------------|----------|-----------|
+| Variable name  | 8 chars  | 32 chars  |
 | Variable label | 40 chars | 256 chars |
-| Format name | 8 chars | 32 chars |
-| Dataset name | 8 chars | 32 chars |
+| Format name    | 8 chars  | 32 chars  |
+| Dataset name   | 8 chars  | 32 chars  |
 
 ## Usage
 
@@ -29,12 +29,12 @@ use std::path::Path;
 use xport::{read_xpt, XptDataset};
 
 // Read entire dataset
-let dataset = read_xpt(Path::new("dm.xpt"))?;
+let dataset = read_xpt(Path::new("dm.xpt")) ?;
 println!("Dataset: {} ({} rows)", dataset.name, dataset.num_rows());
 
 // Access columns
-for column in &dataset.columns {
-    println!("  {} ({})", column.name, column.xpt_type);
+for column in & dataset.columns {
+println!("  {} ({})", column.name, column.xpt_type);
 }
 ```
 
@@ -46,11 +46,11 @@ use xport::{XptDataset, XptColumn, XptValue, write_xpt};
 
 // Create dataset with columns
 let mut dataset = XptDataset::with_columns(
-    "DM",
-    vec![
-        XptColumn::character("USUBJID", 20).with_label("Unique Subject ID"),
-        XptColumn::numeric("AGE").with_label("Age in Years"),
-    ],
+"DM",
+vec![
+    XptColumn::character("USUBJID", 20).with_label("Unique Subject ID"),
+    XptColumn::numeric("AGE").with_label("Age in Years"),
+],
 );
 
 // Add rows
@@ -60,7 +60,7 @@ dataset.add_row(vec![
 ]);
 
 // Write to file
-write_xpt(Path::new("dm.xpt"), &dataset)?;
+write_xpt(Path::new("dm.xpt"), & dataset) ?;
 ```
 
 ### Streaming Large Files
@@ -70,10 +70,10 @@ use std::path::Path;
 use xport::read_xpt_streaming;
 
 // Process rows one at a time (memory efficient)
-let reader = read_xpt_streaming(Path::new("large_file.xpt"))?;
+let reader = read_xpt_streaming(Path::new("large_file.xpt")) ?;
 for observation in reader {
-    let row = observation?;
-    // Process each row...
+let row = observation ?;
+// Process each row...
 }
 ```
 
@@ -108,10 +108,10 @@ use std::path::Path;
 use xport::{read_xpt_to_dataframe, write_dataframe_to_xpt};
 
 // Read XPT to DataFrame
-let df = read_xpt_to_dataframe(Path::new("dm.xpt"))?;
+let df = read_xpt_to_dataframe(Path::new("dm.xpt")) ?;
 
 // Write DataFrame to XPT
-write_dataframe_to_xpt(&df, "DM", Path::new("dm_out.xpt"))?;
+write_dataframe_to_xpt( & df, "DM", Path::new("dm_out.xpt")) ?;
 ```
 
 ## V8 Format
@@ -122,8 +122,8 @@ By default, files are written in V5 format. Use `XptWriterOptions` for V8:
 use std::path::Path;
 use xport::{XptWriterOptions, XptVersion, write_xpt_with_options};
 
-let options = XptWriterOptions::default().with_version(XptVersion::V8);
-write_xpt_with_options(Path::new("dm.xpt"), &dataset, &options)?;
+let options = XptWriterOptions::default ().with_version(XptVersion::V8);
+write_xpt_with_options(Path::new("dm.xpt"), & dataset, & options) ?;
 ```
 
 ## License

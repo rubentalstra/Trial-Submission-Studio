@@ -3,8 +3,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use polars::prelude::*;
-use tss_model::any_to_string;
-use tss_map::ColumnHint;
+use tss_model::{any_to_string, ColumnHint};
 
 /// Builds column hints from a DataFrame.
 ///
