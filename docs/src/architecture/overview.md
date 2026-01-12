@@ -1,6 +1,6 @@
 # Architecture Overview
 
-Trial Submission Studio is built as a modular Rust workspace with 10 specialized crates.
+Trial Submission Studio is built as a modular Rust workspace with 9 specialized crates.
 
 ## Design Philosophy
 
@@ -25,12 +25,11 @@ trial-submission-studio/
 ├── Cargo.toml              # Workspace configuration
 ├── crates/
 │   ├── tss-gui/            # Desktop application
-│   ├── xport/              # XPT file I/O
 │   ├── tss-validate/       # CDISC validation
 │   ├── tss-map/            # Column mapping
-│   ├── tss-normalization/      # Data transformations
+│   ├── tss-normalization/  # Data transformations
 │   ├── tss-ingest/         # CSV loading
-│   ├── tss-output/         # Multi-format export
+│   ├── tss-output/         # Multi-format export (uses xportrs)
 │   ├── tss-standards/      # CDISC standards loader
 │   ├── tss-model/          # Core types + Polars utilities
 │   └── tss-updater/        # App update mechanism
@@ -58,8 +57,8 @@ flowchart TD
         VALIDATE[tss-validate]
     end
 
-    subgraph I/O
-        XPT[xport]
+    subgraph External
+        XPT[xportrs - crates.io]
     end
 
     subgraph Core
@@ -85,6 +84,7 @@ flowchart TD
     style GUI fill: #4a90d9, color: #fff
     style STANDARDS fill: #50c878, color: #fff
     style MODEL fill: #f5a623, color: #fff
+    style XPT fill: #9b59b6, color: #fff
 ```
 
 ## Crate Responsibilities
@@ -92,12 +92,11 @@ flowchart TD
 | Crate             | Purpose                | Key Dependencies       |
 |-------------------|------------------------|------------------------|
 | **tss-gui**       | Desktop application    | egui, eframe           |
-| **xport**         | XPT file I/O           | byteorder, encoding_rs |
 | **tss-validate**  | CDISC validation       | tss-standards          |
 | **tss-map**       | Fuzzy column mapping   | rapidfuzz              |
 | **tss-normalization** | Data transformations   | polars                 |
 | **tss-ingest**    | CSV loading            | csv, polars            |
-| **tss-output**    | Multi-format export    | quick-xml              |
+| **tss-output**    | Multi-format export    | xportrs, quick-xml     |
 | **tss-standards** | CDISC standards loader | serde, serde_json      |
 | **tss-model**     | Core types + Polars utilities | chrono, polars    |
 | **tss-updater**   | App updates            | reqwest                |
@@ -175,7 +174,7 @@ flowchart TB
 |----------------|------------------|
 | Fuzzy matching | rapidfuzz        |
 | XML processing | quick-xml        |
-| XPT handling   | Custom (xport)   |
+| XPT handling   | xportrs          |
 | Logging        | tracing          |
 | HTTP client    | reqwest          |
 
@@ -225,7 +224,7 @@ standards/
 |-------------|------------------|-----------------------|
 | Unit        | Function-level   | All                   |
 | Integration | Cross-crate      | tss-gui               |
-| Snapshot    | Output stability | xport, tss-output     |
+| Snapshot    | Output stability | tss-output            |
 | Property    | Edge cases       | tss-map, tss-validate |
 
 ### Test Data

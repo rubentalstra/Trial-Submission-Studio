@@ -8,7 +8,7 @@ use polars::prelude::{AnyValue, DataFrame};
 use crate::types::{DomainFrame, domain_map_by_code};
 use tss_model::{Domain, VariableType};
 use tss_model::{any_to_f64, any_to_string};
-use xportrs::{NumericValue, XptColumn, XptDataset, XptType, XptValue, write_xpt};
+use xportrs::{Column, ColumnData, Dataset, Xpt};
 
 use crate::common::{ensure_output_dir, variable_length};
 
@@ -35,8 +35,15 @@ pub fn write_xpt_outputs(
         let dataset = build_xpt_dataset_with_name(domain, frame, &output_dataset_name)?;
         let disk_name = output_dataset_name.to_lowercase();
         let filename = format!("{disk_name}.xpt");
-        let path = xpt_dir.join(filename);
-        write_xpt(&path, &dataset)?;
+        let path = xpt_dir.join(&filename);
+
+        // Write using xportrs builder pattern
+        Xpt::writer(dataset)
+            .finalize()
+            .with_context(|| format!("failed to validate XPT dataset for {}", filename))?
+            .write_path(&path)
+            .with_context(|| format!("failed to write XPT file: {}", path.display()))?;
+
         outputs.push(path);
     }
     Ok(outputs)
@@ -51,21 +58,16 @@ pub fn build_xpt_dataset_with_name(
     domain: &Domain,
     frame: &DomainFrame,
     dataset_name: &str,
-) -> Result<XptDataset> {
+) -> Result<Dataset> {
     let df = &frame.data;
     let columns = build_xpt_columns(domain, df)?;
-    let rows = build_xpt_rows(domain, df)?;
-    Ok(XptDataset {
-        name: dataset_name.to_uppercase(),
-        label: domain.label.clone(),
-        dataset_type: None, // TODO Could be set to Some("SDTM") if desired
-        columns,
-        rows,
-    })
+
+    Dataset::new(dataset_name, columns)
+        .with_context(|| format!("failed to create XPT dataset for {}", dataset_name))
 }
 
 /// Build XPT columns from domain variables.
-fn build_xpt_columns(domain: &Domain, df: &DataFrame) -> Result<Vec<XptColumn>> {
+fn build_xpt_columns(domain: &Domain, df: &DataFrame) -> Result<Vec<Column>> {
     // Filter to only variables that exist in the DataFrame
     let existing_vars: Vec<_> = domain
         .variables
@@ -73,60 +75,51 @@ fn build_xpt_columns(domain: &Domain, df: &DataFrame) -> Result<Vec<XptColumn>> 
         .filter(|v| df.column(&v.name).is_ok())
         .collect();
 
+    let row_count = df.height();
     let mut columns = Vec::with_capacity(existing_vars.len());
-    for variable in &existing_vars {
-        let length = variable_length(variable, df)?;
-        columns.push(XptColumn {
-            name: variable.name.clone(),
-            label: variable.label.clone(),
-            data_type: match variable.data_type {
-                VariableType::Num => XptType::Num,
-                VariableType::Char => XptType::Char,
-            },
-            length,
-            // TODO please fix these format/informat fields
-            format: None,
-            format_length: 0,
-            format_decimals: 0,
-            informat: None,
-            informat_length: 0,
-            informat_decimals: 0,
-            justification: Default::default(),
-        });
-    }
-    Ok(columns)
-}
 
-/// Build XPT rows from DataFrame.
-fn build_xpt_rows(domain: &Domain, df: &DataFrame) -> Result<Vec<Vec<XptValue>>> {
-    // Filter to only variables that exist in the DataFrame
-    let existing_vars: Vec<_> = domain
-        .variables
-        .iter()
-        .filter(|v| df.column(&v.name).is_ok())
-        .collect();
-
-    let mut series = Vec::with_capacity(existing_vars.len());
     for variable in &existing_vars {
         let col = df
             .column(variable.name.as_str())
             .with_context(|| format!("missing column {}", variable.name))?;
-        series.push(col);
+
+        let column_data = match variable.data_type {
+            VariableType::Num => {
+                let mut values = Vec::with_capacity(row_count);
+                for row_idx in 0..row_count {
+                    let value = col.get(row_idx).unwrap_or(AnyValue::Null);
+                    let num = any_to_f64(value);
+                    values.push(num);
+                }
+                ColumnData::F64(values)
+            }
+            VariableType::Char => {
+                let mut values = Vec::with_capacity(row_count);
+                for row_idx in 0..row_count {
+                    let value = col.get(row_idx).unwrap_or(AnyValue::Null);
+                    let s = any_to_string(value);
+                    values.push(if s.is_empty() { None } else { Some(s) });
+                }
+                ColumnData::String(values)
+            }
+        };
+
+        // Create column with name and data
+        let mut column = Column::new(&variable.name, column_data);
+
+        // Set label if available (required for FDA submissions)
+        if let Some(label) = &variable.label {
+            column = column.with_label(label.as_str());
+        }
+
+        // Set explicit length for character columns
+        if variable.data_type == VariableType::Char {
+            let length = variable_length(variable, df)?;
+            column = column.with_length(length as usize);
+        }
+
+        columns.push(column);
     }
 
-    let row_count = df.height();
-    let mut rows = Vec::with_capacity(row_count);
-    for row_idx in 0..row_count {
-        let mut row = Vec::with_capacity(series.len());
-        for (variable, column) in existing_vars.iter().zip(series.iter()) {
-            let value = column.get(row_idx).unwrap_or(AnyValue::Null);
-            let cell = match variable.data_type {
-                VariableType::Num => XptValue::Num(NumericValue::from(any_to_f64(value))),
-                VariableType::Char => XptValue::Char(any_to_string(value)),
-            };
-            row.push(cell);
-        }
-        rows.push(row);
-    }
-    Ok(rows)
+    Ok(columns)
 }

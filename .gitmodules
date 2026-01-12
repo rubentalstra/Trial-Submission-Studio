@@ -1,3 +1,0 @@
-[submodule "crates/xportrs"]
-	path = crates/xportrs
-	url = https://github.com/rubentalstra/xportrs.git

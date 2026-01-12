@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+#
+# sync-version.sh - Synchronize version across all metadata files
+#
+# Usage: ./scripts/sync-version.sh
+#
+# This script reads the version from Cargo.toml and updates:
+# - CITATION.cff
+# - .zenodo.json
+# - codemeta.json
+
+set -euo pipefail
+
+# Colors for output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Get script directory and project root
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
+
+cd "$PROJECT_ROOT"
+
+# Extract version from Cargo.toml workspace section
+VERSION=$(grep -A5 '^\[workspace\.package\]' Cargo.toml | grep '^version' | head -1 | sed 's/version = "\(.*\)"/\1/')
+DATE=$(date +%Y-%m-%d)
+
+if [ -z "$VERSION" ]; then
+    echo -e "${RED}Error: Could not extract version from Cargo.toml${NC}"
+    exit 1
+fi
+
+echo -e "${YELLOW}Syncing version ${GREEN}$VERSION${YELLOW} (date: $DATE)${NC}"
+echo ""
+
+# Update CITATION.cff
+echo -n "  Updating CITATION.cff... "
+sed -i.bak "s/^version: .*/version: '$VERSION'/" CITATION.cff
+sed -i.bak "s/^date-released: .*/date-released: '$DATE'/" CITATION.cff
+rm -f CITATION.cff.bak
+echo -e "${GREEN}done${NC}"
+
+# Update .zenodo.json
+echo -n "  Updating .zenodo.json... "
+sed -i.bak "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" .zenodo.json
+rm -f .zenodo.json.bak
+echo -e "${GREEN}done${NC}"
+
+# Update codemeta.json
+echo -n "  Updating codemeta.json... "
+sed -i.bak "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" codemeta.json
+sed -i.bak "s/\"dateModified\": \"[^\"]*\"/\"dateModified\": \"$DATE\"/" codemeta.json
+rm -f codemeta.json.bak
+echo -e "${GREEN}done${NC}"
+
+echo ""
+echo -e "${GREEN}All files updated to version $VERSION${NC}"
+echo ""
+
+# Verify JSON files are valid
+echo "Validating JSON files..."
+if command -v python3 &> /dev/null; then
+    python3 -m json.tool .zenodo.json > /dev/null && echo -e "  .zenodo.json: ${GREEN}valid${NC}"
+    python3 -m json.tool codemeta.json > /dev/null && echo -e "  codemeta.json: ${GREEN}valid${NC}"
+else
+    echo -e "  ${YELLOW}Skipping JSON validation (python3 not found)${NC}"
+fi
+
+echo ""
+echo -e "${GREEN}Version sync complete!${NC}"
