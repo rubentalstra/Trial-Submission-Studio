@@ -7635,9 +7635,9 @@ checksum = "ec7a2a501ed189703dba8b08142f057e887dfc4b2cc4db2d343ac6376ba3e0b9"
 
 [[package]]
 name = "xportrs"
-version = "0.0.6"
+version = "0.0.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76e6de11eba8e787913f6e4357869a56105466f784f4e9921b9d009160ca9b77"
+checksum = "a11eea815428dd24303cd59270a6403b1cd106728f1444d989bd4e8b5f520229"
 dependencies = [
  "byteorder",
  "chrono",

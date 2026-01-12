@@ -251,10 +251,7 @@ fn write_data_file(
 }
 
 /// Variable metadata for XPT export.
-/// Note: xportrs 0.0.5+ doesn't support per-column labels/formats,
-/// but we keep this structure for potential future API compatibility.
 #[derive(Debug, Clone, Default)]
-#[allow(dead_code)]
 struct VariableMetadata {
     /// Human-readable label (max 40 chars).
     label: Option<String>,
@@ -290,9 +287,7 @@ fn build_variable_metadata(domain: &Domain) -> HashMap<String, VariableMetadata>
 /// - "8." -> (None, 8, 0)
 /// - "DATE9." -> (Some("DATE"), 9, 0)
 /// - "12.2" -> (None, 12, 2)
-///
-/// Note: Currently unused as xportrs 0.0.5+ doesn't support format metadata.
-#[allow(dead_code)]
+#[allow(dead_code)] // May be used for future format validation
 fn parse_sas_format(format: &Option<String>) -> (Option<String>, u16, u16) {
     let Some(fmt) = format else {
         return (None, 0, 0);
@@ -367,7 +362,7 @@ fn build_supp_variable_metadata() -> HashMap<String, VariableMetadata> {
 fn write_xpt_file(
     path: &Path,
     frame: &DomainFrame,
-    _variable_metadata: &HashMap<String, VariableMetadata>,
+    variable_metadata: &HashMap<String, VariableMetadata>,
 ) -> Result<(), ExportError> {
     use polars::prelude::{AnyValue, DataType};
     use xportrs::{Column, ColumnData, Dataset, Xpt};
@@ -433,19 +428,28 @@ fn write_xpt_file(
         };
 
         // Create column with name and data
-        // Note: xportrs Column doesn't support per-column labels or formats
-        let column = Column::new(&name, column_data);
+        let mut column = Column::new(&name, column_data);
+
+        // Set label and format from variable metadata
+        if let Some(meta) = variable_metadata.get(&name) {
+            if let Some(label) = &meta.label {
+                column = column.with_label(label.as_str());
+            }
+            if let Some(format) = &meta.format {
+                // Apply SAS format - our auto-generated formats ($N., 8.) are always valid
+                column = column
+                    .with_format_str(format)
+                    .expect("auto-generated SAS format should be valid");
+            }
+        }
+
         columns.push(column);
     }
 
-    // Create dataset with label
+    // Create dataset with label (domain code used as dataset label)
     let dataset_name = frame.dataset_name().to_uppercase();
-    let dataset = Dataset::with_label(
-        dataset_name.as_str(),
-        Some(frame.domain_code.as_str()),
-        columns,
-    )
-    .map_err(|e| ExportError::new(format!("Failed to create XPT dataset: {}", e)))?;
+    let dataset = Dataset::with_label(dataset_name.as_str(), frame.domain_code.as_str(), columns)
+        .map_err(|e| ExportError::new(format!("Failed to create XPT dataset: {}", e)))?;
 
     // Write to file using builder pattern
     Xpt::writer(dataset)

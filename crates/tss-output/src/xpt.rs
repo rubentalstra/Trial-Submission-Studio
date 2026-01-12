@@ -10,7 +10,7 @@ use tss_model::{Domain, VariableType};
 use tss_model::{any_to_f64, any_to_string};
 use xportrs::{Column, ColumnData, Dataset, Xpt};
 
-use crate::common::ensure_output_dir;
+use crate::common::{ensure_output_dir, variable_length};
 
 /// Write XPT outputs for all domains.
 pub fn write_xpt_outputs(
@@ -105,9 +105,18 @@ fn build_xpt_columns(domain: &Domain, df: &DataFrame) -> Result<Vec<Column>> {
         };
 
         // Create column with name and data
-        // Note: xportrs Column doesn't support per-column labels or explicit lengths
-        // The XPT writer determines character lengths from actual data
-        let column = Column::new(&variable.name, column_data);
+        let mut column = Column::new(&variable.name, column_data);
+
+        // Set label if available (required for FDA submissions)
+        if let Some(label) = &variable.label {
+            column = column.with_label(label.as_str());
+        }
+
+        // Set explicit length for character columns
+        if variable.data_type == VariableType::Char {
+            let length = variable_length(variable, df)?;
+            column = column.with_length(length as usize);
+        }
 
         columns.push(column);
     }
