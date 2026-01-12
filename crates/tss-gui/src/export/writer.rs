@@ -251,7 +251,10 @@ fn write_data_file(
 }
 
 /// Variable metadata for XPT export.
+/// Note: xportrs 0.0.5+ doesn't support per-column labels/formats,
+/// but we keep this structure for potential future API compatibility.
 #[derive(Debug, Clone, Default)]
+#[allow(dead_code)]
 struct VariableMetadata {
     /// Human-readable label (max 40 chars).
     label: Option<String>,
@@ -287,6 +290,9 @@ fn build_variable_metadata(domain: &Domain) -> HashMap<String, VariableMetadata>
 /// - "8." -> (None, 8, 0)
 /// - "DATE9." -> (Some("DATE"), 9, 0)
 /// - "12.2" -> (None, 12, 2)
+///
+/// Note: Currently unused as xportrs 0.0.5+ doesn't support format metadata.
+#[allow(dead_code)]
 fn parse_sas_format(format: &Option<String>) -> (Option<String>, u16, u16) {
     let Some(fmt) = format else {
         return (None, 0, 0);
@@ -361,154 +367,91 @@ fn build_supp_variable_metadata() -> HashMap<String, VariableMetadata> {
 fn write_xpt_file(
     path: &Path,
     frame: &DomainFrame,
-    variable_metadata: &HashMap<String, VariableMetadata>,
+    _variable_metadata: &HashMap<String, VariableMetadata>,
 ) -> Result<(), ExportError> {
     use polars::prelude::{AnyValue, DataType};
-    use xportrs::{
-        Justification, MissingValue, NumericValue, XptColumn, XptDataset, XptType, XptValue,
-        write_xpt,
-    };
+    use xportrs::{Column, ColumnData, Dataset, Xpt};
 
-    // Build columns
+    let row_count = frame.data.height();
+
+    // Build columns in columnar format (xportrs uses columnar data, not row-based)
     let mut columns = Vec::new();
     for col in frame.data.get_columns() {
         let name = col.name().to_uppercase();
         let dtype = col.dtype();
 
-        // Look up variable metadata for label and format
-        let metadata = variable_metadata.get(&name);
-
-        // Determine type and length
-        let (data_type, length) = match dtype {
+        // Determine if numeric or character based on dtype
+        let is_numeric = matches!(
+            dtype,
             DataType::Float64
-            | DataType::Float32
-            | DataType::Int64
-            | DataType::Int32
-            | DataType::Int16
-            | DataType::Int8
-            | DataType::UInt64
-            | DataType::UInt32
-            | DataType::UInt16
-            | DataType::UInt8 => (XptType::Num, 8),
-            _ => {
-                // String type - calculate max length
-                let max_len = if let Ok(str_col) = col.str() {
-                    str_col
-                        .iter()
-                        .flatten()
-                        .map(str::len)
-                        .max()
-                        .unwrap_or(8)
-                        .clamp(1, 200) // Cap at 200 for XPT
-                } else {
-                    8
+                | DataType::Float32
+                | DataType::Int64
+                | DataType::Int32
+                | DataType::Int16
+                | DataType::Int8
+                | DataType::UInt64
+                | DataType::UInt32
+                | DataType::UInt16
+                | DataType::UInt8
+        );
+
+        let column_data = if is_numeric {
+            // Build numeric column data
+            let mut values = Vec::with_capacity(row_count);
+            for row_idx in 0..row_count {
+                let value = col.get(row_idx).ok();
+                let num = match value {
+                    Some(AnyValue::Float64(n)) => Some(n),
+                    Some(AnyValue::Float32(n)) => Some(n as f64),
+                    Some(AnyValue::Int64(n)) => Some(n as f64),
+                    Some(AnyValue::Int32(n)) => Some(n as f64),
+                    Some(AnyValue::Int16(n)) => Some(n as f64),
+                    Some(AnyValue::Int8(n)) => Some(n as f64),
+                    Some(AnyValue::UInt64(n)) => Some(n as f64),
+                    Some(AnyValue::UInt32(n)) => Some(n as f64),
+                    Some(AnyValue::UInt16(n)) => Some(n as f64),
+                    Some(AnyValue::UInt8(n)) => Some(n as f64),
+                    _ => None,
                 };
-                (XptType::Char, max_len as u16)
+                values.push(num);
             }
+            ColumnData::F64(values)
+        } else {
+            // Build character column data
+            let mut values = Vec::with_capacity(row_count);
+            for row_idx in 0..row_count {
+                let value = col.get(row_idx).ok();
+                let s = match value {
+                    Some(AnyValue::String(s)) => Some(s.to_string()),
+                    Some(AnyValue::StringOwned(s)) => Some(s.to_string()),
+                    Some(AnyValue::Null) | None => None,
+                    Some(other) => Some(format!("{}", other)),
+                };
+                values.push(s);
+            }
+            ColumnData::String(values)
         };
 
-        // Get label from metadata, fall back to variable name
-        let label = metadata
-            .and_then(|m| m.label.clone())
-            .unwrap_or_else(|| name.clone());
-
-        // Get format from metadata, or derive default
-        let format = metadata
-            .and_then(|m| m.format.clone())
-            .or_else(|| match data_type {
-                XptType::Char => Some(format!("${length}.")),
-                XptType::Num => Some("8.".to_string()),
-                _ => Some("8.".to_string()), // Default for future XptType variants
-            });
-
-        // Parse format into name, length, decimals
-        let (format_name, format_length, format_decimals) = parse_sas_format(&format);
-
-        // Justification: Left for character, Right for numeric
-        let justification = match data_type {
-            XptType::Char => Justification::Left,
-            XptType::Num => Justification::Right,
-            _ => Justification::Right, // Default for future XptType variants
-        };
-
-        columns.push(XptColumn {
-            name: name.clone(),
-            label: Some(label),
-            data_type,
-            length,
-            format: format_name,
-            format_length,
-            format_decimals,
-            // Informat: Not typically needed for export (data already in memory)
-            informat: None,
-            informat_length: 0,
-            informat_decimals: 0,
-            justification,
-        });
+        // Create column with name and data
+        // Note: xportrs Column doesn't support per-column labels or formats
+        let column = Column::new(&name, column_data);
+        columns.push(column);
     }
 
-    // Build rows
-    let mut rows = Vec::with_capacity(frame.data.height());
-    for row_idx in 0..frame.data.height() {
-        let mut row = Vec::with_capacity(columns.len());
-        for (col_idx, col) in frame.data.get_columns().iter().enumerate() {
-            let value = col.get(row_idx).ok();
-            let xpt_type = columns[col_idx].data_type;
-
-            let xpt_value = match (xpt_type, value) {
-                (XptType::Num, Some(AnyValue::Float64(n))) => XptValue::Num(NumericValue::Value(n)),
-                (XptType::Num, Some(AnyValue::Float32(n))) => {
-                    XptValue::Num(NumericValue::Value(n as f64))
-                }
-                (XptType::Num, Some(AnyValue::Int64(n))) => {
-                    XptValue::Num(NumericValue::Value(n as f64))
-                }
-                (XptType::Num, Some(AnyValue::Int32(n))) => {
-                    XptValue::Num(NumericValue::Value(n as f64))
-                }
-                (XptType::Num, Some(AnyValue::Int16(n))) => {
-                    XptValue::Num(NumericValue::Value(n as f64))
-                }
-                (XptType::Num, Some(AnyValue::Int8(n))) => {
-                    XptValue::Num(NumericValue::Value(n as f64))
-                }
-                (XptType::Num, Some(AnyValue::UInt64(n))) => {
-                    XptValue::Num(NumericValue::Value(n as f64))
-                }
-                (XptType::Num, Some(AnyValue::UInt32(n))) => {
-                    XptValue::Num(NumericValue::Value(n as f64))
-                }
-                (XptType::Num, Some(AnyValue::UInt16(n))) => {
-                    XptValue::Num(NumericValue::Value(n as f64))
-                }
-                (XptType::Num, Some(AnyValue::UInt8(n))) => {
-                    XptValue::Num(NumericValue::Value(n as f64))
-                }
-                (XptType::Num, _) => XptValue::Num(NumericValue::Missing(MissingValue::Standard)),
-                (XptType::Char, Some(AnyValue::String(s))) => XptValue::Char(s.to_string()),
-                (XptType::Char, Some(AnyValue::StringOwned(s))) => XptValue::Char(s.to_string()),
-                (XptType::Char, Some(AnyValue::Null)) | (XptType::Char, None) => {
-                    XptValue::Char(String::new())
-                }
-                (XptType::Char, Some(other)) => XptValue::Char(format!("{}", other)),
-                (_, _) => XptValue::Num(NumericValue::Missing(MissingValue::Standard)), // Default for future variants
-            };
-            row.push(xpt_value);
-        }
-        rows.push(row);
-    }
-
-    // Create dataset
-    let dataset = XptDataset {
-        name: frame.dataset_name().to_uppercase(),
-        label: Some(frame.domain_code.clone()),
-        dataset_type: None,
+    // Create dataset with label
+    let dataset_name = frame.dataset_name().to_uppercase();
+    let dataset = Dataset::with_label(
+        dataset_name.as_str(),
+        Some(frame.domain_code.as_str()),
         columns,
-        rows,
-    };
+    )
+    .map_err(|e| ExportError::new(format!("Failed to create XPT dataset: {}", e)))?;
 
-    // Write to file
-    write_xpt(path, &dataset)
+    // Write to file using builder pattern
+    Xpt::writer(dataset)
+        .finalize()
+        .map_err(|e| ExportError::new(format!("Failed to validate XPT dataset: {}", e)))?
+        .write_path(path)
         .map_err(|e| ExportError::new(format!("Failed to write XPT file: {}", e)))?;
 
     Ok(())

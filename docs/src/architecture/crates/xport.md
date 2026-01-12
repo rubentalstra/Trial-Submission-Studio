@@ -1,10 +1,10 @@
-# xport
+# xportrs
 
-XPT (SAS Transport) file I/O crate. Designed for standalone use and publishing to crates.io.
+XPT (SAS Transport) file I/O library. Trial Submission Studio uses the [xportrs](https://crates.io/crates/xportrs) crate from crates.io.
 
 ## Overview
 
-`xport` provides reading and writing of XPT V5 and V8 format files. It's designed to be used independently of the Trial Submission Studio application for general SAS Transport file handling.
+`xportrs` provides reading and writing of XPT V5 and V8 format files. It's a standalone crate designed for general SAS Transport file handling.
 
 ## Features
 
@@ -15,29 +15,13 @@ XPT (SAS Transport) file I/O crate. Designed for standalone use and publishing t
 - Optional Polars DataFrame integration (`polars` feature)
 - Optional serde serialization (`serde` feature)
 
-## Dependencies
+## Installation
 
 ```toml
 [dependencies]
-xport = { version = "0.1", features = ["polars"] }  # With DataFrame support
+xportrs = { version = "0.0.6", features = ["polars"] }  # With DataFrame support
 # or
-xport = "0.1"  # Core functionality only
-```
-
-## Architecture
-
-### Module Structure
-
-```
-xport/
-├── src/
-│   ├── lib.rs
-│   ├── reader/       # XPT file reading (streaming)
-│   ├── writer/       # XPT file writing (streaming)
-│   ├── header/       # Header parsing
-│   ├── types/        # Core types (column, value, missing)
-│   ├── error/        # Error handling
-│   └── version.rs    # V5/V8 version handling
+xportrs = "0.0.6"  # Core functionality only
 ```
 
 ## XPT Format Details
@@ -45,105 +29,90 @@ xport/
 ### File Structure
 
 ```
-┌─────────────────────────────────────┐
-│ Library Header (80 bytes × 2)       │
-├─────────────────────────────────────┤
-│ Member Header (80 bytes × 3)        │
-├─────────────────────────────────────┤
-│ Namestr Records (140 bytes each)    │
-│ (one per variable)                  │
-├─────────────────────────────────────┤
-│ Observation Header (80 bytes)       │
-├─────────────────────────────────────┤
-│ Data Records                        │
-│ (fixed-width, packed)               │
-└─────────────────────────────────────┘
++-------------------------------------+
+| Library Header (80 bytes x 2)       |
++-------------------------------------+
+| Member Header (80 bytes x 3)        |
++-------------------------------------+
+| Namestr Records (140 bytes each)    |
+| (one per variable)                  |
++-------------------------------------+
+| Observation Header (80 bytes)       |
++-------------------------------------+
+| Data Records                        |
+| (fixed-width, packed)               |
++-------------------------------------+
 ```
 
 ### Numeric Handling
 
-IBM mainframe to IEEE conversion:
+IBM mainframe to IEEE conversion is handled automatically when reading/writing XPT files.
 
-```rust
-pub fn ibm_to_ieee(ibm_bytes: [u8; 8]) -> f64 {
-    // Convert IBM 370 floating point to IEEE 754
-}
-
-pub fn ieee_to_ibm(value: f64) -> [u8; 8] {
-    // Convert IEEE 754 to IBM 370 floating point
-}
-```
-
-### Missing Values
-
-Support for all 28 SAS missing codes:
-
-```rust
-pub enum MissingValue {
-    Standard,           // .
-    Special(char),      // .A through .Z
-    Underscore,         // ._
-}
-```
-
-## API
+## API Examples
 
 ### Reading
 
 ```rust
-use xport::{read_xpt, XptDataset};
+use xportrs::Xpt;
 
-let dataset: XptDataset = read_xpt("dm.xpt")?;
-println!("Variables: {}", dataset.columns.len());
-println!("Observations: {}", dataset.rows.len());
+let datasets = Xpt::reader()
+    .read_path("dm.xpt")?;
+
+for dataset in datasets {
+    println!("Domain: {}", dataset.domain_code());
+    println!("Variables: {}", dataset.len());
+    println!("Observations: {}", dataset.nrows());
+}
 ```
 
 ### Writing
 
 ```rust
-use xport::{write_xpt, XptDataset, XptColumn, XptVersion};
+use xportrs::{Column, ColumnData, Dataset, Xpt};
 
-let dataset = XptDataset {
-    name: "DM".to_string(),
-    label: Some("Demographics".to_string()),
-    columns: vec![
-        XptColumn::character("USUBJID", 20).with_label("Unique Subject ID"),
-        XptColumn::numeric("AGE").with_label("Age"),
-    ],
-    rows: vec![/* data rows */],
-    ..Default::default()
-};
+// Create columns with data
+let usubjid = Column::new("USUBJID", ColumnData::String(vec![
+    Some("ABC-001".into()),
+    Some("ABC-002".into()),
+]));
 
-write_xpt("dm.xpt", &dataset)?;
+let age = Column::new("AGE", ColumnData::F64(vec![
+    Some(45.0),
+    Some(38.0),
+]));
+
+// Create dataset
+let dataset = Dataset::with_label("DM", Some("Demographics"), vec![usubjid, age])?;
+
+// Write to file
+Xpt::writer(dataset)
+    .finalize()?
+    .write_path("dm.xpt")?;
 ```
 
 ### With Polars (optional feature)
 
 ```rust
-use xport::polars::{read_xpt_to_dataframe, write_dataframe_to_xpt};
+use xportrs::Xpt;
 use polars::prelude::*;
 
 // Read to DataFrame
-let df = read_xpt_to_dataframe("dm.xpt")?;
+let datasets = Xpt::reader()
+    .read_path("dm.xpt")?;
+let df: DataFrame = datasets[0].clone().try_into()?;
 
 // Write from DataFrame
-write_dataframe_to_xpt(&df, "output.xpt", XptVersion::V5)?;
+let dataset: Dataset = df.try_into()?;
+Xpt::writer(dataset)
+    .finalize()?
+    .write_path("output.xpt")?;
 ```
 
-## Testing
+## Resources
 
-```bash
-cargo test --package xport
-cargo test --package xport --features polars
-```
-
-### Test Categories
-
-- Header parsing
-- Numeric conversion accuracy
-- Missing value roundtrip
-- Large file handling
-- V5/V8 compatibility
+- [xportrs on crates.io](https://crates.io/crates/xportrs)
+- [xportrs documentation](https://docs.rs/xportrs)
+- [GitHub repository](https://github.com/rubentalstra/xportrs)
 
 ## See Also
 

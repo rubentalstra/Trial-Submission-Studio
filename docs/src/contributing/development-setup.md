@@ -112,7 +112,7 @@ cargo run --package tss-gui
 cargo test
 
 # Specific crate
-cargo test --package xport
+cargo test --package tss-output
 
 # With output
 cargo test -- --nocapture
@@ -159,7 +159,7 @@ trial-submission-studio/
 ├── Cargo.toml              # Workspace config
 ├── crates/                 # All crates
 │   ├── tss-gui/           # Main application
-│   ├── xport/             # XPT I/O
+│   ├── tss-output/        # Multi-format export (uses xportrs)
 │   └── ...                # Other crates
 ├── standards/             # Embedded CDISC data
 ├── mockdata/              # Test data

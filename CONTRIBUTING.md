@@ -100,17 +100,16 @@ This file is embedded in the application and displayed in Help > Third-Party Lic
 
 ## Project Architecture
 
-Trial Submission Studio is organized as a 10-crate Rust workspace:
+Trial Submission Studio is organized as a 9-crate Rust workspace:
 
 | Crate           | Purpose                                      |
 |-----------------|----------------------------------------------|
 | `tss-gui`       | Desktop GUI application (egui/eframe)        |
-| `xport`         | XPT (SAS Transport) file I/O                 |
 | `tss-validate`  | CDISC conformance validation                 |
 | `tss-map`       | Fuzzy column mapping engine                  |
 | `tss-normalization` | Data transformation rules                |
 | `tss-ingest`    | CSV discovery and parsing                    |
-| `tss-output`    | Multi-format export (XPT, XML)               |
+| `tss-output`    | Multi-format export (uses xportrs)           |
 | `tss-standards` | CDISC standards loader                       |
 | `tss-model`     | Core domain types + Polars utilities         |
 | `tss-updater`   | Auto-update functionality                    |
@@ -167,7 +166,7 @@ Trial Submission Studio is organized as a 10-crate Rust workspace:
 cargo test
 
 # Specific crate
-cargo test --package xport
+cargo test --package tss-output
 
 # With output
 cargo test -- --nocapture
