@@ -2,9 +2,15 @@
 //!
 //! The preview tab displays a paginated data table showing the
 //! transformed output data from the mapping and normalization steps.
+//!
+//! Features:
+//! - Horizontal and vertical scrolling
+//! - Dynamic column widths based on content
+//! - Responsive layout that uses available space
+//! - Pagination with configurable rows per page
 
-use iced::widget::{Space, button, column, container, row, rule, scrollable, text};
-use iced::{Alignment, Border, Element, Length};
+use iced::widget::{Space, button, column, container, row, scrollable, text};
+use iced::{Alignment, Border, Element, Length, Theme};
 use iced_fonts::lucide;
 use polars::prelude::DataFrame;
 
@@ -12,10 +18,27 @@ use crate::message::domain_editor::PreviewMessage;
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{AppState, PreviewUiState, ViewState};
 use crate::theme::{
-    GRAY_50, GRAY_100, GRAY_200, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800, GRAY_900,
-    PRIMARY_500, SPACING_LG, SPACING_MD, SPACING_SM, TABLE_CELL_PADDING_X, TABLE_CELL_PADDING_Y,
-    WHITE, button_ghost, button_primary, button_secondary,
+    BORDER_RADIUS_SM, GRAY_100, GRAY_200, GRAY_300, GRAY_400, GRAY_500, GRAY_600, GRAY_700,
+    GRAY_800, GRAY_900, PRIMARY_100, PRIMARY_500, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS,
+    WHITE, button_ghost, button_primary,
 };
+
+// =============================================================================
+// CONSTANTS
+// =============================================================================
+
+/// Minimum column width
+const MIN_COL_WIDTH: f32 = 60.0;
+
+/// Maximum column width
+const MAX_COL_WIDTH: f32 = 300.0;
+
+/// Padding inside cells
+const CELL_PADDING_X: f32 = 12.0;
+const CELL_PADDING_Y: f32 = 8.0;
+
+/// Approximate character width for calculating column widths
+const CHAR_WIDTH: f32 = 7.5;
 
 // =============================================================================
 // MAIN PREVIEW TAB VIEW
@@ -26,7 +49,12 @@ pub fn view_preview_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
     let _domain = match state.domain(domain_code) {
         Some(d) => d,
         None => {
-            return text("Domain not found").size(14).color(GRAY_500).into();
+            return container(text("Domain not found").size(14).color(GRAY_500))
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .center_x(Length::Shrink)
+                .center_y(Length::Shrink)
+                .into();
         }
     };
 
@@ -41,7 +69,7 @@ pub fn view_preview_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
     };
 
     // Header
-    let header = view_preview_header(preview_ui);
+    let header = view_preview_header(preview_cache.as_ref(), preview_ui);
 
     // Content based on state
     let content: Element<'a, Message> = if preview_ui.is_rebuilding {
@@ -55,7 +83,8 @@ pub fn view_preview_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
     };
 
     column![header, Space::new().height(SPACING_MD), content,]
-        .spacing(0)
+        .width(Length::Fill)
+        .height(Length::Fill)
         .into()
 }
 
@@ -64,28 +93,77 @@ pub fn view_preview_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
 // =============================================================================
 
 /// Preview header with stats and rebuild button.
-fn view_preview_header<'a>(preview_ui: &PreviewUiState) -> Element<'a, Message> {
+fn view_preview_header<'a>(
+    df: Option<&DataFrame>,
+    preview_ui: &PreviewUiState,
+) -> Element<'a, Message> {
     let title = text("Data Preview").size(18).color(GRAY_900);
 
-    let subtitle = text("Preview of transformed SDTM output data")
-        .size(13)
-        .color(GRAY_600);
+    // Stats based on DataFrame
+    let stats: Element<'a, Message> = if let Some(df) = df {
+        let num_cols = df.width();
+        let num_rows = df.height();
+        row![
+            container(
+                row![
+                    lucide::table().size(12).color(GRAY_500),
+                    Space::new().width(SPACING_XS),
+                    text(format!("{} columns", num_cols))
+                        .size(12)
+                        .color(GRAY_600),
+                ]
+                .align_y(Alignment::Center)
+            )
+            .padding([4.0, 8.0])
+            .style(|_: &Theme| container::Style {
+                background: Some(GRAY_100.into()),
+                border: Border {
+                    radius: BORDER_RADIUS_SM.into(),
+                    ..Default::default()
+                },
+                ..Default::default()
+            }),
+            Space::new().width(SPACING_SM),
+            container(
+                row![
+                    lucide::list().size(12).color(GRAY_500),
+                    Space::new().width(SPACING_XS),
+                    text(format!("{} rows", num_rows)).size(12).color(GRAY_600),
+                ]
+                .align_y(Alignment::Center)
+            )
+            .padding([4.0, 8.0])
+            .style(|_: &Theme| container::Style {
+                background: Some(GRAY_100.into()),
+                border: Border {
+                    radius: BORDER_RADIUS_SM.into(),
+                    ..Default::default()
+                },
+                ..Default::default()
+            }),
+        ]
+        .align_y(Alignment::Center)
+        .into()
+    } else {
+        text("No data loaded").size(12).color(GRAY_500).into()
+    };
 
     let rebuild_button = button(
         row![
             if preview_ui.is_rebuilding {
-                lucide::loader().size(12)
+                lucide::loader().size(14).color(WHITE)
             } else {
-                lucide::refresh_cw().size(12)
+                lucide::refresh_cw().size(14).color(WHITE)
             },
+            Space::new().width(SPACING_SM),
             text(if preview_ui.is_rebuilding {
                 "Building..."
             } else {
-                "Rebuild Preview"
+                "Rebuild"
             })
-            .size(14),
+            .size(13)
+            .color(WHITE),
         ]
-        .spacing(SPACING_SM)
         .align_y(Alignment::Center),
     )
     .on_press_maybe(if preview_ui.is_rebuilding {
@@ -99,11 +177,11 @@ fn view_preview_header<'a>(preview_ui: &PreviewUiState) -> Element<'a, Message> 
     .style(button_primary);
 
     row![
-        column![title, Space::new().height(4.0), subtitle,],
+        column![title, Space::new().height(SPACING_XS), stats,],
         Space::new().width(Length::Fill),
         rebuild_button,
     ]
-    .align_y(Alignment::Start)
+    .align_y(Alignment::Center)
     .into()
 }
 
@@ -111,7 +189,7 @@ fn view_preview_header<'a>(preview_ui: &PreviewUiState) -> Element<'a, Message> 
 // DATA TABLE VIEW
 // =============================================================================
 
-/// Display the actual data table from DataFrame.
+/// Display the actual data table from DataFrame with horizontal scrolling.
 fn view_data_table<'a>(df: &DataFrame, preview_ui: &PreviewUiState) -> Element<'a, Message> {
     let col_names: Vec<String> = df
         .get_column_names()
@@ -122,68 +200,227 @@ fn view_data_table<'a>(df: &DataFrame, preview_ui: &PreviewUiState) -> Element<'
     let page = preview_ui.current_page;
     let page_size = preview_ui.rows_per_page;
 
-    // Build column widths
-    let col_widths: Vec<f32> = col_names
-        .iter()
-        .map(|name| match name.as_str() {
-            "USUBJID" => 150.0,
-            "STUDYID" => 120.0,
-            "DOMAIN" => 60.0,
-            _ if name.ends_with("DTC") => 120.0,
-            _ if name.ends_with("DY") => 80.0,
-            _ if name.ends_with("SEQ") => 80.0,
-            _ => 100.0,
-        })
-        .collect();
-
-    // Header row
-    let header_row = {
-        let mut header = row![].spacing(0);
-        for (name, &width) in col_names.iter().zip(col_widths.iter()) {
-            // Clone the name to move into the widget
-            let name_owned = name.clone();
-            header = header.push(
-                container(text(name_owned).size(12).color(GRAY_600))
-                    .width(Length::Fixed(width))
-                    .padding([TABLE_CELL_PADDING_Y, TABLE_CELL_PADDING_X])
-                    .style(|_theme| container::Style {
-                        background: Some(GRAY_100.into()),
-                        ..Default::default()
-                    }),
-            );
-        }
-        header
-    };
+    // Calculate column widths based on content
+    let col_widths = calculate_column_widths(df, &col_names);
 
     // Calculate visible rows
     let start = page * page_size;
     let end = (start + page_size).min(total_rows);
 
-    // Build data rows
+    // Build the complete table (header + data)
+    let table_content = build_table_content(df, &col_names, &col_widths, start, end);
+
+    // Pagination controls
+    let pagination = view_pagination(page, total_rows, page_size);
+
+    // Rows per page selector
+    let rows_selector = view_rows_per_page_selector(preview_ui.rows_per_page);
+
+    // Bottom bar with pagination and rows selector
+    let bottom_bar = container(
+        row![
+            rows_selector,
+            Space::new().width(Length::Fill),
+            pagination,
+            Space::new().width(Length::Fill),
+            // Spacer to balance the rows selector
+            Space::new().width(150.0),
+        ]
+        .align_y(Alignment::Center)
+        .padding([SPACING_SM, SPACING_MD]),
+    )
+    .style(|_: &Theme| container::Style {
+        background: Some(GRAY_100.into()),
+        border: Border {
+            color: GRAY_200,
+            width: 1.0,
+            radius: BORDER_RADIUS_SM.into(),
+        },
+        ..Default::default()
+    });
+
+    // Main table container with border
+    let table_container = container(
+        column![
+            // Scrollable table area (both horizontal and vertical)
+            scrollable(
+                scrollable(table_content)
+                    .direction(scrollable::Direction::Horizontal(
+                        scrollable::Scrollbar::new().width(8).scroller_width(6),
+                    ))
+                    .width(Length::Shrink)
+            )
+            .direction(scrollable::Direction::Vertical(
+                scrollable::Scrollbar::new().width(8).scroller_width(6),
+            ))
+            .height(Length::Fill)
+            .width(Length::Fill),
+            // Bottom bar
+            bottom_bar,
+        ]
+        .width(Length::Fill)
+        .height(Length::Fill),
+    )
+    .width(Length::Fill)
+    .height(Length::Fill)
+    .style(|_: &Theme| container::Style {
+        border: Border {
+            color: GRAY_200,
+            width: 1.0,
+            radius: BORDER_RADIUS_SM.into(),
+        },
+        ..Default::default()
+    });
+
+    table_container.into()
+}
+
+/// Calculate optimal column widths based on header and data content.
+fn calculate_column_widths(df: &DataFrame, col_names: &[String]) -> Vec<f32> {
+    col_names
+        .iter()
+        .enumerate()
+        .map(|(_col_idx, name)| {
+            // Start with header width
+            let header_width = (name.len() as f32 * CHAR_WIDTH) + (CELL_PADDING_X * 2.0);
+
+            // Sample some data values to find max width
+            let mut max_data_width: f32 = 0.0;
+            if let Ok(col) = df.column(name) {
+                // Sample first 50 rows for width calculation
+                let sample_count = col.len().min(50);
+                for i in 0..sample_count {
+                    if let Ok(val) = col.get(i) {
+                        let val_str = format_anyvalue(&val);
+                        let val_width =
+                            (val_str.len() as f32 * CHAR_WIDTH) + (CELL_PADDING_X * 2.0);
+                        max_data_width = max_data_width.max(val_width);
+                    }
+                }
+            }
+
+            // Use the larger of header or data width, clamped to min/max
+            let width = header_width.max(max_data_width);
+
+            // Apply special rules for known column types
+            let adjusted_width = match name.as_str() {
+                "STUDYID" => width.max(100.0),
+                "USUBJID" => width.max(140.0),
+                "DOMAIN" => width.max(70.0).min(80.0),
+                _ if name.ends_with("SEQ") => width.max(70.0).min(90.0),
+                _ if name.ends_with("DY") => width.max(70.0).min(90.0),
+                _ if name.ends_with("DTC") => width.max(110.0),
+                _ => width,
+            };
+
+            adjusted_width.clamp(MIN_COL_WIDTH, MAX_COL_WIDTH)
+        })
+        .collect()
+}
+
+/// Build the table content (header row + data rows).
+fn build_table_content<'a>(
+    df: &DataFrame,
+    col_names: &[String],
+    col_widths: &[f32],
+    start: usize,
+    end: usize,
+) -> Element<'a, Message> {
+    // Header row
+    let header_row = build_header_row(col_names, col_widths);
+
+    // Data rows
     let mut data_rows = column![].spacing(0);
     for row_idx in start..end {
-        let mut data_row = row![].spacing(0);
-        for (col_idx, col) in df.get_columns().iter().enumerate() {
-            let value = col
-                .get(row_idx)
-                .map_or_else(|_| String::new(), |v| format_anyvalue(&v));
-            let width = col_widths.get(col_idx).copied().unwrap_or(100.0);
-            let is_even = (row_idx - start) % 2 == 0;
-
-            data_row = data_row.push(
-                container(text(value).size(13).color(GRAY_700))
-                    .width(Length::Fixed(width))
-                    .padding([TABLE_CELL_PADDING_Y, TABLE_CELL_PADDING_X])
-                    .style(move |_theme| container::Style {
-                        background: Some(if is_even { WHITE } else { GRAY_50 }.into()),
-                        ..Default::default()
-                    }),
-            );
-        }
-        data_rows = data_rows.push(data_row);
+        let is_even = (row_idx - start) % 2 == 0;
+        data_rows = data_rows.push(build_data_row(df, col_widths, row_idx, is_even));
     }
 
-    // Pagination
+    column![header_row, data_rows,].width(Length::Shrink).into()
+}
+
+/// Build the header row.
+fn build_header_row<'a>(col_names: &[String], col_widths: &[f32]) -> Element<'a, Message> {
+    let mut header = row![].spacing(0);
+
+    for (name, &width) in col_names.iter().zip(col_widths.iter()) {
+        let cell = container(
+            text(name.clone())
+                .size(12)
+                .color(GRAY_700)
+                .font(iced::Font {
+                    weight: iced::font::Weight::Semibold,
+                    ..Default::default()
+                }),
+        )
+        .width(Length::Fixed(width))
+        .padding([CELL_PADDING_Y, CELL_PADDING_X])
+        .style(|_: &Theme| container::Style {
+            background: Some(GRAY_100.into()),
+            border: Border {
+                color: GRAY_200,
+                width: 1.0,
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
+        header = header.push(cell);
+    }
+
+    container(header)
+        .style(|_: &Theme| container::Style {
+            background: Some(GRAY_100.into()),
+            ..Default::default()
+        })
+        .into()
+}
+
+/// Build a single data row.
+fn build_data_row<'a>(
+    df: &DataFrame,
+    col_widths: &[f32],
+    row_idx: usize,
+    is_even: bool,
+) -> Element<'a, Message> {
+    let mut data_row = row![].spacing(0);
+    let bg_color = if is_even { WHITE } else { GRAY_100 };
+
+    for (col_idx, col) in df.get_columns().iter().enumerate() {
+        let value = col
+            .get(row_idx)
+            .map_or_else(|_| String::new(), |v| format_anyvalue(&v));
+        let width = col_widths.get(col_idx).copied().unwrap_or(100.0);
+
+        // Check if value is empty/null for styling
+        let text_color = if value.is_empty() { GRAY_400 } else { GRAY_800 };
+        let display_value = if value.is_empty() {
+            "—".to_string()
+        } else {
+            value
+        };
+
+        let cell = container(text(display_value).size(13).color(text_color))
+            .width(Length::Fixed(width))
+            .padding([CELL_PADDING_Y, CELL_PADDING_X])
+            .style(move |_: &Theme| container::Style {
+                background: Some(bg_color.into()),
+                border: Border {
+                    color: GRAY_200,
+                    width: 0.5,
+                    ..Default::default()
+                },
+                ..Default::default()
+            });
+
+        data_row = data_row.push(cell);
+    }
+
+    data_row.into()
+}
+
+/// Pagination controls.
+fn view_pagination<'a>(page: usize, total_rows: usize, page_size: usize) -> Element<'a, Message> {
     let total_pages = if total_rows == 0 {
         1
     } else {
@@ -193,10 +430,27 @@ fn view_data_table<'a>(df: &DataFrame, preview_ui: &PreviewUiState) -> Element<'
     let prev_enabled = page > 0;
     let next_enabled = page < total_pages.saturating_sub(1);
 
+    // First page button
+    let first_button = button(lucide::chevrons_left().size(14).color(if prev_enabled {
+        GRAY_700
+    } else {
+        GRAY_400
+    }))
+    .on_press_maybe(if prev_enabled {
+        Some(Message::DomainEditor(DomainEditorMessage::Preview(
+            PreviewMessage::GoToPage(0),
+        )))
+    } else {
+        None
+    })
+    .padding([6.0, 8.0])
+    .style(button_ghost);
+
+    // Previous page button
     let prev_button = button(lucide::chevron_left().size(14).color(if prev_enabled {
         GRAY_700
     } else {
-        GRAY_500
+        GRAY_400
     }))
     .on_press_maybe(if prev_enabled {
         Some(Message::DomainEditor(DomainEditorMessage::Preview(
@@ -205,13 +459,38 @@ fn view_data_table<'a>(df: &DataFrame, preview_ui: &PreviewUiState) -> Element<'
     } else {
         None
     })
-    .padding([4.0, 10.0])
+    .padding([6.0, 8.0])
     .style(button_ghost);
 
+    // Page info
+    let start_row = page * page_size + 1;
+    let end_row = ((page + 1) * page_size).min(total_rows);
+    let page_info = container(
+        text(format!(
+            "{}-{} of {}",
+            if total_rows == 0 { 0 } else { start_row },
+            end_row,
+            total_rows
+        ))
+        .size(12)
+        .color(GRAY_700),
+    )
+    .padding([6.0, 12.0])
+    .style(|_: &Theme| container::Style {
+        background: Some(WHITE.into()),
+        border: Border {
+            color: GRAY_200,
+            width: 1.0,
+            radius: BORDER_RADIUS_SM.into(),
+        },
+        ..Default::default()
+    });
+
+    // Next page button
     let next_button = button(lucide::chevron_right().size(14).color(if next_enabled {
         GRAY_700
     } else {
-        GRAY_500
+        GRAY_400
     }))
     .on_press_maybe(if next_enabled {
         Some(Message::DomainEditor(DomainEditorMessage::Preview(
@@ -220,79 +499,90 @@ fn view_data_table<'a>(df: &DataFrame, preview_ui: &PreviewUiState) -> Element<'
     } else {
         None
     })
-    .padding([4.0, 10.0])
+    .padding([6.0, 8.0])
     .style(button_ghost);
 
-    let page_info = text(format!(
-        "Page {} of {} ({} rows)",
-        page + 1,
-        total_pages,
-        total_rows
-    ))
-    .size(12)
-    .color(GRAY_600);
-
-    let pagination = row![
-        Space::new().width(Length::Fill),
-        prev_button,
-        page_info,
-        next_button,
-        Space::new().width(Length::Fill),
-    ]
-    .spacing(SPACING_SM)
-    .align_y(Alignment::Center);
-
-    // Stats bar
-    let num_columns = col_names.len();
-    let stats = row![
-        text(format!("{} columns", num_columns))
-            .size(12)
-            .color(GRAY_600),
-        text("•").size(12).color(GRAY_400),
-        text(format!("{} rows", total_rows))
-            .size(12)
-            .color(GRAY_600),
-        Space::new().width(Length::Fill),
-        text("Rows per page:").size(12).color(GRAY_500),
-        view_rows_per_page_selector(preview_ui.rows_per_page),
-    ]
-    .spacing(SPACING_SM)
-    .align_y(Alignment::Center);
-
-    // Table container
-    let table: Element<'a, Message> = container(
-        column![
-            header_row,
-            rule::horizontal(1).style(|_theme| rule::Style {
-                color: GRAY_200,
-                radius: 0.0.into(),
-                fill_mode: rule::FillMode::Full,
-                snap: true,
-            }),
-            scrollable(data_rows).height(Length::Fill),
-            rule::horizontal(1).style(|_theme| rule::Style {
-                color: GRAY_200,
-                radius: 0.0.into(),
-                fill_mode: rule::FillMode::Full,
-                snap: true,
-            }),
-            container(pagination).padding(SPACING_SM),
-        ]
-        .spacing(0),
-    )
-    .width(Length::Fill)
-    .height(Length::Fill)
-    .style(|_theme| container::Style {
-        border: Border {
-            width: 1.0,
-            radius: 4.0.into(),
-            color: GRAY_200,
-        },
-        ..Default::default()
+    // Last page button
+    let last_button = button(lucide::chevrons_right().size(14).color(if next_enabled {
+        GRAY_700
+    } else {
+        GRAY_400
+    }))
+    .on_press_maybe(if next_enabled {
+        Some(Message::DomainEditor(DomainEditorMessage::Preview(
+            PreviewMessage::GoToPage(total_pages.saturating_sub(1)),
+        )))
+    } else {
+        None
     })
-    .into();
+    .padding([6.0, 8.0])
+    .style(button_ghost);
 
-    column![stats, Space::new().height(SPACING_SM), table,].into()
+    row![
+        first_button,
+        prev_button,
+        Space::new().width(SPACING_XS),
+        page_info,
+        Space::new().width(SPACING_XS),
+        next_button,
+        last_button,
+    ]
+    .align_y(Alignment::Center)
+    .into()
+}
+
+/// Rows per page selector.
+fn view_rows_per_page_selector<'a>(current: usize) -> Element<'a, Message> {
+    let options = [25, 50, 100, 200];
+
+    let label = text("Rows:").size(12).color(GRAY_600);
+
+    let buttons: Vec<Element<'a, Message>> = options
+        .iter()
+        .map(|&n| {
+            let is_selected = current == n;
+            button(text(format!("{}", n)).size(11).color(if is_selected {
+                PRIMARY_500
+            } else {
+                GRAY_600
+            }))
+            .on_press(Message::DomainEditor(DomainEditorMessage::Preview(
+                PreviewMessage::RowsPerPageChanged(n),
+            )))
+            .padding([4.0, 8.0])
+            .style(move |_: &Theme, _status| {
+                if is_selected {
+                    iced::widget::button::Style {
+                        background: Some(PRIMARY_100.into()),
+                        text_color: PRIMARY_500,
+                        border: Border {
+                            color: PRIMARY_500,
+                            width: 1.0,
+                            radius: BORDER_RADIUS_SM.into(),
+                        },
+                        ..Default::default()
+                    }
+                } else {
+                    iced::widget::button::Style {
+                        background: Some(WHITE.into()),
+                        text_color: GRAY_600,
+                        border: Border {
+                            color: GRAY_300,
+                            width: 1.0,
+                            radius: BORDER_RADIUS_SM.into(),
+                        },
+                        ..Default::default()
+                    }
+                }
+            })
+            .into()
+        })
+        .collect();
+
+    row![label, Space::new().width(SPACING_SM),]
+        .push(row(buttons).spacing(4.0))
+        .align_y(Alignment::Center)
+        .into()
 }
 
 /// Format a Polars AnyValue for display.
@@ -336,41 +626,6 @@ fn format_anyvalue(value: &polars::prelude::AnyValue) -> String {
     }
 }
 
-/// Rows per page selector buttons.
-fn view_rows_per_page_selector<'a>(current: usize) -> Element<'a, Message> {
-    let options = [25, 50, 100];
-
-    let buttons: Vec<Element<'a, Message>> = options
-        .iter()
-        .map(|&n| {
-            let is_selected = current == n;
-            button(text(format!("{}", n)).size(11))
-                .on_press(Message::DomainEditor(DomainEditorMessage::Preview(
-                    PreviewMessage::RowsPerPageChanged(n),
-                )))
-                .padding([4.0, 8.0])
-                .style(move |_theme, _status| {
-                    if is_selected {
-                        iced::widget::button::Style {
-                            background: Some(PRIMARY_500.into()),
-                            text_color: iced::Color::WHITE,
-                            border: Border {
-                                radius: 4.0.into(),
-                                ..Default::default()
-                            },
-                            ..Default::default()
-                        }
-                    } else {
-                        button_secondary(_theme, _status)
-                    }
-                })
-                .into()
-        })
-        .collect();
-
-    row(buttons).spacing(4.0).into()
-}
-
 // =============================================================================
 // STATES
 // =============================================================================
@@ -379,18 +634,18 @@ fn view_rows_per_page_selector<'a>(current: usize) -> Element<'a, Message> {
 fn view_loading_state<'a>() -> Element<'a, Message> {
     container(
         column![
-            lucide::loader().size(32).color(PRIMARY_500),
-            Space::new().height(SPACING_MD),
-            text("Building Preview...").size(16).color(GRAY_600),
+            lucide::loader().size(40).color(PRIMARY_500),
+            Space::new().height(SPACING_LG),
+            text("Building Preview").size(18).color(GRAY_800),
             Space::new().height(SPACING_SM),
-            text("Applying mappings and normalization rules")
+            text("Applying mappings and normalization rules...")
                 .size(13)
                 .color(GRAY_500),
         ]
         .align_x(Alignment::Center),
     )
     .width(Length::Fill)
-    .height(Length::Fixed(300.0))
+    .height(Length::Fill)
     .center_x(Length::Shrink)
     .center_y(Length::Shrink)
     .into()
@@ -403,36 +658,41 @@ fn view_error_state(error: &str) -> Element<'_, Message> {
     container(
         column![
             lucide::circle_alert().size(48).color(crate::theme::ERROR),
-            Space::new().height(SPACING_MD),
-            text("Preview Build Failed").size(16).color(GRAY_800),
+            Space::new().height(SPACING_LG),
+            text("Preview Build Failed").size(18).color(GRAY_800),
             Space::new().height(SPACING_SM),
-            text(error_text).size(13).color(GRAY_600),
+            container(text(error_text).size(12).color(GRAY_600))
+                .padding(SPACING_MD)
+                .style(|_: &Theme| container::Style {
+                    background: Some(GRAY_100.into()),
+                    border: Border {
+                        radius: BORDER_RADIUS_SM.into(),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                }),
             Space::new().height(SPACING_LG),
             button(
-                row![lucide::refresh_cw().size(12), text("Retry").size(14),]
-                    .spacing(SPACING_SM)
-                    .align_y(Alignment::Center),
+                row![
+                    lucide::refresh_cw().size(14).color(WHITE),
+                    Space::new().width(SPACING_SM),
+                    text("Retry").size(14).color(WHITE),
+                ]
+                .align_y(Alignment::Center),
             )
             .on_press(Message::DomainEditor(DomainEditorMessage::Preview(
                 PreviewMessage::RebuildPreview,
             )))
-            .padding([10.0, 20.0])
+            .padding([10.0, 24.0])
             .style(button_primary),
         ]
-        .align_x(Alignment::Center),
+        .align_x(Alignment::Center)
+        .max_width(400.0),
     )
     .width(Length::Fill)
-    .height(Length::Fixed(300.0))
+    .height(Length::Fill)
     .center_x(Length::Shrink)
     .center_y(Length::Shrink)
-    .style(|_theme| container::Style {
-        background: Some(GRAY_100.into()),
-        border: Border {
-            radius: 8.0.into(),
-            ..Default::default()
-        },
-        ..Default::default()
-    })
     .into()
 }
 
@@ -440,32 +700,32 @@ fn view_error_state(error: &str) -> Element<'_, Message> {
 fn view_empty_state<'a>() -> Element<'a, Message> {
     container(
         column![
-            lucide::database().size(48).color(GRAY_400),
-            Space::new().height(SPACING_MD),
-            text("No Preview Available").size(16).color(GRAY_600),
+            lucide::table().size(48).color(GRAY_400),
+            Space::new().height(SPACING_LG),
+            text("No Preview Available").size(18).color(GRAY_700),
             Space::new().height(SPACING_SM),
-            text("Click 'Rebuild Preview' to generate the output preview")
+            text("Click 'Rebuild' to generate the transformed data preview")
                 .size(13)
                 .color(GRAY_500),
             Space::new().height(SPACING_LG),
             button(
                 row![
-                    lucide::refresh_cw().size(12),
-                    text("Rebuild Preview").size(14),
+                    lucide::play().size(14).color(WHITE),
+                    Space::new().width(SPACING_SM),
+                    text("Build Preview").size(14).color(WHITE),
                 ]
-                .spacing(SPACING_SM)
                 .align_y(Alignment::Center),
             )
             .on_press(Message::DomainEditor(DomainEditorMessage::Preview(
                 PreviewMessage::RebuildPreview,
             )))
-            .padding([10.0, 20.0])
+            .padding([10.0, 24.0])
             .style(button_primary),
         ]
         .align_x(Alignment::Center),
     )
     .width(Length::Fill)
-    .height(Length::Fixed(300.0))
+    .height(Length::Fill)
     .center_x(Length::Shrink)
     .center_y(Length::Shrink)
     .into()
