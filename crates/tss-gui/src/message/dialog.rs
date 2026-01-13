@@ -34,11 +34,17 @@ pub enum AboutMessage {
     /// Close the About dialog
     Close,
 
+    /// Copy system info to clipboard and close
+    CopyAndClose,
+
     /// Open the website
     OpenWebsite,
 
     /// Open the GitHub repository
     OpenGitHub,
+
+    /// Open the open-source licenses link
+    OpenOpenSource,
 }
 
 // =============================================================================

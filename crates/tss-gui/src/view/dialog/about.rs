@@ -3,12 +3,12 @@
 //! Displays application information, version, and links.
 
 use iced::widget::{Space, button, column, container, row, svg, text};
-use iced::{Alignment, Border, Color, Element, Length};
-use iced_fonts::lucide;
+use iced::window;
+use iced::{Alignment, Border, Element, Length, Padding};
 
 use crate::message::{AboutMessage, DialogMessage, Message};
 use crate::theme::{
-    BORDER_RADIUS_LG, GRAY_100, GRAY_500, GRAY_600, GRAY_700, GRAY_900, SPACING_LG, SPACING_MD,
+    GRAY_100, GRAY_200, GRAY_500, GRAY_800, GRAY_900, PRIMARY_500, SPACING_LG, SPACING_MD,
     SPACING_SM, SPACING_XS, WHITE,
 };
 
@@ -18,148 +18,194 @@ const LOGO_SVG: &[u8] = include_bytes!("../../../assets/icon.svg");
 /// Application version from Cargo.toml.
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// Render the About dialog.
-pub fn view_about_dialog<'a>() -> Element<'a, Message> {
-    let backdrop = container(Space::new().width(Length::Fill).height(Length::Fill))
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .style(|_| container::Style {
-            background: Some(Color::from_rgba(0.0, 0.0, 0.0, 0.5).into()),
-            ..Default::default()
-        });
-
-    let dialog_content = view_dialog_content();
-
-    let dialog = container(dialog_content)
-        .width(400)
-        .style(|_| container::Style {
-            background: Some(WHITE.into()),
-            border: Border {
-                radius: BORDER_RADIUS_LG.into(),
-                ..Default::default()
-            },
-            shadow: iced::Shadow {
-                color: Color::from_rgba(0.0, 0.0, 0.0, 0.2),
-                offset: iced::Vector::new(0.0, 8.0),
-                blur_radius: 24.0,
-            },
-            ..Default::default()
-        });
-
-    let centered_dialog = container(dialog)
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .center_x(Length::Shrink)
-        .center_y(Length::Shrink);
-
-    iced::widget::stack![backdrop, centered_dialog].into()
-}
-
 /// Render the About dialog content for a standalone window (multi-window mode).
-///
-/// This is the content that appears in a separate dialog window.
-pub fn view_about_dialog_content<'a>() -> Element<'a, Message> {
-    let content = view_dialog_content_inner();
+pub fn view_about_dialog_content<'a>(window_id: window::Id) -> Element<'a, Message> {
+    let content = view_dialog_content_inner(Some(window_id));
 
-    // Wrap in a styled container for the window
     container(content)
         .width(Length::Fill)
         .height(Length::Fill)
         .style(|_| container::Style {
-            background: Some(GRAY_100.into()),
+            background: Some(WHITE.into()),
             ..Default::default()
         })
         .into()
 }
 
-/// Dialog content with app info and links.
-fn view_dialog_content<'a>() -> Element<'a, Message> {
-    view_dialog_content_inner()
-}
-
-/// Inner dialog content shared between modal and window modes.
-fn view_dialog_content_inner<'a>() -> Element<'a, Message> {
-    // App logo from embedded SVG
+/// Inner dialog content.
+fn view_dialog_content_inner<'a>(window_id: Option<window::Id>) -> Element<'a, Message> {
+    // Logo on the left
     let logo_handle = svg::Handle::from_memory(LOGO_SVG);
-    let logo = svg(logo_handle).width(72).height(72);
+    let logo = svg(logo_handle).width(80).height(80);
+    let logo_container = container(logo).padding(SPACING_SM);
 
-    // App name and version
-    let title = text("Trial Submission Studio").size(20).color(GRAY_900);
+    // App name
+    let app_title = text("Trial Submission Studio").size(20).color(GRAY_900);
 
-    let version = text(format!("Version {}", VERSION))
-        .size(14)
-        .color(GRAY_600);
-
-    let description = text("Transform clinical trial data into FDA-compliant CDISC formats")
+    // Version line
+    let version_line = text(format!("Version {}", VERSION))
         .size(13)
-        .color(GRAY_700);
+        .color(GRAY_500);
 
-    // Divider
-    let divider =
-        container(Space::new().width(Length::Fill).height(1)).style(|_| container::Style {
-            background: Some(GRAY_500.into()),
+    // Target architecture (proper Rust target triple)
+    let target_line = text(get_target_triple()).size(13).color(GRAY_500);
+
+    // View on GitHub link
+    let github_btn = button(text("View on GitHub").size(13).color(PRIMARY_500))
+        .on_press(Message::Dialog(DialogMessage::About(
+            AboutMessage::OpenGitHub,
+        )))
+        .padding(0)
+        .style(|_, _| button::Style {
+            background: None,
+            text_color: PRIMARY_500,
             ..Default::default()
         });
 
-    // Links section
-    let website_btn = button(
-        row![
-            lucide::globe().size(14),
-            Space::new().width(SPACING_XS),
-            text("Website").size(13),
-        ]
-        .align_y(Alignment::Center),
-    )
-    .on_press(Message::Dialog(DialogMessage::About(
-        AboutMessage::OpenWebsite,
-    )))
-    .padding([SPACING_XS, SPACING_SM]);
-
-    let github_btn = button(
-        row![
-            lucide::github().size(14),
-            Space::new().width(SPACING_XS),
-            text("GitHub").size(13),
-        ]
-        .align_y(Alignment::Center),
-    )
-    .on_press(Message::Dialog(DialogMessage::About(
-        AboutMessage::OpenGitHub,
-    )))
-    .padding([SPACING_XS, SPACING_SM]);
-
-    let links =
-        row![website_btn, Space::new().width(SPACING_SM), github_btn,].align_y(Alignment::Center);
-
     // Copyright
-    let copyright = text("© 2024-2025 Trial Submission Studio Contributors")
-        .size(11)
+    let copyright = text("Copyright © 2024-2026 Ruben Talstra")
+        .size(12)
         .color(GRAY_500);
 
-    // Close button
-    let close_btn = button(text("Close").size(14))
-        .on_press(Message::Dialog(DialogMessage::About(AboutMessage::Close)))
-        .padding([SPACING_SM, SPACING_LG]);
+    // License
+    let license = text("Licensed under the MIT License")
+        .size(12)
+        .color(GRAY_500);
 
-    column![
-        Space::new().height(SPACING_MD),
-        logo,
+    // Right side content
+    let info_content = column![
+        app_title,
+        version_line,
+        target_line,
         Space::new().height(SPACING_SM),
-        title,
-        version,
-        Space::new().height(SPACING_XS),
-        description,
-        Space::new().height(SPACING_MD),
-        divider,
-        Space::new().height(SPACING_MD),
-        links,
-        Space::new().height(SPACING_SM),
+        github_btn,
         copyright,
-        Space::new().height(SPACING_LG),
-        close_btn,
-        Space::new().height(SPACING_MD),
+        license,
     ]
-    .align_x(Alignment::Center)
-    .padding(SPACING_LG)
+    .spacing(SPACING_XS);
+
+    // Main layout: logo left, info right
+    let main_content = row![logo_container, Space::new().width(SPACING_MD), info_content,]
+        .align_y(Alignment::Start)
+        .padding(Padding {
+            top: SPACING_LG,
+            right: SPACING_LG,
+            bottom: SPACING_MD,
+            left: SPACING_LG,
+        });
+
+    // Divider line
+    let divider =
+        container(Space::new().width(Length::Fill).height(1)).style(|_| container::Style {
+            background: Some(GRAY_200.into()),
+            ..Default::default()
+        });
+
+    // Footer with buttons
+    let footer = view_footer(window_id);
+
+    column![main_content, divider, footer,].into()
+}
+
+/// Footer with Copy and Close, then Close buttons.
+fn view_footer<'a>(window_id: Option<window::Id>) -> Element<'a, Message> {
+    let copy_close_btn = button(text("Copy and Close").size(13))
+        .on_press(Message::Dialog(DialogMessage::About(
+            AboutMessage::CopyAndClose,
+        )))
+        .padding([SPACING_SM, SPACING_LG])
+        .style(|theme, status| {
+            let base = button::secondary(theme, status);
+            button::Style {
+                background: Some(GRAY_100.into()),
+                text_color: GRAY_800,
+                border: Border {
+                    radius: 6.0.into(),
+                    width: 1.0,
+                    color: GRAY_200,
+                },
+                ..base
+            }
+        });
+
+    let close_btn = button(text("Close").size(13))
+        .on_press(if let Some(id) = window_id {
+            Message::CloseWindow(id)
+        } else {
+            Message::Dialog(DialogMessage::About(AboutMessage::Close))
+        })
+        .padding([SPACING_SM, SPACING_LG])
+        .style(|theme, status| {
+            let base = button::secondary(theme, status);
+            button::Style {
+                background: Some(GRAY_100.into()),
+                text_color: GRAY_800,
+                border: Border {
+                    radius: 6.0.into(),
+                    width: 1.0,
+                    color: GRAY_200,
+                },
+                ..base
+            }
+        });
+
+    row![
+        Space::new().width(Length::Fill),
+        copy_close_btn,
+        Space::new().width(SPACING_SM),
+        close_btn,
+    ]
+    .padding([SPACING_MD, SPACING_LG])
+    .align_y(Alignment::Center)
     .into()
+}
+
+/// Generate the system info text for copying to clipboard.
+pub fn generate_system_info() -> String {
+    format!(
+        "Trial Submission Studio\n\
+        Version {}\n\
+        Target: {}",
+        VERSION,
+        get_target_triple(),
+    )
+}
+
+/// Get the Rust target triple (e.g., aarch64-apple-darwin).
+fn get_target_triple() -> &'static str {
+    #[cfg(all(target_arch = "aarch64", target_os = "macos"))]
+    {
+        "aarch64-apple-darwin"
+    }
+    #[cfg(all(target_arch = "x86_64", target_os = "macos"))]
+    {
+        "x86_64-apple-darwin"
+    }
+    #[cfg(all(target_arch = "x86_64", target_os = "windows"))]
+    {
+        "x86_64-pc-windows-msvc"
+    }
+    #[cfg(all(target_arch = "aarch64", target_os = "windows"))]
+    {
+        "aarch64-pc-windows-msvc"
+    }
+    #[cfg(all(target_arch = "x86_64", target_os = "linux"))]
+    {
+        "x86_64-unknown-linux-gnu"
+    }
+    #[cfg(all(target_arch = "aarch64", target_os = "linux"))]
+    {
+        "aarch64-unknown-linux-gnu"
+    }
+    #[cfg(not(any(
+        all(target_arch = "aarch64", target_os = "macos"),
+        all(target_arch = "x86_64", target_os = "macos"),
+        all(target_arch = "x86_64", target_os = "windows"),
+        all(target_arch = "aarch64", target_os = "windows"),
+        all(target_arch = "x86_64", target_os = "linux"),
+        all(target_arch = "aarch64", target_os = "linux"),
+    )))]
+    {
+        "unknown-target"
+    }
 }

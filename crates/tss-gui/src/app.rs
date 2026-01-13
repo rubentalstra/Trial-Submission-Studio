@@ -212,7 +212,11 @@ impl App {
                 }
             }
 
-            Message::CloseWindow(id) => window::close(id),
+            Message::CloseWindow(id) => {
+                // Clean up dialog state before closing the window
+                self.state.dialog_windows.close(id);
+                window::close(id)
+            }
 
             // =================================================================
             // Background task results
@@ -326,7 +330,7 @@ impl App {
         // Check if this is a dialog window
         if let Some(dialog_type) = self.state.dialog_windows.dialog_type(id) {
             return match dialog_type {
-                DialogType::About => view_about_dialog_content(),
+                DialogType::About => view_about_dialog_content(id),
                 DialogType::Settings => {
                     let category = self
                         .state
@@ -1780,8 +1784,24 @@ impl App {
                 Task::none()
             }
             AboutMessage::Close => {
+                // Close dialog window in multi-window mode
+                if let Some(id) = self.state.dialog_windows.about.take() {
+                    return window::close(id);
+                }
                 self.state.active_dialog = None;
                 Task::none()
+            }
+            AboutMessage::CopyAndClose => {
+                // Copy system info to clipboard using Iced's clipboard
+                let info = crate::view::dialog::about::generate_system_info();
+                let copy_task = iced::clipboard::write(info);
+
+                // Close dialog window in multi-window mode
+                if let Some(id) = self.state.dialog_windows.about.take() {
+                    return Task::batch([copy_task, window::close(id)]);
+                }
+                self.state.active_dialog = None;
+                copy_task
             }
             AboutMessage::OpenWebsite => {
                 let _ = open::that("https://trialsubmissionstudio.com");
@@ -1789,6 +1809,13 @@ impl App {
             }
             AboutMessage::OpenGitHub => {
                 let _ = open::that("https://github.com/rubentalstra/trial-submission-studio");
+                Task::none()
+            }
+            AboutMessage::OpenOpenSource => {
+                // Open the third-party licenses or open source page
+                let _ = open::that(
+                    "https://github.com/rubentalstra/trial-submission-studio/blob/main/THIRD_PARTY_LICENSES.md",
+                );
                 Task::none()
             }
         }
