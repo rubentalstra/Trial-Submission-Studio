@@ -9,7 +9,7 @@
 //! - Responsive layout that uses available space
 //! - Pagination with configurable rows per page
 
-use iced::widget::{Space, button, column, container, row, scrollable, text};
+use iced::widget::{Space, button, column, container, row, scrollable, text, text::Wrapping};
 use iced::{Alignment, Border, Element, Length, Theme};
 use iced_fonts::lucide;
 use polars::prelude::DataFrame;
@@ -348,6 +348,7 @@ fn build_header_row<'a>(col_names: &[String], col_widths: &[f32]) -> Element<'a,
             text(name.clone())
                 .size(12)
                 .color(GRAY_700)
+                .wrapping(Wrapping::None)
                 .font(iced::Font {
                     weight: iced::font::Weight::Semibold,
                     ..Default::default()
@@ -400,18 +401,23 @@ fn build_data_row<'a>(
             value
         };
 
-        let cell = container(text(display_value).size(13).color(text_color))
-            .width(Length::Fixed(width))
-            .padding([CELL_PADDING_Y, CELL_PADDING_X])
-            .style(move |_: &Theme| container::Style {
-                background: Some(bg_color.into()),
-                border: Border {
-                    color: GRAY_200,
-                    width: 0.5,
-                    ..Default::default()
-                },
+        let cell = container(
+            text(display_value)
+                .size(13)
+                .color(text_color)
+                .wrapping(Wrapping::None),
+        )
+        .width(Length::Fixed(width))
+        .padding([CELL_PADDING_Y, CELL_PADDING_X])
+        .style(move |_: &Theme| container::Style {
+            background: Some(bg_color.into()),
+            border: Border {
+                color: GRAY_200,
+                width: 0.5,
                 ..Default::default()
-            });
+            },
+            ..Default::default()
+        });
 
         data_row = data_row.push(cell);
     }
