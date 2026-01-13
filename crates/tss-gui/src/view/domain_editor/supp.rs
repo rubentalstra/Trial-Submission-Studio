@@ -849,9 +849,9 @@ fn build_skipped_view(
         column![
             header,
             Space::new().height(SPACING_LG),
-            skip_message,
-            Space::new().height(SPACING_LG),
             sample_data,
+            Space::new().height(SPACING_LG),
+            skip_message,
             Space::new().height(SPACING_XL),
             action,
         ]
