@@ -109,17 +109,9 @@ pub fn view_export_complete_dialog_content<'a>(
             domains_exported,
             elapsed_ms,
             warnings,
-        } => view_success_content(
-            output_dir,
-            files.len(),
-            *domains_exported,
-            *elapsed_ms,
-            window_id,
-        ),
-        ExportResult::Error { message, domain } => {
-            view_error_content(message, domain.as_deref(), window_id)
-        }
-        ExportResult::Cancelled => view_cancelled_content(window_id),
+        } => view_success_content(output_dir, files.len(), *domains_exported, *elapsed_ms),
+        ExportResult::Error { message, domain } => view_error_content(message, domain.as_deref()),
+        ExportResult::Cancelled => view_cancelled_content(),
     };
 
     // Wrap in a styled container for the window
@@ -141,7 +133,6 @@ fn view_success_content(
     files_count: usize,
     domains_exported: usize,
     elapsed_ms: u64,
-    window_id: window::Id,
 ) -> Element<Message> {
     let icon = lucide::circle_check().size(56).color(SUCCESS);
 
@@ -231,11 +222,7 @@ fn view_success_content(
 }
 
 /// Error state content.
-fn view_error_content<'a>(
-    message: &'a str,
-    domain: Option<&'a str>,
-    window_id: window::Id,
-) -> Element<'a, Message> {
+fn view_error_content<'a>(message: &'a str, domain: Option<&'a str>) -> Element<'a, Message> {
     let icon = lucide::circle_x().size(56).color(WARNING);
 
     let title = text("Export Failed").size(22).color(GRAY_900);
@@ -307,7 +294,7 @@ fn view_error_content<'a>(
 }
 
 /// Cancelled state content.
-fn view_cancelled_content<'a>(window_id: window::Id) -> Element<'a, Message> {
+fn view_cancelled_content<'a>() -> Element<'a, Message> {
     let icon = lucide::circle_slash().size(56).color(GRAY_500);
 
     let title = text("Export Cancelled").size(22).color(GRAY_900);

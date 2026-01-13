@@ -253,10 +253,10 @@ impl Domain {
         }
     }
 
-    /// Get display name: "DM (Demographics)" or just "DM".
+    /// Get display name: "Demographics" or fallback to code "DM".
     pub fn display_name(&self, code: &str) -> String {
         match &self.source.label {
-            Some(label) => format!("{} ({})", code, label),
+            Some(label) => label.to_string(),
             None => code.to_string(),
         }
     }

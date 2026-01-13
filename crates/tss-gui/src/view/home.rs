@@ -373,6 +373,18 @@ fn view_domain_item<'a>(code: &'a str, domain: &'a Domain) -> Element<'a, Messag
         lucide::circle().size(14).color(GRAY_500).into()
     };
 
+    // Domain badge
+    let domain_badge = container(text(code).size(14).color(WHITE))
+        .padding([4.0, 12.0])
+        .style(move |_theme| container::Style {
+            background: Some(PRIMARY_500.into()),
+            border: Border {
+                radius: 4.0.into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
     let name_text = text(display_name).size(14).color(GRAY_800);
     let rows_text = text(format!("{} rows", row_count)).size(12).color(GRAY_500);
 
@@ -380,6 +392,7 @@ fn view_domain_item<'a>(code: &'a str, domain: &'a Domain) -> Element<'a, Messag
     let item_button = button(
         row![
             status_icon,
+            domain_badge,
             name_text,
             Space::new().width(Length::Fill),
             rows_text,
