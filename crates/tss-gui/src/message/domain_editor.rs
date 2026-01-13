@@ -155,94 +155,32 @@ pub enum PreviewMessage {
 // SUPP TAB
 // =============================================================================
 
+use crate::state::{SuppAction, SuppOrigin};
+
 /// Messages for the SUPP configuration tab.
 #[derive(Debug, Clone)]
 pub enum SuppMessage {
-    /// Select a column in the SUPP list
+    /// Select a column in the SUPP list (master list selection)
     ColumnSelected(String),
 
-    /// Start editing a SUPP column
-    StartEditing(String),
+    /// Search filter text changed
+    SearchChanged(String),
 
-    /// Cancel editing
-    CancelEditing,
+    /// Filter mode changed
+    FilterModeChanged(crate::state::SuppFilterMode),
 
-    /// Save SUPP column changes
-    SaveColumn {
-        column: String,
-        qnam: String,
-        qlabel: String,
-        qorig: QualifierOrigin,
-        qeval: String,
-    },
+    /// QNAM field changed for a column (inline editing, auto-uppercase)
+    QnamChanged { column: String, value: String },
 
-    /// Change the action for a SUPP column
+    /// QLABEL field changed for a column (inline editing)
+    QlabelChanged { column: String, value: String },
+
+    /// QORIG changed for a column (inline editing)
+    QorigChanged { column: String, value: SuppOrigin },
+
+    /// QEVAL field changed for a column (inline editing)
+    QevalChanged { column: String, value: String },
+
+    /// Action changed for a column (Pending/Include/Skip)
     ActionChanged { column: String, action: SuppAction },
-
-    /// QNAM field changed (during editing)
-    QnamChanged(String),
-
-    /// QLABEL field changed (during editing)
-    QlabelChanged(String),
-
-    /// QORIG changed (during editing)
-    QorigChanged(QualifierOrigin),
-
-    /// QEVAL field changed (during editing)
-    QevalChanged(String),
-}
-
-/// Origin of a SUPP qualifier value.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum QualifierOrigin {
-    /// Data from case report form
-    #[default]
-    Crf,
-    /// Derived from other data
-    Derived,
-    /// Sponsor-assigned value
-    Assigned,
-}
-
-impl QualifierOrigin {
-    /// Returns the CDISC code for this origin.
-    pub fn code(&self) -> &'static str {
-        match self {
-            Self::Crf => "CRF",
-            Self::Derived => "DERIVED",
-            Self::Assigned => "ASSIGNED",
-        }
-    }
-
-    /// Returns a human-readable label.
-    pub fn label(&self) -> &'static str {
-        match self {
-            Self::Crf => "Case Report Form",
-            Self::Derived => "Derived",
-            Self::Assigned => "Assigned",
-        }
-    }
-}
-
-/// Action to take for a SUPP column.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum SuppAction {
-    /// Column is pending review
-    #[default]
-    Pending,
-    /// Add to SUPP domain
-    AddToSupp,
-    /// Skip this column (don't include in output)
-    Skip,
-}
-
-impl SuppAction {
-    /// Returns a human-readable label.
-    pub fn label(&self) -> &'static str {
-        match self {
-            Self::Pending => "Pending",
-            Self::AddToSupp => "Add to SUPP",
-            Self::Skip => "Skip",
-        }
-    }
 }

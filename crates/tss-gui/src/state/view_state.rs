@@ -375,96 +375,24 @@ impl Default for PreviewUiState {
 pub struct SuppUiState {
     /// Selected column for detail view.
     pub selected_column: Option<String>,
-    /// Editing state for the selected column.
-    pub editing: Option<SuppEditingState>,
+    /// Search filter for column names.
+    pub search_filter: String,
+    /// Filter mode for columns.
+    pub filter_mode: SuppFilterMode,
 }
 
-/// Editing state for a SUPP column.
-#[derive(Debug, Clone, Default)]
-pub struct SuppEditingState {
-    /// Column name being edited.
-    pub column: String,
-    /// QNAM value.
-    pub qnam: String,
-    /// QLABEL value.
-    pub qlabel: String,
-    /// QORIG value.
-    pub qorig: QualifierOrigin,
-    /// QEVAL value.
-    pub qeval: String,
-}
-
-/// SUPP qualifier origin.
+/// Filter mode for SUPP columns.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum QualifierOrigin {
-    /// Data from case report form.
+pub enum SuppFilterMode {
+    /// Show all unmapped columns.
     #[default]
-    Crf,
-    /// Derived from other data.
-    Derived,
-    /// Sponsor-assigned value.
-    Assigned,
-}
-
-impl QualifierOrigin {
-    /// Get CDISC code.
-    pub fn code(&self) -> &'static str {
-        match self {
-            Self::Crf => "CRF",
-            Self::Derived => "DERIVED",
-            Self::Assigned => "ASSIGNED",
-        }
-    }
-
-    /// Get display name.
-    pub fn display_name(&self) -> &'static str {
-        match self {
-            Self::Crf => "Case Report Form",
-            Self::Derived => "Derived",
-            Self::Assigned => "Assigned",
-        }
-    }
-
-    /// All values.
-    pub const ALL: [QualifierOrigin; 3] = [Self::Crf, Self::Derived, Self::Assigned];
-}
-
-/// SUPP column action.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum SuppAction {
-    /// Pending review.
-    #[default]
+    All,
+    /// Show only pending columns.
     Pending,
-    /// Add to SUPP domain.
-    AddToSupp,
-    /// Skip (don't include).
-    Skip,
-}
-
-impl SuppAction {
-    /// Get display name.
-    pub fn display_name(&self) -> &'static str {
-        match self {
-            Self::Pending => "Pending",
-            Self::AddToSupp => "Add to SUPP",
-            Self::Skip => "Skip",
-        }
-    }
-}
-
-/// SUPP column configuration (domain data, not UI state).
-#[derive(Debug, Clone)]
-pub struct SuppColumnConfig {
-    /// Action for this column.
-    pub action: SuppAction,
-    /// QNAM value (max 8 chars).
-    pub qnam: String,
-    /// QLABEL value (max 40 chars).
-    pub qlabel: String,
-    /// QORIG value.
-    pub qorig: QualifierOrigin,
-    /// QEVAL value.
-    pub qeval: String,
+    /// Show only columns added to SUPP.
+    Included,
+    /// Show only skipped columns.
+    Skipped,
 }
 
 // =============================================================================

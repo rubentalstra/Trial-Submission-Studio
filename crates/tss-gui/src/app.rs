@@ -377,10 +377,7 @@ impl App {
 
             DomainEditorMessage::Preview(preview_msg) => self.handle_preview_message(preview_msg),
 
-            DomainEditorMessage::Supp(_) => {
-                // TODO: Implement
-                Task::none()
-            }
+            DomainEditorMessage::Supp(supp_msg) => self.handle_supp_message(supp_msg),
         }
     }
 
@@ -807,6 +804,127 @@ impl App {
                         {
                             mapping_ui.selected_variable = Some(idx);
                         }
+                    }
+                }
+                Task::none()
+            }
+        }
+    }
+
+    fn handle_supp_message(
+        &mut self,
+        msg: crate::message::domain_editor::SuppMessage,
+    ) -> Task<Message> {
+        use crate::message::domain_editor::SuppMessage;
+        use crate::state::SuppColumnConfig;
+
+        // Get current domain code
+        let domain_code = match &self.state.view {
+            ViewState::DomainEditor { domain, .. } => domain.clone(),
+            _ => return Task::none(),
+        };
+
+        match msg {
+            SuppMessage::ColumnSelected(col_name) => {
+                if let ViewState::DomainEditor { supp_ui, .. } = &mut self.state.view {
+                    supp_ui.selected_column = Some(col_name.clone());
+                }
+                // Initialize config if not exists
+                if let Some(domain) = self
+                    .state
+                    .study
+                    .as_mut()
+                    .and_then(|s| s.domain_mut(&domain_code))
+                {
+                    domain
+                        .supp_config
+                        .entry(col_name.clone())
+                        .or_insert_with(|| SuppColumnConfig::from_column(&col_name));
+                }
+                Task::none()
+            }
+
+            SuppMessage::SearchChanged(text) => {
+                if let ViewState::DomainEditor { supp_ui, .. } = &mut self.state.view {
+                    supp_ui.search_filter = text;
+                }
+                Task::none()
+            }
+
+            SuppMessage::FilterModeChanged(mode) => {
+                if let ViewState::DomainEditor { supp_ui, .. } = &mut self.state.view {
+                    supp_ui.filter_mode = mode;
+                }
+                Task::none()
+            }
+
+            SuppMessage::QnamChanged { column, value } => {
+                if let Some(domain) = self
+                    .state
+                    .study
+                    .as_mut()
+                    .and_then(|s| s.domain_mut(&domain_code))
+                {
+                    if let Some(config) = domain.supp_config.get_mut(&column) {
+                        // Enforce max length and uppercase
+                        config.qnam = value.chars().take(8).collect::<String>().to_uppercase();
+                    }
+                }
+                Task::none()
+            }
+
+            SuppMessage::QlabelChanged { column, value } => {
+                if let Some(domain) = self
+                    .state
+                    .study
+                    .as_mut()
+                    .and_then(|s| s.domain_mut(&domain_code))
+                {
+                    if let Some(config) = domain.supp_config.get_mut(&column) {
+                        // Enforce max length
+                        config.qlabel = value.chars().take(40).collect();
+                    }
+                }
+                Task::none()
+            }
+
+            SuppMessage::QorigChanged { column, value } => {
+                if let Some(domain) = self
+                    .state
+                    .study
+                    .as_mut()
+                    .and_then(|s| s.domain_mut(&domain_code))
+                {
+                    if let Some(config) = domain.supp_config.get_mut(&column) {
+                        config.qorig = value;
+                    }
+                }
+                Task::none()
+            }
+
+            SuppMessage::QevalChanged { column, value } => {
+                if let Some(domain) = self
+                    .state
+                    .study
+                    .as_mut()
+                    .and_then(|s| s.domain_mut(&domain_code))
+                {
+                    if let Some(config) = domain.supp_config.get_mut(&column) {
+                        config.qeval = if value.is_empty() { None } else { Some(value) };
+                    }
+                }
+                Task::none()
+            }
+
+            SuppMessage::ActionChanged { column, action } => {
+                if let Some(domain) = self
+                    .state
+                    .study
+                    .as_mut()
+                    .and_then(|s| s.domain_mut(&domain_code))
+                {
+                    if let Some(config) = domain.supp_config.get_mut(&column) {
+                        config.action = action;
                     }
                 }
                 Task::none()

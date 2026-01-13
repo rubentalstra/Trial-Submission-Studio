@@ -4,11 +4,130 @@
 //! This module contains:
 //! - [`DomainSource`] - Immutable source data (CSV file + DataFrame)
 //! - [`Domain`] - Source + mapping state + normalization pipeline
+//! - [`SuppColumnConfig`] - SUPP qualifier configuration for unmapped columns
 
 use polars::prelude::{DataFrame, PlSmallStr};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use tss_map::MappingState;
 use tss_normalization::{NormalizationPipeline, infer_normalization_rules};
+
+// =============================================================================
+// SUPP CONFIGURATION
+// =============================================================================
+
+/// Configuration for a column to be included in SUPP domain.
+#[derive(Debug, Clone)]
+pub struct SuppColumnConfig {
+    /// Source column name.
+    pub column: String,
+    /// QNAM - Qualifier Variable Name (max 8 chars, uppercase).
+    pub qnam: String,
+    /// QLABEL - Qualifier Variable Label (max 40 chars).
+    pub qlabel: String,
+    /// QORIG - Origin of the data.
+    pub qorig: SuppOrigin,
+    /// QEVAL - Evaluator (optional).
+    pub qeval: Option<String>,
+    /// Action: whether to include in SUPP or skip.
+    pub action: SuppAction,
+}
+
+impl SuppColumnConfig {
+    /// Create a new SUPP config with default values derived from column name.
+    pub fn from_column(column: &str) -> Self {
+        // Auto-generate QNAM from column name (max 8 chars, uppercase)
+        let qnam = column
+            .chars()
+            .filter(|c| c.is_alphanumeric())
+            .take(8)
+            .collect::<String>()
+            .to_uppercase();
+
+        Self {
+            column: column.to_string(),
+            qnam,
+            qlabel: column.to_string(),
+            qorig: SuppOrigin::Crf,
+            qeval: None,
+            action: SuppAction::Pending,
+        }
+    }
+
+    /// Check if the configuration is valid for export.
+    pub fn is_valid(&self) -> bool {
+        !self.qnam.is_empty()
+            && self.qnam.len() <= 8
+            && !self.qlabel.is_empty()
+            && self.qlabel.len() <= 40
+    }
+
+    /// Check if this column should be included in SUPP output.
+    pub fn should_include(&self) -> bool {
+        self.action == SuppAction::Include && self.is_valid()
+    }
+}
+
+/// Origin of SUPP qualifier data.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SuppOrigin {
+    /// Data from Case Report Form.
+    #[default]
+    Crf,
+    /// Derived from other data.
+    Derived,
+    /// Sponsor-assigned value.
+    Assigned,
+}
+
+impl SuppOrigin {
+    /// Get CDISC code for this origin.
+    pub fn code(&self) -> &'static str {
+        match self {
+            Self::Crf => "CRF",
+            Self::Derived => "DERIVED",
+            Self::Assigned => "ASSIGNED",
+        }
+    }
+
+    /// Get display label.
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::Crf => "Case Report Form",
+            Self::Derived => "Derived",
+            Self::Assigned => "Assigned",
+        }
+    }
+
+    /// All values.
+    pub const ALL: [SuppOrigin; 3] = [Self::Crf, Self::Derived, Self::Assigned];
+}
+
+/// Action for a SUPP column.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SuppAction {
+    /// Column is pending review.
+    #[default]
+    Pending,
+    /// Include in SUPP domain.
+    Include,
+    /// Skip this column (don't include in output).
+    Skip,
+}
+
+impl SuppAction {
+    /// Get display label.
+    pub fn label(&self) -> &'static str {
+        match self {
+            Self::Pending => "Pending",
+            Self::Include => "Add to SUPP",
+            Self::Skip => "Skip",
+        }
+    }
+
+    /// All values.
+    pub const ALL: [SuppAction; 3] = [Self::Pending, Self::Include, Self::Skip];
+}
 
 // =============================================================================
 // DOMAIN SOURCE (Immutable)
@@ -110,6 +229,10 @@ pub struct Domain {
     /// Normalization pipeline (derived from SDTM domain metadata).
     /// Computed once when domain is created, defines transformations for export.
     pub normalization: NormalizationPipeline,
+
+    /// SUPP configuration for unmapped columns.
+    /// Key is the source column name.
+    pub supp_config: HashMap<String, SuppColumnConfig>,
 }
 
 impl Domain {
@@ -126,6 +249,7 @@ impl Domain {
             source,
             mapping,
             normalization,
+            supp_config: HashMap::new(),
         }
     }
 
