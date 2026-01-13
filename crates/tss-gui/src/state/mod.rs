@@ -121,6 +121,30 @@ pub enum ActiveDialog {
     Update(crate::view::dialog::update::UpdateState),
 }
 
+/// State for export progress dialog.
+#[derive(Debug, Clone)]
+pub struct ExportProgressState {
+    /// Current domain being processed.
+    pub current_domain: Option<String>,
+    /// Current step label.
+    pub current_step: String,
+    /// Progress 0.0 to 1.0.
+    pub progress: f32,
+    /// Number of files written.
+    pub files_written: usize,
+}
+
+impl Default for ExportProgressState {
+    fn default() -> Self {
+        Self {
+            current_domain: None,
+            current_step: "Preparing...".to_string(),
+            progress: 0.0,
+            files_written: 0,
+        }
+    }
+}
+
 /// Tracks open dialog windows.
 #[derive(Debug, Clone, Default)]
 pub struct DialogWindows {
@@ -134,6 +158,10 @@ pub struct DialogWindows {
     pub update: Option<(window::Id, crate::view::dialog::update::UpdateState)>,
     /// Close study confirmation dialog window ID.
     pub close_study_confirm: Option<window::Id>,
+    /// Export progress dialog window ID and state.
+    pub export_progress: Option<(window::Id, ExportProgressState)>,
+    /// Export completion dialog window ID and result.
+    pub export_complete: Option<(window::Id, ExportResult)>,
 }
 
 impl DialogWindows {
@@ -144,6 +172,8 @@ impl DialogWindows {
             || self.third_party == Some(id)
             || self.update.as_ref().map(|(i, _)| *i) == Some(id)
             || self.close_study_confirm == Some(id)
+            || self.export_progress.as_ref().map(|(i, _)| *i) == Some(id)
+            || self.export_complete.as_ref().map(|(i, _)| *i) == Some(id)
     }
 
     /// Get the dialog type for a window ID.
@@ -158,6 +188,10 @@ impl DialogWindows {
             Some(DialogType::Update)
         } else if self.close_study_confirm == Some(id) {
             Some(DialogType::CloseStudyConfirm)
+        } else if self.export_progress.as_ref().map(|(i, _)| *i) == Some(id) {
+            Some(DialogType::ExportProgress)
+        } else if self.export_complete.as_ref().map(|(i, _)| *i) == Some(id) {
+            Some(DialogType::ExportComplete)
         } else {
             None
         }
@@ -175,6 +209,10 @@ impl DialogWindows {
             self.update = None;
         } else if self.close_study_confirm == Some(id) {
             self.close_study_confirm = None;
+        } else if self.export_progress.as_ref().map(|(i, _)| *i) == Some(id) {
+            self.export_progress = None;
+        } else if self.export_complete.as_ref().map(|(i, _)| *i) == Some(id) {
+            self.export_complete = None;
         }
     }
 }
@@ -187,6 +225,8 @@ pub enum DialogType {
     ThirdParty,
     Update,
     CloseStudyConfirm,
+    ExportProgress,
+    ExportComplete,
 }
 
 impl Default for AppState {

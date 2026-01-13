@@ -1,22 +1,19 @@
 //! Export view for Trial Submission Studio.
 //!
 //! Master-detail layout with domain selection (left) and configuration (right).
-//! Uses modal overlays for progress and completion states.
+//! Progress and completion dialogs are shown in separate windows.
 
 use iced::widget::{
-    Space, button, checkbox, column, container, progress_bar, radio, row, rule, scrollable, text,
+    Space, button, checkbox, column, container, radio, row, rule, scrollable, text,
 };
-use iced::{Alignment, Border, Color, Element, Length};
+use iced::{Alignment, Border, Element, Length};
 use iced_fonts::lucide;
 
 use crate::message::{ExportMessage, Message};
-use crate::state::{
-    AppState, Domain, ExportFormat, ExportPhase, ExportResult, ExportViewState, Study, ViewState,
-    XptVersion,
-};
+use crate::state::{AppState, Domain, ExportFormat, ExportViewState, Study, ViewState, XptVersion};
 use crate::theme::{
-    BORDER_RADIUS_MD, GRAY_100, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800, GRAY_900,
-    SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS, SUCCESS, WARNING, WHITE, button_primary,
+    GRAY_100, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800, GRAY_900, SPACING_LG, SPACING_MD,
+    SPACING_SM, SPACING_XS, SUCCESS, WARNING, WHITE, button_primary,
 };
 
 // =============================================================================
@@ -31,6 +28,9 @@ const MASTER_WIDTH: f32 = 300.0;
 // =============================================================================
 
 /// Render the export view.
+///
+/// Note: Export progress and completion dialogs are now shown in separate windows,
+/// so this view just shows the base export configuration layout.
 pub fn view_export(state: &AppState) -> Element<'_, Message> {
     let export_state = match &state.view {
         ViewState::Export(export) => export,
@@ -43,26 +43,9 @@ pub fn view_export(state: &AppState) -> Element<'_, Message> {
         None => return view_no_study(),
     };
 
-    // Base layout
-    let base_layout = view_export_layout(state, export_state, study);
-
-    // Add modal overlay based on phase
-    match &export_state.phase {
-        ExportPhase::Idle => base_layout,
-        ExportPhase::Exporting {
-            current_domain,
-            current_step,
-            progress,
-            files_written,
-        } => view_with_progress_modal(
-            base_layout,
-            current_domain.as_deref(),
-            current_step,
-            *progress,
-            files_written.len(),
-        ),
-        ExportPhase::Complete(result) => view_with_completion_modal(base_layout, result),
-    }
+    // Just show the base export layout
+    // Progress and completion are handled by separate dialog windows
+    view_export_layout(state, export_state, study)
 }
 
 // =============================================================================
@@ -475,182 +458,4 @@ fn view_export_button(export_state: &ExportViewState) -> Element<'_, Message> {
     }
 
     btn.into()
-}
-
-// =============================================================================
-// MODAL OVERLAYS
-// =============================================================================
-
-/// Wrap content with progress modal overlay.
-fn view_with_progress_modal<'a>(
-    base: Element<'a, Message>,
-    current_domain: Option<&'a str>,
-    current_step: &'a str,
-    progress: f32,
-    files_written: usize,
-) -> Element<'a, Message> {
-    let domain_text = current_domain.unwrap_or("Preparing...");
-
-    let modal_content = column![
-        text("Exporting...").size(18).color(GRAY_800),
-        Space::new().height(SPACING_MD),
-        text(domain_text).size(16).color(GRAY_700),
-        text(current_step).size(14).color(GRAY_500),
-        Space::new().height(SPACING_MD),
-        container(progress_bar(0.0..=1.0, progress)).width(300),
-        Space::new().height(SPACING_SM),
-        text(format!("{} files written", files_written))
-            .size(12)
-            .color(GRAY_500),
-        Space::new().height(SPACING_MD),
-        button(text("Cancel"))
-            .on_press(Message::Export(ExportMessage::CancelExport))
-            .padding([SPACING_SM, SPACING_LG]),
-    ]
-    .align_x(Alignment::Center)
-    .padding(SPACING_LG);
-
-    let modal = container(modal_content).style(|_theme| container::Style {
-        background: Some(WHITE.into()),
-        border: Border {
-            radius: BORDER_RADIUS_MD.into(),
-            ..Default::default()
-        },
-        shadow: iced::Shadow {
-            color: Color::from_rgba(0.0, 0.0, 0.0, 0.2),
-            offset: iced::Vector::new(0.0, 4.0),
-            blur_radius: 20.0,
-        },
-        ..Default::default()
-    });
-
-    let modal_overlay = container(modal)
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .center_x(Length::Shrink)
-        .center_y(Length::Shrink)
-        .style(|_theme| container::Style {
-            background: Some(Color::from_rgba(0.0, 0.0, 0.0, 0.5).into()),
-            ..Default::default()
-        });
-
-    iced::widget::stack![base, modal_overlay].into()
-}
-
-/// Wrap content with completion modal overlay.
-fn view_with_completion_modal<'a>(
-    base: Element<'a, Message>,
-    result: &'a ExportResult,
-) -> Element<'a, Message> {
-    let modal_content: Element<'a, Message> = match result {
-        ExportResult::Success {
-            output_dir,
-            files,
-            domains_exported,
-            elapsed_ms,
-            ..
-        } => column![
-            lucide::circle_check().size(48).color(SUCCESS),
-            Space::new().height(SPACING_MD),
-            text("Export Complete!").size(20).color(GRAY_800),
-            Space::new().height(SPACING_SM),
-            text(format!("{} files written", files.len())).color(GRAY_700),
-            text(format!(
-                "{} domain{} exported in {}ms",
-                domains_exported,
-                if *domains_exported == 1 { "" } else { "s" },
-                elapsed_ms
-            ))
-            .size(12)
-            .color(GRAY_500),
-            Space::new().height(SPACING_MD),
-            text("Output:").color(GRAY_500),
-            text(output_dir.display().to_string())
-                .size(12)
-                .color(GRAY_700),
-            Space::new().height(SPACING_LG),
-            row![
-                button(text("Show in Folder"))
-                    .on_press(Message::Export(ExportMessage::OpenOutputFolder))
-                    .padding([SPACING_SM, SPACING_MD]),
-                Space::new().width(SPACING_SM),
-                button(text("Done"))
-                    .on_press(Message::Export(ExportMessage::DismissCompletion))
-                    .padding([SPACING_SM, SPACING_MD])
-                    .style(button_primary),
-            ]
-            .align_y(Alignment::Center),
-        ]
-        .align_x(Alignment::Center)
-        .padding(SPACING_LG)
-        .into(),
-
-        ExportResult::Error { message, domain } => {
-            let domain_text: Element<'a, Message> = if let Some(d) = domain {
-                text(format!("Domain: {}", d)).color(GRAY_700).into()
-            } else {
-                Space::new().into()
-            };
-
-            column![
-                lucide::circle_x().size(48).color(WARNING),
-                Space::new().height(SPACING_MD),
-                text("Export Failed").size(20).color(GRAY_800),
-                Space::new().height(SPACING_SM),
-                domain_text,
-                text(message).color(WARNING),
-                Space::new().height(SPACING_LG),
-                row![
-                    button(text("Retry"))
-                        .on_press(Message::Export(ExportMessage::RetryExport))
-                        .padding([SPACING_SM, SPACING_MD]),
-                    Space::new().width(SPACING_SM),
-                    button(text("Close"))
-                        .on_press(Message::Export(ExportMessage::DismissCompletion))
-                        .padding([SPACING_SM, SPACING_MD]),
-                ]
-                .align_y(Alignment::Center),
-            ]
-            .align_x(Alignment::Center)
-            .padding(SPACING_LG)
-            .into()
-        }
-
-        ExportResult::Cancelled => column![
-            text("Export was cancelled.").color(GRAY_700),
-            Space::new().height(SPACING_MD),
-            button(text("Close"))
-                .on_press(Message::Export(ExportMessage::DismissCompletion))
-                .padding([SPACING_SM, SPACING_MD]),
-        ]
-        .align_x(Alignment::Center)
-        .padding(SPACING_LG)
-        .into(),
-    };
-
-    let modal = container(modal_content).style(|_theme| container::Style {
-        background: Some(WHITE.into()),
-        border: Border {
-            radius: BORDER_RADIUS_MD.into(),
-            ..Default::default()
-        },
-        shadow: iced::Shadow {
-            color: Color::from_rgba(0.0, 0.0, 0.0, 0.2),
-            offset: iced::Vector::new(0.0, 4.0),
-            blur_radius: 20.0,
-        },
-        ..Default::default()
-    });
-
-    let modal_overlay = container(modal)
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .center_x(Length::Shrink)
-        .center_y(Length::Shrink)
-        .style(|_theme| container::Style {
-            background: Some(Color::from_rgba(0.0, 0.0, 0.0, 0.5).into()),
-            ..Default::default()
-        });
-
-    iced::widget::stack![base, modal_overlay].into()
 }

@@ -6,11 +6,14 @@
 //! - Third-party: Open source license acknowledgments
 //! - Update: Check for and install updates
 //! - Close Study: Confirmation before closing a study
+//! - Export Progress: Export operation in progress
+//! - Export Complete: Export results (success, error, cancelled)
 //!
 //! Each dialog has view functions for standalone window mode (multi-window).
 
 pub mod about;
 pub mod close_study;
+pub mod export;
 pub mod settings;
 pub mod third_party;
 pub mod update;
@@ -18,6 +21,7 @@ pub mod update;
 // Re-export view functions for standalone window mode (multi-window)
 pub use about::view_about_dialog_content;
 pub use close_study::view_close_study_dialog_content;
+pub use export::{view_export_complete_dialog_content, view_export_progress_dialog_content};
 pub use settings::view_settings_dialog_content;
 pub use third_party::view_third_party_dialog_content;
 pub use update::view_update_dialog_content;

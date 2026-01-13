@@ -181,6 +181,12 @@ impl App {
                     DialogType::CloseStudyConfirm => {
                         self.state.dialog_windows.close_study_confirm = Some(id);
                     }
+                    DialogType::ExportProgress => {
+                        // Export progress state is set when export starts
+                    }
+                    DialogType::ExportComplete => {
+                        // Export complete state is set when export completes
+                    }
                 }
                 Task::none()
             }
@@ -296,7 +302,8 @@ impl App {
     pub fn view(&self, id: window::Id) -> Element<'_, Message> {
         use crate::view::{
             view_about_dialog_content, view_close_study_dialog_content, view_domain_editor,
-            view_export, view_settings_dialog_content, view_third_party_dialog_content,
+            view_export, view_export_complete_dialog_content, view_export_progress_dialog_content,
+            view_settings_dialog_content, view_third_party_dialog_content,
             view_update_dialog_content,
         };
 
@@ -326,6 +333,23 @@ impl App {
                     }
                 }
                 DialogType::CloseStudyConfirm => view_close_study_dialog_content(id),
+                DialogType::ExportProgress => {
+                    if let Some((_, ref progress_state)) = self.state.dialog_windows.export_progress
+                    {
+                        view_export_progress_dialog_content(progress_state, id)
+                    } else {
+                        // This shouldn't happen - show a simple loading text
+                        iced::widget::text("Loading...").into()
+                    }
+                }
+                DialogType::ExportComplete => {
+                    if let Some((_, ref result)) = self.state.dialog_windows.export_complete {
+                        view_export_complete_dialog_content(result, id)
+                    } else {
+                        // This shouldn't happen - show a simple close button
+                        iced::widget::text("Export dialog").into()
+                    }
+                }
             };
         }
 
@@ -367,6 +391,8 @@ impl App {
                 DialogType::ThirdParty => "Third-Party Licenses".to_string(),
                 DialogType::Update => "Check for Updates".to_string(),
                 DialogType::CloseStudyConfirm => "Close Study?".to_string(),
+                DialogType::ExportProgress => "Exporting...".to_string(),
+                DialogType::ExportComplete => "Export Complete".to_string(),
             };
         }
 
@@ -1505,7 +1531,7 @@ impl App {
                     return Task::none();
                 }
 
-                // Set exporting state
+                // Set exporting state in ViewState
                 if let ViewState::Export(export_state) = &mut self.state.view {
                     export_state.phase = ExportPhase::Exporting {
                         current_domain: None,
@@ -1515,39 +1541,85 @@ impl App {
                     };
                 }
 
-                // TODO: Start actual export task
-                // For now, just simulate completion
-                Task::done(Message::Export(ExportMessage::Complete(
-                    ExportResult::Success {
-                        output_dir,
-                        files: vec![],
-                        domains_exported: selected_domains.len(),
-                        elapsed_ms: 0,
-                        warnings: vec![],
+                // Open progress dialog window
+                let settings = window::Settings {
+                    size: Size::new(400.0, 300.0),
+                    resizable: false,
+                    decorations: true,
+                    ..Default::default()
+                };
+                let (id, open_task) = window::open(settings);
+
+                // Store the progress state with window ID
+                self.state.dialog_windows.export_progress = Some((
+                    id,
+                    crate::state::ExportProgressState {
+                        current_domain: None,
+                        current_step: "Preparing...".to_string(),
+                        progress: 0.0,
+                        files_written: 0,
                     },
-                )))
+                ));
+
+                // TODO: Start actual export task
+                // For now, just simulate completion after opening dialog
+                let domains_count = selected_domains.len();
+                Task::batch([
+                    open_task.map(|_| Message::Noop),
+                    Task::done(Message::Export(ExportMessage::Complete(
+                        ExportResult::Success {
+                            output_dir,
+                            files: vec![],
+                            domains_exported: domains_count,
+                            elapsed_ms: 0,
+                            warnings: vec![],
+                        },
+                    ))),
+                ])
             }
 
             ExportMessage::CancelExport => {
+                // Close progress dialog and open completion dialog with Cancelled result
+                let mut tasks = vec![];
+
+                // Close progress dialog if open
+                if let Some((id, _)) = self.state.dialog_windows.export_progress.take() {
+                    tasks.push(window::close(id));
+                }
+
+                // Update view state
                 if let ViewState::Export(export_state) = &mut self.state.view {
                     export_state.phase = ExportPhase::Complete(ExportResult::Cancelled);
                 }
-                Task::none()
+
+                // Open completion dialog
+                let settings = window::Settings {
+                    size: Size::new(400.0, 350.0),
+                    resizable: false,
+                    decorations: true,
+                    ..Default::default()
+                };
+                let (id, open_task) = window::open(settings);
+                self.state.dialog_windows.export_complete = Some((id, ExportResult::Cancelled));
+                tasks.push(open_task.map(|_| Message::Noop));
+
+                Task::batch(tasks)
             }
 
             ExportMessage::Progress(progress) => {
+                // Update both ViewState and dialog window state
                 if let ViewState::Export(export_state) = &mut self.state.view {
                     if let ExportPhase::Exporting {
                         current_domain,
                         current_step,
                         progress: prog,
-                        files_written: _,
+                        files_written,
                     } = &mut export_state.phase
                     {
                         use crate::message::export::ExportProgress;
-                        match progress {
+                        match &progress {
                             ExportProgress::StartingDomain(domain) => {
-                                *current_domain = Some(domain);
+                                *current_domain = Some(domain.clone());
                             }
                             ExportProgress::Step(step) => {
                                 *current_step = step.label().to_string();
@@ -1556,7 +1628,25 @@ impl App {
                                 // Domain done
                             }
                             ExportProgress::OverallProgress(p) => {
-                                *prog = p;
+                                *prog = *p;
+                            }
+                        }
+
+                        // Also update dialog window state
+                        if let Some((_, ref mut dialog_state)) =
+                            self.state.dialog_windows.export_progress
+                        {
+                            match progress {
+                                ExportProgress::StartingDomain(domain) => {
+                                    dialog_state.current_domain = Some(domain);
+                                }
+                                ExportProgress::Step(step) => {
+                                    dialog_state.current_step = step.label().to_string();
+                                }
+                                ExportProgress::DomainComplete(_) => {}
+                                ExportProgress::OverallProgress(p) => {
+                                    dialog_state.progress = p;
+                                }
                             }
                         }
                     }
@@ -1565,32 +1655,73 @@ impl App {
             }
 
             ExportMessage::Complete(result) => {
-                if let ViewState::Export(export_state) = &mut self.state.view {
-                    export_state.phase = ExportPhase::Complete(result);
+                let mut tasks = vec![];
+
+                // Close progress dialog if open
+                if let Some((id, _)) = self.state.dialog_windows.export_progress.take() {
+                    tasks.push(window::close(id));
                 }
-                Task::none()
+
+                // Update view state
+                if let ViewState::Export(export_state) = &mut self.state.view {
+                    export_state.phase = ExportPhase::Complete(result.clone());
+                }
+
+                // Open completion dialog
+                let settings = window::Settings {
+                    size: Size::new(450.0, 400.0),
+                    resizable: false,
+                    decorations: true,
+                    ..Default::default()
+                };
+                let (id, open_task) = window::open(settings);
+                self.state.dialog_windows.export_complete = Some((id, result));
+                tasks.push(open_task.map(|_| Message::Noop));
+
+                Task::batch(tasks)
             }
 
             ExportMessage::DismissCompletion => {
+                // Close completion dialog
+                let task = if let Some((id, _)) = self.state.dialog_windows.export_complete.take() {
+                    window::close(id)
+                } else {
+                    Task::none()
+                };
+
+                // Reset view state
                 if let ViewState::Export(export_state) = &mut self.state.view {
                     export_state.reset_phase();
                 }
-                Task::none()
+
+                task
             }
 
             ExportMessage::RetryExport => {
+                // Close completion dialog and restart export
+                let close_task =
+                    if let Some((id, _)) = self.state.dialog_windows.export_complete.take() {
+                        window::close(id)
+                    } else {
+                        Task::none()
+                    };
+
+                // Reset view state
                 if let ViewState::Export(export_state) = &mut self.state.view {
                     export_state.reset_phase();
                 }
-                // Could restart export here
-                Task::none()
+
+                // Batch close and then trigger start export
+                Task::batch([
+                    close_task,
+                    Task::done(Message::Export(ExportMessage::StartExport)),
+                ])
             }
 
             ExportMessage::OpenOutputFolder => {
-                if let ViewState::Export(ref export_state) = self.state.view {
-                    if let ExportPhase::Complete(ExportResult::Success { output_dir, .. }) =
-                        &export_state.phase
-                    {
+                // Get output dir from completion dialog state
+                if let Some((_, ref result)) = self.state.dialog_windows.export_complete {
+                    if let ExportResult::Success { output_dir, .. } = result {
                         let _ = open::that(output_dir);
                     }
                 }
