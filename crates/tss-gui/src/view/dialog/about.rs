@@ -1,6 +1,6 @@
 //! About dialog view.
 //!
-//! Displays application information, version, and links.
+//! Displays application information in RustRover style.
 
 use iced::widget::{Space, button, column, container, row, svg, text};
 use iced::window;
@@ -8,8 +8,8 @@ use iced::{Alignment, Border, Element, Length, Padding};
 
 use crate::message::{AboutMessage, DialogMessage, Message};
 use crate::theme::{
-    GRAY_100, GRAY_200, GRAY_500, GRAY_800, GRAY_900, PRIMARY_500, SPACING_LG, SPACING_MD,
-    SPACING_SM, SPACING_XS, WHITE,
+    GRAY_100, GRAY_200, GRAY_500, GRAY_700, GRAY_800, GRAY_900, PRIMARY_500, SPACING_LG,
+    SPACING_MD, SPACING_SM, SPACING_XL, WHITE, button_primary,
 };
 
 /// Embedded SVG logo bytes.
@@ -18,7 +18,7 @@ const LOGO_SVG: &[u8] = include_bytes!("../../../assets/icon.svg");
 /// Application version from Cargo.toml.
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 
-/// Render the About dialog content for a standalone window (multi-window mode).
+/// Render the About dialog content for a standalone window.
 pub fn view_about_dialog_content<'a>(window_id: window::Id) -> Element<'a, Message> {
     let content = view_dialog_content_inner(Some(window_id));
 
@@ -32,26 +32,51 @@ pub fn view_about_dialog_content<'a>(window_id: window::Id) -> Element<'a, Messa
         .into()
 }
 
-/// Inner dialog content.
+/// Inner dialog content - RustRover style.
 fn view_dialog_content_inner<'a>(window_id: Option<window::Id>) -> Element<'a, Message> {
     // Logo on the left
     let logo_handle = svg::Handle::from_memory(LOGO_SVG);
-    let logo = svg(logo_handle).width(80).height(80);
-    let logo_container = container(logo).padding(SPACING_SM);
+    let logo = svg(logo_handle).width(88).height(88);
+    let logo_container = container(logo).padding(Padding {
+        top: 0.0,
+        right: SPACING_MD,
+        bottom: 0.0,
+        left: 0.0,
+    });
 
-    // App name
-    let app_title = text("Trial Submission Studio").size(20).color(GRAY_900);
+    // Title
+    let title = text("Trial Submission Studio").size(20).color(GRAY_900);
 
-    // Version line
+    // Version
     let version_line = text(format!("Version {}", VERSION))
         .size(13)
         .color(GRAY_500);
 
-    // Target architecture (proper Rust target triple)
-    let target_line = text(get_target_triple()).size(13).color(GRAY_500);
+    // Build number (derived from version)
+    let build_line = text(format!("Build {}", get_build_number()))
+        .size(13)
+        .color(GRAY_500);
 
-    // View on GitHub link
-    let github_btn = button(text("View on GitHub").size(13).color(PRIMARY_500))
+    // Target architecture
+    let target_info = text(get_target_triple()).size(13).color(GRAY_500);
+
+    // "Powered by open-source software" with link
+    let powered_label = text("Powered by ").size(13).color(GRAY_700);
+    let open_source_link = button(text("open-source software").size(13).color(PRIMARY_500))
+        .on_press(Message::Dialog(DialogMessage::About(
+            AboutMessage::OpenOpenSource,
+        )))
+        .padding(0)
+        .style(|_, _| button::Style {
+            background: None,
+            text_color: PRIMARY_500,
+            ..Default::default()
+        });
+    let powered_row = row![powered_label, open_source_link].align_y(Alignment::Center);
+
+    // Copyright with link on author name
+    let copyright_label = text("Copyright © 2024–2026 ").size(13).color(GRAY_700);
+    let author_link = button(text("Ruben Talstra").size(13).color(PRIMARY_500))
         .on_press(Message::Dialog(DialogMessage::About(
             AboutMessage::OpenGitHub,
         )))
@@ -61,73 +86,48 @@ fn view_dialog_content_inner<'a>(window_id: Option<window::Id>) -> Element<'a, M
             text_color: PRIMARY_500,
             ..Default::default()
         });
-
-    // Copyright
-    let copyright = text("Copyright © 2024-2026 Ruben Talstra")
-        .size(12)
-        .color(GRAY_500);
-
-    // License
-    let license = text("Licensed under the MIT License")
-        .size(12)
-        .color(GRAY_500);
+    let copyright_row = row![copyright_label, author_link].align_y(Alignment::Center);
 
     // Right side content
     let info_content = column![
-        app_title,
+        title,
         version_line,
-        target_line,
-        Space::new().height(SPACING_SM),
-        github_btn,
-        copyright,
-        license,
+        build_line,
+        target_info,
+        Space::new().height(SPACING_MD),
+        powered_row,
+        copyright_row,
     ]
-    .spacing(SPACING_XS);
+    .spacing(4.0);
 
     // Main layout: logo left, info right
-    let main_content = row![logo_container, Space::new().width(SPACING_MD), info_content,]
-        .align_y(Alignment::Start)
-        .padding(Padding {
-            top: SPACING_LG,
-            right: SPACING_LG,
-            bottom: SPACING_MD,
-            left: SPACING_LG,
-        });
-
-    // Divider line
-    let divider =
-        container(Space::new().width(Length::Fill).height(1)).style(|_| container::Style {
-            background: Some(GRAY_200.into()),
-            ..Default::default()
-        });
+    let main_content = row![logo_container, info_content].align_y(Alignment::Start);
 
     // Footer with buttons
     let footer = view_footer(window_id);
 
-    column![main_content, divider, footer,].into()
+    // Full layout
+    column![
+        container(main_content).padding(Padding {
+            top: SPACING_XL,
+            right: SPACING_LG,
+            bottom: SPACING_LG,
+            left: SPACING_LG,
+        }),
+        Space::new().height(Length::Fill),
+        container(footer).padding(Padding {
+            top: 0.0,
+            right: SPACING_LG,
+            bottom: SPACING_MD,
+            left: SPACING_LG,
+        }),
+    ]
+    .into()
 }
 
-/// Footer with Copy and Close, then Close buttons.
+/// Footer with Close and Copy and Close buttons (RustRover style).
 fn view_footer<'a>(window_id: Option<window::Id>) -> Element<'a, Message> {
-    let copy_close_btn = button(text("Copy and Close").size(13))
-        .on_press(Message::Dialog(DialogMessage::About(
-            AboutMessage::CopyAndClose,
-        )))
-        .padding([SPACING_SM, SPACING_LG])
-        .style(|theme, status| {
-            let base = button::secondary(theme, status);
-            button::Style {
-                background: Some(GRAY_100.into()),
-                text_color: GRAY_800,
-                border: Border {
-                    radius: 6.0.into(),
-                    width: 1.0,
-                    color: GRAY_200,
-                },
-                ..base
-            }
-        });
-
+    // Close button (secondary/outlined style)
     let close_btn = button(text("Close").size(13))
         .on_press(if let Some(id) = window_id {
             Message::CloseWindow(id)
@@ -149,13 +149,20 @@ fn view_footer<'a>(window_id: Option<window::Id>) -> Element<'a, Message> {
             }
         });
 
+    // Copy and Close button (primary/filled style - like RustRover's blue button)
+    let copy_close_btn = button(text("Copy and Close").size(13))
+        .on_press(Message::Dialog(DialogMessage::About(
+            AboutMessage::CopyAndClose,
+        )))
+        .padding([SPACING_SM, SPACING_LG])
+        .style(button_primary);
+
     row![
         Space::new().width(Length::Fill),
-        copy_close_btn,
-        Space::new().width(SPACING_SM),
         close_btn,
+        Space::new().width(SPACING_SM),
+        copy_close_btn,
     ]
-    .padding([SPACING_MD, SPACING_LG])
     .align_y(Alignment::Center)
     .into()
 }
@@ -165,10 +172,24 @@ pub fn generate_system_info() -> String {
     format!(
         "Trial Submission Studio\n\
         Version {}\n\
-        Target: {}",
+        Build {}\n\
+        {}\n\
+        \n\
+        Powered by open-source software\n\
+        Copyright © 2024–2026 Ruben Talstra",
         VERSION,
+        get_build_number(),
         get_target_triple(),
     )
+}
+
+/// Get build number (derived from version string for consistency).
+fn get_build_number() -> u32 {
+    let mut hash: u32 = 0;
+    for byte in VERSION.bytes() {
+        hash = hash.wrapping_mul(31).wrapping_add(byte as u32);
+    }
+    hash % 1000
 }
 
 /// Get the Rust target triple (e.g., aarch64-apple-darwin).

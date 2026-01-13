@@ -2120,7 +2120,7 @@ impl App {
                 }
                 // Open about dialog in a new window
                 let settings = window::Settings {
-                    size: Size::new(400.0, 420.0),
+                    size: Size::new(480.0, 300.0),
                     resizable: false,
                     decorations: true,
                     level: window::Level::AlwaysOnTop,
