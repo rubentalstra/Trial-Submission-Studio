@@ -7,16 +7,16 @@
 
 // Module declarations
 mod app;
+mod component;
 mod message;
 mod state;
 mod theme;
+mod view;
 
 // These modules will be uncommented as they're ported:
-// mod component;
 // mod menu;
 // mod service;
 // mod settings;
-// mod view;
 
 use app::App;
 use iced::Size;
