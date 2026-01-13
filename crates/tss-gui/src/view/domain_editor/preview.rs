@@ -83,6 +83,7 @@ pub fn view_preview_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
     };
 
     column![header, Space::new().height(SPACING_MD), content,]
+        .padding(SPACING_LG)
         .width(Length::Fill)
         .height(Length::Fill)
         .into()
