@@ -7,16 +7,15 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 use std::time::Instant;
 
-use polars::prelude::{AnyValue, DataFrame, DataType, NamedFrom, Series};
-use tss_model::{Domain, TerminologyRegistry, VariableType};
+use polars::prelude::{AnyValue, DataFrame, NamedFrom, Series};
+use tss_model::{Domain, TerminologyRegistry};
 use tss_normalization::{NormalizationContext, execute_normalization};
 use tss_output::types::DomainFrame;
 use tss_output::{
-    DatasetXmlOptions, DefineXmlOptions, write_dataset_xml as write_dataset_xml_output,
-    write_define_xml as write_define_xml_output,
+    DatasetXmlOptions, DefineXmlOptions, build_xpt_dataset_with_name,
+    write_dataset_xml as write_dataset_xml_output, write_define_xml as write_define_xml_output,
 };
 use tss_validate::{Severity, ValidationReport};
-use xportrs::{Column, ColumnData, Dataset, Xpt};
 
 use crate::state::{Domain as GuiDomain, ExportFormat, ExportResult, XptVersion};
 
@@ -288,107 +287,15 @@ fn write_data_file(
     }
 }
 
-/// Write XPT file.
+/// Write XPT file using tss-output crate.
 fn write_xpt_file(path: &Path, frame: &DomainFrame, domain: &Domain) -> Result<(), ExportError> {
-    let row_count = frame.data.height();
+    // Use the tss-output crate's XPT builder
+    let dataset_name = frame.dataset_name();
+    let dataset = build_xpt_dataset_with_name(domain, frame, &dataset_name)
+        .map_err(|e| ExportError::new(format!("Failed to build XPT dataset: {}", e)))?;
 
-    // Build variable metadata from domain definition
-    let variable_metadata: HashMap<String, VariableMetadata> = domain
-        .variables
-        .iter()
-        .map(|v| {
-            let name = v.name.to_uppercase();
-            let label = v.label.clone();
-            let format = match v.data_type {
-                VariableType::Char => {
-                    let len = v.length.unwrap_or(200).min(200);
-                    Some(format!("${len}."))
-                }
-                VariableType::Num => Some("8.".to_string()),
-            };
-            (name, VariableMetadata { label, format })
-        })
-        .collect();
-
-    // Build columns
-    let mut columns = Vec::new();
-    for col in frame.data.get_columns() {
-        let name = col.name().to_uppercase();
-        let dtype = col.dtype();
-
-        let is_numeric = matches!(
-            dtype,
-            DataType::Float64
-                | DataType::Float32
-                | DataType::Int64
-                | DataType::Int32
-                | DataType::Int16
-                | DataType::Int8
-                | DataType::UInt64
-                | DataType::UInt32
-                | DataType::UInt16
-                | DataType::UInt8
-        );
-
-        let column_data = if is_numeric {
-            let mut values = Vec::with_capacity(row_count);
-            for row_idx in 0..row_count {
-                let value = col.get(row_idx).ok();
-                let num = match value {
-                    Some(AnyValue::Float64(n)) => Some(n),
-                    Some(AnyValue::Float32(n)) => Some(n as f64),
-                    Some(AnyValue::Int64(n)) => Some(n as f64),
-                    Some(AnyValue::Int32(n)) => Some(n as f64),
-                    Some(AnyValue::Int16(n)) => Some(n as f64),
-                    Some(AnyValue::Int8(n)) => Some(n as f64),
-                    Some(AnyValue::UInt64(n)) => Some(n as f64),
-                    Some(AnyValue::UInt32(n)) => Some(n as f64),
-                    Some(AnyValue::UInt16(n)) => Some(n as f64),
-                    Some(AnyValue::UInt8(n)) => Some(n as f64),
-                    _ => None,
-                };
-                values.push(num);
-            }
-            ColumnData::F64(values)
-        } else {
-            let mut values = Vec::with_capacity(row_count);
-            for row_idx in 0..row_count {
-                let value = col.get(row_idx).ok();
-                let s = match value {
-                    Some(AnyValue::String(s)) => Some(s.to_string()),
-                    Some(AnyValue::StringOwned(s)) => Some(s.to_string()),
-                    Some(AnyValue::Null) | None => None,
-                    Some(other) => Some(format!("{}", other)),
-                };
-                values.push(s);
-            }
-            ColumnData::String(values)
-        };
-
-        let mut column = Column::new(&name, column_data);
-
-        // Apply metadata
-        if let Some(meta) = variable_metadata.get(&name) {
-            if let Some(label) = &meta.label {
-                column = column.with_label(label.as_str());
-            }
-            if let Some(format) = &meta.format {
-                column = column
-                    .with_format_str(format)
-                    .expect("auto-generated SAS format should be valid");
-            }
-        }
-
-        columns.push(column);
-    }
-
-    // Create dataset with proper label from domain definition
-    let dataset_name = frame.dataset_name().to_uppercase();
-    let dataset_label = domain.label.as_deref().unwrap_or(&domain.name);
-    let dataset = Dataset::with_label(dataset_name.as_str(), dataset_label, columns)
-        .map_err(|e| ExportError::new(format!("Failed to create XPT dataset: {}", e)))?;
-
-    // Write file
+    // Write using xportrs
+    use xportrs::Xpt;
     Xpt::writer(dataset)
         .finalize()
         .map_err(|e| ExportError::new(format!("Failed to validate XPT: {}", e)))?
@@ -469,14 +376,8 @@ fn write_define_xml(
 }
 
 // =============================================================================
-// HELPER TYPES
+// HELPER FUNCTIONS
 // =============================================================================
-
-/// Variable metadata for XPT export.
-struct VariableMetadata {
-    label: Option<String>,
-    format: Option<String>,
-}
 
 /// Build SUPP domain definition from CDISC standards.
 ///

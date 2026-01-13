@@ -62,7 +62,10 @@ pub fn build_xpt_dataset_with_name(
     let df = &frame.data;
     let columns = build_xpt_columns(domain, df)?;
 
-    Dataset::new(dataset_name, columns)
+    // Use domain label if available, otherwise use domain name
+    let dataset_label = domain.label.as_deref().unwrap_or(&domain.name);
+
+    Dataset::with_label(dataset_name, dataset_label, columns)
         .with_context(|| format!("failed to create XPT dataset for {}", dataset_name))
 }
 
@@ -112,10 +115,16 @@ fn build_xpt_columns(domain: &Domain, df: &DataFrame) -> Result<Vec<Column>> {
             column = column.with_label(label.as_str());
         }
 
-        // Set explicit length for character columns
-        if variable.data_type == VariableType::Char {
-            let length = variable_length(variable, df)?;
-            column = column.with_length(length as usize);
+        // Set explicit length for all columns
+        match variable.data_type {
+            VariableType::Char => {
+                let length = variable_length(variable, df)?;
+                column = column.with_length(length as usize);
+            }
+            VariableType::Num => {
+                // Numeric columns should always be 8 bytes in SAS XPT format
+                column = column.with_length(8);
+            }
         }
 
         columns.push(column);
