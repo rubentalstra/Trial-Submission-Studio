@@ -15,6 +15,7 @@ pub mod validation;
 
 use iced::widget::{Space, button, column, container, row, scrollable, text};
 use iced::{Alignment, Border, Element, Length};
+use iced_fonts::lucide;
 
 use crate::component::{Tab, tab_bar};
 use crate::message::{DomainEditorMessage, Message};
@@ -94,14 +95,9 @@ fn view_editor_header<'a>(domain_code: &'a str, domain: &'a Domain) -> Element<'
 
     // Back button
     let back_button = button(
-        row![
-            text("\u{f053}") // chevron-left icon
-                .font(iced::Font::with_name("Font Awesome 6 Free Solid"))
-                .size(12),
-            text("Back").size(14),
-        ]
-        .spacing(SPACING_SM)
-        .align_y(Alignment::Center),
+        row![lucide::chevron_left().size(12), text("Back").size(14),]
+            .spacing(SPACING_SM)
+            .align_y(Alignment::Center),
     )
     .on_press(Message::DomainEditor(DomainEditorMessage::BackClicked))
     .padding([8.0, 16.0])

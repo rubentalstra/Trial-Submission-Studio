@@ -1,6 +1,7 @@
 # Trial Submission Studio - Theming Guide
 
-This document describes the Professional Clinical theme and styling conventions for Trial Submission Studio.
+This document describes the Professional Clinical theme and styling conventions
+for Trial Submission Studio.
 
 ## Table of Contents
 
@@ -20,20 +21,22 @@ This document describes the Professional Clinical theme and styling conventions 
 
 ### Professional Clinical Aesthetic
 
-The Professional Clinical theme is designed for medical/regulatory applications where:
+The Professional Clinical theme is designed for medical/regulatory applications
+where:
 
 1. **Clarity over decoration** - Every element serves a purpose
 2. **Precision matters** - Clean lines, consistent spacing, readable data
 3. **Extended use comfort** - Light theme optimized for all-day work sessions
-4. **Trust and professionalism** - Conveys reliability for clinical data handling
+4. **Trust and professionalism** - Conveys reliability for clinical data
+   handling
 
 ### Core Principles
 
-| Principle | Implementation |
-|-----------|----------------|
-| **Clean** | Minimal shadows, subtle borders, generous whitespace |
-| **Precise** | Consistent spacing, aligned grids, sharp corners |
-| **Calm** | Muted palette, teal accents, no jarring colors |
+| Principle    | Implementation                                                 |
+|--------------|----------------------------------------------------------------|
+| **Clean**    | Minimal shadows, subtle borders, generous whitespace           |
+| **Precise**  | Consistent spacing, aligned grids, sharp corners               |
+| **Calm**     | Muted palette, teal accents, no jarring colors                 |
 | **Readable** | High contrast text, appropriate font sizes, monospace for data |
 
 ### Visual Language
@@ -50,11 +53,12 @@ The Professional Clinical theme is designed for medical/regulatory applications 
 
 ### Primary Colors (Teal/Cyan)
 
-The primary color palette is used for interactive elements, active states, and emphasis:
+The primary color palette is used for interactive elements, active states, and
+emphasis:
 
 ```rust
 // Primary - Teal/Cyan
-pub const PRIMARY_50:  Color = Color::from_rgb(0.88, 0.97, 0.98);  // #E0F7FA - Lightest tint
+pub const PRIMARY_50: Color = Color::from_rgb(0.88, 0.97, 0.98);  // #E0F7FA - Lightest tint
 pub const PRIMARY_100: Color = Color::from_rgb(0.70, 0.92, 0.95);  // #B3EBF2
 pub const PRIMARY_200: Color = Color::from_rgb(0.50, 0.85, 0.90);  // #80D9E6
 pub const PRIMARY_300: Color = Color::from_rgb(0.30, 0.78, 0.82);  // #4DC7D1
@@ -68,14 +72,14 @@ pub const PRIMARY_900: Color = Color::from_rgb(0.00, 0.27, 0.29);  // #00454A - 
 
 ### Usage
 
-| Variant | Use Case |
-|---------|----------|
-| `PRIMARY_50` | Selected row background, subtle highlights |
-| `PRIMARY_100` | Active tab background, hover states |
-| `PRIMARY_500` | Primary buttons, links, active indicators |
-| `PRIMARY_600` | Button hover state |
+| Variant       | Use Case                                        |
+|---------------|-------------------------------------------------|
+| `PRIMARY_50`  | Selected row background, subtle highlights      |
+| `PRIMARY_100` | Active tab background, hover states             |
+| `PRIMARY_500` | Primary buttons, links, active indicators       |
+| `PRIMARY_600` | Button hover state                              |
 | `PRIMARY_700` | Button pressed state, text on light backgrounds |
-| `PRIMARY_800` | Text on white backgrounds |
+| `PRIMARY_800` | Text on white backgrounds                       |
 
 ### Semantic Colors
 
@@ -83,30 +87,30 @@ For status, feedback, and validation states:
 
 ```rust
 // Success - Green
-pub const SUCCESS:       Color = Color::from_rgb(0.20, 0.70, 0.40);  // #33B366
+pub const SUCCESS: Color = Color::from_rgb(0.20, 0.70, 0.40);  // #33B366
 pub const SUCCESS_LIGHT: Color = Color::from_rgb(0.85, 0.95, 0.88);  // #D9F2E0
 
 // Warning - Amber
-pub const WARNING:       Color = Color::from_rgb(0.95, 0.65, 0.05);  // #F2A60D
+pub const WARNING: Color = Color::from_rgb(0.95, 0.65, 0.05);  // #F2A60D
 pub const WARNING_LIGHT: Color = Color::from_rgb(1.00, 0.96, 0.85);  // #FFF5D9
 
 // Error - Red
-pub const ERROR:       Color = Color::from_rgb(0.85, 0.25, 0.25);  // #D94040
+pub const ERROR: Color = Color::from_rgb(0.85, 0.25, 0.25);  // #D94040
 pub const ERROR_LIGHT: Color = Color::from_rgb(0.99, 0.90, 0.90);  // #FCE6E6
 
 // Info - Blue
-pub const INFO:       Color = Color::from_rgb(0.25, 0.55, 0.85);  // #408CD9
+pub const INFO: Color = Color::from_rgb(0.25, 0.55, 0.85);  // #408CD9
 pub const INFO_LIGHT: Color = Color::from_rgb(0.90, 0.95, 1.00);  // #E6F2FF
 ```
 
 ### Usage
 
-| Color | Use Case |
-|-------|----------|
+| Color     | Use Case                                            |
+|-----------|-----------------------------------------------------|
 | `SUCCESS` | Completed status, valid mappings, passed validation |
-| `WARNING` | Warnings, attention needed, partial completion |
-| `ERROR` | Errors, validation failures, required fields |
-| `INFO` | Informational messages, tips, neutral status |
+| `WARNING` | Warnings, attention needed, partial completion      |
+| `ERROR`   | Errors, validation failures, required fields        |
+| `INFO`    | Informational messages, tips, neutral status        |
 
 ### Neutral Grays
 
@@ -114,8 +118,8 @@ For backgrounds, borders, and text hierarchy:
 
 ```rust
 // Neutral Grays (cool undertone)
-pub const WHITE:    Color = Color::from_rgb(1.00, 1.00, 1.00);  // #FFFFFF
-pub const GRAY_50:  Color = Color::from_rgb(0.98, 0.98, 0.99);  // #FAFAFE - Background
+pub const WHITE: Color = Color::from_rgb(1.00, 1.00, 1.00);  // #FFFFFF
+pub const GRAY_50: Color = Color::from_rgb(0.98, 0.98, 0.99);  // #FAFAFE - Background
 pub const GRAY_100: Color = Color::from_rgb(0.95, 0.95, 0.97);  // #F2F2F7 - Surface
 pub const GRAY_200: Color = Color::from_rgb(0.90, 0.90, 0.93);  // #E6E6ED - Border
 pub const GRAY_300: Color = Color::from_rgb(0.82, 0.82, 0.86);  // #D1D1DB - Divider
@@ -129,19 +133,19 @@ pub const GRAY_900: Color = Color::from_rgb(0.10, 0.10, 0.12);  // #1A1A1F - Pri
 
 ### Usage
 
-| Variant | Use Case |
-|---------|----------|
-| `WHITE` | Card backgrounds, modal backgrounds |
-| `GRAY_50` | Page background, alternate rows |
+| Variant    | Use Case                              |
+|------------|---------------------------------------|
+| `WHITE`    | Card backgrounds, modal backgrounds   |
+| `GRAY_50`  | Page background, alternate rows       |
 | `GRAY_100` | Panel backgrounds, header backgrounds |
-| `GRAY_200` | Borders, dividers |
-| `GRAY_300` | Disabled borders |
-| `GRAY_400` | Placeholder text, disabled text |
-| `GRAY_500` | Secondary text, captions |
-| `GRAY_600` | Labels, descriptions |
-| `GRAY_700` | Body text |
-| `GRAY_800` | Headings, strong text |
-| `GRAY_900` | Primary text, titles |
+| `GRAY_200` | Borders, dividers                     |
+| `GRAY_300` | Disabled borders                      |
+| `GRAY_400` | Placeholder text, disabled text       |
+| `GRAY_500` | Secondary text, captions              |
+| `GRAY_600` | Labels, descriptions                  |
+| `GRAY_700` | Body text                             |
+| `GRAY_800` | Headings, strong text                 |
+| `GRAY_900` | Primary text, titles                  |
 
 ---
 
@@ -153,30 +157,31 @@ Consistent scale for text hierarchy:
 
 ```rust
 // Typography scale
-pub const FONT_SIZE_CAPTION:  f32 = 11.0;  // Labels, hints, table headers
-pub const FONT_SIZE_SMALL:    f32 = 12.0;  // Secondary text, badges
-pub const FONT_SIZE_BODY:     f32 = 14.0;  // Default text, form inputs
+pub const FONT_SIZE_CAPTION: f32 = 11.0;  // Labels, hints, table headers
+pub const FONT_SIZE_SMALL: f32 = 12.0;  // Secondary text, badges
+pub const FONT_SIZE_BODY: f32 = 14.0;  // Default text, form inputs
 pub const FONT_SIZE_SUBTITLE: f32 = 16.0;  // Emphasized text, card titles
-pub const FONT_SIZE_TITLE:    f32 = 20.0;  // Section headers
-pub const FONT_SIZE_HEADING:  f32 = 24.0;  // Page headers
-pub const FONT_SIZE_DISPLAY:  f32 = 32.0;  // Hero text, empty states
+pub const FONT_SIZE_TITLE: f32 = 20.0;  // Section headers
+pub const FONT_SIZE_HEADING: f32 = 24.0;  // Page headers
+pub const FONT_SIZE_DISPLAY: f32 = 32.0;  // Hero text, empty states
 ```
 
 ### Text Styles
 
-| Style | Size | Weight | Color | Use |
-|-------|------|--------|-------|-----|
-| Display | 32px | Bold | `GRAY_900` | Hero text, welcome messages |
-| Heading | 24px | Bold | `GRAY_900` | Page titles |
-| Title | 20px | Semi-bold | `GRAY_800` | Section headers |
-| Subtitle | 16px | Medium | `GRAY_800` | Card titles, emphasis |
-| Body | 14px | Regular | `GRAY_700` | Default text |
-| Small | 12px | Regular | `GRAY_600` | Secondary info |
-| Caption | 11px | Regular | `GRAY_500` | Labels, hints |
+| Style    | Size | Weight    | Color      | Use                         |
+|----------|------|-----------|------------|-----------------------------|
+| Display  | 32px | Bold      | `GRAY_900` | Hero text, welcome messages |
+| Heading  | 24px | Bold      | `GRAY_900` | Page titles                 |
+| Title    | 20px | Semi-bold | `GRAY_800` | Section headers             |
+| Subtitle | 16px | Medium    | `GRAY_800` | Card titles, emphasis       |
+| Body     | 14px | Regular   | `GRAY_700` | Default text                |
+| Small    | 12px | Regular   | `GRAY_600` | Secondary info              |
+| Caption  | 11px | Regular   | `GRAY_500` | Labels, hints               |
 
 ### Monospace
 
 Use monospace font for:
+
 - Variable names and codes
 - File paths
 - Data values
@@ -202,24 +207,24 @@ Consistent spacing values for margins, padding, and gaps:
 
 ```rust
 // Spacing scale (base unit: 4px)
-pub const XS:  f32 = 4.0;   // Tight: between related items
-pub const SM:  f32 = 8.0;   // Small: compact spacing
-pub const MD:  f32 = 16.0;  // Medium: default padding
-pub const LG:  f32 = 24.0;  // Large: section spacing
-pub const XL:  f32 = 32.0;  // Extra large: major gaps
+pub const XS: f32 = 4.0;   // Tight: between related items
+pub const SM: f32 = 8.0;   // Small: compact spacing
+pub const MD: f32 = 16.0;  // Medium: default padding
+pub const LG: f32 = 24.0;  // Large: section spacing
+pub const XL: f32 = 32.0;  // Extra large: major gaps
 pub const XXL: f32 = 48.0;  // Page margins, hero spacing
 ```
 
 ### Usage Guidelines
 
-| Spacing | Use Case |
-|---------|----------|
-| `XS` (4px) | Icon-to-text gap, inline element spacing |
-| `SM` (8px) | Button padding, form field gaps |
-| `MD` (16px) | Card padding, section margins, default gap |
-| `LG` (24px) | Between sections, modal padding |
-| `XL` (32px) | Page margins, major section breaks |
-| `XXL` (48px) | Hero sections, empty state padding |
+| Spacing      | Use Case                                   |
+|--------------|--------------------------------------------|
+| `XS` (4px)   | Icon-to-text gap, inline element spacing   |
+| `SM` (8px)   | Button padding, form field gaps            |
+| `MD` (16px)  | Card padding, section margins, default gap |
+| `LG` (24px)  | Between sections, modal padding            |
+| `XL` (32px)  | Page margins, major section breaks         |
+| `XXL` (48px) | Hero sections, empty state padding         |
 
 ### Border Radius
 
@@ -240,19 +245,19 @@ fn card_example<'a, M: 'a>(title: &str, body: &str) -> Element<'a, M> {
             text(title).size(FONT_SIZE_SUBTITLE),
             text(body).size(FONT_SIZE_BODY).color(palette::GRAY_600),
         ]
-        .spacing(spacing::SM)
+            .spacing(spacing::SM)
     )
-    .padding(spacing::MD)
-    .style(|_| container::Style {
-        background: Some(palette::WHITE.into()),
-        border: iced::Border {
-            radius: spacing::RADIUS_MD.into(),
-            color: palette::GRAY_200,
-            width: 1.0,
-        },
-        ..Default::default()
-    })
-    .into()
+        .padding(spacing::MD)
+        .style(|_| container::Style {
+            background: Some(palette::WHITE.into()),
+            border: iced::Border {
+                radius: spacing::RADIUS_MD.into(),
+                color: palette::GRAY_200,
+                width: 1.0,
+            },
+            ..Default::default()
+        })
+        .into()
 }
 ```
 
@@ -463,48 +468,78 @@ fn panel_container_style(theme: &Theme) -> container::Style {
 
 ## Icons
 
-### Using iced_fonts
+### Using iced_fonts with Lucide
 
-Trial Submission Studio uses `iced_fonts` 0.3.0 which includes:
-- Font Awesome (solid, regular, brands)
-- Bootstrap Icons
-- Nerd Fonts
+Trial Submission Studio uses `iced_fonts` 0.3.0 with the **Lucide** icon set—a
+clean, modern, open-source icon library.
 
-### Font Awesome Icons
+**Setup in Cargo.toml:**
+
+```toml
+iced_fonts = { version = "0.3.0", features = ["lucide"] }
+```
+
+**Load the font in main.rs:**
+
+```rust, no_run
+use iced_fonts::LUCIDE_FONT_BYTES;
+
+iced::application(App::new, App::update, App::view)
+    .font(LUCIDE_FONT_BYTES)
+    // ... other settings
+    .run()
+```
+
+### Using Lucide Icons
+
+Icons are used directly via `iced_fonts::lucide` functions—no wrapper needed:
 
 ```rust
-use iced_fonts::fa;
+use iced_fonts::lucide;
 
-// Icon constants (Font Awesome Solid)
-pub fn icon_folder() -> Text<'static, Theme> {
-    text(fa::FOLDER.to_string()).font(fa::FONT)
-}
-
-pub fn icon_file() -> Text<'static, Theme> {
-    text(fa::FILE.to_string()).font(fa::FONT)
-}
-
-pub fn icon_check() -> Text<'static, Theme> {
-    text(fa::CHECK.to_string()).font(fa::FONT)
-}
-
-pub fn icon_warning() -> Text<'static, Theme> {
-    text(fa::TRIANGLE_EXCLAMATION.to_string()).font(fa::FONT)
-}
-
-pub fn icon_error() -> Text<'static, Theme> {
-    text(fa::CIRCLE_XMARK.to_string()).font(fa::FONT)
-}
-
-pub fn icon_search() -> Text<'static, Theme> {
-    text(fa::MAGNIFYING_GLASS.to_string()).font(fa::FONT)
-}
-
-pub fn icon_export() -> Text<'static, Theme> {
-    text(fa::FILE_EXPORT.to_string()).font(fa::FONT)
+// Direct usage in views - each function returns a Text widget
+fn view_icons() -> Element<'_, Message> {
+    row![
+        lucide::folder(),           // Folder
+        lucide::file(),             // File
+        lucide::check(),            // Checkmark
+        lucide::alert_triangle(),   // Warning
+        lucide::alert_circle(),     // Error/alert
+        lucide::search(),           // Search
+        lucide::file_output(),      // Export
+        lucide::download(),         // Download
+        lucide::upload(),           // Upload
+        lucide::settings(),         // Settings
+        lucide::trash_2(),          // Delete
+        lucide::plus(),             // Add
+        lucide::x(),                // Close
+        lucide::loader(),           // Loading spinner
+    ]
+        .into()
 }
 ```
 
+### Styled Icons
+
+Apply standard text styling methods:
+
+```rust, no_run
+use iced_fonts::lucide;
+use iced::Color;
+
+// With custom size
+lucide::folder().size(24)
+
+// With color
+lucide::check().color(Color::from_rgb(0.2, 0.8, 0.2))
+
+// Combined styling
+lucide::alert_triangle()
+    .size(20)
+    .color(theme::WARNING)
+```
+
+````
 ### Icon Sizing
 
 | Size | Use Case |
@@ -564,18 +599,18 @@ pub const SHADOW_XL: Shadow = Shadow {
     offset: Vector::new(0.0, 8.0),
     blur_radius: 24.0,
 };
-```
+````
 
 ### Elevation Hierarchy
 
-| Layer | Use | Shadow |
-|-------|-----|--------|
-| 0 | Page background | None |
-| 1 | Cards, panels | `SHADOW_SM` |
-| 2 | Dropdowns, popovers | `SHADOW_MD` |
-| 3 | Sticky headers | `SHADOW_MD` |
-| 4 | Modals, dialogs | `SHADOW_LG` |
-| 5 | Toasts, notifications | `SHADOW_XL` |
+| Layer | Use                   | Shadow      |
+|-------|-----------------------|-------------|
+| 0     | Page background       | None        |
+| 1     | Cards, panels         | `SHADOW_SM` |
+| 2     | Dropdowns, popovers   | `SHADOW_MD` |
+| 3     | Sticky headers        | `SHADOW_MD` |
+| 4     | Modals, dialogs       | `SHADOW_LG` |
+| 5     | Toasts, notifications | `SHADOW_XL` |
 
 ---
 
@@ -585,14 +620,14 @@ pub const SHADOW_XL: Shadow = Shadow {
 
 All text colors meet WCAG 2.1 AA standards:
 
-| Text | Background | Contrast Ratio |
-|------|------------|----------------|
-| `GRAY_900` | `WHITE` | 15.3:1 |
-| `GRAY_800` | `WHITE` | 11.5:1 |
-| `GRAY_700` | `WHITE` | 8.5:1 |
-| `GRAY_600` | `WHITE` | 5.7:1 |
-| `PRIMARY_600` | `WHITE` | 4.8:1 |
-| `WHITE` | `PRIMARY_500` | 4.5:1 |
+| Text          | Background    | Contrast Ratio |
+|---------------|---------------|----------------|
+| `GRAY_900`    | `WHITE`       | 15.3:1         |
+| `GRAY_800`    | `WHITE`       | 11.5:1         |
+| `GRAY_700`    | `WHITE`       | 8.5:1          |
+| `GRAY_600`    | `WHITE`       | 5.7:1          |
+| `PRIMARY_600` | `WHITE`       | 4.8:1          |
+| `WHITE`       | `PRIMARY_500` | 4.5:1          |
 
 ### Focus States
 
@@ -665,7 +700,7 @@ impl App {
 
 Override default styles using style functions:
 
-```rust
+```rust, no_run
 // Custom button style
 button("Click me")
     .style(primary_button_style)

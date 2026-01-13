@@ -5,6 +5,7 @@
 
 use iced::widget::{Space, button, column, container, row, text};
 use iced::{Alignment, Border, Element, Length};
+use iced_fonts::lucide;
 
 use crate::message::domain_editor::ValidationMessage;
 use crate::message::{DomainEditorMessage, Message};
@@ -63,14 +64,9 @@ fn view_validation_header<'a>() -> Element<'a, Message> {
         .color(GRAY_600);
 
     let refresh_button = button(
-        row![
-            text("\u{f021}") // refresh icon
-                .font(iced::Font::with_name("Font Awesome 6 Free Solid"))
-                .size(12),
-            text("Re-validate").size(14),
-        ]
-        .spacing(SPACING_SM)
-        .align_y(Alignment::Center),
+        row![lucide::refresh_cw().size(12), text("Re-validate").size(14),]
+            .spacing(SPACING_SM)
+            .align_y(Alignment::Center),
     )
     .on_press(Message::DomainEditor(DomainEditorMessage::Validation(
         ValidationMessage::RefreshValidation,
@@ -95,10 +91,7 @@ fn view_validation_header<'a>() -> Element<'a, Message> {
 fn view_empty_state<'a>() -> Element<'a, Message> {
     container(
         column![
-            text("\u{f058}") // check-circle
-                .font(iced::Font::with_name("Font Awesome 6 Free Solid"))
-                .size(48)
-                .color(GRAY_400),
+            lucide::circle_check().size(48).color(GRAY_400),
             Space::new().height(SPACING_MD),
             text("No Validation Results").size(16).color(GRAY_600),
             Space::new().height(SPACING_SM),
@@ -108,9 +101,7 @@ fn view_empty_state<'a>() -> Element<'a, Message> {
             Space::new().height(SPACING_LG),
             button(
                 row![
-                    text("\u{f021}") // refresh icon
-                        .font(iced::Font::with_name("Font Awesome 6 Free Solid"))
-                        .size(12),
+                    lucide::refresh_cw().size(12),
                     text("Run Validation").size(14),
                 ]
                 .spacing(SPACING_SM)
@@ -135,10 +126,7 @@ fn view_empty_state<'a>() -> Element<'a, Message> {
 fn view_validation_content<'a>() -> Element<'a, Message> {
     container(
         column![
-            text("\u{f058}") // check-circle
-                .font(iced::Font::with_name("Font Awesome 6 Free Solid"))
-                .size(32)
-                .color(SUCCESS),
+            lucide::circle_check().size(32).color(SUCCESS),
             Space::new().height(SPACING_SM),
             text("Validation complete").size(14).color(GRAY_600),
             Space::new().height(SPACING_SM),

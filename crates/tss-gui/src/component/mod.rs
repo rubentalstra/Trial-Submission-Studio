@@ -6,7 +6,7 @@
 //! - **Overlays**: `modal`, `progress_modal`
 //! - **Form**: `search_box`, `form_field`
 //! - **Display**: `status_badge`, `data_table`
-//! - **Helpers**: `icon`
+//! - **Icons**: Use `iced_fonts::lucide::*` directly (see <https://lucide.dev/icons/>)
 //!
 //! # Design Philosophy
 //!
@@ -20,6 +20,7 @@
 //!
 //! ```rust,ignore
 //! use tss_gui::component::{master_detail, search_box, status_badge, Status};
+//! use iced_fonts::lucide;  // Icons
 //!
 //! let view = master_detail(
 //!     search_box(&state.search, "Search...", Message::SearchChanged, Message::SearchCleared),
@@ -30,7 +31,6 @@
 
 mod data_table;
 mod form_field;
-mod icon;
 mod master_detail;
 mod modal;
 mod progress_modal;
@@ -56,5 +56,6 @@ pub use search_box::search_box;
 pub use data_table::{TableColumn, data_table};
 pub use status_badge::{Status, status_badge};
 
-// Helper components
-pub use icon::{icon, icon_check, icon_error, icon_file, icon_folder, icon_search, icon_warning};
+// Icons: Use iced_fonts::lucide directly
+// Re-export font bytes for convenience (load in main.rs)
+pub use iced_fonts::LUCIDE_FONT_BYTES;

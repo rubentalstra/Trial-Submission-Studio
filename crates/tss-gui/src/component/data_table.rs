@@ -4,6 +4,7 @@
 
 use iced::widget::{button, column, container, row, rule, scrollable, space, text};
 use iced::{Border, Element, Length};
+use iced_fonts::lucide;
 
 use crate::theme::{
     GRAY_50, GRAY_100, GRAY_200, GRAY_500, GRAY_600, GRAY_700, GRAY_800, SPACING_SM,
@@ -159,33 +160,31 @@ pub fn data_table<'a, M: Clone + 'a>(
         let prev_enabled = page > 0;
         let next_enabled = page < total_pages.saturating_sub(1);
 
-        let prev_button =
-            button(
-                text("<")
-                    .size(14)
-                    .color(if prev_enabled { GRAY_700 } else { GRAY_500 }),
-            )
-            .on_press_maybe(if prev_enabled {
-                Some(on_page_change.clone()(page - 1))
-            } else {
-                None
-            })
-            .padding([4.0, 10.0])
-            .style(button_ghost);
+        let prev_button = button(lucide::chevron_left().size(14).color(if prev_enabled {
+            GRAY_700
+        } else {
+            GRAY_500
+        }))
+        .on_press_maybe(if prev_enabled {
+            Some(on_page_change.clone()(page - 1))
+        } else {
+            None
+        })
+        .padding([4.0, 10.0])
+        .style(button_ghost);
 
-        let next_button =
-            button(
-                text(">")
-                    .size(14)
-                    .color(if next_enabled { GRAY_700 } else { GRAY_500 }),
-            )
-            .on_press_maybe(if next_enabled {
-                Some(on_page_change(page + 1))
-            } else {
-                None
-            })
-            .padding([4.0, 10.0])
-            .style(button_ghost);
+        let next_button = button(lucide::chevron_right().size(14).color(if next_enabled {
+            GRAY_700
+        } else {
+            GRAY_500
+        }))
+        .on_press_maybe(if next_enabled {
+            Some(on_page_change(page + 1))
+        } else {
+            None
+        })
+        .padding([4.0, 10.0])
+        .style(button_ghost);
 
         let page_info = text(format!(
             "Page {} of {} ({} rows)",

@@ -4,6 +4,7 @@
 
 use iced::widget::{button, center, column, container, opaque, row, space, stack, text};
 use iced::{Border, Element, Length, Shadow, Vector};
+use iced_fonts::lucide;
 
 use crate::theme::{
     BACKDROP, BORDER_RADIUS_LG, GRAY_200, GRAY_500, GRAY_900, MODAL_WIDTH_MD, SHADOW_STRONG,
@@ -63,7 +64,7 @@ pub fn modal<'a, M: Clone + 'a>(
     let header = row![
         text(title).size(18).color(GRAY_900),
         space::horizontal(),
-        button(text("\u{00d7}").size(20).color(GRAY_500))
+        button(lucide::x().size(20).color(GRAY_500))
             .on_press(on_close)
             .padding([4.0, 8.0])
             .style(button_ghost),

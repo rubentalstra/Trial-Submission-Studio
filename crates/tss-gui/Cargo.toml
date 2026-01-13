@@ -37,7 +37,9 @@ iced = { version = "0.14.0", features = [
     "lazy",
     "advanced",
 ] }
-iced_fonts = "0.3.0"  # Font Awesome, Bootstrap, Nerd Fonts, etc.
+# Icon fonts - using Lucide icons (clean, modern icon set)
+# See: https://lucide.dev/icons/ for icon reference
+iced_fonts = { version = "0.3.0", features = ["lucide"] }
 
 # Workspace dependencies
 tss-model = { path = "../tss-model" }
@@ -59,9 +61,11 @@ tracing-subscriber.workspace = true
 chrono.workspace = true
 
 # GUI-specific utilities
-image = { version = "0.25", default-features = false, features = ["png"] }  # Icon loading
-rfd = "0.17"   # Native file dialogs
-open = "5.3"     # Open URLs in browser
+image = { version = "0.25", default-features = false, features = [
+    "png",
+] } # Icon loading
+rfd = "0.17" # Native file dialogs
+open = "5.3" # Open URLs in browser
 
 # Settings & menu
 directories = "6.0"          # Cross-platform app directories

@@ -5,6 +5,7 @@
 
 use iced::widget::{Space, button, column, container, row, text};
 use iced::{Alignment, Border, Element, Length};
+use iced_fonts::lucide;
 
 use crate::message::domain_editor::NormalizationMessage;
 use crate::message::{DomainEditorMessage, Message};
@@ -55,9 +56,7 @@ fn view_header<'a>() -> Element<'a, Message> {
 
     let refresh_button = button(
         row![
-            text("\u{f021}") // refresh icon
-                .font(iced::Font::with_name("Font Awesome 6 Free Solid"))
-                .size(12),
+            lucide::refresh_cw().size(12),
             text("Refresh Preview").size(14),
         ]
         .spacing(SPACING_SM)
@@ -86,10 +85,7 @@ fn view_header<'a>() -> Element<'a, Message> {
 fn view_rules_placeholder<'a>() -> Element<'a, Message> {
     container(
         column![
-            text("\u{f013}") // cog icon
-                .font(iced::Font::with_name("Font Awesome 6 Free Solid"))
-                .size(48)
-                .color(GRAY_400),
+            lucide::settings().size(48).color(GRAY_400),
             Space::new().height(SPACING_MD),
             text("Normalization Rules").size(16).color(GRAY_600),
             Space::new().height(SPACING_SM),

@@ -5,6 +5,7 @@
 
 use iced::widget::{Space, button, column, container, row, text};
 use iced::{Alignment, Border, Element, Length};
+use iced_fonts::lucide;
 
 use crate::message::domain_editor::SuppMessage;
 use crate::message::{DomainEditorMessage, Message};
@@ -65,14 +66,9 @@ fn view_supp_header<'a>(domain_code: &str) -> Element<'a, Message> {
     .color(GRAY_600);
 
     let refresh_button = button(
-        row![
-            text("\u{f021}") // refresh icon
-                .font(iced::Font::with_name("Font Awesome 6 Free Solid"))
-                .size(12),
-            text("Refresh").size(14),
-        ]
-        .spacing(SPACING_SM)
-        .align_y(Alignment::Center),
+        row![lucide::refresh_cw().size(12), text("Refresh").size(14),]
+            .spacing(SPACING_SM)
+            .align_y(Alignment::Center),
     )
     .on_press(Message::DomainEditor(DomainEditorMessage::Supp(
         SuppMessage::CancelEditing,
@@ -97,10 +93,7 @@ fn view_supp_header<'a>(domain_code: &str) -> Element<'a, Message> {
 fn view_no_columns_state<'a>() -> Element<'a, Message> {
     container(
         column![
-            text("\u{f058}") // check-circle
-                .font(iced::Font::with_name("Font Awesome 6 Free Solid"))
-                .size(48)
-                .color(SUCCESS),
+            lucide::circle_check().size(48).color(SUCCESS),
             Space::new().height(SPACING_MD),
             text("All Columns Mapped").size(16).color(GRAY_600),
             Space::new().height(SPACING_SM),
@@ -121,10 +114,7 @@ fn view_no_columns_state<'a>() -> Element<'a, Message> {
 fn view_supp_placeholder<'a>(column_count: usize) -> Element<'a, Message> {
     container(
         column![
-            text("\u{f1c0}") // database icon
-                .font(iced::Font::with_name("Font Awesome 6 Free Solid"))
-                .size(48)
-                .color(GRAY_400),
+            lucide::database().size(48).color(GRAY_400),
             Space::new().height(SPACING_MD),
             text("SUPP Configuration").size(16).color(GRAY_600),
             Space::new().height(SPACING_SM),

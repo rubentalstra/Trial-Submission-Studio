@@ -2,8 +2,9 @@
 
 ## Executive Summary
 
-Complete rewrite of the `tss-gui` crate from egui/eframe to Iced 0.14.0, implementing a Professional Clinical visual
-style with Teal/Cyan accent colors and light theme.
+Complete rewrite of the `tss-gui` crate from egui/eframe to Iced 0.14.0,
+implementing a Professional Clinical visual style with Teal/Cyan accent colors
+and light theme.
 
 **Key Decisions:**
 
@@ -12,7 +13,7 @@ style with Teal/Cyan accent colors and light theme.
 - **Theme**: Light theme only (initially)
 - **Accent Color**: Teal/Cyan (`#009BA6`)
 - **Menu System**: Hybrid (native on macOS via muda, in-app on Windows/Linux)
-- **Icons**: `iced_fonts` 0.3.0 (includes Font Awesome support)
+- **Icons**: `iced_fonts` 0.3.0 with Lucide icon set
 - **Documentation**: Comprehensive (5 markdown files in `crates/tss-gui/docs/`)
 
 ### Iced 0.14.0 Application Pattern (IMPORTANT)
@@ -179,7 +180,7 @@ iced = { version = "0.14.0", features = [
     "lazy", # Performance: lazy widget rendering
     "advanced", # Advanced widget capabilities
 ] }
-iced_fonts = "0.3.0"  # Font Awesome, Bootstrap, Nerd Fonts, etc.
+iced_fonts = { version = "0.3.0", features = ["lucide"] }  # Lucide icons
 
 # Workspace crates (unchanged)
 tss-model.workspace = true
@@ -248,11 +249,15 @@ pub enum Message {
 
 **Sub-messages** (see `02-message-patterns.md` for full details):
 
-- `HomeMessage`: WorkflowModeSelected, OpenStudy, RecentStudy, CloseStudy, DomainClicked
-- `DomainEditorMessage`: TabSelected, Mapping(...), Transform(...), Validation(...), Preview(...), Supp(...)
-- `ExportMessage`: DomainToggled, FormatChanged, StartExport, CancelExport, Progress, Complete
+- `HomeMessage`: WorkflowModeSelected, OpenStudy, RecentStudy, CloseStudy,
+  DomainClicked
+- `DomainEditorMessage`: TabSelected, Mapping(...), Transform(...),
+  Validation(...), Preview(...), Supp(...)
+- `ExportMessage`: DomainToggled, FormatChanged, StartExport, CancelExport,
+  Progress, Complete
 - `DialogMessage`: About(...), Settings(...), ThirdParty(...), Update(...)
-- `TaskMessage`: StudyLoaded, PreviewReady, ValidationComplete, UpdateCheckComplete
+- `TaskMessage`: StudyLoaded, PreviewReady, ValidationComplete,
+  UpdateCheckComplete
 
 ---
 
@@ -437,12 +442,13 @@ state.tasks.export = Some(handle.abort_on_drop());
 
 39. Create `view/domain_editor/mod.rs` - Tab routing
 40. Create `message/domain_editor.rs` - Tab messages
-41. Create `view/domain_editor/mapping.rs` - Mapping tab (target columns in the left side bar, and then you map the
-    source to the target)
+41. Create `view/domain_editor/mapping.rs` - Mapping tab (target columns in the
+    left side bar, and then you map the source to the target)
 42. Create `service/preview.rs` - Preview computation
 43. Create `view/domain_editor/preview.rs` - Preview tab
 44. Create `view/domain_editor/validation.rs` - Validation tab
-45. Create `view/domain_editor/transform.rs` - Transform tab (it's now Normalization)
+45. Create `view/domain_editor/transform.rs` - Transform tab (it's now
+    Normalization)
 46. Create `view/domain_editor/supp.rs` - SUPP tab
 47. Wire up mapping state changes
 48. Wire up preview rebuilding
@@ -500,7 +506,8 @@ state.tasks.export = Some(handle.abort_on_drop());
 
 ### `docs/05-theming.md` (STYLE.md equivalent)
 
-This will be the comprehensive style guide similar to the DRFW example, containing:
+This will be the comprehensive style guide similar to the DRFW example,
+containing:
 
 1. **Design Principles**
     - Professional Clinical aesthetic
@@ -530,7 +537,7 @@ This will be the comprehensive style guide similar to the DRFW example, containi
     - Status badges
 
 6. **Icons**
-    - iced_fonts 0.3.0 usage (Font Awesome, Bootstrap, etc.)
+    - iced_fonts 0.3.0 with Lucide icons (`iced_fonts::lucide::*`)
     - Icon sizing conventions
     - Icon color customization
 
@@ -629,7 +636,7 @@ After successful migration and testing:
 ### Added
 
 - `iced` 0.14.0
-- `iced_fonts` 0.3.0 (includes Font Awesome, Bootstrap icons, etc.)
+- `iced_fonts` 0.3.0 with Lucide feature
 - `tokio` 1.x
 - `async-stream` 0.3
 

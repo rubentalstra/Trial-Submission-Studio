@@ -1,6 +1,7 @@
 # Trial Submission Studio - Architecture Guide
 
-This document describes the overall architecture of the Trial Submission Studio GUI application, built with Iced 0.14.0.
+This document describes the overall architecture of the Trial Submission Studio
+GUI application, built with Iced 0.14.0.
 
 ## Table of Contents
 
@@ -15,24 +16,26 @@ This document describes the overall architecture of the Trial Submission Studio 
 
 ## Overview
 
-Trial Submission Studio uses **Iced 0.14.0**, a cross-platform GUI library for Rust inspired by Elm. The application
-follows the Elm architecture pattern, which provides:
+Trial Submission Studio uses **Iced 0.14.0**, a cross-platform GUI library for
+Rust inspired by Elm. The application follows the Elm architecture pattern,
+which provides:
 
-- **Predictable state management** - All state changes flow through a single `update` function
+- **Predictable state management** - All state changes flow through a single
+  `update` function
 - **Type-safe UI** - The view is a pure function of state
 - **Declarative rendering** - UI is described as data, not imperative commands
 - **Async-friendly** - Built-in support for background tasks via `Task`
 
 ### Technology Stack
 
-| Component            | Technology                      |
-|----------------------|---------------------------------|
-| GUI Framework        | Iced 0.14.0                     |
-| Async Runtime        | Tokio                           |
-| Graphics Backend     | wgpu (Metal/Vulkan/DX12)        |
-| Icon Font            | iced_fonts 0.3.0 (Font Awesome) |
-| Menu (macOS)         | muda (native)                   |
-| Menu (Windows/Linux) | In-app menu                     |
+| Component            | Technology                |
+|----------------------|---------------------------|
+| GUI Framework        | Iced 0.14.0               |
+| Async Runtime        | Tokio                     |
+| Graphics Backend     | wgpu (Metal/Vulkan/DX12)  |
+| Icon Font            | iced_fonts 0.3.0 (Lucide) |
+| Menu (macOS)         | muda (native)             |
+| Menu (Windows/Linux) | In-app menu               |
 
 ---
 
@@ -81,12 +84,13 @@ pub enum Message {
 **Rules:**
 
 - Messages are immutable data
-- Messages should be descriptive of *what happened*, not *what to do*
+- Messages should be descriptive of _what happened_, not _what to do_
 - Nested messages for complex features (see `02-message-patterns.md`)
 
 ### 3. Update
 
-The update function processes messages and returns new state plus optional tasks:
+The update function processes messages and returns new state plus optional
+tasks:
 
 ```rust
 impl App {
@@ -105,7 +109,7 @@ impl App {
 
 **Rules:**
 
-- Update is the *only* place state changes happen
+- Update is the _only_ place state changes happen
 - Keep update handlers focused and delegate to helper methods
 - Return `Task::none()` when no async work is needed
 - Return `Task::perform()` or `Task::done()` for async operations
@@ -354,7 +358,8 @@ Complex features use nested enums for organization:
 Message::DomainEditor(DomainEditorMessage::Mapping(MappingMessage::AcceptSuggestion(var)))
 ```
 
-This keeps the root `Message` enum manageable while allowing detailed sub-messages.
+This keeps the root `Message` enum manageable while allowing detailed
+sub-messages.
 
 ### 4. Separation of UI State and Domain State
 
@@ -382,7 +387,10 @@ Components are functions that return `Element<Message>`, not custom widgets.
 
 ## Next Steps
 
-- **[02-message-patterns.md](./02-message-patterns.md)** - Detailed message hierarchy
-- **[03-state-management.md](./03-state-management.md)** - State patterns and conventions
-- **[04-component-guide.md](./04-component-guide.md)** - Building reusable components
+- **[02-message-patterns.md](./02-message-patterns.md)** - Detailed message
+  hierarchy
+- **[03-state-management.md](./03-state-management.md)** - State patterns and
+  conventions
+- **[04-component-guide.md](./04-component-guide.md)** - Building reusable
+  components
 - **[05-theming.md](./05-theming.md)** - Professional Clinical theme guide

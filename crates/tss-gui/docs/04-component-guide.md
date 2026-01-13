@@ -1,6 +1,7 @@
 # Trial Submission Studio - Component Guide
 
-This document describes the reusable UI components and patterns used in Trial Submission Studio.
+This document describes the reusable UI components and patterns used in Trial
+Submission Studio.
 
 ## Table of Contents
 
@@ -17,7 +18,8 @@ This document describes the reusable UI components and patterns used in Trial Su
 
 ## Component Philosophy
 
-Components in Iced are **functions that return `Element<Message>`**, not custom widget types. This approach provides:
+Components in Iced are **functions that return `Element<Message>`**, not custom
+widget types. This approach provides:
 
 1. **Simplicity** - Just functions, no trait implementations
 2. **Composability** - Combine components freely
@@ -26,14 +28,15 @@ Components in Iced are **functions that return `Element<Message>`**, not custom 
 
 ### Component vs Widget
 
-| Component (Function) | Widget (Struct + Trait) |
-|---------------------|------------------------|
-| Returns `Element<M>` | Implements `Widget` trait |
-| Composes built-in widgets | Custom rendering logic |
-| Quick to create | More complex setup |
-| Use for layout patterns | Use for novel interactions |
+| Component (Function)      | Widget (Struct + Trait)    |
+|---------------------------|----------------------------|
+| Returns `Element<M>`      | Implements `Widget` trait  |
+| Composes built-in widgets | Custom rendering logic     |
+| Quick to create           | More complex setup         |
+| Use for layout patterns   | Use for novel interactions |
 
-**Our approach**: Use component functions for everything except truly custom widgets.
+**Our approach**: Use component functions for everything except truly custom
+widgets.
 
 ---
 
@@ -129,48 +132,43 @@ pub fn search_box<'a, M: Clone + 'a>(
 
 ## Core Components
 
-### Icon Component
+### Icons with iced_fonts::lucide
 
-Wrapper for iced_fonts icons:
+Trial Submission Studio uses `iced_fonts` with the Lucide icon set directly—no
+wrapper needed:
 
 ```rust
-// component/icon.rs
+// Direct usage of iced_fonts::lucide icons
+use iced_fonts::lucide;
 
-use iced::widget::text;
-use iced::{Element, Font};
-use iced_fonts::fa;
-
-/// Font Awesome icon with optional size
-pub fn icon<'a, M: 'a>(icon_char: char, size: Option<f32>) -> Element<'a, M> {
-    text(icon_char.to_string())
-        .font(fa::FONT)
-        .size(size.unwrap_or(16.0))
+// In your view function, use the icon functions directly:
+fn view_example<'a>() -> Element<'a, Message> {
+    row![
+        lucide::folder(),           // Folder icon
+        lucide::file(),             // File icon
+        lucide::check(),            // Checkmark icon
+        lucide::alert_triangle(),   // Warning icon
+        lucide::alert_circle(),     // Error/alert icon
+        lucide::loader(),           // Spinner/loading icon
+        lucide::search(),           // Search/magnifier icon
+        lucide::download(),         // Download icon
+        lucide::upload(),           // Upload icon
+        lucide::settings(),         // Settings/gear icon
+    ]
         .into()
 }
 
-// Convenience functions for common icons
-pub fn icon_folder<'a, M: 'a>() -> Element<'a, M> {
-    icon(fa::FOLDER, None)
+// Custom sizing with .size()
+fn icon_with_size<'a>() -> Element<'a, Message> {
+    lucide::folder().size(24).into()
 }
 
-pub fn icon_file<'a, M: 'a>() -> Element<'a, M> {
-    icon(fa::FILE, None)
-}
-
-pub fn icon_check<'a, M: 'a>() -> Element<'a, M> {
-    icon(fa::CHECK, None)
-}
-
-pub fn icon_warning<'a, M: 'a>() -> Element<'a, M> {
-    icon(fa::TRIANGLE_EXCLAMATION, None)
-}
-
-pub fn icon_error<'a, M: 'a>() -> Element<'a, M> {
-    icon(fa::CIRCLE_EXCLAMATION, None)
-}
-
-pub fn icon_spinner<'a, M: 'a>() -> Element<'a, M> {
-    icon(fa::SPINNER, None)
+// Styling with text styling methods
+fn styled_icon<'a>() -> Element<'a, Message> {
+    lucide::check()
+        .size(20)
+        .color(Color::from_rgb(0.2, 0.8, 0.2))
+        .into()
 }
 ```
 
@@ -304,7 +302,7 @@ pub fn master_detail<'a, M: 'a>(
             .height(Length::Fill)
             .padding(spacing::MD),
     ]
-    .into()
+        .into()
 }
 
 /// Master-detail with header
@@ -321,7 +319,7 @@ pub fn master_detail_with_header<'a, M: 'a>(
         horizontal_rule(1),
         master_detail(master, detail, master_width),
     ]
-    .into()
+        .into()
 }
 ```
 
@@ -357,12 +355,12 @@ pub fn tab_bar<'a, M: Clone + 'a>(
                 .padding([12, 16])
                 .center_x(Length::Shrink),
         )
-        .on_press(tab.message)
-        .style(if is_active {
-            tab_style_active
-        } else {
-            tab_style_inactive
-        });
+            .on_press(tab.message)
+            .style(if is_active {
+                tab_style_active
+            } else {
+                tab_style_inactive
+            });
 
         tab_row = tab_row.push(tab_button);
     }
@@ -443,13 +441,13 @@ pub fn sidebar<'a, M: Clone + 'a>(
         let item_button = button(
             container(label).padding([8, 12]).width(Length::Fill),
         )
-        .on_press(item.message)
-        .width(Length::Fill)
-        .style(if is_active {
-            sidebar_item_active
-        } else {
-            sidebar_item_inactive
-        });
+            .on_press(item.message)
+            .width(Length::Fill)
+            .style(if is_active {
+                sidebar_item_active
+            } else {
+                sidebar_item_inactive
+            });
 
         item_column = item_column.push(item_button);
     }
@@ -666,9 +664,9 @@ pub fn toggle<'a, M: Clone + 'a>(
         text(label).width(Length::Fill),
         toggler(value).on_toggle(on_toggle),
     ]
-    .spacing(spacing::MD)
-    .align_y(iced::Alignment::Center)
-    .into()
+        .spacing(spacing::MD)
+        .align_y(iced::Alignment::Center)
+        .into()
 }
 
 /// Toggle with description
@@ -690,9 +688,9 @@ pub fn toggle_with_description<'a, M: Clone + 'a>(
         .width(Length::Fill),
         toggler(value).on_toggle(on_toggle),
     ]
-    .spacing(spacing::MD)
-    .align_y(iced::Alignment::Center)
-    .into()
+        .spacing(spacing::MD)
+        .align_y(iced::Alignment::Center)
+        .into()
 }
 ```
 
@@ -835,8 +833,8 @@ pub fn data_table<'a, M: Clone + 'a>(
         horizontal_rule(1),
         container(pagination).padding(spacing::SM),
     ]
-    .spacing(0)
-    .into()
+        .spacing(0)
+        .into()
 }
 
 fn header_cell_style(_theme: &iced::Theme) -> container::Style {
@@ -886,7 +884,7 @@ pub fn list_item<'a, M: Clone + 'a>(
             text(primary).size(14),
             text(sec).size(12).color(palette::GRAY_500),
         ]
-        .spacing(2)
+            .spacing(2)
     } else {
         column![text(primary).size(14)]
     };
@@ -968,7 +966,7 @@ pub fn modal<'a, M: Clone + 'a>(
             .on_press(on_close)
             .style(button::text),
     ]
-    .align_y(iced::Alignment::Center);
+        .align_y(iced::Alignment::Center);
 
     let action_row = {
         let mut r = row![].spacing(spacing::SM);
@@ -984,18 +982,18 @@ pub fn modal<'a, M: Clone + 'a>(
             container(content).padding([spacing::MD, 0]),
             action_row,
         ]
-        .spacing(spacing::MD),
+            .spacing(spacing::MD),
     )
-    .width(Length::Fixed(500.0))
-    .padding(spacing::LG)
-    .style(dialog_style);
+        .width(Length::Fixed(500.0))
+        .padding(spacing::LG)
+        .style(dialog_style);
 
     stack![
         base,
         opaque(backdrop),
         center(dialog),
     ]
-    .into()
+        .into()
 }
 
 /// Confirmation modal (simple yes/no)
@@ -1078,7 +1076,7 @@ pub fn progress_modal<'a, M: Clone + 'a>(
         progress_bar_widget,
         percentage,
     ]
-    .spacing(spacing::MD);
+        .spacing(spacing::MD);
 
     if let Some(cancel) = on_cancel {
         content = content.push(
@@ -1087,8 +1085,8 @@ pub fn progress_modal<'a, M: Clone + 'a>(
                     .on_press(cancel)
                     .style(button::secondary),
             )
-            .width(Length::Fill)
-            .center_x(Length::Shrink),
+                .width(Length::Fill)
+                .center_x(Length::Shrink),
         );
     }
 
@@ -1103,21 +1101,21 @@ pub fn progress_modal<'a, M: Clone + 'a>(
     let dialog = container(
         column![text(title).size(18), content].spacing(spacing::MD),
     )
-    .width(Length::Fixed(400.0))
-    .padding(spacing::LG)
-    .style(|_| container::Style {
-        background: Some(palette::WHITE.into()),
-        border: iced::Border {
-            radius: 8.0.into(),
+        .width(Length::Fixed(400.0))
+        .padding(spacing::LG)
+        .style(|_| container::Style {
+            background: Some(palette::WHITE.into()),
+            border: iced::Border {
+                radius: 8.0.into(),
+                ..Default::default()
+            },
+            shadow: iced::Shadow {
+                color: iced::Color::from_rgba(0.0, 0.0, 0.0, 0.2),
+                offset: iced::Vector::new(0.0, 4.0),
+                blur_radius: 16.0,
+            },
             ..Default::default()
-        },
-        shadow: iced::Shadow {
-            color: iced::Color::from_rgba(0.0, 0.0, 0.0, 0.2),
-            offset: iced::Vector::new(0.0, 4.0),
-            blur_radius: 16.0,
-        },
-        ..Default::default()
-    });
+        });
 
     stack![base, opaque(backdrop), center(dialog)].into()
 }
@@ -1149,39 +1147,38 @@ pub fn toast<'a, M: 'a>(
     message: &str,
     toast_type: ToastType,
 ) -> Element<'a, M> {
-    let (bg_color, icon_char) = match toast_type {
-        ToastType::Success => (palette::SUCCESS, '\u{f058}'),  // check-circle
-        ToastType::Warning => (palette::WARNING, '\u{f071}'),  // exclamation-triangle
-        ToastType::Error => (palette::ERROR, '\u{f057}'),      // times-circle
-        ToastType::Info => (palette::INFO, '\u{f05a}'),        // info-circle
+    use iced_fonts::lucide;
+
+    let (bg_color, icon_widget): (_, Element<'a, M>) = match toast_type {
+        ToastType::Success => (palette::SUCCESS, lucide::circle_check().size(16).color(palette::WHITE).into()),
+        ToastType::Warning => (palette::WARNING, lucide::triangle_alert().size(16).color(palette::WHITE).into()),
+        ToastType::Error => (palette::ERROR, lucide::circle_x().size(16).color(palette::WHITE).into()),
+        ToastType::Info => (palette::INFO, lucide::info().size(16).color(palette::WHITE).into()),
     };
 
     container(
         row![
-            text(icon_char.to_string())
-                .font(iced_fonts::fa::FONT)
-                .size(16)
-                .color(palette::WHITE),
+            icon_widget,
             text(message).color(palette::WHITE),
         ]
-        .spacing(spacing::SM)
-        .align_y(iced::Alignment::Center),
+            .spacing(spacing::SM)
+            .align_y(iced::Alignment::Center),
     )
-    .padding([spacing::SM, spacing::MD])
-    .style(move |_| container::Style {
-        background: Some(bg_color.into()),
-        border: iced::Border {
-            radius: 4.0.into(),
+        .padding([spacing::SM, spacing::MD])
+        .style(move |_| container::Style {
+            background: Some(bg_color.into()),
+            border: iced::Border {
+                radius: 4.0.into(),
+                ..Default::default()
+            },
+            shadow: iced::Shadow {
+                color: iced::Color::from_rgba(0.0, 0.0, 0.0, 0.2),
+                offset: iced::Vector::new(0.0, 2.0),
+                blur_radius: 4.0,
+            },
             ..Default::default()
-        },
-        shadow: iced::Shadow {
-            color: iced::Color::from_rgba(0.0, 0.0, 0.0, 0.2),
-            offset: iced::Vector::new(0.0, 2.0),
-            blur_radius: 4.0,
-        },
-        ..Default::default()
-    })
-    .into()
+        })
+        .into()
 }
 ```
 
@@ -1193,7 +1190,7 @@ pub fn toast<'a, M: 'a>(
 
 Always use generic `M` for flexibility:
 
-```rust
+```rust, no_run
 // GOOD: Generic message type
 pub fn my_component<'a, M: Clone + 'a>(...) -> Element<'a, M>
 
@@ -1220,7 +1217,7 @@ pub fn search_box<'a>(value: &str) -> Element<'a, SearchMessage>
 
 Define style functions for reuse:
 
-```rust
+```rust, no_run
 // GOOD: Named function for styles
 fn card_style(_theme: &iced::Theme) -> container::Style {
     container::Style {
@@ -1240,7 +1237,7 @@ container(content).style(|_| container::Style { ... })
 
 Document public components:
 
-```rust
+````rust
 /// Search box with clear button
 ///
 /// # Arguments
@@ -1259,13 +1256,13 @@ Document public components:
 /// )
 /// ```
 pub fn search_box<'a, M: Clone + 'a>(...) -> Element<'a, M>
-```
+````
 
 ### 5. Composability
 
 Components should compose well:
 
-```rust
+```rust, no_run
 // GOOD: Components that work together
 let content = column![
     card(form_field("Name", &name, "Enter name", on_name_change, None)),

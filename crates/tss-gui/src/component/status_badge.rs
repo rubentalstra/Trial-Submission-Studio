@@ -4,6 +4,7 @@
 
 use iced::widget::{container, row, text};
 use iced::{Border, Element, Length};
+use iced_fonts::lucide;
 
 use crate::theme::{
     BORDER_RADIUS_FULL, ERROR, ERROR_LIGHT, GRAY_400, GRAY_500, INFO, INFO_LIGHT, SUCCESS,
@@ -95,8 +96,9 @@ pub fn status_badge<'a, M: 'a>(label: impl Into<String>, status: Status) -> Elem
 /// Creates a status badge with an icon.
 ///
 /// Includes an icon before the label text.
+/// This function now accepts a lucide icon element directly.
 pub fn status_badge_with_icon<'a, M: 'a>(
-    icon_char: char,
+    icon: impl Into<Element<'a, M>>,
     label: impl Into<String>,
     status: Status,
 ) -> Element<'a, M> {
@@ -104,15 +106,10 @@ pub fn status_badge_with_icon<'a, M: 'a>(
     let text_color = status.color();
     let label_str = label.into();
 
-    let icon = text(icon_char.to_string())
-        .font(iced::Font::with_name("Font Awesome 6 Free Solid"))
-        .size(11)
-        .color(text_color);
-
     let label_text = text(label_str).size(12).color(text_color);
 
     container(
-        row![icon, label_text]
+        row![icon.into(), label_text]
             .spacing(6.0)
             .align_y(iced::Alignment::Center),
     )
@@ -181,9 +178,17 @@ pub fn count_badge<'a, M: 'a>(count: usize, status: Status) -> Element<'a, M> {
 /// Specialized badge for variable mapping states.
 pub fn mapping_status_badge<'a, M: 'a>(mapped: bool, required: bool) -> Element<'a, M> {
     if mapped {
-        status_badge_with_icon('\u{f00c}', "Mapped", Status::Success)
+        status_badge_with_icon(
+            lucide::check().size(11).color(SUCCESS),
+            "Mapped",
+            Status::Success,
+        )
     } else if required {
-        status_badge_with_icon('\u{f071}', "Required", Status::Error)
+        status_badge_with_icon(
+            lucide::triangle_alert().size(11).color(ERROR),
+            "Required",
+            Status::Error,
+        )
     } else {
         status_badge("Unmapped", Status::Neutral)
     }
@@ -195,13 +200,13 @@ pub fn mapping_status_badge<'a, M: 'a>(mapped: bool, required: bool) -> Element<
 pub fn validation_badge<'a, M: 'a>(errors: usize, warnings: usize) -> Element<'a, M> {
     if errors > 0 {
         status_badge_with_icon(
-            '\u{f057}', // times-circle
+            lucide::circle_x().size(11).color(ERROR),
             format!("{} error{}", errors, if errors == 1 { "" } else { "s" }),
             Status::Error,
         )
     } else if warnings > 0 {
         status_badge_with_icon(
-            '\u{f071}', // exclamation-triangle
+            lucide::triangle_alert().size(11).color(WARNING),
             format!(
                 "{} warning{}",
                 warnings,
@@ -210,6 +215,10 @@ pub fn validation_badge<'a, M: 'a>(errors: usize, warnings: usize) -> Element<'a
             Status::Warning,
         )
     } else {
-        status_badge_with_icon('\u{f00c}', "Valid", Status::Success)
+        status_badge_with_icon(
+            lucide::check().size(11).color(SUCCESS),
+            "Valid",
+            Status::Success,
+        )
     }
 }

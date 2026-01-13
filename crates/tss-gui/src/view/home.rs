@@ -9,6 +9,7 @@
 
 use iced::widget::{Space, button, column, container, row, scrollable, text};
 use iced::{Alignment, Border, Element, Length};
+use iced_fonts::lucide;
 
 use crate::component::modal;
 use crate::message::{HomeMessage, Message};
@@ -112,9 +113,7 @@ fn view_workflow_selector<'a>(current_mode: WorkflowMode) -> Element<'a, Message
     // Open folder button
     let open_button = button(
         row![
-            text("\u{f07c}") // folder-open icon
-                .font(iced::Font::with_name("Font Awesome 6 Free Solid"))
-                .size(14),
+            lucide::folder_open().size(14),
             text("Open Study Folder").size(14),
         ]
         .spacing(SPACING_SM)
@@ -223,10 +222,7 @@ fn view_recent_studies<'a>(state: &'a AppState) -> Element<'a, Message> {
         let path_clone = path.clone();
         let item = button(
             row![
-                text("\u{f07b}") // folder icon
-                    .font(iced::Font::with_name("Font Awesome 6 Free Solid"))
-                    .size(12)
-                    .color(GRAY_500),
+                lucide::folder().size(12).color(GRAY_500),
                 text(display).size(13).color(GRAY_700),
             ]
             .spacing(SPACING_SM)
@@ -270,9 +266,7 @@ fn view_study_loaded<'a>(state: &'a AppState, workflow_mode: WorkflowMode) -> El
     // Export button
     let export_button = button(
         row![
-            text("\u{f56e}") // file-export icon
-                .font(iced::Font::with_name("Font Awesome 6 Free Solid"))
-                .size(14),
+            lucide::file_output().size(14),
             text("Go to Export").size(14),
         ]
         .spacing(SPACING_SM)
@@ -317,14 +311,9 @@ fn view_study_header<'a>(study: &'a Study, mode: WorkflowMode) -> Element<'a, Me
 
     // Close button
     let close_button = button(
-        row![
-            text("\u{f00d}") // times icon
-                .font(iced::Font::with_name("Font Awesome 6 Free Solid"))
-                .size(12),
-            text("Close Study").size(12),
-        ]
-        .spacing(4.0)
-        .align_y(Alignment::Center),
+        row![lucide::x().size(12), text("Close Study").size(12),]
+            .spacing(4.0)
+            .align_y(Alignment::Center),
     )
     .on_press(Message::Home(HomeMessage::CloseStudyClicked))
     .padding([6.0, 12.0])
@@ -347,10 +336,7 @@ fn view_study_header<'a>(study: &'a Study, mode: WorkflowMode) -> Element<'a, Me
 /// Domain list showing all discovered domains.
 fn view_domain_list<'a>(study: &'a Study) -> Element<'a, Message> {
     let header = row![
-        text("\u{f1c0}") // database icon
-            .font(iced::Font::with_name("Font Awesome 6 Free Solid"))
-            .size(14)
-            .color(GRAY_600),
+        lucide::database().size(14).color(GRAY_600),
         text("Discovered Domains").size(14).color(GRAY_700),
     ]
     .spacing(SPACING_SM)
@@ -388,19 +374,14 @@ fn view_domain_item<'a>(code: &'a str, domain: &'a Domain) -> Element<'a, Messag
     let is_complete = domain.is_mapping_complete();
     let is_touched = domain.is_touched();
 
-    // Status icon
-    let (icon_char, icon_color) = if is_complete {
-        ('\u{f058}', SUCCESS) // check-circle
+    // Status icon using lucide
+    let status_icon: Element<'a, Message> = if is_complete {
+        lucide::circle_check().size(14).color(SUCCESS).into()
     } else if is_touched {
-        ('\u{f303}', WARNING) // pencil-alt
+        lucide::pencil().size(14).color(WARNING).into()
     } else {
-        ('\u{f111}', GRAY_500) // circle
+        lucide::circle().size(14).color(GRAY_500).into()
     };
-
-    let status_icon = text(icon_char.to_string())
-        .font(iced::Font::with_name("Font Awesome 6 Free Solid"))
-        .size(14)
-        .color(icon_color);
 
     let name_text = text(display_name).size(14).color(GRAY_800);
     let rows_text = text(format!("{} rows", row_count)).size(12).color(GRAY_500);
@@ -444,10 +425,7 @@ fn view_domain_item<'a>(code: &'a str, domain: &'a Domain) -> Element<'a, Messag
 
 /// Close study confirmation modal.
 fn view_close_study_modal<'a>(base: Element<'a, Message>) -> Element<'a, Message> {
-    let warning_icon = text("\u{f071}") // exclamation-triangle
-        .font(iced::Font::with_name("Font Awesome 6 Free Solid"))
-        .size(48)
-        .color(WARNING);
+    let warning_icon = lucide::triangle_alert().size(48).color(WARNING);
 
     let title = text("Close Study?").size(18).color(GRAY_900);
 
@@ -461,14 +439,9 @@ fn view_close_study_modal<'a>(base: Element<'a, Message>) -> Element<'a, Message
         .style(button_secondary);
 
     let confirm_button = button(
-        row![
-            text("\u{f2ed}") // trash-alt icon
-                .font(iced::Font::with_name("Font Awesome 6 Free Solid"))
-                .size(12),
-            text("Close Study").size(14),
-        ]
-        .spacing(SPACING_SM)
-        .align_y(Alignment::Center),
+        row![lucide::trash().size(12), text("Close Study").size(14),]
+            .spacing(SPACING_SM)
+            .align_y(Alignment::Center),
     )
     .on_press(Message::Home(HomeMessage::CloseStudyConfirmed))
     .padding([10.0, 20.0])

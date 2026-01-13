@@ -2,8 +2,9 @@
 //!
 //! A text input with search icon and clear button.
 
-use iced::widget::{Space, button, container, row, text, text_input};
+use iced::widget::{Space, button, container, row, text_input};
 use iced::{Border, Element, Length, Padding};
+use iced_fonts::lucide;
 
 use crate::theme::{
     BORDER_RADIUS_SM, GRAY_200, GRAY_400, GRAY_500, SPACING_SM, SPACING_XS, button_ghost,
@@ -44,10 +45,7 @@ pub fn search_box<'a, M: Clone + 'a>(
     on_clear: M,
 ) -> Element<'a, M> {
     // Search icon (magnifying glass)
-    let search_icon = text("\u{f002}")
-        .font(iced::Font::with_name("Font Awesome 6 Free Solid"))
-        .size(14)
-        .color(GRAY_400);
+    let search_icon = lucide::search().size(14).color(GRAY_400);
 
     // Text input (extra left padding for icon)
     let input = text_input(placeholder, value)
@@ -61,7 +59,7 @@ pub fn search_box<'a, M: Clone + 'a>(
         None
     } else {
         Some(
-            button(text("\u{00d7}").size(16).color(GRAY_500))
+            button(lucide::x().size(16).color(GRAY_500))
                 .on_press(on_clear)
                 .padding([4.0, 8.0])
                 .style(button_ghost),
@@ -117,7 +115,7 @@ pub fn search_box_compact<'a, M: Clone + 'a>(
         None
     } else {
         Some(
-            button(text("\u{00d7}").size(14).color(GRAY_500))
+            button(lucide::x().size(14).color(GRAY_500))
                 .on_press(on_clear)
                 .padding([2.0, 6.0])
                 .style(button_ghost),
@@ -153,7 +151,7 @@ pub fn search_box_with_filter<'a, M: Clone + 'a>(
     let clear_button: Element<'a, M> = if value.is_empty() {
         Space::new().width(0.0).into()
     } else {
-        button(text("\u{00d7}").size(16).color(GRAY_500))
+        button(lucide::x().size(16).color(GRAY_500))
             .on_press(on_clear)
             .padding([4.0, 8.0])
             .style(button_ghost)
@@ -167,16 +165,11 @@ pub fn search_box_with_filter<'a, M: Clone + 'a>(
         GRAY_400
     };
 
-    let filter_button: Element<'a, M> = button(
-        text("\u{f0b0}") // filter icon
-            .font(iced::Font::with_name("Font Awesome 6 Free Solid"))
-            .size(14)
-            .color(filter_icon_color),
-    )
-    .on_press(on_filter_toggle)
-    .padding([4.0, 8.0])
-    .style(button_ghost)
-    .into();
+    let filter_button: Element<'a, M> = button(lucide::funnel().size(14).color(filter_icon_color))
+        .on_press(on_filter_toggle)
+        .padding([4.0, 8.0])
+        .style(button_ghost)
+        .into();
 
     row![input, clear_button, filter_button]
         .spacing(SPACING_SM)

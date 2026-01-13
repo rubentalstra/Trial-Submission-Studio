@@ -22,6 +22,9 @@ use app::App;
 use iced::Size;
 use iced::window;
 
+// Import Lucide font bytes for loading
+use component::LUCIDE_FONT_BYTES;
+
 /// Application entry point.
 ///
 /// Initializes the Iced application with the Professional Clinical theme
@@ -39,6 +42,7 @@ pub fn main() -> iced::Result {
         .title(App::title)
         .theme(App::theme)
         .subscription(App::subscription)
+        .font(LUCIDE_FONT_BYTES)
         .window(window::Settings {
             size: Size::new(1280.0, 800.0),
             min_size: Some(Size::new(1024.0, 600.0)),
