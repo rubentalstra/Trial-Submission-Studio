@@ -1,517 +1,324 @@
-//! Main application struct and eframe::App implementation
+//! Main application module for Trial Submission Studio.
+//!
+//! This module implements the Iced 0.14.0 application using the builder pattern.
+//! The architecture follows the Elm pattern: State → Message → Update → View.
 
-use crate::menu;
-use crate::services::StudyLoader;
-use crate::settings::ui::{SettingsResult, SettingsWindow};
-use crate::settings::{load_settings, save_settings};
-use crate::state::{AppState, EditorTab, UpdateDialogState, View};
-use crate::views::{
-    CommonMarkCache, DomainEditorView, ExportView, HomeAction, HomeView, UpdateDialogAction,
-    show_about_dialog, show_third_party_dialog, show_update_dialog,
-};
-use crossbeam_channel::Receiver;
-use eframe::egui;
-use muda::{Menu, MenuEvent};
-use std::sync::mpsc;
-use std::thread;
-use tss_updater::UpdateService;
+use iced::keyboard;
+use iced::widget::{column, container, text};
+use iced::{Element, Subscription, Task, Theme};
 
-/// Message sent from update background thread.
-enum UpdateMessage {
-    /// Update check completed: Ok(Some((version, changelog))) if available, Ok(None) if up-to-date.
-    CheckResult(Result<Option<(String, String)>, String>),
-    /// Install failed with error (success means app restarted).
-    InstallFailed(String),
+use crate::message::Message;
+use crate::state::navigation::View;
+use crate::theme::clinical_light;
+
+// =============================================================================
+// APPLICATION STATE
+// =============================================================================
+
+/// Main application state.
+///
+/// This is the root state container for Trial Submission Studio.
+/// It holds all UI and domain state, organized by concern.
+pub struct App {
+    /// Current view/route
+    view: View,
+    // TODO: Add full state once services are ported
+    // pub study: Option<StudyState>,
+    // pub settings: Settings,
+    // pub ui: UiState,
 }
 
-/// Main application struct
-pub struct CdiscApp {
-    state: AppState,
-    menu_receiver: Receiver<MenuEvent>,
-    /// Keep the menu alive for the lifetime of the app
-    #[allow(dead_code)]
-    menu: Menu,
-    /// Settings window UI component
-    settings_window: SettingsWindow,
-    /// Markdown cache for rendering changelogs and licenses
-    markdown_cache: CommonMarkCache,
-    /// Whether we've performed the startup update check
-    startup_check_done: bool,
-    /// Channel for receiving update messages from background threads
-    update_receiver: mpsc::Receiver<UpdateMessage>,
-    /// Sender for update messages (cloned for background threads)
-    update_sender: mpsc::Sender<UpdateMessage>,
-}
+// =============================================================================
+// APPLICATION IMPLEMENTATION
+// =============================================================================
 
-impl CdiscApp {
-    /// Create a new application instance
-    pub fn new(
-        cc: &eframe::CreationContext<'_>,
-        menu_receiver: Receiver<MenuEvent>,
-        menu: Menu,
-    ) -> Self {
-        // Initialize Phosphor icons font
-        let mut fonts = egui::FontDefinitions::default();
-        egui_phosphor::add_to_fonts(&mut fonts, egui_phosphor::Variant::Regular);
-        cc.egui_ctx.set_fonts(fonts);
+impl App {
+    /// Create a new application instance.
+    ///
+    /// This is called once at startup. Returns the initial state and any
+    /// startup tasks (e.g., loading settings, checking for updates).
+    pub fn new() -> (Self, Task<Message>) {
+        let app = Self { view: View::Home };
 
-        // Install image loaders (required for SVG support)
-        egui_extras::install_image_loaders(&cc.egui_ctx);
+        // TODO: Add startup tasks
+        // - Load settings from disk
+        // - Check for updates (if enabled)
+        // - Load recent studies list
+        let startup_tasks = Task::none();
 
-        // Load settings from disk
-        let settings = load_settings();
-        tracing::info!("Loaded settings: dark_mode={}", settings.general.dark_mode);
-
-        // Create update message channel
-        let (update_sender, update_receiver) = mpsc::channel();
-
-        Self {
-            state: AppState::new(settings),
-            menu_receiver,
-            menu,
-            settings_window: SettingsWindow::default(),
-            markdown_cache: CommonMarkCache::default(),
-            startup_check_done: false,
-            update_receiver,
-            update_sender,
-        }
+        (app, startup_tasks)
     }
-}
 
-impl eframe::App for CdiscApp {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        // Handle preview results from background threads
-        self.handle_preview_results(ctx);
-
-        // Handle update messages from background threads
-        self.handle_update_messages(ctx);
-
-        // Handle menu events
-        self.handle_menu_events(ctx);
-
-        // Handle keyboard shortcuts
-        self.handle_shortcuts(ctx);
-
-        // Perform startup update check if needed
-        self.maybe_startup_update_check(ctx);
-
-        // Track home view action
-        let mut home_action = HomeAction::None;
-
-        // Show settings window if open
-        if self.state.is_settings_open()
-            && let Some(ref mut pending) = self.state.ui.settings.pending
-        {
-            let dark_mode = pending.general.dark_mode;
-            let result = self.settings_window.show(ctx, pending, dark_mode);
-
-            match result {
-                SettingsResult::Open => {}
-                SettingsResult::Apply => {
-                    self.state.close_settings(true);
-                    // Save settings to disk
-                    if let Err(e) = save_settings(&self.state.settings) {
-                        tracing::error!("Failed to save settings: {}", e);
-                    }
-                }
-                SettingsResult::Cancel => {
-                    self.state.close_settings(false);
-                }
-            }
-        }
-
-        // Show update dialog if open
-        let update_action =
-            show_update_dialog(ctx, &mut self.state.ui.update, &mut self.markdown_cache);
-        self.handle_update_action(update_action, ctx);
-
-        // Show about dialog if open
-        show_about_dialog(ctx, &mut self.state.ui.about);
-
-        // Show third-party licenses dialog if open
-        show_third_party_dialog(
-            ctx,
-            &mut self.state.ui.third_party,
-            &mut self.markdown_cache,
-        );
-
-        // Main panel
-        egui::CentralPanel::default().show(ctx, |ui| match self.state.view.clone() {
-            View::Home => {
-                home_action = HomeView::show(ui, &mut self.state);
-            }
-            View::DomainEditor { domain, tab } => {
-                DomainEditorView::show(ui, &mut self.state, &domain, tab);
-            }
-            View::Export => {
-                ExportView::show(ui, &mut self.state);
-            }
-        });
-
-        // Handle home view actions
-        match home_action {
-            HomeAction::LoadStudy(folder) => {
-                self.load_study(&folder);
-            }
-            HomeAction::CloseStudy => {
-                self.state.clear_study();
-            }
-            HomeAction::None => {}
-        }
-    }
-}
-
-impl CdiscApp {
-    /// Handle menu events from the native menu bar
-    fn handle_menu_events(&mut self, ctx: &egui::Context) {
-        while let Ok(event) = self.menu_receiver.try_recv() {
-            let id = event.id().0.as_str();
-            tracing::debug!("Menu event: {}", id);
-
-            match id {
-                menu::ids::OPEN_STUDY => {
-                    if let Some(folder) = rfd::FileDialog::new().pick_folder() {
-                        tracing::info!("Opening study from menu: {:?}", folder);
-                        self.load_study(&folder);
-                    }
-                }
-                menu::ids::SETTINGS => {
-                    self.state.open_settings();
-                }
-                menu::ids::EXIT => {
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
-                }
-                menu::ids::ABOUT => {
-                    self.state.ui.about.open();
-                }
-                menu::ids::CHECK_UPDATES => {
-                    self.start_update_check(ctx);
-                }
-                // Help menu items
-                menu::ids::DOCUMENTATION => {
-                    let _ = open::that(
-                        "https://github.com/rubentalstra/Trial-Submission-Studio#readme",
-                    );
-                }
-                menu::ids::RELEASE_NOTES => {
-                    let _ = open::that(
-                        "https://github.com/rubentalstra/Trial-Submission-Studio/releases",
-                    );
-                }
-                menu::ids::VIEW_ON_GITHUB => {
-                    let _ = open::that("https://github.com/rubentalstra/Trial-Submission-Studio");
-                }
-                menu::ids::REPORT_ISSUE => {
-                    let _ = open::that(
-                        "https://github.com/rubentalstra/Trial-Submission-Studio/issues/new",
-                    );
-                }
-                menu::ids::VIEW_LICENSE => {
-                    let _ = open::that(
-                        "https://github.com/rubentalstra/Trial-Submission-Studio/blob/main/LICENSE",
-                    );
-                }
-                menu::ids::THIRD_PARTY_LICENSES => {
-                    self.state.ui.third_party.open();
-                }
-                _ => {
-                    tracing::debug!("Unknown menu event: {}", id);
-                }
+    /// Update application state in response to a message.
+    ///
+    /// This is the core of the Elm architecture - all state changes happen here.
+    /// Returns any follow-up tasks to execute.
+    pub fn update(&mut self, message: Message) -> Task<Message> {
+        match message {
+            // Navigation
+            Message::Navigate(view) => {
+                self.view = view;
+                Task::none()
             }
 
-            // Request repaint after menu event
-            ctx.request_repaint();
+            // Workflow mode change
+            Message::SetWorkflowMode(_mode) => {
+                // TODO: Store workflow mode in state
+                Task::none()
+            }
+
+            // Home view messages
+            Message::Home(home_msg) => self.handle_home_message(home_msg),
+
+            // Domain editor messages
+            Message::DomainEditor(editor_msg) => self.handle_domain_editor_message(editor_msg),
+
+            // Export messages
+            Message::Export(export_msg) => self.handle_export_message(export_msg),
+
+            // Dialog messages
+            Message::Dialog(dialog_msg) => self.handle_dialog_message(dialog_msg),
+
+            // Menu messages
+            Message::Menu(menu_msg) => self.handle_menu_message(menu_msg),
+
+            // Background task results
+            Message::StudyLoaded(result) => self.handle_study_loaded(result),
+
+            Message::PreviewReady { domain, result } => self.handle_preview_ready(&domain, result),
+
+            Message::ValidationComplete { domain, report } => {
+                self.handle_validation_complete(&domain, report)
+            }
+
+            Message::UpdateCheckComplete(result) => self.handle_update_check_complete(result),
+
+            // Global events
+            Message::KeyPressed(key, modifiers) => self.handle_key_press(key, modifiers),
+
+            Message::Tick => {
+                // Periodic tick for animations or polling
+                Task::none()
+            }
+
+            // File dialog result
+            Message::FolderSelected(path) => {
+                if let Some(_folder) = path {
+                    // TODO: Load study from folder
+                }
+                Task::none()
+            }
+
+            // No-op placeholder
+            Message::Noop => Task::none(),
         }
     }
 
-    /// Load a study from a folder
-    fn load_study(&mut self, folder: &std::path::Path) {
-        let header_rows = self.state.settings.general.header_rows;
-        match StudyLoader::load_study(folder, header_rows) {
-            Ok(study) => {
-                let domain_count = study.domains.len();
-                tracing::info!(
-                    "Loaded study '{}' with {} domains",
-                    study.study_id,
-                    domain_count
-                );
-                self.state.set_study(study);
-
-                // Add to recent studies
-                let path = folder.to_path_buf();
-                self.state.settings.recent_studies.retain(|p| p != &path);
-                self.state.settings.recent_studies.insert(0, path);
-                if self.state.settings.recent_studies.len() > 10 {
-                    self.state.settings.recent_studies.truncate(10);
-                }
-
-                // Save settings with updated recent studies
-                if let Err(e) = save_settings(&self.state.settings) {
-                    tracing::error!("Failed to save settings: {}", e);
-                }
-            }
-            Err(e) => {
-                tracing::error!("Failed to load study: {}", e);
-                // TODO: Show error toast
-            }
-        }
-    }
-}
-
-impl CdiscApp {
-    /// Handle global keyboard shortcuts
-    fn handle_shortcuts(&mut self, ctx: &egui::Context) {
-        // Use Cmd on macOS, Ctrl on other platforms
-        let modifiers = ctx.input(|i| i.modifiers);
-        let cmd_or_ctrl = if cfg!(target_os = "macos") {
-            modifiers.command
-        } else {
-            modifiers.ctrl
+    /// Render the current view.
+    ///
+    /// This is a pure function that produces the UI based on current state.
+    /// No side effects should happen here.
+    pub fn view(&self) -> Element<'_, Message> {
+        // Main content based on current view
+        let content: Element<'_, Message> = match &self.view {
+            View::Home => self.view_home(),
+            View::DomainEditor { domain, tab } => self.view_domain_editor(domain, *tab),
+            View::Export => self.view_export(),
         };
 
-        ctx.input(|i| {
-            // Cmd/Ctrl+O - Open study
-            if cmd_or_ctrl
-                && i.key_pressed(egui::Key::O)
-                && let Some(folder) = rfd::FileDialog::new().pick_folder()
-            {
-                tracing::info!("Opening study: {:?}", folder);
-                // Note: Can't call load_study here due to borrow rules
-                // The menu handles this instead
+        // Wrap in main container
+        container(content)
+            .width(iced::Length::Fill)
+            .height(iced::Length::Fill)
+            .into()
+    }
+
+    /// Get the window title.
+    ///
+    /// This can change based on current state (e.g., show study name).
+    pub fn title(&self) -> String {
+        match &self.view {
+            View::Home => "Trial Submission Studio".to_string(),
+            View::DomainEditor { domain, .. } => {
+                format!("{} - Trial Submission Studio", domain)
+            }
+            View::Export => "Export - Trial Submission Studio".to_string(),
+        }
+    }
+
+    /// Get the current theme.
+    ///
+    /// Returns the Professional Clinical light theme.
+    pub fn theme(&self) -> Theme {
+        clinical_light()
+    }
+
+    /// Subscribe to runtime events.
+    ///
+    /// This sets up event listeners for keyboard shortcuts, timers, etc.
+    pub fn subscription(&self) -> Subscription<Message> {
+        // Keyboard event subscription using Iced 0.14.0 API
+        keyboard::listen().map(|event| match event {
+            keyboard::Event::KeyPressed { key, modifiers, .. } => {
+                Message::KeyPressed(key, modifiers)
+            }
+            _ => Message::Noop,
+        })
+    }
+}
+
+// =============================================================================
+// VIEW IMPLEMENTATIONS (Placeholder)
+// =============================================================================
+
+impl App {
+    /// Render the home view.
+    fn view_home(&self) -> Element<'_, Message> {
+        // Placeholder - will be implemented in Phase 3
+        column![
+            text("Trial Submission Studio").size(32),
+            text("Welcome! Open a study folder to begin.").size(16),
+        ]
+        .spacing(16)
+        .padding(32)
+        .into()
+    }
+
+    /// Render the domain editor view.
+    fn view_domain_editor(
+        &self,
+        domain: &str,
+        tab: crate::state::navigation::EditorTab,
+    ) -> Element<'_, Message> {
+        // Placeholder - will be implemented in Phase 4
+        column![
+            text(format!("Domain: {}", domain)).size(24),
+            text(format!("Tab: {}", tab.name())).size(16),
+        ]
+        .spacing(16)
+        .padding(32)
+        .into()
+    }
+
+    /// Render the export view.
+    fn view_export(&self) -> Element<'_, Message> {
+        // Placeholder - will be implemented in Phase 5
+        column![
+            text("Export").size(24),
+            text("Configure and export your domains.").size(16),
+        ]
+        .spacing(16)
+        .padding(32)
+        .into()
+    }
+}
+
+// =============================================================================
+// MESSAGE HANDLERS (Placeholder)
+// =============================================================================
+
+impl App {
+    fn handle_home_message(&mut self, _msg: crate::message::HomeMessage) -> Task<Message> {
+        // TODO: Implement in Phase 3
+        Task::none()
+    }
+
+    fn handle_domain_editor_message(
+        &mut self,
+        _msg: crate::message::DomainEditorMessage,
+    ) -> Task<Message> {
+        // TODO: Implement in Phase 4
+        Task::none()
+    }
+
+    fn handle_export_message(&mut self, _msg: crate::message::ExportMessage) -> Task<Message> {
+        // TODO: Implement in Phase 5
+        Task::none()
+    }
+
+    fn handle_dialog_message(&mut self, _msg: crate::message::DialogMessage) -> Task<Message> {
+        // TODO: Implement in Phase 5
+        Task::none()
+    }
+
+    fn handle_menu_message(&mut self, _msg: crate::message::MenuMessage) -> Task<Message> {
+        // TODO: Implement in Phase 6
+        Task::none()
+    }
+
+    fn handle_study_loaded(
+        &mut self,
+        _result: Result<crate::state::StudyState, String>,
+    ) -> Task<Message> {
+        // TODO: Implement in Phase 3
+        Task::none()
+    }
+
+    fn handle_preview_ready(
+        &mut self,
+        _domain: &str,
+        _result: Result<polars::prelude::DataFrame, String>,
+    ) -> Task<Message> {
+        // TODO: Implement in Phase 4
+        Task::none()
+    }
+
+    fn handle_validation_complete(
+        &mut self,
+        _domain: &str,
+        _report: tss_validate::ValidationReport,
+    ) -> Task<Message> {
+        // TODO: Implement in Phase 4
+        Task::none()
+    }
+
+    fn handle_update_check_complete(
+        &mut self,
+        _result: Result<Option<crate::message::UpdateInfo>, String>,
+    ) -> Task<Message> {
+        // TODO: Implement in Phase 5
+        Task::none()
+    }
+
+    fn handle_key_press(
+        &mut self,
+        key: keyboard::Key,
+        modifiers: keyboard::Modifiers,
+    ) -> Task<Message> {
+        // Global keyboard shortcuts
+        use keyboard::key::Named;
+
+        match key.as_ref() {
+            // Cmd/Ctrl+O: Open study
+            keyboard::Key::Character("o") if modifiers.command() => {
+                Task::done(Message::Menu(crate::message::MenuMessage::OpenStudy))
             }
 
-            // Cmd/Ctrl+, - Open settings
-            if cmd_or_ctrl && i.key_pressed(egui::Key::Comma) && !self.state.is_settings_open() {
-                self.state.open_settings();
+            // Cmd/Ctrl+W: Close study
+            keyboard::Key::Character("w") if modifiers.command() => {
+                Task::done(Message::Menu(crate::message::MenuMessage::CloseStudy))
             }
 
-            // Cmd/Ctrl+E - Go to Export
-            if cmd_or_ctrl && i.key_pressed(egui::Key::E) && self.state.study.is_some() {
-                self.state.go_export();
+            // Cmd/Ctrl+,: Settings
+            keyboard::Key::Character(",") if modifiers.command() => {
+                Task::done(Message::Menu(crate::message::MenuMessage::Settings))
             }
 
-            // Escape - Go back or close settings
-            if i.key_pressed(egui::Key::Escape) {
-                if self.state.is_settings_open() {
-                    self.state.close_settings(false);
+            // Cmd/Ctrl+E: Export
+            keyboard::Key::Character("e") if modifiers.command() => {
+                Task::done(Message::Navigate(View::Export))
+            }
+
+            // Escape: Go home or close dialog
+            keyboard::Key::Named(Named::Escape) => {
+                if self.view.is_domain_editor() || self.view.is_export() {
+                    Task::done(Message::Navigate(View::Home))
                 } else {
-                    match &self.state.view {
-                        View::Home => {}
-                        View::DomainEditor { .. } | View::Export => {
-                            self.state.go_home();
-                        }
-                    }
+                    Task::none()
                 }
             }
 
-            // Tab navigation in Domain Editor
-            if let View::DomainEditor { tab, .. } = &self.state.view {
-                let tabs = EditorTab::all();
-                let current_idx = tabs.iter().position(|t| t == tab).unwrap_or(0);
-
-                // Right arrow - next tab
-                if i.key_pressed(egui::Key::ArrowRight)
-                    && !modifiers.shift
-                    && current_idx < tabs.len() - 1
-                {
-                    self.state.switch_tab(tabs[current_idx + 1]);
-                }
-
-                // Left arrow - previous tab
-                if i.key_pressed(egui::Key::ArrowLeft) && !modifiers.shift && current_idx > 0 {
-                    self.state.switch_tab(tabs[current_idx - 1]);
-                }
-            }
-        });
-    }
-}
-
-impl CdiscApp {
-    /// Handle preview results from background threads.
-    ///
-    /// Preview computation runs in background threads and sends results
-    /// via channel. This method receives those results and updates state.
-    fn handle_preview_results(&mut self, ctx: &egui::Context) {
-        while let Ok(result) = self.state.preview_receiver.try_recv() {
-            let domain_code = &result.domain_code;
-
-            // Update preview state
-            match result.result {
-                Ok(df) => {
-                    if let Some(domain) = self
-                        .state
-                        .study_mut()
-                        .and_then(|s| s.get_domain_mut(domain_code))
-                    {
-                        domain.derived.preview = Some(df);
-                    }
-                    // Clear error on success
-                    self.state.ui.domain_editor(domain_code).preview.error = None;
-                }
-                Err(e) => {
-                    self.state.ui.domain_editor(domain_code).preview.error = Some(e);
-                }
-            }
-
-            // Clear rebuilding flag
-            self.state
-                .ui
-                .domain_editor(domain_code)
-                .preview
-                .is_rebuilding = false;
-
-            // Request repaint to show the new preview
-            ctx.request_repaint();
+            _ => Task::none(),
         }
-    }
-}
-
-impl CdiscApp {
-    /// Handle update messages from background threads.
-    fn handle_update_messages(&mut self, ctx: &egui::Context) {
-        while let Ok(msg) = self.update_receiver.try_recv() {
-            match msg {
-                UpdateMessage::CheckResult(result) => {
-                    match result {
-                        Ok(Some((version, changelog))) => {
-                            tracing::info!("Update available: {}", version);
-                            self.state.ui.update =
-                                UpdateDialogState::UpdateAvailable { version, changelog };
-                        }
-                        Ok(None) => {
-                            tracing::info!("No update available");
-                            // Show "up to date" only if dialog was opened (manual check)
-                            if self.state.ui.update.is_open() {
-                                self.state.ui.update = UpdateDialogState::NoUpdate;
-                            }
-                        }
-                        Err(e) => {
-                            tracing::error!("Update check failed: {}", e);
-                            // Show error only if dialog is open (manual check)
-                            if self.state.ui.update.is_open() {
-                                self.state.ui.update = UpdateDialogState::Error(e);
-                            }
-                        }
-                    }
-                    // Record check time
-                    self.state.settings.updates.record_check();
-                    if let Err(e) = save_settings(&self.state.settings) {
-                        tracing::error!("Failed to save settings: {}", e);
-                    }
-                }
-                UpdateMessage::InstallFailed(error) => {
-                    tracing::error!("Update installation failed: {}", error);
-                    self.state.ui.update = UpdateDialogState::Error(error);
-                }
-            }
-            ctx.request_repaint();
-        }
-    }
-
-    /// Perform startup update check if settings allow it.
-    fn maybe_startup_update_check(&mut self, ctx: &egui::Context) {
-        if self.startup_check_done {
-            return;
-        }
-        self.startup_check_done = true;
-
-        // Check if we should perform an automatic check
-        if !self.state.settings.updates.should_check_now() {
-            tracing::debug!("Skipping startup update check (disabled or recently checked)");
-            return;
-        }
-
-        tracing::info!("Performing startup update check");
-        self.start_update_check_background(ctx);
-    }
-
-    /// Start an update check (opens dialog for manual check).
-    fn start_update_check(&mut self, ctx: &egui::Context) {
-        // Check rate limiting for manual checks
-        if !self.state.settings.updates.can_check_manually() {
-            if let Some(secs) = self
-                .state
-                .settings
-                .updates
-                .seconds_until_manual_check_allowed()
-            {
-                tracing::info!("Manual check rate limited, {} seconds until allowed", secs);
-            }
-            return;
-        }
-
-        self.state.ui.update = UpdateDialogState::Checking;
-        self.start_update_check_background(ctx);
-    }
-
-    /// Start update check in background thread.
-    fn start_update_check_background(&mut self, ctx: &egui::Context) {
-        let sender = self.update_sender.clone();
-        let settings = self.state.settings.updates.clone();
-        let ctx = ctx.clone();
-
-        thread::spawn(move || {
-            let result = match UpdateService::check_for_update(&settings) {
-                Ok(Some(info)) => Ok(Some((info.version, info.changelog))),
-                Ok(None) => Ok(None),
-                Err(e) => Err(e.to_string()),
-            };
-
-            let _ = sender.send(UpdateMessage::CheckResult(result));
-            ctx.request_repaint();
-        });
-    }
-
-    /// Handle actions from the update dialog.
-    fn handle_update_action(&mut self, action: UpdateDialogAction, ctx: &egui::Context) {
-        match action {
-            UpdateDialogAction::None => {}
-            UpdateDialogAction::SkipVersion => {
-                // Extract version from current state
-                if let UpdateDialogState::UpdateAvailable { ref version, .. } = self.state.ui.update
-                {
-                    self.state.settings.updates.skipped_version = Some(version.clone());
-                    if let Err(e) = save_settings(&self.state.settings) {
-                        tracing::error!("Failed to save settings: {}", e);
-                    }
-                }
-                self.state.ui.update.close();
-            }
-            UpdateDialogAction::RemindLater => {
-                self.state.ui.update.close();
-            }
-            UpdateDialogAction::InstallAndRestart => {
-                self.start_install(ctx);
-            }
-            UpdateDialogAction::Cancel => {
-                self.state.ui.update.close();
-            }
-        }
-    }
-
-    /// Download, install update, and restart the application.
-    ///
-    /// Uses self_update for the entire process. On success, the app will restart.
-    fn start_install(&mut self, ctx: &egui::Context) {
-        self.state.ui.update = UpdateDialogState::Installing;
-
-        let sender = self.update_sender.clone();
-        let ctx = ctx.clone();
-
-        thread::spawn(move || {
-            // Download and install - self_update handles everything
-            if let Err(e) = UpdateService::download_and_install() {
-                let _ = sender.send(UpdateMessage::InstallFailed(e.to_string()));
-                ctx.request_repaint();
-                return;
-            }
-
-            // Restart the application
-            if let Err(e) = UpdateService::restart() {
-                let _ = sender.send(UpdateMessage::InstallFailed(e.to_string()));
-                ctx.request_repaint();
-            }
-            // On success, the app restarts and this thread ends
-        });
     }
 }

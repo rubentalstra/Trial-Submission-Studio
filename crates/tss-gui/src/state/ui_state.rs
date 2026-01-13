@@ -4,10 +4,65 @@
 //! pagination, search filters) that was previously scattered
 //! throughout domain state.
 
-use crate::export::ExportUiState;
-use crate::settings::Settings;
 use crate::state::derived_state::QualifierOrigin;
 use std::collections::HashMap;
+use std::path::PathBuf;
+
+// Use the placeholder Settings from app_state during migration
+use super::app_state::Settings;
+
+// =============================================================================
+// PLACEHOLDER: Export UI State (will be moved to proper module later)
+// =============================================================================
+
+/// UI state for the Export view.
+///
+/// Placeholder implementation during Iced migration.
+#[derive(Debug, Clone, Default)]
+pub struct ExportUiState {
+    /// Selected domains for export
+    pub selected_domains: Vec<String>,
+    /// Current export phase
+    pub phase: ExportPhase,
+    /// Current domain being exported
+    pub current_domain: Option<String>,
+    /// Current step in the export process
+    pub current_step: String,
+    /// Files that have been written
+    pub written_files: Vec<PathBuf>,
+    /// Export result (success or error)
+    pub result: Option<Result<ExportResult, ExportError>>,
+}
+
+impl ExportUiState {
+    /// Reset export state to initial values.
+    pub fn reset(&mut self) {
+        *self = Self::default();
+    }
+}
+
+/// Export phase.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub enum ExportPhase {
+    #[default]
+    Idle,
+    Exporting,
+    Complete,
+}
+
+/// Export result.
+#[derive(Debug, Clone)]
+pub struct ExportResult {
+    pub files_written: Vec<PathBuf>,
+    pub domains_exported: usize,
+}
+
+/// Export error.
+#[derive(Debug, Clone)]
+pub struct ExportError {
+    pub message: String,
+    pub domain: Option<String>,
+}
 
 // ============================================================================
 // Top-Level UI State

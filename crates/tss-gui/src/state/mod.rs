@@ -8,15 +8,20 @@
 //! - **DomainState**: Domain data with mapping state
 //! - **DerivedState**: Cached computed state (preview, validation, SUPP)
 //! - **UiState**: All UI state (separated from domain data)
+//! - **Navigation**: View, EditorTab, WorkflowMode enums
 
 mod app_state;
 mod derived_state;
 mod domain_state;
+pub mod navigation;
 mod study_state;
 mod ui_state;
 
-// App state
-pub use app_state::{AppState, EditorTab, View, WorkflowMode};
+// Navigation (new Iced-compatible enums)
+pub use navigation::{EditorTab, View, WorkflowMode};
+
+// App state (legacy - will be refactored)
+pub use app_state::AppState;
 
 // Study state
 pub use study_state::StudyState;
@@ -31,4 +36,7 @@ pub use derived_state::{
 };
 
 // UI state
-pub use ui_state::{AboutUiState, ThirdPartyUiState, UiState, UpdateDialogState};
+pub use ui_state::{
+    AboutUiState, ExportError, ExportPhase, ExportResult, ExportUiState, ThirdPartyUiState,
+    UiState, UpdateDialogState,
+};

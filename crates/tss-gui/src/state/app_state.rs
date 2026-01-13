@@ -5,10 +5,66 @@
 use std::sync::mpsc::{Receiver, Sender};
 use tss_model::TerminologyRegistry;
 
+use super::navigation::{EditorTab, View, WorkflowMode};
+use super::ui_state::{ExportError, ExportPhase, ExportResult};
 use super::{DomainState, StudyState, UiState};
-use crate::export::{ExportPhase, ExportUpdate};
-use crate::services::PreviewResult;
-use crate::settings::Settings;
+
+// TODO: These imports will be restored when services/export are ported to Iced
+// use crate::export::{ExportPhase, ExportUpdate};
+// use crate::services::PreviewResult;
+// use crate::settings::Settings;
+
+/// Placeholder for Settings until the module is ported
+#[derive(Debug, Clone)]
+pub struct Settings {
+    pub general: GeneralSettings,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            general: GeneralSettings::default(),
+        }
+    }
+}
+
+/// Placeholder for GeneralSettings
+#[derive(Debug, Clone)]
+pub struct GeneralSettings {
+    pub header_rows: usize,
+}
+
+impl Default for GeneralSettings {
+    fn default() -> Self {
+        Self { header_rows: 1 }
+    }
+}
+
+/// Placeholder for PreviewResult
+pub struct PreviewResult {
+    pub domain_code: String,
+    pub result: Result<polars::prelude::DataFrame, String>,
+}
+
+/// Placeholder for ExportUpdate
+pub enum ExportUpdate {
+    Progress {
+        domain: String,
+        step: String,
+    },
+    FileWritten {
+        path: std::path::PathBuf,
+    },
+    Complete {
+        files_written: Vec<std::path::PathBuf>,
+        domains_exported: usize,
+    },
+    Error {
+        message: String,
+        domain: Option<String>,
+    },
+    Cancelled,
+}
 
 /// Top-level application state.
 ///
@@ -87,12 +143,18 @@ impl AppState {
                 ExportUpdate::FileWritten { path } => {
                     self.ui.export.written_files.push(path);
                 }
-                ExportUpdate::Complete { result } => {
-                    self.ui.export.result = Some(Ok(result));
+                ExportUpdate::Complete {
+                    files_written,
+                    domains_exported,
+                } => {
+                    self.ui.export.result = Some(Ok(ExportResult {
+                        files_written,
+                        domains_exported,
+                    }));
                     self.ui.export.phase = ExportPhase::Complete;
                 }
-                ExportUpdate::Error { error } => {
-                    self.ui.export.result = Some(Err(error));
+                ExportUpdate::Error { message, domain } => {
+                    self.ui.export.result = Some(Err(ExportError { message, domain }));
                     self.ui.export.phase = ExportPhase::Complete;
                 }
                 ExportUpdate::Cancelled => {
@@ -250,125 +312,5 @@ impl AppState {
     }
 }
 
-// ============================================================================
-// Workflow Mode Enum
-// ============================================================================
-
-/// CDISC standard workflow mode.
-///
-/// Determines which Implementation Guide is used for the current study.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
-pub enum WorkflowMode {
-    /// SDTM - Study Data Tabulation Model (clinical trials)
-    #[default]
-    Sdtm,
-    /// ADaM - Analysis Data Model (analysis-ready datasets)
-    Adam,
-    /// SEND - Standard for Exchange of Nonclinical Data (animal studies)
-    Send,
-}
-
-impl WorkflowMode {
-    /// Display name for the workflow mode.
-    pub fn display_name(&self) -> &'static str {
-        match self {
-            Self::Sdtm => "SDTM",
-            Self::Adam => "ADaM",
-            Self::Send => "SEND",
-        }
-    }
-
-    /// Full description of the workflow mode.
-    pub fn description(&self) -> &'static str {
-        match self {
-            Self::Sdtm => "Study Data Tabulation Model",
-            Self::Adam => "Analysis Data Model",
-            Self::Send => "Standard for Exchange of Nonclinical Data",
-        }
-    }
-
-    /// Short tagline for UI cards.
-    pub fn tagline(&self) -> &'static str {
-        match self {
-            Self::Sdtm => "Clinical Trial Tabulation",
-            Self::Adam => "Analysis Datasets",
-            Self::Send => "Nonclinical Studies",
-        }
-    }
-}
-
-// ============================================================================
-// View Enum
-// ============================================================================
-
-/// Current view in the application.
-#[derive(Default, Clone, PartialEq)]
-pub enum View {
-    /// Home screen - study selection
-    #[default]
-    Home,
-    /// Domain editor with tabs
-    DomainEditor {
-        /// Selected domain code (e.g., "DM", "AE")
-        domain: String,
-        /// Active tab
-        tab: EditorTab,
-    },
-    /// Export screen
-    Export,
-}
-
-// ============================================================================
-// Editor Tab Enum
-// ============================================================================
-
-/// Tabs in the domain editor.
-#[derive(Default, Clone, Copy, PartialEq, Eq)]
-pub enum EditorTab {
-    #[default]
-    Mapping,
-    Transform,
-    Validation,
-    Preview,
-    Supp,
-}
-
-impl EditorTab {
-    /// Get display name for the tab (with icon).
-    pub fn label(&self) -> String {
-        format!("{} {}", self.icon(), self.name())
-    }
-
-    /// Get just the tab name without icon.
-    pub fn name(&self) -> &'static str {
-        match self {
-            Self::Mapping => "Mapping",
-            Self::Transform => "Transform",
-            Self::Validation => "Validation",
-            Self::Preview => "Preview",
-            Self::Supp => "SUPP",
-        }
-    }
-
-    /// Get tab icon (phosphor icon).
-    pub fn icon(&self) -> &'static str {
-        match self {
-            Self::Mapping => egui_phosphor::regular::ARROWS_LEFT_RIGHT,
-            Self::Transform => egui_phosphor::regular::SHUFFLE,
-            Self::Validation => egui_phosphor::regular::CHECK_SQUARE,
-            Self::Preview => egui_phosphor::regular::EYE,
-            Self::Supp => egui_phosphor::regular::PLUS_SQUARE,
-        }
-    }
-
-    /// Get all tabs in order.
-    pub fn all() -> &'static [EditorTab] {
-        &[
-            Self::Mapping,
-            Self::Transform,
-            Self::Validation,
-            Self::Preview,
-            Self::Supp,
-        ]
-    }
-}
+// Note: WorkflowMode, View, and EditorTab are now defined in navigation.rs
+// and imported at the top of this file.
