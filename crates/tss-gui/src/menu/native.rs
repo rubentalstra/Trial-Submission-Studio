@@ -231,6 +231,17 @@ fn create_edit_menu(menu: &Menu) {
 /// Create the Window menu (macOS only).
 #[cfg(target_os = "macos")]
 fn create_window_menu(menu: &Menu) {
+    if let Some(window_menu) = build_window_submenu() {
+        menu.append(&window_menu)
+            .expect("Failed to add Window menu");
+    }
+}
+
+/// Build the Window submenu (macOS only).
+///
+/// Returns the submenu so it can be used with `set_as_windows_menu_for_nsapp()`.
+#[cfg(target_os = "macos")]
+fn build_window_submenu() -> Option<Submenu> {
     let window_menu = Submenu::new("Window", true);
 
     // Minimize
@@ -257,8 +268,15 @@ fn create_window_menu(menu: &Menu) {
         .append(&PredefinedMenuItem::bring_all_to_front(None))
         .expect("Failed to add Bring All to Front menu item");
 
-    menu.append(&window_menu)
-        .expect("Failed to add Window menu");
+    Some(window_menu)
+}
+
+/// Create a standalone Window submenu for use with `set_as_windows_menu_for_nsapp()`.
+///
+/// Call this after `create_menu()` and `init_for_nsapp()` to set the window menu.
+#[cfg(target_os = "macos")]
+pub fn create_window_submenu() -> Option<Submenu> {
+    build_window_submenu()
 }
 
 /// Create the Help menu (all platforms).

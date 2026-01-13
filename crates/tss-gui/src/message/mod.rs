@@ -34,6 +34,16 @@ pub type ValidationReport = tss_validate::ValidationReport;
 /// Result type for study loading (includes terminology registry).
 pub type StudyLoadResult = Result<(Study, TerminologyRegistry), String>;
 
+/// Menu bar menu identifier for in-app menu (Windows/Linux).
+///
+/// This is a separate type to avoid circular dependencies with the menu module.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MenuBarMenuId {
+    File,
+    Edit,
+    Help,
+}
+
 /// Root message enum for the application.
 ///
 /// All user interactions and system events are represented as variants
@@ -73,6 +83,18 @@ pub enum Message {
     // =========================================================================
     /// Menu action messages.
     Menu(MenuMessage),
+
+    /// Toggle in-app menu bar dropdown (Windows/Linux only).
+    MenuBarToggle(MenuBarMenuId),
+
+    /// Close all in-app menu dropdowns.
+    MenuBarClose,
+
+    /// Native menu event received.
+    NativeMenuEvent,
+
+    /// Initialize native menu (startup task on macOS).
+    InitNativeMenu,
 
     // =========================================================================
     // Background task results

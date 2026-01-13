@@ -52,8 +52,11 @@ impl App {
             state: AppState::with_settings(settings),
         };
 
-        // TODO: Add startup tasks (auto-update check, etc.)
-        (app, Task::none())
+        // Return a startup task to initialize the native menu
+        // This ensures the menu is created after the Iced runtime is ready
+        let startup_task = Task::perform(async {}, |_| Message::InitNativeMenu);
+
+        (app, startup_task)
     }
 
     /// Update application state in response to a message.
@@ -99,8 +102,47 @@ impl App {
             // =================================================================
             // Menu messages
             // =================================================================
-            Message::Menu(_menu_msg) => {
-                // TODO: Implement in Phase 6
+            Message::Menu(menu_msg) => self.handle_menu_message(menu_msg),
+
+            // =================================================================
+            // In-app menu bar messages (Windows/Linux)
+            // =================================================================
+            Message::MenuBarToggle(menu_id) => {
+                self.state.menu_bar.toggle(menu_id);
+                Task::none()
+            }
+
+            Message::MenuBarClose => {
+                self.state.menu_bar.close();
+                Task::none()
+            }
+
+            Message::NativeMenuEvent => {
+                // Poll for native menu events and dispatch
+                if let Some(menu_msg) = crate::menu::poll_native_menu_event() {
+                    return self.handle_menu_message(menu_msg);
+                }
+                Task::none()
+            }
+
+            Message::InitNativeMenu => {
+                // Initialize native menu on macOS
+                // This is called via a startup task to ensure proper timing
+                #[cfg(target_os = "macos")]
+                {
+                    let menu = crate::menu::native::create_menu();
+                    menu.init_for_nsapp();
+
+                    // Set window menu for proper macOS window management
+                    if let Some(window_menu) = crate::menu::native::create_window_submenu() {
+                        window_menu.set_as_windows_menu_for_nsapp();
+                        std::mem::forget(window_menu);
+                    }
+
+                    // Keep the menu alive
+                    std::mem::forget(menu);
+                    tracing::info!("Initialized native macOS menu bar");
+                }
                 Task::none()
             }
 
@@ -209,6 +251,7 @@ impl App {
             view_about_dialog, view_domain_editor, view_export, view_settings_dialog,
             view_third_party_dialog, view_update_dialog,
         };
+        use iced::widget::column;
 
         // Render main content
         let content: Element<'_, Message> = match &self.state.view {
@@ -219,8 +262,19 @@ impl App {
             ViewState::Export(_) => view_export(&self.state),
         };
 
+        // On Windows/Linux, add the in-app menu bar at the top
+        #[cfg(not(target_os = "macos"))]
+        let content_with_menu: Element<'_, Message> = {
+            let menu_bar =
+                crate::menu::in_app::view_menu_bar(&self.state.menu_bar, self.state.has_study());
+            column![menu_bar, content].into()
+        };
+
+        #[cfg(target_os = "macos")]
+        let content_with_menu: Element<'_, Message> = content;
+
         // Wrap in main container
-        let main_view = container(content)
+        let main_view = container(content_with_menu)
             .width(iced::Length::Fill)
             .height(iced::Length::Fill);
 
@@ -276,12 +330,21 @@ impl App {
 
     /// Subscribe to runtime events.
     pub fn subscription(&self) -> Subscription<Message> {
-        keyboard::listen().map(|event| match event {
+        use iced::time;
+        use std::time::Duration;
+
+        // Keyboard events
+        let keyboard_sub = keyboard::listen().map(|event| match event {
             keyboard::Event::KeyPressed { key, modifiers, .. } => {
                 Message::KeyPressed(key, modifiers)
             }
             _ => Message::Noop,
-        })
+        });
+
+        // Native menu event polling (polls every 50ms)
+        let menu_sub = time::every(Duration::from_millis(50)).map(|_| Message::NativeMenuEvent);
+
+        Subscription::batch([keyboard_sub, menu_sub])
     }
 }
 
@@ -1646,6 +1709,93 @@ impl App {
                 // Would restart the application
                 // For now, just close the dialog
                 self.state.active_dialog = None;
+                Task::none()
+            }
+        }
+    }
+}
+
+// =============================================================================
+// MENU MESSAGE HANDLERS
+// =============================================================================
+
+impl App {
+    fn handle_menu_message(&mut self, msg: crate::message::MenuMessage) -> Task<Message> {
+        use crate::message::MenuMessage;
+
+        // Close in-app menu dropdown when any menu action is performed
+        self.state.menu_bar.close();
+
+        match msg {
+            // File menu
+            MenuMessage::OpenStudy => Task::done(Message::Home(HomeMessage::OpenStudyClicked)),
+            MenuMessage::CloseStudy => {
+                if self.state.has_study() {
+                    Task::done(Message::Home(HomeMessage::CloseStudyClicked))
+                } else {
+                    Task::none()
+                }
+            }
+            MenuMessage::Settings => {
+                self.state.active_dialog = Some(ActiveDialog::Settings(
+                    crate::message::SettingsCategory::default(),
+                ));
+                Task::none()
+            }
+            MenuMessage::Quit => {
+                // Request application quit
+                // In Iced, this is typically handled by window close event
+                std::process::exit(0);
+            }
+
+            // Help menu
+            MenuMessage::Documentation => {
+                let _ = open::that("https://docs.trialsubmissionstudio.com");
+                Task::none()
+            }
+            MenuMessage::ReleaseNotes => {
+                let _ =
+                    open::that("https://github.com/rubentalstra/trial-submission-studio/releases");
+                Task::none()
+            }
+            MenuMessage::ViewOnGitHub => {
+                let _ = open::that("https://github.com/rubentalstra/trial-submission-studio");
+                Task::none()
+            }
+            MenuMessage::ReportIssue => {
+                let _ = open::that(
+                    "https://github.com/rubentalstra/trial-submission-studio/issues/new",
+                );
+                Task::none()
+            }
+            MenuMessage::ViewLicense => {
+                let _ = open::that(
+                    "https://github.com/rubentalstra/trial-submission-studio/blob/main/LICENSE",
+                );
+                Task::none()
+            }
+            MenuMessage::ThirdPartyLicenses => {
+                self.state.active_dialog = Some(ActiveDialog::ThirdParty);
+                Task::none()
+            }
+            MenuMessage::CheckUpdates => {
+                self.state.active_dialog = Some(ActiveDialog::Update(UpdateState::Idle));
+                Task::none()
+            }
+            MenuMessage::About => {
+                self.state.active_dialog = Some(ActiveDialog::About);
+                Task::none()
+            }
+
+            // Edit menu (these typically interact with focused widget - noop for now)
+            MenuMessage::Undo
+            | MenuMessage::Redo
+            | MenuMessage::Cut
+            | MenuMessage::Copy
+            | MenuMessage::Paste
+            | MenuMessage::SelectAll => {
+                // These are typically handled by the text input widgets themselves
+                // through the native edit menu on macOS or platform-specific mechanisms
                 Task::none()
             }
         }

@@ -8,15 +8,12 @@
 // Module declarations
 mod app;
 mod component;
+mod menu;
 mod message;
 mod service;
 mod state;
 mod theme;
 mod view;
-
-// These modules will be uncommented as they're ported:
-// mod menu;
-// mod settings;
 
 use app::App;
 use iced::Size;
@@ -36,6 +33,9 @@ pub fn main() -> iced::Result {
         .init();
 
     tracing::info!("Starting Trial Submission Studio");
+
+    // Note: Native menu initialization for macOS happens in App::new()
+    // after the Iced runtime has started
 
     // Run the Iced application using the builder pattern
     iced::application(App::new, App::update, App::view)

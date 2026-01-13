@@ -41,6 +41,7 @@ pub use view_state::{
 
 // Re-export ActiveDialog (defined below in this module)
 
+use crate::menu::MenuBarState;
 use tss_model::TerminologyRegistry;
 
 // =============================================================================
@@ -100,6 +101,9 @@ pub struct AppState {
 
     /// Currently open dialog (None if no dialog is open).
     pub active_dialog: Option<ActiveDialog>,
+
+    /// Menu bar state (for in-app menu on Windows/Linux).
+    pub menu_bar: MenuBarState,
 }
 
 /// Currently active dialog.
@@ -125,6 +129,7 @@ impl Default for AppState {
             error: None,
             is_loading: false,
             active_dialog: None,
+            menu_bar: MenuBarState::default(),
         }
     }
 }
@@ -133,8 +138,14 @@ impl AppState {
     /// Create app state with loaded settings.
     pub fn with_settings(settings: Settings) -> Self {
         Self {
+            view: ViewState::default(),
+            study: None,
             settings,
-            ..Default::default()
+            terminology: None,
+            error: None,
+            is_loading: false,
+            active_dialog: None,
+            menu_bar: MenuBarState::default(),
         }
     }
 
