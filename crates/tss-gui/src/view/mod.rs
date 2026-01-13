@@ -15,15 +15,10 @@ pub mod domain_editor;
 pub mod export;
 pub mod home;
 
-// Re-export commonly used view functions (overlay/modal mode)
-pub use dialog::{
-    view_about_dialog, view_settings_dialog, view_third_party_dialog, view_update_dialog,
-};
-
 // Re-export view functions for standalone window mode (multi-window)
 pub use dialog::{
-    view_about_dialog_content, view_settings_dialog_content, view_third_party_dialog_content,
-    view_update_dialog_content,
+    view_about_dialog_content, view_close_study_dialog_content, view_settings_dialog_content,
+    view_third_party_dialog_content, view_update_dialog_content,
 };
 
 pub use domain_editor::view_domain_editor;

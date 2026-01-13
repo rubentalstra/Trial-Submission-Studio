@@ -132,6 +132,8 @@ pub struct DialogWindows {
     pub third_party: Option<window::Id>,
     /// Update dialog window ID and state.
     pub update: Option<(window::Id, crate::view::dialog::update::UpdateState)>,
+    /// Close study confirmation dialog window ID.
+    pub close_study_confirm: Option<window::Id>,
 }
 
 impl DialogWindows {
@@ -141,6 +143,7 @@ impl DialogWindows {
             || self.settings.as_ref().map(|(i, _)| *i) == Some(id)
             || self.third_party == Some(id)
             || self.update.as_ref().map(|(i, _)| *i) == Some(id)
+            || self.close_study_confirm == Some(id)
     }
 
     /// Get the dialog type for a window ID.
@@ -153,6 +156,8 @@ impl DialogWindows {
             Some(DialogType::ThirdParty)
         } else if self.update.as_ref().map(|(i, _)| *i) == Some(id) {
             Some(DialogType::Update)
+        } else if self.close_study_confirm == Some(id) {
+            Some(DialogType::CloseStudyConfirm)
         } else {
             None
         }
@@ -168,6 +173,8 @@ impl DialogWindows {
             self.third_party = None;
         } else if self.update.as_ref().map(|(i, _)| *i) == Some(id) {
             self.update = None;
+        } else if self.close_study_confirm == Some(id) {
+            self.close_study_confirm = None;
         }
     }
 }

@@ -11,7 +11,6 @@ use iced::widget::{Space, button, column, container, row, scrollable, text};
 use iced::{Alignment, Border, Element, Length};
 use iced_fonts::lucide;
 
-use crate::component::modal;
 use crate::message::{HomeMessage, Message};
 use crate::state::{AppState, Domain, Study, ViewState, WorkflowMode};
 use crate::theme::{
@@ -29,13 +28,10 @@ use crate::theme::{
 /// Shows either the study selector (no study loaded) or the study overview
 /// (study loaded with domain list).
 pub fn view_home<'a>(state: &'a AppState) -> Element<'a, Message> {
-    // Get workflow mode and close_confirm from view state
-    let (workflow_mode, close_confirm) = match &state.view {
-        ViewState::Home {
-            workflow_mode,
-            close_confirm,
-        } => (*workflow_mode, *close_confirm),
-        _ => (WorkflowMode::default(), false),
+    // Get workflow mode from view state
+    let workflow_mode = match &state.view {
+        ViewState::Home { workflow_mode, .. } => *workflow_mode,
+        _ => WorkflowMode::default(),
     };
 
     let content = if state.study.is_some() {
@@ -45,17 +41,11 @@ pub fn view_home<'a>(state: &'a AppState) -> Element<'a, Message> {
     };
 
     // Wrap content in a centered container
-    let main_content = container(content)
+    container(content)
         .width(Length::Fill)
         .height(Length::Fill)
-        .padding(SPACING_XL);
-
-    // Check if we need to show the close study confirmation modal
-    if close_confirm {
-        view_close_study_modal(main_content.into())
-    } else {
-        main_content.into()
-    }
+        .padding(SPACING_XL)
+        .into()
 }
 
 // =============================================================================
@@ -254,7 +244,7 @@ fn view_recent_studies<'a>(state: &'a AppState) -> Element<'a, Message> {
 // =============================================================================
 
 /// View when a study is loaded - shows study info and domain list.
-fn view_study_loaded<'a>(state: &'a AppState, workflow_mode: WorkflowMode) -> Element<'a, Message> {
+fn view_study_loaded(state: &AppState, workflow_mode: WorkflowMode) -> Element<Message> {
     let study = state.study.as_ref().unwrap();
 
     // Header with study name and close button
@@ -289,7 +279,7 @@ fn view_study_loaded<'a>(state: &'a AppState, workflow_mode: WorkflowMode) -> El
 }
 
 /// Study header with name, mode badge, and close button.
-fn view_study_header<'a>(study: &'a Study, mode: WorkflowMode) -> Element<'a, Message> {
+fn view_study_header(study: &Study, mode: WorkflowMode) -> Element<Message> {
     let study_name = text(&study.study_id).size(24).color(GRAY_900);
 
     // Mode badge
@@ -334,7 +324,7 @@ fn view_study_header<'a>(study: &'a Study, mode: WorkflowMode) -> Element<'a, Me
 }
 
 /// Domain list showing all discovered domains.
-fn view_domain_list<'a>(study: &'a Study) -> Element<'a, Message> {
+fn view_domain_list(study: &Study) -> Element<Message> {
     let header = row![
         lucide::database().size(14).color(GRAY_600),
         text("Discovered Domains").size(14).color(GRAY_700),
@@ -402,10 +392,10 @@ fn view_domain_item<'a>(code: &'a str, domain: &'a Domain) -> Element<'a, Messag
     .width(Length::Fill)
     .style(|_theme, status| {
         let bg = match status {
-            iced::widget::button::Status::Hovered => Some(GRAY_100.into()),
+            button::Status::Hovered => Some(GRAY_100.into()),
             _ => None,
         };
-        iced::widget::button::Style {
+        button::Style {
             background: bg,
             text_color: GRAY_800,
             border: Border {
@@ -417,67 +407,4 @@ fn view_domain_item<'a>(code: &'a str, domain: &'a Domain) -> Element<'a, Messag
     });
 
     item_button.into()
-}
-
-// =============================================================================
-// CLOSE STUDY MODAL
-// =============================================================================
-
-/// Close study confirmation modal.
-fn view_close_study_modal(base: Element<Message>) -> Element<Message> {
-    let warning_icon = lucide::triangle_alert().size(48).color(WARNING);
-
-    let title = text("Close Study?").size(18).color(GRAY_900);
-
-    let message = text("All unsaved mapping progress will be lost.")
-        .size(14)
-        .color(GRAY_600);
-
-    let cancel_button = button(text("Cancel").size(14))
-        .on_press(Message::Home(HomeMessage::CloseStudyCancelled))
-        .padding([10.0, 20.0])
-        .style(button_secondary);
-
-    let confirm_button = button(
-        row![lucide::trash().size(12), text("Close Study").size(14),]
-            .spacing(SPACING_SM)
-            .align_y(Alignment::Center),
-    )
-    .on_press(Message::Home(HomeMessage::CloseStudyConfirmed))
-    .padding([10.0, 20.0])
-    .style(|_theme, _status| iced::widget::button::Style {
-        background: Some(iced::Color::from_rgb(0.75, 0.22, 0.17).into()), // Red
-        text_color: WHITE,
-        border: Border {
-            radius: 4.0.into(),
-            ..Default::default()
-        },
-        ..Default::default()
-    });
-
-    let buttons = row![cancel_button, confirm_button,]
-        .spacing(SPACING_MD)
-        .align_y(Alignment::Center);
-
-    let content = column![
-        warning_icon,
-        Space::new().height(SPACING_MD),
-        title,
-        Space::new().height(SPACING_SM),
-        message,
-        Space::new().height(SPACING_LG),
-        buttons,
-    ]
-    .align_x(Alignment::Center);
-
-    modal(
-        base,
-        "Close Study",
-        container(content)
-            .padding(SPACING_MD)
-            .center_x(Length::Shrink)
-            .into(),
-        Message::Home(HomeMessage::CloseStudyCancelled),
-        vec![],
-    )
 }

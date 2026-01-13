@@ -15,9 +15,8 @@ use crate::state::{
     XptVersion,
 };
 use crate::theme::{
-    BORDER_RADIUS_MD, GRAY_100, GRAY_200, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800,
-    GRAY_900, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS, SUCCESS, WARNING, WHITE,
-    button_primary,
+    BORDER_RADIUS_MD, GRAY_100, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800, GRAY_900,
+    SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS, SUCCESS, WARNING, WHITE, button_primary,
 };
 
 // =============================================================================
@@ -362,7 +361,7 @@ fn view_output_directory<'a>(
 }
 
 /// Format selection section.
-fn view_format_selection<'a>(state: &'a AppState) -> Element<'a, Message> {
+fn view_format_selection(state: &AppState) -> Element<Message> {
     let label = text("Data Format").size(14).color(GRAY_700);
 
     let current_format = state.settings.export.default_format;
@@ -394,7 +393,7 @@ fn view_format_selection<'a>(state: &'a AppState) -> Element<'a, Message> {
 }
 
 /// XPT version selection.
-fn view_xpt_version<'a>(state: &'a AppState) -> Element<'a, Message> {
+fn view_xpt_version(state: &AppState) -> Element<Message> {
     let label = text("XPT Version").size(14).color(GRAY_700);
 
     let current_version = state.settings.export.xpt_version;
@@ -426,7 +425,7 @@ fn view_xpt_version<'a>(state: &'a AppState) -> Element<'a, Message> {
 }
 
 /// Define-XML info section (always generated).
-fn view_define_xml_option<'a>(_state: &'a AppState) -> Element<'a, Message> {
+fn view_define_xml_option(_state: &AppState) -> Element<Message> {
     // Define-XML is always generated - it's required for FDA submissions
     row![
         lucide::circle_check().size(14).color(SUCCESS),

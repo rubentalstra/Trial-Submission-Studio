@@ -44,8 +44,6 @@ pub enum ViewState {
     Home {
         /// Selected workflow mode (SDTM, ADaM, SEND).
         workflow_mode: WorkflowMode,
-        /// Whether close study confirmation is shown.
-        close_confirm: bool,
     },
 
     /// Domain editor with tabbed interface.
@@ -85,7 +83,6 @@ impl ViewState {
     pub fn home() -> Self {
         Self::Home {
             workflow_mode: WorkflowMode::default(),
-            close_confirm: false,
         }
     }
 

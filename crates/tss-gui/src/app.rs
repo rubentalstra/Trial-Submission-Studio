@@ -178,6 +178,9 @@ impl App {
                     DialogType::Update => {
                         self.state.dialog_windows.update = Some((id, UpdateState::Idle));
                     }
+                    DialogType::CloseStudyConfirm => {
+                        self.state.dialog_windows.close_study_confirm = Some(id);
+                    }
                 }
                 Task::none()
             }
@@ -292,8 +295,8 @@ impl App {
     /// In multi-window mode, each window gets its own view based on the window ID.
     pub fn view(&self, id: window::Id) -> Element<'_, Message> {
         use crate::view::{
-            view_about_dialog_content, view_domain_editor, view_export,
-            view_settings_dialog_content, view_third_party_dialog_content,
+            view_about_dialog_content, view_close_study_dialog_content, view_domain_editor,
+            view_export, view_settings_dialog_content, view_third_party_dialog_content,
             view_update_dialog_content,
         };
 
@@ -322,6 +325,7 @@ impl App {
                         view_update_dialog_content(&UpdateState::Idle, id)
                     }
                 }
+                DialogType::CloseStudyConfirm => view_close_study_dialog_content(id),
             };
         }
 
@@ -362,6 +366,7 @@ impl App {
                 DialogType::Settings => "Settings".to_string(),
                 DialogType::ThirdParty => "Third-Party Licenses".to_string(),
                 DialogType::Update => "Check for Updates".to_string(),
+                DialogType::CloseStudyConfirm => "Close Study?".to_string(),
             };
         }
 
@@ -440,21 +445,41 @@ impl App {
             HomeMessage::RecentStudyClicked(path) => self.load_study(path),
 
             HomeMessage::CloseStudyClicked => {
-                if let ViewState::Home { close_confirm, .. } = &mut self.state.view {
-                    *close_confirm = true;
+                // Don't open if already open
+                if self.state.dialog_windows.close_study_confirm.is_some() {
+                    return Task::none();
                 }
-                Task::none()
+                // Open close study confirmation dialog in a new window
+                let settings = window::Settings {
+                    size: Size::new(350.0, 250.0),
+                    resizable: false,
+                    decorations: true,
+                    ..Default::default()
+                };
+                let (id, task) = window::open(settings);
+                self.state.dialog_windows.close_study_confirm = Some(id);
+                task.map(|_| Message::Noop)
             }
 
             HomeMessage::CloseStudyConfirmed => {
+                // Close the confirmation dialog window if open
+                let close_task = if let Some(id) = self.state.dialog_windows.close_study_confirm {
+                    self.state.dialog_windows.close_study_confirm = None;
+                    window::close(id)
+                } else {
+                    Task::none()
+                };
+                // Close the study
                 self.state.study = None;
                 self.state.view = ViewState::home();
-                Task::none()
+                close_task
             }
 
             HomeMessage::CloseStudyCancelled => {
-                if let ViewState::Home { close_confirm, .. } = &mut self.state.view {
-                    *close_confirm = false;
+                // Close the confirmation dialog window if open
+                if let Some(id) = self.state.dialog_windows.close_study_confirm {
+                    self.state.dialog_windows.close_study_confirm = None;
+                    return window::close(id);
                 }
                 Task::none()
             }
@@ -1373,11 +1398,7 @@ impl App {
             }
 
             // Escape: Go home or close dialogs
-            keyboard::Key::Named(Named::Escape) => match &mut self.state.view {
-                ViewState::Home { close_confirm, .. } if *close_confirm => {
-                    *close_confirm = false;
-                    Task::none()
-                }
+            keyboard::Key::Named(Named::Escape) => match &self.state.view {
                 ViewState::DomainEditor { .. } | ViewState::Export(_) => {
                     Task::done(Message::Navigate(ViewState::home()))
                 }
