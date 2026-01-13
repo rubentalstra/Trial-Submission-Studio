@@ -10,6 +10,45 @@ use tss_ingest::StudyMetadata;
 use super::domain::Domain;
 
 // =============================================================================
+// STUDY ID EXTRACTION
+// =============================================================================
+
+/// Extract the study ID from a folder name, stripping any timestamp suffix.
+///
+/// Folder names often include a timestamp suffix in the format `_YYYYMMDD_HHMMSS`
+/// (e.g., `DEMO_GDISC_20240903_072908`). This function extracts just the study ID
+/// portion (e.g., `DEMO_GDISC`).
+///
+/// # Examples
+///
+/// ```ignore
+/// assert_eq!(extract_study_id("DEMO_GDISC_20240903_072908"), "DEMO_GDISC");
+/// assert_eq!(extract_study_id("STUDY_ABC"), "STUDY_ABC"); // No timestamp
+/// assert_eq!(extract_study_id("TEST_20231225_143022"), "TEST"); // With timestamp
+/// ```
+fn extract_study_id(folder_name: &str) -> String {
+    // Pattern: name ends with _YYYYMMDD_HHMMSS (8 digits + 6 digits)
+    // Total suffix length: 1 + 8 + 1 + 6 = 16 characters
+    const TIMESTAMP_SUFFIX_LEN: usize = 16; // "_YYYYMMDD_HHMMSS"
+
+    if folder_name.len() > TIMESTAMP_SUFFIX_LEN {
+        let potential_suffix = &folder_name[folder_name.len() - TIMESTAMP_SUFFIX_LEN..];
+
+        // Check if it matches the pattern _XXXXXXXX_XXXXXX where X are digits
+        if potential_suffix.starts_with('_')
+            && potential_suffix.chars().nth(9) == Some('_')
+            && potential_suffix[1..9].chars().all(|c| c.is_ascii_digit())
+            && potential_suffix[10..].chars().all(|c| c.is_ascii_digit())
+        {
+            return folder_name[..folder_name.len() - TIMESTAMP_SUFFIX_LEN].to_string();
+        }
+    }
+
+    // No timestamp suffix found, return as-is
+    folder_name.to_string()
+}
+
+// =============================================================================
 // STUDY STATE
 // =============================================================================
 
@@ -53,13 +92,16 @@ pub struct Study {
 impl Study {
     /// Create a new study from a folder path.
     ///
-    /// The study ID is derived from the folder name.
+    /// The study ID is derived from the folder name, with any timestamp suffix
+    /// (format `_YYYYMMDD_HHMMSS`) stripped. For example, folder name
+    /// `DEMO_GDISC_20240903_072908` becomes study ID `DEMO_GDISC`.
     pub fn from_folder(folder: PathBuf) -> Self {
-        let study_id = folder
+        let folder_name = folder
             .file_name()
             .and_then(|n| n.to_str())
-            .unwrap_or("Unknown")
-            .to_string();
+            .unwrap_or("Unknown");
+
+        let study_id = extract_study_id(folder_name);
 
         Self {
             study_id,
@@ -173,5 +215,70 @@ impl Study {
             .filter(|d| d.is_mapping_complete())
             .count();
         (complete, self.domains.len())
+    }
+}
+
+// =============================================================================
+// TESTS
+// =============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_study_id_with_timestamp() {
+        // Standard case: folder name with timestamp suffix
+        assert_eq!(extract_study_id("DEMO_GDISC_20240903_072908"), "DEMO_GDISC");
+    }
+
+    #[test]
+    fn test_extract_study_id_without_timestamp() {
+        // No timestamp suffix - should return as-is
+        assert_eq!(extract_study_id("STUDY_ABC"), "STUDY_ABC");
+        assert_eq!(extract_study_id("DEMO_GDISC"), "DEMO_GDISC");
+    }
+
+    #[test]
+    fn test_extract_study_id_short_name() {
+        // Name shorter than timestamp suffix - should return as-is
+        assert_eq!(extract_study_id("ABC"), "ABC");
+        assert_eq!(extract_study_id("X"), "X");
+    }
+
+    #[test]
+    fn test_extract_study_id_various_timestamps() {
+        // Various valid timestamps
+        assert_eq!(extract_study_id("TEST_20231225_143022"), "TEST");
+        assert_eq!(extract_study_id("STUDY_A_20200101_000000"), "STUDY_A");
+        assert_eq!(
+            extract_study_id("MY_TRIAL_99_20991231_235959"),
+            "MY_TRIAL_99"
+        );
+    }
+
+    #[test]
+    fn test_extract_study_id_invalid_timestamp_patterns() {
+        // These look like timestamps but aren't valid - should return as-is
+        assert_eq!(
+            extract_study_id("STUDY_2024090_0729088"), // Wrong digit counts
+            "STUDY_2024090_0729088"
+        );
+        assert_eq!(
+            extract_study_id("STUDY_ABCDEFGH_IJKLMN"), // Letters instead of digits
+            "STUDY_ABCDEFGH_IJKLMN"
+        );
+    }
+
+    #[test]
+    fn test_study_from_folder_extracts_id() {
+        let study = Study::from_folder(PathBuf::from("/path/to/DEMO_GDISC_20240903_072908"));
+        assert_eq!(study.study_id, "DEMO_GDISC");
+    }
+
+    #[test]
+    fn test_study_from_folder_no_timestamp() {
+        let study = Study::from_folder(PathBuf::from("/path/to/SIMPLE_STUDY"));
+        assert_eq!(study.study_id, "SIMPLE_STUDY");
     }
 }

@@ -34,7 +34,9 @@ impl Default for Settings {
 impl Settings {
     /// Load settings from the default path.
     pub fn load() -> Self {
-        Self::load_from(Self::config_path())
+        let mut settings = Self::load_from(Self::config_path());
+        settings.migrate();
+        settings
     }
 
     /// Load settings from a specific path.
@@ -43,6 +45,20 @@ impl Settings {
             .ok()
             .and_then(|content| toml::from_str(&content).ok())
             .unwrap_or_default()
+    }
+
+    /// Migrate old settings values to current defaults.
+    ///
+    /// This handles breaking changes in settings, such as:
+    /// - `header_rows` changed from default 1 to 2 (for label + column name rows)
+    fn migrate(&mut self) {
+        // Migration: header_rows was incorrectly defaulting to 1
+        // Clinical data CSVs typically have 2 header rows (labels + column names)
+        if self.general.header_rows == 1 {
+            self.general.header_rows = 2;
+            // Save the migrated settings
+            let _ = self.save();
+        }
     }
 
     /// Save settings to the default path.
@@ -80,7 +96,7 @@ impl Settings {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct GeneralSettings {
-    /// Number of header rows in CSV files (default: 1).
+    /// Number of header rows in CSV files (default: 2 for label + column names).
     pub header_rows: usize,
 
     /// Auto-check for updates on startup.
@@ -98,7 +114,7 @@ pub struct GeneralSettings {
 impl Default for GeneralSettings {
     fn default() -> Self {
         Self {
-            header_rows: 1,
+            header_rows: 2, // Default to double-header (row 1 = labels, row 2 = column names)
             auto_check_updates: true,
             recent_studies: Vec::new(),
             max_recent: 10,

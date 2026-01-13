@@ -16,7 +16,7 @@ use crate::message::domain_editor::NormalizationMessage;
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{AppState, NormalizationUiState, ViewState};
 use crate::theme::{
-    BORDER_RADIUS_SM, ERROR, GRAY_100, GRAY_300, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800,
+    BORDER_RADIUS_SM, GRAY_100, GRAY_300, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800,
     GRAY_900, PRIMARY_100, PRIMARY_500, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS, SUCCESS,
     WARNING, WHITE,
 };
@@ -297,6 +297,11 @@ fn view_rule_row<'a>(
 // =============================================================================
 
 /// Detail view for a selected rule.
+///
+/// Layout:
+/// 1. Header (variable name + transformation badge)
+/// 2. Metadata section (with transformation info at bottom)
+/// 3. Before/After preview (sample data transformation)
 fn view_rule_detail<'a>(
     domain: &'a crate::state::Domain,
     rule: &'a tss_normalization::NormalizationRule,
@@ -311,29 +316,24 @@ fn view_rule_detail<'a>(
     // Header
     let header = view_detail_header(rule, variable);
 
-    // Transformation info
-    let transform_info = view_transformation_info(rule);
-
-    // Source mapping info
-    let mapping_info = view_mapping_info(domain, rule);
-
-    // Variable metadata (if available)
-    let metadata: Element<'a, Message> = if let Some(var) = variable {
-        view_variable_metadata(var)
+    // Combined metadata + transformation section
+    let metadata_section: Element<'a, Message> = if let Some(var) = variable {
+        view_metadata_with_transform(var, rule)
     } else {
-        Space::new().height(0.0).into()
+        view_transformation_only(rule)
     };
+
+    // Before/After preview
+    let preview_section = view_before_after_preview(domain, rule);
 
     scrollable(column![
         header,
         Space::new().height(SPACING_MD),
         rule::horizontal(1),
         Space::new().height(SPACING_MD),
-        transform_info,
+        metadata_section,
         Space::new().height(SPACING_LG),
-        mapping_info,
-        Space::new().height(SPACING_LG),
-        metadata,
+        preview_section,
         Space::new().height(SPACING_MD),
     ])
     .height(Length::Fill)
@@ -403,193 +403,17 @@ fn view_detail_header<'a>(
     .into()
 }
 
-/// Transformation information section.
-fn view_transformation_info<'a>(
+/// Combined metadata + transformation section.
+///
+/// Shows variable metadata first, then transformation info at the bottom.
+fn view_metadata_with_transform<'a>(
+    var: &'a tss_model::Variable,
     rule: &'a tss_normalization::NormalizationRule,
 ) -> Element<'a, Message> {
     let title_row = row![
-        lucide::wand_sparkles().size(14).color(PRIMARY_500),
-        Space::new().width(SPACING_SM),
-        text("Transformation").size(14).color(GRAY_700),
-    ]
-    .align_y(Alignment::Center);
-
-    // Description
-    let description = text(&rule.description).size(13).color(GRAY_700);
-
-    // Detailed explanation based on type
-    let explanation = get_transform_explanation(&rule.transform_type);
-    let explanation_text = text(explanation).size(12).color(GRAY_500);
-
-    let content = column![
-        description,
-        Space::new().height(SPACING_SM),
-        explanation_text,
-    ];
-
-    column![
-        title_row,
-        Space::new().height(SPACING_SM),
-        container(content)
-            .padding(SPACING_MD)
-            .width(Length::Fill)
-            .style(|_theme: &Theme| container::Style {
-                background: Some(GRAY_100.into()),
-                border: Border {
-                    radius: BORDER_RADIUS_SM.into(),
-                    ..Default::default()
-                },
-                ..Default::default()
-            }),
-    ]
-    .into()
-}
-
-/// Mapping information section.
-fn view_mapping_info<'a>(
-    domain: &'a crate::state::Domain,
-    rule: &tss_normalization::NormalizationRule,
-) -> Element<'a, Message> {
-    let title_row = row![
-        lucide::link().size(14).color(PRIMARY_500),
-        Space::new().width(SPACING_SM),
-        text("Source Mapping").size(14).color(GRAY_700),
-    ]
-    .align_y(Alignment::Center);
-
-    let status = domain.mapping.status(&rule.target_variable);
-
-    let content: Element<'a, Message> = match status {
-        VariableStatus::Accepted => {
-            let (source, confidence) = domain
-                .mapping
-                .accepted(&rule.target_variable)
-                .unwrap_or(("Unknown", 0.0));
-            let conf_pct = (confidence * 100.0) as u32;
-
-            row![
-                lucide::circle_check().size(16).color(SUCCESS),
-                Space::new().width(SPACING_SM),
-                column![
-                    text("Mapped to source column").size(12).color(GRAY_600),
-                    text(source).size(14).color(GRAY_900),
-                    text(format!("{}% confidence", conf_pct))
-                        .size(11)
-                        .color(GRAY_500),
-                ],
-            ]
-            .align_y(Alignment::Center)
-            .into()
-        }
-        VariableStatus::Suggested => {
-            let (source, confidence) = domain
-                .mapping
-                .suggestion(&rule.target_variable)
-                .unwrap_or(("Unknown", 0.0));
-            let conf_pct = (confidence * 100.0) as u32;
-
-            row![
-                lucide::lightbulb().size(16).color(WARNING),
-                Space::new().width(SPACING_SM),
-                column![
-                    text(format!("Suggested: {} ({}% confidence)", source, conf_pct))
-                        .size(13)
-                        .color(GRAY_700),
-                    text("Accept suggestion in Mapping tab")
-                        .size(11)
-                        .color(GRAY_500),
-                ],
-            ]
-            .align_y(Alignment::Center)
-            .into()
-        }
-        VariableStatus::AutoGenerated => row![
-            lucide::cpu().size(16).color(PRIMARY_500),
-            Space::new().width(SPACING_SM),
-            column![
-                text("Auto-generated").size(13).color(GRAY_700),
-                text("Value computed automatically during export")
-                    .size(11)
-                    .color(GRAY_500),
-            ],
-        ]
-        .align_y(Alignment::Center)
-        .into(),
-        VariableStatus::NotCollected => {
-            let reason = domain
-                .mapping
-                .all_not_collected()
-                .get(&rule.target_variable)
-                .cloned()
-                .unwrap_or_default();
-
-            let reason_text = if reason.is_empty() {
-                String::from("No reason provided")
-            } else {
-                reason
-            };
-
-            row![
-                lucide::ban().size(16).color(GRAY_500),
-                Space::new().width(SPACING_SM),
-                column![
-                    text("Not Collected").size(13).color(GRAY_700),
-                    text(reason_text).size(11).color(GRAY_500),
-                ],
-            ]
-            .align_y(Alignment::Center)
-            .into()
-        }
-        VariableStatus::Omitted => row![
-            lucide::eye_off().size(16).color(GRAY_500),
-            Space::new().width(SPACING_SM),
-            column![
-                text("Omitted from output").size(13).color(GRAY_700),
-                text("Variable will not be included in export")
-                    .size(11)
-                    .color(GRAY_500),
-            ],
-        ]
-        .align_y(Alignment::Center)
-        .into(),
-        VariableStatus::Unmapped => row![
-            lucide::circle_alert().size(16).color(ERROR),
-            Space::new().width(SPACING_SM),
-            column![
-                text("Not Mapped").size(13).color(ERROR),
-                text("Configure mapping in the Mapping tab")
-                    .size(11)
-                    .color(GRAY_500),
-            ],
-        ]
-        .align_y(Alignment::Center)
-        .into(),
-    };
-
-    column![
-        title_row,
-        Space::new().height(SPACING_SM),
-        container(content)
-            .padding(SPACING_MD)
-            .width(Length::Fill)
-            .style(|_theme: &Theme| container::Style {
-                background: Some(GRAY_100.into()),
-                border: Border {
-                    radius: BORDER_RADIUS_SM.into(),
-                    ..Default::default()
-                },
-                ..Default::default()
-            }),
-    ]
-    .into()
-}
-
-/// Variable metadata section.
-fn view_variable_metadata<'a>(var: &'a tss_model::Variable) -> Element<'a, Message> {
-    let title_row = row![
         lucide::info().size(14).color(PRIMARY_500),
         Space::new().width(SPACING_SM),
-        text("Variable Metadata").size(14).color(GRAY_700),
+        text("Variable Information").size(14).color(GRAY_700),
     ]
     .align_y(Alignment::Center);
 
@@ -627,6 +451,23 @@ fn view_variable_metadata<'a>(var: &'a tss_model::Variable) -> Element<'a, Messa
         rows = rows.push(view_metadata_row("Format", dvd));
     }
 
+    // Divider before transformation
+    rows = rows.push(rule::horizontal(1));
+
+    // Transformation info at the bottom
+    let transform_title = row![
+        lucide::wand_sparkles().size(12).color(PRIMARY_500),
+        Space::new().width(SPACING_XS),
+        text("Transformation").size(12).color(GRAY_600),
+    ]
+    .align_y(Alignment::Center);
+
+    rows = rows.push(transform_title);
+    rows = rows.push(text(&rule.description).size(12).color(GRAY_700));
+
+    let explanation = get_transform_explanation(&rule.transform_type);
+    rows = rows.push(text(explanation).size(11).color(GRAY_500));
+
     column![
         title_row,
         Space::new().height(SPACING_SM),
@@ -643,6 +484,347 @@ fn view_variable_metadata<'a>(var: &'a tss_model::Variable) -> Element<'a, Messa
             }),
     ]
     .into()
+}
+
+/// Transformation-only section (when variable definition not found).
+fn view_transformation_only<'a>(
+    rule: &'a tss_normalization::NormalizationRule,
+) -> Element<'a, Message> {
+    let title_row = row![
+        lucide::wand_sparkles().size(14).color(PRIMARY_500),
+        Space::new().width(SPACING_SM),
+        text("Transformation").size(14).color(GRAY_700),
+    ]
+    .align_y(Alignment::Center);
+
+    let explanation = get_transform_explanation(&rule.transform_type);
+
+    column![
+        title_row,
+        Space::new().height(SPACING_SM),
+        container(column![
+            text(&rule.description).size(13).color(GRAY_700),
+            Space::new().height(SPACING_SM),
+            text(explanation).size(12).color(GRAY_500),
+        ])
+        .padding(SPACING_MD)
+        .width(Length::Fill)
+        .style(|_theme: &Theme| container::Style {
+            background: Some(GRAY_100.into()),
+            border: Border {
+                radius: BORDER_RADIUS_SM.into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        }),
+    ]
+    .into()
+}
+
+/// Before/After preview section.
+///
+/// Shows sample data before and after normalization is applied.
+fn view_before_after_preview<'a>(
+    domain: &'a crate::state::Domain,
+    rule: &'a tss_normalization::NormalizationRule,
+) -> Element<'a, Message> {
+    let title_row = row![
+        lucide::split().size(14).color(PRIMARY_500),
+        Space::new().width(SPACING_SM),
+        text("Before / After").size(14).color(GRAY_700),
+    ]
+    .align_y(Alignment::Center);
+
+    // Get sample data based on transformation type
+    let preview_content = build_preview_content(domain, rule);
+
+    column![
+        title_row,
+        Space::new().height(SPACING_SM),
+        container(preview_content)
+            .padding(SPACING_MD)
+            .width(Length::Fill)
+            .style(|_theme: &Theme| container::Style {
+                background: Some(GRAY_100.into()),
+                border: Border {
+                    radius: BORDER_RADIUS_SM.into(),
+                    ..Default::default()
+                },
+                ..Default::default()
+            }),
+    ]
+    .into()
+}
+
+/// Build the before/after preview content based on transformation type.
+fn build_preview_content<'a>(
+    domain: &'a crate::state::Domain,
+    rule: &'a tss_normalization::NormalizationRule,
+) -> Element<'a, Message> {
+    // Get source column name if mapped
+    let source_column = domain
+        .mapping
+        .accepted(&rule.target_variable)
+        .map(|(col, _)| col);
+
+    match &rule.transform_type {
+        // Constants have no "before" - just show the value
+        NormalizationType::Constant => {
+            let value = if rule.target_variable == "STUDYID" {
+                domain.mapping.domain().name.clone()
+            } else if rule.target_variable == "DOMAIN" {
+                domain.mapping.domain().name.clone()
+            } else {
+                "—".to_string()
+            };
+
+            column![
+                text("Generated Value").size(11).color(GRAY_500),
+                Space::new().height(SPACING_XS),
+                container(text(value).size(13).color(GRAY_800))
+                    .padding([SPACING_XS as u16, SPACING_SM as u16])
+                    .style(|_: &Theme| container::Style {
+                        background: Some(WHITE.into()),
+                        border: Border {
+                            color: GRAY_300,
+                            width: 1.0,
+                            radius: BORDER_RADIUS_SM.into(),
+                        },
+                        ..Default::default()
+                    }),
+            ]
+            .into()
+        }
+
+        // Sequence numbers are auto-generated
+        NormalizationType::SequenceNumber => column![
+            text("Generated Sequence").size(11).color(GRAY_500),
+            Space::new().height(SPACING_XS),
+            row![
+                preview_value_box("1"),
+                Space::new().width(SPACING_XS),
+                preview_value_box("2"),
+                Space::new().width(SPACING_XS),
+                preview_value_box("3"),
+                Space::new().width(SPACING_XS),
+                text("...").size(12).color(GRAY_500),
+            ]
+            .align_y(Alignment::Center),
+            Space::new().height(SPACING_XS),
+            text("Unique per subject within domain")
+                .size(11)
+                .color(GRAY_500),
+        ]
+        .into(),
+
+        // USUBJID derivation
+        NormalizationType::UsubjidPrefix => {
+            let study_id = &domain.mapping.domain().name;
+            column![
+                row![
+                    column![
+                        text("STUDYID").size(10).color(GRAY_500),
+                        preview_value_box(study_id),
+                    ],
+                    Space::new().width(SPACING_SM),
+                    text("+").size(16).color(GRAY_400),
+                    Space::new().width(SPACING_SM),
+                    column![
+                        text("SUBJID").size(10).color(GRAY_500),
+                        preview_value_box("001"),
+                    ],
+                    Space::new().width(SPACING_SM),
+                    text("→").size(16).color(PRIMARY_500),
+                    Space::new().width(SPACING_SM),
+                    column![
+                        text("USUBJID").size(10).color(GRAY_500),
+                        preview_value_box(&format!("{}-001", study_id)),
+                    ],
+                ]
+                .align_y(Alignment::End),
+            ]
+            .into()
+        }
+
+        // For mapped variables, show actual sample data
+        _ => {
+            if let Some(col_name) = source_column {
+                // Get unique values from source data
+                let samples = get_unique_values(&domain.source.data, col_name, 5);
+
+                if samples.is_empty() {
+                    text("No sample data available")
+                        .size(12)
+                        .color(GRAY_500)
+                        .into()
+                } else {
+                    // Build before/after table
+                    let mut table_rows = column![].spacing(2.0);
+
+                    // Header row
+                    table_rows = table_rows.push(
+                        row![
+                            text("Before")
+                                .size(10)
+                                .color(GRAY_500)
+                                .width(Length::FillPortion(1)),
+                            Space::new().width(SPACING_MD),
+                            text("After")
+                                .size(10)
+                                .color(GRAY_500)
+                                .width(Length::FillPortion(1)),
+                        ]
+                        .padding([0, SPACING_SM as u16]),
+                    );
+
+                    // Data rows
+                    for sample in samples {
+                        let after_value = simulate_transform(&sample, &rule.transform_type);
+                        table_rows = table_rows.push(view_preview_row(sample, after_value));
+                    }
+
+                    table_rows.into()
+                }
+            } else {
+                // Not mapped yet
+                column![
+                    row![
+                        lucide::circle_alert().size(14).color(WARNING),
+                        Space::new().width(SPACING_SM),
+                        text("Source column not mapped").size(12).color(GRAY_600),
+                    ]
+                    .align_y(Alignment::Center),
+                    Space::new().height(SPACING_XS),
+                    text("Map this variable in the Mapping tab to see preview")
+                        .size(11)
+                        .color(GRAY_500),
+                ]
+                .into()
+            }
+        }
+    }
+}
+
+/// A single before/after row in the preview table.
+fn view_preview_row<'a>(before: String, after: String) -> Element<'a, Message> {
+    row![
+        container(text(before).size(12).color(GRAY_800))
+            .padding([SPACING_XS as u16, SPACING_SM as u16])
+            .width(Length::FillPortion(1))
+            .style(|_: &Theme| container::Style {
+                background: Some(WHITE.into()),
+                border: Border {
+                    color: GRAY_300,
+                    width: 1.0,
+                    radius: BORDER_RADIUS_SM.into(),
+                },
+                ..Default::default()
+            }),
+        Space::new().width(SPACING_SM),
+        text("→").size(12).color(GRAY_400),
+        Space::new().width(SPACING_SM),
+        container(text(after).size(12).color(GRAY_800))
+            .padding([SPACING_XS as u16, SPACING_SM as u16])
+            .width(Length::FillPortion(1))
+            .style(|_: &Theme| container::Style {
+                background: Some(WHITE.into()),
+                border: Border {
+                    color: GRAY_300,
+                    width: 1.0,
+                    radius: BORDER_RADIUS_SM.into(),
+                },
+                ..Default::default()
+            }),
+    ]
+    .align_y(Alignment::Center)
+    .into()
+}
+
+/// Small box showing a preview value.
+fn preview_value_box<'a>(value: impl Into<String>) -> Element<'a, Message> {
+    container(text(value.into()).size(12).color(GRAY_800))
+        .padding([SPACING_XS as u16, SPACING_SM as u16])
+        .style(|_: &Theme| container::Style {
+            background: Some(WHITE.into()),
+            border: Border {
+                color: GRAY_300,
+                width: 1.0,
+                radius: BORDER_RADIUS_SM.into(),
+            },
+            ..Default::default()
+        })
+        .into()
+}
+
+/// Get unique sample values from a DataFrame column.
+///
+/// Returns up to `limit` unique values for preview.
+fn get_unique_values(df: &polars::prelude::DataFrame, column: &str, limit: usize) -> Vec<String> {
+    use polars::prelude::*;
+    use std::collections::HashSet;
+
+    let mut seen = HashSet::new();
+    let mut result = Vec::new();
+
+    if let Ok(col) = df.column(column) {
+        // Get the underlying series and iterate
+        let series = col.as_materialized_series();
+        for i in 0..series.len().min(1000) {
+            // Limit scan to first 1000 rows
+            let value = series.get(i).ok();
+            if let Some(v) = value {
+                let str_val = match v {
+                    AnyValue::String(s) => s.to_string(),
+                    AnyValue::Int64(n) => n.to_string(),
+                    AnyValue::Float64(f) => format!("{:.2}", f),
+                    AnyValue::Null => continue, // Skip nulls
+                    _ => format!("{}", v),
+                };
+
+                if !str_val.is_empty() && seen.insert(str_val.clone()) {
+                    result.push(str_val);
+                    if result.len() >= limit {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    result
+}
+
+/// Simulate what a transformation would produce (simplified preview).
+fn simulate_transform(input: &str, transform_type: &NormalizationType) -> String {
+    match transform_type {
+        NormalizationType::CopyDirect => input.to_string(),
+
+        NormalizationType::Iso8601DateTime | NormalizationType::Iso8601Date => {
+            // Simple date normalization simulation
+            if input.contains('/') {
+                // Convert MM/DD/YYYY to YYYY-MM-DD (simplified)
+                input.replace('/', "-")
+            } else {
+                input.to_string()
+            }
+        }
+
+        NormalizationType::NumericConversion => {
+            // Try to parse as number
+            if input.parse::<f64>().is_ok() {
+                input.to_string()
+            } else {
+                "—".to_string()
+            }
+        }
+
+        NormalizationType::CtNormalization { .. } => {
+            // For CT, show uppercase (simplified - real would lookup codelist)
+            input.to_uppercase()
+        }
+
+        _ => input.to_string(),
+    }
 }
 
 /// Metadata row helper.
