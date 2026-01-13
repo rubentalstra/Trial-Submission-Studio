@@ -16,12 +16,13 @@
 //! committed only on "Save".
 
 use iced::widget::{
-    Space, button, column, container, pick_list, row, scrollable, text, text_input,
+    Space, button, column, container, pick_list, row, rule, scrollable, text, text_input,
 };
 use iced::{Alignment, Border, Element, Length, Theme};
 use iced_fonts::lucide;
 use polars::prelude::AnyValue;
 
+use crate::component::master_detail_with_pinned_header;
 use crate::message::domain_editor::SuppMessage;
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{
@@ -29,8 +30,8 @@ use crate::state::{
     SuppUiState, ViewState,
 };
 use crate::theme::{
-    BORDER_RADIUS_SM, ERROR, GRAY_100, GRAY_200, GRAY_300, GRAY_400, GRAY_500, GRAY_600, GRAY_700,
-    GRAY_800, GRAY_900, PRIMARY_100, PRIMARY_500, PRIMARY_600, PRIMARY_700, SPACING_LG, SPACING_MD,
+    BORDER_RADIUS_SM, ERROR, GRAY_100, GRAY_300, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800,
+    GRAY_900, PRIMARY_100, PRIMARY_500, PRIMARY_600, PRIMARY_700, SPACING_LG, SPACING_MD,
     SPACING_SM, SPACING_XL, SPACING_XS, SUCCESS, WARNING, WHITE,
 };
 
@@ -74,58 +75,22 @@ pub fn view_supp_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Element<'
         return view_all_mapped_state(domain_code);
     }
 
-    // Build master list
-    let master = build_master_list(&unmapped_columns, domain, supp_ui, domain_code);
-
-    // Build detail panel
-    let detail = build_detail_panel(domain, supp_ui, domain_code);
-
-    // Vertical divider
-    let divider = container(Space::new().width(1))
-        .width(Length::Fixed(1.0))
-        .height(Length::Fill)
-        .style(|_: &Theme| container::Style {
-            background: Some(GRAY_200.into()),
-            ..Default::default()
-        });
-
-    row![
-        container(master)
-            .width(Length::Fixed(MASTER_WIDTH))
-            .height(Length::Fill),
-        divider,
-        container(detail).width(Length::Fill).height(Length::Fill),
-    ]
-    .height(Length::Fill)
-    .into()
-}
-
-// =============================================================================
-// MASTER LIST
-// =============================================================================
-
-fn build_master_list(
-    columns: &[String],
-    domain: &Domain,
-    ui: &SuppUiState,
-    domain_code: &str,
-) -> Element<'static, Message> {
     // Filter columns based on search and filter mode
-    let filtered: Vec<String> = columns
+    let filtered: Vec<String> = unmapped_columns
         .iter()
         .filter(|col| {
             // Search filter
-            if !ui.search_filter.is_empty()
+            if !supp_ui.search_filter.is_empty()
                 && !col
                     .to_lowercase()
-                    .contains(&ui.search_filter.to_lowercase())
+                    .contains(&supp_ui.search_filter.to_lowercase())
             {
                 return false;
             }
 
             // Action filter
             let config = domain.supp_config.get(*col);
-            match ui.filter_mode {
+            match supp_ui.filter_mode {
                 SuppFilterMode::All => true,
                 SuppFilterMode::Pending => config.map_or(true, |c| c.action == SuppAction::Pending),
                 SuppFilterMode::Included => {
@@ -137,12 +102,39 @@ fn build_master_list(
         .cloned()
         .collect();
 
-    // Header
-    let header = build_master_header(domain_code, filtered.len());
+    // Build master header (pinned at top)
+    let master_header = build_master_header_pinned(domain_code, supp_ui, filtered.len());
+
+    // Build master content (scrollable column list)
+    let master_content = build_master_content(&filtered, domain, supp_ui);
+
+    // Build detail panel
+    let detail = build_detail_panel(domain, supp_ui, domain_code);
+
+    // Use master-detail layout with pinned header
+    master_detail_with_pinned_header(master_header, master_content, detail, MASTER_WIDTH)
+}
+
+// =============================================================================
+// MASTER PANEL: HEADER (PINNED)
+// =============================================================================
+
+/// Left panel header: title, search, filters, and stats (pinned at top).
+fn build_master_header_pinned<'a>(
+    domain_code: &'a str,
+    ui: &'a SuppUiState,
+    filtered_count: usize,
+) -> Element<'a, Message> {
+    let title = format!("SUPP{}", domain_code);
+
+    // Title row
+    let title_row = text(title).size(16).color(GRAY_900).font(iced::Font {
+        weight: iced::font::Weight::Semibold,
+        ..Default::default()
+    });
 
     // Search box
-    let search_filter = ui.search_filter.clone();
-    let search = text_input("Search columns...", &search_filter)
+    let search = text_input("Search columns...", &ui.search_filter)
         .on_input(|s| {
             Message::DomainEditor(DomainEditorMessage::Supp(SuppMessage::SearchChanged(s)))
         })
@@ -152,9 +144,41 @@ fn build_master_list(
     // Filter buttons
     let filters = build_filter_buttons(ui.filter_mode);
 
-    // Column list
-    let column_list: Element<'static, Message> = if filtered.is_empty() {
-        container(
+    // Stats
+    let stats = row![
+        text(format!("{}", filtered_count)).size(12).color(GRAY_600),
+        Space::new().width(4.0),
+        text("columns").size(11).color(GRAY_500),
+    ]
+    .align_y(Alignment::Center);
+
+    column![
+        title_row,
+        Space::new().height(SPACING_SM),
+        search,
+        Space::new().height(SPACING_SM),
+        filters,
+        Space::new().height(SPACING_SM),
+        stats,
+        Space::new().height(SPACING_SM),
+        rule::horizontal(1),
+        Space::new().height(SPACING_SM),
+    ]
+    .into()
+}
+
+// =============================================================================
+// MASTER PANEL: CONTENT (SCROLLABLE)
+// =============================================================================
+
+/// Left panel content: scrollable list of columns.
+fn build_master_content<'a>(
+    filtered: &[String],
+    domain: &'a Domain,
+    ui: &'a SuppUiState,
+) -> Element<'a, Message> {
+    if filtered.is_empty() {
+        return container(
             column![
                 lucide::search_x().size(32).color(GRAY_400),
                 Space::new().height(SPACING_SM),
@@ -163,55 +187,23 @@ fn build_master_list(
             .align_x(Alignment::Center),
         )
         .width(Length::Fill)
-        .height(Length::Fixed(150.0))
+        .padding(SPACING_LG)
         .center_x(Length::Shrink)
-        .center_y(Length::Shrink)
-        .into()
-    } else {
-        let selected_col = ui.selected_column.clone();
-        let items: Vec<Element<'static, Message>> = filtered
-            .into_iter()
-            .map(|col_name| {
-                let config = domain.supp_config.get(&col_name);
-                let action = config.map_or(SuppAction::Pending, |c| c.action);
-                let is_selected = selected_col.as_deref() == Some(col_name.as_str());
-                build_column_item(col_name, action, is_selected)
-            })
-            .collect();
+        .into();
+    }
 
-        scrollable(column(items).spacing(2).width(Length::Fill))
-            .height(Length::Fill)
-            .into()
-    };
+    // Build column items
+    let mut items = column![].spacing(SPACING_XS);
 
-    column![
-        header,
-        Space::new().height(SPACING_SM),
-        search,
-        Space::new().height(SPACING_SM),
-        filters,
-        Space::new().height(SPACING_SM),
-        column_list,
-    ]
-    .padding(SPACING_MD)
-    .width(Length::Fill)
-    .height(Length::Fill)
-    .into()
-}
+    for col_name in filtered {
+        let config = domain.supp_config.get(col_name);
+        let action = config.map_or(SuppAction::Pending, |c| c.action);
+        let is_selected = ui.selected_column.as_deref() == Some(col_name.as_str());
+        let item = build_column_item(col_name.clone(), action, is_selected);
+        items = items.push(item);
+    }
 
-fn build_master_header(domain_code: &str, count: usize) -> Element<'static, Message> {
-    let title = format!("SUPP{}", domain_code);
-    let subtitle = format!("{} unmapped columns", count);
-
-    column![
-        text(title).size(16).color(GRAY_900).font(iced::Font {
-            weight: iced::font::Weight::Semibold,
-            ..Default::default()
-        }),
-        Space::new().height(2.0),
-        text(subtitle).size(12).color(GRAY_500),
-    ]
-    .into()
+    items.into()
 }
 
 fn build_filter_buttons(current: SuppFilterMode) -> Element<'static, Message> {
@@ -950,15 +942,21 @@ fn build_sample_data(domain: &Domain, col_name: &str) -> Element<'static, Messag
 
 fn build_editable_fields(
     config: SuppColumnConfig,
-    qnam_error: Option<String>,
+    qnam_conflict_error: Option<String>,
 ) -> Element<'static, Message> {
-    // QNAM field
+    // QNAM field (required) - check empty first, then conflict
+    let qnam_error = if config.qnam.trim().is_empty() {
+        Some("QNAM is required".to_string())
+    } else {
+        qnam_conflict_error
+    };
     let qnam_field = build_text_field(
-        "QNAM",
+        "QNAM *",
         "Qualifier name (max 8 chars)",
         config.qnam,
         QNAM_MAX_LEN,
         qnam_error,
+        true,
         |v| {
             Message::DomainEditor(DomainEditorMessage::Supp(SuppMessage::QnamChanged(
                 v.to_uppercase(),
@@ -966,26 +964,33 @@ fn build_editable_fields(
         },
     );
 
-    // QLABEL field
+    // QLABEL field (required) - validate empty
+    let qlabel_error = if config.qlabel.trim().is_empty() {
+        Some("QLABEL is required".to_string())
+    } else {
+        None
+    };
     let qlabel_field = build_text_field(
-        "QLABEL",
+        "QLABEL *",
         "Describe what this value represents...",
         config.qlabel,
         QLABEL_MAX_LEN,
-        None,
+        qlabel_error,
+        true,
         |v| Message::DomainEditor(DomainEditorMessage::Supp(SuppMessage::QlabelChanged(v))),
     );
 
     // QORIG picker
     let qorig_field = build_origin_picker(config.qorig);
 
-    // QEVAL field
+    // QEVAL field (optional)
     let qeval_field = build_text_field(
-        "QEVAL (Optional)",
+        "QEVAL",
         "Evaluator (e.g., INVESTIGATOR)",
         config.qeval.unwrap_or_default(),
         40,
         None,
+        false,
         |v| Message::DomainEditor(DomainEditorMessage::Supp(SuppMessage::QevalChanged(v))),
     );
 
@@ -1000,6 +1005,7 @@ fn build_text_field<F>(
     value: String,
     max_len: usize,
     error: Option<String>,
+    _is_required: bool,
     on_change: F,
 ) -> Element<'static, Message>
 where

@@ -82,8 +82,16 @@ pub fn view_preview_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
         view_empty_state()
     };
 
-    column![header, Space::new().height(SPACING_MD), content,]
-        .padding(SPACING_LG)
+    // Header with padding, table without padding for edge-to-edge look
+    let header_section =
+        container(column![header, Space::new().height(SPACING_MD),]).padding(iced::Padding {
+            top: SPACING_LG,
+            right: SPACING_LG,
+            bottom: 0.0,
+            left: SPACING_LG,
+        });
+
+    column![header_section, content,]
         .width(Length::Fill)
         .height(Length::Fill)
         .into()

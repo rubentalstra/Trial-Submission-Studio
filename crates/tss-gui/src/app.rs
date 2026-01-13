@@ -939,6 +939,11 @@ impl App {
                         .and_then(|s| s.domain_mut(&domain_code))
                     {
                         if let Some(config) = domain.supp_config.get_mut(&col_name) {
+                            // Validate required fields before adding
+                            if config.qnam.trim().is_empty() || config.qlabel.trim().is_empty() {
+                                // Don't add - QNAM and QLABEL are required
+                                return Task::none();
+                            }
                             config.action = SuppAction::Include;
                         }
                     }
@@ -1038,6 +1043,12 @@ impl App {
                 };
 
                 if let (Some(col_name), Some(draft)) = (col, draft) {
+                    // Validate required fields before saving
+                    if draft.qnam.trim().is_empty() || draft.qlabel.trim().is_empty() {
+                        // Don't save - QNAM and QLABEL are required
+                        return Task::none();
+                    }
+
                     if let Some(domain) = self
                         .state
                         .study
