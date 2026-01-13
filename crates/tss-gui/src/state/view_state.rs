@@ -14,6 +14,8 @@ use polars::prelude::DataFrame;
 use std::collections::BTreeMap;
 use tss_validate::ValidationReport;
 
+use super::domain::{SuppColumnConfig, SuppOrigin};
+
 // =============================================================================
 // VIEW STATE (Current view + its UI state)
 // =============================================================================
@@ -371,6 +373,14 @@ impl Default for PreviewUiState {
 // =============================================================================
 
 /// UI state for the SUPP tab.
+///
+/// # Edit Draft Pattern
+///
+/// When editing an already-included column, changes are stored in `edit_draft`
+/// and only committed to `supp_config` when the user clicks "Save".
+/// This allows cancellation without losing the original values.
+///
+/// For pending columns, edits go directly to `supp_config` (no draft needed).
 #[derive(Debug, Clone, Default)]
 pub struct SuppUiState {
     /// Selected column for detail view.
@@ -379,6 +389,55 @@ pub struct SuppUiState {
     pub search_filter: String,
     /// Filter mode for columns.
     pub filter_mode: SuppFilterMode,
+    /// Edit draft for already-included columns.
+    /// When Some, user is editing an included column.
+    /// When None, showing read-only view or editing a pending column.
+    pub edit_draft: Option<SuppEditDraft>,
+}
+
+impl SuppUiState {
+    /// Check if we're in edit mode for an included column.
+    pub fn is_editing(&self) -> bool {
+        self.edit_draft.is_some()
+    }
+
+    /// Start editing with a draft from the current config.
+    pub fn start_editing(&mut self, draft: SuppEditDraft) {
+        self.edit_draft = Some(draft);
+    }
+
+    /// Cancel editing, discarding the draft.
+    pub fn cancel_editing(&mut self) {
+        self.edit_draft = None;
+    }
+}
+
+/// Draft state for editing an included SUPP column.
+///
+/// This holds temporary values while editing, allowing the user
+/// to cancel without losing the original configuration.
+#[derive(Debug, Clone)]
+pub struct SuppEditDraft {
+    /// QNAM value being edited.
+    pub qnam: String,
+    /// QLABEL value being edited.
+    pub qlabel: String,
+    /// QORIG value being edited.
+    pub qorig: SuppOrigin,
+    /// QEVAL value being edited.
+    pub qeval: String,
+}
+
+impl SuppEditDraft {
+    /// Create a draft from an existing config.
+    pub fn from_config(config: &SuppColumnConfig) -> Self {
+        Self {
+            qnam: config.qnam.clone(),
+            qlabel: config.qlabel.clone(),
+            qorig: config.qorig,
+            qeval: config.qeval.clone().unwrap_or_default(),
+        }
+    }
 }
 
 /// Filter mode for SUPP columns.

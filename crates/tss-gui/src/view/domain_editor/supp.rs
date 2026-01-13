@@ -1,14 +1,19 @@
 //! SUPP (Supplemental Qualifiers) tab view.
 //!
-//! The SUPP tab allows configuration of supplemental qualifier domains
-//! for columns that don't map to standard SDTM variables.
+//! # Architecture
 //!
-//! Features:
-//! - Master list of unmapped source columns
-//! - Detail panel for SUPP configuration (QNAM, QLABEL, QORIG, QEVAL)
-//! - Inline editing with auto-uppercase QNAM
-//! - QNAM uniqueness validation
-//! - Sample data preview from source column
+//! The SUPP tab uses a clean state-based UX:
+//!
+//! - **Pending**: Editable fields + sample data + "Add to SUPP"/"Skip" buttons
+//! - **Included (view)**: Read-only summary + "Edit"/"Remove" options
+//! - **Included (edit)**: Editable fields + "Save"/"Cancel" buttons
+//! - **Skipped**: Skip message + sample data + "Add to SUPP instead" button
+//!
+//! # Edit Draft Pattern
+//!
+//! For pending columns, edits go directly to `supp_config`.
+//! For included columns in edit mode, edits go to `edit_draft` and are
+//! committed only on "Save".
 
 use iced::widget::{
     Space, button, column, container, pick_list, row, scrollable, text, text_input,
@@ -20,13 +25,13 @@ use polars::prelude::AnyValue;
 use crate::message::domain_editor::SuppMessage;
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{
-    AppState, Domain, SuppAction, SuppColumnConfig, SuppFilterMode, SuppOrigin, SuppUiState,
-    ViewState,
+    AppState, Domain, SuppAction, SuppColumnConfig, SuppEditDraft, SuppFilterMode, SuppOrigin,
+    SuppUiState, ViewState,
 };
 use crate::theme::{
     BORDER_RADIUS_SM, ERROR, GRAY_100, GRAY_200, GRAY_300, GRAY_400, GRAY_500, GRAY_600, GRAY_700,
-    GRAY_800, GRAY_900, PRIMARY_100, PRIMARY_500, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS,
-    SUCCESS, WHITE,
+    GRAY_800, GRAY_900, PRIMARY_100, PRIMARY_500, PRIMARY_600, PRIMARY_700, SPACING_LG, SPACING_MD,
+    SPACING_SM, SPACING_XL, SPACING_XS, SUCCESS, WARNING, WHITE,
 };
 
 // =============================================================================
@@ -69,7 +74,7 @@ pub fn view_supp_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Element<'
         return view_all_mapped_state(domain_code);
     }
 
-    // Build master list inline to avoid lifetime issues
+    // Build master list
     let master = build_master_list(&unmapped_columns, domain, supp_ui, domain_code);
 
     // Build detail panel
@@ -85,13 +90,10 @@ pub fn view_supp_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Element<'
         });
 
     row![
-        // Master list
         container(master)
             .width(Length::Fixed(MASTER_WIDTH))
             .height(Length::Fill),
-        // Divider
         divider,
-        // Detail panel
         container(detail).width(Length::Fill).height(Length::Fill),
     ]
     .height(Length::Fill)
@@ -99,10 +101,9 @@ pub fn view_supp_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Element<'
 }
 
 // =============================================================================
-// MASTER LIST (builds elements that own their data)
+// MASTER LIST
 // =============================================================================
 
-/// Build master list showing unmapped columns.
 fn build_master_list(
     columns: &[String],
     domain: &Domain,
@@ -115,7 +116,9 @@ fn build_master_list(
         .filter(|col| {
             // Search filter
             if !ui.search_filter.is_empty()
-                && !col.to_lowercase().contains(&ui.search_filter.to_lowercase())
+                && !col
+                    .to_lowercase()
+                    .contains(&ui.search_filter.to_lowercase())
             {
                 return false;
             }
@@ -124,22 +127,20 @@ fn build_master_list(
             let config = domain.supp_config.get(*col);
             match ui.filter_mode {
                 SuppFilterMode::All => true,
-                SuppFilterMode::Pending => {
-                    config.map_or(true, |c| c.action == SuppAction::Pending)
-                }
+                SuppFilterMode::Pending => config.map_or(true, |c| c.action == SuppAction::Pending),
                 SuppFilterMode::Included => {
                     config.map_or(false, |c| c.action == SuppAction::Include)
                 }
                 SuppFilterMode::Skipped => config.map_or(false, |c| c.action == SuppAction::Skip),
             }
         })
-        .cloned()  // Clone to own the data
+        .cloned()
         .collect();
 
     // Header
     let header = build_master_header(domain_code, filtered.len());
 
-    // Search box - clone the filter for the closure
+    // Search box
     let search_filter = ui.search_filter.clone();
     let search = text_input("Search columns...", &search_filter)
         .on_input(|s| {
@@ -167,7 +168,6 @@ fn build_master_list(
         .center_y(Length::Shrink)
         .into()
     } else {
-        // Build items with owned data
         let selected_col = ui.selected_column.clone();
         let items: Vec<Element<'static, Message>> = filtered
             .into_iter()
@@ -199,7 +199,6 @@ fn build_master_list(
     .into()
 }
 
-/// Build master list header.
 fn build_master_header(domain_code: &str, count: usize) -> Element<'static, Message> {
     let title = format!("SUPP{}", domain_code);
     let subtitle = format!("{} unmapped columns", count);
@@ -215,7 +214,6 @@ fn build_master_header(domain_code: &str, count: usize) -> Element<'static, Mess
     .into()
 }
 
-/// Build filter buttons.
 fn build_filter_buttons(current: SuppFilterMode) -> Element<'static, Message> {
     let filters = [
         (SuppFilterMode::All, "All"),
@@ -272,13 +270,11 @@ fn build_filter_buttons(current: SuppFilterMode) -> Element<'static, Message> {
     row(buttons).spacing(4.0).into()
 }
 
-/// Build single column item in the master list.
 fn build_column_item(
     col_name: String,
     action: SuppAction,
     is_selected: bool,
 ) -> Element<'static, Message> {
-    // Status indicator
     let status_icon: Element<'static, Message> = match action {
         SuppAction::Pending => lucide::circle().size(10).color(GRAY_400).into(),
         SuppAction::Include => lucide::circle_check().size(10).color(SUCCESS).into(),
@@ -319,19 +315,34 @@ fn build_column_item(
 // DETAIL PANEL
 // =============================================================================
 
-/// Build detail panel for configuring a selected column.
 fn build_detail_panel(
     domain: &Domain,
     ui: &SuppUiState,
     domain_code: &str,
 ) -> Element<'static, Message> {
     match &ui.selected_column {
-        Some(col) => build_column_detail(domain, col.clone(), domain_code.to_string()),
+        Some(col) => {
+            let config = domain
+                .supp_config
+                .get(col)
+                .cloned()
+                .unwrap_or_else(|| SuppColumnConfig::from_column(col));
+
+            let is_editing = ui.edit_draft.is_some();
+
+            match config.action {
+                SuppAction::Pending => build_pending_view(domain, col, &config, domain_code),
+                SuppAction::Include if is_editing => {
+                    build_edit_view(domain, col, ui.edit_draft.as_ref().unwrap(), domain_code)
+                }
+                SuppAction::Include => build_included_view(domain, col, &config, domain_code),
+                SuppAction::Skip => build_skipped_view(domain, col, domain_code),
+            }
+        }
         None => build_no_selection_state(),
     }
 }
 
-/// Build no column selected state.
 fn build_no_selection_state() -> Element<'static, Message> {
     container(
         column![
@@ -352,33 +363,27 @@ fn build_no_selection_state() -> Element<'static, Message> {
     .into()
 }
 
-/// Build detail view for a selected column.
-fn build_column_detail(
+// =============================================================================
+// PENDING VIEW - Editable fields + Add/Skip buttons
+// =============================================================================
+
+fn build_pending_view(
     domain: &Domain,
-    col_name: String,
-    domain_code: String,
+    col_name: &str,
+    config: &SuppColumnConfig,
+    domain_code: &str,
 ) -> Element<'static, Message> {
-    // Get or create config for this column
-    let config = domain
-        .supp_config
-        .get(&col_name)
-        .cloned()
-        .unwrap_or_else(|| SuppColumnConfig::from_column(&col_name));
+    let header = build_detail_header(col_name, domain_code);
+    let sample_data = build_sample_data(domain, col_name);
 
-    // Check for QNAM uniqueness
-    let qnam_conflict = check_qnam_conflict(domain, &col_name, &config.qnam);
+    // Check QNAM conflict (only against included columns)
+    let qnam_error = check_qnam_conflict(domain, col_name, &config.qnam);
 
-    // Header
-    let header = build_detail_header(&col_name, &domain_code);
+    // Editable fields
+    let fields = build_editable_fields(config.clone(), qnam_error);
 
-    // Sample data preview
-    let sample_data = build_sample_data(domain, &col_name);
-
-    // SUPP fields
-    let fields = build_supp_fields(col_name.clone(), config.clone(), qnam_conflict);
-
-    // Action selector
-    let action_selector = build_action_selector(col_name, config.action);
+    // Action buttons
+    let actions = build_pending_actions(domain_code);
 
     scrollable(
         column![
@@ -387,8 +392,8 @@ fn build_column_detail(
             sample_data,
             Space::new().height(SPACING_LG),
             fields,
-            Space::new().height(SPACING_LG),
-            action_selector,
+            Space::new().height(SPACING_XL),
+            actions,
         ]
         .padding(SPACING_LG)
         .width(Length::Fill),
@@ -397,7 +402,470 @@ fn build_column_detail(
     .into()
 }
 
-/// Build detail header.
+fn build_pending_actions(domain_code: &str) -> Element<'static, Message> {
+    let supp_name = format!("SUPP{}", domain_code);
+
+    column![
+        // Primary action - Add to SUPP
+        button(
+            row![
+                lucide::plus().size(16).color(WHITE),
+                Space::new().width(SPACING_SM),
+                text(format!("Add to {}", supp_name)).size(14).color(WHITE),
+            ]
+            .align_y(Alignment::Center),
+        )
+        .on_press(Message::DomainEditor(DomainEditorMessage::Supp(
+            SuppMessage::AddToSupp,
+        )))
+        .padding([12.0, 24.0])
+        .width(Length::Fill)
+        .style(|_: &Theme, status| {
+            let bg = match status {
+                iced::widget::button::Status::Hovered => PRIMARY_600,
+                iced::widget::button::Status::Pressed => PRIMARY_700,
+                _ => PRIMARY_500,
+            };
+            iced::widget::button::Style {
+                background: Some(bg.into()),
+                text_color: WHITE,
+                border: Border {
+                    radius: BORDER_RADIUS_SM.into(),
+                    ..Default::default()
+                },
+                ..Default::default()
+            }
+        }),
+        Space::new().height(SPACING_MD),
+        // Secondary action - Skip
+        container(
+            button(
+                row![
+                    lucide::x().size(14).color(GRAY_500),
+                    Space::new().width(SPACING_XS),
+                    text("Skip this column").size(13).color(GRAY_500),
+                ]
+                .align_y(Alignment::Center),
+            )
+            .on_press(Message::DomainEditor(DomainEditorMessage::Supp(
+                SuppMessage::Skip,
+            )))
+            .padding([8.0, 16.0])
+            .style(|_: &Theme, status| {
+                let text_color = match status {
+                    iced::widget::button::Status::Hovered => GRAY_700,
+                    _ => GRAY_500,
+                };
+                iced::widget::button::Style {
+                    background: None,
+                    text_color,
+                    ..Default::default()
+                }
+            }),
+        )
+        .width(Length::Fill)
+        .center_x(Length::Shrink),
+    ]
+    .into()
+}
+
+// =============================================================================
+// INCLUDED VIEW (Read-only) - Summary + Edit/Remove buttons
+// =============================================================================
+
+fn build_included_view(
+    domain: &Domain,
+    col_name: &str,
+    config: &SuppColumnConfig,
+    domain_code: &str,
+) -> Element<'static, Message> {
+    let header = build_detail_header(col_name, domain_code);
+    let sample_data = build_sample_data(domain, col_name);
+
+    // Read-only summary
+    let summary = build_readonly_summary(config);
+
+    // Actions
+    let actions = build_included_actions();
+
+    scrollable(
+        column![
+            header,
+            Space::new().height(SPACING_LG),
+            sample_data,
+            Space::new().height(SPACING_LG),
+            summary,
+            Space::new().height(SPACING_XL),
+            actions,
+        ]
+        .padding(SPACING_LG)
+        .width(Length::Fill),
+    )
+    .height(Length::Fill)
+    .into()
+}
+
+fn build_readonly_summary(config: &SuppColumnConfig) -> Element<'static, Message> {
+    let qnam = config.qnam.clone();
+    let qlabel = config.qlabel.clone();
+    let qorig = config.qorig.label().to_string();
+    let qeval = config.qeval.clone().unwrap_or_else(|| "—".to_string());
+
+    container(
+        column![
+            // Success indicator
+            row![
+                lucide::circle_check().size(16).color(SUCCESS),
+                Space::new().width(SPACING_SM),
+                text("Added to SUPP")
+                    .size(13)
+                    .color(SUCCESS)
+                    .font(iced::Font {
+                        weight: iced::font::Weight::Medium,
+                        ..Default::default()
+                    }),
+            ]
+            .align_y(Alignment::Center),
+            Space::new().height(SPACING_MD),
+            // Fields summary
+            build_summary_row("QNAM", &qnam),
+            Space::new().height(SPACING_SM),
+            build_summary_row("QLABEL", &qlabel),
+            Space::new().height(SPACING_SM),
+            build_summary_row("QORIG", &qorig),
+            Space::new().height(SPACING_SM),
+            build_summary_row("QEVAL", &qeval),
+        ]
+        .padding(SPACING_MD),
+    )
+    .style(|_: &Theme| container::Style {
+        background: Some(iced::Color::from_rgb(0.95, 0.99, 0.96).into()),
+        border: Border {
+            color: SUCCESS,
+            width: 1.0,
+            radius: BORDER_RADIUS_SM.into(),
+        },
+        ..Default::default()
+    })
+    .width(Length::Fill)
+    .into()
+}
+
+fn build_summary_row(label: &str, value: &str) -> Element<'static, Message> {
+    let label_str = label.to_string();
+    let value_str = value.to_string();
+
+    row![
+        text(label_str)
+            .size(12)
+            .color(GRAY_600)
+            .width(Length::Fixed(60.0)),
+        text(value_str).size(13).color(GRAY_800).font(iced::Font {
+            weight: iced::font::Weight::Medium,
+            ..Default::default()
+        }),
+    ]
+    .align_y(Alignment::Center)
+    .into()
+}
+
+fn build_included_actions() -> Element<'static, Message> {
+    row![
+        // Edit button
+        button(
+            row![
+                lucide::pencil().size(14).color(PRIMARY_500),
+                Space::new().width(SPACING_XS),
+                text("Edit").size(13).color(PRIMARY_500),
+            ]
+            .align_y(Alignment::Center),
+        )
+        .on_press(Message::DomainEditor(DomainEditorMessage::Supp(
+            SuppMessage::StartEdit,
+        )))
+        .padding([8.0, 16.0])
+        .style(|_: &Theme, status| {
+            let text_color = match status {
+                iced::widget::button::Status::Hovered => PRIMARY_700,
+                _ => PRIMARY_500,
+            };
+            iced::widget::button::Style {
+                background: Some(PRIMARY_100.into()),
+                text_color,
+                border: Border {
+                    color: PRIMARY_500,
+                    width: 1.0,
+                    radius: BORDER_RADIUS_SM.into(),
+                },
+                ..Default::default()
+            }
+        }),
+        Space::new().width(SPACING_MD),
+        // Remove button
+        button(
+            row![
+                lucide::trash().size(14).color(GRAY_500),
+                Space::new().width(SPACING_XS),
+                text("Remove").size(13).color(GRAY_500),
+            ]
+            .align_y(Alignment::Center),
+        )
+        .on_press(Message::DomainEditor(DomainEditorMessage::Supp(
+            SuppMessage::UndoAction,
+        )))
+        .padding([8.0, 16.0])
+        .style(|_: &Theme, status| {
+            let text_color = match status {
+                iced::widget::button::Status::Hovered => GRAY_700,
+                _ => GRAY_500,
+            };
+            iced::widget::button::Style {
+                background: None,
+                text_color,
+                border: Border {
+                    color: GRAY_300,
+                    width: 1.0,
+                    radius: BORDER_RADIUS_SM.into(),
+                },
+                ..Default::default()
+            }
+        }),
+    ]
+    .into()
+}
+
+// =============================================================================
+// EDIT VIEW (for included columns) - Editable fields + Save/Cancel
+// =============================================================================
+
+fn build_edit_view(
+    domain: &Domain,
+    col_name: &str,
+    draft: &SuppEditDraft,
+    domain_code: &str,
+) -> Element<'static, Message> {
+    let header = build_detail_header(col_name, domain_code);
+    let sample_data = build_sample_data(domain, col_name);
+
+    // Create a temporary config from draft for display
+    let temp_config = SuppColumnConfig {
+        column: col_name.to_string(),
+        qnam: draft.qnam.clone(),
+        qlabel: draft.qlabel.clone(),
+        qorig: draft.qorig,
+        qeval: if draft.qeval.is_empty() {
+            None
+        } else {
+            Some(draft.qeval.clone())
+        },
+        action: SuppAction::Include,
+    };
+
+    // Check QNAM conflict
+    let qnam_error = check_qnam_conflict(domain, col_name, &draft.qnam);
+
+    // Editable fields
+    let fields = build_editable_fields(temp_config, qnam_error);
+
+    // Edit mode info
+    let edit_info = container(
+        row![
+            lucide::info().size(14).color(WARNING),
+            Space::new().width(SPACING_SM),
+            text("Editing — changes will be saved when you click Save")
+                .size(12)
+                .color(GRAY_600),
+        ]
+        .align_y(Alignment::Center),
+    )
+    .padding([SPACING_SM, SPACING_MD])
+    .style(|_: &Theme| container::Style {
+        background: Some(iced::Color::from_rgb(1.0, 0.98, 0.92).into()),
+        border: Border {
+            color: WARNING,
+            width: 1.0,
+            radius: BORDER_RADIUS_SM.into(),
+        },
+        ..Default::default()
+    })
+    .width(Length::Fill);
+
+    // Actions
+    let actions = build_edit_actions();
+
+    scrollable(
+        column![
+            header,
+            Space::new().height(SPACING_MD),
+            edit_info,
+            Space::new().height(SPACING_LG),
+            sample_data,
+            Space::new().height(SPACING_LG),
+            fields,
+            Space::new().height(SPACING_XL),
+            actions,
+        ]
+        .padding(SPACING_LG)
+        .width(Length::Fill),
+    )
+    .height(Length::Fill)
+    .into()
+}
+
+fn build_edit_actions() -> Element<'static, Message> {
+    row![
+        // Save button (primary)
+        button(
+            row![
+                lucide::check().size(16).color(WHITE),
+                Space::new().width(SPACING_SM),
+                text("Save").size(14).color(WHITE),
+            ]
+            .align_y(Alignment::Center),
+        )
+        .on_press(Message::DomainEditor(DomainEditorMessage::Supp(
+            SuppMessage::SaveEdit,
+        )))
+        .padding([10.0, 24.0])
+        .style(|_: &Theme, status| {
+            let bg = match status {
+                iced::widget::button::Status::Hovered => PRIMARY_600,
+                iced::widget::button::Status::Pressed => PRIMARY_700,
+                _ => PRIMARY_500,
+            };
+            iced::widget::button::Style {
+                background: Some(bg.into()),
+                text_color: WHITE,
+                border: Border {
+                    radius: BORDER_RADIUS_SM.into(),
+                    ..Default::default()
+                },
+                ..Default::default()
+            }
+        }),
+        Space::new().width(SPACING_MD),
+        // Cancel button
+        button(text("Cancel").size(14).color(GRAY_600))
+            .on_press(Message::DomainEditor(DomainEditorMessage::Supp(
+                SuppMessage::CancelEdit,
+            )))
+            .padding([10.0, 24.0])
+            .style(|_: &Theme, status| {
+                let text_color = match status {
+                    iced::widget::button::Status::Hovered => GRAY_800,
+                    _ => GRAY_600,
+                };
+                iced::widget::button::Style {
+                    background: None,
+                    text_color,
+                    border: Border {
+                        color: GRAY_300,
+                        width: 1.0,
+                        radius: BORDER_RADIUS_SM.into(),
+                    },
+                    ..Default::default()
+                }
+            }),
+    ]
+    .into()
+}
+
+// =============================================================================
+// SKIPPED VIEW - Skip message + sample data + Add instead button
+// =============================================================================
+
+fn build_skipped_view(
+    domain: &Domain,
+    col_name: &str,
+    domain_code: &str,
+) -> Element<'static, Message> {
+    let header = build_detail_header(col_name, domain_code);
+    let sample_data = build_sample_data(domain, col_name);
+
+    // Skip message
+    let skip_message = container(
+        column![
+            row![
+                lucide::circle_minus().size(20).color(GRAY_500),
+                Space::new().width(SPACING_SM),
+                text("Skipped").size(16).color(GRAY_700).font(iced::Font {
+                    weight: iced::font::Weight::Semibold,
+                    ..Default::default()
+                }),
+            ]
+            .align_y(Alignment::Center),
+            Space::new().height(SPACING_SM),
+            text("This column will not be included in the output.")
+                .size(13)
+                .color(GRAY_500),
+        ]
+        .padding(SPACING_MD),
+    )
+    .style(|_: &Theme| container::Style {
+        background: Some(GRAY_100.into()),
+        border: Border {
+            color: GRAY_300,
+            width: 1.0,
+            radius: BORDER_RADIUS_SM.into(),
+        },
+        ..Default::default()
+    })
+    .width(Length::Fill);
+
+    // Action - Add to SUPP instead
+    let supp_name = format!("SUPP{}", domain_code);
+    let action = button(
+        row![
+            lucide::plus().size(16).color(PRIMARY_500),
+            Space::new().width(SPACING_SM),
+            text(format!("Add to {} instead", supp_name))
+                .size(14)
+                .color(PRIMARY_500),
+        ]
+        .align_y(Alignment::Center),
+    )
+    .on_press(Message::DomainEditor(DomainEditorMessage::Supp(
+        SuppMessage::UndoAction,
+    )))
+    .padding([10.0, 20.0])
+    .style(|_: &Theme, status| {
+        let (bg, text_color) = match status {
+            iced::widget::button::Status::Hovered => (PRIMARY_100, PRIMARY_700),
+            _ => (WHITE, PRIMARY_500),
+        };
+        iced::widget::button::Style {
+            background: Some(bg.into()),
+            text_color,
+            border: Border {
+                color: PRIMARY_500,
+                width: 1.0,
+                radius: BORDER_RADIUS_SM.into(),
+            },
+            ..Default::default()
+        }
+    });
+
+    scrollable(
+        column![
+            header,
+            Space::new().height(SPACING_LG),
+            skip_message,
+            Space::new().height(SPACING_LG),
+            sample_data,
+            Space::new().height(SPACING_XL),
+            action,
+        ]
+        .padding(SPACING_LG)
+        .width(Length::Fill),
+    )
+    .height(Length::Fill)
+    .into()
+}
+
+// =============================================================================
+// SHARED COMPONENTS
+// =============================================================================
+
 fn build_detail_header(col_name: &str, domain_code: &str) -> Element<'static, Message> {
     let col_display = col_name.to_string();
     let target = format!("SUPP{}", domain_code);
@@ -412,7 +880,7 @@ fn build_detail_header(col_name: &str, domain_code: &str) -> Element<'static, Me
             }),
         Space::new().height(4.0),
         row![
-            text("Source Column:").size(13).color(GRAY_500),
+            text("Source:").size(13).color(GRAY_500),
             Space::new().width(SPACING_XS),
             text(col_display).size(13).color(GRAY_800).font(iced::Font {
                 weight: iced::font::Weight::Semibold,
@@ -429,7 +897,6 @@ fn build_detail_header(col_name: &str, domain_code: &str) -> Element<'static, Me
     .into()
 }
 
-/// Build sample data from source column.
 fn build_sample_data(domain: &Domain, col_name: &str) -> Element<'static, Message> {
     let samples = get_sample_values(domain, col_name, 5);
 
@@ -481,82 +948,36 @@ fn build_sample_data(domain: &Domain, col_name: &str) -> Element<'static, Messag
     .into()
 }
 
-/// Get sample values from a column.
-fn get_sample_values(domain: &Domain, col_name: &str, max: usize) -> Vec<String> {
-    let mut samples = Vec::new();
-    let mut seen = std::collections::HashSet::new();
-
-    if let Ok(col) = domain.source.data.column(col_name) {
-        for i in 0..col.len().min(100) {
-            if let Ok(val) = col.get(i) {
-                let s = format_value(&val);
-                if !s.is_empty() && seen.insert(s.clone()) {
-                    samples.push(s);
-                    if samples.len() >= max {
-                        break;
-                    }
-                }
-            }
-        }
-    }
-
-    samples
-}
-
-/// Format a Polars value for display.
-fn format_value(value: &AnyValue) -> String {
-    match value {
-        AnyValue::Null => String::new(),
-        AnyValue::String(s) => s.to_string(),
-        AnyValue::StringOwned(s) => s.to_string(),
-        _ => format!("{}", value),
-    }
-}
-
-/// Build SUPP configuration fields.
-fn build_supp_fields(
-    col_name: String,
+fn build_editable_fields(
     config: SuppColumnConfig,
     qnam_error: Option<String>,
 ) -> Element<'static, Message> {
     // QNAM field
     let qnam_field = build_text_field(
         "QNAM",
-        "Qualifier Variable Name (max 8 chars)",
-        config.qnam.clone(),
+        "Qualifier name (max 8 chars)",
+        config.qnam,
         QNAM_MAX_LEN,
         qnam_error,
-        {
-            let col = col_name.clone();
-            move |v| {
-                Message::DomainEditor(DomainEditorMessage::Supp(SuppMessage::QnamChanged {
-                    column: col.clone(),
-                    value: v.to_uppercase(), // Auto-uppercase
-                }))
-            }
+        |v| {
+            Message::DomainEditor(DomainEditorMessage::Supp(SuppMessage::QnamChanged(
+                v.to_uppercase(),
+            )))
         },
     );
 
     // QLABEL field
     let qlabel_field = build_text_field(
         "QLABEL",
-        "Qualifier Variable Label (max 40 chars)",
-        config.qlabel.clone(),
+        "Describe what this value represents...",
+        config.qlabel,
         QLABEL_MAX_LEN,
         None,
-        {
-            let col = col_name.clone();
-            move |v| {
-                Message::DomainEditor(DomainEditorMessage::Supp(SuppMessage::QlabelChanged {
-                    column: col.clone(),
-                    value: v,
-                }))
-            }
-        },
+        |v| Message::DomainEditor(DomainEditorMessage::Supp(SuppMessage::QlabelChanged(v))),
     );
 
     // QORIG picker
-    let qorig_field = build_origin_picker(col_name.clone(), config.qorig);
+    let qorig_field = build_origin_picker(config.qorig);
 
     // QEVAL field
     let qeval_field = build_text_field(
@@ -565,15 +986,7 @@ fn build_supp_fields(
         config.qeval.unwrap_or_default(),
         40,
         None,
-        {
-            let col = col_name;
-            move |v| {
-                Message::DomainEditor(DomainEditorMessage::Supp(SuppMessage::QevalChanged {
-                    column: col.clone(),
-                    value: v,
-                }))
-            }
-        },
+        |v| Message::DomainEditor(DomainEditorMessage::Supp(SuppMessage::QevalChanged(v))),
     );
 
     column![qnam_field, qlabel_field, qorig_field, qeval_field,]
@@ -581,7 +994,6 @@ fn build_supp_fields(
         .into()
 }
 
-/// Build text input field with label and validation.
 fn build_text_field<F>(
     label: &'static str,
     placeholder: &'static str,
@@ -643,16 +1055,12 @@ where
     .into()
 }
 
-/// Build origin picker dropdown.
-fn build_origin_picker(col_name: String, current: SuppOrigin) -> Element<'static, Message> {
+fn build_origin_picker(current: SuppOrigin) -> Element<'static, Message> {
     column![
         text("QORIG").size(12).color(GRAY_600),
         Space::new().height(4.0),
-        pick_list(&SuppOrigin::ALL[..], Some(current), move |origin| {
-            Message::DomainEditor(DomainEditorMessage::Supp(SuppMessage::QorigChanged {
-                column: col_name.clone(),
-                value: origin,
-            }))
+        pick_list(&SuppOrigin::ALL[..], Some(current), |origin| {
+            Message::DomainEditor(DomainEditorMessage::Supp(SuppMessage::QorigChanged(origin)))
         })
         .text_size(14)
         .padding([10.0, 12.0])
@@ -661,99 +1069,52 @@ fn build_origin_picker(col_name: String, current: SuppOrigin) -> Element<'static
     .into()
 }
 
-/// Build action selector (Pending/Include/Skip).
-fn build_action_selector(col_name: String, current: SuppAction) -> Element<'static, Message> {
-    let actions = [
-        (SuppAction::Pending, "Pending", GRAY_500, "Not yet decided"),
-        (
-            SuppAction::Include,
-            "Add to SUPP",
-            SUCCESS,
-            "Include in SUPP domain output",
-        ),
-        (
-            SuppAction::Skip,
-            "Skip",
-            GRAY_400,
-            "Don't include in output",
-        ),
-    ];
-
-    let buttons: Vec<Element<'static, Message>> = actions
-        .iter()
-        .map(|(action, label, color, desc)| {
-            let is_selected = current == *action;
-            let action_val = *action;
-            let col_clone = col_name.clone();
-            let icon_color = *color;
-
-            let icon: Element<'static, Message> = if is_selected {
-                lucide::circle_check().size(16).color(icon_color).into()
-            } else {
-                lucide::circle().size(16).color(GRAY_300).into()
-            };
-
-            container(
-                button(column![
-                    row![
-                        icon,
-                        Space::new().width(SPACING_SM),
-                        text(*label)
-                            .size(14)
-                            .color(if is_selected { GRAY_900 } else { GRAY_600 }),
-                    ]
-                    .align_y(Alignment::Center),
-                    Space::new().height(2.0),
-                    text(*desc).size(11).color(GRAY_500),
-                ])
-                .on_press(Message::DomainEditor(DomainEditorMessage::Supp(
-                    SuppMessage::ActionChanged {
-                        column: col_clone,
-                        action: action_val,
-                    },
-                )))
-                .padding(SPACING_MD)
-                .width(Length::Fill)
-                .style(move |_: &Theme, _status| {
-                    let bg = if is_selected { PRIMARY_100 } else { WHITE };
-                    let border_color = if is_selected { PRIMARY_500 } else { GRAY_200 };
-                    iced::widget::button::Style {
-                        background: Some(bg.into()),
-                        border: Border {
-                            color: border_color,
-                            width: if is_selected { 2.0 } else { 1.0 },
-                            radius: BORDER_RADIUS_SM.into(),
-                        },
-                        ..Default::default()
-                    }
-                }),
-            )
-            .width(Length::FillPortion(1))
-            .into()
-        })
-        .collect();
-
-    column![
-        text("Action").size(12).color(GRAY_600),
-        Space::new().height(SPACING_SM),
-        row(buttons).spacing(SPACING_SM),
-    ]
-    .into()
-}
-
 // =============================================================================
 // HELPER FUNCTIONS
 // =============================================================================
 
-/// Check if QNAM conflicts with another column.
+fn get_sample_values(domain: &Domain, col_name: &str, max: usize) -> Vec<String> {
+    let mut samples = Vec::new();
+    let mut seen = std::collections::HashSet::new();
+
+    if let Ok(col) = domain.source.data.column(col_name) {
+        for i in 0..col.len().min(100) {
+            if let Ok(val) = col.get(i) {
+                let s = format_value(&val);
+                if !s.is_empty() && seen.insert(s.clone()) {
+                    samples.push(s);
+                    if samples.len() >= max {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    samples
+}
+
+fn format_value(value: &AnyValue) -> String {
+    match value {
+        AnyValue::Null => String::new(),
+        AnyValue::String(s) => s.to_string(),
+        AnyValue::StringOwned(s) => s.to_string(),
+        _ => format!("{}", value),
+    }
+}
+
 fn check_qnam_conflict(domain: &Domain, current_col: &str, qnam: &str) -> Option<String> {
     if qnam.is_empty() {
         return None;
     }
 
+    // Only check against columns already included in SUPP
     for (col, config) in &domain.supp_config {
-        if col != current_col && config.qnam.eq_ignore_ascii_case(qnam) {
-            return Some(format!("QNAM '{}' already used by column '{}'", qnam, col));
+        if col != current_col
+            && config.action == SuppAction::Include
+            && config.qnam.eq_ignore_ascii_case(qnam)
+        {
+            return Some(format!("QNAM '{}' already used by '{}'", qnam, col));
         }
     }
 
@@ -761,10 +1122,9 @@ fn check_qnam_conflict(domain: &Domain, current_col: &str, qnam: &str) -> Option
 }
 
 // =============================================================================
-// STATES
+// ALL MAPPED STATE
 // =============================================================================
 
-/// All columns mapped state.
 fn view_all_mapped_state(domain_code: &str) -> Element<'static, Message> {
     let msg1 = format!(
         "All source columns are mapped to {} variables.",

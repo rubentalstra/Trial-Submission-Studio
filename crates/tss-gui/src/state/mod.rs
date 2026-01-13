@@ -35,8 +35,8 @@ pub use settings::{ExportFormat, ExportSettings, GeneralSettings, Settings};
 pub use study::Study;
 pub use view_state::{
     EditorTab, ExportViewState, MappingUiState, NormalizationUiState, NotCollectedDialog,
-    PreviewUiState, SeverityFilter, SuppFilterMode, SuppUiState, ValidationUiState, ViewState,
-    WorkflowMode,
+    PreviewUiState, SeverityFilter, SuppEditDraft, SuppFilterMode, SuppUiState, ValidationUiState,
+    ViewState, WorkflowMode,
 };
 
 use tss_model::TerminologyRegistry;

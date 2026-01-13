@@ -152,35 +152,72 @@ pub enum PreviewMessage {
 }
 
 // =============================================================================
-// SUPP TAB
+// SUPP TAB (Redesigned - Clean Architecture)
 // =============================================================================
 
-use crate::state::{SuppAction, SuppOrigin};
+use crate::state::SuppOrigin;
 
 /// Messages for the SUPP configuration tab.
+///
+/// # Design
+///
+/// The SUPP tab uses a simple state-based flow:
+/// - **Pending columns**: Editable inline, changes stored directly
+/// - **Included columns**: Read-only view, click "Edit" to modify
+/// - **Skipped columns**: Simple skip message, option to add instead
+///
+/// When editing an already-included column, changes go to a draft
+/// and are only committed on "Save".
 #[derive(Debug, Clone)]
 pub enum SuppMessage {
-    /// Select a column in the SUPP list (master list selection)
+    // =========================================================================
+    // NAVIGATION & FILTERING
+    // =========================================================================
+    /// Select a column in the master list
     ColumnSelected(String),
 
     /// Search filter text changed
     SearchChanged(String),
 
-    /// Filter mode changed
+    /// Filter mode changed (All/Pending/Included/Skipped)
     FilterModeChanged(crate::state::SuppFilterMode),
 
-    /// QNAM field changed for a column (inline editing, auto-uppercase)
-    QnamChanged { column: String, value: String },
+    // =========================================================================
+    // FIELD EDITING
+    // =========================================================================
+    /// QNAM field changed (auto-uppercase, max 8 chars)
+    QnamChanged(String),
 
-    /// QLABEL field changed for a column (inline editing)
-    QlabelChanged { column: String, value: String },
+    /// QLABEL field changed (max 40 chars)
+    QlabelChanged(String),
 
-    /// QORIG changed for a column (inline editing)
-    QorigChanged { column: String, value: SuppOrigin },
+    /// QORIG field changed
+    QorigChanged(SuppOrigin),
 
-    /// QEVAL field changed for a column (inline editing)
-    QevalChanged { column: String, value: String },
+    /// QEVAL field changed (optional)
+    QevalChanged(String),
 
-    /// Action changed for a column (Pending/Include/Skip)
-    ActionChanged { column: String, action: SuppAction },
+    // =========================================================================
+    // ACTIONS
+    // =========================================================================
+    /// Add the current column to SUPP (Pending → Include)
+    AddToSupp,
+
+    /// Skip the current column (Pending → Skip)
+    Skip,
+
+    /// Remove from SUPP / Undo skip (Include/Skip → Pending)
+    UndoAction,
+
+    // =========================================================================
+    // EDIT MODE (for already-included columns)
+    // =========================================================================
+    /// Enter edit mode for an included column
+    StartEdit,
+
+    /// Save changes and exit edit mode
+    SaveEdit,
+
+    /// Discard changes and exit edit mode
+    CancelEdit,
 }

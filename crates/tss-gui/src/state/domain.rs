@@ -47,7 +47,7 @@ impl SuppColumnConfig {
         Self {
             column: column.to_string(),
             qnam,
-            qlabel: column.to_string(),
+            qlabel: String::new(), // User must provide meaningful description
             qorig: SuppOrigin::Crf,
             qeval: None,
             action: SuppAction::Pending,
