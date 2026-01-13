@@ -58,6 +58,7 @@ pub use palette::{
     PRIMARY_300,
     PRIMARY_400,
     // Primary colors
+    PRIMARY_500,
     PRIMARY_500 as PRIMARY,
     PRIMARY_600,
     PRIMARY_700,
