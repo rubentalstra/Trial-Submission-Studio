@@ -106,6 +106,9 @@ pub struct AppState {
 
     /// Tracks open dialog windows (multi-window mode).
     pub dialog_windows: DialogWindows,
+
+    /// Main window ID (for identifying the main window in multi-window mode).
+    pub main_window_id: Option<window::Id>,
 }
 
 /// Currently active dialog (for overlay mode - deprecated).
@@ -241,6 +244,7 @@ impl Default for AppState {
             active_dialog: None,
             menu_bar: MenuBarState::default(),
             dialog_windows: DialogWindows::default(),
+            main_window_id: None,
         }
     }
 }
@@ -258,6 +262,7 @@ impl AppState {
             active_dialog: None,
             menu_bar: MenuBarState::default(),
             dialog_windows: DialogWindows::default(),
+            main_window_id: None,
         }
     }
 

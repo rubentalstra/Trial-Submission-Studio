@@ -342,16 +342,16 @@ fn view_export_settings(settings: &Settings) -> Element<Message> {
             .color(GRAY_500),
         Space::new().height(SPACING_XS),
         radio(
-            XptVersion::V8.display_name(),
-            XptVersion::V8,
+            XptVersion::V5.display_name(),
+            XptVersion::V5,
             Some(settings.export.xpt_version),
             |v| Message::Dialog(DialogMessage::Settings(SettingsMessage::Export(
                 ExportSettingsMessage::DefaultXptVersionChanged(v),
             )))
         ),
         radio(
-            XptVersion::V5.display_name(),
-            XptVersion::V5,
+            XptVersion::V8.display_name(),
+            XptVersion::V8,
             Some(settings.export.xpt_version),
             |v| Message::Dialog(DialogMessage::Settings(SettingsMessage::Export(
                 ExportSettingsMessage::DefaultXptVersionChanged(v),

@@ -51,20 +51,26 @@ impl App {
         // Load settings from disk
         let settings = Settings::load();
 
-        let app = Self {
+        let mut app = Self {
             state: AppState::with_settings(settings),
         };
 
         // Open the main window (daemon mode requires explicit window creation)
+        // exit_on_close_request: false allows us to handle close events in our subscription
         let main_window_settings = window::Settings {
             size: Size::new(1280.0, 800.0),
             min_size: Some(Size::new(1024.0, 600.0)),
             icon: load_app_icon(),
+            exit_on_close_request: false,
             ..Default::default()
         };
 
         // window::open returns (Id, Task<Id>)
-        let (_, open_window_task) = window::open(main_window_settings);
+        let (main_id, open_window_task) = window::open(main_window_settings);
+
+        // Store the main window ID for proper close handling
+        app.state.main_window_id = Some(main_id);
+
         let open_window = open_window_task.map(|_| Message::Noop);
         let init_menu = Task::perform(async {}, |_| Message::InitNativeMenu);
 
@@ -192,8 +198,18 @@ impl App {
             }
 
             Message::DialogWindowClosed(id) => {
-                self.state.dialog_windows.close(id);
-                Task::none()
+                // Check if this is a dialog window
+                if self.state.dialog_windows.is_dialog_window(id) {
+                    // Clean up state and close the dialog window
+                    self.state.dialog_windows.close(id);
+                    window::close(id)
+                } else if self.state.main_window_id == Some(id) {
+                    // This is the main window - exit the application
+                    iced::exit()
+                } else {
+                    // Unknown window (already closed dialog) - just ignore
+                    Task::none()
+                }
             }
 
             Message::CloseWindow(id) => window::close(id),
@@ -480,6 +496,8 @@ impl App {
                     size: Size::new(350.0, 250.0),
                     resizable: false,
                     decorations: true,
+                    level: window::Level::AlwaysOnTop,
+                    exit_on_close_request: false,
                     ..Default::default()
                 };
                 let (id, task) = window::open(settings);
@@ -1546,6 +1564,8 @@ impl App {
                     size: Size::new(400.0, 300.0),
                     resizable: false,
                     decorations: true,
+                    level: window::Level::AlwaysOnTop,
+                    exit_on_close_request: false,
                     ..Default::default()
                 };
                 let (id, open_task) = window::open(settings);
@@ -1597,6 +1617,8 @@ impl App {
                     size: Size::new(400.0, 350.0),
                     resizable: false,
                     decorations: true,
+                    level: window::Level::AlwaysOnTop,
+                    exit_on_close_request: false,
                     ..Default::default()
                 };
                 let (id, open_task) = window::open(settings);
@@ -1672,6 +1694,8 @@ impl App {
                     size: Size::new(450.0, 400.0),
                     resizable: false,
                     decorations: true,
+                    level: window::Level::AlwaysOnTop,
+                    exit_on_close_request: false,
                     ..Default::default()
                 };
                 let (id, open_task) = window::open(settings);
@@ -1778,11 +1802,24 @@ impl App {
                 Task::none()
             }
             SettingsMessage::Close => {
+                // Close dialog window in multi-window mode
+                if let Some((id, _)) = self.state.dialog_windows.settings.take() {
+                    return window::close(id);
+                }
+                // Fallback for overlay mode (deprecated)
                 self.state.active_dialog = None;
                 Task::none()
             }
             SettingsMessage::Apply => {
+                // Save settings
                 let _ = self.state.settings.save();
+                tracing::info!("Settings saved");
+
+                // Close dialog window in multi-window mode
+                if let Some((id, _)) = self.state.dialog_windows.settings.take() {
+                    return window::close(id);
+                }
+                // Fallback for overlay mode (deprecated)
                 self.state.active_dialog = None;
                 Task::none()
             }
@@ -1791,6 +1828,11 @@ impl App {
                 Task::none()
             }
             SettingsMessage::CategorySelected(category) => {
+                // Update dialog_windows.settings for multi-window mode
+                if let Some((id, _)) = self.state.dialog_windows.settings {
+                    self.state.dialog_windows.settings = Some((id, category));
+                }
+                // Also update active_dialog for overlay mode (deprecated)
                 self.state.active_dialog = Some(ActiveDialog::Settings(category));
                 Task::none()
             }
@@ -1967,6 +2009,8 @@ impl App {
                     size: Size::new(720.0, 500.0),
                     resizable: false,
                     decorations: true,
+                    level: window::Level::AlwaysOnTop,
+                    exit_on_close_request: false,
                     ..Default::default()
                 };
                 let (id, task) = window::open(settings);
@@ -2016,6 +2060,8 @@ impl App {
                     size: Size::new(700.0, 550.0),
                     resizable: true,
                     decorations: true,
+                    level: window::Level::AlwaysOnTop,
+                    exit_on_close_request: false,
                     ..Default::default()
                 };
                 let (id, task) = window::open(settings);
@@ -2032,6 +2078,8 @@ impl App {
                     size: Size::new(450.0, 350.0),
                     resizable: false,
                     decorations: true,
+                    level: window::Level::AlwaysOnTop,
+                    exit_on_close_request: false,
                     ..Default::default()
                 };
                 let (id, task) = window::open(settings);
@@ -2048,6 +2096,8 @@ impl App {
                     size: Size::new(400.0, 420.0),
                     resizable: false,
                     decorations: true,
+                    level: window::Level::AlwaysOnTop,
+                    exit_on_close_request: false,
                     ..Default::default()
                 };
                 let (id, task) = window::open(settings);
