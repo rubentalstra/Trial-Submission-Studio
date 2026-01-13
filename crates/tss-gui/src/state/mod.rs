@@ -34,9 +34,9 @@ pub use domain::{Domain, DomainSource, SuppAction, SuppColumnConfig, SuppOrigin}
 pub use settings::{ExportFormat, ExportSettings, GeneralSettings, Settings};
 pub use study::Study;
 pub use view_state::{
-    EditorTab, ExportViewState, MappingUiState, NormalizationUiState, NotCollectedDialog,
-    PreviewUiState, SeverityFilter, SuppEditDraft, SuppFilterMode, SuppUiState, ValidationUiState,
-    ViewState, WorkflowMode,
+    EditorTab, ExportFormat, ExportPhase, ExportResult, ExportViewState, MappingUiState,
+    NormalizationUiState, NotCollectedEdit, PreviewUiState, SeverityFilter, SuppEditDraft,
+    SuppFilterMode, SuppUiState, ValidationUiState, ViewState, WorkflowMode, XptVersion,
 };
 
 use tss_model::TerminologyRegistry;

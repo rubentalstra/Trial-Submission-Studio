@@ -277,16 +277,17 @@ pub struct MappingUiState {
     pub filter_unmapped: bool,
     /// Show only required variables.
     pub filter_required: bool,
-    /// "Not collected" dialog state.
-    pub not_collected_dialog: Option<NotCollectedDialog>,
+    /// Inline "Not Collected" editing state.
+    /// Set when user is entering/editing a reason for marking a variable as not collected.
+    pub not_collected_edit: Option<NotCollectedEdit>,
 }
 
-/// State for the "not collected" reason dialog.
+/// State for inline "Not Collected" reason editing.
 #[derive(Debug, Clone, Default)]
-pub struct NotCollectedDialog {
-    /// Variable being marked.
+pub struct NotCollectedEdit {
+    /// Variable being marked/edited.
     pub variable: String,
-    /// Reason text being edited.
+    /// Reason text being entered.
     pub reason: String,
 }
 

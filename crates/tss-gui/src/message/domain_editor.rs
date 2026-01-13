@@ -55,16 +55,28 @@ pub enum MappingMessage {
     /// Manually map a variable to a column
     ManualMap { variable: String, column: String },
 
-    /// Mark a variable as "Not Collected"
+    /// Start marking a variable as "Not Collected" (shows inline reason input)
     MarkNotCollected { variable: String },
 
-    /// Confirm the "Not Collected" marking
-    NotCollectedConfirmed { variable: String, reason: String },
+    /// Update the reason text while editing (inline)
+    NotCollectedReasonChanged(String),
 
-    /// Cancel the "Not Collected" dialog
-    NotCollectedCancelled,
+    /// Save the "Not Collected" marking with reason
+    NotCollectedSave { variable: String, reason: String },
 
-    /// Mark a variable as "Omitted" (intentionally skipped)
+    /// Cancel the "Not Collected" inline editing
+    NotCollectedCancel,
+
+    /// Start editing an existing "Not Collected" reason
+    EditNotCollectedReason {
+        variable: String,
+        current_reason: String,
+    },
+
+    /// Revert "Not Collected" back to unmapped (clear the status)
+    ClearNotCollected(String),
+
+    /// Mark a variable as "Omitted" (intentionally skipped, Perm only)
     MarkOmitted(String),
 
     /// Clear the "Omitted" status

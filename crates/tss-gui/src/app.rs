@@ -17,8 +17,8 @@ use iced::{Element, Subscription, Task, Theme};
 
 use crate::message::{DomainEditorMessage, HomeMessage, Message};
 use crate::state::{
-    AppState, Domain, DomainSource, EditorTab, NotCollectedDialog, Settings, Study,
-    SuppColumnConfig, SuppEditDraft, ViewState,
+    AppState, Domain, DomainSource, EditorTab, NotCollectedEdit, Settings, Study, SuppColumnConfig,
+    SuppEditDraft, ViewState,
 };
 use crate::theme::clinical_light;
 use crate::view::view_home;
@@ -482,8 +482,9 @@ impl App {
             }
 
             MappingMessage::MarkNotCollected { variable } => {
+                // Start inline editing for new "Not Collected" marking
                 if let ViewState::DomainEditor { mapping_ui, .. } = &mut self.state.view {
-                    mapping_ui.not_collected_dialog = Some(NotCollectedDialog {
+                    mapping_ui.not_collected_edit = Some(NotCollectedEdit {
                         variable,
                         reason: String::new(),
                     });
@@ -491,7 +492,23 @@ impl App {
                 Task::none()
             }
 
-            MappingMessage::NotCollectedConfirmed { variable, reason } => {
+            MappingMessage::NotCollectedReasonChanged(reason) => {
+                // Update the reason text while editing
+                if let ViewState::DomainEditor { mapping_ui, .. } = &mut self.state.view {
+                    if let Some(edit) = &mut mapping_ui.not_collected_edit {
+                        edit.reason = reason;
+                    }
+                }
+                Task::none()
+            }
+
+            MappingMessage::NotCollectedSave { variable, reason } => {
+                // Validate reason is not empty
+                if reason.trim().is_empty() {
+                    return Task::none();
+                }
+
+                // Save the "Not Collected" status with reason
                 if let Some(domain) = self
                     .state
                     .study
@@ -500,6 +517,7 @@ impl App {
                 {
                     let _ = domain.mapping.mark_not_collected(&variable, &reason);
                 }
+                // Clear edit state and invalidate caches
                 if let ViewState::DomainEditor {
                     mapping_ui,
                     preview_cache,
@@ -507,16 +525,54 @@ impl App {
                     ..
                 } = &mut self.state.view
                 {
-                    mapping_ui.not_collected_dialog = None;
+                    mapping_ui.not_collected_edit = None;
                     *preview_cache = None;
                     *validation_cache = None;
                 }
                 Task::none()
             }
 
-            MappingMessage::NotCollectedCancelled => {
+            MappingMessage::NotCollectedCancel => {
+                // Cancel inline editing
                 if let ViewState::DomainEditor { mapping_ui, .. } = &mut self.state.view {
-                    mapping_ui.not_collected_dialog = None;
+                    mapping_ui.not_collected_edit = None;
+                }
+                Task::none()
+            }
+
+            MappingMessage::EditNotCollectedReason {
+                variable,
+                current_reason,
+            } => {
+                // Start editing an existing "Not Collected" reason
+                if let ViewState::DomainEditor { mapping_ui, .. } = &mut self.state.view {
+                    mapping_ui.not_collected_edit = Some(NotCollectedEdit {
+                        variable,
+                        reason: current_reason,
+                    });
+                }
+                Task::none()
+            }
+
+            MappingMessage::ClearNotCollected(variable) => {
+                // Revert "Not Collected" back to unmapped
+                if let Some(domain) = self
+                    .state
+                    .study
+                    .as_mut()
+                    .and_then(|s| s.domain_mut(&domain_code))
+                {
+                    domain.mapping.clear_assignment(&variable);
+                }
+                // Invalidate caches
+                if let ViewState::DomainEditor {
+                    preview_cache,
+                    validation_cache,
+                    ..
+                } = &mut self.state.view
+                {
+                    *preview_cache = None;
+                    *validation_cache = None;
                 }
                 Task::none()
             }

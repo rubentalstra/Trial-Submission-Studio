@@ -9,19 +9,31 @@
 //! - Responsive layout that uses available space
 //! - Pagination with configurable rows per page
 
+use std::collections::HashSet;
+
 use iced::widget::{Space, button, column, container, row, scrollable, text, text::Wrapping};
-use iced::{Alignment, Border, Element, Length, Theme};
+use iced::{Alignment, Border, Color, Element, Length, Theme};
 use iced_fonts::lucide;
 use polars::prelude::DataFrame;
 
 use crate::message::domain_editor::PreviewMessage;
 use crate::message::{DomainEditorMessage, Message};
-use crate::state::{AppState, PreviewUiState, ViewState};
+use crate::state::{AppState, Domain, PreviewUiState, ViewState};
 use crate::theme::{
     BORDER_RADIUS_SM, GRAY_100, GRAY_200, GRAY_300, GRAY_400, GRAY_500, GRAY_600, GRAY_700,
     GRAY_800, GRAY_900, PRIMARY_100, PRIMARY_500, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS,
     WHITE, button_ghost, button_primary,
 };
+
+// =============================================================================
+// SPECIAL COLUMN COLORS
+// =============================================================================
+
+/// Light amber background for "Not Collected" columns - subtle but distinct
+const NOT_COLLECTED_BG: Color = Color::from_rgb(1.0, 0.98, 0.93); // #FFF9ED - very light amber
+const NOT_COLLECTED_BG_ALT: Color = Color::from_rgb(1.0, 0.96, 0.88); // #FFF5E0 - slightly darker for alternating rows
+const NOT_COLLECTED_HEADER_BG: Color = Color::from_rgb(1.0, 0.95, 0.85); // #FFF2D9 - header background
+const NOT_COLLECTED_BADGE_BG: Color = Color::from_rgb(0.95, 0.65, 0.05); // #F2A60D - amber badge
 
 // =============================================================================
 // CONSTANTS
@@ -46,7 +58,7 @@ const CHAR_WIDTH: f32 = 7.5;
 
 /// Render the preview tab content.
 pub fn view_preview_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Element<'a, Message> {
-    let _domain = match state.domain(domain_code) {
+    let domain = match state.domain(domain_code) {
         Some(d) => d,
         None => {
             return container(text("Domain not found").size(14).color(GRAY_500))
@@ -77,7 +89,7 @@ pub fn view_preview_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
     } else if let Some(error) = &preview_ui.error {
         view_error_state(error.as_str())
     } else if let Some(df) = preview_cache {
-        view_data_table(df, preview_ui)
+        view_data_table(df, preview_ui, domain)
     } else {
         view_empty_state()
     };
@@ -199,7 +211,11 @@ fn view_preview_header<'a>(
 // =============================================================================
 
 /// Display the actual data table from DataFrame with horizontal scrolling.
-fn view_data_table<'a>(df: &DataFrame, preview_ui: &PreviewUiState) -> Element<'a, Message> {
+fn view_data_table<'a>(
+    df: &DataFrame,
+    preview_ui: &PreviewUiState,
+    domain: &Domain,
+) -> Element<'a, Message> {
     let col_names: Vec<String> = df
         .get_column_names()
         .iter()
@@ -209,6 +225,14 @@ fn view_data_table<'a>(df: &DataFrame, preview_ui: &PreviewUiState) -> Element<'
     let page = preview_ui.current_page;
     let page_size = preview_ui.rows_per_page;
 
+    // Get the set of "Not Collected" variable names
+    let not_collected_cols: HashSet<&str> = domain
+        .mapping
+        .all_not_collected()
+        .keys()
+        .map(String::as_str)
+        .collect();
+
     // Calculate column widths based on content
     let col_widths = calculate_column_widths(df, &col_names);
 
@@ -217,7 +241,8 @@ fn view_data_table<'a>(df: &DataFrame, preview_ui: &PreviewUiState) -> Element<'
     let end = (start + page_size).min(total_rows);
 
     // Build the complete table (header + data)
-    let table_content = build_table_content(df, &col_names, &col_widths, start, end);
+    let table_content =
+        build_table_content(df, &col_names, &col_widths, &not_collected_cols, start, end);
 
     // Pagination controls
     let pagination = view_pagination(page, total_rows, page_size);
@@ -332,28 +357,71 @@ fn build_table_content<'a>(
     df: &DataFrame,
     col_names: &[String],
     col_widths: &[f32],
+    not_collected_cols: &HashSet<&str>,
     start: usize,
     end: usize,
 ) -> Element<'a, Message> {
     // Header row
-    let header_row = build_header_row(col_names, col_widths);
+    let header_row = build_header_row(col_names, col_widths, not_collected_cols);
 
     // Data rows
     let mut data_rows = column![].spacing(0);
     for row_idx in start..end {
         let is_even = (row_idx - start) % 2 == 0;
-        data_rows = data_rows.push(build_data_row(df, col_widths, row_idx, is_even));
+        data_rows = data_rows.push(build_data_row(
+            df,
+            col_names,
+            col_widths,
+            not_collected_cols,
+            row_idx,
+            is_even,
+        ));
     }
 
     column![header_row, data_rows,].width(Length::Shrink).into()
 }
 
 /// Build the header row.
-fn build_header_row<'a>(col_names: &[String], col_widths: &[f32]) -> Element<'a, Message> {
+fn build_header_row<'a>(
+    col_names: &[String],
+    col_widths: &[f32],
+    not_collected_cols: &HashSet<&str>,
+) -> Element<'a, Message> {
     let mut header = row![].spacing(0);
 
     for (name, &width) in col_names.iter().zip(col_widths.iter()) {
-        let cell = container(
+        let is_not_collected = not_collected_cols.contains(name.as_str());
+
+        // Build cell content with optional "NC" badge
+        let cell_content: Element<'a, Message> = if is_not_collected {
+            row![
+                text(name.clone())
+                    .size(12)
+                    .color(GRAY_700)
+                    .wrapping(Wrapping::None)
+                    .font(iced::Font {
+                        weight: iced::font::Weight::Semibold,
+                        ..Default::default()
+                    }),
+                Space::new().width(SPACING_XS),
+                // "NC" badge
+                container(text("NC").size(9).color(WHITE).font(iced::Font {
+                    weight: iced::font::Weight::Bold,
+                    ..Default::default()
+                }))
+                .padding([2.0, 4.0])
+                .style(|_: &Theme| container::Style {
+                    background: Some(NOT_COLLECTED_BADGE_BG.into()),
+                    border: Border {
+                        radius: 3.0.into(),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                }),
+            ]
+            .align_y(Alignment::Center)
+            .into()
+        } else {
             text(name.clone())
                 .size(12)
                 .color(GRAY_700)
@@ -361,19 +429,29 @@ fn build_header_row<'a>(col_names: &[String], col_widths: &[f32]) -> Element<'a,
                 .font(iced::Font {
                     weight: iced::font::Weight::Semibold,
                     ..Default::default()
-                }),
-        )
-        .width(Length::Fixed(width))
-        .padding([CELL_PADDING_Y, CELL_PADDING_X])
-        .style(|_: &Theme| container::Style {
-            background: Some(GRAY_100.into()),
-            border: Border {
-                color: GRAY_200,
-                width: 1.0,
+                })
+                .into()
+        };
+
+        // Determine background color based on Not Collected status
+        let bg_color = if is_not_collected {
+            NOT_COLLECTED_HEADER_BG
+        } else {
+            GRAY_100
+        };
+
+        let cell = container(cell_content)
+            .width(Length::Fixed(width))
+            .padding([CELL_PADDING_Y, CELL_PADDING_X])
+            .style(move |_: &Theme| container::Style {
+                background: Some(bg_color.into()),
+                border: Border {
+                    color: GRAY_200,
+                    width: 1.0,
+                    ..Default::default()
+                },
                 ..Default::default()
-            },
-            ..Default::default()
-        });
+            });
 
         header = header.push(cell);
     }
@@ -389,14 +467,31 @@ fn build_header_row<'a>(col_names: &[String], col_widths: &[f32]) -> Element<'a,
 /// Build a single data row.
 fn build_data_row<'a>(
     df: &DataFrame,
+    col_names: &[String],
     col_widths: &[f32],
+    not_collected_cols: &HashSet<&str>,
     row_idx: usize,
     is_even: bool,
 ) -> Element<'a, Message> {
     let mut data_row = row![].spacing(0);
-    let bg_color = if is_even { WHITE } else { GRAY_100 };
 
     for (col_idx, col) in df.get_columns().iter().enumerate() {
+        let col_name = col_names.get(col_idx).map(String::as_str).unwrap_or("");
+        let is_not_collected = not_collected_cols.contains(col_name);
+
+        // Determine background color based on Not Collected status and alternating rows
+        let bg_color = if is_not_collected {
+            if is_even {
+                NOT_COLLECTED_BG
+            } else {
+                NOT_COLLECTED_BG_ALT
+            }
+        } else if is_even {
+            WHITE
+        } else {
+            GRAY_100
+        };
+
         let value = col
             .get(row_idx)
             .map_or_else(|_| String::new(), |v| format_anyvalue(&v));
