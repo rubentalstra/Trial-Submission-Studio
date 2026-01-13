@@ -8,8 +8,8 @@ use iced_fonts::lucide;
 
 use crate::message::{AboutMessage, DialogMessage, Message};
 use crate::theme::{
-    BORDER_RADIUS_LG, GRAY_500, GRAY_600, GRAY_700, GRAY_900, SPACING_LG, SPACING_MD, SPACING_SM,
-    SPACING_XS, WHITE,
+    BORDER_RADIUS_LG, GRAY_100, GRAY_500, GRAY_600, GRAY_700, GRAY_900, SPACING_LG, SPACING_MD,
+    SPACING_SM, SPACING_XS, WHITE,
 };
 
 /// Embedded SVG logo bytes.
@@ -55,8 +55,30 @@ pub fn view_about_dialog<'a>() -> Element<'a, Message> {
     iced::widget::stack![backdrop, centered_dialog].into()
 }
 
+/// Render the About dialog content for a standalone window (multi-window mode).
+///
+/// This is the content that appears in a separate dialog window.
+pub fn view_about_dialog_content<'a>() -> Element<'a, Message> {
+    let content = view_dialog_content_inner();
+
+    // Wrap in a styled container for the window
+    container(content)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .style(|_| container::Style {
+            background: Some(GRAY_100.into()),
+            ..Default::default()
+        })
+        .into()
+}
+
 /// Dialog content with app info and links.
 fn view_dialog_content<'a>() -> Element<'a, Message> {
+    view_dialog_content_inner()
+}
+
+/// Inner dialog content shared between modal and window modes.
+fn view_dialog_content_inner<'a>() -> Element<'a, Message> {
     // App logo from embedded SVG
     let logo_handle = svg::Handle::from_memory(LOGO_SVG);
     let logo = svg(logo_handle).width(72).height(72);

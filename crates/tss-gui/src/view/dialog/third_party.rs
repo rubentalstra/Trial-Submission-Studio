@@ -53,6 +53,23 @@ pub fn view_third_party_dialog<'a>() -> Element<'a, Message> {
     iced::widget::stack![backdrop, centered_dialog].into()
 }
 
+/// Render the Third-party licenses dialog content for a standalone window (multi-window mode).
+///
+/// This is the content that appears in a separate dialog window.
+pub fn view_third_party_dialog_content<'a>() -> Element<'a, Message> {
+    let content = view_dialog_content();
+
+    // Wrap in a styled container for the window
+    container(content)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .style(|_| container::Style {
+            background: Some(GRAY_100.into()),
+            ..Default::default()
+        })
+        .into()
+}
+
 /// Dialog content with header, scrollable content, and footer.
 fn view_dialog_content<'a>() -> Element<'a, Message> {
     let header = view_header();

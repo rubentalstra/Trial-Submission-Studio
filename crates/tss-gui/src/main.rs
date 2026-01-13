@@ -26,6 +26,8 @@ use component::LUCIDE_FONT_BYTES;
 ///
 /// Initializes the Iced application with the Professional Clinical theme
 /// and default window settings.
+///
+/// Uses `daemon()` builder for multi-window support (dialog windows).
 pub fn main() -> iced::Result {
     // Initialize logging
     tracing_subscriber::fmt()
@@ -34,21 +36,13 @@ pub fn main() -> iced::Result {
 
     tracing::info!("Starting Trial Submission Studio");
 
-    // Note: Native menu initialization for macOS happens in App::new()
-    // after the Iced runtime has started
-
-    // Run the Iced application using the builder pattern
-    iced::application(App::new, App::update, App::view)
+    // Run the Iced application using daemon builder for multi-window support
+    // daemon() allows multiple windows with window::Id-based view/title
+    iced::daemon(App::new, App::update, App::view)
         .title(App::title)
         .theme(App::theme)
         .subscription(App::subscription)
         .font(LUCIDE_FONT_BYTES)
-        .window(window::Settings {
-            size: Size::new(1280.0, 800.0),
-            min_size: Some(Size::new(1024.0, 600.0)),
-            icon: load_icon(),
-            ..Default::default()
-        })
         .run()
 }
 

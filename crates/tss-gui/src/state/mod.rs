@@ -39,9 +39,8 @@ pub use view_state::{
     ValidationUiState, ViewState, WorkflowMode,
 };
 
-// Re-export ActiveDialog (defined below in this module)
-
 use crate::menu::MenuBarState;
+use iced::window;
 use tss_model::TerminologyRegistry;
 
 // =============================================================================
@@ -104,9 +103,12 @@ pub struct AppState {
 
     /// Menu bar state (for in-app menu on Windows/Linux).
     pub menu_bar: MenuBarState,
+
+    /// Tracks open dialog windows (multi-window mode).
+    pub dialog_windows: DialogWindows,
 }
 
-/// Currently active dialog.
+/// Currently active dialog (for overlay mode - deprecated).
 #[derive(Debug, Clone)]
 pub enum ActiveDialog {
     /// About dialog.
@@ -117,6 +119,67 @@ pub enum ActiveDialog {
     ThirdParty,
     /// Update dialog with current state.
     Update(crate::view::dialog::update::UpdateState),
+}
+
+/// Tracks open dialog windows.
+#[derive(Debug, Clone, Default)]
+pub struct DialogWindows {
+    /// About dialog window ID.
+    pub about: Option<window::Id>,
+    /// Settings dialog window ID.
+    pub settings: Option<(window::Id, crate::message::SettingsCategory)>,
+    /// Third-party licenses dialog window ID.
+    pub third_party: Option<window::Id>,
+    /// Update dialog window ID and state.
+    pub update: Option<(window::Id, crate::view::dialog::update::UpdateState)>,
+}
+
+impl DialogWindows {
+    /// Check if a window ID belongs to any dialog.
+    pub fn is_dialog_window(&self, id: window::Id) -> bool {
+        self.about == Some(id)
+            || self.settings.as_ref().map(|(i, _)| *i) == Some(id)
+            || self.third_party == Some(id)
+            || self.update.as_ref().map(|(i, _)| *i) == Some(id)
+    }
+
+    /// Get the dialog type for a window ID.
+    pub fn dialog_type(&self, id: window::Id) -> Option<DialogType> {
+        if self.about == Some(id) {
+            Some(DialogType::About)
+        } else if self.settings.as_ref().map(|(i, _)| *i) == Some(id) {
+            Some(DialogType::Settings)
+        } else if self.third_party == Some(id) {
+            Some(DialogType::ThirdParty)
+        } else if self.update.as_ref().map(|(i, _)| *i) == Some(id) {
+            Some(DialogType::Update)
+        } else {
+            None
+        }
+    }
+
+    /// Close a dialog window by ID.
+    pub fn close(&mut self, id: window::Id) {
+        if self.about == Some(id) {
+            self.about = None;
+        } else if self.settings.as_ref().map(|(i, _)| *i) == Some(id) {
+            self.settings = None;
+        } else if self.third_party == Some(id) {
+            self.third_party = None;
+        } else if self.update.as_ref().map(|(i, _)| *i) == Some(id) {
+            self.update = None;
+        }
+    }
+}
+
+/// Dialog type identifier.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DialogType {
+    About,
+    Settings,
+    ThirdParty,
+    Update,
+    CloseStudyConfirm,
 }
 
 impl Default for AppState {
@@ -130,6 +193,7 @@ impl Default for AppState {
             is_loading: false,
             active_dialog: None,
             menu_bar: MenuBarState::default(),
+            dialog_windows: DialogWindows::default(),
         }
     }
 }
@@ -146,6 +210,7 @@ impl AppState {
             is_loading: false,
             active_dialog: None,
             menu_bar: MenuBarState::default(),
+            dialog_windows: DialogWindows::default(),
         }
     }
 

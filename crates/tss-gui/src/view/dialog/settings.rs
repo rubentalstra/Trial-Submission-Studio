@@ -3,6 +3,7 @@
 //! Master-detail layout with category sidebar and settings content.
 
 use iced::widget::{Space, button, column, container, radio, row, rule, scrollable, text, toggler};
+use iced::window;
 use iced::{Alignment, Border, Color, Element, Length};
 use iced_fonts::lucide;
 
@@ -12,8 +13,8 @@ use crate::message::{
 };
 use crate::state::{ExportFormat, Settings, XptVersion};
 use crate::theme::{
-    BORDER_RADIUS_LG, GRAY_500, GRAY_700, GRAY_800, GRAY_900, PRIMARY_100, SPACING_LG, SPACING_MD,
-    SPACING_SM, SPACING_XL, SPACING_XS, WHITE, button_primary,
+    BORDER_RADIUS_LG, GRAY_100, GRAY_500, GRAY_700, GRAY_800, GRAY_900, PRIMARY_100, SPACING_LG,
+    SPACING_MD, SPACING_SM, SPACING_XL, SPACING_XS, WHITE, button_primary,
 };
 
 /// Width of the category sidebar.
@@ -58,6 +59,78 @@ pub fn view_settings_dialog(
         .center_y(Length::Shrink);
 
     iced::widget::stack![backdrop, centered_dialog].into()
+}
+
+/// Render the Settings dialog content for a standalone window (multi-window mode).
+///
+/// This is the content that appears in a separate dialog window.
+pub fn view_settings_dialog_content(
+    settings: &Settings,
+    active_category: SettingsCategory,
+    window_id: window::Id,
+) -> Element<Message> {
+    let content = view_dialog_content_for_window(settings, active_category, window_id);
+
+    // Wrap in a styled container for the window
+    container(content)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .style(|_| container::Style {
+            background: Some(GRAY_100.into()),
+            ..Default::default()
+        })
+        .into()
+}
+
+/// Dialog content for window mode with window-specific close action.
+fn view_dialog_content_for_window(
+    settings: &Settings,
+    active_category: SettingsCategory,
+    window_id: window::Id,
+) -> Element<Message> {
+    let header = view_header();
+    let body = view_master_detail(settings, active_category);
+    let footer = view_footer_for_window(window_id);
+
+    column![
+        header,
+        rule::horizontal(1),
+        body,
+        rule::horizontal(1),
+        footer,
+    ]
+    .into()
+}
+
+/// Dialog footer for window mode (close window instead of dismiss dialog).
+fn view_footer_for_window<'a>(window_id: window::Id) -> Element<'a, Message> {
+    let reset_btn = button(text("Reset to Defaults").size(13))
+        .on_press(Message::Dialog(DialogMessage::Settings(
+            SettingsMessage::ResetToDefaults,
+        )))
+        .padding([SPACING_SM, SPACING_MD]);
+
+    let cancel_btn = button(text("Cancel").size(13))
+        .on_press(Message::CloseWindow(window_id))
+        .padding([SPACING_SM, SPACING_MD]);
+
+    let apply_btn = button(text("Apply & Close").size(13))
+        .on_press(Message::Dialog(DialogMessage::Settings(
+            SettingsMessage::Apply,
+        )))
+        .padding([SPACING_SM, SPACING_XL])
+        .style(button_primary);
+
+    row![
+        reset_btn,
+        Space::new().width(Length::Fill),
+        cancel_btn,
+        Space::new().width(SPACING_SM),
+        apply_btn,
+    ]
+    .padding([SPACING_MD, SPACING_LG])
+    .align_y(Alignment::Center)
+    .into()
 }
 
 /// Main dialog content with header, master-detail, and footer.

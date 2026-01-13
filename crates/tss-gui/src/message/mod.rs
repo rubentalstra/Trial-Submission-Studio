@@ -12,10 +12,11 @@ pub mod menu;
 use std::path::PathBuf;
 
 use iced::keyboard;
+use iced::window;
 use tss_model::TerminologyRegistry;
 
 // Use new state types
-use crate::state::{EditorTab, Study, ViewState, WorkflowMode};
+use crate::state::{DialogType, EditorTab, Study, ViewState, WorkflowMode};
 
 pub use dialog::{
     AboutMessage, DeveloperSettingsMessage, DialogMessage, DisplaySettingsMessage,
@@ -95,6 +96,18 @@ pub enum Message {
 
     /// Initialize native menu (startup task on macOS).
     InitNativeMenu,
+
+    // =========================================================================
+    // Multi-window dialog management
+    // =========================================================================
+    /// A dialog window was opened.
+    DialogWindowOpened(DialogType, window::Id),
+
+    /// A dialog window was closed.
+    DialogWindowClosed(window::Id),
+
+    /// Request to close a specific window.
+    CloseWindow(window::Id),
 
     // =========================================================================
     // Background task results

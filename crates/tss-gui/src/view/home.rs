@@ -424,7 +424,7 @@ fn view_domain_item<'a>(code: &'a str, domain: &'a Domain) -> Element<'a, Messag
 // =============================================================================
 
 /// Close study confirmation modal.
-fn view_close_study_modal<'a>(base: Element<'a, Message>) -> Element<'a, Message> {
+fn view_close_study_modal(base: Element<Message>) -> Element<Message> {
     let warning_icon = lucide::triangle_alert().size(48).color(WARNING);
 
     let title = text("Close Study?").size(18).color(GRAY_900);

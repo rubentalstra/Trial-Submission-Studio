@@ -13,15 +13,17 @@ use std::path::PathBuf;
 
 use iced::keyboard;
 use iced::widget::{column, container, text};
-use iced::{Element, Subscription, Task, Theme};
+use iced::window;
+use iced::{Element, Size, Subscription, Task, Theme};
 
 use crate::message::{
     AboutMessage, DialogMessage, DomainEditorMessage, ExportMessage, HomeMessage, Message,
     SettingsCategory, SettingsMessage, ThirdPartyMessage, UpdateMessage,
 };
 use crate::state::{
-    ActiveDialog, AppState, Domain, DomainSource, EditorTab, ExportPhase, ExportResult,
-    NotCollectedEdit, Settings, Study, SuppColumnConfig, SuppEditDraft, ViewState,
+    ActiveDialog, AppState, DialogType, DialogWindows, Domain, DomainSource, EditorTab,
+    ExportPhase, ExportResult, NotCollectedEdit, Settings, Study, SuppColumnConfig, SuppEditDraft,
+    ViewState,
 };
 use crate::theme::clinical_light;
 use crate::view::dialog::update::UpdateState;
@@ -44,6 +46,7 @@ impl App {
     /// Create a new application instance.
     ///
     /// Called once at startup. Returns the initial state and any startup tasks.
+    /// In daemon mode, we must open the main window explicitly.
     pub fn new() -> (Self, Task<Message>) {
         // Load settings from disk
         let settings = Settings::load();
@@ -52,11 +55,22 @@ impl App {
             state: AppState::with_settings(settings),
         };
 
-        // Return a startup task to initialize the native menu
-        // This ensures the menu is created after the Iced runtime is ready
-        let startup_task = Task::perform(async {}, |_| Message::InitNativeMenu);
+        // Open the main window (daemon mode requires explicit window creation)
+        let main_window_settings = window::Settings {
+            size: Size::new(1280.0, 800.0),
+            min_size: Some(Size::new(1024.0, 600.0)),
+            icon: load_app_icon(),
+            ..Default::default()
+        };
 
-        (app, startup_task)
+        // window::open returns (Id, Task<Id>)
+        let (_, open_window_task) = window::open(main_window_settings);
+        let open_window = open_window_task.map(|_| Message::Noop);
+        let init_menu = Task::perform(async {}, |_| Message::InitNativeMenu);
+
+        // Chain the tasks
+        let startup = open_window.chain(init_menu);
+        (app, startup)
     }
 
     /// Update application state in response to a message.
@@ -145,6 +159,35 @@ impl App {
                 }
                 Task::none()
             }
+
+            // =================================================================
+            // Multi-window dialog management
+            // =================================================================
+            Message::DialogWindowOpened(dialog_type, id) => {
+                match dialog_type {
+                    DialogType::About => {
+                        self.state.dialog_windows.about = Some(id);
+                    }
+                    DialogType::Settings => {
+                        self.state.dialog_windows.settings =
+                            Some((id, SettingsCategory::default()));
+                    }
+                    DialogType::ThirdParty => {
+                        self.state.dialog_windows.third_party = Some(id);
+                    }
+                    DialogType::Update => {
+                        self.state.dialog_windows.update = Some((id, UpdateState::Idle));
+                    }
+                }
+                Task::none()
+            }
+
+            Message::DialogWindowClosed(id) => {
+                self.state.dialog_windows.close(id);
+                Task::none()
+            }
+
+            Message::CloseWindow(id) => window::close(id),
 
             // =================================================================
             // Background task results
@@ -243,17 +286,46 @@ impl App {
         }
     }
 
-    /// Render the current view.
+    /// Render the view for a specific window.
     ///
     /// This is a pure function that produces UI based on current state.
-    pub fn view(&self) -> Element<'_, Message> {
+    /// In multi-window mode, each window gets its own view based on the window ID.
+    pub fn view(&self, id: window::Id) -> Element<'_, Message> {
         use crate::view::{
-            view_about_dialog, view_domain_editor, view_export, view_settings_dialog,
-            view_third_party_dialog, view_update_dialog,
+            view_about_dialog_content, view_domain_editor, view_export,
+            view_settings_dialog_content, view_third_party_dialog_content,
+            view_update_dialog_content,
         };
-        use iced::widget::column;
 
-        // Render main content
+        // Check if this is a dialog window
+        if let Some(dialog_type) = self.state.dialog_windows.dialog_type(id) {
+            return match dialog_type {
+                DialogType::About => view_about_dialog_content(),
+                DialogType::Settings => {
+                    let category = self
+                        .state
+                        .dialog_windows
+                        .settings
+                        .as_ref()
+                        .map(|(_, cat)| *cat)
+                        .unwrap_or_default();
+                    view_settings_dialog_content(&self.state.settings, category, id)
+                }
+                DialogType::ThirdParty => view_third_party_dialog_content(),
+                DialogType::Update => {
+                    // Get reference to update state from dialog_windows
+                    // Use default Idle state if somehow missing
+                    if let Some((_, ref update_state)) = self.state.dialog_windows.update {
+                        view_update_dialog_content(update_state, id)
+                    } else {
+                        // Fallback to Idle state - this shouldn't happen
+                        view_update_dialog_content(&UpdateState::Idle, id)
+                    }
+                }
+            };
+        }
+
+        // Main window content
         let content: Element<'_, Message> = match &self.state.view {
             ViewState::Home { .. } => view_home(&self.state),
             ViewState::DomainEditor { domain, tab, .. } => {
@@ -265,6 +337,7 @@ impl App {
         // On Windows/Linux, add the in-app menu bar at the top
         #[cfg(not(target_os = "macos"))]
         let content_with_menu: Element<'_, Message> = {
+            use iced::widget::column;
             let menu_bar =
                 crate::menu::in_app::view_menu_bar(&self.state.menu_bar, self.state.has_study());
             column![menu_bar, content].into()
@@ -274,32 +347,25 @@ impl App {
         let content_with_menu: Element<'_, Message> = content;
 
         // Wrap in main container
-        let main_view = container(content_with_menu)
+        container(content_with_menu)
             .width(iced::Length::Fill)
-            .height(iced::Length::Fill);
-
-        // If a dialog is active, render it on top
-        match &self.state.active_dialog {
-            Some(ActiveDialog::About) => {
-                iced::widget::stack![main_view, view_about_dialog()].into()
-            }
-            Some(ActiveDialog::Settings(category)) => iced::widget::stack![
-                main_view,
-                view_settings_dialog(&self.state.settings, *category)
-            ]
-            .into(),
-            Some(ActiveDialog::ThirdParty) => {
-                iced::widget::stack![main_view, view_third_party_dialog()].into()
-            }
-            Some(ActiveDialog::Update(state)) => {
-                iced::widget::stack![main_view, view_update_dialog(state)].into()
-            }
-            None => main_view.into(),
-        }
+            .height(iced::Length::Fill)
+            .into()
     }
 
-    /// Get the window title.
-    pub fn title(&self) -> String {
+    /// Get the window title for a specific window.
+    pub fn title(&self, id: window::Id) -> String {
+        // Check if this is a dialog window
+        if let Some(dialog_type) = self.state.dialog_windows.dialog_type(id) {
+            return match dialog_type {
+                DialogType::About => "About Trial Submission Studio".to_string(),
+                DialogType::Settings => "Settings".to_string(),
+                DialogType::ThirdParty => "Third-Party Licenses".to_string(),
+                DialogType::Update => "Check for Updates".to_string(),
+            };
+        }
+
+        // Main window title
         let study_name = self
             .state
             .study
@@ -323,8 +389,8 @@ impl App {
         }
     }
 
-    /// Get the current theme.
-    pub fn theme(&self) -> Theme {
+    /// Get the theme for a specific window.
+    pub fn theme(&self, _id: window::Id) -> Theme {
         clinical_light()
     }
 
@@ -344,7 +410,10 @@ impl App {
         // Native menu event polling (polls every 50ms)
         let menu_sub = time::every(Duration::from_millis(50)).map(|_| Message::NativeMenuEvent);
 
-        Subscription::batch([keyboard_sub, menu_sub])
+        // Window close events (for cleaning up dialog windows)
+        let window_sub = window::close_requests().map(Message::DialogWindowClosed);
+
+        Subscription::batch([keyboard_sub, menu_sub, window_sub])
     }
 }
 
@@ -1737,10 +1806,21 @@ impl App {
                 }
             }
             MenuMessage::Settings => {
-                self.state.active_dialog = Some(ActiveDialog::Settings(
-                    crate::message::SettingsCategory::default(),
-                ));
-                Task::none()
+                // Don't open if already open
+                if self.state.dialog_windows.settings.is_some() {
+                    return Task::none();
+                }
+                // Open settings dialog in a new window
+                let settings = window::Settings {
+                    size: Size::new(720.0, 500.0),
+                    resizable: false,
+                    decorations: true,
+                    ..Default::default()
+                };
+                let (id, task) = window::open(settings);
+                self.state.dialog_windows.settings =
+                    Some((id, crate::message::SettingsCategory::default()));
+                task.map(|_| Message::Noop)
             }
             MenuMessage::Quit => {
                 // Request application quit
@@ -1775,16 +1855,52 @@ impl App {
                 Task::none()
             }
             MenuMessage::ThirdPartyLicenses => {
-                self.state.active_dialog = Some(ActiveDialog::ThirdParty);
-                Task::none()
+                // Don't open if already open
+                if self.state.dialog_windows.third_party.is_some() {
+                    return Task::none();
+                }
+                // Open third-party licenses dialog in a new window
+                let settings = window::Settings {
+                    size: Size::new(700.0, 550.0),
+                    resizable: true,
+                    decorations: true,
+                    ..Default::default()
+                };
+                let (id, task) = window::open(settings);
+                self.state.dialog_windows.third_party = Some(id);
+                task.map(|_| Message::Noop)
             }
             MenuMessage::CheckUpdates => {
-                self.state.active_dialog = Some(ActiveDialog::Update(UpdateState::Idle));
-                Task::none()
+                // Don't open if already open
+                if self.state.dialog_windows.update.is_some() {
+                    return Task::none();
+                }
+                // Open update dialog in a new window
+                let settings = window::Settings {
+                    size: Size::new(450.0, 350.0),
+                    resizable: false,
+                    decorations: true,
+                    ..Default::default()
+                };
+                let (id, task) = window::open(settings);
+                self.state.dialog_windows.update = Some((id, UpdateState::Idle));
+                task.map(|_| Message::Noop)
             }
             MenuMessage::About => {
-                self.state.active_dialog = Some(ActiveDialog::About);
-                Task::none()
+                // Don't open if already open
+                if self.state.dialog_windows.about.is_some() {
+                    return Task::none();
+                }
+                // Open about dialog in a new window
+                let settings = window::Settings {
+                    size: Size::new(400.0, 420.0),
+                    resizable: false,
+                    decorations: true,
+                    ..Default::default()
+                };
+                let (id, task) = window::open(settings);
+                self.state.dialog_windows.about = Some(id);
+                task.map(|_| Message::Noop)
             }
 
             // Edit menu (these typically interact with focused widget - noop for now)
@@ -1936,4 +2052,10 @@ fn extract_domain_code(file_stem: &str) -> &str {
 
     // Return the last segment after underscore
     file_stem.rsplit('_').next().unwrap_or(file_stem)
+}
+
+/// Load the application icon from embedded PNG data.
+fn load_app_icon() -> Option<window::Icon> {
+    let icon_data = include_bytes!("../assets/icon.png");
+    window::icon::from_file_data(icon_data, Some(image::ImageFormat::Png)).ok()
 }

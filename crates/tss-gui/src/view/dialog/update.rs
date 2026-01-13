@@ -3,13 +3,14 @@
 //! Check for and install application updates.
 
 use iced::widget::{Space, button, column, container, progress_bar, row, text};
+use iced::window;
 use iced::{Alignment, Border, Color, Element, Length};
 use iced_fonts::lucide;
 
 use crate::message::{DialogMessage, Message, UpdateInfo, UpdateMessage};
 use crate::theme::{
-    BORDER_RADIUS_LG, GRAY_500, GRAY_600, GRAY_700, GRAY_800, GRAY_900, PRIMARY_500, SPACING_LG,
-    SPACING_MD, SPACING_SM, SPACING_XS, SUCCESS, WHITE, button_primary,
+    BORDER_RADIUS_LG, GRAY_100, GRAY_500, GRAY_600, GRAY_700, GRAY_800, GRAY_900, PRIMARY_500,
+    SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS, SUCCESS, WHITE, button_primary,
 };
 
 /// Current application version.
@@ -70,6 +71,226 @@ pub fn view_update_dialog(state: &UpdateState) -> Element<Message> {
         .center_y(Length::Shrink);
 
     iced::widget::stack![backdrop, centered_dialog].into()
+}
+
+/// Render the Update dialog content for a standalone window (multi-window mode).
+///
+/// This is the content that appears in a separate dialog window.
+pub fn view_update_dialog_content(state: &UpdateState, window_id: window::Id) -> Element<Message> {
+    let content = view_dialog_content_for_window(state, window_id);
+
+    // Wrap in a styled container for the window
+    container(content)
+        .width(Length::Fill)
+        .height(Length::Fill)
+        .center_x(Length::Fill)
+        .center_y(Length::Fill)
+        .style(|_| container::Style {
+            background: Some(GRAY_100.into()),
+            ..Default::default()
+        })
+        .into()
+}
+
+/// Dialog content for window mode with window-specific close action.
+fn view_dialog_content_for_window(state: &UpdateState, window_id: window::Id) -> Element<Message> {
+    match state {
+        UpdateState::Idle => view_idle_state_window(window_id),
+        UpdateState::Checking => view_checking_state(),
+        UpdateState::Available(info) => view_available_state_window(info, window_id),
+        UpdateState::UpToDate => view_up_to_date_state_window(window_id),
+        UpdateState::Error(msg) => view_error_state_window(msg, window_id),
+        UpdateState::Installing { progress } => view_installing_state(*progress),
+        UpdateState::InstallComplete => view_install_complete_state_window(window_id),
+    }
+}
+
+/// Idle state for window mode.
+fn view_idle_state_window<'a>(window_id: window::Id) -> Element<'a, Message> {
+    let icon = lucide::refresh_cw().size(32).color(PRIMARY_500);
+
+    let current_version = text(format!("Current version: {}", CURRENT_VERSION))
+        .size(12)
+        .color(GRAY_500);
+
+    let check_btn = button(
+        row![
+            lucide::search().size(14),
+            Space::new().width(SPACING_XS),
+            text("Check for Updates"),
+        ]
+        .align_y(Alignment::Center),
+    )
+    .on_press(Message::Dialog(DialogMessage::Update(
+        UpdateMessage::CheckForUpdates,
+    )))
+    .padding([SPACING_SM, SPACING_MD])
+    .style(button_primary);
+
+    let close_btn = button(text("Close").size(13))
+        .on_press(Message::CloseWindow(window_id))
+        .padding([SPACING_SM, SPACING_MD]);
+
+    column![
+        Space::new().height(SPACING_LG),
+        icon,
+        Space::new().height(SPACING_MD),
+        text("Check for Updates").size(18).color(GRAY_900),
+        Space::new().height(SPACING_XS),
+        current_version,
+        Space::new().height(SPACING_LG),
+        check_btn,
+        Space::new().height(SPACING_SM),
+        close_btn,
+        Space::new().height(SPACING_LG),
+    ]
+    .align_x(Alignment::Center)
+    .padding(SPACING_LG)
+    .into()
+}
+
+/// Available state for window mode.
+fn view_available_state_window(info: &UpdateInfo, window_id: window::Id) -> Element<Message> {
+    let icon = lucide::download().size(32).color(SUCCESS);
+
+    let install_btn = button(
+        row![
+            lucide::download().size(14),
+            Space::new().width(SPACING_XS),
+            text("Install Update"),
+        ]
+        .align_y(Alignment::Center),
+    )
+    .on_press(Message::Dialog(DialogMessage::Update(
+        UpdateMessage::StartInstall,
+    )))
+    .padding([SPACING_SM, SPACING_MD])
+    .style(button_primary);
+
+    let later_btn = button(text("Later").size(13))
+        .on_press(Message::CloseWindow(window_id))
+        .padding([SPACING_SM, SPACING_MD]);
+
+    column![
+        Space::new().height(SPACING_LG),
+        icon,
+        Space::new().height(SPACING_MD),
+        text("Update Available!").size(18).color(GRAY_900),
+        Space::new().height(SPACING_SM),
+        text(format!("Version {} is available", info.version))
+            .size(14)
+            .color(GRAY_700),
+        Space::new().height(SPACING_XS),
+        text(format!("Current: {}", CURRENT_VERSION))
+            .size(12)
+            .color(GRAY_500),
+        Space::new().height(SPACING_LG),
+        install_btn,
+        Space::new().height(SPACING_SM),
+        later_btn,
+        Space::new().height(SPACING_LG),
+    ]
+    .align_x(Alignment::Center)
+    .padding(SPACING_LG)
+    .into()
+}
+
+/// Up to date state for window mode.
+fn view_up_to_date_state_window<'a>(window_id: window::Id) -> Element<'a, Message> {
+    let icon = lucide::circle_check().size(32).color(SUCCESS);
+
+    let close_btn = button(text("Close").size(13))
+        .on_press(Message::CloseWindow(window_id))
+        .padding([SPACING_SM, SPACING_LG]);
+
+    column![
+        Space::new().height(SPACING_LG),
+        icon,
+        Space::new().height(SPACING_MD),
+        text("You're Up to Date!").size(18).color(GRAY_900),
+        Space::new().height(SPACING_XS),
+        text(format!("Version {} is the latest", CURRENT_VERSION))
+            .size(13)
+            .color(GRAY_500),
+        Space::new().height(SPACING_LG),
+        close_btn,
+        Space::new().height(SPACING_LG),
+    ]
+    .align_x(Alignment::Center)
+    .padding(SPACING_LG)
+    .into()
+}
+
+/// Error state for window mode.
+fn view_error_state_window(message: &str, window_id: window::Id) -> Element<Message> {
+    let icon = lucide::circle_x().size(32).color(GRAY_600);
+
+    let retry_btn = button(text("Retry").size(13))
+        .on_press(Message::Dialog(DialogMessage::Update(
+            UpdateMessage::CheckForUpdates,
+        )))
+        .padding([SPACING_SM, SPACING_MD]);
+
+    let close_btn = button(text("Close").size(13))
+        .on_press(Message::CloseWindow(window_id))
+        .padding([SPACING_SM, SPACING_MD]);
+
+    column![
+        Space::new().height(SPACING_LG),
+        icon,
+        Space::new().height(SPACING_MD),
+        text("Update Check Failed").size(18).color(GRAY_900),
+        Space::new().height(SPACING_SM),
+        text(message).size(13).color(GRAY_600),
+        Space::new().height(SPACING_LG),
+        row![retry_btn, Space::new().width(SPACING_SM), close_btn,].align_y(Alignment::Center),
+        Space::new().height(SPACING_LG),
+    ]
+    .align_x(Alignment::Center)
+    .padding(SPACING_LG)
+    .into()
+}
+
+/// Install complete state for window mode.
+fn view_install_complete_state_window<'a>(window_id: window::Id) -> Element<'a, Message> {
+    let icon = lucide::circle_check().size(32).color(SUCCESS);
+
+    let restart_btn = button(
+        row![
+            lucide::refresh_cw().size(14),
+            Space::new().width(SPACING_XS),
+            text("Restart Now"),
+        ]
+        .align_y(Alignment::Center),
+    )
+    .on_press(Message::Dialog(DialogMessage::Update(
+        UpdateMessage::RestartApp,
+    )))
+    .padding([SPACING_SM, SPACING_MD])
+    .style(button_primary);
+
+    let later_btn = button(text("Later").size(13))
+        .on_press(Message::CloseWindow(window_id))
+        .padding([SPACING_SM, SPACING_MD]);
+
+    column![
+        Space::new().height(SPACING_LG),
+        icon,
+        Space::new().height(SPACING_MD),
+        text("Update Ready!").size(18).color(GRAY_900),
+        Space::new().height(SPACING_XS),
+        text("Restart to complete the installation")
+            .size(13)
+            .color(GRAY_500),
+        Space::new().height(SPACING_LG),
+        restart_btn,
+        Space::new().height(SPACING_SM),
+        later_btn,
+        Space::new().height(SPACING_LG),
+    ]
+    .align_x(Alignment::Center)
+    .padding(SPACING_LG)
+    .into()
 }
 
 /// Dialog content based on state.
