@@ -9,13 +9,13 @@
 mod app;
 mod component;
 mod message;
+mod service;
 mod state;
 mod theme;
 mod view;
 
 // These modules will be uncommented as they're ported:
 // mod menu;
-// mod service;
 // mod settings;
 
 use app::App;

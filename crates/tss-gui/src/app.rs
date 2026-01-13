@@ -206,9 +206,13 @@ impl App {
     ///
     /// This is a pure function that produces UI based on current state.
     pub fn view(&self) -> Element<'_, Message> {
+        use crate::view::view_domain_editor;
+
         let content: Element<'_, Message> = match &self.state.view {
             ViewState::Home { .. } => view_home(&self.state),
-            ViewState::DomainEditor { domain, tab, .. } => self.view_domain_editor(domain, *tab),
+            ViewState::DomainEditor { domain, tab, .. } => {
+                view_domain_editor(&self.state, domain, *tab)
+            }
             ViewState::Export(_) => self.view_export(),
         };
 
@@ -372,10 +376,7 @@ impl App {
                 Task::none()
             }
 
-            DomainEditorMessage::Preview(_) => {
-                // TODO: Implement
-                Task::none()
-            }
+            DomainEditorMessage::Preview(preview_msg) => self.handle_preview_message(preview_msg),
 
             DomainEditorMessage::Supp(_) => {
                 // TODO: Implement
@@ -583,6 +584,87 @@ impl App {
             }
         }
     }
+
+    fn handle_preview_message(
+        &mut self,
+        msg: crate::message::domain_editor::PreviewMessage,
+    ) -> Task<Message> {
+        use crate::message::domain_editor::PreviewMessage;
+        use crate::service::preview::{PreviewInput, compute_preview};
+
+        // Get current domain code
+        let domain_code = match &self.state.view {
+            ViewState::DomainEditor { domain, .. } => domain.clone(),
+            _ => return Task::none(),
+        };
+
+        match msg {
+            PreviewMessage::RebuildPreview => {
+                // Get domain data for preview
+                let domain = match self
+                    .state
+                    .study
+                    .as_ref()
+                    .and_then(|s| s.domain(&domain_code))
+                {
+                    Some(d) => d,
+                    None => return Task::none(),
+                };
+
+                // Mark as rebuilding
+                if let ViewState::DomainEditor { preview_ui, .. } = &mut self.state.view {
+                    preview_ui.is_rebuilding = true;
+                    preview_ui.error = None;
+                }
+
+                // Build preview input
+                let input = PreviewInput {
+                    source_df: domain.source.data.clone(),
+                    mapping: domain.mapping.clone(),
+                    ct_registry: self.state.terminology.clone(),
+                };
+
+                let domain_for_result = domain_code.clone();
+
+                // Start async preview computation
+                Task::perform(compute_preview(input), move |result| {
+                    Message::PreviewReady {
+                        domain: domain_for_result,
+                        result: result.map_err(|e| e.to_string()),
+                    }
+                })
+            }
+
+            PreviewMessage::GoToPage(page) => {
+                if let ViewState::DomainEditor { preview_ui, .. } = &mut self.state.view {
+                    preview_ui.current_page = page;
+                }
+                Task::none()
+            }
+
+            PreviewMessage::NextPage => {
+                if let ViewState::DomainEditor { preview_ui, .. } = &mut self.state.view {
+                    preview_ui.current_page = preview_ui.current_page.saturating_add(1);
+                }
+                Task::none()
+            }
+
+            PreviewMessage::PreviousPage => {
+                if let ViewState::DomainEditor { preview_ui, .. } = &mut self.state.view {
+                    preview_ui.current_page = preview_ui.current_page.saturating_sub(1);
+                }
+                Task::none()
+            }
+
+            PreviewMessage::RowsPerPageChanged(rows) => {
+                if let ViewState::DomainEditor { preview_ui, .. } = &mut self.state.view {
+                    preview_ui.rows_per_page = rows;
+                    preview_ui.current_page = 0; // Reset to first page
+                }
+                Task::none()
+            }
+        }
+    }
 }
 
 // =============================================================================
@@ -643,17 +725,6 @@ impl App {
 // =============================================================================
 
 impl App {
-    fn view_domain_editor(&self, domain: &str, tab: EditorTab) -> Element<'_, Message> {
-        // Placeholder - will be implemented properly
-        column![
-            text(format!("Domain: {}", domain)).size(24),
-            text(format!("Tab: {}", tab.name())).size(16),
-        ]
-        .spacing(16)
-        .padding(32)
-        .into()
-    }
-
     fn view_export(&self) -> Element<'_, Message> {
         // Placeholder - will be implemented in Phase 5
         column![
@@ -703,29 +774,34 @@ async fn load_study_async(folder: PathBuf, header_rows: usize) -> Result<Study, 
         let file_stem = csv_path
             .file_stem()
             .and_then(|s| s.to_str())
-            .map(|s| s.to_uppercase())
             .unwrap_or_default();
 
+        // Extract domain code from filename
+        // Handles both simple names (DM.csv) and prefixed names (STUDY_DM.csv)
+        let domain_code = extract_domain_code(file_stem);
+
         // Skip non-domain files
-        if file_stem.is_empty()
-            || file_stem.starts_with('_')
-            || file_stem.eq_ignore_ascii_case("items")
-            || file_stem.eq_ignore_ascii_case("codelists")
+        if domain_code.is_empty()
+            || domain_code.starts_with('_')
+            || domain_code.eq_ignore_ascii_case("items")
+            || domain_code.eq_ignore_ascii_case("codelists")
         {
             continue;
         }
 
+        let domain_code = domain_code.to_uppercase();
+
         // Load CSV
         let (df, _headers) = tss_ingest::read_csv_table(&csv_path, header_rows)
-            .map_err(|e| format!("Failed to load {}: {}", file_stem, e))?;
+            .map_err(|e| format!("Failed to load {}: {}", domain_code, e))?;
 
         // Find domain in SDTM-IG
         let ig_domain = ig_domains
             .iter()
-            .find(|d| d.name.eq_ignore_ascii_case(&file_stem));
+            .find(|d| d.name.eq_ignore_ascii_case(&domain_code));
 
         let Some(ig_domain) = ig_domain else {
-            tracing::warn!("Domain {} not found in SDTM-IG, skipping", file_stem);
+            tracing::warn!("Domain {} not found in SDTM-IG, skipping", domain_code);
             continue;
         };
 
@@ -750,7 +826,7 @@ async fn load_study_async(folder: PathBuf, header_rows: usize) -> Result<Study, 
 
         // Create domain and add to study
         let domain = Domain::new(source, mapping);
-        study.add_domain(file_stem, domain);
+        study.add_domain(domain_code, domain);
     }
 
     if study.domain_count() == 0 {
@@ -758,4 +834,22 @@ async fn load_study_async(folder: PathBuf, header_rows: usize) -> Result<Study, 
     }
 
     Ok(study)
+}
+
+/// Extract domain code from a filename.
+///
+/// Handles various naming conventions:
+/// - Simple: `DM.csv` → `DM`
+/// - Prefixed: `STUDY_DM.csv` → `DM`
+/// - Full path: `DEMO_GDISC_20240903_072908_DM.csv` → `DM`
+///
+/// Returns the last underscore-separated segment.
+fn extract_domain_code(file_stem: &str) -> &str {
+    // If there's no underscore, return the whole string
+    if !file_stem.contains('_') {
+        return file_stem;
+    }
+
+    // Return the last segment after underscore
+    file_stem.rsplit('_').next().unwrap_or(file_stem)
 }

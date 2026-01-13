@@ -12,10 +12,12 @@ pub mod state;
 pub mod theme;
 pub mod view;
 
+// Service modules for background tasks
+pub mod service;
+
 // These modules will be restored as they're ported to Iced:
 // pub mod export;
 // pub mod menu;
-// pub mod service;
 // pub mod settings;
 
 // Legacy modules (commented out during migration)
