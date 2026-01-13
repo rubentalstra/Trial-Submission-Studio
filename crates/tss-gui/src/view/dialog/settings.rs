@@ -265,7 +265,7 @@ fn view_category_content<'a>(
         SettingsCategory::Export => view_export_settings(settings),
         SettingsCategory::Display => view_display_settings(),
         SettingsCategory::Updates => view_update_settings(settings),
-        SettingsCategory::Developer => view_developer_settings(),
+        SettingsCategory::Developer => view_developer_settings(settings),
         SettingsCategory::Validation => view_validation_settings(),
     };
 
@@ -438,18 +438,20 @@ fn view_update_settings(settings: &Settings) -> Element<Message> {
 }
 
 /// Developer settings section.
-fn view_developer_settings<'a>() -> Element<'a, Message> {
+fn view_developer_settings(settings: &Settings) -> Element<Message> {
     let bypass_validation_section = row![
         column![
             text("Bypass Validation Errors").size(14).color(GRAY_800),
-            text("Allow export even with validation errors (not recommended)")
+            text("Allow export even with validation errors (use with caution)")
                 .size(12)
                 .color(GRAY_500),
         ]
         .width(Length::Fill),
-        toggler(false).on_toggle(|v| Message::Dialog(DialogMessage::Settings(
-            SettingsMessage::Developer(DeveloperSettingsMessage::BypassValidationToggled(v)),
-        ))),
+        toggler(settings.developer.bypass_validation).on_toggle(|v| Message::Dialog(
+            DialogMessage::Settings(SettingsMessage::Developer(
+                DeveloperSettingsMessage::BypassValidationToggled(v),
+            ))
+        )),
     ]
     .align_y(Alignment::Center);
 
@@ -461,9 +463,11 @@ fn view_developer_settings<'a>() -> Element<'a, Message> {
                 .color(GRAY_500),
         ]
         .width(Length::Fill),
-        toggler(false).on_toggle(|v| Message::Dialog(DialogMessage::Settings(
-            SettingsMessage::Developer(DeveloperSettingsMessage::DeveloperModeToggled(v)),
-        ))),
+        toggler(settings.developer.developer_mode).on_toggle(|v| Message::Dialog(
+            DialogMessage::Settings(SettingsMessage::Developer(
+                DeveloperSettingsMessage::DeveloperModeToggled(v),
+            ))
+        )),
     ]
     .align_y(Alignment::Center);
 

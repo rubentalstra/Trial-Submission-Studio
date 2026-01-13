@@ -31,7 +31,9 @@ mod view_state;
 
 // Re-exports
 pub use domain::{Domain, DomainSource, SuppAction, SuppColumnConfig, SuppOrigin};
-pub use settings::{ExportFormat, ExportSettings, GeneralSettings, Settings, XptVersion};
+pub use settings::{
+    DeveloperSettings, ExportFormat, ExportSettings, GeneralSettings, Settings, XptVersion,
+};
 pub use study::Study;
 pub use view_state::{
     EditorTab, ExportPhase, ExportResult, ExportViewState, MappingUiState, NormalizationUiState,

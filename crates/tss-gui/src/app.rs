@@ -1553,6 +1553,56 @@ impl App {
                     return Task::none();
                 }
 
+                // Get study data
+                let study = match &self.state.study {
+                    Some(s) => s,
+                    None => return Task::none(),
+                };
+
+                let study_id = study.study_id.clone();
+                let terminology = self.state.terminology.clone();
+
+                // Build export data for each selected domain
+                let mut domain_data = Vec::new();
+                let mut not_collected_map = std::collections::HashMap::new();
+
+                for code in &selected_domains {
+                    if let Some(gui_domain) = study.domain(code) {
+                        // Collect not_collected variables for validation
+                        let not_collected: std::collections::BTreeSet<String> = gui_domain
+                            .mapping
+                            .all_not_collected()
+                            .keys()
+                            .cloned()
+                            .collect();
+                        if !not_collected.is_empty() {
+                            not_collected_map.insert(code.clone(), not_collected);
+                        }
+
+                        match crate::service::export::build_domain_export_data(
+                            code,
+                            gui_domain,
+                            &study_id,
+                            terminology.as_ref(),
+                        ) {
+                            Ok(data) => domain_data.push(data),
+                            Err(e) => {
+                                // Return error immediately
+                                return Task::done(Message::Export(ExportMessage::Complete(
+                                    ExportResult::Error {
+                                        message: e.message,
+                                        domain: e.domain,
+                                    },
+                                )));
+                            }
+                        }
+                    }
+                }
+
+                if domain_data.is_empty() {
+                    return Task::none();
+                }
+
                 // Set exporting state in ViewState
                 if let ViewState::Export(export_state) = &mut self.state.view {
                     export_state.phase = ExportPhase::Exporting {
@@ -1579,27 +1629,31 @@ impl App {
                     id,
                     crate::state::ExportProgressState {
                         current_domain: None,
-                        current_step: "Preparing...".to_string(),
+                        current_step: "Exporting...".to_string(),
                         progress: 0.0,
                         files_written: 0,
                     },
                 ));
 
-                // TODO: Start actual export task
-                // For now, just simulate completion after opening dialog
-                let domains_count = selected_domains.len();
-                Task::batch([
-                    open_task.map(|_| Message::Noop),
-                    Task::done(Message::Export(ExportMessage::Complete(
-                        ExportResult::Success {
-                            output_dir,
-                            files: vec![],
-                            domains_exported: domains_count,
-                            elapsed_ms: 0,
-                            warnings: vec![],
-                        },
-                    ))),
-                ])
+                // Build export input with validation settings
+                let export_input = crate::service::export::ExportInput {
+                    output_dir,
+                    format: self.state.settings.export.default_format,
+                    xpt_version: self.state.settings.export.xpt_version,
+                    domains: domain_data,
+                    study_id,
+                    bypass_validation: self.state.settings.developer.bypass_validation,
+                    ct_registry: terminology,
+                    not_collected: not_collected_map,
+                };
+
+                // Start actual export task
+                let export_task = Task::perform(
+                    crate::service::export::execute_export(export_input),
+                    |result| Message::Export(ExportMessage::Complete(result)),
+                );
+
+                Task::batch([open_task.map(|_| Message::Noop), export_task])
             }
 
             ExportMessage::CancelExport => {
@@ -1879,8 +1933,18 @@ impl App {
                 // Handle validation settings
                 Task::none()
             }
-            SettingsMessage::Developer(_dev_msg) => {
-                // Handle developer settings
+            SettingsMessage::Developer(dev_msg) => {
+                use crate::message::DeveloperSettingsMessage;
+                match dev_msg {
+                    DeveloperSettingsMessage::BypassValidationToggled(enabled) => {
+                        self.state.settings.developer.bypass_validation = enabled;
+                        tracing::info!("Bypass validation: {}", enabled);
+                    }
+                    DeveloperSettingsMessage::DeveloperModeToggled(enabled) => {
+                        self.state.settings.developer.developer_mode = enabled;
+                        tracing::info!("Developer mode: {}", enabled);
+                    }
+                }
                 Task::none()
             }
             SettingsMessage::Export(export_msg) => {

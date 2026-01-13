@@ -10,10 +10,11 @@ use iced::{Alignment, Border, Element, Length};
 use iced_fonts::lucide;
 
 use crate::message::{ExportMessage, Message};
+use crate::service::export::{domain_has_supp, domain_supp_count};
 use crate::state::{AppState, Domain, ExportFormat, ExportViewState, Study, ViewState, XptVersion};
 use crate::theme::{
-    GRAY_100, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800, GRAY_900, SPACING_LG, SPACING_MD,
-    SPACING_SM, SPACING_XS, SUCCESS, WARNING, WHITE, button_primary,
+    GRAY_100, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800, GRAY_900, PRIMARY_500, SPACING_LG,
+    SPACING_MD, SPACING_SM, SPACING_XS, SUCCESS, WARNING, WHITE, button_primary,
 };
 
 // =============================================================================
@@ -199,7 +200,7 @@ fn view_domain_selection<'a>(
     .into()
 }
 
-/// Single domain row with checkbox and status.
+/// Single domain row with checkbox, status, and SUPP indicator.
 fn view_domain_row<'a>(
     code: &'a str,
     domain: &'a Domain,
@@ -232,7 +233,7 @@ fn view_domain_row<'a>(
 
     let row_info = text(format!("{} rows", row_count)).size(12).color(GRAY_500);
 
-    let row_content = row![
+    let main_row = row![
         checkbox_widget,
         Space::new().width(SPACING_XS),
         text(code).color(GRAY_800),
@@ -244,12 +245,44 @@ fn view_domain_row<'a>(
     .align_y(Alignment::Center)
     .padding([SPACING_XS, 0.0]);
 
-    container(row_content)
-        .style(|_theme| container::Style {
-            background: Some(WHITE.into()),
-            ..Default::default()
-        })
-        .into()
+    // Check if domain has SUPP columns
+    let has_supp = domain_has_supp(domain);
+
+    if has_supp && is_selected {
+        let supp_count = domain_supp_count(domain);
+
+        // Show SUPP row below main domain
+        let supp_row = row![
+            Space::new().width(28.0), // Indent to align with domain name
+            lucide::corner_down_right().size(12).color(GRAY_400),
+            Space::new().width(SPACING_XS),
+            text(format!("SUPP{}", code)).size(12).color(PRIMARY_500),
+            Space::new().width(SPACING_SM),
+            text(format!(
+                "{} qualifier{}",
+                supp_count,
+                if supp_count == 1 { "" } else { "s" }
+            ))
+            .size(11)
+            .color(GRAY_500),
+        ]
+        .align_y(Alignment::Center)
+        .padding([2.0, 0.0]);
+
+        container(column![main_row, supp_row].spacing(2.0))
+            .style(|_theme| container::Style {
+                background: Some(WHITE.into()),
+                ..Default::default()
+            })
+            .into()
+    } else {
+        container(main_row)
+            .style(|_theme| container::Style {
+                background: Some(WHITE.into()),
+                ..Default::default()
+            })
+            .into()
+    }
 }
 
 // =============================================================================

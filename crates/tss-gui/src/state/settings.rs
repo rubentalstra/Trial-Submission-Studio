@@ -20,6 +20,9 @@ pub struct Settings {
 
     /// Export settings.
     pub export: ExportSettings,
+
+    /// Developer settings (advanced options).
+    pub developer: DeveloperSettings,
 }
 
 impl Default for Settings {
@@ -27,6 +30,7 @@ impl Default for Settings {
         Self {
             general: GeneralSettings::default(),
             export: ExportSettings::default(),
+            developer: DeveloperSettings::default(),
         }
     }
 }
@@ -240,6 +244,33 @@ impl XptVersion {
         match self {
             Self::V5 => "Version 5 (FDA)",
             Self::V8 => "Version 8",
+        }
+    }
+}
+
+// =============================================================================
+// DEVELOPER SETTINGS
+// =============================================================================
+
+/// Developer settings (advanced options).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
+pub struct DeveloperSettings {
+    /// Bypass validation errors when exporting.
+    ///
+    /// When enabled, allows exporting even if validation errors exist.
+    /// Use with caution - exported data may not be FDA-compliant.
+    pub bypass_validation: bool,
+
+    /// Enable developer mode (shows additional debug info).
+    pub developer_mode: bool,
+}
+
+impl Default for DeveloperSettings {
+    fn default() -> Self {
+        Self {
+            bypass_validation: false,
+            developer_mode: false,
         }
     }
 }
