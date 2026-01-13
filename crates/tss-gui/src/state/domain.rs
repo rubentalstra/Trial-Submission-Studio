@@ -3,11 +3,12 @@
 //! A domain represents a single SDTM dataset (e.g., DM, AE, LB).
 //! This module contains:
 //! - [`DomainSource`] - Immutable source data (CSV file + DataFrame)
-//! - [`Domain`] - Source + mapping state
+//! - [`Domain`] - Source + mapping state + normalization pipeline
 
 use polars::prelude::{DataFrame, PlSmallStr};
 use std::path::PathBuf;
 use tss_map::MappingState;
+use tss_normalization::{NormalizationPipeline, infer_normalization_rules};
 
 // =============================================================================
 // DOMAIN SOURCE (Immutable)
@@ -74,9 +75,12 @@ impl DomainSource {
 ///
 /// # Design Notes
 ///
-/// - **No derived/cached state** - Preview, validation, and transform results
-///   are computed on demand, not stored here. This keeps state simple and
-///   avoids cache invalidation complexity.
+/// - **Normalization pipeline is computed once** - The pipeline is derived from
+///   the SDTM domain metadata when the domain is created. It defines what
+///   transformations will be applied to each variable during export.
+///
+/// - **Preview, validation, and transform results** are computed on demand,
+///   not stored here. This keeps state simple and avoids cache invalidation.
 ///
 /// - **Mapping state is from `tss_map`** - The core mapping logic lives in the
 ///   `tss_map` crate. This struct just holds the state.
@@ -90,8 +94,10 @@ impl DomainSource {
 /// let summary = domain.mapping.summary();
 /// println!("Mapped: {}/{}", summary.mapped, summary.total_variables);
 ///
-/// // Accept a suggestion (in update())
-/// domain.mapping.accept_suggestion("USUBJID")?;
+/// // Access normalization rules
+/// for rule in &domain.normalization.rules {
+///     println!("{}: {:?}", rule.target_variable, rule.transform_type);
+/// }
 /// ```
 #[derive(Clone)]
 pub struct Domain {
@@ -100,12 +106,27 @@ pub struct Domain {
 
     /// Mapping state from `tss_map` crate.
     pub mapping: MappingState,
+
+    /// Normalization pipeline (derived from SDTM domain metadata).
+    /// Computed once when domain is created, defines transformations for export.
+    pub normalization: NormalizationPipeline,
 }
 
 impl Domain {
     /// Create a new domain.
+    ///
+    /// Automatically infers the normalization pipeline from the SDTM domain
+    /// metadata. This pipeline defines what transformations will be applied
+    /// to each variable during export.
     pub fn new(source: DomainSource, mapping: MappingState) -> Self {
-        Self { source, mapping }
+        // Infer normalization rules from the SDTM domain metadata
+        let normalization = infer_normalization_rules(mapping.domain());
+
+        Self {
+            source,
+            mapping,
+            normalization,
+        }
     }
 
     /// Get display name: "DM (Demographics)" or just "DM".

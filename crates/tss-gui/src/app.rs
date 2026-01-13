@@ -367,9 +367,8 @@ impl App {
 
             DomainEditorMessage::Mapping(mapping_msg) => self.handle_mapping_message(mapping_msg),
 
-            DomainEditorMessage::Normalization(_) => {
-                // TODO: Implement
-                Task::none()
+            DomainEditorMessage::Normalization(norm_msg) => {
+                self.handle_normalization_message(norm_msg)
             }
 
             DomainEditorMessage::Validation(validation_msg) => {
@@ -580,6 +579,35 @@ impl App {
                 if let ViewState::DomainEditor { mapping_ui, .. } = &mut self.state.view {
                     mapping_ui.filter_required = enabled;
                 }
+                Task::none()
+            }
+        }
+    }
+
+    fn handle_normalization_message(
+        &mut self,
+        msg: crate::message::domain_editor::NormalizationMessage,
+    ) -> Task<Message> {
+        use crate::message::domain_editor::NormalizationMessage;
+
+        match msg {
+            NormalizationMessage::RuleSelected(index) => {
+                if let ViewState::DomainEditor {
+                    normalization_ui, ..
+                } = &mut self.state.view
+                {
+                    normalization_ui.selected_rule = Some(index);
+                }
+                Task::none()
+            }
+
+            NormalizationMessage::RuleToggled { .. } => {
+                // TODO: Implement rule toggling if needed
+                Task::none()
+            }
+
+            NormalizationMessage::RefreshPreview => {
+                // TODO: Implement preview refresh if needed
                 Task::none()
             }
         }
