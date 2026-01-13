@@ -22,6 +22,7 @@ use crate::theme::{
 };
 
 use tss_map::VariableStatus;
+use tss_model::TerminologyRegistry;
 use tss_normalization::NormalizationType;
 
 // =============================================================================
@@ -76,7 +77,7 @@ pub fn view_normalization_tab<'a>(
     // Build detail panel
     let detail = if let Some(selected_idx) = normalization_ui.selected_rule {
         if let Some(rule) = normalization.rules.get(selected_idx) {
-            view_rule_detail(domain, rule, sdtm_domain)
+            view_rule_detail(domain, rule, sdtm_domain, state.terminology.as_ref())
         } else {
             view_no_selection()
         }
@@ -306,6 +307,7 @@ fn view_rule_detail<'a>(
     domain: &'a crate::state::Domain,
     rule: &'a tss_normalization::NormalizationRule,
     sdtm_domain: &'a tss_model::Domain,
+    terminology: Option<&'a TerminologyRegistry>,
 ) -> Element<'a, Message> {
     // Find the variable definition
     let variable = sdtm_domain
@@ -324,7 +326,7 @@ fn view_rule_detail<'a>(
     };
 
     // Before/After preview
-    let preview_section = view_before_after_preview(domain, rule);
+    let preview_section = view_before_after_preview(domain, rule, terminology);
 
     scrollable(column![
         header,
@@ -527,6 +529,7 @@ fn view_transformation_only<'a>(
 fn view_before_after_preview<'a>(
     domain: &'a crate::state::Domain,
     rule: &'a tss_normalization::NormalizationRule,
+    terminology: Option<&'a TerminologyRegistry>,
 ) -> Element<'a, Message> {
     let title_row = row![
         lucide::split().size(14).color(PRIMARY_500),
@@ -536,7 +539,7 @@ fn view_before_after_preview<'a>(
     .align_y(Alignment::Center);
 
     // Get sample data based on transformation type
-    let preview_content = build_preview_content(domain, rule);
+    let preview_content = build_preview_content(domain, rule, terminology);
 
     column![
         title_row,
@@ -560,6 +563,7 @@ fn view_before_after_preview<'a>(
 fn build_preview_content<'a>(
     domain: &'a crate::state::Domain,
     rule: &'a tss_normalization::NormalizationRule,
+    terminology: Option<&'a TerminologyRegistry>,
 ) -> Element<'a, Message> {
     // Get source column name if mapped
     let source_column = domain
@@ -679,7 +683,8 @@ fn build_preview_content<'a>(
 
                     // Data rows
                     for sample in samples {
-                        let after_value = simulate_transform(&sample, &rule.transform_type);
+                        let after_value =
+                            simulate_transform(&sample, &rule.transform_type, terminology);
                         table_rows = table_rows.push(view_preview_row(sample, after_value));
                     }
 
@@ -794,8 +799,15 @@ fn get_unique_values(df: &polars::prelude::DataFrame, column: &str, limit: usize
     result
 }
 
-/// Simulate what a transformation would produce (simplified preview).
-fn simulate_transform(input: &str, transform_type: &NormalizationType) -> String {
+/// Simulate what a transformation would produce.
+///
+/// For CT normalization, uses the actual terminology registry to look up
+/// the correct submission value (e.g., "Male" -> "M" for SEX codelist).
+fn simulate_transform(
+    input: &str,
+    transform_type: &NormalizationType,
+    terminology: Option<&TerminologyRegistry>,
+) -> String {
     match transform_type {
         NormalizationType::CopyDirect => input.to_string(),
 
@@ -818,9 +830,16 @@ fn simulate_transform(input: &str, transform_type: &NormalizationType) -> String
             }
         }
 
-        NormalizationType::CtNormalization { .. } => {
-            // For CT, show uppercase (simplified - real would lookup codelist)
-            input.to_uppercase()
+        NormalizationType::CtNormalization { codelist_code } => {
+            // Use actual CT lookup if terminology is available
+            if let Some(registry) = terminology {
+                if let Some(resolved) = registry.resolve(codelist_code, None) {
+                    // Use the codelist's normalize method which handles synonyms
+                    return resolved.normalize(input);
+                }
+            }
+            // Fallback if no terminology or codelist not found
+            input.to_string()
         }
 
         _ => input.to_string(),
