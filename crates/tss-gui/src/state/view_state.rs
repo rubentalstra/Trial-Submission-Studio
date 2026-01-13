@@ -55,8 +55,8 @@ pub enum ViewState {
         tab: EditorTab,
         /// Mapping tab UI state.
         mapping_ui: MappingUiState,
-        /// Transform tab UI state.
-        transform_ui: TransformUiState,
+        /// Normalization tab UI state.
+        normalization_ui: NormalizationUiState,
         /// Validation tab UI state.
         validation_ui: ValidationUiState,
         /// Preview tab UI state.
@@ -94,7 +94,7 @@ impl ViewState {
             domain: domain.into(),
             tab,
             mapping_ui: MappingUiState::default(),
-            transform_ui: TransformUiState::default(),
+            normalization_ui: NormalizationUiState::default(),
             validation_ui: ValidationUiState::default(),
             preview_ui: PreviewUiState::default(),
             supp_ui: SuppUiState::default(),
@@ -201,8 +201,8 @@ pub enum EditorTab {
     /// Variable mapping.
     #[default]
     Mapping,
-    /// Data transformation/normalization.
-    Transform,
+    /// Data normalization rules.
+    Normalization,
     /// Validation results.
     Validation,
     /// Data preview.
@@ -216,7 +216,7 @@ impl EditorTab {
     pub fn name(&self) -> &'static str {
         match self {
             Self::Mapping => "Mapping",
-            Self::Transform => "Transform",
+            Self::Normalization => "Normalization",
             Self::Validation => "Validation",
             Self::Preview => "Preview",
             Self::Supp => "SUPP",
@@ -227,7 +227,7 @@ impl EditorTab {
     pub fn description(&self) -> &'static str {
         match self {
             Self::Mapping => "Map source columns to CDISC variables",
-            Self::Transform => "Configure data normalization rules",
+            Self::Normalization => "Configure data normalization rules",
             Self::Validation => "Review CDISC conformance issues",
             Self::Preview => "Preview transformed output data",
             Self::Supp => "Configure supplemental qualifiers",
@@ -237,7 +237,7 @@ impl EditorTab {
     /// All tabs in display order.
     pub const ALL: [EditorTab; 5] = [
         Self::Mapping,
-        Self::Transform,
+        Self::Normalization,
         Self::Validation,
         Self::Preview,
         Self::Supp,
@@ -247,7 +247,7 @@ impl EditorTab {
     pub fn index(&self) -> usize {
         match self {
             Self::Mapping => 0,
-            Self::Transform => 1,
+            Self::Normalization => 1,
             Self::Validation => 2,
             Self::Preview => 3,
             Self::Supp => 4,
@@ -294,7 +294,7 @@ pub struct NotCollectedDialog {
 
 /// UI state for the transform tab.
 #[derive(Debug, Clone, Default)]
-pub struct TransformUiState {
+pub struct NormalizationUiState {
     /// Selected rule index.
     pub selected_rule: Option<usize>,
 }

@@ -362,7 +362,7 @@ impl App {
 
             DomainEditorMessage::Mapping(mapping_msg) => self.handle_mapping_message(mapping_msg),
 
-            DomainEditorMessage::Transform(_) => {
+            DomainEditorMessage::Normalization(_) => {
                 // TODO: Implement
                 Task::none()
             }

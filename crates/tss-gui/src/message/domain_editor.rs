@@ -1,7 +1,7 @@
 //! Domain editor messages.
 //!
 //! Messages for the domain editor view including all five tabs:
-//! Mapping, Transform, Validation, Preview, and SUPP.
+//! Mapping, Normalization, Validation, Preview, and SUPP.
 
 use crate::state::EditorTab;
 
@@ -17,8 +17,8 @@ pub enum DomainEditorMessage {
     /// Mapping tab messages
     Mapping(MappingMessage),
 
-    /// Transform/Normalization tab messages
-    Transform(TransformMessage),
+    /// Normalization tab messages
+    Normalization(NormalizationMessage),
 
     /// Validation tab messages
     Validation(ValidationMessage),
@@ -78,19 +78,19 @@ pub enum MappingMessage {
 }
 
 // =============================================================================
-// TRANSFORM TAB
+// NORMALIZATION TAB
 // =============================================================================
 
-/// Messages for the Transform/Normalization tab.
+/// Messages for the Normalization tab.
 #[derive(Debug, Clone)]
-pub enum TransformMessage {
-    /// Select a transform rule
+pub enum NormalizationMessage {
+    /// Select a normalization rule
     RuleSelected(usize),
 
-    /// Toggle a transform rule on/off
+    /// Toggle a normalization rule on/off
     RuleToggled { index: usize, enabled: bool },
 
-    /// Refresh transform preview
+    /// Refresh normalization preview
     RefreshPreview,
 }
 

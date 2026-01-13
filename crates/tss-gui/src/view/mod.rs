@@ -6,18 +6,16 @@
 //! ## Module Structure
 //!
 //! - `home.rs` - Home screen (study selection, domain list)
-//! - `export.rs` - Export configuration and progress
 //! - `domain_editor/` - Domain editing with tabbed interface
-//! - `dialog/` - Modal dialogs (about, settings, etc.)
+//! - `export.rs` - Export configuration and progress (TODO)
+//! - `dialog/` - Modal dialogs (about, settings, etc.) (TODO)
 
+pub mod domain_editor;
 pub mod home;
 
 // Re-export commonly used view functions
+pub use domain_editor::view_domain_editor;
 pub use home::view_home;
-
-// TODO: Phase 4 - Domain editor views
-// pub mod domain_editor;
-// pub use domain_editor::view_domain_editor;
 
 // TODO: Phase 5 - Export and dialog views
 // pub mod export;

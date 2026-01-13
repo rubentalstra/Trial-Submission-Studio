@@ -34,8 +34,8 @@ pub use domain::{Domain, DomainSource};
 pub use settings::{ExportFormat, ExportSettings, GeneralSettings, Settings};
 pub use study::Study;
 pub use view_state::{
-    EditorTab, ExportViewState, MappingUiState, NotCollectedDialog, PreviewUiState, SuppUiState,
-    TransformUiState, ValidationUiState, ViewState, WorkflowMode,
+    EditorTab, ExportViewState, MappingUiState, NormalizationUiState, NotCollectedDialog,
+    PreviewUiState, SuppUiState, ValidationUiState, ViewState, WorkflowMode,
 };
 
 use tss_model::TerminologyRegistry;

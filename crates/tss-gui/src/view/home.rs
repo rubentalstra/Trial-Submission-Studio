@@ -7,7 +7,7 @@
 //! - Recent studies list
 //! - Study overview (when loaded) with domain list
 
-use iced::widget::{Space, button, center, column, container, row, scrollable, text};
+use iced::widget::{Space, button, column, container, row, scrollable, text};
 use iced::{Alignment, Border, Element, Length};
 
 use crate::component::modal;
