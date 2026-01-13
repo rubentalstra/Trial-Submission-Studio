@@ -13,7 +13,8 @@ use std::path::PathBuf;
 
 use iced::keyboard;
 
-use crate::state::navigation::{EditorTab, View, WorkflowMode};
+// Use new state types
+use crate::state::{EditorTab, Study, ViewState, WorkflowMode};
 
 pub use dialog::DialogMessage;
 pub use domain_editor::DomainEditorMessage;
@@ -34,70 +35,70 @@ pub enum Message {
     // =========================================================================
     // Navigation
     // =========================================================================
-    /// Navigate to a different view
-    Navigate(View),
+    /// Navigate to a different view.
+    Navigate(ViewState),
 
-    /// Change the workflow mode (SDTM, ADaM, SEND)
+    /// Change the workflow mode (SDTM, ADaM, SEND).
     SetWorkflowMode(WorkflowMode),
 
     // =========================================================================
     // View-specific messages
     // =========================================================================
-    /// Home view messages
+    /// Home view messages.
     Home(HomeMessage),
 
-    /// Domain editor messages (includes all tabs)
+    /// Domain editor messages (includes all tabs).
     DomainEditor(DomainEditorMessage),
 
-    /// Export view messages
+    /// Export view messages.
     Export(ExportMessage),
 
     // =========================================================================
     // Dialogs
     // =========================================================================
-    /// Dialog messages (About, Settings, ThirdParty, Update)
+    /// Dialog messages (About, Settings, ThirdParty, Update).
     Dialog(DialogMessage),
 
     // =========================================================================
     // Menu
     // =========================================================================
-    /// Menu action messages
+    /// Menu action messages.
     Menu(MenuMessage),
 
     // =========================================================================
     // Background task results
     // =========================================================================
-    /// Study loading completed
-    StudyLoaded(Result<crate::state::StudyState, String>),
+    /// Study loading completed.
+    StudyLoaded(Result<Study, String>),
 
-    /// Preview computation completed for a domain
+    /// Preview computation completed for a domain.
     PreviewReady {
         domain: String,
         result: Result<polars::prelude::DataFrame, String>,
     },
 
-    /// Validation completed for a domain
+    /// Validation completed for a domain.
     ValidationComplete {
         domain: String,
         report: ValidationReport,
     },
 
-    /// Update check completed
+    /// Update check completed.
     UpdateCheckComplete(Result<Option<UpdateInfo>, String>),
 
     // =========================================================================
     // Global events
     // =========================================================================
-    /// Keyboard event
+    /// Keyboard event.
     KeyPressed(keyboard::Key, keyboard::Modifiers),
 
-    /// Periodic tick (for polling, animations)
-    Tick,
-
-    /// File dialog returned a folder selection
+    /// File dialog returned a folder selection.
     FolderSelected(Option<PathBuf>),
 
-    /// No operation - used for placeholder actions
+    /// Dismiss error message.
+    DismissError,
+
+    /// No operation - used for placeholder actions.
     Noop,
 }
 
@@ -112,16 +113,16 @@ pub struct UpdateInfo {
 impl Message {
     /// Creates a navigation message to go to the home view.
     pub fn go_home() -> Self {
-        Self::Navigate(View::Home)
+        Self::Navigate(ViewState::home())
     }
 
     /// Creates a navigation message to go to the export view.
     pub fn go_export() -> Self {
-        Self::Navigate(View::Export)
+        Self::Navigate(ViewState::export())
     }
 
     /// Creates a navigation message to go to a domain editor.
-    pub fn go_domain(domain: String, tab: EditorTab) -> Self {
-        Self::Navigate(View::DomainEditor { domain, tab })
+    pub fn go_domain(domain: impl Into<String>, tab: EditorTab) -> Self {
+        Self::Navigate(ViewState::domain_editor(domain, tab))
     }
 }

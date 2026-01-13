@@ -12,7 +12,7 @@ use iced::{Alignment, Border, Element, Length};
 
 use crate::component::modal;
 use crate::message::{HomeMessage, Message};
-use crate::state::{AppState, StudyState, WorkflowMode};
+use crate::state::{AppState, Domain, Study, ViewState, WorkflowMode};
 use crate::theme::{
     BORDER_RADIUS_MD, GRAY_100, GRAY_200, GRAY_500, GRAY_600, GRAY_700, GRAY_800, GRAY_900,
     PRIMARY_500, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XL, SUCCESS, WARNING, WHITE,
@@ -28,10 +28,19 @@ use crate::theme::{
 /// Shows either the study selector (no study loaded) or the study overview
 /// (study loaded with domain list).
 pub fn view_home<'a>(state: &'a AppState) -> Element<'a, Message> {
+    // Get workflow mode and close_confirm from view state
+    let (workflow_mode, close_confirm) = match &state.view {
+        ViewState::Home {
+            workflow_mode,
+            close_confirm,
+        } => (*workflow_mode, *close_confirm),
+        _ => (WorkflowMode::default(), false),
+    };
+
     let content = if state.study.is_some() {
-        view_study_loaded(state)
+        view_study_loaded(state, workflow_mode)
     } else {
-        view_no_study(state)
+        view_no_study(state, workflow_mode)
     };
 
     // Wrap content in a centered container
@@ -41,7 +50,7 @@ pub fn view_home<'a>(state: &'a AppState) -> Element<'a, Message> {
         .padding(SPACING_XL);
 
     // Check if we need to show the close study confirmation modal
-    if state.ui.close_study_confirm {
+    if close_confirm {
         view_close_study_modal(main_content.into())
     } else {
         main_content.into()
@@ -53,7 +62,7 @@ pub fn view_home<'a>(state: &'a AppState) -> Element<'a, Message> {
 // =============================================================================
 
 /// View when no study is loaded - shows welcome message and study selector.
-fn view_no_study<'a>(state: &'a AppState) -> Element<'a, Message> {
+fn view_no_study<'a>(state: &'a AppState, workflow_mode: WorkflowMode) -> Element<'a, Message> {
     let title = text("Trial Submission Studio").size(32).color(GRAY_900);
 
     let tagline = text("Transform clinical data to regulatory formats")
@@ -61,7 +70,7 @@ fn view_no_study<'a>(state: &'a AppState) -> Element<'a, Message> {
         .color(GRAY_500);
 
     // Workflow mode selector card
-    let selector_card = view_workflow_selector(state.workflow_mode);
+    let selector_card = view_workflow_selector(workflow_mode);
 
     // Recent studies section
     let recent_studies = view_recent_studies(state);
@@ -195,10 +204,53 @@ fn view_mode_button<'a>(
 }
 
 /// Recent studies list section.
-fn view_recent_studies<'a>(_state: &'a AppState) -> Element<'a, Message> {
-    // TODO: Implement recent studies from settings
-    // For now, show a placeholder
-    column![].into()
+fn view_recent_studies<'a>(state: &'a AppState) -> Element<'a, Message> {
+    let recent = &state.settings.general.recent_studies;
+
+    if recent.is_empty() {
+        return column![].into();
+    }
+
+    let header = text("Recent Studies").size(14).color(GRAY_700);
+
+    let mut items = column![].spacing(SPACING_SM);
+    for path in recent.iter().take(5) {
+        let display = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("Unknown");
+
+        let path_clone = path.clone();
+        let item = button(
+            row![
+                text("\u{f07b}") // folder icon
+                    .font(iced::Font::with_name("Font Awesome 6 Free Solid"))
+                    .size(12)
+                    .color(GRAY_500),
+                text(display).size(13).color(GRAY_700),
+            ]
+            .spacing(SPACING_SM)
+            .align_y(Alignment::Center),
+        )
+        .on_press(Message::Home(HomeMessage::RecentStudyClicked(path_clone)))
+        .padding([6.0, 12.0])
+        .style(|_theme, status| {
+            let bg = match status {
+                iced::widget::button::Status::Hovered => Some(GRAY_100.into()),
+                _ => None,
+            };
+            iced::widget::button::Style {
+                background: bg,
+                text_color: GRAY_700,
+                border: Border::default(),
+                ..Default::default()
+            }
+        });
+
+        items = items.push(item);
+    }
+
+    column![header, Space::new().height(SPACING_SM), items,].into()
 }
 
 // =============================================================================
@@ -206,11 +258,11 @@ fn view_recent_studies<'a>(_state: &'a AppState) -> Element<'a, Message> {
 // =============================================================================
 
 /// View when a study is loaded - shows study info and domain list.
-fn view_study_loaded<'a>(state: &'a AppState) -> Element<'a, Message> {
+fn view_study_loaded<'a>(state: &'a AppState, workflow_mode: WorkflowMode) -> Element<'a, Message> {
     let study = state.study.as_ref().unwrap();
 
     // Header with study name and close button
-    let header = view_study_header(study, state.workflow_mode);
+    let header = view_study_header(study, workflow_mode);
 
     // Domain list
     let domain_list = view_domain_list(study);
@@ -243,7 +295,7 @@ fn view_study_loaded<'a>(state: &'a AppState) -> Element<'a, Message> {
 }
 
 /// Study header with name, mode badge, and close button.
-fn view_study_header<'a>(study: &'a StudyState, mode: WorkflowMode) -> Element<'a, Message> {
+fn view_study_header<'a>(study: &'a Study, mode: WorkflowMode) -> Element<'a, Message> {
     let study_name = text(&study.study_id).size(24).color(GRAY_900);
 
     // Mode badge
@@ -293,7 +345,7 @@ fn view_study_header<'a>(study: &'a StudyState, mode: WorkflowMode) -> Element<'
 }
 
 /// Domain list showing all discovered domains.
-fn view_domain_list<'a>(study: &'a StudyState) -> Element<'a, Message> {
+fn view_domain_list<'a>(study: &'a Study) -> Element<'a, Message> {
     let header = row![
         text("\u{f1c0}") // database icon
             .font(iced::Font::with_name("Font Awesome 6 Free Solid"))
@@ -309,7 +361,7 @@ fn view_domain_list<'a>(study: &'a StudyState) -> Element<'a, Message> {
     let mut domain_items = column![].spacing(SPACING_SM);
 
     for code in domain_codes {
-        if let Some(domain) = study.get_domain(code) {
+        if let Some(domain) = study.domain(code) {
             let item = view_domain_item(code, domain);
             domain_items = domain_items.push(item);
         }
@@ -330,10 +382,7 @@ fn view_domain_list<'a>(study: &'a StudyState) -> Element<'a, Message> {
 }
 
 /// A single domain item in the list.
-fn view_domain_item<'a>(
-    code: &'a str,
-    domain: &'a crate::state::DomainState,
-) -> Element<'a, Message> {
+fn view_domain_item<'a>(code: &'a str, domain: &'a Domain) -> Element<'a, Message> {
     let display_name = domain.display_name(code);
     let row_count = domain.row_count();
     let is_complete = domain.is_mapping_complete();

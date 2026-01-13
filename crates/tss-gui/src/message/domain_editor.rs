@@ -3,7 +3,7 @@
 //! Messages for the domain editor view including all five tabs:
 //! Mapping, Transform, Validation, Preview, and SUPP.
 
-use crate::state::navigation::EditorTab;
+use crate::state::EditorTab;
 
 /// Messages for the Domain Editor view.
 #[derive(Debug, Clone)]
