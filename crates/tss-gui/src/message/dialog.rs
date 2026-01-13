@@ -145,10 +145,10 @@ pub enum ExportSettingsMessage {
     DefaultOutputDirChanged(String),
 
     /// Change default export format
-    DefaultFormatChanged(super::export::ExportFormat),
+    DefaultFormatChanged(crate::state::ExportFormat),
 
     /// Change default XPT version
-    DefaultXptVersionChanged(super::export::XptVersion),
+    DefaultXptVersionChanged(crate::state::XptVersion),
 }
 
 /// Display settings messages.

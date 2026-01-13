@@ -17,7 +17,12 @@ use tss_model::TerminologyRegistry;
 // Use new state types
 use crate::state::{EditorTab, Study, ViewState, WorkflowMode};
 
-pub use dialog::DialogMessage;
+pub use dialog::{
+    AboutMessage, DeveloperSettingsMessage, DialogMessage, DisplaySettingsMessage,
+    ExportSettingsMessage, GeneralSettingsMessage, SettingsCategory, SettingsMessage,
+    ThirdPartyMessage, UpdateCheckFrequency, UpdateMessage, UpdateSettingsMessage,
+    ValidationSettingsMessage,
+};
 pub use domain_editor::DomainEditorMessage;
 pub use export::ExportMessage;
 pub use home::HomeMessage;

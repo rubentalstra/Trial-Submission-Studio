@@ -11,7 +11,6 @@
 //! and makes it clear what state belongs to which view.
 
 use polars::prelude::DataFrame;
-use std::collections::BTreeMap;
 use tss_validate::ValidationReport;
 
 use super::domain::{SuppColumnConfig, SuppOrigin};
@@ -459,21 +458,40 @@ pub enum SuppFilterMode {
 // EXPORT VIEW STATE
 // =============================================================================
 
-/// UI state for the export view.
+use std::collections::HashSet;
+use std::path::PathBuf;
+
+/// Export phase - tracks the current state of the export workflow.
 #[derive(Debug, Clone, Default)]
-pub struct ExportViewState {
-    /// Selected domains for export.
-    pub selected_domains: BTreeMap<String, bool>,
-    /// Export in progress.
-    pub is_exporting: bool,
-    /// Current export step description.
-    pub current_step: Option<String>,
-    /// Export progress (0.0 to 1.0).
-    pub progress: f32,
-    /// Files that have been written.
-    pub written_files: Vec<std::path::PathBuf>,
-    /// Export result.
-    pub result: Option<ExportResult>,
+pub enum ExportPhase {
+    /// Idle - configuring export options.
+    #[default]
+    Idle,
+    /// Exporting - background task in progress.
+    Exporting {
+        /// Current domain being processed.
+        current_domain: Option<String>,
+        /// Current step label.
+        current_step: String,
+        /// Progress 0.0 to 1.0.
+        progress: f32,
+        /// Files written so far.
+        files_written: Vec<PathBuf>,
+    },
+    /// Complete - export finished (success or error).
+    Complete(ExportResult),
+}
+
+impl ExportPhase {
+    /// Check if export is in progress.
+    pub fn is_exporting(&self) -> bool {
+        matches!(self, Self::Exporting { .. })
+    }
+
+    /// Check if export is complete.
+    pub fn is_complete(&self) -> bool {
+        matches!(self, Self::Complete(_))
+    }
 }
 
 /// Export result.
@@ -481,11 +499,116 @@ pub struct ExportViewState {
 pub enum ExportResult {
     /// Export succeeded.
     Success {
-        files: Vec<std::path::PathBuf>,
+        /// Output directory.
+        output_dir: PathBuf,
+        /// Files that were written.
+        files: Vec<PathBuf>,
+        /// Number of domains exported.
         domains_exported: usize,
+        /// Elapsed time in milliseconds.
+        elapsed_ms: u64,
+        /// Any warnings generated.
+        warnings: Vec<String>,
     },
     /// Export failed.
-    Error { message: String },
-    /// Export was cancelled.
+    Error {
+        /// Error message.
+        message: String,
+        /// Domain that caused the error (if applicable).
+        domain: Option<String>,
+    },
+    /// Export was cancelled by user.
     Cancelled,
+}
+
+impl ExportResult {
+    /// Check if result is successful.
+    pub fn is_success(&self) -> bool {
+        matches!(self, Self::Success { .. })
+    }
+
+    /// Check if result is an error.
+    pub fn is_error(&self) -> bool {
+        matches!(self, Self::Error { .. })
+    }
+}
+
+/// UI state for the export view.
+///
+/// # Design
+///
+/// The export view follows a master-detail pattern:
+/// - **Left panel**: Domain selection list with status indicators
+/// - **Right panel**: Export configuration (format, output dir, options)
+///
+/// State is organized into:
+/// - Selection state (which domains to export)
+/// - Configuration state (format, output dir) - uses types from settings module
+/// - Phase state (idle/exporting/complete)
+#[derive(Debug, Clone)]
+pub struct ExportViewState {
+    /// Selected domain codes for export.
+    pub selected_domains: HashSet<String>,
+    /// Custom output directory (None = use default: study_folder/export).
+    pub output_dir: Option<PathBuf>,
+    /// Current export phase.
+    pub phase: ExportPhase,
+}
+
+impl Default for ExportViewState {
+    fn default() -> Self {
+        Self {
+            selected_domains: HashSet::new(),
+            output_dir: None,
+            phase: ExportPhase::default(),
+        }
+    }
+}
+
+impl ExportViewState {
+    /// Check if a domain is selected.
+    pub fn is_selected(&self, domain: &str) -> bool {
+        self.selected_domains.contains(domain)
+    }
+
+    /// Toggle domain selection.
+    pub fn toggle_domain(&mut self, domain: &str) {
+        if self.selected_domains.contains(domain) {
+            self.selected_domains.remove(domain);
+        } else {
+            self.selected_domains.insert(domain.to_string());
+        }
+    }
+
+    /// Select all domains from a list.
+    pub fn select_all(&mut self, domains: impl IntoIterator<Item = String>) {
+        self.selected_domains.extend(domains);
+    }
+
+    /// Deselect all domains.
+    pub fn deselect_all(&mut self) {
+        self.selected_domains.clear();
+    }
+
+    /// Number of selected domains.
+    pub fn selection_count(&self) -> usize {
+        self.selected_domains.len()
+    }
+
+    /// Check if export can start.
+    pub fn can_export(&self) -> bool {
+        !self.selected_domains.is_empty() && !self.phase.is_exporting()
+    }
+
+    /// Reset to idle state (after completion modal dismissed).
+    pub fn reset_phase(&mut self) {
+        self.phase = ExportPhase::Idle;
+    }
+
+    /// Get the effective output directory.
+    pub fn effective_output_dir(&self, study_folder: &std::path::Path) -> PathBuf {
+        self.output_dir
+            .clone()
+            .unwrap_or_else(|| study_folder.join("export"))
+    }
 }

@@ -15,12 +15,16 @@ use iced::keyboard;
 use iced::widget::{column, container, text};
 use iced::{Element, Subscription, Task, Theme};
 
-use crate::message::{DomainEditorMessage, HomeMessage, Message};
+use crate::message::{
+    AboutMessage, DialogMessage, DomainEditorMessage, ExportMessage, HomeMessage, Message,
+    SettingsCategory, SettingsMessage, ThirdPartyMessage, UpdateMessage,
+};
 use crate::state::{
-    AppState, Domain, DomainSource, EditorTab, NotCollectedEdit, Settings, Study, SuppColumnConfig,
-    SuppEditDraft, ViewState,
+    ActiveDialog, AppState, Domain, DomainSource, EditorTab, ExportPhase, ExportResult,
+    NotCollectedEdit, Settings, Study, SuppColumnConfig, SuppEditDraft, ViewState,
 };
 use crate::theme::clinical_light;
+use crate::view::dialog::update::UpdateState;
 use crate::view::view_home;
 
 // =============================================================================
@@ -85,18 +89,12 @@ impl App {
             // =================================================================
             // Export messages
             // =================================================================
-            Message::Export(_export_msg) => {
-                // TODO: Implement in Phase 5
-                Task::none()
-            }
+            Message::Export(export_msg) => self.handle_export_message(export_msg),
 
             // =================================================================
             // Dialog messages
             // =================================================================
-            Message::Dialog(_dialog_msg) => {
-                // TODO: Implement in Phase 5
-                Task::none()
-            }
+            Message::Dialog(dialog_msg) => self.handle_dialog_message(dialog_msg),
 
             // =================================================================
             // Menu messages
@@ -207,21 +205,43 @@ impl App {
     ///
     /// This is a pure function that produces UI based on current state.
     pub fn view(&self) -> Element<'_, Message> {
-        use crate::view::view_domain_editor;
+        use crate::view::{
+            view_about_dialog, view_domain_editor, view_export, view_settings_dialog,
+            view_third_party_dialog, view_update_dialog,
+        };
 
+        // Render main content
         let content: Element<'_, Message> = match &self.state.view {
             ViewState::Home { .. } => view_home(&self.state),
             ViewState::DomainEditor { domain, tab, .. } => {
                 view_domain_editor(&self.state, domain, *tab)
             }
-            ViewState::Export(_) => self.view_export(),
+            ViewState::Export(_) => view_export(&self.state),
         };
 
         // Wrap in main container
-        container(content)
+        let main_view = container(content)
             .width(iced::Length::Fill)
-            .height(iced::Length::Fill)
-            .into()
+            .height(iced::Length::Fill);
+
+        // If a dialog is active, render it on top
+        match &self.state.active_dialog {
+            Some(ActiveDialog::About) => {
+                iced::widget::stack![main_view, view_about_dialog()].into()
+            }
+            Some(ActiveDialog::Settings(category)) => iced::widget::stack![
+                main_view,
+                view_settings_dialog(&self.state.settings, *category)
+            ]
+            .into(),
+            Some(ActiveDialog::ThirdParty) => {
+                iced::widget::stack![main_view, view_third_party_dialog()].into()
+            }
+            Some(ActiveDialog::Update(state)) => {
+                iced::widget::stack![main_view, view_update_dialog(state)].into()
+            }
+            None => main_view.into(),
+        }
     }
 
     /// Get the window title.
@@ -1238,19 +1258,397 @@ impl App {
 }
 
 // =============================================================================
-// VIEW IMPLEMENTATIONS (Placeholder)
+// EXPORT MESSAGE HANDLERS
 // =============================================================================
 
 impl App {
-    fn view_export(&self) -> Element<'_, Message> {
-        // Placeholder - will be implemented in Phase 5
-        column![
-            text("Export").size(24),
-            text("Configure and export your domains.").size(16),
-        ]
-        .spacing(16)
-        .padding(32)
-        .into()
+    fn handle_export_message(&mut self, msg: ExportMessage) -> Task<Message> {
+        match msg {
+            ExportMessage::DomainToggled(domain) => {
+                if let ViewState::Export(export_state) = &mut self.state.view {
+                    export_state.toggle_domain(&domain);
+                }
+                Task::none()
+            }
+
+            ExportMessage::SelectAll => {
+                if let Some(study) = &self.state.study {
+                    let domains: Vec<String> = study
+                        .domain_codes()
+                        .into_iter()
+                        .map(|s| s.to_string())
+                        .collect();
+                    if let ViewState::Export(export_state) = &mut self.state.view {
+                        export_state.select_all(domains);
+                    }
+                }
+                Task::none()
+            }
+
+            ExportMessage::DeselectAll => {
+                if let ViewState::Export(export_state) = &mut self.state.view {
+                    export_state.deselect_all();
+                }
+                Task::none()
+            }
+
+            ExportMessage::FormatChanged(format) => {
+                self.state.settings.export.default_format = format;
+                let _ = self.state.settings.save();
+                Task::none()
+            }
+
+            ExportMessage::OutputDirChangeClicked => Task::perform(
+                async {
+                    rfd::AsyncFileDialog::new()
+                        .set_title("Select Output Directory")
+                        .pick_folder()
+                        .await
+                        .map(|handle| handle.path().to_path_buf())
+                },
+                |path| match path {
+                    Some(p) => Message::Export(ExportMessage::OutputDirSelected(p)),
+                    None => Message::Noop,
+                },
+            ),
+
+            ExportMessage::OutputDirSelected(path) => {
+                if let ViewState::Export(export_state) = &mut self.state.view {
+                    export_state.output_dir = Some(path);
+                }
+                Task::none()
+            }
+
+            ExportMessage::XptVersionChanged(version) => {
+                self.state.settings.export.xpt_version = version;
+                let _ = self.state.settings.save();
+                Task::none()
+            }
+
+            ExportMessage::ToggleDefineXml => {
+                // Define-XML is always generated - this is a no-op
+                Task::none()
+            }
+
+            ExportMessage::StartExport => {
+                // Get export configuration
+                let (selected_domains, output_dir) = match &self.state.view {
+                    ViewState::Export(export_state) => {
+                        let study_folder = self
+                            .state
+                            .study
+                            .as_ref()
+                            .map(|s| s.study_folder.clone())
+                            .unwrap_or_default();
+                        (
+                            export_state.selected_domains.clone(),
+                            export_state.effective_output_dir(&study_folder),
+                        )
+                    }
+                    _ => return Task::none(),
+                };
+
+                if selected_domains.is_empty() {
+                    return Task::none();
+                }
+
+                // Set exporting state
+                if let ViewState::Export(export_state) = &mut self.state.view {
+                    export_state.phase = ExportPhase::Exporting {
+                        current_domain: None,
+                        current_step: "Preparing...".to_string(),
+                        progress: 0.0,
+                        files_written: vec![],
+                    };
+                }
+
+                // TODO: Start actual export task
+                // For now, just simulate completion
+                Task::done(Message::Export(ExportMessage::Complete(
+                    ExportResult::Success {
+                        output_dir,
+                        files: vec![],
+                        domains_exported: selected_domains.len(),
+                        elapsed_ms: 0,
+                        warnings: vec![],
+                    },
+                )))
+            }
+
+            ExportMessage::CancelExport => {
+                if let ViewState::Export(export_state) = &mut self.state.view {
+                    export_state.phase = ExportPhase::Complete(ExportResult::Cancelled);
+                }
+                Task::none()
+            }
+
+            ExportMessage::Progress(progress) => {
+                if let ViewState::Export(export_state) = &mut self.state.view {
+                    if let ExportPhase::Exporting {
+                        current_domain,
+                        current_step,
+                        progress: prog,
+                        files_written: _,
+                    } = &mut export_state.phase
+                    {
+                        use crate::message::export::ExportProgress;
+                        match progress {
+                            ExportProgress::StartingDomain(domain) => {
+                                *current_domain = Some(domain);
+                            }
+                            ExportProgress::Step(step) => {
+                                *current_step = step.label().to_string();
+                            }
+                            ExportProgress::DomainComplete(_domain) => {
+                                // Domain done
+                            }
+                            ExportProgress::OverallProgress(p) => {
+                                *prog = p;
+                            }
+                        }
+                    }
+                }
+                Task::none()
+            }
+
+            ExportMessage::Complete(result) => {
+                if let ViewState::Export(export_state) = &mut self.state.view {
+                    export_state.phase = ExportPhase::Complete(result);
+                }
+                Task::none()
+            }
+
+            ExportMessage::DismissCompletion => {
+                if let ViewState::Export(export_state) = &mut self.state.view {
+                    export_state.reset_phase();
+                }
+                Task::none()
+            }
+
+            ExportMessage::RetryExport => {
+                if let ViewState::Export(export_state) = &mut self.state.view {
+                    export_state.reset_phase();
+                }
+                // Could restart export here
+                Task::none()
+            }
+
+            ExportMessage::OpenOutputFolder => {
+                if let ViewState::Export(ref export_state) = self.state.view {
+                    if let ExportPhase::Complete(ExportResult::Success { output_dir, .. }) =
+                        &export_state.phase
+                    {
+                        let _ = open::that(output_dir);
+                    }
+                }
+                Task::none()
+            }
+        }
+    }
+}
+
+// =============================================================================
+// DIALOG MESSAGE HANDLERS
+// =============================================================================
+
+impl App {
+    fn handle_dialog_message(&mut self, msg: DialogMessage) -> Task<Message> {
+        match msg {
+            DialogMessage::About(about_msg) => self.handle_about_message(about_msg),
+            DialogMessage::Settings(settings_msg) => self.handle_settings_message(settings_msg),
+            DialogMessage::ThirdParty(tp_msg) => self.handle_third_party_message(tp_msg),
+            DialogMessage::Update(update_msg) => self.handle_update_message(update_msg),
+            DialogMessage::CloseAll => {
+                self.state.active_dialog = None;
+                Task::none()
+            }
+        }
+    }
+
+    fn handle_about_message(&mut self, msg: AboutMessage) -> Task<Message> {
+        match msg {
+            AboutMessage::Open => {
+                self.state.active_dialog = Some(ActiveDialog::About);
+                Task::none()
+            }
+            AboutMessage::Close => {
+                self.state.active_dialog = None;
+                Task::none()
+            }
+            AboutMessage::OpenWebsite => {
+                let _ = open::that("https://trialsubmissionstudio.com");
+                Task::none()
+            }
+            AboutMessage::OpenGitHub => {
+                let _ = open::that("https://github.com/rubentalstra/trial-submission-studio");
+                Task::none()
+            }
+        }
+    }
+
+    fn handle_settings_message(&mut self, msg: SettingsMessage) -> Task<Message> {
+        match msg {
+            SettingsMessage::Open => {
+                self.state.active_dialog =
+                    Some(ActiveDialog::Settings(SettingsCategory::default()));
+                Task::none()
+            }
+            SettingsMessage::Close => {
+                self.state.active_dialog = None;
+                Task::none()
+            }
+            SettingsMessage::Apply => {
+                let _ = self.state.settings.save();
+                self.state.active_dialog = None;
+                Task::none()
+            }
+            SettingsMessage::ResetToDefaults => {
+                self.state.settings = Settings::default();
+                Task::none()
+            }
+            SettingsMessage::CategorySelected(category) => {
+                self.state.active_dialog = Some(ActiveDialog::Settings(category));
+                Task::none()
+            }
+            SettingsMessage::General(general_msg) => {
+                use crate::message::GeneralSettingsMessage;
+                match general_msg {
+                    GeneralSettingsMessage::CtVersionChanged(_version) => {
+                        // CT version change - would reload terminology
+                    }
+                    GeneralSettingsMessage::HeaderRowsChanged(rows) => {
+                        self.state.settings.general.header_rows = rows;
+                    }
+                }
+                Task::none()
+            }
+            SettingsMessage::Validation(_val_msg) => {
+                // Handle validation settings
+                Task::none()
+            }
+            SettingsMessage::Developer(_dev_msg) => {
+                // Handle developer settings
+                Task::none()
+            }
+            SettingsMessage::Export(export_msg) => {
+                use crate::message::ExportSettingsMessage;
+                match export_msg {
+                    ExportSettingsMessage::DefaultOutputDirChanged(_dir) => {
+                        // Handle output dir change
+                    }
+                    ExportSettingsMessage::DefaultFormatChanged(format) => {
+                        self.state.settings.export.default_format = format;
+                    }
+                    ExportSettingsMessage::DefaultXptVersionChanged(version) => {
+                        self.state.settings.export.xpt_version = version;
+                    }
+                }
+                Task::none()
+            }
+            SettingsMessage::Display(_display_msg) => {
+                // Handle display settings
+                Task::none()
+            }
+            SettingsMessage::Updates(update_msg) => {
+                use crate::message::UpdateSettingsMessage;
+                match update_msg {
+                    UpdateSettingsMessage::AutoCheckToggled(enabled) => {
+                        self.state.settings.general.auto_check_updates = enabled;
+                    }
+                    UpdateSettingsMessage::CheckFrequencyChanged(_freq) => {
+                        // Handle frequency change
+                    }
+                }
+                Task::none()
+            }
+        }
+    }
+
+    fn handle_third_party_message(&mut self, msg: ThirdPartyMessage) -> Task<Message> {
+        match msg {
+            ThirdPartyMessage::Open => {
+                self.state.active_dialog = Some(ActiveDialog::ThirdParty);
+                Task::none()
+            }
+            ThirdPartyMessage::Close => {
+                self.state.active_dialog = None;
+                Task::none()
+            }
+            ThirdPartyMessage::ScrollTo(_position) => {
+                // Handle scroll - would need scrollable state
+                Task::none()
+            }
+        }
+    }
+
+    fn handle_update_message(&mut self, msg: UpdateMessage) -> Task<Message> {
+        match msg {
+            UpdateMessage::Open => {
+                self.state.active_dialog = Some(ActiveDialog::Update(UpdateState::Idle));
+                Task::none()
+            }
+            UpdateMessage::Close => {
+                self.state.active_dialog = None;
+                Task::none()
+            }
+            UpdateMessage::CheckForUpdates => {
+                // Set checking state
+                self.state.active_dialog = Some(ActiveDialog::Update(UpdateState::Checking));
+                // TODO: Start actual update check
+                // For now, simulate up-to-date
+                Task::done(Message::Dialog(DialogMessage::Update(
+                    UpdateMessage::CheckResult(Ok(None)),
+                )))
+            }
+            UpdateMessage::CheckResult(result) => {
+                match result {
+                    Ok(Some(info)) => {
+                        self.state.active_dialog =
+                            Some(ActiveDialog::Update(UpdateState::Available(info)));
+                    }
+                    Ok(None) => {
+                        self.state.active_dialog =
+                            Some(ActiveDialog::Update(UpdateState::UpToDate));
+                    }
+                    Err(err) => {
+                        self.state.active_dialog =
+                            Some(ActiveDialog::Update(UpdateState::Error(err)));
+                    }
+                }
+                Task::none()
+            }
+            UpdateMessage::StartInstall => {
+                self.state.active_dialog = Some(ActiveDialog::Update(UpdateState::Installing {
+                    progress: 0.0,
+                }));
+                // TODO: Start actual installation
+                Task::none()
+            }
+            UpdateMessage::InstallProgress(progress) => {
+                self.state.active_dialog =
+                    Some(ActiveDialog::Update(UpdateState::Installing { progress }));
+                Task::none()
+            }
+            UpdateMessage::InstallComplete(result) => {
+                match result {
+                    Ok(()) => {
+                        self.state.active_dialog =
+                            Some(ActiveDialog::Update(UpdateState::InstallComplete));
+                    }
+                    Err(err) => {
+                        self.state.active_dialog =
+                            Some(ActiveDialog::Update(UpdateState::Error(err)));
+                    }
+                }
+                Task::none()
+            }
+            UpdateMessage::RestartApp => {
+                // Would restart the application
+                // For now, just close the dialog
+                self.state.active_dialog = None;
+                Task::none()
+            }
+        }
     }
 }
 

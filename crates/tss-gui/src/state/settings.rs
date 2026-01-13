@@ -191,11 +191,27 @@ pub enum ExportFormat {
 }
 
 impl ExportFormat {
-    /// Get display name.
+    /// All available formats.
+    pub const ALL: [ExportFormat; 2] = [Self::Xpt, Self::DatasetXml];
+
+    /// Get display name (alias for label).
     pub fn display_name(&self) -> &'static str {
+        self.label()
+    }
+
+    /// Human-readable label.
+    pub fn label(&self) -> &'static str {
         match self {
             Self::Xpt => "XPT (SAS Transport)",
             Self::DatasetXml => "Dataset-XML",
+        }
+    }
+
+    /// Brief description of the format.
+    pub fn description(&self) -> &'static str {
+        match self {
+            Self::Xpt => "Industry standard format for FDA submissions",
+            Self::DatasetXml => "XML representation of CDISC datasets",
         }
     }
 
@@ -206,18 +222,15 @@ impl ExportFormat {
             Self::DatasetXml => "xml",
         }
     }
-
-    /// All formats.
-    pub const ALL: [ExportFormat; 2] = [Self::Xpt, Self::DatasetXml];
 }
 
 /// XPT version for SAS transport files.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum XptVersion {
-    /// Version 5 (legacy, wider compatibility).
-    V5,
-    /// Version 8 (modern, recommended).
+    /// Version 5.
     #[default]
+    V5,
+    /// Version 8.
     V8,
 }
 
@@ -225,8 +238,8 @@ impl XptVersion {
     /// Get display name.
     pub fn display_name(&self) -> &'static str {
         match self {
-            Self::V5 => "Version 5 (Legacy)",
-            Self::V8 => "Version 8 (Modern)",
+            Self::V5 => "Version 5 (FDA)",
+            Self::V8 => "Version 8",
         }
     }
 }

@@ -31,13 +31,15 @@ mod view_state;
 
 // Re-exports
 pub use domain::{Domain, DomainSource, SuppAction, SuppColumnConfig, SuppOrigin};
-pub use settings::{ExportFormat, ExportSettings, GeneralSettings, Settings};
+pub use settings::{ExportFormat, ExportSettings, GeneralSettings, Settings, XptVersion};
 pub use study::Study;
 pub use view_state::{
-    EditorTab, ExportFormat, ExportPhase, ExportResult, ExportViewState, MappingUiState,
-    NormalizationUiState, NotCollectedEdit, PreviewUiState, SeverityFilter, SuppEditDraft,
-    SuppFilterMode, SuppUiState, ValidationUiState, ViewState, WorkflowMode, XptVersion,
+    EditorTab, ExportPhase, ExportResult, ExportViewState, MappingUiState, NormalizationUiState,
+    NotCollectedEdit, PreviewUiState, SeverityFilter, SuppEditDraft, SuppFilterMode, SuppUiState,
+    ValidationUiState, ViewState, WorkflowMode,
 };
+
+// Re-export ActiveDialog (defined below in this module)
 
 use tss_model::TerminologyRegistry;
 
@@ -95,6 +97,22 @@ pub struct AppState {
 
     /// Whether a background task is running (for UI feedback).
     pub is_loading: bool,
+
+    /// Currently open dialog (None if no dialog is open).
+    pub active_dialog: Option<ActiveDialog>,
+}
+
+/// Currently active dialog.
+#[derive(Debug, Clone)]
+pub enum ActiveDialog {
+    /// About dialog.
+    About,
+    /// Settings dialog with current category.
+    Settings(crate::message::SettingsCategory),
+    /// Third-party licenses dialog.
+    ThirdParty,
+    /// Update dialog with current state.
+    Update(crate::view::dialog::update::UpdateState),
 }
 
 impl Default for AppState {
@@ -106,6 +124,7 @@ impl Default for AppState {
             terminology: None,
             error: None,
             is_loading: false,
+            active_dialog: None,
         }
     }
 }
