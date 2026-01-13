@@ -13,7 +13,7 @@ pub mod preview;
 pub mod supp;
 pub mod validation;
 
-use iced::widget::{Space, button, column, container, row, scrollable, text};
+use iced::widget::{Space, button, column, container, row, text};
 use iced::{Alignment, Border, Element, Length};
 use iced_fonts::lucide;
 
@@ -72,14 +72,13 @@ pub fn view_domain_editor<'a>(
         EditorTab::Supp => view_supp_tab(state, domain_code),
     };
 
-    // Main layout
+    // Main layout - content fills remaining space
+    // Note: Don't wrap in scrollable here - tabs like Mapping use master_detail
+    // which manages its own scrolling
     column![
         header,
         tabs,
-        container(scrollable(content).height(Length::Fill))
-            .width(Length::Fill)
-            .height(Length::Fill)
-            .padding(SPACING_LG),
+        container(content).width(Length::Fill).height(Length::Fill),
     ]
     .spacing(0)
     .into()

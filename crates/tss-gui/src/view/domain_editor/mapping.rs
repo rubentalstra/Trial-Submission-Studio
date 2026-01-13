@@ -10,7 +10,7 @@ use iced::widget::{Space, button, column, container, row, rule, scrollable, text
 use iced::{Alignment, Border, Element, Length, Theme};
 use iced_fonts::lucide;
 
-use crate::component::master_detail;
+use crate::component::master_detail_with_pinned_header;
 use crate::message::domain_editor::MappingMessage;
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{AppState, MappingUiState, ViewState};
@@ -95,13 +95,16 @@ pub fn view_mapping_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
         .map(|(idx, _)| idx)
         .collect();
 
-    // Build master panel (variable list)
-    let master = view_variable_list(domain, &filtered_indices, mapping_ui);
+    // Build master panel header (search, filters, stats - pinned at top)
+    let master_header = view_variable_list_header(domain, mapping_ui);
+
+    // Build master panel content (scrollable variable list)
+    let master_content = view_variable_list_content(domain, &filtered_indices, mapping_ui);
 
     // Build detail panel (selected variable)
     let detail = if let Some(selected_idx) = mapping_ui.selected_variable {
         if let Some(var) = sdtm_domain.variables.get(selected_idx) {
-            view_variable_detail(domain, var)
+            view_variable_detail(state, domain, var)
         } else {
             view_no_selection()
         }
@@ -109,22 +112,21 @@ pub fn view_mapping_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
         view_no_selection()
     };
 
-    // Use master-detail layout
-    master_detail(master, detail, MASTER_WIDTH)
+    // Use master-detail layout with pinned header
+    master_detail_with_pinned_header(master_header, master_content, detail, MASTER_WIDTH)
 }
 
 // =============================================================================
 // MASTER PANEL: VARIABLE LIST
 // =============================================================================
 
-/// Left panel: list of target SDTM variables.
-fn view_variable_list<'a>(
+/// Left panel header: search, filters, and stats (pinned at top).
+fn view_variable_list_header<'a>(
     domain: &'a crate::state::Domain,
-    filtered_indices: &[usize],
     mapping_ui: &'a MappingUiState,
 ) -> Element<'a, Message> {
-    // Header with search and filters
-    let header = view_list_header(mapping_ui);
+    // Search and filter controls
+    let search_filters = view_search_and_filters(mapping_ui);
 
     // Summary stats
     let summary = domain.summary();
@@ -137,6 +139,23 @@ fn view_variable_list<'a>(
     ]
     .align_y(Alignment::Center);
 
+    column![
+        search_filters,
+        Space::new().height(SPACING_SM),
+        stats,
+        Space::new().height(SPACING_SM),
+        rule::horizontal(1),
+        Space::new().height(SPACING_SM),
+    ]
+    .into()
+}
+
+/// Left panel content: scrollable list of variables.
+fn view_variable_list_content<'a>(
+    domain: &'a crate::state::Domain,
+    filtered_indices: &[usize],
+    mapping_ui: &'a MappingUiState,
+) -> Element<'a, Message> {
     // Get the SDTM domain for variable lookup
     let sdtm_domain = domain.mapping.domain();
 
@@ -152,8 +171,8 @@ fn view_variable_list<'a>(
         }
     }
 
-    // Empty state
-    let content: Element<'a, Message> = if filtered_indices.is_empty() {
+    // Empty state or list
+    if filtered_indices.is_empty() {
         container(
             column![
                 text("No variables match your filters")
@@ -174,23 +193,12 @@ fn view_variable_list<'a>(
         .center_x(Length::Shrink)
         .into()
     } else {
-        scrollable(items).height(Length::Fill).into()
-    };
-
-    column![
-        header,
-        Space::new().height(SPACING_SM),
-        stats,
-        Space::new().height(SPACING_SM),
-        rule::horizontal(1),
-        Space::new().height(SPACING_SM),
-        content,
-    ]
-    .into()
+        items.into()
+    }
 }
 
-/// Header with search box and filter toggles.
-fn view_list_header<'a>(mapping_ui: &'a MappingUiState) -> Element<'a, Message> {
+/// Search box and filter toggle buttons.
+fn view_search_and_filters<'a>(mapping_ui: &'a MappingUiState) -> Element<'a, Message> {
     // Search input
     let search_input = text_input("Search variables...", &mapping_ui.search_filter)
         .on_input(|s| {
@@ -345,6 +353,7 @@ fn view_variable_item<'a>(
 
 /// Right panel: details for selected variable.
 fn view_variable_detail<'a>(
+    state: &'a AppState,
     domain: &'a crate::state::Domain,
     var: &'a tss_model::Variable,
 ) -> Element<'a, Message> {
@@ -356,23 +365,43 @@ fn view_variable_detail<'a>(
     // Metadata section
     let metadata = view_variable_metadata(var);
 
+    // Controlled Terminology section (if variable has a codelist)
+    let ct_section: Element<'a, Message> = if var.codelist_code.is_some() {
+        view_controlled_terminology(state, var)
+    } else {
+        Space::new().height(0.0).into()
+    };
+
     // Current mapping status
     let mapping_status = view_mapping_status(domain, var, status);
+
+    // Source column picker (only show if unmapped or suggested)
+    let source_picker: Element<'a, Message> =
+        if matches!(status, VariableStatus::Unmapped | VariableStatus::Suggested) {
+            view_source_column_picker(domain, var)
+        } else {
+            Space::new().height(0.0).into()
+        };
 
     // Actions section
     let actions = view_mapping_actions(var, status);
 
-    column![
+    scrollable(column![
         header,
         Space::new().height(SPACING_MD),
         rule::horizontal(1),
         Space::new().height(SPACING_MD),
         metadata,
         Space::new().height(SPACING_LG),
+        ct_section,
         mapping_status,
+        Space::new().height(SPACING_MD),
+        source_picker,
         Space::new().height(SPACING_LG),
         actions,
-    ]
+        Space::new().height(SPACING_MD),
+    ])
+    .height(Length::Fill)
     .into()
 }
 
@@ -446,6 +475,180 @@ fn view_metadata_row<'a>(label: &'static str, value: impl ToString) -> Element<'
         text(value.to_string()).size(12).color(GRAY_800),
     ]
     .align_y(Alignment::Center)
+    .into()
+}
+
+// =============================================================================
+// CONTROLLED TERMINOLOGY SECTION
+// =============================================================================
+
+/// Display controlled terminology information for a variable.
+fn view_controlled_terminology<'a>(
+    state: &'a AppState,
+    var: &'a tss_model::Variable,
+) -> Element<'a, Message> {
+    let ct_code = match &var.codelist_code {
+        Some(code) => code,
+        None => return Space::new().height(0.0).into(),
+    };
+
+    // Try to resolve the codelist from the terminology registry
+    let resolved = state
+        .terminology
+        .as_ref()
+        .and_then(|reg| reg.resolve(ct_code, None));
+
+    let title_row = row![
+        lucide::list().size(14).color(PRIMARY_500),
+        Space::new().width(SPACING_SM),
+        text("Controlled Terminology").size(14).color(GRAY_700),
+    ]
+    .align_y(Alignment::Center);
+
+    let content: Element<'a, Message> = if let Some(resolved) = resolved {
+        let codelist = resolved.codelist;
+
+        // Codelist header info
+        let codelist_name = text(&codelist.name).size(13).color(GRAY_800);
+        let codelist_code_text = text(format!("({})", ct_code)).size(11).color(GRAY_500);
+
+        let extensible_badge = if codelist.extensible {
+            container(text("Extensible").size(10).color(GRAY_600))
+                .padding([2.0, 6.0])
+                .style(|_theme: &Theme| container::Style {
+                    background: Some(GRAY_200.into()),
+                    border: Border {
+                        radius: 4.0.into(),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                })
+        } else {
+            container(text("Non-extensible").size(10).color(ERROR))
+                .padding([2.0, 6.0])
+                .style(|_theme: &Theme| container::Style {
+                    background: Some(iced::Color::from_rgb(1.0, 0.95, 0.95).into()),
+                    border: Border {
+                        radius: 4.0.into(),
+                        color: ERROR,
+                        width: 1.0,
+                    },
+                    ..Default::default()
+                })
+        };
+
+        let header_row = row![
+            codelist_name,
+            Space::new().width(SPACING_XS),
+            codelist_code_text,
+            Space::new().width(Length::Fill),
+            extensible_badge,
+        ]
+        .align_y(Alignment::Center);
+
+        // Build terms list (limit to first 10 for space)
+        let terms: Vec<_> = codelist.terms.values().collect();
+        let show_count = terms.len().min(10);
+        let has_more = terms.len() > 10;
+
+        let mut terms_list = column![].spacing(2.0);
+
+        // Header row for the terms table
+        let terms_header = row![
+            text("Value")
+                .size(10)
+                .color(GRAY_500)
+                .width(Length::Fixed(350.0)),
+            text("Meaning").size(10).color(GRAY_500),
+        ]
+        .padding(SPACING_SM);
+
+        terms_list = terms_list.push(terms_header);
+        terms_list = terms_list.push(rule::horizontal(1).style(|_theme| rule::Style {
+            color: GRAY_200,
+            radius: 0.0.into(),
+            fill_mode: rule::FillMode::Full,
+            snap: true,
+        }));
+
+        for term in terms.iter().take(show_count) {
+            let meaning = term
+                .preferred_term
+                .as_deref()
+                .unwrap_or(&term.submission_value);
+
+            let term_row = row![
+                text(&term.submission_value)
+                    .size(12)
+                    .color(PRIMARY_500)
+                    .width(Length::Fixed(350.0)),
+                text(meaning).size(12).color(GRAY_700),
+            ]
+            .padding(SPACING_SM)
+            .align_y(Alignment::Center);
+
+            terms_list = terms_list.push(term_row);
+        }
+
+        // Show "and X more..." if truncated
+        if has_more {
+            let more_text = text(format!("... and {} more values", terms.len() - show_count))
+                .size(11)
+                .color(GRAY_500);
+            terms_list =
+                terms_list.push(container(more_text).padding([4.0, 8.0]).width(Length::Fill));
+        }
+
+        // Wrap terms in a styled container
+        let terms_container = container(terms_list)
+            .width(Length::Fill)
+            .style(|_theme: &Theme| container::Style {
+                background: Some(WHITE.into()),
+                border: Border {
+                    radius: BORDER_RADIUS_SM.into(),
+                    color: GRAY_200,
+                    width: 1.0,
+                },
+                ..Default::default()
+            });
+
+        column![
+            header_row,
+            Space::new().height(SPACING_SM),
+            text("Allowed Values:").size(11).color(GRAY_600),
+            Space::new().height(SPACING_XS),
+            terms_container,
+        ]
+        .into()
+    } else {
+        // Codelist not found in registry
+        row![
+            lucide::triangle_alert().size(12).color(WARNING),
+            Space::new().width(SPACING_SM),
+            text(format!("Codelist {} not found in terminology", ct_code))
+                .size(12)
+                .color(GRAY_600),
+        ]
+        .align_y(Alignment::Center)
+        .into()
+    };
+
+    column![
+        title_row,
+        Space::new().height(SPACING_SM),
+        container(content)
+            .padding(SPACING_MD)
+            .width(Length::Fill)
+            .style(|_theme: &Theme| container::Style {
+                background: Some(GRAY_100.into()),
+                border: Border {
+                    radius: BORDER_RADIUS_SM.into(),
+                    ..Default::default()
+                },
+                ..Default::default()
+            }),
+        Space::new().height(SPACING_LG),
+    ]
     .into()
 }
 
@@ -670,6 +873,158 @@ fn view_status_unmapped<'a>() -> Element<'a, Message> {
         },
         ..Default::default()
     })
+    .into()
+}
+
+// =============================================================================
+// SOURCE COLUMN SELECTION
+// =============================================================================
+
+/// A source column option with optional suggestion info for display in picker.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct ColumnOption {
+    name: String,
+    is_suggested: bool,
+    confidence: Option<u32>, // Percentage 0-100
+}
+
+impl std::fmt::Display for ColumnOption {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.is_suggested {
+            if let Some(conf) = self.confidence {
+                write!(f, "{} (Best match - {}%)", self.name, conf)
+            } else {
+                write!(f, "{} (Suggested)", self.name)
+            }
+        } else {
+            write!(f, "{}", self.name)
+        }
+    }
+}
+
+/// Source column picker using a dropdown with suggestion highlighting.
+fn view_source_column_picker<'a>(
+    domain: &'a crate::state::Domain,
+    var: &'a tss_model::Variable,
+) -> Element<'a, Message> {
+    use iced::widget::pick_list;
+
+    // Get all source columns
+    let source_columns = domain.source.column_names();
+
+    // Get columns that are already mapped (to filter out)
+    let mapped_columns: std::collections::BTreeSet<String> = domain
+        .mapping
+        .all_accepted()
+        .values()
+        .map(|(col, _)| col.clone())
+        .collect();
+
+    // Get suggestion for this variable (if any)
+    let suggestion = domain.mapping.suggestion(&var.name);
+    let suggested_col: Option<&str> = suggestion.as_ref().map(|(col, _)| col.as_ref());
+    let suggested_conf = suggestion.as_ref().map(|(_, conf)| (*conf * 100.0) as u32);
+
+    // Build column options with suggestion info
+    let mut column_options: Vec<ColumnOption> = source_columns
+        .into_iter()
+        .filter(|col| !mapped_columns.contains(col))
+        .map(|col| {
+            let is_suggested = suggested_col == Some(col.as_str());
+            ColumnOption {
+                name: col,
+                is_suggested,
+                confidence: if is_suggested { suggested_conf } else { None },
+            }
+        })
+        .collect();
+
+    // Sort: suggested first, then alphabetically
+    column_options.sort_by(|a, b| match (a.is_suggested, b.is_suggested) {
+        (true, false) => std::cmp::Ordering::Less,
+        (false, true) => std::cmp::Ordering::Greater,
+        _ => a.name.cmp(&b.name),
+    });
+
+    if column_options.is_empty() {
+        return container(
+            row![
+                lucide::info().size(14).color(GRAY_500),
+                Space::new().width(SPACING_SM),
+                text("All source columns are already mapped")
+                    .size(13)
+                    .color(GRAY_500),
+            ]
+            .align_y(Alignment::Center),
+        )
+        .padding(SPACING_MD)
+        .width(Length::Fill)
+        .style(|_theme: &Theme| container::Style {
+            background: Some(GRAY_100.into()),
+            border: Border {
+                radius: BORDER_RADIUS_SM.into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .into();
+    }
+
+    let var_name = var.name.clone();
+    let column_count = column_options.len();
+    let has_suggestion = column_options.iter().any(|c| c.is_suggested);
+
+    // Create the pick_list dropdown
+    let picker = pick_list(
+        column_options,
+        None::<ColumnOption>,
+        move |selected: ColumnOption| {
+            Message::DomainEditor(DomainEditorMessage::Mapping(MappingMessage::ManualMap {
+                variable: var_name.clone(),
+                column: selected.name,
+            }))
+        },
+    )
+    .placeholder("Select a source column...")
+    .width(Length::Fill)
+    .padding([10.0, 14.0])
+    .text_size(14.0)
+    .style(|_theme: &Theme, status| {
+        let border_color = match status {
+            pick_list::Status::Active => PRIMARY_500,
+            pick_list::Status::Hovered => GRAY_400,
+            pick_list::Status::Opened { .. } => PRIMARY_500,
+        };
+        pick_list::Style {
+            text_color: GRAY_800,
+            placeholder_color: GRAY_500,
+            handle_color: GRAY_600,
+            background: WHITE.into(),
+            border: Border {
+                radius: BORDER_RADIUS_SM.into(),
+                width: 1.0,
+                color: border_color,
+            },
+        }
+    });
+
+    // Helper text
+    let helper_text = if has_suggestion {
+        format!(
+            "{} columns available - best match shown first",
+            column_count
+        )
+    } else {
+        format!("{} columns available", column_count)
+    };
+
+    column![
+        text("Map to Source Column").size(14).color(GRAY_700),
+        Space::new().height(SPACING_SM),
+        picker,
+        Space::new().height(SPACING_XS),
+        text(helper_text).size(11).color(GRAY_500),
+    ]
     .into()
 }
 

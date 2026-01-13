@@ -12,6 +12,7 @@ pub mod menu;
 use std::path::PathBuf;
 
 use iced::keyboard;
+use tss_model::TerminologyRegistry;
 
 // Use new state types
 use crate::state::{EditorTab, Study, ViewState, WorkflowMode};
@@ -24,6 +25,9 @@ pub use menu::MenuMessage;
 
 /// Re-export ValidationReport from tss_validate for convenience.
 pub type ValidationReport = tss_validate::ValidationReport;
+
+/// Result type for study loading (includes terminology registry).
+pub type StudyLoadResult = Result<(Study, TerminologyRegistry), String>;
 
 /// Root message enum for the application.
 ///
@@ -68,8 +72,8 @@ pub enum Message {
     // =========================================================================
     // Background task results
     // =========================================================================
-    /// Study loading completed.
-    StudyLoaded(Result<Study, String>),
+    /// Study loading completed (includes study and terminology registry).
+    StudyLoaded(StudyLoadResult),
 
     /// Preview computation completed for a domain.
     PreviewReady {

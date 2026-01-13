@@ -40,7 +40,9 @@ mod status_badge;
 mod tab_bar;
 
 // Layout components
-pub use master_detail::{master_detail, master_detail_with_header};
+pub use master_detail::{
+    master_detail, master_detail_with_header, master_detail_with_pinned_header,
+};
 pub use sidebar::{SidebarItem, sidebar};
 pub use tab_bar::{Tab, tab_bar};
 

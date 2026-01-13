@@ -110,6 +110,52 @@ pub fn master_detail_with_header<'a, M: 'a>(
     .into()
 }
 
+/// Creates a master-detail layout with a pinned header on the master panel.
+///
+/// The master panel has a fixed header that doesn't scroll, while the content below scrolls.
+/// This is useful for keeping search bars, filters, or titles visible.
+///
+/// # Arguments
+///
+/// * `master_header` - Pinned header content for the master panel (search, filters, etc.)
+/// * `master_content` - Scrollable content for the master panel (list items)
+/// * `detail` - Content for the right panel
+/// * `master_width` - Width of the master panel in pixels
+pub fn master_detail_with_pinned_header<'a, M: 'a>(
+    master_header: Element<'a, M>,
+    master_content: Element<'a, M>,
+    detail: Element<'a, M>,
+    master_width: f32,
+) -> Element<'a, M> {
+    row![
+        // Master panel (fixed width, header + scrollable content)
+        container(
+            column![
+                master_header,
+                scrollable(master_content).height(Length::Fill),
+            ]
+            .height(Length::Fill)
+        )
+        .width(Length::Fixed(master_width))
+        .height(Length::Fill)
+        .padding(SPACING_MD),
+        // Vertical divider
+        rule::vertical(1).style(|_theme| rule::Style {
+            color: GRAY_200,
+            radius: 0.0.into(),
+            fill_mode: rule::FillMode::Full,
+            snap: true,
+        }),
+        // Detail panel (fill remaining, scrollable)
+        container(detail)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .padding(SPACING_MD),
+    ]
+    .height(Length::Fill)
+    .into()
+}
+
 /// Creates a master-detail layout with master on the right.
 ///
 /// Reverses the layout with detail on left and master on right.

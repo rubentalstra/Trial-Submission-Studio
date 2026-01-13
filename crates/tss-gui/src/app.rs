@@ -112,7 +112,7 @@ impl App {
             Message::StudyLoaded(result) => {
                 self.state.is_loading = false;
                 match result {
-                    Ok(study) => {
+                    Ok((study, terminology)) => {
                         tracing::info!(
                             "Study loaded: {} with {} domains",
                             study.study_id,
@@ -127,6 +127,7 @@ impl App {
                         let _ = self.state.settings.save();
 
                         self.state.study = Some(study);
+                        self.state.terminology = Some(terminology);
                         self.state.view = ViewState::home();
                     }
                     Err(err) => {
@@ -860,8 +861,13 @@ impl App {
 // ASYNC STUDY LOADING
 // =============================================================================
 
-/// Load a study asynchronously.
-async fn load_study_async(folder: PathBuf, header_rows: usize) -> Result<Study, String> {
+use tss_model::TerminologyRegistry;
+
+/// Load a study asynchronously, including CT loading.
+async fn load_study_async(
+    folder: PathBuf,
+    header_rows: usize,
+) -> Result<(Study, TerminologyRegistry), String> {
     // Create study from folder
     let mut study = Study::from_folder(folder.clone());
 
@@ -887,6 +893,20 @@ async fn load_study_async(folder: PathBuf, header_rows: usize) -> Result<Study, 
     // Load SDTM-IG
     let ig_domains =
         tss_standards::load_sdtm_ig().map_err(|e| format!("Failed to load SDTM-IG: {}", e))?;
+
+    // Load Controlled Terminology
+    let ct_version = tss_standards::ct::CtVersion::default();
+    let terminology = tss_standards::ct::load(ct_version).map_err(|e| {
+        format!(
+            "Failed to load Controlled Terminology ({}): {}",
+            ct_version, e
+        )
+    })?;
+    tracing::info!(
+        "Loaded CT {} with {} catalogs",
+        ct_version,
+        terminology.catalogs.len()
+    );
 
     // Process each CSV file
     for csv_path in csv_files {
@@ -952,7 +972,7 @@ async fn load_study_async(folder: PathBuf, header_rows: usize) -> Result<Study, 
         return Err("No valid SDTM domains found in the selected folder".to_string());
     }
 
-    Ok(study)
+    Ok((study, terminology))
 }
 
 /// Extract domain code from a filename.
