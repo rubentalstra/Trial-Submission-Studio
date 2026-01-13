@@ -226,7 +226,9 @@ fn execute_export_sync(input: ExportInput) -> ExportResult {
             let supp_path = datasets_dir.join(&supp_filename);
 
             // For SUPP, we need to get the SUPP domain definition
-            if let Some(supp_def) = build_supp_domain_definition(&domain_data.code) {
+            // Pass the parent domain's label for proper SUPP labeling
+            let parent_label = domain_data.definition.label.as_deref();
+            if let Some(supp_def) = build_supp_domain_definition(&domain_data.code, parent_label) {
                 if let Err(e) = write_data_file(
                     &supp_path,
                     &supp_frame,
@@ -380,9 +382,10 @@ fn write_xpt_file(path: &Path, frame: &DomainFrame, domain: &Domain) -> Result<(
         columns.push(column);
     }
 
-    // Create dataset
+    // Create dataset with proper label from domain definition
     let dataset_name = frame.dataset_name().to_uppercase();
-    let dataset = Dataset::with_label(dataset_name.as_str(), frame.domain_code.as_str(), columns)
+    let dataset_label = domain.label.as_deref().unwrap_or(&domain.name);
+    let dataset = Dataset::with_label(dataset_name.as_str(), dataset_label, columns)
         .map_err(|e| ExportError::new(format!("Failed to create XPT dataset: {}", e)))?;
 
     // Write file
@@ -444,7 +447,13 @@ fn write_define_xml(
             .unwrap_or(&supp_frame.domain_code)
             .to_uppercase();
 
-        if let Some(supp_domain) = build_supp_domain_definition(&parent_code) {
+        // Find parent domain's label from domain_data
+        let parent_label = domain_data
+            .iter()
+            .find(|d| d.code.to_uppercase() == parent_code)
+            .and_then(|d| d.definition.label.as_deref());
+
+        if let Some(supp_domain) = build_supp_domain_definition(&parent_code, parent_label) {
             domains.push(supp_domain);
         }
         all_frames.push(supp_frame.clone());
@@ -473,7 +482,11 @@ struct VariableMetadata {
 ///
 /// Loads the SUPPQUAL template from embedded standards and customizes it
 /// for the specific parent domain.
-fn build_supp_domain_definition(parent_code: &str) -> Option<Domain> {
+///
+/// # Arguments
+/// * `parent_code` - The parent domain code (e.g., "DM", "AE")
+/// * `parent_label` - The parent domain label (e.g., "Demographics", "Adverse Events")
+fn build_supp_domain_definition(parent_code: &str, parent_label: Option<&str>) -> Option<Domain> {
     // Load SUPPQUAL template from standards
     let domains = tss_standards::sdtm_ig::load().ok()?;
     let suppqual = domains.iter().find(|d| d.name == "SUPPQUAL")?;
@@ -481,10 +494,12 @@ fn build_supp_domain_definition(parent_code: &str) -> Option<Domain> {
     // Clone and customize for this specific parent domain
     let mut supp_domain = suppqual.clone();
     supp_domain.name = format!("SUPP{}", parent_code.to_uppercase());
-    supp_domain.label = Some(format!(
-        "Supplemental Qualifiers for {}",
-        parent_code.to_uppercase()
-    ));
+
+    // Use parent label if available, otherwise fall back to code
+    // Per SDTMIG: "Supplemental Qualifiers for [domain name]"
+    let label_name = parent_label.unwrap_or(parent_code);
+    supp_domain.label = Some(format!("Supplemental Qualifiers for {}", label_name));
+
     supp_domain.dataset_name = Some(format!("SUPP{}", parent_code.to_uppercase()));
 
     Some(supp_domain)

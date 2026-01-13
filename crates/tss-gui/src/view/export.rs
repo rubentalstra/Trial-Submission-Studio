@@ -251,7 +251,7 @@ fn view_domain_row<'a>(
     if has_supp && is_selected {
         let supp_count = domain_supp_count(domain);
 
-        // Show SUPP row below main domain
+        // Show SUPP row below main domain (e.g., "SUPPDM")
         let supp_row = row![
             Space::new().width(28.0), // Indent to align with domain name
             lucide::corner_down_right().size(12).color(GRAY_400),
@@ -259,7 +259,7 @@ fn view_domain_row<'a>(
             text(format!("SUPP{}", code)).size(12).color(PRIMARY_500),
             Space::new().width(SPACING_SM),
             text(format!(
-                "{} qualifier{}",
+                "({} qualifier{})",
                 supp_count,
                 if supp_count == 1 { "" } else { "s" }
             ))
