@@ -34,8 +34,8 @@ use crate::state::{
 };
 use crate::theme::{
     BORDER_RADIUS_SM, GRAY_100, GRAY_300, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800,
-    GRAY_900, MASTER_WIDTH, PRIMARY_100, PRIMARY_500, PRIMARY_600, PRIMARY_700, SPACING_LG,
-    SPACING_MD, SPACING_SM, SPACING_XL, SPACING_XS, SUCCESS, WARNING, WHITE,
+    MASTER_WIDTH, PRIMARY_100, PRIMARY_500, PRIMARY_600, PRIMARY_700, SPACING_LG, SPACING_MD,
+    SPACING_SM, SPACING_XS, SUCCESS, WARNING, WHITE,
 };
 
 // =============================================================================
@@ -103,7 +103,7 @@ pub fn view_supp_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Element<'
         .collect();
 
     // Build master header (pinned at top)
-    let master_header = build_master_header_pinned(domain_code, supp_ui, filtered.len());
+    let master_header = build_master_header_pinned(supp_ui, filtered.len());
 
     // Build master content (scrollable column list)
     let master_content = build_master_content(&filtered, domain, supp_ui);
@@ -119,20 +119,8 @@ pub fn view_supp_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Element<'
 // MASTER PANEL: HEADER (PINNED)
 // =============================================================================
 
-/// Left panel header: title, search, filters, and stats (pinned at top).
-fn build_master_header_pinned<'a>(
-    domain_code: &'a str,
-    ui: &'a SuppUiState,
-    filtered_count: usize,
-) -> Element<'a, Message> {
-    let title = format!("SUPP{}", domain_code);
-
-    // Title row
-    let title_row = text(title).size(16).color(GRAY_900).font(iced::Font {
-        weight: iced::font::Weight::Semibold,
-        ..Default::default()
-    });
-
+/// Left panel header: search, filters, and stats (pinned at top).
+fn build_master_header_pinned(ui: &'_ SuppUiState, filtered_count: usize) -> Element<'_, Message> {
     // Search box
     let search = text_input("Search columns...", &ui.search_filter)
         .on_input(|s| {
@@ -153,10 +141,8 @@ fn build_master_header_pinned<'a>(
     .align_y(Alignment::Center);
 
     column![
-        title_row,
-        Space::new().height(SPACING_SM),
         search,
-        Space::new().height(SPACING_SM),
+        Space::new().height(SPACING_XS),
         filters,
         Space::new().height(SPACING_SM),
         stats,
@@ -342,19 +328,19 @@ fn build_pending_view(
     // Action buttons
     let actions = build_pending_actions(domain_code);
 
-    scrollable(
-        column![
-            header,
-            Space::new().height(SPACING_LG),
-            sample_data,
-            Space::new().height(SPACING_LG),
-            fields,
-            Space::new().height(SPACING_XL),
-            actions,
-        ]
-        .padding(SPACING_LG)
-        .width(Length::Fill),
-    )
+    // Consistent layout matching mapping/normalization/validation
+    scrollable(column![
+        header,
+        Space::new().height(SPACING_MD),
+        rule::horizontal(1),
+        Space::new().height(SPACING_MD),
+        sample_data,
+        Space::new().height(SPACING_LG),
+        fields,
+        Space::new().height(SPACING_LG),
+        actions,
+        Space::new().height(SPACING_MD),
+    ])
     .height(Length::Fill)
     .into()
 }
@@ -445,19 +431,19 @@ fn build_included_view(
     // Actions
     let actions = build_included_actions();
 
-    scrollable(
-        column![
-            header,
-            Space::new().height(SPACING_LG),
-            sample_data,
-            Space::new().height(SPACING_LG),
-            summary,
-            Space::new().height(SPACING_XL),
-            actions,
-        ]
-        .padding(SPACING_LG)
-        .width(Length::Fill),
-    )
+    // Consistent layout matching mapping/normalization/validation
+    scrollable(column![
+        header,
+        Space::new().height(SPACING_MD),
+        rule::horizontal(1),
+        Space::new().height(SPACING_MD),
+        sample_data,
+        Space::new().height(SPACING_LG),
+        summary,
+        Space::new().height(SPACING_LG),
+        actions,
+        Space::new().height(SPACING_MD),
+    ])
     .height(Length::Fill)
     .into()
 }
@@ -631,21 +617,21 @@ fn build_edit_view(
     // Actions
     let actions = build_edit_actions();
 
-    scrollable(
-        column![
-            header,
-            Space::new().height(SPACING_MD),
-            edit_info,
-            Space::new().height(SPACING_LG),
-            sample_data,
-            Space::new().height(SPACING_LG),
-            fields,
-            Space::new().height(SPACING_XL),
-            actions,
-        ]
-        .padding(SPACING_LG)
-        .width(Length::Fill),
-    )
+    // Consistent layout matching mapping/normalization/validation
+    scrollable(column![
+        header,
+        Space::new().height(SPACING_MD),
+        rule::horizontal(1),
+        Space::new().height(SPACING_MD),
+        edit_info,
+        Space::new().height(SPACING_LG),
+        sample_data,
+        Space::new().height(SPACING_LG),
+        fields,
+        Space::new().height(SPACING_LG),
+        actions,
+        Space::new().height(SPACING_MD),
+    ])
     .height(Length::Fill)
     .into()
 }
@@ -750,15 +736,12 @@ fn build_skipped_view(
     })
     .width(Length::Fill);
 
-    // Action - Add to SUPP instead
-    let supp_name = format!("SUPP{}", domain_code);
+    // Action - Undo skip (returns to pending state)
     let action = button(
         row![
-            lucide::plus().size(16).color(PRIMARY_500),
+            lucide::rotate_ccw().size(14).color(PRIMARY_500),
             Space::new().width(SPACING_SM),
-            text(format!("Add to {} instead", supp_name))
-                .size(14)
-                .color(PRIMARY_500),
+            text("Undo Skip").size(14).color(PRIMARY_500),
         ]
         .align_y(Alignment::Center),
     )
@@ -783,19 +766,19 @@ fn build_skipped_view(
         }
     });
 
-    scrollable(
-        column![
-            header,
-            Space::new().height(SPACING_LG),
-            sample_data,
-            Space::new().height(SPACING_LG),
-            skip_message,
-            Space::new().height(SPACING_XL),
-            action,
-        ]
-        .padding(SPACING_LG)
-        .width(Length::Fill),
-    )
+    // Consistent layout matching mapping/normalization/validation
+    scrollable(column![
+        header,
+        Space::new().height(SPACING_MD),
+        rule::horizontal(1),
+        Space::new().height(SPACING_MD),
+        sample_data,
+        Space::new().height(SPACING_LG),
+        skip_message,
+        Space::new().height(SPACING_LG),
+        action,
+        Space::new().height(SPACING_MD),
+    ])
     .height(Length::Fill)
     .into()
 }
