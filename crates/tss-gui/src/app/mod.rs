@@ -295,7 +295,17 @@ impl App {
             }
 
             Message::UpdateCheckComplete(_result) => {
-                // TODO: Implement in Phase 5
+                // This is now handled via UpdateMessage::CheckComplete in dialog handler
+                Task::none()
+            }
+
+            Message::UpdateReadyToInstall {
+                info,
+                data,
+                verified,
+            } => {
+                // Update dialog state to ReadyToInstall
+                self.set_update_ready_to_install(info, data, verified);
                 Task::none()
             }
 

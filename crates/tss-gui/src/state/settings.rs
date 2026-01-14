@@ -23,6 +23,9 @@ pub struct Settings {
 
     /// Developer settings (advanced options).
     pub developer: DeveloperSettings,
+
+    /// Update settings.
+    pub updates: tss_updater::UpdateSettings,
 }
 
 impl Default for Settings {
@@ -31,6 +34,7 @@ impl Default for Settings {
             general: GeneralSettings::default(),
             export: ExportSettings::default(),
             developer: DeveloperSettings::default(),
+            updates: tss_updater::UpdateSettings::default(),
         }
     }
 }
@@ -103,9 +107,6 @@ pub struct GeneralSettings {
     /// Number of header rows in CSV files (default: 2 for label + column names).
     pub header_rows: usize,
 
-    /// Auto-check for updates on startup.
-    pub auto_check_updates: bool,
-
     /// Recent study folders (most recent first).
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub recent_studies: Vec<PathBuf>,
@@ -124,7 +125,6 @@ impl Default for GeneralSettings {
     fn default() -> Self {
         Self {
             header_rows: 2, // Default to double-header (row 1 = labels, row 2 = column names)
-            auto_check_updates: true,
             recent_studies: Vec::new(),
             max_recent: 10,
             mapping_confidence_threshold: 0.6, // Default threshold for mapping suggestions

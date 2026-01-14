@@ -173,33 +173,14 @@ pub enum DisplaySettingsMessage {
 /// Update settings messages.
 #[derive(Debug, Clone)]
 pub enum UpdateSettingsMessage {
-    /// Toggle automatic update checks
-    AutoCheckToggled(bool),
+    /// Toggle update checking (enabled/disabled)
+    EnabledToggled(bool),
 
-    /// Change update check frequency
-    CheckFrequencyChanged(UpdateCheckFrequency),
-}
+    /// Change update channel (Stable/Beta)
+    ChannelChanged(tss_updater::UpdateChannel),
 
-/// Update check frequency options.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum UpdateCheckFrequency {
-    #[default]
-    Daily,
-    Weekly,
-    Monthly,
-    Never,
-}
-
-impl UpdateCheckFrequency {
-    /// Returns a human-readable label.
-    pub fn label(&self) -> &'static str {
-        match self {
-            Self::Daily => "Daily",
-            Self::Weekly => "Weekly",
-            Self::Monthly => "Monthly",
-            Self::Never => "Never",
-        }
-    }
+    /// Clear skipped version
+    ClearSkippedVersion,
 }
 
 // =============================================================================
@@ -235,18 +216,44 @@ pub enum UpdateMessage {
     /// Check for updates
     CheckForUpdates,
 
-    /// Update check result received
-    CheckResult(Result<Option<super::UpdateInfo>, String>),
+    /// Update check completed with result
+    CheckComplete(Result<Option<tss_updater::UpdateInfo>, String>),
 
-    /// Start downloading and installing the update
-    StartInstall,
+    /// User confirmed download
+    ConfirmDownload,
 
-    /// Install progress update
-    InstallProgress(f32),
+    /// Download progress update (0.0 to 1.0)
+    DownloadProgress(f32),
 
-    /// Install completed
+    /// Download completed with data or error
+    DownloadComplete(Result<Vec<u8>, String>),
+
+    /// SHA256 verification status received
+    VerificationStatus(VerificationResult),
+
+    /// User confirmed install (after verification)
+    ConfirmInstall,
+
+    /// Installation completed
     InstallComplete(Result<(), String>),
 
     /// Restart the application to apply update
     RestartApp,
+
+    /// User chose to skip this version
+    SkipVersion(String),
+
+    /// User chose to be reminded later
+    RemindLater,
+}
+
+/// SHA256 verification result.
+#[derive(Debug, Clone)]
+pub enum VerificationResult {
+    /// SHA256 hash matched
+    Verified,
+    /// SHA256 hash did not match
+    Failed { expected: String, actual: String },
+    /// No digest available from GitHub
+    Unavailable,
 }

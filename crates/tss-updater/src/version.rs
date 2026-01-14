@@ -85,7 +85,7 @@ impl fmt::Display for PreRelease {
 }
 
 /// A semantic version with optional pre-release tag.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Version {
     /// Major version number.
     pub major: u32,

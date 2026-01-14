@@ -21,8 +21,8 @@ use crate::state::{DialogType, EditorTab, Study, ViewState, WorkflowMode};
 pub use dialog::{
     AboutMessage, DeveloperSettingsMessage, DialogMessage, DisplaySettingsMessage,
     ExportSettingsMessage, GeneralSettingsMessage, SettingsCategory, SettingsMessage,
-    ThirdPartyMessage, UpdateCheckFrequency, UpdateMessage, UpdateSettingsMessage,
-    ValidationSettingsMessage,
+    ThirdPartyMessage, UpdateMessage, UpdateSettingsMessage, ValidationSettingsMessage,
+    VerificationResult,
 };
 pub use domain_editor::DomainEditorMessage;
 pub use export::ExportMessage;
@@ -128,7 +128,14 @@ pub enum Message {
     },
 
     /// Update check completed.
-    UpdateCheckComplete(Result<Option<UpdateInfo>, String>),
+    UpdateCheckComplete(Result<Option<tss_updater::UpdateInfo>, String>),
+
+    /// Update is ready to install (verification passed or unavailable).
+    UpdateReadyToInstall {
+        info: tss_updater::UpdateInfo,
+        data: Vec<u8>,
+        verified: bool,
+    },
 
     // =========================================================================
     // Global events
@@ -144,14 +151,6 @@ pub enum Message {
 
     /// No operation - used for placeholder actions.
     Noop,
-}
-
-/// Information about an available update.
-#[derive(Debug, Clone)]
-pub struct UpdateInfo {
-    pub version: String,
-    pub changelog: String,
-    pub download_url: String,
 }
 
 impl Message {

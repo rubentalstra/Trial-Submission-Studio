@@ -3,7 +3,8 @@
 //! Master-detail layout with category sidebar and settings content.
 
 use iced::widget::{
-    Space, button, column, container, radio, row, rule, scrollable, slider, text, toggler,
+    Space, button, column, container, pick_list, radio, row, rule, scrollable, slider, text,
+    toggler,
 };
 use iced::window;
 use iced::{Alignment, Border, Color, Element, Length};
@@ -443,26 +444,47 @@ fn view_display_settings<'a>() -> Element<'a, Message> {
 
 /// Update settings section.
 fn view_update_settings(settings: &Settings) -> Element<Message> {
-    let auto_check_section = row![
+    let enable_section = row![
         column![
-            text("Automatic Update Checks").size(14).color(GRAY_800),
+            text("Enable Update Checking").size(14).color(GRAY_800),
             text("Check for updates when the application starts")
                 .size(12)
                 .color(GRAY_500),
         ]
         .width(Length::Fill),
-        toggler(settings.general.auto_check_updates).on_toggle(|v| Message::Dialog(
-            DialogMessage::Settings(SettingsMessage::Updates(
-                UpdateSettingsMessage::AutoCheckToggled(v),
-            ))
-        )),
+        toggler(settings.updates.enabled).on_toggle(|v| Message::Dialog(DialogMessage::Settings(
+            SettingsMessage::Updates(UpdateSettingsMessage::EnabledToggled(v),)
+        ))),
+    ]
+    .align_y(Alignment::Center);
+
+    let channel_section = row![
+        column![
+            text("Update Channel").size(14).color(GRAY_800),
+            text(settings.updates.channel.description())
+                .size(12)
+                .color(GRAY_500),
+        ]
+        .width(Length::Fill),
+        pick_list(
+            &[
+                tss_updater::UpdateChannel::Stable,
+                tss_updater::UpdateChannel::Beta
+            ][..],
+            Some(settings.updates.channel),
+            |channel| Message::Dialog(DialogMessage::Settings(SettingsMessage::Updates(
+                UpdateSettingsMessage::ChannelChanged(channel),
+            ))),
+        ),
     ]
     .align_y(Alignment::Center);
 
     column![
         section_header("Update Settings"),
         Space::new().height(SPACING_MD),
-        auto_check_section,
+        enable_section,
+        Space::new().height(SPACING_SM),
+        channel_section,
     ]
     .spacing(SPACING_SM)
     .into()

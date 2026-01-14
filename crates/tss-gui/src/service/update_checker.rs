@@ -1,42 +1,108 @@
 //! Update checking service.
 //!
-//! Provides async functions for checking application updates using
-//! Iced's `Task::perform` pattern.
+//! Provides async functions for checking, downloading, and installing
+//! application updates using Iced's `Task::perform` pattern.
 
-use crate::message::UpdateInfo;
+use iced::Task;
+
+use crate::message::{DialogMessage, Message, UpdateMessage, VerificationResult};
 
 /// Check for available updates.
 ///
-/// Returns `Ok(Some(UpdateInfo))` if an update is available,
-/// `Ok(None)` if the application is up to date,
-/// or `Err(message)` if the check failed.
-pub async fn check_for_updates() -> Result<Option<UpdateInfo>, String> {
-    // Run the check in a blocking task to avoid blocking the async runtime
-    tokio::task::spawn_blocking(check_for_updates_sync)
-        .await
-        .map_err(|e| format!("Update check task failed: {}", e))?
+/// Returns a Task that will produce a `CheckComplete` message.
+pub fn check_for_updates(settings: tss_updater::UpdateSettings) -> Task<Message> {
+    Task::perform(
+        async move {
+            tss_updater::UpdateService::check_for_update(&settings)
+                .await
+                .map_err(|e| e.user_message().to_string())
+        },
+        |result| Message::Dialog(DialogMessage::Update(UpdateMessage::CheckComplete(result))),
+    )
 }
 
-/// Synchronous update check implementation.
-fn check_for_updates_sync() -> Result<Option<UpdateInfo>, String> {
-    // Create default update settings
-    let settings = tss_updater::UpdateSettings::default();
+/// Download an update with progress reporting.
+///
+/// Returns a Task that will produce a `DownloadComplete` message.
+pub fn download_update(info: tss_updater::UpdateInfo) -> Task<Message> {
+    Task::perform(
+        async move {
+            tss_updater::UpdateService::download_update(&info, |_progress| {
+                // Progress updates are handled via separate mechanism
+                // For now, we don't send progress updates
+            })
+            .await
+            .map_err(|e| e.user_message().to_string())
+        },
+        |result| {
+            Message::Dialog(DialogMessage::Update(UpdateMessage::DownloadComplete(
+                result,
+            )))
+        },
+    )
+}
 
-    // Check for updates using tss_updater
-    match tss_updater::UpdateService::check_for_update(&settings) {
-        Ok(Some(info)) => {
-            // Convert tss_updater::UpdateInfo to crate::message::UpdateInfo
+/// Verify downloaded data and transition to ready-to-install state.
+///
+/// Returns a Task that will update the state based on verification result.
+pub fn verify_update(data: Vec<u8>, info: tss_updater::UpdateInfo) -> Task<Message> {
+    Task::perform(
+        async move {
+            // Perform verification
+            let status = tss_updater::UpdateService::verify_download(&data, &info);
 
-            //  TODO: look at tss_updater to really integrate this properly.
-            Ok(Some(UpdateInfo {
-                version: info.version_display().to_string(),
-                changelog: info.changelog,
-                download_url: String::new(), // Not provided by tss_updater
-            }))
-        }
-        Ok(None) => Ok(None),
-        Err(e) => Err(format!("Failed to check for updates: {}", e)),
-    }
+            match status {
+                tss_updater::VerificationStatus::Verified => {
+                    // Return data and info for installation
+                    Ok((data, info, true))
+                }
+                tss_updater::VerificationStatus::Failed { expected, actual } => {
+                    // Verification failed
+                    Err(VerificationResult::Failed { expected, actual })
+                }
+                tss_updater::VerificationStatus::Unavailable => {
+                    // No digest available, allow with warning
+                    Ok((data, info, false))
+                }
+            }
+        },
+        |result| match result {
+            Ok((data, info, verified)) => {
+                // Need to update state to ReadyToInstall
+                // This is a bit awkward - we need to pass data through
+                Message::UpdateReadyToInstall {
+                    info,
+                    data,
+                    verified,
+                }
+            }
+            Err(verification_result) => Message::Dialog(DialogMessage::Update(
+                UpdateMessage::VerificationStatus(verification_result),
+            )),
+        },
+    )
+}
+
+/// Install the downloaded update.
+///
+/// Returns a Task that will produce an `InstallComplete` message.
+pub fn install_update(data: Vec<u8>, info: tss_updater::UpdateInfo) -> Task<Message> {
+    Task::perform(
+        async move {
+            // Run installation in blocking task
+            tokio::task::spawn_blocking(move || {
+                tss_updater::UpdateService::install_update(&data, &info)
+            })
+            .await
+            .map_err(|e| format!("Installation task failed: {}", e))?
+            .map_err(|e| e.user_message().to_string())
+        },
+        |result| {
+            Message::Dialog(DialogMessage::Update(UpdateMessage::InstallComplete(
+                result,
+            )))
+        },
+    )
 }
 
 #[cfg(test)]
