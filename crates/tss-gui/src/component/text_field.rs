@@ -123,7 +123,7 @@ impl<M: Clone + 'static> TextField<M> {
             ],
             Space::new().height(4.0),
             text_input(&placeholder, &value)
-                .on_input(move |s| on_change(s))
+                .on_input(on_change)
                 .padding([10.0, 12.0])
                 .size(14)
                 .style(move |_: &Theme, _status| {

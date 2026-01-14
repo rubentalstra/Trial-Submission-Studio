@@ -12,15 +12,16 @@ use iced_fonts::lucide;
 use tss_submit::{Issue, Severity, ValidationReport};
 
 use crate::component::{
-    DetailHeader, EmptyState, MetadataCard, NoFilteredResults, master_detail_with_pinned_header,
+    DetailHeader, EmptyState, MetadataCard, NoFilteredResults, SelectableRow,
+    master_detail_with_pinned_header,
 };
 use crate::message::domain_editor::{SeverityFilter as MsgSeverityFilter, ValidationMessage};
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{AppState, SeverityFilter, ValidationUiState, ViewState};
 use crate::theme::{
-    ERROR, GRAY_100, GRAY_200, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800, MASTER_WIDTH,
-    PRIMARY_100, PRIMARY_500, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS, SUCCESS, WARNING,
-    WHITE, button_primary, button_secondary,
+    ERROR, GRAY_100, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800, MASTER_WIDTH, PRIMARY_100,
+    PRIMARY_500, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS, SUCCESS, WARNING, button_primary,
+    button_secondary,
 };
 
 // =============================================================================
@@ -225,7 +226,7 @@ fn view_issues_list<'a>(
         .into()
 }
 
-/// Single issue row in the master list.
+/// Single issue row in the master list using SelectableRow component.
 fn view_issue_row<'a>(issue: &'a Issue, idx: usize, is_selected: bool) -> Element<'a, Message> {
     let severity = issue.severity();
     let severity_color = match severity {
@@ -233,7 +234,7 @@ fn view_issue_row<'a>(issue: &'a Issue, idx: usize, is_selected: bool) -> Elemen
         Severity::Warning => WARNING,
     };
 
-    // Severity icon
+    // Severity icon as leading element
     let severity_icon: Element<'a, Message> = match severity {
         Severity::Reject | Severity::Error => {
             lucide::circle_x().size(14).color(severity_color).into()
@@ -241,9 +242,9 @@ fn view_issue_row<'a>(issue: &'a Issue, idx: usize, is_selected: bool) -> Elemen
         Severity::Warning => lucide::circle_alert().size(14).color(severity_color).into(),
     };
 
-    // Rule ID badge
-    let rule_id = issue.rule_id();
-    let rule_badge = container(text(rule_id).size(9).color(GRAY_600))
+    // Category badge as trailing element
+    let category = issue_category(issue);
+    let category_badge: Element<'a, Message> = container(text(category).size(9).color(GRAY_600))
         .padding([2.0, 5.0])
         .style(|_| container::Style {
             background: Some(GRAY_100.into()),
@@ -252,51 +253,23 @@ fn view_issue_row<'a>(issue: &'a Issue, idx: usize, is_selected: bool) -> Elemen
                 ..Default::default()
             },
             ..Default::default()
-        });
-
-    // Variable name
-    let variable = text(issue.variable()).size(13).color(GRAY_800);
+        })
+        .into();
 
     // Short description (truncated)
     let short_msg = truncate_message(issue.message().as_str(), 40);
-    let description = text(short_msg).size(11).color(GRAY_500);
 
-    // Row content
-    let row_content = row![
-        severity_icon,
-        Space::new().width(SPACING_XS),
-        rule_badge,
-        Space::new().width(SPACING_XS),
-        column![variable, description,].spacing(2.0),
-    ]
-    .align_y(Alignment::Center);
-
-    // Clickable row
-    let bg_color = if is_selected { PRIMARY_100 } else { WHITE };
-    let border_color = if is_selected { PRIMARY_500 } else { GRAY_200 };
-
-    button(row_content)
-        .on_press(Message::DomainEditor(DomainEditorMessage::Validation(
+    SelectableRow::new(
+        issue.variable().to_string(),
+        Message::DomainEditor(DomainEditorMessage::Validation(
             ValidationMessage::IssueSelected(idx),
-        )))
-        .width(Length::Fill)
-        .padding([SPACING_SM, SPACING_SM])
-        .style(move |_, status| {
-            let bg = match status {
-                iced::widget::button::Status::Hovered if !is_selected => Some(GRAY_100.into()),
-                _ => Some(bg_color.into()),
-            };
-            iced::widget::button::Style {
-                background: bg,
-                border: Border {
-                    width: 1.0,
-                    radius: 6.0.into(),
-                    color: border_color,
-                },
-                ..Default::default()
-            }
-        })
-        .into()
+        )),
+    )
+    .secondary(short_msg)
+    .leading(severity_icon)
+    .trailing(category_badge)
+    .selected(is_selected)
+    .view()
 }
 
 // =============================================================================
@@ -312,6 +285,7 @@ fn view_issue_detail<'a>(issue: &Issue) -> Element<'a, Message> {
     };
 
     let variable_name = issue.variable().to_string();
+    let category = issue_category(issue);
 
     // Severity badge icon
     let badge_icon: Element<'a, Message> = match severity {
@@ -323,17 +297,46 @@ fn view_issue_detail<'a>(issue: &Issue) -> Element<'a, Message> {
 
     // Header with variable name and severity badge
     let header = DetailHeader::new(variable_name.clone())
-        .subtitle(format!("Rule: {}", issue.rule_id()))
+        .subtitle(category)
         .badge(badge_icon, severity.label(), severity_color)
         .view();
 
     // Issue information metadata card
-    let mut metadata = MetadataCard::new();
-    metadata = metadata
-        .row("Rule ID", issue.rule_id())
+    let metadata_card = view_issue_metadata(issue, severity, category);
+
+    // Description section
+    let description_section = view_issue_description(issue);
+
+    // Action buttons
+    let actions = view_issue_actions(&variable_name);
+
+    // Build detail content (matching mapping.rs and normalization.rs pattern)
+    scrollable(column![
+        header,
+        Space::new().height(SPACING_MD),
+        rule::horizontal(1),
+        Space::new().height(SPACING_MD),
+        metadata_card,
+        Space::new().height(SPACING_LG),
+        description_section,
+        Space::new().height(SPACING_LG),
+        actions,
+        Space::new().height(SPACING_MD),
+    ])
+    .height(Length::Fill)
+    .into()
+}
+
+/// Build metadata card for issue details.
+fn view_issue_metadata<'a>(
+    issue: &Issue,
+    severity: Severity,
+    category: &'static str,
+) -> Element<'a, Message> {
+    let mut metadata = MetadataCard::new()
         .row("Variable", issue.variable())
         .row("Severity", severity.label())
-        .row("Category", issue_category(issue));
+        .row("Category", category);
 
     // Add issue-specific details
     match issue {
@@ -390,7 +393,7 @@ fn view_issue_detail<'a>(issue: &Issue) -> Element<'a, Message> {
             metadata = metadata.row("Allowed Terms", allowed_count.to_string());
             if !invalid_values.is_empty() {
                 let display_values: Vec<&str> =
-                    invalid_values.iter().take(5).map(|s| s.as_str()).collect();
+                    invalid_values.iter().take(5).map(String::as_str).collect();
                 let suffix = if invalid_values.len() > 5 {
                     format!("... +{} more", invalid_values.len() - 5)
                 } else {
@@ -405,32 +408,35 @@ fn view_issue_detail<'a>(issue: &Issue) -> Element<'a, Message> {
         _ => {}
     }
 
-    let metadata_card = metadata.view();
+    metadata.view()
+}
 
-    // Full message section
-    let message_section = column![
-        text("Description")
-            .size(12)
-            .color(GRAY_600)
-            .font(iced::Font {
-                weight: iced::font::Weight::Semibold,
-                ..Default::default()
-            }),
-        Space::new().height(SPACING_XS),
-        container(text(issue.message()).size(13).color(GRAY_800))
-            .padding(SPACING_SM)
-            .width(Length::Fill)
-            .style(|_| container::Style {
-                background: Some(GRAY_100.into()),
-                border: Border {
-                    radius: 6.0.into(),
-                    ..Default::default()
-                },
-                ..Default::default()
-            }),
-    ];
+/// Build description section for issue details.
+fn view_issue_description<'a>(issue: &Issue) -> Element<'a, Message> {
+    let title_row = row![
+        lucide::file_text().size(14).color(GRAY_600),
+        Space::new().width(SPACING_SM),
+        text("Description").size(14).color(GRAY_700),
+    ]
+    .align_y(Alignment::Center);
 
-    // Action buttons
+    let message_box = container(text(issue.message()).size(13).color(GRAY_800))
+        .padding(SPACING_SM)
+        .width(Length::Fill)
+        .style(|_| container::Style {
+            background: Some(GRAY_100.into()),
+            border: Border {
+                radius: 6.0.into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        });
+
+    column![title_row, Space::new().height(SPACING_XS), message_box,].into()
+}
+
+/// Build action buttons for issue details.
+fn view_issue_actions<'a>(variable_name: &str) -> Element<'a, Message> {
     let go_to_button = button(
         row![
             lucide::arrow_right().size(14),
@@ -441,29 +447,13 @@ fn view_issue_detail<'a>(issue: &Issue) -> Element<'a, Message> {
     )
     .on_press(Message::DomainEditor(DomainEditorMessage::Validation(
         ValidationMessage::GoToIssueSource {
-            variable: variable_name,
+            variable: variable_name.to_string(),
         },
     )))
     .padding([10.0, 16.0])
     .style(button_primary);
 
-    let actions = row![go_to_button,];
-
-    // Build detail content
-    let content = column![
-        header,
-        Space::new().height(SPACING_LG),
-        metadata_card,
-        Space::new().height(SPACING_LG),
-        message_section,
-        Space::new().height(SPACING_LG),
-        actions,
-    ]
-    .width(Length::Fill);
-
-    scrollable(container(content).width(Length::Fill).padding(SPACING_LG))
-        .height(Length::Fill)
-        .into()
+    row![go_to_button,].into()
 }
 
 // =============================================================================

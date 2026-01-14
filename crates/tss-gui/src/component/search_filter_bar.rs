@@ -125,7 +125,7 @@ impl<M: Clone + 'static> SearchFilterBar<M> {
 
         // Search input
         let search_input = text_input(&placeholder, &search_value)
-            .on_input(move |s| on_search(s))
+            .on_input(on_search)
             .padding([8.0, 12.0])
             .size(13)
             .width(Length::Fill);

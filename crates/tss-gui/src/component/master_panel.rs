@@ -29,6 +29,7 @@ use crate::theme::{
 /// ```
 pub struct MasterPanelHeader<M> {
     title: String,
+    #[allow(clippy::type_complexity)]
     search: Option<(String, String, Box<dyn Fn(String) -> M>)>, // (value, placeholder, handler)
     filters: Vec<(String, bool, M)>,
     stats: Option<String>,
@@ -85,7 +86,7 @@ impl<M: Clone + 'static> MasterPanelHeader<M> {
         // Search input
         if let Some((value, placeholder, on_change)) = self.search {
             let search_input = text_input(&placeholder, &value)
-                .on_input(move |s| on_change(s))
+                .on_input(on_change)
                 .padding([8.0, 12.0])
                 .size(13)
                 .width(Length::Fill);

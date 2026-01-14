@@ -622,12 +622,11 @@ fn simulate_transform(
             }
         }
         NormalizationType::CtNormalization { codelist_code } => {
-            if let Some(registry) = terminology {
-                if let Some(resolved) = registry.resolve(codelist_code, None) {
-                    if let Some(submission_value) = resolved.find_submission_value(input) {
-                        return submission_value.to_string();
-                    }
-                }
+            if let Some(registry) = terminology
+                && let Some(resolved) = registry.resolve(codelist_code, None)
+                && let Some(submission_value) = resolved.find_submission_value(input)
+            {
+                return submission_value.to_string();
             }
             input.to_string()
         }

@@ -96,29 +96,6 @@ pub enum Issue {
 }
 
 impl Issue {
-    /// Rule ID for this issue type.
-    ///
-    /// TODO: we need to remove this because this is P21 specific. and this we will not do. so we can simplefy this whole Rule ID thing.
-    /// TODO: we need to look into looking this catagory thing and issue enum thing. if we can make just one of them.????
-    pub fn rule_id(&self) -> &'static str {
-        match self {
-            Issue::RequiredMissing { .. } => "SD0056",
-            Issue::RequiredEmpty { .. } => "SD0002",
-            Issue::ExpectedMissing { .. } => "SD0057",
-            Issue::IdentifierNull { .. } => "SD0002",
-            Issue::InvalidDate { .. } => "SD0003",
-            Issue::TextTooLong { .. } => "SD0017",
-            Issue::DataTypeMismatch { .. } => "SD0055",
-            Issue::DuplicateSequence { .. } => "SD0005",
-            Issue::CtViolation {
-                extensible: false, ..
-            } => "CT2001",
-            Issue::CtViolation {
-                extensible: true, ..
-            } => "CT2002",
-        }
-    }
-
     /// Variable name (all issues have one).
     pub fn variable(&self) -> &str {
         match self {
