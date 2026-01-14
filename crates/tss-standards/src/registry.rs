@@ -2,13 +2,12 @@
 //!
 //! Provides unified access to SDTM, ADaM, and SEND standards.
 
-use tss_model::adam::AdamDataset;
-use tss_model::ct::TerminologyRegistry;
-use tss_model::sdtm::Domain as SdtmDomain;
-use tss_model::send::SendDomain;
-use tss_model::traits::Standard;
+use crate::adam::AdamDataset;
+use crate::ct::{CtVersion, TerminologyRegistry};
+use crate::sdtm::SdtmDomain;
+use crate::send::SendDomain;
+use crate::traits::Standard;
 
-use crate::ct::CtVersion;
 use crate::error::Result;
 use crate::{adam_ig, ct, sdtm_ig, send_ig};
 
@@ -47,11 +46,11 @@ impl StandardsConfig {
         }
     }
 
-    /// Create config for ADaM only.
-    pub fn adam_only() -> Self {
+    /// Create config for ADaM workflow (requires SDTM as source + ADaM as target).
+    pub fn adam_workflow() -> Self {
         Self {
-            load_sdtm: false,
-            load_adam: true,
+            load_sdtm: true, // Source data
+            load_adam: true, // Target structure
             load_send: false,
             ..Default::default()
         }
@@ -122,9 +121,9 @@ impl StandardsRegistry {
         Self::load(&StandardsConfig::sdtm_only())
     }
 
-    /// Load ADaM standards only.
-    pub fn load_adam_only() -> Result<Self> {
-        Self::load(&StandardsConfig::adam_only())
+    /// Load ADaM workflow standards (SDTM + ADaM).
+    pub fn load_adam_workflow() -> Result<Self> {
+        Self::load(&StandardsConfig::adam_workflow())
     }
 
     /// Load SEND standards only.
@@ -163,6 +162,13 @@ impl StandardsRegistry {
             .find(|d| d.name.eq_ignore_ascii_case(name))
     }
 
+    /// Find the SUPPQUAL template domain.
+    ///
+    /// This is the base domain for creating SUPP domains.
+    pub fn find_suppqual_template(&self) -> Option<&SdtmDomain> {
+        self.find_sdtm_domain("SUPPQUAL")
+    }
+
     /// Find an ADaM dataset by name (case-insensitive).
     pub fn find_adam_dataset(&self, name: &str) -> Option<&AdamDataset> {
         self.adam_datasets
@@ -199,9 +205,27 @@ mod tests {
     }
 
     #[test]
+    fn test_load_adam_workflow() {
+        let registry = StandardsRegistry::load_adam_workflow().expect("load ADaM workflow");
+        assert!(
+            registry.has_standard(Standard::Sdtm),
+            "ADaM workflow requires SDTM"
+        );
+        assert!(registry.has_standard(Standard::Adam));
+        assert!(!registry.has_standard(Standard::Send));
+    }
+
+    #[test]
     fn test_find_domain() {
         let registry = StandardsRegistry::load_sdtm_only().expect("load registry");
         let ae = registry.find_sdtm_domain("AE");
         assert!(ae.is_some(), "Should find AE domain");
+    }
+
+    #[test]
+    fn test_find_suppqual_template() {
+        let registry = StandardsRegistry::load_sdtm_only().expect("load registry");
+        let suppqual = registry.find_suppqual_template();
+        assert!(suppqual.is_some(), "Should find SUPPQUAL template");
     }
 }

@@ -11,7 +11,7 @@ workspace = true
 
 [dependencies]
 polars.workspace = true
-tss-model = { path = "../tss-model" }
+tss-standards = { path = "../tss-standards" }
 serde = { workspace = true, features = ["derive"] }
 thiserror.workspace = true
 tracing.workspace = true

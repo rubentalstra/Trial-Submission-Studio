@@ -8,14 +8,14 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use polars::prelude::{AnyValue, DataFrame, NamedFrom, Series};
-use tss_model::{Domain, TerminologyRegistry};
-use tss_normalization::{NormalizationContext, execute_normalization};
-use tss_output::types::DomainFrame;
-use tss_output::{
+use tss_standards::{SdtmDomain as Domain, TerminologyRegistry};
+use tss_submit::export::types::DomainFrame;
+use tss_submit::export::{
     DatasetXmlOptions, DefineXmlOptions, build_xpt_dataset_with_name,
     write_dataset_xml as write_dataset_xml_output, write_define_xml as write_define_xml_output,
 };
-use tss_validate::{Severity, ValidationReport};
+use tss_submit::{NormalizationContext, execute_normalization};
+use tss_submit::{Severity, ValidationReport};
 
 use crate::state::{Domain as GuiDomain, ExportFormat, ExportResult, XptVersion};
 
@@ -611,7 +611,7 @@ fn validate_all_domains(input: &ExportInput) -> Vec<(String, usize)> {
             .cloned()
             .unwrap_or_default();
 
-        let report = tss_validate::validate_domain_with_not_collected(
+        let report = tss_submit::validate_domain_with_not_collected(
             &domain_data.definition,
             &domain_data.data,
             input.ct_registry.as_ref(),

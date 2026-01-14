@@ -21,9 +21,9 @@ use crate::theme::{
     WARNING, WHITE,
 };
 
-use tss_map::VariableStatus;
-use tss_model::TerminologyRegistry;
-use tss_normalization::NormalizationType;
+use tss_standards::TerminologyRegistry;
+use tss_submit::NormalizationType;
+use tss_submit::VariableStatus;
 
 // =============================================================================
 // CONSTANTS
@@ -95,7 +95,7 @@ pub fn view_normalization_tab<'a>(
 /// Header with title and stats for the rules list.
 fn view_rules_header<'a>(
     total_rules: usize,
-    rules: &[tss_normalization::NormalizationRule],
+    rules: &[tss_submit::NormalizationRule],
 ) -> Element<'a, Message> {
     let title = text("Normalization Rules").size(14).color(GRAY_700);
 
@@ -168,7 +168,7 @@ fn view_rules_header<'a>(
 /// Rules list content.
 fn view_rules_list<'a>(
     domain: &'a crate::state::Domain,
-    rules: &'a [tss_normalization::NormalizationRule],
+    rules: &'a [tss_submit::NormalizationRule],
     ui_state: &'a NormalizationUiState,
 ) -> Element<'a, Message> {
     let mut items = column![].spacing(2.0);
@@ -185,7 +185,7 @@ fn view_rules_list<'a>(
 /// Single rule row in the list.
 fn view_rule_row<'a>(
     index: usize,
-    rule: &'a tss_normalization::NormalizationRule,
+    rule: &'a tss_submit::NormalizationRule,
     var_status: VariableStatus,
     is_selected: bool,
 ) -> Element<'a, Message> {
@@ -305,8 +305,8 @@ fn view_rule_row<'a>(
 /// 3. Before/After preview (sample data transformation)
 fn view_rule_detail<'a>(
     domain: &'a crate::state::Domain,
-    rule: &'a tss_normalization::NormalizationRule,
-    sdtm_domain: &'a tss_model::Domain,
+    rule: &'a tss_submit::NormalizationRule,
+    sdtm_domain: &'a tss_standards::SdtmDomain,
     terminology: Option<&'a TerminologyRegistry>,
 ) -> Element<'a, Message> {
     // Find the variable definition
@@ -344,8 +344,8 @@ fn view_rule_detail<'a>(
 
 /// Detail header with variable name and transformation type.
 fn view_detail_header<'a>(
-    rule: &'a tss_normalization::NormalizationRule,
-    variable: Option<&'a tss_model::Variable>,
+    rule: &'a tss_submit::NormalizationRule,
+    variable: Option<&'a tss_standards::SdtmVariable>,
 ) -> Element<'a, Message> {
     let name = text(&rule.target_variable).size(20).color(GRAY_900);
 
@@ -409,8 +409,8 @@ fn view_detail_header<'a>(
 ///
 /// Shows variable metadata first, then transformation info at the bottom.
 fn view_metadata_with_transform<'a>(
-    var: &'a tss_model::Variable,
-    rule: &'a tss_normalization::NormalizationRule,
+    var: &'a tss_standards::SdtmVariable,
+    rule: &'a tss_submit::NormalizationRule,
 ) -> Element<'a, Message> {
     let title_row = row![
         lucide::info().size(14).color(PRIMARY_500),
@@ -423,8 +423,8 @@ fn view_metadata_with_transform<'a>(
 
     // Data type
     let type_str = match var.data_type {
-        tss_model::VariableType::Char => "Character",
-        tss_model::VariableType::Num => "Numeric",
+        tss_standards::VariableType::Char => "Character",
+        tss_standards::VariableType::Num => "Numeric",
     };
     rows = rows.push(view_metadata_row("Type", type_str));
 
@@ -489,9 +489,7 @@ fn view_metadata_with_transform<'a>(
 }
 
 /// Transformation-only section (when variable definition not found).
-fn view_transformation_only<'a>(
-    rule: &'a tss_normalization::NormalizationRule,
-) -> Element<'a, Message> {
+fn view_transformation_only<'a>(rule: &'a tss_submit::NormalizationRule) -> Element<'a, Message> {
     let title_row = row![
         lucide::wand_sparkles().size(14).color(PRIMARY_500),
         Space::new().width(SPACING_SM),
@@ -528,7 +526,7 @@ fn view_transformation_only<'a>(
 /// Shows sample data before and after normalization is applied.
 fn view_before_after_preview<'a>(
     domain: &'a crate::state::Domain,
-    rule: &'a tss_normalization::NormalizationRule,
+    rule: &'a tss_submit::NormalizationRule,
     terminology: Option<&'a TerminologyRegistry>,
 ) -> Element<'a, Message> {
     let title_row = row![
@@ -562,7 +560,7 @@ fn view_before_after_preview<'a>(
 /// Build the before/after preview content based on transformation type.
 fn build_preview_content<'a>(
     domain: &'a crate::state::Domain,
-    rule: &'a tss_normalization::NormalizationRule,
+    rule: &'a tss_submit::NormalizationRule,
     terminology: Option<&'a TerminologyRegistry>,
 ) -> Element<'a, Message> {
     // Get source column name if mapped
@@ -834,8 +832,10 @@ fn simulate_transform(
             // Use actual CT lookup if terminology is available
             if let Some(registry) = terminology {
                 if let Some(resolved) = registry.resolve(codelist_code, None) {
-                    // Use the codelist's normalize method which handles synonyms
-                    return resolved.normalize(input);
+                    // Find the canonical submission value (handles synonyms)
+                    if let Some(submission_value) = resolved.find_submission_value(input) {
+                        return submission_value.to_string();
+                    }
                 }
             }
             // Fallback if no terminology or codelist not found

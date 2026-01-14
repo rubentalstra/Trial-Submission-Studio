@@ -11,7 +11,7 @@
 //! and makes it clear what state belongs to which view.
 
 use polars::prelude::DataFrame;
-use tss_validate::ValidationReport;
+use tss_submit::ValidationReport;
 
 use super::domain::{SuppColumnConfig, SuppOrigin};
 

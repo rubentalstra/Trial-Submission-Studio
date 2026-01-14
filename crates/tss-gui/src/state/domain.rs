@@ -9,8 +9,8 @@
 use polars::prelude::{DataFrame, PlSmallStr};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use tss_map::MappingState;
-use tss_normalization::{NormalizationPipeline, infer_normalization_rules};
+use tss_submit::MappingState;
+use tss_submit::{NormalizationPipeline, infer_normalization_rules};
 
 // =============================================================================
 // SUPP CONFIGURATION
@@ -275,7 +275,7 @@ impl Domain {
 
     /// Get mapping summary.
     #[inline]
-    pub fn summary(&self) -> tss_map::MappingSummary {
+    pub fn summary(&self) -> tss_submit::MappingSummary {
         self.mapping.summary()
     }
 

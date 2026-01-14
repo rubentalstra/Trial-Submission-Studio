@@ -2215,7 +2215,7 @@ impl App {
 // ASYNC STUDY LOADING
 // =============================================================================
 
-use tss_model::TerminologyRegistry;
+use tss_standards::TerminologyRegistry;
 
 /// Load a study asynchronously, including CT loading.
 async fn load_study_async(
@@ -2309,7 +2309,7 @@ async fn load_study_async(
             .map(|s| s.to_string())
             .collect();
 
-        let mapping = tss_map::MappingState::new(
+        let mapping = tss_submit::MappingState::new(
             ig_domain.clone(),
             &study.study_id,
             &source_columns,

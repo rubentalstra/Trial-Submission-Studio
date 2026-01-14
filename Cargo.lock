@@ -6638,13 +6638,9 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "tss-ingest",
- "tss-map",
- "tss-model",
- "tss-normalization",
- "tss-output",
  "tss-standards",
+ "tss-submit",
  "tss-updater",
- "tss-validate",
  "winresource",
  "xportrs",
 ]
@@ -6658,55 +6654,7 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.17",
  "tracing",
- "tss-model",
-]
-
-[[package]]
-name = "tss-map"
-version = "0.0.1-alpha.8"
-dependencies = [
- "anyhow",
- "rapidfuzz",
- "serde",
- "serde_json",
- "tss-model",
  "tss-standards",
-]
-
-[[package]]
-name = "tss-model"
-version = "0.0.1-alpha.8"
-dependencies = [
- "polars",
- "serde",
- "serde_json",
- "thiserror 2.0.17",
-]
-
-[[package]]
-name = "tss-normalization"
-version = "0.0.1-alpha.8"
-dependencies = [
- "chrono",
- "insta",
- "polars",
- "serde",
- "thiserror 2.0.17",
- "tracing",
- "tss-model",
-]
-
-[[package]]
-name = "tss-output"
-version = "0.0.1-alpha.8"
-dependencies = [
- "anyhow",
- "chrono",
- "polars",
- "quick-xml 0.38.4",
- "tss-model",
- "tss-standards",
- "xportrs",
 ]
 
 [[package]]
@@ -6714,9 +6662,30 @@ name = "tss-standards"
 version = "0.0.1-alpha.8"
 dependencies = [
  "csv",
+ "polars",
  "serde",
+ "serde_json",
  "thiserror 2.0.17",
- "tss-model",
+]
+
+[[package]]
+name = "tss-submit"
+version = "0.0.1-alpha.8"
+dependencies = [
+ "anyhow",
+ "chrono",
+ "insta",
+ "polars",
+ "quick-xml 0.38.4",
+ "rapidfuzz",
+ "regex",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.17",
+ "tracing",
+ "tss-standards",
+ "xportrs",
 ]
 
 [[package]]
@@ -6728,16 +6697,6 @@ dependencies = [
  "serde",
  "thiserror 2.0.17",
  "tracing",
-]
-
-[[package]]
-name = "tss-validate"
-version = "0.0.1-alpha.8"
-dependencies = [
- "polars",
- "regex",
- "serde",
- "tss-model",
 ]
 
 [[package]]

@@ -8,8 +8,8 @@ use std::path::Path;
 
 use serde::Deserialize;
 
-use tss_model::send::{SendDatasetClass, SendDomain, SendVariable};
-use tss_model::traits::DataType;
+use crate::send::{SendDatasetClass, SendDomain, SendVariable};
+use crate::traits::VariableType;
 
 use crate::error::{Result, StandardsError};
 use crate::paths::send_ig_path;
@@ -170,7 +170,7 @@ fn load_variables(path: &Path) -> Result<BTreeMap<String, Vec<SendVariable>>> {
         let variable = SendVariable {
             name,
             label: non_empty(&row.variable_label),
-            data_type: parse_data_type(&row.variable_type),
+            data_type: parse_variable_type(&row.variable_type),
             length: None,
             core: non_empty(&row.core).and_then(|v| v.parse().ok()),
             codelist_code: non_empty(&row.codelist_code),
@@ -221,11 +221,11 @@ fn build_domains(
 // Helpers
 // =============================================================================
 
-/// Parse data type from string.
-fn parse_data_type(raw: &str) -> DataType {
+/// Parse variable type from string.
+fn parse_variable_type(raw: &str) -> VariableType {
     match raw.trim().to_lowercase().as_str() {
-        "num" | "numeric" => DataType::Num,
-        _ => DataType::Char,
+        "num" | "numeric" => VariableType::Num,
+        _ => VariableType::Char,
     }
 }
 

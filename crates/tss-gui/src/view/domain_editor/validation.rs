@@ -6,7 +6,7 @@
 use iced::widget::{Space, button, column, container, row, scrollable, text};
 use iced::{Alignment, Border, Element, Length};
 use iced_fonts::lucide;
-use tss_validate::{Issue, Severity, ValidationReport};
+use tss_submit::{Issue, Severity, ValidationReport};
 
 use crate::message::domain_editor::{SeverityFilter as MsgSeverityFilter, ValidationMessage};
 use crate::message::{DomainEditorMessage, Message};

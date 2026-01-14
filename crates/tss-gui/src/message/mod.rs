@@ -13,7 +13,7 @@ use std::path::PathBuf;
 
 use iced::keyboard;
 use iced::window;
-use tss_model::TerminologyRegistry;
+use tss_standards::TerminologyRegistry;
 
 // Use new state types
 use crate::state::{DialogType, EditorTab, Study, ViewState, WorkflowMode};
@@ -30,7 +30,7 @@ pub use home::HomeMessage;
 pub use menu::MenuMessage;
 
 /// Re-export ValidationReport from tss_validate for convenience.
-pub type ValidationReport = tss_validate::ValidationReport;
+pub type ValidationReport = tss_submit::ValidationReport;
 
 /// Result type for study loading (includes terminology registry).
 pub type StudyLoadResult = Result<(Study, TerminologyRegistry), String>;

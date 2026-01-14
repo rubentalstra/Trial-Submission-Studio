@@ -43,7 +43,7 @@ pub use view_state::{
 
 use crate::menu::MenuBarState;
 use iced::window;
-use tss_model::TerminologyRegistry;
+use tss_standards::TerminologyRegistry;
 
 // =============================================================================
 // ROOT APPLICATION STATE

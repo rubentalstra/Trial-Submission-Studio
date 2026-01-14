@@ -8,7 +8,7 @@ use iced::{Alignment, Border, Element, Length, Padding, Theme};
 use iced_fonts::lucide;
 
 use crate::message::{MenuBarMenuId, MenuMessage, Message};
-use crate::theme::{GRAY_100, GRAY_200, GRAY_600, GRAY_800, SPACING_SM, SPACING_XS};
+use crate::theme::{GRAY_200, GRAY_600, GRAY_800, SPACING_SM, SPACING_XS};
 
 /// Re-export MenuId as an alias for MenuBarMenuId for convenience.
 pub type MenuId = MenuBarMenuId;
