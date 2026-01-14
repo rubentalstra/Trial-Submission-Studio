@@ -97,6 +97,9 @@ pub enum Issue {
 
 impl Issue {
     /// Rule ID for this issue type.
+    ///
+    /// TODO: we need to remove this because this is P21 specific. and this we will not do. so we can simplefy this whole Rule ID thing.
+    /// TODO: we need to look into looking this catagory thing and issue enum thing. if we can make just one of them.????
     pub fn rule_id(&self) -> &'static str {
         match self {
             Issue::RequiredMissing { .. } => "SD0056",

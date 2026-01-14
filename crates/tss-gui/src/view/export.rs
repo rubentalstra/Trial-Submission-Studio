@@ -9,22 +9,17 @@ use iced::widget::{
 use iced::{Alignment, Border, Element, Length};
 use iced_fonts::lucide;
 
+use crate::component::EmptyState;
 use crate::message::{ExportMessage, Message};
 use crate::service::export::{domain_has_supp, domain_supp_count};
 use crate::state::{
     AppState, DomainState, ExportFormat, ExportViewState, Study, ViewState, XptVersion,
 };
 use crate::theme::{
-    GRAY_100, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800, GRAY_900, PRIMARY_500, SPACING_LG,
-    SPACING_MD, SPACING_SM, SPACING_XS, SUCCESS, WARNING, WHITE, button_primary,
+    GRAY_100, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800, GRAY_900, MASTER_WIDTH,
+    PRIMARY_500, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS, SUCCESS, WARNING, WHITE,
+    button_primary,
 };
-
-// =============================================================================
-// CONSTANTS
-// =============================================================================
-
-/// Width of the master (domain list) panel.
-const MASTER_WIDTH: f32 = 300.0;
 
 // =============================================================================
 // MAIN VIEW FUNCTION
@@ -57,34 +52,14 @@ pub fn view_export(state: &AppState) -> Element<'_, Message> {
 
 /// View when no study is loaded.
 fn view_no_study<'a>() -> Element<'a, Message> {
-    let icon = lucide::folder_open().size(48).color(GRAY_500);
-
-    let content = column![
-        icon,
-        Space::new().height(SPACING_MD),
-        text("No Study Loaded").size(20).color(GRAY_800),
-        Space::new().height(SPACING_SM),
-        text("Open a study folder to export domains").color(GRAY_500),
-        Space::new().height(SPACING_LG),
-        button(
-            row![
-                lucide::arrow_left().size(14),
-                Space::new().width(SPACING_XS),
-                text("Go Back"),
-            ]
-            .align_y(Alignment::Center)
-        )
-        .on_press(Message::Navigate(ViewState::home()))
-        .padding([SPACING_SM, SPACING_MD]),
-    ]
-    .align_x(Alignment::Center);
-
-    container(content)
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .center_x(Length::Shrink)
-        .center_y(Length::Shrink)
-        .into()
+    EmptyState::new(
+        lucide::folder_open().size(48).color(GRAY_500),
+        "No Study Loaded",
+    )
+    .description("Open a study folder to export domains")
+    .action("Go Back", Message::Navigate(ViewState::home()))
+    .centered()
+    .view()
 }
 
 /// Main export layout with header and two-column content.

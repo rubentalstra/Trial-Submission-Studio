@@ -3,6 +3,9 @@
 //! This module defines the message hierarchy for the Elm-style architecture.
 //! All user interactions and events flow through these message types.
 
+// Allow unused imports - these are public API re-exports
+#![allow(unused_imports)]
+
 pub mod dialog;
 pub mod domain_editor;
 pub mod export;

@@ -12,7 +12,8 @@ Submission Studio.
 5. [Form Components](#form-components)
 6. [Data Display Components](#data-display-components)
 7. [Feedback Components](#feedback-components)
-8. [Component Best Practices](#component-best-practices)
+8. [Builder Pattern Components](#builder-pattern-components)
+9. [Component Best Practices](#component-best-practices)
 
 ---
 
@@ -1180,6 +1181,216 @@ pub fn toast<'a, M: 'a>(
         })
         .into()
 }
+```
+
+---
+
+## Builder Pattern Components
+
+These components use the builder pattern for flexible, chainable configuration.
+They're designed for common UI patterns that appear across multiple views.
+
+### Empty State Components
+
+Located in `component/empty_state.rs`:
+
+#### EmptyState
+
+Full-featured empty state with icon, title, description, and action button:
+
+```rust
+use tss_gui::component::EmptyState;
+use iced_fonts::lucide;
+
+// Basic usage
+EmptyState::new(
+    lucide::folder_open().size(48).color(GRAY_400),
+    "No Study Loaded"
+)
+    .view()
+
+// Full featured
+EmptyState::new(
+    lucide::shield_check().size(48).color(GRAY_400),
+    "No Validation Results"
+)
+    .description("Click 'Re-validate' to check for CDISC conformance issues")
+    .action("Run Validation", Message::RunValidation)
+    .height(300.0)      // Fixed height
+    .centered()         // Center in container
+    .view()
+```
+
+#### LoadingState
+
+Spinner with loading message:
+
+```rust
+use tss_gui::component::LoadingState;
+
+LoadingState::new("Building Preview")
+    .description("Applying mappings and normalization rules...")
+    .centered()
+    .view()
+```
+
+#### ErrorState
+
+Error display with optional retry:
+
+```rust
+use tss_gui::component::ErrorState;
+
+ErrorState::new("Preview Build Failed")
+    .message(&error_string)     // Error details
+    .retry(Message::Rebuild)    // Retry button
+    .centered()
+    .view()
+```
+
+#### NoFilteredResults
+
+Compact empty state for filtered lists:
+
+```rust
+use tss_gui::component::NoFilteredResults;
+
+NoFilteredResults::new("No columns match filter")
+    .hint("Try adjusting your search or filter")
+    .height(120.0)
+    .view()
+```
+
+### Page Header Component
+
+Located in `component/page_header.rs`:
+
+#### PageHeader
+
+Standardized page header with back button, badge, and metadata:
+
+```rust
+use tss_gui::component::PageHeader;
+
+PageHeader::new("Demographics")
+    .back(Message::BackClicked)                    // Back button
+    .badge("DM", PRIMARY_500)                      // Domain badge
+    .meta("Rows", domain.row_count().to_string()) // Key-value metadata
+    .meta("Progress", format!("{}%", progress))
+    .trailing(some_element)                        // Optional trailing element
+    .view()
+```
+
+#### page_header_simple
+
+Simple function for basic headers:
+
+```rust
+use tss_gui::component::page_header_simple;
+
+page_header_simple("Settings", Some(Message::Back))
+```
+
+### Section Components
+
+Located in `component/section_card.rs`:
+
+#### SectionCard
+
+Titled card container:
+
+```rust
+use tss_gui::component::SectionCard;
+use iced_fonts::lucide;
+
+SectionCard::new("Variable Information", content)
+    .icon(lucide::info().size(14).color(GRAY_600))
+    .view()
+```
+
+#### panel / status_panel
+
+Simple wrapper functions:
+
+```rust
+use tss_gui::component::{panel, status_panel};
+
+// Basic panel with border
+panel(content)
+
+// Status panel with colored border
+status_panel(content, SUCCESS, Some(SUCCESS_LIGHT))
+```
+
+### Badge Components
+
+#### Domain Badges
+
+Located in `component/domain_badge.rs`:
+
+```rust
+use tss_gui::component::{domain_badge, domain_badge_small};
+
+// Standard size badge with primary color
+domain_badge("DM")
+
+// Compact badge for tight spaces
+domain_badge_small("AE")
+```
+
+#### Core Designation Badges
+
+Located in `component/core_badge.rs`:
+
+```rust
+use tss_gui::component::{core_badge, core_badge_if_important};
+use tss_model::sdtm::CoreDesignation;
+
+// Always shows the badge
+core_badge(CoreDesignation::Required)   // Red "Req"
+core_badge(CoreDesignation::Expected)   // Amber "Exp"
+core_badge(CoreDesignation::Permissible) // Gray "Perm"
+
+// Only shows for Required/Expected (returns empty for Permissible)
+core_badge_if_important(designation)
+```
+
+### Selectable Row Components
+
+Located in `component/selectable_row.rs`:
+
+#### SelectableRow
+
+Master list item with hover/selection states:
+
+```rust
+use tss_gui::component::SelectableRow;
+use iced_fonts::lucide;
+
+SelectableRow::new("STUDYID", Message::VariableSelected(idx))
+    .secondary("Study Identifier")              // Subtitle
+    .leading(lucide::check().size(12))         // Leading element (icon)
+    .trailing(core_badge(CoreDesignation::Required)) // Trailing element
+    .selected(idx == state.selected_index)      // Selection state
+    .view()
+```
+
+#### DomainListItem
+
+Specialized for domain lists on home screen:
+
+```rust
+use tss_gui::component::DomainListItem;
+
+DomainListItem::new(
+    "DM",
+    "Demographics",
+    Message::DomainClicked("DM".into())
+)
+    .row_count(150)      // Number of data rows
+    .complete(true)      // Mapping complete?
+    .touched(true)       // Has been edited?
+    .view()
 ```
 
 ---

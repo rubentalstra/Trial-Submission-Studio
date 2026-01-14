@@ -46,6 +46,7 @@ pub fn main() -> iced::Result {
 }
 
 /// Load the application icon from embedded PNG data.
+#[allow(dead_code)]
 fn load_icon() -> Option<window::Icon> {
     let icon_data = include_bytes!("../assets/icon.png");
     // Use Iced 0.14.0 API: from_file_data takes raw bytes and optional format

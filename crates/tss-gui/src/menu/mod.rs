@@ -7,6 +7,9 @@
 //!
 //! The menu system converts platform-specific events into unified `MenuMessage` variants.
 
+// Allow unused code - menu items are public API that may not be used in all configurations
+#![allow(dead_code)]
+
 pub mod in_app;
 pub mod native;
 

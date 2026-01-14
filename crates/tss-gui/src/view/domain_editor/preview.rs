@@ -16,6 +16,7 @@ use iced::{Alignment, Border, Color, Element, Length, Theme};
 use iced_fonts::lucide;
 use polars::prelude::DataFrame;
 
+use crate::component::{EmptyState, ErrorState, LoadingState};
 use crate::message::domain_editor::PreviewMessage;
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{AppState, DomainState, PreviewUiState, ViewState};
@@ -737,101 +738,34 @@ fn format_anyvalue(value: &polars::prelude::AnyValue) -> String {
 
 /// Loading state while preview is being rebuilt.
 fn view_loading_state<'a>() -> Element<'a, Message> {
-    container(
-        column![
-            lucide::loader().size(40).color(PRIMARY_500),
-            Space::new().height(SPACING_LG),
-            text("Building Preview").size(18).color(GRAY_800),
-            Space::new().height(SPACING_SM),
-            text("Applying mappings and normalization rules...")
-                .size(13)
-                .color(GRAY_500),
-        ]
-        .align_x(Alignment::Center),
-    )
-    .width(Length::Fill)
-    .height(Length::Fill)
-    .center_x(Length::Shrink)
-    .center_y(Length::Shrink)
-    .into()
+    LoadingState::new("Building Preview")
+        .description("Applying mappings and normalization rules...")
+        .centered()
+        .view()
 }
 
 /// Error state when preview build failed.
 fn view_error_state(error: &str) -> Element<'_, Message> {
-    let error_text = error.to_string();
-
-    container(
-        column![
-            lucide::circle_alert().size(48).color(crate::theme::ERROR),
-            Space::new().height(SPACING_LG),
-            text("Preview Build Failed").size(18).color(GRAY_800),
-            Space::new().height(SPACING_SM),
-            container(text(error_text).size(12).color(GRAY_600))
-                .padding(SPACING_MD)
-                .style(|_: &Theme| container::Style {
-                    background: Some(GRAY_100.into()),
-                    border: Border {
-                        radius: BORDER_RADIUS_SM.into(),
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                }),
-            Space::new().height(SPACING_LG),
-            button(
-                row![
-                    lucide::refresh_cw().size(14).color(WHITE),
-                    Space::new().width(SPACING_SM),
-                    text("Retry").size(14).color(WHITE),
-                ]
-                .align_y(Alignment::Center),
-            )
-            .on_press(Message::DomainEditor(DomainEditorMessage::Preview(
-                PreviewMessage::RebuildPreview,
-            )))
-            .padding([10.0, 24.0])
-            .style(button_primary),
-        ]
-        .align_x(Alignment::Center)
-        .max_width(400.0),
-    )
-    .width(Length::Fill)
-    .height(Length::Fill)
-    .center_x(Length::Shrink)
-    .center_y(Length::Shrink)
-    .into()
+    ErrorState::new("Preview Build Failed")
+        .message(error)
+        .retry(Message::DomainEditor(DomainEditorMessage::Preview(
+            PreviewMessage::RebuildPreview,
+        )))
+        .centered()
+        .view()
 }
 
 /// Empty state when no preview is available.
 fn view_empty_state<'a>() -> Element<'a, Message> {
-    container(
-        column![
-            lucide::table().size(48).color(GRAY_400),
-            Space::new().height(SPACING_LG),
-            text("No Preview Available").size(18).color(GRAY_700),
-            Space::new().height(SPACING_SM),
-            text("Click 'Rebuild' to generate the transformed data preview")
-                .size(13)
-                .color(GRAY_500),
-            Space::new().height(SPACING_LG),
-            button(
-                row![
-                    lucide::play().size(14).color(WHITE),
-                    Space::new().width(SPACING_SM),
-                    text("Build Preview").size(14).color(WHITE),
-                ]
-                .align_y(Alignment::Center),
-            )
-            .on_press(Message::DomainEditor(DomainEditorMessage::Preview(
-                PreviewMessage::RebuildPreview,
-            )))
-            .padding([10.0, 24.0])
-            .style(button_primary),
-        ]
-        .align_x(Alignment::Center),
+    EmptyState::new(
+        lucide::table().size(48).color(GRAY_400),
+        "No Preview Available",
     )
-    .width(Length::Fill)
-    .height(Length::Fill)
-    .center_x(Length::Shrink)
-    .center_y(Length::Shrink)
-    .into()
+    .description("Click 'Rebuild' to generate the transformed data preview")
+    .action(
+        "Build Preview",
+        Message::DomainEditor(DomainEditorMessage::Preview(PreviewMessage::RebuildPreview)),
+    )
+    .centered()
+    .view()
 }

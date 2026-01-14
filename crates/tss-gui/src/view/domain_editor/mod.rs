@@ -13,17 +13,13 @@ pub mod preview;
 pub mod supp;
 pub mod validation;
 
-use iced::widget::{Space, button, column, container, row, text};
-use iced::{Alignment, Border, Element, Length};
-use iced_fonts::lucide;
+use iced::widget::{column, container, text};
+use iced::{Border, Element, Length};
 
-use crate::component::{Tab, tab_bar};
+use crate::component::{PageHeader, Tab, tab_bar};
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{AppState, DomainState, EditorTab};
-use crate::theme::{
-    GRAY_100, GRAY_200, GRAY_500, GRAY_900, PRIMARY_500, SPACING_LG, SPACING_MD, SPACING_SM, WHITE,
-    button_secondary,
-};
+use crate::theme::{GRAY_200, GRAY_500, PRIMARY_500, WHITE};
 
 // Re-export tab view functions
 pub use mapping::view_mapping_tab;
@@ -91,78 +87,26 @@ pub fn view_domain_editor<'a>(
 /// Domain editor header with domain info and back button.
 fn view_editor_header<'a>(domain_code: &'a str, domain: &'a DomainState) -> Element<'a, Message> {
     let display_name = domain.display_name(domain_code);
-
-    // Back button
-    let back_button = button(
-        row![lucide::chevron_left().size(12), text("Back").size(14),]
-            .spacing(SPACING_SM)
-            .align_y(Alignment::Center),
-    )
-    .on_press(Message::DomainEditor(DomainEditorMessage::BackClicked))
-    .padding([8.0, 16.0])
-    .style(button_secondary);
-
-    // Domain badge
-    let domain_badge = container(text(domain_code).size(14).color(WHITE))
-        .padding([4.0, 12.0])
-        .style(move |_theme| container::Style {
-            background: Some(PRIMARY_500.into()),
-            border: Border {
-                radius: 4.0.into(),
-                ..Default::default()
-            },
-            ..Default::default()
-        });
-
-    // Domain name
-    let domain_name = text(display_name).size(20).color(GRAY_900);
-
-    // Row count
-    let row_count = text(format!("{} rows", domain.row_count()))
-        .size(13)
-        .color(GRAY_500);
-
-    // Progress indicator
     let summary = domain.summary();
-    let progress_text = text(format!(
-        "{}/{} mapped ({}%)",
-        summary.mapped,
-        summary.total_variables,
-        if summary.total_variables > 0 {
-            (summary.mapped * 100) / summary.total_variables
-        } else {
-            0
-        }
-    ))
-    .size(12)
-    .color(GRAY_500);
 
-    let header_row = row![
-        back_button,
-        Space::new().width(SPACING_MD),
-        domain_badge,
-        Space::new().width(SPACING_SM),
-        domain_name,
-        Space::new().width(Length::Fill),
-        row_count,
-        Space::new().width(SPACING_MD),
-        progress_text,
-    ]
-    .align_y(Alignment::Center);
+    let progress_pct = if summary.total_variables > 0 {
+        (summary.mapped * 100) / summary.total_variables
+    } else {
+        0
+    };
 
-    container(header_row)
-        .width(Length::Fill)
-        .padding([SPACING_MD, SPACING_LG])
-        .style(|_theme| container::Style {
-            background: Some(GRAY_100.into()),
-            border: Border {
-                width: 0.0,
-                radius: 0.0.into(),
-                color: GRAY_200,
-            },
-            ..Default::default()
-        })
-        .into()
+    PageHeader::new(display_name)
+        .back(Message::DomainEditor(DomainEditorMessage::BackClicked))
+        .badge(domain_code, PRIMARY_500)
+        .meta("Rows", domain.row_count().to_string())
+        .meta(
+            "Progress",
+            format!(
+                "{}/{} ({}%)",
+                summary.mapped, summary.total_variables, progress_pct
+            ),
+        )
+        .view()
 }
 
 // =============================================================================

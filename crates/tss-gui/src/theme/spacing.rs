@@ -91,6 +91,9 @@ pub const INPUT_HEIGHT_LG: f32 = 44.0;
 // LAYOUT WIDTHS
 // =============================================================================
 
+/// Master panel width in master-detail layouts
+pub const MASTER_WIDTH: f32 = 320.0;
+
 /// Sidebar width - master panel in master-detail layouts
 pub const SIDEBAR_WIDTH: f32 = 280.0;
 

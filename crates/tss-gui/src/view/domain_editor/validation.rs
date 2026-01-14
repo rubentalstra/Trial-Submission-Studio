@@ -2,19 +2,25 @@
 //!
 //! The validation tab displays CDISC conformance issues found during
 //! validation of the mapped and normalized data.
+//!
+//! - **Left (Master)**: Filterable list of validation issues
+//! - **Right (Detail)**: Detailed view of the selected issue
 
-use iced::widget::{Space, button, column, container, row, scrollable, text};
+use iced::widget::{Space, button, column, container, row, rule, scrollable, text};
 use iced::{Alignment, Border, Element, Length};
 use iced_fonts::lucide;
 use tss_submit::{Issue, Severity, ValidationReport};
 
+use crate::component::{
+    DetailHeader, EmptyState, MetadataCard, NoFilteredResults, master_detail_with_pinned_header,
+};
 use crate::message::domain_editor::{SeverityFilter as MsgSeverityFilter, ValidationMessage};
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{AppState, SeverityFilter, ValidationUiState, ViewState};
 use crate::theme::{
-    ERROR, GRAY_100, GRAY_200, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800, GRAY_900,
-    PRIMARY_100, PRIMARY_500, SPACING_LG, SPACING_MD, SPACING_SM, SUCCESS, WARNING, WHITE,
-    button_ghost, button_primary,
+    ERROR, GRAY_100, GRAY_200, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800, MASTER_WIDTH,
+    PRIMARY_100, PRIMARY_500, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS, SUCCESS, WARNING,
+    WHITE, button_primary, button_secondary,
 };
 
 // =============================================================================
@@ -40,83 +46,119 @@ pub fn view_validation_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Ele
         _ => return text("Invalid view state").into(),
     };
 
-    // Header
-    let header = view_validation_header(validation_cache.as_ref(), validation_ui);
-
-    // Content based on state
-    let content: Element<'a, Message> = if let Some(report) = validation_cache {
-        if report.is_empty() {
-            view_no_issues_state()
-        } else {
-            view_issues_list(report, validation_ui)
-        }
-    } else {
-        view_empty_state()
+    // If no validation results, show empty state
+    let Some(report) = validation_cache else {
+        return view_no_validation_run();
     };
 
-    column![header, Space::new().height(SPACING_MD), content,]
-        .spacing(0)
-        .into()
+    // If validation passed (no issues), show success state
+    if report.is_empty() {
+        return view_validation_passed();
+    }
+
+    // Filter issues by severity
+    let filtered_issues: Vec<(usize, &Issue)> = report
+        .issues
+        .iter()
+        .enumerate()
+        .filter(|(_, issue)| match validation_ui.severity_filter {
+            SeverityFilter::All => true,
+            SeverityFilter::Errors => {
+                matches!(issue.severity(), Severity::Error | Severity::Reject)
+            }
+            SeverityFilter::Warnings => matches!(issue.severity(), Severity::Warning),
+            SeverityFilter::Info => false, // No info level in current model
+        })
+        .collect();
+
+    // Master panel header
+    let master_header = view_master_header(report, validation_ui, filtered_issues.len());
+
+    // Master panel content (list)
+    let master_content = view_issues_list(&filtered_issues, validation_ui);
+
+    // Detail panel
+    let detail = if let Some(selected_idx) = validation_ui.selected_issue {
+        if let Some(issue) = report.issues.get(selected_idx) {
+            view_issue_detail(issue)
+        } else {
+            view_no_selection()
+        }
+    } else {
+        view_no_selection()
+    };
+
+    master_detail_with_pinned_header(master_header, master_content, detail, MASTER_WIDTH)
 }
 
 // =============================================================================
-// HEADER
+// MASTER PANEL
 // =============================================================================
 
-/// Validation header with stats and filter.
-fn view_validation_header<'a>(
-    report: Option<&ValidationReport>,
+/// Master panel header with title, filters, and stats.
+fn view_master_header<'a>(
+    report: &ValidationReport,
     ui: &ValidationUiState,
+    filtered_count: usize,
 ) -> Element<'a, Message> {
-    let title = text("Validation Issues").size(18).color(GRAY_900);
+    // Title
+    let title = text("Issues").size(14).color(GRAY_700).font(iced::Font {
+        weight: iced::font::Weight::Semibold,
+        ..Default::default()
+    });
 
-    // Stats subtitle
-    let subtitle_text = if let Some(r) = report {
-        let errors = r.error_count();
-        let warnings = r.warning_count();
-        if errors == 0 && warnings == 0 {
-            "No issues found".to_string()
-        } else {
-            format!("{} errors, {} warnings", errors, warnings)
-        }
-    } else {
-        "Run validation to check for issues".to_string()
-    };
-    let subtitle = text(subtitle_text).size(13).color(GRAY_600);
-
-    // Severity filter buttons
-    let filter_buttons = row![
-        filter_button("All", SeverityFilter::All, ui.severity_filter),
-        filter_button("Errors", SeverityFilter::Errors, ui.severity_filter),
-        filter_button("Warnings", SeverityFilter::Warnings, ui.severity_filter),
-    ]
-    .spacing(4.0);
-
-    // Refresh button
+    // Re-validate button
     let refresh_button = button(
-        row![lucide::refresh_cw().size(12), text("Re-validate").size(14),]
-            .spacing(SPACING_SM)
+        row![lucide::refresh_cw().size(12), text("Re-validate").size(12),]
+            .spacing(6.0)
             .align_y(Alignment::Center),
     )
     .on_press(Message::DomainEditor(DomainEditorMessage::Validation(
         ValidationMessage::RefreshValidation,
     )))
-    .padding([8.0, 16.0])
+    .padding([6.0, 12.0])
     .style(button_primary);
 
-    row![
-        column![title, Space::new().height(4.0), subtitle,],
-        Space::new().width(Length::Fill),
-        filter_buttons,
-        Space::new().width(SPACING_MD),
-        refresh_button,
+    let title_row =
+        row![title, Space::new().width(Length::Fill), refresh_button,].align_y(Alignment::Center);
+
+    // Severity filter buttons
+    let filter_buttons = row![
+        severity_filter_button("All", SeverityFilter::All, ui.severity_filter),
+        severity_filter_button("Errors", SeverityFilter::Errors, ui.severity_filter),
+        severity_filter_button("Warnings", SeverityFilter::Warnings, ui.severity_filter),
     ]
-    .align_y(Alignment::Start)
+    .spacing(SPACING_XS);
+
+    // Stats
+    let error_count = report.error_count();
+    let warning_count = report.warning_count();
+    let stats_text = format!(
+        "{} shown • {} errors, {} warnings total",
+        filtered_count, error_count, warning_count
+    );
+
+    let stats = row![
+        text(stats_text).size(11).color(GRAY_500),
+        Space::new().width(Length::Fill),
+    ];
+
+    // Build header column
+    column![
+        title_row,
+        Space::new().height(SPACING_SM),
+        filter_buttons,
+        Space::new().height(SPACING_SM),
+        stats,
+        Space::new().height(SPACING_SM),
+        rule::horizontal(1),
+        Space::new().height(SPACING_SM),
+    ]
     .into()
 }
 
-/// Filter button for severity.
-fn filter_button<'a>(
+/// Severity filter button.
+fn severity_filter_button<'a>(
     label: &'static str,
     filter: SeverityFilter,
     current: SeverityFilter,
@@ -129,158 +171,117 @@ fn filter_button<'a>(
         SeverityFilter::Info => MsgSeverityFilter::Info,
     };
 
-    button(text(label).size(12))
+    button(text(label).size(11))
         .on_press(Message::DomainEditor(DomainEditorMessage::Validation(
             ValidationMessage::SeverityFilterChanged(msg_filter),
         )))
-        .padding([6.0, 12.0])
-        .style(move |_theme, _status| {
+        .padding([4.0, 8.0])
+        .style(move |theme, status| {
             if is_selected {
                 iced::widget::button::Style {
-                    background: Some(PRIMARY_500.into()),
-                    text_color: iced::Color::WHITE,
+                    background: Some(PRIMARY_100.into()),
+                    text_color: PRIMARY_500,
                     border: Border {
                         radius: 4.0.into(),
-                        ..Default::default()
+                        color: PRIMARY_500,
+                        width: 1.0,
                     },
                     ..Default::default()
                 }
             } else {
-                button_ghost(_theme, _status)
+                button_secondary(theme, status)
             }
         })
         .into()
 }
 
-// =============================================================================
-// ISSUES LIST
-// =============================================================================
-
-/// Display list of validation issues.
+/// Issues list in master panel.
 fn view_issues_list<'a>(
-    report: &'a ValidationReport,
+    issues: &[(usize, &'a Issue)],
     ui: &ValidationUiState,
 ) -> Element<'a, Message> {
-    // Filter issues by severity
-    let filtered: Vec<&Issue> = report
-        .issues
-        .iter()
-        .filter(|issue| match ui.severity_filter {
-            SeverityFilter::All => true,
-            SeverityFilter::Errors => {
-                matches!(issue.severity(), Severity::Error | Severity::Reject)
-            }
-            SeverityFilter::Warnings => matches!(issue.severity(), Severity::Warning),
-            SeverityFilter::Info => false, // No info level in current model
-        })
-        .collect();
-
-    if filtered.is_empty() {
-        return view_no_filtered_issues(ui.severity_filter);
+    if issues.is_empty() {
+        let filter_name = match ui.severity_filter {
+            SeverityFilter::All => "issues",
+            SeverityFilter::Errors => "errors",
+            SeverityFilter::Warnings => "warnings",
+            SeverityFilter::Info => "info messages",
+        };
+        return NoFilteredResults::new(format!("No {} found", filter_name))
+            .hint("Try changing the severity filter")
+            .height(200.0)
+            .view();
     }
 
-    // Build issue rows
-    let mut issues_col = column![].spacing(SPACING_SM);
+    let mut list = column![].spacing(2.0);
 
-    for (idx, issue) in filtered.iter().enumerate() {
-        let is_selected = ui.selected_issue == Some(idx);
-        issues_col = issues_col.push(view_issue_row(issue, idx, is_selected));
+    for (original_idx, issue) in issues {
+        let is_selected = ui.selected_issue == Some(*original_idx);
+        list = list.push(view_issue_row(issue, *original_idx, is_selected));
     }
 
-    // Wrap in scrollable container
-    container(scrollable(issues_col.padding(SPACING_SM)))
-        .width(Length::Fill)
+    scrollable(list.padding([0.0, SPACING_SM]))
         .height(Length::Fill)
-        .style(|_theme| container::Style {
-            border: Border {
-                width: 1.0,
-                radius: 4.0.into(),
-                color: GRAY_200,
-            },
-            ..Default::default()
-        })
         .into()
 }
 
-/// Single issue row.
-fn view_issue_row<'a>(issue: &Issue, idx: usize, is_selected: bool) -> Element<'a, Message> {
+/// Single issue row in the master list.
+fn view_issue_row<'a>(issue: &'a Issue, idx: usize, is_selected: bool) -> Element<'a, Message> {
     let severity = issue.severity();
     let severity_color = match severity {
         Severity::Reject | Severity::Error => ERROR,
         Severity::Warning => WARNING,
     };
 
-    // Clone values we need to own
-    let rule_id = issue.rule_id().to_string();
-    let variable_name = issue.variable().to_string();
-    let message_text = issue.message();
-
     // Severity icon
     let severity_icon: Element<'a, Message> = match severity {
         Severity::Reject | Severity::Error => {
-            lucide::circle_x().size(16).color(severity_color).into()
+            lucide::circle_x().size(14).color(severity_color).into()
         }
-        Severity::Warning => lucide::circle_alert().size(16).color(severity_color).into(),
+        Severity::Warning => lucide::circle_alert().size(14).color(severity_color).into(),
     };
 
     // Rule ID badge
-    let rule_badge = container(text(rule_id).size(10).color(GRAY_600))
-        .padding([2.0, 6.0])
-        .style(|_theme| container::Style {
+    let rule_id = issue.rule_id();
+    let rule_badge = container(text(rule_id).size(9).color(GRAY_600))
+        .padding([2.0, 5.0])
+        .style(|_| container::Style {
             background: Some(GRAY_100.into()),
             border: Border {
-                radius: 4.0.into(),
+                radius: 3.0.into(),
                 ..Default::default()
             },
             ..Default::default()
         });
 
     // Variable name
-    let variable = text(variable_name.clone()).size(13).color(GRAY_800);
+    let variable = text(issue.variable()).size(13).color(GRAY_800);
 
-    // Issue message
-    let message = text(message_text).size(12).color(GRAY_600);
-
-    // Go to source button
-    let go_to_button = button(
-        row![lucide::arrow_right().size(10), text("Go to").size(11),]
-            .spacing(4.0)
-            .align_y(Alignment::Center),
-    )
-    .on_press(Message::DomainEditor(DomainEditorMessage::Validation(
-        ValidationMessage::GoToIssueSource {
-            variable: variable_name,
-        },
-    )))
-    .padding([4.0, 8.0])
-    .style(button_ghost);
+    // Short description (truncated)
+    let short_msg = truncate_message(issue.message().as_str(), 40);
+    let description = text(short_msg).size(11).color(GRAY_500);
 
     // Row content
     let row_content = row![
         severity_icon,
-        Space::new().width(SPACING_SM),
+        Space::new().width(SPACING_XS),
         rule_badge,
-        Space::new().width(SPACING_SM),
-        variable,
-        Space::new().width(SPACING_SM),
-        text("•").size(12).color(GRAY_400),
-        Space::new().width(SPACING_SM),
-        message,
-        Space::new().width(Length::Fill),
-        go_to_button,
+        Space::new().width(SPACING_XS),
+        column![variable, description,].spacing(2.0),
     ]
     .align_y(Alignment::Center);
 
     // Clickable row
     let bg_color = if is_selected { PRIMARY_100 } else { WHITE };
+    let border_color = if is_selected { PRIMARY_500 } else { GRAY_200 };
 
     button(row_content)
         .on_press(Message::DomainEditor(DomainEditorMessage::Validation(
             ValidationMessage::IssueSelected(idx),
         )))
         .width(Length::Fill)
-        .padding([SPACING_SM, SPACING_MD])
-        .style(move |_theme, status| {
+        .padding([SPACING_SM, SPACING_SM])
+        .style(move |_, status| {
             let bg = match status {
                 iced::widget::button::Status::Hovered if !is_selected => Some(GRAY_100.into()),
                 _ => Some(bg_color.into()),
@@ -290,7 +291,7 @@ fn view_issue_row<'a>(issue: &Issue, idx: usize, is_selected: bool) -> Element<'
                 border: Border {
                     width: 1.0,
                     radius: 6.0.into(),
-                    color: if is_selected { PRIMARY_500 } else { GRAY_200 },
+                    color: border_color,
                 },
                 ..Default::default()
             }
@@ -299,91 +300,267 @@ fn view_issue_row<'a>(issue: &Issue, idx: usize, is_selected: bool) -> Element<'
 }
 
 // =============================================================================
-// STATES
+// DETAIL PANEL
 // =============================================================================
 
-/// State when there are no filtered issues.
-fn view_no_filtered_issues<'a>(filter: SeverityFilter) -> Element<'a, Message> {
-    let filter_name = match filter {
-        SeverityFilter::All => "issues",
-        SeverityFilter::Errors => "errors",
-        SeverityFilter::Warnings => "warnings",
-        SeverityFilter::Info => "info messages",
+/// Detail view for selected issue.
+fn view_issue_detail<'a>(issue: &Issue) -> Element<'a, Message> {
+    let severity = issue.severity();
+    let severity_color = match severity {
+        Severity::Reject | Severity::Error => ERROR,
+        Severity::Warning => WARNING,
     };
 
-    container(
-        column![
-            lucide::search().size(32).color(GRAY_400),
-            Space::new().height(SPACING_MD),
-            text(format!("No {} found", filter_name))
-                .size(14)
-                .color(GRAY_600),
-            Space::new().height(SPACING_SM),
-            text("Try changing the severity filter")
-                .size(12)
-                .color(GRAY_500),
+    let variable_name = issue.variable().to_string();
+
+    // Severity badge icon
+    let badge_icon: Element<'a, Message> = match severity {
+        Severity::Reject | Severity::Error => {
+            lucide::circle_x().size(12).color(severity_color).into()
+        }
+        Severity::Warning => lucide::circle_alert().size(12).color(severity_color).into(),
+    };
+
+    // Header with variable name and severity badge
+    let header = DetailHeader::new(variable_name.clone())
+        .subtitle(format!("Rule: {}", issue.rule_id()))
+        .badge(badge_icon, severity.label(), severity_color)
+        .view();
+
+    // Issue information metadata card
+    let mut metadata = MetadataCard::new();
+    metadata = metadata
+        .row("Rule ID", issue.rule_id())
+        .row("Variable", issue.variable())
+        .row("Severity", severity.label())
+        .row("Category", issue_category(issue));
+
+    // Add issue-specific details
+    match issue {
+        Issue::RequiredEmpty { null_count, .. } | Issue::IdentifierNull { null_count, .. } => {
+            metadata = metadata.row("Null Values", null_count.to_string());
+        }
+        Issue::InvalidDate {
+            invalid_count,
+            samples,
+            ..
+        } => {
+            metadata = metadata.row("Invalid Count", invalid_count.to_string());
+            if !samples.is_empty() {
+                metadata = metadata.row("Examples", samples.join(", "));
+            }
+        }
+        Issue::TextTooLong {
+            exceeded_count,
+            max_found,
+            max_allowed,
+            ..
+        } => {
+            metadata = metadata.row("Exceeded Count", exceeded_count.to_string());
+            metadata = metadata.row("Max Found", max_found.to_string());
+            metadata = metadata.row("Max Allowed", max_allowed.to_string());
+        }
+        Issue::DataTypeMismatch {
+            non_numeric_count,
+            samples,
+            ..
+        } => {
+            metadata = metadata.row("Invalid Count", non_numeric_count.to_string());
+            if !samples.is_empty() {
+                metadata = metadata.row("Examples", samples.join(", "));
+            }
+        }
+        Issue::DuplicateSequence {
+            duplicate_count, ..
+        } => {
+            metadata = metadata.row("Duplicate Count", duplicate_count.to_string());
+        }
+        Issue::CtViolation {
+            codelist_code,
+            codelist_name,
+            extensible,
+            invalid_count,
+            invalid_values,
+            allowed_count,
+            ..
+        } => {
+            metadata = metadata.row("Codelist", format!("{} ({})", codelist_name, codelist_code));
+            metadata = metadata.row("Extensible", if *extensible { "Yes" } else { "No" });
+            metadata = metadata.row("Invalid Values", invalid_count.to_string());
+            metadata = metadata.row("Allowed Terms", allowed_count.to_string());
+            if !invalid_values.is_empty() {
+                let display_values: Vec<&str> =
+                    invalid_values.iter().take(5).map(|s| s.as_str()).collect();
+                let suffix = if invalid_values.len() > 5 {
+                    format!("... +{} more", invalid_values.len() - 5)
+                } else {
+                    String::new()
+                };
+                metadata = metadata.row(
+                    "Examples",
+                    format!("{}{}", display_values.join(", "), suffix),
+                );
+            }
+        }
+        _ => {}
+    }
+
+    let metadata_card = metadata.view();
+
+    // Full message section
+    let message_section = column![
+        text("Description")
+            .size(12)
+            .color(GRAY_600)
+            .font(iced::Font {
+                weight: iced::font::Weight::Semibold,
+                ..Default::default()
+            }),
+        Space::new().height(SPACING_XS),
+        container(text(issue.message()).size(13).color(GRAY_800))
+            .padding(SPACING_SM)
+            .width(Length::Fill)
+            .style(|_| container::Style {
+                background: Some(GRAY_100.into()),
+                border: Border {
+                    radius: 6.0.into(),
+                    ..Default::default()
+                },
+                ..Default::default()
+            }),
+    ];
+
+    // Action buttons
+    let go_to_button = button(
+        row![
+            lucide::arrow_right().size(14),
+            text("Go to Variable").size(13),
         ]
-        .align_x(Alignment::Center),
+        .spacing(SPACING_XS)
+        .align_y(Alignment::Center),
     )
-    .width(Length::Fill)
-    .height(Length::Fixed(200.0))
-    .center_x(Length::Shrink)
-    .center_y(Length::Shrink)
-    .into()
+    .on_press(Message::DomainEditor(DomainEditorMessage::Validation(
+        ValidationMessage::GoToIssueSource {
+            variable: variable_name,
+        },
+    )))
+    .padding([10.0, 16.0])
+    .style(button_primary);
+
+    let actions = row![go_to_button,];
+
+    // Build detail content
+    let content = column![
+        header,
+        Space::new().height(SPACING_LG),
+        metadata_card,
+        Space::new().height(SPACING_LG),
+        message_section,
+        Space::new().height(SPACING_LG),
+        actions,
+    ]
+    .width(Length::Fill);
+
+    scrollable(container(content).width(Length::Fill).padding(SPACING_LG))
+        .height(Length::Fill)
+        .into()
 }
 
-/// State when validation has no issues.
-fn view_no_issues_state<'a>() -> Element<'a, Message> {
-    container(
-        column![
-            lucide::circle_check().size(48).color(SUCCESS),
-            Space::new().height(SPACING_MD),
-            text("No Issues Found").size(16).color(GRAY_700),
-            Space::new().height(SPACING_SM),
-            text("All validation checks passed successfully")
-                .size(13)
-                .color(GRAY_500),
-        ]
-        .align_x(Alignment::Center),
+// =============================================================================
+// EMPTY STATES
+// =============================================================================
+
+/// Empty state when no issue is selected.
+fn view_no_selection<'a>() -> Element<'a, Message> {
+    EmptyState::new(
+        lucide::mouse_pointer_click().size(48).color(GRAY_400),
+        "Select an Issue",
     )
-    .width(Length::Fill)
-    .height(Length::Fixed(300.0))
-    .center_x(Length::Shrink)
-    .center_y(Length::Shrink)
-    .into()
+    .description("Choose a validation issue from the list to view details")
+    .centered()
+    .view()
 }
 
 /// Empty state when no validation has been run.
-fn view_empty_state<'a>() -> Element<'a, Message> {
+fn view_no_validation_run<'a>() -> Element<'a, Message> {
+    EmptyState::new(
+        lucide::shield_check().size(48).color(GRAY_400),
+        "No Validation Results",
+    )
+    .description("Click 'Re-validate' to check for CDISC conformance issues")
+    .action(
+        "Run Validation",
+        Message::DomainEditor(DomainEditorMessage::Validation(
+            ValidationMessage::RefreshValidation,
+        )),
+    )
+    .centered()
+    .view()
+}
+
+/// Success state when validation passed.
+fn view_validation_passed<'a>() -> Element<'a, Message> {
+    let refresh_btn = button(
+        row![lucide::refresh_cw().size(14), text("Re-validate").size(13),]
+            .spacing(SPACING_XS)
+            .align_y(Alignment::Center),
+    )
+    .on_press(Message::DomainEditor(DomainEditorMessage::Validation(
+        ValidationMessage::RefreshValidation,
+    )))
+    .padding([10.0, 16.0])
+    .style(button_secondary);
+
     container(
         column![
-            lucide::shield_check().size(48).color(GRAY_400),
+            lucide::circle_check().size(64).color(SUCCESS),
             Space::new().height(SPACING_MD),
-            text("No Validation Results").size(16).color(GRAY_600),
-            Space::new().height(SPACING_SM),
-            text("Click 'Re-validate' to check for CDISC conformance issues")
-                .size(13)
-                .color(GRAY_500),
+            text("All Checks Passed")
+                .size(20)
+                .color(SUCCESS)
+                .font(iced::Font {
+                    weight: iced::font::Weight::Semibold,
+                    ..Default::default()
+                }),
+            Space::new().height(SPACING_XS),
+            text("No CDISC conformance issues were found")
+                .size(14)
+                .color(GRAY_600),
             Space::new().height(SPACING_LG),
-            button(
-                row![
-                    lucide::refresh_cw().size(12),
-                    text("Run Validation").size(14),
-                ]
-                .spacing(SPACING_SM)
-                .align_y(Alignment::Center),
-            )
-            .on_press(Message::DomainEditor(DomainEditorMessage::Validation(
-                ValidationMessage::RefreshValidation,
-            )))
-            .padding([10.0, 20.0])
-            .style(button_primary),
+            refresh_btn,
         ]
         .align_x(Alignment::Center),
     )
     .width(Length::Fill)
-    .height(Length::Fixed(300.0))
+    .height(Length::Fill)
     .center_x(Length::Shrink)
     .center_y(Length::Shrink)
     .into()
+}
+
+// =============================================================================
+// HELPERS
+// =============================================================================
+
+/// Get issue category for display.
+fn issue_category(issue: &Issue) -> &'static str {
+    match issue {
+        Issue::RequiredMissing { .. }
+        | Issue::RequiredEmpty { .. }
+        | Issue::ExpectedMissing { .. }
+        | Issue::IdentifierNull { .. } => "Presence",
+        Issue::InvalidDate { .. } | Issue::TextTooLong { .. } => "Format",
+        Issue::DataTypeMismatch { .. } => "Type",
+        Issue::DuplicateSequence { .. } => "Consistency",
+        Issue::CtViolation { .. } => "Terminology",
+    }
+}
+
+/// Truncate message for display in list.
+fn truncate_message(msg: &str, max_len: usize) -> String {
+    if msg.len() <= max_len {
+        msg.to_string()
+    } else {
+        format!("{}...", &msg[..max_len])
+    }
 }

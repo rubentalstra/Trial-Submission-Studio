@@ -11,12 +11,13 @@ use iced::widget::{Space, button, column, container, row, scrollable, text};
 use iced::{Alignment, Border, Element, Length};
 use iced_fonts::lucide;
 
+use crate::component::DomainListItem;
 use crate::message::{HomeMessage, Message};
 use crate::state::{AppState, DomainState, Study, ViewState, WorkflowMode};
 use crate::theme::{
     BORDER_RADIUS_MD, GRAY_100, GRAY_200, GRAY_500, GRAY_600, GRAY_700, GRAY_800, GRAY_900,
-    PRIMARY_500, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XL, SUCCESS, WARNING, WHITE,
-    button_primary, button_secondary,
+    PRIMARY_500, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XL, WHITE, button_primary,
+    button_secondary,
 };
 
 // =============================================================================
@@ -27,7 +28,7 @@ use crate::theme::{
 ///
 /// Shows either the study selector (no study loaded) or the study overview
 /// (study loaded with domain list).
-pub fn view_home<'a>(state: &'a AppState) -> Element<'a, Message> {
+pub fn view_home(state: &'_ AppState) -> Element<'_, Message> {
     // Get workflow mode from view state
     let workflow_mode = match &state.view {
         ViewState::Home { workflow_mode, .. } => *workflow_mode,
@@ -53,7 +54,7 @@ pub fn view_home<'a>(state: &'a AppState) -> Element<'a, Message> {
 // =============================================================================
 
 /// View when no study is loaded - shows welcome message and study selector.
-fn view_no_study<'a>(state: &'a AppState, workflow_mode: WorkflowMode) -> Element<'a, Message> {
+fn view_no_study(state: &'_ AppState, workflow_mode: WorkflowMode) -> Element<'_, Message> {
     let title = text("Trial Submission Studio").size(32).color(GRAY_900);
 
     let tagline = text("Transform clinical data to regulatory formats")
@@ -193,7 +194,7 @@ fn view_mode_button<'a>(
 }
 
 /// Recent studies list section.
-fn view_recent_studies<'a>(state: &'a AppState) -> Element<'a, Message> {
+fn view_recent_studies(state: &'_ AppState) -> Element<'_, Message> {
     let recent = &state.settings.general.recent_studies;
 
     if recent.is_empty() {
@@ -364,60 +365,13 @@ fn view_domain_item<'a>(code: &'a str, domain: &'a DomainState) -> Element<'a, M
     let is_complete = domain.is_mapping_complete();
     let is_touched = domain.is_touched();
 
-    // Status icon using lucide
-    let status_icon: Element<'a, Message> = if is_complete {
-        lucide::circle_check().size(14).color(SUCCESS).into()
-    } else if is_touched {
-        lucide::pencil().size(14).color(WARNING).into()
-    } else {
-        lucide::circle().size(14).color(GRAY_500).into()
-    };
-
-    // Domain badge
-    let domain_badge = container(text(code).size(14).color(WHITE))
-        .padding([4.0, 12.0])
-        .style(move |_theme| container::Style {
-            background: Some(PRIMARY_500.into()),
-            border: Border {
-                radius: 4.0.into(),
-                ..Default::default()
-            },
-            ..Default::default()
-        });
-
-    let name_text = text(display_name).size(14).color(GRAY_800);
-    let rows_text = text(format!("{} rows", row_count)).size(12).color(GRAY_500);
-
-    let code_owned = code.to_string();
-    let item_button = button(
-        row![
-            status_icon,
-            domain_badge,
-            name_text,
-            Space::new().width(Length::Fill),
-            rows_text,
-        ]
-        .spacing(SPACING_SM)
-        .align_y(Alignment::Center)
-        .padding([SPACING_SM, SPACING_MD]),
+    DomainListItem::new(
+        code,
+        display_name,
+        Message::Home(HomeMessage::DomainClicked(code.to_string())),
     )
-    .on_press(Message::Home(HomeMessage::DomainClicked(code_owned)))
-    .width(Length::Fill)
-    .style(|_theme, status| {
-        let bg = match status {
-            button::Status::Hovered => Some(GRAY_100.into()),
-            _ => None,
-        };
-        button::Style {
-            background: bg,
-            text_color: GRAY_800,
-            border: Border {
-                radius: 4.0.into(),
-                ..Default::default()
-            },
-            ..Default::default()
-        }
-    });
-
-    item_button.into()
+    .row_count(row_count)
+    .complete(is_complete)
+    .touched(is_touched)
+    .view()
 }

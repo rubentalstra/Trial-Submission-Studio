@@ -24,6 +24,9 @@
 //! 3. **Derived data computed on demand** - Not cached in state
 //! 4. **UI state lives with views** - Not mixed with domain data
 
+// Allow unused imports - these are public API re-exports
+#![allow(unused_imports)]
+
 mod domain_state;
 mod settings;
 mod study;
