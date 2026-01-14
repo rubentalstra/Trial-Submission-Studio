@@ -10,6 +10,8 @@
 //! This eliminates the need to synchronize separate state containers
 //! and makes it clear what state belongs to which view.
 
+use std::collections::HashMap;
+
 use polars::prelude::DataFrame;
 use tss_submit::ValidationReport;
 
@@ -45,6 +47,9 @@ pub enum ViewState {
     Home {
         /// Selected workflow mode (SDTM, ADaM, SEND).
         workflow_mode: WorkflowMode,
+        /// Cached validation summaries per domain: domain_code -> (warnings, errors).
+        /// None for a domain means validation hasn't completed yet.
+        validation_summaries: HashMap<String, (usize, usize)>,
     },
 
     /// Domain editor with tabbed interface.
@@ -84,6 +89,7 @@ impl ViewState {
     pub fn home() -> Self {
         Self::Home {
             workflow_mode: WorkflowMode::default(),
+            validation_summaries: HashMap::new(),
         }
     }
 

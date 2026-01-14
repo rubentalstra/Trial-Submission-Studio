@@ -66,8 +66,10 @@ mod tab_bar;
 // New comprehensive layout components
 mod action_button;
 mod detail_header;
+mod domain_card;
 mod master_panel;
 mod metadata_card;
+mod progress_bar;
 mod search_filter_bar;
 mod status_card;
 mod text_field;
@@ -116,6 +118,12 @@ pub use section_card::{SectionCard, panel, status_panel};
 // Badge components
 pub use core_badge::{core_badge, core_badge_if_important};
 pub use domain_badge::{domain_badge, domain_badge_small};
+
+// Progress components
+pub use progress_bar::ProgressBar;
+
+// Domain card component (for home view)
+pub use domain_card::DomainCard;
 
 // List item components
 pub use selectable_row::{DomainListItem, SelectableRow};
