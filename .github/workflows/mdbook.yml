@@ -7,7 +7,6 @@ on:
       - "docs/**"
       - ".github/workflows/mdbook.yml"
   pull_request:
-    branches: [ main ]
     paths:
       - "docs/**"
       - ".github/workflows/mdbook.yml"
