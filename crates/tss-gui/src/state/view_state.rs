@@ -39,6 +39,7 @@ use super::domain_state::{SuppColumnConfig, SuppOrigin};
 /// }
 /// ```
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum ViewState {
     /// Home screen - study selection and overview.
     Home {
@@ -542,7 +543,7 @@ impl ExportResult {
 /// - Selection state (which domains to export)
 /// - Configuration state (format, output dir) - uses types from settings module
 /// - Phase state (idle/exporting/complete)
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct ExportViewState {
     /// Selected domain codes for export.
     pub selected_domains: HashSet<String>,
@@ -550,16 +551,6 @@ pub struct ExportViewState {
     pub output_dir: Option<PathBuf>,
     /// Current export phase.
     pub phase: ExportPhase,
-}
-
-impl Default for ExportViewState {
-    fn default() -> Self {
-        Self {
-            selected_domains: HashSet::new(),
-            output_dir: None,
-            phase: ExportPhase::default(),
-        }
-    }
 }
 
 impl ExportViewState {

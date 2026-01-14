@@ -199,12 +199,12 @@ impl Study {
 
     /// Count total rows across all domains.
     pub fn total_rows(&self) -> usize {
-        self.domains.values().map(|d| d.row_count()).sum()
+        self.domains.values().map(DomainState::row_count).sum()
     }
 
     /// Check if all domains have complete mappings.
     pub fn is_all_complete(&self) -> bool {
-        self.domains.values().all(|d| d.is_mapping_complete())
+        self.domains.values().all(DomainState::is_mapping_complete)
     }
 
     /// Get mapping progress as (complete, total).

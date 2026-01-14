@@ -219,7 +219,7 @@ fn view_data_table<'a>(
     let col_names: Vec<String> = df
         .get_column_names()
         .iter()
-        .map(|s| s.to_string())
+        .map(ToString::to_string)
         .collect();
     let total_rows = df.height();
     let page = preview_ui.current_page;
@@ -313,8 +313,7 @@ fn view_data_table<'a>(
 fn calculate_column_widths(df: &DataFrame, col_names: &[String]) -> Vec<f32> {
     col_names
         .iter()
-        .enumerate()
-        .map(|(_col_idx, name)| {
+        .map(|name| {
             // Start with header width
             let header_width = (name.len() as f32 * CHAR_WIDTH) + (CELL_PADDING_X * 2.0);
 
@@ -340,9 +339,9 @@ fn calculate_column_widths(df: &DataFrame, col_names: &[String]) -> Vec<f32> {
             let adjusted_width = match name.as_str() {
                 "STUDYID" => width.max(100.0),
                 "USUBJID" => width.max(140.0),
-                "DOMAIN" => width.max(70.0).min(80.0),
-                _ if name.ends_with("SEQ") => width.max(70.0).min(90.0),
-                _ if name.ends_with("DY") => width.max(70.0).min(90.0),
+                "DOMAIN" => width.clamp(70.0, 80.0),
+                _ if name.ends_with("SEQ") => width.clamp(70.0, 90.0),
+                _ if name.ends_with("DY") => width.clamp(70.0, 90.0),
                 _ if name.ends_with("DTC") => width.max(110.0),
                 _ => width,
             };
@@ -367,7 +366,7 @@ fn build_table_content<'a>(
     // Data rows
     let mut data_rows = column![].spacing(0);
     for row_idx in start..end {
-        let is_even = (row_idx - start) % 2 == 0;
+        let is_even = (row_idx - start).is_multiple_of(2);
         data_rows = data_rows.push(build_data_row(
             df,
             col_names,
@@ -531,11 +530,7 @@ fn build_data_row<'a>(
 
 /// Pagination controls.
 fn view_pagination<'a>(page: usize, total_rows: usize, page_size: usize) -> Element<'a, Message> {
-    let total_pages = if total_rows == 0 {
-        1
-    } else {
-        (total_rows + page_size - 1) / page_size
-    };
+    let total_pages = total_rows.div_ceil(page_size).max(1);
 
     let prev_enabled = page > 0;
     let next_enabled = page < total_pages.saturating_sub(1);

@@ -12,7 +12,7 @@ use std::path::PathBuf;
 /// Application settings.
 ///
 /// Serialized to TOML and stored in the user's config directory.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Settings {
     /// General application settings.
@@ -28,28 +28,17 @@ pub struct Settings {
     pub updates: tss_updater::UpdateSettings,
 }
 
-impl Default for Settings {
-    fn default() -> Self {
-        Self {
-            general: GeneralSettings::default(),
-            export: ExportSettings::default(),
-            developer: DeveloperSettings::default(),
-            updates: tss_updater::UpdateSettings::default(),
-        }
-    }
-}
-
 impl Settings {
     /// Load settings from the default path.
     pub fn load() -> Self {
-        let mut settings = Self::load_from(Self::config_path());
+        let mut settings = Self::load_from(&Self::config_path());
         settings.migrate();
         settings
     }
 
     /// Load settings from a specific path.
-    pub fn load_from(path: PathBuf) -> Self {
-        std::fs::read_to_string(&path)
+    pub fn load_from(path: &PathBuf) -> Self {
+        std::fs::read_to_string(path)
             .ok()
             .and_then(|content| toml::from_str(&content).ok())
             .unwrap_or_default()
@@ -71,11 +60,11 @@ impl Settings {
 
     /// Save settings to the default path.
     pub fn save(&self) -> Result<(), String> {
-        self.save_to(Self::config_path())
+        self.save_to(&Self::config_path())
     }
 
     /// Save settings to a specific path.
-    pub fn save_to(&self, path: PathBuf) -> Result<(), String> {
+    pub fn save_to(&self, path: &PathBuf) -> Result<(), String> {
         // Ensure parent directory exists
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)
@@ -85,7 +74,7 @@ impl Settings {
         let content = toml::to_string_pretty(self)
             .map_err(|e| format!("Failed to serialize settings: {}", e))?;
 
-        std::fs::write(&path, content).map_err(|e| format!("Failed to write settings: {}", e))
+        std::fs::write(path, content).map_err(|e| format!("Failed to write settings: {}", e))
     }
 
     /// Get the default config file path.
@@ -259,7 +248,7 @@ impl XptVersion {
 // =============================================================================
 
 /// Developer settings (advanced options).
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct DeveloperSettings {
     /// Bypass validation errors when exporting.
@@ -270,13 +259,4 @@ pub struct DeveloperSettings {
 
     /// Enable developer mode (shows additional debug info).
     pub developer_mode: bool,
-}
-
-impl Default for DeveloperSettings {
-    fn default() -> Self {
-        Self {
-            bypass_validation: false,
-            developer_mode: false,
-        }
-    }
 }

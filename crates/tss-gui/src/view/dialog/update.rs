@@ -25,9 +25,10 @@ use crate::theme::{
 const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Update check and installation state.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub enum UpdateState {
     /// Initial state, no check performed.
+    #[default]
     Idle,
 
     /// Checking for updates.
@@ -95,16 +96,13 @@ pub enum UpdateState {
     Error(String),
 }
 
-impl Default for UpdateState {
-    fn default() -> Self {
-        Self::Idle
-    }
-}
-
 /// Render the Update dialog content for a standalone window (multi-window mode).
 ///
 /// This is the content that appears in a separate dialog window.
-pub fn view_update_dialog_content(state: &UpdateState, window_id: window::Id) -> Element<Message> {
+pub fn view_update_dialog_content(
+    state: &UpdateState,
+    window_id: window::Id,
+) -> Element<'_, Message> {
     let content = match state {
         UpdateState::Idle => view_idle_state(window_id),
         UpdateState::Checking => view_checking_state(),
@@ -335,7 +333,7 @@ fn view_downloading_state(
     downloaded_bytes: u64,
     total_bytes: u64,
     window_id: window::Id,
-) -> Element<Message> {
+) -> Element<'_, Message> {
     let icon = lucide::download().size(32).color(PRIMARY_500);
 
     // Format bytes for display
@@ -374,7 +372,7 @@ fn view_downloading_state(
 }
 
 /// Verifying state.
-fn view_verifying_state(info: &tss_updater::UpdateInfo) -> Element<Message> {
+fn view_verifying_state(info: &tss_updater::UpdateInfo) -> Element<'_, Message> {
     let icon = lucide::shield_check().size(32).color(PRIMARY_500);
 
     column![
@@ -456,7 +454,7 @@ fn view_ready_to_install_state(
     info: &tss_updater::UpdateInfo,
     verified: bool,
     window_id: window::Id,
-) -> Element<Message> {
+) -> Element<'_, Message> {
     let (icon, verification_text) = if verified {
         (
             lucide::shield_check().size(32).color(SUCCESS),
@@ -530,7 +528,7 @@ fn view_installing_state() -> Element<'static, Message> {
 }
 
 /// Installation complete state.
-fn view_install_complete_state(version: &str, window_id: window::Id) -> Element<Message> {
+fn view_install_complete_state(version: &str, window_id: window::Id) -> Element<'_, Message> {
     let icon = lucide::circle_check().size(32).color(SUCCESS);
 
     let restart_btn = button(
@@ -577,7 +575,7 @@ fn view_install_complete_state(version: &str, window_id: window::Id) -> Element<
 }
 
 /// Error state.
-fn view_error_state(message: &str, window_id: window::Id) -> Element<Message> {
+fn view_error_state(message: &str, window_id: window::Id) -> Element<'_, Message> {
     let icon = lucide::circle_x().size(32).color(GRAY_600);
 
     let retry_btn = button(text("Retry").size(13))

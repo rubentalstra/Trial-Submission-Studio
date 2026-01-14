@@ -463,7 +463,7 @@ fn view_variable_metadata<'a>(var: &'a tss_standards::SdtmVariable) -> Element<'
 
     // Length
     if let Some(length) = var.length {
-        rows = rows.push(view_metadata_row("Length", &length.to_string()));
+        rows = rows.push(view_metadata_row("Length", length.to_string()));
     }
 
     // Controlled Terminology
@@ -491,6 +491,7 @@ fn view_variable_metadata<'a>(var: &'a tss_standards::SdtmVariable) -> Element<'
 }
 
 /// Single metadata row.
+#[allow(clippy::needless_pass_by_value)]
 fn view_metadata_row<'a>(label: &'static str, value: impl ToString) -> Element<'a, Message> {
     row![
         text(label)

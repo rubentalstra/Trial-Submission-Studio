@@ -51,6 +51,7 @@ pub enum MenuBarMenuId {
 /// of this enum. The `update` function processes these messages to
 /// modify application state.
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum Message {
     // =========================================================================
     // Navigation

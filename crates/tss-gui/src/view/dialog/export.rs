@@ -24,7 +24,7 @@ use crate::theme::{
 pub fn view_export_progress_dialog_content(
     state: &ExportProgressState,
     _window_id: window::Id,
-) -> Element<Message> {
+) -> Element<'_, Message> {
     let domain_text = state.current_domain.as_deref().unwrap_or("Preparing...");
 
     // Header with icon
@@ -133,7 +133,7 @@ fn view_success_content(
     files_count: usize,
     domains_exported: usize,
     elapsed_ms: u64,
-) -> Element<Message> {
+) -> Element<'_, Message> {
     let icon = lucide::circle_check().size(56).color(SUCCESS);
 
     let title = text("Export Complete!").size(22).color(GRAY_900);

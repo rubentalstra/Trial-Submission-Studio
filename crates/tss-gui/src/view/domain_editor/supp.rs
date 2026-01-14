@@ -92,11 +92,9 @@ pub fn view_supp_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Element<'
             let config = domain.supp_config.get(*col);
             match supp_ui.filter_mode {
                 SuppFilterMode::All => true,
-                SuppFilterMode::Pending => config.map_or(true, |c| c.action == SuppAction::Pending),
-                SuppFilterMode::Included => {
-                    config.map_or(false, |c| c.action == SuppAction::Include)
-                }
-                SuppFilterMode::Skipped => config.map_or(false, |c| c.action == SuppAction::Skip),
+                SuppFilterMode::Pending => config.is_none_or(|c| c.action == SuppAction::Pending),
+                SuppFilterMode::Included => config.is_some_and(|c| c.action == SuppAction::Include),
+                SuppFilterMode::Skipped => config.is_some_and(|c| c.action == SuppAction::Skip),
             }
         })
         .cloned()
@@ -372,7 +370,7 @@ fn build_pending_view(
     let qnam_error = check_qnam_conflict(domain, col_name, &config.qnam);
 
     // Editable fields
-    let fields = build_editable_fields(config.clone(), qnam_error);
+    let fields = build_editable_fields(config, qnam_error);
 
     // Action buttons
     let actions = build_pending_actions(domain_code);
@@ -657,7 +655,7 @@ fn build_edit_view(
     let qnam_error = check_qnam_conflict(domain, col_name, &draft.qnam);
 
     // Editable fields
-    let fields = build_editable_fields(temp_config, qnam_error);
+    let fields = build_editable_fields(&temp_config, qnam_error);
 
     // Edit mode info
     let edit_info = container(
@@ -941,7 +939,7 @@ fn build_sample_data(domain: &DomainState, col_name: &str) -> Element<'static, M
 }
 
 fn build_editable_fields(
-    config: SuppColumnConfig,
+    config: &SuppColumnConfig,
     qnam_conflict_error: Option<String>,
 ) -> Element<'static, Message> {
     // QNAM field (required) - check empty first, then conflict
@@ -953,7 +951,7 @@ fn build_editable_fields(
     let qnam_field = build_text_field(
         "QNAM *",
         "Qualifier name (max 8 chars)",
-        config.qnam,
+        &config.qnam,
         QNAM_MAX_LEN,
         qnam_error,
         true,
@@ -973,7 +971,7 @@ fn build_editable_fields(
     let qlabel_field = build_text_field(
         "QLABEL *",
         "Describe what this value represents...",
-        config.qlabel,
+        &config.qlabel,
         QLABEL_MAX_LEN,
         qlabel_error,
         true,
@@ -984,10 +982,11 @@ fn build_editable_fields(
     let qorig_field = build_origin_picker(config.qorig);
 
     // QEVAL field (optional)
+    let qeval_str = config.qeval.as_deref().unwrap_or("");
     let qeval_field = build_text_field(
         "QEVAL",
         "Evaluator (e.g., INVESTIGATOR)",
-        config.qeval.unwrap_or_default(),
+        qeval_str,
         40,
         None,
         false,
@@ -1002,7 +1001,7 @@ fn build_editable_fields(
 fn build_text_field<F>(
     label: &'static str,
     placeholder: &'static str,
-    value: String,
+    value: &str,
     max_len: usize,
     error: Option<String>,
     _is_required: bool,
@@ -1037,7 +1036,7 @@ where
                 .color(if is_over { ERROR } else { GRAY_400 }),
         ],
         Space::new().height(4.0),
-        text_input(placeholder, &value)
+        text_input(placeholder, value)
             .on_input(on_change)
             .padding([10.0, 12.0])
             .size(14)

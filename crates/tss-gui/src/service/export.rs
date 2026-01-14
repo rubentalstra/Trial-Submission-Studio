@@ -17,7 +17,7 @@ use tss_submit::export::{
 use tss_submit::{NormalizationContext, execute_normalization};
 use tss_submit::{Severity, ValidationReport};
 
-use crate::state::{DomainState, ExportFormat, ExportResult, XptVersion};
+use crate::state::{DomainState, ExportFormat, ExportResult, SuppColumnConfig, XptVersion};
 
 // =============================================================================
 // INPUT TYPES
@@ -510,7 +510,7 @@ fn build_supp_dataframe(
 
     // Build rows for each SUPP column
     for (source_col_name, config) in &included {
-        let source_col = match source_df.column(*source_col_name) {
+        let source_col = match source_df.column(source_col_name) {
             Ok(col) => col,
             Err(_) => continue,
         };
@@ -652,7 +652,7 @@ pub fn domain_has_supp(gui_domain: &DomainState) -> bool {
     gui_domain
         .supp_config
         .values()
-        .any(|config| config.should_include())
+        .any(SuppColumnConfig::should_include)
 }
 
 /// Get count of included SUPP columns for a domain.

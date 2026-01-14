@@ -16,7 +16,6 @@ mod theme;
 mod view;
 
 use app::App;
-use iced::Size;
 use iced::window;
 
 // Import Lucide font bytes for loading

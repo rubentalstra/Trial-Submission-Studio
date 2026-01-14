@@ -71,6 +71,7 @@ use tss_standards::TerminologyRegistry;
 ///     Task::none()
 /// }
 /// ```
+#[derive(Default)]
 pub struct AppState {
     /// Current view and its associated UI state.
     ///
@@ -216,22 +217,6 @@ pub enum DialogType {
     CloseStudyConfirm,
     ExportProgress,
     ExportComplete,
-}
-
-impl Default for AppState {
-    fn default() -> Self {
-        Self {
-            view: ViewState::default(),
-            study: None,
-            settings: Settings::default(),
-            terminology: None,
-            error: None,
-            is_loading: false,
-            menu_bar: MenuBarState::default(),
-            dialog_windows: DialogWindows::default(),
-            main_window_id: None,
-        }
-    }
 }
 
 impl AppState {

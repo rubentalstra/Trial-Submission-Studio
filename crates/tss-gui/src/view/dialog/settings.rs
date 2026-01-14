@@ -27,7 +27,7 @@ const SIDEBAR_WIDTH: f32 = 200.0;
 pub fn view_settings_dialog(
     settings: &Settings,
     active_category: SettingsCategory,
-) -> Element<Message> {
+) -> Element<'_, Message> {
     let backdrop = container(Space::new().width(Length::Fill).height(Length::Fill))
         .width(Length::Fill)
         .height(Length::Fill)
@@ -71,7 +71,7 @@ pub fn view_settings_dialog_content(
     settings: &Settings,
     active_category: SettingsCategory,
     window_id: window::Id,
-) -> Element<Message> {
+) -> Element<'_, Message> {
     let content = view_dialog_content_for_window(settings, active_category, window_id);
 
     // Wrap in a styled container for the window
@@ -90,7 +90,7 @@ fn view_dialog_content_for_window(
     settings: &Settings,
     active_category: SettingsCategory,
     window_id: window::Id,
-) -> Element<Message> {
+) -> Element<'_, Message> {
     let header = view_header();
     let body = view_master_detail(settings, active_category);
     let footer = view_footer_for_window(window_id);
@@ -137,7 +137,10 @@ fn view_footer_for_window<'a>(window_id: window::Id) -> Element<'a, Message> {
 }
 
 /// Main dialog content with header, master-detail, and footer.
-fn view_dialog_content(settings: &Settings, active_category: SettingsCategory) -> Element<Message> {
+fn view_dialog_content(
+    settings: &Settings,
+    active_category: SettingsCategory,
+) -> Element<'_, Message> {
     let header = view_header();
     let body = view_master_detail(settings, active_category);
     let footer = view_footer();
@@ -167,7 +170,10 @@ fn view_header<'a>() -> Element<'a, Message> {
 }
 
 /// Master-detail layout: category sidebar + settings content.
-fn view_master_detail(settings: &Settings, active_category: SettingsCategory) -> Element<Message> {
+fn view_master_detail(
+    settings: &Settings,
+    active_category: SettingsCategory,
+) -> Element<'_, Message> {
     let sidebar = view_sidebar(active_category);
     let content = view_category_content(settings, active_category);
 
@@ -279,7 +285,7 @@ fn view_category_content<'a>(
 }
 
 /// General settings section.
-fn view_general_settings(settings: &Settings) -> Element<Message> {
+fn view_general_settings(settings: &Settings) -> Element<'_, Message> {
     let header_rows_section = column![
         text("CSV Header Rows").size(14).color(GRAY_800),
         text("Number of header rows in source CSV files")
@@ -341,7 +347,7 @@ fn view_general_settings(settings: &Settings) -> Element<Message> {
 }
 
 /// Export settings section.
-fn view_export_settings(settings: &Settings) -> Element<Message> {
+fn view_export_settings(settings: &Settings) -> Element<'_, Message> {
     let format_section = column![
         text("Default Export Format").size(14).color(GRAY_800),
         text("Format used when exporting domain data")
@@ -443,7 +449,7 @@ fn view_display_settings<'a>() -> Element<'a, Message> {
 }
 
 /// Update settings section.
-fn view_update_settings(settings: &Settings) -> Element<Message> {
+fn view_update_settings(settings: &Settings) -> Element<'_, Message> {
     let enable_section = row![
         column![
             text("Enable Update Checking").size(14).color(GRAY_800),
@@ -488,7 +494,7 @@ fn view_update_settings(settings: &Settings) -> Element<Message> {
 }
 
 /// Developer settings section.
-fn view_developer_settings(settings: &Settings) -> Element<Message> {
+fn view_developer_settings(settings: &Settings) -> Element<'_, Message> {
     let bypass_validation_section = row![
         column![
             text("Bypass Validation Errors").size(14).color(GRAY_800),
@@ -546,7 +552,7 @@ fn view_validation_settings<'a>() -> Element<'a, Message> {
 }
 
 /// Section header helper.
-fn section_header(title: &str) -> Element<Message> {
+fn section_header(title: &str) -> Element<'_, Message> {
     text(title).size(16).color(GRAY_900).into()
 }
 

@@ -39,8 +39,8 @@ pub use palette::{
     EXPORT_HAS_ERRORS,
     EXPORT_INCOMPLETE,
     EXPORT_READY,
-    // Grays
     GRAY_50,
+    // Grays
     GRAY_100,
     GRAY_200,
     GRAY_300,
@@ -123,16 +123,16 @@ pub use spacing::{
     // Spacing
     SPACING_XS,
     SPACING_XXL,
-    // Tab bar
     TAB_BAR_HEIGHT,
     TAB_INDICATOR_HEIGHT,
+    // Table
     TAB_PADDING_X,
     TAB_PADDING_Y,
+    // Tab bar
     TABLE_CELL_PADDING_X,
     TABLE_CELL_PADDING_Y,
     TABLE_HEADER_HEIGHT,
     TABLE_ROW_HEIGHT_COMFORTABLE,
-    // Table
     TABLE_ROW_HEIGHT_COMPACT,
     TABLE_ROW_HEIGHT_DEFAULT,
 };

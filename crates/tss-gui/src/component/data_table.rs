@@ -150,11 +150,7 @@ pub fn data_table<'a, M: Clone + 'a>(
     }
 
     // Pagination
-    let total_pages = if total_rows == 0 {
-        1
-    } else {
-        (total_rows + page_size - 1) / page_size
-    };
+    let total_pages = total_rows.div_ceil(page_size).max(1);
 
     let pagination = {
         let prev_enabled = page > 0;

@@ -572,9 +572,7 @@ fn build_preview_content<'a>(
     match &rule.transform_type {
         // Constants have no "before" - just show the value
         NormalizationType::Constant => {
-            let value = if rule.target_variable == "STUDYID" {
-                domain.mapping.domain().name.clone()
-            } else if rule.target_variable == "DOMAIN" {
+            let value = if rule.target_variable == "STUDYID" || rule.target_variable == "DOMAIN" {
                 domain.mapping.domain().name.clone()
             } else {
                 "—".to_string()
@@ -640,7 +638,7 @@ fn build_preview_content<'a>(
                     Space::new().width(SPACING_SM),
                     column![
                         text("USUBJID").size(10).color(GRAY_500),
-                        preview_value_box(&format!("{}-001", study_id)),
+                        preview_value_box(format!("{}-001", study_id)),
                     ],
                 ]
                 .align_y(Alignment::End),
@@ -830,12 +828,12 @@ fn simulate_transform(
 
         NormalizationType::CtNormalization { codelist_code } => {
             // Use actual CT lookup if terminology is available
-            if let Some(registry) = terminology {
-                if let Some(resolved) = registry.resolve(codelist_code, None) {
-                    // Find the canonical submission value (handles synonyms)
-                    if let Some(submission_value) = resolved.find_submission_value(input) {
-                        return submission_value.to_string();
-                    }
+            if let Some(registry) = terminology
+                && let Some(resolved) = registry.resolve(codelist_code, None)
+            {
+                // Find the canonical submission value (handles synonyms)
+                if let Some(submission_value) = resolved.find_submission_value(input) {
+                    return submission_value.to_string();
                 }
             }
             // Fallback if no terminology or codelist not found

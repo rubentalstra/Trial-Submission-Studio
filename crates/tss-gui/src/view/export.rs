@@ -379,7 +379,7 @@ fn view_output_directory<'a>(
 }
 
 /// Format selection section.
-fn view_format_selection(state: &AppState) -> Element<Message> {
+fn view_format_selection(state: &AppState) -> Element<'_, Message> {
     let label = text("Data Format").size(14).color(GRAY_700);
 
     let current_format = state.settings.export.default_format;
@@ -411,7 +411,7 @@ fn view_format_selection(state: &AppState) -> Element<Message> {
 }
 
 /// XPT version selection.
-fn view_xpt_version(state: &AppState) -> Element<Message> {
+fn view_xpt_version(state: &AppState) -> Element<'_, Message> {
     let label = text("XPT Version").size(14).color(GRAY_700);
 
     let current_version = state.settings.export.xpt_version;
@@ -443,7 +443,7 @@ fn view_xpt_version(state: &AppState) -> Element<Message> {
 }
 
 /// Define-XML info section (always generated).
-fn view_define_xml_option(_state: &AppState) -> Element<Message> {
+fn view_define_xml_option(_state: &AppState) -> Element<'_, Message> {
     // Define-XML is always generated - it's required for FDA submissions
     row![
         lucide::circle_check().size(14).color(SUCCESS),

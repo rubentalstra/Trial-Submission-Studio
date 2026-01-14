@@ -244,7 +244,7 @@ fn view_recent_studies<'a>(state: &'a AppState) -> Element<'a, Message> {
 // =============================================================================
 
 /// View when a study is loaded - shows study info and domain list.
-fn view_study_loaded(state: &AppState, workflow_mode: WorkflowMode) -> Element<Message> {
+fn view_study_loaded(state: &AppState, workflow_mode: WorkflowMode) -> Element<'_, Message> {
     let study = state.study.as_ref().unwrap();
 
     // Header with study name and close button
@@ -279,7 +279,7 @@ fn view_study_loaded(state: &AppState, workflow_mode: WorkflowMode) -> Element<M
 }
 
 /// Study header with name, mode badge, and close button.
-fn view_study_header(study: &Study, mode: WorkflowMode) -> Element<Message> {
+fn view_study_header(study: &Study, mode: WorkflowMode) -> Element<'_, Message> {
     let study_name = text(&study.study_id).size(24).color(GRAY_900);
 
     // Mode badge
@@ -324,7 +324,7 @@ fn view_study_header(study: &Study, mode: WorkflowMode) -> Element<Message> {
 }
 
 /// Domain list showing all discovered domains.
-fn view_domain_list(study: &Study) -> Element<Message> {
+fn view_domain_list(study: &Study) -> Element<'_, Message> {
     let header = row![
         lucide::database().size(14).color(GRAY_600),
         text("Discovered Domains").size(14).color(GRAY_700),
