@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: Release
 
 on:
@@ -7,24 +8,23 @@ on:
   workflow_dispatch:
     inputs:
       build_macos:
-        description: 'Build macOS'
+        description: "Build macOS"
         type: boolean
         default: true
       build_linux:
-        description: 'Build Linux'
+        description: "Build Linux"
         type: boolean
         default: true
       build_windows:
-        description: 'Build Windows'
+        description: "Build Windows"
         type: boolean
-        default: false  # Disabled until signing keys available
+        default: true
 
 # Default values for tag-triggered builds
-# To re-enable a platform, change its value to 'true'
 env:
-  DEFAULT_BUILD_MACOS: 'true'
-  DEFAULT_BUILD_LINUX: 'true'
-  DEFAULT_BUILD_WINDOWS: 'false'  # Set to 'true' when Windows signing keys are available
+  DEFAULT_BUILD_MACOS: "true"
+  DEFAULT_BUILD_LINUX: "true"
+  DEFAULT_BUILD_WINDOWS: "true"
 
 concurrency:
   group: release-${{ github.ref }}
@@ -37,7 +37,10 @@ permissions:
   actions: read
 
 jobs:
+  # ============================================================
+  # Prepare Release
   # Extract version and determine which platforms to build
+  # ============================================================
   prepare:
     name: Prepare Release
     runs-on: ubuntu-latest
@@ -48,9 +51,10 @@ jobs:
       build_linux: ${{ steps.config.outputs.build_linux }}
       build_windows: ${{ steps.config.outputs.build_windows }}
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v6
         with:
-          fetch-depth: 0  # Need full history for commit count
+          fetch-depth: 0
 
       - name: Extract version and build number
         id: version
@@ -58,11 +62,19 @@ jobs:
           REF: ${{ github.ref }}
           RUN_NUMBER: ${{ github.run_number }}
         run: |
-          echo "VERSION=${REF#refs/tags/}" >> $GITHUB_OUTPUT
+          set -euo pipefail
+
+          VERSION="${REF#refs/tags/}"
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
 
           # Calculate build number: TSS-{run_number}.{commit_count}
           COMMIT_COUNT=$(git rev-list --count HEAD)
-          echo "BUILD_NUMBER=TSS-${RUN_NUMBER}.${COMMIT_COUNT}" >> $GITHUB_OUTPUT
+          BUILD_NUMBER="TSS-${RUN_NUMBER}.${COMMIT_COUNT}"
+          echo "BUILD_NUMBER=${BUILD_NUMBER}" >> $GITHUB_OUTPUT
+
+          echo "=== Release Information ==="
+          echo "Version: ${VERSION}"
+          echo "Build Number: ${BUILD_NUMBER}"
 
       - name: Determine build configuration
         id: config
@@ -80,12 +92,15 @@ jobs:
 
       - name: Log build configuration
         run: |
-          echo "Build configuration:"
-          echo "  macOS: ${{ steps.config.outputs.build_macos }}"
-          echo "  Linux: ${{ steps.config.outputs.build_linux }}"
+          echo "=== Build Configuration ==="
+          echo "  macOS:   ${{ steps.config.outputs.build_macos }}"
+          echo "  Linux:   ${{ steps.config.outputs.build_linux }}"
           echo "  Windows: ${{ steps.config.outputs.build_windows }}"
 
-  # Validate required secrets for enabled platforms
+  # ============================================================
+  # Validate Secrets
+  # Check that required secrets are configured
+  # ============================================================
   validate:
     name: Validate Secrets
     needs: [ prepare ]
@@ -95,22 +110,15 @@ jobs:
       validate_windows: ${{ needs.prepare.outputs.build_windows == 'true' }}
     secrets: inherit
 
-  # Build for enabled platforms
+  # ============================================================
+  # Platform Builds
+  # Build for each enabled platform
+  # ============================================================
   build-macos:
     name: Build macOS
     needs: [ prepare, validate ]
     if: needs.prepare.outputs.build_macos == 'true'
     uses: ./.github/workflows/02-release-build-macos.yml
-    with:
-      version: ${{ needs.prepare.outputs.version }}
-      build_number: ${{ needs.prepare.outputs.build_number }}
-    secrets: inherit
-
-  build-windows:
-    name: Build Windows
-    needs: [ prepare, validate ]
-    if: needs.prepare.outputs.build_windows == 'true'
-    uses: ./.github/workflows/02-release-build-windows.yml
     with:
       version: ${{ needs.prepare.outputs.version }}
       build_number: ${{ needs.prepare.outputs.build_number }}
@@ -126,11 +134,23 @@ jobs:
       build_number: ${{ needs.prepare.outputs.build_number }}
     secrets: inherit
 
-  # Create GitHub Release with all artifacts
+  build-windows:
+    name: Build Windows
+    needs: [ prepare, validate ]
+    if: needs.prepare.outputs.build_windows == 'true'
+    uses: ./.github/workflows/02-release-build-windows.yml
+    with:
+      version: ${{ needs.prepare.outputs.version }}
+      build_number: ${{ needs.prepare.outputs.build_number }}
+    secrets: inherit
+
+  # ============================================================
+  # Publish Release
+  # Combine artifacts and create GitHub Release
+  # ============================================================
   publish:
     name: Publish Release
     needs: [ prepare, build-macos, build-windows, build-linux ]
-    # Run if at least one build was enabled and all enabled builds succeeded
     if: |
       always() &&
       (needs.prepare.outputs.build_macos == 'true' ||
@@ -143,36 +163,41 @@ jobs:
         needs.build-windows.result == 'skipped' &&
         needs.build-linux.result == 'skipped')
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v6
 
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: artifacts
           merge-multiple: true
 
-      - name: List artifacts
-        run: find artifacts -type f || ls -la artifacts/
+      - name: List downloaded artifacts
+        run: |
+          echo "=== Downloaded Artifacts ==="
+          find artifacts -type f -exec ls -lh {} \; 2>/dev/null || ls -la artifacts/
 
       - name: Generate artifact attestations
         uses: actions/attest-build-provenance@v2
         with:
           subject-path: "artifacts/*"
 
-      - name: Determine prerelease
+      - name: Determine prerelease status
         id: prerelease
         env:
           VERSION: ${{ needs.prepare.outputs.version }}
         run: |
-          if [[ "$VERSION" == *"-"* ]]; then
+          if [[ "$VERSION" == *"-alpha"* ]] || [[ "$VERSION" == *"-beta"* ]] || [[ "$VERSION" == *"-rc"* ]]; then
             echo "PRERELEASE=true" >> $GITHUB_OUTPUT
+            echo "This is a pre-release version"
           else
             echo "PRERELEASE=false" >> $GITHUB_OUTPUT
+            echo "This is a stable release"
           fi
 
-      - name: Create Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: "${{ needs.prepare.outputs.version }}"
@@ -182,3 +207,16 @@ jobs:
           files: artifacts/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Release Summary
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          echo "=== Release Summary ==="
+          echo "Version: ${VERSION}"
+          echo "Pre-release: ${{ steps.prerelease.outputs.PRERELEASE }}"
+          echo ""
+          echo "Artifacts uploaded:"
+          find artifacts -type f -name "*.tar.gz" -o -name "*.zip" -o -name "*.dmg" -o -name "*.exe" -o -name "*.AppImage" 2>/dev/null | sort
+          echo ""
+          echo "Note: SHA256 digests are automatically provided by GitHub for all release assets"

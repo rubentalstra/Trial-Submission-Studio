@@ -1,12 +1,15 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: Build macOS
 
 on:
   workflow_call:
     inputs:
       version:
+        description: "Release version (e.g., v0.1.0)"
         required: true
         type: string
       build_number:
+        description: "Build number (e.g., TSS-123.456)"
         required: true
         type: string
     secrets:
@@ -28,13 +31,15 @@ on:
 permissions:
   contents: read
 
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  APP_NAME: trial-submission-studio
+  BUNDLE_NAME: "Trial Submission Studio"
+
 jobs:
   build:
-    name: Build ${{ matrix.artifact-name }}
-    env:
-      CARGO_TERM_COLOR: always
-      APP_NAME: trial-submission-studio
-      BUNDLE_NAME: "Trial Submission Studio"
+    name: Build ${{ matrix.target }}
     strategy:
       fail-fast: false
       matrix:
@@ -43,21 +48,23 @@ jobs:
             runner: macos-latest
             artifact-name: macos-arm64
           - target: x86_64-apple-darwin
-            runner: macos-15-intel
+            runner: macos-13
             artifact-name: macos-x86_64
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v6
 
-      - name: Install Rust
+      - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
-      - uses: Swatinem/rust-cache@v2
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "release-${{ matrix.artifact-name }}"
+          shared-key: release-${{ matrix.target }}
           cache-on-failure: true
 
       - name: Cache Homebrew packages
@@ -67,18 +74,22 @@ jobs:
             ~/Library/Caches/Homebrew
             /usr/local/Cellar/create-dmg
             /opt/homebrew/Cellar/create-dmg
-          key: brew-create-dmg-${{ runner.os }}-${{ runner.arch }}
+          key: brew-create-dmg-${{ runner.os }}-${{ runner.arch }}-v1
 
-      - name: Build
+      - name: Build release binary
         env:
           TSS_BUILD_NUMBER: ${{ inputs.build_number }}
-        run: cargo build --release --target ${{ matrix.target }}
+        run: |
+          echo "Building for target: ${{ matrix.target }}"
+          cargo build --release --target ${{ matrix.target }}
 
       - name: Create App Bundle
         env:
           VERSION: ${{ inputs.version }}
           BUILD_VERSION: ${{ inputs.build_number }}
         run: |
+          set -euo pipefail
+
           APP_DIR="${BUNDLE_NAME}.app"
           mkdir -p "$APP_DIR/Contents/MacOS"
           mkdir -p "$APP_DIR/Contents/Resources"
@@ -86,7 +97,7 @@ jobs:
           # Copy binary
           cp "target/${{ matrix.target }}/release/${APP_NAME}" "$APP_DIR/Contents/MacOS/"
 
-          # Extract marketing version (strip -alpha.X, -beta.X, -rc.X suffixes)
+          # Extract marketing version (strip v prefix and pre-release suffixes)
           MARKETING_VERSION=$(echo "${VERSION}" | sed -E 's/^v//' | sed -E 's/-(alpha|beta|rc)\.[0-9]+$//')
 
           echo "Marketing Version: $MARKETING_VERSION"
@@ -101,15 +112,17 @@ jobs:
           cp packaging/macos/AppIcon.icns "$APP_DIR/Contents/Resources/"
           cp packaging/macos/PkgInfo "$APP_DIR/Contents/"
 
+          echo "App bundle created: $APP_DIR"
+
       - name: Validate App Bundle
         run: |
+          set -euo pipefail
           APP_DIR="${BUNDLE_NAME}.app"
 
-          # Validate plist syntax
-          echo "Validating Info.plist..."
+          echo "=== Validating Info.plist ==="
           plutil -lint "$APP_DIR/Contents/Info.plist"
 
-          # Verify required keys exist
+          # Verify required keys
           plutil -extract CFBundleIdentifier raw "$APP_DIR/Contents/Info.plist"
           plutil -extract CFBundleVersion raw "$APP_DIR/Contents/Info.plist"
           plutil -extract CFBundleShortVersionString raw "$APP_DIR/Contents/Info.plist"
@@ -118,49 +131,47 @@ jobs:
           # Verify JetBrains-style build version format: TSS-{number}.{number}
           BUNDLE_VERSION=$(plutil -extract CFBundleVersion raw "$APP_DIR/Contents/Info.plist")
           if ! [[ "$BUNDLE_VERSION" =~ ^TSS-[0-9]+\.[0-9]+$ ]]; then
-            echo "ERROR: CFBundleVersion must be TSS-X.Y format, got: $BUNDLE_VERSION"
+            echo "::error::CFBundleVersion must be TSS-X.Y format, got: $BUNDLE_VERSION"
             exit 1
           fi
 
           # Verify marketing version is n.n.n format
           SHORT_VERSION=$(plutil -extract CFBundleShortVersionString raw "$APP_DIR/Contents/Info.plist")
           if ! [[ "$SHORT_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "ERROR: CFBundleShortVersionString must be n.n.n format, got: $SHORT_VERSION"
+            echo "::error::CFBundleShortVersionString must be n.n.n format, got: $SHORT_VERSION"
             exit 1
           fi
 
-          echo "Info.plist validation passed"
           echo "  CFBundleVersion: $BUNDLE_VERSION"
           echo "  CFBundleShortVersionString: $SHORT_VERSION"
 
-          # Validate PkgInfo
-          echo "Validating PkgInfo..."
+          echo "=== Validating PkgInfo ==="
           PKGINFO=$(cat "$APP_DIR/Contents/PkgInfo")
           if [[ "$PKGINFO" != "APPL????" ]]; then
-            echo "ERROR: PkgInfo invalid, expected 'APPL????' got '$PKGINFO'"
+            echo "::error::PkgInfo invalid, expected 'APPL????' got '$PKGINFO'"
             exit 1
           fi
-          echo "PkgInfo validation passed"
 
-          # Validate bundle structure
-          echo "Validating bundle structure..."
-          test -f "$APP_DIR/Contents/MacOS/${APP_NAME}" || { echo "ERROR: Binary missing"; exit 1; }
-          test -f "$APP_DIR/Contents/Info.plist" || { echo "ERROR: Info.plist missing"; exit 1; }
-          test -f "$APP_DIR/Contents/Resources/AppIcon.icns" || { echo "ERROR: Icon missing"; exit 1; }
-          test -f "$APP_DIR/Contents/PkgInfo" || { echo "ERROR: PkgInfo missing"; exit 1; }
+          echo "=== Validating bundle structure ==="
+          test -f "$APP_DIR/Contents/MacOS/${APP_NAME}" || { echo "::error::Binary missing"; exit 1; }
+          test -f "$APP_DIR/Contents/Info.plist" || { echo "::error::Info.plist missing"; exit 1; }
+          test -f "$APP_DIR/Contents/Resources/AppIcon.icns" || { echo "::error::Icon missing"; exit 1; }
+          test -f "$APP_DIR/Contents/PkgInfo" || { echo "::error::PkgInfo missing"; exit 1; }
 
-          echo "Bundle structure validated"
+          echo "Bundle validation passed"
 
-      - name: Import Certificate
+      - name: Import Code Signing Certificate
         env:
           APPLE_DEVELOPER_CERTIFICATE_P12_BASE64: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12_BASE64 }}
           APPLE_DEVELOPER_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_PASSWORD }}
           CI_KEYCHAIN_PASSWORD: ${{ secrets.CI_KEYCHAIN_PASSWORD }}
         run: |
+          set -euo pipefail
+
           # Create a new keychain for CI
           security create-keychain -p "$CI_KEYCHAIN_PASSWORD" build.keychain
 
-          # Add keychain to search list (CRITICAL: required for codesign to find certificate)
+          # Add keychain to search list (required for codesign to find certificate)
           security list-keychains -d user -s build.keychain login.keychain
 
           # Set as default and unlock
@@ -179,8 +190,10 @@ jobs:
           rm certificate.p12
 
           # Verify certificate was imported
+          echo "Verifying certificate import..."
           security find-identity -v -p codesigning build.keychain
-          echo "Certificate imported"
+
+          echo "Certificate imported successfully"
 
       - name: Sign App Bundle
         env:
@@ -191,13 +204,23 @@ jobs:
             --sign "$APPLE_CODESIGN_IDENTITY" \
             --timestamp \
             "${BUNDLE_NAME}.app"
-          echo "App signed"
 
-      - name: Verify Signature
+          echo "App bundle signed"
+
+      - name: Verify Code Signature
         run: |
+          set -euo pipefail
+
+          echo "=== Verifying signature ==="
           codesign --verify --deep --strict --verbose=2 "${BUNDLE_NAME}.app"
-          codesign -d --verbose=4 "${BUNDLE_NAME}.app" 2>&1 | grep -q "runtime" || { echo "ERROR: Hardened runtime not enabled"; exit 1; }
-          echo "Signature verified"
+
+          echo "=== Checking hardened runtime ==="
+          codesign -d --verbose=4 "${BUNDLE_NAME}.app" 2>&1 | grep -q "runtime" || {
+            echo "::error::Hardened runtime not enabled"
+            exit 1
+          }
+
+          echo "Signature verification passed"
 
       - name: Notarize App
         timeout-minutes: 30
@@ -206,39 +229,71 @@ jobs:
           APPLE_NOTARIZATION_APP_PASSWORD: ${{ secrets.APPLE_NOTARIZATION_APP_PASSWORD }}
           APPLE_DEVELOPER_TEAM_ID: ${{ secrets.APPLE_DEVELOPER_TEAM_ID }}
         run: |
+          set -euo pipefail
+
+          echo "Creating ZIP for notarization..."
           ditto -c -k --keepParent "${BUNDLE_NAME}.app" notarize.zip
+
+          echo "Submitting for notarization..."
           xcrun notarytool submit notarize.zip \
             --apple-id "$APPLE_NOTARIZATION_APPLE_ID" \
             --password "$APPLE_NOTARIZATION_APP_PASSWORD" \
             --team-id "$APPLE_DEVELOPER_TEAM_ID" \
             --wait --timeout 30m
+
+          echo "Stapling notarization ticket..."
           xcrun stapler staple "${BUNDLE_NAME}.app"
+
           rm notarize.zip
-          echo "App notarized and stapled"
+          echo "Notarization complete"
 
       - name: Verify Notarization
         run: |
-          xcrun stapler validate "${BUNDLE_NAME}.app" || { echo "ERROR: Stapling failed"; exit 1; }
-          spctl --assess --type execute --verbose=2 "${BUNDLE_NAME}.app" || { echo "ERROR: Gatekeeper rejected app"; exit 1; }
-          echo "Notarization verified"
+          set -euo pipefail
+
+          echo "=== Validating stapled ticket ==="
+          xcrun stapler validate "${BUNDLE_NAME}.app" || {
+            echo "::error::Stapling validation failed"
+            exit 1
+          }
+
+          echo "=== Gatekeeper assessment ==="
+          spctl --assess --type execute --verbose=2 "${BUNDLE_NAME}.app" || {
+            echo "::error::Gatekeeper rejected app"
+            exit 1
+          }
+
+          echo "Notarization verification passed"
 
       - name: Create DMG
         env:
           VERSION: ${{ inputs.version }}
         run: |
-          brew install create-dmg
+          set -euo pipefail
+
+          brew install create-dmg || true
+
+          DMG_NAME="${APP_NAME}-${VERSION}-${{ matrix.target }}.dmg"
+
           create-dmg \
             --volname "${BUNDLE_NAME}" \
             --volicon "packaging/macos/AppIcon.icns" \
-            --window-pos 200 120 --window-size 600 400 \
-            --icon-size 100 --icon "${BUNDLE_NAME}.app" 150 190 \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "${BUNDLE_NAME}.app" 150 190 \
             --hide-extension "${BUNDLE_NAME}.app" \
             --app-drop-link 450 190 \
-            "${APP_NAME}-${VERSION}-${{ matrix.target }}.dmg" \
+            "$DMG_NAME" \
             "${BUNDLE_NAME}.app" || true
+
           # Verify DMG was created (create-dmg returns 2 on success sometimes)
-          test -f "${APP_NAME}-${VERSION}-${{ matrix.target }}.dmg" || { echo "ERROR: DMG not created"; exit 1; }
-          echo "DMG created"
+          test -f "$DMG_NAME" || {
+            echo "::error::DMG not created"
+            exit 1
+          }
+
+          echo "DMG created: $DMG_NAME"
 
       - name: Sign and Notarize DMG
         timeout-minutes: 30
@@ -249,27 +304,60 @@ jobs:
           APPLE_NOTARIZATION_APP_PASSWORD: ${{ secrets.APPLE_NOTARIZATION_APP_PASSWORD }}
           APPLE_DEVELOPER_TEAM_ID: ${{ secrets.APPLE_DEVELOPER_TEAM_ID }}
         run: |
-          DMG="${APP_NAME}-${VERSION}-${{ matrix.target }}.dmg"
-          codesign --force --sign "$APPLE_CODESIGN_IDENTITY" --timestamp "$DMG"
-          xcrun notarytool submit "$DMG" \
+          set -euo pipefail
+
+          DMG_NAME="${APP_NAME}-${VERSION}-${{ matrix.target }}.dmg"
+
+          echo "Signing DMG..."
+          codesign --force --sign "$APPLE_CODESIGN_IDENTITY" --timestamp "$DMG_NAME"
+
+          echo "Notarizing DMG..."
+          xcrun notarytool submit "$DMG_NAME" \
             --apple-id "$APPLE_NOTARIZATION_APPLE_ID" \
             --password "$APPLE_NOTARIZATION_APP_PASSWORD" \
             --team-id "$APPLE_DEVELOPER_TEAM_ID" \
             --wait --timeout 30m
-          xcrun stapler staple "$DMG"
+
+          echo "Stapling DMG..."
+          xcrun stapler staple "$DMG_NAME"
+
           echo "DMG signed and notarized"
 
-      - name: Create ZIP
+      - name: Create ZIP archive
         env:
           VERSION: ${{ inputs.version }}
         run: |
-          ditto -c -k --keepParent "${BUNDLE_NAME}.app" "${APP_NAME}-${VERSION}-${{ matrix.target }}.zip"
+          ZIP_NAME="${APP_NAME}-${VERSION}-${{ matrix.target }}.zip"
+          ditto -c -k --keepParent "${BUNDLE_NAME}.app" "$ZIP_NAME"
+          echo "ZIP created: $ZIP_NAME"
 
-      - name: Upload Artifacts
+      - name: Create tar.gz archive
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          TAR_NAME="${APP_NAME}-${VERSION}-${{ matrix.target }}.tar.gz"
+
+          # Create a directory with the app bundle for tarball
+          mkdir -p release-tar
+          cp -R "${BUNDLE_NAME}.app" release-tar/
+
+          tar -czvf "$TAR_NAME" -C release-tar .
+          rm -rf release-tar
+
+          echo "Tarball created: $TAR_NAME"
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.artifact-name }}
           path: |
-            ${{ env.APP_NAME }}-*.dmg
-            ${{ env.APP_NAME }}-*.zip
+            ${{ env.APP_NAME }}-${{ inputs.version }}-${{ matrix.target }}.dmg
+            ${{ env.APP_NAME }}-${{ inputs.version }}-${{ matrix.target }}.zip
+            ${{ env.APP_NAME }}-${{ inputs.version }}-${{ matrix.target }}.tar.gz
           if-no-files-found: error
+          retention-days: 7
+
+      - name: Cleanup keychain
+        if: always()
+        run: |
+          security delete-keychain build.keychain 2>/dev/null || true

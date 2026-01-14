@@ -1,7 +1,8 @@
 //! GitHub API client for fetching release information.
 //!
 //! This module provides a client for interacting with the GitHub Releases API
-//! to fetch release metadata including SHA256 digests for verification.
+//! to fetch release metadata. SHA256 digests are automatically provided by GitHub
+//! for all release assets (since June 2025).
 
 use crate::error::{Result, UpdateError};
 use reqwest::header::{ACCEPT, HeaderMap, HeaderValue, USER_AGENT};
@@ -57,7 +58,8 @@ impl GitHubClient {
 
     /// Fetches the latest release from GitHub.
     ///
-    /// Returns the release information including all assets with their digests.
+    /// Returns the release information including all assets with their digests
+    /// automatically populated by GitHub (since June 2025).
     pub async fn get_latest_release(&self) -> Result<GitHubRelease> {
         let url = format!(
             "{}/repos/{}/{}/releases/latest",
@@ -67,8 +69,9 @@ impl GitHubClient {
         tracing::debug!("Fetching latest release from {}", url);
 
         let response = self.client.get(&url).send().await?;
+        let release = self.handle_response(response).await?;
 
-        self.handle_response(response).await
+        Ok(release)
     }
 
     /// Fetches a specific release by tag name.
@@ -84,8 +87,9 @@ impl GitHubClient {
         tracing::debug!("Fetching release by tag from {}", url);
 
         let response = self.client.get(&url).send().await?;
+        let release = self.handle_response(response).await?;
 
-        self.handle_response(response).await
+        Ok(release)
     }
 
     /// Handles the HTTP response, checking for errors and parsing JSON.
@@ -176,8 +180,11 @@ pub struct GitHubAsset {
     /// Direct download URL.
     pub browser_download_url: String,
 
+    /// Upload state: "uploaded" (complete) or "open" (still uploading).
+    pub state: String,
+
     /// SHA256 digest (format: "sha256:...").
-    /// This field was added by GitHub in June 2025.
+    /// Always present in API response but may be null if not yet computed.
     pub digest: Option<String>,
 
     /// File size in bytes.
@@ -211,19 +218,49 @@ impl GitHubRelease {
 
     /// Finds an asset matching the given target triple.
     ///
+    /// Prefers tar.gz for Unix-like systems and zip for Windows.
+    /// Only returns fully uploaded assets (state == "uploaded").
+    ///
     /// # Arguments
     /// * `target` - The target triple (e.g., "x86_64-apple-darwin")
     #[must_use]
     pub fn find_asset_for_target(&self, target: &str) -> Option<&GitHubAsset> {
-        self.assets.iter().find(|asset| {
-            let name = asset.name.to_lowercase();
-            // Match target triple in asset name
-            name.contains(&target.to_lowercase())
-        })
+        let target_lower = target.to_lowercase();
+        let is_windows = target_lower.contains("windows");
+
+        // Filter assets that match the target and are fully uploaded
+        let matching: Vec<_> = self
+            .assets
+            .iter()
+            .filter(|asset| {
+                let name = asset.name.to_lowercase();
+                // Must contain the target triple AND be fully uploaded
+                name.contains(&target_lower) && asset.is_uploaded()
+            })
+            .collect();
+
+        if matching.is_empty() {
+            return None;
+        }
+
+        // Prefer the right archive format for the platform
+        let preferred_ext = if is_windows { ".zip" } else { ".tar.gz" };
+
+        matching
+            .iter()
+            .find(|a| a.name.to_lowercase().ends_with(preferred_ext))
+            .or(matching.first())
+            .copied()
     }
 }
 
 impl GitHubAsset {
+    /// Returns whether this asset is fully uploaded and ready for download.
+    #[must_use]
+    pub fn is_uploaded(&self) -> bool {
+        self.state == "uploaded"
+    }
+
     /// Returns the SHA256 hash from the digest field, if available.
     ///
     /// The digest field has the format "sha256:...".
@@ -282,6 +319,7 @@ mod tests {
         let asset = GitHubAsset {
             name: "test.tar.gz".to_string(),
             browser_download_url: "https://example.com/test.tar.gz".to_string(),
+            state: "uploaded".to_string(),
             digest: Some("sha256:abc123def456".to_string()),
             size: 1024,
             content_type: "application/gzip".to_string(),
@@ -292,6 +330,7 @@ mod tests {
 
         assert_eq!(asset.sha256(), Some("abc123def456"));
         assert!(asset.has_verification());
+        assert!(asset.is_uploaded());
     }
 
     #[test]
@@ -299,6 +338,7 @@ mod tests {
         let asset = GitHubAsset {
             name: "test.tar.gz".to_string(),
             browser_download_url: "https://example.com/test.tar.gz".to_string(),
+            state: "uploaded".to_string(),
             digest: None,
             size: 1024,
             content_type: "application/gzip".to_string(),
@@ -309,6 +349,35 @@ mod tests {
 
         assert_eq!(asset.sha256(), None);
         assert!(!asset.has_verification());
+    }
+
+    #[test]
+    fn test_asset_upload_state() {
+        let uploaded = GitHubAsset {
+            name: "test.tar.gz".to_string(),
+            browser_download_url: String::new(),
+            state: "uploaded".to_string(),
+            digest: None,
+            size: 1024,
+            content_type: "application/gzip".to_string(),
+            download_count: 0,
+            created_at: String::new(),
+            updated_at: String::new(),
+        };
+        assert!(uploaded.is_uploaded());
+
+        let open = GitHubAsset {
+            name: "test.tar.gz".to_string(),
+            browser_download_url: String::new(),
+            state: "open".to_string(),
+            digest: None,
+            size: 1024,
+            content_type: "application/gzip".to_string(),
+            download_count: 0,
+            created_at: String::new(),
+            updated_at: String::new(),
+        };
+        assert!(!open.is_uploaded());
     }
 
     #[test]
@@ -323,6 +392,7 @@ mod tests {
                 GitHubAsset {
                     name: "trial-submission-studio-v0.1.0-x86_64-apple-darwin.tar.gz".to_string(),
                     browser_download_url: String::new(),
+                    state: "uploaded".to_string(),
                     digest: None,
                     size: 1024,
                     content_type: "application/gzip".to_string(),
@@ -333,6 +403,7 @@ mod tests {
                 GitHubAsset {
                     name: "trial-submission-studio-v0.1.0-x86_64-pc-windows-msvc.zip".to_string(),
                     browser_download_url: String::new(),
+                    state: "uploaded".to_string(),
                     digest: None,
                     size: 2048,
                     content_type: "application/zip".to_string(),
@@ -348,12 +419,83 @@ mod tests {
         let asset = release.find_asset_for_target("x86_64-apple-darwin");
         assert!(asset.is_some());
         assert!(asset.unwrap().name.contains("apple-darwin"));
+        assert!(asset.unwrap().name.ends_with(".tar.gz"));
 
         let asset = release.find_asset_for_target("x86_64-pc-windows-msvc");
         assert!(asset.is_some());
         assert!(asset.unwrap().name.contains("windows"));
+        assert!(asset.unwrap().name.ends_with(".zip"));
 
         let asset = release.find_asset_for_target("aarch64-unknown-linux-gnu");
         assert!(asset.is_none());
+    }
+
+    #[test]
+    fn test_find_asset_skips_incomplete_uploads() {
+        let release = GitHubRelease {
+            tag_name: "v0.1.0".to_string(),
+            name: None,
+            body: None,
+            prerelease: false,
+            draft: false,
+            assets: vec![GitHubAsset {
+                name: "app-v0.1.0-x86_64-apple-darwin.tar.gz".to_string(),
+                browser_download_url: String::new(),
+                state: "open".to_string(), // Still uploading
+                digest: None,
+                size: 1024,
+                content_type: "application/gzip".to_string(),
+                download_count: 0,
+                created_at: String::new(),
+                updated_at: String::new(),
+            }],
+            html_url: String::new(),
+            published_at: None,
+        };
+
+        // Should not find the asset because it's still uploading
+        let asset = release.find_asset_for_target("x86_64-apple-darwin");
+        assert!(asset.is_none());
+    }
+
+    #[test]
+    fn test_find_asset_prefers_correct_format() {
+        let release = GitHubRelease {
+            tag_name: "v0.1.0".to_string(),
+            name: None,
+            body: None,
+            prerelease: false,
+            draft: false,
+            assets: vec![
+                GitHubAsset {
+                    name: "app-v0.1.0-x86_64-apple-darwin.zip".to_string(),
+                    browser_download_url: String::new(),
+                    state: "uploaded".to_string(),
+                    digest: None,
+                    size: 1024,
+                    content_type: "application/zip".to_string(),
+                    download_count: 0,
+                    created_at: String::new(),
+                    updated_at: String::new(),
+                },
+                GitHubAsset {
+                    name: "app-v0.1.0-x86_64-apple-darwin.tar.gz".to_string(),
+                    browser_download_url: String::new(),
+                    state: "uploaded".to_string(),
+                    digest: None,
+                    size: 1024,
+                    content_type: "application/gzip".to_string(),
+                    download_count: 0,
+                    created_at: String::new(),
+                    updated_at: String::new(),
+                },
+            ],
+            html_url: String::new(),
+            published_at: None,
+        };
+
+        // For macOS, should prefer tar.gz
+        let asset = release.find_asset_for_target("x86_64-apple-darwin");
+        assert!(asset.unwrap().name.ends_with(".tar.gz"));
     }
 }

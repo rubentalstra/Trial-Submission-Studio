@@ -1,23 +1,26 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: Build Windows
 
 on:
   workflow_call:
     inputs:
       version:
+        description: "Release version (e.g., v0.1.0)"
         required: true
         type: string
       build_number:
+        description: "Build number (e.g., TSS-123.456)"
         required: true
         type: string
     secrets:
       SIGNPATH_API_TOKEN:
-        required: true
+        required: false
       SIGNPATH_ORGANIZATION_ID:
-        required: true
+        required: false
       SIGNPATH_PROJECT_SLUG:
-        required: true
+        required: false
       SIGNPATH_SIGNING_POLICY_SLUG:
-        required: true
+        required: false
 
 permissions:
   contents: read
@@ -26,11 +29,12 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
   APP_NAME: trial-submission-studio
 
 jobs:
   build:
-    name: Build ${{ matrix.artifact-name }}
+    name: Build ${{ matrix.target }}
     strategy:
       fail-fast: false
       matrix:
@@ -42,39 +46,65 @@ jobs:
             runner: windows-11-arm
             artifact-name: windows-arm64
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 45
+    timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v6
 
-      - name: Install Rust
+      - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
-      - uses: Swatinem/rust-cache@v2
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "release-${{ matrix.artifact-name }}"
+          shared-key: release-${{ matrix.target }}
           cache-on-failure: true
 
-      - name: Build
+      - name: Build release binary
         env:
           TSS_BUILD_NUMBER: ${{ inputs.build_number }}
-        run: cargo build --release --target ${{ matrix.target }}
+        run: |
+          Write-Host "Building for target: ${{ matrix.target }}"
+          cargo build --release --target ${{ matrix.target }}
+
+      - name: Check signing availability
+        id: signing-check
+        shell: pwsh
+        env:
+          SIGNPATH_API_TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+          SIGNPATH_ORGANIZATION_ID: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
+          SIGNPATH_PROJECT_SLUG: ${{ secrets.SIGNPATH_PROJECT_SLUG }}
+          SIGNPATH_SIGNING_POLICY_SLUG: ${{ secrets.SIGNPATH_SIGNING_POLICY_SLUG }}
+        run: |
+          if ($env:SIGNPATH_API_TOKEN -and $env:SIGNPATH_ORGANIZATION_ID -and $env:SIGNPATH_PROJECT_SLUG -and $env:SIGNPATH_SIGNING_POLICY_SLUG) {
+            Write-Host "SignPath secrets available - will sign binaries"
+            "available=true" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          } else {
+            Write-Host "::warning::SignPath secrets not configured - binaries will NOT be signed"
+            "available=false" | Out-File -FilePath $env:GITHUB_OUTPUT -Append
+          }
 
       - name: Prepare unsigned artifact
+        if: steps.signing-check.outputs.available == 'true'
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path "to-sign"
           Copy-Item "target\${{ matrix.target }}\release\$env:APP_NAME.exe" "to-sign\"
+          Write-Host "Prepared unsigned binary for signing"
 
       - name: Upload unsigned artifact for signing
+        if: steps.signing-check.outputs.available == 'true'
         id: upload-unsigned
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: unsigned-${{ matrix.artifact-name }}
           path: to-sign/
+          retention-days: 1
 
       - name: Sign with SignPath
+        if: steps.signing-check.outputs.available == 'true'
         uses: signpath/github-action-submit-signing-request@v1
         with:
           api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
@@ -86,6 +116,7 @@ jobs:
           output-artifact-directory: signed/
 
       - name: Verify Signature
+        if: steps.signing-check.outputs.available == 'true'
         shell: pwsh
         run: |
           $sig = Get-AuthenticodeSignature "signed\$env:APP_NAME.exe"
@@ -95,17 +126,46 @@ jobs:
           }
           Write-Host "Signature valid: $($sig.SignerCertificate.Subject)"
 
-      - name: Prepare final artifacts
+      - name: Prepare release artifacts (signed)
+        if: steps.signing-check.outputs.available == 'true'
         shell: pwsh
         env:
           VERSION: ${{ inputs.version }}
         run: |
-          Compress-Archive -Path "signed\$env:APP_NAME.exe" `
-            -DestinationPath "$env:APP_NAME-$env:VERSION-${{ matrix.target }}.zip"
-          Copy-Item "signed\$env:APP_NAME.exe" `
-            "$env:APP_NAME-$env:VERSION-${{ matrix.target }}.exe"
+          $target = "${{ matrix.target }}"
 
-      - name: Upload signed artifacts
+          # Create ZIP archive from signed binary
+          $zipName = "$env:APP_NAME-$env:VERSION-$target.zip"
+          Compress-Archive -Path "signed\$env:APP_NAME.exe" -DestinationPath $zipName
+          Write-Host "Created (signed): $zipName"
+
+          # Copy standalone executable
+          $exeName = "$env:APP_NAME-$env:VERSION-$target.exe"
+          Copy-Item "signed\$env:APP_NAME.exe" $exeName
+          Write-Host "Created (signed): $exeName"
+
+      - name: Prepare release artifacts (unsigned)
+        if: steps.signing-check.outputs.available != 'true'
+        shell: pwsh
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          $target = "${{ matrix.target }}"
+          $sourceBinary = "target\$target\release\$env:APP_NAME.exe"
+
+          Write-Host "::warning::Creating UNSIGNED release artifacts"
+
+          # Create ZIP archive from unsigned binary
+          $zipName = "$env:APP_NAME-$env:VERSION-$target.zip"
+          Compress-Archive -Path $sourceBinary -DestinationPath $zipName
+          Write-Host "Created (unsigned): $zipName"
+
+          # Copy standalone executable
+          $exeName = "$env:APP_NAME-$env:VERSION-$target.exe"
+          Copy-Item $sourceBinary $exeName
+          Write-Host "Created (unsigned): $exeName"
+
+      - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
           name: ${{ matrix.artifact-name }}
@@ -113,3 +173,12 @@ jobs:
             ${{ env.APP_NAME }}-${{ inputs.version }}-${{ matrix.target }}.zip
             ${{ env.APP_NAME }}-${{ inputs.version }}-${{ matrix.target }}.exe
           if-no-files-found: error
+          retention-days: 7
+
+      - name: Cleanup signing artifacts
+        if: always() && steps.signing-check.outputs.available == 'true'
+        shell: pwsh
+        run: |
+          # Clean up signing artifacts to avoid confusion
+          Remove-Item -Path "to-sign" -Recurse -Force -ErrorAction SilentlyContinue
+          Remove-Item -Path "signed" -Recurse -Force -ErrorAction SilentlyContinue

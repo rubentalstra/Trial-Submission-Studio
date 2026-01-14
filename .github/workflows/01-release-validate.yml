@@ -79,19 +79,20 @@ jobs:
           [ -z "$SIGNPATH_SIGNING_POLICY_SLUG" ] && missing="$missing SIGNPATH_SIGNING_POLICY_SLUG"
 
           if [ -n "$missing" ]; then
-            echo "::error::Missing required Windows secrets:$missing"
+            echo "::warning::Missing Windows SignPath secrets:$missing"
             echo ""
-            echo "Please configure the following secrets in GitHub Settings > Secrets and variables > Actions:"
+            echo "Windows binaries will be built but NOT signed."
+            echo ""
+            echo "To enable code signing, configure the following secrets in GitHub Settings > Secrets and variables > Actions:"
             echo "  - SIGNPATH_API_TOKEN: API token with submitter permissions from SignPath dashboard"
             echo "  - SIGNPATH_ORGANIZATION_ID: Your SignPath organization ID"
             echo "  - SIGNPATH_PROJECT_SLUG: Project identifier from SignPath"
             echo "  - SIGNPATH_SIGNING_POLICY_SLUG: Signing policy name (typically 'release-signing')"
             echo ""
             echo "See docs/src/development/windows-signing.md for SignPath setup instructions."
-            exit 1
+          else
+            echo "All Windows SignPath secrets configured - binaries will be signed"
           fi
-
-          echo "All Windows SignPath secrets configured"
 
       - name: Skip Windows validation
         if: ${{ !inputs.validate_windows }}

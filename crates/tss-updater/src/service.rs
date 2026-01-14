@@ -5,7 +5,7 @@
 
 use std::str::FromStr;
 
-use crate::config::{UpdateChannel, UpdateSettings};
+use crate::config::UpdateSettings;
 use crate::download::{DownloadProgress, download_with_progress};
 use crate::error::{Result, UpdateError};
 use crate::github::{GitHubAsset, GitHubClient, GitHubRelease};
@@ -54,18 +54,22 @@ impl UpdateService {
             return Ok(None);
         }
 
-        // Check channel preference
-        if release.prerelease && settings.channel == UpdateChannel::Stable {
-            tracing::debug!("Skipping pre-release (stable channel selected)");
-            return Ok(None);
-        }
-
         // Parse versions for comparison
         let current_version = Version::from_str(VERSION)
             .map_err(|_| UpdateError::InvalidVersion(VERSION.to_string()))?;
 
         let release_version = Version::from_tag(release.version())
             .map_err(|_| UpdateError::InvalidVersion(release.tag_name.clone()))?;
+
+        // Check if version matches user's channel preference
+        if !settings.channel.includes(&release_version) {
+            tracing::debug!(
+                "Skipping {} (not in {} channel)",
+                release.version(),
+                settings.channel.label()
+            );
+            return Ok(None);
+        }
 
         // Check if update is newer
         if release_version <= current_version {

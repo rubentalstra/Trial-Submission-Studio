@@ -1,12 +1,15 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: Build Linux
 
 on:
   workflow_call:
     inputs:
       version:
+        description: "Release version (e.g., v0.1.0)"
         required: true
         type: string
       build_number:
+        description: "Build number (e.g., TSS-123.456)"
         required: true
         type: string
 
@@ -15,11 +18,12 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
   APP_NAME: trial-submission-studio
 
 jobs:
   build:
-    name: Build ${{ matrix.artifact-name }}
+    name: Build ${{ matrix.target }}
     strategy:
       fail-fast: false
       matrix:
@@ -31,55 +35,86 @@ jobs:
             runner: ubuntu-24.04-arm
             artifact-name: linux-arm64
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
-      - uses: actions/checkout@v6
+      - name: Checkout repository
+        uses: actions/checkout@v6
 
-      - uses: awalsh128/cache-apt-pkgs-action@latest
+      - name: Install system dependencies
+        uses: awalsh128/cache-apt-pkgs-action@latest
         with:
-          packages: libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libxdo-dev libfuse2
+          packages: >-
+            libgtk-3-dev
+            libxcb-render0-dev
+            libxcb-shape0-dev
+            libxcb-xfixes0-dev
+            libxkbcommon-dev
+            libssl-dev
+            libxdo-dev
+            libfuse2
           version: 1.1
 
-      - name: Install Rust
+      - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
 
-      - uses: Swatinem/rust-cache@v2
+      - name: Cache Rust dependencies
+        uses: Swatinem/rust-cache@v2
         with:
-          shared-key: "release-${{ matrix.artifact-name }}"
+          shared-key: release-${{ matrix.target }}
           cache-on-failure: true
 
-      - name: Build
+      - name: Build release binary
         env:
           TSS_BUILD_NUMBER: ${{ inputs.build_number }}
-        run: cargo build --release --target ${{ matrix.target }}
+        run: |
+          echo "Building for target: ${{ matrix.target }}"
+          cargo build --release --target ${{ matrix.target }}
 
       - name: Create tarball
         env:
           VERSION: ${{ inputs.version }}
         run: |
+          set -euo pipefail
+
+          TAR_NAME="${APP_NAME}-${VERSION}-${{ matrix.target }}.tar.gz"
+
           mkdir -p release
           cp "target/${{ matrix.target }}/release/${APP_NAME}" release/
-          tar -czvf "${APP_NAME}-${VERSION}-${{ matrix.target }}.tar.gz" -C release .
+
+          # Make binary executable
+          chmod +x release/${APP_NAME}
+
+          tar -czvf "$TAR_NAME" -C release .
+          rm -rf release
+
+          echo "Tarball created: $TAR_NAME"
 
       - name: Create AppImage
         env:
           VERSION: ${{ inputs.version }}
         run: |
+          set -euo pipefail
+
+          APPIMAGE_NAME="${APP_NAME}-${VERSION}-${{ matrix.target }}.AppImage"
+
           # Download and extract appimagetool (extract to avoid FUSE issues in CI)
+          echo "Downloading appimagetool..."
           wget -q "https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-$(uname -m).AppImage" -O appimagetool
           chmod +x appimagetool
           ./appimagetool --appimage-extract
           mv squashfs-root appimagetool-extracted
 
           # Create AppDir structure
+          echo "Creating AppDir structure..."
           mkdir -p AppDir/usr/bin
           mkdir -p AppDir/usr/share/applications
           mkdir -p AppDir/usr/share/icons/hicolor/256x256/apps
 
           # Copy binary
           cp "target/${{ matrix.target }}/release/${APP_NAME}" AppDir/usr/bin/
+          chmod +x AppDir/usr/bin/${APP_NAME}
 
           # Copy desktop file and icon
           cp packaging/linux/${APP_NAME}.desktop AppDir/usr/share/applications/
@@ -91,7 +126,19 @@ jobs:
           ln -s usr/share/icons/hicolor/256x256/apps/${APP_NAME}.png AppDir/${APP_NAME}.png
 
           # Build AppImage using extracted appimagetool
-          ARCH=$(uname -m) ./appimagetool-extracted/AppRun AppDir "${APP_NAME}-${VERSION}-${{ matrix.target }}.AppImage"
+          echo "Building AppImage..."
+          ARCH=$(uname -m) ./appimagetool-extracted/AppRun AppDir "$APPIMAGE_NAME"
+
+          # Verify AppImage was created
+          test -f "$APPIMAGE_NAME" || {
+            echo "::error::AppImage not created"
+            exit 1
+          }
+
+          # Cleanup
+          rm -rf AppDir appimagetool appimagetool-extracted
+
+          echo "AppImage created: $APPIMAGE_NAME"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
@@ -101,3 +148,4 @@ jobs:
             ${{ env.APP_NAME }}-${{ inputs.version }}-${{ matrix.target }}.tar.gz
             ${{ env.APP_NAME }}-${{ inputs.version }}-${{ matrix.target }}.AppImage
           if-no-files-found: error
+          retention-days: 7
