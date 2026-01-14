@@ -12,7 +12,7 @@ use iced::{Alignment, Border, Element, Length};
 use iced_fonts::lucide;
 
 use crate::message::{HomeMessage, Message};
-use crate::state::{AppState, Domain, Study, ViewState, WorkflowMode};
+use crate::state::{AppState, DomainState, Study, ViewState, WorkflowMode};
 use crate::theme::{
     BORDER_RADIUS_MD, GRAY_100, GRAY_200, GRAY_500, GRAY_600, GRAY_700, GRAY_800, GRAY_900,
     PRIMARY_500, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XL, SUCCESS, WARNING, WHITE,
@@ -358,7 +358,7 @@ fn view_domain_list(study: &Study) -> Element<Message> {
 }
 
 /// A single domain item in the list.
-fn view_domain_item<'a>(code: &'a str, domain: &'a Domain) -> Element<'a, Message> {
+fn view_domain_item<'a>(code: &'a str, domain: &'a DomainState) -> Element<'a, Message> {
     let display_name = domain.display_name(code);
     let row_count = domain.row_count();
     let is_complete = domain.is_mapping_complete();

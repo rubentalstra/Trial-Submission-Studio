@@ -167,7 +167,7 @@ fn view_rules_header<'a>(
 
 /// Rules list content.
 fn view_rules_list<'a>(
-    domain: &'a crate::state::Domain,
+    domain: &'a crate::state::DomainState,
     rules: &'a [tss_submit::NormalizationRule],
     ui_state: &'a NormalizationUiState,
 ) -> Element<'a, Message> {
@@ -304,7 +304,7 @@ fn view_rule_row<'a>(
 /// 2. Metadata section (with transformation info at bottom)
 /// 3. Before/After preview (sample data transformation)
 fn view_rule_detail<'a>(
-    domain: &'a crate::state::Domain,
+    domain: &'a crate::state::DomainState,
     rule: &'a tss_submit::NormalizationRule,
     sdtm_domain: &'a tss_standards::SdtmDomain,
     terminology: Option<&'a TerminologyRegistry>,
@@ -525,7 +525,7 @@ fn view_transformation_only<'a>(rule: &'a tss_submit::NormalizationRule) -> Elem
 ///
 /// Shows sample data before and after normalization is applied.
 fn view_before_after_preview<'a>(
-    domain: &'a crate::state::Domain,
+    domain: &'a crate::state::DomainState,
     rule: &'a tss_submit::NormalizationRule,
     terminology: Option<&'a TerminologyRegistry>,
 ) -> Element<'a, Message> {
@@ -559,7 +559,7 @@ fn view_before_after_preview<'a>(
 
 /// Build the before/after preview content based on transformation type.
 fn build_preview_content<'a>(
-    domain: &'a crate::state::Domain,
+    domain: &'a crate::state::DomainState,
     rule: &'a tss_submit::NormalizationRule,
     terminology: Option<&'a TerminologyRegistry>,
 ) -> Element<'a, Message> {

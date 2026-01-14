@@ -7,7 +7,7 @@ use std::path::PathBuf;
 
 use tss_ingest::StudyMetadata;
 
-use super::domain::Domain;
+use super::domain_state::DomainState;
 
 // =============================================================================
 // STUDY ID EXTRACTION
@@ -85,8 +85,8 @@ pub struct Study {
     /// Study metadata (Items.csv, CodeLists.csv) if available.
     pub metadata: Option<StudyMetadata>,
 
-    /// Domains indexed by code (e.g., "DM", "AE", "LB").
-    domains: BTreeMap<String, Domain>,
+    /// DomainStates indexed by code (e.g., "DM", "AE", "LB").
+    domains: BTreeMap<String, DomainState>,
 }
 
 impl Study {
@@ -127,7 +127,7 @@ impl Study {
 
     /// Get a domain by code.
     #[inline]
-    pub fn domain(&self, code: &str) -> Option<&Domain> {
+    pub fn domain(&self, code: &str) -> Option<&DomainState> {
         self.domains.get(code)
     }
 
@@ -136,7 +136,7 @@ impl Study {
     /// Note: In Iced, prefer updating domain through messages in `update()`.
     /// This is provided for use within the `update()` function only.
     #[inline]
-    pub fn domain_mut(&mut self, code: &str) -> Option<&mut Domain> {
+    pub fn domain_mut(&mut self, code: &str) -> Option<&mut DomainState> {
         self.domains.get_mut(code)
     }
 
@@ -147,12 +147,12 @@ impl Study {
     }
 
     /// Add a domain to the study.
-    pub fn add_domain(&mut self, code: impl Into<String>, domain: Domain) {
+    pub fn add_domain(&mut self, code: impl Into<String>, domain: DomainState) {
         self.domains.insert(code.into(), domain);
     }
 
     /// Remove a domain from the study.
-    pub fn remove_domain(&mut self, code: &str) -> Option<Domain> {
+    pub fn remove_domain(&mut self, code: &str) -> Option<DomainState> {
         self.domains.remove(code)
     }
 
@@ -184,12 +184,12 @@ impl Study {
     }
 
     /// Iterate over all domains.
-    pub fn domains(&self) -> impl Iterator<Item = (&str, &Domain)> {
+    pub fn domains(&self) -> impl Iterator<Item = (&str, &DomainState)> {
         self.domains.iter().map(|(k, v)| (k.as_str(), v))
     }
 
     /// Iterate over all domains mutably.
-    pub fn domains_mut(&mut self) -> impl Iterator<Item = (&str, &mut Domain)> {
+    pub fn domains_mut(&mut self) -> impl Iterator<Item = (&str, &mut DomainState)> {
         self.domains.iter_mut().map(|(k, v)| (k.as_str(), v))
     }
 

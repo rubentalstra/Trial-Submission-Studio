@@ -19,7 +19,7 @@ use iced_fonts::lucide;
 
 use crate::component::{Tab, tab_bar};
 use crate::message::{DomainEditorMessage, Message};
-use crate::state::{AppState, Domain, EditorTab};
+use crate::state::{AppState, DomainState, EditorTab};
 use crate::theme::{
     GRAY_100, GRAY_200, GRAY_500, GRAY_900, PRIMARY_500, SPACING_LG, SPACING_MD, SPACING_SM, WHITE,
     button_secondary,
@@ -89,7 +89,7 @@ pub fn view_domain_editor<'a>(
 // =============================================================================
 
 /// Domain editor header with domain info and back button.
-fn view_editor_header<'a>(domain_code: &'a str, domain: &'a Domain) -> Element<'a, Message> {
+fn view_editor_header<'a>(domain_code: &'a str, domain: &'a DomainState) -> Element<'a, Message> {
     let display_name = domain.display_name(domain_code);
 
     // Back button

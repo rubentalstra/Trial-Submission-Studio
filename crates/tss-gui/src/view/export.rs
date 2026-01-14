@@ -11,7 +11,9 @@ use iced_fonts::lucide;
 
 use crate::message::{ExportMessage, Message};
 use crate::service::export::{domain_has_supp, domain_supp_count};
-use crate::state::{AppState, Domain, ExportFormat, ExportViewState, Study, ViewState, XptVersion};
+use crate::state::{
+    AppState, DomainState, ExportFormat, ExportViewState, Study, ViewState, XptVersion,
+};
 use crate::theme::{
     GRAY_100, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800, GRAY_900, PRIMARY_500, SPACING_LG,
     SPACING_MD, SPACING_SM, SPACING_XS, SUCCESS, WARNING, WHITE, button_primary,
@@ -203,7 +205,7 @@ fn view_domain_selection<'a>(
 /// Single domain row with checkbox, status, and SUPP indicator.
 fn view_domain_row<'a>(
     code: &'a str,
-    domain: &'a Domain,
+    domain: &'a DomainState,
     export_state: &'a ExportViewState,
 ) -> Element<'a, Message> {
     let is_selected = export_state.is_selected(code);

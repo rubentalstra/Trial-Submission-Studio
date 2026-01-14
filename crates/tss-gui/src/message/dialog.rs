@@ -122,6 +122,9 @@ pub enum GeneralSettingsMessage {
 
     /// Change header rows setting
     HeaderRowsChanged(usize),
+
+    /// Change mapping confidence threshold (0.0 to 1.0)
+    ConfidenceThresholdChanged(f32),
 }
 
 /// Validation settings messages.

@@ -5,7 +5,7 @@
 use std::collections::BTreeSet;
 
 use polars::prelude::DataFrame;
-use tss_standards::SdtmDomain as Domain;
+use tss_standards::SdtmDomain;
 use tss_standards::TerminologyRegistry;
 use tss_submit::ValidationReport;
 
@@ -13,7 +13,7 @@ use tss_submit::ValidationReport;
 #[derive(Clone)]
 pub struct ValidationInput {
     /// SDTM domain definition.
-    pub domain: Domain,
+    pub domain: SdtmDomain,
     /// Transformed DataFrame to validate.
     pub df: DataFrame,
     /// Optional CT registry for terminology validation.

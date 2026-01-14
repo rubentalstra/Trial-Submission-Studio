@@ -207,7 +207,7 @@ impl DomainSource {
 /// # Example
 ///
 /// ```ignore
-/// let domain = Domain::new(source, mapping);
+/// let domain = DomainState::new(source, mapping);
 ///
 /// // Check mapping status
 /// let summary = domain.mapping.summary();
@@ -219,7 +219,7 @@ impl DomainSource {
 /// }
 /// ```
 #[derive(Clone)]
-pub struct Domain {
+pub struct DomainState {
     /// Immutable source data (CSV).
     pub source: DomainSource,
 
@@ -235,7 +235,7 @@ pub struct Domain {
     pub supp_config: HashMap<String, SuppColumnConfig>,
 }
 
-impl Domain {
+impl DomainState {
     /// Create a new domain.
     ///
     /// Automatically infers the normalization pipeline from the SDTM domain
@@ -313,9 +313,9 @@ impl Domain {
     }
 }
 
-impl std::fmt::Debug for Domain {
+impl std::fmt::Debug for DomainState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("Domain")
+        f.debug_struct("DomainState")
             .field("source", &self.source.file_path)
             .field("rows", &self.source.row_count())
             .field("mapping_summary", &self.mapping.summary())

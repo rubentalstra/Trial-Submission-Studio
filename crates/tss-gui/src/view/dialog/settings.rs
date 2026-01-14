@@ -2,7 +2,9 @@
 //!
 //! Master-detail layout with category sidebar and settings content.
 
-use iced::widget::{Space, button, column, container, radio, row, rule, scrollable, text, toggler};
+use iced::widget::{
+    Space, button, column, container, radio, row, rule, scrollable, slider, text, toggler,
+};
 use iced::window;
 use iced::{Alignment, Border, Color, Element, Length};
 use iced_fonts::lucide;
@@ -299,10 +301,39 @@ fn view_general_settings(settings: &Settings) -> Element<Message> {
     ]
     .spacing(SPACING_XS);
 
+    // Confidence threshold slider
+    let threshold = settings.general.mapping_confidence_threshold;
+    let threshold_section = column![
+        text("Mapping Confidence Threshold")
+            .size(14)
+            .color(GRAY_800),
+        text("Minimum confidence score for auto-mapping suggestions")
+            .size(12)
+            .color(GRAY_500),
+        Space::new().height(SPACING_XS),
+        row![
+            slider(0.0..=1.0, threshold, |v| {
+                Message::Dialog(DialogMessage::Settings(SettingsMessage::General(
+                    GeneralSettingsMessage::ConfidenceThresholdChanged(v),
+                )))
+            })
+            .step(0.05)
+            .width(Length::Fixed(200.0)),
+            Space::new().width(SPACING_SM),
+            text(format!("{:.0}%", threshold * 100.0))
+                .size(14)
+                .color(GRAY_700),
+        ]
+        .align_y(Alignment::Center),
+    ]
+    .spacing(SPACING_XS);
+
     column![
         section_header("General Settings"),
         Space::new().height(SPACING_MD),
         header_rows_section,
+        Space::new().height(SPACING_LG),
+        threshold_section,
     ]
     .spacing(SPACING_SM)
     .into()

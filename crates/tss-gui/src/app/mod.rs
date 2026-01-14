@@ -8,11 +8,26 @@
 //! - **All state changes happen in `update()`** - Views are pure functions
 //! - **No channels/polling** - Use `Task::perform` for async operations
 //! - **View state is part of ViewState enum** - Not separate UiState struct
+//!
+//! # Module Structure
+//!
+//! This module is split into submodules:
+//! - `handler/` - Message handlers organized by category
+//! - `update` - Top-level update dispatcher (future)
+//! - `util` - Utility functions (future)
+
+// Submodules (placeholders for incremental migration)
+mod handler;
+mod update;
+mod util;
+
+// Re-export utility functions for internal use
+use util::{load_app_icon, load_study_async};
 
 use std::path::PathBuf;
 
 use iced::keyboard;
-use iced::widget::{column, container, text};
+use iced::widget::container;
 use iced::window;
 use iced::{Element, Size, Subscription, Task, Theme};
 
@@ -21,9 +36,8 @@ use crate::message::{
     SettingsCategory, SettingsMessage, ThirdPartyMessage, UpdateMessage,
 };
 use crate::state::{
-    ActiveDialog, AppState, DialogType, DialogWindows, Domain, DomainSource, EditorTab,
-    ExportPhase, ExportResult, NotCollectedEdit, Settings, Study, SuppColumnConfig, SuppEditDraft,
-    ViewState,
+    AppState, DialogType, DomainSource, DomainState, EditorTab, ExportPhase, ExportResult,
+    NotCollectedEdit, Settings, Study, SuppColumnConfig, SuppEditDraft, ViewState,
 };
 use crate::theme::clinical_light;
 use crate::view::dialog::update::UpdateState;
@@ -560,9 +574,10 @@ impl App {
     fn load_study(&mut self, path: PathBuf) -> Task<Message> {
         self.state.is_loading = true;
         let header_rows = self.state.settings.general.header_rows;
+        let confidence_threshold = self.state.settings.general.mapping_confidence_threshold;
 
         Task::perform(
-            async move { load_study_async(path, header_rows).await },
+            async move { load_study_async(path, header_rows, confidence_threshold).await },
             Message::StudyLoaded,
         )
     }
@@ -1693,7 +1708,7 @@ impl App {
                         current_domain,
                         current_step,
                         progress: prog,
-                        files_written,
+                        files_written: _,
                     } = &mut export_state.phase
                     {
                         use crate::message::export::ExportProgress;
@@ -1824,25 +1839,18 @@ impl App {
             DialogMessage::Settings(settings_msg) => self.handle_settings_message(settings_msg),
             DialogMessage::ThirdParty(tp_msg) => self.handle_third_party_message(tp_msg),
             DialogMessage::Update(update_msg) => self.handle_update_message(update_msg),
-            DialogMessage::CloseAll => {
-                self.state.active_dialog = None;
-                Task::none()
-            }
+            DialogMessage::CloseAll => Task::none(),
         }
     }
 
     fn handle_about_message(&mut self, msg: AboutMessage) -> Task<Message> {
         match msg {
-            AboutMessage::Open => {
-                self.state.active_dialog = Some(ActiveDialog::About);
-                Task::none()
-            }
+            AboutMessage::Open => Task::none(),
             AboutMessage::Close => {
                 // Close dialog window in multi-window mode
                 if let Some(id) = self.state.dialog_windows.about.take() {
                     return window::close(id);
                 }
-                self.state.active_dialog = None;
                 Task::none()
             }
             AboutMessage::CopyAndClose => {
@@ -1854,7 +1862,6 @@ impl App {
                 if let Some(id) = self.state.dialog_windows.about.take() {
                     return Task::batch([copy_task, window::close(id)]);
                 }
-                self.state.active_dialog = None;
                 copy_task
             }
             AboutMessage::OpenWebsite => {
@@ -1877,18 +1884,12 @@ impl App {
 
     fn handle_settings_message(&mut self, msg: SettingsMessage) -> Task<Message> {
         match msg {
-            SettingsMessage::Open => {
-                self.state.active_dialog =
-                    Some(ActiveDialog::Settings(SettingsCategory::default()));
-                Task::none()
-            }
+            SettingsMessage::Open => Task::none(),
             SettingsMessage::Close => {
                 // Close dialog window in multi-window mode
                 if let Some((id, _)) = self.state.dialog_windows.settings.take() {
                     return window::close(id);
                 }
-                // Fallback for overlay mode (deprecated)
-                self.state.active_dialog = None;
                 Task::none()
             }
             SettingsMessage::Apply => {
@@ -1900,8 +1901,6 @@ impl App {
                 if let Some((id, _)) = self.state.dialog_windows.settings.take() {
                     return window::close(id);
                 }
-                // Fallback for overlay mode (deprecated)
-                self.state.active_dialog = None;
                 Task::none()
             }
             SettingsMessage::ResetToDefaults => {
@@ -1913,8 +1912,6 @@ impl App {
                 if let Some((id, _)) = self.state.dialog_windows.settings {
                     self.state.dialog_windows.settings = Some((id, category));
                 }
-                // Also update active_dialog for overlay mode (deprecated)
-                self.state.active_dialog = Some(ActiveDialog::Settings(category));
                 Task::none()
             }
             SettingsMessage::General(general_msg) => {
@@ -1925,6 +1922,9 @@ impl App {
                     }
                     GeneralSettingsMessage::HeaderRowsChanged(rows) => {
                         self.state.settings.general.header_rows = rows;
+                    }
+                    GeneralSettingsMessage::ConfidenceThresholdChanged(threshold) => {
+                        self.state.settings.general.mapping_confidence_threshold = threshold;
                     }
                 }
                 Task::none()
@@ -1983,14 +1983,8 @@ impl App {
 
     fn handle_third_party_message(&mut self, msg: ThirdPartyMessage) -> Task<Message> {
         match msg {
-            ThirdPartyMessage::Open => {
-                self.state.active_dialog = Some(ActiveDialog::ThirdParty);
-                Task::none()
-            }
-            ThirdPartyMessage::Close => {
-                self.state.active_dialog = None;
-                Task::none()
-            }
+            ThirdPartyMessage::Open => Task::none(),
+            ThirdPartyMessage::Close => Task::none(),
             ThirdPartyMessage::ScrollTo(_position) => {
                 // Handle scroll - would need scrollable state
                 Task::none()
@@ -2000,69 +1994,33 @@ impl App {
 
     fn handle_update_message(&mut self, msg: UpdateMessage) -> Task<Message> {
         match msg {
-            UpdateMessage::Open => {
-                self.state.active_dialog = Some(ActiveDialog::Update(UpdateState::Idle));
-                Task::none()
-            }
-            UpdateMessage::Close => {
-                self.state.active_dialog = None;
-                Task::none()
-            }
+            UpdateMessage::Open => Task::none(),
+            UpdateMessage::Close => Task::none(),
             UpdateMessage::CheckForUpdates => {
-                // Set checking state
-                self.state.active_dialog = Some(ActiveDialog::Update(UpdateState::Checking));
                 // TODO: Start actual update check
                 // For now, simulate up-to-date
                 Task::done(Message::Dialog(DialogMessage::Update(
                     UpdateMessage::CheckResult(Ok(None)),
                 )))
             }
-            UpdateMessage::CheckResult(result) => {
-                match result {
-                    Ok(Some(info)) => {
-                        self.state.active_dialog =
-                            Some(ActiveDialog::Update(UpdateState::Available(info)));
-                    }
-                    Ok(None) => {
-                        self.state.active_dialog =
-                            Some(ActiveDialog::Update(UpdateState::UpToDate));
-                    }
-                    Err(err) => {
-                        self.state.active_dialog =
-                            Some(ActiveDialog::Update(UpdateState::Error(err)));
-                    }
-                }
+            UpdateMessage::CheckResult(_result) => {
+                // TODO: Handle update check result via dialog window
                 Task::none()
             }
             UpdateMessage::StartInstall => {
-                self.state.active_dialog = Some(ActiveDialog::Update(UpdateState::Installing {
-                    progress: 0.0,
-                }));
                 // TODO: Start actual installation
                 Task::none()
             }
-            UpdateMessage::InstallProgress(progress) => {
-                self.state.active_dialog =
-                    Some(ActiveDialog::Update(UpdateState::Installing { progress }));
+            UpdateMessage::InstallProgress(_progress) => {
+                // TODO: Update progress via dialog window
                 Task::none()
             }
-            UpdateMessage::InstallComplete(result) => {
-                match result {
-                    Ok(()) => {
-                        self.state.active_dialog =
-                            Some(ActiveDialog::Update(UpdateState::InstallComplete));
-                    }
-                    Err(err) => {
-                        self.state.active_dialog =
-                            Some(ActiveDialog::Update(UpdateState::Error(err)));
-                    }
-                }
+            UpdateMessage::InstallComplete(_result) => {
+                // TODO: Handle completion via dialog window
                 Task::none()
             }
             UpdateMessage::RestartApp => {
                 // Would restart the application
-                // For now, just close the dialog
-                self.state.active_dialog = None;
                 Task::none()
             }
         }
@@ -2211,144 +2169,7 @@ impl App {
     }
 }
 
-// =============================================================================
-// ASYNC STUDY LOADING
-// =============================================================================
-
-use tss_standards::TerminologyRegistry;
-
-/// Load a study asynchronously, including CT loading.
-async fn load_study_async(
-    folder: PathBuf,
-    header_rows: usize,
-) -> Result<(Study, TerminologyRegistry), String> {
-    // Create study from folder
-    let mut study = Study::from_folder(folder.clone());
-
-    // Discover CSV files
-    let csv_files: Vec<PathBuf> = std::fs::read_dir(&folder)
-        .map_err(|e| format!("Failed to read folder: {}", e))?
-        .filter_map(|entry| entry.ok())
-        .map(|entry| entry.path())
-        .filter(|path| {
-            path.extension()
-                .map(|ext| ext.eq_ignore_ascii_case("csv"))
-                .unwrap_or(false)
-        })
-        .collect();
-
-    if csv_files.is_empty() {
-        return Err("No CSV files found in the selected folder".to_string());
-    }
-
-    // Load metadata if available
-    study.metadata = tss_ingest::load_study_metadata(&folder, header_rows).ok();
-
-    // Load SDTM-IG
-    let ig_domains =
-        tss_standards::load_sdtm_ig().map_err(|e| format!("Failed to load SDTM-IG: {}", e))?;
-
-    // Load Controlled Terminology
-    let ct_version = tss_standards::ct::CtVersion::default();
-    let terminology = tss_standards::ct::load(ct_version).map_err(|e| {
-        format!(
-            "Failed to load Controlled Terminology ({}): {}",
-            ct_version, e
-        )
-    })?;
-    tracing::info!(
-        "Loaded CT {} with {} catalogs",
-        ct_version,
-        terminology.catalogs.len()
-    );
-
-    // Process each CSV file
-    for csv_path in csv_files {
-        let file_stem = csv_path
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or_default();
-
-        // Extract domain code from filename
-        // Handles both simple names (DM.csv) and prefixed names (STUDY_DM.csv)
-        let domain_code = extract_domain_code(file_stem);
-
-        // Skip non-domain files
-        if domain_code.is_empty()
-            || domain_code.starts_with('_')
-            || domain_code.eq_ignore_ascii_case("items")
-            || domain_code.eq_ignore_ascii_case("codelists")
-        {
-            continue;
-        }
-
-        let domain_code = domain_code.to_uppercase();
-
-        // Load CSV
-        let (df, _headers) = tss_ingest::read_csv_table(&csv_path, header_rows)
-            .map_err(|e| format!("Failed to load {}: {}", domain_code, e))?;
-
-        // Find domain in SDTM-IG
-        let ig_domain = ig_domains
-            .iter()
-            .find(|d| d.name.eq_ignore_ascii_case(&domain_code));
-
-        let Some(ig_domain) = ig_domain else {
-            tracing::warn!("Domain {} not found in SDTM-IG, skipping", domain_code);
-            continue;
-        };
-
-        // Create source
-        let source = DomainSource::new(csv_path, df.clone(), ig_domain.label.clone());
-
-        // Create mapping state
-        let hints = tss_ingest::build_column_hints(&df);
-        let source_columns: Vec<String> = df
-            .get_column_names()
-            .into_iter()
-            .map(|s| s.to_string())
-            .collect();
-
-        let mapping = tss_submit::MappingState::new(
-            ig_domain.clone(),
-            &study.study_id,
-            &source_columns,
-            hints,
-            0.6,
-        );
-
-        // Create domain and add to study
-        let domain = Domain::new(source, mapping);
-        study.add_domain(domain_code, domain);
-    }
-
-    if study.domain_count() == 0 {
-        return Err("No valid SDTM domains found in the selected folder".to_string());
-    }
-
-    Ok((study, terminology))
-}
-
-/// Extract domain code from a filename.
-///
-/// Handles various naming conventions:
-/// - Simple: `DM.csv` → `DM`
-/// - Prefixed: `STUDY_DM.csv` → `DM`
-/// - Full path: `DEMO_GDISC_20240903_072908_DM.csv` → `DM`
-///
-/// Returns the last underscore-separated segment.
-fn extract_domain_code(file_stem: &str) -> &str {
-    // If there's no underscore, return the whole string
-    if !file_stem.contains('_') {
-        return file_stem;
-    }
-
-    // Return the last segment after underscore
-    file_stem.rsplit('_').next().unwrap_or(file_stem)
-}
-
-/// Load the application icon from embedded PNG data.
-fn load_app_icon() -> Option<window::Icon> {
-    let icon_data = include_bytes!("../assets/icon.png");
-    window::icon::from_file_data(icon_data, Some(image::ImageFormat::Png)).ok()
-}
+// Utility functions moved to app/util.rs:
+// - load_study_async
+// - extract_domain_code
+// - load_app_icon

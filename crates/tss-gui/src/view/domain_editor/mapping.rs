@@ -122,7 +122,7 @@ pub fn view_mapping_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
 
 /// Left panel header: search, filters, and stats (pinned at top).
 fn view_variable_list_header<'a>(
-    domain: &'a crate::state::Domain,
+    domain: &'a crate::state::DomainState,
     mapping_ui: &'a MappingUiState,
 ) -> Element<'a, Message> {
     // Search and filter controls
@@ -152,7 +152,7 @@ fn view_variable_list_header<'a>(
 
 /// Left panel content: scrollable list of variables.
 fn view_variable_list_content<'a>(
-    domain: &'a crate::state::Domain,
+    domain: &'a crate::state::DomainState,
     filtered_indices: &[usize],
     mapping_ui: &'a MappingUiState,
 ) -> Element<'a, Message> {
@@ -354,7 +354,7 @@ fn view_variable_item<'a>(
 /// Right panel: details for selected variable.
 fn view_variable_detail<'a>(
     state: &'a AppState,
-    domain: &'a crate::state::Domain,
+    domain: &'a crate::state::DomainState,
     var: &'a tss_standards::SdtmVariable,
 ) -> Element<'a, Message> {
     let status = domain.mapping.status(&var.name);
@@ -679,7 +679,7 @@ fn view_controlled_terminology<'a>(
 
 /// Current mapping status display.
 fn view_mapping_status<'a>(
-    domain: &'a crate::state::Domain,
+    domain: &'a crate::state::DomainState,
     var: &'a tss_standards::SdtmVariable,
     status: VariableStatus,
 ) -> Element<'a, Message> {
@@ -929,7 +929,7 @@ impl std::fmt::Display for ColumnOption {
 
 /// Source column picker using a dropdown with suggestion highlighting.
 fn view_source_column_picker<'a>(
-    domain: &'a crate::state::Domain,
+    domain: &'a crate::state::DomainState,
     var: &'a tss_standards::SdtmVariable,
 ) -> Element<'a, Message> {
     use iced::widget::pick_list;
@@ -1055,7 +1055,7 @@ fn view_source_column_picker<'a>(
 
 /// Action buttons for the variable.
 fn view_mapping_actions<'a>(
-    domain: &'a crate::state::Domain,
+    domain: &'a crate::state::DomainState,
     var: &'a tss_standards::SdtmVariable,
     status: VariableStatus,
 ) -> Element<'a, Message> {

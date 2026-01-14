@@ -13,7 +13,7 @@
 use polars::prelude::DataFrame;
 use tss_submit::ValidationReport;
 
-use super::domain::{SuppColumnConfig, SuppOrigin};
+use super::domain_state::{SuppColumnConfig, SuppOrigin};
 
 // =============================================================================
 // VIEW STATE (Current view + its UI state)
