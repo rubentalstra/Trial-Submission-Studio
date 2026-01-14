@@ -1,7 +1,7 @@
 //! Message handlers organized by category.
 //!
-//! Each handler module contains functions to process specific message types:
-//! - `home` - Home view messages
+//! Each handler module contains `impl App` blocks with handler methods:
+//! - `home` - Home view messages (open study, recent, close study)
 //! - `domain_editor` - Domain editor tab navigation
 //! - `mapping` - Variable mapping messages
 //! - `normalization` - Normalization rule messages
@@ -25,4 +25,5 @@ mod preview;
 mod supp;
 mod validation;
 
-// Re-exports will be added as handlers are implemented
+// All handlers are implemented as `impl App` blocks in their respective modules.
+// No re-exports needed since the methods are defined on the App type directly.
