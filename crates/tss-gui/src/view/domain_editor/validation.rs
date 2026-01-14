@@ -242,19 +242,19 @@ fn view_issue_row<'a>(issue: &'a Issue, idx: usize, is_selected: bool) -> Elemen
         Severity::Warning => lucide::circle_alert().size(14).color(severity_color).into(),
     };
 
-    // Category badge as trailing element
-    let category = issue_category(issue);
-    let category_badge: Element<'a, Message> = container(text(category).size(9).color(GRAY_600))
-        .padding([2.0, 5.0])
-        .style(|_| container::Style {
-            background: Some(GRAY_100.into()),
-            border: Border {
-                radius: 3.0.into(),
-                ..Default::default()
-            },
-            ..Default::default()
-        })
-        .into();
+    // Category badge as trailing element (commented out due to UI issues)
+    // let category = issue_category(issue);
+    // let category_badge: Element<'a, Message> = container(text(category).size(9).color(GRAY_600))
+    //     .padding([2.0, 5.0])
+    //     .style(|_| container::Style {
+    //         background: Some(GRAY_100.into()),
+    //         border: Border {
+    //             radius: 3.0.into(),
+    //             ..Default::default()
+    //         },
+    //         ..Default::default()
+    //     })
+    //     .into();
 
     // Short description (truncated)
     let short_msg = truncate_message(issue.message().as_str(), 40);
@@ -267,7 +267,7 @@ fn view_issue_row<'a>(issue: &'a Issue, idx: usize, is_selected: bool) -> Elemen
     )
     .secondary(short_msg)
     .leading(severity_icon)
-    .trailing(category_badge)
+    // .trailing(category_badge)  // Commented out due to UI issues
     .selected(is_selected)
     .view()
 }
