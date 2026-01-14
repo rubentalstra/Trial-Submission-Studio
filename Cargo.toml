@@ -2,13 +2,9 @@
 members = [
     "crates/tss-gui",
     "crates/tss-ingest",
-    "crates/tss-map",
-    "crates/tss-model",
-    "crates/tss-output",
     "crates/tss-standards",
-    "crates/tss-normalization",
+    "crates/tss-submit",
     "crates/tss-updater",
-    "crates/tss-validate",
 ]
 resolver = "3"
 

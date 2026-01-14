@@ -13,7 +13,7 @@
 //!
 //! - [`AppState`] - Root state container (flat, no nesting complexity)
 //! - [`Study`] - Loaded study with domains (domain data)
-//! - [`Domain`] - Single SDTM domain with source data and mapping
+//! - [`DomainState`] - Single SDTM domain with source data and mapping
 //! - [`ViewState`] - Current view and its UI state
 //! - [`Settings`] - Persisted user preferences
 //!
@@ -24,13 +24,13 @@
 //! 3. **Derived data computed on demand** - Not cached in state
 //! 4. **UI state lives with views** - Not mixed with domain data
 
-mod domain;
+mod domain_state;
 mod settings;
 mod study;
 mod view_state;
 
 // Re-exports
-pub use domain::{Domain, DomainSource, SuppAction, SuppColumnConfig, SuppOrigin};
+pub use domain_state::{DomainSource, DomainState, SuppAction, SuppColumnConfig, SuppOrigin};
 pub use settings::{
     DeveloperSettings, ExportFormat, ExportSettings, GeneralSettings, Settings, XptVersion,
 };
@@ -43,7 +43,7 @@ pub use view_state::{
 
 use crate::menu::MenuBarState;
 use iced::window;
-use tss_model::TerminologyRegistry;
+use tss_standards::TerminologyRegistry;
 
 // =============================================================================
 // ROOT APPLICATION STATE
@@ -100,9 +100,6 @@ pub struct AppState {
     /// Whether a background task is running (for UI feedback).
     pub is_loading: bool,
 
-    /// Currently open dialog (None if no dialog is open).
-    pub active_dialog: Option<ActiveDialog>,
-
     /// Menu bar state (for in-app menu on Windows/Linux).
     pub menu_bar: MenuBarState,
 
@@ -111,19 +108,6 @@ pub struct AppState {
 
     /// Main window ID (for identifying the main window in multi-window mode).
     pub main_window_id: Option<window::Id>,
-}
-
-/// Currently active dialog (for overlay mode - deprecated).
-#[derive(Debug, Clone)]
-pub enum ActiveDialog {
-    /// About dialog.
-    About,
-    /// Settings dialog with current category.
-    Settings(crate::message::SettingsCategory),
-    /// Third-party licenses dialog.
-    ThirdParty,
-    /// Update dialog with current state.
-    Update(crate::view::dialog::update::UpdateState),
 }
 
 /// State for export progress dialog.
@@ -243,7 +227,6 @@ impl Default for AppState {
             terminology: None,
             error: None,
             is_loading: false,
-            active_dialog: None,
             menu_bar: MenuBarState::default(),
             dialog_windows: DialogWindows::default(),
             main_window_id: None,
@@ -261,7 +244,6 @@ impl AppState {
             terminology: None,
             error: None,
             is_loading: false,
-            active_dialog: None,
             menu_bar: MenuBarState::default(),
             dialog_windows: DialogWindows::default(),
             main_window_id: None,
@@ -280,7 +262,7 @@ impl AppState {
 
     /// Get domain by code.
     #[inline]
-    pub fn domain(&self, code: &str) -> Option<&Domain> {
+    pub fn domain(&self, code: &str) -> Option<&DomainState> {
         self.study.as_ref()?.domain(code)
     }
 

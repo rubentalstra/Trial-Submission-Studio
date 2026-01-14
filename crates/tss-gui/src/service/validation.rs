@@ -5,15 +5,15 @@
 use std::collections::BTreeSet;
 
 use polars::prelude::DataFrame;
-use tss_model::Domain;
-use tss_model::TerminologyRegistry;
-use tss_validate::ValidationReport;
+use tss_standards::SdtmDomain;
+use tss_standards::TerminologyRegistry;
+use tss_submit::ValidationReport;
 
 /// Input for validation computation.
 #[derive(Clone)]
 pub struct ValidationInput {
     /// SDTM domain definition.
-    pub domain: Domain,
+    pub domain: SdtmDomain,
     /// Transformed DataFrame to validate.
     pub df: DataFrame,
     /// Optional CT registry for terminology validation.
@@ -52,7 +52,7 @@ fn compute_validation_sync(input: ValidationInput) -> ValidationReport {
         not_collected,
     } = input;
 
-    tss_validate::validate_domain_with_not_collected(
+    tss_submit::validate_domain_with_not_collected(
         &domain,
         &df,
         ct_registry.as_ref(),

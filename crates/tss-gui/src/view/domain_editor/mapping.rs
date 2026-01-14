@@ -20,8 +20,8 @@ use crate::theme::{
     WARNING, WHITE, button_primary, button_secondary,
 };
 
-use tss_map::VariableStatus;
-use tss_model::CoreDesignation;
+use tss_standards::CoreDesignation;
+use tss_submit::VariableStatus;
 
 // =============================================================================
 // CONSTANTS
@@ -122,7 +122,7 @@ pub fn view_mapping_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
 
 /// Left panel header: search, filters, and stats (pinned at top).
 fn view_variable_list_header<'a>(
-    domain: &'a crate::state::Domain,
+    domain: &'a crate::state::DomainState,
     mapping_ui: &'a MappingUiState,
 ) -> Element<'a, Message> {
     // Search and filter controls
@@ -152,7 +152,7 @@ fn view_variable_list_header<'a>(
 
 /// Left panel content: scrollable list of variables.
 fn view_variable_list_content<'a>(
-    domain: &'a crate::state::Domain,
+    domain: &'a crate::state::DomainState,
     filtered_indices: &[usize],
     mapping_ui: &'a MappingUiState,
 ) -> Element<'a, Message> {
@@ -265,7 +265,7 @@ fn view_search_and_filters<'a>(mapping_ui: &'a MappingUiState) -> Element<'a, Me
 /// Single variable item in the list.
 fn view_variable_item<'a>(
     index: usize,
-    var: &'a tss_model::Variable,
+    var: &'a tss_standards::SdtmVariable,
     status: VariableStatus,
     is_selected: bool,
 ) -> Element<'a, Message> {
@@ -354,8 +354,8 @@ fn view_variable_item<'a>(
 /// Right panel: details for selected variable.
 fn view_variable_detail<'a>(
     state: &'a AppState,
-    domain: &'a crate::state::Domain,
-    var: &'a tss_model::Variable,
+    domain: &'a crate::state::DomainState,
+    var: &'a tss_standards::SdtmVariable,
 ) -> Element<'a, Message> {
     let status = domain.mapping.status(&var.name);
 
@@ -431,7 +431,7 @@ fn view_variable_detail<'a>(
 }
 
 /// Detail header with variable name.
-fn view_detail_header<'a>(var: &'a tss_model::Variable) -> Element<'a, Message> {
+fn view_detail_header<'a>(var: &'a tss_standards::SdtmVariable) -> Element<'a, Message> {
     let name = text(&var.name).size(20).color(GRAY_900);
     let label = text(var.label.as_deref().unwrap_or("No label"))
         .size(14)
@@ -441,7 +441,7 @@ fn view_detail_header<'a>(var: &'a tss_model::Variable) -> Element<'a, Message> 
 }
 
 /// Variable metadata display.
-fn view_variable_metadata<'a>(var: &'a tss_model::Variable) -> Element<'a, Message> {
+fn view_variable_metadata<'a>(var: &'a tss_standards::SdtmVariable) -> Element<'a, Message> {
     let mut rows = column![].spacing(SPACING_SM);
 
     // Role
@@ -456,8 +456,8 @@ fn view_variable_metadata<'a>(var: &'a tss_model::Variable) -> Element<'a, Messa
 
     // Data type
     let type_str = match var.data_type {
-        tss_model::VariableType::Char => "Character",
-        tss_model::VariableType::Num => "Numeric",
+        tss_standards::VariableType::Char => "Character",
+        tss_standards::VariableType::Num => "Numeric",
     };
     rows = rows.push(view_metadata_row("Type", type_str));
 
@@ -510,7 +510,7 @@ fn view_metadata_row<'a>(label: &'static str, value: impl ToString) -> Element<'
 /// Display controlled terminology information for a variable.
 fn view_controlled_terminology<'a>(
     state: &'a AppState,
-    var: &'a tss_model::Variable,
+    var: &'a tss_standards::SdtmVariable,
 ) -> Element<'a, Message> {
     let ct_code = match &var.codelist_code {
         Some(code) => code,
@@ -679,8 +679,8 @@ fn view_controlled_terminology<'a>(
 
 /// Current mapping status display.
 fn view_mapping_status<'a>(
-    domain: &'a crate::state::Domain,
-    var: &'a tss_model::Variable,
+    domain: &'a crate::state::DomainState,
+    var: &'a tss_standards::SdtmVariable,
     status: VariableStatus,
 ) -> Element<'a, Message> {
     let title = text("Mapping Status").size(14).color(GRAY_700);
@@ -929,8 +929,8 @@ impl std::fmt::Display for ColumnOption {
 
 /// Source column picker using a dropdown with suggestion highlighting.
 fn view_source_column_picker<'a>(
-    domain: &'a crate::state::Domain,
-    var: &'a tss_model::Variable,
+    domain: &'a crate::state::DomainState,
+    var: &'a tss_standards::SdtmVariable,
 ) -> Element<'a, Message> {
     use iced::widget::pick_list;
 
@@ -1055,8 +1055,8 @@ fn view_source_column_picker<'a>(
 
 /// Action buttons for the variable.
 fn view_mapping_actions<'a>(
-    domain: &'a crate::state::Domain,
-    var: &'a tss_model::Variable,
+    domain: &'a crate::state::DomainState,
+    var: &'a tss_standards::SdtmVariable,
     status: VariableStatus,
 ) -> Element<'a, Message> {
     let var_name = var.name.clone();
@@ -1218,7 +1218,7 @@ fn view_mapping_actions<'a>(
 
 /// Inline editor for "Not Collected" reason.
 fn view_not_collected_inline_edit<'a>(
-    var: &'a tss_model::Variable,
+    var: &'a tss_standards::SdtmVariable,
     edit: &'a NotCollectedEdit,
 ) -> Element<'a, Message> {
     let var_name = var.name.clone();

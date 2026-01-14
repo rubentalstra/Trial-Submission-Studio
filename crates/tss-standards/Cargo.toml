@@ -4,13 +4,23 @@ version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 license.workspace = true
-description = "CDISC standards loading for SDTM, ADaM, and SEND"
+description = "CDISC standards types and loaders for SDTM, ADaM, and SEND"
 
 [lints]
 workspace = true
 
 [dependencies]
-csv.workspace = true
-tss-model = { path = "../tss-model" }
+# Serialization
 serde = { workspace = true, features = ["derive"] }
-thiserror = "2.0.17"
+
+# Data handling
+polars.workspace = true
+
+# CSV parsing for standards loading
+csv.workspace = true
+
+# Error handling
+thiserror.workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true

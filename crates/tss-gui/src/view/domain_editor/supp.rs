@@ -26,7 +26,7 @@ use crate::component::master_detail_with_pinned_header;
 use crate::message::domain_editor::SuppMessage;
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{
-    AppState, Domain, SuppAction, SuppColumnConfig, SuppEditDraft, SuppFilterMode, SuppOrigin,
+    AppState, DomainState, SuppAction, SuppColumnConfig, SuppEditDraft, SuppFilterMode, SuppOrigin,
     SuppUiState, ViewState,
 };
 use crate::theme::{
@@ -174,7 +174,7 @@ fn build_master_header_pinned<'a>(
 /// Left panel content: scrollable list of columns.
 fn build_master_content<'a>(
     filtered: &[String],
-    domain: &'a Domain,
+    domain: &'a DomainState,
     ui: &'a SuppUiState,
 ) -> Element<'a, Message> {
     if filtered.is_empty() {
@@ -308,7 +308,7 @@ fn build_column_item(
 // =============================================================================
 
 fn build_detail_panel(
-    domain: &Domain,
+    domain: &DomainState,
     ui: &SuppUiState,
     domain_code: &str,
 ) -> Element<'static, Message> {
@@ -360,7 +360,7 @@ fn build_no_selection_state() -> Element<'static, Message> {
 // =============================================================================
 
 fn build_pending_view(
-    domain: &Domain,
+    domain: &DomainState,
     col_name: &str,
     config: &SuppColumnConfig,
     domain_code: &str,
@@ -466,7 +466,7 @@ fn build_pending_actions(domain_code: &str) -> Element<'static, Message> {
 // =============================================================================
 
 fn build_included_view(
-    domain: &Domain,
+    domain: &DomainState,
     col_name: &str,
     config: &SuppColumnConfig,
     domain_code: &str,
@@ -631,7 +631,7 @@ fn build_included_actions() -> Element<'static, Message> {
 // =============================================================================
 
 fn build_edit_view(
-    domain: &Domain,
+    domain: &DomainState,
     col_name: &str,
     draft: &SuppEditDraft,
     domain_code: &str,
@@ -767,7 +767,7 @@ fn build_edit_actions() -> Element<'static, Message> {
 // =============================================================================
 
 fn build_skipped_view(
-    domain: &Domain,
+    domain: &DomainState,
     col_name: &str,
     domain_code: &str,
 ) -> Element<'static, Message> {
@@ -889,7 +889,7 @@ fn build_detail_header(col_name: &str, domain_code: &str) -> Element<'static, Me
     .into()
 }
 
-fn build_sample_data(domain: &Domain, col_name: &str) -> Element<'static, Message> {
+fn build_sample_data(domain: &DomainState, col_name: &str) -> Element<'static, Message> {
     let samples = get_sample_values(domain, col_name, 5);
 
     let sample_chips: Vec<Element<'static, Message>> = samples
@@ -1079,7 +1079,7 @@ fn build_origin_picker(current: SuppOrigin) -> Element<'static, Message> {
 // HELPER FUNCTIONS
 // =============================================================================
 
-fn get_sample_values(domain: &Domain, col_name: &str, max: usize) -> Vec<String> {
+fn get_sample_values(domain: &DomainState, col_name: &str, max: usize) -> Vec<String> {
     let mut samples = Vec::new();
     let mut seen = std::collections::HashSet::new();
 
@@ -1109,7 +1109,7 @@ fn format_value(value: &AnyValue) -> String {
     }
 }
 
-fn check_qnam_conflict(domain: &Domain, current_col: &str, qnam: &str) -> Option<String> {
+fn check_qnam_conflict(domain: &DomainState, current_col: &str, qnam: &str) -> Option<String> {
     if qnam.is_empty() {
         return None;
     }

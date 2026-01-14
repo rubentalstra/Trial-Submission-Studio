@@ -23,7 +23,7 @@ use crate::theme::{
 /// Render the export progress dialog content for a standalone window.
 pub fn view_export_progress_dialog_content(
     state: &ExportProgressState,
-    window_id: window::Id,
+    _window_id: window::Id,
 ) -> Element<Message> {
     let domain_text = state.current_domain.as_deref().unwrap_or("Preparing...");
 
@@ -100,7 +100,7 @@ pub fn view_export_progress_dialog_content(
 /// Render the export completion dialog content for a standalone window.
 pub fn view_export_complete_dialog_content<'a>(
     result: &'a ExportResult,
-    window_id: window::Id,
+    _window_id: window::Id,
 ) -> Element<'a, Message> {
     let content: Element<'a, Message> = match result {
         ExportResult::Success {
@@ -108,7 +108,7 @@ pub fn view_export_complete_dialog_content<'a>(
             files,
             domains_exported,
             elapsed_ms,
-            warnings,
+            warnings: _,
         } => view_success_content(output_dir, files.len(), *domains_exported, *elapsed_ms),
         ExportResult::Error { message, domain } => view_error_content(message, domain.as_deref()),
         ExportResult::Cancelled => view_cancelled_content(),

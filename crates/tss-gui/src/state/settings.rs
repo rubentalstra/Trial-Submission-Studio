@@ -113,6 +113,11 @@ pub struct GeneralSettings {
     /// Maximum number of recent studies to remember.
     #[serde(skip)]
     pub max_recent: usize,
+
+    /// Minimum confidence score (0.0 to 1.0) for displaying mapping suggestions.
+    ///
+    /// Higher values show only high-confidence matches, lower values show more suggestions.
+    pub mapping_confidence_threshold: f32,
 }
 
 impl Default for GeneralSettings {
@@ -122,6 +127,7 @@ impl Default for GeneralSettings {
             auto_check_updates: true,
             recent_studies: Vec::new(),
             max_recent: 10,
+            mapping_confidence_threshold: 0.6, // Default threshold for mapping suggestions
         }
     }
 }

@@ -18,7 +18,7 @@ use polars::prelude::DataFrame;
 
 use crate::message::domain_editor::PreviewMessage;
 use crate::message::{DomainEditorMessage, Message};
-use crate::state::{AppState, Domain, PreviewUiState, ViewState};
+use crate::state::{AppState, DomainState, PreviewUiState, ViewState};
 use crate::theme::{
     BORDER_RADIUS_SM, GRAY_100, GRAY_200, GRAY_300, GRAY_400, GRAY_500, GRAY_600, GRAY_700,
     GRAY_800, GRAY_900, PRIMARY_100, PRIMARY_500, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS,
@@ -214,7 +214,7 @@ fn view_preview_header<'a>(
 fn view_data_table<'a>(
     df: &DataFrame,
     preview_ui: &PreviewUiState,
-    domain: &Domain,
+    domain: &DomainState,
 ) -> Element<'a, Message> {
     let col_names: Vec<String> = df
         .get_column_names()

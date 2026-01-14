@@ -8,16 +8,16 @@ use std::path::{Path, PathBuf};
 use std::time::Instant;
 
 use polars::prelude::{AnyValue, DataFrame, NamedFrom, Series};
-use tss_model::{Domain, TerminologyRegistry};
-use tss_normalization::{NormalizationContext, execute_normalization};
-use tss_output::types::DomainFrame;
-use tss_output::{
+use tss_standards::{SdtmDomain, TerminologyRegistry};
+use tss_submit::export::types::DomainFrame;
+use tss_submit::export::{
     DatasetXmlOptions, DefineXmlOptions, build_xpt_dataset_with_name,
     write_dataset_xml as write_dataset_xml_output, write_define_xml as write_define_xml_output,
 };
-use tss_validate::{Severity, ValidationReport};
+use tss_submit::{NormalizationContext, execute_normalization};
+use tss_submit::{Severity, ValidationReport};
 
-use crate::state::{Domain as GuiDomain, ExportFormat, ExportResult, XptVersion};
+use crate::state::{DomainState, ExportFormat, ExportResult, XptVersion};
 
 // =============================================================================
 // INPUT TYPES
@@ -56,7 +56,7 @@ pub struct DomainExportData {
     /// Domain code (e.g., "DM", "AE").
     pub code: String,
     /// Domain definition from CDISC standards.
-    pub definition: Domain,
+    pub definition: SdtmDomain,
     /// Transformed DataFrame ready for export.
     pub data: DataFrame,
     /// SUPP data if applicable.
@@ -277,7 +277,7 @@ fn execute_export_sync(input: ExportInput) -> ExportResult {
 fn write_data_file(
     path: &Path,
     frame: &DomainFrame,
-    domain: &Domain,
+    domain: &SdtmDomain,
     study_id: &str,
     format: ExportFormat,
 ) -> Result<(), ExportError> {
@@ -288,7 +288,11 @@ fn write_data_file(
 }
 
 /// Write XPT file using tss-output crate.
-fn write_xpt_file(path: &Path, frame: &DomainFrame, domain: &Domain) -> Result<(), ExportError> {
+fn write_xpt_file(
+    path: &Path,
+    frame: &DomainFrame,
+    domain: &SdtmDomain,
+) -> Result<(), ExportError> {
     // Use the tss-output crate's XPT builder
     let dataset_name = frame.dataset_name();
     let dataset = build_xpt_dataset_with_name(domain, frame, &dataset_name)
@@ -309,7 +313,7 @@ fn write_xpt_file(path: &Path, frame: &DomainFrame, domain: &Domain) -> Result<(
 fn write_dataset_xml_file(
     path: &Path,
     frame: &DomainFrame,
-    domain: &Domain,
+    domain: &SdtmDomain,
     study_id: &str,
 ) -> Result<(), ExportError> {
     let options = DatasetXmlOptions {
@@ -342,7 +346,7 @@ fn write_define_xml(
     supp_frames: &[DomainFrame],
 ) -> Result<(), ExportError> {
     // Collect all domains and frames
-    let mut domains: Vec<Domain> = domain_data.iter().map(|d| d.definition.clone()).collect();
+    let mut domains: Vec<SdtmDomain> = domain_data.iter().map(|d| d.definition.clone()).collect();
     let mut all_frames: Vec<DomainFrame> = domain_frames.to_vec();
 
     // Add SUPP domains
@@ -387,7 +391,10 @@ fn write_define_xml(
 /// # Arguments
 /// * `parent_code` - The parent domain code (e.g., "DM", "AE")
 /// * `parent_label` - The parent domain label (e.g., "Demographics", "Adverse Events")
-fn build_supp_domain_definition(parent_code: &str, parent_label: Option<&str>) -> Option<Domain> {
+fn build_supp_domain_definition(
+    parent_code: &str,
+    parent_label: Option<&str>,
+) -> Option<SdtmDomain> {
     // Load SUPPQUAL template from standards
     let domains = tss_standards::sdtm_ig::load().ok()?;
     let suppqual = domains.iter().find(|d| d.name == "SUPPQUAL")?;
@@ -416,7 +423,7 @@ fn build_supp_domain_definition(parent_code: &str, parent_label: Option<&str>) -
 /// builds SUPP DataFrame if the domain has included SUPP columns.
 pub fn build_domain_export_data(
     code: &str,
-    gui_domain: &GuiDomain,
+    gui_domain: &DomainState,
     study_id: &str,
     terminology: Option<&TerminologyRegistry>,
 ) -> Result<DomainExportData, ExportError> {
@@ -460,7 +467,7 @@ pub fn build_domain_export_data(
 /// Build SUPP DataFrame from domain's supp_config.
 fn build_supp_dataframe(
     domain_code: &str,
-    gui_domain: &GuiDomain,
+    gui_domain: &DomainState,
     study_id: &str,
     transformed_data: &DataFrame,
 ) -> Result<Option<DataFrame>, ExportError> {
@@ -611,7 +618,7 @@ fn validate_all_domains(input: &ExportInput) -> Vec<(String, usize)> {
             .cloned()
             .unwrap_or_default();
 
-        let report = tss_validate::validate_domain_with_not_collected(
+        let report = tss_submit::validate_domain_with_not_collected(
             &domain_data.definition,
             &domain_data.data,
             input.ct_registry.as_ref(),
@@ -641,7 +648,7 @@ fn count_validation_errors(report: &ValidationReport) -> usize {
 // =============================================================================
 
 /// Check if a domain has any included SUPP columns.
-pub fn domain_has_supp(gui_domain: &GuiDomain) -> bool {
+pub fn domain_has_supp(gui_domain: &DomainState) -> bool {
     gui_domain
         .supp_config
         .values()
@@ -649,7 +656,7 @@ pub fn domain_has_supp(gui_domain: &GuiDomain) -> bool {
 }
 
 /// Get count of included SUPP columns for a domain.
-pub fn domain_supp_count(gui_domain: &GuiDomain) -> usize {
+pub fn domain_supp_count(gui_domain: &DomainState) -> usize {
     gui_domain
         .supp_config
         .values()

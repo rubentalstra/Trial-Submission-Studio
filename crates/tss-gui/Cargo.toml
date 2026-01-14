@@ -42,15 +42,11 @@ iced = { version = "0.14.0", features = [
 iced_fonts = { version = "0.3.0", features = ["lucide"] }
 
 # Workspace dependencies
-tss-model = { path = "../tss-model" }
 tss-standards = { path = "../tss-standards" }
 tss-ingest = { path = "../tss-ingest" }
-tss-map = { path = "../tss-map" }
-tss-normalization = { path = "../tss-normalization" }
-tss-validate = { path = "../tss-validate" }
-tss-output = { path = "../tss-output" }
-xportrs.workspace = true
+tss-submit = { path = "../tss-submit" }
 tss-updater = { path = "../tss-updater" }
+xportrs.workspace = true
 
 # Common dependencies
 anyhow.workspace = true

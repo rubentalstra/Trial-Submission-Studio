@@ -16,6 +16,7 @@
       <sourceFolder url="file://$MODULE_DIR$/crates/xport/tests" isTestSource="true" />
       <sourceFolder url="file://$MODULE_DIR$/crates/xportrs/src" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/crates/xportrs/tests" isTestSource="true" />
+      <sourceFolder url="file://$MODULE_DIR$/crates/tss-submit/src" isTestSource="false" />
       <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_CF1234_NL_20250120_104838/output/dataset-xml" />
       <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_CF1234_NL_20250120_104838/output/sas" />
       <excludeFolder url="file://$MODULE_DIR$/mockdata/DEMO_CF1234_NL_20250120_104838/output/xpt" />

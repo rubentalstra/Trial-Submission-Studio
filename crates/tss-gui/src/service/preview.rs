@@ -5,9 +5,9 @@
 use std::collections::BTreeMap;
 
 use polars::prelude::DataFrame;
-use tss_map::MappingState;
-use tss_model::TerminologyRegistry;
-use tss_normalization::build_preview_dataframe_with_omitted;
+use tss_standards::TerminologyRegistry;
+use tss_submit::MappingState;
+use tss_submit::build_preview_dataframe_with_omitted;
 
 /// Error from preview computation.
 #[derive(Debug, Clone)]
@@ -78,5 +78,5 @@ fn compute_preview_sync(input: PreviewInput) -> Result<DataFrame, PreviewError> 
         study_id,
         ct_registry.as_ref(),
     )
-    .map_err(|e: tss_normalization::NormalizationError| PreviewError(e.to_string()))
+    .map_err(|e: tss_submit::NormalizationError| PreviewError(e.to_string()))
 }
