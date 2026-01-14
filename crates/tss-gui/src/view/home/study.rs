@@ -2,8 +2,6 @@
 //!
 //! Shows study info header, domain cards with progress, and export action.
 
-use std::collections::HashMap;
-
 use iced::widget::{Space, button, column, container, row, scrollable, text};
 use iced::{Alignment, Element, Length};
 use iced_fonts::lucide;
@@ -21,7 +19,6 @@ pub fn view_study<'a>(
     state: &'a AppState,
     study: &'a Study,
     workflow_mode: WorkflowMode,
-    validation_summaries: &'a HashMap<String, (usize, usize)>,
 ) -> Element<'a, Message> {
     // Page header with study info
     let header = view_header(study, workflow_mode);
@@ -30,7 +27,7 @@ pub fn view_study<'a>(
     let path_info = view_path_info(study);
 
     // Domain cards section
-    let domains_section = view_domains(state, study, validation_summaries);
+    let domains_section = view_domains(state, study);
 
     // Export button
     let export_section = view_export_action();
@@ -102,11 +99,7 @@ fn view_path_info<'a>(study: &Study) -> Element<'a, Message> {
 }
 
 /// Render the domains section with cards.
-fn view_domains<'a>(
-    state: &'a AppState,
-    study: &'a Study,
-    validation_summaries: &'a HashMap<String, (usize, usize)>,
-) -> Element<'a, Message> {
+fn view_domains<'a>(state: &'a AppState, study: &'a Study) -> Element<'a, Message> {
     let domain_codes = study.domain_codes_dm_first();
 
     // Section header with domain count
@@ -145,8 +138,8 @@ fn view_domains<'a>(
                 0.0
             };
 
-            // Get validation summary (if available)
-            let validation = validation_summaries.get(code).copied();
+            // Get validation summary from DomainState (persists across navigation)
+            let validation = domain.validation_summary();
 
             // Get display name from domain
             let display_name = domain.display_name(code);

@@ -52,16 +52,11 @@ impl App {
                     .and_then(|s| s.domain_mut(&domain_code))
                 {
                     let _ = domain.mapping.accept_suggestion(&variable);
+                    domain.invalidate_validation();
                 }
-                // Invalidate caches
-                if let ViewState::DomainEditor {
-                    preview_cache,
-                    validation_cache,
-                    ..
-                } = &mut self.state.view
-                {
+                // Invalidate preview cache
+                if let ViewState::DomainEditor { preview_cache, .. } = &mut self.state.view {
                     *preview_cache = None;
-                    *validation_cache = None;
                 }
                 Task::none()
             }
@@ -74,16 +69,11 @@ impl App {
                     .and_then(|s| s.domain_mut(&domain_code))
                 {
                     domain.mapping.clear_assignment(&variable);
+                    domain.invalidate_validation();
                 }
-                // Invalidate caches
-                if let ViewState::DomainEditor {
-                    preview_cache,
-                    validation_cache,
-                    ..
-                } = &mut self.state.view
-                {
+                // Invalidate preview cache
+                if let ViewState::DomainEditor { preview_cache, .. } = &mut self.state.view {
                     *preview_cache = None;
-                    *validation_cache = None;
                 }
                 Task::none()
             }
@@ -96,16 +86,11 @@ impl App {
                     .and_then(|s| s.domain_mut(&domain_code))
                 {
                     let _ = domain.mapping.accept_manual(&variable, &column);
+                    domain.invalidate_validation();
                 }
-                // Invalidate caches
-                if let ViewState::DomainEditor {
-                    preview_cache,
-                    validation_cache,
-                    ..
-                } = &mut self.state.view
-                {
+                // Invalidate preview cache
+                if let ViewState::DomainEditor { preview_cache, .. } = &mut self.state.view {
                     *preview_cache = None;
-                    *validation_cache = None;
                 }
                 Task::none()
             }
@@ -145,18 +130,17 @@ impl App {
                     .and_then(|s| s.domain_mut(&domain_code))
                 {
                     let _ = domain.mapping.mark_not_collected(&variable, &reason);
+                    domain.invalidate_validation();
                 }
-                // Clear edit state and invalidate caches
+                // Clear edit state and invalidate preview cache
                 if let ViewState::DomainEditor {
                     mapping_ui,
                     preview_cache,
-                    validation_cache,
                     ..
                 } = &mut self.state.view
                 {
                     mapping_ui.not_collected_edit = None;
                     *preview_cache = None;
-                    *validation_cache = None;
                 }
                 Task::none()
             }
@@ -192,16 +176,11 @@ impl App {
                     .and_then(|s| s.domain_mut(&domain_code))
                 {
                     domain.mapping.clear_assignment(&variable);
+                    domain.invalidate_validation();
                 }
-                // Invalidate caches
-                if let ViewState::DomainEditor {
-                    preview_cache,
-                    validation_cache,
-                    ..
-                } = &mut self.state.view
-                {
+                // Invalidate preview cache
+                if let ViewState::DomainEditor { preview_cache, .. } = &mut self.state.view {
                     *preview_cache = None;
-                    *validation_cache = None;
                 }
                 Task::none()
             }
@@ -214,16 +193,11 @@ impl App {
                     .and_then(|s| s.domain_mut(&domain_code))
                 {
                     let _ = domain.mapping.mark_omit(&variable);
+                    domain.invalidate_validation();
                 }
-                // Invalidate caches
-                if let ViewState::DomainEditor {
-                    preview_cache,
-                    validation_cache,
-                    ..
-                } = &mut self.state.view
-                {
+                // Invalidate preview cache
+                if let ViewState::DomainEditor { preview_cache, .. } = &mut self.state.view {
                     *preview_cache = None;
-                    *validation_cache = None;
                 }
                 Task::none()
             }
@@ -236,16 +210,11 @@ impl App {
                     .and_then(|s| s.domain_mut(&domain_code))
                 {
                     domain.mapping.clear_assignment(&variable);
+                    domain.invalidate_validation();
                 }
-                // Invalidate caches
-                if let ViewState::DomainEditor {
-                    preview_cache,
-                    validation_cache,
-                    ..
-                } = &mut self.state.view
-                {
+                // Invalidate preview cache
+                if let ViewState::DomainEditor { preview_cache, .. } = &mut self.state.view {
                     *preview_cache = None;
-                    *validation_cache = None;
                 }
                 Task::none()
             }

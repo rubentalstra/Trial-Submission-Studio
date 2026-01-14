@@ -34,16 +34,10 @@ use crate::state::{
 };
 use crate::theme::{
     BORDER_RADIUS_SM, GRAY_100, GRAY_300, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800,
-    MASTER_WIDTH, PRIMARY_100, PRIMARY_500, PRIMARY_600, PRIMARY_700, SPACING_LG, SPACING_MD,
-    SPACING_SM, SPACING_XS, SUCCESS, WARNING, WHITE,
+    MASTER_WIDTH, MAX_CHARS_SHORT_LABEL, MAX_CHARS_VARIABLE_NAME, PRIMARY_100, PRIMARY_500,
+    PRIMARY_600, PRIMARY_700, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS, SUCCESS, WARNING,
+    WHITE,
 };
-
-// =============================================================================
-// CONSTANTS
-// =============================================================================
-
-const QNAM_MAX_LEN: usize = 8;
-const QLABEL_MAX_LEN: usize = 40;
 
 // =============================================================================
 // MAIN SUPP TAB VIEW
@@ -862,7 +856,7 @@ fn build_editable_fields(
             v.to_uppercase(),
         )))
     })
-    .max_length(QNAM_MAX_LEN)
+    .max_length(MAX_CHARS_VARIABLE_NAME)
     .required(true)
     .error(qnam_error)
     .view();
@@ -879,7 +873,7 @@ fn build_editable_fields(
         "Describe what this value represents...",
         |v| Message::DomainEditor(DomainEditorMessage::Supp(SuppMessage::QlabelChanged(v))),
     )
-    .max_length(QLABEL_MAX_LEN)
+    .max_length(MAX_CHARS_SHORT_LABEL)
     .required(true)
     .error(qlabel_error)
     .view();

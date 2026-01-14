@@ -279,15 +279,11 @@ impl App {
             }
 
             Message::ValidationComplete { domain, report } => {
-                if let ViewState::DomainEditor {
-                    domain: current_domain,
-                    validation_cache,
-                    ..
-                } = &mut self.state.view
+                // Store validation in DomainState so it persists across navigation
+                if let Some(study) = &mut self.state.study
+                    && let Some(domain_state) = study.domain_mut(&domain)
                 {
-                    if current_domain == &domain {
-                        *validation_cache = Some(report);
-                    }
+                    domain_state.validation_cache = Some(report);
                 }
                 Task::none()
             }

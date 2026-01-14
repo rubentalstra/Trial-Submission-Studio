@@ -30,25 +30,21 @@ use crate::theme::{
 
 /// Render the validation tab content.
 pub fn view_validation_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Element<'a, Message> {
-    let _domain = match state.domain(domain_code) {
+    let domain = match state.domain(domain_code) {
         Some(d) => d,
         None => {
             return text("Domain not found").size(14).color(GRAY_500).into();
         }
     };
 
-    // Get validation cache and UI state
-    let (validation_cache, validation_ui) = match &state.view {
-        ViewState::DomainEditor {
-            validation_cache,
-            validation_ui,
-            ..
-        } => (validation_cache, validation_ui),
+    // Get validation UI state from view
+    let validation_ui = match &state.view {
+        ViewState::DomainEditor { validation_ui, .. } => validation_ui,
         _ => return text("Invalid view state").into(),
     };
 
-    // If no validation results, show empty state
-    let Some(report) = validation_cache else {
+    // Get validation cache from domain (persists across navigation)
+    let Some(report) = &domain.validation_cache else {
         return view_no_validation_run();
     };
 
