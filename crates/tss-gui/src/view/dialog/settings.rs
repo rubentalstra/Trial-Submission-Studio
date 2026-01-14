@@ -467,10 +467,7 @@ fn view_update_settings(settings: &Settings) -> Element<Message> {
         ]
         .width(Length::Fill),
         pick_list(
-            &[
-                tss_updater::UpdateChannel::Stable,
-                tss_updater::UpdateChannel::Beta
-            ][..],
+            tss_updater::UpdateChannel::all(),
             Some(settings.updates.channel),
             |channel| Message::Dialog(DialogMessage::Settings(SettingsMessage::Updates(
                 UpdateSettingsMessage::ChannelChanged(channel),

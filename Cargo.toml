@@ -23,7 +23,7 @@ anyhow = "1.0.100"
 chrono = { version = "0.4.42", features = ["serde"] }
 csv = "1.4.0"
 hex = "0.4.3"
-insta = { version = "1.45.1", features = ["json"] }
+insta = { version = "1.46", features = ["json"] }
 proptest = "1.9.0"
 polars = { version = "0.51.0", features = [
     "lazy",
@@ -32,9 +32,9 @@ polars = { version = "0.51.0", features = [
     "range",
     "dtype-array",
 ] }
-quick-xml = "0.38.4"
+quick-xml = "0.39"
 serde = { version = "1.0.228", features = ["derive"] }
-serde_json = "1.0.148"
+serde_json = "1.0"
 sha2 = "0.10.9"
 thiserror = "2.0.17"
 tracing = "0.1.44"

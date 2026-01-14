@@ -176,7 +176,7 @@ pub enum UpdateSettingsMessage {
     /// Toggle update checking (enabled/disabled)
     EnabledToggled(bool),
 
-    /// Change update channel (Stable/Beta)
+    /// Change update channel (Stable/ReleaseCandidate/Beta/Alpha)
     ChannelChanged(tss_updater::UpdateChannel),
 
     /// Clear skipped version
