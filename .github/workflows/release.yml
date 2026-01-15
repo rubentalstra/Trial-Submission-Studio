@@ -299,41 +299,45 @@ jobs:
 
   # ============================================================
   # Flatpak Builds
+  # Uses flatpak-github-actions for building Flatpak bundles
+  # Docs: https://github.com/flatpak/flatpak-github-actions
   # ============================================================
   build-flatpak:
-    name: Flatpak (${{ matrix.arch }})
+    name: Flatpak (${{ matrix.config.arch }})
     needs: prepare
     if: needs.prepare.outputs.build_flatpak == 'true'
     strategy:
       fail-fast: false
       matrix:
-        include:
+        config:
+          # Native runners for each architecture (faster than QEMU emulation)
           - arch: x86_64
-            runner: ubuntu-latest
+            runner: ubuntu-24.04
           - arch: aarch64
             runner: ubuntu-24.04-arm
-    runs-on: ${{ matrix.runner }}
+    runs-on: ${{ matrix.config.runner }}
     container:
+      # Use Flathub infrastructure image matching runtime version (25.08)
+      # Available images: https://github.com/flathub-infra/actions-images
       image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08
       options: --privileged
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
 
-      - name: Cache pip packages
-        uses: actions/cache@v4
-        with:
-          path: ~/.cache/pip
-          key: pip-flatpak-cargo-generator-${{ runner.os }}
-          restore-keys: pip-flatpak-cargo-generator-
+      - name: Install flatpak-cargo-generator
+        run: |
+          pip install --quiet flatpak-cargo-generator
 
       - name: Generate cargo sources
         run: |
-          pip install flatpak-cargo-generator
+          # Generate offline cargo sources from Cargo.lock
+          # This creates the vendored dependencies manifest
           flatpak-cargo-generator Cargo.lock -o assets/flatpak/cargo-sources.json
+          echo "Generated cargo-sources.json with $(grep -c '"type":' assets/flatpak/cargo-sources.json || echo '?') entries"
 
       - name: Update manifest git source
         run: |
@@ -343,37 +347,64 @@ jobs:
           # Get the commit hash for this version tag
           COMMIT_HASH=$(git rev-parse HEAD)
 
-          # Update tag and commit in the manifest
+          # Update tag and commit in the manifest for reproducible builds
           sed -i "s/tag: v.*/tag: ${{ env.VERSION }}/" assets/flatpak/io.github.rubentalstra.trial-submission-studio.yml
           sed -i "s/commit: .*/commit: ${COMMIT_HASH}/" assets/flatpak/io.github.rubentalstra.trial-submission-studio.yml
 
           echo "Updated manifest: tag=${{ env.VERSION }}, commit=${COMMIT_HASH}"
+          cat assets/flatpak/io.github.rubentalstra.trial-submission-studio.yml | grep -A2 "type: git"
 
       - name: Build Flatpak
-        uses: flatpak/flatpak-github-actions/flatpak-builder@v6.6
+        uses: flatpak/flatpak-github-actions/flatpak-builder@v6
         with:
-          bundle: ${{ env.APP_NAME }}-${{ env.VERSION }}.flatpak
+          # Output bundle name
+          bundle: ${{ env.APP_NAME }}-${{ env.VERSION }}-${{ matrix.config.arch }}.flatpak
+          # Path to Flatpak manifest
           manifest-path: assets/flatpak/io.github.rubentalstra.trial-submission-studio.yml
-          arch: ${{ matrix.arch }}
-          cache-key: flatpak-builder-${{ matrix.arch }}-${{ hashFiles('Cargo.lock', 'assets/flatpak/io.github.rubentalstra.trial-submission-studio.yml') }}
+          # Target architecture
+          arch: ${{ matrix.config.arch }}
+          # Cache key incorporates arch and content hashes for cache invalidation
+          cache-key: flatpak-builder-${{ matrix.config.arch }}-${{ hashFiles('Cargo.lock') }}
+          # Upload bundle as GitHub artifact
           upload-artifact: true
+          # Enable verbose output for debugging build issues
+          verbose: true
 
       - name: Lint manifest
-        run: flatpak-builder-lint --exceptions --gha-format manifest assets/flatpak/io.github.rubentalstra.trial-submission-studio.yml
+        run: |
+          flatpak-builder-lint \
+            --exceptions \
+            --gha-format \
+            manifest assets/flatpak/io.github.rubentalstra.trial-submission-studio.yml
 
       - name: Lint appstream metadata
-        run: flatpak-builder-lint --exceptions --user-exceptions assets/flatpak/linter-exceptions.json --gha-format appstream flatpak_app/files/share/metainfo/io.github.rubentalstra.trial-submission-studio.metainfo.xml
+        run: |
+          flatpak-builder-lint \
+            --exceptions \
+            --user-exceptions assets/flatpak/linter-exceptions.json \
+            --gha-format \
+            appstream flatpak_app/files/share/metainfo/io.github.rubentalstra.trial-submission-studio.metainfo.xml
 
       - name: Lint build directory
-        run: flatpak-builder-lint --exceptions --user-exceptions assets/flatpak/linter-exceptions.json --gha-format builddir flatpak_app
+        run: |
+          flatpak-builder-lint \
+            --exceptions \
+            --user-exceptions assets/flatpak/linter-exceptions.json \
+            --gha-format \
+            builddir flatpak_app
 
       - name: Lint repository
-        run: flatpak-builder-lint --exceptions --user-exceptions assets/flatpak/linter-exceptions.json --gha-format repo repo
+        run: |
+          flatpak-builder-lint \
+            --exceptions \
+            --user-exceptions assets/flatpak/linter-exceptions.json \
+            --gha-format \
+            repo repo
 
       - name: Save Flathub submission files
         uses: actions/upload-artifact@v6
         with:
-          name: flathub-${{ matrix.arch }}
+          name: flathub-${{ matrix.config.arch }}
           path: |
             assets/flatpak/io.github.rubentalstra.trial-submission-studio.yml
             assets/flatpak/cargo-sources.json
