@@ -13,7 +13,6 @@
     "--share=network",
     "--socket=fallback-x11",
     "--socket=wayland",
-    "--filesystem=home:ro",
     "--filesystem=xdg-documents",
     "--filesystem=xdg-download"
   ],
