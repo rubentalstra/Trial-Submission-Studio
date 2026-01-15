@@ -313,7 +313,7 @@ jobs:
           flatpak-cargo-generator Cargo.lock -o assets/flatpak/cargo-sources.json
 
       - name: Build Flatpak
-        uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        uses: flatpak/flatpak-github-actions/flatpak-builder@v6.6
         with:
           bundle: ${{ env.APP_NAME }}-${{ env.VERSION }}-${{ matrix.arch }}.flatpak
           manifest-path: assets/flatpak/io.github.rubentalstra.trial-submission-studio.json
@@ -406,7 +406,7 @@ jobs:
   # ============================================================
   publish:
     name: Publish
-    needs: [ prepare, build-macos, build-linux, build-flatpak, build-windows ]
+    needs: [prepare, build-macos, build-linux, build-flatpak, build-windows]
     if: |
       always() &&
       (needs.build-macos.result == 'success' || needs.build-macos.result == 'skipped') &&
@@ -459,7 +459,7 @@ jobs:
   # ============================================================
   notify-flathub:
     name: Notify Flathub
-    needs: [ prepare, publish ]
+    needs: [prepare, publish]
     if: |
       needs.publish.result == 'success' &&
       !contains(needs.prepare.outputs.version, '-alpha') &&
