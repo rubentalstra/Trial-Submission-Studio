@@ -30,6 +30,7 @@ use iced::{Element, Size, Subscription, Task, Theme};
 use crate::message::{Message, SettingsCategory};
 use crate::state::{AppState, DialogType, Settings, ViewState};
 use crate::theme::clinical_light;
+use crate::view::dialog::third_party::ThirdPartyState;
 use crate::view::dialog::update::UpdateState;
 use crate::view::view_home;
 
@@ -183,7 +184,7 @@ impl App {
                             Some((id, SettingsCategory::default()));
                     }
                     DialogType::ThirdParty => {
-                        self.state.dialog_windows.third_party = Some(id);
+                        self.state.dialog_windows.third_party = Some((id, ThirdPartyState::new()));
                     }
                     DialogType::Update => {
                         self.state.dialog_windows.update = Some((id, UpdateState::Idle));
@@ -351,7 +352,14 @@ impl App {
                         .unwrap_or_default();
                     view_settings_dialog_content(&self.state.settings, category, id)
                 }
-                DialogType::ThirdParty => view_third_party_dialog_content(),
+                DialogType::ThirdParty => {
+                    if let Some((_, ref third_party_state)) = self.state.dialog_windows.third_party
+                    {
+                        view_third_party_dialog_content(third_party_state)
+                    } else {
+                        iced::widget::text("Loading...").into()
+                    }
+                }
                 DialogType::Update => {
                     // Get reference to update state from dialog_windows
                     // Use default Idle state if somehow missing

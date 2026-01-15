@@ -146,7 +146,10 @@ pub struct DialogWindows {
     /// Settings dialog window ID.
     pub settings: Option<(window::Id, crate::message::SettingsCategory)>,
     /// Third-party licenses dialog window ID.
-    pub third_party: Option<window::Id>,
+    pub third_party: Option<(
+        window::Id,
+        crate::view::dialog::third_party::ThirdPartyState,
+    )>,
     /// Update dialog window ID and state.
     pub update: Option<(window::Id, crate::view::dialog::update::UpdateState)>,
     /// Close study confirmation dialog window ID.
@@ -162,7 +165,7 @@ impl DialogWindows {
     pub fn is_dialog_window(&self, id: window::Id) -> bool {
         self.about == Some(id)
             || self.settings.as_ref().map(|(i, _)| *i) == Some(id)
-            || self.third_party == Some(id)
+            || self.third_party.as_ref().map(|(i, _)| *i) == Some(id)
             || self.update.as_ref().map(|(i, _)| *i) == Some(id)
             || self.close_study_confirm == Some(id)
             || self.export_progress.as_ref().map(|(i, _)| *i) == Some(id)
@@ -175,7 +178,7 @@ impl DialogWindows {
             Some(DialogType::About)
         } else if self.settings.as_ref().map(|(i, _)| *i) == Some(id) {
             Some(DialogType::Settings)
-        } else if self.third_party == Some(id) {
+        } else if self.third_party.as_ref().map(|(i, _)| *i) == Some(id) {
             Some(DialogType::ThirdParty)
         } else if self.update.as_ref().map(|(i, _)| *i) == Some(id) {
             Some(DialogType::Update)
@@ -196,7 +199,7 @@ impl DialogWindows {
             self.about = None;
         } else if self.settings.as_ref().map(|(i, _)| *i) == Some(id) {
             self.settings = None;
-        } else if self.third_party == Some(id) {
+        } else if self.third_party.as_ref().map(|(i, _)| *i) == Some(id) {
             self.third_party = None;
         } else if self.update.as_ref().map(|(i, _)| *i) == Some(id) {
             self.update = None;

@@ -179,7 +179,12 @@ impl App {
     fn handle_third_party_message(&mut self, msg: ThirdPartyMessage) -> Task<Message> {
         match msg {
             ThirdPartyMessage::Open => Task::none(),
-            ThirdPartyMessage::Close => Task::none(),
+            ThirdPartyMessage::Close => {
+                if let Some((id, _)) = self.state.dialog_windows.third_party.take() {
+                    return window::close(id);
+                }
+                Task::none()
+            }
             ThirdPartyMessage::ScrollTo(_position) => {
                 // Handle scroll - would need scrollable state
                 Task::none()

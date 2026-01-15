@@ -10,6 +10,7 @@ use iced::{Size, Task};
 
 use crate::app::App;
 use crate::message::{HomeMessage, MenuMessage, Message, SettingsCategory};
+use crate::view::dialog::third_party::ThirdPartyState;
 use crate::view::dialog::update::UpdateState;
 
 impl App {
@@ -93,7 +94,7 @@ impl App {
                     ..Default::default()
                 };
                 let (id, task) = window::open(settings);
-                self.state.dialog_windows.third_party = Some(id);
+                self.state.dialog_windows.third_party = Some((id, ThirdPartyState::new()));
                 task.map(|_| Message::Noop)
             }
             MenuMessage::CheckUpdates => {

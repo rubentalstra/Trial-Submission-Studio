@@ -2,21 +2,41 @@
 //!
 //! Displays open source license acknowledgments.
 
-use iced::widget::{Space, button, column, container, row, scrollable, text};
-use iced::{Alignment, Border, Color, Element, Length};
+use iced::widget::{Space, button, column, container, markdown, row, scrollable, text};
+use iced::{Alignment, Border, Color, Element, Length, Theme};
 use iced_fonts::lucide;
 
 use crate::message::{DialogMessage, Message, ThirdPartyMessage};
 use crate::theme::{
-    BORDER_RADIUS_LG, GRAY_100, GRAY_500, GRAY_600, GRAY_700, GRAY_800, GRAY_900, SPACING_LG,
-    SPACING_MD, SPACING_SM, WHITE,
+    BORDER_RADIUS_LG, GRAY_100, GRAY_500, GRAY_700, GRAY_900, SPACING_LG, SPACING_MD, SPACING_SM,
+    WHITE,
 };
 
 /// Third-party license information (embedded at build time).
 const THIRD_PARTY_LICENSES: &str = include_str!("../../../../../THIRD_PARTY_LICENSES.md");
 
+/// Pre-parsed markdown state for the third-party licenses dialog.
+#[derive(Debug, Clone, Default)]
+pub struct ThirdPartyState {
+    markdown_items: Vec<markdown::Item>,
+}
+
+impl ThirdPartyState {
+    /// Parse bundled licenses markdown for rendering.
+    pub fn new() -> Self {
+        Self {
+            markdown_items: markdown::parse(THIRD_PARTY_LICENSES).collect(),
+        }
+    }
+
+    /// Borrow the parsed markdown items.
+    pub fn items(&self) -> &[markdown::Item] {
+        &self.markdown_items
+    }
+}
+
 /// Render the Third-party licenses dialog.
-pub fn view_third_party_dialog<'a>() -> Element<'a, Message> {
+pub fn view_third_party_dialog(state: &'_ ThirdPartyState) -> Element<'_, Message> {
     let backdrop = container(Space::new().width(Length::Fill).height(Length::Fill))
         .width(Length::Fill)
         .height(Length::Fill)
@@ -25,7 +45,7 @@ pub fn view_third_party_dialog<'a>() -> Element<'a, Message> {
             ..Default::default()
         });
 
-    let dialog_content = view_dialog_content();
+    let dialog_content = view_dialog_content(state);
 
     let dialog = container(dialog_content)
         .width(700)
@@ -56,8 +76,8 @@ pub fn view_third_party_dialog<'a>() -> Element<'a, Message> {
 /// Render the Third-party licenses dialog content for a standalone window (multi-window mode).
 ///
 /// This is the content that appears in a separate dialog window.
-pub fn view_third_party_dialog_content<'a>() -> Element<'a, Message> {
-    let content = view_dialog_content();
+pub fn view_third_party_dialog_content(state: &'_ ThirdPartyState) -> Element<'_, Message> {
+    let content = view_dialog_content(state);
 
     // Wrap in a styled container for the window
     container(content)
@@ -71,9 +91,9 @@ pub fn view_third_party_dialog_content<'a>() -> Element<'a, Message> {
 }
 
 /// Dialog content with header, scrollable content, and footer.
-fn view_dialog_content<'a>() -> Element<'a, Message> {
+fn view_dialog_content(state: &'_ ThirdPartyState) -> Element<'_, Message> {
     let header = view_header();
-    let content = view_licenses_content();
+    let content = view_licenses_content(state.items());
     let footer = view_footer();
 
     column![header, content, footer,].into()
@@ -92,62 +112,34 @@ fn view_header<'a>() -> Element<'a, Message> {
 }
 
 /// Scrollable licenses content.
-fn view_licenses_content<'a>() -> Element<'a, Message> {
-    // Parse and render the licenses markdown
-    // For simplicity, we'll render it as plain text with some formatting
-    let content = parse_licenses_simple();
-
-    container(
-        scrollable(container(content).padding(SPACING_MD).width(Length::Fill)).height(Length::Fill),
-    )
-    .style(|_| container::Style {
-        background: Some(GRAY_100.into()),
-        ..Default::default()
-    })
-    .height(Length::Fill)
-    .into()
-}
-
-/// Simple license parsing - renders as formatted text.
-fn parse_licenses_simple<'a>() -> Element<'a, Message> {
-    // Split into sections by "## " headers
-    let sections: Vec<&str> = THIRD_PARTY_LICENSES
-        .split("\n## ")
-        .filter(|s| !s.trim().is_empty())
-        .collect();
-
-    let elements: Vec<Element<'a, Message>> = sections
-        .into_iter()
-        .take(50) // Limit to avoid performance issues
-        .map(|section| {
-            let lines: Vec<&str> = section.lines().collect();
-            let title = lines.first().unwrap_or(&"Unknown");
-
-            // Extract license type if present
-            let license_line = lines.iter().find(|l| l.starts_with("License:"));
-            let license_text = license_line
-                .map(|l| l.trim_start_matches("License:").trim())
-                .unwrap_or("Unknown");
-
-            column![
-                text(*title).size(13).color(GRAY_800),
-                text(format!("License: {}", license_text))
-                    .size(11)
-                    .color(GRAY_600),
-            ]
-                .spacing(2)
-                .into()
-        })
-        .collect();
-
-    if elements.is_empty() {
+fn view_licenses_content<'a>(items: &'a [markdown::Item]) -> Element<'a, Message> {
+    if items.is_empty() {
         return text("No third-party licenses found.")
             .size(13)
             .color(GRAY_500)
             .into();
     }
 
-    column(elements).spacing(SPACING_SM).into()
+    let markdown_content: Element<'a, Message> = markdown::view(items, Theme::Light).map(|url| {
+        let _ = open::that(&url);
+        Message::Noop
+    });
+
+    let scroll = scrollable(
+        container(markdown_content)
+            .padding(SPACING_MD)
+            .width(Length::Fill),
+    )
+    .height(Length::Fill)
+    .width(Length::Fill);
+
+    container(scroll)
+        .style(|_| container::Style {
+            background: Some(GRAY_100.into()),
+            ..Default::default()
+        })
+        .height(Length::Fill)
+        .into()
 }
 
 /// Dialog footer with close button.

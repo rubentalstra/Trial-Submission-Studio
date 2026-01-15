@@ -4,20 +4,20 @@ Trial Submission Studio includes the following third-party open source software.
 
 ## License Summary
 
-| License | Count |
-|---------|-------|
-| MIT License | 510 |
-| Apache License 2.0 | 25 |
-| Unicode License v3 | 19 |
-| ISC License | 4 |
-| BSD 3-Clause "New" or "Revised" License | 3 |
-| Boost Software License 1.0 | 3 |
-| Community Data License Agreement Permissive 2.0 | 2 |
-| zlib License | 2 |
-| BSD 2-Clause "Simplified" License | 1 |
-| Mozilla Public License 2.0 | 1 |
-| SIL Open Font License 1.1 | 1 |
-| Ubuntu Font Licence v1.0 | 1 |
+| License                                         | Count |
+|-------------------------------------------------|-------|
+| MIT License                                     | 588   |
+| Apache License 2.0                              | 30    |
+| Unicode License v3                              | 19    |
+| BSD 3-Clause "New" or "Revised" License         | 7     |
+| zlib License                                    | 5     |
+| BSD 2-Clause "Simplified" License               | 4     |
+| ISC License                                     | 4     |
+| Boost Software License 1.0                      | 3     |
+| Creative Commons Zero v1.0 Universal            | 2     |
+| Community Data License Agreement Permissive 2.0 | 1     |
+| Mozilla Public License 2.0                      | 1     |
+| bzip2 and libbzip2 License v1.0.6               | 1     |
 
 ---
 
@@ -25,7 +25,7 @@ Trial Submission Studio includes the following third-party open source software.
 
 ### Used by
 
-- [polars-arrow-format v0.2.1](https://github.com/pola-rs/arrow-format)
+- [mundy v0.2.2](https://github.com/bash/mundy)
 
 ### License Text
 
@@ -33,7 +33,7 @@ Trial Submission Studio includes the following third-party open source software.
 
                                  Apache License
                            Version 2.0, January 2004
-                        https://www.apache.org/licenses/
+                        http://www.apache.org/licenses/
 
    TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
 
@@ -208,13 +208,24 @@ Trial Submission Studio includes the following third-party open source software.
 
    END OF TERMS AND CONDITIONS
 
-   Copyright 2020-2022 Jorge C. Leitão
+   APPENDIX: How to apply the Apache License to your work.
+
+      To apply the Apache License to your work, attach the following
+      boilerplate notice, with the fields enclosed by brackets "[]"
+      replaced with your own identifying information. (Don't include
+      the brackets!)  The text should be enclosed in the appropriate
+      comment syntax for the file format. We also recommend that a
+      file or class name and description of purpose be included on the
+      same "printed page" as the copyright notice for easier
+      identification within third-party archives.
+
+   Copyright [yyyy] [name of copyright owner]
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
 
-       https://www.apache.org/licenses/LICENSE-2.0
+       http://www.apache.org/licenses/LICENSE-2.0
 
    Unless required by applicable law or agreed to in writing, software
    distributed under the License is distributed on an "AS IS" BASIS,
@@ -225,6 +236,10 @@ Trial Submission Studio includes the following third-party open source software.
 ```
 
 ---
+
+### Used by
+
+- [polars-arrow-format v0.2.1](https://github.com/pola-rs/arrow-format)
 
 ### Used by
 
@@ -241,15 +256,23 @@ Trial Submission Studio includes the following third-party open source software.
 
 ### Used by
 
+- [lzma-rust2 v0.15.7](https://github.com/hasenbanck/lzma-rust2/)
+
+### Used by
+
+- [codespan-reporting v0.12.0](https://github.com/brendanzab/codespan)
+- [imgref v1.12.0](https://github.com/kornelski/imgref)
+- [self_cell v1.2.2](https://github.com/Voultapher/self_cell)
+- [unicode-linebreak v0.1.5](https://github.com/axelf4/unicode-linebreak)
+
+### Used by
+
 - [gethostname v1.1.0](https://codeberg.org/swsnr/gethostname.rs.git)
 - [ring v0.17.14](https://github.com/briansmith/ring)
 - [self-replace v1.5.0](https://github.com/mitsuhiko/self-replace)
 
 ### Used by
 
-- [glutin v0.32.3](https://github.com/rust-windowing/glutin)
-- [glutin_egl_sys v0.7.1](https://github.com/rust-windowing/glutin)
-- [glutin_glx_sys v0.6.1](https://github.com/rust-windowing/glutin)
 - [glutin_wgl_sys v0.6.1](https://github.com/rust-windowing/glutin)
 
 ### Used by
@@ -259,14 +282,19 @@ Trial Submission Studio includes the following third-party open source software.
 
 ### Used by
 
+- [clipboard_macos v0.1.1](https://github.com/hecrj/window_clipboard)
+- [clipboard_wayland v0.2.2](https://github.com/hecrj/window_clipboard)
+
+### Used by
+
 - [ab_glyph v0.2.32](https://github.com/alexheretic/ab-glyph)
 - [ab_glyph_rasterizer v0.1.10](https://github.com/alexheretic/ab-glyph)
-- [accesskit_winit v0.29.2](https://github.com/AccessKit/accesskit)
 - [blake3 v1.8.2](https://github.com/BLAKE3-team/BLAKE3)
 - [constant_time_eq v0.3.1](https://github.com/cesarb/constant_time_eq)
 - [owned_ttf_parser v0.25.1](https://github.com/alexheretic/owned-ttf-parser)
 - [polars-parquet-format v0.1.0](https://github.com/pola-rs/parquet-format)
 - [ryu v1.0.22](https://github.com/dtolnay/ryu)
+- [spirv v0.3.0+sdk-1.3.268.0](https://github.com/gfx-rs/rspirv)
 - [sync_wrapper v1.0.2](https://github.com/Actyx/sync_wrapper)
 
 ### Used by
@@ -281,90 +309,116 @@ Trial Submission Studio includes the following third-party open source software.
 
 ### Used by
 
-- [arrayref v0.3.9](https://github.com/droundy/arrayref)
+- [v_frame v0.3.9](https://github.com/rust-av/v_frame)
 
 ### License Text
 
 ```text
-Copyright (c) 2015 David Roundy <roundyd@physics.oregonstate.edu>
+BSD 2-Clause License
+
+Copyright (c) 2017-2022, the rav1e contributors
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are
-met:
+modification, are permitted provided that the following conditions are met:
 
-1. Redistributions of source code must retain the above copyright
-   notice, this list of conditions and the following disclaimer.
+- Redistributions of source code must retain the above copyright notice, this
+  list of conditions and the following disclaimer.
 
-2. Redistributions in binary form must reproduce the above copyright
-   notice, this list of conditions and the following disclaimer in the
-   documentation and/or other materials provided with the
-   distribution.
+- Redistributions in binary form must reproduce the above copyright notice,
+  this list of conditions and the following disclaimer in the documentation
+  and/or other materials provided with the distribution.
 
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 ```
 
 ---
 
+### Used by
+
+- [rav1e v0.8.1](https://github.com/xiph/rav1e/)
+
+### Used by
+
+- [av1-grain v0.2.5](https://github.com/rust-av/av1-grain)
+
+### Used by
+
+- [arrayref v0.3.9](https://github.com/droundy/arrayref)
+
 ## BSD 3-Clause "New" or "Revised" License
+
+### Used by
+
+- [avif-serialize v0.8.6](https://github.com/kornelski/avif-serialize)
+
+### License Text
+
+```text
+BSD 3-Clause License
+
+Copyright (c) 2020, Cloudflare, Inc.
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+```
+
+---
+
+### Used by
+
+- [ravif v0.12.0](https://github.com/kornelski/cavif-rs)
 
 ### Used by
 
 - [tiny-skia-path v0.11.4](https://github.com/RazrFalcon/tiny-skia/tree/master/path)
 - [tiny-skia v0.11.4](https://github.com/RazrFalcon/tiny-skia)
 
-### License Text
-
-```text
-Copyright (c) 2011 Google Inc. All rights reserved.
-Copyright (c) 2020 Yevhenii Reizner All rights reserved.
-
-Redistribution and use in source and binary forms, with or without
-modification, are permitted provided that the following conditions are
-met:
-
-  * Redistributions of source code must retain the above copyright
-    notice, this list of conditions and the following disclaimer.
-
-  * Redistributions in binary form must reproduce the above copyright
-    notice, this list of conditions and the following disclaimer in
-    the documentation and/or other materials provided with the
-    distribution.
-
-  * Neither the name of the copyright holder nor the names of its
-    contributors may be used to endorse or promote products derived
-    from this software without specific prior written permission.
-
-THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
-"AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
-LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR
-A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
-OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
-SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT
-LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE,
-DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY
-THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
-(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
-OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-
-```
-
----
-
 ### Used by
 
 - [subtle v2.6.1](https://github.com/dalek-cryptography/subtle)
+
+### Used by
+
+- [lebe v0.5.3](https://github.com/johannesvollmer/lebe)
+
+### Used by
+
+- [exr v1.74.0](https://github.com/johannesvollmer/exrs)
 
 ## Boost Software License 1.0
 
@@ -408,11 +462,146 @@ DEALINGS IN THE SOFTWARE.
 
 - [clipboard-win v5.4.1](https://github.com/DoumanAsh/clipboard-win)
 
+## Creative Commons Zero v1.0 Universal
+
+### Used by
+
+- [hexf-parse v0.2.1](https://github.com/lifthrasiir/hexf)
+- [ppmd-rust v1.3.0](https://github.com/hasenbanck/ppmd-rust)
+
+### License Text
+
+```text
+Creative Commons Legal Code
+
+CC0 1.0 Universal
+
+    CREATIVE COMMONS CORPORATION IS NOT A LAW FIRM AND DOES NOT PROVIDE
+    LEGAL SERVICES. DISTRIBUTION OF THIS DOCUMENT DOES NOT CREATE AN
+    ATTORNEY-CLIENT RELATIONSHIP. CREATIVE COMMONS PROVIDES THIS
+    INFORMATION ON AN "AS-IS" BASIS. CREATIVE COMMONS MAKES NO WARRANTIES
+    REGARDING THE USE OF THIS DOCUMENT OR THE INFORMATION OR WORKS
+    PROVIDED HEREUNDER, AND DISCLAIMS LIABILITY FOR DAMAGES RESULTING FROM
+    THE USE OF THIS DOCUMENT OR THE INFORMATION OR WORKS PROVIDED
+    HEREUNDER.
+
+Statement of Purpose
+
+The laws of most jurisdictions throughout the world automatically confer
+exclusive Copyright and Related Rights (defined below) upon the creator
+and subsequent owner(s) (each and all, an "owner") of an original work of
+authorship and/or a database (each, a "Work").
+
+Certain owners wish to permanently relinquish those rights to a Work for
+the purpose of contributing to a commons of creative, cultural and
+scientific works ("Commons") that the public can reliably and without fear
+of later claims of infringement build upon, modify, incorporate in other
+works, reuse and redistribute as freely as possible in any form whatsoever
+and for any purposes, including without limitation commercial purposes.
+These owners may contribute to the Commons to promote the ideal of a free
+culture and the further production of creative, cultural and scientific
+works, or to gain reputation or greater distribution for their Work in
+part through the use and efforts of others.
+
+For these and/or other purposes and motivations, and without any
+expectation of additional consideration or compensation, the person
+associating CC0 with a Work (the "Affirmer"), to the extent that he or she
+is an owner of Copyright and Related Rights in the Work, voluntarily
+elects to apply CC0 to the Work and publicly distribute the Work under its
+terms, with knowledge of his or her Copyright and Related Rights in the
+Work and the meaning and intended legal effect of CC0 on those rights.
+
+1. Copyright and Related Rights. A Work made available under CC0 may be
+protected by copyright and related or neighboring rights ("Copyright and
+Related Rights"). Copyright and Related Rights include, but are not
+limited to, the following:
+
+  i. the right to reproduce, adapt, distribute, perform, display,
+     communicate, and translate a Work;
+ ii. moral rights retained by the original author(s) and/or performer(s);
+iii. publicity and privacy rights pertaining to a person's image or
+     likeness depicted in a Work;
+ iv. rights protecting against unfair competition in regards to a Work,
+     subject to the limitations in paragraph 4(a), below;
+  v. rights protecting the extraction, dissemination, use and reuse of data
+     in a Work;
+ vi. database rights (such as those arising under Directive 96/9/EC of the
+     European Parliament and of the Council of 11 March 1996 on the legal
+     protection of databases, and under any national implementation
+     thereof, including any amended or successor version of such
+     directive); and
+vii. other similar, equivalent or corresponding rights throughout the
+     world based on applicable law or treaty, and any national
+     implementations thereof.
+
+2. Waiver. To the greatest extent permitted by, but not in contravention
+of, applicable law, Affirmer hereby overtly, fully, permanently,
+irrevocably and unconditionally waives, abandons, and surrenders all of
+Affirmer's Copyright and Related Rights and associated claims and causes
+of action, whether now known or unknown (including existing as well as
+future claims and causes of action), in the Work (i) in all territories
+worldwide, (ii) for the maximum duration provided by applicable law or
+treaty (including future time extensions), (iii) in any current or future
+medium and for any number of copies, and (iv) for any purpose whatsoever,
+including without limitation commercial, advertising or promotional
+purposes (the "Waiver"). Affirmer makes the Waiver for the benefit of each
+member of the public at large and to the detriment of Affirmer's heirs and
+successors, fully intending that such Waiver shall not be subject to
+revocation, rescission, cancellation, termination, or any other legal or
+equitable action to disrupt the quiet enjoyment of the Work by the public
+as contemplated by Affirmer's express Statement of Purpose.
+
+3. Public License Fallback. Should any part of the Waiver for any reason
+be judged legally invalid or ineffective under applicable law, then the
+Waiver shall be preserved to the maximum extent permitted taking into
+account Affirmer's express Statement of Purpose. In addition, to the
+extent the Waiver is so judged Affirmer hereby grants to each affected
+person a royalty-free, non transferable, non sublicensable, non exclusive,
+irrevocable and unconditional license to exercise Affirmer's Copyright and
+Related Rights in the Work (i) in all territories worldwide, (ii) for the
+maximum duration provided by applicable law or treaty (including future
+time extensions), (iii) in any current or future medium and for any number
+of copies, and (iv) for any purpose whatsoever, including without
+limitation commercial, advertising or promotional purposes (the
+"License"). The License shall be deemed effective as of the date CC0 was
+applied by Affirmer to the Work. Should any part of the License for any
+reason be judged legally invalid or ineffective under applicable law, such
+partial invalidity or ineffectiveness shall not invalidate the remainder
+of the License, and in such case Affirmer hereby affirms that he or she
+will not (i) exercise any of his or her remaining Copyright and Related
+Rights in the Work or (ii) assert any associated claims and causes of
+action with respect to the Work, in either case contrary to Affirmer's
+express Statement of Purpose.
+
+4. Limitations and Disclaimers.
+
+ a. No trademark or patent rights held by Affirmer are waived, abandoned,
+    surrendered, licensed or otherwise affected by this document.
+ b. Affirmer offers the Work as-is and makes no representations or
+    warranties of any kind concerning the Work, express, implied,
+    statutory or otherwise, including without limitation warranties of
+    title, merchantability, fitness for a particular purpose, non
+    infringement, or the absence of latent or other defects, accuracy, or
+    the present or absence of errors, whether or not discoverable, all to
+    the greatest extent permissible under applicable law.
+ c. Affirmer disclaims responsibility for clearing rights of other persons
+    that may apply to the Work or any use thereof, including without
+    limitation any person's Copyright and Related Rights in the Work.
+    Further, Affirmer disclaims responsibility for obtaining any necessary
+    consents, permissions or other rights required for any use of the
+    Work.
+ d. Affirmer understands and acknowledges that Creative Commons is not a
+    party to this document and has no duty or obligation with respect to
+    this CC0 or use of the Work.
+
+```
+
+---
+
 ## Community Data License Agreement Permissive 2.0
 
 ### Used by
 
-- [webpki-roots v0.26.11](https://github.com/rustls/webpki-roots)
 - [webpki-roots v1.0.4](https://github.com/rustls/webpki-roots)
 
 ### License Text
@@ -564,18 +753,29 @@ insights.
 
 ### Used by
 
+- [harfrust v0.3.2](https://github.com/harfbuzz/harfrust)
+
+### Used by
+
+- [sha1 v0.10.6](https://github.com/RustCrypto/hashes)
+- [sha2 v0.10.9](https://github.com/RustCrypto/hashes)
+
+### Used by
+
 - [lazy_static v1.5.0](https://github.com/rust-lang-nursery/lazy-static.rs)
+- [metal v0.32.0](https://github.com/gfx-rs/metal-rs)
 - [rayon-core v1.13.0](https://github.com/rayon-rs/rayon)
 - [rayon v1.11.0](https://github.com/rayon-rs/rayon)
 
 ### Used by
 
-- [cgl v0.3.2](https://github.com/servo/cgl-rs)
 - [core-foundation-sys v0.8.7](https://github.com/servo/core-foundation-rs)
 - [core-foundation v0.10.1](https://github.com/servo/core-foundation-rs)
 - [core-foundation v0.9.4](https://github.com/servo/core-foundation-rs)
 - [core-graphics-types v0.1.3](https://github.com/servo/core-foundation-rs)
+- [core-graphics-types v0.2.0](https://github.com/servo/core-foundation-rs)
 - [core-graphics v0.23.2](https://github.com/servo/core-foundation-rs)
+- [euclid v0.22.11](https://github.com/servo/euclid)
 
 ### Used by
 
@@ -613,14 +813,15 @@ insights.
 
 ### Used by
 
-- [mime v0.3.17](https://github.com/hyperium/mime)
-
-### Used by
-
 - [bitflags v1.3.2](https://github.com/bitflags/bitflags)
 - [bitflags v2.10.0](https://github.com/bitflags/bitflags)
+- [getopts v0.2.24](https://github.com/rust-lang/getopts)
 - [glob v0.3.3](https://github.com/rust-lang/glob)
 - [log v0.4.29](https://github.com/rust-lang/log)
+- [num-bigint v0.4.6](https://github.com/rust-num/num-bigint)
+- [num-derive v0.4.2](https://github.com/rust-num/num-derive)
+- [num-integer v0.1.46](https://github.com/rust-num/num-integer)
+- [num-rational v0.4.2](https://github.com/rust-num/num-rational)
 - [num-traits v0.2.19](https://github.com/rust-num/num-traits)
 - [regex-automata v0.4.13](https://github.com/rust-lang/regex)
 - [regex-syntax v0.8.8](https://github.com/rust-lang/regex)
@@ -636,6 +837,10 @@ insights.
 
 ### Used by
 
+- [nom v8.0.0](https://github.com/rust-bakery/nom)
+
+### Used by
+
 - [float-cmp v0.9.0](https://github.com/mikedilger/float-cmp)
 
 ### Used by
@@ -645,6 +850,10 @@ insights.
 ### Used by
 
 - [flate2 v1.1.5](https://github.com/rust-lang/flate2-rs)
+
+### Used by
+
+- [bzip2 v0.6.1](https://github.com/trifectatechfoundation/bzip2-rs)
 
 ### Used by
 
@@ -667,6 +876,11 @@ insights.
 - [wayland-protocols v0.32.9](https://github.com/smithay/wayland-rs)
 - [wayland-scanner v0.31.7](https://github.com/smithay/wayland-rs)
 - [wayland-sys v0.31.7](https://github.com/smithay/wayland-rs)
+
+### Used by
+
+- [new_debug_unreachable v1.0.6](https://github.com/mbrubeck/rust-debug-unreachable)
+- [ordered-float v5.1.0](https://github.com/reem/rust-ordered-float)
 
 ### Used by
 
@@ -711,6 +925,11 @@ insights.
 ### Used by
 
 - [httparse v1.10.1](https://github.com/seanmonstar/httparse)
+- [num_cpus v1.17.0](https://github.com/seanmonstar/num_cpus)
+
+### Used by
+
+- [ash v0.38.0+1.3.281](https://github.com/ash-rs/ash)
 
 ### Used by
 
@@ -772,7 +991,24 @@ insights.
 
 ### Used by
 
+- [cipher v0.4.4](https://github.com/RustCrypto/traits)
+
+### Used by
+
 - [reqwest v0.12.28](https://github.com/seanmonstar/reqwest)
+
+### Used by
+
+- [digest v0.10.7](https://github.com/RustCrypto/traits)
+- [hmac v0.12.1](https://github.com/RustCrypto/MACs)
+
+### Used by
+
+- [pbkdf2 v0.12.2](https://github.com/RustCrypto/password-hashes/tree/master/pbkdf2)
+
+### Used by
+
+- [bitstream-io v4.9.0](https://github.com/tuffy/bitstream-io)
 
 ### Used by
 
@@ -781,6 +1017,10 @@ insights.
 ### Used by
 
 - [memoffset v0.9.1](https://github.com/Gilnaa/memoffset)
+
+### Used by
+
+- [aligned v0.4.3](https://github.com/rust-embedded-community/aligned)
 
 ### Used by
 
@@ -823,7 +1063,15 @@ insights.
 
 ### Used by
 
+- [aes v0.8.4](https://github.com/RustCrypto/block-ciphers)
+
+### Used by
+
 - [bytes v1.11.0](https://github.com/tokio-rs/bytes)
+
+### Used by
+
+- [as-slice v0.2.1](https://github.com/japaric/as-slice)
 
 ### Used by
 
@@ -831,6 +1079,7 @@ insights.
 
 ### Used by
 
+- [kurbo v0.10.4](https://github.com/linebender/kurbo)
 - [kurbo v0.11.3](https://github.com/linebender/kurbo)
 
 ### Used by
@@ -870,6 +1119,10 @@ insights.
 
 ### Used by
 
+- [block-buffer v0.10.4](https://github.com/RustCrypto/utils)
+
+### Used by
+
 - [dirs-sys v0.5.0](https://github.com/dirs-dev/dirs-sys-rs)
 
 ### Used by
@@ -890,11 +1143,21 @@ insights.
 
 ### Used by
 
+- [font-types v0.10.1](https://github.com/googlefonts/fontations)
+- [read-fonts v0.35.0](https://github.com/googlefonts/fontations)
+- [skrifa v0.37.0](https://github.com/googlefonts/fontations)
+
+### Used by
+
 - [sharded-slab v0.1.7](https://github.com/hawkw/sharded-slab)
 
 ### Used by
 
 - [matchers v0.2.0](https://github.com/hawkw/matchers)
+
+### Used by
+
+- [presser v0.3.1](https://github.com/EmbarkStudios/presser)
 
 ### Used by
 
@@ -925,6 +1188,10 @@ insights.
 
 ### Used by
 
+- [clipboard_x11 v0.4.3](https://github.com/hecrj/window_clipboard)
+
+### Used by
+
 - [tower-http v0.6.8](https://github.com/tower-rs/tower-http)
 
 ### Used by
@@ -945,6 +1212,18 @@ insights.
 
 ### Used by
 
+- [swash v0.2.6](https://github.com/dfrg/swash)
+
+### Used by
+
+- [zeno v0.3.3](https://github.com/dfrg/zeno)
+
+### Used by
+
+- [yazi v0.2.1](https://github.com/dfrg/yazi)
+
+### Used by
+
 - [document-features v0.2.12](https://github.com/slint-ui/document-features)
 
 ### Used by
@@ -957,6 +1236,10 @@ insights.
 
 ### Used by
 
+- [core2 v0.4.0](https://github.com/bbqsrc/core2)
+
+### Used by
+
 - [pollster v0.4.0](https://github.com/zesterer/pollster)
 
 ### Used by
@@ -965,9 +1248,27 @@ insights.
 
 ### Used by
 
-- [atspi-common v0.9.0](https://github.com/odilia-app/atspi)
-- [atspi-connection v0.9.0](https://github.com/odilia-app/atspi/)
-- [atspi v0.25.0](https://github.com/odilia-app/atspi)
+- [cpufeatures v0.2.17](https://github.com/RustCrypto/utils)
+
+### Used by
+
+- [crypto-common v0.1.7](https://github.com/RustCrypto/traits)
+
+### Used by
+
+- [gpu-allocator v0.27.0](https://github.com/Traverse-Research/gpu-allocator)
+
+### Used by
+
+- [renderdoc-sys v1.1.0](https://github.com/ebkalderon/renderdoc-rs)
+
+### Used by
+
+- [qoi v0.4.1](https://github.com/aldanor/qoi-rust)
+
+### Used by
+
+- [inout v0.1.4](https://github.com/RustCrypto/utils)
 
 ### Used by
 
@@ -976,11 +1277,6 @@ insights.
 ### Used by
 
 - [xkeysym v0.2.1](https://github.com/notgull/xkeysym)
-
-### Used by
-
-- [egui_commonmark v0.22.0](https://github.com/lampsitter/egui_commonmark)
-- [egui_commonmark_backend v0.22.0](https://github.com/lampsitter/egui_commonmark)
 
 ### Used by
 
@@ -1006,6 +1302,11 @@ insights.
 
 ### Used by
 
+- [bit-set v0.8.0](https://github.com/contain-rs/bit-set)
+- [bit-vec v0.8.0](https://github.com/contain-rs/bit-vec)
+
+### Used by
+
 - [hyper-util v0.1.19](https://github.com/hyperium/hyper-util)
 
 ### Used by
@@ -1017,7 +1318,6 @@ insights.
 - [zbus v5.12.0](https://github.com/z-galaxy/zbus/)
 - [zbus_macros v5.12.0](https://github.com/z-galaxy/zbus/)
 - [zbus_names v4.2.0](https://github.com/dbus2/zbus/)
-- [zbus_xml v5.0.2](https://github.com/dbus2/zbus/)
 - [zvariant v5.8.0](https://github.com/dbus2/zbus/)
 - [zvariant_derive v5.8.0](https://github.com/dbus2/zbus/)
 
@@ -1089,7 +1389,15 @@ insights.
 
 ### Used by
 
-- [nohash-hasher v0.2.0](https://github.com/paritytech/nohash-hasher)
+- [iced v0.14.0](https://github.com/iced-rs/iced)
+
+### Used by
+
+- [window_clipboard v0.5.1](https://github.com/hecrj/window_clipboard)
+
+### Used by
+
+- [rangemap v1.7.1](https://github.com/jeffparsons/rangemap)
 
 ### Used by
 
@@ -1103,6 +1411,10 @@ insights.
 ### Used by
 
 - [iri-string v0.7.9](https://github.com/lo48576/iri-string)
+
+### Used by
+
+- [softbuffer v0.4.8](https://github.com/rust-windowing/softbuffer)
 
 ### Used by
 
@@ -1124,11 +1436,7 @@ insights.
 
 ### Used by
 
-- [glutin-winit v0.5.0](https://github.com/rust-windowing/glutin)
-
-### Used by
-
-- [epaint_default_fonts v0.33.3](https://github.com/emilk/egui/tree/main/crates/epaint_default_fonts)
+- [lru v0.16.3](https://github.com/jeromefroe/lru-rs.git)
 
 ### Used by
 
@@ -1141,11 +1449,15 @@ insights.
 
 ### Used by
 
-- [self_update v0.42.0](https://github.com/jaemk/self_update)
+- [static_assertions v1.1.0](https://github.com/nvzqz/static-assertions-rs)
 
 ### Used by
 
-- [static_assertions v1.1.0](https://github.com/nvzqz/static-assertions-rs)
+- [crc v3.3.0](https://github.com/mrhooray/crc-rs.git)
+
+### Used by
+
+- [arg_enum_proc_macro v0.3.4](https://github.com/lu-zero/arg_enum_proc_macro)
 
 ### Used by
 
@@ -1158,6 +1470,10 @@ insights.
 ### Used by
 
 - [zeroize v1.8.2](https://github.com/RustCrypto/utils)
+
+### Used by
+
+- [crc-catalog v2.4.0](https://github.com/akhilles/crc-catalog.git)
 
 ### Used by
 
@@ -1174,7 +1490,15 @@ insights.
 
 ### Used by
 
-- [ureq v2.12.1](https://github.com/algesten/ureq)
+- [noop_proc_macro v0.3.0](https://github.com/lu-zero/noop_proc_macro)
+
+### Used by
+
+- [av-scenechange v0.14.1](https://github.com/rust-av/av-scenechange)
+
+### Used by
+
+- [guillotiere v0.6.2](https://github.com/nical/guillotiere)
 
 ### Used by
 
@@ -1195,7 +1519,7 @@ insights.
 
 ### Used by
 
-- [ashpd v0.11.0](https://github.com/bilelmoussaoui/ashpd)
+- [zeroize_derive v1.4.3](https://github.com/RustCrypto/utils/tree/master/zeroize/derive)
 
 ### Used by
 
@@ -1204,6 +1528,14 @@ insights.
 ### Used by
 
 - [tinyvec_macros v0.1.1](https://github.com/Soveu/tinyvec_macros)
+
+### Used by
+
+- [sys-locale v0.3.2](https://github.com/1Password/sys-locale)
+
+### Used by
+
+- [maybe-rayon v0.1.1](https://github.com/shssoichiro/maybe-rayon)
 
 ### Used by
 
@@ -1224,7 +1556,7 @@ insights.
 
 ### Used by
 
-- [rfd v0.16.0](https://github.com/PolyMeilex/rfd)
+- [rfd v0.17.2](https://github.com/PolyMeilex/rfd)
 - [sctk-adwaita v0.10.1](https://github.com/PolyMeilex/sctk-adwaita)
 
 ### Used by
@@ -1233,11 +1565,15 @@ insights.
 
 ### Used by
 
-- [arboard v3.6.1](https://github.com/1Password/arboard)
+- [aligned-vec v0.6.4](https://github.com/sarah-ek/aligned-vec/)
 
 ### Used by
 
 - [muda v0.17.1](https://github.com/amrbashir/muda)
+
+### Used by
+
+- [tiny-xlib v0.2.4](https://github.com/notgull/tiny-xlib)
 
 ### Used by
 
@@ -1250,79 +1586,113 @@ insights.
 
 ### Used by
 
+- [equator-macro v0.4.2](https://github.com/sarah-ek/equator/)
+- [equator v0.4.2](https://github.com/sarah-ek/equator/)
+
+### Used by
+
+- [iced_fonts v0.3.0](https://github.com/Redhawk18/iced_fonts)
+
+### Used by
+
 - [core_maths v0.1.1](https://github.com/robertbastian/core_maths)
 
 ### Used by
 
-- [tss-common v0.0.1-alpha.8](https://crates.io/crates/tss-common)
-- [tss-gui v0.0.1-alpha.8](https://crates.io/crates/tss-gui)
-- [tss-ingest v0.0.1-alpha.8](https://crates.io/crates/tss-ingest)
-- [tss-map v0.0.1-alpha.8](https://crates.io/crates/tss-map)
-- [tss-model v0.0.1-alpha.8](https://crates.io/crates/tss-model)
-- [tss-normalization v0.0.1-alpha.8](https://crates.io/crates/tss-normalization)
-- [tss-output v0.0.1-alpha.8](https://crates.io/crates/tss-output)
-- [tss-standards v0.0.1-alpha.8](https://crates.io/crates/tss-standards)
-- [tss-updater v0.0.1-alpha.8](https://crates.io/crates/tss-updater)
-- [tss-validate v0.0.1-alpha.8](https://crates.io/crates/tss-validate)
-- [tss-xpt v0.0.1-alpha.8](https://crates.io/crates/tss-xpt)
-- [accesskit v0.21.1](https://github.com/AccessKit/accesskit)
-- [accesskit_atspi_common v0.14.2](https://github.com/AccessKit/accesskit)
-- [accesskit_consumer v0.31.0](https://github.com/AccessKit/accesskit)
-- [accesskit_macos v0.22.2](https://github.com/AccessKit/accesskit)
-- [accesskit_unix v0.17.2](https://github.com/AccessKit/accesskit)
-- [accesskit_windows v0.29.2](https://github.com/AccessKit/accesskit)
+- [lilt v0.8.1](https://github.com/cyypherus/lilt)
+
+### Used by
+
+- [naga v27.0.3](https://github.com/gfx-rs/wgpu)
+- [wgpu-core-deps-apple v27.0.0](https://github.com/gfx-rs/wgpu)
+- [wgpu-core-deps-windows-linux-android v27.0.0](https://github.com/gfx-rs/wgpu)
+- [wgpu-core v27.0.3](https://github.com/gfx-rs/wgpu)
+- [wgpu-hal v27.0.4](https://github.com/gfx-rs/wgpu)
+- [wgpu-types v27.0.1](https://github.com/gfx-rs/wgpu)
+- [wgpu v27.0.1](https://github.com/gfx-rs/wgpu)
+
+### Used by
+
+- [xportrs v0.0.8](https://github.com/rubentalstra/xportrs)
+
+### Used by
+
+- [tss-gui v0.0.1-alpha.11](https://crates.io/crates/tss-gui)
+- [tss-ingest v0.0.1-alpha.11](https://crates.io/crates/tss-ingest)
+- [tss-standards v0.0.1-alpha.11](https://crates.io/crates/tss-standards)
+- [tss-submit v0.0.1-alpha.11](https://crates.io/crates/tss-submit)
+- [tss-updater v0.0.1-alpha.11](https://crates.io/crates/tss-updater)
 - [async-stream-impl v0.3.6](https://github.com/tokio-rs/async-stream)
 - [async-stream v0.3.6](https://github.com/tokio-rs/async-stream)
 - [atoi_simd v0.16.1](https://github.com/RoDmitry/atoi_simd)
-- [atspi-proxies v0.9.0](https://github.com/odilia-app/atspi)
 - [block2 v0.5.1](https://github.com/madsmtm/objc2)
 - [block2 v0.6.2](https://github.com/madsmtm/objc2)
+- [block v0.1.6](http://github.com/SSheldon/rust-block)
 - [chrono-tz v0.10.4](https://github.com/chronotope/chrono-tz)
 - [chrono v0.4.42](https://github.com/chronotope/chrono)
 - [debug_unsafe v0.1.3](https://github.com/RoDmitry/debug_unsafe)
 - [dispatch2 v0.3.0](https://github.com/madsmtm/objc2)
 - [dispatch v0.2.0](http://github.com/SSheldon/rust-dispatch)
 - [dpi v0.1.2](https://github.com/rust-windowing/winit)
-- [ecolor v0.33.3](https://github.com/emilk/egui)
-- [eframe v0.33.3](https://github.com/emilk/egui/tree/main/crates/eframe)
-- [egui-winit v0.33.3](https://github.com/emilk/egui/tree/main/crates/egui-winit)
-- [egui v0.33.3](https://github.com/emilk/egui)
-- [egui_extras v0.33.3](https://github.com/emilk/egui)
-- [egui_glow v0.33.3](https://github.com/emilk/egui/tree/main/crates/egui_glow)
-- [ehttp v0.6.0](https://github.com/emilk/ehttp)
-- [emath v0.33.3](https://github.com/emilk/egui/tree/main/crates/emath)
-- [epaint v0.33.3](https://github.com/emilk/egui/tree/main/crates/epaint)
 - [fax v0.2.6](https://github.com/pdf-rs/fax)
 - [fax_derive v0.2.0](https://github.com/pdf-rs/fax)
+- [gpu-alloc-types v0.3.0](https://github.com/zakarumych/gpu-alloc)
+- [gpu-alloc v0.6.0](https://github.com/zakarumych/gpu-alloc)
+- [gpu-descriptor-types v0.2.0](https://github.com/zakarumych/gpu-descriptor)
+- [gpu-descriptor v0.3.2](https://github.com/zakarumych/gpu-descriptor)
+- [iced_core v0.14.0](https://github.com/iced-rs/iced)
+- [iced_debug v0.14.0](https://github.com/iced-rs/iced)
+- [iced_fonts_macros v0.3.0](https://github.com/Redhawk18/iced_fonts)
+- [iced_futures v0.14.0](https://github.com/iced-rs/iced)
+- [iced_graphics v0.14.0](https://github.com/iced-rs/iced)
+- [iced_program v0.14.0](https://github.com/iced-rs/iced)
+- [iced_renderer v0.14.0](https://github.com/iced-rs/iced)
+- [iced_runtime v0.14.0](https://github.com/iced-rs/iced)
+- [iced_tiny_skia v0.14.0](https://github.com/iced-rs/iced)
+- [iced_wgpu v0.14.0](https://github.com/iced-rs/iced)
+- [iced_widget v0.14.2](https://github.com/iced-rs/iced)
+- [iced_winit v0.14.0](https://github.com/iced-rs/iced)
 - [libm v0.2.15](https://github.com/rust-lang/compiler-builtins)
-- [number_prefix v0.4.0](https://github.com/ogham/rust-number-prefix)
+- [malloc_buf v0.0.6](https://github.com/SSheldon/malloc_buf)
 - [objc-sys v0.3.5](https://github.com/madsmtm/objc2)
 - [objc2-app-kit v0.2.2](https://github.com/madsmtm/objc2)
 - [objc2-app-kit v0.3.2](https://github.com/madsmtm/objc2)
+- [objc2-cloud-kit v0.3.2](https://github.com/madsmtm/objc2)
+- [objc2-core-data v0.3.2](https://github.com/madsmtm/objc2)
 - [objc2-core-foundation v0.3.2](https://github.com/madsmtm/objc2)
 - [objc2-core-graphics v0.3.2](https://github.com/madsmtm/objc2)
+- [objc2-core-image v0.3.2](https://github.com/madsmtm/objc2)
+- [objc2-core-text v0.3.2](https://github.com/madsmtm/objc2)
+- [objc2-core-video v0.3.2](https://github.com/madsmtm/objc2)
 - [objc2-encode v4.1.0](https://github.com/madsmtm/objc2)
 - [objc2-foundation v0.2.2](https://github.com/madsmtm/objc2)
 - [objc2-foundation v0.3.2](https://github.com/madsmtm/objc2)
+- [objc2-quartz-core v0.3.2](https://github.com/madsmtm/objc2)
 - [objc2 v0.5.2](https://github.com/madsmtm/objc2)
 - [objc2 v0.6.3](https://github.com/madsmtm/objc2)
 - [object_store v0.12.4](https://github.com/apache/arrow-rs-object-store)
+- [ouroboros v0.18.5](https://github.com/someguynamedjosh/ouroboros)
+- [ouroboros_macro v0.18.5](https://github.com/someguynamedjosh/ouroboros)
 - [polars-arrow v0.51.0](https://github.com/pola-rs/polars)
 - [polars-parquet v0.51.0](https://github.com/pola-rs/polars)
+- [profiling-procmacros v1.0.17](https://github.com/aclysma/profiling)
 - [profiling v1.0.17](https://github.com/aclysma/profiling)
+- [simd_helpers v0.1.0](https://github.com/lu-zero/simd_helpers)
 - [siphasher v1.0.1](https://github.com/jedisct1/rust-siphash)
-- [windows-collections v0.2.0](https://github.com/microsoft/windows-rs)
-- [windows-core v0.61.2](https://github.com/microsoft/windows-rs)
+- [svg_fmt v0.4.5](https://github.com/nical/rust_debug)
+- [windows-collections v0.3.2](https://github.com/microsoft/windows-rs)
+- [windows-core v0.58.0](https://github.com/microsoft/windows-rs)
 - [windows-core v0.62.2](https://github.com/microsoft/windows-rs)
-- [windows-future v0.2.1](https://github.com/microsoft/windows-rs)
+- [windows-future v0.3.2](https://github.com/microsoft/windows-rs)
+- [windows-implement v0.58.0](https://github.com/microsoft/windows-rs)
 - [windows-implement v0.60.2](https://github.com/microsoft/windows-rs)
+- [windows-interface v0.58.0](https://github.com/microsoft/windows-rs)
 - [windows-interface v0.59.3](https://github.com/microsoft/windows-rs)
-- [windows-link v0.1.3](https://github.com/microsoft/windows-rs)
 - [windows-link v0.2.1](https://github.com/microsoft/windows-rs)
-- [windows-numerics v0.2.0](https://github.com/microsoft/windows-rs)
-- [windows-result v0.3.4](https://github.com/microsoft/windows-rs)
+- [windows-numerics v0.3.1](https://github.com/microsoft/windows-rs)
+- [windows-result v0.2.0](https://github.com/microsoft/windows-rs)
 - [windows-result v0.4.1](https://github.com/microsoft/windows-rs)
-- [windows-strings v0.4.2](https://github.com/microsoft/windows-rs)
+- [windows-strings v0.1.0](https://github.com/microsoft/windows-rs)
 - [windows-strings v0.5.1](https://github.com/microsoft/windows-rs)
 - [windows-sys v0.52.0](https://github.com/microsoft/windows-rs)
 - [windows-sys v0.59.0](https://github.com/microsoft/windows-rs)
@@ -1330,19 +1700,20 @@ insights.
 - [windows-sys v0.61.2](https://github.com/microsoft/windows-rs)
 - [windows-targets v0.52.6](https://github.com/microsoft/windows-rs)
 - [windows-targets v0.53.5](https://github.com/microsoft/windows-rs)
-- [windows-threading v0.1.0](https://github.com/microsoft/windows-rs)
-- [windows v0.61.3](https://github.com/microsoft/windows-rs)
+- [windows-threading v0.2.1](https://github.com/microsoft/windows-rs)
+- [windows v0.58.0](https://github.com/microsoft/windows-rs)
+- [windows v0.62.2](https://github.com/microsoft/windows-rs)
 - [windows_x86_64_gnu v0.52.6](https://github.com/microsoft/windows-rs)
 - [windows_x86_64_gnu v0.53.1](https://github.com/microsoft/windows-rs)
 - [windows_x86_64_msvc v0.52.6](https://github.com/microsoft/windows-rs)
 - [windows_x86_64_msvc v0.53.1](https://github.com/microsoft/windows-rs)
 - [zune-core v0.4.12](https://crates.io/crates/zune-core)
+- [zune-inflate v0.2.54](https://crates.io/crates/zune-inflate)
 - [zune-jpeg v0.4.21](https://github.com/etemesi254/zune-image/tree/dev/crates/zune-jpeg)
 
 ### Used by
 
-- [enum-map-derive v0.17.0](https://codeberg.org/xfix/enum-map)
-- [enum-map v2.7.3](https://codeberg.org/xfix/enum-map)
+- [objc v0.2.7](http://github.com/SSheldon/rust-objc)
 
 ### Used by
 
@@ -1352,6 +1723,11 @@ insights.
 ### Used by
 
 - [simd-adler32 v0.3.8](https://github.com/mcountryman/simd-adler32)
+
+### Used by
+
+- [zune-core v0.5.0](https://github.com/etemesi254/zune-image)
+- [zune-jpeg v0.5.8](https://github.com/etemesi254/zune-image/tree/dev/crates/zune-jpeg)
 
 ### Used by
 
@@ -1371,6 +1747,7 @@ insights.
 
 - [boxcar v0.2.14](https://github.com/ibraheemdev/boxcar)
 - [half v2.7.1](https://github.com/VoidStarKat/half-rs)
+- [linebender_resource_handle v0.1.1](https://github.com/linebender/raw_resource_handle)
 
 ### Used by
 
@@ -1395,11 +1772,12 @@ insights.
 
 ### Used by
 
-- [egui-phosphor v0.11.0](https://github.com/amPerl/egui-phosphor)
+- [range-alloc v0.1.4](https://github.com/gfx-rs/range-alloc)
 
 ### Used by
 
 - [async-recursion v1.1.1](https://github.com/dcchut/async-recursion)
+- [rustc-hash v2.1.1](https://github.com/rust-lang/rustc-hash)
 
 ### Used by
 
@@ -1407,10 +1785,8 @@ insights.
 - [anyhow v1.0.100](https://github.com/dtolnay/anyhow)
 - [async-channel v2.5.0](https://github.com/smol-rs/async-channel)
 - [async-executor v1.13.3](https://github.com/smol-rs/async-executor)
-- [async-fs v2.2.0](https://github.com/smol-rs/async-fs)
 - [async-io v2.6.0](https://github.com/smol-rs/async-io)
 - [async-lock v3.4.2](https://github.com/smol-rs/async-lock)
-- [async-net v2.0.0](https://github.com/smol-rs/async-net)
 - [async-process v2.5.0](https://github.com/smol-rs/async-process)
 - [async-signal v0.2.13](https://github.com/smol-rs/async-signal)
 - [async-task v4.7.1](https://github.com/smol-rs/async-task)
@@ -1418,6 +1794,8 @@ insights.
 - [atomic-waker v1.1.2](https://github.com/smol-rs/atomic-waker)
 - [blocking v1.6.2](https://github.com/smol-rs/blocking)
 - [concurrent-queue v2.5.0](https://github.com/smol-rs/concurrent-queue)
+- [cryoglyph v0.1.0](https://github.com/iced-rs/cryoglyph)
+- [ctor-lite v0.1.0](https://codeberg.org/notgull/ctor-lite)
 - [displaydoc v0.2.5](https://github.com/yaahc/displaydoc)
 - [dyn-clone v1.0.20](https://github.com/dtolnay/dyn-clone)
 - [endi v1.1.1](https://github.com/zeenix/endi)
@@ -1426,27 +1804,30 @@ insights.
 - [fast-float2 v0.2.3](https://github.com/Alexhuszagh/fast-float-rust)
 - [fastrand v2.3.0](https://github.com/smol-rs/fastrand)
 - [futures-lite v2.6.1](https://github.com/smol-rs/futures-lite)
+- [glam v0.25.0](https://github.com/bitshifter/glam-rs)
 - [home v0.5.12](https://github.com/rust-lang/cargo)
 - [itoa v1.0.17](https://github.com/dtolnay/itoa)
+- [khronos-egl v6.0.0](https://github.com/timothee-haudebourg/khronos-egl)
 - [linux-raw-sys v0.11.0](https://github.com/sunfishcode/linux-raw-sys)
 - [linux-raw-sys v0.4.15](https://github.com/sunfishcode/linux-raw-sys)
 - [once_cell v1.21.3](https://github.com/matklad/once_cell)
 - [ordered-stream v0.2.0](https://github.com/danieldg/ordered-stream)
 - [parking v2.2.1](https://github.com/smol-rs/parking)
+- [paste v1.0.15](https://github.com/dtolnay/paste)
+- [pastey v0.1.1](https://github.com/as1100k/pastey)
 - [pathdiff v0.2.3](https://github.com/Manishearth/pathdiff)
 - [pin-project-lite v0.2.16](https://github.com/taiki-e/pin-project-lite)
 - [piper v0.2.4](https://github.com/smol-rs/piper)
 - [polling v3.11.0](https://github.com/smol-rs/polling)
-- [portable-atomic v1.13.0](https://github.com/taiki-e/portable-atomic)
 - [proc-macro-crate v1.3.1](https://github.com/bkchr/proc-macro-crate)
 - [proc-macro-crate v2.0.2](https://github.com/bkchr/proc-macro-crate)
 - [proc-macro-crate v3.4.0](https://github.com/bkchr/proc-macro-crate)
 - [proc-macro2 v1.0.104](https://github.com/dtolnay/proc-macro2)
 - [quote v1.0.42](https://github.com/dtolnay/quote)
+- [rustc-hash v1.1.0](https://github.com/rust-lang-nursery/rustc-hash)
 - [rustix v0.38.44](https://github.com/bytecodealliance/rustix)
 - [rustix v1.1.3](https://github.com/bytecodealliance/rustix)
 - [rustversion v1.0.22](https://github.com/dtolnay/rustversion)
-- [semver v1.0.27](https://github.com/dtolnay/semver)
 - [serde v1.0.228](https://github.com/serde-rs/serde)
 - [serde_core v1.0.228](https://github.com/serde-rs/serde)
 - [serde_derive v1.0.228](https://github.com/serde-rs/serde)
@@ -1463,8 +1844,6 @@ insights.
 - [unicode-ident v1.0.22](https://github.com/dtolnay/unicode-ident)
 - [x11-dl v2.21.0](https://github.com/AltF02/x11-rs.git)
 - [x11 v2.21.0](https://github.com/AltF02/x11-rs.git)
-- [zbus-lockstep-macros v0.5.2](https://github.com/luukvanderduim/zbus-lockstep)
-- [zbus-lockstep v0.5.2](https://github.com/luukvanderduim/zbus-lockstep)
 - [zmij v1.0.0](https://github.com/dtolnay/zmij)
 - [zvariant_utils v3.2.1](https://github.com/dbus2/zbus/)
 
@@ -1481,10 +1860,6 @@ insights.
 - [rapidfuzz v0.5.0](https://github.com/maxbachmann/rapidfuzz-rs)
 - [winnow v0.5.40](https://github.com/winnow-rs/winnow)
 - [winnow v0.7.14](https://github.com/winnow-rs/winnow)
-
-### Used by
-
-- [encode_unicode v1.0.0](https://github.com/tormol/encode_unicode)
 
 ### Used by
 
@@ -1514,11 +1889,20 @@ insights.
 
 ### Used by
 
-- [pulldown-cmark v0.13.0](https://github.com/raphlinus/pulldown-cmark)
+- [pulldown-cmark-escape v0.11.0](https://github.com/raphlinus/pulldown-cmark)
+- [pulldown-cmark v0.12.2](https://github.com/raphlinus/pulldown-cmark)
 
 ### Used by
 
-- [zip v2.4.2](https://github.com/zip-rs/zip2.git)
+- [deflate64 v0.1.10](https://github.com/anatawa12/deflate64-rs)
+
+### Used by
+
+- [zip v7.1.0](https://github.com/zip-rs/zip2.git)
+
+### Used by
+
+- [typenum v1.19.0](https://github.com/paholg/typenum)
 
 ### Used by
 
@@ -1538,6 +1922,7 @@ insights.
 
 - [aho-corasick v1.1.4](https://github.com/BurntSushi/aho-corasick)
 - [byteorder-lite v0.1.0](https://github.com/image-rs/byteorder-lite)
+- [byteorder v1.5.0](https://github.com/BurntSushi/byteorder)
 - [csv-core v0.1.13](https://github.com/BurntSushi/rust-csv)
 - [csv v1.4.0](https://github.com/BurntSushi/rust-csv)
 - [memchr v2.7.6](https://github.com/BurntSushi/memchr)
@@ -1547,10 +1932,6 @@ insights.
 
 - [lz4-sys v1.11.1+lz4-1.10.0](https://github.com/10xGenomics/lz4-rs)
 - [lz4 v1.28.1](https://github.com/10xGenomics/lz4-rs)
-
-### Used by
-
-- [mime_guess2 v2.3.1](https://github.com/ttys3/mime_guess2)
 
 ### Used by
 
@@ -1572,11 +1953,12 @@ insights.
 
 ### Used by
 
+- [gif v0.13.3](https://github.com/image-rs/image-gif)
 - [gif v0.14.1](https://github.com/image-rs/image-gif)
 
 ### Used by
 
-- [webbrowser v1.0.6](https://github.com/amodm/webbrowser-rs)
+- [y4m v0.8.0](https://github.com/image-rs/y4m.git)
 
 ### Used by
 
@@ -1588,17 +1970,16 @@ insights.
 
 ### Used by
 
+- [bit_field v0.10.3](https://github.com/phil-opp/rust-bit-field)
+
+### Used by
+
 - [color_quant v1.1.0](https://github.com/image-rs/color_quant.git)
 
 ### Used by
 
 - [same-file v1.0.6](https://github.com/BurntSushi/same-file)
 - [winapi-util v0.1.11](https://github.com/BurntSushi/winapi-util)
-
-### Used by
-
-- [console v0.15.11](https://github.com/console-rs/console)
-- [indicatif v0.17.11](https://github.com/console-rs/indicatif)
 
 ### Used by
 
@@ -1623,6 +2004,14 @@ insights.
 
 ### Used by
 
+- [aliasable v0.1.3](https://github.com/avitex/rust-aliasable)
+
+### Used by
+
+- [etagere v0.2.15](https://github.com/nical/etagere)
+
+### Used by
+
 - [fontdb v0.23.0](https://github.com/RazrFalcon/fontdb)
 - [unicode-bidi-mirroring v0.4.0](https://github.com/RazrFalcon/unicode-bidi-mirroring)
 - [unicode-ccc v0.4.0](https://github.com/RazrFalcon/unicode-ccc)
@@ -1630,6 +2019,10 @@ insights.
 ### Used by
 
 - [async-broadcast v0.7.2](https://github.com/smol-rs/async-broadcast)
+
+### Used by
+
+- [cosmic-text v0.15.0](https://github.com/pop-os/cosmic-text)
 
 ### Used by
 
@@ -1651,13 +2044,25 @@ insights.
 
 ### Used by
 
+- [proc-macro2-diagnostics v0.10.1](https://github.com/SergioBenitez/proc-macro2-diagnostics)
+
+### Used by
+
+- [yansi v1.0.1](https://github.com/SergioBenitez/yansi)
+
+### Used by
+
 - [nu-ansi-term v0.50.3](https://github.com/nushell/nu-ansi-term)
 
 ### Used by
 
-- [quick-xml v0.36.2](https://github.com/tafia/quick-xml)
+- [generic-array v0.14.7](https://github.com/fizyk20/generic-array.git)
+
+### Used by
+
 - [quick-xml v0.37.5](https://github.com/tafia/quick-xml)
 - [quick-xml v0.38.4](https://github.com/tafia/quick-xml)
+- [quick-xml v0.39.0](https://github.com/tafia/quick-xml)
 
 ### Used by
 
@@ -1665,7 +2070,7 @@ insights.
 
 ### Used by
 
-- [urlencoding v2.1.3](https://github.com/kornelski/rust_urlencoding)
+- [loop9 v0.1.5](https://gitlab.com/kornelski/loop9.git)
 
 ## Mozilla Public License 2.0
 
@@ -2054,222 +2459,6 @@ Exhibit B - "Incompatible With Secondary Licenses" Notice
 
 ---
 
-## SIL Open Font License 1.1
-
-### Used by
-
-- [epaint_default_fonts v0.33.3](https://github.com/emilk/egui/tree/main/crates/epaint_default_fonts)
-
-### License Text
-
-```text
-This Font Software is licensed under the SIL Open Font License,
-Version 1.1.
-
-This license is copied below, and is also available with a FAQ at:
-http://scripts.sil.org/OFL
-
------------------------------------------------------------
-SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
------------------------------------------------------------
-
-PREAMBLE
-The goals of the Open Font License (OFL) are to stimulate worldwide
-development of collaborative font projects, to support the font
-creation efforts of academic and linguistic communities, and to
-provide a free and open framework in which fonts may be shared and
-improved in partnership with others.
-
-The OFL allows the licensed fonts to be used, studied, modified and
-redistributed freely as long as they are not sold by themselves. The
-fonts, including any derivative works, can be bundled, embedded,
-redistributed and/or sold with any software provided that any reserved
-names are not used by derivative works. The fonts and derivatives,
-however, cannot be released under any other type of license. The
-requirement for fonts to remain under this license does not apply to
-any document created using the fonts or their derivatives.
-
-DEFINITIONS
-"Font Software" refers to the set of files released by the Copyright
-Holder(s) under this license and clearly marked as such. This may
-include source files, build scripts and documentation.
-
-"Reserved Font Name" refers to any names specified as such after the
-copyright statement(s).
-
-"Original Version" refers to the collection of Font Software
-components as distributed by the Copyright Holder(s).
-
-"Modified Version" refers to any derivative made by adding to,
-deleting, or substituting -- in part or in whole -- any of the
-components of the Original Version, by changing formats or by porting
-the Font Software to a new environment.
-
-"Author" refers to any designer, engineer, programmer, technical
-writer or other person who contributed to the Font Software.
-
-PERMISSION & CONDITIONS
-Permission is hereby granted, free of charge, to any person obtaining
-a copy of the Font Software, to use, study, copy, merge, embed,
-modify, redistribute, and sell modified and unmodified copies of the
-Font Software, subject to the following conditions:
-
-1) Neither the Font Software nor any of its individual components, in
-Original or Modified Versions, may be sold by itself.
-
-2) Original or Modified Versions of the Font Software may be bundled,
-redistributed and/or sold with any software, provided that each copy
-contains the above copyright notice and this license. These can be
-included either as stand-alone text files, human-readable headers or
-in the appropriate machine-readable metadata fields within text or
-binary files as long as those fields can be easily viewed by the user.
-
-3) No Modified Version of the Font Software may use the Reserved Font
-Name(s) unless explicit written permission is granted by the
-corresponding Copyright Holder. This restriction only applies to the
-primary font name as presented to the users.
-
-4) The name(s) of the Copyright Holder(s) or the Author(s) of the Font
-Software shall not be used to promote, endorse or advertise any
-Modified Version, except to acknowledge the contribution(s) of the
-Copyright Holder(s) and the Author(s) or with their explicit written
-permission.
-
-5) The Font Software, modified or unmodified, in part or in whole,
-must be distributed entirely under this license, and must not be
-distributed under any other license. The requirement for fonts to
-remain under this license does not apply to any document created using
-the Font Software.
-
-TERMINATION
-This license becomes null and void if any of the above conditions are
-not met.
-
-DISCLAIMER
-THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT
-OF COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE
-COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
-DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
-OTHER DEALINGS IN THE FONT SOFTWARE.
-
-```
-
----
-
-## Ubuntu Font Licence v1.0
-
-### Used by
-
-- [epaint_default_fonts v0.33.3](https://github.com/emilk/egui/tree/main/crates/epaint_default_fonts)
-
-### License Text
-
-```text
--------------------------------
-UBUNTU FONT LICENCE Version 1.0
--------------------------------
-
-PREAMBLE
-This licence allows the licensed fonts to be used, studied, modified and
-redistributed freely. The fonts, including any derivative works, can be
-bundled, embedded, and redistributed provided the terms of this licence
-are met. The fonts and derivatives, however, cannot be released under
-any other licence. The requirement for fonts to remain under this
-licence does not require any document created using the fonts or their
-derivatives to be published under this licence, as long as the primary
-purpose of the document is not to be a vehicle for the distribution of
-the fonts.
-
-DEFINITIONS
-"Font Software" refers to the set of files released by the Copyright
-Holder(s) under this licence and clearly marked as such. This may
-include source files, build scripts and documentation.
-
-"Original Version" refers to the collection of Font Software components
-as received under this licence.
-
-"Modified Version" refers to any derivative made by adding to, deleting,
-or substituting -- in part or in whole -- any of the components of the
-Original Version, by changing formats or by porting the Font Software to
-a new environment.
-
-"Copyright Holder(s)" refers to all individuals and companies who have a
-copyright ownership of the Font Software.
-
-"Substantially Changed" refers to Modified Versions which can be easily
-identified as dissimilar to the Font Software by users of the Font
-Software comparing the Original Version with the Modified Version.
-
-To "Propagate" a work means to do anything with it that, without
-permission, would make you directly or secondarily liable for
-infringement under applicable copyright law, except executing it on a
-computer or modifying a private copy. Propagation includes copying,
-distribution (with or without modification and with or without charging
-a redistribution fee), making available to the public, and in some
-countries other activities as well.
-
-PERMISSION & CONDITIONS
-This licence does not grant any rights under trademark law and all such
-rights are reserved.
-
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of the Font Software, to propagate the Font Software, subject to
-the below conditions:
-
-1) Each copy of the Font Software must contain the above copyright
-notice and this licence. These can be included either as stand-alone
-text files, human-readable headers or in the appropriate machine-
-readable metadata fields within text or binary files as long as those
-fields can be easily viewed by the user.
-
-2) The font name complies with the following:
-(a) The Original Version must retain its name, unmodified.
-(b) Modified Versions which are Substantially Changed must be renamed to
-avoid use of the name of the Original Version or similar names entirely.
-(c) Modified Versions which are not Substantially Changed must be
-renamed to both (i) retain the name of the Original Version and (ii) add
-additional naming elements to distinguish the Modified Version from the
-Original Version. The name of such Modified Versions must be the name of
-the Original Version, with "derivative X" where X represents the name of
-the new work, appended to that name.
-
-3) The name(s) of the Copyright Holder(s) and any contributor to the
-Font Software shall not be used to promote, endorse or advertise any
-Modified Version, except (i) as required by this licence, (ii) to
-acknowledge the contribution(s) of the Copyright Holder(s) or (iii) with
-their explicit written permission.
-
-4) The Font Software, modified or unmodified, in part or in whole, must
-be distributed entirely under this licence, and must not be distributed
-under any other licence. The requirement for fonts to remain under this
-licence does not affect any document created using the Font Software,
-except any version of the Font Software extracted from a document
-created using the Font Software may only be distributed under this
-licence.
-
-TERMINATION
-This licence becomes null and void if any of the above conditions are
-not met.
-
-DISCLAIMER
-THE FONT SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO ANY WARRANTIES OF
-MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT OF
-COPYRIGHT, PATENT, TRADEMARK, OR OTHER RIGHT. IN NO EVENT SHALL THE
-COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
-INCLUDING ANY GENERAL, SPECIAL, INDIRECT, INCIDENTAL, OR CONSEQUENTIAL
-DAMAGES, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
-FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM OTHER
-DEALINGS IN THE FONT SOFTWARE.
-
-```
-
----
-
 ## Unicode License v3
 
 ### Used by
@@ -2348,30 +2537,31 @@ authorization of the copyright holder.
 
 ### Used by
 
-- [slotmap v1.1.1](https://github.com/orlp/slotmap)
+- [libz-rs-sys v0.5.5](https://github.com/trifectatechfoundation/zlib-rs)
+- [zlib-rs v0.5.5](https://github.com/trifectatechfoundation/zlib-rs)
 
 ### License Text
 
 ```text
-Copyright (c) 2021 Orson Peters <orsonpeters@gmail.com>
+(C) 2024 Trifecta Tech Foundation 
 
-This software is provided 'as-is', without any express or implied warranty. In
-no event will the authors be held liable for any damages arising from the use of
-this software.
+This software is provided 'as-is', without any express or implied
+warranty. In no event will the authors be held liable for any damages
+arising from the use of this software.
 
-Permission is granted to anyone to use this software for any purpose, including
-commercial applications, and to alter it and redistribute it freely, subject to
-the following restrictions:
+Permission is granted to anyone to use this software for any purpose,
+including commercial applications, and to alter it and redistribute it
+freely, subject to the following restrictions:
 
- 1. The origin of this software must not be misrepresented; you must not claim
-    that you wrote the original software. If you use this software in a product,
-    an acknowledgment in the product documentation would be appreciated but is
-    not required.
+1. The origin of this software must not be misrepresented; you must not
+   claim that you wrote the original software. If you use this software
+   in a product, an acknowledgment in the product documentation would be
+   appreciated but is not required.
 
- 2. Altered source versions must be plainly marked as such, and must not be
-    misrepresented as being the original software.
+2. Altered source versions must be plainly marked as such, and must not be
+   misrepresented as being the original software.
 
- 3. This notice may not be removed or altered from any source distribution.
+3. This notice may not be removed or altered from any source distribution.
 
 ```
 
@@ -2379,5 +2569,72 @@ the following restrictions:
 
 ### Used by
 
+- [slotmap v1.1.1](https://github.com/orlp/slotmap)
+
+### Used by
+
 - [foldhash v0.1.5](https://github.com/orlp/foldhash)
+- [foldhash v0.2.0](https://github.com/orlp/foldhash)
+
+## bzip2 and libbzip2 License v1.0.6
+
+### Used by
+
+- [libbz2-rs-sys v0.2.2](https://github.com/trifectatechfoundation/libbzip2-rs)
+
+### License Text
+
+```text
+
+--------------------------------------------------------------------------
+
+The original program, "bzip2", the associated library "libbzip2", and all
+documentation, are
+
+Copyright (C) 1996-2021 Julian R Seward.
+Copyright (C) 2019-2020 Federico Mena Quintero
+Copyright (C) 2021 Micah Snyder
+
+This Rust translation, "libbzip2-rs" is a derived work based on "bzip2" and
+"libbzip2", and is Copyright (C) 2024-2025 Trifecta Tech Foundation and contributors
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions
+are met:
+
+1. Redistributions of source code must retain the above copyright
+   notice, this list of conditions and the following disclaimer.
+
+2. The origin of this software must not be misrepresented; you must
+   not claim that you wrote the original software.  If you use this
+   software in a product, an acknowledgment in the product
+   documentation would be appreciated but is not required.
+
+3. Altered source versions must be plainly marked as such, and must
+   not be misrepresented as being the original software.
+
+4. The name of the author may not be used to endorse or promote
+   products derived from this software without specific prior written
+   permission.
+
+THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS
+OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY
+DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE
+GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+Julian Seward, jseward@acm.org
+bzip2/libbzip2 version 1.1.0 of 6 September 2010
+
+--------------------------------------------------------------------------
+
+```
+
+---
 
