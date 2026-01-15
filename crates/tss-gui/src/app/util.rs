@@ -8,28 +8,49 @@
 use std::path::PathBuf;
 
 use iced::window;
+use polars::prelude::DataFrame;
 
 use crate::state::{DomainSource, DomainState, Study};
 use tss_standards::TerminologyRegistry;
 
-/// Load a study asynchronously, including CT loading.
+/// Pre-loaded CSV file data.
 ///
-/// # Arguments
-/// * `folder` - Path to the study folder containing CSV files
-/// * `header_rows` - Number of header rows in CSV files
-/// * `confidence_threshold` - Minimum confidence (0.0-1.0) for mapping suggestions
-pub async fn load_study_async(
-    folder: PathBuf,
-    header_rows: usize,
-    confidence_threshold: f32,
-) -> Result<(Study, TerminologyRegistry), String> {
-    // Create study from folder
-    let mut study = Study::from_folder(folder.clone());
+/// On macOS with hardened runtime, security-scoped file access from file dialogs
+/// doesn't transfer across thread boundaries. This struct holds file data that
+/// was read synchronously on the main thread so it can be processed asynchronously.
+#[derive(Debug, Clone)]
+pub struct PreloadedCsvFile {
+    /// The path to the CSV file
+    pub path: PathBuf,
+    /// The loaded DataFrame
+    pub df: DataFrame,
+    /// The file stem (filename without extension)
+    pub file_stem: String,
+}
 
-    // Discover CSV files
-    let csv_files: Vec<PathBuf> = std::fs::read_dir(&folder)
+/// Input for study loading - either a path or preloaded data.
+#[allow(dead_code)] // Variants are conditionally compiled per-platform
+pub enum StudyLoadInput {
+    /// Load from a folder path (used on Linux/Windows)
+    Path(PathBuf),
+    /// Use preloaded CSV data (used on macOS)
+    Preloaded {
+        folder: PathBuf,
+        csv_files: Vec<PreloadedCsvFile>,
+    },
+}
+
+/// Read CSV files synchronously from a folder.
+///
+/// This is used on macOS to read files on the main thread where security-scoped
+/// access from the file dialog is available.
+pub fn read_csv_files_sync(
+    folder: &PathBuf,
+    header_rows: usize,
+) -> Result<Vec<PreloadedCsvFile>, String> {
+    let csv_paths: Vec<PathBuf> = std::fs::read_dir(folder)
         .map_err(|e| format!("Failed to read folder: {}", e))?
-        .filter_map(|entry| entry.ok())
+        .filter_map(std::result::Result::ok)
         .map(|entry| entry.path())
         .filter(|path| {
             path.extension()
@@ -38,18 +59,102 @@ pub async fn load_study_async(
         })
         .collect();
 
-    if csv_files.is_empty() {
+    if csv_paths.is_empty() {
         return Err("No CSV files found in the selected folder".to_string());
     }
 
+    let mut csv_files = Vec::new();
+    for csv_path in csv_paths {
+        let file_stem = csv_path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default()
+            .to_string();
+
+        // Load CSV data
+        let (df, _headers) = tss_ingest::read_csv_table(&csv_path, header_rows)
+            .map_err(|e| format!("Failed to load {}: {}", file_stem, e))?;
+
+        csv_files.push(PreloadedCsvFile {
+            path: csv_path,
+            df,
+            file_stem,
+        });
+    }
+
+    Ok(csv_files)
+}
+
+/// Load a study asynchronously, including CT loading.
+///
+/// # Arguments
+/// * `input` - Either a folder path or preloaded CSV data
+/// * `header_rows` - Number of header rows in CSV files (only used when loading from path)
+/// * `confidence_threshold` - Minimum confidence (0.0-1.0) for mapping suggestions
+pub async fn load_study_async(
+    input: StudyLoadInput,
+    header_rows: usize,
+    confidence_threshold: f32,
+) -> Result<(Study, TerminologyRegistry), String> {
+    // Extract folder and CSV data based on input type
+    let (folder, csv_files) = match input {
+        StudyLoadInput::Path(folder) => {
+            // Discover and load CSV files from the folder
+            let csv_paths: Vec<PathBuf> = std::fs::read_dir(&folder)
+                .map_err(|e| format!("Failed to read folder: {}", e))?
+                .filter_map(std::result::Result::ok)
+                .map(|entry| entry.path())
+                .filter(|path| {
+                    path.extension()
+                        .map(|ext| ext.eq_ignore_ascii_case("csv"))
+                        .unwrap_or(false)
+                })
+                .collect();
+
+            if csv_paths.is_empty() {
+                return Err("No CSV files found in the selected folder".to_string());
+            }
+
+            let mut csv_files = Vec::new();
+            for csv_path in csv_paths {
+                let file_stem = csv_path
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or_default()
+                    .to_string();
+
+                let (df, _headers) = tss_ingest::read_csv_table(&csv_path, header_rows)
+                    .map_err(|e| format!("Failed to load {}: {}", file_stem, e))?;
+
+                csv_files.push(PreloadedCsvFile {
+                    path: csv_path,
+                    df,
+                    file_stem,
+                });
+            }
+
+            (folder, csv_files)
+        }
+        StudyLoadInput::Preloaded { folder, csv_files } => {
+            if csv_files.is_empty() {
+                return Err("No CSV files found in the selected folder".to_string());
+            }
+            (folder, csv_files)
+        }
+    };
+
+    // Create study from folder
+    let mut study = Study::from_folder(folder.clone());
+
     // Load metadata if available
+    // Note: This file read might fail on macOS if not preloaded, but it's optional
     study.metadata = tss_ingest::load_study_metadata(&folder, header_rows).ok();
 
-    // Load SDTM-IG
+    // Load SDTM-IG (embedded data, no file access needed)
     let ig_domains =
         tss_standards::load_sdtm_ig().map_err(|e| format!("Failed to load SDTM-IG: {}", e))?;
 
-    // Load Controlled Terminology
+    // Load Controlled Terminology (embedded data, no file access needed)
     let ct_version = tss_standards::ct::CtVersion::default();
     let terminology = tss_standards::ct::load(ct_version).map_err(|e| {
         format!(
@@ -64,15 +169,10 @@ pub async fn load_study_async(
     );
 
     // Process each CSV file
-    for csv_path in csv_files {
-        let file_stem = csv_path
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or_default();
-
+    for csv_file in csv_files {
         // Extract domain code from filename
         // Handles both simple names (DM.csv) and prefixed names (STUDY_DM.csv)
-        let domain_code = extract_domain_code(file_stem);
+        let domain_code = extract_domain_code(&csv_file.file_stem);
 
         // Skip non-domain files
         if domain_code.is_empty()
@@ -85,10 +185,6 @@ pub async fn load_study_async(
 
         let domain_code = domain_code.to_uppercase();
 
-        // Load CSV
-        let (df, _headers) = tss_ingest::read_csv_table(&csv_path, header_rows)
-            .map_err(|e| format!("Failed to load {}: {}", domain_code, e))?;
-
         // Find domain in SDTM-IG
         let ig_domain = ig_domains
             .iter()
@@ -100,14 +196,15 @@ pub async fn load_study_async(
         };
 
         // Create source
-        let source = DomainSource::new(csv_path, df.clone(), ig_domain.label.clone());
+        let source = DomainSource::new(csv_file.path, csv_file.df.clone(), ig_domain.label.clone());
 
         // Create mapping state
-        let hints = tss_ingest::build_column_hints(&df);
-        let source_columns: Vec<String> = df
+        let hints = tss_ingest::build_column_hints(&csv_file.df);
+        let source_columns: Vec<String> = csv_file
+            .df
             .get_column_names()
             .into_iter()
-            .map(|s| s.to_string())
+            .map(ToString::to_string)
             .collect();
 
         let mapping = tss_submit::MappingState::new(

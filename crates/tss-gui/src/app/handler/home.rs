@@ -11,7 +11,9 @@ use iced::window;
 use iced::{Size, Task};
 
 use crate::app::App;
-use crate::app::util::load_study_async;
+#[cfg(target_os = "macos")]
+use crate::app::util::read_csv_files_sync;
+use crate::app::util::{StudyLoadInput, load_study_async};
 use crate::message::{HomeMessage, Message};
 use crate::state::{EditorTab, ViewState};
 
@@ -124,9 +126,36 @@ impl App {
         let header_rows = self.state.settings.general.header_rows;
         let confidence_threshold = self.state.settings.general.mapping_confidence_threshold;
 
-        Task::perform(
-            async move { load_study_async(path, header_rows, confidence_threshold).await },
-            Message::StudyLoaded,
-        )
+        // On macOS, read CSV files synchronously on the main thread to maintain
+        // security-scoped file access from the file dialog. The hardened runtime
+        // restricts file access when crossing thread boundaries.
+        #[cfg(target_os = "macos")]
+        {
+            match read_csv_files_sync(&path, header_rows) {
+                Ok(csv_files) => {
+                    let input = StudyLoadInput::Preloaded {
+                        folder: path,
+                        csv_files,
+                    };
+                    Task::perform(
+                        async move { load_study_async(input, header_rows, confidence_threshold).await },
+                        Message::StudyLoaded,
+                    )
+                }
+                Err(e) => {
+                    self.state.is_loading = false;
+                    Task::done(Message::StudyLoaded(Err(e)))
+                }
+            }
+        }
+
+        #[cfg(not(target_os = "macos"))]
+        {
+            let input = StudyLoadInput::Path(path);
+            Task::perform(
+                async move { load_study_async(input, header_rows, confidence_threshold).await },
+                Message::StudyLoaded,
+            )
+        }
     }
 }
