@@ -103,9 +103,10 @@ impl App {
                     return Task::none();
                 }
                 // Open update dialog in a new window
+                // Size accommodates: icon, version info, changelog, and action buttons
                 let settings = window::Settings {
-                    size: Size::new(450.0, 350.0),
-                    resizable: false,
+                    size: Size::new(550.0, 500.0),
+                    resizable: true,
                     decorations: true,
                     level: window::Level::AlwaysOnTop,
                     exit_on_close_request: false,

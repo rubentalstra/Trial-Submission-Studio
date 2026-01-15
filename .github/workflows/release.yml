@@ -335,17 +335,28 @@ jobs:
           pip install flatpak-cargo-generator
           flatpak-cargo-generator Cargo.lock -o assets/flatpak/cargo-sources.json
 
+      - name: Update manifest git source
+        run: |
+          # Get the commit hash for this version tag
+          COMMIT_HASH=$(git rev-parse HEAD)
+
+          # Update tag and commit in the manifest
+          sed -i "s/tag: v.*/tag: ${{ env.VERSION }}/" assets/flatpak/io.github.rubentalstra.trial-submission-studio.yml
+          sed -i "s/commit: .*/commit: ${COMMIT_HASH}/" assets/flatpak/io.github.rubentalstra.trial-submission-studio.yml
+
+          echo "Updated manifest: tag=${{ env.VERSION }}, commit=${COMMIT_HASH}"
+
       - name: Build Flatpak
         uses: flatpak/flatpak-github-actions/flatpak-builder@v6.6
         with:
           bundle: ${{ env.APP_NAME }}-${{ env.VERSION }}.flatpak
-          manifest-path: assets/flatpak/io.github.rubentalstra.trial-submission-studio.json
+          manifest-path: assets/flatpak/io.github.rubentalstra.trial-submission-studio.yml
           arch: ${{ matrix.arch }}
-          cache-key: flatpak-builder-${{ matrix.arch }}-${{ hashFiles('Cargo.lock', 'assets/flatpak/io.github.rubentalstra.trial-submission-studio.json') }}
+          cache-key: flatpak-builder-${{ matrix.arch }}-${{ hashFiles('Cargo.lock', 'assets/flatpak/io.github.rubentalstra.trial-submission-studio.yml') }}
           upload-artifact: true
 
       - name: Lint manifest
-        run: flatpak-builder-lint --exceptions --gha-format manifest assets/flatpak/io.github.rubentalstra.trial-submission-studio.json
+        run: flatpak-builder-lint --exceptions --gha-format manifest assets/flatpak/io.github.rubentalstra.trial-submission-studio.yml
 
       - name: Lint appstream metadata
         run: flatpak-builder-lint --exceptions --user-exceptions assets/flatpak/linter-exceptions.json --gha-format appstream flatpak_app/files/share/metainfo/io.github.rubentalstra.trial-submission-studio.metainfo.xml
@@ -361,7 +372,7 @@ jobs:
         with:
           name: flathub-${{ matrix.arch }}
           path: |
-            assets/flatpak/io.github.rubentalstra.trial-submission-studio.json
+            assets/flatpak/io.github.rubentalstra.trial-submission-studio.yml
             assets/flatpak/cargo-sources.json
           retention-days: 7
 
@@ -500,109 +511,6 @@ jobs:
           files: artifacts/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # ============================================================
-  # Submit to Flathub
-  # ============================================================
-  flathub-submission:
-    name: Submit to Flathub
-    needs: [ prepare, publish ]
-    if: needs.publish.result == 'success'
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - name: Download Flathub artifacts
-        uses: actions/download-artifact@v7
-        with:
-          pattern: flathub-*
-          path: flathub-files
-          merge-multiple: true
-
-      - name: Create Flathub PR
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VERSION: ${{ needs.prepare.outputs.version }}
-          APP_ID: io.github.rubentalstra.trial-submission-studio
-        run: |
-          # Get authenticated user's info from GitHub API
-          USER_INFO=$(gh api user)
-          USER_NAME=$(echo "$USER_INFO" | jq -r '.name // .login')
-          USER_EMAIL=$(echo "$USER_INFO" | jq -r '.email // "\(.id)+\(.login)@users.noreply.github.com"')
-
-          # Fork flathub/flathub if not already forked
-          gh repo fork flathub/flathub --clone=false --remote=false || true
-
-          # Clone upstream directly (fork may not have new-pr branch)
-          git clone https://github.com/flathub/flathub.git --branch new-pr --single-branch flathub
-          cd flathub
-
-          # Configure git with your verified credentials
-          git config user.name "$USER_NAME"
-          git config user.email "$USER_EMAIL"
-
-          # Set up remotes: origin = fork, upstream = flathub
-          git remote rename origin upstream
-          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository_owner }}/flathub.git"
-
-          # Create submission branch
-          BRANCH_NAME="${APP_ID}-${VERSION}"
-          git checkout -b "$BRANCH_NAME"
-
-          # Create app directory and copy files
-          mkdir -p "$APP_ID"
-          cp ../flathub-files/cargo-sources.json "$APP_ID/"
-
-          # Update manifest: replace local dir source with git source for Flathub
-          RELEASE_TAG="${VERSION}"
-          jq --arg tag "$RELEASE_TAG" '
-            .modules[-1].sources = [
-              {
-                "type": "git",
-                "url": "https://github.com/rubentalstra/Trial-Submission-Studio.git",
-                "tag": $tag
-              },
-              "cargo-sources.json"
-            ]
-          ' ../flathub-files/io.github.rubentalstra.trial-submission-studio.json > "$APP_ID/io.github.rubentalstra.trial-submission-studio.json"
-
-          # Commit and push to your fork
-          git add "$APP_ID"
-          git commit -m "Add ${APP_ID} ${VERSION}"
-          git push origin "$BRANCH_NAME"
-
-          # Create PR from your fork to flathub/flathub:new-pr
-          gh pr create \
-            --repo flathub/flathub \
-            --base new-pr \
-            --head "${{ github.repository_owner }}:${BRANCH_NAME}" \
-            --title "Add ${APP_ID}" \
-            --body "$(cat <<EOF
-          ## Trial Submission Studio ${VERSION}
-
-          ### Application Details
-          - **App ID:** ${APP_ID}
-          - **Version:** ${VERSION}
-          - **Architectures:** x86_64, aarch64
-          - **License:** MIT
-          - **Homepage:** https://rubentalstra.github.io/Trial-Submission-Studio/
-          - **Repository:** https://github.com/rubentalstra/Trial-Submission-Studio
-
-          ### Pre-submission Checklist
-          - [x] Built and tested locally with org.flatpak.Builder
-          - [x] Manifest linter passed (flatpak-builder-lint manifest)
-          - [x] Repo linter passed (flatpak-builder-lint repo)
-          - [x] All required files included (manifest, cargo-sources.json)
-          - [x] Metainfo file validates correctly
-          - [x] Application tested on both x86_64 and aarch64
-
-          ### Build Information
-          - Release: https://github.com/rubentalstra/Trial-Submission-Studio/releases/tag/${VERSION}
-          - CI Run: https://github.com/rubentalstra/Trial-Submission-Studio/actions/runs/${{ github.run_id }}
-
-          ### Notes
-          Clinical trial data transformation tool for FDA/EMA submissions. Converts data to CDISC SDTM format.
-          EOF
-          )"
 
   # ============================================================
   # Notify Flathub (Post-Approval Only)
