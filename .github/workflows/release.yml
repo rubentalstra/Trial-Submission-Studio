@@ -337,6 +337,9 @@ jobs:
 
       - name: Update manifest git source
         run: |
+          # Fix git ownership issue in container
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
           # Get the commit hash for this version tag
           COMMIT_HASH=$(git rev-parse HEAD)
 
