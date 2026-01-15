@@ -298,14 +298,14 @@ jobs:
             runner: ubuntu-24.04-arm
     runs-on: ${{ matrix.runner }}
     container:
-      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-24.08
+      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08
       options: --privileged
     timeout-minutes: 60
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Generate cargo sources
         run: |
@@ -406,7 +406,7 @@ jobs:
   # ============================================================
   publish:
     name: Publish
-    needs: [prepare, build-macos, build-linux, build-flatpak, build-windows]
+    needs: [ prepare, build-macos, build-linux, build-flatpak, build-windows ]
     if: |
       always() &&
       (needs.build-macos.result == 'success' || needs.build-macos.result == 'skipped') &&
@@ -459,7 +459,7 @@ jobs:
   # ============================================================
   notify-flathub:
     name: Notify Flathub
-    needs: [prepare, publish]
+    needs: [ prepare, publish ]
     if: |
       needs.publish.result == 'success' &&
       !contains(needs.prepare.outputs.version, '-alpha') &&
