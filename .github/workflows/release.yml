@@ -323,6 +323,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v6
 
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: pip-flatpak-cargo-generator-${{ runner.os }}
+          restore-keys: pip-flatpak-cargo-generator-
+
       - name: Generate cargo sources
         run: |
           pip install flatpak-cargo-generator
@@ -334,7 +341,7 @@ jobs:
           bundle: ${{ env.APP_NAME }}-${{ env.VERSION }}.flatpak
           manifest-path: assets/flatpak/io.github.rubentalstra.trial-submission-studio.json
           arch: ${{ matrix.arch }}
-          cache-key: flatpak-builder-${{ matrix.arch }}-${{ github.sha }}
+          cache-key: flatpak-builder-${{ matrix.arch }}-${{ hashFiles('Cargo.lock', 'assets/flatpak/io.github.rubentalstra.trial-submission-studio.json') }}
           upload-artifact: true
 
       - name: Lint manifest
