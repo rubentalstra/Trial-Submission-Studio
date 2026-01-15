@@ -204,7 +204,6 @@ jobs:
 
       - name: Create archives
         run: |
-          ditto -c -k --keepParent "Trial Submission Studio.app" "${APP_NAME}-${VERSION}-${{ matrix.target }}.zip"
           mkdir -p release-tar && cp -R "Trial Submission Studio.app" release-tar/
           tar -czvf "${APP_NAME}-${VERSION}-${{ matrix.target }}.tar.gz" -C release-tar .
           rm -rf release-tar
@@ -215,7 +214,6 @@ jobs:
           name: macos-${{ matrix.arch }}
           path: |
             ${{ env.APP_NAME }}-${{ env.VERSION }}-${{ matrix.target }}.dmg
-            ${{ env.APP_NAME }}-${{ env.VERSION }}-${{ matrix.target }}.zip
             ${{ env.APP_NAME }}-${{ env.VERSION }}-${{ matrix.target }}.tar.gz
           retention-days: 7
 
