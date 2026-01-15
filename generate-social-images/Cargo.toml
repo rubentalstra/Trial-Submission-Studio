@@ -12,6 +12,6 @@ readme = "README.md"
 image = "0.25.9"
 imageproc = "0.26.0"
 swash = "0.2.6"
-resvg = "0.45.1"
-toml = "0.9.8"
+resvg = "0.46"
+toml = "0.9"
 serde = { version = "1.0.228", features = ["derive"] }

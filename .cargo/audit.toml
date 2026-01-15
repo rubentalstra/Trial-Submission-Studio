@@ -1,0 +1,28 @@
+# Cargo audit configuration
+# This file documents known warnings/advisories and their justifications.
+# Run: cargo audit --deny warnings
+#
+# These warnings represent maintenance status issues, not active security vulnerabilities.
+# They are monitored and will be addressed through upstream updates.
+
+[advisories]
+# Ignore specific advisories
+# GTK3 bindings warnings - successfully removed by disabling gtk feature in muda
+# Remaining warnings are from deep transitive dependencies with no current maintenance alternatives
+
+ignore = [
+    # RUSTSEC-2025-0141: bincode 2.0.1 - unmaintained
+    # Transitive: polars 0.51.0 -> polars-utils -> bincode
+    # Impact: Used internally by polars for serialization, not exposed in public APIs
+    # Path forward: Upgrade polars when new version removes bincode dependency
+    "RUSTSEC-2025-0141",
+    
+    # RUSTSEC-2024-0436: paste 1.0.15 - unmaintained
+    # Transitive: image 0.25.9 -> rav1e 0.8.1 -> paste (macro crate)
+    # Impact: Stable macro crate, used only at compile time
+    # Path forward: Upgrade rav1e/image when they update macro dependencies
+    "RUSTSEC-2024-0436",
+]
+
+
+

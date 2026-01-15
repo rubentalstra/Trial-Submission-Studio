@@ -67,7 +67,7 @@ open = "5.3" # Open URLs in browser
 # Settings & menu
 directories = "6.0"          # Cross-platform app directories
 toml = "0.9"               # Config file format
-muda = "0.17.1"              # Native menu bar (macOS only now)
+muda = { version = "0.17.1", default-features = false, features = ["common-controls-v6"] } # Native menu bar
 crossbeam-channel = "0.5.15" # Required by muda for menu event receiver
 
 # Async runtime (required by Iced with tokio feature)
