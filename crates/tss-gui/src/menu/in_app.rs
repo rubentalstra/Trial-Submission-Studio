@@ -51,6 +51,8 @@ impl MenuBarState {
 /// This is only used on Windows and Linux. On macOS, the native menu bar is used.
 #[cfg(not(target_os = "macos"))]
 pub fn view_menu_bar<'a>(state: &MenuBarState, has_study: bool) -> Element<'a, Message> {
+    use crate::theme::GRAY_100;
+
     let file_menu = view_menu_button("File", MenuBarMenuId::File, state);
     let edit_menu = view_menu_button("Edit", MenuBarMenuId::Edit, state);
     let help_menu = view_menu_button("Help", MenuBarMenuId::Help, state);
