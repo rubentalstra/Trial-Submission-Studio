@@ -38,6 +38,9 @@ modules:
     build-options:
       env:
         CARGO_HOME: /run/build/trial-submission-studio/cargo
+        # Required to find libxdo from xdotool module during linking
+        PKG_CONFIG_PATH: /app/lib/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig
+        LIBRARY_PATH: /app/lib
     build-commands:
       - cargo --offline fetch --manifest-path Cargo.toml --verbose
       - cargo --offline build --release --verbose
