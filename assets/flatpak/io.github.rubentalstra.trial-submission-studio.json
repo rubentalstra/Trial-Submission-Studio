@@ -37,9 +37,8 @@
         }
       },
       "build-commands": [
-        "./configure --prefix=/app --libdir=/app/lib",
-        "make",
-        "make install"
+        "make -j $FLATPAK_BUILDER_N_JOBS",
+        "make install PREFIX=/app LIBDIR=/app/lib"
       ],
       "sources": [
         {
