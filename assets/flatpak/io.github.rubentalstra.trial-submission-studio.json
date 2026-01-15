@@ -62,7 +62,8 @@
         "install -Dm755 target/release/trial-submission-studio /app/bin/trial-submission-studio",
         "install -Dm644 assets/linux/io.github.rubentalstra.trial-submission-studio.desktop /app/share/applications/io.github.rubentalstra.trial-submission-studio.desktop",
         "install -Dm644 assets/linux/io.github.rubentalstra.trial-submission-studio.metainfo.xml /app/share/metainfo/io.github.rubentalstra.trial-submission-studio.metainfo.xml",
-        "for size in 16 24 32 48 64 96 128 256 512; do install -Dm644 assets/linux/icons/hicolor/${size}x${size}/apps/io.github.rubentalstra.trial-submission-studio.png /app/share/icons/hicolor/${size}x${size}/apps/io.github.rubentalstra.trial-submission-studio.png; done"
+        "for size in 16 24 32 48 64 96 128 256 512; do install -Dm644 assets/linux/icons/hicolor/${size}x${size}/apps/io.github.rubentalstra.trial-submission-studio.png /app/share/icons/hicolor/${size}x${size}/apps/io.github.rubentalstra.trial-submission-studio.png; done",
+        "install -Dm644 LICENSE /app/share/licenses/io.github.rubentalstra.trial-submission-studio/LICENSE"
       ],
       "sources": [
         {

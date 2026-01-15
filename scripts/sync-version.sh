@@ -8,6 +8,7 @@
 # - CITATION.cff
 # - .zenodo.json
 # - codemeta.json
+# - assets/linux/*.metainfo.xml (Flatpak/AppStream metadata)
 
 set -euo pipefail
 
@@ -55,17 +56,30 @@ sed -i.bak "s/\"dateModified\": \"[^\"]*\"/\"dateModified\": \"$DATE\"/" codemet
 rm -f codemeta.json.bak
 echo -e "${GREEN}done${NC}"
 
+# Update metainfo.xml (Flatpak/AppStream)
+METAINFO_FILE="assets/linux/io.github.rubentalstra.trial-submission-studio.metainfo.xml"
+if [ -f "$METAINFO_FILE" ]; then
+    echo -n "  Updating metainfo.xml... "
+    # Update the most recent release version and date
+    sed -i.bak "s/<release version=\"[^\"]*\" date=\"[^\"]*\">/<release version=\"$VERSION\" date=\"$DATE\">/" "$METAINFO_FILE"
+    rm -f "${METAINFO_FILE}.bak"
+    echo -e "${GREEN}done${NC}"
+else
+    echo -e "  ${YELLOW}Skipping metainfo.xml (file not found)${NC}"
+fi
+
 echo ""
 echo -e "${GREEN}All files updated to version $VERSION${NC}"
 echo ""
 
-# Verify JSON files are valid
-echo "Validating JSON files..."
+# Verify files are valid
+echo "Validating files..."
 if command -v python3 &> /dev/null; then
     python3 -m json.tool .zenodo.json > /dev/null && echo -e "  .zenodo.json: ${GREEN}valid${NC}"
     python3 -m json.tool codemeta.json > /dev/null && echo -e "  codemeta.json: ${GREEN}valid${NC}"
+    python3 -c "import xml.etree.ElementTree as ET; ET.parse('$METAINFO_FILE')" 2>/dev/null && echo -e "  metainfo.xml: ${GREEN}valid${NC}"
 else
-    echo -e "  ${YELLOW}Skipping JSON validation (python3 not found)${NC}"
+    echo -e "  ${YELLOW}Skipping validation (python3 not found)${NC}"
 fi
 
 echo ""

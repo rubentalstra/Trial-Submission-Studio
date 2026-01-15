@@ -2,10 +2,10 @@
 <component type="desktop-application">
     <id>io.github.rubentalstra.trial-submission-studio</id>
 
-    <name>TSS</name>
-    <summary>CDISC data transformer</summary>
+    <name>Trial Submission Studio</name>
+    <summary>Transform clinical trial data into FDA-compliant CDISC formats</summary>
 
-    <metadata_license>MIT</metadata_license>
+    <metadata_license>CC0-1.0</metadata_license>
     <project_license>MIT</project_license>
 
     <developer id="io.github.rubentalstra">
@@ -35,15 +35,15 @@
 
     <screenshots>
         <screenshot type="default">
-            <image>https://raw.githubusercontent.com/rubentalstra/Trial-Submission-Studio/main/assets/screenshots/home.png</image>
+            <image>https://raw.githubusercontent.com/rubentalstra/Trial-Submission-Studio/refs/heads/main/assets/screenshots/home.png</image>
             <caption>Home view showing study overview and domain status</caption>
         </screenshot>
         <screenshot>
-            <image>https://raw.githubusercontent.com/rubentalstra/Trial-Submission-Studio/main/assets/screenshots/mapping.png</image>
+            <image>https://raw.githubusercontent.com/rubentalstra/Trial-Submission-Studio/refs/heads/main/assets/screenshots/mapping.png</image>
             <caption>Column mapping with confidence scores</caption>
         </screenshot>
         <screenshot>
-            <image>https://raw.githubusercontent.com/rubentalstra/Trial-Submission-Studio/main/assets/screenshots/validation.png</image>
+            <image>https://raw.githubusercontent.com/rubentalstra/Trial-Submission-Studio/refs/heads/main/assets/screenshots/validation.png</image>
             <caption>CDISC validation results</caption>
         </screenshot>
     </screenshots>
@@ -58,6 +58,21 @@
         <binary>trial-submission-studio</binary>
     </provides>
 
+    <categories>
+        <category>Science</category>
+        <category>Office</category>
+        <category>DataVisualization</category>
+    </categories>
+
+    <keywords>
+        <keyword>CDISC</keyword>
+        <keyword>SDTM</keyword>
+        <keyword>clinical trial</keyword>
+        <keyword>FDA</keyword>
+        <keyword>medical</keyword>
+        <keyword>regulatory</keyword>
+    </keywords>
+
     <supports>
         <control>pointing</control>
         <control>keyboard</control>
@@ -66,7 +81,7 @@
     <content_rating type="oars-1.1"/>
 
     <releases>
-        <release version="0.0.1-alpha.11" date="2026-01-15">
+        <release version="0.0.1-alpha.12" date="2026-01-15">
             <description>
                 <p>Alpha release with core SDTM transformation features:</p>
                 <ul>
