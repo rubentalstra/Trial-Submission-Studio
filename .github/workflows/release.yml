@@ -1,0 +1,380 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      build_macos:
+        description: "Build macOS"
+        type: boolean
+        default: true
+      build_linux:
+        description: "Build Linux"
+        type: boolean
+        default: true
+      build_windows:
+        description: "Build Windows"
+        type: boolean
+        default: true
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: 0
+  APP_NAME: trial-submission-studio
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+  id-token: write
+  attestations: write
+  actions: read
+
+jobs:
+  # ============================================================
+  # Prepare Release
+  # ============================================================
+  prepare:
+    name: Prepare
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.VERSION }}
+      build_number: ${{ steps.version.outputs.BUILD_NUMBER }}
+      build_macos: ${{ steps.config.outputs.build_macos }}
+      build_linux: ${{ steps.config.outputs.build_linux }}
+      build_windows: ${{ steps.config.outputs.build_windows }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Extract version
+        id: version
+        run: |
+          VERSION="${GITHUB_REF#refs/tags/}"
+          COMMIT_COUNT=$(git rev-list --count HEAD)
+          BUILD_NUMBER="TSS-${{ github.run_number }}.${COMMIT_COUNT}"
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          echo "BUILD_NUMBER=${BUILD_NUMBER}" >> $GITHUB_OUTPUT
+          echo "Version: ${VERSION}, Build: ${BUILD_NUMBER}"
+
+      - name: Determine platforms
+        id: config
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "build_macos=${{ inputs.build_macos }}" >> $GITHUB_OUTPUT
+            echo "build_linux=${{ inputs.build_linux }}" >> $GITHUB_OUTPUT
+            echo "build_windows=${{ inputs.build_windows }}" >> $GITHUB_OUTPUT
+          else
+            echo "build_macos=true" >> $GITHUB_OUTPUT
+            echo "build_linux=true" >> $GITHUB_OUTPUT
+            echo "build_windows=true" >> $GITHUB_OUTPUT
+          fi
+
+  # ============================================================
+  # macOS Builds
+  # ============================================================
+  build-macos:
+    name: macOS (${{ matrix.arch }})
+    needs: prepare
+    if: needs.prepare.outputs.build_macos == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            runner: macos-latest
+            arch: arm64
+          - target: x86_64-apple-darwin
+            runner: macos-15-intel
+            arch: x86_64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      TARGET: ${{ matrix.target }}
+      TSS_BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release-${{ matrix.target }}
+
+      - name: Build
+        run: ./scripts/build-macos.sh
+
+      - name: Package
+        run: |
+          brew install create-dmg || true
+          ./scripts/package-macos.sh
+
+      - name: Import certificate
+        env:
+          CERT_BASE64: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_P12_BASE64 }}
+          CERT_PASSWORD: ${{ secrets.APPLE_DEVELOPER_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.CI_KEYCHAIN_PASSWORD }}
+        run: |
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security list-keychains -d user -s build.keychain login.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security set-keychain-settings -t 3600 -u build.keychain
+          echo "$CERT_BASE64" | base64 --decode > cert.p12
+          security import cert.p12 -k build.keychain -P "$CERT_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$KEYCHAIN_PASSWORD" build.keychain
+          rm cert.p12
+
+      - name: Sign app
+        env:
+          IDENTITY: ${{ secrets.APPLE_CODESIGN_IDENTITY }}
+        run: |
+          codesign --force --options runtime \
+            --entitlements assets/macos/TrialSubmissionStudio.app/Contents/entitlements.plist \
+            --sign "$IDENTITY" --timestamp "Trial Submission Studio.app"
+
+      - name: Notarize
+        env:
+          APPLE_ID: ${{ secrets.APPLE_NOTARIZATION_APPLE_ID }}
+          APP_PASSWORD: ${{ secrets.APPLE_NOTARIZATION_APP_PASSWORD }}
+          TEAM_ID: ${{ secrets.APPLE_DEVELOPER_TEAM_ID }}
+        run: |
+          ditto -c -k --keepParent "Trial Submission Studio.app" notarize.zip
+          xcrun notarytool submit notarize.zip --apple-id "$APPLE_ID" --password "$APP_PASSWORD" --team-id "$TEAM_ID" --wait --timeout 30m
+          xcrun stapler staple "Trial Submission Studio.app"
+          rm notarize.zip
+
+      - name: Sign DMG
+        env:
+          IDENTITY: ${{ secrets.APPLE_CODESIGN_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_NOTARIZATION_APPLE_ID }}
+          APP_PASSWORD: ${{ secrets.APPLE_NOTARIZATION_APP_PASSWORD }}
+          TEAM_ID: ${{ secrets.APPLE_DEVELOPER_TEAM_ID }}
+        run: |
+          DMG_NAME="${APP_NAME}-${VERSION}-${{ matrix.target }}.dmg"
+          codesign --force --sign "$IDENTITY" --timestamp "$DMG_NAME"
+          xcrun notarytool submit "$DMG_NAME" --apple-id "$APPLE_ID" --password "$APP_PASSWORD" --team-id "$TEAM_ID" --wait --timeout 30m
+          xcrun stapler staple "$DMG_NAME"
+
+      - name: Create archives
+        run: |
+          ditto -c -k --keepParent "Trial Submission Studio.app" "${APP_NAME}-${VERSION}-${{ matrix.target }}.zip"
+          mkdir -p release-tar && cp -R "Trial Submission Studio.app" release-tar/
+          tar -czvf "${APP_NAME}-${VERSION}-${{ matrix.target }}.tar.gz" -C release-tar .
+          rm -rf release-tar
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: macos-${{ matrix.arch }}
+          path: |
+            ${{ env.APP_NAME }}-${{ env.VERSION }}-${{ matrix.target }}.dmg
+            ${{ env.APP_NAME }}-${{ env.VERSION }}-${{ matrix.target }}.zip
+            ${{ env.APP_NAME }}-${{ env.VERSION }}-${{ matrix.target }}.tar.gz
+          retention-days: 7
+
+      - name: Cleanup
+        if: always()
+        run: security delete-keychain build.keychain 2>/dev/null || true
+
+  # ============================================================
+  # Linux Builds
+  # ============================================================
+  build-linux:
+    name: Linux (${{ matrix.arch }})
+    needs: prepare
+    if: needs.prepare.outputs.build_linux == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            runner: ubuntu-latest
+            arch: x86_64
+          - target: aarch64-unknown-linux-gnu
+            runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      TARGET: ${{ matrix.target }}
+      TSS_BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install dependencies
+        uses: awalsh128/cache-apt-pkgs-action@latest
+        with:
+          packages: libgtk-3-dev libxcb-render0-dev libxcb-shape0-dev libxcb-xfixes0-dev libxkbcommon-dev libssl-dev libxdo-dev libfuse2
+          version: 1.1
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release-${{ matrix.target }}
+
+      - name: Build
+        run: ./scripts/build-linux.sh
+
+      - name: Package
+        run: ./scripts/package-linux.sh
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: linux-${{ matrix.arch }}
+          path: |
+            ${{ env.APP_NAME }}-${{ env.VERSION }}-${{ matrix.target }}.tar.gz
+            ${{ env.APP_NAME }}-${{ env.VERSION }}-${{ matrix.target }}.AppImage
+          retention-days: 7
+
+  # ============================================================
+  # Windows Builds
+  # ============================================================
+  build-windows:
+    name: Windows (${{ matrix.arch }})
+    needs: prepare
+    if: needs.prepare.outputs.build_windows == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-pc-windows-msvc
+            runner: windows-latest
+            arch: x86_64
+          - target: aarch64-pc-windows-msvc
+            runner: windows-11-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      TARGET: ${{ matrix.target }}
+      TSS_BUILD_NUMBER: ${{ needs.prepare.outputs.build_number }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Rust
+        uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: release-${{ matrix.target }}
+
+      - name: Build
+        shell: bash
+        run: ./scripts/build-windows.sh
+
+      - name: Check signing
+        id: signing
+        shell: pwsh
+        env:
+          TOKEN: ${{ secrets.SIGNPATH_API_TOKEN }}
+        run: |
+          if ($env:TOKEN) { "available=true" >> $env:GITHUB_OUTPUT }
+          else { "available=false" >> $env:GITHUB_OUTPUT }
+
+      - name: Sign (if available)
+        if: steps.signing.outputs.available == 'true'
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: ${{ secrets.SIGNPATH_PROJECT_SLUG }}
+          signing-policy-slug: ${{ secrets.SIGNPATH_SIGNING_POLICY_SLUG }}
+          artifact-configuration-slug: release-signing
+          github-artifact-id: ${{ github.run_id }}
+          wait-for-completion: true
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $binary = "target/${{ matrix.target }}/release/$env:APP_NAME.exe"
+          $zipName = "$env:APP_NAME-$env:VERSION-${{ matrix.target }}.zip"
+          $exeName = "$env:APP_NAME-$env:VERSION-${{ matrix.target }}.exe"
+          Compress-Archive -Path $binary -DestinationPath $zipName
+          Copy-Item $binary $exeName
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
+        with:
+          name: windows-${{ matrix.arch }}
+          path: |
+            ${{ env.APP_NAME }}-${{ env.VERSION }}-${{ matrix.target }}.zip
+            ${{ env.APP_NAME }}-${{ env.VERSION }}-${{ matrix.target }}.exe
+          retention-days: 7
+
+  # ============================================================
+  # Publish Release
+  # ============================================================
+  publish:
+    name: Publish
+    needs: [ prepare, build-macos, build-linux, build-windows ]
+    if: |
+      always() &&
+      (needs.build-macos.result == 'success' || needs.build-macos.result == 'skipped') &&
+      (needs.build-linux.result == 'success' || needs.build-linux.result == 'skipped') &&
+      (needs.build-windows.result == 'success' || needs.build-windows.result == 'skipped') &&
+      !(needs.build-macos.result == 'skipped' && needs.build-linux.result == 'skipped' && needs.build-windows.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: find artifacts -type f -exec ls -lh {} \; 2>/dev/null || ls -la artifacts/
+
+      - name: Generate attestations
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: "artifacts/*"
+
+      - name: Determine prerelease
+        id: prerelease
+        env:
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          if [[ "$VERSION" == *"-alpha"* ]] || [[ "$VERSION" == *"-beta"* ]] || [[ "$VERSION" == *"-rc"* ]]; then
+            echo "PRERELEASE=true" >> $GITHUB_OUTPUT
+          else
+            echo "PRERELEASE=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "${{ needs.prepare.outputs.version }}"
+          draft: false
+          prerelease: ${{ steps.prerelease.outputs.PRERELEASE }}
+          generate_release_notes: true
+          files: artifacts/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

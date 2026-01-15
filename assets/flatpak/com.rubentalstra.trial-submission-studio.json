@@ -1,0 +1,52 @@
+{
+    "id": "com.rubentalstra.trial-submission-studio",
+    "runtime": "org.freedesktop.Platform",
+    "runtime-version": "24.08",
+    "sdk": "org.freedesktop.Sdk",
+    "sdk-extensions": ["org.freedesktop.Sdk.Extension.rust-stable"],
+    "command": "trial-submission-studio",
+    "finish-args": [
+        "--device=dri",
+        "--share=ipc",
+        "--share=network",
+        "--socket=fallback-x11",
+        "--socket=wayland",
+        "--talk-name=org.freedesktop.Notifications",
+        "--filesystem=home:ro",
+        "--filesystem=xdg-documents",
+        "--filesystem=xdg-download"
+    ],
+    "build-options": {
+        "append-path": "/usr/lib/sdk/rust-stable/bin",
+        "env": {
+            "CARGO_HOME": "/run/build/trial-submission-studio/cargo",
+            "CARGO_REGISTRIES_CRATES_IO_PROTOCOL": "sparse"
+        }
+    },
+    "modules": [
+        {
+            "name": "trial-submission-studio",
+            "buildsystem": "simple",
+            "build-options": {
+                "env": {
+                    "CARGO_HOME": "/run/build/trial-submission-studio/cargo"
+                }
+            },
+            "build-commands": [
+                "cargo --offline fetch --manifest-path Cargo.toml --verbose",
+                "cargo --offline build --release --verbose",
+                "install -Dm755 target/release/trial-submission-studio /app/bin/trial-submission-studio",
+                "install -Dm644 assets/linux/com.rubentalstra.trial-submission-studio.desktop /app/share/applications/com.rubentalstra.trial-submission-studio.desktop",
+                "install -Dm644 assets/linux/com.rubentalstra.trial-submission-studio.metainfo.xml /app/share/metainfo/com.rubentalstra.trial-submission-studio.metainfo.xml",
+                "for size in 16 24 32 48 64 96 128 256 512; do install -Dm644 assets/linux/icons/hicolor/${size}x${size}/apps/com.rubentalstra.trial-submission-studio.png /app/share/icons/hicolor/${size}x${size}/apps/com.rubentalstra.trial-submission-studio.png; done"
+            ],
+            "sources": [
+                {
+                    "type": "dir",
+                    "path": "../.."
+                },
+                "cargo-sources.json"
+            ]
+        }
+    ]
+}
