@@ -338,16 +338,16 @@ jobs:
           upload-artifact: true
 
       - name: Lint manifest
-        run: flatpak-builder-lint --gha-format manifest assets/flatpak/io.github.rubentalstra.trial-submission-studio.json
+        run: flatpak-builder-lint --exceptions --gha-format manifest assets/flatpak/io.github.rubentalstra.trial-submission-studio.json
 
       - name: Lint appstream metadata
-        run: flatpak-builder-lint --gha-format appstream flatpak_app/files/share/metainfo/io.github.rubentalstra.trial-submission-studio.metainfo.xml
+        run: flatpak-builder-lint --exceptions --gha-format appstream flatpak_app/files/share/metainfo/io.github.rubentalstra.trial-submission-studio.metainfo.xml
 
       - name: Lint build directory
-        run: flatpak-builder-lint --gha-format builddir flatpak_app
+        run: flatpak-builder-lint --exceptions --gha-format builddir flatpak_app
 
       - name: Lint repository
-        run: flatpak-builder-lint --gha-format repo repo
+        run: flatpak-builder-lint --exceptions --gha-format repo repo
 
       - name: Save Flathub submission files
         uses: actions/upload-artifact@v6
