@@ -1,7 +1,7 @@
 {
   "title": "Trial Submission Studio",
   "description": "Trial Submission Studio is an open-source desktop application that transforms clinical trial data into FDA-compliant CDISC formats. It provides multi-format output support (XPT V5/V8, Dataset-XML, Define-XML 2.1), intelligent fuzzy column matching with confidence scores, built-in CDISC Controlled Terminology validation, and cross-platform native applications for macOS, Windows, and Linux. All standards are embedded for offline use.",
-  "version": "0.0.1-alpha.13",
+  "version": "0.0.1",
   "upload_type": "software",
   "access_right": "open",
   "license": "mit",
