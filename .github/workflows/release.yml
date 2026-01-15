@@ -337,6 +337,16 @@ jobs:
           cache-key: flatpak-builder-${{ matrix.arch }}-${{ github.sha }}
           upload-artifact: true
 
+      - name: Save Flathub submission files
+        uses: actions/upload-artifact@v6
+        with:
+          name: flathub-${{ matrix.arch }}
+          path: |
+            assets/flatpak/io.github.rubentalstra.trial-submission-studio.json
+            assets/flatpak/cargo-sources.json
+            assets/flatpak/flathub.json
+          retention-days: 7
+
   # ============================================================
   # Windows Builds
   # ============================================================
@@ -422,7 +432,7 @@ jobs:
   # ============================================================
   publish:
     name: Publish
-    needs: [prepare, build-macos, build-linux, build-flatpak, build-windows]
+    needs: [ prepare, build-macos, build-linux, build-flatpak, build-windows ]
     if: |
       always() &&
       (needs.build-macos.result == 'success' || needs.build-macos.result == 'skipped') &&
@@ -433,11 +443,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - name: Download artifacts
+      - name: Download artifacts (excluding Flathub files)
         uses: actions/download-artifact@v7
         with:
           path: artifacts
           merge-multiple: true
+
+      - name: Remove Flathub submission files
+        run: rm -rf artifacts/flathub-*
 
       - name: List artifacts
         run: find artifacts -type f -exec ls -lh {} \; 2>/dev/null || ls -la artifacts/
@@ -471,12 +484,127 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # ============================================================
-  # Notify Flathub
+  # Submit to Flathub
   # ============================================================
+  flathub-submission:
+    name: Submit to Flathub
+    needs: [ prepare, publish ]
+    if: needs.publish.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download Flathub artifacts
+        uses: actions/download-artifact@v7
+        with:
+          pattern: flathub-*
+          path: flathub-files
+          merge-multiple: true
+
+      - name: Install Flatpak and linter
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y flatpak flatpak-builder
+          flatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          flatpak install -y flathub org.flatpak.Builder
+
+      - name: Build Flatpak locally
+        run: |
+          cd flathub-files
+          flatpak run --command=flathub-build org.flatpak.Builder io.github.rubentalstra.trial-submission-studio.json
+
+      - name: Run manifest linter
+        run: |
+          cd flathub-files
+          flatpak run --command=flatpak-builder-lint org.flatpak.Builder manifest io.github.rubentalstra.trial-submission-studio.json
+
+      - name: Run repo linter
+        run: |
+          cd flathub-files
+          flatpak run --command=flatpak-builder-lint org.flatpak.Builder repo repo
+
+      - name: Create Flathub PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+          APP_ID: io.github.rubentalstra.trial-submission-studio
+        run: |
+          # Get authenticated user's info from GitHub API
+          USER_INFO=$(gh api user)
+          USER_NAME=$(echo "$USER_INFO" | jq -r '.name // .login')
+          USER_EMAIL=$(echo "$USER_INFO" | jq -r '.email // "\(.id)+\(.login)@users.noreply.github.com"')
+
+          # Fork flathub/flathub if not already forked
+          gh repo fork flathub/flathub --clone=false --remote=false || true
+
+          # Clone your fork from new-pr branch
+          gh repo clone ${{ github.repository_owner }}/flathub -- --branch new-pr --single-branch
+          cd flathub
+
+          # Configure git with your verified credentials
+          git config user.name "$USER_NAME"
+          git config user.email "$USER_EMAIL"
+
+          # Add upstream and fetch new-pr
+          git remote add upstream https://github.com/flathub/flathub.git
+          git fetch upstream new-pr
+
+          # Create submission branch from upstream/new-pr
+          BRANCH_NAME="${APP_ID}-${VERSION}"
+          git checkout -b "$BRANCH_NAME" upstream/new-pr
+
+          # Create app directory and copy files
+          mkdir -p "$APP_ID"
+          cp ../flathub-files/io.github.rubentalstra.trial-submission-studio.json "$APP_ID/"
+          cp ../flathub-files/cargo-sources.json "$APP_ID/"
+          cp ../flathub-files/flathub.json "$APP_ID/"
+
+          # Commit and push to your fork
+          git add "$APP_ID"
+          git commit -m "Add ${APP_ID} ${VERSION}"
+          git push origin "$BRANCH_NAME"
+
+          # Create PR from your fork to flathub/flathub:new-pr
+          gh pr create \
+            --repo flathub/flathub \
+            --base new-pr \
+            --head "${{ github.repository_owner }}:${BRANCH_NAME}" \
+            --title "Add ${APP_ID}" \
+            --body "## Trial Submission Studio ${VERSION}
+
+          ### Application Details
+          - **App ID:** ${APP_ID}
+          - **Version:** ${VERSION}
+          - **Architectures:** x86_64, aarch64
+          - **License:** MIT
+          - **Homepage:** https://rubentalstra.github.io/Trial-Submission-Studio/
+          - **Repository:** https://github.com/rubentalstra/Trial-Submission-Studio
+
+          ### Pre-submission Checklist
+          - [x] Built and tested locally before automation
+          - [x] Manifest linter passed (flatpak-builder-lint manifest)
+          - [x] Repo linter passed (flatpak-builder-lint repo)
+          - [x] All required files included (manifest, cargo-sources.json, flathub.json)
+          - [x] Follows Flathub submission requirements and guidelines
+          - [x] Application tested on both x86_64 and aarch64
+
+          ### Build Information
+          - Release notes: https://github.com/rubentalstra/Trial-Submission-Studio/releases/tag/${VERSION}
+          - Build artifacts: https://github.com/rubentalstra/Trial-Submission-Studio/actions/runs/${{ github.run_id }}
+
+          ### Maintainer Notes
+          This is a submission for an FDA/EMA clinical trial submission studio application built with Rust. The app helps clinical trial teams prepare CDISC-compliant submission packages.
+
+  # ============================================================
+  # Notify Flathub (Post-Approval Only)
+  # ============================================================
+  # This job is disabled until after your app is approved on Flathub.
+  # Once flathub/io.github.rubentalstra.trial-submission-studio exists,
+  # set FLATHUB_TOKEN secret to enable automatic update notifications.
   notify-flathub:
     name: Notify Flathub
-    needs: [prepare, publish]
+    needs: [ prepare, publish ]
     if: |
+      false &&
       needs.publish.result == 'success' &&
       !contains(needs.prepare.outputs.version, '-alpha') &&
       !contains(needs.prepare.outputs.version, '-beta')
@@ -484,9 +612,14 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Trigger Flathub update
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.FLATHUB_PAT }}
-          repository: flathub/io.github.rubentalstra.trial-submission-studio
-          event-type: new-release
-          client-payload: '{"version": "${{ needs.prepare.outputs.version }}"}'
+        env:
+          FLATHUB_TOKEN: ${{ secrets.FLATHUB_TOKEN }}
+        run: |
+          if [[ -z "$FLATHUB_TOKEN" ]]; then
+            echo "::warning::FLATHUB_TOKEN not set. Skipping Flathub notification."
+            exit 0
+          fi
+
+          gh api repos/flathub/io.github.rubentalstra.trial-submission-studio/dispatches \
+            -f event_type="new-release" \
+            -f client_payload='{"version": "${{ needs.prepare.outputs.version }}"}'

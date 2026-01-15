@@ -16,13 +16,10 @@ ignore = [
     # Impact: Used internally by polars for serialization, not exposed in public APIs
     # Path forward: Upgrade polars when new version removes bincode dependency
     "RUSTSEC-2025-0141",
-    
+
     # RUSTSEC-2024-0436: paste 1.0.15 - unmaintained
     # Transitive: image 0.25.9 -> rav1e 0.8.1 -> paste (macro crate)
     # Impact: Stable macro crate, used only at compile time
     # Path forward: Upgrade rav1e/image when they update macro dependencies
     "RUSTSEC-2024-0436",
 ]
-
-
-
