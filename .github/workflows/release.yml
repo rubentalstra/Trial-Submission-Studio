@@ -331,7 +331,7 @@ jobs:
       - name: Build Flatpak
         uses: flatpak/flatpak-github-actions/flatpak-builder@v6.6
         with:
-          bundle: ${{ env.APP_NAME }}-${{ env.VERSION }}-${{ matrix.arch }}.flatpak
+          bundle: ${{ env.APP_NAME }}-${{ env.VERSION }}.flatpak
           manifest-path: assets/flatpak/io.github.rubentalstra.trial-submission-studio.json
           arch: ${{ matrix.arch }}
           cache-key: flatpak-builder-${{ matrix.arch }}-${{ github.sha }}
