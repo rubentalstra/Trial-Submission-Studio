@@ -2,11 +2,12 @@
 name: Release
 
 on:
-  push:
-    tags:
-      - "v*"
   workflow_dispatch:
     inputs:
+      version:
+        description: "Version tag (e.g., v0.1.0, v0.1.0-alpha.1)"
+        type: string
+        required: true
       build_macos:
         description: "Build macOS"
         type: boolean
@@ -49,40 +50,65 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.VERSION }}
       build_number: ${{ steps.version.outputs.BUILD_NUMBER }}
-      build_macos: ${{ steps.config.outputs.build_macos }}
-      build_linux: ${{ steps.config.outputs.build_linux }}
-      build_flatpak: ${{ steps.config.outputs.build_flatpak }}
-      build_windows: ${{ steps.config.outputs.build_windows }}
+      build_macos: ${{ inputs.build_macos }}
+      build_linux: ${{ inputs.build_linux }}
+      build_flatpak: ${{ inputs.build_flatpak }}
+      build_windows: ${{ inputs.build_windows }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Extract version
-        id: version
+      - name: Validate version
         run: |
-          VERSION="${GITHUB_REF#refs/tags/}"
+          VERSION="${{ inputs.version }}"
+
+          # Check format
+          if [[ ! "$VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+            echo "::error::Version must be in format v0.0.0 or v0.0.0-alpha.1"
+            exit 1
+          fi
+          echo "✓ Version format valid: $VERSION"
+
+          # Check if tag already exists locally
+          if git rev-parse "$VERSION" >/dev/null 2>&1; then
+            echo "::error::Tag $VERSION already exists locally"
+            exit 1
+          fi
+
+          # Check if tag already exists on remote
+          if git ls-remote --tags origin | grep -q "refs/tags/$VERSION$"; then
+            echo "::error::Tag $VERSION already exists on remote"
+            exit 1
+          fi
+          echo "✓ Tag $VERSION is available"
+
+      - name: Create verified tag
+        id: version
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ inputs.version }}"
           COMMIT_COUNT=$(git rev-list --count HEAD)
           BUILD_NUMBER="TSS-${{ github.run_number }}.${COMMIT_COUNT}"
+          SHA=$(git rev-parse HEAD)
+
+          # Create annotated tag via GitHub API (will be verified)
+          gh api repos/${{ github.repository }}/git/tags \
+            -f tag="$VERSION" \
+            -f message="Release $VERSION" \
+            -f object="$SHA" \
+            -f type="commit"
+
+          # Create tag reference
+          gh api repos/${{ github.repository }}/git/refs \
+            -f ref="refs/tags/$VERSION" \
+            -f sha="$SHA"
+
           echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
           echo "BUILD_NUMBER=${BUILD_NUMBER}" >> $GITHUB_OUTPUT
-          echo "Version: ${VERSION}, Build: ${BUILD_NUMBER}"
-
-      - name: Determine platforms
-        id: config
-        run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-            echo "build_macos=${{ inputs.build_macos }}" >> $GITHUB_OUTPUT
-            echo "build_linux=${{ inputs.build_linux }}" >> $GITHUB_OUTPUT
-            echo "build_flatpak=${{ inputs.build_flatpak }}" >> $GITHUB_OUTPUT
-            echo "build_windows=${{ inputs.build_windows }}" >> $GITHUB_OUTPUT
-          else
-            echo "build_macos=true" >> $GITHUB_OUTPUT
-            echo "build_linux=true" >> $GITHUB_OUTPUT
-            echo "build_flatpak=true" >> $GITHUB_OUTPUT
-            echo "build_windows=true" >> $GITHUB_OUTPUT
-          fi
+          echo "✓ Created verified tag: ${VERSION}"
 
   # ============================================================
   # macOS Builds
@@ -419,6 +445,7 @@ jobs:
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ needs.prepare.outputs.version }}
           name: "${{ needs.prepare.outputs.version }}"
           draft: false
           prerelease: ${{ steps.prerelease.outputs.PRERELEASE }}
