@@ -153,7 +153,7 @@ jobs:
       - name: Package
         run: |
           brew install create-dmg || true
-          ./scripts/package-macos.sh
+          SKIP_DMG=1 ./scripts/package-macos.sh
 
       - name: Import certificate
         env:
@@ -189,6 +189,24 @@ jobs:
           xcrun notarytool submit notarize.zip --apple-id "$APPLE_ID" --password "$APP_PASSWORD" --team-id "$TEAM_ID" --wait --timeout 30m
           xcrun stapler staple "Trial Submission Studio.app"
           rm notarize.zip
+
+      - name: Create DMG from signed app
+        run: |
+          DMG_NAME="${APP_NAME}-${VERSION}-${{ matrix.target }}.dmg"
+          APP_DIR="Trial Submission Studio.app"
+          rm -f "$DMG_NAME"
+
+          create-dmg \
+            --volname "Trial Submission Studio" \
+            --volicon "assets/macos/TrialSubmissionStudio.app/Contents/Resources/AppIcon.icns" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "${APP_DIR}" 150 190 \
+            --hide-extension "${APP_DIR}" \
+            --app-drop-link 450 190 \
+            "$DMG_NAME" \
+            "$APP_DIR"
 
       - name: Sign DMG
         env:
@@ -404,7 +422,7 @@ jobs:
   # ============================================================
   publish:
     name: Publish
-    needs: [ prepare, build-macos, build-linux, build-flatpak, build-windows ]
+    needs: [prepare, build-macos, build-linux, build-flatpak, build-windows]
     if: |
       always() &&
       (needs.build-macos.result == 'success' || needs.build-macos.result == 'skipped') &&
@@ -457,7 +475,7 @@ jobs:
   # ============================================================
   notify-flathub:
     name: Notify Flathub
-    needs: [ prepare, publish ]
+    needs: [prepare, publish]
     if: |
       needs.publish.result == 'success' &&
       !contains(needs.prepare.outputs.version, '-alpha') &&

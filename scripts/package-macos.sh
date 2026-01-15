@@ -6,6 +6,7 @@
 #   TARGET - Rust target triple (default: host architecture)
 #   VERSION - Version string (default: from Cargo.toml)
 #   TSS_BUILD_NUMBER - Build number (default: LOCAL.{commits})
+#   SKIP_DMG - Set to 1 to skip DMG creation (useful when DMG needs the signed app bundle)
 
 set -euo pipefail
 
@@ -79,38 +80,43 @@ plutil -lint "$APP_DIR/Contents/Info.plist" || { echo "Error: Invalid Info.plist
 echo ""
 echo "App bundle created: $APP_DIR"
 
-# Create DMG if create-dmg is available
-if command -v create-dmg &> /dev/null; then
-    DMG_NAME="${APP_NAME}-${VERSION}-${TARGET}.dmg"
+# Create DMG if requested and create-dmg is available
+if [[ "${SKIP_DMG:-0}" != "1" ]]; then
+    if command -v create-dmg &> /dev/null; then
+        DMG_NAME="${APP_NAME}-${VERSION}-${TARGET}.dmg"
 
-    echo ""
-    echo "Creating DMG: $DMG_NAME"
+        echo ""
+        echo "Creating DMG: $DMG_NAME"
 
-    # Remove existing DMG
-    rm -f "$DMG_NAME"
+        # Remove existing DMG
+        rm -f "$DMG_NAME"
 
-    create-dmg \
-        --volname "${BUNDLE_NAME}" \
-        --volicon "assets/macos/TrialSubmissionStudio.app/Contents/Resources/AppIcon.icns" \
-        --window-pos 200 120 \
-        --window-size 600 400 \
-        --icon-size 100 \
-        --icon "${BUNDLE_NAME}.app" 150 190 \
-        --hide-extension "${BUNDLE_NAME}.app" \
-        --app-drop-link 450 190 \
-        "$DMG_NAME" \
-        "$APP_DIR" || true
+        create-dmg \
+            --volname "${BUNDLE_NAME}" \
+            --volicon "assets/macos/TrialSubmissionStudio.app/Contents/Resources/AppIcon.icns" \
+            --window-pos 200 120 \
+            --window-size 600 400 \
+            --icon-size 100 \
+            --icon "${BUNDLE_NAME}.app" 150 190 \
+            --hide-extension "${BUNDLE_NAME}.app" \
+            --app-drop-link 450 190 \
+            "$DMG_NAME" \
+            "$APP_DIR" || true
 
-    if [[ -f "$DMG_NAME" ]]; then
-        echo "DMG created: $DMG_NAME"
-        echo "Size: $(du -h "$DMG_NAME" | cut -f1)"
+        if [[ -f "$DMG_NAME" ]]; then
+            echo "DMG created: $DMG_NAME"
+            echo "Size: $(du -h "$DMG_NAME" | cut -f1)"
+        else
+            echo "Warning: DMG creation failed (create-dmg may have returned non-zero)"
+        fi
     else
-        echo "Warning: DMG creation failed (create-dmg may have returned non-zero)"
+        echo ""
+        echo "Note: create-dmg not found, skipping DMG creation"
+        echo "Install with: brew install create-dmg"
     fi
 else
     echo ""
-    echo "Note: create-dmg not found, skipping DMG creation"
-    echo "Install with: brew install create-dmg"
+    echo "Skipping DMG creation (SKIP_DMG=${SKIP_DMG})"
 fi
 
 echo ""
