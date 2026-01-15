@@ -1,5 +1,5 @@
 {
-    "id": "com.rubentalstra.trial-submission-studio",
+    "id": "io.github.rubentalstra.trial-submission-studio",
     "runtime": "org.freedesktop.Platform",
     "runtime-version": "24.08",
     "sdk": "org.freedesktop.Sdk",
@@ -11,7 +11,6 @@
         "--share=network",
         "--socket=fallback-x11",
         "--socket=wayland",
-        "--talk-name=org.freedesktop.Notifications",
         "--filesystem=home:ro",
         "--filesystem=xdg-documents",
         "--filesystem=xdg-download"
@@ -36,9 +35,9 @@
                 "cargo --offline fetch --manifest-path Cargo.toml --verbose",
                 "cargo --offline build --release --verbose",
                 "install -Dm755 target/release/trial-submission-studio /app/bin/trial-submission-studio",
-                "install -Dm644 assets/linux/com.rubentalstra.trial-submission-studio.desktop /app/share/applications/com.rubentalstra.trial-submission-studio.desktop",
-                "install -Dm644 assets/linux/com.rubentalstra.trial-submission-studio.metainfo.xml /app/share/metainfo/com.rubentalstra.trial-submission-studio.metainfo.xml",
-                "for size in 16 24 32 48 64 96 128 256 512; do install -Dm644 assets/linux/icons/hicolor/${size}x${size}/apps/com.rubentalstra.trial-submission-studio.png /app/share/icons/hicolor/${size}x${size}/apps/com.rubentalstra.trial-submission-studio.png; done"
+                "install -Dm644 assets/linux/io.github.rubentalstra.trial-submission-studio.desktop /app/share/applications/io.github.rubentalstra.trial-submission-studio.desktop",
+                "install -Dm644 assets/linux/io.github.rubentalstra.trial-submission-studio.metainfo.xml /app/share/metainfo/io.github.rubentalstra.trial-submission-studio.metainfo.xml",
+                "for size in 16 24 32 48 64 96 128 256 512; do install -Dm644 assets/linux/icons/hicolor/${size}x${size}/apps/io.github.rubentalstra.trial-submission-studio.png /app/share/icons/hicolor/${size}x${size}/apps/io.github.rubentalstra.trial-submission-studio.png; done"
             ],
             "sources": [
                 {

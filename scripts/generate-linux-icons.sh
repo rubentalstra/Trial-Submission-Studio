@@ -12,7 +12,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 SOURCE_SVG="$PROJECT_ROOT/assets/icon.svg"
 OUTPUT_DIR="$PROJECT_ROOT/assets/linux/icons/hicolor"
-ICON_NAME="com.rubentalstra.trial-submission-studio.png"
+ICON_NAME="io.github.rubentalstra.trial-submission-studio.png"
 
 # Verify source exists
 if [[ ! -f "$SOURCE_SVG" ]]; then

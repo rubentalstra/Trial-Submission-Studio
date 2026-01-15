@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Trial Submission Studio
+GenericName=CDISC Data Transformer
+Comment=Transform clinical trial data into FDA-compliant CDISC SDTM formats
+Exec=trial-submission-studio %U
+Icon=io.github.rubentalstra.trial-submission-studio
+Terminal=false
+Categories=Science;Medical;Office;
+Keywords=CDISC;SDTM;clinical;trial;FDA;
+StartupWMClass=io.github.rubentalstra.trial-submission-studio
+StartupNotify=true

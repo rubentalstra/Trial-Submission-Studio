@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
 APP_NAME="trial-submission-studio"
-APP_ID="com.rubentalstra.trial-submission-studio"
+APP_ID="io.github.rubentalstra.trial-submission-studio"
 
 # Determine target architecture
 TARGET="${TARGET:-x86_64-unknown-linux-gnu}"

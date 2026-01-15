@@ -15,7 +15,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 
-APP_ID="com.rubentalstra.trial-submission-studio"
+APP_ID="io.github.rubentalstra.trial-submission-studio"
 MANIFEST="$PROJECT_ROOT/assets/flatpak/${APP_ID}.json"
 CARGO_SOURCES="$PROJECT_ROOT/assets/flatpak/cargo-sources.json"
 

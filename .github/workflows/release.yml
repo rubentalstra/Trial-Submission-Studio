@@ -15,6 +15,10 @@ on:
         description: "Build Linux"
         type: boolean
         default: true
+      build_flatpak:
+        description: "Build Flatpak"
+        type: boolean
+        default: true
       build_windows:
         description: "Build Windows"
         type: boolean
@@ -47,6 +51,7 @@ jobs:
       build_number: ${{ steps.version.outputs.BUILD_NUMBER }}
       build_macos: ${{ steps.config.outputs.build_macos }}
       build_linux: ${{ steps.config.outputs.build_linux }}
+      build_flatpak: ${{ steps.config.outputs.build_flatpak }}
       build_windows: ${{ steps.config.outputs.build_windows }}
     steps:
       - name: Checkout
@@ -70,10 +75,12 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "build_macos=${{ inputs.build_macos }}" >> $GITHUB_OUTPUT
             echo "build_linux=${{ inputs.build_linux }}" >> $GITHUB_OUTPUT
+            echo "build_flatpak=${{ inputs.build_flatpak }}" >> $GITHUB_OUTPUT
             echo "build_windows=${{ inputs.build_windows }}" >> $GITHUB_OUTPUT
           else
             echo "build_macos=true" >> $GITHUB_OUTPUT
             echo "build_linux=true" >> $GITHUB_OUTPUT
+            echo "build_flatpak=true" >> $GITHUB_OUTPUT
             echo "build_windows=true" >> $GITHUB_OUTPUT
           fi
 
@@ -249,6 +256,46 @@ jobs:
           retention-days: 7
 
   # ============================================================
+  # Flatpak Builds
+  # ============================================================
+  build-flatpak:
+    name: Flatpak (${{ matrix.arch }})
+    needs: prepare
+    if: needs.prepare.outputs.build_flatpak == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-latest
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-24.08
+      options: --privileged
+    timeout-minutes: 60
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Generate cargo sources
+        run: |
+          pip install flatpak-cargo-generator
+          flatpak-cargo-generator Cargo.lock -o assets/flatpak/cargo-sources.json
+
+      - name: Build Flatpak
+        uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          bundle: ${{ env.APP_NAME }}-${{ env.VERSION }}-${{ matrix.arch }}.flatpak
+          manifest-path: assets/flatpak/io.github.rubentalstra.trial-submission-studio.json
+          arch: ${{ matrix.arch }}
+          cache-key: flatpak-builder-${{ matrix.arch }}-${{ github.sha }}
+          upload-artifact: true
+
+  # ============================================================
   # Windows Builds
   # ============================================================
   build-windows:
@@ -333,11 +380,12 @@ jobs:
   # ============================================================
   publish:
     name: Publish
-    needs: [ prepare, build-macos, build-linux, build-windows ]
+    needs: [ prepare, build-macos, build-linux, build-flatpak, build-windows ]
     if: |
       always() &&
       (needs.build-macos.result == 'success' || needs.build-macos.result == 'skipped') &&
       (needs.build-linux.result == 'success' || needs.build-linux.result == 'skipped') &&
+      (needs.build-flatpak.result == 'success' || needs.build-flatpak.result == 'skipped') &&
       (needs.build-windows.result == 'success' || needs.build-windows.result == 'skipped') &&
       !(needs.build-macos.result == 'skipped' && needs.build-linux.result == 'skipped' && needs.build-windows.result == 'skipped')
     runs-on: ubuntu-latest
@@ -378,3 +426,24 @@ jobs:
           files: artifacts/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ============================================================
+  # Notify Flathub
+  # ============================================================
+  notify-flathub:
+    name: Notify Flathub
+    needs: [ prepare, publish ]
+    if: |
+      needs.publish.result == 'success' &&
+      !contains(needs.prepare.outputs.version, '-alpha') &&
+      !contains(needs.prepare.outputs.version, '-beta')
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger Flathub update
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.FLATHUB_PAT }}
+          repository: flathub/io.github.rubentalstra.trial-submission-studio
+          event-type: new-release
+          client-payload: '{"version": "${{ needs.prepare.outputs.version }}"}'
