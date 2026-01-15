@@ -11,7 +11,6 @@
 //! and makes it clear what state belongs to which view.
 
 use polars::prelude::DataFrame;
-use tss_submit::ValidationReport;
 
 use super::domain_state::{SuppColumnConfig, SuppOrigin};
 
@@ -65,8 +64,6 @@ pub enum ViewState {
         supp_ui: SuppUiState,
         /// Cached preview DataFrame (computed on demand).
         preview_cache: Option<DataFrame>,
-        /// Cached validation report (computed on demand).
-        validation_cache: Option<ValidationReport>,
     },
 
     /// Export screen.
@@ -98,7 +95,6 @@ impl ViewState {
             preview_ui: PreviewUiState::default(),
             supp_ui: SuppUiState::default(),
             preview_cache: None,
-            validation_cache: None,
         }
     }
 

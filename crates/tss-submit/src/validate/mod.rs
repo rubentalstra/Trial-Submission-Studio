@@ -21,7 +21,7 @@
 //!
 //! // Display issues
 //! for issue in &report.issues {
-//!     println!("[{:?}] {}: {}", issue.severity(), issue.rule_id(), issue.message());
+//!     println!("[{:?}] {}: {}", issue.severity(), issue.category(), issue.message());
 //! }
 //! ```
 

@@ -27,9 +27,7 @@ use iced::widget::container;
 use iced::window;
 use iced::{Element, Size, Subscription, Task, Theme};
 
-use crate::message::{
-    DialogMessage, DomainEditorMessage, ExportMessage, HomeMessage, Message, SettingsCategory,
-};
+use crate::message::{Message, SettingsCategory};
 use crate::state::{AppState, DialogType, Settings, ViewState};
 use crate::theme::clinical_light;
 use crate::view::dialog::update::UpdateState;
@@ -281,15 +279,11 @@ impl App {
             }
 
             Message::ValidationComplete { domain, report } => {
-                if let ViewState::DomainEditor {
-                    domain: current_domain,
-                    validation_cache,
-                    ..
-                } = &mut self.state.view
+                // Store validation in DomainState so it persists across navigation
+                if let Some(study) = &mut self.state.study
+                    && let Some(domain_state) = study.domain_mut(&domain)
                 {
-                    if current_domain == &domain {
-                        *validation_cache = Some(report);
-                    }
+                    domain_state.validation_cache = Some(report);
                 }
                 Task::none()
             }

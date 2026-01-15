@@ -12,6 +12,11 @@ provides:
 - Type-safe message passing
 - Easy customization per use case
 
+## Component Types
+
+1. **Function Components**: Simple functions like `panel()`, `domain_badge()`
+2. **Builder Components**: Chainable structs like `EmptyState`, `PageHeader`
+
 ## Components
 
 ### Layout Components
@@ -176,6 +181,175 @@ let warning = status_badge("3 Issues", Status::Warning);
 let error = status_badge("Required", Status::Error);
 ```
 
+### Feedback Components (Builder Pattern)
+
+#### `EmptyState`
+
+Empty state with icon, title, description, and optional action button.
+
+```rust
+use tss_gui::component::EmptyState;
+use iced_fonts::lucide;
+
+EmptyState::new(lucide::folder_open().size(48), "No Study Loaded")
+.description("Open a study folder to get started")
+.action("Open Folder", Message::OpenFolder)
+.centered()
+.view()
+```
+
+#### `LoadingState`
+
+Loading spinner with title and description.
+
+```rust
+use tss_gui::component::LoadingState;
+
+LoadingState::new("Building Preview")
+.description("Applying mappings and normalization rules...")
+.centered()
+.view()
+```
+
+#### `ErrorState`
+
+Error display with retry option.
+
+```rust
+use tss_gui::component::ErrorState;
+
+ErrorState::new("Export Failed")
+.message( & error_details)
+.retry(Message::RetryExport)
+.centered()
+.view()
+```
+
+#### `NoFilteredResults`
+
+Empty state for filtered/searched lists.
+
+```rust
+use tss_gui::component::NoFilteredResults;
+
+NoFilteredResults::new("No columns match filter")
+.hint("Try adjusting your search")
+.height(150.0)
+.view()
+```
+
+### Header Components (Builder Pattern)
+
+#### `PageHeader`
+
+Page header with back button, badge, title, and metadata.
+
+```rust
+use tss_gui::component::PageHeader;
+
+PageHeader::new("Demographics")
+.back(Message::BackClicked)
+.badge("DM", PRIMARY_500)
+.meta("Rows", "150")
+.meta("Progress", "85%")
+.view()
+```
+
+#### `page_header_simple`
+
+Simple header without metadata.
+
+```rust
+use tss_gui::component::page_header_simple;
+
+page_header_simple("Settings", Some(Message::BackClicked))
+```
+
+### Section Components
+
+#### `SectionCard`
+
+Titled section card with optional icon.
+
+```rust
+use tss_gui::component::SectionCard;
+use iced_fonts::lucide;
+
+SectionCard::new("Variable Info", metadata_content)
+.icon(lucide::info().size(14))
+.view()
+```
+
+#### `panel` / `status_panel`
+
+Panel wrappers for content grouping.
+
+```rust
+use tss_gui::component::{panel, status_panel};
+
+// Basic panel
+panel(content)
+
+// Status panel with border color
+status_panel(content, SUCCESS, Some(SUCCESS_LIGHT))
+```
+
+### Badge Components
+
+#### `domain_badge` / `domain_badge_small`
+
+Domain code badges (e.g., DM, AE, VS).
+
+```rust
+use tss_gui::component::{domain_badge, domain_badge_small};
+
+domain_badge("DM")       // Standard size
+domain_badge_small("AE") // Compact size
+```
+
+#### `core_badge` / `core_badge_if_important`
+
+CDISC core designation badges (Req/Exp/Perm).
+
+```rust
+use tss_gui::component::{core_badge, core_badge_if_important};
+use tss_model::sdtm::CoreDesignation;
+
+core_badge(CoreDesignation::Required)   // Always shows "Req" in red
+core_badge_if_important(designation)    // Only shows if Required/Expected
+```
+
+### List Components (Builder Pattern)
+
+#### `SelectableRow`
+
+Selectable row for master lists with hover/selection states.
+
+```rust
+use tss_gui::component::SelectableRow;
+
+SelectableRow::new("STUDYID", Message::Selected(0))
+.secondary("Study Identifier")
+.leading(lucide::check().size(12).color(SUCCESS))
+.trailing(core_badge(CoreDesignation::Required))
+.selected(idx == selected_idx)
+.view()
+```
+
+#### `DomainListItem`
+
+Specialized domain list item for home view.
+
+```rust
+use tss_gui::component::DomainListItem;
+
+DomainListItem::new("DM", "Demographics", Message::DomainClicked("DM".into()))
+.row_count(150)
+.complete(true)
+.touched(true)
+.view()
+```
+
 #### `data_table`
 
 Paginated data table.
@@ -252,11 +426,33 @@ let colored = lucide::check().size(16).color(SUCCESS);
 
 ## Theme Integration
 
-All components use the Professional Clinical theme from `crate::theme`:
+All components use the theme constants from `crate::theme`:
 
-- **Colors**: `palette::PRIMARY_500`, `palette::GRAY_600`, etc.
-- **Spacing**: `spacing::SPACING_MD`, `spacing::BORDER_RADIUS_SM`
-- **Typography**: `typography::FONT_SIZE_BODY`
-- **Styles**: `button_primary`, `container_card`, `text_input_default`
+- **Colors**: `PRIMARY_500`, `GRAY_600`, `SUCCESS`, `WARNING`, `ERROR`, etc.
+- **Spacing**: `SPACING_SM`, `SPACING_MD`, `SPACING_LG`, `SPACING_XL`
+- **Border Radius**: `BORDER_RADIUS_SM`, `BORDER_RADIUS_MD`
+- **Button Styles**: `button_primary`, `button_secondary`
 
 See `docs/05-theming.md` for the complete style guide.
+
+## File Structure
+
+```
+component/
+├── mod.rs              # Exports all components
+├── master_detail.rs    # Split pane layout
+├── sidebar.rs          # Vertical navigation
+├── tab_bar.rs          # Horizontal tabs
+├── modal.rs            # Modal dialogs
+├── progress_modal.rs   # Progress overlays
+├── form_field.rs       # Form inputs
+├── search_box.rs       # Search with clear
+├── status_badge.rs     # Status indicators
+├── data_table.rs       # Paginated tables
+├── empty_state.rs      # EmptyState, LoadingState, ErrorState
+├── section_card.rs     # SectionCard, panel, status_panel
+├── domain_badge.rs     # Domain code badges
+├── core_badge.rs       # Core designation badges
+├── selectable_row.rs   # SelectableRow, DomainListItem
+└── page_header.rs      # PageHeader builder
+```

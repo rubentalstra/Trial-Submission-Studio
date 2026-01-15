@@ -22,7 +22,10 @@ use iced::{Alignment, Border, Element, Length, Theme};
 use iced_fonts::lucide;
 use polars::prelude::AnyValue;
 
-use crate::component::master_detail_with_pinned_header;
+use crate::component::{
+    DetailHeader, EmptyState, FilterToggle, MetadataCard, NoFilteredResults, TextField,
+    master_detail_with_pinned_header,
+};
 use crate::message::domain_editor::SuppMessage;
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{
@@ -30,18 +33,11 @@ use crate::state::{
     SuppUiState, ViewState,
 };
 use crate::theme::{
-    BORDER_RADIUS_SM, ERROR, GRAY_100, GRAY_300, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800,
-    GRAY_900, PRIMARY_100, PRIMARY_500, PRIMARY_600, PRIMARY_700, SPACING_LG, SPACING_MD,
-    SPACING_SM, SPACING_XL, SPACING_XS, SUCCESS, WARNING, WHITE,
+    BORDER_RADIUS_SM, GRAY_100, GRAY_300, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800,
+    MASTER_WIDTH, MAX_CHARS_SHORT_LABEL, MAX_CHARS_VARIABLE_NAME, PRIMARY_100, PRIMARY_500,
+    PRIMARY_600, PRIMARY_700, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS, SUCCESS, WARNING,
+    WHITE,
 };
-
-// =============================================================================
-// CONSTANTS
-// =============================================================================
-
-const MASTER_WIDTH: f32 = 300.0;
-const QNAM_MAX_LEN: usize = 8;
-const QLABEL_MAX_LEN: usize = 40;
 
 // =============================================================================
 // MAIN SUPP TAB VIEW
@@ -101,7 +97,7 @@ pub fn view_supp_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Element<'
         .collect();
 
     // Build master header (pinned at top)
-    let master_header = build_master_header_pinned(domain_code, supp_ui, filtered.len());
+    let master_header = build_master_header_pinned(supp_ui, filtered.len());
 
     // Build master content (scrollable column list)
     let master_content = build_master_content(&filtered, domain, supp_ui);
@@ -117,20 +113,8 @@ pub fn view_supp_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Element<'
 // MASTER PANEL: HEADER (PINNED)
 // =============================================================================
 
-/// Left panel header: title, search, filters, and stats (pinned at top).
-fn build_master_header_pinned<'a>(
-    domain_code: &'a str,
-    ui: &'a SuppUiState,
-    filtered_count: usize,
-) -> Element<'a, Message> {
-    let title = format!("SUPP{}", domain_code);
-
-    // Title row
-    let title_row = text(title).size(16).color(GRAY_900).font(iced::Font {
-        weight: iced::font::Weight::Semibold,
-        ..Default::default()
-    });
-
+/// Left panel header: search, filters, and stats (pinned at top).
+fn build_master_header_pinned(ui: &'_ SuppUiState, filtered_count: usize) -> Element<'_, Message> {
     // Search box
     let search = text_input("Search columns...", &ui.search_filter)
         .on_input(|s| {
@@ -151,10 +135,8 @@ fn build_master_header_pinned<'a>(
     .align_y(Alignment::Center);
 
     column![
-        title_row,
-        Space::new().height(SPACING_SM),
         search,
-        Space::new().height(SPACING_SM),
+        Space::new().height(SPACING_XS),
         filters,
         Space::new().height(SPACING_SM),
         stats,
@@ -176,18 +158,10 @@ fn build_master_content<'a>(
     ui: &'a SuppUiState,
 ) -> Element<'a, Message> {
     if filtered.is_empty() {
-        return container(
-            column![
-                lucide::search_x().size(32).color(GRAY_400),
-                Space::new().height(SPACING_SM),
-                text("No columns match filter").size(13).color(GRAY_500),
-            ]
-            .align_x(Alignment::Center),
-        )
-        .width(Length::Fill)
-        .padding(SPACING_LG)
-        .center_x(Length::Shrink)
-        .into();
+        return NoFilteredResults::new("No columns match filter")
+            .hint("Try adjusting your search or filter")
+            .height(120.0)
+            .view();
     }
 
     // Build column items
@@ -205,59 +179,42 @@ fn build_master_content<'a>(
 }
 
 fn build_filter_buttons(current: SuppFilterMode) -> Element<'static, Message> {
-    let filters = [
-        (SuppFilterMode::All, "All"),
-        (SuppFilterMode::Pending, "Pending"),
-        (SuppFilterMode::Included, "SUPP"),
-        (SuppFilterMode::Skipped, "Skip"),
-    ];
-
-    let buttons: Vec<Element<'static, Message>> = filters
-        .iter()
-        .map(|(mode, label)| {
-            let is_selected = current == *mode;
-            let mode_val = *mode;
-            let label_str = *label;
-
-            button(
-                text(label_str)
-                    .size(11)
-                    .color(if is_selected { PRIMARY_500 } else { GRAY_600 }),
-            )
-            .on_press(Message::DomainEditor(DomainEditorMessage::Supp(
-                SuppMessage::FilterModeChanged(mode_val),
+    row![
+        FilterToggle::new(
+            "All",
+            current == SuppFilterMode::All,
+            Message::DomainEditor(DomainEditorMessage::Supp(SuppMessage::FilterModeChanged(
+                SuppFilterMode::All
             )))
-            .padding([4.0, 8.0])
-            .style(move |_: &Theme, _status| {
-                if is_selected {
-                    iced::widget::button::Style {
-                        background: Some(PRIMARY_100.into()),
-                        text_color: PRIMARY_500,
-                        border: Border {
-                            color: PRIMARY_500,
-                            width: 1.0,
-                            radius: BORDER_RADIUS_SM.into(),
-                        },
-                        ..Default::default()
-                    }
-                } else {
-                    iced::widget::button::Style {
-                        background: Some(WHITE.into()),
-                        text_color: GRAY_600,
-                        border: Border {
-                            color: GRAY_300,
-                            width: 1.0,
-                            radius: BORDER_RADIUS_SM.into(),
-                        },
-                        ..Default::default()
-                    }
-                }
-            })
-            .into()
-        })
-        .collect();
-
-    row(buttons).spacing(4.0).into()
+        )
+        .view(),
+        FilterToggle::new(
+            "Pending",
+            current == SuppFilterMode::Pending,
+            Message::DomainEditor(DomainEditorMessage::Supp(SuppMessage::FilterModeChanged(
+                SuppFilterMode::Pending
+            )))
+        )
+        .view(),
+        FilterToggle::new(
+            "SUPP",
+            current == SuppFilterMode::Included,
+            Message::DomainEditor(DomainEditorMessage::Supp(SuppMessage::FilterModeChanged(
+                SuppFilterMode::Included
+            )))
+        )
+        .view(),
+        FilterToggle::new(
+            "Skip",
+            current == SuppFilterMode::Skipped,
+            Message::DomainEditor(DomainEditorMessage::Supp(SuppMessage::FilterModeChanged(
+                SuppFilterMode::Skipped
+            )))
+        )
+        .view(),
+    ]
+    .spacing(SPACING_XS)
+    .into()
 }
 
 fn build_column_item(
@@ -334,23 +291,13 @@ fn build_detail_panel(
 }
 
 fn build_no_selection_state() -> Element<'static, Message> {
-    container(
-        column![
-            lucide::mouse_pointer_click().size(48).color(GRAY_400),
-            Space::new().height(SPACING_LG),
-            text("Select a Column").size(18).color(GRAY_700),
-            Space::new().height(SPACING_SM),
-            text("Click on a column in the list to configure its SUPP settings")
-                .size(13)
-                .color(GRAY_500),
-        ]
-        .align_x(Alignment::Center),
+    EmptyState::new(
+        lucide::mouse_pointer_click().size(48).color(GRAY_400),
+        "Select a Column",
     )
-    .width(Length::Fill)
-    .height(Length::Fill)
-    .center_x(Length::Shrink)
-    .center_y(Length::Shrink)
-    .into()
+    .description("Click on a column in the list to configure its SUPP settings")
+    .centered()
+    .view()
 }
 
 // =============================================================================
@@ -375,19 +322,19 @@ fn build_pending_view(
     // Action buttons
     let actions = build_pending_actions(domain_code);
 
-    scrollable(
-        column![
-            header,
-            Space::new().height(SPACING_LG),
-            sample_data,
-            Space::new().height(SPACING_LG),
-            fields,
-            Space::new().height(SPACING_XL),
-            actions,
-        ]
-        .padding(SPACING_LG)
-        .width(Length::Fill),
-    )
+    // Consistent layout matching mapping/normalization/validation
+    scrollable(column![
+        header,
+        Space::new().height(SPACING_MD),
+        rule::horizontal(1),
+        Space::new().height(SPACING_MD),
+        sample_data,
+        Space::new().height(SPACING_LG),
+        fields,
+        Space::new().height(SPACING_LG),
+        actions,
+        Space::new().height(SPACING_MD),
+    ])
     .height(Length::Fill)
     .into()
 }
@@ -478,19 +425,19 @@ fn build_included_view(
     // Actions
     let actions = build_included_actions();
 
-    scrollable(
-        column![
-            header,
-            Space::new().height(SPACING_LG),
-            sample_data,
-            Space::new().height(SPACING_LG),
-            summary,
-            Space::new().height(SPACING_XL),
-            actions,
-        ]
-        .padding(SPACING_LG)
-        .width(Length::Fill),
-    )
+    // Consistent layout matching mapping/normalization/validation
+    scrollable(column![
+        header,
+        Space::new().height(SPACING_MD),
+        rule::horizontal(1),
+        Space::new().height(SPACING_MD),
+        sample_data,
+        Space::new().height(SPACING_LG),
+        summary,
+        Space::new().height(SPACING_LG),
+        actions,
+        Space::new().height(SPACING_MD),
+    ])
     .height(Length::Fill)
     .into()
 }
@@ -517,14 +464,13 @@ fn build_readonly_summary(config: &SuppColumnConfig) -> Element<'static, Message
             ]
             .align_y(Alignment::Center),
             Space::new().height(SPACING_MD),
-            // Fields summary
-            build_summary_row("QNAM", &qnam),
-            Space::new().height(SPACING_SM),
-            build_summary_row("QLABEL", &qlabel),
-            Space::new().height(SPACING_SM),
-            build_summary_row("QORIG", &qorig),
-            Space::new().height(SPACING_SM),
-            build_summary_row("QEVAL", &qeval),
+            // Fields summary using MetadataCard
+            MetadataCard::new()
+                .row("QNAM", qnam)
+                .row("QLABEL", qlabel)
+                .row("QORIG", qorig)
+                .row("QEVAL", qeval)
+                .view(),
         ]
         .padding(SPACING_MD),
     )
@@ -538,24 +484,6 @@ fn build_readonly_summary(config: &SuppColumnConfig) -> Element<'static, Message
         ..Default::default()
     })
     .width(Length::Fill)
-    .into()
-}
-
-fn build_summary_row(label: &str, value: &str) -> Element<'static, Message> {
-    let label_str = label.to_string();
-    let value_str = value.to_string();
-
-    row![
-        text(label_str)
-            .size(12)
-            .color(GRAY_600)
-            .width(Length::Fixed(60.0)),
-        text(value_str).size(13).color(GRAY_800).font(iced::Font {
-            weight: iced::font::Weight::Medium,
-            ..Default::default()
-        }),
-    ]
-    .align_y(Alignment::Center)
     .into()
 }
 
@@ -683,21 +611,21 @@ fn build_edit_view(
     // Actions
     let actions = build_edit_actions();
 
-    scrollable(
-        column![
-            header,
-            Space::new().height(SPACING_MD),
-            edit_info,
-            Space::new().height(SPACING_LG),
-            sample_data,
-            Space::new().height(SPACING_LG),
-            fields,
-            Space::new().height(SPACING_XL),
-            actions,
-        ]
-        .padding(SPACING_LG)
-        .width(Length::Fill),
-    )
+    // Consistent layout matching mapping/normalization/validation
+    scrollable(column![
+        header,
+        Space::new().height(SPACING_MD),
+        rule::horizontal(1),
+        Space::new().height(SPACING_MD),
+        edit_info,
+        Space::new().height(SPACING_LG),
+        sample_data,
+        Space::new().height(SPACING_LG),
+        fields,
+        Space::new().height(SPACING_LG),
+        actions,
+        Space::new().height(SPACING_MD),
+    ])
     .height(Length::Fill)
     .into()
 }
@@ -802,15 +730,12 @@ fn build_skipped_view(
     })
     .width(Length::Fill);
 
-    // Action - Add to SUPP instead
-    let supp_name = format!("SUPP{}", domain_code);
+    // Action - Undo skip (returns to pending state)
     let action = button(
         row![
-            lucide::plus().size(16).color(PRIMARY_500),
+            lucide::rotate_ccw().size(14).color(PRIMARY_500),
             Space::new().width(SPACING_SM),
-            text(format!("Add to {} instead", supp_name))
-                .size(14)
-                .color(PRIMARY_500),
+            text("Undo Skip").size(14).color(PRIMARY_500),
         ]
         .align_y(Alignment::Center),
     )
@@ -835,19 +760,19 @@ fn build_skipped_view(
         }
     });
 
-    scrollable(
-        column![
-            header,
-            Space::new().height(SPACING_LG),
-            sample_data,
-            Space::new().height(SPACING_LG),
-            skip_message,
-            Space::new().height(SPACING_XL),
-            action,
-        ]
-        .padding(SPACING_LG)
-        .width(Length::Fill),
-    )
+    // Consistent layout matching mapping/normalization/validation
+    scrollable(column![
+        header,
+        Space::new().height(SPACING_MD),
+        rule::horizontal(1),
+        Space::new().height(SPACING_MD),
+        sample_data,
+        Space::new().height(SPACING_LG),
+        skip_message,
+        Space::new().height(SPACING_LG),
+        action,
+        Space::new().height(SPACING_MD),
+    ])
     .height(Length::Fill)
     .into()
 }
@@ -860,31 +785,9 @@ fn build_detail_header(col_name: &str, domain_code: &str) -> Element<'static, Me
     let col_display = col_name.to_string();
     let target = format!("SUPP{}", domain_code);
 
-    column![
-        text("Configure SUPP Variable")
-            .size(18)
-            .color(GRAY_900)
-            .font(iced::Font {
-                weight: iced::font::Weight::Semibold,
-                ..Default::default()
-            }),
-        Space::new().height(4.0),
-        row![
-            text("Source:").size(13).color(GRAY_500),
-            Space::new().width(SPACING_XS),
-            text(col_display).size(13).color(GRAY_800).font(iced::Font {
-                weight: iced::font::Weight::Semibold,
-                ..Default::default()
-            }),
-        ],
-        Space::new().height(2.0),
-        row![
-            text("Target:").size(13).color(GRAY_500),
-            Space::new().width(SPACING_XS),
-            text(target).size(13).color(GRAY_600),
-        ],
-    ]
-    .into()
+    DetailHeader::new("Configure SUPP Variable")
+        .subtitle(format!("Source: {} → {}", col_display, target))
+        .view()
 }
 
 fn build_sample_data(domain: &DomainState, col_name: &str) -> Element<'static, Message> {
@@ -943,121 +846,52 @@ fn build_editable_fields(
     qnam_conflict_error: Option<String>,
 ) -> Element<'static, Message> {
     // QNAM field (required) - check empty first, then conflict
-    let qnam_error = if config.qnam.trim().is_empty() {
+    let qnam_error: Option<String> = if config.qnam.trim().is_empty() {
         Some("QNAM is required".to_string())
     } else {
         qnam_conflict_error
     };
-    let qnam_field = build_text_field(
-        "QNAM *",
-        "Qualifier name (max 8 chars)",
-        &config.qnam,
-        QNAM_MAX_LEN,
-        qnam_error,
-        true,
-        |v| {
-            Message::DomainEditor(DomainEditorMessage::Supp(SuppMessage::QnamChanged(
-                v.to_uppercase(),
-            )))
-        },
-    );
+    let qnam_field = TextField::new("QNAM", &config.qnam, "Qualifier name (max 8 chars)", |v| {
+        Message::DomainEditor(DomainEditorMessage::Supp(SuppMessage::QnamChanged(
+            v.to_uppercase(),
+        )))
+    })
+    .max_length(MAX_CHARS_VARIABLE_NAME)
+    .required(true)
+    .error(qnam_error)
+    .view();
 
     // QLABEL field (required) - validate empty
-    let qlabel_error = if config.qlabel.trim().is_empty() {
+    let qlabel_error: Option<String> = if config.qlabel.trim().is_empty() {
         Some("QLABEL is required".to_string())
     } else {
         None
     };
-    let qlabel_field = build_text_field(
-        "QLABEL *",
-        "Describe what this value represents...",
+    let qlabel_field = TextField::new(
+        "QLABEL",
         &config.qlabel,
-        QLABEL_MAX_LEN,
-        qlabel_error,
-        true,
+        "Describe what this value represents...",
         |v| Message::DomainEditor(DomainEditorMessage::Supp(SuppMessage::QlabelChanged(v))),
-    );
+    )
+    .max_length(MAX_CHARS_SHORT_LABEL)
+    .required(true)
+    .error(qlabel_error)
+    .view();
 
     // QORIG picker
     let qorig_field = build_origin_picker(config.qorig);
 
     // QEVAL field (optional)
     let qeval_str = config.qeval.as_deref().unwrap_or("");
-    let qeval_field = build_text_field(
-        "QEVAL",
-        "Evaluator (e.g., INVESTIGATOR)",
-        qeval_str,
-        40,
-        None,
-        false,
-        |v| Message::DomainEditor(DomainEditorMessage::Supp(SuppMessage::QevalChanged(v))),
-    );
+    let qeval_field = TextField::new("QEVAL", qeval_str, "Evaluator (e.g., INVESTIGATOR)", |v| {
+        Message::DomainEditor(DomainEditorMessage::Supp(SuppMessage::QevalChanged(v)))
+    })
+    .max_length(40)
+    .view();
 
     column![qnam_field, qlabel_field, qorig_field, qeval_field,]
         .spacing(SPACING_MD)
         .into()
-}
-
-fn build_text_field<F>(
-    label: &'static str,
-    placeholder: &'static str,
-    value: &str,
-    max_len: usize,
-    error: Option<String>,
-    _is_required: bool,
-    on_change: F,
-) -> Element<'static, Message>
-where
-    F: 'static + Fn(String) -> Message,
-{
-    let char_count = value.len();
-    let is_over = char_count > max_len;
-    let has_error = error.is_some() || is_over;
-
-    let error_msg: Element<'static, Message> = if let Some(err) = error {
-        row![
-            lucide::circle_alert().size(12).color(ERROR),
-            Space::new().width(4.0),
-            text(err).size(11).color(ERROR),
-        ]
-        .into()
-    } else {
-        Space::new().height(0.0).into()
-    };
-
-    let count_display = format!("{}/{}", char_count, max_len);
-
-    column![
-        row![
-            text(label).size(12).color(GRAY_600),
-            Space::new().width(Length::Fill),
-            text(count_display)
-                .size(11)
-                .color(if is_over { ERROR } else { GRAY_400 }),
-        ],
-        Space::new().height(4.0),
-        text_input(placeholder, value)
-            .on_input(on_change)
-            .padding([10.0, 12.0])
-            .size(14)
-            .style(move |_: &Theme, _status| {
-                let border_color = if has_error { ERROR } else { GRAY_300 };
-                iced::widget::text_input::Style {
-                    background: WHITE.into(),
-                    border: Border {
-                        color: border_color,
-                        width: 1.0,
-                        radius: BORDER_RADIUS_SM.into(),
-                    },
-                    icon: GRAY_500,
-                    placeholder: GRAY_400,
-                    value: GRAY_900,
-                    selection: PRIMARY_100,
-                }
-            }),
-        error_msg,
-    ]
-    .into()
 }
 
 fn build_origin_picker(current: SuppOrigin) -> Element<'static, Message> {
@@ -1131,30 +965,18 @@ fn check_qnam_conflict(domain: &DomainState, current_col: &str, qnam: &str) -> O
 // =============================================================================
 
 fn view_all_mapped_state(domain_code: &str) -> Element<'static, Message> {
-    let msg1 = format!(
-        "All source columns are mapped to {} variables.",
+    let description = format!(
+        "All source columns are mapped to {} variables. No SUPP configuration needed.",
         domain_code
     );
 
-    container(
-        column![
-            lucide::circle_check().size(48).color(SUCCESS),
-            Space::new().height(SPACING_LG),
-            text("All Columns Mapped").size(18).color(GRAY_700),
-            Space::new().height(SPACING_SM),
-            text(msg1).size(13).color(GRAY_500),
-            Space::new().height(4.0),
-            text("No SUPP configuration needed.")
-                .size(13)
-                .color(GRAY_500),
-        ]
-        .align_x(Alignment::Center),
+    EmptyState::new(
+        lucide::circle_check().size(48).color(SUCCESS),
+        "All Columns Mapped",
     )
-    .width(Length::Fill)
-    .height(Length::Fill)
-    .center_x(Length::Shrink)
-    .center_y(Length::Shrink)
-    .into()
+    .description(description)
+    .centered()
+    .view()
 }
 
 // =============================================================================

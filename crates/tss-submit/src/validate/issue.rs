@@ -96,26 +96,6 @@ pub enum Issue {
 }
 
 impl Issue {
-    /// Rule ID for this issue type.
-    pub fn rule_id(&self) -> &'static str {
-        match self {
-            Issue::RequiredMissing { .. } => "SD0056",
-            Issue::RequiredEmpty { .. } => "SD0002",
-            Issue::ExpectedMissing { .. } => "SD0057",
-            Issue::IdentifierNull { .. } => "SD0002",
-            Issue::InvalidDate { .. } => "SD0003",
-            Issue::TextTooLong { .. } => "SD0017",
-            Issue::DataTypeMismatch { .. } => "SD0055",
-            Issue::DuplicateSequence { .. } => "SD0005",
-            Issue::CtViolation {
-                extensible: false, ..
-            } => "CT2001",
-            Issue::CtViolation {
-                extensible: true, ..
-            } => "CT2002",
-        }
-    }
-
     /// Variable name (all issues have one).
     pub fn variable(&self) -> &str {
         match self {

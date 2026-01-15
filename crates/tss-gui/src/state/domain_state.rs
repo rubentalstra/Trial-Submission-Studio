@@ -10,7 +10,7 @@ use polars::prelude::{DataFrame, PlSmallStr};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use tss_submit::MappingState;
-use tss_submit::{NormalizationPipeline, infer_normalization_rules};
+use tss_submit::{NormalizationPipeline, Severity, ValidationReport, infer_normalization_rules};
 
 // =============================================================================
 // SUPP CONFIGURATION
@@ -198,8 +198,8 @@ impl DomainSource {
 ///   the SDTM domain metadata when the domain is created. It defines what
 ///   transformations will be applied to each variable during export.
 ///
-/// - **Preview, validation, and transform results** are computed on demand,
-///   not stored here. This keeps state simple and avoids cache invalidation.
+/// - **Validation cache persists across navigation** - Stored here so it survives
+///   view changes. Use `validation_summary()` for quick stats.
 ///
 /// - **Mapping state is from `tss_map`** - The core mapping logic lives in the
 ///   `tss_map` crate. This struct just holds the state.
@@ -213,9 +213,9 @@ impl DomainSource {
 /// let summary = domain.mapping.summary();
 /// println!("Mapped: {}/{}", summary.mapped, summary.total_variables);
 ///
-/// // Access normalization rules
-/// for rule in &domain.normalization.rules {
-///     println!("{}: {:?}", rule.target_variable, rule.transform_type);
+/// // Check validation (if run)
+/// if let Some((warnings, errors)) = domain.validation_summary() {
+///     println!("Issues: {} warnings, {} errors", warnings, errors);
 /// }
 /// ```
 #[derive(Clone)]
@@ -233,6 +233,11 @@ pub struct DomainState {
     /// SUPP configuration for unmapped columns.
     /// Key is the source column name.
     pub supp_config: HashMap<String, SuppColumnConfig>,
+
+    /// Cached validation report.
+    /// Stored at domain level so it persists across view navigation.
+    /// None = validation not yet run, Some = cached results.
+    pub validation_cache: Option<ValidationReport>,
 }
 
 impl DomainState {
@@ -250,7 +255,33 @@ impl DomainState {
             mapping,
             normalization,
             supp_config: HashMap::new(),
+            validation_cache: None,
         }
+    }
+
+    /// Get validation summary as (warnings, errors) count.
+    ///
+    /// Returns `None` if validation hasn't been run yet.
+    /// Returns `Some((warnings, errors))` from cached validation report.
+    pub fn validation_summary(&self) -> Option<(usize, usize)> {
+        self.validation_cache.as_ref().map(|report| {
+            let warnings = report
+                .issues
+                .iter()
+                .filter(|i| matches!(i.severity(), Severity::Warning))
+                .count();
+            let errors = report
+                .issues
+                .iter()
+                .filter(|i| matches!(i.severity(), Severity::Error | Severity::Reject))
+                .count();
+            (warnings, errors)
+        })
+    }
+
+    /// Clear validation cache (call when mapping/normalization changes).
+    pub fn invalidate_validation(&mut self) {
+        self.validation_cache = None;
     }
 
     /// Get display name: "Demographics" or fallback to code "DM".

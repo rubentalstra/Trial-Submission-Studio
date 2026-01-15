@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- ═══════════════════════════════════════════════════════════════════
+         BUNDLE IDENTIFICATION
+         ═══════════════════════════════════════════════════════════════════ -->
+
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+
+    <key>CFBundleIdentifier</key>
+    <string>com.rubentalstra.trial-submission-studio</string>
+
+    <key>CFBundleName</key>
+    <string>Trial Submission Studio</string>
+
+    <key>CFBundleDisplayName</key>
+    <string>Trial Submission Studio</string>
+
+    <key>CFBundleExecutable</key>
+    <string>trial-submission-studio</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         VERSION INFORMATION
+         ═══════════════════════════════════════════════════════════════════ -->
+
+    <key>CFBundleVersion</key>
+    <string>${BUILD_VERSION}</string>
+
+    <key>CFBundleShortVersionString</key>
+    <string>${MARKETING_VERSION}</string>
+
+    <key>CFBundleGetInfoString</key>
+    <string>Trial Submission Studio ${MARKETING_VERSION}, build ${BUILD_VERSION}. Copyright Ruben Talstra, (c) 2024-2026</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         BUNDLE METADATA
+         ═══════════════════════════════════════════════════════════════════ -->
+
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+
+    <key>CFBundleSignature</key>
+    <string>????</string>
+
+    <key>CFBundleIconFile</key>
+    <string>AppIcon</string>
+
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright © 2024-2026 Ruben Talstra. All rights reserved.</string>
+
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+
+    <key>CFBundleSupportedPlatforms</key>
+    <array>
+        <string>MacOSX</string>
+    </array>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         SYSTEM REQUIREMENTS & DISPLAY
+         ═══════════════════════════════════════════════════════════════════ -->
+
+    <key>LSMinimumSystemVersion</key>
+    <string>11.0.0</string>
+
+    <key>NSHighResolutionCapable</key>
+    <true/>
+
+    <key>NSSupportsAutomaticGraphicsSwitching</key>
+    <true/>
+
+    <key>LSArchitecturePriority</key>
+    <array>
+        <string>arm64</string>
+        <string>x86_64</string>
+    </array>
+
+    <key>LSRequiresNativeExecution</key>
+    <true/>
+
+    <!-- Support system dark/light mode (don't force Aqua appearance) -->
+    <key>NSRequiresAquaSystemAppearance</key>
+    <false/>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         FILE ACCESS PERMISSIONS (TCC - Required for file dialogs)
+         These descriptions are shown when the app requests folder access
+         ═══════════════════════════════════════════════════════════════════ -->
+
+    <key>NSDesktopFolderUsageDescription</key>
+    <string>Trial Submission Studio needs access to your Desktop to import and export clinical trial data files.</string>
+
+    <key>NSDocumentsFolderUsageDescription</key>
+    <string>Trial Submission Studio needs access to your Documents folder to import and export clinical trial data files.</string>
+
+    <key>NSDownloadsFolderUsageDescription</key>
+    <string>Trial Submission Studio needs access to your Downloads folder to export clinical trial output files.</string>
+
+    <key>NSRemovableVolumesUsageDescription</key>
+    <string>Trial Submission Studio needs access to removable drives to import clinical trial data from external storage devices.</string>
+
+    <key>NSNetworkVolumesUsageDescription</key>
+    <string>Trial Submission Studio needs access to network volumes to import clinical trial data from shared storage.</string>
+
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>Trial Submission Studio uses the network to check for software updates from GitHub.</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         APPLICATION METADATA
+         ═══════════════════════════════════════════════════════════════════ -->
+
+    <key>LSApplicationCategoryType</key>
+    <string>public.app-category.medical</string>
+
+    <key>LSSupportsSecureStateRestoration</key>
+    <true/>
+
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         NETWORK SECURITY (App Transport Security)
+         ═══════════════════════════════════════════════════════════════════ -->
+
+    <key>NSAppTransportSecurity</key>
+    <dict>
+        <key>NSExceptionDomains</key>
+        <dict>
+            <!-- GitHub for update checking and asset downloads -->
+            <key>github.com</key>
+            <dict>
+                <key>NSIncludesSubdomains</key>
+                <true/>
+                <key>NSExceptionMinimumTLSVersion</key>
+                <string>TLSv1.2</string>
+                <key>NSExceptionRequiresForwardSecrecy</key>
+                <true/>
+            </dict>
+            <!-- GitHub user content for release asset downloads -->
+            <key>githubusercontent.com</key>
+            <dict>
+                <key>NSIncludesSubdomains</key>
+                <true/>
+                <key>NSExceptionMinimumTLSVersion</key>
+                <string>TLSv1.2</string>
+                <key>NSExceptionRequiresForwardSecrecy</key>
+                <true/>
+            </dict>
+        </dict>
+    </dict>
+</dict>
+</plist>

@@ -24,6 +24,9 @@
 //! let font_size = typography::FONT_SIZE_BODY;
 //! ```
 
+// Allow unused imports - these are public API re-exports
+#![allow(unused_imports)]
+
 pub mod clinical;
 pub mod palette;
 pub mod spacing;
@@ -104,6 +107,8 @@ pub use spacing::{
     // Input heights
     INPUT_HEIGHT,
     INPUT_HEIGHT_LG,
+    // Layout widths
+    MASTER_WIDTH,
     MODAL_WIDTH_LG,
     MODAL_WIDTH_MD,
     MODAL_WIDTH_SM,
@@ -112,7 +117,6 @@ pub use spacing::{
     // Scrollbar
     SCROLLBAR_WIDTH,
     SETTINGS_WIDTH,
-    // Layout widths
     SIDEBAR_WIDTH,
     SIDEBAR_WIDTH_NARROW,
     SIDEBAR_WIDTH_WIDE,
