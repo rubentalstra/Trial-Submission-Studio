@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+    <id>io.github.rubentalstra.trial-submission-studio</id>
+
+    <name>TSS</name>
+    <summary>CDISC data transformer</summary>
+
+    <metadata_license>MIT</metadata_license>
+    <project_license>MIT</project_license>
+
+    <developer id="io.github.rubentalstra">
+        <name>Ruben Talstra</name>
+    </developer>
+
+    <branding>
+        <color type="primary" scheme_preference="light">#3B82F6</color>
+        <color type="primary" scheme_preference="dark">#1E40AF</color>
+    </branding>
+
+    <description>
+        <p>
+            Trial Submission Studio transforms clinical trial data into FDA-compliant
+            CDISC SDTM formats. Works completely offline with embedded standards.
+        </p>
+        <p>
+            Import CSV files and map columns to SDTM variables using intelligent fuzzy
+            matching. Apply transformation rules and validate against CDISC controlled
+            terminology.
+        </p>
+        <p>
+            Export to XPT (SAS Transport V5/V8), Dataset-XML, or Define-XML 2.1 for
+            regulatory submission.
+        </p>
+    </description>
+
+    <screenshots>
+        <screenshot type="default">
+            <image>https://raw.githubusercontent.com/rubentalstra/Trial-Submission-Studio/main/assets/screenshots/home.png</image>
+            <caption>Home view showing study overview and domain status</caption>
+        </screenshot>
+        <screenshot>
+            <image>https://raw.githubusercontent.com/rubentalstra/Trial-Submission-Studio/main/assets/screenshots/mapping.png</image>
+            <caption>Column mapping with confidence scores</caption>
+        </screenshot>
+        <screenshot>
+            <image>https://raw.githubusercontent.com/rubentalstra/Trial-Submission-Studio/main/assets/screenshots/validation.png</image>
+            <caption>CDISC validation results</caption>
+        </screenshot>
+    </screenshots>
+
+    <url type="homepage">https://github.com/rubentalstra/Trial-Submission-Studio</url>
+    <url type="bugtracker">https://github.com/rubentalstra/Trial-Submission-Studio/issues</url>
+    <url type="vcs-browser">https://github.com/rubentalstra/Trial-Submission-Studio</url>
+
+    <launchable type="desktop-id">io.github.rubentalstra.trial-submission-studio.desktop</launchable>
+
+    <provides>
+        <binary>trial-submission-studio</binary>
+    </provides>
+
+    <supports>
+        <control>pointing</control>
+        <control>keyboard</control>
+    </supports>
+
+    <content_rating type="oars-1.1"/>
+
+    <releases>
+        <release version="0.0.1-alpha.11" date="2026-01-15">
+            <description>
+                <p>Alpha release with core SDTM transformation features:</p>
+                <ul>
+                    <li>CSV import with automatic column detection</li>
+                    <li>Fuzzy column mapping to SDTM variables</li>
+                    <li>Export to XPT, Dataset-XML, Define-XML 2.1</li>
+                    <li>Offline validation with embedded CDISC standards</li>
+                </ul>
+            </description>
+        </release>
+    </releases>
+</component>

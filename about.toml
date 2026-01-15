@@ -15,10 +15,11 @@ accepted = [
     "MPL-2.0",
     "Unicode-3.0",
     "Unicode-DFS-2016",
-    "BSL-1.0",              # Boost Software License (clipboard-win, etc.)
-    "OFL-1.1",              # Open Font License (epaint fonts)
-    "Ubuntu-font-1.0",      # Ubuntu font license
-    "CDLA-Permissive-2.0",  # webpki-roots
+    "BSL-1.0", # Boost Software License (clipboard-win, etc.)
+    "OFL-1.1", # Open Font License (epaint fonts)
+    "Ubuntu-font-1.0", # Ubuntu font license
+    "CDLA-Permissive-2.0", # webpki-roots
+    "bzip2-1.0.6", # bzip2-sys
 ]
 
 # Target platforms (matches our release CI)

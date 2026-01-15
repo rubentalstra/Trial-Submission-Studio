@@ -1,10 +1,18 @@
 //! Trial Submission Studio - GUI Library
 //!
-//! This module exposes internal services for testing.
+//! This module provides the core application types and modules for the
+//! Trial Submission Studio desktop application.
+//!
+//! Built with Iced 0.14.0 using the Elm architecture.
 
-pub mod export;
+// Core modules (new Iced implementation)
+pub mod component;
 pub mod menu;
-pub mod services;
-pub mod settings;
+pub mod message;
 pub mod state;
+#[allow(dead_code)]
 pub mod theme;
+pub mod view;
+
+// Service modules for background tasks
+pub mod service;

@@ -7,17 +7,20 @@ description = "Auto-update functionality for Trial Submission Studio"
 license.workspace = true
 
 [dependencies]
-# Self-update handles everything: GitHub API, download, checksum, install
-self_update = { version = "0.42", default-features = false, features = [
-    "archive-zip",
-    "archive-tar",
-    "compression-flate2",
-    "compression-zip-deflate",
-    "rustls",
+# HTTP client for GitHub API
+reqwest = { version = "0.12", default-features = false, features = [
+    "rustls-tls",
+    "json",
+    "stream",
 ] }
 
-# Serialization (for config)
+# SHA256 hashing for verification
+sha2 = "0.10"
+hex = "0.4"
+
+# Serialization
 serde = { workspace = true }
+serde_json = "1.0"
 
 # Date/time (for config)
 chrono = { workspace = true }
@@ -27,3 +30,18 @@ thiserror = { workspace = true }
 
 # Logging
 tracing = { workspace = true }
+
+# Binary replacement
+self-replace = "1.5"
+tempfile = "3.24"
+
+# Archive extraction
+flate2 = "1.1"
+tar = "0.4"
+zip = "7.1"
+
+# Async runtime
+futures-util = "0.3"
+
+
+[dev-dependencies]

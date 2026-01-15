@@ -1,0 +1,31 @@
+[package]
+name = "tss-submit"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+description = "CDISC submission preparation: mapping, normalization, validation, and export"
+
+[lints]
+workspace = true
+
+[dependencies]
+# Workspace crates
+tss-standards = { path = "../tss-standards" }
+
+# Core dependencies
+anyhow.workspace = true
+chrono.workspace = true
+polars.workspace = true
+quick-xml.workspace = true
+rapidfuzz = "0.5.0"
+regex = "1.12.2"
+serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+xportrs.workspace = true
+
+[dev-dependencies]
+insta.workspace = true
+tempfile = "3"

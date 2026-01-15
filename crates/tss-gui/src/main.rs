@@ -2,69 +2,53 @@
 //!
 //! A desktop application for converting clinical trial source data into
 //! CDISC SDTM formats (XPT, Dataset-XML, Define-XML).
+//!
+//! Built with Iced 0.14.0 using the Elm architecture (State, Message, Update, View).
 
+// Module declarations
 mod app;
-mod export;
+mod component;
 mod menu;
-mod services;
-mod settings;
+mod message;
+mod service;
 mod state;
 mod theme;
-mod views;
+mod view;
 
-use eframe::egui;
-use std::sync::Arc;
+use app::App;
+use iced::window;
 
-/// Load the application icon from embedded PNG data.
-fn load_icon() -> egui::IconData {
-    let icon_data = include_bytes!("../assets/icon.png");
-    let image = image::load_from_memory(icon_data)
-        .expect("Failed to load icon")
-        .into_rgba8();
-    let (width, height) = image.dimensions();
-    egui::IconData {
-        rgba: image.into_raw(),
-        width,
-        height,
-    }
-}
+// Import Lucide font bytes for loading
+use component::LUCIDE_FONT_BYTES;
 
-fn main() -> eframe::Result<()> {
+/// Application entry point.
+///
+/// Initializes the Iced application with the Professional Clinical theme
+/// and default window settings.
+///
+/// Uses `daemon()` builder for multi-window support (dialog windows).
+pub fn main() -> iced::Result {
     // Initialize logging
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
         .init();
 
-    // Create native menu bar
-    // Note: On macOS, we must disable eframe's default menu to use our custom muda menu
-    let menu = menu::create_menu();
-    let menu_receiver = menu::menu_event_receiver();
+    tracing::info!("Starting Trial Submission Studio");
 
-    let options = eframe::NativeOptions {
-        viewport: egui::ViewportBuilder::default()
-            .with_title("Trial Submission Studio")
-            .with_icon(Arc::new(load_icon()))
-            .with_inner_size([1280.0, 800.0])
-            .with_min_inner_size([1024.0, 600.0]),
-        #[cfg(target_os = "macos")]
-        event_loop_builder: Some(Box::new(|builder| {
-            use winit::platform::macos::EventLoopBuilderExtMacOS;
-            builder.with_default_menu(false);
-        })),
-        #[cfg(not(target_os = "macos"))]
-        event_loop_builder: None,
-        ..Default::default()
-    };
+    // Run the Iced application using daemon builder for multi-window support
+    // daemon() allows multiple windows with window::Id-based view/title
+    iced::daemon(App::new, App::update, App::view)
+        .title(App::title)
+        .theme(App::theme)
+        .subscription(App::subscription)
+        .font(LUCIDE_FONT_BYTES)
+        .run()
+}
 
-    eframe::run_native(
-        "Trial Submission Studio",
-        options,
-        Box::new(move |cc| {
-            // Initialize the menu for macOS NSApp now that the event loop is running
-            menu::init_menu_for_nsapp(&menu);
-
-            // Create app, passing menu ownership to keep it alive
-            Ok(Box::new(app::CdiscApp::new(cc, menu_receiver, menu)))
-        }),
-    )
+/// Load the application icon from embedded PNG data.
+#[allow(dead_code)]
+fn load_icon() -> Option<window::Icon> {
+    let icon_data = include_bytes!("../assets/icon.png");
+    // Use Iced 0.14.0 API: from_file_data takes raw bytes and optional format
+    window::icon::from_file_data(icon_data, Some(image::ImageFormat::Png)).ok()
 }

@@ -132,7 +132,7 @@ fn embed_windows_resources(build_number: &str, build_date: &str, commit_count: &
     let mut res = winresource::WindowsResource::new();
 
     // Set application icon
-    res.set_icon("../../packaging/windows/icon.ico");
+    res.set_icon("../../assets/windows/trial-submission-studio.ico");
 
     // Parse version from CARGO_PKG_VERSION (e.g., "0.0.1-alpha.4")
     let version = std::env::var("CARGO_PKG_VERSION").unwrap_or_else(|_| "0.0.0".to_string());

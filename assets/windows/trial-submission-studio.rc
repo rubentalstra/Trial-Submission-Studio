@@ -1,0 +1,10 @@
+// Windows Resource File for Trial Submission Studio
+// This file defines the application icon and manifest
+
+#define IDI_ICON 0x101
+
+// Application icon
+IDI_ICON ICON "trial-submission-studio.ico"
+
+// Application manifest for DPI awareness and Windows compatibility
+1 24 "trial-submission-studio.manifest"

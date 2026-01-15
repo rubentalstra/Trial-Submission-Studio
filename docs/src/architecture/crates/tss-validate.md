@@ -112,7 +112,7 @@ let validator = Validator::new( & standards);
 let results = validator.validate( & context) ?;
 
 for result in results.errors() {
-println ! ("{}: {}", result.rule_id, result.message);
+    println!("[{:?}] {}", result.severity(), result.message());
 }
 ```
 

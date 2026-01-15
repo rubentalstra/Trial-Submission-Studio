@@ -8,7 +8,8 @@ use std::path::Path;
 
 use serde::Deserialize;
 
-use tss_model::{DatasetClass, Domain, Variable, VariableType};
+use crate::sdtm::{DatasetClass, SdtmDomain, SdtmVariable};
+use crate::traits::VariableType;
 
 use crate::error::{Result, StandardsError};
 use crate::paths::sdtm_ig_path;
@@ -24,7 +25,7 @@ use crate::paths::sdtm_ig_path;
 /// let ae = domains.iter().find(|d| d.name == "AE").unwrap();
 /// println!("AE has {} variables", ae.variables.len());
 /// ```
-pub fn load() -> Result<Vec<Domain>> {
+pub fn load() -> Result<Vec<SdtmDomain>> {
     load_from(&sdtm_ig_path())
 }
 
@@ -33,7 +34,7 @@ pub fn load() -> Result<Vec<Domain>> {
 /// # Arguments
 ///
 /// * `base_dir` - Directory containing Datasets.csv and Variables.csv
-pub fn load_from(base_dir: &Path) -> Result<Vec<Domain>> {
+pub fn load_from(base_dir: &Path) -> Result<Vec<SdtmDomain>> {
     if !base_dir.exists() {
         return Err(StandardsError::DirectoryNotFound {
             path: base_dir.to_path_buf(),
@@ -138,7 +139,7 @@ fn load_datasets(path: &Path) -> Result<BTreeMap<String, DatasetMeta>> {
 }
 
 /// Load Variables.csv into a map of variables grouped by dataset.
-fn load_variables(path: &Path) -> Result<BTreeMap<String, Vec<Variable>>> {
+fn load_variables(path: &Path) -> Result<BTreeMap<String, Vec<SdtmVariable>>> {
     if !path.exists() {
         return Err(StandardsError::FileNotFound {
             path: path.to_path_buf(),
@@ -153,7 +154,7 @@ fn load_variables(path: &Path) -> Result<BTreeMap<String, Vec<Variable>>> {
             source: e,
         })?;
 
-    let mut grouped: BTreeMap<String, Vec<Variable>> = BTreeMap::new();
+    let mut grouped: BTreeMap<String, Vec<SdtmVariable>> = BTreeMap::new();
 
     for result in reader.deserialize::<VariableCsvRow>() {
         let row = result.map_err(|e| StandardsError::CsvRead {
@@ -169,7 +170,7 @@ fn load_variables(path: &Path) -> Result<BTreeMap<String, Vec<Variable>>> {
 
         let order = row.variable_order.trim().parse::<u32>().ok();
 
-        let variable = Variable {
+        let variable = SdtmVariable {
             name,
             label: non_empty(&row.variable_label),
             data_type: parse_variable_type(&row.variable_type),
@@ -201,8 +202,8 @@ struct DatasetMeta {
 /// Build Domain structs from loaded data.
 fn build_domains(
     datasets: &BTreeMap<String, DatasetMeta>,
-    mut variables: BTreeMap<String, Vec<Variable>>,
-) -> Result<Vec<Domain>> {
+    mut variables: BTreeMap<String, Vec<SdtmVariable>>,
+) -> Result<Vec<SdtmDomain>> {
     let mut domains = Vec::new();
 
     for (name, vars) in &mut variables {
@@ -211,7 +212,7 @@ fn build_domains(
         // Sort variables by order
         vars.sort_by(compare_variable_order);
 
-        domains.push(Domain {
+        domains.push(SdtmDomain {
             name: name.clone(),
             label: meta.and_then(|m| m.label.clone()),
             class: meta.and_then(|m| m.class),
@@ -250,7 +251,7 @@ fn non_empty(s: &str) -> Option<String> {
 }
 
 /// Compare variables by order (nulls last, then by name).
-fn compare_variable_order(left: &Variable, right: &Variable) -> std::cmp::Ordering {
+fn compare_variable_order(left: &SdtmVariable, right: &SdtmVariable) -> std::cmp::Ordering {
     match (left.order, right.order) {
         (Some(a), Some(b)) => a.cmp(&b),
         (Some(_), None) => std::cmp::Ordering::Less,
