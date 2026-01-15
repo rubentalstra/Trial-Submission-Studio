@@ -19,16 +19,34 @@ impl App {
     /// Handle home view messages.
     pub fn handle_home_message(&mut self, msg: HomeMessage) -> Task<Message> {
         match msg {
-            HomeMessage::OpenStudyClicked => Task::perform(
-                async {
-                    rfd::AsyncFileDialog::new()
+            HomeMessage::OpenStudyClicked => {
+                // On macOS, use synchronous dialog to avoid security-scoped access issues
+                // with hardened runtime. The async dialog can lose access when the
+                // FileHandle is dropped across thread boundaries.
+                #[cfg(target_os = "macos")]
+                {
+                    let path = rfd::FileDialog::new()
                         .set_title("Select Study Folder")
-                        .pick_folder()
-                        .await
-                        .map(|handle| handle.path().to_path_buf())
-                },
-                Message::FolderSelected,
-            ),
+                        .pick_folder();
+
+                    if let Some(p) = path {
+                        return self.load_study(p);
+                    }
+                    Task::none()
+                }
+
+                #[cfg(not(target_os = "macos"))]
+                Task::perform(
+                    async {
+                        rfd::AsyncFileDialog::new()
+                            .set_title("Select Study Folder")
+                            .pick_folder()
+                            .await
+                            .map(|handle| handle.path().to_path_buf())
+                    },
+                    Message::FolderSelected,
+                )
+            }
 
             HomeMessage::StudyFolderSelected(path) => self.load_study(path),
 
