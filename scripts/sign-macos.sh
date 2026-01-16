@@ -69,21 +69,22 @@ if $LOCAL_MODE; then
     echo "Signing app bundle..."
 
     MACOS_DIR="$APP_PATH/Contents/MacOS"
+    HELPER_BUNDLE="$APP_PATH/Contents/Helpers/tss-updater-helper.app"
     ENTITLEMENTS="assets/macos/TrialSubmissionStudio.app/Contents/entitlements.plist"
 
-    # Sign helper binaries first (everything except the main binary)
-    for binary in "$MACOS_DIR"/*; do
-        if [[ "$(basename "$binary")" != "trial-submission-studio" ]]; then
-            echo "Signing helper: $binary"
-            codesign --force --options runtime \
-                --entitlements "$ENTITLEMENTS" \
-                --sign "$IDENTITY" \
-                --timestamp \
-                "$binary"
-        fi
-    done
+    # 1. Sign helper bundle FIRST (nested bundle must be signed before outer)
+    echo "Signing helper bundle: $HELPER_BUNDLE"
+    codesign --force --options runtime \
+        --entitlements "$ENTITLEMENTS" \
+        --sign "$IDENTITY" \
+        --timestamp \
+        "$HELPER_BUNDLE"
 
-    # Sign the main binary
+    # 2. Verify helper is signed
+    echo "Verifying helper signature..."
+    codesign --verify --strict "$HELPER_BUNDLE"
+
+    # 3. Sign the main binary
     echo "Signing main binary: $MACOS_DIR/trial-submission-studio"
     codesign --force --options runtime \
         --entitlements "$ENTITLEMENTS" \
@@ -91,13 +92,17 @@ if $LOCAL_MODE; then
         --timestamp \
         "$MACOS_DIR/trial-submission-studio"
 
-    # Sign the bundle itself
+    # 4. Sign the main bundle (this seals everything including the signed helper)
     echo "Signing bundle: $APP_PATH"
     codesign --force --options runtime \
         --entitlements "$ENTITLEMENTS" \
         --sign "$IDENTITY" \
         --timestamp \
         "$APP_PATH"
+
+    # 5. Verify entire bundle with deep check
+    echo "Verifying entire bundle..."
+    codesign --verify --deep --strict "$APP_PATH"
 
     echo ""
     echo "=== Local Signing Complete ==="
@@ -138,21 +143,22 @@ else
     echo "Signing app bundle..."
 
     MACOS_DIR="$APP_PATH/Contents/MacOS"
+    HELPER_BUNDLE="$APP_PATH/Contents/Helpers/tss-updater-helper.app"
     ENTITLEMENTS="assets/macos/TrialSubmissionStudio.app/Contents/entitlements.plist"
 
-    # Sign helper binaries first (everything except the main binary)
-    for binary in "$MACOS_DIR"/*; do
-        if [[ "$(basename "$binary")" != "trial-submission-studio" ]]; then
-            echo "Signing helper: $binary"
-            codesign --force --options runtime \
-                --entitlements "$ENTITLEMENTS" \
-                --sign "$APPLE_CODESIGN_IDENTITY" \
-                --timestamp \
-                "$binary"
-        fi
-    done
+    # 1. Sign helper bundle FIRST (nested bundle must be signed before outer)
+    echo "Signing helper bundle: $HELPER_BUNDLE"
+    codesign --force --options runtime \
+        --entitlements "$ENTITLEMENTS" \
+        --sign "$APPLE_CODESIGN_IDENTITY" \
+        --timestamp \
+        "$HELPER_BUNDLE"
 
-    # Sign the main binary
+    # 2. Verify helper is signed
+    echo "Verifying helper signature..."
+    codesign --verify --strict "$HELPER_BUNDLE"
+
+    # 3. Sign the main binary
     echo "Signing main binary: $MACOS_DIR/trial-submission-studio"
     codesign --force --options runtime \
         --entitlements "$ENTITLEMENTS" \
@@ -160,7 +166,7 @@ else
         --timestamp \
         "$MACOS_DIR/trial-submission-studio"
 
-    # Sign the bundle itself
+    # 4. Sign the main bundle (this seals everything including the signed helper)
     echo "Signing bundle: $APP_PATH"
     codesign --force --options runtime \
         --entitlements "$ENTITLEMENTS" \
@@ -168,7 +174,7 @@ else
         --timestamp \
         "$APP_PATH"
 
-    # Verify signature
+    # 5. Verify entire bundle with deep check
     echo ""
     echo "Verifying signature..."
     codesign --verify --deep --strict --verbose=2 "$APP_PATH"

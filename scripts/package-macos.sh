@@ -71,10 +71,19 @@ APP_DIR="${BUNDLE_NAME}.app"
 rm -rf "$APP_DIR"
 mkdir -p "$APP_DIR/Contents/MacOS"
 mkdir -p "$APP_DIR/Contents/Resources"
+mkdir -p "$APP_DIR/Contents/Helpers/tss-updater-helper.app/Contents/MacOS"
 
-# Copy binaries
+# Copy main binary
 cp "$BINARY" "$APP_DIR/Contents/MacOS/"
-cp "$HELPER" "$APP_DIR/Contents/MacOS/"
+
+# Create nested helper app bundle
+cp "$HELPER" "$APP_DIR/Contents/Helpers/tss-updater-helper.app/Contents/MacOS/"
+
+# Process helper Info.plist template
+sed -e "s/\${BUILD_VERSION}/${BUILD_VERSION}/g" \
+    -e "s/\${MARKETING_VERSION}/${MARKETING_VERSION}/g" \
+    "assets/macos/tss-updater-helper.app/Contents/Info.plist" \
+    > "$APP_DIR/Contents/Helpers/tss-updater-helper.app/Contents/Info.plist"
 
 # Process Info.plist template
 sed -e "s/\${BUILD_VERSION}/${BUILD_VERSION}/g" \

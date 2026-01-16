@@ -251,8 +251,13 @@ fn get_current_bundle() -> Result<PathBuf> {
 }
 
 /// Gets the path to the helper binary inside the current bundle.
+///
+/// The helper is packaged as a nested app bundle following Apple's recommended structure:
+/// `Contents/Helpers/tss-updater-helper.app/Contents/MacOS/tss-updater-helper`
 fn get_helper_path(bundle_path: &std::path::Path) -> Result<PathBuf> {
-    let helper_path = bundle_path.join("Contents/MacOS").join(HELPER_NAME);
+    let helper_path = bundle_path
+        .join("Contents/Helpers/tss-updater-helper.app/Contents/MacOS")
+        .join(HELPER_NAME);
 
     if helper_path.exists() {
         Ok(helper_path)

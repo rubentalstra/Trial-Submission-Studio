@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Bundle Identification -->
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+
+    <key>CFBundleIdentifier</key>
+    <string>com.rubentalstra.trial-submission-studio.helper</string>
+
+    <key>CFBundleName</key>
+    <string>TSS Updater Helper</string>
+
+    <key>CFBundleDisplayName</key>
+    <string>TSS Updater Helper</string>
+
+    <key>CFBundleExecutable</key>
+    <string>tss-updater-helper</string>
+
+    <!-- Version Information (substituted at build time) -->
+    <key>CFBundleVersion</key>
+    <string>${BUILD_VERSION}</string>
+
+    <key>CFBundleShortVersionString</key>
+    <string>${MARKETING_VERSION}</string>
+
+    <!-- Bundle Metadata -->
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+
+    <key>CFBundleSignature</key>
+    <string>????</string>
+
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright 2024-2026 Ruben Talstra. All rights reserved.</string>
+
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+
+    <key>CFBundleSupportedPlatforms</key>
+    <array>
+        <string>MacOSX</string>
+    </array>
+
+    <!-- System Requirements -->
+    <key>LSMinimumSystemVersion</key>
+    <string>11.0.0</string>
+
+    <!-- Background-only helper (no dock icon, no menu bar) -->
+    <key>LSBackgroundOnly</key>
+    <true/>
+
+    <key>LSUIElement</key>
+    <true/>
+</dict>
+</plist>
