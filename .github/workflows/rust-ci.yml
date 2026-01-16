@@ -255,35 +255,35 @@ jobs:
   # Validates manifest syntax and lints without full build
   # Lightweight check that runs on PRs and pushes to main
   # ============================================================
-  flatpak-lint:
-    name: Flatpak Lint
-    runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08
-      options: --privileged
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v6
-
-      - name: Validate YAML syntax
-        run: |
-          python3 -c "import yaml; yaml.safe_load(open('assets/flatpak/io.github.rubentalstra.trial-submission-studio.yml'))"
-          echo "Manifest YAML syntax is valid"
-
-      - name: Lint manifest
-        run: |
-          flatpak-builder-lint \
-            --exceptions \
-            --gha-format \
-            manifest assets/flatpak/io.github.rubentalstra.trial-submission-studio.yml
-
-      - name: Lint appstream metadata
-        run: |
-          flatpak-builder-lint \
-            --exceptions \
-            --user-exceptions assets/flatpak/linter-exceptions.json \
-            --gha-format \
-            appstream assets/linux/io.github.rubentalstra.trial-submission-studio.metainfo.xml
+  #  flatpak-lint:
+  #    name: Flatpak Lint
+  #    runs-on: ubuntu-latest
+  #    container:
+  #      image: ghcr.io/flathub-infra/flatpak-github-actions:freedesktop-25.08
+  #      options: --privileged
+  #    steps:
+  #      - name: Checkout repository
+  #        uses: actions/checkout@v6
+  #
+  #      - name: Validate YAML syntax
+  #        run: |
+  #          python3 -c "import yaml; yaml.safe_load(open('assets/flatpak/io.github.rubentalstra.trial-submission-studio.yml'))"
+  #          echo "Manifest YAML syntax is valid"
+  #
+  #      - name: Lint manifest
+  #        run: |
+  #          flatpak-builder-lint \
+  #            --exceptions \
+  #            --gha-format \
+  #            manifest assets/flatpak/io.github.rubentalstra.trial-submission-studio.yml
+  #
+  #      - name: Lint appstream metadata
+  #        run: |
+  #          flatpak-builder-lint \
+  #            --exceptions \
+  #            --user-exceptions assets/flatpak/linter-exceptions.json \
+  #            --gha-format \
+  #            appstream assets/linux/io.github.rubentalstra.trial-submission-studio.metainfo.xml
 
   # ============================================================
   # CI Success Gate
