@@ -83,7 +83,47 @@ pub fn verify_update(data: Vec<u8>, info: tss_updater::UpdateInfo) -> Task<Messa
     )
 }
 
-/// Install the downloaded update.
+/// Install the downloaded update and restart the application.
+///
+/// This function handles all platform-specific details:
+/// - On macOS: Spawns a helper to swap app bundles, then exits
+/// - On Windows/Linux: Replaces the binary and restarts
+///
+/// On success, this function does not return (the app exits/restarts).
+/// Returns a Task that will produce an `InstallFailed` message only on error.
+pub fn install_and_restart(data: Vec<u8>, info: tss_updater::UpdateInfo) -> Task<Message> {
+    Task::perform(
+        async move {
+            // Run installation in blocking task
+            tokio::task::spawn_blocking(move || {
+                tss_updater::UpdateService::install_and_restart(&data, &info)
+            })
+            .await
+            .map_err(|e| format!("Installation task failed: {}", e))?
+            .map_err(|e| e.user_message().to_string())
+        },
+        |result| {
+            // On macOS: never reached (process exits)
+            // On Windows/Linux: never reached (process restarts)
+            // Only reached on error
+            match result {
+                Ok(()) => {
+                    // Should not reach here, but handle gracefully
+                    Message::Dialog(DialogMessage::Update(UpdateMessage::InstallComplete(
+                        Ok(()),
+                    )))
+                }
+                Err(e) => Message::Dialog(DialogMessage::Update(UpdateMessage::InstallComplete(
+                    Err(e),
+                ))),
+            }
+        },
+    )
+}
+
+/// Install the downloaded update (legacy method, kept for compatibility).
+///
+/// Prefer using `install_and_restart` for new code.
 ///
 /// Returns a Task that will produce an `InstallComplete` message.
 pub fn install_update(data: Vec<u8>, info: tss_updater::UpdateInfo) -> Task<Message> {

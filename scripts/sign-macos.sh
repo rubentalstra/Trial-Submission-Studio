@@ -67,6 +67,18 @@ if $LOCAL_MODE; then
     # Sign with local certificate
     echo ""
     echo "Signing app bundle..."
+
+    # Sign each executable in the bundle individually
+    for binary in "$APP_PATH/Contents/MacOS/"*; do
+        echo "Signing: $binary"
+        codesign --force --options runtime \
+            --entitlements "assets/macos/TrialSubmissionStudio.app/Contents/entitlements.plist" \
+            --sign "$IDENTITY" \
+            --timestamp \
+            "$binary"
+    done
+
+    # Sign the bundle itself
     codesign --force --options runtime \
         --entitlements "assets/macos/TrialSubmissionStudio.app/Contents/entitlements.plist" \
         --sign "$IDENTITY" \
@@ -110,6 +122,18 @@ else
     # Sign app bundle
     echo ""
     echo "Signing app bundle..."
+
+    # Sign each executable in the bundle individually
+    for binary in "$APP_PATH/Contents/MacOS/"*; do
+        echo "Signing: $binary"
+        codesign --force --options runtime \
+            --entitlements "assets/macos/TrialSubmissionStudio.app/Contents/entitlements.plist" \
+            --sign "$APPLE_CODESIGN_IDENTITY" \
+            --timestamp \
+            "$binary"
+    done
+
+    # Sign the bundle itself
     codesign --force --options runtime \
         --entitlements "assets/macos/TrialSubmissionStudio.app/Contents/entitlements.plist" \
         --sign "$APPLE_CODESIGN_IDENTITY" \

@@ -56,14 +56,25 @@ if [[ ! -f "$BINARY" ]]; then
     exit 1
 fi
 
+# Find helper binary
+HELPER="target/$TARGET/release/tss-updater-helper"
+if [[ ! -f "$HELPER" ]]; then
+    HELPER="target/release/tss-updater-helper"
+fi
+if [[ ! -f "$HELPER" ]]; then
+    echo "Error: Helper binary not found. Run ./scripts/build-macos.sh first."
+    exit 1
+fi
+
 # Create app bundle structure
 APP_DIR="${BUNDLE_NAME}.app"
 rm -rf "$APP_DIR"
 mkdir -p "$APP_DIR/Contents/MacOS"
 mkdir -p "$APP_DIR/Contents/Resources"
 
-# Copy binary
+# Copy binaries
 cp "$BINARY" "$APP_DIR/Contents/MacOS/"
+cp "$HELPER" "$APP_DIR/Contents/MacOS/"
 
 # Process Info.plist template
 sed -e "s/\${BUILD_VERSION}/${BUILD_VERSION}/g" \

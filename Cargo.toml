@@ -5,6 +5,7 @@ members = [
     "crates/tss-standards",
     "crates/tss-submit",
     "crates/tss-updater",
+    "crates/tss-updater-helper",
 ]
 resolver = "3"
 

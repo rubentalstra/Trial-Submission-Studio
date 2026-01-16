@@ -175,6 +175,13 @@ jobs:
         env:
           IDENTITY: ${{ secrets.APPLE_CODESIGN_IDENTITY }}
         run: |
+          # Sign each executable in the bundle individually
+          for binary in "Trial Submission Studio.app/Contents/MacOS/"*; do
+            codesign --force --options runtime \
+              --entitlements assets/macos/TrialSubmissionStudio.app/Contents/entitlements.plist \
+              --sign "$IDENTITY" --timestamp "$binary"
+          done
+          # Sign the bundle itself
           codesign --force --options runtime \
             --entitlements assets/macos/TrialSubmissionStudio.app/Contents/entitlements.plist \
             --sign "$IDENTITY" --timestamp "Trial Submission Studio.app"

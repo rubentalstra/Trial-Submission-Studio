@@ -12,6 +12,7 @@ use crate::github::{GitHubAsset, GitHubClient, GitHubRelease};
 use crate::install::{
     extract_binary, get_target_triple, replace_current_executable, restart_application,
 };
+use crate::platform;
 use crate::release::{ReleaseAsset, UpdateInfo};
 use crate::verify::{VerificationStatus, verify_sha256};
 use crate::version::Version;
@@ -182,6 +183,28 @@ impl UpdateService {
     /// and spawns a new one.
     pub fn restart() -> Result<()> {
         restart_application()
+    }
+
+    /// Installs the update and restarts the application.
+    ///
+    /// This is the recommended way to apply updates. It handles all platform-specific
+    /// details automatically:
+    ///
+    /// - **macOS**: Extracts the .app bundle, verifies code signature, spawns a helper
+    ///   binary that swaps bundles and relaunches. This function does not return on success.
+    /// - **Windows/Linux**: Extracts the binary, replaces the current executable using
+    ///   `self_replace`, and restarts. This function does not return on success.
+    ///
+    /// # Arguments
+    /// * `data` - The downloaded archive data
+    /// * `info` - Update info containing asset metadata
+    ///
+    /// # Returns
+    /// This function does not return on success - it either exits (macOS) or restarts
+    /// (Windows/Linux) the application. Returns an error only if installation fails.
+    pub fn install_and_restart(data: &[u8], info: &UpdateInfo) -> Result<()> {
+        tracing::info!("Installing update and restarting: {}", info.version);
+        platform::install_and_restart(data, info)
     }
 
     /// Gets the current target triple for the running platform.

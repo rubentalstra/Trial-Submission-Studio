@@ -61,6 +61,7 @@ pub mod download;
 pub mod error;
 pub mod github;
 pub mod install;
+pub mod platform;
 pub mod release;
 pub mod service;
 pub mod verify;
