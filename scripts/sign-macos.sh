@@ -68,19 +68,33 @@ if $LOCAL_MODE; then
     echo ""
     echo "Signing app bundle..."
 
-    # Sign each executable in the bundle individually
-    for binary in "$APP_PATH/Contents/MacOS/"*; do
-        echo "Signing: $binary"
-        codesign --force --options runtime \
-            --entitlements "assets/macos/TrialSubmissionStudio.app/Contents/entitlements.plist" \
-            --sign "$IDENTITY" \
-            --timestamp \
-            "$binary"
+    MACOS_DIR="$APP_PATH/Contents/MacOS"
+    ENTITLEMENTS="assets/macos/TrialSubmissionStudio.app/Contents/entitlements.plist"
+
+    # Sign helper binaries first (everything except the main binary)
+    for binary in "$MACOS_DIR"/*; do
+        if [[ "$(basename "$binary")" != "trial-submission-studio" ]]; then
+            echo "Signing helper: $binary"
+            codesign --force --options runtime \
+                --entitlements "$ENTITLEMENTS" \
+                --sign "$IDENTITY" \
+                --timestamp \
+                "$binary"
+        fi
     done
 
-    # Sign the bundle itself
+    # Sign the main binary
+    echo "Signing main binary: $MACOS_DIR/trial-submission-studio"
     codesign --force --options runtime \
-        --entitlements "assets/macos/TrialSubmissionStudio.app/Contents/entitlements.plist" \
+        --entitlements "$ENTITLEMENTS" \
+        --sign "$IDENTITY" \
+        --timestamp \
+        "$MACOS_DIR/trial-submission-studio"
+
+    # Sign the bundle itself
+    echo "Signing bundle: $APP_PATH"
+    codesign --force --options runtime \
+        --entitlements "$ENTITLEMENTS" \
         --sign "$IDENTITY" \
         --timestamp \
         "$APP_PATH"
@@ -123,19 +137,33 @@ else
     echo ""
     echo "Signing app bundle..."
 
-    # Sign each executable in the bundle individually
-    for binary in "$APP_PATH/Contents/MacOS/"*; do
-        echo "Signing: $binary"
-        codesign --force --options runtime \
-            --entitlements "assets/macos/TrialSubmissionStudio.app/Contents/entitlements.plist" \
-            --sign "$APPLE_CODESIGN_IDENTITY" \
-            --timestamp \
-            "$binary"
+    MACOS_DIR="$APP_PATH/Contents/MacOS"
+    ENTITLEMENTS="assets/macos/TrialSubmissionStudio.app/Contents/entitlements.plist"
+
+    # Sign helper binaries first (everything except the main binary)
+    for binary in "$MACOS_DIR"/*; do
+        if [[ "$(basename "$binary")" != "trial-submission-studio" ]]; then
+            echo "Signing helper: $binary"
+            codesign --force --options runtime \
+                --entitlements "$ENTITLEMENTS" \
+                --sign "$APPLE_CODESIGN_IDENTITY" \
+                --timestamp \
+                "$binary"
+        fi
     done
 
-    # Sign the bundle itself
+    # Sign the main binary
+    echo "Signing main binary: $MACOS_DIR/trial-submission-studio"
     codesign --force --options runtime \
-        --entitlements "assets/macos/TrialSubmissionStudio.app/Contents/entitlements.plist" \
+        --entitlements "$ENTITLEMENTS" \
+        --sign "$APPLE_CODESIGN_IDENTITY" \
+        --timestamp \
+        "$MACOS_DIR/trial-submission-studio"
+
+    # Sign the bundle itself
+    echo "Signing bundle: $APP_PATH"
+    codesign --force --options runtime \
+        --entitlements "$ENTITLEMENTS" \
         --sign "$APPLE_CODESIGN_IDENTITY" \
         --timestamp \
         "$APP_PATH"

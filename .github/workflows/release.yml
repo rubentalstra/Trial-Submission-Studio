@@ -175,16 +175,31 @@ jobs:
         env:
           IDENTITY: ${{ secrets.APPLE_CODESIGN_IDENTITY }}
         run: |
-          # Sign each executable in the bundle individually
-          for binary in "Trial Submission Studio.app/Contents/MacOS/"*; do
-            codesign --force --options runtime \
-              --entitlements assets/macos/TrialSubmissionStudio.app/Contents/entitlements.plist \
-              --sign "$IDENTITY" --timestamp "$binary"
+          APP_BUNDLE="Trial Submission Studio.app"
+          MACOS_DIR="$APP_BUNDLE/Contents/MacOS"
+          ENTITLEMENTS="assets/macos/TrialSubmissionStudio.app/Contents/entitlements.plist"
+
+          # Sign helper binaries first (everything except the main binary)
+          for binary in "$MACOS_DIR"/*; do
+            if [[ "$(basename "$binary")" != "trial-submission-studio" ]]; then
+              echo "Signing helper: $binary"
+              codesign --force --options runtime \
+                --entitlements "$ENTITLEMENTS" \
+                --sign "$IDENTITY" --timestamp "$binary"
+            fi
           done
-          # Sign the bundle itself
+
+          # Sign the main binary
+          echo "Signing main binary: $MACOS_DIR/trial-submission-studio"
           codesign --force --options runtime \
-            --entitlements assets/macos/TrialSubmissionStudio.app/Contents/entitlements.plist \
-            --sign "$IDENTITY" --timestamp "Trial Submission Studio.app"
+            --entitlements "$ENTITLEMENTS" \
+            --sign "$IDENTITY" --timestamp "$MACOS_DIR/trial-submission-studio"
+
+          # Sign the bundle itself
+          echo "Signing bundle: $APP_BUNDLE"
+          codesign --force --options runtime \
+            --entitlements "$ENTITLEMENTS" \
+            --sign "$IDENTITY" --timestamp "$APP_BUNDLE"
 
       - name: Notarize
         env:
