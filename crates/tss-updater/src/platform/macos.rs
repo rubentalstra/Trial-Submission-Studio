@@ -53,8 +53,9 @@ pub fn install_and_restart(data: &[u8], info: &UpdateInfo) -> Result<()> {
     tracing::info!("Starting macOS update installation");
 
     // Create temp directory for extraction
-    let temp_dir = tempfile::tempdir()
-        .map_err(|e| UpdateError::Installation(format!("Failed to create temp directory: {}", e)))?;
+    let temp_dir = tempfile::tempdir().map_err(|e| {
+        UpdateError::Installation(format!("Failed to create temp directory: {}", e))
+    })?;
 
     // Extract app bundle
     let new_app_path = extract_app_bundle(data, &info.asset.name, temp_dir.path())?;
@@ -92,7 +93,11 @@ pub fn install_and_restart(data: &[u8], info: &UpdateInfo) -> Result<()> {
 }
 
 /// Extracts the .app bundle from a tar.gz archive.
-fn extract_app_bundle(data: &[u8], asset_name: &str, dest_dir: &std::path::Path) -> Result<PathBuf> {
+fn extract_app_bundle(
+    data: &[u8],
+    asset_name: &str,
+    dest_dir: &std::path::Path,
+) -> Result<PathBuf> {
     let asset_lower = asset_name.to_lowercase();
 
     if asset_lower.ends_with(".tar.gz") || asset_lower.ends_with(".tgz") {
@@ -116,9 +121,9 @@ fn extract_app_from_tar_gz(data: &[u8], dest_dir: &std::path::Path) -> Result<Pa
     let mut archive = Archive::new(decoder);
 
     // Extract entire archive
-    archive.unpack(dest_dir).map_err(|e| {
-        UpdateError::ArchiveExtraction(format!("Failed to extract tar.gz: {}", e))
-    })?;
+    archive
+        .unpack(dest_dir)
+        .map_err(|e| UpdateError::ArchiveExtraction(format!("Failed to extract tar.gz: {}", e)))?;
 
     // Find the .app bundle
     let app_path = dest_dir.join(APP_BUNDLE_NAME);
@@ -130,9 +135,8 @@ fn extract_app_from_tar_gz(data: &[u8], dest_dir: &std::path::Path) -> Result<Pa
     for entry in fs::read_dir(dest_dir)
         .map_err(|e| UpdateError::ArchiveExtraction(format!("Failed to read temp dir: {}", e)))?
     {
-        let entry = entry.map_err(|e| {
-            UpdateError::ArchiveExtraction(format!("Failed to read entry: {}", e))
-        })?;
+        let entry = entry
+            .map_err(|e| UpdateError::ArchiveExtraction(format!("Failed to read entry: {}", e)))?;
         let path = entry.path();
 
         if path.is_dir() {
