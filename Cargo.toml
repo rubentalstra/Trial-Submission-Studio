@@ -5,11 +5,12 @@ members = [
     "crates/tss-standards",
     "crates/tss-submit",
     "crates/tss-updater",
+    "crates/tss-updater-helper",
 ]
 resolver = "3"
 
 [workspace.package]
-version = "0.0.1"
+version = "0.0.2-alpha.1"
 edition = "2024"
 rust-version = "1.92"
 license = "MIT"

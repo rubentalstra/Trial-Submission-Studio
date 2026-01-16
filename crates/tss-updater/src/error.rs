@@ -53,6 +53,18 @@ pub enum UpdateError {
         /// Seconds until rate limit resets.
         retry_after: u64,
     },
+
+    /// Code signature verification failed (macOS).
+    #[error("code signature verification failed: {0}")]
+    SignatureInvalid(String),
+
+    /// Updater helper binary not found (macOS).
+    #[error("updater helper not found")]
+    HelperNotFound,
+
+    /// Helper process failed (macOS).
+    #[error("helper process failed: {0}")]
+    HelperFailed(String),
 }
 
 impl UpdateError {
@@ -71,6 +83,13 @@ impl UpdateError {
             Self::Installation(_) => "Could not install the update. Please try again.",
             Self::ArchiveExtraction(_) => "Could not extract the update package.",
             Self::RateLimited { .. } => "GitHub API rate limit reached. Please try again later.",
+            Self::SignatureInvalid(_) => {
+                "The update's code signature is invalid. Please download again or contact support."
+            }
+            Self::HelperNotFound => "Update helper not found. Please reinstall the application.",
+            Self::HelperFailed(_) => {
+                "The update process failed. Please try again or reinstall manually."
+            }
             Self::InvalidVersion(_) | Self::Io(_) | Self::JsonParse(_) => {
                 "An unexpected error occurred."
             }
