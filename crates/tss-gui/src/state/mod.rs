@@ -44,6 +44,7 @@ pub use view_state::{
     ValidationUiState, ViewState, WorkflowMode,
 };
 
+use crate::component::toast::ToastState;
 use crate::menu::MenuBarState;
 use iced::window;
 use tss_standards::TerminologyRegistry;
@@ -112,6 +113,9 @@ pub struct AppState {
 
     /// Main window ID (for identifying the main window in multi-window mode).
     pub main_window_id: Option<window::Id>,
+
+    /// Active toast notification (if any).
+    pub toast: Option<ToastState>,
 }
 
 /// State for export progress dialog.
@@ -238,6 +242,7 @@ impl AppState {
             menu_bar: MenuBarState::default(),
             dialog_windows: DialogWindows::default(),
             main_window_id: None,
+            toast: None,
         }
     }
 

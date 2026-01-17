@@ -96,16 +96,33 @@ impl fmt::Display for UpdateChannel {
     }
 }
 
+/// Minimum time between automatic startup checks (in hours).
+pub const AUTO_CHECK_INTERVAL_HOURS: i64 = 24;
+
+/// Minimum time between manual update checks to prevent spam (in seconds).
+pub const MANUAL_CHECK_COOLDOWN_SECS: i64 = 300; // 5 minutes
+
 /// User settings for the update system.
 ///
-/// By default, update checking is disabled to comply with privacy requirements.
-/// Users must explicitly enable it in the application settings.
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+/// The update system has two independent controls:
+/// - `enabled`: Master switch for all update functionality
+/// - `check_on_startup`: Whether to automatically check on app launch
+///
+/// By default, updates are enabled but automatic startup checks are disabled,
+/// giving users control over when checks happen.
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UpdateSettings {
-    /// Whether update checking is enabled.
-    /// Default is `false` to comply with SignPath Foundation privacy requirements.
-    #[serde(default)]
+    /// Allow update checking (manual or automatic).
+    /// Users can disable this entirely if they don't want any update features.
+    /// Default: `true`
+    #[serde(default = "default_enabled")]
     pub enabled: bool,
+
+    /// Automatically check for updates on app startup.
+    /// Requires `enabled = true`. If false, user must manually check via menu.
+    /// Default: `false`
+    #[serde(default)]
+    pub check_on_startup: bool,
 
     /// Which release channel to follow.
     #[serde(default)]
@@ -120,8 +137,21 @@ pub struct UpdateSettings {
     pub last_check: Option<DateTime<Utc>>,
 }
 
-/// Minimum time between manual update checks to prevent spam (in seconds).
-pub const MANUAL_CHECK_COOLDOWN_SECS: i64 = 300; // 5 minutes
+fn default_enabled() -> bool {
+    true
+}
+
+impl Default for UpdateSettings {
+    fn default() -> Self {
+        Self {
+            enabled: true,
+            check_on_startup: false,
+            channel: UpdateChannel::default(),
+            skipped_version: None,
+            last_check: None,
+        }
+    }
+}
 
 impl UpdateSettings {
     /// Creates new settings with update checking enabled.
@@ -133,39 +163,49 @@ impl UpdateSettings {
         }
     }
 
-    /// Check if we should perform an automatic update check on startup.
+    /// Check if automatic startup check should run.
     ///
     /// Returns `true` only if:
     /// - Update checking is enabled
-    /// - Enough time has passed since the last check
+    /// - Automatic startup checks are enabled
+    /// - At least 24 hours have passed since the last check
     #[must_use]
-    pub fn should_check_on_startup(&self) -> bool {
-        if !self.enabled {
-            return false;
-        }
-
-        // Check if at least 24 hours have passed since last check
-        match self.last_check {
-            None => true,
-            Some(last) => {
-                let now = Utc::now();
-                let elapsed = now.signed_duration_since(last);
-                elapsed.num_hours() >= 24
-            }
-        }
+    pub fn should_auto_check(&self) -> bool {
+        self.enabled
+            && self.check_on_startup
+            && self.hours_since_last_check() >= AUTO_CHECK_INTERVAL_HOURS
     }
 
     /// Check if enough time has passed to allow a manual check.
     ///
-    /// This prevents spamming the GitHub API with rapid manual checks.
+    /// Returns `true` only if:
+    /// - Update checking is enabled
+    /// - At least 5 minutes have passed since the last check (cooldown)
     #[must_use]
     pub fn can_check_manually(&self) -> bool {
+        self.enabled && self.seconds_since_last_check() >= MANUAL_CHECK_COOLDOWN_SECS
+    }
+
+    /// Get the number of hours since the last check.
+    #[must_use]
+    pub fn hours_since_last_check(&self) -> i64 {
         match self.last_check {
-            None => true,
+            None => i64::MAX, // Never checked, so "infinite" hours ago
             Some(last) => {
                 let now = Utc::now();
-                let elapsed = now.signed_duration_since(last);
-                elapsed.num_seconds() >= MANUAL_CHECK_COOLDOWN_SECS
+                now.signed_duration_since(last).num_hours()
+            }
+        }
+    }
+
+    /// Get the number of seconds since the last check.
+    #[must_use]
+    pub fn seconds_since_last_check(&self) -> i64 {
+        match self.last_check {
+            None => i64::MAX, // Never checked
+            Some(last) => {
+                let now = Utc::now();
+                now.signed_duration_since(last).num_seconds()
             }
         }
     }
@@ -173,6 +213,9 @@ impl UpdateSettings {
     /// Get the number of seconds until manual check is allowed again.
     #[must_use]
     pub fn seconds_until_manual_check_allowed(&self) -> Option<i64> {
+        if !self.enabled {
+            return None;
+        }
         match self.last_check {
             None => None,
             Some(last) => {
@@ -209,6 +252,16 @@ impl UpdateSettings {
     pub fn clear_skipped_version(&mut self) {
         self.skipped_version = None;
     }
+
+    /// Enable automatic startup checks.
+    pub fn enable_auto_check(&mut self) {
+        self.check_on_startup = true;
+    }
+
+    /// Disable automatic startup checks.
+    pub fn disable_auto_check(&mut self) {
+        self.check_on_startup = false;
+    }
 }
 
 #[cfg(test)]
@@ -218,23 +271,67 @@ mod tests {
     #[test]
     fn test_default_settings() {
         let settings = UpdateSettings::default();
-        // Default is disabled to comply with privacy requirements
-        assert!(!settings.enabled);
+        // Default is enabled but no auto-check on startup
+        assert!(settings.enabled);
+        assert!(!settings.check_on_startup);
         assert_eq!(settings.channel, UpdateChannel::Stable);
         assert!(settings.skipped_version.is_none());
         assert!(settings.last_check.is_none());
     }
 
     #[test]
-    fn test_should_check_on_startup_disabled() {
-        let settings = UpdateSettings::default();
-        assert!(!settings.should_check_on_startup());
+    fn test_should_auto_check_disabled() {
+        let mut settings = UpdateSettings::default();
+        settings.enabled = false;
+        assert!(!settings.should_auto_check());
     }
 
     #[test]
-    fn test_should_check_on_startup_enabled() {
-        let settings = UpdateSettings::with_enabled(true);
-        assert!(settings.should_check_on_startup());
+    fn test_should_auto_check_no_startup_check() {
+        let settings = UpdateSettings::default();
+        // enabled=true, check_on_startup=false by default
+        assert!(!settings.should_auto_check());
+    }
+
+    #[test]
+    fn test_should_auto_check_with_startup_check() {
+        let mut settings = UpdateSettings::default();
+        settings.check_on_startup = true;
+        // No last_check, so should return true
+        assert!(settings.should_auto_check());
+    }
+
+    #[test]
+    fn test_should_auto_check_respects_interval() {
+        let mut settings = UpdateSettings::default();
+        settings.check_on_startup = true;
+        settings.last_check = Some(Utc::now()); // Just checked
+
+        // Should not auto-check because we just checked
+        assert!(!settings.should_auto_check());
+    }
+
+    #[test]
+    fn test_can_check_manually_disabled() {
+        let mut settings = UpdateSettings::default();
+        settings.enabled = false;
+        assert!(!settings.can_check_manually());
+    }
+
+    #[test]
+    fn test_can_check_manually_no_cooldown() {
+        let settings = UpdateSettings::default();
+        // Never checked, so can check manually
+        assert!(settings.can_check_manually());
+    }
+
+    #[test]
+    fn test_can_check_manually_with_cooldown() {
+        let mut settings = UpdateSettings::default();
+        settings.last_check = Some(Utc::now()); // Just checked
+
+        // Should not be able to check manually due to cooldown
+        assert!(!settings.can_check_manually());
     }
 
     use std::str::FromStr;
@@ -310,5 +407,17 @@ mod tests {
 
         settings.record_check();
         assert!(settings.last_check.is_some());
+    }
+
+    #[test]
+    fn test_enable_disable_auto_check() {
+        let mut settings = UpdateSettings::default();
+        assert!(!settings.check_on_startup);
+
+        settings.enable_auto_check();
+        assert!(settings.check_on_startup);
+
+        settings.disable_auto_check();
+        assert!(!settings.check_on_startup);
     }
 }

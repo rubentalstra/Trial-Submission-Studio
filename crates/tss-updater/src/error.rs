@@ -2,8 +2,49 @@
 
 use thiserror::Error;
 
+/// Suggested action for the user when an error occurs.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SuggestedAction {
+    /// Retry the operation immediately.
+    Retry,
+    /// Wait for a specified time and retry.
+    WaitAndRetry(u64),
+    /// Retry the download from scratch.
+    RetryDownload,
+    /// Download the update manually from the releases page.
+    ManualDownload,
+    /// Run the application as administrator.
+    RunAsAdmin,
+    /// Free up disk space.
+    FreeSpace,
+    /// Reinstall the application.
+    Reinstall,
+    /// Report an issue to support.
+    ReportIssue,
+    /// No action can be taken.
+    None,
+}
+
+impl SuggestedAction {
+    /// Returns a user-friendly description of the suggested action.
+    #[must_use]
+    pub const fn description(&self) -> &'static str {
+        match self {
+            Self::Retry => "Please try again.",
+            Self::WaitAndRetry(_) => "Please wait and try again.",
+            Self::RetryDownload => "Please try downloading again.",
+            Self::ManualDownload => "Please download the update manually from the releases page.",
+            Self::RunAsAdmin => "Please run the application as administrator.",
+            Self::FreeSpace => "Please free up some disk space and try again.",
+            Self::Reinstall => "Please reinstall the application.",
+            Self::ReportIssue => "Please report this issue to support.",
+            Self::None => "",
+        }
+    }
+}
+
 /// Errors that can occur during the update process.
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Clone)]
 #[non_exhaustive]
 pub enum UpdateError {
     /// Failed to parse version string.
@@ -13,6 +54,10 @@ pub enum UpdateError {
     /// Network request failed.
     #[error("network error: {0}")]
     Network(String),
+
+    /// Connection timed out.
+    #[error("connection timed out")]
+    Timeout,
 
     /// No suitable release asset found for the current platform.
     #[error("no release asset found for target: {0}")]
@@ -76,6 +121,40 @@ pub enum UpdateError {
     /// This error occurs when a release only has older formats (tar.gz).
     #[error("no compatible update package found for this platform")]
     NoCompatibleAsset,
+
+    /// Update was cancelled by user.
+    #[error("update cancelled")]
+    Cancelled,
+
+    /// Insufficient disk space.
+    #[error("insufficient disk space: need {required} bytes, have {available} bytes")]
+    InsufficientSpace {
+        /// Required bytes.
+        required: u64,
+        /// Available bytes.
+        available: u64,
+    },
+
+    /// Permission denied during file operations.
+    #[error("permission denied: {0}")]
+    PermissionDenied(String),
+
+    /// Invalid update state transition.
+    #[error("invalid state transition: cannot go from {from} to {to}")]
+    InvalidStateTransition {
+        /// Current state.
+        from: String,
+        /// Attempted target state.
+        to: String,
+    },
+
+    /// No update available.
+    #[error("no update available")]
+    NoUpdateAvailable,
+
+    /// Already up to date.
+    #[error("already running the latest version: {0}")]
+    AlreadyUpToDate(String),
 }
 
 impl UpdateError {
@@ -83,7 +162,7 @@ impl UpdateError {
     #[must_use]
     pub fn user_message(&self) -> &str {
         match self {
-            Self::Network(_) => {
+            Self::Network(_) | Self::Timeout => {
                 "Could not connect to GitHub. Please check your internet connection."
             }
             Self::ChecksumMismatch { .. } => {
@@ -109,9 +188,20 @@ impl UpdateError {
                 "This release doesn't have a compatible update package for macOS. \
                  Please download the latest DMG from the releases page."
             }
-            Self::InvalidVersion(_) | Self::Io(_) | Self::JsonParse(_) => {
-                "An unexpected error occurred."
+            Self::Cancelled => "Update was cancelled.",
+            Self::InsufficientSpace { .. } => {
+                "Not enough disk space to download the update. Please free up some space."
             }
+            Self::PermissionDenied(_) => {
+                "Permission denied. Try running the application as administrator."
+            }
+            Self::NoUpdateAvailable | Self::AlreadyUpToDate(_) => {
+                "You are already running the latest version."
+            }
+            Self::InvalidVersion(_)
+            | Self::Io(_)
+            | Self::JsonParse(_)
+            | Self::InvalidStateTransition { .. } => "An unexpected error occurred.",
         }
     }
 
@@ -120,20 +210,47 @@ impl UpdateError {
     pub fn is_retryable(&self) -> bool {
         matches!(
             self,
-            Self::Network(_) | Self::RateLimited { .. } | Self::Io(_)
+            Self::Network(_) | Self::Timeout | Self::RateLimited { .. } | Self::Io(_)
         )
+    }
+
+    /// Returns the suggested action for the user.
+    #[must_use]
+    pub fn suggested_action(&self) -> SuggestedAction {
+        match self {
+            Self::Network(_) | Self::Timeout => SuggestedAction::Retry,
+            Self::RateLimited { retry_after } => SuggestedAction::WaitAndRetry(*retry_after),
+            Self::ChecksumMismatch { .. } => SuggestedAction::RetryDownload,
+            Self::NoCompatibleAsset | Self::NoAssetFound(_) => SuggestedAction::ManualDownload,
+            Self::PermissionDenied(_) => SuggestedAction::RunAsAdmin,
+            Self::InsufficientSpace { .. } => SuggestedAction::FreeSpace,
+            Self::HelperNotFound | Self::NotInAppBundle => SuggestedAction::Reinstall,
+            Self::SignatureInvalid(_) | Self::HelperFailed(_) => SuggestedAction::ReportIssue,
+            Self::Cancelled | Self::NoUpdateAvailable | Self::AlreadyUpToDate(_) => {
+                SuggestedAction::None
+            }
+            _ => SuggestedAction::Retry,
+        }
     }
 }
 
 impl From<reqwest::Error> for UpdateError {
     fn from(err: reqwest::Error) -> Self {
-        Self::Network(err.to_string())
+        if err.is_timeout() {
+            Self::Timeout
+        } else {
+            Self::Network(err.to_string())
+        }
     }
 }
 
 impl From<std::io::Error> for UpdateError {
     fn from(err: std::io::Error) -> Self {
-        Self::Io(err.to_string())
+        use std::io::ErrorKind;
+        match err.kind() {
+            ErrorKind::PermissionDenied => Self::PermissionDenied(err.to_string()),
+            _ => Self::Io(err.to_string()),
+        }
     }
 }
 
@@ -169,11 +286,15 @@ mod tests {
 
         let err = UpdateError::NoAssetFound("x86_64-apple-darwin".to_string());
         assert!(err.user_message().contains("platform"));
+
+        let err = UpdateError::Cancelled;
+        assert_eq!(err.user_message(), "Update was cancelled.");
     }
 
     #[test]
     fn test_retryable() {
         assert!(UpdateError::Network("timeout".to_string()).is_retryable());
+        assert!(UpdateError::Timeout.is_retryable());
         assert!(UpdateError::RateLimited { retry_after: 60 }.is_retryable());
         assert!(
             !UpdateError::ChecksumMismatch {
@@ -182,5 +303,37 @@ mod tests {
             }
             .is_retryable()
         );
+        assert!(!UpdateError::Cancelled.is_retryable());
+    }
+
+    #[test]
+    fn test_suggested_actions() {
+        assert_eq!(
+            UpdateError::Network("test".to_string()).suggested_action(),
+            SuggestedAction::Retry
+        );
+        assert_eq!(
+            UpdateError::RateLimited { retry_after: 60 }.suggested_action(),
+            SuggestedAction::WaitAndRetry(60)
+        );
+        assert_eq!(
+            UpdateError::InsufficientSpace {
+                required: 100,
+                available: 50
+            }
+            .suggested_action(),
+            SuggestedAction::FreeSpace
+        );
+        assert_eq!(
+            UpdateError::Cancelled.suggested_action(),
+            SuggestedAction::None
+        );
+    }
+
+    #[test]
+    fn test_suggested_action_description() {
+        assert!(!SuggestedAction::Retry.description().is_empty());
+        assert!(!SuggestedAction::ManualDownload.description().is_empty());
+        assert!(SuggestedAction::None.description().is_empty());
     }
 }

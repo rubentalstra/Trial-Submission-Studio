@@ -25,12 +25,15 @@ pub use dialog::{
     AboutMessage, DeveloperSettingsMessage, DialogMessage, DisplaySettingsMessage,
     ExportSettingsMessage, GeneralSettingsMessage, SettingsCategory, SettingsMessage,
     ThirdPartyMessage, UpdateMessage, UpdateSettingsMessage, ValidationSettingsMessage,
-    VerificationResult,
+    VerifyResult,
 };
 pub use domain_editor::DomainEditorMessage;
 pub use export::ExportMessage;
 pub use home::HomeMessage;
 pub use menu::MenuMessage;
+
+// Toast message
+pub use crate::component::toast::{ToastMessage, ToastState};
 
 /// Re-export ValidationReport from tss_validate for convenience.
 pub type ValidationReport = tss_submit::ValidationReport;
@@ -152,6 +155,12 @@ pub enum Message {
 
     /// Dismiss error message.
     DismissError,
+
+    // =========================================================================
+    // Toast notifications
+    // =========================================================================
+    /// Toast notification messages.
+    Toast(ToastMessage),
 
     /// No operation - used for placeholder actions.
     Noop,

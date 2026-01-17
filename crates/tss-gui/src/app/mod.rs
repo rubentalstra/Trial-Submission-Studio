@@ -60,6 +60,11 @@ impl App {
             state: AppState::with_settings(settings),
         };
 
+        // Check for post-update status and show toast if update was successful
+        if let Some(toast) = check_update_status() {
+            app.state.toast = Some(toast);
+        }
+
         // Open the main window (daemon mode requires explicit window creation)
         // exit_on_close_request: false allows us to handle close events in our subscription
         let main_window_settings = window::Settings {
@@ -322,7 +327,48 @@ impl App {
                 Task::none()
             }
 
+            // =================================================================
+            // Toast notifications
+            // =================================================================
+            Message::Toast(toast_msg) => self.handle_toast_message(toast_msg),
+
             Message::Noop => Task::none(),
+        }
+    }
+
+    /// Handle toast notification messages.
+    fn handle_toast_message(&mut self, msg: crate::message::ToastMessage) -> Task<Message> {
+        use crate::component::toast::{ToastActionType, ToastMessage};
+
+        match msg {
+            ToastMessage::Dismiss => {
+                self.state.toast = None;
+                Task::none()
+            }
+            ToastMessage::Action => {
+                // Handle the action based on the current toast
+                if let Some(toast) = &self.state.toast
+                    && let Some(action) = &toast.action
+                {
+                    match &action.on_click {
+                        ToastActionType::ViewChangelog => {
+                            // Open the update dialog
+                            self.state.toast = None;
+                            return self
+                                .handle_menu_message(crate::message::MenuMessage::CheckUpdates);
+                        }
+                        ToastActionType::OpenUrl(url) => {
+                            let _ = open::that(url);
+                        }
+                    }
+                }
+                self.state.toast = None;
+                Task::none()
+            }
+            ToastMessage::Show(toast_state) => {
+                self.state.toast = Some(toast_state);
+                Task::none()
+            }
         }
     }
 
@@ -412,6 +458,31 @@ impl App {
         #[cfg(target_os = "macos")]
         let content_with_menu: Element<'_, Message> = content;
 
+        // If there's a toast, wrap content with an overlay
+        if let Some(toast) = &self.state.toast {
+            use crate::component::toast::view_toast;
+            use iced::widget::{Space, column, stack};
+
+            let toast_element = view_toast(toast);
+
+            // Position toast at bottom-right using a row with flex space
+            let toast_row = iced::widget::row![
+                Space::new().width(iced::Length::Fill),
+                container(toast_element).padding([0.0, 24.0]),
+            ];
+
+            let toast_container = column![Space::new().height(iced::Length::Fill), toast_row,];
+
+            // Stack the toast on top of the content
+            return stack![
+                container(content_with_menu)
+                    .width(iced::Length::Fill)
+                    .height(iced::Length::Fill),
+                toast_container,
+            ]
+            .into();
+        }
+
         // Wrap in main container
         container(content_with_menu)
             .width(iced::Length::Fill)
@@ -482,6 +553,65 @@ impl App {
         // Window close events (for cleaning up dialog windows)
         let window_sub = window::close_requests().map(Message::DialogWindowClosed);
 
-        Subscription::batch([keyboard_sub, menu_sub, window_sub])
+        // Toast auto-dismiss timer (5 seconds)
+        let toast_sub = if self.state.toast.is_some() {
+            time::every(Duration::from_secs(5))
+                .map(|_| Message::Toast(crate::message::ToastMessage::Dismiss))
+        } else {
+            Subscription::none()
+        };
+
+        Subscription::batch([keyboard_sub, menu_sub, window_sub, toast_sub])
     }
+}
+
+/// Checks for a post-update status file and returns a toast if the update was successful.
+///
+/// This is called on app startup to show a notification when the app has been updated.
+/// The status file is written by the update helper and deleted after reading.
+fn check_update_status() -> Option<crate::component::toast::ToastState> {
+    use directories::ProjectDirs;
+
+    // Get the status file path using the same location as the helper
+    // On macOS: ~/Library/Application Support/Trial Submission Studio/update_status.json
+    let proj_dirs = ProjectDirs::from("", "", "Trial Submission Studio")?;
+    let status_path = proj_dirs.data_dir().join("update_status.json");
+
+    if !status_path.exists() {
+        return None;
+    }
+
+    // Read and parse the status file (helper writes JSON)
+    let content = std::fs::read_to_string(&status_path).ok()?;
+    let status: UpdateStatusJson = serde_json::from_str(&content).ok()?;
+
+    // Delete the status file after reading
+    let _ = std::fs::remove_file(&status_path);
+
+    if status.success {
+        tracing::info!(
+            "App was updated from {} to {}",
+            status.previous_version,
+            status.version
+        );
+        Some(crate::component::toast::ToastState::update_success(
+            &status.version,
+        ))
+    } else {
+        tracing::warn!("Update to {} failed: {:?}", status.version, status.error);
+        None
+    }
+}
+
+/// JSON structure for the update status file (matches tss-updater-helper's UpdateStatus).
+#[derive(serde::Deserialize)]
+struct UpdateStatusJson {
+    success: bool,
+    version: String,
+    previous_version: String,
+    #[allow(dead_code)]
+    timestamp: String,
+    error: Option<String>,
+    #[allow(dead_code)]
+    log_file: String,
 }
