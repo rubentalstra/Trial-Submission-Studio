@@ -176,9 +176,6 @@ pub enum DisplaySettingsMessage {
 /// Update settings messages.
 #[derive(Debug, Clone)]
 pub enum UpdateSettingsMessage {
-    /// Toggle update checking (enabled/disabled)
-    EnabledToggled(bool),
-
     /// Toggle automatic update check on startup
     CheckOnStartupToggled(bool),
 

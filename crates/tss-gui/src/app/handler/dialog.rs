@@ -161,10 +161,6 @@ impl App {
             }
             SettingsMessage::Updates(update_msg) => {
                 match update_msg {
-                    UpdateSettingsMessage::EnabledToggled(enabled) => {
-                        self.state.settings.updates.enabled = enabled;
-                        tracing::info!("Update checking enabled: {}", enabled);
-                    }
                     UpdateSettingsMessage::CheckOnStartupToggled(enabled) => {
                         self.state.settings.updates.check_on_startup = enabled;
                         tracing::info!("Check on startup: {}", enabled);

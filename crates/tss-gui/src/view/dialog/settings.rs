@@ -469,17 +469,19 @@ fn view_display_settings<'a>() -> Element<'a, Message> {
 
 /// Update settings section.
 fn view_update_settings(settings: &Settings) -> Element<'_, Message> {
-    let enable_section = row![
+    let check_on_startup_section = row![
         column![
-            text("Enable Update Checking").size(14).color(GRAY_800),
-            text("Check for updates when the application starts")
+            text("Check on Startup").size(14).color(GRAY_800),
+            text("Automatically check for updates when the application starts")
                 .size(12)
                 .color(GRAY_500),
         ]
         .width(Length::Fill),
-        toggler(settings.updates.enabled).on_toggle(|v| Message::Dialog(DialogMessage::Settings(
-            SettingsMessage::Updates(UpdateSettingsMessage::EnabledToggled(v),)
-        ))),
+        toggler(settings.updates.check_on_startup).on_toggle(|v| Message::Dialog(
+            DialogMessage::Settings(SettingsMessage::Updates(
+                UpdateSettingsMessage::CheckOnStartupToggled(v),
+            ))
+        )),
     ]
     .align_y(Alignment::Center);
 
@@ -504,7 +506,7 @@ fn view_update_settings(settings: &Settings) -> Element<'_, Message> {
     column![
         section_header("Update Settings"),
         Space::new().height(SPACING_MD),
-        enable_section,
+        check_on_startup_section,
         Space::new().height(SPACING_SM),
         channel_section,
     ]
