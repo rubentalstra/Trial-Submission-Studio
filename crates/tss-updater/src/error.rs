@@ -65,6 +65,17 @@ pub enum UpdateError {
     /// Helper process failed (macOS).
     #[error("helper process failed: {0}")]
     HelperFailed(String),
+
+    /// Not running from an app bundle (macOS development build).
+    #[error("not running from an app bundle")]
+    NotInAppBundle,
+
+    /// No compatible asset format available for this platform.
+    ///
+    /// On macOS, DMG format is required to preserve code signatures.
+    /// This error occurs when a release only has older formats (tar.gz).
+    #[error("no compatible update package found for this platform")]
+    NoCompatibleAsset,
 }
 
 impl UpdateError {
@@ -89,6 +100,14 @@ impl UpdateError {
             Self::HelperNotFound => "Update helper not found. Please reinstall the application.",
             Self::HelperFailed(_) => {
                 "The update process failed. Please try again or reinstall manually."
+            }
+            Self::NotInAppBundle => {
+                "Cannot update: not running from an installed app bundle. \
+                 Please install the app to /Applications and run it from there."
+            }
+            Self::NoCompatibleAsset => {
+                "This release doesn't have a compatible update package for macOS. \
+                 Please download the latest DMG from the releases page."
             }
             Self::InvalidVersion(_) | Self::Io(_) | Self::JsonParse(_) => {
                 "An unexpected error occurred."

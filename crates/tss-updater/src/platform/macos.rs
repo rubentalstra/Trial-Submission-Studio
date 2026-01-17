@@ -21,9 +21,8 @@ use crate::error::{Result, UpdateError};
 use crate::release::UpdateInfo;
 use serde::Serialize;
 use std::fs;
-use std::io::Write;
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
+use std::process::Command;
 
 /// Expected app bundle name in archives
 const APP_BUNDLE_NAME: &str = "Trial Submission Studio.app";
@@ -92,8 +91,8 @@ pub fn install_and_restart(data: &[u8], info: &UpdateInfo) -> Result<()> {
     let temp_path = temp_dir.keep();
     tracing::info!("Temp directory: {:?}", temp_path);
 
-    // Spawn helper
-    spawn_helper_and_exit(&helper_path, &config_json)
+    // Spawn helper with config file path
+    spawn_helper_and_exit(&helper_path, &config_json, &temp_path)
 }
 
 /// Extracts the .app bundle from a DMG archive.
@@ -117,40 +116,71 @@ fn extract_app_bundle(
         )));
     }
 
-    tracing::debug!("Extracting app bundle from DMG");
+    tracing::info!(
+        "Extracting app bundle from DMG: {} ({} bytes)",
+        asset_name,
+        data.len()
+    );
 
     // Write DMG to temp file
     let dmg_path = dest_dir.join("update.dmg");
+    tracing::debug!("Writing DMG to: {:?}", dmg_path);
     fs::write(&dmg_path, data)
         .map_err(|e| UpdateError::ArchiveExtraction(format!("Failed to write DMG: {}", e)))?;
+    tracing::debug!("DMG written successfully");
 
     // Create mount point
     let mount_point = dest_dir.join("dmg_mount");
+    tracing::debug!("Creating mount point: {:?}", mount_point);
     fs::create_dir_all(&mount_point).map_err(|e| {
         UpdateError::ArchiveExtraction(format!("Failed to create mount point: {}", e))
     })?;
 
     // Mount DMG (readonly, no Finder window)
+    tracing::info!("Mounting DMG...");
     let attach_output = Command::new("hdiutil")
         .args(["attach", "-nobrowse", "-readonly", "-mountpoint"])
         .arg(&mount_point)
         .arg(&dmg_path)
         .output()
-        .map_err(|e| UpdateError::ArchiveExtraction(format!("Failed to mount DMG: {}", e)))?;
+        .map_err(|e| UpdateError::ArchiveExtraction(format!("Failed to run hdiutil: {}", e)))?;
 
     if !attach_output.status.success() {
         let stderr = String::from_utf8_lossy(&attach_output.stderr);
+        let stdout = String::from_utf8_lossy(&attach_output.stdout);
+        tracing::error!(
+            "hdiutil attach failed - stdout: {}, stderr: {}",
+            stdout,
+            stderr
+        );
         let _ = fs::remove_file(&dmg_path);
         return Err(UpdateError::ArchiveExtraction(format!(
             "Failed to mount DMG: {}",
             stderr
         )));
     }
+    tracing::info!("DMG mounted successfully at: {:?}", mount_point);
 
     // Find the .app bundle in the mounted DMG
     let mounted_app = mount_point.join(APP_BUNDLE_NAME);
+    tracing::debug!("Looking for app bundle at: {:?}", mounted_app);
 
     if !mounted_app.exists() {
+        // List what's actually in the mounted DMG for debugging
+        let contents: Vec<String> = fs::read_dir(&mount_point)
+            .map(|entries| {
+                entries
+                    .filter_map(|e| e.ok())
+                    .map(|e| e.file_name().to_string_lossy().to_string())
+                    .collect()
+            })
+            .unwrap_or_default();
+        tracing::error!(
+            "App bundle '{}' not found. DMG contains: {:?}",
+            APP_BUNDLE_NAME,
+            contents
+        );
+
         // Detach and clean up before returning error
         let _ = Command::new("hdiutil")
             .args(["detach", "-quiet"])
@@ -158,13 +188,15 @@ fn extract_app_bundle(
             .output();
         let _ = fs::remove_file(&dmg_path);
         return Err(UpdateError::ArchiveExtraction(format!(
-            "App bundle '{}' not found in DMG",
-            APP_BUNDLE_NAME
+            "App bundle '{}' not found in DMG. Contents: {:?}",
+            APP_BUNDLE_NAME, contents
         )));
     }
+    tracing::info!("Found app bundle: {:?}", mounted_app);
 
     // Copy .app bundle using ditto (preserves ALL macOS metadata)
     let dest_app = dest_dir.join(APP_BUNDLE_NAME);
+    tracing::info!("Copying app bundle with ditto to: {:?}", dest_app);
     let copy_output = Command::new("ditto")
         .arg(&mounted_app)
         .arg(&dest_app)
@@ -172,6 +204,7 @@ fn extract_app_bundle(
         .map_err(|e| UpdateError::ArchiveExtraction(format!("Failed to run ditto: {}", e)))?;
 
     // Always detach DMG
+    tracing::debug!("Detaching DMG...");
     let _ = Command::new("hdiutil")
         .args(["detach", "-quiet"])
         .arg(&mount_point)
@@ -182,13 +215,14 @@ fn extract_app_bundle(
 
     if !copy_output.status.success() {
         let stderr = String::from_utf8_lossy(&copy_output.stderr);
+        tracing::error!("ditto copy failed: {}", stderr);
         return Err(UpdateError::ArchiveExtraction(format!(
             "ditto copy failed: {}",
             stderr
         )));
     }
 
-    tracing::debug!("Extracted app bundle to: {:?}", dest_app);
+    tracing::info!("Extracted app bundle to: {:?}", dest_app);
     Ok(dest_app)
 }
 
@@ -213,6 +247,8 @@ fn get_current_bundle() -> Result<PathBuf> {
     let exe = std::env::current_exe()
         .map_err(|e| UpdateError::Installation(format!("Failed to get current exe: {}", e)))?;
 
+    tracing::debug!("Current executable path: {:?}", exe);
+
     // Traverse up to find .app bundle
     // Typical path: /Applications/Trial Submission Studio.app/Contents/MacOS/trial-submission-studio
     let mut path = exe.as_path();
@@ -224,9 +260,8 @@ fn get_current_bundle() -> Result<PathBuf> {
         path = parent;
     }
 
-    Err(UpdateError::Installation(
-        "Could not find .app bundle in current executable path".to_string(),
-    ))
+    tracing::warn!("Not running from an app bundle. Executable path: {:?}", exe);
+    Err(UpdateError::NotInAppBundle)
 }
 
 /// Gets the path to the helper binary inside the current bundle.
@@ -248,25 +283,28 @@ fn get_helper_path(bundle_path: &std::path::Path) -> Result<PathBuf> {
 /// Spawns the helper binary and exits the current process.
 ///
 /// This function does not return - it exits after spawning the helper.
-fn spawn_helper_and_exit(helper_path: &std::path::Path, config_json: &str) -> Result<()> {
+/// Config is written to a file (rather than stdin) to avoid race conditions
+/// when the parent exits before the helper has fully read the input.
+fn spawn_helper_and_exit(
+    helper_path: &std::path::Path,
+    config_json: &str,
+    temp_dir: &std::path::Path,
+) -> Result<()> {
     tracing::info!("Spawning update helper and exiting");
 
-    let mut child = Command::new(helper_path)
-        .stdin(Stdio::piped())
+    // Write config to file (persists after parent exits, avoiding race condition)
+    let config_path = temp_dir.join("update_config.json");
+    fs::write(&config_path, config_json)
+        .map_err(|e| UpdateError::HelperFailed(format!("Failed to write config file: {}", e)))?;
+    tracing::debug!("Config written to: {:?}", config_path);
+
+    // Spawn helper with config file path as argument
+    Command::new(helper_path)
+        .arg(&config_path)
         .spawn()
         .map_err(|e| UpdateError::HelperFailed(format!("Failed to spawn helper: {}", e)))?;
 
-    // Write config to helper's stdin
-    if let Some(ref mut stdin) = child.stdin {
-        stdin
-            .write_all(config_json.as_bytes())
-            .map_err(|e| UpdateError::HelperFailed(format!("Failed to write config: {}", e)))?;
-    }
-
-    // Close stdin to signal end of input
-    drop(child.stdin.take());
-
-    // Exit - helper will complete the update
+    // Safe to exit - config file persists for helper to read
     tracing::info!("Exiting for helper to complete update");
     std::process::exit(0);
 }

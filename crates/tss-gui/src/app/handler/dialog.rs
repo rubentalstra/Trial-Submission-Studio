@@ -378,8 +378,8 @@ impl App {
                     self.state.dialog_windows.update = Some((id, UpdateState::Installing));
                 }
 
-                // Start installation
-                update_checker::install_update(data, info)
+                // Start installation (uses DMG extraction on macOS, binary extraction elsewhere)
+                update_checker::install_and_restart(data, info)
             }
 
             UpdateMessage::InstallComplete(result) => {

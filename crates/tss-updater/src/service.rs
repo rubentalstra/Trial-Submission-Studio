@@ -94,9 +94,15 @@ impl UpdateService {
 
         // Find asset for current platform
         let target = get_target_triple();
-        let asset = release
-            .find_asset_for_target(&target)
-            .ok_or_else(|| UpdateError::NoAssetFound(target.clone()))?;
+        let asset = release.find_asset_for_target(&target).ok_or_else(|| {
+            // On macOS, DMG is required (preserves code signatures).
+            // If no DMG is found, give a specific error suggesting manual download.
+            if target.contains("apple-darwin") {
+                UpdateError::NoCompatibleAsset
+            } else {
+                UpdateError::NoAssetFound(target.clone())
+            }
+        })?;
 
         tracing::info!(
             "Update available: {} -> {} (asset: {})",

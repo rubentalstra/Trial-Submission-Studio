@@ -256,11 +256,17 @@ impl GitHubRelease {
             ".tar.gz"
         };
 
-        matching
+        let preferred_asset = matching
             .iter()
-            .find(|a| a.name.to_lowercase().ends_with(preferred_ext))
-            .or(matching.first())
-            .copied()
+            .find(|a| a.name.to_lowercase().ends_with(preferred_ext));
+
+        // For macOS, DMG is required (preserves code signatures).
+        // For other platforms, fall back to any matching asset if preferred format isn't found.
+        if is_macos {
+            preferred_asset.copied()
+        } else {
+            preferred_asset.or(matching.first()).copied()
+        }
     }
 }
 
@@ -507,5 +513,64 @@ mod tests {
         // For macOS, should prefer DMG (preserves code signatures)
         let asset = release.find_asset_for_target("x86_64-apple-darwin");
         assert!(asset.unwrap().name.ends_with(".dmg"));
+    }
+
+    #[test]
+    fn test_macos_requires_dmg_no_fallback() {
+        // Release with only tar.gz (no DMG) for macOS
+        let release = GitHubRelease {
+            tag_name: "v0.1.0".to_string(),
+            name: None,
+            body: None,
+            prerelease: false,
+            draft: false,
+            assets: vec![GitHubAsset {
+                name: "app-v0.1.0-x86_64-apple-darwin.tar.gz".to_string(),
+                browser_download_url: String::new(),
+                state: "uploaded".to_string(),
+                digest: None,
+                size: 1024,
+                content_type: "application/gzip".to_string(),
+                download_count: 0,
+                created_at: String::new(),
+                updated_at: String::new(),
+            }],
+            html_url: String::new(),
+            published_at: None,
+        };
+
+        // macOS should NOT fallback to tar.gz - DMG is required
+        let asset = release.find_asset_for_target("x86_64-apple-darwin");
+        assert!(asset.is_none(), "macOS should not fallback to tar.gz");
+    }
+
+    #[test]
+    fn test_linux_can_fallback_to_any_format() {
+        // Release with only zip (not preferred tar.gz) for Linux
+        let release = GitHubRelease {
+            tag_name: "v0.1.0".to_string(),
+            name: None,
+            body: None,
+            prerelease: false,
+            draft: false,
+            assets: vec![GitHubAsset {
+                name: "app-v0.1.0-x86_64-unknown-linux-gnu.zip".to_string(),
+                browser_download_url: String::new(),
+                state: "uploaded".to_string(),
+                digest: None,
+                size: 1024,
+                content_type: "application/zip".to_string(),
+                download_count: 0,
+                created_at: String::new(),
+                updated_at: String::new(),
+            }],
+            html_url: String::new(),
+            published_at: None,
+        };
+
+        // Linux should fallback to zip when tar.gz isn't available
+        let asset = release.find_asset_for_target("x86_64-unknown-linux-gnu");
+        assert!(asset.is_some(), "Linux should fallback to available format");
+        assert!(asset.unwrap().name.ends_with(".zip"));
     }
 }

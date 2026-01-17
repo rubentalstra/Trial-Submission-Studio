@@ -5,25 +5,25 @@
 //!
 //! Process:
 //! 1. Parent (main app) downloads new .app bundle to temp directory
-//! 2. Parent spawns this helper with JSON config via stdin
+//! 2. Parent writes JSON config to a file and spawns this helper with the file path
 //! 3. Parent exits
-//! 4. Helper waits for parent to exit
-//! 5. Helper verifies code signature of new bundle
-//! 6. Helper performs atomic swap: current → backup, new → current
-//! 7. Helper relaunches the application
-//! 8. Helper cleans up backup on success
+//! 4. Helper reads config from file (avoids race condition with stdin)
+//! 5. Helper waits for parent to exit
+//! 6. Helper verifies code signature of new bundle
+//! 7. Helper performs atomic swap: current → backup, new → current
+//! 8. Helper relaunches the application
+//! 9. Helper cleans up backup on success
 
 #[cfg(target_os = "macos")]
 mod macos {
     use serde::Deserialize;
     use std::fs;
-    use std::io::{self, Read};
     use std::path::PathBuf;
     use std::process::{Command, ExitCode};
     use std::thread;
     use std::time::Duration;
 
-    /// Configuration passed from the main application via stdin
+    /// Configuration passed from the main application via config file
     #[derive(Debug, Deserialize)]
     pub struct HelperConfig {
         /// Path to the new .app bundle (in temp directory)
@@ -77,7 +77,7 @@ mod macos {
         }
     }
 
-    /// Performs the atomic swap of app bundles
+    /// Performs the swap of app bundles using ditto (works across filesystems)
     fn swap_bundles(new_app: &PathBuf, current_app: &PathBuf) -> Result<PathBuf, String> {
         eprintln!(
             "[helper] Swapping bundles: {:?} -> {:?}",
@@ -93,27 +93,50 @@ mod macos {
                 .map_err(|e| format!("Failed to remove old backup: {}", e))?;
         }
 
-        // Move current to backup
+        // Move current to backup (same filesystem, rename works)
         fs::rename(current_app, &backup_path)
             .map_err(|e| format!("Failed to move current app to backup: {}", e))?;
         eprintln!("[helper] Current app moved to backup: {:?}", backup_path);
 
-        // Move new to current
-        match fs::rename(new_app, current_app) {
-            Ok(()) => {
+        // Copy new app using ditto (works across filesystems, preserves metadata)
+        let copy_result = Command::new("ditto").arg(new_app).arg(current_app).output();
+
+        match copy_result {
+            Ok(output) if output.status.success() => {
                 eprintln!("[helper] New app installed: {:?}", current_app);
+
+                // Clean up the source (temp) app bundle
+                if let Err(e) = fs::remove_dir_all(new_app) {
+                    eprintln!("[helper] Warning: Failed to clean up temp app: {}", e);
+                }
+
                 Ok(backup_path)
+            }
+            Ok(output) => {
+                let stderr = String::from_utf8_lossy(&output.stderr);
+                eprintln!("[helper] ditto copy failed: {}", stderr);
+
+                // Rollback: restore backup
+                eprintln!("[helper] Rolling back...");
+                if let Err(restore_err) = fs::rename(&backup_path, current_app) {
+                    return Err(format!(
+                        "Install failed and rollback failed: ditto: {} / restore: {}",
+                        stderr, restore_err
+                    ));
+                }
+                Err(format!("Failed to copy new app with ditto: {}", stderr))
             }
             Err(e) => {
                 // Rollback: restore backup
-                eprintln!("[helper] Install failed, rolling back: {}", e);
+                eprintln!("[helper] ditto command failed: {}", e);
+                eprintln!("[helper] Rolling back...");
                 if let Err(restore_err) = fs::rename(&backup_path, current_app) {
                     return Err(format!(
                         "Install failed and rollback failed: {} / {}",
                         e, restore_err
                     ));
                 }
-                Err(format!("Failed to install new app: {}", e))
+                Err(format!("Failed to run ditto: {}", e))
             }
         }
     }
@@ -147,12 +170,25 @@ mod macos {
     pub fn run() -> ExitCode {
         eprintln!("[helper] Trial Submission Studio Update Helper started");
 
-        // Read config from stdin
-        let mut input = String::new();
-        if let Err(e) = io::stdin().read_to_string(&mut input) {
-            eprintln!("[helper] Failed to read config from stdin: {}", e);
+        // Get config file path from command line argument
+        let args: Vec<String> = std::env::args().collect();
+        if args.len() < 2 {
+            eprintln!("[helper] Usage: {} <config_file>", args[0]);
             return ExitCode::FAILURE;
         }
+        let config_path = &args[1];
+
+        // Read config from file (persists after parent exits, avoiding race condition)
+        let input = match fs::read_to_string(config_path) {
+            Ok(s) => s,
+            Err(e) => {
+                eprintln!(
+                    "[helper] Failed to read config file '{}': {}",
+                    config_path, e
+                );
+                return ExitCode::FAILURE;
+            }
+        };
 
         let config: HelperConfig = match serde_json::from_str(&input) {
             Ok(c) => c,
