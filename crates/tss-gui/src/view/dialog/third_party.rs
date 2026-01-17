@@ -16,6 +16,8 @@ use crate::theme::{
 const THIRD_PARTY_LICENSES: &str = include_str!("../../../../../THIRD_PARTY_LICENSES.md");
 
 /// Pre-parsed markdown state for the third-party licenses dialog.
+///
+/// The markdown is parsed once when the dialog is opened and cached in state.
 #[derive(Debug, Clone, Default)]
 pub struct ThirdPartyState {
     markdown_items: Vec<markdown::Item>,
@@ -112,6 +114,9 @@ fn view_header<'a>() -> Element<'a, Message> {
 }
 
 /// Scrollable licenses content.
+///
+/// The markdown items are pre-parsed and cached in state, so we only
+/// build the widget tree here (no expensive parsing on every frame).
 fn view_licenses_content<'a>(items: &'a [markdown::Item]) -> Element<'a, Message> {
     if items.is_empty() {
         return text("No third-party licenses found.")

@@ -13,6 +13,7 @@ pub mod home;
 pub mod menu;
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use iced::keyboard;
 use iced::window;
@@ -138,9 +139,10 @@ pub enum Message {
     UpdateCheckComplete(Result<Option<tss_updater::UpdateInfo>, String>),
 
     /// Update is ready to install (verification passed or unavailable).
+    /// Uses `Arc<Vec<u8>>` for cheap cloning of large binary data.
     UpdateReadyToInstall {
         info: tss_updater::UpdateInfo,
-        data: Vec<u8>,
+        data: Arc<Vec<u8>>,
         verified: bool,
     },
 

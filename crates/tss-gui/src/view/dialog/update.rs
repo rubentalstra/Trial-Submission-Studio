@@ -7,6 +7,7 @@
 //! - Two-step confirmation (download + install)
 //! - Inline error handling with suggestions
 
+use std::sync::Arc;
 use std::time::Instant;
 
 use iced::widget::{
@@ -177,8 +178,8 @@ pub enum RetryContext {
     Install {
         /// Update info.
         info: tss_updater::UpdateInfo,
-        /// Downloaded data.
-        data: Vec<u8>,
+        /// Downloaded data (Arc for cheap cloning of large binaries).
+        data: Arc<Vec<u8>>,
     },
 }
 
@@ -222,8 +223,8 @@ pub enum UpdateState {
     ReadyToInstall {
         /// Update information.
         info: tss_updater::UpdateInfo,
-        /// Downloaded binary data.
-        data: Vec<u8>,
+        /// Downloaded binary data (Arc for cheap cloning of large binaries).
+        data: Arc<Vec<u8>>,
         /// Whether verification passed.
         verified: bool,
     },
@@ -267,12 +268,12 @@ pub fn view_update_dialog_content(
         } => view_available(info, changelog_items, *changelog_expanded, window_id),
         UpdateState::UpToDate => view_up_to_date(window_id),
         UpdateState::Downloading { info, stats } => view_downloading(info, stats, window_id),
-        UpdateState::Verifying { info } => view_verifying(info),
+        UpdateState::Verifying { info } => view_ready_to_install(info, None, window_id),
         UpdateState::ReadyToInstall {
             info,
             verified,
             data: _,
-        } => view_ready_to_install(info, *verified, window_id),
+        } => view_ready_to_install(info, Some(*verified), window_id),
         UpdateState::Installing { info } => view_installing(info),
         UpdateState::Complete { version } => view_complete(version),
         UpdateState::Error {
@@ -575,70 +576,110 @@ fn view_downloading<'a>(
     content.into()
 }
 
-/// Verifying state - brief indicator.
-fn view_verifying<'a>(info: &'a tss_updater::UpdateInfo) -> Element<'a, Message> {
-    let icon = lucide::shield_check().size(48).color(PRIMARY_500);
-
-    let content = column![
-        Space::new().height(SPACING_LG),
-        center(icon).width(Length::Fill),
-        Space::new().height(SPACING_MD),
-        text("Verifying Download...")
-            .size(18)
-            .color(GRAY_800)
-            .center(),
-        Space::new().height(SPACING_XS),
-        text(format!(
-            "Checking integrity of version {}",
-            info.version_display()
-        ))
-        .size(13)
-        .color(GRAY_500)
-        .center(),
-        Space::new().height(SPACING_LG),
-    ]
-    .align_x(Alignment::Center)
-    .padding(SPACING_LG)
-    .width(Length::Fill);
-
-    content.into()
-}
-
-/// Ready to install state - second confirmation.
+/// Ready to install state - second confirmation with prominent verification status.
+///
+/// `verified` is:
+/// - `None` = verification in progress (shows spinner)
+/// - `Some(true)` = verified successfully
+/// - `Some(false)` = unverified (no digest available)
 fn view_ready_to_install<'a>(
     info: &'a tss_updater::UpdateInfo,
-    verified: bool,
+    verified: Option<bool>,
     window_id: window::Id,
 ) -> Element<'a, Message> {
-    let verification_badge = if verified {
-        row![
-            lucide::shield_check().size(14).color(SUCCESS),
-            Space::new().width(4),
-            text("Verified").size(13).color(SUCCESS),
-        ]
-        .align_y(Alignment::Center)
-    } else {
-        row![
-            lucide::shield_alert().size(14).color(WARNING),
-            Space::new().width(4),
-            text("Unverified").size(13).color(WARNING),
-        ]
-        .align_y(Alignment::Center)
+    // Large icon based on verification status
+    let icon: Element<'a, Message> = match verified {
+        None => lucide::shield_check().size(48).color(PRIMARY_500).into(), // Verifying
+        Some(true) => lucide::shield_check().size(48).color(SUCCESS).into(), // Verified
+        Some(false) => lucide::shield_alert().size(48).color(WARNING).into(), // Unverified
     };
 
-    let install_btn = button(
-        row![
-            lucide::package().size(14),
-            Space::new().width(SPACING_XS),
-            text("Install"),
-        ]
-        .align_y(Alignment::Center),
-    )
-    .on_press(Message::Dialog(DialogMessage::Update(
-        UpdateMessage::ConfirmInstall,
-    )))
-    .padding([SPACING_SM, SPACING_MD])
-    .style(button_primary);
+    // Verification status badge with styled container
+    let verification_badge: Element<'a, Message> = match verified {
+        None => {
+            // Verifying in progress
+            container(
+                row![
+                    lucide::loader().size(16).color(PRIMARY_500),
+                    Space::new().width(SPACING_XS),
+                    text("Verifying Download...").size(14).color(PRIMARY_500),
+                ]
+                .align_y(Alignment::Center),
+            )
+            .padding([SPACING_SM, SPACING_MD])
+            .style(|_| container::Style {
+                background: Some(iced::Color::from_rgb(0.93, 0.95, 1.0).into()), // Light blue
+                border: iced::Border {
+                    color: PRIMARY_500,
+                    width: 1.0,
+                    radius: BORDER_RADIUS_SM.into(),
+                },
+                ..Default::default()
+            })
+            .into()
+        }
+        Some(is_verified) => {
+            let badge_text = if is_verified {
+                "Download Verified"
+            } else {
+                "Unverified Download"
+            };
+            let badge_color = if is_verified { SUCCESS } else { WARNING };
+            let badge_bg = if is_verified {
+                iced::Color::from_rgb(0.9, 1.0, 0.9) // Light green
+            } else {
+                iced::Color::from_rgb(1.0, 0.98, 0.9) // Light yellow
+            };
+
+            let badge_icon: Element<'a, Message> = if is_verified {
+                lucide::shield_check().size(16).color(badge_color).into()
+            } else {
+                lucide::shield_alert().size(16).color(badge_color).into()
+            };
+
+            container(
+                row![
+                    badge_icon,
+                    Space::new().width(SPACING_XS),
+                    text(badge_text).size(14).color(badge_color),
+                ]
+                .align_y(Alignment::Center),
+            )
+            .padding([SPACING_SM, SPACING_MD])
+            .style(move |_| container::Style {
+                background: Some(badge_bg.into()),
+                border: iced::Border {
+                    color: badge_color,
+                    width: 1.0,
+                    radius: BORDER_RADIUS_SM.into(),
+                },
+                ..Default::default()
+            })
+            .into()
+        }
+    };
+
+    // Install button - disabled while verifying
+    let install_btn_content = row![
+        lucide::package().size(14),
+        Space::new().width(SPACING_XS),
+        text("Install & Restart"),
+    ]
+    .align_y(Alignment::Center);
+
+    let install_btn = if verified.is_some() {
+        button(install_btn_content)
+            .on_press(Message::Dialog(DialogMessage::Update(
+                UpdateMessage::ConfirmInstall,
+            )))
+            .padding([SPACING_SM, SPACING_MD])
+            .style(button_primary)
+    } else {
+        // Disabled while verifying
+        button(install_btn_content)
+            .padding([SPACING_SM, SPACING_MD])
+            .style(button_secondary)
+    };
 
     let cancel_btn = button(text("Cancel").size(13))
         .on_press(Message::CloseWindow(window_id))
@@ -647,15 +688,17 @@ fn view_ready_to_install<'a>(
 
     let content = column![
         Space::new().height(SPACING_LG),
+        center(icon).width(Length::Fill),
+        Space::new().height(SPACING_MD),
         text("Ready to Install").size(20).color(GRAY_900).center(),
         Space::new().height(SPACING_XS),
         text(format!("Version {}", info.version_display()))
             .size(14)
             .color(GRAY_700)
             .center(),
-        Space::new().height(SPACING_SM),
+        Space::new().height(SPACING_MD),
         center(verification_badge).width(Length::Fill),
-        Space::new().height(SPACING_LG),
+        Space::new().height(SPACING_MD),
         text("The application will restart after installation.")
             .size(13)
             .color(GRAY_500)

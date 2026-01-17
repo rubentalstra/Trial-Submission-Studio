@@ -589,8 +589,8 @@ impl App {
             _ => Message::Noop,
         });
 
-        // Native menu event polling (polls every 50ms)
-        let menu_sub = time::every(Duration::from_millis(50)).map(|_| Message::NativeMenuEvent);
+        // Native menu event polling (polls every 200ms to reduce CPU usage)
+        let menu_sub = time::every(Duration::from_millis(200)).map(|_| Message::NativeMenuEvent);
 
         // Window close events (for cleaning up dialog windows)
         let window_sub = window::close_requests().map(Message::DialogWindowClosed);

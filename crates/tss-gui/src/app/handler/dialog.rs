@@ -6,6 +6,8 @@
 //! - Third-party licenses dialog
 //! - Update check dialog (using Task::perform and Task::run for streaming)
 
+use std::sync::Arc;
+
 use futures_util::StreamExt;
 use iced::Task;
 use iced::widget::markdown;
@@ -292,10 +294,10 @@ impl App {
             }
 
             UpdateMessage::ConfirmInstall => {
-                // Get data from current state
+                // Get data from current state (Arc::clone is cheap for large binaries)
                 let (info, data) = match &self.state.dialog_windows.update {
                     Some((_, UpdateState::ReadyToInstall { info, data, .. })) => {
-                        (info.clone(), data.clone())
+                        (info.clone(), Arc::clone(data))
                     }
                     Some((
                         _,
@@ -303,7 +305,7 @@ impl App {
                             retry_context: Some(RetryContext::Install { info, data }),
                             ..
                         },
-                    )) => (info.clone(), data.clone()),
+                    )) => (info.clone(), Arc::clone(data)),
                     _ => return Task::none(),
                 };
 
@@ -607,13 +609,13 @@ impl App {
 
                 match result {
                     Ok(outcome) => {
-                        // Move to ReadyToInstall
+                        // Move to ReadyToInstall (wrap data in Arc for cheap cloning)
                         if let Some((id, _)) = self.state.dialog_windows.update {
                             self.state.dialog_windows.update = Some((
                                 id,
                                 UpdateState::ReadyToInstall {
                                     info,
-                                    data: outcome.data,
+                                    data: Arc::new(outcome.data),
                                     verified: outcome.verified,
                                 },
                             ));
@@ -646,12 +648,12 @@ impl App {
                     Err(e) => {
                         tracing::error!("Installation failed: {}", e);
 
-                        // Get info and data for retry if available
+                        // Get info for retry if available (data is lost at this point)
                         let retry_context = match &self.state.dialog_windows.update {
                             Some((_, UpdateState::Installing { info })) => {
                                 Some(RetryContext::Install {
                                     info: info.clone(),
-                                    data: vec![], // We don't have the data anymore
+                                    data: Arc::new(vec![]), // Data is not available after install attempt
                                 })
                             }
                             _ => None,
@@ -677,7 +679,7 @@ impl App {
     pub fn set_update_ready_to_install(
         &mut self,
         info: tss_updater::UpdateInfo,
-        data: Vec<u8>,
+        data: Arc<Vec<u8>>,
         verified: bool,
     ) {
         if let Some((id, _)) = self.state.dialog_windows.update {
