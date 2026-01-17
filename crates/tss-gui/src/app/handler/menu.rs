@@ -9,7 +9,9 @@ use iced::window;
 use iced::{Size, Task};
 
 use crate::app::App;
-use crate::message::{HomeMessage, MenuMessage, Message, SettingsCategory};
+use crate::message::{
+    DialogMessage, HomeMessage, MenuMessage, Message, SettingsCategory, UpdateMessage,
+};
 use crate::view::dialog::third_party::ThirdPartyState;
 use crate::view::dialog::update::UpdateState;
 
@@ -113,19 +115,33 @@ impl App {
                 if self.state.dialog_windows.update.is_some() {
                     return Task::none();
                 }
-                // Open update dialog in a new window
-                // Size accommodates: icon, version info, changelog, and action buttons
+                // Open update dialog in a new window (600x420, horizontal layout)
                 let settings = window::Settings {
-                    size: Size::new(550.0, 500.0),
-                    resizable: true,
+                    size: Size::new(600.0, 420.0),
+                    resizable: false,
                     decorations: true,
                     level: window::Level::AlwaysOnTop,
                     exit_on_close_request: false,
                     ..Default::default()
                 };
-                let (id, task) = window::open(settings);
-                self.state.dialog_windows.update = Some((id, UpdateState::Idle));
-                task.map(|_| Message::Noop)
+                let (id, open_task) = window::open(settings);
+                // Dialog opens in Checking state and triggers check automatically
+                self.state.dialog_windows.update = Some((id, UpdateState::Checking));
+
+                // Start the update check task
+                let update_settings = self.state.settings.updates.clone();
+                let check_task = Task::perform(
+                    async move {
+                        tss_updater::check_for_update(&update_settings)
+                            .await
+                            .map_err(|e| e.user_message().to_string())
+                    },
+                    |result| {
+                        Message::Dialog(DialogMessage::Update(UpdateMessage::CheckResult(result)))
+                    },
+                );
+
+                Task::batch([open_task.map(|_| Message::Noop), check_task])
             }
             MenuMessage::About => {
                 // Don't open if already open

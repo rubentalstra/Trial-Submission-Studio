@@ -120,10 +120,8 @@ fn view_licenses_content<'a>(items: &'a [markdown::Item]) -> Element<'a, Message
             .into();
     }
 
-    let markdown_content: Element<'a, Message> = markdown::view(items, Theme::Light).map(|url| {
-        let _ = open::that(&url);
-        Message::Noop
-    });
+    let markdown_content: Element<'a, Message> =
+        markdown::view(items, Theme::Light).map(|url| Message::OpenUrl(url.to_string()));
 
     let scroll = scrollable(
         container(markdown_content)

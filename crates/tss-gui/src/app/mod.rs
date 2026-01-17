@@ -203,7 +203,7 @@ impl App {
                         self.state.dialog_windows.third_party = Some((id, ThirdPartyState::new()));
                     }
                     DialogType::Update => {
-                        self.state.dialog_windows.update = Some((id, UpdateState::Idle));
+                        self.state.dialog_windows.update = Some((id, UpdateState::Checking));
                     }
                     DialogType::CloseStudyConfirm => {
                         self.state.dialog_windows.close_study_confirm = Some(id);
@@ -360,6 +360,14 @@ impl App {
             }
 
             // =================================================================
+            // External actions
+            // =================================================================
+            Message::OpenUrl(url) => {
+                let _ = open::that(&url);
+                Task::none()
+            }
+
+            // =================================================================
             // Toast notifications
             // =================================================================
             Message::Toast(toast_msg) => self.handle_toast_message(toast_msg),
@@ -440,12 +448,11 @@ impl App {
                 }
                 DialogType::Update => {
                     // Get reference to update state from dialog_windows
-                    // Use default Idle state if somehow missing
                     if let Some((_, ref update_state)) = self.state.dialog_windows.update {
                         view_update_dialog_content(update_state, id)
                     } else {
-                        // Fallback to Idle state - this shouldn't happen
-                        view_update_dialog_content(&UpdateState::Idle, id)
+                        // This shouldn't happen - show loading text as fallback
+                        iced::widget::text("Loading...").into()
                     }
                 }
                 DialogType::CloseStudyConfirm => view_close_study_dialog_content(id),

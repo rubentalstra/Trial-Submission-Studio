@@ -25,7 +25,7 @@ pub use dialog::{
     AboutMessage, DeveloperSettingsMessage, DialogMessage, DisplaySettingsMessage,
     ExportSettingsMessage, GeneralSettingsMessage, SettingsCategory, SettingsMessage,
     ThirdPartyMessage, UpdateMessage, UpdateSettingsMessage, ValidationSettingsMessage,
-    VerifyResult,
+    VerifyOutcome,
 };
 pub use domain_editor::DomainEditorMessage;
 pub use export::ExportMessage;
@@ -155,6 +155,12 @@ pub enum Message {
 
     /// Dismiss error message.
     DismissError,
+
+    // =========================================================================
+    // External actions
+    // =========================================================================
+    /// Open a URL in the system browser.
+    OpenUrl(String),
 
     // =========================================================================
     // Toast notifications

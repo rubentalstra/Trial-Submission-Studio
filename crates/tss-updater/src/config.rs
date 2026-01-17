@@ -106,7 +106,7 @@ pub const MANUAL_CHECK_COOLDOWN_SECS: i64 = 300; // 5 minutes
 ///
 /// By default, automatic startup checks are disabled, giving users
 /// control over when checks happen. Users can always manually check via menu.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct UpdateSettings {
     /// Automatically check for updates on app startup.
     /// If false, user must manually check via menu.
@@ -125,17 +125,6 @@ pub struct UpdateSettings {
     /// Last time we checked for updates.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub last_check: Option<DateTime<Utc>>,
-}
-
-impl Default for UpdateSettings {
-    fn default() -> Self {
-        Self {
-            check_on_startup: false,
-            channel: UpdateChannel::default(),
-            skipped_version: None,
-            last_check: None,
-        }
-    }
 }
 
 impl UpdateSettings {
