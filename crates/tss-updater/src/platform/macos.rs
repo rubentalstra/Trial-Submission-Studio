@@ -6,16 +6,22 @@
 //! 3. Apple's Gatekeeper requires valid signatures for apps to run
 //!
 //! Instead, we:
-//! 1. Extract the full .app bundle from the downloaded archive
+//! 1. Extract the full .app bundle from the downloaded DMG
 //! 2. Verify its code signature
 //! 3. Spawn a helper binary that swaps the bundles after we exit
 //! 4. The helper relaunches the new version
+//!
+//! DMG is the only supported format for macOS updates because it perfectly preserves:
+//! - Code signatures
+//! - Extended attributes (xattrs)
+//! - Resource forks
+//! - ACLs and file flags
 
 use crate::error::{Result, UpdateError};
 use crate::release::UpdateInfo;
 use serde::Serialize;
 use std::fs;
-use std::io::{Cursor, Write};
+use std::io::Write;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
@@ -90,7 +96,13 @@ pub fn install_and_restart(data: &[u8], info: &UpdateInfo) -> Result<()> {
     spawn_helper_and_exit(&helper_path, &config_json)
 }
 
-/// Extracts the .app bundle from a tar.gz archive.
+/// Extracts the .app bundle from a DMG archive.
+///
+/// DMG is the only supported format for macOS updates because it perfectly preserves:
+/// - Code signatures
+/// - Extended attributes (xattrs)
+/// - Resource forks
+/// - ACLs and file flags
 fn extract_app_bundle(
     data: &[u8],
     asset_name: &str,
@@ -98,150 +110,86 @@ fn extract_app_bundle(
 ) -> Result<PathBuf> {
     let asset_lower = asset_name.to_lowercase();
 
-    if asset_lower.ends_with(".tar.gz") || asset_lower.ends_with(".tgz") {
-        extract_app_from_tar_gz(data, dest_dir)
-    } else if asset_lower.ends_with(".zip") {
-        extract_app_from_zip(data, dest_dir)
-    } else {
-        Err(UpdateError::ArchiveExtraction(format!(
-            "Unsupported archive format for macOS: {}",
+    if !asset_lower.ends_with(".dmg") {
+        return Err(UpdateError::ArchiveExtraction(format!(
+            "macOS updates require DMG format, got: {}",
             asset_name
-        )))
+        )));
     }
-}
 
-/// Extracts .app bundle from tar.gz archive using macOS native tar.
-///
-/// Uses the system `tar` command with `-p` flag to properly preserve:
-/// - File permissions
-/// - ACLs (Access Control Lists)
-/// - Extended attributes (xattrs)
-/// - File flags
-/// - Code signature integrity
-fn extract_app_from_tar_gz(data: &[u8], dest_dir: &std::path::Path) -> Result<PathBuf> {
-    tracing::debug!("Extracting app bundle from tar.gz using native tar");
+    tracing::debug!("Extracting app bundle from DMG");
 
-    // Write archive data to a temporary file (native tar reads from file, not stdin for large archives)
-    let archive_path = dest_dir.join("update.tar.gz");
-    fs::write(&archive_path, data).map_err(|e| {
-        UpdateError::ArchiveExtraction(format!("Failed to write archive to temp file: {}", e))
+    // Write DMG to temp file
+    let dmg_path = dest_dir.join("update.dmg");
+    fs::write(&dmg_path, data)
+        .map_err(|e| UpdateError::ArchiveExtraction(format!("Failed to write DMG: {}", e)))?;
+
+    // Create mount point
+    let mount_point = dest_dir.join("dmg_mount");
+    fs::create_dir_all(&mount_point).map_err(|e| {
+        UpdateError::ArchiveExtraction(format!("Failed to create mount point: {}", e))
     })?;
 
-    // Use macOS native tar with -p to preserve all permissions and attributes
-    // -x = extract
-    // -z = decompress with gzip
-    // -p = preserve permissions (including ACLs, owner, file flags)
-    // -f = read from file
-    let output = Command::new("tar")
-        .args(["-xzpf"])
-        .arg(&archive_path)
-        .current_dir(dest_dir)
+    // Mount DMG (readonly, no Finder window)
+    let attach_output = Command::new("hdiutil")
+        .args(["attach", "-nobrowse", "-readonly", "-mountpoint"])
+        .arg(&mount_point)
+        .arg(&dmg_path)
         .output()
-        .map_err(|e| UpdateError::ArchiveExtraction(format!("Failed to execute tar: {}", e)))?;
+        .map_err(|e| UpdateError::ArchiveExtraction(format!("Failed to mount DMG: {}", e)))?;
 
-    // Clean up the temporary archive file
-    if let Err(e) = fs::remove_file(&archive_path) {
-        tracing::warn!("Failed to remove temp archive: {}", e);
-    }
-
-    // Check if extraction succeeded
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
+    if !attach_output.status.success() {
+        let stderr = String::from_utf8_lossy(&attach_output.stderr);
+        let _ = fs::remove_file(&dmg_path);
         return Err(UpdateError::ArchiveExtraction(format!(
-            "tar extraction failed: {}",
+            "Failed to mount DMG: {}",
             stderr
         )));
     }
 
-    // Find the .app bundle in the extracted contents
-    let app_path = dest_dir.join(APP_BUNDLE_NAME);
-    if app_path.exists() {
-        tracing::debug!("Found app bundle at: {:?}", app_path);
-        return Ok(app_path);
+    // Find the .app bundle in the mounted DMG
+    let mounted_app = mount_point.join(APP_BUNDLE_NAME);
+
+    if !mounted_app.exists() {
+        // Detach and clean up before returning error
+        let _ = Command::new("hdiutil")
+            .args(["detach", "-quiet"])
+            .arg(&mount_point)
+            .output();
+        let _ = fs::remove_file(&dmg_path);
+        return Err(UpdateError::ArchiveExtraction(format!(
+            "App bundle '{}' not found in DMG",
+            APP_BUNDLE_NAME
+        )));
     }
 
-    // The archive might have the app in a subdirectory (e.g., release-tar/)
-    // Search one level deep for the .app bundle
-    for entry in fs::read_dir(dest_dir)
-        .map_err(|e| UpdateError::ArchiveExtraction(format!("Failed to read temp dir: {}", e)))?
-    {
-        let entry = entry
-            .map_err(|e| UpdateError::ArchiveExtraction(format!("Failed to read entry: {}", e)))?;
-        let path = entry.path();
+    // Copy .app bundle using ditto (preserves ALL macOS metadata)
+    let dest_app = dest_dir.join(APP_BUNDLE_NAME);
+    let copy_output = Command::new("ditto")
+        .arg(&mounted_app)
+        .arg(&dest_app)
+        .output()
+        .map_err(|e| UpdateError::ArchiveExtraction(format!("Failed to run ditto: {}", e)))?;
 
-        if path.is_dir() {
-            let nested_app = path.join(APP_BUNDLE_NAME);
-            if nested_app.exists() {
-                // Move the app bundle to the top level of dest_dir
-                let final_path = dest_dir.join(APP_BUNDLE_NAME);
-                fs::rename(&nested_app, &final_path).map_err(|e| {
-                    UpdateError::ArchiveExtraction(format!("Failed to move app bundle: {}", e))
-                })?;
-                tracing::debug!("Moved app bundle from {:?} to {:?}", nested_app, final_path);
-                return Ok(final_path);
-            }
-        }
+    // Always detach DMG
+    let _ = Command::new("hdiutil")
+        .args(["detach", "-quiet"])
+        .arg(&mount_point)
+        .output();
+
+    // Clean up DMG file
+    let _ = fs::remove_file(&dmg_path);
+
+    if !copy_output.status.success() {
+        let stderr = String::from_utf8_lossy(&copy_output.stderr);
+        return Err(UpdateError::ArchiveExtraction(format!(
+            "ditto copy failed: {}",
+            stderr
+        )));
     }
 
-    Err(UpdateError::ArchiveExtraction(format!(
-        "App bundle '{}' not found in archive",
-        APP_BUNDLE_NAME
-    )))
-}
-
-/// Extracts .app bundle from ZIP archive
-fn extract_app_from_zip(data: &[u8], dest_dir: &std::path::Path) -> Result<PathBuf> {
-    tracing::debug!("Extracting app bundle from ZIP");
-
-    let cursor = Cursor::new(data);
-    let mut archive = zip::ZipArchive::new(cursor)?;
-
-    // Extract all files
-    for i in 0..archive.len() {
-        let mut file = archive.by_index(i)?;
-        let outpath = match file.enclosed_name() {
-            Some(path) => dest_dir.join(path),
-            None => continue,
-        };
-
-        if file.is_dir() {
-            fs::create_dir_all(&outpath).map_err(|e| {
-                UpdateError::ArchiveExtraction(format!("Failed to create directory: {}", e))
-            })?;
-        } else {
-            if let Some(parent) = outpath.parent() {
-                fs::create_dir_all(parent).map_err(|e| {
-                    UpdateError::ArchiveExtraction(format!("Failed to create parent dir: {}", e))
-                })?;
-            }
-            let mut outfile = fs::File::create(&outpath).map_err(|e| {
-                UpdateError::ArchiveExtraction(format!("Failed to create file: {}", e))
-            })?;
-            std::io::copy(&mut file, &mut outfile).map_err(|e| {
-                UpdateError::ArchiveExtraction(format!("Failed to write file: {}", e))
-            })?;
-
-            // Set executable permissions on macOS
-            #[cfg(unix)]
-            {
-                use std::os::unix::fs::PermissionsExt;
-                if let Some(mode) = file.unix_mode() {
-                    fs::set_permissions(&outpath, fs::Permissions::from_mode(mode)).ok();
-                }
-            }
-        }
-    }
-
-    // Find the .app bundle
-    let app_path = dest_dir.join(APP_BUNDLE_NAME);
-    if app_path.exists() {
-        return Ok(app_path);
-    }
-
-    Err(UpdateError::ArchiveExtraction(format!(
-        "App bundle '{}' not found in ZIP archive",
-        APP_BUNDLE_NAME
-    )))
+    tracing::debug!("Extracted app bundle to: {:?}", dest_app);
+    Ok(dest_app)
 }
 
 /// Verifies the code signature of an app bundle.

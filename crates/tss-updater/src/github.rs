@@ -244,7 +244,17 @@ impl GitHubRelease {
         }
 
         // Prefer the right archive format for the platform
-        let preferred_ext = if is_windows { ".zip" } else { ".tar.gz" };
+        // macOS: DMG preserves code signatures perfectly
+        // Linux: tar.gz is standard
+        // Windows: zip is standard
+        let is_macos = target_lower.contains("apple-darwin");
+        let preferred_ext = if is_macos {
+            ".dmg"
+        } else if is_windows {
+            ".zip"
+        } else {
+            ".tar.gz"
+        };
 
         matching
             .iter()
@@ -390,12 +400,12 @@ mod tests {
             draft: false,
             assets: vec![
                 GitHubAsset {
-                    name: "trial-submission-studio-v0.1.0-x86_64-apple-darwin.tar.gz".to_string(),
+                    name: "trial-submission-studio-v0.1.0-x86_64-apple-darwin.dmg".to_string(),
                     browser_download_url: String::new(),
                     state: "uploaded".to_string(),
                     digest: None,
                     size: 1024,
-                    content_type: "application/gzip".to_string(),
+                    content_type: "application/x-apple-diskimage".to_string(),
                     download_count: 0,
                     created_at: String::new(),
                     updated_at: String::new(),
@@ -419,7 +429,7 @@ mod tests {
         let asset = release.find_asset_for_target("x86_64-apple-darwin");
         assert!(asset.is_some());
         assert!(asset.unwrap().name.contains("apple-darwin"));
-        assert!(asset.unwrap().name.ends_with(".tar.gz"));
+        assert!(asset.unwrap().name.ends_with(".dmg"));
 
         let asset = release.find_asset_for_target("x86_64-pc-windows-msvc");
         assert!(asset.is_some());
@@ -479,12 +489,12 @@ mod tests {
                     updated_at: String::new(),
                 },
                 GitHubAsset {
-                    name: "app-v0.1.0-x86_64-apple-darwin.tar.gz".to_string(),
+                    name: "app-v0.1.0-x86_64-apple-darwin.dmg".to_string(),
                     browser_download_url: String::new(),
                     state: "uploaded".to_string(),
                     digest: None,
                     size: 1024,
-                    content_type: "application/gzip".to_string(),
+                    content_type: "application/x-apple-diskimage".to_string(),
                     download_count: 0,
                     created_at: String::new(),
                     updated_at: String::new(),
@@ -494,8 +504,8 @@ mod tests {
             published_at: None,
         };
 
-        // For macOS, should prefer tar.gz
+        // For macOS, should prefer DMG (preserves code signatures)
         let asset = release.find_asset_for_target("x86_64-apple-darwin");
-        assert!(asset.unwrap().name.ends_with(".tar.gz"));
+        assert!(asset.unwrap().name.ends_with(".dmg"));
     }
 }

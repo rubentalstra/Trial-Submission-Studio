@@ -247,19 +247,11 @@ jobs:
           xcrun notarytool submit "$DMG_NAME" --apple-id "$APPLE_ID" --password "$APP_PASSWORD" --team-id "$TEAM_ID" --wait --timeout 30m
           xcrun stapler staple "$DMG_NAME"
 
-      - name: Create archives
-        run: |
-          mkdir -p release-tar && cp -R "Trial Submission Studio.app" release-tar/
-          tar -czvf "${APP_NAME}-${VERSION}-${{ matrix.target }}.tar.gz" -C release-tar .
-          rm -rf release-tar
-
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
           name: macos-${{ matrix.arch }}
-          path: |
-            ${{ env.APP_NAME }}-${{ env.VERSION }}-${{ matrix.target }}.dmg
-            ${{ env.APP_NAME }}-${{ env.VERSION }}-${{ matrix.target }}.tar.gz
+          path: ${{ env.APP_NAME }}-${{ env.VERSION }}-${{ matrix.target }}.dmg
           retention-days: 7
 
       - name: Cleanup
