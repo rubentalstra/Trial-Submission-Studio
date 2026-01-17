@@ -13,13 +13,11 @@
 
 use crate::error::{Result, UpdateError};
 use crate::release::UpdateInfo;
-use flate2::read::GzDecoder;
 use serde::Serialize;
 use std::fs;
 use std::io::{Cursor, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use tar::Archive;
 
 /// Expected app bundle name in archives
 const APP_BUNDLE_NAME: &str = "Trial Submission Studio.app";
@@ -112,26 +110,58 @@ fn extract_app_bundle(
     }
 }
 
-/// Extracts .app bundle from tar.gz archive
+/// Extracts .app bundle from tar.gz archive using macOS native tar.
+///
+/// Uses the system `tar` command with `-p` flag to properly preserve:
+/// - File permissions
+/// - ACLs (Access Control Lists)
+/// - Extended attributes (xattrs)
+/// - File flags
+/// - Code signature integrity
 fn extract_app_from_tar_gz(data: &[u8], dest_dir: &std::path::Path) -> Result<PathBuf> {
-    tracing::debug!("Extracting app bundle from tar.gz");
+    tracing::debug!("Extracting app bundle from tar.gz using native tar");
 
-    let cursor = Cursor::new(data);
-    let decoder = GzDecoder::new(cursor);
-    let mut archive = Archive::new(decoder);
+    // Write archive data to a temporary file (native tar reads from file, not stdin for large archives)
+    let archive_path = dest_dir.join("update.tar.gz");
+    fs::write(&archive_path, data).map_err(|e| {
+        UpdateError::ArchiveExtraction(format!("Failed to write archive to temp file: {}", e))
+    })?;
 
-    // Extract entire archive
-    archive
-        .unpack(dest_dir)
-        .map_err(|e| UpdateError::ArchiveExtraction(format!("Failed to extract tar.gz: {}", e)))?;
+    // Use macOS native tar with -p to preserve all permissions and attributes
+    // -x = extract
+    // -z = decompress with gzip
+    // -p = preserve permissions (including ACLs, owner, file flags)
+    // -f = read from file
+    let output = Command::new("tar")
+        .args(["-xzpf"])
+        .arg(&archive_path)
+        .current_dir(dest_dir)
+        .output()
+        .map_err(|e| UpdateError::ArchiveExtraction(format!("Failed to execute tar: {}", e)))?;
 
-    // Find the .app bundle
+    // Clean up the temporary archive file
+    if let Err(e) = fs::remove_file(&archive_path) {
+        tracing::warn!("Failed to remove temp archive: {}", e);
+    }
+
+    // Check if extraction succeeded
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(UpdateError::ArchiveExtraction(format!(
+            "tar extraction failed: {}",
+            stderr
+        )));
+    }
+
+    // Find the .app bundle in the extracted contents
     let app_path = dest_dir.join(APP_BUNDLE_NAME);
     if app_path.exists() {
+        tracing::debug!("Found app bundle at: {:?}", app_path);
         return Ok(app_path);
     }
 
-    // Look in subdirectories
+    // The archive might have the app in a subdirectory (e.g., release-tar/)
+    // Search one level deep for the .app bundle
     for entry in fs::read_dir(dest_dir)
         .map_err(|e| UpdateError::ArchiveExtraction(format!("Failed to read temp dir: {}", e)))?
     {
@@ -142,11 +172,12 @@ fn extract_app_from_tar_gz(data: &[u8], dest_dir: &std::path::Path) -> Result<Pa
         if path.is_dir() {
             let nested_app = path.join(APP_BUNDLE_NAME);
             if nested_app.exists() {
-                // Move to top level
+                // Move the app bundle to the top level of dest_dir
                 let final_path = dest_dir.join(APP_BUNDLE_NAME);
                 fs::rename(&nested_app, &final_path).map_err(|e| {
                     UpdateError::ArchiveExtraction(format!("Failed to move app bundle: {}", e))
                 })?;
+                tracing::debug!("Moved app bundle from {:?} to {:?}", nested_app, final_path);
                 return Ok(final_path);
             }
         }
