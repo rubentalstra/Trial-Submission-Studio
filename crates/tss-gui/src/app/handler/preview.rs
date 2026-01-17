@@ -85,6 +85,9 @@ impl App {
                     preview_ui.rows_per_page = rows;
                     preview_ui.current_page = 0; // Reset to first page
                 }
+                // Persist to settings
+                self.state.settings.display.preview_rows_per_page = rows;
+                let _ = self.state.settings.save();
                 Task::none()
             }
         }

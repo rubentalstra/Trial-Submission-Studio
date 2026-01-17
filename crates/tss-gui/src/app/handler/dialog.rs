@@ -148,6 +148,10 @@ impl App {
                     ExportSettingsMessage::DefaultXptVersionChanged(version) => {
                         self.state.settings.export.xpt_version = version;
                     }
+                    ExportSettingsMessage::SdtmIgVersionChanged(version) => {
+                        self.state.settings.export.sdtm_ig_version = version;
+                        tracing::info!("SDTM-IG version: {}", version);
+                    }
                 }
                 Task::none()
             }

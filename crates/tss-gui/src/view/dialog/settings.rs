@@ -13,6 +13,7 @@ use iced_fonts::lucide;
 use crate::message::{
     DeveloperSettingsMessage, DialogMessage, DisplaySettingsMessage, ExportSettingsMessage,
     GeneralSettingsMessage, Message, SettingsCategory, SettingsMessage, UpdateSettingsMessage,
+    ValidationSettingsMessage,
 };
 use crate::state::{ExportFormat, Settings, XptVersion};
 use crate::theme::{
@@ -275,7 +276,7 @@ fn view_category_content<'a>(
         SettingsCategory::Display => view_display_settings(),
         SettingsCategory::Updates => view_update_settings(settings),
         SettingsCategory::Developer => view_developer_settings(settings),
-        SettingsCategory::Validation => view_validation_settings(),
+        SettingsCategory::Validation => view_validation_settings(settings),
     };
 
     container(content)
@@ -398,12 +399,30 @@ fn view_export_settings(settings: &Settings) -> Element<'_, Message> {
     ]
     .spacing(SPACING_XS);
 
+    let sdtm_ig_section = column![
+        text("SDTM-IG Version").size(14).color(GRAY_800),
+        text("Implementation Guide version for Dataset-XML and Define-XML")
+            .size(12)
+            .color(GRAY_500),
+        Space::new().height(SPACING_XS),
+        pick_list(
+            crate::state::SdtmIgVersion::ALL.to_vec(),
+            Some(settings.export.sdtm_ig_version),
+            |v| Message::Dialog(DialogMessage::Settings(SettingsMessage::Export(
+                ExportSettingsMessage::SdtmIgVersionChanged(v),
+            )))
+        ),
+    ]
+    .spacing(SPACING_XS);
+
     column![
         section_header("Export Settings"),
         Space::new().height(SPACING_MD),
         format_section,
         Space::new().height(SPACING_LG),
         xpt_version_section,
+        Space::new().height(SPACING_LG),
+        sdtm_ig_section,
     ]
     .spacing(SPACING_SM)
     .into()
@@ -538,14 +557,112 @@ fn view_developer_settings(settings: &Settings) -> Element<'_, Message> {
     .into()
 }
 
-/// Validation settings section (placeholder).
-fn view_validation_settings<'a>() -> Element<'a, Message> {
+/// Validation settings section.
+fn view_validation_settings(settings: &Settings) -> Element<'_, Message> {
+    let rules = &settings.validation.rules;
+
+    // Helper to create rule toggle rows
+    fn rule_toggle<'a>(
+        label: &'a str,
+        description: &'a str,
+        enabled: bool,
+        rule_id: &'static str,
+    ) -> Element<'a, Message> {
+        row![
+            column![
+                text(label).size(14).color(GRAY_800),
+                text(description).size(12).color(GRAY_500),
+            ]
+            .width(Length::Fill),
+            toggler(enabled).on_toggle(move |v| {
+                Message::Dialog(DialogMessage::Settings(SettingsMessage::Validation(
+                    ValidationSettingsMessage::RuleToggled {
+                        rule_id: rule_id.to_string(),
+                        enabled: v,
+                    },
+                )))
+            }),
+        ]
+        .align_y(Alignment::Center)
+        .into()
+    }
+
+    let strict_mode = row![
+        column![
+            text("Strict Mode").size(14).color(GRAY_800),
+            text("Treat warnings as errors").size(12).color(GRAY_500),
+        ]
+        .width(Length::Fill),
+        toggler(settings.validation.strict_mode).on_toggle(|v| {
+            Message::Dialog(DialogMessage::Settings(SettingsMessage::Validation(
+                ValidationSettingsMessage::StrictModeToggled(v),
+            )))
+        }),
+    ]
+    .align_y(Alignment::Center);
+
     column![
         section_header("Validation Settings"),
         Space::new().height(SPACING_MD),
-        text("Validation rule configuration coming soon...")
-            .size(13)
-            .color(GRAY_500),
+        strict_mode,
+        Space::new().height(SPACING_LG),
+        text("Validation Rules").size(14).color(GRAY_700),
+        Space::new().height(SPACING_SM),
+        rule_toggle(
+            "Required Variables",
+            "Check that required variables are present",
+            rules.check_required_variables,
+            "check_required_variables"
+        ),
+        Space::new().height(SPACING_XS),
+        rule_toggle(
+            "Expected Variables",
+            "Check that expected variables are present",
+            rules.check_expected_variables,
+            "check_expected_variables"
+        ),
+        Space::new().height(SPACING_XS),
+        rule_toggle(
+            "Data Types",
+            "Check data types match expected types",
+            rules.check_data_types,
+            "check_data_types"
+        ),
+        Space::new().height(SPACING_XS),
+        rule_toggle(
+            "ISO 8601 Format",
+            "Check date/time format compliance",
+            rules.check_iso8601_format,
+            "check_iso8601_format"
+        ),
+        Space::new().height(SPACING_XS),
+        rule_toggle(
+            "Sequence Uniqueness",
+            "Check sequence number uniqueness",
+            rules.check_sequence_uniqueness,
+            "check_sequence_uniqueness"
+        ),
+        Space::new().height(SPACING_XS),
+        rule_toggle(
+            "Text Length",
+            "Check text length against CDISC limits",
+            rules.check_text_length,
+            "check_text_length"
+        ),
+        Space::new().height(SPACING_XS),
+        rule_toggle(
+            "Identifier Nulls",
+            "Check identifier nulls (STUDYID, USUBJID)",
+            rules.check_identifier_nulls,
+            "check_identifier_nulls"
+        ),
+        Space::new().height(SPACING_XS),
+        rule_toggle(
+            "Controlled Terminology",
+            "Check controlled terminology values",
+            rules.check_controlled_terminology,
+            "check_controlled_terminology"
+        ),
     ]
     .spacing(SPACING_SM)
     .into()

@@ -254,6 +254,7 @@ impl App {
             output_dir,
             format: self.state.settings.export.default_format,
             xpt_version: self.state.settings.export.xpt_version,
+            sdtm_ig_version: self.state.settings.export.sdtm_ig_version,
             domains: domain_data,
             study_id,
             bypass_validation: self.state.settings.developer.bypass_validation,

@@ -35,7 +35,8 @@ mod view_state;
 // Re-exports
 pub use domain_state::{DomainSource, DomainState, SuppAction, SuppColumnConfig, SuppOrigin};
 pub use settings::{
-    DeveloperSettings, ExportFormat, ExportSettings, GeneralSettings, Settings, XptVersion,
+    DeveloperSettings, DisplaySettings, ExportFormat, ExportSettings, GeneralSettings, RecentStudy,
+    SdtmIgVersion, Settings, ValidationRuleSettings, ValidationSettings, WorkflowType, XptVersion,
 };
 pub use study::Study;
 pub use view_state::{

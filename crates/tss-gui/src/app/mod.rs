@@ -169,6 +169,17 @@ impl App {
                         std::mem::forget(window_menu);
                     }
 
+                    // Populate recent studies submenu from saved settings
+                    let studies: Vec<_> = self
+                        .state
+                        .settings
+                        .general
+                        .recent_sorted()
+                        .into_iter()
+                        .cloned()
+                        .collect();
+                    crate::menu::native::update_recent_studies_menu(&studies);
+
                     // Keep the menu alive
                     std::mem::forget(menu);
                     tracing::info!("Initialized native macOS menu bar");
@@ -241,12 +252,33 @@ impl App {
                             study.domain_count()
                         );
 
-                        // Add to recent studies
-                        self.state
+                        // Add to recent studies with rich metadata
+                        let workflow_type = match self.state.view.workflow_mode() {
+                            crate::state::WorkflowMode::Sdtm => crate::state::WorkflowType::Sdtm,
+                            crate::state::WorkflowMode::Adam => crate::state::WorkflowType::Adam,
+                            crate::state::WorkflowMode::Send => crate::state::WorkflowType::Send,
+                        };
+                        let total_rows = study.total_rows();
+                        let recent_study = crate::state::RecentStudy::new(
+                            study.study_folder.clone(),
+                            study.study_id.clone(),
+                            workflow_type,
+                            study.domain_count(),
+                            total_rows,
+                        );
+                        self.state.settings.general.add_recent_study(recent_study);
+                        let _ = self.state.settings.save();
+
+                        // Update native menu's recent studies submenu
+                        let studies: Vec<_> = self
+                            .state
                             .settings
                             .general
-                            .add_recent(study.study_folder.clone());
-                        let _ = self.state.settings.save();
+                            .recent_sorted()
+                            .into_iter()
+                            .cloned()
+                            .collect();
+                        crate::menu::native::update_recent_studies_menu(&studies);
 
                         self.state.study = Some(study);
                         self.state.terminology = Some(terminology);
@@ -450,8 +482,11 @@ impl App {
         #[cfg(not(target_os = "macos"))]
         let content_with_menu: Element<'_, Message> = {
             use iced::widget::column;
-            let menu_bar =
-                crate::menu::in_app::view_menu_bar(&self.state.menu_bar, self.state.has_study());
+            let menu_bar = crate::menu::in_app::view_menu_bar(
+                &self.state.menu_bar,
+                self.state.has_study(),
+                &self.state,
+            );
             column![menu_bar, content].into()
         };
 

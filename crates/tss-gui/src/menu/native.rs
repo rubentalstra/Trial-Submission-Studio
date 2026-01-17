@@ -4,17 +4,26 @@
 //! - macOS: App menu with About, Settings, Hide, Quit + Edit/Window menus
 //! - Windows/Linux: File menu with Open Study, Settings, Exit + Edit menu
 
+use std::cell::RefCell;
+use std::path::{Path, PathBuf};
+
+use base64::Engine;
 use muda::{
     Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu,
     accelerator::{Accelerator, Code, Modifiers},
 };
 
+use crate::state::RecentStudy;
+
 /// Menu action identifiers.
 pub mod ids {
     // File menu
     pub const OPEN_STUDY: &str = "open_study";
-    #[allow(dead_code)] // Planned for future "Open Recent" submenu
     pub const CLEAR_RECENT: &str = "clear_recent";
+
+    // Recent Studies submenu
+    pub const RECENT_STUDY_PREFIX: &str = "recent_study:";
+    pub const NO_RECENT_STUDIES: &str = "no_recent_studies";
 
     // App/Settings
     pub const SETTINGS: &str = "settings";
@@ -29,6 +38,12 @@ pub mod ids {
     pub const REPORT_ISSUE: &str = "report_issue";
     pub const VIEW_LICENSE: &str = "view_license";
     pub const THIRD_PARTY_LICENSES: &str = "third_party_licenses";
+}
+
+// Thread-local storage for the Recent Studies submenu reference.
+// muda::Submenu is not Send+Sync, but we only access it from the main thread.
+thread_local! {
+    static RECENT_SUBMENU: RefCell<Option<Submenu>> = const { RefCell::new(None) };
 }
 
 /// Create the native menu bar.
@@ -150,8 +165,26 @@ fn create_file_menu(menu: &Menu) {
         ))
         .expect("Failed to add Open Study menu item");
 
-    // TODO: Add "Open Recent" submenu with recent files
-    // This requires tracking recent files in settings
+    // Create Recent Studies submenu
+    let recent_submenu = Submenu::new("Recent Studies", true);
+    recent_submenu
+        .append(&MenuItem::with_id(
+            ids::NO_RECENT_STUDIES,
+            "No Recent Studies",
+            false, // disabled
+            None,
+        ))
+        .expect("Failed to add placeholder");
+
+    file_menu
+        .append(&recent_submenu)
+        .expect("Failed to add Recent Studies submenu");
+
+    // Store submenu reference for later updates (clone needed for thread_local)
+    let recent_submenu_clone = recent_submenu.clone();
+    RECENT_SUBMENU.with(|cell| {
+        *cell.borrow_mut() = Some(recent_submenu_clone);
+    });
 
     file_menu
         .append(&PredefinedMenuItem::separator())
@@ -395,4 +428,59 @@ pub fn init_menu_for_nsapp(_menu: &Menu) {
 /// Muda uses crossbeam_channel internally. Call `try_recv()` to poll for events.
 pub fn menu_event_receiver() -> crossbeam_channel::Receiver<MenuEvent> {
     MenuEvent::receiver().clone()
+}
+
+/// Update the Recent Studies submenu with current list.
+///
+/// This clears the existing items and repopulates with the given studies.
+/// Call this after a study is loaded or settings change.
+pub fn update_recent_studies_menu(studies: &[RecentStudy]) {
+    RECENT_SUBMENU.with(|cell| {
+        let borrowed = cell.borrow();
+        let Some(submenu) = borrowed.as_ref() else {
+            return;
+        };
+
+        // Clear existing items
+        while submenu.remove_at(0).is_some() {}
+
+        if studies.is_empty() {
+            let _ = submenu.append(&MenuItem::with_id(
+                ids::NO_RECENT_STUDIES,
+                "No Recent Studies",
+                false,
+                None,
+            ));
+        } else {
+            // Add study items (max 10)
+            for study in studies.iter().take(10) {
+                let encoded_path = encode_path(&study.path);
+                let id = format!("{}{}", ids::RECENT_STUDY_PREFIX, encoded_path);
+                let _ = submenu.append(&MenuItem::with_id(&id, &study.display_name, true, None));
+            }
+
+            // Add separator and clear option
+            let _ = submenu.append(&PredefinedMenuItem::separator());
+            let _ = submenu.append(&MenuItem::with_id(
+                ids::CLEAR_RECENT,
+                "Clear Recent Studies",
+                true,
+                None,
+            ));
+        }
+    });
+}
+
+/// Encode a path as a URL-safe base64 string.
+fn encode_path(path: &Path) -> String {
+    base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(path.to_string_lossy().as_bytes())
+}
+
+/// Decode a URL-safe base64 string back to a path.
+pub fn decode_path(encoded: &str) -> Option<PathBuf> {
+    base64::engine::general_purpose::URL_SAFE_NO_PAD
+        .decode(encoded)
+        .ok()
+        .and_then(|bytes| String::from_utf8(bytes).ok())
+        .map(PathBuf::from)
 }

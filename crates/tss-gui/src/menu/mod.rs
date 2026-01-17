@@ -26,9 +26,17 @@ use crate::message::MenuMessage;
 /// Returns `None` for events that don't map to application actions
 /// (like predefined system events).
 pub fn menu_event_to_message(event_id: &str) -> Option<MenuMessage> {
+    // Check for recent study click
+    if let Some(encoded) = event_id.strip_prefix(native::ids::RECENT_STUDY_PREFIX)
+        && let Some(path) = native::decode_path(encoded)
+    {
+        return Some(MenuMessage::OpenRecentStudy(path));
+    }
+
     match event_id {
         // File menu
         ids::OPEN_STUDY => Some(MenuMessage::OpenStudy),
+        ids::CLEAR_RECENT => Some(MenuMessage::ClearRecentStudies),
         ids::SETTINGS => Some(MenuMessage::Settings),
         ids::EXIT => Some(MenuMessage::Quit),
 

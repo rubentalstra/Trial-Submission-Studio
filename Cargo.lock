@@ -6575,6 +6575,7 @@ name = "tss-gui"
 version = "0.0.2-alpha.5"
 dependencies = [
  "anyhow",
+ "base64",
  "chrono",
  "crossbeam-channel",
  "directories",

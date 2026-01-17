@@ -22,12 +22,23 @@ impl App {
         match msg {
             // File menu
             MenuMessage::OpenStudy => Task::done(Message::Home(HomeMessage::OpenStudyClicked)),
+            MenuMessage::OpenRecentStudy(path) => {
+                Task::done(Message::Home(HomeMessage::RecentStudyClicked(path)))
+            }
             MenuMessage::CloseStudy => {
                 if self.state.has_study() {
                     Task::done(Message::Home(HomeMessage::CloseStudyClicked))
                 } else {
                     Task::none()
                 }
+            }
+            MenuMessage::ClearRecentStudies => {
+                self.state.settings.general.clear_all_recent();
+                let _ = self.state.settings.save();
+
+                // Update native menu's recent studies submenu
+                crate::menu::native::update_recent_studies_menu(&[]);
+                Task::none()
             }
             MenuMessage::Settings => {
                 // Don't open if already open

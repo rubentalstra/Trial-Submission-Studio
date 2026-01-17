@@ -115,6 +115,8 @@ pub struct UpdateSettings {
     /// Allow update checking (manual or automatic).
     /// Users can disable this entirely if they don't want any update features.
     /// Default: `true`
+
+    // TODO: i think this is double here? and it totaly unnecessary!
     #[serde(default = "default_enabled")]
     pub enabled: bool,
 

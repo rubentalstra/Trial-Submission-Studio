@@ -158,6 +158,9 @@ pub enum ExportSettingsMessage {
 
     /// Change default XPT version
     DefaultXptVersionChanged(crate::state::XptVersion),
+
+    /// Change SDTM-IG version
+    SdtmIgVersionChanged(crate::state::SdtmIgVersion),
 }
 
 /// Display settings messages.

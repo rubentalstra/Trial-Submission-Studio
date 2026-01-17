@@ -86,13 +86,22 @@ impl ViewState {
 
     /// Create domain editor view state.
     pub fn domain_editor(domain: impl Into<String>, tab: EditorTab) -> Self {
+        Self::domain_editor_with_rows(domain, tab, 50)
+    }
+
+    /// Create domain editor view state with custom rows per page.
+    pub fn domain_editor_with_rows(
+        domain: impl Into<String>,
+        tab: EditorTab,
+        rows_per_page: usize,
+    ) -> Self {
         Self::DomainEditor {
             domain: domain.into(),
             tab,
             mapping_ui: MappingUiState::default(),
             normalization_ui: NormalizationUiState::default(),
             validation_ui: ValidationUiState::default(),
-            preview_ui: PreviewUiState::default(),
+            preview_ui: PreviewUiState::with_rows_per_page(rows_per_page),
             supp_ui: SuppUiState::default(),
             preview_cache: None,
         }
@@ -358,6 +367,16 @@ impl Default for PreviewUiState {
             rows_per_page: 50,
             is_rebuilding: false,
             error: None,
+        }
+    }
+}
+
+impl PreviewUiState {
+    /// Create with a custom rows per page value.
+    pub fn with_rows_per_page(rows: usize) -> Self {
+        Self {
+            rows_per_page: rows,
+            ..Default::default()
         }
     }
 }
