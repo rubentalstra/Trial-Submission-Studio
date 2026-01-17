@@ -176,6 +176,9 @@ pub enum UpdateSettingsMessage {
     /// Toggle update checking (enabled/disabled)
     EnabledToggled(bool),
 
+    /// Toggle automatic update check on startup
+    CheckOnStartupToggled(bool),
+
     /// Change update channel (Stable/ReleaseCandidate/Beta/Alpha)
     ChannelChanged(tss_updater::UpdateChannel),
 
@@ -205,55 +208,65 @@ pub enum ThirdPartyMessage {
 // =============================================================================
 
 /// Messages for the Update dialog.
+///
+/// This enum contains both user actions and async operation results.
+/// User actions trigger async tasks, which send back result messages.
 #[derive(Debug, Clone)]
 pub enum UpdateMessage {
-    /// Open the dialog
+    // -------------------------------------------------------------------------
+    // User Actions
+    // -------------------------------------------------------------------------
+    /// Open the update dialog
     Open,
 
-    /// Close the dialog
+    /// Close the update dialog
     Close,
 
-    /// Check for updates
+    /// User initiated update check
     CheckForUpdates,
 
-    /// Update check completed with result
-    CheckComplete(Result<Option<tss_updater::UpdateInfo>, String>),
-
-    /// User confirmed download
+    /// User confirmed download after seeing update available
     ConfirmDownload,
 
-    /// Download progress update (0.0 to 1.0)
-    DownloadProgress(f32),
-
-    /// Download completed with data or error
-    DownloadComplete(Result<Vec<u8>, String>),
-
-    /// SHA256 verification status received
-    VerificationStatus(VerificationResult),
-
-    /// User confirmed install (after verification)
+    /// User confirmed install after verification
     ConfirmInstall,
 
-    /// Installation completed
-    InstallComplete(Result<(), String>),
-
-    /// Restart the application to apply update
-    RestartApp,
+    /// User clicked restart to apply update
+    Restart,
 
     /// User chose to skip this version
     SkipVersion(String),
 
     /// User chose to be reminded later
     RemindLater,
+
+    /// User cancelled the current operation
+    Cancel,
+
+    // -------------------------------------------------------------------------
+    // Async Operation Results (from Task::perform / Task::sip)
+    // -------------------------------------------------------------------------
+    /// Result of checking for updates
+    CheckComplete(std::result::Result<Option<tss_updater::UpdateInfo>, String>),
+
+    /// Download progress update (from Task::sip stream)
+    DownloadProgress(tss_updater::DownloadProgress),
+
+    /// Download complete with data (from Task::sip stream completion)
+    DownloadComplete(std::result::Result<tss_updater::DownloadResult, String>),
+
+    /// Verification complete
+    VerifyComplete(std::result::Result<VerifyResult, String>),
+
+    /// Installation complete
+    InstallComplete(std::result::Result<(), String>),
 }
 
-/// SHA256 verification result.
+/// Result of SHA256 verification.
 #[derive(Debug, Clone)]
-pub enum VerificationResult {
-    /// SHA256 hash matched
-    Verified,
-    /// SHA256 hash did not match
-    Failed { expected: String, actual: String },
-    /// No digest available from GitHub
-    Unavailable,
+pub struct VerifyResult {
+    /// Whether verification passed.
+    pub verified: bool,
+    /// The SHA256 hash (if computed).
+    pub sha256: Option<String>,
 }

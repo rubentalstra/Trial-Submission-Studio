@@ -40,8 +40,9 @@ flate2 = "1.1"
 tar = "0.4"
 zip = "7.1"
 
-# Async runtime
+# Async runtime and channels
 futures-util = "0.3"
+async-stream = "0.3"
 
 
 [dev-dependencies]

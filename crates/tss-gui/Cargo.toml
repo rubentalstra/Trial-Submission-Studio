@@ -64,12 +64,13 @@ open = "5.3"                                            # Open URLs in browser
 # Settings & menu
 directories = "6.0"          # Cross-platform app directories
 toml = "0.9"                 # Config file format
+serde_json = "1.0"           # JSON parsing for update status
 muda = "0.17.1"              # Native menu bar (macOS only now)
 crossbeam-channel = "0.5.15" # Required by muda for menu event receiver
 
 # Async runtime (required by Iced with tokio feature)
 tokio = { version = "1", features = ["rt-multi-thread", "sync"] }
-async-stream = "0.3"
+futures-util = "0.3"
 
 # Platform-specific: Windows resource compilation
 [target.'cfg(windows)'.build-dependencies]

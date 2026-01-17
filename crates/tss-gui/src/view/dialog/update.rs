@@ -55,6 +55,8 @@ pub enum UpdateState {
         downloaded_bytes: u64,
         /// Total bytes to download.
         total_bytes: u64,
+        /// Download speed in bytes per second.
+        speed: u64,
     },
 
     /// Verifying SHA256 hash.
@@ -116,7 +118,15 @@ pub fn view_update_dialog_content(
             progress,
             downloaded_bytes,
             total_bytes,
-        } => view_downloading_state(info, *progress, *downloaded_bytes, *total_bytes, window_id),
+            speed,
+        } => view_downloading_state(
+            info,
+            *progress,
+            *downloaded_bytes,
+            *total_bytes,
+            *speed,
+            window_id,
+        ),
         UpdateState::Verifying { info } => view_verifying_state(info),
         UpdateState::VerificationFailed {
             info,
@@ -332,6 +342,7 @@ fn view_downloading_state(
     progress: f32,
     downloaded_bytes: u64,
     total_bytes: u64,
+    speed: u64,
     window_id: window::Id,
 ) -> Element<'_, Message> {
     let icon = lucide::download().size(32).color(PRIMARY_500);
@@ -339,6 +350,7 @@ fn view_downloading_state(
     // Format bytes for display
     let downloaded_mb = downloaded_bytes as f64 / 1_048_576.0;
     let total_mb = total_bytes as f64 / 1_048_576.0;
+    let speed_str = tss_updater::format_speed(speed);
 
     let cancel_btn = button(text("Cancel").size(13))
         .on_press(Message::CloseWindow(window_id))
@@ -355,10 +367,11 @@ fn view_downloading_state(
         container(progress_bar(0.0..=1.0, progress)).width(300),
         Space::new().height(SPACING_XS),
         text(format!(
-            "{:.1} MB / {:.1} MB ({:.0}%)",
+            "{:.1} MB / {:.1} MB ({:.0}%) - {}",
             downloaded_mb,
             total_mb,
-            progress * 100.0
+            progress * 100.0,
+            speed_str
         ))
         .size(12)
         .color(GRAY_500),
@@ -540,7 +553,7 @@ fn view_install_complete_state(version: &str, window_id: window::Id) -> Element<
         .align_y(Alignment::Center),
     )
     .on_press(Message::Dialog(DialogMessage::Update(
-        UpdateMessage::RestartApp,
+        UpdateMessage::Restart,
     )))
     .padding([SPACING_SM, SPACING_MD])
     .style(button_primary);
