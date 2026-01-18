@@ -269,15 +269,18 @@ impl App {
                         let _ = self.state.settings.save();
 
                         // Update native menu's recent studies submenu
-                        let studies: Vec<_> = self
-                            .state
-                            .settings
-                            .general
-                            .recent_sorted()
-                            .into_iter()
-                            .cloned()
-                            .collect();
-                        crate::menu::native::update_recent_studies_menu(&studies);
+                        #[cfg(target_os = "macos")]
+                        {
+                            let studies: Vec<_> = self
+                                .state
+                                .settings
+                                .general
+                                .recent_sorted()
+                                .into_iter()
+                                .cloned()
+                                .collect();
+                            crate::menu::native::update_recent_studies_menu(&studies);
+                        }
 
                         self.state.study = Some(study);
                         self.state.terminology = Some(terminology);

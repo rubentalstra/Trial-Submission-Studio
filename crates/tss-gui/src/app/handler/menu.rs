@@ -39,6 +39,7 @@ impl App {
                 let _ = self.state.settings.save();
 
                 // Update native menu's recent studies submenu
+                #[cfg(target_os = "macos")]
                 crate::menu::native::update_recent_studies_menu(&[]);
                 Task::none()
             }

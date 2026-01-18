@@ -4,15 +4,23 @@
 //! - macOS: App menu with About, Settings, Hide, Quit + Edit/Window menus
 //! - Windows/Linux: File menu with Open Study, Settings, Exit + Edit menu
 
+use std::path::PathBuf;
+
+#[cfg(target_os = "macos")]
+use std::path::Path;
+
+#[cfg(target_os = "macos")]
 use std::cell::RefCell;
-use std::path::{Path, PathBuf};
 
 use base64::Engine;
+use muda::MenuEvent;
+#[cfg(target_os = "macos")]
 use muda::{
-    Menu, MenuEvent, MenuItem, PredefinedMenuItem, Submenu,
+    Menu, MenuItem, PredefinedMenuItem, Submenu,
     accelerator::{Accelerator, Code, Modifiers},
 };
 
+#[cfg(target_os = "macos")]
 use crate::state::RecentStudy;
 
 /// Menu action identifiers.
@@ -42,6 +50,7 @@ pub mod ids {
 
 // Thread-local storage for the Recent Studies submenu reference.
 // muda::Submenu is not Send+Sync, but we only access it from the main thread.
+#[cfg(target_os = "macos")]
 thread_local! {
     static RECENT_SUBMENU: RefCell<Option<Submenu>> = const { RefCell::new(None) };
 }
@@ -423,6 +432,7 @@ pub fn menu_event_receiver() -> crossbeam_channel::Receiver<MenuEvent> {
 ///
 /// This clears the existing items and repopulates with the given studies.
 /// Call this after a study is loaded or settings change.
+#[cfg(target_os = "macos")]
 pub fn update_recent_studies_menu(studies: &[RecentStudy]) {
     RECENT_SUBMENU.with(|cell| {
         let borrowed = cell.borrow();
@@ -461,6 +471,7 @@ pub fn update_recent_studies_menu(studies: &[RecentStudy]) {
 }
 
 /// Encode a path as a URL-safe base64 string.
+#[cfg(target_os = "macos")]
 fn encode_path(path: &Path) -> String {
     base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(path.to_string_lossy().as_bytes())
 }
