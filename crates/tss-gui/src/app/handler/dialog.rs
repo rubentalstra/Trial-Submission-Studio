@@ -38,6 +38,7 @@ impl App {
     }
 
     /// Handle about dialog messages.
+    #[allow(clippy::needless_pass_by_value)]
     fn handle_about_message(&mut self, msg: AboutMessage) -> Task<Message> {
         match msg {
             AboutMessage::Open => Task::none(),
@@ -184,6 +185,7 @@ impl App {
     }
 
     /// Handle third-party licenses dialog messages.
+    #[allow(clippy::needless_pass_by_value)]
     fn handle_third_party_message(&mut self, msg: ThirdPartyMessage) -> Task<Message> {
         match msg {
             ThirdPartyMessage::Open => Task::none(),

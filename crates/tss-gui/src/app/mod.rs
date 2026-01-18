@@ -16,7 +16,6 @@
 
 // Submodules - handlers are organized by category in handler/
 mod handler;
-mod update;
 pub mod util;
 
 // Re-export utility functions for internal use
@@ -299,17 +298,16 @@ impl App {
                     preview_ui,
                     ..
                 } = &mut self.state.view
+                    && current_domain == &domain
                 {
-                    if current_domain == &domain {
-                        preview_ui.is_rebuilding = false;
-                        match result {
-                            Ok(df) => {
-                                *preview_cache = Some(df);
-                                preview_ui.error = None;
-                            }
-                            Err(e) => {
-                                preview_ui.error = Some(e);
-                            }
+                    preview_ui.is_rebuilding = false;
+                    match result {
+                        Ok(df) => {
+                            *preview_cache = Some(df);
+                            preview_ui.error = None;
+                        }
+                        Err(e) => {
+                            preview_ui.error = Some(e);
                         }
                     }
                 }
@@ -647,13 +645,12 @@ fn check_update_status() -> Option<crate::component::toast::ToastState> {
 
 /// JSON structure for the update status file (matches tss-updater-helper's UpdateStatus).
 #[derive(serde::Deserialize)]
+#[allow(dead_code)] // Fields present in JSON but not all read in code
 struct UpdateStatusJson {
     success: bool,
     version: String,
     previous_version: String,
-    #[allow(dead_code)]
     timestamp: String,
     error: Option<String>,
-    #[allow(dead_code)]
     log_file: String,
 }

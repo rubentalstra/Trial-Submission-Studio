@@ -74,16 +74,6 @@ impl ToastState {
             }),
         }
     }
-
-    /// Creates a simple info toast.
-    #[allow(dead_code)]
-    pub fn info(message: impl Into<String>) -> Self {
-        Self {
-            message: message.into(),
-            toast_type: ToastType::Info,
-            action: None,
-        }
-    }
 }
 
 /// Renders a toast notification.

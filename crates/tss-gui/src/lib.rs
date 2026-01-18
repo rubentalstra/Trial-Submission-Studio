@@ -10,7 +10,6 @@ pub mod component;
 pub mod menu;
 pub mod message;
 pub mod state;
-#[allow(dead_code)]
 pub mod theme;
 pub mod view;
 

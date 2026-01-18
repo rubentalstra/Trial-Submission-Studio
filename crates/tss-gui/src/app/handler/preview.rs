@@ -15,6 +15,7 @@ use crate::state::ViewState;
 
 impl App {
     /// Handle preview tab messages.
+    #[allow(clippy::needless_pass_by_value)]
     pub fn handle_preview_message(&mut self, msg: PreviewMessage) -> Task<Message> {
         // Get current domain code
         let domain_code = match &self.state.view {

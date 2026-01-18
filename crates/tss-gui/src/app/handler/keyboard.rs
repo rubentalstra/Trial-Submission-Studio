@@ -18,6 +18,7 @@ use crate::state::{EditorTab, ViewState};
 
 impl App {
     /// Handle keyboard shortcuts.
+    #[allow(clippy::needless_pass_by_value)]
     pub fn handle_key_press(
         &mut self,
         key: keyboard::Key,
@@ -106,7 +107,10 @@ impl App {
                     ..
                 } = &self.state.view
                 {
-                    let total_rows = preview_cache.as_ref().map(|df| df.height()).unwrap_or(0);
+                    let total_rows = preview_cache
+                        .as_ref()
+                        .map(polars::prelude::DataFrame::height)
+                        .unwrap_or(0);
                     let page_size = preview_ui.rows_per_page;
                     let last_page = total_rows.saturating_sub(1) / page_size;
                     Task::done(Message::DomainEditor(DomainEditorMessage::Preview(

@@ -40,7 +40,7 @@ mod macos {
     use crate::signature::{get_team_id, verify_signature};
     use crate::status::UpdateStatus;
     use crate::swap::{cleanup_backup, swap_bundles};
-    use std::path::PathBuf;
+    use std::path::{Path, PathBuf};
     use std::process::ExitCode;
 
     pub fn run() -> ExitCode {
@@ -189,17 +189,12 @@ mod macos {
     }
 
     /// Writes a failure status file.
-    fn write_failure_status(
-        version: &str,
-        previous_version: &str,
-        error: &str,
-        log_path: &PathBuf,
-    ) {
+    fn write_failure_status(version: &str, previous_version: &str, error: &str, log_path: &Path) {
         let status = UpdateStatus::failure(
             version.to_string(),
             previous_version.to_string(),
             error.to_string(),
-            log_path.clone(),
+            log_path.to_path_buf(),
         );
         if let Err(e) = status.write() {
             log_error("Failed to write failure status", &e);

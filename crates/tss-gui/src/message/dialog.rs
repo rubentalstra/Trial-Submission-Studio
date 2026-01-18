@@ -116,6 +116,7 @@ impl SettingsCategory {
 
 /// General settings messages.
 #[derive(Debug, Clone)]
+#[allow(dead_code, clippy::enum_variant_names)]
 pub enum GeneralSettingsMessage {
     /// Change controlled terminology version
     CtVersionChanged(String),
@@ -149,6 +150,7 @@ pub enum DeveloperSettingsMessage {
 
 /// Export settings messages.
 #[derive(Debug, Clone)]
+#[allow(dead_code, clippy::enum_variant_names)]
 pub enum ExportSettingsMessage {
     /// Change default output directory
     DefaultOutputDirChanged(String),
@@ -168,9 +170,6 @@ pub enum ExportSettingsMessage {
 pub enum DisplaySettingsMessage {
     /// Change preview rows per page
     PreviewRowsChanged(usize),
-
-    /// Change decimal precision
-    DecimalPrecisionChanged(usize),
 }
 
 /// Update settings messages.
@@ -252,7 +251,7 @@ pub enum UpdateMessage {
     /// Download complete with data
     DownloadComplete(std::result::Result<tss_updater::DownloadResult, String>),
 
-    /// Verification complete (verified: bool, data: Vec<u8>)
+    /// Verification complete (verified: bool, data: `Vec<u8>`)
     VerifyResult(std::result::Result<VerifyOutcome, String>),
 
     /// Installation complete

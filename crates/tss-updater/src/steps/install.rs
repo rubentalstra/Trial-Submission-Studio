@@ -1,20 +1,12 @@
 //! Installation step for updates.
 
 use std::fs;
+#[cfg(not(target_os = "macos"))]
 use std::io::Write;
 use std::path::Path;
 
 use crate::error::{Result, UpdateError};
 use crate::release::UpdateInfo;
-
-/// The expected binary name.
-#[cfg(target_os = "windows")]
-#[allow(dead_code)]
-const BINARY_NAME: &str = "trial-submission-studio.exe";
-
-#[cfg(not(target_os = "windows"))]
-#[allow(dead_code)]
-const BINARY_NAME: &str = "trial-submission-studio";
 
 /// Helper binary name (macOS).
 #[cfg(target_os = "macos")]
@@ -150,7 +142,7 @@ fn get_helper_path(bundle_path: &Path) -> Result<std::path::PathBuf> {
 }
 
 /// Replaces the current executable with the new binary.
-#[allow(dead_code)]
+#[cfg(not(target_os = "macos"))]
 fn replace_current_executable(binary: &[u8]) -> Result<()> {
     tracing::info!("Replacing current executable ({} bytes)", binary.len());
 
@@ -190,13 +182,4 @@ pub fn restart_application() -> Result<()> {
 
     // Exit the current process
     std::process::exit(0);
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_install_module_exists() {
-        // Just verify the module compiles
-        assert!(true);
-    }
 }

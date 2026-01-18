@@ -3,14 +3,11 @@
 //! Displays open source license acknowledgments.
 
 use iced::widget::{Space, button, column, container, markdown, row, scrollable, text};
-use iced::{Alignment, Border, Color, Element, Length, Theme};
+use iced::{Alignment, Element, Length, Theme};
 use iced_fonts::lucide;
 
 use crate::message::{DialogMessage, Message, ThirdPartyMessage};
-use crate::theme::{
-    BORDER_RADIUS_LG, GRAY_100, GRAY_500, GRAY_700, GRAY_900, SPACING_LG, SPACING_MD, SPACING_SM,
-    WHITE,
-};
+use crate::theme::{GRAY_100, GRAY_500, GRAY_700, GRAY_900, SPACING_LG, SPACING_MD, SPACING_SM};
 
 /// Third-party license information (embedded at build time).
 const THIRD_PARTY_LICENSES: &str = include_str!("../../../../../THIRD_PARTY_LICENSES.md");
@@ -35,44 +32,6 @@ impl ThirdPartyState {
     pub fn items(&self) -> &[markdown::Item] {
         &self.markdown_items
     }
-}
-
-/// Render the Third-party licenses dialog.
-pub fn view_third_party_dialog(state: &'_ ThirdPartyState) -> Element<'_, Message> {
-    let backdrop = container(Space::new().width(Length::Fill).height(Length::Fill))
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .style(|_| container::Style {
-            background: Some(Color::from_rgba(0.0, 0.0, 0.0, 0.5).into()),
-            ..Default::default()
-        });
-
-    let dialog_content = view_dialog_content(state);
-
-    let dialog = container(dialog_content)
-        .width(700)
-        .height(550)
-        .style(|_| container::Style {
-            background: Some(WHITE.into()),
-            border: Border {
-                radius: BORDER_RADIUS_LG.into(),
-                ..Default::default()
-            },
-            shadow: iced::Shadow {
-                color: Color::from_rgba(0.0, 0.0, 0.0, 0.2),
-                offset: iced::Vector::new(0.0, 8.0),
-                blur_radius: 24.0,
-            },
-            ..Default::default()
-        });
-
-    let centered_dialog = container(dialog)
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .center_x(Length::Shrink)
-        .center_y(Length::Shrink);
-
-    iced::widget::stack![backdrop, centered_dialog].into()
 }
 
 /// Render the Third-party licenses dialog content for a standalone window (multi-window mode).

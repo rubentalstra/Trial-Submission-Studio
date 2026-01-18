@@ -244,17 +244,21 @@ mod tests {
 
     #[test]
     fn test_should_auto_check_with_startup_check() {
-        let mut settings = UpdateSettings::default();
-        settings.check_on_startup = true;
+        let settings = UpdateSettings {
+            check_on_startup: true,
+            ..Default::default()
+        };
         // No last_check, so should return true
         assert!(settings.should_auto_check());
     }
 
     #[test]
     fn test_should_auto_check_respects_interval() {
-        let mut settings = UpdateSettings::default();
-        settings.check_on_startup = true;
-        settings.last_check = Some(Utc::now()); // Just checked
+        let settings = UpdateSettings {
+            check_on_startup: true,
+            last_check: Some(Utc::now()), // Just checked
+            ..Default::default()
+        };
 
         // Should not auto-check because we just checked
         assert!(!settings.should_auto_check());
@@ -269,8 +273,10 @@ mod tests {
 
     #[test]
     fn test_can_check_manually_with_cooldown() {
-        let mut settings = UpdateSettings::default();
-        settings.last_check = Some(Utc::now()); // Just checked
+        let settings = UpdateSettings {
+            last_check: Some(Utc::now()), // Just checked
+            ..Default::default()
+        };
 
         // Should not be able to check manually due to cooldown
         assert!(!settings.can_check_manually());

@@ -299,15 +299,6 @@ impl GeneralSettings {
         self.recent_studies.clear();
     }
 
-    /// Find studies with non-existent paths.
-    pub fn find_stale_studies(&self) -> Vec<PathBuf> {
-        self.recent_studies
-            .iter()
-            .filter(|s| !s.exists())
-            .map(|s| s.path.clone())
-            .collect()
-    }
-
     /// Remove stale studies (those with missing paths).
     pub fn prune_stale(&mut self) {
         self.recent_studies.retain(RecentStudy::exists);
@@ -409,14 +400,6 @@ pub enum ExportFormat {
 }
 
 impl ExportFormat {
-    /// All available formats.
-    pub const ALL: [ExportFormat; 2] = [Self::Xpt, Self::DatasetXml];
-
-    /// Get display name (alias for label).
-    pub fn display_name(&self) -> &'static str {
-        self.label()
-    }
-
     /// Human-readable label.
     pub fn label(&self) -> &'static str {
         match self {

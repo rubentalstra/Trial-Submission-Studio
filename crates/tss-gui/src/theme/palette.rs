@@ -3,6 +3,8 @@
 //! This module defines all colors used throughout the application.
 //! Colors follow a 10-shade scale pattern (50-900) for flexibility.
 
+#![allow(dead_code)]
+
 use iced::Color;
 
 /// Helper function to create Color from RGB values (0.0-1.0 range)

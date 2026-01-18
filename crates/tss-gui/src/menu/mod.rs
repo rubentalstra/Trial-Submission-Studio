@@ -7,17 +7,11 @@
 //!
 //! The menu system converts platform-specific events into unified `MenuMessage` variants.
 
-// Allow unused code - menu items are public API that may not be used in all configurations
-#![allow(dead_code)]
-
 pub mod in_app;
 pub mod native;
 
 pub use in_app::MenuBarState;
-pub use native::{create_menu, ids, init_menu_for_nsapp, menu_event_receiver};
-
-// Re-export MenuBarMenuId from message module
-pub use crate::message::MenuBarMenuId;
+pub use native::{ids, menu_event_receiver};
 
 use crate::message::MenuMessage;
 
@@ -72,55 +66,10 @@ pub fn poll_native_menu_event() -> Option<MenuMessage> {
     }
 }
 
-/// Menu state that tracks both native menu and in-app menu state.
-#[derive(Debug, Clone, Default)]
-pub struct MenuState {
-    /// In-app menu bar state (Windows/Linux only).
-    pub bar: MenuBarState,
-
-    /// Whether the native menu has been initialized.
-    pub native_initialized: bool,
-}
-
-impl MenuState {
-    /// Create a new menu state.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Initialize the native menu.
-    ///
-    /// On macOS, this creates the native menu bar.
-    /// On other platforms, this is a no-op.
-    #[cfg(target_os = "macos")]
-    pub fn init_native(&mut self) -> muda::Menu {
-        let menu = create_menu();
-        init_menu_for_nsapp(&menu);
-        self.native_initialized = true;
-        menu
-    }
-
-    /// Initialize the native menu (no-op on non-macOS).
-    #[cfg(not(target_os = "macos"))]
-    pub fn init_native(&mut self) -> muda::Menu {
-        self.native_initialized = true;
-        create_menu()
-    }
-
-    /// Toggle an in-app menu.
-    pub fn toggle_menu(&mut self, menu_id: MenuBarMenuId) {
-        self.bar.toggle(menu_id);
-    }
-
-    /// Close all in-app menus.
-    pub fn close_menus(&mut self) {
-        self.bar.close();
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::message::MenuBarMenuId;
 
     #[test]
     fn test_menu_event_to_message() {
@@ -141,7 +90,7 @@ mod tests {
 
     #[test]
     fn test_menu_bar_state() {
-        let mut state = MenuBarState::new();
+        let mut state = MenuBarState::default();
         assert!(state.open_menu.is_none());
 
         state.toggle(MenuBarMenuId::File);

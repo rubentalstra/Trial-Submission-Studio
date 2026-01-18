@@ -70,7 +70,6 @@ pub fn verify_signature(_app_path: &Path) -> Result<Option<String>> {
 mod tests {
     #[test]
     fn test_signature_module_exists() {
-        // Just verify the module compiles
-        assert!(true);
+        // Verify the module compiles - test is intentionally minimal
     }
 }

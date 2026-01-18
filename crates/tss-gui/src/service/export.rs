@@ -36,6 +36,8 @@ pub struct ExportInput {
     /// Export format (XPT or Dataset-XML).
     pub format: ExportFormat,
     /// XPT version (only used when format is XPT).
+    /// TODO: Pass this to the XPT writer when version support is implemented in tss-submit.
+    #[allow(dead_code)]
     pub xpt_version: XptVersion,
     /// SDTM-IG version for Dataset-XML and Define-XML.
     pub sdtm_ig_version: SdtmIgVersion,
@@ -177,15 +179,6 @@ fn execute_export_sync(input: ExportInput) -> ExportResult {
     let mut written_files: Vec<PathBuf> = Vec::new();
     let mut domain_frames: Vec<DomainFrame> = Vec::new();
     let mut supp_frames: Vec<DomainFrame> = Vec::new();
-    let mut warnings: Vec<String> = Vec::new();
-
-    // Add validation bypass warnings
-    for (domain, count) in &validation_errors {
-        warnings.push(format!(
-            "{}: Exported with {} validation error(s) (bypass enabled)",
-            domain, count
-        ));
-    }
 
     // Process each domain
     for domain_data in &input.domains {
@@ -242,7 +235,12 @@ fn execute_export_sync(input: ExportInput) -> ExportResult {
                     input.format,
                     ig_version,
                 ) {
-                    warnings.push(format!("SUPP{} export warning: {}", domain_data.code, e));
+                    // Log SUPP file failure but continue - graceful degradation
+                    tracing::warn!(
+                        "SUPP{} export failed (continuing without SUPP file): {}",
+                        domain_data.code,
+                        e
+                    );
                 } else {
                     written_files.push(supp_path);
                     supp_frames.push(supp_frame);
@@ -274,7 +272,6 @@ fn execute_export_sync(input: ExportInput) -> ExportResult {
         files: written_files,
         domains_exported: input.domains.len(),
         elapsed_ms: start.elapsed().as_millis() as u64,
-        warnings,
     }
 }
 

@@ -16,7 +16,6 @@ mod theme;
 mod view;
 
 use app::App;
-use iced::window;
 
 // Import Lucide font bytes for loading
 use component::LUCIDE_FONT_BYTES;
@@ -43,12 +42,4 @@ pub fn main() -> iced::Result {
         .subscription(App::subscription)
         .font(LUCIDE_FONT_BYTES)
         .run()
-}
-
-/// Load the application icon from embedded PNG data.
-#[allow(dead_code)]
-fn load_icon() -> Option<window::Icon> {
-    let icon_data = include_bytes!("../assets/icon.png");
-    // Use Iced 0.14.0 API: from_file_data takes raw bytes and optional format
-    window::icon::from_file_data(icon_data, Some(image::ImageFormat::Png)).ok()
 }

@@ -49,7 +49,7 @@ thread_local! {
 /// Create the native menu bar.
 ///
 /// On macOS, this creates the app menu but does NOT call `init_for_nsapp()`.
-/// Call `init_menu_for_nsapp()` after the application event loop has started.
+/// Call `menu.init_for_nsapp()` after the application event loop has started.
 ///
 /// Returns the menu. Use `menu_event_receiver()` to get menu events.
 pub fn create_menu() -> Menu {
@@ -406,21 +406,6 @@ fn create_help_menu(menu: &Menu) {
     }
 
     menu.append(&help_menu).expect("Failed to add Help menu");
-}
-
-/// Initialize the menu for macOS NSApp.
-///
-/// This must be called after the application event loop has started.
-/// On non-macOS platforms, this is a no-op.
-#[cfg(target_os = "macos")]
-pub fn init_menu_for_nsapp(menu: &Menu) {
-    menu.init_for_nsapp();
-}
-
-/// Initialize the menu for macOS NSApp (no-op on other platforms).
-#[cfg(not(target_os = "macos"))]
-pub fn init_menu_for_nsapp(_menu: &Menu) {
-    // No-op on non-macOS platforms
 }
 
 /// Get the menu event receiver.

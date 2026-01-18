@@ -3,15 +3,22 @@
 //! On macOS, the native menu bar is used instead (via muda).
 //! This module provides an Iced-based menu bar rendered inside the application window.
 
-use iced::widget::{Space, button, container, row, text};
-use iced::{Alignment, Border, Element, Length, Padding, Theme};
-use iced_fonts::lucide;
+// Cross-platform imports (used by MenuBarState)
+use crate::message::MenuBarMenuId;
 
+// Platform-specific imports (Windows/Linux only)
 #[cfg(not(target_os = "macos"))]
-use crate::message::HomeMessage;
-use crate::message::{MenuBarMenuId, MenuMessage, Message};
+use crate::message::{HomeMessage, MenuMessage, Message};
+#[cfg(not(target_os = "macos"))]
 use crate::state::AppState;
+#[cfg(not(target_os = "macos"))]
 use crate::theme::{GRAY_200, GRAY_600, GRAY_800, SPACING_SM, SPACING_XS};
+#[cfg(not(target_os = "macos"))]
+use iced::widget::{Space, button, container, row, text};
+#[cfg(not(target_os = "macos"))]
+use iced::{Alignment, Border, Element, Length, Padding, Theme};
+#[cfg(not(target_os = "macos"))]
+use iced_fonts::lucide;
 
 /// Re-export MenuId as an alias for MenuBarMenuId for convenience.
 pub type MenuId = MenuBarMenuId;
@@ -24,11 +31,6 @@ pub struct MenuBarState {
 }
 
 impl MenuBarState {
-    /// Create a new menu bar state.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     /// Toggle a menu open/closed.
     pub fn toggle(&mut self, menu: MenuId) {
         if self.open_menu == Some(menu) {
@@ -44,6 +46,7 @@ impl MenuBarState {
     }
 
     /// Check if a specific menu is open.
+    #[cfg(any(test, not(target_os = "macos")))]
     pub fn is_open(&self, menu: MenuId) -> bool {
         self.open_menu == Some(menu)
     }
@@ -103,6 +106,7 @@ pub fn view_menu_bar<'a>(
 }
 
 /// Render a menu button in the menu bar.
+#[cfg(not(target_os = "macos"))]
 fn view_menu_button<'a>(
     label: &'a str,
     menu_id: MenuBarMenuId,
@@ -251,6 +255,7 @@ fn view_menu_item_disabled<'a>(icon: Element<'a, Message>, label: &'a str) -> El
 }
 
 /// Render the Edit menu dropdown.
+#[cfg(not(target_os = "macos"))]
 fn view_edit_dropdown<'a>() -> Element<'a, Message> {
     use iced::widget::column;
 
@@ -313,6 +318,7 @@ fn view_edit_dropdown<'a>() -> Element<'a, Message> {
 }
 
 /// Render the Help menu dropdown.
+#[cfg(not(target_os = "macos"))]
 fn view_help_dropdown<'a>() -> Element<'a, Message> {
     use iced::widget::column;
 
@@ -392,6 +398,7 @@ fn view_help_dropdown<'a>() -> Element<'a, Message> {
 }
 
 /// Render a menu item.
+#[cfg(not(target_os = "macos"))]
 fn view_menu_item<'a>(
     icon: Element<'a, Message>,
     label: &'a str,
@@ -428,6 +435,7 @@ fn view_menu_item<'a>(
 }
 
 /// Render a menu separator.
+#[cfg(not(target_os = "macos"))]
 fn view_separator<'a>() -> Element<'a, Message> {
     container(Space::new().width(Length::Fill).height(1))
         .style(|_theme: &Theme| container::Style {
@@ -439,6 +447,7 @@ fn view_separator<'a>() -> Element<'a, Message> {
 }
 
 /// Wrap a dropdown in a positioned container.
+#[cfg(not(target_os = "macos"))]
 fn view_dropdown_container<'a>(
     content: impl Into<Element<'a, Message>>,
     _left_offset: f32,
@@ -466,6 +475,7 @@ fn view_dropdown_container<'a>(
 }
 
 /// Style for menu items.
+#[cfg(not(target_os = "macos"))]
 fn menu_item_style(_theme: &Theme, _status: button::Status) -> button::Style {
     button::Style {
         background: None,
@@ -476,14 +486,4 @@ fn menu_item_style(_theme: &Theme, _status: button::Status) -> button::Style {
         },
         ..Default::default()
     }
-}
-
-/// No-op view for macOS (uses native menu).
-#[cfg(target_os = "macos")]
-pub fn view_menu_bar<'a>(
-    _state: &MenuBarState,
-    _has_study: bool,
-    _app_state: &'a AppState,
-) -> Element<'a, Message> {
-    Space::new().width(0).height(0).into()
 }

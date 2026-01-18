@@ -17,53 +17,12 @@ use crate::message::{
 };
 use crate::state::{ExportFormat, Settings, XptVersion};
 use crate::theme::{
-    BORDER_RADIUS_LG, GRAY_100, GRAY_500, GRAY_700, GRAY_800, GRAY_900, PRIMARY_100, SPACING_LG,
-    SPACING_MD, SPACING_SM, SPACING_XL, SPACING_XS, WHITE, button_primary,
+    GRAY_100, GRAY_500, GRAY_700, GRAY_800, GRAY_900, PRIMARY_100, SPACING_LG, SPACING_MD,
+    SPACING_SM, SPACING_XL, SPACING_XS, button_primary,
 };
 
 /// Width of the category sidebar.
 const SIDEBAR_WIDTH: f32 = 200.0;
-
-/// Render the Settings dialog.
-pub fn view_settings_dialog(
-    settings: &Settings,
-    active_category: SettingsCategory,
-) -> Element<'_, Message> {
-    let backdrop = container(Space::new().width(Length::Fill).height(Length::Fill))
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .style(|_| container::Style {
-            background: Some(Color::from_rgba(0.0, 0.0, 0.0, 0.5).into()),
-            ..Default::default()
-        });
-
-    let dialog_content = view_dialog_content(settings, active_category);
-
-    let dialog = container(dialog_content)
-        .width(720)
-        .height(500)
-        .style(|_| container::Style {
-            background: Some(WHITE.into()),
-            border: Border {
-                radius: BORDER_RADIUS_LG.into(),
-                ..Default::default()
-            },
-            shadow: iced::Shadow {
-                color: Color::from_rgba(0.0, 0.0, 0.0, 0.2),
-                offset: iced::Vector::new(0.0, 8.0),
-                blur_radius: 24.0,
-            },
-            ..Default::default()
-        });
-
-    let centered_dialog = container(dialog)
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .center_x(Length::Shrink)
-        .center_y(Length::Shrink);
-
-    iced::widget::stack![backdrop, centered_dialog].into()
-}
 
 /// Render the Settings dialog content for a standalone window (multi-window mode).
 ///
@@ -134,25 +93,6 @@ fn view_footer_for_window<'a>(window_id: window::Id) -> Element<'a, Message> {
     ]
     .padding([SPACING_MD, SPACING_LG])
     .align_y(Alignment::Center)
-    .into()
-}
-
-/// Main dialog content with header, master-detail, and footer.
-fn view_dialog_content(
-    settings: &Settings,
-    active_category: SettingsCategory,
-) -> Element<'_, Message> {
-    let header = view_header();
-    let body = view_master_detail(settings, active_category);
-    let footer = view_footer();
-
-    column![
-        header,
-        rule::horizontal(1),
-        body,
-        rule::horizontal(1),
-        footer,
-    ]
     .into()
 }
 
@@ -673,37 +613,4 @@ fn view_validation_settings(settings: &Settings) -> Element<'_, Message> {
 /// Section header helper.
 fn section_header(title: &str) -> Element<'_, Message> {
     text(title).size(16).color(GRAY_900).into()
-}
-
-/// Dialog footer with action buttons.
-fn view_footer<'a>() -> Element<'a, Message> {
-    let reset_btn = button(text("Reset to Defaults").size(13))
-        .on_press(Message::Dialog(DialogMessage::Settings(
-            SettingsMessage::ResetToDefaults,
-        )))
-        .padding([SPACING_SM, SPACING_MD]);
-
-    let cancel_btn = button(text("Cancel").size(13))
-        .on_press(Message::Dialog(DialogMessage::Settings(
-            SettingsMessage::Close,
-        )))
-        .padding([SPACING_SM, SPACING_MD]);
-
-    let apply_btn = button(text("Apply").size(13))
-        .on_press(Message::Dialog(DialogMessage::Settings(
-            SettingsMessage::Apply,
-        )))
-        .padding([SPACING_SM, SPACING_XL])
-        .style(button_primary);
-
-    row![
-        reset_btn,
-        Space::new().width(Length::Fill),
-        cancel_btn,
-        Space::new().width(SPACING_SM),
-        apply_btn,
-    ]
-    .padding([SPACING_MD, SPACING_LG])
-    .align_y(Alignment::Center)
-    .into()
 }

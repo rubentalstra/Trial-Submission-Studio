@@ -77,29 +77,6 @@ impl UpdateStatus {
         eprintln!("[helper] Status written to: {:?}", path);
         Ok(())
     }
-
-    /// Reads the status from the status file.
-    /// Used by the main app to read post-update status.
-    #[allow(dead_code)]
-    pub fn read() -> Option<Self> {
-        let path = Self::status_file_path()?;
-
-        let content = fs::read_to_string(&path).ok()?;
-        serde_json::from_str(&content).ok()
-    }
-
-    /// Deletes the status file.
-    /// Used by the main app after reading and displaying the status.
-    #[allow(dead_code)]
-    pub fn delete() -> Result<(), String> {
-        if let Some(path) = Self::status_file_path() {
-            if path.exists() {
-                fs::remove_file(&path)
-                    .map_err(|e| format!("Failed to delete status file: {}", e))?;
-            }
-        }
-        Ok(())
-    }
 }
 
 /// Gets the path to the dirs crate's data directory.

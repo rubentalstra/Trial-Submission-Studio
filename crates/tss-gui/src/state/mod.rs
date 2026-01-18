@@ -24,9 +24,6 @@
 //! 3. **Derived data computed on demand** - Not cached in state
 //! 4. **UI state lives with views** - Not mixed with domain data
 
-// Allow unused imports - these are public API re-exports
-#![allow(unused_imports)]
-
 mod domain_state;
 mod settings;
 mod study;
@@ -34,10 +31,7 @@ mod view_state;
 
 // Re-exports
 pub use domain_state::{DomainSource, DomainState, SuppAction, SuppColumnConfig, SuppOrigin};
-pub use settings::{
-    DeveloperSettings, DisplaySettings, ExportFormat, ExportSettings, GeneralSettings, RecentStudy,
-    SdtmIgVersion, Settings, ValidationRuleSettings, ValidationSettings, WorkflowType, XptVersion,
-};
+pub use settings::{ExportFormat, RecentStudy, SdtmIgVersion, Settings, WorkflowType, XptVersion};
 pub use study::Study;
 pub use view_state::{
     EditorTab, ExportPhase, ExportResult, ExportViewState, MappingUiState, NormalizationUiState,
@@ -247,16 +241,6 @@ impl AppState {
         }
     }
 
-    // =========================================================================
-    // READ-ONLY ACCESSORS (no mutation - that happens in update())
-    // =========================================================================
-
-    /// Get study reference.
-    #[inline]
-    pub fn study(&self) -> Option<&Study> {
-        self.study.as_ref()
-    }
-
     /// Get domain by code.
     #[inline]
     pub fn domain(&self, code: &str) -> Option<&DomainState> {
@@ -267,31 +251,5 @@ impl AppState {
     #[inline]
     pub fn has_study(&self) -> bool {
         self.study.is_some()
-    }
-
-    /// Get domain codes (for iteration).
-    pub fn domain_codes(&self) -> Vec<&str> {
-        self.study
-            .as_ref()
-            .map(|s| s.domain_codes())
-            .unwrap_or_default()
-    }
-
-    /// Get current workflow mode from view state.
-    #[inline]
-    pub fn workflow_mode(&self) -> WorkflowMode {
-        self.view.workflow_mode()
-    }
-
-    /// Get current domain code if in domain editor.
-    #[inline]
-    pub fn current_domain_code(&self) -> Option<&str> {
-        self.view.current_domain()
-    }
-
-    /// Get current editor tab if in domain editor.
-    #[inline]
-    pub fn current_tab(&self) -> Option<EditorTab> {
-        self.view.current_tab()
     }
 }

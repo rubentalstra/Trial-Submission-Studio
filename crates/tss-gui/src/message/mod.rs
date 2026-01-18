@@ -2,9 +2,12 @@
 //!
 //! This module defines the message hierarchy for the Elm-style architecture.
 //! All user interactions and events flow through these message types.
+//!
+//! Note: Some variants may appear unused on certain platforms (e.g., menu variants on macOS)
+//! or are part of features still being wired up. The message system defines the application's
+//! complete capability surface.
 
-// Allow unused imports - these are public API re-exports
-#![allow(unused_imports)]
+#![allow(dead_code)]
 
 pub mod dialog;
 pub mod domain_editor;
@@ -20,7 +23,7 @@ use iced::window;
 use tss_standards::TerminologyRegistry;
 
 // Use new state types
-use crate::state::{DialogType, EditorTab, Study, ViewState, WorkflowMode};
+use crate::state::{DialogType, Study, ViewState, WorkflowMode};
 
 pub use dialog::{
     AboutMessage, DeveloperSettingsMessage, DialogMessage, DisplaySettingsMessage,
@@ -34,7 +37,7 @@ pub use home::HomeMessage;
 pub use menu::MenuMessage;
 
 // Toast message
-pub use crate::component::toast::{ToastMessage, ToastState};
+pub use crate::component::toast::ToastMessage;
 
 /// Re-export ValidationReport from tss_validate for convenience.
 pub type ValidationReport = tss_submit::ValidationReport;
@@ -45,6 +48,7 @@ pub type StudyLoadResult = Result<(Study, TerminologyRegistry), String>;
 /// Menu bar menu identifier for in-app menu (Windows/Linux).
 ///
 /// This is a separate type to avoid circular dependencies with the menu module.
+/// Only used on Windows/Linux where in-app menu bar is rendered.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MenuBarMenuId {
     File,
@@ -57,6 +61,7 @@ pub enum MenuBarMenuId {
 /// All user interactions and system events are represented as variants
 /// of this enum. The `update` function processes these messages to
 /// modify application state.
+///
 #[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
 pub enum Message {
@@ -172,21 +177,4 @@ pub enum Message {
 
     /// No operation - used for placeholder actions.
     Noop,
-}
-
-impl Message {
-    /// Creates a navigation message to go to the home view.
-    pub fn go_home() -> Self {
-        Self::Navigate(ViewState::home())
-    }
-
-    /// Creates a navigation message to go to the export view.
-    pub fn go_export() -> Self {
-        Self::Navigate(ViewState::export())
-    }
-
-    /// Creates a navigation message to go to a domain editor.
-    pub fn go_domain(domain: impl Into<String>, tab: EditorTab) -> Self {
-        Self::Navigate(ViewState::domain_editor(domain, tab))
-    }
 }
