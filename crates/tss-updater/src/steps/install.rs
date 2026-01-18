@@ -34,6 +34,17 @@ pub fn install_desktop(data: &[u8], info: &UpdateInfo) -> Result<()> {
     Ok(())
 }
 
+/// Extracts binary bytes from an archive.
+///
+/// This is a convenience wrapper that extracts the archive and reads the binary.
+#[cfg(not(target_os = "macos"))]
+pub fn extract_binary(data: &[u8], asset_name: &str) -> Result<Vec<u8>> {
+    let binary_path = crate::steps::extract::extract_archive(data, asset_name)?;
+
+    fs::read(&binary_path)
+        .map_err(|e| UpdateError::Installation(format!("Failed to read extracted binary: {}", e)))
+}
+
 /// Installs an update on macOS by spawning the helper.
 ///
 /// This function spawns the helper binary and exits the current process.
@@ -143,7 +154,7 @@ fn get_helper_path(bundle_path: &Path) -> Result<std::path::PathBuf> {
 
 /// Replaces the current executable with the new binary.
 #[cfg(not(target_os = "macos"))]
-fn replace_current_executable(binary: &[u8]) -> Result<()> {
+pub fn replace_current_executable(binary: &[u8]) -> Result<()> {
     tracing::info!("Replacing current executable ({} bytes)", binary.len());
 
     // Write binary to a temporary file
