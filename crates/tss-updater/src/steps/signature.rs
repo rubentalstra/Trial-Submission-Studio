@@ -1,9 +1,12 @@
 //! Code signature verification (macOS only).
 
 use std::path::Path;
+#[cfg(target_os = "macos")]
 use std::process::Command;
 
-use crate::error::{Result, UpdateError};
+use crate::error::Result;
+#[cfg(target_os = "macos")]
+use crate::error::UpdateError;
 
 /// Verifies the code signature of an app bundle.
 ///
