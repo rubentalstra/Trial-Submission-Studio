@@ -28,19 +28,4 @@ impl HelperConfig {
 
         serde_json::from_str(&content).map_err(|e| format!("Failed to parse config: {}", e))
     }
-
-    /// Validates that the required paths exist.
-    #[allow(dead_code)]
-    pub fn validate(&self) -> Result<(), String> {
-        if !self.new_app_path.exists() {
-            return Err(format!("New app not found: {:?}", self.new_app_path));
-        }
-        if !self.current_app_path.exists() {
-            return Err(format!(
-                "Current app not found: {:?}",
-                self.current_app_path
-            ));
-        }
-        Ok(())
-    }
 }

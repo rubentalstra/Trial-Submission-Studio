@@ -3,6 +3,8 @@
 //! This module provides the custom theme that gives the application its
 //! distinctive clinical/regulatory aesthetic.
 
+#![allow(dead_code)]
+
 use iced::theme::Palette;
 use iced::widget::{button, container, progress_bar, text_input};
 use iced::{Border, Color, Shadow, Theme, Vector};

@@ -60,11 +60,11 @@ pub fn log(message: &str) {
     eprint!("{}", log_line);
 
     // Write to log file if available
-    if let Ok(mut guard) = LOG_FILE.lock() {
-        if let Some(ref mut file) = *guard {
-            let _ = file.write_all(log_line.as_bytes());
-            let _ = file.flush();
-        }
+    if let Ok(mut guard) = LOG_FILE.lock()
+        && let Some(ref mut file) = *guard
+    {
+        let _ = file.write_all(log_line.as_bytes());
+        let _ = file.flush();
     }
 }
 

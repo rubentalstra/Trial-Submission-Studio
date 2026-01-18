@@ -1,15 +1,17 @@
 //! Update dialog view.
 //!
-//! Check for and install application updates with SHA256 verification.
-//!
-//! This module provides multi-window dialog views for the update process:
-//! - Check for updates
-//! - Download with progress
-//! - SHA256 verification
-//! - Installation and restart
+//! Modern update dialog with:
+//! - Immediate checking when opened (no idle state)
+//! - Enhanced progress display with speed and ETA
+//! - Collapsible changelog
+//! - Two-step confirmation (download + install)
+//! - Inline error handling with suggestions
+
+use std::sync::Arc;
+use std::time::Instant;
 
 use iced::widget::{
-    Space, button, column, container, markdown, progress_bar, row, scrollable, text,
+    Space, button, center, column, container, markdown, progress_bar, row, scrollable, text,
 };
 use iced::window;
 use iced::{Alignment, Element, Length, Theme};
@@ -17,253 +19,340 @@ use iced_fonts::lucide;
 
 use crate::message::{DialogMessage, Message, UpdateMessage};
 use crate::theme::{
-    GRAY_100, GRAY_500, GRAY_600, GRAY_700, GRAY_800, GRAY_900, PRIMARY_500, SPACING_LG,
-    SPACING_MD, SPACING_SM, SPACING_XS, SUCCESS, WARNING, button_primary,
+    BORDER_RADIUS_SM, ERROR, GRAY_100, GRAY_200, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800,
+    GRAY_900, PRIMARY_500, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS, SUCCESS, WARNING, WHITE,
+    button_ghost, button_primary, button_secondary,
 };
 
 /// Current application version.
 const CURRENT_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+// =============================================================================
+// STATE TYPES
+// =============================================================================
+
+/// Download statistics for enhanced progress display.
+#[derive(Debug, Clone, Default)]
+pub struct DownloadStats {
+    /// Bytes downloaded so far.
+    pub downloaded: u64,
+    /// Total bytes to download.
+    pub total: u64,
+    /// Current download speed in bytes per second.
+    pub speed: u64,
+    /// When the download started.
+    pub started_at: Option<Instant>,
+}
+
+impl DownloadStats {
+    /// Create new download stats.
+    pub fn new(total: u64) -> Self {
+        Self {
+            downloaded: 0,
+            total,
+            speed: 0,
+            started_at: Some(Instant::now()),
+        }
+    }
+
+    /// Update from progress data.
+    pub fn update(&mut self, downloaded: u64, speed: u64) {
+        self.downloaded = downloaded;
+        self.speed = speed;
+        if self.started_at.is_none() {
+            self.started_at = Some(Instant::now());
+        }
+    }
+
+    /// Progress fraction (0.0 to 1.0).
+    pub fn fraction(&self) -> f32 {
+        if self.total == 0 {
+            0.0
+        } else {
+            (self.downloaded as f32 / self.total as f32).min(1.0)
+        }
+    }
+
+    /// Percentage (0 to 100).
+    pub fn percentage(&self) -> u32 {
+        (self.fraction() * 100.0) as u32
+    }
+
+    /// Estimated time remaining in seconds.
+    pub fn eta_seconds(&self) -> Option<u64> {
+        if self.speed == 0 || self.downloaded >= self.total {
+            return None;
+        }
+        let remaining = self.total.saturating_sub(self.downloaded);
+        Some(remaining / self.speed)
+    }
+
+    /// Human-readable ETA string.
+    pub fn eta_display(&self) -> String {
+        match self.eta_seconds() {
+            Some(secs) if secs >= 60 => {
+                let mins = secs / 60;
+                let secs = secs % 60;
+                format!("{}m {}s remaining", mins, secs)
+            }
+            Some(secs) => format!("{}s remaining", secs),
+            None => String::new(),
+        }
+    }
+
+    /// Human-readable speed string.
+    pub fn speed_display(&self) -> String {
+        tss_updater::format_speed(self.speed)
+    }
+
+    /// Human-readable size progress string.
+    pub fn size_display(&self) -> String {
+        let downloaded_mb = self.downloaded as f64 / 1_048_576.0;
+        let total_mb = self.total as f64 / 1_048_576.0;
+        format!("{:.1} / {:.1} MB", downloaded_mb, total_mb)
+    }
+}
+
+/// Error information with user-friendly details and suggestions.
+#[derive(Debug, Clone)]
+pub struct UpdateErrorInfo {
+    /// User-friendly error message.
+    pub message: String,
+    /// Suggested action to resolve the error.
+    pub suggestion: Option<String>,
+    /// Whether the error can be retried.
+    pub can_retry: bool,
+    /// URL for manual download (if applicable).
+    pub manual_download_url: Option<String>,
+}
+
+impl UpdateErrorInfo {
+    /// Create error info from a string message.
+    pub fn from_message(message: impl Into<String>) -> Self {
+        Self {
+            message: message.into(),
+            suggestion: Some("Please try again.".to_string()),
+            can_retry: true,
+            manual_download_url: None,
+        }
+    }
+}
+
+impl From<tss_updater::UpdateError> for UpdateErrorInfo {
+    fn from(err: tss_updater::UpdateError) -> Self {
+        let suggestion = match err.suggested_action() {
+            tss_updater::SuggestedAction::None => None,
+            action => Some(action.description().to_string()),
+        };
+
+        let manual_download_url = match &err {
+            tss_updater::UpdateError::NoAssetFound(_)
+            | tss_updater::UpdateError::NoCompatibleAsset => Some(format!(
+                "https://github.com/{}/{}/releases/latest",
+                tss_updater::REPO_OWNER,
+                tss_updater::REPO_NAME
+            )),
+            _ => None,
+        };
+
+        Self {
+            message: err.user_message().to_string(),
+            suggestion,
+            can_retry: err.is_retryable(),
+            manual_download_url,
+        }
+    }
+}
+
+/// Context for retry operations.
+#[derive(Debug, Clone)]
+pub enum RetryContext {
+    /// Retry the update check.
+    Check,
+    /// Retry downloading.
+    Download {
+        /// Update info for retry.
+        info: tss_updater::UpdateInfo,
+    },
+    /// Retry installation.
+    Install {
+        /// Update info.
+        info: tss_updater::UpdateInfo,
+        /// Downloaded data (Arc for cheap cloning of large binaries).
+        data: Arc<Vec<u8>>,
+    },
+}
+
 /// Update check and installation state.
+///
+/// Clean 8-state design with no idle state - dialog opens directly into checking.
 #[derive(Debug, Clone, Default)]
 pub enum UpdateState {
-    /// Initial state, no check performed.
+    /// Checking for updates (initial state when dialog opens).
     #[default]
-    Idle,
-
-    /// Checking for updates.
     Checking,
 
-    /// Update available with parsed changelog.
+    /// Update available with info and collapsible changelog.
     Available {
         /// Update information from tss_updater.
         info: tss_updater::UpdateInfo,
         /// Pre-parsed markdown items for rendering.
         changelog_items: Vec<markdown::Item>,
+        /// Whether changelog is expanded.
+        changelog_expanded: bool,
     },
 
-    /// No update available.
+    /// No update available - already on latest version.
     UpToDate,
 
-    /// Downloading update with progress.
+    /// Downloading update with enhanced progress.
     Downloading {
         /// Update information.
         info: tss_updater::UpdateInfo,
-        /// Progress fraction (0.0 to 1.0).
-        progress: f32,
-        /// Bytes downloaded so far.
-        downloaded_bytes: u64,
-        /// Total bytes to download.
-        total_bytes: u64,
-        /// Download speed in bytes per second.
-        speed: u64,
+        /// Download statistics.
+        stats: DownloadStats,
     },
 
-    /// Verifying SHA256 hash.
+    /// Verifying SHA256 hash (brief state).
     Verifying {
         /// Update information.
         info: tss_updater::UpdateInfo,
     },
 
-    /// SHA256 verification failed.
-    VerificationFailed {
-        /// Update information.
-        info: tss_updater::UpdateInfo,
-        /// Expected hash.
-        expected: String,
-        /// Actual hash.
-        actual: String,
-    },
-
-    /// Download complete, ready to install.
+    /// Download complete, ready for second confirmation.
     ReadyToInstall {
         /// Update information.
         info: tss_updater::UpdateInfo,
-        /// Downloaded binary data.
-        data: Vec<u8>,
+        /// Downloaded binary data (Arc for cheap cloning of large binaries).
+        data: Arc<Vec<u8>>,
         /// Whether verification passed.
         verified: bool,
     },
 
     /// Installing update.
-    Installing,
+    Installing {
+        /// Update information.
+        info: tss_updater::UpdateInfo,
+    },
 
     /// Installation complete, restart required.
-    InstallComplete {
+    Complete {
         /// Version that was installed.
         version: String,
     },
 
-    /// Error occurred.
-    Error(String),
+    /// Error occurred with recovery options.
+    Error {
+        /// Error details.
+        error: UpdateErrorInfo,
+        /// Context for retry (if applicable).
+        retry_context: Option<RetryContext>,
+    },
 }
 
-/// Render the Update dialog content for a standalone window (multi-window mode).
-///
-/// This is the content that appears in a separate dialog window.
+// =============================================================================
+// MAIN VIEW FUNCTION
+// =============================================================================
+
+/// Render the update dialog content for a standalone window.
 pub fn view_update_dialog_content(
     state: &UpdateState,
     window_id: window::Id,
 ) -> Element<'_, Message> {
-    let content = match state {
-        UpdateState::Idle => view_idle_state(window_id),
-        UpdateState::Checking => view_checking_state(),
+    let content: Element<'_, Message> = match state {
+        UpdateState::Checking => view_checking(window_id),
         UpdateState::Available {
             info,
             changelog_items,
-        } => view_available_state(info, changelog_items, window_id),
-        UpdateState::UpToDate => view_up_to_date_state(window_id),
-        UpdateState::Downloading {
-            info,
-            progress,
-            downloaded_bytes,
-            total_bytes,
-            speed,
-        } => view_downloading_state(
-            info,
-            *progress,
-            *downloaded_bytes,
-            *total_bytes,
-            *speed,
-            window_id,
-        ),
-        UpdateState::Verifying { info } => view_verifying_state(info),
-        UpdateState::VerificationFailed {
-            info,
-            expected,
-            actual,
-        } => view_verification_failed_state(info, expected, actual, window_id),
+            changelog_expanded,
+        } => view_available(info, changelog_items, *changelog_expanded, window_id),
+        UpdateState::UpToDate => view_up_to_date(window_id),
+        UpdateState::Downloading { info, stats } => view_downloading(info, stats, window_id),
+        UpdateState::Verifying { info } => view_ready_to_install(info, None, window_id),
         UpdateState::ReadyToInstall {
             info,
             verified,
             data: _,
-        } => view_ready_to_install_state(info, *verified, window_id),
-        UpdateState::Installing => view_installing_state(),
-        UpdateState::InstallComplete { version } => view_install_complete_state(version, window_id),
-        UpdateState::Error(msg) => view_error_state(msg, window_id),
+        } => view_ready_to_install(info, Some(*verified), window_id),
+        UpdateState::Installing { info } => view_installing(info),
+        UpdateState::Complete { version } => view_complete(version),
+        UpdateState::Error {
+            error,
+            retry_context,
+        } => view_error(error, retry_context.is_some(), window_id),
     };
 
-    // Wrap in a styled container for the window
+    // Dialog container with white background (content fills window directly)
     container(content)
         .width(Length::Fill)
         .height(Length::Fill)
-        .center_x(Length::Fill)
-        .center_y(Length::Fill)
+        .padding(SPACING_LG)
         .style(|_| container::Style {
-            background: Some(GRAY_100.into()),
+            background: Some(WHITE.into()),
             ..Default::default()
         })
         .into()
 }
 
-/// Idle state - prompt to check for updates.
-fn view_idle_state(window_id: window::Id) -> Element<'static, Message> {
-    let icon = lucide::refresh_cw().size(32).color(PRIMARY_500);
+// =============================================================================
+// VIEW FUNCTIONS FOR EACH STATE
+// =============================================================================
 
-    let current_version = text(format!("Current version: {}", CURRENT_VERSION))
-        .size(12)
-        .color(GRAY_500);
+/// Checking state - initial state with spinner.
+fn view_checking(window_id: window::Id) -> Element<'static, Message> {
+    let spinner = lucide::loader().size(48).color(PRIMARY_500);
 
-    let check_btn = button(
-        row![
-            lucide::search().size(14),
-            Space::new().width(SPACING_XS),
-            text("Check for Updates"),
-        ]
-        .align_y(Alignment::Center),
-    )
-    .on_press(Message::Dialog(DialogMessage::Update(
-        UpdateMessage::CheckForUpdates,
-    )))
-    .padding([SPACING_SM, SPACING_MD])
-    .style(button_primary);
-
-    let close_btn = button(text("Close").size(13))
+    let cancel_btn = button(text("Cancel").size(13))
         .on_press(Message::CloseWindow(window_id))
-        .padding([SPACING_SM, SPACING_MD]);
+        .padding([SPACING_SM, SPACING_MD])
+        .style(button_secondary);
 
-    column![
+    let content = column![
         Space::new().height(SPACING_LG),
-        icon,
+        center(spinner).width(Length::Fill),
         Space::new().height(SPACING_MD),
-        text("Check for Updates").size(18).color(GRAY_900),
+        text("Checking for Updates...")
+            .size(18)
+            .color(GRAY_800)
+            .center(),
         Space::new().height(SPACING_XS),
-        current_version,
+        text(format!("Current version: {}", CURRENT_VERSION))
+            .size(13)
+            .color(GRAY_500)
+            .center(),
         Space::new().height(SPACING_LG),
-        check_btn,
-        Space::new().height(SPACING_SM),
-        close_btn,
         Space::new().height(SPACING_LG),
+        row![Space::new().width(Length::Fill), cancel_btn],
     ]
     .align_x(Alignment::Center)
     .padding(SPACING_LG)
-    .into()
+    .width(Length::Fill);
+
+    content.into()
 }
 
-/// Checking state - spinner/loading.
-fn view_checking_state() -> Element<'static, Message> {
-    let icon = lucide::loader().size(32).color(PRIMARY_500);
-
-    column![
-        Space::new().height(SPACING_LG),
-        icon,
-        Space::new().height(SPACING_MD),
-        text("Checking for Updates...").size(16).color(GRAY_800),
-        Space::new().height(SPACING_XS),
-        text("Please wait").size(13).color(GRAY_500),
-        Space::new().height(SPACING_LG),
-    ]
-    .align_x(Alignment::Center)
-    .padding(SPACING_LG)
-    .into()
-}
-
-/// Update available state with changelog.
-fn view_available_state<'a>(
+/// Available state - update available with collapsible changelog.
+fn view_available<'a>(
     info: &'a tss_updater::UpdateInfo,
     changelog_items: &'a [markdown::Item],
+    changelog_expanded: bool,
     window_id: window::Id,
 ) -> Element<'a, Message> {
-    let icon = lucide::download().size(32).color(SUCCESS);
+    let header = column![
+        text(format!("Version {} Available", info.version_display()))
+            .size(20)
+            .color(GRAY_900),
+        Space::new().height(SPACING_XS),
+        text(format!("You have version {}", CURRENT_VERSION))
+            .size(13)
+            .color(GRAY_500),
+    ]
+    .align_x(Alignment::Center);
 
-    let header = text(format!("Version {} Available", info.version_display()))
-        .size(18)
-        .color(GRAY_900);
+    // Collapsible changelog section
+    let changelog_section = view_collapsible_changelog(changelog_items, changelog_expanded);
 
-    let current = text(format!("Current: {}", CURRENT_VERSION))
-        .size(12)
-        .color(GRAY_500);
-
-    // Changelog section with markdown rendering
-    let changelog_header = text("Release Notes").size(14).color(GRAY_700);
-
-    // Render changelog using iced's markdown widget in scrollable container
-    // The markdown widget returns Element<String> (for URL clicks), we map to our Message type
-    let markdown_content: Element<'_, Message> =
-        markdown::view(changelog_items, Theme::Light).map(|url| {
-            // Open URLs in browser when clicked
-            let _ = open::that(&url);
-            Message::Noop
-        });
-
-    let changelog_view = scrollable(container(markdown_content).padding(SPACING_SM))
-        .height(Length::Fixed(200.0))
-        .width(Length::Fill);
-
-    let changelog_container =
-        container(changelog_view)
-            .width(Length::Fill)
-            .style(|_| container::Style {
-                background: Some(iced::Color::WHITE.into()),
-                border: iced::Border {
-                    color: GRAY_500,
-                    width: 1.0,
-                    radius: 4.0.into(),
-                },
-                ..Default::default()
-            });
-
-    // Show file size on download button
+    // Action buttons
     let size_display = info.asset.size_display();
     let download_btn = button(
         row![
@@ -279,270 +368,385 @@ fn view_available_state<'a>(
     .padding([SPACING_SM, SPACING_MD])
     .style(button_primary);
 
+    let later_btn = button(text("Later").size(13))
+        .on_press(Message::CloseWindow(window_id))
+        .padding([SPACING_SM, SPACING_MD])
+        .style(button_secondary);
+
     let skip_btn = button(text("Skip Version").size(13))
         .on_press(Message::Dialog(DialogMessage::Update(
-            UpdateMessage::SkipVersion(info.version.clone()),
+            UpdateMessage::SkipVersion,
         )))
-        .padding([SPACING_SM, SPACING_MD]);
+        .padding([SPACING_SM, SPACING_MD])
+        .style(button_ghost);
 
-    let later_btn = button(text("Remind Later").size(13))
-        .on_press(Message::CloseWindow(window_id))
-        .padding([SPACING_SM, SPACING_MD]);
+    let buttons = row![
+        skip_btn,
+        Space::new().width(Length::Fill),
+        later_btn,
+        download_btn
+    ]
+    .spacing(SPACING_SM)
+    .align_y(Alignment::Center);
 
-    column![
-        Space::new().height(SPACING_MD),
-        icon,
+    let content = column![
         Space::new().height(SPACING_MD),
         header,
-        Space::new().height(SPACING_XS),
-        current,
         Space::new().height(SPACING_MD),
-        changelog_header,
-        Space::new().height(SPACING_SM),
-        changelog_container,
+        changelog_section,
         Space::new().height(SPACING_MD),
-        row![download_btn, skip_btn, later_btn].spacing(SPACING_SM),
-        Space::new().height(SPACING_MD),
+        buttons,
     ]
-    .align_x(Alignment::Center)
     .padding(SPACING_LG)
+    .width(Length::Fill);
+
+    content.into()
+}
+
+/// Collapsible changelog component.
+fn view_collapsible_changelog<'a>(
+    changelog_items: &'a [markdown::Item],
+    expanded: bool,
+) -> Element<'a, Message> {
+    let chevron = if expanded {
+        lucide::chevron_up().size(16).color(GRAY_600)
+    } else {
+        lucide::chevron_down().size(16).color(GRAY_600)
+    };
+
+    let header_btn = button(
+        row![
+            text("Release Notes").size(14).color(GRAY_700),
+            Space::new().width(Length::Fill),
+            chevron,
+        ]
+        .align_y(Alignment::Center)
+        .width(Length::Fill),
+    )
+    .on_press(Message::Dialog(DialogMessage::Update(
+        UpdateMessage::ToggleChangelog,
+    )))
+    .padding([SPACING_SM, SPACING_MD])
     .width(Length::Fill)
-    .into()
+    .style(|theme, status| {
+        let mut style = button_secondary(theme, status);
+        style.border.radius = BORDER_RADIUS_SM.into();
+        style
+    });
+
+    if expanded {
+        // Render changelog using iced's markdown widget
+        let markdown_content: Element<'_, Message> = markdown::view(changelog_items, Theme::Light)
+            .map(|url| Message::OpenUrl(url.to_string()));
+
+        let changelog_view = scrollable(
+            container(markdown_content)
+                .padding(SPACING_MD)
+                .width(Length::Fill),
+        )
+        .height(Length::Fixed(220.0))
+        .width(Length::Fill);
+
+        let changelog_container =
+            container(changelog_view)
+                .width(Length::Fill)
+                .style(|_| container::Style {
+                    background: Some(GRAY_100.into()),
+                    border: iced::Border {
+                        color: GRAY_200,
+                        width: 1.0,
+                        radius: BORDER_RADIUS_SM.into(),
+                    },
+                    ..Default::default()
+                });
+
+        column![header_btn, changelog_container]
+            .spacing(0)
+            .width(Length::Fill)
+            .into()
+    } else {
+        header_btn.into()
+    }
 }
 
 /// Up to date state.
-fn view_up_to_date_state(window_id: window::Id) -> Element<'static, Message> {
-    let icon = lucide::circle_check().size(32).color(SUCCESS);
+fn view_up_to_date(window_id: window::Id) -> Element<'static, Message> {
+    let icon = lucide::circle_check().size(48).color(SUCCESS);
 
     let close_btn = button(text("Close").size(13))
         .on_press(Message::CloseWindow(window_id))
-        .padding([SPACING_SM, SPACING_LG]);
+        .padding([SPACING_SM, SPACING_LG])
+        .style(button_secondary);
 
-    column![
+    let content = column![
         Space::new().height(SPACING_LG),
-        icon,
+        center(icon).width(Length::Fill),
         Space::new().height(SPACING_MD),
-        text("You're Up to Date!").size(18).color(GRAY_900),
-        Space::new().height(SPACING_XS),
-        text(format!("Version {} is the latest", CURRENT_VERSION))
-            .size(13)
-            .color(GRAY_500),
-        Space::new().height(SPACING_LG),
-        close_btn,
-        Space::new().height(SPACING_LG),
-    ]
-    .align_x(Alignment::Center)
-    .padding(SPACING_LG)
-    .into()
-}
-
-/// Downloading state with progress.
-fn view_downloading_state(
-    info: &tss_updater::UpdateInfo,
-    progress: f32,
-    downloaded_bytes: u64,
-    total_bytes: u64,
-    speed: u64,
-    window_id: window::Id,
-) -> Element<'_, Message> {
-    let icon = lucide::download().size(32).color(PRIMARY_500);
-
-    // Format bytes for display
-    let downloaded_mb = downloaded_bytes as f64 / 1_048_576.0;
-    let total_mb = total_bytes as f64 / 1_048_576.0;
-    let speed_str = tss_updater::format_speed(speed);
-
-    let cancel_btn = button(text("Cancel").size(13))
-        .on_press(Message::CloseWindow(window_id))
-        .padding([SPACING_SM, SPACING_MD]);
-
-    column![
-        Space::new().height(SPACING_LG),
-        icon,
-        Space::new().height(SPACING_MD),
-        text(format!("Downloading version {}...", info.version_display()))
-            .size(16)
-            .color(GRAY_800),
-        Space::new().height(SPACING_MD),
-        container(progress_bar(0.0..=1.0, progress)).width(300),
+        text("You're Up to Date").size(20).color(GRAY_900).center(),
         Space::new().height(SPACING_XS),
         text(format!(
-            "{:.1} MB / {:.1} MB ({:.0}%) - {}",
-            downloaded_mb,
-            total_mb,
-            progress * 100.0,
-            speed_str
-        ))
-        .size(12)
-        .color(GRAY_500),
-        Space::new().height(SPACING_LG),
-        cancel_btn,
-        Space::new().height(SPACING_LG),
-    ]
-    .align_x(Alignment::Center)
-    .padding(SPACING_LG)
-    .into()
-}
-
-/// Verifying state.
-fn view_verifying_state(info: &tss_updater::UpdateInfo) -> Element<'_, Message> {
-    let icon = lucide::shield_check().size(32).color(PRIMARY_500);
-
-    column![
-        Space::new().height(SPACING_LG),
-        icon,
-        Space::new().height(SPACING_MD),
-        text("Verifying Download...").size(16).color(GRAY_800),
-        Space::new().height(SPACING_XS),
-        text(format!(
-            "Checking SHA256 hash for version {}",
-            info.version_display()
+            "Version {} is the latest version.",
+            CURRENT_VERSION
         ))
         .size(13)
-        .color(GRAY_500),
+        .color(GRAY_500)
+        .center(),
         Space::new().height(SPACING_LG),
+        Space::new().height(SPACING_LG),
+        row![Space::new().width(Length::Fill), close_btn],
     ]
     .align_x(Alignment::Center)
     .padding(SPACING_LG)
-    .into()
+    .width(Length::Fill);
+
+    content.into()
 }
 
-/// Verification failed state.
-fn view_verification_failed_state<'a>(
-    _info: &'a tss_updater::UpdateInfo,
-    expected: &'a str,
-    actual: &'a str,
+/// Downloading state with enhanced progress display.
+fn view_downloading<'a>(
+    info: &'a tss_updater::UpdateInfo,
+    stats: &DownloadStats,
     window_id: window::Id,
 ) -> Element<'a, Message> {
-    let icon = lucide::shield_x().size(32).color(WARNING);
+    let percentage = stats.percentage();
 
-    let retry_btn = button(text("Retry Download").size(13))
-        .on_press(Message::Dialog(DialogMessage::Update(
-            UpdateMessage::ConfirmDownload,
-        )))
-        .padding([SPACING_SM, SPACING_MD])
-        .style(button_primary);
+    let percentage_text = text(format!("{}%", percentage))
+        .size(32)
+        .color(PRIMARY_500)
+        .center();
 
-    let close_btn = button(text("Close").size(13))
-        .on_press(Message::CloseWindow(window_id))
-        .padding([SPACING_SM, SPACING_MD]);
+    let title = text(format!("Downloading {}", info.version_display()))
+        .size(18)
+        .color(GRAY_800)
+        .center();
 
-    column![
-        Space::new().height(SPACING_LG),
-        icon,
-        Space::new().height(SPACING_MD),
-        text("Verification Failed").size(18).color(GRAY_900),
-        Space::new().height(SPACING_SM),
-        text("The downloaded file's SHA256 hash does not match.")
-            .size(13)
-            .color(GRAY_600),
-        Space::new().height(SPACING_XS),
-        text("This could indicate a corrupted download or tampering.")
-            .size(12)
-            .color(GRAY_500),
-        Space::new().height(SPACING_MD),
-        container(
-            column![
-                text(format!("Expected: {}", truncate_hash(expected)))
-                    .size(10)
-                    .color(GRAY_500),
-                text(format!("Actual: {}", truncate_hash(actual)))
-                    .size(10)
-                    .color(GRAY_500),
-            ]
-            .spacing(2)
-        )
-        .padding(SPACING_SM),
-        Space::new().height(SPACING_MD),
-        row![retry_btn, Space::new().width(SPACING_SM), close_btn,].align_y(Alignment::Center),
-        Space::new().height(SPACING_LG),
+    // Progress bar
+    let progress = progress_bar(0.0..=1.0, stats.fraction()).style(|_| progress_bar::Style {
+        background: GRAY_200.into(),
+        bar: PRIMARY_500.into(),
+        border: iced::Border {
+            radius: 4.0.into(),
+            width: 0.0,
+            color: iced::Color::TRANSPARENT,
+        },
+    });
+
+    // Stats row
+    let stats_row = row![
+        text(stats.size_display()).size(12).color(GRAY_500),
+        Space::new().width(Length::Fill),
+        text(stats.speed_display()).size(12).color(GRAY_500),
     ]
-    .align_x(Alignment::Center)
-    .padding(SPACING_LG)
-    .into()
-}
+    .width(Length::Fill);
 
-/// Ready to install state.
-fn view_ready_to_install_state(
-    info: &tss_updater::UpdateInfo,
-    verified: bool,
-    window_id: window::Id,
-) -> Element<'_, Message> {
-    let (icon, verification_text) = if verified {
-        (
-            lucide::shield_check().size(32).color(SUCCESS),
-            text("SHA256 verification passed").size(12).color(SUCCESS),
-        )
-    } else {
-        (
-            lucide::shield_alert().size(32).color(WARNING),
-            text("No verification available (digest not provided)")
-                .size(12)
-                .color(WARNING),
-        )
-    };
-
-    let install_btn = button(
+    // ETA row
+    let eta = stats.eta_display();
+    let eta_row = if !eta.is_empty() {
         row![
-            lucide::package().size(14),
-            Space::new().width(SPACING_XS),
-            text("Install Update"),
+            Space::new().width(Length::Fill),
+            text(eta).size(12).color(GRAY_500),
         ]
-        .align_y(Alignment::Center),
-    )
-    .on_press(Message::Dialog(DialogMessage::Update(
-        UpdateMessage::ConfirmInstall,
-    )))
-    .padding([SPACING_SM, SPACING_MD])
-    .style(button_primary);
+        .width(Length::Fill)
+    } else {
+        row![].width(Length::Fill)
+    };
 
     let cancel_btn = button(text("Cancel").size(13))
         .on_press(Message::CloseWindow(window_id))
-        .padding([SPACING_SM, SPACING_MD]);
+        .padding([SPACING_SM, SPACING_MD])
+        .style(button_secondary);
 
-    column![
-        Space::new().height(SPACING_LG),
-        icon,
+    let content = column![
         Space::new().height(SPACING_MD),
-        text("Ready to Install").size(18).color(GRAY_900),
+        percentage_text,
+        Space::new().height(SPACING_SM),
+        title,
+        Space::new().height(SPACING_MD),
+        container(progress).width(Length::Fill),
+        Space::new().height(SPACING_XS),
+        stats_row,
+        eta_row,
+        Space::new().height(SPACING_LG),
+        row![Space::new().width(Length::Fill), cancel_btn],
+    ]
+    .align_x(Alignment::Center)
+    .padding(SPACING_LG)
+    .width(Length::Fill);
+
+    content.into()
+}
+
+/// Ready to install state - second confirmation with prominent verification status.
+///
+/// `verified` is:
+/// - `None` = verification in progress (shows spinner)
+/// - `Some(true)` = verified successfully
+/// - `Some(false)` = unverified (no digest available)
+fn view_ready_to_install<'a>(
+    info: &'a tss_updater::UpdateInfo,
+    verified: Option<bool>,
+    window_id: window::Id,
+) -> Element<'a, Message> {
+    // Large icon based on verification status
+    let icon: Element<'a, Message> = match verified {
+        None => lucide::shield_check().size(48).color(PRIMARY_500).into(), // Verifying
+        Some(true) => lucide::shield_check().size(48).color(SUCCESS).into(), // Verified
+        Some(false) => lucide::shield_alert().size(48).color(WARNING).into(), // Unverified
+    };
+
+    // Verification status badge with styled container
+    let verification_badge: Element<'a, Message> = match verified {
+        None => {
+            // Verifying in progress
+            container(
+                row![
+                    lucide::loader().size(16).color(PRIMARY_500),
+                    Space::new().width(SPACING_XS),
+                    text("Verifying Download...").size(14).color(PRIMARY_500),
+                ]
+                .align_y(Alignment::Center),
+            )
+            .padding([SPACING_SM, SPACING_MD])
+            .style(|_| container::Style {
+                background: Some(iced::Color::from_rgb(0.93, 0.95, 1.0).into()), // Light blue
+                border: iced::Border {
+                    color: PRIMARY_500,
+                    width: 1.0,
+                    radius: BORDER_RADIUS_SM.into(),
+                },
+                ..Default::default()
+            })
+            .into()
+        }
+        Some(is_verified) => {
+            let badge_text = if is_verified {
+                "Download Verified"
+            } else {
+                "Unverified Download"
+            };
+            let badge_color = if is_verified { SUCCESS } else { WARNING };
+            let badge_bg = if is_verified {
+                iced::Color::from_rgb(0.9, 1.0, 0.9) // Light green
+            } else {
+                iced::Color::from_rgb(1.0, 0.98, 0.9) // Light yellow
+            };
+
+            let badge_icon: Element<'a, Message> = if is_verified {
+                lucide::shield_check().size(16).color(badge_color).into()
+            } else {
+                lucide::shield_alert().size(16).color(badge_color).into()
+            };
+
+            container(
+                row![
+                    badge_icon,
+                    Space::new().width(SPACING_XS),
+                    text(badge_text).size(14).color(badge_color),
+                ]
+                .align_y(Alignment::Center),
+            )
+            .padding([SPACING_SM, SPACING_MD])
+            .style(move |_| container::Style {
+                background: Some(badge_bg.into()),
+                border: iced::Border {
+                    color: badge_color,
+                    width: 1.0,
+                    radius: BORDER_RADIUS_SM.into(),
+                },
+                ..Default::default()
+            })
+            .into()
+        }
+    };
+
+    // Install button - disabled while verifying
+    let install_btn_content = row![
+        lucide::package().size(14),
+        Space::new().width(SPACING_XS),
+        text("Install & Restart"),
+    ]
+    .align_y(Alignment::Center);
+
+    let install_btn = if verified.is_some() {
+        button(install_btn_content)
+            .on_press(Message::Dialog(DialogMessage::Update(
+                UpdateMessage::ConfirmInstall,
+            )))
+            .padding([SPACING_SM, SPACING_MD])
+            .style(button_primary)
+    } else {
+        // Disabled while verifying
+        button(install_btn_content)
+            .padding([SPACING_SM, SPACING_MD])
+            .style(button_secondary)
+    };
+
+    let cancel_btn = button(text("Cancel").size(13))
+        .on_press(Message::CloseWindow(window_id))
+        .padding([SPACING_SM, SPACING_MD])
+        .style(button_secondary);
+
+    let content = column![
+        Space::new().height(SPACING_LG),
+        center(icon).width(Length::Fill),
+        Space::new().height(SPACING_MD),
+        text("Ready to Install").size(20).color(GRAY_900).center(),
         Space::new().height(SPACING_XS),
         text(format!("Version {}", info.version_display()))
             .size(14)
-            .color(GRAY_700),
-        Space::new().height(SPACING_XS),
-        verification_text,
-        Space::new().height(SPACING_LG),
-        row![install_btn, Space::new().width(SPACING_SM), cancel_btn,].align_y(Alignment::Center),
-        Space::new().height(SPACING_LG),
-    ]
-    .align_x(Alignment::Center)
-    .padding(SPACING_LG)
-    .into()
-}
-
-/// Installing state.
-fn view_installing_state() -> Element<'static, Message> {
-    let icon = lucide::loader().size(32).color(PRIMARY_500);
-
-    column![
-        Space::new().height(SPACING_LG),
-        icon,
+            .color(GRAY_700)
+            .center(),
         Space::new().height(SPACING_MD),
-        text("Installing Update...").size(16).color(GRAY_800),
-        Space::new().height(SPACING_XS),
-        text("Please wait, do not close the application")
+        center(verification_badge).width(Length::Fill),
+        Space::new().height(SPACING_MD),
+        text("The application will restart after installation.")
             .size(13)
-            .color(GRAY_500),
+            .color(GRAY_500)
+            .center(),
+        Space::new().height(SPACING_LG),
+        row![Space::new().width(Length::Fill), cancel_btn, install_btn].spacing(SPACING_SM),
+    ]
+    .align_x(Alignment::Center)
+    .padding(SPACING_LG)
+    .width(Length::Fill);
+
+    content.into()
+}
+
+/// Installing state - brief indicator.
+fn view_installing<'a>(info: &'a tss_updater::UpdateInfo) -> Element<'a, Message> {
+    let icon = lucide::loader().size(48).color(PRIMARY_500);
+
+    let content = column![
+        Space::new().height(SPACING_LG),
+        center(icon).width(Length::Fill),
+        Space::new().height(SPACING_MD),
+        text("Installing Update...")
+            .size(18)
+            .color(GRAY_800)
+            .center(),
+        Space::new().height(SPACING_XS),
+        text(format!("Installing version {}", info.version_display()))
+            .size(13)
+            .color(GRAY_500)
+            .center(),
+        Space::new().height(SPACING_XS),
+        text("Please wait, do not close the application.")
+            .size(12)
+            .color(GRAY_400)
+            .center(),
         Space::new().height(SPACING_LG),
     ]
     .align_x(Alignment::Center)
     .padding(SPACING_LG)
-    .into()
+    .width(Length::Fill);
+
+    content.into()
 }
 
-/// Installation complete state.
-fn view_install_complete_state(version: &str, window_id: window::Id) -> Element<'_, Message> {
-    let icon = lucide::circle_check().size(32).color(SUCCESS);
+/// Complete state - restart required.
+fn view_complete(version: &str) -> Element<'_, Message> {
+    let icon = lucide::circle_check().size(48).color(SUCCESS);
 
     let restart_btn = button(
         row![
@@ -553,82 +757,137 @@ fn view_install_complete_state(version: &str, window_id: window::Id) -> Element<
         .align_y(Alignment::Center),
     )
     .on_press(Message::Dialog(DialogMessage::Update(
-        UpdateMessage::Restart,
+        UpdateMessage::RestartNow,
     )))
-    .padding([SPACING_SM, SPACING_MD])
+    .padding([SPACING_SM, SPACING_LG])
     .style(button_primary);
 
-    let later_btn = button(text("Restart Later").size(13))
-        .on_press(Message::CloseWindow(window_id))
-        .padding([SPACING_SM, SPACING_MD]);
-
-    column![
+    let content = column![
         Space::new().height(SPACING_LG),
-        icon,
+        center(icon).width(Length::Fill),
         Space::new().height(SPACING_MD),
-        text("Update Installed!").size(18).color(GRAY_900),
+        text("Update Installed").size(20).color(GRAY_900).center(),
+        Space::new().height(SPACING_SM),
+        text(format!("Version {} installed successfully.", version))
+            .size(13)
+            .color(GRAY_500)
+            .center(),
         Space::new().height(SPACING_XS),
-        text(format!(
-            "Version {} has been installed successfully.",
-            version
-        ))
-        .size(13)
-        .color(GRAY_500),
-        Space::new().height(SPACING_XS),
-        text("Restart the application to use the new version.")
-            .size(12)
-            .color(GRAY_500),
+        text("Restart to start using it.")
+            .size(13)
+            .color(GRAY_500)
+            .center(),
         Space::new().height(SPACING_LG),
-        row![restart_btn, Space::new().width(SPACING_SM), later_btn,].align_y(Alignment::Center),
-        Space::new().height(SPACING_LG),
+        center(restart_btn).width(Length::Fill),
+        Space::new().height(SPACING_MD),
     ]
     .align_x(Alignment::Center)
     .padding(SPACING_LG)
-    .into()
+    .width(Length::Fill);
+
+    content.into()
 }
 
-/// Error state.
-fn view_error_state(message: &str, window_id: window::Id) -> Element<'_, Message> {
-    let icon = lucide::circle_x().size(32).color(GRAY_600);
+/// Error state with suggestions and retry.
+fn view_error(
+    error: &UpdateErrorInfo,
+    can_retry: bool,
+    window_id: window::Id,
+) -> Element<'_, Message> {
+    let icon = lucide::circle_x().size(48).color(ERROR);
 
-    let retry_btn = button(text("Retry").size(13))
-        .on_press(Message::Dialog(DialogMessage::Update(
-            UpdateMessage::CheckForUpdates,
-        )))
-        .padding([SPACING_SM, SPACING_MD]);
+    let mut content_items: Vec<Element<'_, Message>> = vec![
+        Space::new().height(SPACING_LG).into(),
+        center(icon).width(Length::Fill).into(),
+        Space::new().height(SPACING_MD).into(),
+        text("Update Failed")
+            .size(18)
+            .color(GRAY_900)
+            .center()
+            .into(),
+        Space::new().height(SPACING_SM).into(),
+        text(&error.message)
+            .size(13)
+            .color(GRAY_600)
+            .center()
+            .into(),
+    ];
+
+    // Suggestion box
+    if let Some(suggestion) = &error.suggestion {
+        content_items.push(Space::new().height(SPACING_MD).into());
+        let suggestion_box = container(
+            row![
+                lucide::lightbulb().size(14).color(WARNING),
+                Space::new().width(SPACING_SM),
+                text(suggestion).size(12).color(GRAY_700),
+            ]
+            .align_y(Alignment::Center),
+        )
+        .padding(SPACING_SM)
+        .width(Length::Fill)
+        .style(|_| container::Style {
+            background: Some(iced::Color::from_rgb(1.0, 0.98, 0.9).into()),
+            border: iced::Border {
+                color: WARNING,
+                width: 1.0,
+                radius: BORDER_RADIUS_SM.into(),
+            },
+            ..Default::default()
+        });
+        content_items.push(suggestion_box.into());
+    }
+
+    // Manual download link
+    if let Some(url) = &error.manual_download_url {
+        content_items.push(Space::new().height(SPACING_SM).into());
+        let link_btn = button(
+            row![
+                lucide::external_link().size(12).color(PRIMARY_500),
+                Space::new().width(4),
+                text("Download manually").size(12).color(PRIMARY_500),
+            ]
+            .align_y(Alignment::Center),
+        )
+        .on_press(Message::OpenUrl(url.clone()))
+        .padding([4, 8])
+        .style(button_ghost);
+        content_items.push(center(link_btn).width(Length::Fill).into());
+    }
+
+    // Buttons
+    content_items.push(Space::new().height(SPACING_LG).into());
 
     let close_btn = button(text("Close").size(13))
         .on_press(Message::CloseWindow(window_id))
-        .padding([SPACING_SM, SPACING_MD]);
+        .padding([SPACING_SM, SPACING_MD])
+        .style(button_secondary);
 
-    column![
-        Space::new().height(SPACING_LG),
-        icon,
-        Space::new().height(SPACING_MD),
-        text("Update Check Failed").size(18).color(GRAY_900),
-        Space::new().height(SPACING_SM),
-        text(message).size(13).color(GRAY_600),
-        Space::new().height(SPACING_LG),
-        row![retry_btn, Space::new().width(SPACING_SM), close_btn,].align_y(Alignment::Center),
-        Space::new().height(SPACING_LG),
-    ]
-    .align_x(Alignment::Center)
-    .padding(SPACING_LG)
-    .into()
-}
-
-/// Truncate a hash for display (show first and last 8 characters).
-fn truncate_hash(hash: &str) -> String {
-    if hash.len() > 20 {
-        format!("{}...{}", &hash[..8], &hash[hash.len() - 8..])
+    let buttons = if can_retry && error.can_retry {
+        let retry_btn = button(text("Retry").size(13))
+            .on_press(Message::Dialog(DialogMessage::Update(UpdateMessage::Retry)))
+            .padding([SPACING_SM, SPACING_MD])
+            .style(button_primary);
+        row![Space::new().width(Length::Fill), close_btn, retry_btn].spacing(SPACING_SM)
     } else {
-        hash.to_string()
-    }
+        row![Space::new().width(Length::Fill), close_btn]
+    };
+
+    content_items.push(buttons.into());
+
+    let content = column(content_items)
+        .align_x(Alignment::Center)
+        .padding(SPACING_LG)
+        .width(Length::Fill);
+
+    content.into()
 }
+
+// =============================================================================
+// HELPER FUNCTIONS
+// =============================================================================
 
 /// Parse changelog into markdown items for rendering.
-///
-/// This should be called when transitioning to the `Available` state.
 pub fn parse_changelog(changelog: &str) -> Vec<markdown::Item> {
     markdown::parse(changelog).collect()
 }

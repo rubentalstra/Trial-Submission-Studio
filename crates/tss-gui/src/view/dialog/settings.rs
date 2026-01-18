@@ -13,56 +13,16 @@ use iced_fonts::lucide;
 use crate::message::{
     DeveloperSettingsMessage, DialogMessage, DisplaySettingsMessage, ExportSettingsMessage,
     GeneralSettingsMessage, Message, SettingsCategory, SettingsMessage, UpdateSettingsMessage,
+    ValidationSettingsMessage,
 };
 use crate::state::{ExportFormat, Settings, XptVersion};
 use crate::theme::{
-    BORDER_RADIUS_LG, GRAY_100, GRAY_500, GRAY_700, GRAY_800, GRAY_900, PRIMARY_100, SPACING_LG,
-    SPACING_MD, SPACING_SM, SPACING_XL, SPACING_XS, WHITE, button_primary,
+    GRAY_100, GRAY_500, GRAY_700, GRAY_800, GRAY_900, PRIMARY_100, SPACING_LG, SPACING_MD,
+    SPACING_SM, SPACING_XL, SPACING_XS, button_primary,
 };
 
 /// Width of the category sidebar.
 const SIDEBAR_WIDTH: f32 = 200.0;
-
-/// Render the Settings dialog.
-pub fn view_settings_dialog(
-    settings: &Settings,
-    active_category: SettingsCategory,
-) -> Element<'_, Message> {
-    let backdrop = container(Space::new().width(Length::Fill).height(Length::Fill))
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .style(|_| container::Style {
-            background: Some(Color::from_rgba(0.0, 0.0, 0.0, 0.5).into()),
-            ..Default::default()
-        });
-
-    let dialog_content = view_dialog_content(settings, active_category);
-
-    let dialog = container(dialog_content)
-        .width(720)
-        .height(500)
-        .style(|_| container::Style {
-            background: Some(WHITE.into()),
-            border: Border {
-                radius: BORDER_RADIUS_LG.into(),
-                ..Default::default()
-            },
-            shadow: iced::Shadow {
-                color: Color::from_rgba(0.0, 0.0, 0.0, 0.2),
-                offset: iced::Vector::new(0.0, 8.0),
-                blur_radius: 24.0,
-            },
-            ..Default::default()
-        });
-
-    let centered_dialog = container(dialog)
-        .width(Length::Fill)
-        .height(Length::Fill)
-        .center_x(Length::Shrink)
-        .center_y(Length::Shrink);
-
-    iced::widget::stack![backdrop, centered_dialog].into()
-}
 
 /// Render the Settings dialog content for a standalone window (multi-window mode).
 ///
@@ -133,25 +93,6 @@ fn view_footer_for_window<'a>(window_id: window::Id) -> Element<'a, Message> {
     ]
     .padding([SPACING_MD, SPACING_LG])
     .align_y(Alignment::Center)
-    .into()
-}
-
-/// Main dialog content with header, master-detail, and footer.
-fn view_dialog_content(
-    settings: &Settings,
-    active_category: SettingsCategory,
-) -> Element<'_, Message> {
-    let header = view_header();
-    let body = view_master_detail(settings, active_category);
-    let footer = view_footer();
-
-    column![
-        header,
-        rule::horizontal(1),
-        body,
-        rule::horizontal(1),
-        footer,
-    ]
     .into()
 }
 
@@ -275,7 +216,7 @@ fn view_category_content<'a>(
         SettingsCategory::Display => view_display_settings(),
         SettingsCategory::Updates => view_update_settings(settings),
         SettingsCategory::Developer => view_developer_settings(settings),
-        SettingsCategory::Validation => view_validation_settings(),
+        SettingsCategory::Validation => view_validation_settings(settings),
     };
 
     container(content)
@@ -398,12 +339,30 @@ fn view_export_settings(settings: &Settings) -> Element<'_, Message> {
     ]
     .spacing(SPACING_XS);
 
+    let sdtm_ig_section = column![
+        text("SDTM-IG Version").size(14).color(GRAY_800),
+        text("Implementation Guide version for Dataset-XML and Define-XML")
+            .size(12)
+            .color(GRAY_500),
+        Space::new().height(SPACING_XS),
+        pick_list(
+            crate::state::SdtmIgVersion::ALL.to_vec(),
+            Some(settings.export.sdtm_ig_version),
+            |v| Message::Dialog(DialogMessage::Settings(SettingsMessage::Export(
+                ExportSettingsMessage::SdtmIgVersionChanged(v),
+            )))
+        ),
+    ]
+    .spacing(SPACING_XS);
+
     column![
         section_header("Export Settings"),
         Space::new().height(SPACING_MD),
         format_section,
         Space::new().height(SPACING_LG),
         xpt_version_section,
+        Space::new().height(SPACING_LG),
+        sdtm_ig_section,
     ]
     .spacing(SPACING_SM)
     .into()
@@ -450,17 +409,19 @@ fn view_display_settings<'a>() -> Element<'a, Message> {
 
 /// Update settings section.
 fn view_update_settings(settings: &Settings) -> Element<'_, Message> {
-    let enable_section = row![
+    let check_on_startup_section = row![
         column![
-            text("Enable Update Checking").size(14).color(GRAY_800),
-            text("Check for updates when the application starts")
+            text("Check on Startup").size(14).color(GRAY_800),
+            text("Automatically check for updates when the application starts")
                 .size(12)
                 .color(GRAY_500),
         ]
         .width(Length::Fill),
-        toggler(settings.updates.enabled).on_toggle(|v| Message::Dialog(DialogMessage::Settings(
-            SettingsMessage::Updates(UpdateSettingsMessage::EnabledToggled(v),)
-        ))),
+        toggler(settings.updates.check_on_startup).on_toggle(|v| Message::Dialog(
+            DialogMessage::Settings(SettingsMessage::Updates(
+                UpdateSettingsMessage::CheckOnStartupToggled(v),
+            ))
+        )),
     ]
     .align_y(Alignment::Center);
 
@@ -485,7 +446,7 @@ fn view_update_settings(settings: &Settings) -> Element<'_, Message> {
     column![
         section_header("Update Settings"),
         Space::new().height(SPACING_MD),
-        enable_section,
+        check_on_startup_section,
         Space::new().height(SPACING_SM),
         channel_section,
     ]
@@ -538,14 +499,112 @@ fn view_developer_settings(settings: &Settings) -> Element<'_, Message> {
     .into()
 }
 
-/// Validation settings section (placeholder).
-fn view_validation_settings<'a>() -> Element<'a, Message> {
+/// Validation settings section.
+fn view_validation_settings(settings: &Settings) -> Element<'_, Message> {
+    let rules = &settings.validation.rules;
+
+    // Helper to create rule toggle rows
+    fn rule_toggle<'a>(
+        label: &'a str,
+        description: &'a str,
+        enabled: bool,
+        rule_id: &'static str,
+    ) -> Element<'a, Message> {
+        row![
+            column![
+                text(label).size(14).color(GRAY_800),
+                text(description).size(12).color(GRAY_500),
+            ]
+            .width(Length::Fill),
+            toggler(enabled).on_toggle(move |v| {
+                Message::Dialog(DialogMessage::Settings(SettingsMessage::Validation(
+                    ValidationSettingsMessage::RuleToggled {
+                        rule_id: rule_id.to_string(),
+                        enabled: v,
+                    },
+                )))
+            }),
+        ]
+        .align_y(Alignment::Center)
+        .into()
+    }
+
+    let strict_mode = row![
+        column![
+            text("Strict Mode").size(14).color(GRAY_800),
+            text("Treat warnings as errors").size(12).color(GRAY_500),
+        ]
+        .width(Length::Fill),
+        toggler(settings.validation.strict_mode).on_toggle(|v| {
+            Message::Dialog(DialogMessage::Settings(SettingsMessage::Validation(
+                ValidationSettingsMessage::StrictModeToggled(v),
+            )))
+        }),
+    ]
+    .align_y(Alignment::Center);
+
     column![
         section_header("Validation Settings"),
         Space::new().height(SPACING_MD),
-        text("Validation rule configuration coming soon...")
-            .size(13)
-            .color(GRAY_500),
+        strict_mode,
+        Space::new().height(SPACING_LG),
+        text("Validation Rules").size(14).color(GRAY_700),
+        Space::new().height(SPACING_SM),
+        rule_toggle(
+            "Required Variables",
+            "Check that required variables are present",
+            rules.check_required_variables,
+            "check_required_variables"
+        ),
+        Space::new().height(SPACING_XS),
+        rule_toggle(
+            "Expected Variables",
+            "Check that expected variables are present",
+            rules.check_expected_variables,
+            "check_expected_variables"
+        ),
+        Space::new().height(SPACING_XS),
+        rule_toggle(
+            "Data Types",
+            "Check data types match expected types",
+            rules.check_data_types,
+            "check_data_types"
+        ),
+        Space::new().height(SPACING_XS),
+        rule_toggle(
+            "ISO 8601 Format",
+            "Check date/time format compliance",
+            rules.check_iso8601_format,
+            "check_iso8601_format"
+        ),
+        Space::new().height(SPACING_XS),
+        rule_toggle(
+            "Sequence Uniqueness",
+            "Check sequence number uniqueness",
+            rules.check_sequence_uniqueness,
+            "check_sequence_uniqueness"
+        ),
+        Space::new().height(SPACING_XS),
+        rule_toggle(
+            "Text Length",
+            "Check text length against CDISC limits",
+            rules.check_text_length,
+            "check_text_length"
+        ),
+        Space::new().height(SPACING_XS),
+        rule_toggle(
+            "Identifier Nulls",
+            "Check identifier nulls (STUDYID, USUBJID)",
+            rules.check_identifier_nulls,
+            "check_identifier_nulls"
+        ),
+        Space::new().height(SPACING_XS),
+        rule_toggle(
+            "Controlled Terminology",
+            "Check controlled terminology values",
+            rules.check_controlled_terminology,
+            "check_controlled_terminology"
+        ),
     ]
     .spacing(SPACING_SM)
     .into()
@@ -554,37 +613,4 @@ fn view_validation_settings<'a>() -> Element<'a, Message> {
 /// Section header helper.
 fn section_header(title: &str) -> Element<'_, Message> {
     text(title).size(16).color(GRAY_900).into()
-}
-
-/// Dialog footer with action buttons.
-fn view_footer<'a>() -> Element<'a, Message> {
-    let reset_btn = button(text("Reset to Defaults").size(13))
-        .on_press(Message::Dialog(DialogMessage::Settings(
-            SettingsMessage::ResetToDefaults,
-        )))
-        .padding([SPACING_SM, SPACING_MD]);
-
-    let cancel_btn = button(text("Cancel").size(13))
-        .on_press(Message::Dialog(DialogMessage::Settings(
-            SettingsMessage::Close,
-        )))
-        .padding([SPACING_SM, SPACING_MD]);
-
-    let apply_btn = button(text("Apply").size(13))
-        .on_press(Message::Dialog(DialogMessage::Settings(
-            SettingsMessage::Apply,
-        )))
-        .padding([SPACING_SM, SPACING_XL])
-        .style(button_primary);
-
-    row![
-        reset_btn,
-        Space::new().width(Length::Fill),
-        cancel_btn,
-        Space::new().width(SPACING_SM),
-        apply_btn,
-    ]
-    .padding([SPACING_MD, SPACING_LG])
-    .align_y(Alignment::Center)
-    .into()
 }

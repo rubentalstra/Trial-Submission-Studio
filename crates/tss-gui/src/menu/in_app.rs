@@ -3,12 +3,22 @@
 //! On macOS, the native menu bar is used instead (via muda).
 //! This module provides an Iced-based menu bar rendered inside the application window.
 
-use iced::widget::{Space, button, container, row, text};
-use iced::{Alignment, Border, Element, Length, Padding, Theme};
-use iced_fonts::lucide;
+// Cross-platform imports (used by MenuBarState)
+use crate::message::MenuBarMenuId;
 
-use crate::message::{MenuBarMenuId, MenuMessage, Message};
+// Platform-specific imports (Windows/Linux only)
+#[cfg(not(target_os = "macos"))]
+use crate::message::{HomeMessage, MenuMessage, Message};
+#[cfg(not(target_os = "macos"))]
+use crate::state::AppState;
+#[cfg(not(target_os = "macos"))]
 use crate::theme::{GRAY_200, GRAY_600, GRAY_800, SPACING_SM, SPACING_XS};
+#[cfg(not(target_os = "macos"))]
+use iced::widget::{Space, button, container, row, text};
+#[cfg(not(target_os = "macos"))]
+use iced::{Alignment, Border, Element, Length, Padding, Theme};
+#[cfg(not(target_os = "macos"))]
+use iced_fonts::lucide;
 
 /// Re-export MenuId as an alias for MenuBarMenuId for convenience.
 pub type MenuId = MenuBarMenuId;
@@ -21,11 +31,6 @@ pub struct MenuBarState {
 }
 
 impl MenuBarState {
-    /// Create a new menu bar state.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     /// Toggle a menu open/closed.
     pub fn toggle(&mut self, menu: MenuId) {
         if self.open_menu == Some(menu) {
@@ -41,6 +46,7 @@ impl MenuBarState {
     }
 
     /// Check if a specific menu is open.
+    #[cfg(any(test, not(target_os = "macos")))]
     pub fn is_open(&self, menu: MenuId) -> bool {
         self.open_menu == Some(menu)
     }
@@ -50,7 +56,11 @@ impl MenuBarState {
 ///
 /// This is only used on Windows and Linux. On macOS, the native menu bar is used.
 #[cfg(not(target_os = "macos"))]
-pub fn view_menu_bar<'a>(state: &MenuBarState, has_study: bool) -> Element<'a, Message> {
+pub fn view_menu_bar<'a>(
+    state: &MenuBarState,
+    has_study: bool,
+    app_state: &'a AppState,
+) -> Element<'a, Message> {
     use crate::theme::GRAY_100;
 
     let file_menu = view_menu_button("File", MenuBarMenuId::File, state);
@@ -83,7 +93,7 @@ pub fn view_menu_bar<'a>(state: &MenuBarState, has_study: bool) -> Element<'a, M
     // If a menu is open, render the dropdown
     match state.open_menu {
         Some(MenuBarMenuId::File) => {
-            iced::widget::stack![bar_container, view_file_dropdown(has_study)].into()
+            iced::widget::stack![bar_container, view_file_dropdown(has_study, app_state)].into()
         }
         Some(MenuBarMenuId::Edit) => {
             iced::widget::stack![bar_container, view_edit_dropdown()].into()
@@ -96,6 +106,7 @@ pub fn view_menu_bar<'a>(state: &MenuBarState, has_study: bool) -> Element<'a, M
 }
 
 /// Render a menu button in the menu bar.
+#[cfg(not(target_os = "macos"))]
 fn view_menu_button<'a>(
     label: &'a str,
     menu_id: MenuBarMenuId,
@@ -129,7 +140,8 @@ fn view_menu_button<'a>(
 }
 
 /// Render the File menu dropdown.
-fn view_file_dropdown<'a>(has_study: bool) -> Element<'a, Message> {
+#[cfg(not(target_os = "macos"))]
+fn view_file_dropdown<'a>(has_study: bool, app_state: &'a AppState) -> Element<'a, Message> {
     use iced::widget::column;
 
     let open_item = view_menu_item(
@@ -150,6 +162,47 @@ fn view_file_dropdown<'a>(has_study: bool) -> Element<'a, Message> {
         },
     );
 
+    // Generate recent study items
+    let recent_studies = app_state.settings.general.recent_sorted();
+    let mut dropdown_items: Vec<Element<'a, Message>> =
+        vec![open_item.into(), close_item.into(), view_separator()];
+
+    // Add "Recent Studies" label
+    dropdown_items.push(view_menu_label("Recent Studies"));
+
+    if recent_studies.is_empty() {
+        dropdown_items.push(view_menu_item_disabled(
+            lucide::history().size(14).into(),
+            "No Recent Studies",
+        ));
+    } else {
+        for study in recent_studies.iter().take(5) {
+            let path = study.path.clone();
+            dropdown_items.push(view_menu_item(
+                lucide::folder().size(14).into(),
+                &study.display_name,
+                None,
+                Some(Message::Home(HomeMessage::RecentStudyClicked(path))),
+            ));
+        }
+    }
+
+    dropdown_items.push(view_separator());
+
+    // Clear Recent Studies
+    dropdown_items.push(view_menu_item(
+        lucide::trash().size(14).into(),
+        "Clear Recent Studies",
+        None,
+        if recent_studies.is_empty() {
+            None
+        } else {
+            Some(Message::Menu(MenuMessage::ClearRecentStudies))
+        },
+    ));
+
+    dropdown_items.push(view_separator());
+
     let settings_item = view_menu_item(
         lucide::settings().size(14).into(),
         "Settings...",
@@ -164,20 +217,45 @@ fn view_file_dropdown<'a>(has_study: bool) -> Element<'a, Message> {
         Some(Message::Menu(MenuMessage::Quit)),
     );
 
-    let dropdown = column![
-        open_item,
-        close_item,
-        view_separator(),
-        settings_item,
-        view_separator(),
-        exit_item,
-    ]
-    .width(220);
+    dropdown_items.push(settings_item.into());
+    dropdown_items.push(view_separator());
+    dropdown_items.push(exit_item.into());
+
+    let dropdown = column(dropdown_items).width(220);
 
     view_dropdown_container(dropdown, 0.0)
 }
 
+/// Render a menu label (non-clickable section header).
+#[cfg(not(target_os = "macos"))]
+fn view_menu_label<'a>(label: &'a str) -> Element<'a, Message> {
+    use crate::theme::GRAY_500;
+
+    container(text(label).size(11).color(GRAY_500))
+        .padding([SPACING_XS, SPACING_SM])
+        .into()
+}
+
+/// Render a disabled menu item.
+#[cfg(not(target_os = "macos"))]
+fn view_menu_item_disabled<'a>(icon: Element<'a, Message>, label: &'a str) -> Element<'a, Message> {
+    use crate::theme::GRAY_400;
+
+    let content = row![
+        container(icon).width(20),
+        Space::new().width(SPACING_XS),
+        text(label).size(13).color(GRAY_400),
+    ]
+    .align_y(Alignment::Center);
+
+    container(content)
+        .padding([SPACING_XS, SPACING_SM])
+        .width(Length::Fill)
+        .into()
+}
+
 /// Render the Edit menu dropdown.
+#[cfg(not(target_os = "macos"))]
 fn view_edit_dropdown<'a>() -> Element<'a, Message> {
     use iced::widget::column;
 
@@ -240,6 +318,7 @@ fn view_edit_dropdown<'a>() -> Element<'a, Message> {
 }
 
 /// Render the Help menu dropdown.
+#[cfg(not(target_os = "macos"))]
 fn view_help_dropdown<'a>() -> Element<'a, Message> {
     use iced::widget::column;
 
@@ -319,6 +398,7 @@ fn view_help_dropdown<'a>() -> Element<'a, Message> {
 }
 
 /// Render a menu item.
+#[cfg(not(target_os = "macos"))]
 fn view_menu_item<'a>(
     icon: Element<'a, Message>,
     label: &'a str,
@@ -355,6 +435,7 @@ fn view_menu_item<'a>(
 }
 
 /// Render a menu separator.
+#[cfg(not(target_os = "macos"))]
 fn view_separator<'a>() -> Element<'a, Message> {
     container(Space::new().width(Length::Fill).height(1))
         .style(|_theme: &Theme| container::Style {
@@ -366,6 +447,7 @@ fn view_separator<'a>() -> Element<'a, Message> {
 }
 
 /// Wrap a dropdown in a positioned container.
+#[cfg(not(target_os = "macos"))]
 fn view_dropdown_container<'a>(
     content: impl Into<Element<'a, Message>>,
     _left_offset: f32,
@@ -393,6 +475,7 @@ fn view_dropdown_container<'a>(
 }
 
 /// Style for menu items.
+#[cfg(not(target_os = "macos"))]
 fn menu_item_style(_theme: &Theme, _status: button::Status) -> button::Style {
     button::Style {
         background: None,
@@ -403,10 +486,4 @@ fn menu_item_style(_theme: &Theme, _status: button::Status) -> button::Style {
         },
         ..Default::default()
     }
-}
-
-/// No-op view for macOS (uses native menu).
-#[cfg(target_os = "macos")]
-pub fn view_menu_bar<'a>(_state: &MenuBarState, _has_study: bool) -> Element<'a, Message> {
-    Space::new().width(0).height(0).into()
 }

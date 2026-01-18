@@ -16,7 +16,6 @@
 
 // Submodules - handlers are organized by category in handler/
 mod handler;
-mod update;
 pub mod util;
 
 // Re-export utility functions for internal use
@@ -169,6 +168,17 @@ impl App {
                         std::mem::forget(window_menu);
                     }
 
+                    // Populate recent studies submenu from saved settings
+                    let studies: Vec<_> = self
+                        .state
+                        .settings
+                        .general
+                        .recent_sorted()
+                        .into_iter()
+                        .cloned()
+                        .collect();
+                    crate::menu::native::update_recent_studies_menu(&studies);
+
                     // Keep the menu alive
                     std::mem::forget(menu);
                     tracing::info!("Initialized native macOS menu bar");
@@ -192,7 +202,7 @@ impl App {
                         self.state.dialog_windows.third_party = Some((id, ThirdPartyState::new()));
                     }
                     DialogType::Update => {
-                        self.state.dialog_windows.update = Some((id, UpdateState::Idle));
+                        self.state.dialog_windows.update = Some((id, UpdateState::Checking));
                     }
                     DialogType::CloseStudyConfirm => {
                         self.state.dialog_windows.close_study_confirm = Some(id);
@@ -241,12 +251,33 @@ impl App {
                             study.domain_count()
                         );
 
-                        // Add to recent studies
-                        self.state
+                        // Add to recent studies with rich metadata
+                        let workflow_type = match self.state.view.workflow_mode() {
+                            crate::state::WorkflowMode::Sdtm => crate::state::WorkflowType::Sdtm,
+                            crate::state::WorkflowMode::Adam => crate::state::WorkflowType::Adam,
+                            crate::state::WorkflowMode::Send => crate::state::WorkflowType::Send,
+                        };
+                        let total_rows = study.total_rows();
+                        let recent_study = crate::state::RecentStudy::new(
+                            study.study_folder.clone(),
+                            study.study_id.clone(),
+                            workflow_type,
+                            study.domain_count(),
+                            total_rows,
+                        );
+                        self.state.settings.general.add_recent_study(recent_study);
+                        let _ = self.state.settings.save();
+
+                        // Update native menu's recent studies submenu
+                        let studies: Vec<_> = self
+                            .state
                             .settings
                             .general
-                            .add_recent(study.study_folder.clone());
-                        let _ = self.state.settings.save();
+                            .recent_sorted()
+                            .into_iter()
+                            .cloned()
+                            .collect();
+                        crate::menu::native::update_recent_studies_menu(&studies);
 
                         self.state.study = Some(study);
                         self.state.terminology = Some(terminology);
@@ -267,17 +298,16 @@ impl App {
                     preview_ui,
                     ..
                 } = &mut self.state.view
+                    && current_domain == &domain
                 {
-                    if current_domain == &domain {
-                        preview_ui.is_rebuilding = false;
-                        match result {
-                            Ok(df) => {
-                                *preview_cache = Some(df);
-                                preview_ui.error = None;
-                            }
-                            Err(e) => {
-                                preview_ui.error = Some(e);
-                            }
+                    preview_ui.is_rebuilding = false;
+                    match result {
+                        Ok(df) => {
+                            *preview_cache = Some(df);
+                            preview_ui.error = None;
+                        }
+                        Err(e) => {
+                            preview_ui.error = Some(e);
                         }
                     }
                 }
@@ -324,6 +354,14 @@ impl App {
 
             Message::DismissError => {
                 self.state.error = None;
+                Task::none()
+            }
+
+            // =================================================================
+            // External actions
+            // =================================================================
+            Message::OpenUrl(url) => {
+                let _ = open::that(&url);
                 Task::none()
             }
 
@@ -408,12 +446,11 @@ impl App {
                 }
                 DialogType::Update => {
                     // Get reference to update state from dialog_windows
-                    // Use default Idle state if somehow missing
                     if let Some((_, ref update_state)) = self.state.dialog_windows.update {
                         view_update_dialog_content(update_state, id)
                     } else {
-                        // Fallback to Idle state - this shouldn't happen
-                        view_update_dialog_content(&UpdateState::Idle, id)
+                        // This shouldn't happen - show loading text as fallback
+                        iced::widget::text("Loading...").into()
                     }
                 }
                 DialogType::CloseStudyConfirm => view_close_study_dialog_content(id),
@@ -450,8 +487,11 @@ impl App {
         #[cfg(not(target_os = "macos"))]
         let content_with_menu: Element<'_, Message> = {
             use iced::widget::column;
-            let menu_bar =
-                crate::menu::in_app::view_menu_bar(&self.state.menu_bar, self.state.has_study());
+            let menu_bar = crate::menu::in_app::view_menu_bar(
+                &self.state.menu_bar,
+                self.state.has_study(),
+                &self.state,
+            );
             column![menu_bar, content].into()
         };
 
@@ -547,8 +587,8 @@ impl App {
             _ => Message::Noop,
         });
 
-        // Native menu event polling (polls every 50ms)
-        let menu_sub = time::every(Duration::from_millis(50)).map(|_| Message::NativeMenuEvent);
+        // Native menu event polling (polls every 200ms to reduce CPU usage)
+        let menu_sub = time::every(Duration::from_millis(200)).map(|_| Message::NativeMenuEvent);
 
         // Window close events (for cleaning up dialog windows)
         let window_sub = window::close_requests().map(Message::DialogWindowClosed);
@@ -605,13 +645,12 @@ fn check_update_status() -> Option<crate::component::toast::ToastState> {
 
 /// JSON structure for the update status file (matches tss-updater-helper's UpdateStatus).
 #[derive(serde::Deserialize)]
+#[allow(dead_code)] // Fields present in JSON but not all read in code
 struct UpdateStatusJson {
     success: bool,
     version: String,
     previous_version: String,
-    #[allow(dead_code)]
     timestamp: String,
     error: Option<String>,
-    #[allow(dead_code)]
     log_file: String,
 }

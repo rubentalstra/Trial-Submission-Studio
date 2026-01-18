@@ -97,7 +97,9 @@ impl App {
             }
 
             HomeMessage::DomainClicked(domain) => {
-                self.state.view = ViewState::domain_editor(domain, EditorTab::Mapping);
+                let rows = self.state.settings.display.preview_rows_per_page;
+                self.state.view =
+                    ViewState::domain_editor_with_rows(domain, EditorTab::Mapping, rows);
                 Task::none()
             }
 
@@ -112,8 +114,14 @@ impl App {
                 Task::none()
             }
 
-            HomeMessage::ClearRecentStudies => {
-                self.state.settings.general.clear_recent();
+            HomeMessage::ClearAllRecentStudies => {
+                self.state.settings.general.clear_all_recent();
+                let _ = self.state.settings.save();
+                Task::none()
+            }
+
+            HomeMessage::PruneStaleStudies => {
+                self.state.settings.general.prune_stale();
                 let _ = self.state.settings.save();
                 Task::none()
             }

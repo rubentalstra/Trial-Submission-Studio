@@ -1,9 +1,12 @@
 //! Code signature verification (macOS only).
 
 use std::path::Path;
+#[cfg(target_os = "macos")]
 use std::process::Command;
 
-use crate::error::{Result, UpdateError};
+use crate::error::Result;
+#[cfg(target_os = "macos")]
+use crate::error::UpdateError;
 
 /// Verifies the code signature of an app bundle.
 ///
@@ -70,7 +73,6 @@ pub fn verify_signature(_app_path: &Path) -> Result<Option<String>> {
 mod tests {
     #[test]
     fn test_signature_module_exists() {
-        // Just verify the module compiles
-        assert!(true);
+        // Verify the module compiles - test is intentionally minimal
     }
 }

@@ -43,6 +43,7 @@
 //! ```
 
 // Allow unused exports - these are public API items that may not be used internally
+// Component library provides building blocks - not all are used yet
 #![allow(unused_imports)]
 #![allow(dead_code)]
 

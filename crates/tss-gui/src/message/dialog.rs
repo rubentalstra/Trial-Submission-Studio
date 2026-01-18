@@ -116,6 +116,7 @@ impl SettingsCategory {
 
 /// General settings messages.
 #[derive(Debug, Clone)]
+#[allow(dead_code, clippy::enum_variant_names)]
 pub enum GeneralSettingsMessage {
     /// Change controlled terminology version
     CtVersionChanged(String),
@@ -149,6 +150,7 @@ pub enum DeveloperSettingsMessage {
 
 /// Export settings messages.
 #[derive(Debug, Clone)]
+#[allow(dead_code, clippy::enum_variant_names)]
 pub enum ExportSettingsMessage {
     /// Change default output directory
     DefaultOutputDirChanged(String),
@@ -158,6 +160,9 @@ pub enum ExportSettingsMessage {
 
     /// Change default XPT version
     DefaultXptVersionChanged(crate::state::XptVersion),
+
+    /// Change SDTM-IG version
+    SdtmIgVersionChanged(crate::state::SdtmIgVersion),
 }
 
 /// Display settings messages.
@@ -165,17 +170,11 @@ pub enum ExportSettingsMessage {
 pub enum DisplaySettingsMessage {
     /// Change preview rows per page
     PreviewRowsChanged(usize),
-
-    /// Change decimal precision
-    DecimalPrecisionChanged(usize),
 }
 
 /// Update settings messages.
 #[derive(Debug, Clone)]
 pub enum UpdateSettingsMessage {
-    /// Toggle update checking (enabled/disabled)
-    EnabledToggled(bool),
-
     /// Toggle automatic update check on startup
     CheckOnStartupToggled(bool),
 
@@ -209,21 +208,18 @@ pub enum ThirdPartyMessage {
 
 /// Messages for the Update dialog.
 ///
-/// This enum contains both user actions and async operation results.
+/// Simplified enum with 11 variants (down from 17).
 /// User actions trigger async tasks, which send back result messages.
 #[derive(Debug, Clone)]
 pub enum UpdateMessage {
     // -------------------------------------------------------------------------
     // User Actions
     // -------------------------------------------------------------------------
-    /// Open the update dialog
+    /// Open the update dialog AND trigger check (no idle state)
     Open,
 
     /// Close the update dialog
     Close,
-
-    /// User initiated update check
-    CheckForUpdates,
 
     /// User confirmed download after seeing update available
     ConfirmDownload,
@@ -232,41 +228,41 @@ pub enum UpdateMessage {
     ConfirmInstall,
 
     /// User clicked restart to apply update
-    Restart,
+    RestartNow,
 
     /// User chose to skip this version
-    SkipVersion(String),
+    SkipVersion,
 
-    /// User chose to be reminded later
-    RemindLater,
+    /// Toggle changelog expanded/collapsed in Available state
+    ToggleChangelog,
 
-    /// User cancelled the current operation
-    Cancel,
+    /// Retry after error (uses RetryContext from state)
+    Retry,
 
     // -------------------------------------------------------------------------
-    // Async Operation Results (from Task::perform / Task::sip)
+    // Async Operation Results
     // -------------------------------------------------------------------------
     /// Result of checking for updates
-    CheckComplete(std::result::Result<Option<tss_updater::UpdateInfo>, String>),
+    CheckResult(std::result::Result<Option<tss_updater::UpdateInfo>, String>),
 
-    /// Download progress update (from Task::sip stream)
+    /// Download progress update (from streaming download)
     DownloadProgress(tss_updater::DownloadProgress),
 
-    /// Download complete with data (from Task::sip stream completion)
+    /// Download complete with data
     DownloadComplete(std::result::Result<tss_updater::DownloadResult, String>),
 
-    /// Verification complete
-    VerifyComplete(std::result::Result<VerifyResult, String>),
+    /// Verification complete (verified: bool, data: `Vec<u8>`)
+    VerifyResult(std::result::Result<VerifyOutcome, String>),
 
     /// Installation complete
-    InstallComplete(std::result::Result<(), String>),
+    InstallResult(std::result::Result<String, String>),
 }
 
-/// Result of SHA256 verification.
+/// Outcome of SHA256 verification.
 #[derive(Debug, Clone)]
-pub struct VerifyResult {
+pub struct VerifyOutcome {
     /// Whether verification passed.
     pub verified: bool,
-    /// The SHA256 hash (if computed).
-    pub sha256: Option<String>,
+    /// The downloaded data.
+    pub data: Vec<u8>,
 }

@@ -128,22 +128,20 @@ impl App {
                     _ => None,
                 };
 
-                if let Some(col_name) = col {
-                    if let Some(domain) = self
+                if let Some(col_name) = col
+                    && let Some(domain) = self
                         .state
                         .study
                         .as_mut()
                         .and_then(|s| s.domain_mut(&domain_code))
-                    {
-                        if let Some(config) = domain.supp_config.get_mut(&col_name) {
-                            // Validate required fields before adding
-                            if config.qnam.trim().is_empty() || config.qlabel.trim().is_empty() {
-                                // Don't add - QNAM and QLABEL are required
-                                return Task::none();
-                            }
-                            config.action = SuppAction::Include;
-                        }
+                    && let Some(config) = domain.supp_config.get_mut(&col_name)
+                {
+                    // Validate required fields before adding
+                    if config.qnam.trim().is_empty() || config.qlabel.trim().is_empty() {
+                        // Don't add - QNAM and QLABEL are required
+                        return Task::none();
                     }
+                    config.action = SuppAction::Include;
                 }
                 // Clear draft after action
                 if let ViewState::DomainEditor { supp_ui, .. } = &mut self.state.view {
@@ -158,17 +156,15 @@ impl App {
                     _ => None,
                 };
 
-                if let Some(col_name) = col {
-                    if let Some(domain) = self
+                if let Some(col_name) = col
+                    && let Some(domain) = self
                         .state
                         .study
                         .as_mut()
                         .and_then(|s| s.domain_mut(&domain_code))
-                    {
-                        if let Some(config) = domain.supp_config.get_mut(&col_name) {
-                            config.action = SuppAction::Skip;
-                        }
-                    }
+                    && let Some(config) = domain.supp_config.get_mut(&col_name)
+                {
+                    config.action = SuppAction::Skip;
                 }
                 // Clear draft after action
                 if let ViewState::DomainEditor { supp_ui, .. } = &mut self.state.view {
@@ -183,17 +179,15 @@ impl App {
                     _ => None,
                 };
 
-                if let Some(col_name) = col {
-                    if let Some(domain) = self
+                if let Some(col_name) = col
+                    && let Some(domain) = self
                         .state
                         .study
                         .as_mut()
                         .and_then(|s| s.domain_mut(&domain_code))
-                    {
-                        if let Some(config) = domain.supp_config.get_mut(&col_name) {
-                            config.action = SuppAction::Pending;
-                        }
-                    }
+                    && let Some(config) = domain.supp_config.get_mut(&col_name)
+                {
+                    config.action = SuppAction::Pending;
                 }
                 // Clear draft after action
                 if let ViewState::DomainEditor { supp_ui, .. } = &mut self.state.view {
@@ -212,19 +206,17 @@ impl App {
                     _ => None,
                 };
 
-                if let Some(col_name) = &col {
-                    if let Some(domain) = self
+                if let Some(col_name) = &col
+                    && let Some(domain) = self
                         .state
                         .study
                         .as_ref()
                         .and_then(|s| s.domain(&domain_code))
-                    {
-                        if let Some(config) = domain.supp_config.get(col_name) {
-                            let draft = SuppEditDraft::from_config(config);
-                            if let ViewState::DomainEditor { supp_ui, .. } = &mut self.state.view {
-                                supp_ui.edit_draft = Some(draft);
-                            }
-                        }
+                    && let Some(config) = domain.supp_config.get(col_name)
+                {
+                    let draft = SuppEditDraft::from_config(config);
+                    if let ViewState::DomainEditor { supp_ui, .. } = &mut self.state.view {
+                        supp_ui.edit_draft = Some(draft);
                     }
                 }
                 Task::none()
@@ -251,17 +243,16 @@ impl App {
                         .study
                         .as_mut()
                         .and_then(|s| s.domain_mut(&domain_code))
+                        && let Some(config) = domain.supp_config.get_mut(&col_name)
                     {
-                        if let Some(config) = domain.supp_config.get_mut(&col_name) {
-                            config.qnam = draft.qnam;
-                            config.qlabel = draft.qlabel;
-                            config.qorig = draft.qorig;
-                            config.qeval = if draft.qeval.is_empty() {
-                                None
-                            } else {
-                                Some(draft.qeval)
-                            };
-                        }
+                        config.qnam = draft.qnam;
+                        config.qlabel = draft.qlabel;
+                        config.qorig = draft.qorig;
+                        config.qeval = if draft.qeval.is_empty() {
+                            None
+                        } else {
+                            Some(draft.qeval)
+                        };
                     }
                 }
                 // Clear draft
@@ -302,12 +293,12 @@ impl App {
 
         if is_editing {
             // Update the draft
-            if let ViewState::DomainEditor { supp_ui, .. } = &mut self.state.view {
-                if let Some(draft) = &mut supp_ui.edit_draft {
-                    // Get a dummy config to satisfy the closure signature
-                    let mut dummy = SuppColumnConfig::from_column("");
-                    update(&mut dummy, Some(draft));
-                }
+            if let ViewState::DomainEditor { supp_ui, .. } = &mut self.state.view
+                && let Some(draft) = &mut supp_ui.edit_draft
+            {
+                // Get a dummy config to satisfy the closure signature
+                let mut dummy = SuppColumnConfig::from_column("");
+                update(&mut dummy, Some(draft));
             }
         } else {
             // Update the config directly
@@ -316,10 +307,9 @@ impl App {
                 .study
                 .as_mut()
                 .and_then(|s| s.domain_mut(domain_code))
+                && let Some(config) = domain.supp_config.get_mut(&col_name)
             {
-                if let Some(config) = domain.supp_config.get_mut(&col_name) {
-                    update(config, None);
-                }
+                update(config, None);
             }
         }
     }

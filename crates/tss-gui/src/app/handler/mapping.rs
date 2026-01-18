@@ -108,10 +108,10 @@ impl App {
 
             MappingMessage::NotCollectedReasonChanged(reason) => {
                 // Update the reason text while editing
-                if let ViewState::DomainEditor { mapping_ui, .. } = &mut self.state.view {
-                    if let Some(edit) = &mut mapping_ui.not_collected_edit {
-                        edit.reason = reason;
-                    }
+                if let ViewState::DomainEditor { mapping_ui, .. } = &mut self.state.view
+                    && let Some(edit) = &mut mapping_ui.not_collected_edit
+                {
+                    edit.reason = reason;
                 }
                 Task::none()
             }

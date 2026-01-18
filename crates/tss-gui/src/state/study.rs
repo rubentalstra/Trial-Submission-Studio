@@ -111,20 +111,6 @@ impl Study {
         }
     }
 
-    /// Create a study with a custom ID.
-    pub fn new(study_id: impl Into<String>, folder: PathBuf) -> Self {
-        Self {
-            study_id: study_id.into(),
-            study_folder: folder,
-            metadata: None,
-            domains: BTreeMap::new(),
-        }
-    }
-
-    // =========================================================================
-    // DOMAIN ACCESS
-    // =========================================================================
-
     /// Get a domain by code.
     #[inline]
     pub fn domain(&self, code: &str) -> Option<&DomainState> {
@@ -132,28 +118,14 @@ impl Study {
     }
 
     /// Get a mutable reference to a domain.
-    ///
-    /// Note: In Iced, prefer updating domain through messages in `update()`.
-    /// This is provided for use within the `update()` function only.
     #[inline]
     pub fn domain_mut(&mut self, code: &str) -> Option<&mut DomainState> {
         self.domains.get_mut(code)
     }
 
-    /// Check if a domain exists.
-    #[inline]
-    pub fn has_domain(&self, code: &str) -> bool {
-        self.domains.contains_key(code)
-    }
-
     /// Add a domain to the study.
     pub fn add_domain(&mut self, code: impl Into<String>, domain: DomainState) {
         self.domains.insert(code.into(), domain);
-    }
-
-    /// Remove a domain from the study.
-    pub fn remove_domain(&mut self, code: &str) -> Option<DomainState> {
-        self.domains.remove(code)
     }
 
     /// Get all domain codes.
@@ -162,17 +134,12 @@ impl Study {
     }
 
     /// Get domain codes with DM first, then alphabetical.
-    ///
-    /// DM (Demographics) is the primary domain and should appear first.
     pub fn domain_codes_dm_first(&self) -> Vec<&str> {
         let mut codes: Vec<_> = self.domain_codes();
-        codes.sort_by(|a, b| {
-            // DM comes first
-            match (*a, *b) {
-                ("DM", _) => std::cmp::Ordering::Less,
-                (_, "DM") => std::cmp::Ordering::Greater,
-                _ => a.cmp(b),
-            }
+        codes.sort_by(|a, b| match (*a, *b) {
+            ("DM", _) => std::cmp::Ordering::Less,
+            (_, "DM") => std::cmp::Ordering::Greater,
+            _ => a.cmp(b),
         });
         codes
     }
@@ -183,38 +150,9 @@ impl Study {
         self.domains.len()
     }
 
-    /// Iterate over all domains.
-    pub fn domains(&self) -> impl Iterator<Item = (&str, &DomainState)> {
-        self.domains.iter().map(|(k, v)| (k.as_str(), v))
-    }
-
-    /// Iterate over all domains mutably.
-    pub fn domains_mut(&mut self) -> impl Iterator<Item = (&str, &mut DomainState)> {
-        self.domains.iter_mut().map(|(k, v)| (k.as_str(), v))
-    }
-
-    // =========================================================================
-    // COMPUTED PROPERTIES
-    // =========================================================================
-
     /// Count total rows across all domains.
     pub fn total_rows(&self) -> usize {
         self.domains.values().map(DomainState::row_count).sum()
-    }
-
-    /// Check if all domains have complete mappings.
-    pub fn is_all_complete(&self) -> bool {
-        self.domains.values().all(DomainState::is_mapping_complete)
-    }
-
-    /// Get mapping progress as (complete, total).
-    pub fn mapping_progress(&self) -> (usize, usize) {
-        let complete = self
-            .domains
-            .values()
-            .filter(|d| d.is_mapping_complete())
-            .count();
-        (complete, self.domains.len())
     }
 }
 

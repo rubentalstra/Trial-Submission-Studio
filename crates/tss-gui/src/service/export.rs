@@ -17,7 +17,9 @@ use tss_submit::export::{
 use tss_submit::{NormalizationContext, execute_normalization};
 use tss_submit::{Severity, ValidationReport};
 
-use crate::state::{DomainState, ExportFormat, ExportResult, SuppColumnConfig, XptVersion};
+use crate::state::{
+    DomainState, ExportFormat, ExportResult, SdtmIgVersion, SuppColumnConfig, XptVersion,
+};
 
 // =============================================================================
 // INPUT TYPES
@@ -34,7 +36,11 @@ pub struct ExportInput {
     /// Export format (XPT or Dataset-XML).
     pub format: ExportFormat,
     /// XPT version (only used when format is XPT).
+    /// TODO: Pass this to the XPT writer when version support is implemented in tss-submit.
+    #[allow(dead_code)]
     pub xpt_version: XptVersion,
+    /// SDTM-IG version for Dataset-XML and Define-XML.
+    pub sdtm_ig_version: SdtmIgVersion,
     /// Domains to export with their data.
     pub domains: Vec<DomainExportData>,
     /// Study ID (extracted from data or default).
@@ -173,15 +179,6 @@ fn execute_export_sync(input: ExportInput) -> ExportResult {
     let mut written_files: Vec<PathBuf> = Vec::new();
     let mut domain_frames: Vec<DomainFrame> = Vec::new();
     let mut supp_frames: Vec<DomainFrame> = Vec::new();
-    let mut warnings: Vec<String> = Vec::new();
-
-    // Add validation bypass warnings
-    for (domain, count) in &validation_errors {
-        warnings.push(format!(
-            "{}: Exported with {} validation error(s) (bypass enabled)",
-            domain, count
-        ));
-    }
 
     // Process each domain
     for domain_data in &input.domains {
@@ -196,12 +193,14 @@ fn execute_export_sync(input: ExportInput) -> ExportResult {
         );
         let path = datasets_dir.join(&filename);
 
+        let ig_version = input.sdtm_ig_version.as_str();
         if let Err(e) = write_data_file(
             &path,
             &frame,
             &domain_data.definition,
             &input.study_id,
             input.format,
+            ig_version,
         ) {
             return ExportResult::Error {
                 message: e.message,
@@ -234,8 +233,14 @@ fn execute_export_sync(input: ExportInput) -> ExportResult {
                     &supp_def,
                     &input.study_id,
                     input.format,
+                    ig_version,
                 ) {
-                    warnings.push(format!("SUPP{} export warning: {}", domain_data.code, e));
+                    // Log SUPP file failure but continue - graceful degradation
+                    tracing::warn!(
+                        "SUPP{} export failed (continuing without SUPP file): {}",
+                        domain_data.code,
+                        e
+                    );
                 } else {
                     written_files.push(supp_path);
                     supp_frames.push(supp_frame);
@@ -246,12 +251,14 @@ fn execute_export_sync(input: ExportInput) -> ExportResult {
 
     // Write Define-XML (always required)
     let define_path = datasets_dir.join("define.xml");
+    let ig_version = input.sdtm_ig_version.as_str();
     if let Err(e) = write_define_xml(
         &define_path,
         &input.study_id,
         &input.domains,
         &domain_frames,
         &supp_frames,
+        ig_version,
     ) {
         return ExportResult::Error {
             message: format!("Failed to write Define-XML: {}", e),
@@ -265,7 +272,6 @@ fn execute_export_sync(input: ExportInput) -> ExportResult {
         files: written_files,
         domains_exported: input.domains.len(),
         elapsed_ms: start.elapsed().as_millis() as u64,
-        warnings,
     }
 }
 
@@ -280,10 +286,13 @@ fn write_data_file(
     domain: &SdtmDomain,
     study_id: &str,
     format: ExportFormat,
+    sdtm_ig_version: &str,
 ) -> Result<(), ExportError> {
     match format {
         ExportFormat::Xpt => write_xpt_file(path, frame, domain),
-        ExportFormat::DatasetXml => write_dataset_xml_file(path, frame, domain, study_id),
+        ExportFormat::DatasetXml => {
+            write_dataset_xml_file(path, frame, domain, study_id, sdtm_ig_version)
+        }
     }
 }
 
@@ -315,14 +324,12 @@ fn write_dataset_xml_file(
     frame: &DomainFrame,
     domain: &SdtmDomain,
     study_id: &str,
+    sdtm_ig_version: &str,
 ) -> Result<(), ExportError> {
     let options = DatasetXmlOptions {
         dataset_name: Some(frame.dataset_name()),
         ..Default::default()
     };
-
-    // TODO: Make SDTM-IG version configurable
-    let sdtm_ig_version = "3.4";
 
     write_dataset_xml_output(
         path,
@@ -344,6 +351,7 @@ fn write_define_xml(
     domain_data: &[DomainExportData],
     domain_frames: &[DomainFrame],
     supp_frames: &[DomainFrame],
+    sdtm_ig_version: &str,
 ) -> Result<(), ExportError> {
     // Collect all domains and frames
     let mut domains: Vec<SdtmDomain> = domain_data.iter().map(|d| d.definition.clone()).collect();
@@ -370,8 +378,7 @@ fn write_define_xml(
         all_frames.push(supp_frame.clone());
     }
 
-    // TODO: Make SDTM-IG version configurable
-    let options = DefineXmlOptions::new("3.4", "Submission");
+    let options = DefineXmlOptions::new(sdtm_ig_version, "Submission");
 
     write_define_xml_output(path, study_id, &domains, &all_frames, &options)
         .map_err(|e| ExportError::new(format!("Failed to write Define-XML: {}", e)))?;

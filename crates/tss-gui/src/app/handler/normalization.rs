@@ -13,6 +13,7 @@ use crate::state::ViewState;
 
 impl App {
     /// Handle normalization tab messages.
+    #[allow(clippy::needless_pass_by_value)]
     pub fn handle_normalization_message(&mut self, msg: NormalizationMessage) -> Task<Message> {
         match msg {
             NormalizationMessage::RuleSelected(index) => {
@@ -22,16 +23,6 @@ impl App {
                 {
                     normalization_ui.selected_rule = Some(index);
                 }
-                Task::none()
-            }
-
-            NormalizationMessage::RuleToggled { .. } => {
-                // TODO: Implement rule toggling if needed
-                Task::none()
-            }
-
-            NormalizationMessage::RefreshPreview => {
-                // TODO: Implement preview refresh if needed
                 Task::none()
             }
         }

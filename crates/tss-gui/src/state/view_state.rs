@@ -84,15 +84,19 @@ impl ViewState {
         }
     }
 
-    /// Create domain editor view state.
-    pub fn domain_editor(domain: impl Into<String>, tab: EditorTab) -> Self {
+    /// Create domain editor view state with custom rows per page.
+    pub fn domain_editor_with_rows(
+        domain: impl Into<String>,
+        tab: EditorTab,
+        rows_per_page: usize,
+    ) -> Self {
         Self::DomainEditor {
             domain: domain.into(),
             tab,
             mapping_ui: MappingUiState::default(),
             normalization_ui: NormalizationUiState::default(),
             validation_ui: ValidationUiState::default(),
-            preview_ui: PreviewUiState::default(),
+            preview_ui: PreviewUiState::with_rows_per_page(rows_per_page),
             supp_ui: SuppUiState::default(),
             preview_cache: None,
         }
@@ -101,41 +105,6 @@ impl ViewState {
     /// Create export view state.
     pub fn export() -> Self {
         Self::Export(ExportViewState::default())
-    }
-
-    // =========================================================================
-    // QUERIES
-    // =========================================================================
-
-    /// Check if this is the home view.
-    pub fn is_home(&self) -> bool {
-        matches!(self, Self::Home { .. })
-    }
-
-    /// Check if this is a domain editor view.
-    pub fn is_domain_editor(&self) -> bool {
-        matches!(self, Self::DomainEditor { .. })
-    }
-
-    /// Check if this is the export view.
-    pub fn is_export(&self) -> bool {
-        matches!(self, Self::Export(_))
-    }
-
-    /// Get the current domain code if in domain editor.
-    pub fn current_domain(&self) -> Option<&str> {
-        match self {
-            Self::DomainEditor { domain, .. } => Some(domain),
-            _ => None,
-        }
-    }
-
-    /// Get the current tab if in domain editor.
-    pub fn current_tab(&self) -> Option<EditorTab> {
-        match self {
-            Self::DomainEditor { tab, .. } => Some(*tab),
-            _ => None,
-        }
     }
 
     /// Get workflow mode.
@@ -181,9 +150,6 @@ impl WorkflowMode {
             Self::Send => "Standard for Exchange of Nonclinical Data - Animal studies",
         }
     }
-
-    /// All workflow modes.
-    pub const ALL: [WorkflowMode; 3] = [Self::Sdtm, Self::Adam, Self::Send];
 }
 
 // =============================================================================
@@ -218,17 +184,6 @@ impl EditorTab {
         }
     }
 
-    /// Get description.
-    pub fn description(&self) -> &'static str {
-        match self {
-            Self::Mapping => "Map source columns to CDISC variables",
-            Self::Normalization => "Configure data normalization rules",
-            Self::Validation => "Review CDISC conformance issues",
-            Self::Preview => "Preview transformed output data",
-            Self::Supp => "Configure supplemental qualifiers",
-        }
-    }
-
     /// All tabs in display order.
     pub const ALL: [EditorTab; 5] = [
         Self::Mapping,
@@ -237,22 +192,6 @@ impl EditorTab {
         Self::Preview,
         Self::Supp,
     ];
-
-    /// Get tab index (0-based).
-    pub fn index(&self) -> usize {
-        match self {
-            Self::Mapping => 0,
-            Self::Normalization => 1,
-            Self::Validation => 2,
-            Self::Preview => 3,
-            Self::Supp => 4,
-        }
-    }
-
-    /// Create tab from index.
-    pub fn from_index(index: usize) -> Option<Self> {
-        Self::ALL.get(index).copied()
-    }
 }
 
 // =============================================================================
@@ -322,18 +261,6 @@ pub enum SeverityFilter {
     Info,
 }
 
-impl SeverityFilter {
-    /// Get display name.
-    pub fn display_name(&self) -> &'static str {
-        match self {
-            Self::All => "All",
-            Self::Errors => "Errors",
-            Self::Warnings => "Warnings",
-            Self::Info => "Info",
-        }
-    }
-}
-
 // =============================================================================
 // PREVIEW TAB UI STATE
 // =============================================================================
@@ -358,6 +285,16 @@ impl Default for PreviewUiState {
             rows_per_page: 50,
             is_rebuilding: false,
             error: None,
+        }
+    }
+}
+
+impl PreviewUiState {
+    /// Create with a custom rows per page value.
+    pub fn with_rows_per_page(rows: usize) -> Self {
+        Self {
+            rows_per_page: rows,
+            ..Default::default()
         }
     }
 }
@@ -387,23 +324,6 @@ pub struct SuppUiState {
     /// When Some, user is editing an included column.
     /// When None, showing read-only view or editing a pending column.
     pub edit_draft: Option<SuppEditDraft>,
-}
-
-impl SuppUiState {
-    /// Check if we're in edit mode for an included column.
-    pub fn is_editing(&self) -> bool {
-        self.edit_draft.is_some()
-    }
-
-    /// Start editing with a draft from the current config.
-    pub fn start_editing(&mut self, draft: SuppEditDraft) {
-        self.edit_draft = Some(draft);
-    }
-
-    /// Cancel editing, discarding the draft.
-    pub fn cancel_editing(&mut self) {
-        self.edit_draft = None;
-    }
 }
 
 /// Draft state for editing an included SUPP column.
@@ -469,22 +389,15 @@ pub enum ExportPhase {
         current_step: String,
         /// Progress 0.0 to 1.0.
         progress: f32,
-        /// Files written so far.
-        files_written: Vec<PathBuf>,
     },
-    /// Complete - export finished (success or error).
-    Complete(ExportResult),
+    /// Complete - export finished (result stored in dialog_windows).
+    Complete,
 }
 
 impl ExportPhase {
     /// Check if export is in progress.
     pub fn is_exporting(&self) -> bool {
         matches!(self, Self::Exporting { .. })
-    }
-
-    /// Check if export is complete.
-    pub fn is_complete(&self) -> bool {
-        matches!(self, Self::Complete(_))
     }
 }
 
@@ -501,8 +414,6 @@ pub enum ExportResult {
         domains_exported: usize,
         /// Elapsed time in milliseconds.
         elapsed_ms: u64,
-        /// Any warnings generated.
-        warnings: Vec<String>,
     },
     /// Export failed.
     Error {
@@ -513,18 +424,6 @@ pub enum ExportResult {
     },
     /// Export was cancelled by user.
     Cancelled,
-}
-
-impl ExportResult {
-    /// Check if result is successful.
-    pub fn is_success(&self) -> bool {
-        matches!(self, Self::Success { .. })
-    }
-
-    /// Check if result is an error.
-    pub fn is_error(&self) -> bool {
-        matches!(self, Self::Error { .. })
-    }
 }
 
 /// UI state for the export view.

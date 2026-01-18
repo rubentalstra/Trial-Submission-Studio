@@ -5,9 +5,9 @@
 //! 2. Replace the current executable using self_replace
 //! 3. Restart the application
 
-use crate::error::{Result, UpdateError};
-use crate::install::{extract_binary, replace_current_executable, restart_application};
+use crate::error::Result;
 use crate::release::UpdateInfo;
+use crate::steps::install::{extract_binary, replace_current_executable, restart_application};
 
 /// Installs the update and restarts the application.
 ///

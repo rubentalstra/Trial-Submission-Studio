@@ -3,7 +3,7 @@
 //! A domain represents a single SDTM dataset (e.g., DM, AE, LB).
 //! This module contains:
 //! - [`DomainSource`] - Immutable source data (CSV file + DataFrame)
-//! - [`Domain`] - Source + mapping state + normalization pipeline
+//! - [`DomainState`] - Domain with source data and mapping state
 //! - [`SuppColumnConfig`] - SUPP qualifier configuration for unmapped columns
 
 use polars::prelude::{DataFrame, PlSmallStr};
@@ -20,6 +20,8 @@ use tss_submit::{NormalizationPipeline, Severity, ValidationReport, infer_normal
 #[derive(Debug, Clone)]
 pub struct SuppColumnConfig {
     /// Source column name.
+    /// Note: Redundant with HashMap key, but kept for struct completeness.
+    #[allow(dead_code)]
     pub column: String,
     /// QNAM - Qualifier Variable Name (max 8 chars, uppercase).
     pub qnam: String,
@@ -115,20 +117,6 @@ pub enum SuppAction {
     Skip,
 }
 
-impl SuppAction {
-    /// Get display label.
-    pub fn label(&self) -> &'static str {
-        match self {
-            Self::Pending => "Pending",
-            Self::Include => "Add to SUPP",
-            Self::Skip => "Skip",
-        }
-    }
-
-    /// All values.
-    pub const ALL: [SuppAction; 3] = [Self::Pending, Self::Include, Self::Skip];
-}
-
 // =============================================================================
 // DOMAIN SOURCE (Immutable)
 // =============================================================================
@@ -172,17 +160,6 @@ impl DomainSource {
     #[inline]
     pub fn row_count(&self) -> usize {
         self.data.height()
-    }
-
-    /// Get column count.
-    #[inline]
-    pub fn column_count(&self) -> usize {
-        self.data.width()
-    }
-
-    /// Get file name without path.
-    pub fn file_name(&self) -> Option<&str> {
-        self.file_path.file_name().and_then(|n| n.to_str())
     }
 }
 
@@ -298,31 +275,10 @@ impl DomainState {
         self.source.row_count()
     }
 
-    /// Get column names from source data.
-    #[inline]
-    pub fn column_names(&self) -> Vec<String> {
-        self.source.column_names()
-    }
-
     /// Get mapping summary.
     #[inline]
     pub fn summary(&self) -> tss_submit::MappingSummary {
         self.mapping.summary()
-    }
-
-    /// Check if all required/expected variables are mapped.
-    pub fn is_mapping_complete(&self) -> bool {
-        let summary = self.summary();
-        summary.required_mapped == summary.required_total
-    }
-
-    /// Check if user has made any mapping changes.
-    ///
-    /// A domain is "touched" if any variable has been accepted,
-    /// marked not collected, or marked omitted.
-    pub fn is_touched(&self) -> bool {
-        let summary = self.summary();
-        summary.mapped > 0 || summary.not_collected > 0 || summary.omitted > 0
     }
 
     /// Get unmapped source columns (for SUPP configuration).

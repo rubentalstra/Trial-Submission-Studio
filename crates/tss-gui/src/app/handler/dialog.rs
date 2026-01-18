@@ -6,6 +6,8 @@
 //! - Third-party licenses dialog
 //! - Update check dialog (using Task::perform and Task::run for streaming)
 
+use std::sync::Arc;
+
 use futures_util::StreamExt;
 use iced::Task;
 use iced::widget::markdown;
@@ -16,10 +18,12 @@ use crate::message::Message;
 use crate::message::{
     AboutMessage, DeveloperSettingsMessage, DialogMessage, ExportSettingsMessage,
     GeneralSettingsMessage, SettingsMessage, ThirdPartyMessage, UpdateMessage,
-    UpdateSettingsMessage, VerifyResult,
+    UpdateSettingsMessage, VerifyOutcome,
 };
 use crate::state::Settings;
-use crate::view::dialog::update::UpdateState;
+use crate::view::dialog::update::{
+    DownloadStats, RetryContext, UpdateErrorInfo, UpdateState, parse_changelog,
+};
 
 impl App {
     /// Handle dialog messages.
@@ -34,6 +38,7 @@ impl App {
     }
 
     /// Handle about dialog messages.
+    #[allow(clippy::needless_pass_by_value)]
     fn handle_about_message(&mut self, msg: AboutMessage) -> Task<Message> {
         match msg {
             AboutMessage::Open => Task::none(),
@@ -148,6 +153,10 @@ impl App {
                     ExportSettingsMessage::DefaultXptVersionChanged(version) => {
                         self.state.settings.export.xpt_version = version;
                     }
+                    ExportSettingsMessage::SdtmIgVersionChanged(version) => {
+                        self.state.settings.export.sdtm_ig_version = version;
+                        tracing::info!("SDTM-IG version: {}", version);
+                    }
                 }
                 Task::none()
             }
@@ -157,10 +166,6 @@ impl App {
             }
             SettingsMessage::Updates(update_msg) => {
                 match update_msg {
-                    UpdateSettingsMessage::EnabledToggled(enabled) => {
-                        self.state.settings.updates.enabled = enabled;
-                        tracing::info!("Update checking enabled: {}", enabled);
-                    }
                     UpdateSettingsMessage::CheckOnStartupToggled(enabled) => {
                         self.state.settings.updates.check_on_startup = enabled;
                         tracing::info!("Check on startup: {}", enabled);
@@ -180,6 +185,7 @@ impl App {
     }
 
     /// Handle third-party licenses dialog messages.
+    #[allow(clippy::needless_pass_by_value)]
     fn handle_third_party_message(&mut self, msg: ThirdPartyMessage) -> Task<Message> {
         match msg {
             ThirdPartyMessage::Open => Task::none(),
@@ -198,32 +204,25 @@ impl App {
 
     /// Handle update dialog messages.
     ///
-    /// This handler processes user actions and async operation results.
+    /// This handler manages the update dialog state machine with the following states:
+    /// - Checking: Initial state when dialog opens, check runs automatically
+    /// - Available: Update found with collapsible changelog
+    /// - UpToDate: No update available
+    /// - Downloading: Download in progress with stats
+    /// - Verifying: Verification in progress
+    /// - ReadyToInstall: Second confirmation before install
+    /// - Installing: Installation in progress
+    /// - Complete: Restart required
+    /// - Error: With retry context
     fn handle_update_message(&mut self, msg: UpdateMessage) -> Task<Message> {
         match msg {
-            // -------------------------------------------------------------------------
+            // =================================================================
             // User Actions
-            // -------------------------------------------------------------------------
+            // =================================================================
             UpdateMessage::Open => {
-                // Window opening is handled by the app's view routing
-                Task::none()
-            }
-
-            UpdateMessage::Close => {
-                // Close dialog window in multi-window mode
-                if let Some((id, _)) = self.state.dialog_windows.update.take() {
-                    return window::close(id);
-                }
-                Task::none()
-            }
-
-            UpdateMessage::CheckForUpdates => {
-                // Update state to Checking
-                if let Some((id, _)) = self.state.dialog_windows.update {
-                    self.state.dialog_windows.update = Some((id, UpdateState::Checking));
-                }
-
-                // Spawn async check using Task::perform
+                // Dialog opens in Checking state and triggers check automatically
+                // State is set when window is opened via DialogWindowOpened message
+                // Here we just start the check task
                 let settings = self.state.settings.updates.clone();
                 Task::perform(
                     async move {
@@ -232,45 +231,47 @@ impl App {
                             .map_err(|e| e.user_message().to_string())
                     },
                     |result| {
-                        Message::Dialog(DialogMessage::Update(UpdateMessage::CheckComplete(result)))
+                        Message::Dialog(DialogMessage::Update(UpdateMessage::CheckResult(result)))
                     },
                 )
             }
 
+            UpdateMessage::Close => {
+                if let Some((id, _)) = self.state.dialog_windows.update.take() {
+                    return window::close(id);
+                }
+                Task::none()
+            }
+
             UpdateMessage::ConfirmDownload => {
                 // Get update info from current state
-                let info = if let Some((_, UpdateState::Available { info, .. })) =
-                    &self.state.dialog_windows.update
-                {
-                    info.clone()
-                } else if let Some((_, UpdateState::VerificationFailed { info, .. })) =
-                    &self.state.dialog_windows.update
-                {
-                    // Retry download after verification failure
-                    info.clone()
-                } else {
-                    return Task::none();
+                let info = match &self.state.dialog_windows.update {
+                    Some((_, UpdateState::Available { info, .. })) => info.clone(),
+                    Some((
+                        _,
+                        UpdateState::Error {
+                            retry_context: Some(RetryContext::Download { info }),
+                            ..
+                        },
+                    )) => info.clone(),
+                    _ => return Task::none(),
                 };
 
-                // Update state to Downloading with initial progress
+                // Update state to Downloading
                 if let Some((id, _)) = self.state.dialog_windows.update {
                     self.state.dialog_windows.update = Some((
                         id,
                         UpdateState::Downloading {
                             info: info.clone(),
-                            progress: 0.0,
-                            downloaded_bytes: 0,
-                            total_bytes: info.asset.size,
-                            speed: 0,
+                            stats: DownloadStats::new(info.asset.size),
                         },
                     ));
                 }
 
-                // Use Task::run() for streaming download with progress
+                // Stream download with progress
                 let url = info.asset.download_url.clone();
                 let total = info.asset.size;
 
-                // Map stream items to messages (url is passed as owned String)
                 let stream = tss_updater::download_with_data(url, total).map(
                     |item: Result<tss_updater::DownloadStreamItem, tss_updater::UpdateError>| {
                         match item {
@@ -295,27 +296,29 @@ impl App {
             }
 
             UpdateMessage::ConfirmInstall => {
-                // Get data from current state
-                let (info, data) = if let Some((
-                    _,
-                    UpdateState::ReadyToInstall {
-                        info,
-                        data,
-                        verified: _,
-                    },
-                )) = &self.state.dialog_windows.update
-                {
-                    (info.clone(), data.clone())
-                } else {
-                    return Task::none();
+                // Get data from current state (Arc::clone is cheap for large binaries)
+                let (info, data) = match &self.state.dialog_windows.update {
+                    Some((_, UpdateState::ReadyToInstall { info, data, .. })) => {
+                        (info.clone(), Arc::clone(data))
+                    }
+                    Some((
+                        _,
+                        UpdateState::Error {
+                            retry_context: Some(RetryContext::Install { info, data }),
+                            ..
+                        },
+                    )) => (info.clone(), Arc::clone(data)),
+                    _ => return Task::none(),
                 };
 
                 // Update state to Installing
                 if let Some((id, _)) = self.state.dialog_windows.update {
-                    self.state.dialog_windows.update = Some((id, UpdateState::Installing));
+                    self.state.dialog_windows.update =
+                        Some((id, UpdateState::Installing { info: info.clone() }));
                 }
 
                 // Spawn async installation
+                let version = info.version.clone();
                 Task::perform(
                     async move {
                         tokio::task::spawn_blocking(move || {
@@ -323,33 +326,43 @@ impl App {
                         })
                         .await
                         .map_err(|e| format!("Installation task failed: {}", e))?
+                        .map(|_| version)
                         .map_err(|e| e.user_message().to_string())
                     },
                     |result| {
-                        Message::Dialog(DialogMessage::Update(UpdateMessage::InstallComplete(
-                            result,
-                        )))
+                        Message::Dialog(DialogMessage::Update(UpdateMessage::InstallResult(result)))
                     },
                 )
             }
 
-            UpdateMessage::Restart => {
-                // Attempt to restart the application
+            UpdateMessage::RestartNow => {
                 if let Err(e) = tss_updater::restart() {
                     tracing::error!("Failed to restart application: {}", e);
                     if let Some((id, _)) = self.state.dialog_windows.update {
-                        self.state.dialog_windows.update =
-                            Some((id, UpdateState::Error(format!("Failed to restart: {}", e))));
+                        self.state.dialog_windows.update = Some((
+                            id,
+                            UpdateState::Error {
+                                error: UpdateErrorInfo::from_message(format!(
+                                    "Failed to restart: {}",
+                                    e
+                                )),
+                                retry_context: None,
+                            },
+                        ));
                     }
                 }
                 Task::none()
             }
 
-            UpdateMessage::SkipVersion(version) => {
-                // Save skipped version
-                self.state.settings.updates.skip_version(&version);
-                let _ = self.state.settings.save();
-                tracing::info!("Skipped version: {}", version);
+            UpdateMessage::SkipVersion => {
+                // Get version from current state and skip it
+                if let Some((_, UpdateState::Available { info, .. })) =
+                    &self.state.dialog_windows.update
+                {
+                    self.state.settings.updates.skip_version(&info.version);
+                    let _ = self.state.settings.save();
+                    tracing::info!("Skipped version: {}", info.version);
+                }
 
                 // Close dialog
                 if let Some((id, _)) = self.state.dialog_windows.update.take() {
@@ -358,32 +371,98 @@ impl App {
                 Task::none()
             }
 
-            UpdateMessage::RemindLater => {
-                // Just close the dialog
-                if let Some((id, _)) = self.state.dialog_windows.update.take() {
-                    return window::close(id);
+            UpdateMessage::ToggleChangelog => {
+                // Toggle changelog expanded state
+                if let Some((
+                    id,
+                    UpdateState::Available {
+                        info,
+                        changelog_items,
+                        changelog_expanded,
+                    },
+                )) = self.state.dialog_windows.update.take()
+                {
+                    self.state.dialog_windows.update = Some((
+                        id,
+                        UpdateState::Available {
+                            info,
+                            changelog_items,
+                            changelog_expanded: !changelog_expanded,
+                        },
+                    ));
                 }
                 Task::none()
             }
 
-            UpdateMessage::Cancel => {
-                // Cancel current operation and close dialog
-                if let Some((id, _)) = self.state.dialog_windows.update.take() {
-                    return window::close(id);
+            UpdateMessage::Retry => {
+                // Get retry context from current error state
+                let retry_context = match &self.state.dialog_windows.update {
+                    Some((_, UpdateState::Error { retry_context, .. })) => retry_context.clone(),
+                    _ => return Task::none(),
+                };
+
+                match retry_context {
+                    Some(RetryContext::Check) => {
+                        // Retry the check
+                        if let Some((id, _)) = self.state.dialog_windows.update {
+                            self.state.dialog_windows.update = Some((id, UpdateState::Checking));
+                        }
+
+                        let settings = self.state.settings.updates.clone();
+                        Task::perform(
+                            async move {
+                                tss_updater::check_for_update(&settings)
+                                    .await
+                                    .map_err(|e| e.user_message().to_string())
+                            },
+                            |result| {
+                                Message::Dialog(DialogMessage::Update(UpdateMessage::CheckResult(
+                                    result,
+                                )))
+                            },
+                        )
+                    }
+                    Some(RetryContext::Download { info }) => {
+                        // Retry download - dispatch to ConfirmDownload
+                        if let Some((id, _)) = self.state.dialog_windows.update {
+                            self.state.dialog_windows.update = Some((
+                                id,
+                                UpdateState::Available {
+                                    changelog_items: parse_changelog(&info.changelog),
+                                    info,
+                                    changelog_expanded: false,
+                                },
+                            ));
+                        }
+                        self.handle_update_message(UpdateMessage::ConfirmDownload)
+                    }
+                    Some(RetryContext::Install { info, data }) => {
+                        // Retry install - dispatch to ConfirmInstall
+                        if let Some((id, _)) = self.state.dialog_windows.update {
+                            self.state.dialog_windows.update = Some((
+                                id,
+                                UpdateState::ReadyToInstall {
+                                    info,
+                                    data,
+                                    verified: false,
+                                },
+                            ));
+                        }
+                        self.handle_update_message(UpdateMessage::ConfirmInstall)
+                    }
+                    None => Task::none(),
                 }
-                Task::none()
             }
 
-            // -------------------------------------------------------------------------
+            // =================================================================
             // Async Operation Results
-            // -------------------------------------------------------------------------
-            UpdateMessage::CheckComplete(result) => {
-                // Record that we checked for updates
+            // =================================================================
+            UpdateMessage::CheckResult(result) => {
+                // Record that we checked
                 self.state.settings.updates.record_check();
 
                 match result {
                     Ok(Some(info)) => {
-                        // Parse changelog into markdown items
                         let changelog_items: Vec<markdown::Item> =
                             markdown::parse(&info.changelog).collect();
 
@@ -393,6 +472,7 @@ impl App {
                                 UpdateState::Available {
                                     info,
                                     changelog_items,
+                                    changelog_expanded: false,
                                 },
                             ));
                         }
@@ -405,7 +485,13 @@ impl App {
                     Err(e) => {
                         tracing::error!("Update check failed: {}", e);
                         if let Some((id, _)) = self.state.dialog_windows.update {
-                            self.state.dialog_windows.update = Some((id, UpdateState::Error(e)));
+                            self.state.dialog_windows.update = Some((
+                                id,
+                                UpdateState::Error {
+                                    error: UpdateErrorInfo::from_message(e),
+                                    retry_context: Some(RetryContext::Check),
+                                },
+                            ));
                         }
                     }
                 }
@@ -413,20 +499,18 @@ impl App {
             }
 
             UpdateMessage::DownloadProgress(progress) => {
-                // Update download progress in state
-                if let Some((id, UpdateState::Downloading { info, .. })) =
-                    &self.state.dialog_windows.update
+                // Update download stats
+                if let Some((id, UpdateState::Downloading { info, stats })) =
+                    &mut self.state.dialog_windows.update
                 {
-                    self.state.dialog_windows.update = Some((
-                        *id,
-                        UpdateState::Downloading {
-                            info: info.clone(),
-                            progress: progress.fraction(),
-                            downloaded_bytes: progress.downloaded,
-                            total_bytes: progress.total,
-                            speed: progress.speed,
-                        },
-                    ));
+                    stats.update(progress.downloaded, progress.speed);
+                    // Clone to update state properly
+                    let id = *id;
+                    let info = info.clone();
+                    let mut stats = stats.clone();
+                    stats.update(progress.downloaded, progress.speed);
+                    self.state.dialog_windows.update =
+                        Some((id, UpdateState::Downloading { info, stats }));
                 }
                 Task::none()
             }
@@ -435,12 +519,9 @@ impl App {
                 match result {
                     Ok(download_result) => {
                         // Get info from current state
-                        let info = if let Some((_, UpdateState::Downloading { info, .. })) =
-                            &self.state.dialog_windows.update
-                        {
-                            info.clone()
-                        } else {
-                            return Task::none();
+                        let info = match &self.state.dialog_windows.update {
+                            Some((_, UpdateState::Downloading { info, .. })) => info.clone(),
+                            _ => return Task::none(),
                         };
 
                         // Update state to Verifying
@@ -459,20 +540,17 @@ impl App {
                                     match expected_digest {
                                         Some(expected) => {
                                             match tss_updater::verify_sha256(&data, &expected) {
-                                                Ok(hash) => Ok((
-                                                    VerifyResult {
-                                                        verified: true,
-                                                        sha256: Some(hash),
-                                                    },
+                                                Ok(_) => Ok(VerifyOutcome {
+                                                    verified: true,
                                                     data,
-                                                )),
+                                                }),
                                                 Err(
                                                     tss_updater::UpdateError::ChecksumMismatch {
                                                         expected,
                                                         actual,
                                                     },
                                                 ) => Err(format!(
-                                                    "Checksum mismatch: expected {}, got {}",
+                                                    "Checksum mismatch: expected {}..., got {}...",
                                                     &expected[..8.min(expected.len())],
                                                     &actual[..8.min(actual.len())]
                                                 )),
@@ -481,13 +559,10 @@ impl App {
                                         }
                                         None => {
                                             // No digest available, skip verification
-                                            Ok((
-                                                VerifyResult {
-                                                    verified: false,
-                                                    sha256: None,
-                                                },
+                                            Ok(VerifyOutcome {
+                                                verified: false,
                                                 data,
-                                            ))
+                                            })
                                         }
                                     }
                                 })
@@ -495,56 +570,67 @@ impl App {
                                 .map_err(|e| format!("Verification task failed: {}", e))?
                             },
                             move |result| match result {
-                                Ok((verify_result, data)) => Message::UpdateReadyToInstall {
-                                    info,
-                                    data,
-                                    verified: verify_result.verified,
-                                },
+                                Ok(outcome) => Message::Dialog(DialogMessage::Update(
+                                    UpdateMessage::VerifyResult(Ok(outcome)),
+                                )),
                                 Err(e) => Message::Dialog(DialogMessage::Update(
-                                    UpdateMessage::VerifyComplete(Err(e)),
+                                    UpdateMessage::VerifyResult(Err(e)),
                                 )),
                             },
                         )
                     }
                     Err(e) => {
                         tracing::error!("Download failed: {}", e);
+
+                        // Get info for retry
+                        let info = match &self.state.dialog_windows.update {
+                            Some((_, UpdateState::Downloading { info, .. })) => Some(info.clone()),
+                            _ => None,
+                        };
+
                         if let Some((id, _)) = self.state.dialog_windows.update {
-                            self.state.dialog_windows.update = Some((id, UpdateState::Error(e)));
+                            self.state.dialog_windows.update = Some((
+                                id,
+                                UpdateState::Error {
+                                    error: UpdateErrorInfo::from_message(e),
+                                    retry_context: info.map(|i| RetryContext::Download { info: i }),
+                                },
+                            ));
                         }
                         Task::none()
                     }
                 }
             }
 
-            UpdateMessage::VerifyComplete(result) => {
+            UpdateMessage::VerifyResult(result) => {
+                // Get info from Verifying state
+                let info = match &self.state.dialog_windows.update {
+                    Some((_, UpdateState::Verifying { info })) => info.clone(),
+                    _ => return Task::none(),
+                };
+
                 match result {
-                    Ok(_verify_result) => {
-                        // This path is handled by Message::UpdateReadyToInstall
-                        tracing::debug!("Verification complete (handled elsewhere)");
-                    }
-                    Err(e) => {
-                        tracing::error!("Verification failed: {}", e);
-
-                        // Get info for retry option
-                        let info = if let Some((_, UpdateState::Verifying { info })) =
-                            &self.state.dialog_windows.update
-                        {
-                            info.clone()
-                        } else {
-                            if let Some((id, _)) = self.state.dialog_windows.update {
-                                self.state.dialog_windows.update =
-                                    Some((id, UpdateState::Error(e)));
-                            }
-                            return Task::none();
-                        };
-
+                    Ok(outcome) => {
+                        // Move to ReadyToInstall (wrap data in Arc for cheap cloning)
                         if let Some((id, _)) = self.state.dialog_windows.update {
                             self.state.dialog_windows.update = Some((
                                 id,
-                                UpdateState::VerificationFailed {
+                                UpdateState::ReadyToInstall {
                                     info,
-                                    expected: "unknown".to_string(),
-                                    actual: "unknown".to_string(),
+                                    data: Arc::new(outcome.data),
+                                    verified: outcome.verified,
+                                },
+                            ));
+                        }
+                    }
+                    Err(e) => {
+                        tracing::error!("Verification failed: {}", e);
+                        if let Some((id, _)) = self.state.dialog_windows.update {
+                            self.state.dialog_windows.update = Some((
+                                id,
+                                UpdateState::Error {
+                                    error: UpdateErrorInfo::from_message(e),
+                                    retry_context: Some(RetryContext::Download { info }),
                                 },
                             ));
                         }
@@ -553,28 +639,36 @@ impl App {
                 Task::none()
             }
 
-            UpdateMessage::InstallComplete(result) => {
+            UpdateMessage::InstallResult(result) => {
                 match result {
-                    Ok(()) => {
-                        // Get version from previous state
-                        let version = if let Some((_, UpdateState::Installing)) =
-                            &self.state.dialog_windows.update
-                        {
-                            // We don't have version here, use a generic message
-                            "new version".to_string()
-                        } else {
-                            "new version".to_string()
-                        };
-
+                    Ok(version) => {
                         if let Some((id, _)) = self.state.dialog_windows.update {
                             self.state.dialog_windows.update =
-                                Some((id, UpdateState::InstallComplete { version }));
+                                Some((id, UpdateState::Complete { version }));
                         }
                     }
                     Err(e) => {
                         tracing::error!("Installation failed: {}", e);
+
+                        // Get info for retry if available (data is lost at this point)
+                        let retry_context = match &self.state.dialog_windows.update {
+                            Some((_, UpdateState::Installing { info })) => {
+                                Some(RetryContext::Install {
+                                    info: info.clone(),
+                                    data: Arc::new(vec![]), // Data is not available after install attempt
+                                })
+                            }
+                            _ => None,
+                        };
+
                         if let Some((id, _)) = self.state.dialog_windows.update {
-                            self.state.dialog_windows.update = Some((id, UpdateState::Error(e)));
+                            self.state.dialog_windows.update = Some((
+                                id,
+                                UpdateState::Error {
+                                    error: UpdateErrorInfo::from_message(e),
+                                    retry_context,
+                                },
+                            ));
                         }
                     }
                 }
@@ -587,7 +681,7 @@ impl App {
     pub fn set_update_ready_to_install(
         &mut self,
         info: tss_updater::UpdateInfo,
-        data: Vec<u8>,
+        data: Arc<Vec<u8>>,
         verified: bool,
     ) {
         if let Some((id, _)) = self.state.dialog_windows.update {
