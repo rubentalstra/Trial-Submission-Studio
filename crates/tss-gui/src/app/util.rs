@@ -35,6 +35,7 @@ pub enum StudyLoadInput {
     #[cfg_attr(target_os = "macos", allow(dead_code))]
     Path(PathBuf),
     /// Use preloaded CSV data (used on macOS)
+    #[cfg_attr(not(target_os = "macos"), allow(dead_code))]
     Preloaded {
         folder: PathBuf,
         csv_files: Vec<PreloadedCsvFile>,
@@ -45,6 +46,7 @@ pub enum StudyLoadInput {
 ///
 /// This is used on macOS to read files on the main thread where security-scoped
 /// access from the file dialog is available.
+#[cfg(target_os = "macos")]
 pub fn read_csv_files_sync(
     folder: &PathBuf,
     header_rows: usize,

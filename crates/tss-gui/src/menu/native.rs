@@ -52,6 +52,7 @@ thread_local! {
 /// Call `menu.init_for_nsapp()` after the application event loop has started.
 ///
 /// Returns the menu. Use `menu_event_receiver()` to get menu events.
+#[cfg(target_os = "macos")]
 pub fn create_menu() -> Menu {
     let menu = Menu::new();
 
@@ -145,7 +146,8 @@ fn create_macos_app_menu(menu: &Menu) {
     menu.append(&app_menu).expect("Failed to add app menu");
 }
 
-/// Create the File menu (all platforms).
+/// Create the File menu.
+#[cfg(target_os = "macos")]
 fn create_file_menu(menu: &Menu) {
     let file_menu = Submenu::new("File", true);
 
@@ -216,7 +218,8 @@ fn create_file_menu(menu: &Menu) {
     menu.append(&file_menu).expect("Failed to add File menu");
 }
 
-/// Create the Edit menu (all platforms).
+/// Create the Edit menu.
+#[cfg(target_os = "macos")]
 fn create_edit_menu(menu: &Menu) {
     let edit_menu = Submenu::new("Edit", true);
 
@@ -312,7 +315,8 @@ pub fn create_window_submenu() -> Option<Submenu> {
     build_window_submenu()
 }
 
-/// Create the Help menu (all platforms).
+/// Create the Help menu.
+#[cfg(target_os = "macos")]
 fn create_help_menu(menu: &Menu) {
     let help_menu = Submenu::new("Help", true);
 
