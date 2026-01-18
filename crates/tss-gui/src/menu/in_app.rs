@@ -165,7 +165,7 @@ fn view_file_dropdown<'a>(has_study: bool, app_state: &'a AppState) -> Element<'
     // Generate recent study items
     let recent_studies = app_state.settings.general.recent_sorted();
     let mut dropdown_items: Vec<Element<'a, Message>> =
-        vec![open_item.into(), close_item.into(), view_separator()];
+        vec![open_item, close_item, view_separator()];
 
     // Add "Recent Studies" label
     dropdown_items.push(view_menu_label("Recent Studies"));
@@ -217,9 +217,9 @@ fn view_file_dropdown<'a>(has_study: bool, app_state: &'a AppState) -> Element<'
         Some(Message::Menu(MenuMessage::Quit)),
     );
 
-    dropdown_items.push(settings_item.into());
+    dropdown_items.push(settings_item);
     dropdown_items.push(view_separator());
-    dropdown_items.push(exit_item.into());
+    dropdown_items.push(exit_item);
 
     let dropdown = column(dropdown_items).width(220);
 
