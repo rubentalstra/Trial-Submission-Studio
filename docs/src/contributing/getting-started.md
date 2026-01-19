@@ -61,12 +61,12 @@ Familiarize yourself with:
 
 ```mermaid
 flowchart LR
-    A[1. Find Issue] --> B[2. Comment]
-    B --> C[3. Fork]
-    C --> D[4. Branch]
-    D --> E[5. Code]
-    E --> F[6. Test]
-    F --> G[7. PR]
+    A["Find Issue"] --> B["Comment"]
+    B --> C["Fork"]
+    C --> D["Branch"]
+    D --> E["Code"]
+    E --> F["Test"]
+    F --> G["PR"]
 
     style A fill:#4a90d9,color:#fff
     style G fill:#50c878,color:#fff

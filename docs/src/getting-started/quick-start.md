@@ -8,9 +8,9 @@ This guide walks you through the basic workflow:
 
 ```mermaid
 flowchart LR
-    A[1. Import CSV] --> B[2. Map Columns]
-    B --> C[3. Validate]
-    C --> D[4. Export]
+    A["Import CSV"] --> B["Map Columns"]
+    B --> C["Validate"]
+    C --> D["Export"]
 
     style A fill:#4a90d9,color:#fff
     style D fill:#50c878,color:#fff
