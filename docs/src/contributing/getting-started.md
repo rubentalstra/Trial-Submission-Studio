@@ -59,8 +59,17 @@ Familiarize yourself with:
 
 ### Overview
 
-```
-1. Find Issue → 2. Comment → 3. Fork → 4. Branch → 5. Code → 6. Test → 7. PR
+```mermaid
+flowchart LR
+    A[1. Find Issue] --> B[2. Comment]
+    B --> C[3. Fork]
+    C --> D[4. Branch]
+    D --> E[5. Code]
+    E --> F[6. Test]
+    F --> G[7. PR]
+
+    style A fill:#4a90d9,color:#fff
+    style G fill:#50c878,color:#fff
 ```
 
 ### Detailed Steps

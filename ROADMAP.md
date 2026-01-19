@@ -54,7 +54,7 @@ Features that have been implemented:
 - [x] CSV ingestion with schema detection
 - [x] Fuzzy column mapping engine
 - [x] Controlled Terminology validation
-- [x] Desktop GUI (egui/eframe)
+- [x] Desktop GUI (Iced 0.14.0)
 - [x] SDTM-IG v3.4 standards embedded
 - [x] Controlled Terminology (2024-2025)
 

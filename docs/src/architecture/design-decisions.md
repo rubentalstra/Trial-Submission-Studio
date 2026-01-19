@@ -23,26 +23,53 @@ Key architectural decisions and their rationale.
 | C++      | Performance              | Memory safety, complexity    |
 | Go       | Simple, fast compilation | Less expressive types        |
 
-## Why egui for GUI?
+## Why Iced for GUI?
 
-### Chosen: egui/eframe
+### Chosen: Iced 0.14.0
 
 **Rationale**:
 
-- **Immediate mode** - Simple mental model
-- **Pure Rust** - No FFI complexity
+- **Elm architecture** - Predictable state management with unidirectional data flow
+- **Pure Rust** - No FFI complexity, native performance
 - **Cross-platform** - macOS, Windows, Linux
-- **Lightweight** - Small binary size
-- **Fast iteration** - Easy to prototype
+- **Type-safe messages** - Compile-time guarantees for all user interactions
+- **Async-first** - Built-in `Task` system for background operations
+- **Multi-window** - Native support for dialog windows
+
+### Architecture Benefits
+
+```mermaid
+flowchart LR
+    subgraph "Elm Architecture"
+        View["View<br/>(render UI)"]
+        Message["Message<br/>(user action)"]
+        Update["Update<br/>(handle message)"]
+        State["State<br/>(app data)"]
+    end
+
+    View --> Message
+    Message --> Update
+    Update --> State
+    State --> View
+
+    style View fill:#4a90d9,color:#fff
+    style State fill:#50c878,color:#fff
+```
+
+The Elm architecture ensures:
+- State is the **single source of truth**
+- All state changes flow through `update()`
+- Views are **pure functions** of state
+- Easy debugging and testing
 
 ### Alternatives Considered
 
-| Framework | Pros               | Cons                         |
-|-----------|--------------------|------------------------------|
-| Tauri     | Web tech, flexible | Bundle size, two languages   |
-| GTK-rs    | Native look        | Platform differences         |
-| Qt        | Mature, rich       | License complexity, bindings |
-| Iced      | Elm-like           | Less mature                  |
+| Framework | Pros | Cons |
+|-----------|------|------|
+| egui | Simple immediate mode, rapid prototyping | Harder state management at scale, no multi-window |
+| Tauri | Web tech, flexible | Bundle size, two languages (Rust + JS) |
+| GTK-rs | Native look | Platform differences, complex bindings |
+| Qt | Mature, rich | License complexity, C++ bindings |
 
 ## Why Polars for Data?
 
@@ -95,12 +122,14 @@ Key architectural decisions and their rationale.
 
 ### Crate Boundaries
 
-| Boundary      | Principle                                   |
-|---------------|---------------------------------------------|
-| tss-model     | Core types, no dependencies on other crates |
-| tss-standards | Pure data loading, no transformation logic  |
-| tss-validate  | Rules only, no I/O                          |
-| xport         | XPT format only, no CDISC logic             |
+| Crate | Principle |
+|-------|-----------|
+| tss-gui | UI only, delegates all processing to other crates |
+| tss-submit | Core pipeline (map, normalize, validate, export) |
+| tss-ingest | CSV parsing only, no transformation logic |
+| tss-standards | Pure data loading, no transformation logic |
+| tss-updater | Update mechanism, no UI dependencies |
+| tss-updater-helper | macOS-only binary, minimal dependencies |
 
 ## Data Processing Pipeline
 

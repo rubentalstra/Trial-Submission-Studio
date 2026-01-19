@@ -98,5 +98,5 @@ Trial Submission Studio is open source software licensed under the
 ---
 
 <div align="center">
-  <sub>Built with Rust and egui</sub>
+  <sub>Built with Rust and Iced</sub>
 </div>

@@ -73,9 +73,9 @@ git push origin feature/my-feature
 Use same format as commits:
 
 ```
-feat(validate): add USUBJID cross-domain validation
-fix(xpt): correct numeric precision for large values
-docs: add API documentation for tss-map
+feat(submit): add USUBJID cross-domain validation
+fix(export): correct numeric precision for large values
+docs: add API documentation for tss-submit
 ```
 
 ### PR Description Template

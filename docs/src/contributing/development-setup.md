@@ -112,7 +112,7 @@ cargo run --package tss-gui
 cargo test
 
 # Specific crate
-cargo test --package tss-output
+cargo test --package tss-submit
 
 # With output
 cargo test -- --nocapture
@@ -158,12 +158,15 @@ cargo clippy -- -D warnings
 trial-submission-studio/
 ├── Cargo.toml              # Workspace config
 ├── crates/                 # All crates
-│   ├── tss-gui/           # Main application
-│   ├── tss-output/        # Multi-format export (uses xportrs)
-│   └── ...                # Other crates
-├── standards/             # Embedded CDISC data
-├── mockdata/              # Test data
-└── docs/                  # Documentation
+│   ├── tss-gui/            # Main application (Iced 0.14.0)
+│   ├── tss-submit/         # Mapping, normalization, validation, export
+│   ├── tss-ingest/         # CSV loading
+│   ├── tss-standards/      # CDISC standards loader
+│   ├── tss-updater/        # Auto-update functionality
+│   └── tss-updater-helper/ # macOS update helper
+├── standards/              # Embedded CDISC data
+├── mockdata/               # Test data
+└── docs/                   # Documentation
 ```
 
 ## Development Workflow

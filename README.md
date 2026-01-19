@@ -113,18 +113,15 @@ cargo run --package tss-gui
 
 ## Architecture
 
-9-crate Rust workspace designed for modularity:
+6-crate Rust workspace designed for modularity:
 
 ```
-tss-gui         → Desktop application (egui/eframe)
-tss-validate    → Conformance validation
-tss-map         → Column mapping engine
-tss-normalization   → Data transformations
-tss-ingest      → CSV loading
-tss-output      → Multi-format export (uses xportrs)
-tss-standards   → CDISC standards loader
-tss-model       → Core types + Polars utilities
-tss-updater     → Auto-update functionality
+tss-gui            → Desktop application (Iced 0.14.0)
+tss-submit         → Mapping, normalization, validation, export
+tss-ingest         → CSV loading
+tss-standards      → CDISC standards loader
+tss-updater        → Auto-update functionality
+tss-updater-helper → macOS update helper
 ```
 
 ## Contributing
@@ -141,7 +138,7 @@ Built with:
 
 - [CDISC](https://www.cdisc.org/) standards
 - [Polars](https://pola.rs/) DataFrame library
-- [egui](https://github.com/emilk/egui) GUI framework
+- [Iced](https://iced.rs/) GUI framework
 - [RapidFuzz](https://github.com/rapidfuzz/rapidfuzz-rs) string matching
 
 ## License

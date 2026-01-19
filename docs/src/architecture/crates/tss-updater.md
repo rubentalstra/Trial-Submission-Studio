@@ -22,7 +22,6 @@ semver = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sha2 = "0.10"
-tss-common = { path = "../tss-common" }
 ```
 
 ## Architecture
@@ -130,9 +129,14 @@ return Err(UpdateError::ChecksumMismatch);
 
 ### macOS
 
-1. Mount/extract new app bundle
-2. Replace existing application
-3. Restart application
+Uses `tss-updater-helper` for atomic bundle swap:
+
+1. Download new app bundle to temp directory
+2. Spawn `tss-updater-helper` with config
+3. Main app exits
+4. Helper performs atomic swap and relaunches
+
+See [tss-updater-helper](tss-updater-helper.md) for details.
 
 ### Windows
 
@@ -214,3 +218,4 @@ cargo test --package tss-updater
 
 - [Architecture Overview](../overview.md) - System design
 - [tss-gui](tss-gui.md) - UI integration
+- [tss-updater-helper](tss-updater-helper.md) - macOS update helper

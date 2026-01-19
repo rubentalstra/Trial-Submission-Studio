@@ -18,9 +18,9 @@ CSV ingestion and schema detection crate.
 ```toml
 [dependencies]
 csv = "1.3"
-polars = { version = "0.44", features = ["lazy", "csv"] }
+polars = { version = "0.46", features = ["lazy", "csv"] }
 encoding_rs = "0.8"
-tss-model = { path = "../tss-model" }
+tss-standards = { path = "../tss-standards" }
 ```
 
 ## Architecture
@@ -156,4 +156,4 @@ Located in `mockdata/`:
 ## See Also
 
 - [Importing Data](../../user-guide/importing-data.md) - User guide
-- [tss-normalization](tss-normalization.md) - Data transformation
+- [tss-submit](tss-submit.md) - Data transformation and validation
