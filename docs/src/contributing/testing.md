@@ -38,37 +38,6 @@ fn validate_imported_data() {
 }
 ```
 
-### Snapshot Tests
-
-Use `insta` for output stability:
-
-```rust
-use insta::assert_snapshot;
-
-#[test]
-fn export_produces_expected_output() {
-    let output = export_to_string(&data);
-    assert_snapshot!(output);
-}
-```
-
-### Property Tests
-
-Use `proptest` for edge cases:
-
-```rust
-use proptest::prelude::*;
-
-proptest! {
-    #[test]
-    fn similarity_is_symmetric(a in ".*", b in ".*") {
-        let ab = calculate_similarity(&a, &b);
-        let ba = calculate_similarity(&b, &a);
-        assert!((ab - ba).abs() < 0.001);
-    }
-}
-```
-
 ## Running Tests
 
 ### All Tests
@@ -247,27 +216,6 @@ fn error_contains_helpful_message() {
     let err = process_file("bad.csv").unwrap_err();
     assert!(err.to_string().contains("parse error"));
 }
-```
-
-## Snapshot Testing
-
-### With Insta
-
-```rust
-use insta::assert_snapshot;
-
-#[test]
-fn xpt_header_format() {
-    let header = generate_header(&metadata);
-    assert_snapshot!(header);
-}
-```
-
-### Updating Snapshots
-
-```bash
-# Review and update snapshots
-cargo insta review
 ```
 
 ## CI Testing

@@ -16,7 +16,6 @@ chrono.workspace = true
 polars.workspace = true
 quick-xml.workspace = true
 serde = { workspace = true, features = ["derive"] }
-serde_json.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 xportrs.workspace = true
@@ -27,7 +26,3 @@ regex = "1.12.2"
 
 # Path dependencies (alphabetical)
 tss-standards = { path = "../tss-standards" }
-
-[dev-dependencies]
-insta.workspace = true
-tempfile.workspace = true
