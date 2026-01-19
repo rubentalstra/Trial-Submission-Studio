@@ -6,6 +6,16 @@ Get up and running with Trial Submission Studio in 5 minutes.
 
 This guide walks you through the basic workflow:
 
+```mermaid
+flowchart LR
+    A[1. Import CSV] --> B[2. Map Columns]
+    B --> C[3. Validate]
+    C --> D[4. Export]
+
+    style A fill:#4a90d9,color:#fff
+    style D fill:#50c878,color:#fff
+```
+
 1. **Import** your source CSV data
 2. **Map** columns to SDTM variables
 3. **Validate** against CDISC standards

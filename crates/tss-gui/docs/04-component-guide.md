@@ -1204,21 +1204,21 @@ use iced_fonts::lucide;
 
 // Basic usage
 EmptyState::new(
-    lucide::folder_open().size(48).color(GRAY_400),
-    "No Study Loaded"
+lucide::folder_open().size(48).color(GRAY_400),
+"No Study Loaded"
 )
-    .view()
+.view()
 
 // Full featured
 EmptyState::new(
-    lucide::shield_check().size(48).color(GRAY_400),
-    "No Validation Results"
+lucide::shield_check().size(48).color(GRAY_400),
+"No Validation Results"
 )
-    .description("Click 'Re-validate' to check for CDISC conformance issues")
-    .action("Run Validation", Message::RunValidation)
-    .height(300.0)      // Fixed height
-    .centered()         // Center in container
-    .view()
+.description("Click 'Re-validate' to check for CDISC conformance issues")
+.action("Run Validation", Message::RunValidation)
+.height(300.0)      // Fixed height
+.centered()         // Center in container
+.view()
 ```
 
 #### LoadingState
@@ -1229,9 +1229,9 @@ Spinner with loading message:
 use tss_gui::component::LoadingState;
 
 LoadingState::new("Building Preview")
-    .description("Applying mappings and normalization rules...")
-    .centered()
-    .view()
+.description("Applying mappings and normalization rules...")
+.centered()
+.view()
 ```
 
 #### ErrorState
@@ -1242,10 +1242,10 @@ Error display with optional retry:
 use tss_gui::component::ErrorState;
 
 ErrorState::new("Preview Build Failed")
-    .message(&error_string)     // Error details
-    .retry(Message::Rebuild)    // Retry button
-    .centered()
-    .view()
+.message( & error_string)     // Error details
+.retry(Message::Rebuild)    // Retry button
+.centered()
+.view()
 ```
 
 #### NoFilteredResults
@@ -1256,9 +1256,9 @@ Compact empty state for filtered lists:
 use tss_gui::component::NoFilteredResults;
 
 NoFilteredResults::new("No columns match filter")
-    .hint("Try adjusting your search or filter")
-    .height(120.0)
-    .view()
+.hint("Try adjusting your search or filter")
+.height(120.0)
+.view()
 ```
 
 ### Page Header Component
@@ -1273,12 +1273,12 @@ Standardized page header with back button, badge, and metadata:
 use tss_gui::component::PageHeader;
 
 PageHeader::new("Demographics")
-    .back(Message::BackClicked)                    // Back button
-    .badge("DM", PRIMARY_500)                      // Domain badge
-    .meta("Rows", domain.row_count().to_string()) // Key-value metadata
-    .meta("Progress", format!("{}%", progress))
-    .trailing(some_element)                        // Optional trailing element
-    .view()
+.back(Message::BackClicked)                    // Back button
+.badge("DM", PRIMARY_500)                      // Domain badge
+.meta("Rows", domain.row_count().to_string()) // Key-value metadata
+.meta("Progress", format!("{}%", progress))
+.trailing(some_element)                        // Optional trailing element
+.view()
 ```
 
 #### page_header_simple
@@ -1304,8 +1304,8 @@ use tss_gui::component::SectionCard;
 use iced_fonts::lucide;
 
 SectionCard::new("Variable Information", content)
-    .icon(lucide::info().size(14).color(GRAY_600))
-    .view()
+.icon(lucide::info().size(14).color(GRAY_600))
+.view()
 ```
 
 #### panel / status_panel
@@ -1344,7 +1344,7 @@ Located in `component/core_badge.rs`:
 
 ```rust
 use tss_gui::component::{core_badge, core_badge_if_important};
-use tss_model::sdtm::CoreDesignation;
+use tss_standards::sdtm::CoreDesignation;
 
 // Always shows the badge
 core_badge(CoreDesignation::Required)   // Red "Req"
@@ -1368,11 +1368,11 @@ use tss_gui::component::SelectableRow;
 use iced_fonts::lucide;
 
 SelectableRow::new("STUDYID", Message::VariableSelected(idx))
-    .secondary("Study Identifier")              // Subtitle
-    .leading(lucide::check().size(12))         // Leading element (icon)
-    .trailing(core_badge(CoreDesignation::Required)) // Trailing element
-    .selected(idx == state.selected_index)      // Selection state
-    .view()
+.secondary("Study Identifier")              // Subtitle
+.leading(lucide::check().size(12))         // Leading element (icon)
+.trailing(core_badge(CoreDesignation::Required)) // Trailing element
+.selected(idx == state.selected_index)      // Selection state
+.view()
 ```
 
 #### DomainListItem
@@ -1383,14 +1383,14 @@ Specialized for domain lists on home screen:
 use tss_gui::component::DomainListItem;
 
 DomainListItem::new(
-    "DM",
-    "Demographics",
-    Message::DomainClicked("DM".into())
+"DM",
+"Demographics",
+Message::DomainClicked("DM".into())
 )
-    .row_count(150)      // Number of data rows
-    .complete(true)      // Mapping complete?
-    .touched(true)       // Has been edited?
-    .view()
+.row_count(150)      // Number of data rows
+.complete(true)      // Mapping complete?
+.touched(true)       // Has been edited?
+.view()
 ```
 
 ---

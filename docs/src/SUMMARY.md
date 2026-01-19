@@ -51,15 +51,11 @@
 - [Architecture Overview](architecture/overview.md)
 - [Crate Documentation]()
     - [tss-gui](architecture/crates/tss-gui.md)
-    - [xportrs](architecture/crates/xport.md)
-    - [tss-validate](architecture/crates/tss-validate.md)
-    - [tss-map](architecture/crates/tss-map.md)
-    - [tss-normalization](architecture/crates/tss-normalization.md)
+    - [tss-submit](architecture/crates/tss-submit.md)
     - [tss-ingest](architecture/crates/tss-ingest.md)
-    - [tss-output](architecture/crates/tss-output.md)
     - [tss-standards](architecture/crates/tss-standards.md)
-    - [tss-model](architecture/crates/tss-model.md)
     - [tss-updater](architecture/crates/tss-updater.md)
+    - [tss-updater-helper](architecture/crates/tss-updater-helper.md)
 - [Design Decisions](architecture/design-decisions.md)
 
 ---

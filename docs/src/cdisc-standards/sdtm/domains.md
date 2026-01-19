@@ -2,6 +2,40 @@
 
 SDTM organizes clinical trial data into domains based on the type of observation.
 
+## Domain Classification
+
+```mermaid
+flowchart TD
+    subgraph "SDTM Domains"
+        direction TB
+        SPE[Special Purpose]
+        INT[Interventions]
+        EVT[Events]
+        FND[Findings]
+    end
+
+    SPE --> DM[DM - Demographics]
+    SPE --> TA[TA - Trial Arms]
+    SPE --> TS[TS - Trial Summary]
+
+    INT --> CM[CM - Medications]
+    INT --> EX[EX - Exposure]
+    INT --> PR[PR - Procedures]
+
+    EVT --> AE[AE - Adverse Events]
+    EVT --> MH[MH - Medical History]
+    EVT --> DS[DS - Disposition]
+
+    FND --> LB[LB - Lab Results]
+    FND --> VS[VS - Vital Signs]
+    FND --> EG[EG - ECG Results]
+
+    style SPE fill:#4a90d9,color:#fff
+    style INT fill:#50c878,color:#fff
+    style EVT fill:#f5a623,color:#fff
+    style FND fill:#9b59b6,color:#fff
+```
+
 ## Domain Categories
 
 ### Special Purpose Domains

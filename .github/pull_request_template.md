@@ -23,15 +23,12 @@ Closes #
 
 <!-- Which workspace crates does this PR modify? -->
 
-- [ ] `tss-gui`
-- [ ] `tss-validate`
-- [ ] `tss-map`
-- [ ] `tss-normalization`
-- [ ] `tss-ingest`
-- [ ] `tss-output`
-- [ ] `tss-standards`
-- [ ] `tss-model`
-- [ ] `tss-updater`
+- [ ] `tss-gui` - Desktop GUI (Iced 0.14.0)
+- [ ] `tss-submit` - Mapping, normalization, validation, export
+- [ ] `tss-ingest` - CSV discovery and parsing
+- [ ] `tss-standards` - CDISC standards loader
+- [ ] `tss-updater` - Auto-update functionality
+- [ ] `tss-updater-helper` - macOS update helper
 
 ## Breaking Changes
 

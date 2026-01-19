@@ -100,19 +100,16 @@ This file is embedded in the application and displayed in Help > Third-Party Lic
 
 ## Project Architecture
 
-Trial Submission Studio is organized as a 9-crate Rust workspace:
+Trial Submission Studio is organized as a 6-crate Rust workspace:
 
-| Crate           | Purpose                                      |
-|-----------------|----------------------------------------------|
-| `tss-gui`       | Desktop GUI application (egui/eframe)        |
-| `tss-validate`  | CDISC conformance validation                 |
-| `tss-map`       | Fuzzy column mapping engine                  |
-| `tss-normalization` | Data transformation rules                |
-| `tss-ingest`    | CSV discovery and parsing                    |
-| `tss-output`    | Multi-format export (uses xportrs)           |
-| `tss-standards` | CDISC standards loader                       |
-| `tss-model`     | Core domain types + Polars utilities         |
-| `tss-updater`   | Auto-update functionality                    |
+| Crate | Purpose |
+|-------|---------|
+| `tss-gui` | Desktop GUI application (Iced 0.14.0 with Elm architecture) |
+| `tss-submit` | Mapping, normalization, validation, and export pipeline |
+| `tss-ingest` | CSV discovery and parsing |
+| `tss-standards` | CDISC standards loader |
+| `tss-updater` | Auto-update functionality |
+| `tss-updater-helper` | macOS app bundle swap helper |
 
 ### Key Directories
 
@@ -164,7 +161,7 @@ Trial Submission Studio is organized as a 9-crate Rust workspace:
 cargo test
 
 # Specific crate
-cargo test --package tss-output
+cargo test --package tss-submit
 
 # With output
 cargo test -- --nocapture

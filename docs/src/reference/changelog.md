@@ -45,7 +45,7 @@ to [Semantic Versioning](https://semver.org/).
 
 #### User Interface
 
-- Native desktop GUI (egui/eframe)
+- Native desktop GUI (Iced 0.14.0)
 - Data preview grid
 - Mapping interface with suggestions
 - Validation results panel

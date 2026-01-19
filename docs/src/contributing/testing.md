@@ -49,7 +49,7 @@ cargo test
 ### Specific Crate
 
 ```bash
-cargo test --package tss-output
+cargo test --package tss-submit
 ```
 
 ### Specific Test
@@ -75,13 +75,13 @@ cargo test --release
 ### File Structure
 
 ```
-crates/tss-validate/
+crates/tss-submit/
 ├── src/
 │   ├── lib.rs
-│   └── rules/
-│       └── structural.rs
+│   └── validate/
+│       └── checks/
 └── tests/
-    ├── structural_rules_test.rs
+    ├── validation_test.rs
     └── data/
         └── sample_dm.csv
 ```

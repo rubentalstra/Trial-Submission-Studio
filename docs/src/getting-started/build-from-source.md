@@ -86,7 +86,7 @@ Or run the compiled binary directly:
 cargo test
 
 # Specific crate
-cargo test --package tss-output
+cargo test --package tss-submit
 
 # With output
 cargo test -- --nocapture
@@ -104,23 +104,20 @@ cargo clippy -- -D warnings
 
 ## Project Structure
 
-Trial Submission Studio is organized as a Rust workspace with multiple crates:
+Trial Submission Studio is organized as a 6-crate Rust workspace:
 
 ```
 trial-submission-studio/
 ├── crates/
-│   ├── tss-gui/          # Desktop application
-│   ├── tss-validate/     # CDISC validation
-│   ├── tss-map/          # Column mapping
-│   ├── tss-normalization/    # Data transformations
-│   ├── tss-ingest/       # CSV loading
-│   ├── tss-output/       # Multi-format export (uses xportrs)
-│   ├── tss-standards/    # CDISC standards loader
-│   ├── tss-model/        # Core types + Polars utilities
-│   └── tss-updater/      # Update mechanism
-├── standards/            # Embedded CDISC standards
-├── mockdata/             # Test datasets
-└── docs/                 # Documentation (this site)
+│   ├── tss-gui/            # Desktop application (Iced 0.14.0)
+│   ├── tss-submit/         # Mapping, normalization, validation, export
+│   ├── tss-ingest/         # CSV loading
+│   ├── tss-standards/      # CDISC standards loader
+│   ├── tss-updater/        # Auto-update functionality
+│   └── tss-updater-helper/ # macOS update helper
+├── standards/              # Embedded CDISC standards
+├── mockdata/               # Test datasets
+└── docs/                   # Documentation (this site)
 ```
 
 ## Third-Party Licenses

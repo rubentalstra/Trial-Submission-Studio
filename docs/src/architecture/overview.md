@@ -1,6 +1,6 @@
 # Architecture Overview
 
-Trial Submission Studio is built as a modular Rust workspace with 9 specialized crates.
+Trial Submission Studio is built as a modular Rust workspace with 6 specialized crates.
 
 ## Design Philosophy
 
@@ -24,15 +24,12 @@ Trial Submission Studio is built as a modular Rust workspace with 9 specialized 
 trial-submission-studio/
 ├── Cargo.toml              # Workspace configuration
 ├── crates/
-│   ├── tss-gui/            # Desktop application
-│   ├── tss-validate/       # CDISC validation
-│   ├── tss-map/            # Column mapping
-│   ├── tss-normalization/  # Data transformations
+│   ├── tss-gui/            # Desktop application (Iced 0.14.0)
+│   ├── tss-submit/         # Mapping, normalization, validation, export
 │   ├── tss-ingest/         # CSV loading
-│   ├── tss-output/         # Multi-format export (uses xportrs)
 │   ├── tss-standards/      # CDISC standards loader
-│   ├── tss-model/          # Core types + Polars utilities
-│   └── tss-updater/        # App update mechanism
+│   ├── tss-updater/        # App update mechanism
+│   └── tss-updater-helper/ # macOS bundle swap helper
 ├── standards/              # Embedded CDISC data
 ├── mockdata/               # Test datasets
 └── docs/                   # This documentation
@@ -43,67 +40,62 @@ trial-submission-studio/
 ```mermaid
 flowchart TD
     subgraph Application
-        GUI[tss-gui]
+        GUI[tss-gui<br/>Iced 0.14.0]
     end
 
-    subgraph Processing
-        MAP[tss-map]
-        OUTPUT[tss-output]
+    subgraph "Core Pipeline"
+        SUBMIT[tss-submit]
+        subgraph modules[tss-submit modules]
+            MAP[map/]
+            NORM[normalize/]
+            VAL[validate/]
+            EXP[export/]
+        end
+    end
+
+    subgraph Support
         INGEST[tss-ingest]
-        TRANSFORM[tss-normalization]
+        STANDARDS[tss-standards]
     end
 
-    subgraph Validation
-        VALIDATE[tss-validate]
+    subgraph Update
+        UPDATER[tss-updater]
+        HELPER[tss-updater-helper]
     end
 
     subgraph External
-        XPT[xportrs - crates.io]
+        XPT[xportrs<br/>crates.io]
     end
 
-    subgraph Core
-        STANDARDS[tss-standards]
-        MODEL[tss-model]
-    end
-
-    subgraph Utility
-        UPDATER[tss-updater]
-    end
-
-    GUI --> MAP
-    GUI --> OUTPUT
+    GUI --> SUBMIT
     GUI --> INGEST
+    GUI --> STANDARDS
     GUI --> UPDATER
-    MAP --> VALIDATE
-    MAP --> STANDARDS
-    OUTPUT --> XPT
-    OUTPUT --> STANDARDS
+    SUBMIT --> STANDARDS
+    SUBMIT --> XPT
+    UPDATER -.-> HELPER
     INGEST --> STANDARDS
-    VALIDATE --> STANDARDS
-    STANDARDS --> MODEL
-    style GUI fill: #4a90d9, color: #fff
-    style STANDARDS fill: #50c878, color: #fff
-    style MODEL fill: #f5a623, color: #fff
-    style XPT fill: #9b59b6, color: #fff
+
+    style GUI fill:#4a90d9,color:#fff
+    style SUBMIT fill:#50c878,color:#fff
+    style STANDARDS fill:#f5a623,color:#fff
+    style XPT fill:#9b59b6,color:#fff
 ```
 
 ## Crate Responsibilities
 
-| Crate             | Purpose                | Key Dependencies       |
-|-------------------|------------------------|------------------------|
-| **tss-gui**       | Desktop application    | egui, eframe           |
-| **tss-validate**  | CDISC validation       | tss-standards          |
-| **tss-map**       | Fuzzy column mapping   | rapidfuzz              |
-| **tss-normalization** | Data transformations   | polars                 |
-| **tss-ingest**    | CSV loading            | csv, polars            |
-| **tss-output**    | Multi-format export    | xportrs, quick-xml     |
-| **tss-standards** | CDISC standards loader | serde, serde_json      |
-| **tss-model**     | Core types + Polars utilities | chrono, polars    |
-| **tss-updater**   | App updates            | reqwest                |
+| Crate | Purpose | Key Dependencies |
+|-------|---------|------------------|
+| **tss-gui** | Desktop application | Iced 0.14.0 |
+| **tss-submit** | Mapping, normalization, validation, export | rapidfuzz, xportrs, quick-xml |
+| **tss-ingest** | CSV loading | csv, polars |
+| **tss-standards** | CDISC standards loader | serde, serde_json |
+| **tss-updater** | App updates | reqwest |
+| **tss-updater-helper** | macOS bundle swap | (macOS-only) |
 
 ## Data Flow
 
-### Import → Transform → Export
+### Import to Export Pipeline
 
 ```mermaid
 flowchart LR
@@ -111,30 +103,41 @@ flowchart LR
         CSV[CSV File]
     end
 
-    subgraph Processing
-        INGEST[Ingest]
-        MAP[Map & Transform]
-        VALIDATE[Validate]
+    subgraph "tss-submit"
+        MAP[map/]
+        NORM[normalize/]
+        VAL[validate/]
+        EXP[export/]
     end
 
     subgraph Output
-        XPT[XPT File]
+        XPT[XPT V5/V8]
         XML[Dataset-XML]
-        DEFINE[Define-XML]
+        DEFINE[Define-XML 2.1]
     end
 
-    CSV --> INGEST
-    INGEST --> MAP
-    MAP --> VALIDATE
-    VALIDATE --> XPT
-    VALIDATE --> XML
-    VALIDATE --> DEFINE
-    VALIDATE -.->|errors| MAP
-    style CSV fill: #e8f4f8, stroke: #333
-    style XPT fill: #d4edda, stroke: #333
-    style XML fill: #d4edda, stroke: #333
-    style DEFINE fill: #d4edda, stroke: #333
+    CSV --> MAP
+    MAP --> NORM
+    NORM --> VAL
+    VAL --> EXP
+    EXP --> XPT
+    EXP --> XML
+    EXP --> DEFINE
+
+    style CSV fill:#e8f4f8
+    style XPT fill:#d4edda
+    style XML fill:#d4edda
+    style DEFINE fill:#d4edda
 ```
+
+### Pipeline Stages
+
+| Stage | Module | Purpose |
+|-------|--------|---------|
+| 1. Map | `tss-submit/map/` | Fuzzy column-to-variable mapping with confidence scoring |
+| 2. Normalize | `tss-submit/normalize/` | Data transformation (datetime, CT, studyday, duration) |
+| 3. Validate | `tss-submit/validate/` | CDISC conformance checking (CT, required, dates, datatypes) |
+| 4. Export | `tss-submit/export/` | Output generation (XPT via xportrs, Dataset-XML, Define-XML) |
 
 ### Standards Integration
 
@@ -150,33 +153,60 @@ flowchart TB
     SDTM --> STANDARDS
     CT --> STANDARDS
     DOMAINS --> STANDARDS
-    STANDARDS --> MAP[tss-map]
-    STANDARDS --> VALIDATE[tss-validate]
-    STANDARDS --> OUTPUT[tss-output]
-    style STANDARDS fill: #50c878, color: #fff
+    STANDARDS --> SUBMIT[tss-submit]
+    STANDARDS --> INGEST[tss-ingest]
+    style STANDARDS fill:#50c878,color:#fff
 ```
 
 ## Key Technologies
 
 ### Core Stack
 
-| Component       | Technology      |
-|-----------------|-----------------|
-| Language        | Rust 1.92+      |
-| GUI Framework   | egui/eframe     |
-| Data Processing | Polars          |
-| Serialization   | Serde           |
-| Testing         | Insta, Proptest |
+| Component | Technology |
+|-----------|------------|
+| Language | Rust 1.92+ |
+| GUI Framework | Iced 0.14.0 (Elm architecture) |
+| Data Processing | Polars |
+| Serialization | Serde |
+| Testing | Insta, Proptest |
 
 ### External Crates
 
-| Purpose        | Crate            |
-|----------------|------------------|
-| Fuzzy matching | rapidfuzz        |
-| XML processing | quick-xml        |
-| XPT handling   | xportrs          |
-| Logging        | tracing          |
-| HTTP client    | reqwest          |
+| Purpose | Crate |
+|---------|-------|
+| Fuzzy matching | rapidfuzz |
+| XML processing | quick-xml |
+| XPT handling | xportrs |
+| Logging | tracing |
+| HTTP client | reqwest |
+
+## GUI Architecture
+
+Trial Submission Studio uses **Iced 0.14.0** with the Elm architecture pattern:
+
+```mermaid
+flowchart LR
+    subgraph "Elm Architecture"
+        View["View<br/>(render UI)"]
+        Message["Message<br/>(user action)"]
+        Update["Update<br/>(handle message)"]
+        State["State<br/>(app data)"]
+    end
+
+    View --> Message
+    Message --> Update
+    Update --> State
+    State --> View
+
+    style View fill:#4a90d9,color:#fff
+    style State fill:#50c878,color:#fff
+```
+
+Key GUI components:
+- **State types**: `ViewState`, `Study`, `DomainState`, `Settings`
+- **Message enums**: `Message` -> `HomeMessage`, `DomainEditorMessage`, `DialogMessage`
+- **View functions**: Organized by screen (`home/`, `domain_editor/`, `dialog/`)
+- **Theme**: Clinical-style theming with custom color palette
 
 ## Embedded Data
 
@@ -220,12 +250,12 @@ standards/
 
 ### Test Types
 
-| Type        | Purpose          | Crates                |
-|-------------|------------------|-----------------------|
-| Unit        | Function-level   | All                   |
-| Integration | Cross-crate      | tss-gui               |
-| Snapshot    | Output stability | tss-output            |
-| Property    | Edge cases       | tss-map, tss-validate |
+| Type | Purpose | Crates |
+|------|---------|--------|
+| Unit | Function-level | All |
+| Integration | Cross-crate | tss-gui |
+| Snapshot | Output stability | tss-submit/export |
+| Property | Edge cases | tss-submit/map, tss-submit/validate |
 
 ### Test Data
 

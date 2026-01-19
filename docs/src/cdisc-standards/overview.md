@@ -9,6 +9,26 @@ CDISC develops global data standards that streamline clinical research and
 enable connections to healthcare. These standards are required by regulatory
 agencies including the FDA and PMDA.
 
+## Standards Hierarchy
+
+```mermaid
+flowchart TD
+    CDISC[CDISC Standards]
+    CDISC --> SDTM[SDTM]
+    CDISC --> ADAM[ADaM]
+    CDISC --> SEND[SEND]
+    CDISC --> CT[Controlled Terminology]
+
+    SDTM --> IG34[IG v3.4]
+    ADAM --> IG13[IG v1.3]
+    SEND --> IG311[IG v3.1.1]
+
+    style CDISC fill:#4a90d9,color:#fff
+    style SDTM fill:#50c878,color:#fff
+    style ADAM fill:#f5a623,color:#fff
+    style SEND fill:#9b59b6,color:#fff
+```
+
 ## Supported Standards
 
 ### Currently Implemented

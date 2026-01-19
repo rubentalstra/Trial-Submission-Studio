@@ -20,7 +20,7 @@ CDISC standards data loader crate.
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 include_dir = "0.7"
-tss-model = { path = "../tss-model" }
+polars = { version = "0.46", features = ["lazy", "csv"] }
 ```
 
 ## Architecture
@@ -208,4 +208,4 @@ cargo test --package tss-standards
 
 - [CDISC Standards](../../cdisc-standards/overview.md) - Standards overview
 - [Controlled Terminology](../../cdisc-standards/controlled-terminology.md) - CT details
-- [tss-validate](tss-validate.md) - Uses standards for validation
+- [tss-submit](tss-submit.md) - Uses standards for validation
