@@ -10,16 +10,10 @@ description = "CDISC standards types and loaders for SDTM, ADaM, and SEND"
 workspace = true
 
 [dependencies]
-# Serialization
-serde = { workspace = true, features = ["derive"] }
-
-# Data handling
-polars.workspace = true
-
-# CSV parsing for standards loading
+# Workspace dependencies (alphabetical)
 csv.workspace = true
-
-# Error handling
+polars.workspace = true
+serde = { workspace = true, features = ["derive"] }
 thiserror.workspace = true
 
 [dev-dependencies]

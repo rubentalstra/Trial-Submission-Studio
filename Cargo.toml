@@ -19,13 +19,13 @@ exclude = ["resources/"]
 
 
 [workspace.dependencies]
-xportrs = "0.0.8"
 anyhow = "1.0.100"
 chrono = { version = "0.4.42", features = ["serde"] }
 csv = "1.4.0"
+futures-util = "0.3"
 hex = "0.4.3"
+indicatif = "0.18.3"
 insta = { version = "1.46", features = ["json"] }
-proptest = "1.9.0"
 polars = { version = "0.51.0", features = [
     "lazy",
     "csv",
@@ -33,14 +33,16 @@ polars = { version = "0.51.0", features = [
     "range",
     "dtype-array",
 ] }
+proptest = "1.9.0"
 quick-xml = "0.39"
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0"
 sha2 = "0.10.9"
+tempfile = "3.24"
 thiserror = "2.0.17"
 tracing = "0.1.44"
-indicatif = "0.18.3"
 tracing-subscriber = { version = "0.3.22", features = ["env-filter", "json"] }
+xportrs = "0.0.8"
 
 [workspace.lints.rust]
 # Safety and correctness

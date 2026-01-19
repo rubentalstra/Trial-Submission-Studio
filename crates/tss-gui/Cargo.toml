@@ -16,9 +16,22 @@ name = "trial-submission-studio"
 path = "src/main.rs"
 
 [dependencies]
-# Iced GUI framework (replacing eframe/egui)
+# Workspace dependencies (alphabetical)
+anyhow.workspace = true
+chrono.workspace = true
+futures-util.workspace = true
+polars.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+xportrs.workspace = true
+
+# External dependencies (alphabetical)
+crossbeam-channel = "0.5.15"
+directories = "6.0"
+# Iced GUI framework
 # NOTE: Iced 0.14.0 uses builder pattern: iced::application(new, update, view).run()
-#
 # Feature flags:
 #   - tokio:    Async runtime for Task::perform, Task::sip (preview, export, updates)
 #   - image:    Image loading with codecs (PNG icons, potential charts)
@@ -26,9 +39,6 @@ path = "src/main.rs"
 #   - markdown: Markdown widget (replaces egui_commonmark for changelogs/licenses)
 #   - lazy:     Lazy widget rendering (performance optimization)
 #   - advanced: Advanced widget capabilities
-#
-# Default features (auto-included): wgpu, tiny-skia, thread-pool, wayland, x11,
-#                                   web-colors, crisp, linux-theme-detection
 iced = { version = "0.14.0", features = [
     "tokio",
     "image",
@@ -37,41 +47,20 @@ iced = { version = "0.14.0", features = [
     "lazy",
     "advanced",
 ] }
-# Icon fonts - using Lucide icons (clean, modern icon set)
-# See: https://lucide.dev/icons/ for icon reference
 iced_fonts = { version = "0.3.0", features = ["lucide"] }
+image = { version = "0.25", features = ["png", "ico"] }
+muda = "0.17.1"
+open = "5.3"
+rfd = "0.17"
+tokio = { version = "1", features = ["rt-multi-thread", "sync"] }
+toml = "0.9"
+uuid = { version = "1.0", features = ["v4", "serde"] }
 
-# Workspace dependencies
-tss-standards = { path = "../tss-standards" }
+# Path dependencies (alphabetical)
 tss-ingest = { path = "../tss-ingest" }
+tss-standards = { path = "../tss-standards" }
 tss-submit = { path = "../tss-submit" }
 tss-updater = { path = "../tss-updater" }
-xportrs.workspace = true
-
-# Common dependencies
-anyhow.workspace = true
-polars.workspace = true
-serde.workspace = true
-tracing.workspace = true
-tracing-subscriber.workspace = true
-chrono.workspace = true
-
-# GUI-specific utilities
-image = { version = "0.25", features = ["png", "ico"] } # Icon loading
-rfd = "0.17"                                            # Native file dialogs
-open = "5.3"                                            # Open URLs in browser
-
-# Settings & menu
-directories = "6.0"          # Cross-platform app directories
-toml = "0.9"                 # Config file format
-serde_json = "1.0"           # JSON parsing for update status
-muda = "0.17.1"              # Native menu bar (macOS only now)
-crossbeam-channel = "0.5.15" # Required by muda for menu event receiver
-uuid = { version = "1.0", features = ["v4", "serde"] } # UUID for recent study IDs
-
-# Async runtime (required by Iced with tokio feature)
-tokio = { version = "1", features = ["rt-multi-thread", "sync"] }
-futures-util = "0.3"
 
 # Platform-specific: Windows resource compilation
 [target.'cfg(windows)'.build-dependencies]
