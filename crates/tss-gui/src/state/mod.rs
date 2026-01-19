@@ -40,7 +40,8 @@ pub use view_state::{
 };
 
 use crate::component::toast::ToastState;
-use crate::menu::MenuBarState;
+#[cfg(not(target_os = "macos"))]
+use crate::menu::MenuDropdownState;
 use iced::window;
 use tss_standards::TerminologyRegistry;
 
@@ -100,8 +101,10 @@ pub struct AppState {
     /// Whether a background task is running (for UI feedback).
     pub is_loading: bool,
 
-    /// Menu bar state (for in-app menu on Windows/Linux).
-    pub menu_bar: MenuBarState,
+    /// Menu dropdown state (for in-app menu on Windows/Linux).
+    /// Only present on desktop platforms; macOS uses native menus.
+    #[cfg(not(target_os = "macos"))]
+    pub menu_dropdown: MenuDropdownState,
 
     /// Tracks open dialog windows (multi-window mode).
     pub dialog_windows: DialogWindows,
@@ -234,7 +237,8 @@ impl AppState {
             terminology: None,
             error: None,
             is_loading: false,
-            menu_bar: MenuBarState::default(),
+            #[cfg(not(target_os = "macos"))]
+            menu_dropdown: MenuDropdownState::default(),
             dialog_windows: DialogWindows::default(),
             main_window_id: None,
             toast: None,

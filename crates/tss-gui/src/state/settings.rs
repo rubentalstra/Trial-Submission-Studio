@@ -5,6 +5,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+use uuid::Uuid;
 
 // =============================================================================
 // ROOT SETTINGS
@@ -99,6 +100,12 @@ impl Settings {
 /// Rich metadata for a recently opened study.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RecentStudy {
+    /// Unique identifier for this recent study entry.
+    ///
+    /// Used for robust identification in menu actions instead of path encoding.
+    #[serde(default = "Uuid::new_v4")]
+    pub id: Uuid,
+
     /// Path to the study folder (canonical/absolute).
     pub path: PathBuf,
 
@@ -128,6 +135,7 @@ impl RecentStudy {
         total_rows: usize,
     ) -> Self {
         Self {
+            id: Uuid::new_v4(),
             path,
             display_name,
             workflow_type,

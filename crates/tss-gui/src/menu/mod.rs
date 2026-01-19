@@ -1,109 +1,150 @@
 //! Menu module for Trial Submission Studio.
 //!
-//! This module provides both native and in-app menu support:
+//! This module provides a unified menu abstraction across platforms:
 //!
-//! - **macOS**: Uses native menu bar via `muda` crate
-//! - **Windows/Linux**: Uses in-app menu bar rendered with Iced
+//! - **macOS**: Native NSMenu via `muda` crate with channel-based events
+//! - **Windows/Linux**: Custom Iced-rendered menu bar
 //!
-//! The menu system converts platform-specific events into unified `MenuMessage` variants.
+//! The core abstraction is the [`MenuAction`] enum, which represents all
+//! possible menu actions in a platform-agnostic way.
 
-pub mod in_app;
-pub mod native;
+pub mod common;
 
-pub use in_app::MenuBarState;
-pub use native::{ids, menu_event_receiver};
+// Platform-specific modules with single cfg gate at module level
+#[cfg(target_os = "macos")]
+pub mod macos;
 
-use crate::message::MenuMessage;
+#[cfg(not(target_os = "macos"))]
+pub mod desktop;
 
-/// Convert a muda menu event ID to a MenuMessage.
+// Re-exports for platform-specific implementations
+#[cfg(target_os = "macos")]
+pub use macos::{RecentStudyInfo, create_menu, menu_subscription, update_recent_studies_menu};
+
+#[cfg(not(target_os = "macos"))]
+pub use desktop::{DropdownId, MenuDropdownState, view_menu_bar};
+
+use uuid::Uuid;
+
+// =============================================================================
+// MENU ACTION
+// =============================================================================
+
+/// Unified menu action enum.
 ///
-/// Returns `None` for events that don't map to application actions
-/// (like predefined system events).
-pub fn menu_event_to_message(event_id: &str) -> Option<MenuMessage> {
-    // Check for recent study click
-    if let Some(encoded) = event_id.strip_prefix(native::ids::RECENT_STUDY_PREFIX)
-        && let Some(path) = native::decode_path(encoded)
-    {
-        return Some(MenuMessage::OpenRecentStudy(path));
-    }
+/// This is the core abstraction that represents all menu actions in a
+/// platform-agnostic way. Both macOS native menus and desktop in-app menus
+/// convert their events to this type.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MenuAction {
+    // =========================================================================
+    // File menu
+    // =========================================================================
+    /// Open a study folder
+    OpenStudy,
 
-    match event_id {
-        // File menu
-        ids::OPEN_STUDY => Some(MenuMessage::OpenStudy),
-        ids::CLEAR_RECENT => Some(MenuMessage::ClearRecentStudies),
-        ids::SETTINGS => Some(MenuMessage::Settings),
-        ids::EXIT => Some(MenuMessage::Quit),
+    /// Open a recent study by its UUID
+    OpenRecentStudy(Uuid),
 
-        // Help menu
-        ids::DOCUMENTATION => Some(MenuMessage::Documentation),
-        ids::RELEASE_NOTES => Some(MenuMessage::ReleaseNotes),
-        ids::VIEW_ON_GITHUB => Some(MenuMessage::ViewOnGitHub),
-        ids::REPORT_ISSUE => Some(MenuMessage::ReportIssue),
-        ids::VIEW_LICENSE => Some(MenuMessage::ViewLicense),
-        ids::THIRD_PARTY_LICENSES => Some(MenuMessage::ThirdPartyLicenses),
-        ids::CHECK_UPDATES => Some(MenuMessage::CheckUpdates),
-        ids::ABOUT => Some(MenuMessage::About),
+    /// Close the current study
+    CloseStudy,
 
-        // Unknown or predefined items (handled by system)
-        _ => None,
-    }
+    /// Clear recent studies list
+    ClearRecentStudies,
+
+    /// Open settings dialog
+    Settings,
+
+    /// Quit the application
+    Quit,
+
+    // =========================================================================
+    // Edit menu (stubs - Iced handles natively)
+    // =========================================================================
+    /// Undo action
+    Undo,
+
+    /// Redo action
+    Redo,
+
+    /// Cut selection
+    Cut,
+
+    /// Copy selection
+    Copy,
+
+    /// Paste from clipboard
+    Paste,
+
+    /// Select all
+    SelectAll,
+
+    // =========================================================================
+    // Help menu
+    // =========================================================================
+    /// Open documentation in browser
+    Documentation,
+
+    /// Open release notes
+    ReleaseNotes,
+
+    /// Open GitHub repository
+    ViewOnGitHub,
+
+    /// Report an issue on GitHub
+    ReportIssue,
+
+    /// View license information
+    ViewLicense,
+
+    /// View third-party licenses
+    ThirdPartyLicenses,
+
+    /// Check for updates
+    CheckUpdates,
+
+    /// Open About dialog
+    About,
+
+    // =========================================================================
+    // Desktop-only: Menu bar toggle (not used on macOS)
+    // =========================================================================
+    /// Toggle a dropdown menu (desktop only)
+    #[cfg(not(target_os = "macos"))]
+    ToggleDropdown(DropdownId),
+
+    /// Close all dropdown menus (desktop only)
+    #[cfg(not(target_os = "macos"))]
+    CloseDropdowns,
 }
 
-/// Poll for native menu events and convert them to messages.
-///
-/// This should be called in the application's subscription handler.
-/// Returns `None` if no events are pending.
-pub fn poll_native_menu_event() -> Option<MenuMessage> {
-    let receiver = menu_event_receiver();
-
-    // Try to receive an event without blocking
-    match receiver.try_recv() {
-        Ok(event) => {
-            let id = event.id().0.as_str();
-            menu_event_to_message(id)
-        }
-        Err(_) => None,
+// Desktop-only: Allow converting DropdownId to MenuAction for toggle
+#[cfg(not(target_os = "macos"))]
+impl From<DropdownId> for MenuAction {
+    fn from(id: DropdownId) -> Self {
+        MenuAction::ToggleDropdown(id)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::message::MenuBarMenuId;
 
     #[test]
-    fn test_menu_event_to_message() {
-        assert!(matches!(
-            menu_event_to_message(ids::OPEN_STUDY),
-            Some(MenuMessage::OpenStudy)
-        ));
-        assert!(matches!(
-            menu_event_to_message(ids::SETTINGS),
-            Some(MenuMessage::Settings)
-        ));
-        assert!(matches!(
-            menu_event_to_message(ids::ABOUT),
-            Some(MenuMessage::About)
-        ));
-        assert!(menu_event_to_message("unknown_id").is_none());
+    fn test_menu_action_equality() {
+        assert_eq!(MenuAction::OpenStudy, MenuAction::OpenStudy);
+        assert_ne!(MenuAction::OpenStudy, MenuAction::CloseStudy);
+
+        let uuid = Uuid::new_v4();
+        assert_eq!(
+            MenuAction::OpenRecentStudy(uuid),
+            MenuAction::OpenRecentStudy(uuid)
+        );
     }
 
     #[test]
-    fn test_menu_bar_state() {
-        let mut state = MenuBarState::default();
-        assert!(state.open_menu.is_none());
-
-        state.toggle(MenuBarMenuId::File);
-        assert!(state.is_open(MenuBarMenuId::File));
-        assert!(!state.is_open(MenuBarMenuId::Edit));
-
-        state.toggle(MenuBarMenuId::File);
-        assert!(!state.is_open(MenuBarMenuId::File));
-
-        state.toggle(MenuBarMenuId::Help);
-        assert!(state.is_open(MenuBarMenuId::Help));
-
-        state.close();
-        assert!(state.open_menu.is_none());
+    fn test_menu_action_debug() {
+        let action = MenuAction::Settings;
+        assert!(format!("{:?}", action).contains("Settings"));
     }
 }

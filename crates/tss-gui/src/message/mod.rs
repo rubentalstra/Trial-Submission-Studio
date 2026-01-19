@@ -23,6 +23,7 @@ use iced::window;
 use tss_standards::TerminologyRegistry;
 
 // Use new state types
+use crate::menu::MenuAction;
 use crate::state::{DialogType, Study, ViewState, WorkflowMode};
 
 pub use dialog::{
@@ -95,17 +96,11 @@ pub enum Message {
     // =========================================================================
     // Menu
     // =========================================================================
-    /// Menu action messages.
+    /// Unified menu action (from native or in-app menu).
+    MenuAction(MenuAction),
+
+    /// Legacy menu action messages (being phased out).
     Menu(MenuMessage),
-
-    /// Toggle in-app menu bar dropdown (Windows/Linux only).
-    MenuBarToggle(MenuBarMenuId),
-
-    /// Close all in-app menu dropdowns.
-    MenuBarClose,
-
-    /// Native menu event received.
-    NativeMenuEvent,
 
     /// Initialize native menu (startup task on macOS).
     InitNativeMenu,

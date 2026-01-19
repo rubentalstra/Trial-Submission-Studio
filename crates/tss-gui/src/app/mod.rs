@@ -131,42 +131,21 @@ impl App {
             // =================================================================
             // Menu messages
             // =================================================================
+            Message::MenuAction(action) => self.handle_menu_action(action),
+
             Message::Menu(menu_msg) => self.handle_menu_message(menu_msg),
-
-            // =================================================================
-            // In-app menu bar messages (Windows/Linux)
-            // =================================================================
-            Message::MenuBarToggle(menu_id) => {
-                self.state.menu_bar.toggle(menu_id);
-                Task::none()
-            }
-
-            Message::MenuBarClose => {
-                self.state.menu_bar.close();
-                Task::none()
-            }
-
-            Message::NativeMenuEvent => {
-                // Poll for native menu events and dispatch
-                if let Some(menu_msg) = crate::menu::poll_native_menu_event() {
-                    return self.handle_menu_message(menu_msg);
-                }
-                Task::none()
-            }
 
             Message::InitNativeMenu => {
                 // Initialize native menu on macOS
                 // This is called via a startup task to ensure proper timing
                 #[cfg(target_os = "macos")]
                 {
-                    let menu = crate::menu::native::create_menu();
-                    menu.init_for_nsapp();
-
-                    // Set window menu for proper macOS window management
-                    if let Some(window_menu) = crate::menu::native::create_window_submenu() {
-                        window_menu.set_as_windows_menu_for_nsapp();
-                        std::mem::forget(window_menu);
-                    }
+                    // create_menu() handles all initialization including:
+                    // - Creating the menu structure
+                    // - Initializing for NSApp
+                    // - Setting up the window menu
+                    // - Storing references in thread-local storage
+                    let _menu = crate::menu::create_menu();
 
                     // Populate recent studies submenu from saved settings
                     let studies: Vec<_> = self
@@ -174,13 +153,11 @@ impl App {
                         .settings
                         .general
                         .recent_sorted()
-                        .into_iter()
-                        .cloned()
+                        .iter()
+                        .map(|s| crate::menu::RecentStudyInfo::new(s.id, s.display_name.clone()))
                         .collect();
-                    crate::menu::native::update_recent_studies_menu(&studies);
+                    crate::menu::update_recent_studies_menu(&studies);
 
-                    // Keep the menu alive
-                    std::mem::forget(menu);
                     tracing::info!("Initialized native macOS menu bar");
                 }
                 Task::none()
@@ -276,10 +253,12 @@ impl App {
                                 .settings
                                 .general
                                 .recent_sorted()
-                                .into_iter()
-                                .cloned()
+                                .iter()
+                                .map(|s| {
+                                    crate::menu::RecentStudyInfo::new(s.id, s.display_name.clone())
+                                })
                                 .collect();
-                            crate::menu::native::update_recent_studies_menu(&studies);
+                            crate::menu::update_recent_studies_menu(&studies);
                         }
 
                         self.state.study = Some(study);
@@ -490,8 +469,8 @@ impl App {
         #[cfg(not(target_os = "macos"))]
         let content_with_menu: Element<'_, Message> = {
             use iced::widget::column;
-            let menu_bar = crate::menu::in_app::view_menu_bar(
-                &self.state.menu_bar,
+            let menu_bar = crate::menu::view_menu_bar(
+                &self.state.menu_dropdown,
                 self.state.has_study(),
                 &self.state,
             );
@@ -590,8 +569,15 @@ impl App {
             _ => Message::Noop,
         });
 
-        // Native menu event polling (polls every 200ms to reduce CPU usage)
-        let menu_sub = time::every(Duration::from_millis(200)).map(|_| Message::NativeMenuEvent);
+        // Native menu event polling (macOS only, polls every 50ms for responsiveness)
+        #[cfg(target_os = "macos")]
+        let menu_sub = crate::menu::menu_subscription().map(|action| match action {
+            Some(a) => Message::MenuAction(a),
+            None => Message::Noop,
+        });
+
+        #[cfg(not(target_os = "macos"))]
+        let menu_sub = Subscription::none();
 
         // Window close events (for cleaning up dialog windows)
         let window_sub = window::close_requests().map(Message::DialogWindowClosed);

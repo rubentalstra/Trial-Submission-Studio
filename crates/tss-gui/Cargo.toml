@@ -67,7 +67,7 @@ toml = "0.9"                 # Config file format
 serde_json = "1.0"           # JSON parsing for update status
 muda = "0.17.1"              # Native menu bar (macOS only now)
 crossbeam-channel = "0.5.15" # Required by muda for menu event receiver
-base64 = "0.22"              # For encoding paths in menu item IDs
+uuid = { version = "1.0", features = ["v4", "serde"] } # UUID for recent study IDs
 
 # Async runtime (required by Iced with tokio feature)
 tokio = { version = "1", features = ["rt-multi-thread", "sync"] }
