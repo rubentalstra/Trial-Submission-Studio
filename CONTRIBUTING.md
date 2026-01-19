@@ -156,8 +156,6 @@ Trial Submission Studio is organized as a 9-crate Rust workspace:
 
 - **Unit tests**: Per-function/module tests
 - **Integration tests**: End-to-end workflows
-- **Snapshot tests**: Using `insta` for output stability
-- **Property tests**: Using `proptest` for edge cases
 
 ### Running Tests
 
