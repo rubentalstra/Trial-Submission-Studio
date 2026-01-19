@@ -18,11 +18,6 @@ pub struct MenuDropdownState {
 }
 
 impl MenuDropdownState {
-    /// Create a new menu dropdown state with all menus closed.
-    pub fn new() -> Self {
-        Self { open: None }
-    }
-
     /// Toggle a dropdown open/closed.
     pub fn toggle(&mut self, id: DropdownId) {
         if self.open == Some(id) {

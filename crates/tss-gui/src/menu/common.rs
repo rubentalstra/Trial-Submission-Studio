@@ -1,10 +1,12 @@
 //! Shared constants for menu identifiers.
 //!
-//! These IDs are used by both macOS native menus (muda) and desktop in-app menus.
+//! These IDs are used by macOS native menus (muda).
+//! On desktop platforms, actions are handled directly without string IDs.
 
-/// Menu item identifiers.
+/// Menu item identifiers for macOS native menus.
 ///
-/// Using string IDs allows consistent identification across platforms.
+/// Using string IDs allows muda to identify which menu item was clicked.
+#[cfg(target_os = "macos")]
 pub mod ids {
     // =========================================================================
     // File menu

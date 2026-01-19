@@ -8,6 +8,7 @@
 //! The core abstraction is the [`MenuAction`] enum, which represents all
 //! possible menu actions in a platform-agnostic way.
 
+#[cfg(target_os = "macos")]
 pub mod common;
 
 // Platform-specific modules with single cfg gate at module level
@@ -24,6 +25,7 @@ pub use macos::{RecentStudyInfo, create_menu, menu_subscription, update_recent_s
 #[cfg(not(target_os = "macos"))]
 pub use desktop::{DropdownId, MenuDropdownState, view_menu_bar};
 
+#[cfg(target_os = "macos")]
 use uuid::Uuid;
 
 // =============================================================================
@@ -43,7 +45,8 @@ pub enum MenuAction {
     /// Open a study folder
     OpenStudy,
 
-    /// Open a recent study by its UUID
+    /// Open a recent study by its UUID (macOS only - desktop uses path-based approach)
+    #[cfg(target_os = "macos")]
     OpenRecentStudy(Uuid),
 
     /// Close the current study
@@ -112,10 +115,6 @@ pub enum MenuAction {
     /// Toggle a dropdown menu (desktop only)
     #[cfg(not(target_os = "macos"))]
     ToggleDropdown(DropdownId),
-
-    /// Close all dropdown menus (desktop only)
-    #[cfg(not(target_os = "macos"))]
-    CloseDropdowns,
 }
 
 // Desktop-only: Allow converting DropdownId to MenuAction for toggle
@@ -134,7 +133,11 @@ mod tests {
     fn test_menu_action_equality() {
         assert_eq!(MenuAction::OpenStudy, MenuAction::OpenStudy);
         assert_ne!(MenuAction::OpenStudy, MenuAction::CloseStudy);
+    }
 
+    #[test]
+    #[cfg(target_os = "macos")]
+    fn test_menu_action_recent_study() {
         let uuid = Uuid::new_v4();
         assert_eq!(
             MenuAction::OpenRecentStudy(uuid),

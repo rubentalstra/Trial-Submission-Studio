@@ -30,6 +30,7 @@ impl App {
             // File menu
             MenuAction::OpenStudy => Task::done(Message::Home(HomeMessage::OpenStudyClicked)),
 
+            #[cfg(target_os = "macos")]
             MenuAction::OpenRecentStudy(uuid) => {
                 // Find the study path by UUID
                 if let Some(study) = self
@@ -203,13 +204,6 @@ impl App {
             #[cfg(not(target_os = "macos"))]
             MenuAction::ToggleDropdown(id) => {
                 self.state.menu_dropdown.toggle(id);
-                Task::none()
-            }
-
-            // Desktop-only: Close all dropdowns
-            #[cfg(not(target_os = "macos"))]
-            MenuAction::CloseDropdowns => {
-                self.state.menu_dropdown.close();
                 Task::none()
             }
         }
