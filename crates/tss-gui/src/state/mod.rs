@@ -24,9 +24,6 @@
 //! 3. **Derived data computed on demand** - Not cached in state
 //! 4. **UI state lives with views** - Not mixed with domain data
 
-// Allow unused imports - these are public API re-exports
-#![allow(unused_imports)]
-
 mod domain_state;
 mod settings;
 mod study;
@@ -34,9 +31,7 @@ mod view_state;
 
 // Re-exports
 pub use domain_state::{DomainSource, DomainState, SuppAction, SuppColumnConfig, SuppOrigin};
-pub use settings::{
-    DeveloperSettings, ExportFormat, ExportSettings, GeneralSettings, Settings, XptVersion,
-};
+pub use settings::{ExportFormat, RecentStudy, SdtmIgVersion, Settings, WorkflowType, XptVersion};
 pub use study::Study;
 pub use view_state::{
     EditorTab, ExportPhase, ExportResult, ExportViewState, MappingUiState, NormalizationUiState,
@@ -45,7 +40,8 @@ pub use view_state::{
 };
 
 use crate::component::toast::ToastState;
-use crate::menu::MenuBarState;
+#[cfg(not(target_os = "macos"))]
+use crate::menu::MenuDropdownState;
 use iced::window;
 use tss_standards::TerminologyRegistry;
 
@@ -105,8 +101,10 @@ pub struct AppState {
     /// Whether a background task is running (for UI feedback).
     pub is_loading: bool,
 
-    /// Menu bar state (for in-app menu on Windows/Linux).
-    pub menu_bar: MenuBarState,
+    /// Menu dropdown state (for in-app menu on Windows/Linux).
+    /// Only present on desktop platforms; macOS uses native menus.
+    #[cfg(not(target_os = "macos"))]
+    pub menu_dropdown: MenuDropdownState,
 
     /// Tracks open dialog windows (multi-window mode).
     pub dialog_windows: DialogWindows,
@@ -239,21 +237,12 @@ impl AppState {
             terminology: None,
             error: None,
             is_loading: false,
-            menu_bar: MenuBarState::default(),
+            #[cfg(not(target_os = "macos"))]
+            menu_dropdown: MenuDropdownState::default(),
             dialog_windows: DialogWindows::default(),
             main_window_id: None,
             toast: None,
         }
-    }
-
-    // =========================================================================
-    // READ-ONLY ACCESSORS (no mutation - that happens in update())
-    // =========================================================================
-
-    /// Get study reference.
-    #[inline]
-    pub fn study(&self) -> Option<&Study> {
-        self.study.as_ref()
     }
 
     /// Get domain by code.
@@ -266,31 +255,5 @@ impl AppState {
     #[inline]
     pub fn has_study(&self) -> bool {
         self.study.is_some()
-    }
-
-    /// Get domain codes (for iteration).
-    pub fn domain_codes(&self) -> Vec<&str> {
-        self.study
-            .as_ref()
-            .map(|s| s.domain_codes())
-            .unwrap_or_default()
-    }
-
-    /// Get current workflow mode from view state.
-    #[inline]
-    pub fn workflow_mode(&self) -> WorkflowMode {
-        self.view.workflow_mode()
-    }
-
-    /// Get current domain code if in domain editor.
-    #[inline]
-    pub fn current_domain_code(&self) -> Option<&str> {
-        self.view.current_domain()
-    }
-
-    /// Get current editor tab if in domain editor.
-    #[inline]
-    pub fn current_tab(&self) -> Option<EditorTab> {
-        self.view.current_tab()
     }
 }

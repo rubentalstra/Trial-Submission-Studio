@@ -39,11 +39,14 @@ pub enum HomeMessage {
     GoToExportClicked,
 
     // =========================================================================
-    // Study info
+    // Recent Studies
     // =========================================================================
     /// Remove a study from recent list
     RemoveFromRecent(PathBuf),
 
     /// Clear all recent studies
-    ClearRecentStudies,
+    ClearAllRecentStudies,
+
+    /// Prune studies with missing paths
+    PruneStaleStudies,
 }

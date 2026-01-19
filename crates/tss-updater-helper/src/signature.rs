@@ -25,7 +25,6 @@ pub fn verify_signature(app_path: &Path) -> Result<(), String> {
 }
 
 /// Gets the team ID from a signed app bundle (for logging).
-#[allow(dead_code)]
 pub fn get_team_id(app_path: &Path) -> Option<String> {
     let output = Command::new("codesign")
         .args(["-dvv"])

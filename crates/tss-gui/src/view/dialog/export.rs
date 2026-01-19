@@ -108,7 +108,6 @@ pub fn view_export_complete_dialog_content<'a>(
             files,
             domains_exported,
             elapsed_ms,
-            warnings: _,
         } => view_success_content(output_dir, files.len(), *domains_exported, *elapsed_ms),
         ExportResult::Error { message, domain } => view_error_content(message, domain.as_deref()),
         ExportResult::Cancelled => view_cancelled_content(),

@@ -30,7 +30,7 @@ impl App {
                     let domains: Vec<String> = study
                         .domain_codes()
                         .into_iter()
-                        .map(|s| s.to_string())
+                        .map(str::to_string)
                         .collect();
                     if let ViewState::Export(export_state) = &mut self.state.view {
                         export_state.select_all(domains);
@@ -134,10 +134,10 @@ impl App {
 
             ExportMessage::OpenOutputFolder => {
                 // Get output dir from completion dialog state
-                if let Some((_, ref result)) = self.state.dialog_windows.export_complete {
-                    if let ExportResult::Success { output_dir, .. } = result {
-                        let _ = open::that(output_dir);
-                    }
+                if let Some((_, ref result)) = self.state.dialog_windows.export_complete
+                    && let ExportResult::Success { output_dir, .. } = result
+                {
+                    let _ = open::that(output_dir);
                 }
                 Task::none()
             }
@@ -223,7 +223,6 @@ impl App {
                 current_domain: None,
                 current_step: "Preparing...".to_string(),
                 progress: 0.0,
-                files_written: vec![],
             };
         }
 
@@ -254,6 +253,7 @@ impl App {
             output_dir,
             format: self.state.settings.export.default_format,
             xpt_version: self.state.settings.export.xpt_version,
+            sdtm_ig_version: self.state.settings.export.sdtm_ig_version,
             domains: domain_data,
             study_id,
             bypass_validation: self.state.settings.developer.bypass_validation,
@@ -281,7 +281,7 @@ impl App {
 
         // Update view state
         if let ViewState::Export(export_state) = &mut self.state.view {
-            export_state.phase = ExportPhase::Complete(ExportResult::Cancelled);
+            export_state.phase = ExportPhase::Complete;
         }
 
         // Open completion dialog
@@ -303,42 +303,40 @@ impl App {
     /// Update export progress.
     fn update_export_progress(&mut self, progress: ExportProgress) {
         // Update both ViewState and dialog window state
-        if let ViewState::Export(export_state) = &mut self.state.view {
-            if let ExportPhase::Exporting {
+        if let ViewState::Export(export_state) = &mut self.state.view
+            && let ExportPhase::Exporting {
                 current_domain,
                 current_step,
                 progress: prog,
-                files_written: _,
             } = &mut export_state.phase
-            {
-                match &progress {
+        {
+            match &progress {
+                ExportProgress::StartingDomain(domain) => {
+                    *current_domain = Some(domain.clone());
+                }
+                ExportProgress::Step(step) => {
+                    *current_step = step.label().to_string();
+                }
+                ExportProgress::DomainComplete(_domain) => {
+                    // Domain done
+                }
+                ExportProgress::OverallProgress(p) => {
+                    *prog = *p;
+                }
+            }
+
+            // Also update dialog window state
+            if let Some((_, ref mut dialog_state)) = self.state.dialog_windows.export_progress {
+                match progress {
                     ExportProgress::StartingDomain(domain) => {
-                        *current_domain = Some(domain.clone());
+                        dialog_state.current_domain = Some(domain);
                     }
                     ExportProgress::Step(step) => {
-                        *current_step = step.label().to_string();
+                        dialog_state.current_step = step.label().to_string();
                     }
-                    ExportProgress::DomainComplete(_domain) => {
-                        // Domain done
-                    }
+                    ExportProgress::DomainComplete(_) => {}
                     ExportProgress::OverallProgress(p) => {
-                        *prog = *p;
-                    }
-                }
-
-                // Also update dialog window state
-                if let Some((_, ref mut dialog_state)) = self.state.dialog_windows.export_progress {
-                    match progress {
-                        ExportProgress::StartingDomain(domain) => {
-                            dialog_state.current_domain = Some(domain);
-                        }
-                        ExportProgress::Step(step) => {
-                            dialog_state.current_step = step.label().to_string();
-                        }
-                        ExportProgress::DomainComplete(_) => {}
-                        ExportProgress::OverallProgress(p) => {
-                            dialog_state.progress = p;
-                        }
+                        dialog_state.progress = p;
                     }
                 }
             }
@@ -356,7 +354,7 @@ impl App {
 
         // Update view state
         if let ViewState::Export(export_state) = &mut self.state.view {
-            export_state.phase = ExportPhase::Complete(result.clone());
+            export_state.phase = ExportPhase::Complete;
         }
 
         // Open completion dialog

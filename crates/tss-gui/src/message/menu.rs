@@ -2,6 +2,8 @@
 //!
 //! Messages triggered by menu actions (both native and in-app menus).
 
+use std::path::PathBuf;
+
 /// Messages for menu actions.
 #[derive(Debug, Clone)]
 pub enum MenuMessage {
@@ -11,8 +13,14 @@ pub enum MenuMessage {
     /// Open a study folder
     OpenStudy,
 
+    /// Open a specific recent study by path
+    OpenRecentStudy(PathBuf),
+
     /// Close the current study
     CloseStudy,
+
+    /// Clear recent studies list
+    ClearRecentStudies,
 
     /// Open settings dialog
     Settings,

@@ -35,8 +35,9 @@ jobs:
         include:
           - language: actions
             build-mode: none
-          - language: rust
-            build-mode: none
+          # Rust removed: CodeQL Rust support is experimental and provides
+          # limited additional value over clippy-sarif (runs in rust-ci.yml).
+          # Rust security is covered by: cargo-audit (CVEs) + clippy-sarif (static analysis)
 
     steps:
       - name: Checkout repository

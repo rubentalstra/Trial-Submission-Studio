@@ -3,6 +3,7 @@
 use std::fs;
 use std::io::{Cursor, Read};
 use std::path::PathBuf;
+#[cfg(target_os = "macos")]
 use std::process::Command;
 
 use flate2::read::GzDecoder;

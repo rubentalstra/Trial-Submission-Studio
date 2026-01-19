@@ -38,9 +38,20 @@ fn main() {
     println!("cargo:rerun-if-env-changed=GITHUB_ACTIONS");
     println!("cargo:rerun-if-env-changed=GITHUB_RUN_NUMBER");
 
-    // Windows: embed icon and version info
+    // Windows: embed icon and version info (only on native Windows builds)
+    // During cross-compilation from non-Windows hosts, skip resource embedding
+    // as winresource requires MSVC tools that aren't available
     #[cfg(target_os = "windows")]
-    embed_windows_resources(&build_number, &build_date, &commit_count);
+    {
+        let host = std::env::var("HOST").unwrap_or_default();
+        if host.contains("windows") {
+            embed_windows_resources(&build_number, &build_date, &commit_count);
+        } else {
+            println!(
+                "cargo:warning=Skipping Windows resource embedding (cross-compiling from non-Windows host)"
+            );
+        }
+    }
 }
 
 /// Get the Rust compiler version.

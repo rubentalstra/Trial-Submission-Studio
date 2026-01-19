@@ -15,6 +15,7 @@ use crate::state::ViewState;
 
 impl App {
     /// Handle preview tab messages.
+    #[allow(clippy::needless_pass_by_value)]
     pub fn handle_preview_message(&mut self, msg: PreviewMessage) -> Task<Message> {
         // Get current domain code
         let domain_code = match &self.state.view {
@@ -85,6 +86,9 @@ impl App {
                     preview_ui.rows_per_page = rows;
                     preview_ui.current_page = 0; // Reset to first page
                 }
+                // Persist to settings
+                self.state.settings.display.preview_rows_per_page = rows;
+                let _ = self.state.settings.save();
                 Task::none()
             }
         }

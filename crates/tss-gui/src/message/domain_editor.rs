@@ -98,12 +98,6 @@ pub enum MappingMessage {
 pub enum NormalizationMessage {
     /// Select a normalization rule
     RuleSelected(usize),
-
-    /// Toggle a normalization rule on/off
-    RuleToggled { index: usize, enabled: bool },
-
-    /// Refresh normalization preview
-    RefreshPreview,
 }
 
 // =============================================================================
