@@ -1,410 +1,445 @@
 # Trial Submission Studio - State Management
 
-This document describes state organization and patterns used in Trial Submission Studio.
+This document describes state organization and patterns used in Trial Submission
+Studio.
 
 ## Table of Contents
 
 1. [State Philosophy](#state-philosophy)
-2. [State Hierarchy](#state-hierarchy)
-3. [State Categories](#state-categories)
-4. [Domain State vs UI State](#domain-state-vs-ui-state)
-5. [Derived State](#derived-state)
-6. [State Update Patterns](#state-update-patterns)
-7. [Common Patterns](#common-patterns)
-8. [Anti-Patterns](#anti-patterns)
+2. [State Architecture](#state-architecture)
+3. [AppState - Root State](#appstate---root-state)
+4. [ViewState - View + UI State](#viewstate---view--ui-state)
+5. [Study and Domain State](#study-and-domain-state)
+6. [Dialog Windows State](#dialog-windows-state)
+7. [Settings State](#settings-state)
+8. [State Update Patterns](#state-update-patterns)
+9. [Common Patterns](#common-patterns)
+10. [Anti-Patterns](#anti-patterns)
 
 ---
 
 ## State Philosophy
 
-State management in Iced follows these principles:
+State management in Trial Submission Studio follows these principles:
 
-1. **Single source of truth** - All state lives in the `App` struct
-2. **Immutable updates** - State is updated only in `update()`, never in `view()`
-3. **Minimal state** - Only store what you need, derive the rest
-4. **Separation of concerns** - Domain data vs UI state vs derived/cached data
+1. **Single source of truth** - All state lives in `App.state: AppState`
+2. **View-scoped UI state** - UI state lives inside `ViewState` variants
+3. **Immutable updates** - State is updated only in `update()`, never in
+   `view()`
+4. **Derived data on demand** - Compute derived values when needed, don't cache
+5. **Multi-window awareness** - Dialog windows track their own IDs and state
 
-### State Ownership
+### Why View-Scoped UI State?
 
-```rust
-pub struct App {
-    // =========================================================================
-    // Navigation State
-    // =========================================================================
-    /// Current view/screen being displayed
-    view: View,
-
-    /// Current workflow mode (SDTM, ADaM, SEND)
-    workflow_mode: WorkflowMode,
-
-    // =========================================================================
-    // Domain State
-    // =========================================================================
-    /// Loaded study (None if no study loaded)
-    study: Option<StudyState>,
-
-    /// Application settings (persisted to disk)
-    settings: Settings,
-
-    // =========================================================================
-    // UI State
-    // =========================================================================
-    /// All UI-specific state (selection, scroll, dialogs)
-    ui: UiState,
-
-    // =========================================================================
-    // Cached/Derived State
-    // =========================================================================
-    /// Controlled terminology registry (loaded lazily)
-    ct_registry: Option<TerminologyRegistry>,
-}
-```
-
----
-
-## State Hierarchy
-
-### Overview
-
-```
-App
-├── view: View                      # Navigation state
-├── workflow_mode: WorkflowMode     # Current mode
-├── study: Option<StudyState>       # Domain data
-│   ├── path: PathBuf               # Study folder path
-│   ├── metadata: StudyMetadata     # Study info
-│   └── domains: HashMap<String, DomainState>
-│       ├── source: DomainSource    # Original data
-│       ├── mapping: MappingState   # Column mappings
-│       └── derived: DerivedState   # Cached computations
-├── settings: Settings              # Persisted settings
-└── ui: UiState                     # UI-only state
-    ├── home: HomeUiState
-    ├── domain_editors: HashMap<String, DomainEditorUiState>
-    ├── export: ExportUiState
-    ├── settings: SettingsUiState
-    ├── about: AboutUiState
-    └── update: UpdateUiState
-```
-
-### Navigation State
+Instead of separate `UiState` struct, UI state is embedded in `ViewState`:
 
 ```rust
-/// Current view/screen
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub enum View {
-    #[default]
-    Home,
+// Each view holds its own UI state
+pub enum ViewState {
+    Home { workflow_mode: WorkflowMode },
     DomainEditor {
         domain: String,
         tab: EditorTab,
+        mapping_ui: MappingUiState,      // Tab-specific UI
+        validation_ui: ValidationUiState,
+        // ...
     },
-    Export,
+    Export(ExportViewState),
 }
+```
 
-/// Editor tabs within DomainEditor view
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum EditorTab {
-    #[default]
-    Mapping,
-    Transform,
-    Validation,
-    Preview,
-    Supp,
+Benefits:
+
+- **Automatic cleanup** - Navigation clears transient state
+- **Clear ownership** - UI state belongs to its view
+- **No synchronization** - No separate state containers to keep in sync
+
+---
+
+## State Architecture
+
+```
+App
+└── state: AppState
+    ├── view: ViewState                 # Current view + its UI state
+    │   └── (view-specific UI state)
+    │
+    ├── study: Option<Study>            # Loaded study data
+    │   └── domains: BTreeMap<String, DomainState>
+    │       ├── source: DomainSource    # Original CSV data
+    │       ├── mapping: ColumnMapping  # Variable mappings
+    │       └── validation_cache: ...   # Cached validation
+    │
+    ├── settings: Settings              # Persisted preferences
+    │   ├── general: GeneralSettings
+    │   ├── export: ExportSettings
+    │   └── ...
+    │
+    ├── terminology: Option<TerminologyRegistry>  # CDISC CT
+    │
+    ├── dialog_windows: DialogWindows   # Multi-window tracking
+    │   ├── about: Option<window::Id>
+    │   ├── settings: Option<(window::Id, SettingsCategory)>
+    │   └── ...
+    │
+    ├── main_window_id: Option<window::Id>
+    ├── toast: Option<ToastState>
+    ├── error: Option<String>
+    └── is_loading: bool
+```
+
+---
+
+## AppState - Root State
+
+`AppState` is the root container for all application state:
+
+```rust
+#[derive(Default)]
+pub struct AppState {
+    /// Current view and its associated UI state.
+    pub view: ViewState,
+
+    /// Loaded study data (None when no study is open).
+    pub study: Option<Study>,
+
+    /// User settings (persisted to disk).
+    pub settings: Settings,
+
+    /// CDISC Controlled Terminology registry.
+    pub terminology: Option<TerminologyRegistry>,
+
+    /// Current error message to display.
+    pub error: Option<String>,
+
+    /// Whether a background task is running.
+    pub is_loading: bool,
+
+    /// Menu dropdown state (Windows/Linux only).
+    #[cfg(not(target_os = "macos"))]
+    pub menu_dropdown: MenuDropdownState,
+
+    /// Tracks open dialog windows.
+    pub dialog_windows: DialogWindows,
+
+    /// Main window ID.
+    pub main_window_id: Option<window::Id>,
+
+    /// Active toast notification.
+    pub toast: Option<ToastState>,
 }
+```
 
-/// Workflow mode
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum WorkflowMode {
-    #[default]
-    Sdtm,
-    Adam,
-    Send,
+### Accessors
+
+```rust
+impl AppState {
+    /// Get domain by code.
+    pub fn domain(&self, code: &str) -> Option<&DomainState> {
+        self.study.as_ref()?.domain(code)
+    }
+
+    /// Check if a study is loaded.
+    pub fn has_study(&self) -> bool {
+        self.study.is_some()
+    }
 }
 ```
 
 ---
 
-## State Categories
+## ViewState - View + UI State
 
-### 1. Navigation State
-
-Controls what's displayed on screen:
+`ViewState` combines navigation with view-specific UI state:
 
 ```rust
-// Current view
-view: View
+#[derive(Debug, Clone)]
+pub enum ViewState {
+    /// Home screen - study selection and overview.
+    Home {
+        workflow_mode: WorkflowMode,
+    },
 
-// View helpers
-impl View {
-    pub fn is_home(&self) -> bool { ... }
-    pub fn is_domain_editor(&self) -> bool { ... }
-    pub fn is_export(&self) -> bool { ... }
-    pub fn current_domain(&self) -> Option<&str> { ... }
-    pub fn current_tab(&self) -> Option<EditorTab> { ... }
+    /// Domain editor with tabbed interface.
+    DomainEditor {
+        /// Domain code being edited (e.g., "DM", "AE").
+        domain: String,
+        /// Active tab.
+        tab: EditorTab,
+        /// Mapping tab UI state.
+        mapping_ui: MappingUiState,
+        /// Normalization tab UI state.
+        normalization_ui: NormalizationUiState,
+        /// Validation tab UI state.
+        validation_ui: ValidationUiState,
+        /// Preview tab UI state.
+        preview_ui: PreviewUiState,
+        /// SUPP tab UI state.
+        supp_ui: SuppUiState,
+        /// Cached preview DataFrame.
+        preview_cache: Option<DataFrame>,
+    },
+
+    /// Export screen.
+    Export(ExportViewState),
 }
 ```
 
-### 2. Domain State
-
-Business data that represents the actual clinical trial data:
+### Constructor Helpers
 
 ```rust
-/// State for a single study
-pub struct StudyState {
-    /// Path to study folder
-    pub path: PathBuf,
+impl ViewState {
+    /// Create home view state.
+    pub fn home() -> Self {
+        Self::Home {
+            workflow_mode: WorkflowMode::default(),
+        }
+    }
 
-    /// Study metadata (name, description, etc.)
-    pub metadata: StudyMetadata,
+    /// Create domain editor view state.
+    pub fn domain_editor_with_rows(
+        domain: impl Into<String>,
+        tab: EditorTab,
+        rows_per_page: usize,
+    ) -> Self {
+        Self::DomainEditor {
+            domain: domain.into(),
+            tab,
+            mapping_ui: MappingUiState::default(),
+            normalization_ui: NormalizationUiState::default(),
+            validation_ui: ValidationUiState::default(),
+            preview_ui: PreviewUiState::with_rows_per_page(rows_per_page),
+            supp_ui: SuppUiState::default(),
+            preview_cache: None,
+        }
+    }
 
-    /// Domain states keyed by domain code (e.g., "DM", "AE")
-    domains: HashMap<String, DomainState>,
+    /// Create export view state.
+    pub fn export() -> Self {
+        Self::Export(ExportViewState::default())
+    }
+}
+```
+
+### Tab-Specific UI States
+
+Each editor tab has its own UI state struct:
+
+```rust
+/// Mapping tab UI state.
+pub struct MappingUiState {
+    pub selected_variable: Option<usize>,
+    pub search_filter: String,
+    pub filter_unmapped: bool,
+    pub filter_required: bool,
+    pub not_collected_edit: Option<NotCollectedEdit>,
 }
 
-/// State for a single domain
-pub struct DomainState {
-    /// Domain code (e.g., "DM", "AE")
-    pub code: String,
+/// Validation tab UI state.
+pub struct ValidationUiState {
+    pub selected_issue: Option<usize>,
+    pub severity_filter: SeverityFilter,
+}
 
-    /// Original source data
+/// Preview tab UI state.
+pub struct PreviewUiState {
+    pub current_page: usize,
+    pub rows_per_page: usize,
+    pub is_rebuilding: bool,
+    pub error: Option<String>,
+}
+
+/// SUPP tab UI state.
+pub struct SuppUiState {
+    pub selected_column: Option<String>,
+    pub search_filter: String,
+    pub filter_mode: SuppFilterMode,
+    pub edit_draft: Option<SuppEditDraft>,
+}
+```
+
+---
+
+## Study and Domain State
+
+### Study
+
+Represents a loaded study folder:
+
+```rust
+pub struct Study {
+    /// Study identifier (derived from folder name).
+    pub study_id: String,
+
+    /// Path to the study folder.
+    pub study_folder: PathBuf,
+
+    /// Study metadata (Items.csv, CodeLists.csv) if available.
+    pub metadata: Option<StudyMetadata>,
+
+    /// DomainStates indexed by code (e.g., "DM", "AE", "LB").
+    domains: BTreeMap<String, DomainState>,
+}
+
+impl Study {
+    pub fn domain(&self, code: &str) -> Option<&DomainState>;
+    pub fn domain_mut(&mut self, code: &str) -> Option<&mut DomainState>;
+    pub fn domain_codes_dm_first(&self) -> Vec<&str>;
+    pub fn domain_count(&self) -> usize;
+    pub fn total_rows(&self) -> usize;
+}
+```
+
+### DomainState
+
+Holds data and configuration for a single domain:
+
+```rust
+pub struct DomainState {
+    /// Domain code (e.g., "DM", "AE").
+    pub domain_code: String,
+
+    /// Source CSV data.
     pub source: DomainSource,
 
-    /// Column mapping state
-    pub mapping: MappingState,
+    /// Variable mappings (source column -> SDTM variable).
+    pub mapping: ColumnMapping,
 
-    /// Cached/computed state
-    pub derived: DerivedState,
-}
+    /// SUPP qualifier configuration.
+    pub supp_config: SuppConfig,
 
-/// Mapping state for a domain
-pub struct MappingState {
-    /// Column mappings: source_column -> target_variable
-    pub mappings: HashMap<String, String>,
-
-    /// Unmapped source columns
-    pub unmapped: Vec<String>,
-
-    /// Mapping confidence scores
-    pub confidence: HashMap<String, f64>,
+    /// Cached validation results.
+    pub validation_cache: Option<ValidationReport>,
 }
 ```
 
-### 3. UI State
+### DomainSource
 
-Visual-only state that doesn't affect domain data:
+Original CSV data:
 
 ```rust
-/// All UI state (separated from domain state)
-pub struct UiState {
-    /// Home view UI state
-    pub home: HomeUiState,
+pub struct DomainSource {
+    /// Path to the source CSV file.
+    pub file_path: PathBuf,
 
-    /// Per-domain editor UI state
-    domain_editors: HashMap<String, DomainEditorUiState>,
+    /// Source DataFrame (Polars).
+    pub data: DataFrame,
 
-    /// Export view UI state
-    pub export: ExportUiState,
-
-    /// Settings dialog UI state
-    pub settings: SettingsUiState,
-
-    /// About dialog UI state
-    pub about: AboutUiState,
-
-    /// Update dialog UI state
-    pub update: UpdateUiState,
-}
-
-/// UI state for a domain editor
-pub struct DomainEditorUiState {
-    /// Mapping tab UI state
-    pub mapping: MappingUiState,
-
-    /// Transform tab UI state
-    pub transform: TransformUiState,
-
-    /// Validation tab UI state
-    pub validation: ValidationUiState,
-
-    /// Preview tab UI state
-    pub preview: PreviewUiState,
-
-    /// SUPP tab UI state
-    pub supp: SuppUiState,
-}
-
-/// Mapping tab UI state
-pub struct MappingUiState {
-    /// Currently selected variable index
-    pub selected_idx: Option<usize>,
-
-    /// Search filter text
-    pub search_filter: String,
-
-    /// Show only unmapped toggle
-    pub filter_unmapped: bool,
-
-    /// Scroll position (for virtual scrolling)
-    pub scroll_offset: f32,
+    /// Column names from source.
+    pub columns: Vec<String>,
 }
 ```
 
-### 4. Persisted State
+---
 
-Settings that survive app restarts:
+## Dialog Windows State
+
+Multi-window dialogs track their window IDs and associated state:
 
 ```rust
-/// Application settings (persisted to disk)
+pub struct DialogWindows {
+    /// About dialog window ID.
+    pub about: Option<window::Id>,
+
+    /// Settings dialog window ID and current category.
+    pub settings: Option<(window::Id, SettingsCategory)>,
+
+    /// Third-party licenses dialog.
+    pub third_party: Option<(window::Id, ThirdPartyState)>,
+
+    /// Update dialog.
+    pub update: Option<(window::Id, UpdateState)>,
+
+    /// Close study confirmation dialog.
+    pub close_study_confirm: Option<window::Id>,
+
+    /// Export progress dialog.
+    pub export_progress: Option<(window::Id, ExportProgressState)>,
+
+    /// Export completion dialog.
+    pub export_complete: Option<(window::Id, ExportResult)>,
+}
+```
+
+### Helper Methods
+
+```rust
+impl DialogWindows {
+    /// Check if a window ID belongs to any dialog.
+    pub fn is_dialog_window(&self, id: window::Id) -> bool;
+
+    /// Get the dialog type for a window ID.
+    pub fn dialog_type(&self, id: window::Id) -> Option<DialogType>;
+
+    /// Close a dialog window by ID.
+    pub fn close(&mut self, id: window::Id);
+}
+```
+
+### Dialog State Examples
+
+```rust
+/// Export progress state.
+pub struct ExportProgressState {
+    pub current_domain: Option<String>,
+    pub current_step: String,
+    pub progress: f32,
+    pub files_written: usize,
+}
+
+/// Update dialog state.
+pub enum UpdateState {
+    Checking,
+    NoUpdate,
+    Available(UpdateInfo),
+    Downloading { progress: f32 },
+    ReadyToInstall { info: UpdateInfo, data: Vec<u8>, verified: bool },
+    Installing,
+    Error(String),
+}
+```
+
+---
+
+## Settings State
+
+User preferences persisted to disk:
+
+```rust
 pub struct Settings {
-    /// General settings
     pub general: GeneralSettings,
-
-    /// Export settings
     pub export: ExportSettings,
-
-    /// Validation settings
     pub validation: ValidationSettings,
-
-    /// Update settings
     pub update: UpdateSettings,
+    pub display: DisplaySettings,
+    pub developer: DeveloperSettings,
 }
 
-/// General settings
+impl Settings {
+    /// Load settings from disk (or defaults).
+    pub fn load() -> Self;
+
+    /// Save settings to disk.
+    pub fn save(&self) -> Result<(), io::Error>;
+}
+```
+
+### Recent Studies
+
+```rust
 pub struct GeneralSettings {
-    /// Number of header rows in source files
-    pub header_rows: usize,
-
-    /// Recent studies (most recent first)
-    pub recent_studies: Vec<PathBuf>,
-
-    /// Maximum recent studies to remember
-    pub max_recent: usize,
-}
-```
-
----
-
-## Domain State vs UI State
-
-### Why Separate?
-
-| Domain State         | UI State      |
-|----------------------|---------------|
-| Business data        | Visual state  |
-| Persisted with study | Ephemeral     |
-| Shared across views  | View-specific |
-| Affects output       | Display only  |
-
-### Example: Mapping Tab
-
-```rust
-// Domain state (affects export output)
-pub struct MappingState {
-    pub mappings: HashMap<String, String>,  // The actual mappings
+    pub recent_studies: Vec<RecentStudy>,
+    // ...
 }
 
-// UI state (visual only)
-pub struct MappingUiState {
-    pub selected_idx: Option<usize>,        // Which row is highlighted
-    pub search_filter: String,              // Search box text
-    pub scroll_offset: f32,                 // Scroll position
-}
-```
-
-### Access Pattern
-
-```rust
-impl App {
-    fn view_mapping(&self, domain: &str) -> Element<'_, Message> {
-        // Get domain state (the data)
-        let domain_state = self.study.as_ref()
-            .and_then(|s| s.get_domain(domain));
-
-        // Get UI state (the visual state)
-        let ui_state = &self.ui.domain_editor(domain).mapping;
-
-        // Use both to render
-        // ...
-    }
-}
-```
-
----
-
-## Derived State
-
-Computed data that's cached for performance:
-
-```rust
-/// Cached/computed state for a domain
-pub struct DerivedState {
-    /// Cached preview DataFrame
-    pub preview: Option<DataFrame>,
-
-    /// Cached validation results
-    pub validation: Option<ValidationReport>,
-
-    /// SUPP configuration (derived from source data)
-    pub supp_config: Option<SuppConfig>,
-
-    /// Last computation timestamp
-    pub computed_at: Option<Instant>,
-}
-```
-
-### Invalidation Pattern
-
-When source data changes, invalidate derived state:
-
-```rust
-impl App {
-    /// Invalidate preview when mapping changes
-    fn invalidate_preview(&mut self, domain_code: &str) {
-        if let Some(domain) = self.domain_mut(domain_code) {
-            domain.derived.preview = None;
-            domain.derived.validation = None;
-            domain.derived.computed_at = None;
-        }
-
-        // Also clear UI rebuild state
-        self.ui.domain_editor(domain_code).preview.is_rebuilding = false;
-        self.ui.domain_editor(domain_code).preview.error = None;
-    }
-}
-```
-
-### Lazy Computation Pattern
-
-Only compute derived state when needed:
-
-```rust
-impl App {
-    fn handle_preview_tab_selected(&mut self, domain: &str) -> Task<Message> {
-        // Check if preview needs rebuilding
-        let needs_rebuild = self.domain(domain)
-            .map(|d| d.derived.preview.is_none())
-            .unwrap_or(false);
-
-        if needs_rebuild {
-            // Set rebuilding flag
-            self.ui.domain_editor(domain).preview.is_rebuilding = true;
-
-            // Spawn background task
-            let domain = domain.to_string();
-            let config = self.build_preview_config(&domain);
-
-            Task::perform(
-                async move { compute_preview(config).await },
-                move |result| Message::PreviewReady {
-                    domain: domain.clone(),
-                    result,
-                }
-            )
-        } else {
-            Task::none()
-        }
-    }
+pub struct RecentStudy {
+    pub id: Uuid,
+    pub path: PathBuf,
+    pub display_name: String,
+    pub workflow_type: WorkflowType,
+    pub domain_count: usize,
+    pub row_count: usize,
+    pub last_opened: DateTime<Utc>,
 }
 ```
 
@@ -416,88 +451,114 @@ impl App {
 
 For simple, synchronous updates:
 
-```rust, no_run
-Message::Navigate(view) => {
-    self.view = view;
-    Task::none()
+```rust
+Message::Navigate(view_state) => {
+self.state.view = view_state;
+Task::none()
 }
 
-MappingMessage::VariableSelected(idx) => {
-    self.ui.domain_editor(domain).mapping.selected_idx = Some(idx);
-    Task::none()
+MappingMessage::SearchChanged(query) => {
+if let ViewState::DomainEditor { mapping_ui, .. } = & mut self.state.view {
+mapping_ui.search_filter = query;
+mapping_ui.selected_variable = None;
+}
+Task::none()
 }
 ```
 
-### 2. Async State Update
+### 2. Pattern Matching ViewState
 
-For updates that require background work:
+Access view-specific state:
 
-```rust, no_run
+```rust
+// Read from ViewState
+if let ViewState::DomainEditor { domain, tab, mapping_ui,..} = & self .state.view {
+// Use domain, tab, mapping_ui
+}
+
+// Write to ViewState
+if let ViewState::DomainEditor { mapping_ui,..} = & mut self .state.view {
+mapping_ui.selected_variable = Some(idx);
+}
+```
+
+### 3. Async State Update
+
+Background work with `Task::perform`:
+
+```rust
 HomeMessage::OpenStudyClicked => {
-    // Start file dialog (async)
-    Task::perform(
-        async { rfd::AsyncFileDialog::new().pick_folder().await },
-        |folder| Message::FolderSelected(folder.map(|f| f.path().to_path_buf()))
-    )
+Task::perform(
+async { rfd::AsyncFileDialog::new().pick_folder().await },
+| folder | Message::FolderSelected(folder.map( | f | f.path().to_path_buf()))
+)
 }
 
 Message::FolderSelected(Some(path)) => {
-    // Start study loading (async)
-    Task::perform(
-        async move { load_study(&path).await },
-        Message::StudyLoaded
-    )
+self.state.is_loading = true;
+Task::perform(
+async move { load_study( & path).await },
+Message::StudyLoaded
+)
 }
 
-Message::StudyLoaded(Ok(study)) => {
-    // Final state update (sync)
-    self.study = Some(study);
-    self.view = View::Home;
-    Task::none()
+Message::StudyLoaded(Ok((study, terminology))) => {
+self.state.study = Some(study);
+self.state.terminology = Some(terminology);
+self.state.is_loading = false;
+self.state.view = ViewState::home();
+Task::none()
 }
 ```
 
-### 3. Chained Updates
+### 4. Cached Data Invalidation
 
-When one update triggers another:
+Clear cached data when source changes:
 
-```rust, no_run
+```rust
 MappingMessage::AcceptSuggestion(variable) => {
-    // Update mapping
-    if let Some(domain) = self.current_domain() {
-        self.apply_mapping(&domain, &variable);
+// Update mapping
+if let Some(domain_state) = self.state.study.as_mut()
+.and_then( |s | s.domain_mut( & domain))
+{
+domain_state.mapping.accept_suggestion( & variable);
+// Invalidate cached validation
+domain_state.validation_cache = None;
+}
 
-        // Invalidate dependent state
-        self.invalidate_preview(&domain);
+// Clear preview cache in view
+if let ViewState::DomainEditor { preview_cache, .. } = & mut self.state.view {
+* preview_cache = None;
+}
 
-        // Move to next unmapped variable
-        self.advance_selection(&domain);
-    }
-    Task::none()
+Task::none()
 }
 ```
 
-### 4. Batched Updates
+### 5. Multi-Window Dialog Opening
 
-When multiple state changes happen together:
+```rust
+AboutMessage::Open => {
+// Check if already open
+if self.state.dialog_windows.about.is_some() {
+return Task::none();
+}
 
-```rust, no_run
-Message::StudyLoaded(Ok(study)) => {
-    // Batch all related state changes
-    self.study = Some(study);
-    self.ui.clear_domain_editors();
-    self.ui.export.reset();
-    self.view = View::Home;
+// Open new window
+let settings = window::Settings {
+size: Size::new(400.0, 300.0),
+resizable: false,
+..Default::default()
+};
+let (id, task) = window::open(settings);
 
-    // Load CT registry if needed
-    if self.ct_registry.is_none() {
-        return Task::perform(
-            async { load_ct_registry().await },
-            Message::CtRegistryLoaded
-        );
-    }
+// Map task to store window ID
+task.map( move | _ | Message::DialogWindowOpened(DialogType::About, id))
+}
 
-    Task::none()
+Message::DialogWindowOpened(DialogType::About, id) => {
+self.state.dialog_windows.about = Some(id);
+Task::none()
 }
 ```
 
@@ -505,146 +566,94 @@ Message::StudyLoaded(Ok(study)) => {
 
 ## Common Patterns
 
-### 1. Optional State Access
-
-Safely access nested optional state:
+### 1. Optional Domain Access
 
 ```rust
-// Get domain state
-pub fn domain(&self, code: &str) -> Option<&DomainState> {
-    self.study.as_ref()?.get_domain(code)
-}
-
-// Get mutable domain state
-pub fn domain_mut(&mut self, code: &str) -> Option<&mut DomainState> {
-    self.study.as_mut()?.get_domain_mut(code)
-}
-
-// Use in update
-fn handle_mapping_change(&mut self, domain: &str, change: MappingChange) {
-    if let Some(d) = self.domain_mut(domain) {
-        d.mapping.apply_change(change);
+impl AppState {
+    pub fn domain(&self, code: &str) -> Option<&DomainState> {
+        self.study.as_ref()?.domain(code)
     }
+}
+
+// Usage
+if let Some(domain) = self .state.domain("DM") {
+// Work with domain
 }
 ```
 
-### 2. UI State Factory
+### 2. Edit Draft Pattern (SUPP)
 
-Create UI state on-demand for domains:
+Temporary edits before committing:
 
 ```rust
-impl UiState {
-    /// Get or create UI state for a domain editor
-    pub fn domain_editor(&mut self, domain: &str) -> &mut DomainEditorUiState {
-        self.domain_editors
-            .entry(domain.to_string())
-            .or_insert_with(DomainEditorUiState::default)
-    }
+pub struct SuppUiState {
+    /// Edit draft for already-included columns.
+    /// When Some, user is editing an included column.
+    pub edit_draft: Option<SuppEditDraft>,
+}
 
-    /// Clear all domain editor UI state (on study change)
-    pub fn clear_domain_editors(&mut self) {
-        self.domain_editors.clear();
+pub struct SuppEditDraft {
+    pub qnam: String,
+    pub qlabel: String,
+    pub qorig: SuppOrigin,
+    pub qeval: String,
+}
+
+impl SuppEditDraft {
+    pub fn from_config(config: &SuppColumnConfig) -> Self {
+        // Copy current values to draft
     }
 }
+
+// Save: apply draft to actual config
+// Cancel: discard draft
 ```
 
-### 3. Settings with Pending Changes
+### 3. Export Selection State
 
-Edit settings without immediate persistence:
-
-```rust
-pub struct SettingsUiState {
-    /// Whether settings dialog is open
-    open: bool,
-
-    /// Pending settings (edited but not applied)
-    pending: Option<Settings>,
-
-    /// Active tab in settings dialog
-    pub active_tab: SettingsTab,
-}
-
-impl SettingsUiState {
-    /// Open settings dialog with current settings
-    pub fn open(&mut self, current: &Settings) {
-        self.open = true;
-        self.pending = Some(current.clone());
-    }
-
-    /// Close settings dialog
-    /// Returns the new settings if apply=true
-    pub fn close(&mut self, apply: bool) -> Option<Settings> {
-        self.open = false;
-        if apply {
-            self.pending.take()
-        } else {
-            self.pending = None;
-            None
-        }
-    }
-
-    /// Get pending settings for editing
-    pub fn pending_mut(&mut self) -> Option<&mut Settings> {
-        self.pending.as_mut()
-    }
-}
-```
-
-### 4. Export Progress State
-
-Track async operation progress:
+Track selected domains for export:
 
 ```rust
-pub struct ExportUiState {
-    /// Current export phase
+pub struct ExportViewState {
+    pub selected_domains: HashSet<String>,
+    pub output_dir: Option<PathBuf>,
     pub phase: ExportPhase,
-
-    /// Currently exporting domain
-    pub current_domain: Option<String>,
-
-    /// Current step description
-    pub current_step: String,
-
-    /// Overall progress (0.0 - 1.0)
-    pub overall_progress: f32,
-
-    /// Files written so far
-    pub written_files: Vec<PathBuf>,
-
-    /// Final result (success or error)
-    pub result: Option<Result<ExportResult, ExportError>>,
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
-pub enum ExportPhase {
-    #[default]
-    Idle,
-    Preparing,
-    Exporting,
-    Complete,
-}
-
-impl ExportUiState {
-    /// Reset to initial state
-    pub fn reset(&mut self) {
-        *self = Self::default();
-    }
-
-    /// Update progress from background task
-    pub fn apply_progress(&mut self, progress: ExportProgress) {
-        match progress {
-            ExportProgress::StartingDomain(domain) => {
-                self.current_domain = Some(domain);
-            }
-            ExportProgress::Step(step) => {
-                self.current_step = step.to_string();
-            }
-            ExportProgress::OverallProgress(p) => {
-                self.overall_progress = p;
-            }
+impl ExportViewState {
+    pub fn toggle_domain(&mut self, domain: &str) {
+        if self.selected_domains.contains(domain) {
+            self.selected_domains.remove(domain);
+        } else {
+            self.selected_domains.insert(domain.to_string());
         }
     }
+
+    pub fn can_export(&self) -> bool {
+        !self.selected_domains.is_empty() && !self.phase.is_exporting()
+    }
 }
+```
+
+### 4. Toast Notification State
+
+```rust
+pub struct ToastState {
+    pub message: String,
+    pub variant: ToastVariant,
+    pub action: Option<ToastAction>,
+}
+
+// Show toast
+self .state.toast = Some(ToastState::success("Export complete"));
+
+// Auto-dismiss via subscription
+let toast_sub = if self .state.toast.is_some() {
+time::every(Duration::from_secs(5))
+.map( | _ | Message::Toast(ToastMessage::Dismiss))
+} else {
+Subscription::none()
+};
 ```
 
 ---
@@ -655,104 +664,82 @@ impl ExportUiState {
 
 ```rust
 // BAD: Modifying state in view
-fn view_mapping(&mut self) -> Element<'_, Message> {
-    self.ui.mapping.view_count += 1;  // Side effect!
+fn view(&mut self) -> Element<'_, Message> {
+    self.view_count += 1;  // Side effect!
     // ...
 }
 
 // GOOD: Pure view function
-fn view_mapping(&self) -> Element<'_, Message> {
+fn view(&self) -> Element<'_, Message> {
     // Only read state, never modify
-    // ...
 }
 ```
 
-### 2. Duplicated State
+### 2. Separate UiState Struct
 
 ```rust
-// BAD: Same data in multiple places
+// BAD: Separate state containers to synchronize
 pub struct App {
-    current_domain: Option<String>,  // Duplicates View::DomainEditor
     view: View,
+    ui_state: UiState,  // Must stay in sync with view
+}
+
+// GOOD: UI state embedded in view
+pub struct App {
+    state: AppState,  // state.view contains UI state
+}
+```
+
+### 3. Caching Derived Data Unnecessarily
+
+```rust
+// BAD: Caching computed counts
+pub struct StudyState {
+    total_rows: usize,  // Must update when data changes
+    mapped_count: usize,
+}
+
+// GOOD: Compute on demand
+impl Study {
+    pub fn total_rows(&self) -> usize {
+        self.domains.values().map(|d| d.row_count()).sum()
+    }
+}
+```
+
+### 4. Forgetting to Clear Cached State
+
+```rust
+// BAD: Updating mapping without invalidating cache
+fn update_mapping(&mut self, ...) {
+    domain.mapping.update(...);
+    // Forgot to clear validation_cache!
+}
+
+// GOOD: Always invalidate dependent caches
+fn update_mapping(&mut self, ...) {
+    domain.mapping.update(...);
+    domain.validation_cache = None;
+
+    // Also clear preview cache in view state
+    if let ViewState::DomainEditor { preview_cache, .. } = &mut self.state.view {
+        *preview_cache = None;
+    }
+}
+```
+
+### 5. Duplicate State Across Windows
+
+```rust
+// BAD: Duplicating dialog state
+Message::DialogContent {
+window_id: window::Id,  // Already in dialog_windows
+settings: Settings,     // Should reference state.settings
 }
 
 // GOOD: Single source of truth
-pub struct App {
-    view: View,  // Contains domain info when in editor
-}
-
-// Access via helper
-impl App {
-    fn current_domain(&self) -> Option<&str> {
-        if let View::DomainEditor { domain, .. } = &self.view {
-            Some(domain)
-        } else {
-            None
-        }
-    }
-}
-```
-
-### 3. Giant State Structs
-
-```rust
-// BAD: Flat structure with everything at top level
-pub struct App {
-    view: View,
-    mapping_selected_idx: Option<usize>,
-    mapping_search: String,
-    preview_scroll: f32,
-    export_phase: ExportPhase,
-    export_progress: f32,
-    // ... 50 more fields
-}
-
-// GOOD: Nested structure organized by concern
-pub struct App {
-    view: View,
-    study: Option<StudyState>,
-    ui: UiState,
-}
-```
-
-### 4. Mixing Domain and UI State
-
-```rust
-// BAD: UI state mixed into domain struct
-pub struct DomainState {
-    pub mapping: MappingState,
-    pub selected_variable: Option<usize>,  // This is UI state!
-    pub scroll_position: f32,              // This is UI state!
-}
-
-// GOOD: Separated concerns
-pub struct DomainState {
-    pub mapping: MappingState,  // Domain data only
-}
-
-pub struct DomainEditorUiState {
-    pub mapping: MappingUiState,  // UI state here
-}
-```
-
-### 5. Forgetting to Invalidate
-
-```rust
-// BAD: Changing source without invalidating derived
-fn update_mapping(&mut self, domain: &str, mapping: MappingChange) {
-    if let Some(d) = self.domain_mut(domain) {
-        d.mapping.apply(mapping);
-        // Forgot to invalidate preview!
-    }
-}
-
-// GOOD: Always invalidate dependent state
-fn update_mapping(&mut self, domain: &str, mapping: MappingChange) {
-    if let Some(d) = self.domain_mut(domain) {
-        d.mapping.apply(mapping);
-    }
-    self.invalidate_preview(domain);  // Always invalidate
-}
+// dialog_windows tracks window IDs
+// state.settings is the single settings instance
 ```
 
 ---
@@ -761,34 +748,41 @@ fn update_mapping(&mut self, domain: &str, mapping: MappingChange) {
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
-│                            App State                                     │
+│                            App.state: AppState                           │
 │                                                                         │
-│  ┌───────────────┐  ┌──────────────────────┐  ┌────────────────────┐  │
-│  │   Navigation  │  │    Domain State      │  │     UI State       │  │
-│  │               │  │                      │  │                    │  │
-│  │  view         │  │  study: StudyState   │  │  home              │  │
-│  │  workflow     │  │    domains: HashMap  │  │  domain_editors    │  │
-│  │               │  │      mapping         │  │    mapping         │  │
-│  │               │  │      source          │  │    transform       │  │
-│  │               │  │      derived ←───────┼──┼─── preview         │  │
-│  │               │  │                      │  │  export            │  │
-│  └───────────────┘  └──────────────────────┘  └────────────────────┘  │
+│  ┌─────────────────────────────────────────────────────────────────┐  │
+│  │                    ViewState (current view)                      │  │
+│  │                                                                   │  │
+│  │  Home { workflow_mode }                                          │  │
+│  │  DomainEditor { domain, tab, mapping_ui, validation_ui, ... }    │  │
+│  │  Export(ExportViewState)                                         │  │
+│  └─────────────────────────────────────────────────────────────────┘  │
 │                                                                         │
-│  ┌───────────────────────────────────────────────────────────────────┐ │
-│  │                        Persisted State                             │ │
-│  │  settings: Settings (general, export, validation, update)         │ │
-│  └───────────────────────────────────────────────────────────────────┘ │
+│  ┌──────────────────────────┐  ┌────────────────────────────────────┐ │
+│  │     Study (domain data)   │  │      DialogWindows (multi-window) │ │
+│  │  study_id, study_folder   │  │  about: Option<window::Id>        │ │
+│  │  domains: BTreeMap        │  │  settings: Option<(Id, Category)> │ │
+│  │    "DM" -> DomainState    │  │  export_progress: Option<...>     │ │
+│  │    "AE" -> DomainState    │  │  ...                              │ │
+│  └──────────────────────────┘  └────────────────────────────────────┘ │
+│                                                                         │
+│  ┌──────────────────────────┐  ┌────────────────────────────────────┐ │
+│  │        Settings           │  │         Ephemeral State            │ │
+│  │  general, export, ...     │  │  is_loading, error, toast          │ │
+│  │  (persisted to disk)      │  │  terminology                       │ │
+│  └──────────────────────────┘  └────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────────────────┘
 
 Message Flow:
-  User Action → Message → update() → State Change → view() → UI Update
-                              │
-                              └→ Task (async) → Result Message → State Change
+  User Action -> Message -> update() -> State Change -> view() -> UI Update
+                                │
+                                └-> Task (async) -> Result Message -> State Change
 ```
 
 ---
 
 ## Next Steps
 
-- **[04-component-guide.md](./04-component-guide.md)** - Building reusable components
+- **[04-component-guide.md](./04-component-guide.md)** - Building reusable
+  components
 - **[05-theming.md](./05-theming.md)** - Professional Clinical theme guide

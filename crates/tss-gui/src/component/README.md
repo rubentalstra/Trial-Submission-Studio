@@ -313,7 +313,7 @@ CDISC core designation badges (Req/Exp/Perm).
 
 ```rust
 use tss_gui::component::{core_badge, core_badge_if_important};
-use tss_model::sdtm::CoreDesignation;
+use tss_standards::sdtm::CoreDesignation;
 
 core_badge(CoreDesignation::Required)   // Always shows "Req" in red
 core_badge_if_important(designation)    // Only shows if Required/Expected

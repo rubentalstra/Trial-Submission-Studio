@@ -1,6 +1,7 @@
 # Trial Submission Studio - Message Patterns
 
-This document describes the message hierarchy and patterns used in Trial Submission Studio.
+This document describes the message hierarchy and patterns used in Trial
+Submission Studio.
 
 ## Table of Contents
 
@@ -8,15 +9,17 @@ This document describes the message hierarchy and patterns used in Trial Submiss
 2. [Root Message Enum](#root-message-enum)
 3. [Nested Message Pattern](#nested-message-pattern)
 4. [Message Categories](#message-categories)
-5. [Naming Conventions](#naming-conventions)
-6. [Common Patterns](#common-patterns)
-7. [Anti-Patterns](#anti-patterns)
+5. [View-Specific Messages](#view-specific-messages)
+6. [Naming Conventions](#naming-conventions)
+7. [Common Patterns](#common-patterns)
+8. [Anti-Patterns](#anti-patterns)
 
 ---
 
 ## Message Philosophy
 
-Messages in Iced serve as the **communication channel** between the view (UI) and the update logic. They should:
+Messages in Iced serve as the **communication channel** between the view (UI)
+and the update logic. They should:
 
 1. **Describe what happened**, not what to do
 2. **Be immutable data** - messages are values, not commands
@@ -25,7 +28,7 @@ Messages in Iced serve as the **communication channel** between the view (UI) an
 
 ### Good Message Names
 
-```rust, no_run
+```rust
 // Describes what the user did
 HomeMessage::OpenStudyClicked
 MappingMessage::VariableSelected(index)
@@ -34,7 +37,7 @@ ExportMessage::FormatChanged(format)
 
 ### Poor Message Names
 
-```rust, no_run
+```rust
 // Describes implementation detail
 Message::SetStudyAndNavigateHome(study)  // Too imperative
 Message::DoExport                         // Vague
@@ -54,7 +57,7 @@ pub enum Message {
     // Navigation
     // =========================================================================
     /// Navigate to a different view
-    Navigate(View),
+    Navigate(ViewState),
 
     /// Change the workflow mode (SDTM, ADaM, SEND)
     SetWorkflowMode(WorkflowMode),
@@ -80,14 +83,32 @@ pub enum Message {
     // =========================================================================
     // Menu
     // =========================================================================
-    /// Menu action messages
+    /// Unified menu action (from native or in-app menu)
+    MenuAction(MenuAction),
+
+    /// Legacy menu messages
     Menu(MenuMessage),
+
+    /// Initialize native menu (startup task on macOS)
+    InitNativeMenu,
+
+    // =========================================================================
+    // Multi-window dialog management
+    // =========================================================================
+    /// A dialog window was opened
+    DialogWindowOpened(DialogType, window::Id),
+
+    /// A dialog window was closed
+    DialogWindowClosed(window::Id),
+
+    /// Request to close a specific window
+    CloseWindow(window::Id),
 
     // =========================================================================
     // Background task results
     // =========================================================================
-    /// Study loading completed
-    StudyLoaded(Result<StudyState, String>),
+    /// Study loading completed (includes study and terminology registry)
+    StudyLoaded(StudyLoadResult),
 
     /// Preview computation completed for a domain
     PreviewReady {
@@ -104,17 +125,36 @@ pub enum Message {
     /// Update check completed
     UpdateCheckComplete(Result<Option<UpdateInfo>, String>),
 
+    /// Update is ready to install
+    UpdateReadyToInstall {
+        info: UpdateInfo,
+        data: Arc<Vec<u8>>,
+        verified: bool,
+    },
+
     // =========================================================================
     // Global events
     // =========================================================================
     /// Keyboard event
     KeyPressed(Key, Modifiers),
 
-    /// Periodic tick (for polling, animations)
-    Tick,
-
     /// File dialog returned a folder selection
     FolderSelected(Option<PathBuf>),
+
+    /// Dismiss error message
+    DismissError,
+
+    // =========================================================================
+    // External actions
+    // =========================================================================
+    /// Open a URL in the system browser
+    OpenUrl(String),
+
+    // =========================================================================
+    // Toast notifications
+    // =========================================================================
+    /// Toast notification messages
+    Toast(ToastMessage),
 
     /// No operation - used for placeholder actions
     Noop,
@@ -129,17 +169,17 @@ Complex features use nested enums to organize related messages:
 
 ### Two-Level Nesting
 
-```rust, no_run
-// Root → Feature
+```rust
+// Root -> Feature
 Message::Home(HomeMessage::OpenStudyClicked)
 Message::Export(ExportMessage::StartExport)
-Message::Dialog(DialogMessage::CloseAll)
+Message::Dialog(DialogMessage::About(AboutMessage::Close))
 ```
 
 ### Three-Level Nesting
 
-```rust, no_run
-// Root → Feature → Sub-feature
+```rust
+// Root -> Feature -> Sub-feature
 Message::DomainEditor(DomainEditorMessage::Mapping(MappingMessage::AcceptSuggestion(var)))
 Message::Dialog(DialogMessage::Settings(SettingsMessage::General(GeneralSettingsMessage::HeaderRowsChanged(2))))
 ```
@@ -161,21 +201,22 @@ Message::Dialog(DialogMessage::Settings(SettingsMessage::General(GeneralSettings
 
 Control which view is displayed:
 
-```rust, no_run
-Message::Navigate(View::Home)
-Message::Navigate(View::DomainEditor { domain: "DM".into(), tab: EditorTab::Mapping })
-Message::Navigate(View::Export)
+```rust
+Message::Navigate(ViewState::home())
+Message::Navigate(ViewState::domain_editor("DM", EditorTab::Mapping))
+Message::Navigate(ViewState::export())
 ```
 
 ### 2. User Interaction Messages
 
 Respond to clicks, selections, input:
 
-```rust, no_run
+```rust
 // Home view
 HomeMessage::OpenStudyClicked
 HomeMessage::RecentStudyClicked(path)
 HomeMessage::DomainClicked(domain_code)
+HomeMessage::GoToExportClicked
 
 // Mapping tab
 MappingMessage::VariableSelected(index)
@@ -188,7 +229,7 @@ MappingMessage::ManualMap { variable, column }
 
 Handle text input and selections:
 
-```rust, no_run
+```rust
 // Settings
 GeneralSettingsMessage::HeaderRowsChanged(rows)
 ExportSettingsMessage::DefaultOutputDirChanged(path)
@@ -196,15 +237,17 @@ ExportSettingsMessage::DefaultOutputDirChanged(path)
 // SUPP tab
 SuppMessage::QnamChanged(value)
 SuppMessage::QlabelChanged(value)
+SuppMessage::QorigChanged(origin)
 ```
 
 ### 4. Toggle/Switch Messages
 
 Boolean state changes:
 
-```rust, no_run
+```rust
 ValidationSettingsMessage::StrictModeToggled(enabled)
 MappingMessage::FilterUnmappedToggled(enabled)
+MappingMessage::FilterRequiredToggled(enabled)
 UpdateSettingsMessage::AutoCheckToggled(enabled)
 ```
 
@@ -212,22 +255,144 @@ UpdateSettingsMessage::AutoCheckToggled(enabled)
 
 Results from background operations:
 
-```rust, no_run
-Message::StudyLoaded(Result<StudyState, String>)
+```rust
+Message::StudyLoaded(Result<(Study, TerminologyRegistry), String>)
 Message::PreviewReady { domain, result }
 Message::ValidationComplete { domain, report }
-ExportMessage::Complete(Result<ExportResult, ExportError>)
+Message::UpdateReadyToInstall { info, data, verified }
 ```
 
-### 6. Progress Messages
+### 6. Window Management Messages
 
-Updates during long operations:
+Multi-window dialog lifecycle:
 
-```rust, no_run
-ExportMessage::Progress(ExportProgress::StartingDomain(domain))
-ExportMessage::Progress(ExportProgress::Step(ExportStep::Validating))
-ExportMessage::Progress(ExportProgress::OverallProgress(0.75))
-UpdateMessage::InstallProgress(0.5)
+```rust
+Message::DialogWindowOpened(DialogType::About, window_id)
+Message::DialogWindowClosed(window_id)
+Message::CloseWindow(window_id)
+```
+
+---
+
+## View-Specific Messages
+
+### HomeMessage
+
+```rust
+pub enum HomeMessage {
+    // Study selection
+    OpenStudyClicked,
+    StudyFolderSelected(PathBuf),
+    RecentStudyClicked(PathBuf),
+    CloseStudyClicked,
+    CloseStudyConfirmed,
+    CloseStudyCancelled,
+
+    // Navigation
+    DomainClicked(String),
+    GoToExportClicked,
+
+    // Recent studies management
+    RemoveFromRecent(PathBuf),
+    ClearAllRecentStudies,
+    PruneStaleStudies,
+}
+```
+
+### DomainEditorMessage
+
+```rust
+pub enum DomainEditorMessage {
+    /// Switch to a different tab
+    TabSelected(EditorTab),
+
+    /// Go back to home view
+    BackClicked,
+
+    /// Tab-specific messages
+    Mapping(MappingMessage),
+    Normalization(NormalizationMessage),
+    Validation(ValidationMessage),
+    Preview(PreviewMessage),
+    Supp(SuppMessage),
+}
+```
+
+### MappingMessage
+
+```rust
+pub enum MappingMessage {
+    // Selection
+    VariableSelected(usize),
+    SearchChanged(String),
+    SearchCleared,
+
+    // Mapping actions
+    AcceptSuggestion(String),
+    ClearMapping(String),
+    ManualMap { variable: String, column: String },
+
+    // Not Collected workflow
+    MarkNotCollected { variable: String },
+    NotCollectedReasonChanged(String),
+    NotCollectedSave { variable: String, reason: String },
+    NotCollectedCancel,
+    EditNotCollectedReason { variable: String, current_reason: String },
+    ClearNotCollected(String),
+
+    // Omitted status (Perm variables only)
+    MarkOmitted(String),
+    ClearOmitted(String),
+
+    // Filters
+    FilterUnmappedToggled(bool),
+    FilterRequiredToggled(bool),
+}
+```
+
+### SuppMessage
+
+```rust
+pub enum SuppMessage {
+    // Navigation & filtering
+    ColumnSelected(String),
+    SearchChanged(String),
+    FilterModeChanged(SuppFilterMode),
+
+    // Field editing
+    QnamChanged(String),
+    QlabelChanged(String),
+    QorigChanged(SuppOrigin),
+    QevalChanged(String),
+
+    // Actions
+    AddToSupp,
+    Skip,
+    UndoAction,
+
+    // Edit mode (for included columns)
+    StartEdit,
+    SaveEdit,
+    CancelEdit,
+}
+```
+
+### DialogMessage
+
+```rust
+pub enum DialogMessage {
+    /// About dialog
+    About(AboutMessage),
+
+    /// Settings dialog
+    Settings(SettingsMessage),
+
+    /// Third-party licenses
+    ThirdParty(ThirdPartyMessage),
+
+    /// Update dialog
+    Update(UpdateMessage),
+}
 ```
 
 ---
@@ -236,7 +401,7 @@ UpdateMessage::InstallProgress(0.5)
 
 ### Message Enum Names
 
-```rust, no_run
+```rust
 // Pattern: {Feature}Message
 HomeMessage
 DomainEditorMessage
@@ -255,24 +420,23 @@ SettingsMessage     // Sub-feature of Dialog
 | Input change | `{Field}Changed`   | `SearchChanged`, `QnamChanged`           |
 | Toggle       | `{Feature}Toggled` | `StrictModeToggled`, `AutoCheckToggled`  |
 | Navigation   | `GoTo{View}`       | `GoToExportClicked`, `BackClicked`       |
-| Task start   | `Start{Task}`      | `StartExport`, `StartInstall`            |
-| Task result  | `{Task}Complete`   | `InstallComplete`, `CheckResult`         |
+| Task result  | `{Task}Complete`   | `ValidationComplete`, `StudyLoaded`      |
 | Clear/Reset  | `Clear{Item}`      | `ClearMapping`, `ClearSearch`            |
 
 ### Payload Naming
 
-```rust, no_run
+```rust
 // Single value: just the type
 VariableSelected(usize)
 FormatChanged(ExportFormat)
 
 // Multiple values: use named fields
 ManualMap { variable: String, column: String }
-RuleToggled { index: usize, enabled: bool }
+NotCollectedSave { variable: String, reason: String }
 
 // Complex results: use Result or custom struct
-StudyLoaded(Result<StudyState, String>)
-Complete(Result<ExportResult, ExportError>)
+StudyLoaded(Result<(Study, TerminologyRegistry), String>)
+PreviewReady { domain: String, result: Result<DataFrame, String> }
 ```
 
 ---
@@ -293,34 +457,40 @@ pub enum MappingMessage {
     SearchChanged(String),
 }
 
-// Handler
+// Handler in app/handler/mapping.rs
 fn handle_mapping(&mut self, msg: MappingMessage) -> Task<Message> {
     match msg {
         MappingMessage::VariableSelected(idx) => {
-            self.ui.mapping.selected_idx = Some(idx);
+            if let ViewState::DomainEditor { mapping_ui, .. } = &mut self.state.view {
+                mapping_ui.selected_idx = Some(idx);
+            }
             Task::none()
         }
         MappingMessage::SearchChanged(query) => {
-            self.ui.mapping.search_filter = query;
-            self.ui.mapping.selected_idx = None; // Clear selection on search
+            if let ViewState::DomainEditor { mapping_ui, .. } = &mut self.state.view {
+                mapping_ui.search_filter = query;
+                mapping_ui.selected_idx = None; // Clear selection on search
+            }
             Task::none()
         }
         MappingMessage::SearchCleared => {
-            self.ui.mapping.search_filter.clear();
+            if let ViewState::DomainEditor { mapping_ui, .. } = &mut self.state.view {
+                mapping_ui.search_filter.clear();
+            }
             Task::none()
         }
     }
 }
 ```
 
-### 2. Dialog Open/Close Pattern
+### 2. Multi-Window Dialog Pattern
 
 ```rust
 pub enum AboutMessage {
-    /// Open the About dialog
+    /// Open the About dialog window
     Open,
 
-    /// Close the About dialog
+    /// Close the About dialog window
     Close,
 
     /// Open external link
@@ -328,22 +498,33 @@ pub enum AboutMessage {
     OpenGitHub,
 }
 
-// Handler
+// Handler opens a new window
 fn handle_about(&mut self, msg: AboutMessage) -> Task<Message> {
     match msg {
         AboutMessage::Open => {
-            self.ui.about.open = true;
-            Task::none()
+            // Check if already open
+            if self.state.dialog_windows.about.is_some() {
+                return Task::none();
+            }
+            // Open new window
+            let settings = window::Settings {
+                size: Size::new(400.0, 300.0),
+                resizable: false,
+                ..Default::default()
+            };
+            let (id, task) = window::open(settings);
+            task.map(move |_| Message::DialogWindowOpened(DialogType::About, id))
         }
         AboutMessage::Close => {
-            self.ui.about.open = false;
+            if let Some(id) = self.state.dialog_windows.about {
+                self.state.dialog_windows.about = None;
+                return window::close(id);
+            }
             Task::none()
         }
         AboutMessage::OpenWebsite => {
-            Task::perform(
-                async { open::that("https://example.com") },
-                |_| Message::Noop
-            )
+            let _ = open::that("https://trialsubmissionstudio.com");
+            Task::none()
         }
         // ...
     }
@@ -357,14 +538,11 @@ pub enum ExportMessage {
     /// Start the export process
     StartExport,
 
-    /// Cancel the export in progress
-    CancelExport,
-
     /// Progress update (from background task)
-    Progress(ExportProgress),
+    Progress { domain: String, step: String, progress: f32 },
 
     /// Export completed (from background task)
-    Complete(Result<ExportResult, ExportError>),
+    Complete(Result<ExportResult, String>),
 }
 
 // Handler
@@ -372,78 +550,59 @@ fn handle_export(&mut self, msg: ExportMessage) -> Task<Message> {
     match msg {
         ExportMessage::StartExport => {
             let config = self.build_export_config();
-            self.ui.export.phase = ExportPhase::Exporting;
 
-            // Start background task
-            Task::perform(
-                async move { run_export(config).await },
-                |result| Message::Export(ExportMessage::Complete(result))
-            )
+            // Open progress dialog window
+            let (id, open_task) = window::open(progress_window_settings());
+
+            // Chain: open window, then start export
+            open_task
+                .map(move |_| Message::DialogWindowOpened(DialogType::ExportProgress, id))
+                .chain(Task::perform(
+                    async move { run_export(config).await },
+                    |result| Message::Export(ExportMessage::Complete(result))
+                ))
         }
-        ExportMessage::Progress(progress) => {
-            self.ui.export.apply_progress(progress);
+        ExportMessage::Progress { domain, step, progress } => {
+            if let Some((_, ref mut state)) = self.state.dialog_windows.export_progress {
+                state.current_domain = Some(domain);
+                state.current_step = step;
+                state.progress = progress;
+            }
             Task::none()
         }
         ExportMessage::Complete(result) => {
-            self.ui.export.phase = ExportPhase::Complete;
-            self.ui.export.result = Some(result);
-            Task::none()
-        }
-        ExportMessage::CancelExport => {
-            // Cancel logic...
+            // Close progress window, open complete window
+            // ...
             Task::none()
         }
     }
 }
 ```
 
-### 4. Settings Apply/Cancel Pattern
+### 4. Settings Edit Pattern
 
 ```rust
 pub enum SettingsMessage {
-    /// Open the Settings dialog
-    Open,
+    /// Switch settings category
+    CategorySelected(SettingsCategory),
 
-    /// Close the Settings dialog (discard changes)
-    Close,
+    /// Category-specific messages
+    General(GeneralSettingsMessage),
+    Export(ExportSettingsMessage),
+    Validation(ValidationSettingsMessage),
+    Update(UpdateSettingsMessage),
+    Display(DisplaySettingsMessage),
+    Developer(DeveloperSettingsMessage),
 
-    /// Apply changes and close
-    Apply,
+    /// Save all settings
+    Save,
 
-    /// Reset to default settings
+    /// Reset to defaults
     ResetToDefaults,
-
-    // ... category-specific messages
 }
 
-// Handler
-fn handle_settings(&mut self, msg: SettingsMessage) -> Task<Message> {
-    match msg {
-        SettingsMessage::Open => {
-            self.ui.settings.pending = Some(self.settings.clone());
-            self.ui.settings.open = true;
-            Task::none()
-        }
-        SettingsMessage::Close => {
-            self.ui.settings.pending = None;
-            self.ui.settings.open = false;
-            Task::none()
-        }
-        SettingsMessage::Apply => {
-            if let Some(pending) = self.ui.settings.pending.take() {
-                self.settings = pending;
-                // Save to disk
-                Task::perform(
-                    async move { save_settings(&self.settings).await },
-                    |_| Message::Noop
-                )
-            } else {
-                Task::none()
-            }
-        }
-        // ...
-    }
-}
+// Settings changes are applied directly to state.settings
+// and saved on SettingsMessage::Save
 ```
 
 ---
@@ -452,40 +611,39 @@ fn handle_settings(&mut self, msg: SettingsMessage) -> Task<Message> {
 
 ### 1. Imperative Message Names
 
-```rust, no_run
+```rust
 // BAD: Describes what to do
 Message::SetViewToHome
 Message::LoadStudyFromPath(path)
 Message::UpdateMappingState
 
 // GOOD: Describes what happened
-Message::Navigate(View::Home)
+Message::Navigate(ViewState::home())
 Message::StudyLoaded(result)
 MappingMessage::VariableSelected(idx)
 ```
 
 ### 2. Giant Payloads
 
-```rust, no_run
+```rust
 // BAD: Too much data in message
 Message::UpdateEverything {
-    study: StudyState,
-    settings: Settings,
-    ui: UiState,
-    view: View,
+study: Study,
+settings: Settings,
+view: ViewState,
 }
 
 // GOOD: Specific, minimal payload
-Message::StudyLoaded(Result<StudyState, String>)
+Message::StudyLoaded(Result<(Study, TerminologyRegistry), String>)
 ```
 
 ### 3. Side Effects in Message Creation
 
-```rust, no_run
+```rust
 // BAD: Side effect in view
 button("Save").on_press({
-    save_to_disk(); // Side effect!
-    Message::Saved
+save_to_disk(); // Side effect!
+Message::Saved
 })
 
 // GOOD: Side effect in update
@@ -493,29 +651,25 @@ button("Save").on_press(Message::SaveClicked)
 
 // In update:
 Message::SaveClicked => {
-    Task::perform(
-        async { save_to_disk().await },
-        Message::SaveComplete
-    )
+Task::perform(
+async { save_to_disk().await },
+Message::SaveComplete
+)
 }
 ```
 
-### 4. Duplicate Information
+### 4. Mixing Window ID in State Path
 
-```rust, no_run
-// BAD: Domain code in message AND in state path
-Message::DomainEditor {
-    domain: String,      // Duplicates view state
-    msg: DomainEditorMessage,
+```rust
+// BAD: Window ID duplicated
+Message::DialogContent {
+window_id: window::Id,  // Already tracked in dialog_windows
+content: DialogContent,
 }
 
-// GOOD: Get domain from current view
-Message::DomainEditor(DomainEditorMessage)
-
-// In handler:
-if let View::DomainEditor { domain, .. } = &self.view {
-    // Use domain from view state
-}
+// GOOD: Use dialog_windows to track window IDs
+Message::DialogWindowOpened(DialogType::About, id)
+// Later: self.state.dialog_windows.dialog_type(id)
 ```
 
 ---
@@ -537,15 +691,15 @@ if let View::DomainEditor { domain, .. } = &self.view {
 ┌─────────────────────────────────────────────────────────────────┐
 │                         App::update()                            │
 │  match message {                                                 │
-│      Message::Home(msg) => self.handle_home(msg),               │
+│      Message::Home(msg) => self.handle_home_message(msg),       │
 │      ...                                                         │
 │  }                                                               │
 └─────────────────────────────┬───────────────────────────────────┘
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                      Feature Handler                             │
-│  fn handle_home(&mut self, msg: HomeMessage) -> Task<Message>   │
+│                   Handler (app/handler/*.rs)                     │
+│  fn handle_home_message(&mut self, msg: HomeMessage)            │
 │  match msg {                                                     │
 │      HomeMessage::OpenStudyClicked => Task::perform(...),       │
 │      ...                                                         │
@@ -557,7 +711,7 @@ if let View::DomainEditor { domain, .. } = &self.view {
               ▼                               ▼
 ┌─────────────────────────┐     ┌─────────────────────────┐
 │     State Update         │     │    Background Task      │
-│  self.view = View::Home  │     │  Task::perform(...)     │
+│  self.state.view = ...   │     │  Task::perform(...)     │
 └─────────────────────────┘     └────────────┬────────────┘
                                              │
                                              ▼
@@ -571,6 +725,8 @@ if let View::DomainEditor { domain, .. } = &self.view {
 
 ## Next Steps
 
-- **[03-state-management.md](./03-state-management.md)** - State organization and patterns
-- **[04-component-guide.md](./04-component-guide.md)** - Building reusable components
+- **[03-state-management.md](./03-state-management.md)** - State organization and
+  patterns
+- **[04-component-guide.md](./04-component-guide.md)** - Building reusable
+  components
 - **[05-theming.md](./05-theming.md)** - Professional Clinical theme guide
