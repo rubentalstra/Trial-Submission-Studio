@@ -7,8 +7,7 @@ use iced::{Border, Element, Length, Padding};
 use iced_fonts::lucide;
 
 use crate::theme::{
-    BORDER_RADIUS_SM, GRAY_200, GRAY_400, GRAY_500, SPACING_SM, SPACING_XS, button_ghost,
-    text_input_default,
+    BORDER_RADIUS_SM, SPACING_SM, SPACING_XS, button_ghost, colors, text_input_default,
 };
 
 // =============================================================================
@@ -44,8 +43,13 @@ pub fn search_box<'a, M: Clone + 'a>(
     on_change: impl Fn(String) -> M + 'a,
     on_clear: M,
 ) -> Element<'a, M> {
+    let c = colors();
+    let icon_color = c.text_muted;
+    let border_color = c.border_default;
+    let bg_color = c.background_elevated;
+
     // Search icon (magnifying glass)
-    let search_icon = lucide::search().size(14).color(GRAY_400);
+    let search_icon = lucide::search().size(14).color(icon_color);
 
     // Text input (extra left padding for icon)
     let input = text_input(placeholder, value)
@@ -59,7 +63,7 @@ pub fn search_box<'a, M: Clone + 'a>(
         None
     } else {
         Some(
-            button(lucide::x().size(16).color(GRAY_500))
+            button(lucide::x().size(16).color(icon_color))
                 .on_press(on_clear)
                 .padding([4.0, 8.0])
                 .style(button_ghost),
@@ -83,10 +87,10 @@ pub fn search_box<'a, M: Clone + 'a>(
 
     container(content)
         .width(Length::Fill)
-        .style(|_theme| container::Style {
-            background: Some(iced::Color::WHITE.into()),
+        .style(move |_theme| container::Style {
+            background: Some(bg_color.into()),
             border: Border {
-                color: GRAY_200,
+                color: border_color,
                 width: 1.0,
                 radius: BORDER_RADIUS_SM.into(),
             },
@@ -104,6 +108,8 @@ pub fn search_box_compact<'a, M: Clone + 'a>(
     on_change: impl Fn(String) -> M + 'a,
     on_clear: M,
 ) -> Element<'a, M> {
+    let icon_color = colors().text_muted;
+
     let input = text_input(placeholder, value)
         .on_input(on_change)
         .padding([6.0, 8.0])
@@ -115,7 +121,7 @@ pub fn search_box_compact<'a, M: Clone + 'a>(
         None
     } else {
         Some(
-            button(lucide::x().size(14).color(GRAY_500))
+            button(lucide::x().size(14).color(icon_color))
                 .on_press(on_clear)
                 .padding([2.0, 6.0])
                 .style(button_ghost),
@@ -142,6 +148,10 @@ pub fn search_box_with_filter<'a, M: Clone + 'a>(
     filter_active: bool,
     on_filter_toggle: M,
 ) -> Element<'a, M> {
+    let c = colors();
+    let icon_color = c.text_muted;
+    let accent_color = c.accent_primary;
+
     let input = text_input(placeholder, value)
         .on_input(on_change)
         .padding([8.0, 12.0])
@@ -151,7 +161,7 @@ pub fn search_box_with_filter<'a, M: Clone + 'a>(
     let clear_button: Element<'a, M> = if value.is_empty() {
         Space::new().width(0.0).into()
     } else {
-        button(lucide::x().size(16).color(GRAY_500))
+        button(lucide::x().size(16).color(icon_color))
             .on_press(on_clear)
             .padding([4.0, 8.0])
             .style(button_ghost)
@@ -160,9 +170,9 @@ pub fn search_box_with_filter<'a, M: Clone + 'a>(
 
     // Filter button
     let filter_icon_color = if filter_active {
-        crate::theme::PRIMARY_500
+        accent_color
     } else {
-        GRAY_400
+        icon_color
     };
 
     let filter_button: Element<'a, M> = button(lucide::funnel().size(14).color(filter_icon_color))

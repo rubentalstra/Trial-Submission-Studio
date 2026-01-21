@@ -19,10 +19,7 @@ use iced::widget::{Space, button, container, row, text};
 use iced::{Alignment, Border, Color, Element, Length};
 use iced_fonts::lucide;
 
-use crate::theme::{
-    GRAY_100, GRAY_200, GRAY_500, GRAY_900, SPACING_LG, SPACING_MD, SPACING_SM, WHITE,
-    button_secondary,
-};
+use crate::theme::{SPACING_LG, SPACING_MD, SPACING_SM, button_secondary, colors};
 
 // =============================================================================
 // PAGE HEADER
@@ -75,6 +72,13 @@ impl<'a, M: Clone + 'a> PageHeader<'a, M> {
 
     /// Build the element.
     pub fn view(self) -> Element<'a, M> {
+        let c = colors();
+        let text_primary = c.text_primary;
+        let text_muted = c.text_muted;
+        let text_on_accent = c.text_on_accent;
+        let bg_secondary = c.background_secondary;
+        let border_default = c.border_default;
+
         let mut header_row = row![].spacing(SPACING_SM).align_y(Alignment::Center);
 
         // Back button
@@ -94,7 +98,7 @@ impl<'a, M: Clone + 'a> PageHeader<'a, M> {
 
         // Badge
         if let Some((badge_text, badge_color)) = self.badge {
-            let badge = container(text(badge_text).size(14).color(WHITE))
+            let badge = container(text(badge_text).size(14).color(text_on_accent))
                 .padding([4.0, 12.0])
                 .style(move |_| container::Style {
                     background: Some(badge_color.into()),
@@ -109,7 +113,7 @@ impl<'a, M: Clone + 'a> PageHeader<'a, M> {
         }
 
         // Title
-        header_row = header_row.push(text(self.title).size(20).color(GRAY_900));
+        header_row = header_row.push(text(self.title).size(20).color(text_primary));
 
         // Fill space
         header_row = header_row.push(Space::new().width(Length::Fill));
@@ -118,7 +122,7 @@ impl<'a, M: Clone + 'a> PageHeader<'a, M> {
         for (label, value) in self.metadata {
             let meta_item = text(format!("{}: {}", label, value))
                 .size(12)
-                .color(GRAY_500);
+                .color(text_muted);
             header_row = header_row.push(meta_item);
             header_row = header_row.push(Space::new().width(SPACING_MD));
         }
@@ -132,12 +136,12 @@ impl<'a, M: Clone + 'a> PageHeader<'a, M> {
         container(header_row)
             .width(Length::Fill)
             .padding([SPACING_MD, SPACING_LG])
-            .style(|_| container::Style {
-                background: Some(GRAY_100.into()),
+            .style(move |_| container::Style {
+                background: Some(bg_secondary.into()),
                 border: Border {
                     width: 0.0,
                     radius: 0.0.into(),
-                    color: GRAY_200,
+                    color: border_default,
                 },
                 ..Default::default()
             })

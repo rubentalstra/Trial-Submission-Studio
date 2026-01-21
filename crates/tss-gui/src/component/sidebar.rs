@@ -3,12 +3,9 @@
 //! A vertical sidebar for domain/feature navigation.
 
 use iced::widget::{button, column, container, scrollable, space, text};
-use iced::{Border, Element, Length, Padding};
+use iced::{Border, Color, Element, Length, Padding};
 
-use crate::theme::{
-    BORDER_RADIUS_SM, GRAY_50, GRAY_100, GRAY_200, GRAY_700, GRAY_800, PRIMARY_100, PRIMARY_500,
-    PRIMARY_700, SIDEBAR_WIDTH, SPACING_SM, SPACING_XS,
-};
+use crate::theme::{BORDER_RADIUS_SM, SIDEBAR_WIDTH, SPACING_SM, SPACING_XS, colors};
 
 // =============================================================================
 // SIDEBAR ITEM
@@ -74,6 +71,20 @@ pub fn sidebar<'a, M: Clone + 'a>(
     active_index: Option<usize>,
     width: f32,
 ) -> Element<'a, M> {
+    let c = colors();
+    let bg_primary = c.background_primary;
+    let bg_secondary = c.background_secondary;
+    let border_default = c.border_default;
+    let text_secondary = c.text_secondary;
+    let text_primary = c.text_primary;
+    let accent_primary = c.accent_primary;
+    let accent_pressed = c.accent_pressed;
+    // Light tint of accent for active background
+    let accent_light = Color {
+        a: 0.15,
+        ..accent_primary
+    };
+
     let mut item_column = column![].spacing(SPACING_XS);
 
     for (index, item) in items.into_iter().enumerate() {
@@ -83,14 +94,16 @@ pub fn sidebar<'a, M: Clone + 'a>(
         // Item content with optional badge
         let item_content = if let Some(badge) = item.badge {
             iced::widget::row![
-                text(label)
-                    .size(14)
-                    .color(if is_active { PRIMARY_700 } else { GRAY_700 }),
+                text(label).size(14).color(if is_active {
+                    accent_pressed
+                } else {
+                    text_secondary
+                }),
                 space::horizontal(),
-                container(text(badge).size(11).color(GRAY_700))
+                container(text(badge).size(11).color(text_secondary))
                     .padding([2.0, 6.0])
-                    .style(|_theme| container::Style {
-                        background: Some(GRAY_200.into()),
+                    .style(move |_theme| container::Style {
+                        background: Some(border_default.into()),
                         border: Border {
                             radius: 10.0.into(),
                             ..Default::default()
@@ -101,9 +114,9 @@ pub fn sidebar<'a, M: Clone + 'a>(
             .align_y(iced::Alignment::Center)
         } else {
             iced::widget::row![text(label).size(14).color(if is_active {
-                PRIMARY_700
+                accent_pressed
             } else {
-                GRAY_700
+                text_secondary
             })]
         };
 
@@ -114,11 +127,32 @@ pub fn sidebar<'a, M: Clone + 'a>(
         )
         .on_press(item.message)
         .width(Length::Fill)
-        .style(move |theme, status| {
+        .style(move |_theme, status| {
             if is_active {
-                sidebar_item_active(theme, status)
+                button::Style {
+                    background: Some(accent_light.into()),
+                    text_color: accent_pressed,
+                    border: Border {
+                        color: accent_primary,
+                        width: 0.0,
+                        radius: BORDER_RADIUS_SM.into(),
+                    },
+                    ..Default::default()
+                }
             } else {
-                sidebar_item_inactive(theme, status)
+                let bg = match status {
+                    button::Status::Hovered => Some(bg_secondary.into()),
+                    _ => None,
+                };
+                button::Style {
+                    background: bg,
+                    text_color: text_primary,
+                    border: Border {
+                        radius: BORDER_RADIUS_SM.into(),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                }
             }
         });
 
@@ -129,10 +163,10 @@ pub fn sidebar<'a, M: Clone + 'a>(
         .width(Length::Fixed(width))
         .height(Length::Fill)
         .padding(SPACING_SM)
-        .style(|_theme| container::Style {
-            background: Some(GRAY_50.into()),
+        .style(move |_theme| container::Style {
+            background: Some(bg_primary.into()),
             border: Border {
-                color: GRAY_200,
+                color: border_default,
                 width: 1.0,
                 radius: 0.0.into(),
             },
@@ -156,6 +190,20 @@ pub fn sidebar_with_header<'a, M: Clone + 'a>(
     active_index: Option<usize>,
     width: f32,
 ) -> Element<'a, M> {
+    let c = colors();
+    let bg_primary = c.background_primary;
+    let bg_secondary = c.background_secondary;
+    let border_default = c.border_default;
+    let text_secondary = c.text_secondary;
+    let text_primary = c.text_primary;
+    let accent_primary = c.accent_primary;
+    let accent_pressed = c.accent_pressed;
+    // Light tint of accent for active background
+    let accent_light = Color {
+        a: 0.15,
+        ..accent_primary
+    };
+
     let mut item_column = column![].spacing(SPACING_XS);
 
     for (index, item) in items.into_iter().enumerate() {
@@ -163,21 +211,42 @@ pub fn sidebar_with_header<'a, M: Clone + 'a>(
         let label = item.label.clone();
 
         let item_button = button(
-            container(
-                text(label)
-                    .size(14)
-                    .color(if is_active { PRIMARY_700 } else { GRAY_700 }),
-            )
+            container(text(label).size(14).color(if is_active {
+                accent_pressed
+            } else {
+                text_secondary
+            }))
             .padding([SPACING_SM, 12.0])
             .width(Length::Fill),
         )
         .on_press(item.message)
         .width(Length::Fill)
-        .style(move |theme, status| {
+        .style(move |_theme, status| {
             if is_active {
-                sidebar_item_active(theme, status)
+                button::Style {
+                    background: Some(accent_light.into()),
+                    text_color: accent_pressed,
+                    border: Border {
+                        color: accent_primary,
+                        width: 0.0,
+                        radius: BORDER_RADIUS_SM.into(),
+                    },
+                    ..Default::default()
+                }
             } else {
-                sidebar_item_inactive(theme, status)
+                let bg = match status {
+                    button::Status::Hovered => Some(bg_secondary.into()),
+                    _ => None,
+                };
+                button::Style {
+                    background: bg,
+                    text_color: text_primary,
+                    border: Border {
+                        radius: BORDER_RADIUS_SM.into(),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                }
             }
         });
 
@@ -194,48 +263,14 @@ pub fn sidebar_with_header<'a, M: Clone + 'a>(
     )
     .width(Length::Fixed(width))
     .height(Length::Fill)
-    .style(|_theme| container::Style {
-        background: Some(GRAY_50.into()),
+    .style(move |_theme| container::Style {
+        background: Some(bg_primary.into()),
         border: Border {
-            color: GRAY_200,
+            color: border_default,
             width: 1.0,
             radius: 0.0.into(),
         },
         ..Default::default()
     })
     .into()
-}
-
-// =============================================================================
-// SIDEBAR ITEM STYLES
-// =============================================================================
-
-fn sidebar_item_active(_theme: &iced::Theme, _status: button::Status) -> button::Style {
-    button::Style {
-        background: Some(PRIMARY_100.into()),
-        text_color: PRIMARY_700,
-        border: Border {
-            color: PRIMARY_500,
-            width: 0.0,
-            radius: BORDER_RADIUS_SM.into(),
-        },
-        ..Default::default()
-    }
-}
-
-fn sidebar_item_inactive(_theme: &iced::Theme, status: button::Status) -> button::Style {
-    let bg = match status {
-        button::Status::Hovered => Some(GRAY_100.into()),
-        _ => None,
-    };
-
-    button::Style {
-        background: bg,
-        text_color: GRAY_800,
-        border: Border {
-            radius: BORDER_RADIUS_SM.into(),
-            ..Default::default()
-        },
-        ..Default::default()
-    }
 }

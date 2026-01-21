@@ -6,9 +6,7 @@
 use iced::widget::{Space, button, column, container, row, rule, text};
 use iced::{Alignment, Element, Length};
 
-use crate::theme::{
-    GRAY_500, GRAY_600, GRAY_700, GRAY_900, SPACING_LG, SPACING_SM, SPACING_XS, button_secondary,
-};
+use crate::theme::{SPACING_LG, SPACING_SM, SPACING_XS, button_secondary, colors};
 
 // =============================================================================
 // MASTER PANEL HEADER
@@ -74,13 +72,22 @@ impl<M: Clone + 'static> MasterPanelHeader<M> {
         use crate::component::FilterToggle;
         use iced::widget::text_input;
 
+        let c = colors();
+        let text_secondary = c.text_secondary;
+        let text_muted = c.text_muted;
+
         let mut content = column![];
 
         // Title
-        content = content.push(text(self.title).size(14).color(GRAY_700).font(iced::Font {
-            weight: iced::font::Weight::Semibold,
-            ..Default::default()
-        }));
+        content = content.push(
+            text(self.title)
+                .size(14)
+                .color(text_secondary)
+                .font(iced::Font {
+                    weight: iced::font::Weight::Semibold,
+                    ..Default::default()
+                }),
+        );
         content = content.push(Space::new().height(SPACING_SM));
 
         // Search input
@@ -117,9 +124,9 @@ impl<M: Clone + 'static> MasterPanelHeader<M> {
             };
 
             let stats_row = row![
-                text(num_part).size(12).color(GRAY_600),
+                text(num_part).size(12).color(text_muted),
                 Space::new().width(4.0),
-                text(label_part).size(11).color(GRAY_500),
+                text(label_part).size(11).color(text_muted),
             ]
             .align_y(Alignment::Center);
             content = content.push(stats_row);
@@ -148,11 +155,13 @@ pub fn master_panel_empty<'a, M: Clone + 'a>(
     message: impl Into<String>,
     clear_message: M,
 ) -> Element<'a, M> {
+    let c = colors();
+    let text_muted = c.text_muted;
     let msg = message.into();
 
     container(
         column![
-            text(msg).size(13).color(GRAY_500),
+            text(msg).size(13).color(text_muted),
             Space::new().height(SPACING_SM),
             button(text("Clear filters").size(12))
                 .on_press(clear_message)
@@ -204,10 +213,13 @@ impl<'a, M: 'a> MasterPanelSection<'a, M> {
 
     /// Build the section element.
     pub fn view(self) -> Element<'a, M> {
+        let c = colors();
+        let text_muted = c.text_muted;
+
         let count_el: Element<'a, M> = if let Some(count) = self.count {
             row![
                 Space::new().width(SPACING_XS),
-                text(format!("({})", count)).size(11).color(GRAY_500),
+                text(format!("({})", count)).size(11).color(text_muted),
             ]
             .into()
         } else {
@@ -215,7 +227,7 @@ impl<'a, M: 'a> MasterPanelSection<'a, M> {
         };
 
         let title_row =
-            row![text(self.title).size(12).color(GRAY_600), count_el,].align_y(Alignment::Center);
+            row![text(self.title).size(12).color(text_muted), count_el,].align_y(Alignment::Center);
 
         column![title_row, Space::new().height(SPACING_XS), self.content,].into()
     }

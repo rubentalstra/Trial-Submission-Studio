@@ -7,8 +7,8 @@ use iced::{Border, Element, Length, Shadow, Vector};
 use iced_fonts::lucide;
 
 use crate::theme::{
-    BACKDROP, BORDER_RADIUS_LG, GRAY_200, GRAY_500, GRAY_900, MODAL_WIDTH_MD, SHADOW_STRONG,
-    SPACING_LG, SPACING_MD, SPACING_SM, WHITE, button_ghost, button_primary, button_secondary,
+    BORDER_RADIUS_LG, MODAL_WIDTH_MD, SPACING_LG, SPACING_MD, SPACING_SM, button_ghost,
+    button_primary, button_secondary, colors,
 };
 
 // =============================================================================
@@ -51,20 +51,22 @@ pub fn modal<'a, M: Clone + 'a>(
     on_close: M,
     actions: Vec<Element<'a, M>>,
 ) -> Element<'a, M> {
+    let c = colors();
+
     // Backdrop overlay
     let backdrop = container(column![])
         .width(Length::Fill)
         .height(Length::Fill)
-        .style(|_theme| container::Style {
-            background: Some(BACKDROP.into()),
+        .style(move |_theme| container::Style {
+            background: Some(c.backdrop.into()),
             ..Default::default()
         });
 
     // Header with title and close button
     let header = row![
-        text(title).size(18).color(GRAY_900),
+        text(title).size(18).color(c.text_primary),
         space::horizontal(),
-        button(lucide::x().size(20).color(GRAY_500))
+        button(lucide::x().size(20).color(c.text_muted))
             .on_press(on_close)
             .padding([4.0, 8.0])
             .style(button_ghost),
@@ -91,15 +93,15 @@ pub fn modal<'a, M: Clone + 'a>(
     )
     .width(Length::Fixed(MODAL_WIDTH_MD))
     .padding(SPACING_LG)
-    .style(|_theme| container::Style {
-        background: Some(WHITE.into()),
+    .style(move |_theme| container::Style {
+        background: Some(c.background_elevated.into()),
         border: Border {
             radius: BORDER_RADIUS_LG.into(),
             width: 1.0,
-            color: GRAY_200,
+            color: c.border_default,
         },
         shadow: Shadow {
-            color: SHADOW_STRONG,
+            color: c.shadow_strong,
             offset: Vector::new(0.0, 4.0),
             blur_radius: 24.0,
         },

@@ -6,50 +6,51 @@
 
 use iced::widget::{Space, button, column, container, progress_bar, row, text};
 use iced::window;
-use iced::{Alignment, Border, Color, Element, Length};
+use iced::{Alignment, Border, Element, Length};
 use iced_fonts::lucide;
 
 use crate::message::{ExportMessage, Message};
 use crate::state::{ExportProgressState, ExportResult};
-use crate::theme::{
-    GRAY_100, GRAY_500, GRAY_600, GRAY_700, GRAY_800, GRAY_900, SPACING_LG, SPACING_MD, SPACING_SM,
-    SUCCESS, WARNING, WHITE, button_primary, button_secondary,
-};
+use crate::theme::{SPACING_LG, SPACING_MD, SPACING_SM, button_primary, button_secondary, colors};
 
 // =============================================================================
 // EXPORT PROGRESS DIALOG
 // =============================================================================
 
 /// Render the export progress dialog content for a standalone window.
-pub fn view_export_progress_dialog_content(
-    state: &ExportProgressState,
+pub fn view_export_progress_dialog_content<'a>(
+    state: &'a ExportProgressState,
     _window_id: window::Id,
-) -> Element<'_, Message> {
+) -> Element<'a, Message> {
+    let c = colors();
+
     let domain_text = state.current_domain.as_deref().unwrap_or("Preparing...");
 
     // Header with icon
     let header = row![
-        lucide::loader().size(24).color(GRAY_700),
+        lucide::loader().size(24).color(c.text_secondary),
         Space::new().width(SPACING_SM),
-        text("Exporting...").size(20).color(GRAY_900),
+        text("Exporting...").size(20).color(c.text_primary),
     ]
     .align_y(Alignment::Center);
 
     // Current domain and step
-    let domain_label = text(domain_text).size(16).color(GRAY_800);
-    let step_label = text(&state.current_step).size(14).color(GRAY_600);
+    let domain_label = text(domain_text).size(16).color(c.text_primary);
+    let step_label = text(&state.current_step).size(14).color(c.text_secondary);
 
     // Progress bar
     let progress = container(progress_bar(0.0..=1.0, state.progress)).width(Length::Fixed(320.0));
 
     // Progress percentage
     let percent = (state.progress * 100.0) as u32;
-    let progress_text = text(format!("{}%", percent)).size(14).color(GRAY_600);
+    let progress_text = text(format!("{}%", percent))
+        .size(14)
+        .color(c.text_secondary);
 
     // Files written
     let files_text = text(format!("{} files written", state.files_written))
         .size(12)
-        .color(GRAY_500);
+        .color(c.text_muted);
 
     // Cancel button
     let cancel_button = button(
@@ -80,14 +81,15 @@ pub fn view_export_progress_dialog_content(
     .align_x(Alignment::Center)
     .padding(SPACING_LG);
 
+    let bg_secondary = c.background_secondary;
     // Wrap in a styled container for the window
     container(content)
         .width(Length::Fill)
         .height(Length::Fill)
         .center_x(Length::Fill)
         .center_y(Length::Fill)
-        .style(|_| container::Style {
-            background: Some(GRAY_100.into()),
+        .style(move |_| container::Style {
+            background: Some(bg_secondary.into()),
             ..Default::default()
         })
         .into()
@@ -102,6 +104,9 @@ pub fn view_export_complete_dialog_content<'a>(
     result: &'a ExportResult,
     _window_id: window::Id,
 ) -> Element<'a, Message> {
+    let c = colors();
+    let bg_secondary = c.background_secondary;
+
     let content: Element<'a, Message> = match result {
         ExportResult::Success {
             output_dir,
@@ -119,8 +124,8 @@ pub fn view_export_complete_dialog_content<'a>(
         .height(Length::Fill)
         .center_x(Length::Fill)
         .center_y(Length::Fill)
-        .style(|_| container::Style {
-            background: Some(GRAY_100.into()),
+        .style(move |_| container::Style {
+            background: Some(bg_secondary.into()),
             ..Default::default()
         })
         .into()
@@ -132,14 +137,16 @@ fn view_success_content(
     files_count: usize,
     domains_exported: usize,
     elapsed_ms: u64,
-) -> Element<'_, Message> {
-    let icon = lucide::circle_check().size(56).color(SUCCESS);
+) -> Element<'static, Message> {
+    let c = colors();
 
-    let title = text("Export Complete!").size(22).color(GRAY_900);
+    let icon = lucide::circle_check().size(56).color(c.status_success);
+
+    let title = text("Export Complete!").size(22).color(c.text_primary);
 
     let files_text = text(format!("{} files written", files_count))
         .size(16)
-        .color(GRAY_700);
+        .color(c.text_secondary);
 
     let domains_text = text(format!(
         "{} domain{} exported in {}ms",
@@ -148,21 +155,23 @@ fn view_success_content(
         elapsed_ms
     ))
     .size(13)
-    .color(GRAY_600);
+    .color(c.text_secondary);
 
-    let output_label = text("Output directory:").size(12).color(GRAY_500);
+    let output_label = text("Output directory:").size(12).color(c.text_muted);
 
+    let bg_elevated = c.background_elevated;
+    let border_default = c.border_default;
     let output_path = container(
         text(output_dir.display().to_string())
             .size(12)
-            .color(GRAY_700),
+            .color(c.text_secondary),
     )
     .padding([SPACING_SM, SPACING_MD])
-    .style(|_| container::Style {
-        background: Some(WHITE.into()),
+    .style(move |_| container::Style {
+        background: Some(bg_elevated.into()),
         border: Border {
             radius: 4.0.into(),
-            color: Color::from_rgb(0.9, 0.9, 0.9),
+            color: border_default,
             width: 1.0,
         },
         ..Default::default()
@@ -221,28 +230,32 @@ fn view_success_content(
 }
 
 /// Error state content.
-fn view_error_content<'a>(message: &'a str, domain: Option<&'a str>) -> Element<'a, Message> {
-    let icon = lucide::circle_x().size(56).color(WARNING);
+fn view_error_content(message: &str, domain: Option<&str>) -> Element<'static, Message> {
+    let c = colors();
 
-    let title = text("Export Failed").size(22).color(GRAY_900);
+    let icon = lucide::circle_x().size(56).color(c.status_warning);
 
-    let domain_text: Element<'a, Message> = if let Some(d) = domain {
+    let title = text("Export Failed").size(22).color(c.text_primary);
+
+    let domain_text: Element<'static, Message> = if let Some(d) = domain {
         text(format!("Domain: {}", d))
             .size(14)
-            .color(GRAY_700)
+            .color(c.text_secondary)
             .into()
     } else {
         Space::new().into()
     };
 
-    let error_container = container(text(message).size(13).color(WARNING))
+    let status_warning = c.status_warning;
+    let status_warning_light = c.status_warning_light;
+    let error_container = container(text(message.to_string()).size(13).color(status_warning))
         .padding([SPACING_SM, SPACING_MD])
         .max_width(350)
-        .style(|_| container::Style {
-            background: Some(Color::from_rgb(1.0, 0.95, 0.95).into()),
+        .style(move |_| container::Style {
+            background: Some(status_warning_light.into()),
             border: Border {
                 radius: 4.0.into(),
-                color: WARNING,
+                color: status_warning,
                 width: 1.0,
             },
             ..Default::default()
@@ -293,14 +306,16 @@ fn view_error_content<'a>(message: &'a str, domain: Option<&'a str>) -> Element<
 }
 
 /// Cancelled state content.
-fn view_cancelled_content<'a>() -> Element<'a, Message> {
-    let icon = lucide::circle_slash().size(56).color(GRAY_500);
+fn view_cancelled_content() -> Element<'static, Message> {
+    let c = colors();
 
-    let title = text("Export Cancelled").size(22).color(GRAY_900);
+    let icon = lucide::circle_slash().size(56).color(c.text_muted);
+
+    let title = text("Export Cancelled").size(22).color(c.text_primary);
 
     let message = text("The export operation was cancelled.")
         .size(14)
-        .color(GRAY_600);
+        .color(c.text_secondary);
 
     let close_button = button(
         row![

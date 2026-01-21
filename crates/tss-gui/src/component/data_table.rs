@@ -6,10 +6,9 @@ use iced::widget::{button, column, container, row, rule, scrollable, space, text
 use iced::{Border, Element, Length};
 use iced_fonts::lucide;
 
-use crate::theme::{
-    GRAY_50, GRAY_100, GRAY_200, GRAY_500, GRAY_600, GRAY_700, GRAY_800, SPACING_SM,
-    TABLE_CELL_PADDING_X, TABLE_CELL_PADDING_Y, WHITE, button_ghost,
-};
+use iced::Color;
+
+use crate::theme::{SPACING_SM, TABLE_CELL_PADDING_X, TABLE_CELL_PADDING_Y, button_ghost, colors};
 
 // =============================================================================
 // TABLE COLUMN
@@ -94,6 +93,15 @@ pub fn data_table<'a, M: Clone + 'a>(
     total_rows: usize,
     on_page_change: impl Fn(usize) -> M + Clone + 'a,
 ) -> Element<'a, M> {
+    let c = colors();
+    let text_muted = c.text_muted;
+    let text_secondary = c.text_secondary;
+    let text_disabled = c.text_disabled;
+    let bg_secondary = c.background_secondary;
+    let bg_primary = c.background_primary;
+    let bg_elevated = c.background_elevated;
+    let border_default = c.border_default;
+
     // Header row
     let header_row = {
         let mut header = row![].spacing(0);
@@ -102,13 +110,13 @@ pub fn data_table<'a, M: Clone + 'a>(
                 container(
                     text(&col.header)
                         .size(12)
-                        .color(GRAY_600)
+                        .color(text_muted)
                         .font(iced::Font::DEFAULT),
                 )
                 .width(col.width)
                 .padding([TABLE_CELL_PADDING_Y, TABLE_CELL_PADDING_X])
-                .style(|_theme| container::Style {
-                    background: Some(GRAY_100.into()),
+                .style(move |_theme| container::Style {
+                    background: Some(bg_secondary.into()),
                     ..Default::default()
                 }),
             );
@@ -137,11 +145,11 @@ pub fn data_table<'a, M: Clone + 'a>(
             let is_even = row_idx % 2 == 0;
 
             data_row = data_row.push(
-                container(text(cell).size(13).color(GRAY_700))
+                container(text(cell).size(13).color(text_secondary))
                     .width(width)
                     .padding([TABLE_CELL_PADDING_Y, TABLE_CELL_PADDING_X])
                     .style(move |_theme| container::Style {
-                        background: Some(if is_even { WHITE } else { GRAY_50 }.into()),
+                        background: Some(if is_even { bg_elevated } else { bg_primary }.into()),
                         ..Default::default()
                     }),
             );
@@ -157,9 +165,9 @@ pub fn data_table<'a, M: Clone + 'a>(
         let next_enabled = page < total_pages.saturating_sub(1);
 
         let prev_button = button(lucide::chevron_left().size(14).color(if prev_enabled {
-            GRAY_700
+            text_secondary
         } else {
-            GRAY_500
+            text_disabled
         }))
         .on_press_maybe(if prev_enabled {
             Some(on_page_change.clone()(page - 1))
@@ -170,9 +178,9 @@ pub fn data_table<'a, M: Clone + 'a>(
         .style(button_ghost);
 
         let next_button = button(lucide::chevron_right().size(14).color(if next_enabled {
-            GRAY_700
+            text_secondary
         } else {
-            GRAY_500
+            text_disabled
         }))
         .on_press_maybe(if next_enabled {
             Some(on_page_change(page + 1))
@@ -189,7 +197,7 @@ pub fn data_table<'a, M: Clone + 'a>(
             total_rows
         ))
         .size(12)
-        .color(GRAY_600);
+        .color(text_muted);
 
         row![
             space::horizontal(),
@@ -205,15 +213,15 @@ pub fn data_table<'a, M: Clone + 'a>(
     // Assemble table
     column![
         header_row,
-        rule::horizontal(1).style(|_theme| rule::Style {
-            color: GRAY_200,
+        rule::horizontal(1).style(move |_theme| rule::Style {
+            color: border_default,
             radius: 0.0.into(),
             fill_mode: rule::FillMode::Full,
             snap: true,
         }),
         scrollable(data_rows).height(Length::Fill),
-        rule::horizontal(1).style(|_theme| rule::Style {
-            color: GRAY_200,
+        rule::horizontal(1).style(move |_theme| rule::Style {
+            color: border_default,
             radius: 0.0.into(),
             fill_mode: rule::FillMode::Full,
             snap: true,
@@ -231,16 +239,24 @@ pub fn simple_table<'a, M: 'a>(
     columns: &'a [TableColumn],
     rows: &'a [Vec<String>],
 ) -> Element<'a, M> {
+    let c = colors();
+    let text_muted = c.text_muted;
+    let text_secondary = c.text_secondary;
+    let bg_secondary = c.background_secondary;
+    let bg_primary = c.background_primary;
+    let bg_elevated = c.background_elevated;
+    let border_default = c.border_default;
+
     // Header row
     let header_row = {
         let mut header = row![].spacing(0);
         for col in columns {
             header = header.push(
-                container(text(&col.header).size(12).color(GRAY_600))
+                container(text(&col.header).size(12).color(text_muted))
                     .width(col.width)
                     .padding([TABLE_CELL_PADDING_Y, TABLE_CELL_PADDING_X])
-                    .style(|_theme| container::Style {
-                        background: Some(GRAY_100.into()),
+                    .style(move |_theme| container::Style {
+                        background: Some(bg_secondary.into()),
                         ..Default::default()
                     }),
             );
@@ -260,11 +276,11 @@ pub fn simple_table<'a, M: 'a>(
             let is_even = row_idx % 2 == 0;
 
             data_row = data_row.push(
-                container(text(cell).size(13).color(GRAY_700))
+                container(text(cell).size(13).color(text_secondary))
                     .width(width)
                     .padding([TABLE_CELL_PADDING_Y, TABLE_CELL_PADDING_X])
                     .style(move |_theme| container::Style {
-                        background: Some(if is_even { WHITE } else { GRAY_50 }.into()),
+                        background: Some(if is_even { bg_elevated } else { bg_primary }.into()),
                         ..Default::default()
                     }),
             );
@@ -274,8 +290,8 @@ pub fn simple_table<'a, M: 'a>(
 
     column![
         header_row,
-        rule::horizontal(1).style(|_theme| rule::Style {
-            color: GRAY_200,
+        rule::horizontal(1).style(move |_theme| rule::Style {
+            color: border_default,
             radius: 0.0.into(),
             fill_mode: rule::FillMode::Full,
             snap: true,
@@ -295,6 +311,18 @@ pub fn selectable_row<'a, M: Clone + 'a>(
     is_selected: bool,
     on_click: M,
 ) -> Element<'a, M> {
+    let c = colors();
+    let text_primary = c.text_primary;
+    let text_secondary = c.text_secondary;
+    let bg_secondary = c.background_secondary;
+    let bg_elevated = c.background_elevated;
+    let accent_primary = c.accent_primary;
+    // Light tint of accent for selected background
+    let accent_light = Color {
+        a: 0.15,
+        ..accent_primary
+    };
+
     let mut data_row = row![].spacing(0);
 
     for (col_idx, cell) in cells.iter().enumerate() {
@@ -304,20 +332,20 @@ pub fn selectable_row<'a, M: Clone + 'a>(
             .unwrap_or(Length::Fill);
 
         data_row = data_row.push(
-            container(
-                text(cell)
-                    .size(13)
-                    .color(if is_selected { GRAY_800 } else { GRAY_700 }),
-            )
+            container(text(cell).size(13).color(if is_selected {
+                text_primary
+            } else {
+                text_secondary
+            }))
             .width(width)
             .padding([TABLE_CELL_PADDING_Y, TABLE_CELL_PADDING_X]),
         );
     }
 
     let bg_color = if is_selected {
-        crate::theme::PRIMARY_100
+        accent_light
     } else {
-        WHITE
+        bg_elevated
     };
 
     button(data_row)
@@ -326,7 +354,7 @@ pub fn selectable_row<'a, M: Clone + 'a>(
         .padding(0)
         .style(move |_theme, status| {
             let bg = match status {
-                button::Status::Hovered if !is_selected => Some(GRAY_100.into()),
+                button::Status::Hovered if !is_selected => Some(bg_secondary.into()),
                 _ => Some(bg_color.into()),
             };
             button::Style {

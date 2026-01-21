@@ -3,15 +3,14 @@
 //! Shows study info header, domain cards with progress, and export action.
 
 use iced::widget::{Space, button, column, container, row, scrollable, text};
-use iced::{Alignment, Element, Length};
+use iced::{Alignment, Color, Element, Length};
 use iced_fonts::lucide;
 
 use crate::component::{DomainCard, PageHeader};
 use crate::message::{HomeMessage, Message};
 use crate::state::{AppState, Study, WorkflowMode};
 use crate::theme::{
-    GRAY_500, GRAY_600, GRAY_700, PRIMARY_500, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XL,
-    WHITE, button_primary, button_secondary,
+    SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XL, button_primary, button_secondary, colors,
 };
 
 /// Render the study view (study loaded).
@@ -61,13 +60,15 @@ pub fn view_study<'a>(
 
 /// Render the page header with study info.
 fn view_header<'a>(study: &Study, workflow_mode: WorkflowMode) -> Element<'a, Message> {
+    let c = colors();
+
     let total_rows = study.total_rows();
     let domain_count = study.domain_count();
 
     // Close button
     let close_btn = button(
         row![
-            lucide::x().size(14).color(GRAY_700),
+            lucide::x().size(14).color(c.text_secondary),
             Space::new().width(SPACING_SM),
             text("Close Study").size(13),
         ]
@@ -78,7 +79,7 @@ fn view_header<'a>(study: &Study, workflow_mode: WorkflowMode) -> Element<'a, Me
     .style(button_secondary);
 
     PageHeader::new(&study.study_id)
-        .badge(workflow_mode.display_name(), PRIMARY_500)
+        .badge(workflow_mode.display_name(), c.accent_primary)
         .meta("Domains", domain_count.to_string())
         .meta("Total rows", format_number(total_rows))
         .trailing(close_btn)
@@ -87,12 +88,13 @@ fn view_header<'a>(study: &Study, workflow_mode: WorkflowMode) -> Element<'a, Me
 
 /// Render the study path info.
 fn view_path_info<'a>(study: &Study) -> Element<'a, Message> {
+    let c = colors();
     let path_str = study.study_folder.display().to_string();
 
     row![
-        lucide::folder().size(14).color(GRAY_500),
+        lucide::folder().size(14).color(c.text_muted),
         Space::new().width(SPACING_SM),
-        text(path_str).size(12).color(GRAY_500),
+        text(path_str).size(12).color(c.text_muted),
     ]
     .align_y(Alignment::Center)
     .into()
@@ -100,20 +102,21 @@ fn view_path_info<'a>(study: &Study) -> Element<'a, Message> {
 
 /// Render the domains section with cards.
 fn view_domains<'a>(state: &'a AppState, study: &'a Study) -> Element<'a, Message> {
+    let c = colors();
     let domain_codes = study.domain_codes_dm_first();
 
     // Section header with domain count
     let header = row![
-        text("Domains").size(16).color(GRAY_700),
+        text("Domains").size(16).color(c.text_secondary),
         Space::new().width(SPACING_SM),
         container(
             text(format!("{}", domain_codes.len()))
                 .size(12)
-                .color(GRAY_600)
+                .color(c.text_muted)
         )
         .padding([2.0, 8.0])
         .style(|_| container::Style {
-            background: Some(iced::Color::from_rgba(0.0, 0.0, 0.0, 0.05).into()),
+            background: Some(Color::from_rgba(0.0, 0.0, 0.0, 0.05).into()),
             border: iced::Border {
                 radius: 4.0.into(),
                 ..Default::default()
@@ -165,9 +168,11 @@ fn view_domains<'a>(state: &'a AppState, study: &'a Study) -> Element<'a, Messag
 
 /// Render the export action button.
 fn view_export_action<'a>() -> Element<'a, Message> {
+    let c = colors();
+
     let export_btn = button(
         row![
-            lucide::download().size(16).color(WHITE),
+            lucide::download().size(16).color(c.text_on_accent),
             Space::new().width(SPACING_SM),
             text("Go to Export").size(14),
         ]

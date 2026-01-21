@@ -79,7 +79,7 @@ mod variable_list_item;
 
 // Layout components
 pub use master_detail::{
-    master_detail, master_detail_with_header, master_detail_with_pinned_header,
+    detail_master, master_detail, master_detail_with_header, master_detail_with_pinned_header,
 };
 pub use sidebar::{SidebarItem, sidebar};
 pub use tab_bar::{Tab, tab_bar};
@@ -96,12 +96,15 @@ pub use progress_modal::progress_modal;
 
 // Form components
 pub use form_field::{form_field, number_field};
-pub use search_box::search_box;
+pub use search_box::{search_box, search_box_compact, search_box_with_filter};
 pub use text_field::{TextAreaField, TextField};
 
 // Display components
 pub use data_table::{TableColumn, data_table};
-pub use status_badge::{Status, status_badge};
+pub use status_badge::{
+    Status, count_badge, mapping_status_badge, status_badge, status_badge_with_icon, status_dot,
+    validation_badge,
+};
 
 // Metadata display components
 pub use metadata_card::{MetadataCard, metadata_row, metadata_row_wide};

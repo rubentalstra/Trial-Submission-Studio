@@ -13,7 +13,7 @@ use super::components::{
 use super::state::{DropdownId, MenuDropdownState};
 use crate::message::{HomeMessage, Message};
 use crate::state::AppState;
-use crate::theme::{GRAY_100, GRAY_200, GRAY_600, GRAY_800, SPACING_SM, SPACING_XS};
+use crate::theme::{SPACING_SM, SPACING_XS, colors};
 
 use super::super::MenuAction;
 
@@ -23,9 +23,13 @@ pub fn view_menu_bar<'a>(
     has_study: bool,
     app_state: &'a AppState,
 ) -> Element<'a, Message> {
+    let c = colors();
     let file_menu = view_menu_button("File", DropdownId::File, state);
     let edit_menu = view_menu_button("Edit", DropdownId::Edit, state);
     let help_menu = view_menu_button("Help", DropdownId::Help, state);
+
+    let bg_secondary = c.background_secondary;
+    let border_default = c.border_default;
 
     let bar = row![
         file_menu,
@@ -37,18 +41,17 @@ pub fn view_menu_bar<'a>(
     .align_y(Alignment::Center)
     .padding(Padding::from([SPACING_XS, SPACING_SM]));
 
-    let bar_container =
-        container(bar)
-            .width(Length::Fill)
-            .style(|_theme: &Theme| container::Style {
-                background: Some(GRAY_100.into()),
-                border: Border {
-                    color: GRAY_200,
-                    width: 0.0,
-                    radius: 0.0.into(),
-                },
-                ..Default::default()
-            });
+    let bar_container = container(bar)
+        .width(Length::Fill)
+        .style(move |_theme: &Theme| container::Style {
+            background: Some(bg_secondary.into()),
+            border: Border {
+                color: border_default,
+                width: 0.0,
+                radius: 0.0.into(),
+            },
+            ..Default::default()
+        });
 
     // If a menu is open, render the dropdown
     match state.open {
@@ -67,20 +70,25 @@ fn view_menu_button<'a>(
     menu_id: DropdownId,
     state: &MenuDropdownState,
 ) -> Element<'a, Message> {
+    let c = colors();
     let is_active = state.is_open(menu_id);
+
+    let bg_active = c.border_default;
+    let text_primary = c.text_primary;
+    let text_muted = c.text_muted;
 
     let style = move |_theme: &Theme, _status: button::Status| {
         if is_active {
             button::Style {
-                background: Some(GRAY_200.into()),
-                text_color: GRAY_800,
+                background: Some(bg_active.into()),
+                text_color: text_primary,
                 border: Border::default(),
                 ..Default::default()
             }
         } else {
             button::Style {
                 background: None,
-                text_color: GRAY_600,
+                text_color: text_muted,
                 border: Border::default(),
                 ..Default::default()
             }

@@ -4,9 +4,23 @@
 //! Commonly used for the mapping view (variable list + detail panel) and export view.
 
 use iced::widget::{column, container, row, rule, scrollable};
-use iced::{Element, Length};
+use iced::{Color, Element, Length};
 
-use crate::theme::{GRAY_200, SPACING_MD};
+use crate::theme::{SPACING_MD, colors};
+
+// =============================================================================
+// HELPER
+// =============================================================================
+
+/// Helper to create a divider rule style with a given color.
+fn divider_style(color: Color) -> impl Fn(&iced::Theme) -> rule::Style {
+    move |_theme| rule::Style {
+        color,
+        radius: 0.0.into(),
+        fill_mode: rule::FillMode::Full,
+        snap: true,
+    }
+}
 
 // =============================================================================
 // MASTER-DETAIL LAYOUT
@@ -39,20 +53,14 @@ pub fn master_detail<'a, M: 'a>(
     detail: Element<'a, M>,
     master_width: f32,
 ) -> Element<'a, M> {
+    let divider_color = colors().border_default;
+
     row![
-        // Master panel (fixed width, scrollable)
         container(scrollable(master).height(Length::Fill))
             .width(Length::Fixed(master_width))
             .height(Length::Fill)
             .padding(SPACING_MD),
-        // Vertical divider
-        rule::vertical(1).style(|_theme| rule::Style {
-            color: GRAY_200,
-            radius: 0.0.into(),
-            fill_mode: rule::FillMode::Full,
-            snap: true,
-        }),
-        // Detail panel (fill remaining, scrollable)
+        rule::vertical(1).style(divider_style(divider_color)),
         container(scrollable(detail).height(Length::Fill))
             .width(Length::Fill)
             .height(Length::Fill)
@@ -72,38 +80,19 @@ pub fn master_detail<'a, M: 'a>(
 /// * `master` - Content for the left panel
 /// * `detail` - Content for the right panel
 /// * `master_width` - Width of the master panel in pixels
-///
-/// # Example
-///
-/// ```rust,ignore
-/// use tss_gui::component::master_detail_with_header;
-///
-/// let layout = master_detail_with_header(
-///     tab_bar,
-///     variable_list,
-///     variable_details,
-///     280.0,
-/// );
-/// ```
 pub fn master_detail_with_header<'a, M: 'a>(
     header: Element<'a, M>,
     master: Element<'a, M>,
     detail: Element<'a, M>,
     master_width: f32,
 ) -> Element<'a, M> {
+    let divider_color = colors().border_default;
+
     column![
-        // Header bar
         container(header)
             .width(Length::Fill)
             .padding(iced::Padding::new(SPACING_MD).bottom(0.0)),
-        // Horizontal divider
-        rule::horizontal(1).style(|_theme| rule::Style {
-            color: GRAY_200,
-            radius: 0.0.into(),
-            fill_mode: rule::FillMode::Full,
-            snap: true,
-        }),
-        // Master-detail content
+        rule::horizontal(1).style(divider_style(divider_color)),
         master_detail(master, detail, master_width),
     ]
     .height(Length::Fill)
@@ -127,8 +116,9 @@ pub fn master_detail_with_pinned_header<'a, M: 'a>(
     detail: Element<'a, M>,
     master_width: f32,
 ) -> Element<'a, M> {
+    let divider_color = colors().border_default;
+
     row![
-        // Master panel (fixed width, header + scrollable content)
         container(
             column![
                 master_header,
@@ -139,14 +129,7 @@ pub fn master_detail_with_pinned_header<'a, M: 'a>(
         .width(Length::Fixed(master_width))
         .height(Length::Fill)
         .padding(SPACING_MD),
-        // Vertical divider
-        rule::vertical(1).style(|_theme| rule::Style {
-            color: GRAY_200,
-            radius: 0.0.into(),
-            fill_mode: rule::FillMode::Full,
-            snap: true,
-        }),
-        // Detail panel (fill remaining, scrollable)
+        rule::vertical(1).style(divider_style(divider_color)),
         container(detail)
             .width(Length::Fill)
             .height(Length::Fill)
@@ -171,20 +154,14 @@ pub fn detail_master<'a, M: 'a>(
     master: Element<'a, M>,
     master_width: f32,
 ) -> Element<'a, M> {
+    let divider_color = colors().border_default;
+
     row![
-        // Detail panel (fill remaining, scrollable)
         container(scrollable(detail).height(Length::Fill))
             .width(Length::Fill)
             .height(Length::Fill)
             .padding(SPACING_MD),
-        // Vertical divider
-        rule::vertical(1).style(|_theme| rule::Style {
-            color: GRAY_200,
-            radius: 0.0.into(),
-            fill_mode: rule::FillMode::Full,
-            snap: true,
-        }),
-        // Master panel (fixed width, scrollable)
+        rule::vertical(1).style(divider_style(divider_color)),
         container(scrollable(master).height(Length::Fill))
             .width(Length::Fixed(master_width))
             .height(Length::Fill)

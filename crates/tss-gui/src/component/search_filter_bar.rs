@@ -4,12 +4,9 @@
 //! Used across mapping, normalization, and SUPP tabs.
 
 use iced::widget::{Space, button, column, row, text, text_input};
-use iced::{Alignment, Border, Element, Length, Theme};
+use iced::{Alignment, Border, Color, Element, Length, Theme};
 
-use crate::theme::{
-    BORDER_RADIUS_SM, GRAY_500, GRAY_600, PRIMARY_100, PRIMARY_500, SPACING_SM, SPACING_XS,
-    button_secondary,
-};
+use crate::theme::{BORDER_RADIUS_SM, SPACING_SM, SPACING_XS, button_secondary, colors};
 
 // =============================================================================
 // FILTER TOGGLE
@@ -40,6 +37,13 @@ impl<M: Clone + 'static> FilterToggle<M> {
 
     /// Build the filter toggle element.
     pub fn view(self) -> Element<'static, M> {
+        let c = colors();
+        let accent_primary = c.accent_primary;
+        let accent_light = Color {
+            a: 0.15,
+            ..accent_primary
+        };
+
         let active = self.active;
         let label = self.label;
         let on_toggle = self.on_toggle;
@@ -50,11 +54,11 @@ impl<M: Clone + 'static> FilterToggle<M> {
             .style(move |theme: &Theme, status| {
                 if active {
                     iced::widget::button::Style {
-                        background: Some(PRIMARY_100.into()),
-                        text_color: PRIMARY_500,
+                        background: Some(accent_light.into()),
+                        text_color: accent_primary,
                         border: Border {
                             radius: BORDER_RADIUS_SM.into(),
-                            color: PRIMARY_500,
+                            color: accent_primary,
                             width: 1.0,
                         },
                         ..Default::default()
@@ -144,6 +148,10 @@ impl<M: Clone + 'static> SearchFilterBar<M> {
         };
 
         // Stats text
+        let c = colors();
+        let text_muted = c.text_muted;
+        let text_secondary = c.text_secondary;
+
         let stats_el: Option<Element<'static, M>> = self.stats_text.map(|stats_text| {
             // Split stats text into number and label parts
             let (num_part, label_part) = if let Some((n, r)) = stats_text.split_once(' ') {
@@ -153,9 +161,9 @@ impl<M: Clone + 'static> SearchFilterBar<M> {
             };
 
             row![
-                text(num_part).size(12).color(GRAY_600),
+                text(num_part).size(12).color(text_secondary),
                 Space::new().width(4.0),
-                text(label_part).size(11).color(GRAY_500),
+                text(label_part).size(11).color(text_muted),
             ]
             .align_y(Alignment::Center)
             .into()

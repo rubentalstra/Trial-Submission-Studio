@@ -9,40 +9,27 @@ use iced::{Alignment, Border, Element, Length};
 use iced_fonts::lucide;
 
 use crate::message::{HomeMessage, Message};
-use crate::theme::{
-    SPACING_LG, SPACING_MD, SPACING_SM, SemanticColor, ThemeConfig, button_secondary,
-};
+use crate::theme::{SPACING_LG, SPACING_MD, SPACING_SM, button_secondary, colors};
 
 /// Render the Close Study confirmation dialog content for a standalone window.
 pub fn view_close_study_dialog_content<'a>(window_id: window::Id) -> Element<'a, Message> {
-    view_close_study_dialog_content_themed(&ThemeConfig::default(), window_id)
-}
+    let c = colors();
 
-/// Render the Close Study confirmation dialog content with specific theme config.
-pub fn view_close_study_dialog_content_themed<'a>(
-    config: &ThemeConfig,
-    window_id: window::Id,
-) -> Element<'a, Message> {
-    let warning_color = config.resolve(SemanticColor::StatusWarning);
-    let text_primary = config.resolve(SemanticColor::TextPrimary);
-    let text_secondary = config.resolve(SemanticColor::TextSecondary);
-    let bg_color = config.resolve(SemanticColor::BackgroundSecondary);
-    let error_color = config.resolve(SemanticColor::StatusError);
-    let text_on_accent = config.resolve(SemanticColor::TextOnAccent);
+    let warning_icon = lucide::triangle_alert().size(48).color(c.status_warning);
 
-    let warning_icon = lucide::triangle_alert().size(48).color(warning_color);
-
-    let title = text("Close Study?").size(20).color(text_primary);
+    let title = text("Close Study?").size(20).color(c.text_primary);
 
     let message = text("All unsaved mapping progress will be lost.")
         .size(14)
-        .color(text_secondary);
+        .color(c.text_secondary);
 
     let cancel_button = button(text("Cancel").size(14))
         .on_press(Message::CloseWindow(window_id))
         .padding([10.0, 20.0])
         .style(button_secondary);
 
+    let error_color = c.status_error;
+    let text_on_accent = c.text_on_accent;
     let confirm_button = button(
         row![
             lucide::trash().size(14),
@@ -82,6 +69,7 @@ pub fn view_close_study_dialog_content_themed<'a>(
     .align_x(Alignment::Center)
     .padding(SPACING_LG);
 
+    let bg_color = c.background_secondary;
     // Wrap in a styled container for the window
     container(content)
         .width(Length::Fill)

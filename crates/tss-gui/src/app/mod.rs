@@ -28,7 +28,7 @@ use iced::{Element, Size, Subscription, Task, Theme};
 
 use crate::message::{Message, SettingsCategory};
 use crate::state::{AppState, DialogType, Settings, ViewState};
-use crate::theme::clinical_theme;
+use crate::theme::{ThemeConfig, clinical_theme, set_theme};
 use crate::view::dialog::third_party::ThirdPartyState;
 use crate::view::dialog::update::UpdateState;
 use crate::view::view_home;
@@ -54,6 +54,12 @@ impl App {
     pub fn new() -> (Self, Task<Message>) {
         // Load settings from disk
         let settings = Settings::load();
+
+        // Initialize theme context with saved settings
+        set_theme(ThemeConfig::new(
+            settings.display.theme_mode,
+            settings.display.accessibility_mode,
+        ));
 
         let mut app = Self {
             state: AppState::with_settings(settings),

@@ -3,12 +3,9 @@
 //! Horizontal tab navigation for switching between views or panels.
 
 use iced::widget::{button, container, row, text};
-use iced::{Border, Element, Length};
+use iced::{Border, Color, Element, Length};
 
-use crate::theme::{
-    BORDER_RADIUS_SM, GRAY_100, GRAY_200, GRAY_600, PRIMARY_100, PRIMARY_500, PRIMARY_700,
-    TAB_PADDING_X, TAB_PADDING_Y,
-};
+use crate::theme::{BORDER_RADIUS_SM, TAB_PADDING_X, TAB_PADDING_Y, colors};
 
 // =============================================================================
 // TAB DEFINITION
@@ -59,6 +56,18 @@ impl<M> Tab<M> {
 /// let bar = tab_bar(tabs, state.active_tab);
 /// ```
 pub fn tab_bar<'a, M: Clone + 'a>(tabs: Vec<Tab<M>>, active_index: usize) -> Element<'a, M> {
+    let c = colors();
+    let bg_secondary = c.background_secondary;
+    let border_default = c.border_default;
+    let accent_primary = c.accent_primary;
+    let accent_pressed = c.accent_pressed;
+    let text_muted = c.text_muted;
+    // Create light tint of accent color for active tab background
+    let accent_light = Color {
+        a: 0.15,
+        ..accent_primary
+    };
+
     let mut tab_row = row![].spacing(0);
 
     for (index, tab) in tabs.into_iter().enumerate() {
@@ -71,11 +80,29 @@ pub fn tab_bar<'a, M: Clone + 'a>(tabs: Vec<Tab<M>>, active_index: usize) -> Ele
                 .center_x(Length::Shrink),
         )
         .on_press(tab.message)
-        .style(move |theme, status| {
+        .style(move |_theme, status| {
             if is_active {
-                tab_style_active(theme, status)
+                button::Style {
+                    background: Some(accent_light.into()),
+                    text_color: accent_pressed,
+                    border: Border {
+                        color: accent_primary,
+                        width: 0.0,
+                        radius: 0.0.into(),
+                    },
+                    ..Default::default()
+                }
             } else {
-                tab_style_inactive(theme, status)
+                let bg = match status {
+                    button::Status::Hovered => Some(border_default.into()),
+                    _ => None,
+                };
+                button::Style {
+                    background: bg,
+                    text_color: text_muted,
+                    border: Border::default(),
+                    ..Default::default()
+                }
             }
         });
 
@@ -84,10 +111,10 @@ pub fn tab_bar<'a, M: Clone + 'a>(tabs: Vec<Tab<M>>, active_index: usize) -> Ele
 
     container(tab_row)
         .width(Length::Fill)
-        .style(|_theme| container::Style {
-            background: Some(GRAY_100.into()),
+        .style(move |_theme| container::Style {
+            background: Some(bg_secondary.into()),
             border: Border {
-                color: GRAY_200,
+                color: border_default,
                 width: 1.0,
                 radius: 0.0.into(),
             },
@@ -103,6 +130,18 @@ pub fn tab_bar_rounded<'a, M: Clone + 'a>(
     tabs: Vec<Tab<M>>,
     active_index: usize,
 ) -> Element<'a, M> {
+    let c = colors();
+    let bg_secondary = c.background_secondary;
+    let border_default = c.border_default;
+    let accent_primary = c.accent_primary;
+    let accent_pressed = c.accent_pressed;
+    let text_muted = c.text_muted;
+    // Create light tint of accent color for active tab background
+    let accent_light = Color {
+        a: 0.15,
+        ..accent_primary
+    };
+
     let mut tab_row = row![].spacing(2.0);
 
     for (index, tab) in tabs.into_iter().enumerate() {
@@ -115,11 +154,31 @@ pub fn tab_bar_rounded<'a, M: Clone + 'a>(
                 .center_x(Length::Shrink),
         )
         .on_press(tab.message)
-        .style(move |theme, status| {
+        .style(move |_theme, status| {
             if is_active {
-                tab_style_active_rounded(theme, status)
+                button::Style {
+                    background: Some(accent_light.into()),
+                    text_color: accent_pressed,
+                    border: Border {
+                        radius: BORDER_RADIUS_SM.into(),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                }
             } else {
-                tab_style_inactive_rounded(theme, status)
+                let bg = match status {
+                    button::Status::Hovered => Some(border_default.into()),
+                    _ => None,
+                };
+                button::Style {
+                    background: bg,
+                    text_color: text_muted,
+                    border: Border {
+                        radius: BORDER_RADIUS_SM.into(),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                }
             }
         });
 
@@ -128,8 +187,8 @@ pub fn tab_bar_rounded<'a, M: Clone + 'a>(
 
     container(tab_row)
         .padding(4.0)
-        .style(|_theme| container::Style {
-            background: Some(GRAY_100.into()),
+        .style(move |_theme| container::Style {
+            background: Some(bg_secondary.into()),
             border: Border {
                 radius: BORDER_RADIUS_SM.into(),
                 ..Default::default()
@@ -137,64 +196,4 @@ pub fn tab_bar_rounded<'a, M: Clone + 'a>(
             ..Default::default()
         })
         .into()
-}
-
-// =============================================================================
-// TAB STYLES
-// =============================================================================
-
-fn tab_style_active(_theme: &iced::Theme, _status: button::Status) -> button::Style {
-    button::Style {
-        background: Some(PRIMARY_100.into()),
-        text_color: PRIMARY_700,
-        border: Border {
-            color: PRIMARY_500,
-            width: 0.0,
-            radius: 0.0.into(),
-        },
-        ..Default::default()
-    }
-}
-
-fn tab_style_inactive(_theme: &iced::Theme, status: button::Status) -> button::Style {
-    let bg = match status {
-        button::Status::Hovered => Some(GRAY_200.into()),
-        _ => None,
-    };
-
-    button::Style {
-        background: bg,
-        text_color: GRAY_600,
-        border: Border::default(),
-        ..Default::default()
-    }
-}
-
-fn tab_style_active_rounded(_theme: &iced::Theme, _status: button::Status) -> button::Style {
-    button::Style {
-        background: Some(PRIMARY_100.into()),
-        text_color: PRIMARY_700,
-        border: Border {
-            radius: BORDER_RADIUS_SM.into(),
-            ..Default::default()
-        },
-        ..Default::default()
-    }
-}
-
-fn tab_style_inactive_rounded(_theme: &iced::Theme, status: button::Status) -> button::Style {
-    let bg = match status {
-        button::Status::Hovered => Some(GRAY_200.into()),
-        _ => None,
-    };
-
-    button::Style {
-        background: bg,
-        text_color: GRAY_600,
-        border: Border {
-            radius: BORDER_RADIUS_SM.into(),
-            ..Default::default()
-        },
-        ..Default::default()
-    }
 }

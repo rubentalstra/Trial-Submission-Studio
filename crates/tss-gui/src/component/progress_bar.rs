@@ -14,26 +14,35 @@
 //! ```
 
 use iced::widget::{Space, container, row, text};
-use iced::{Border, Element, Length};
+use iced::{Border, Color, Element, Length};
 
-use crate::theme::{GRAY_200, GRAY_600, PRIMARY_500, SPACING_SM, SUCCESS};
+use crate::theme::{SPACING_SM, colors};
 
-/// A horizontal progress bar.
+/// A horizontal progress bar with accessibility support.
 ///
 /// Shows progress as a filled bar with optional percentage text.
 pub struct ProgressBar {
     value: f32,
     height: f32,
     show_label: bool,
+    fill_color: Color,
+    complete_color: Color,
+    track_color: Color,
+    label_color: Color,
 }
 
 impl ProgressBar {
     /// Create a new progress bar with the given value (0.0 to 1.0).
     pub fn new(value: f32) -> Self {
+        let c = colors();
         Self {
             value: value.clamp(0.0, 1.0),
             height: 6.0,
             show_label: false,
+            fill_color: c.accent_primary,
+            complete_color: c.status_success,
+            track_color: c.border_default,
+            label_color: c.text_muted,
         }
     }
 
@@ -56,10 +65,12 @@ impl ProgressBar {
 
         // Choose color based on completion
         let fill_color = if self.value >= 1.0 {
-            SUCCESS
+            self.complete_color
         } else {
-            PRIMARY_500
+            self.fill_color
         };
+        let track_color = self.track_color;
+        let label_color = self.label_color;
 
         // Filled portion width as FillPortion for proper scaling
         let fill_width = if self.value > 0.0 {
@@ -96,7 +107,7 @@ impl ProgressBar {
             .width(Length::Fill)
             .height(height)
             .style(move |_theme| container::Style {
-                background: Some(GRAY_200.into()),
+                background: Some(track_color.into()),
                 border: Border {
                     radius: (height / 2.0).into(),
                     ..Default::default()
@@ -109,7 +120,7 @@ impl ProgressBar {
             row![
                 bar,
                 Space::new().width(SPACING_SM),
-                text(format!("{}%", percentage)).size(12).color(GRAY_600),
+                text(format!("{}%", percentage)).size(12).color(label_color),
             ]
             .into()
         } else {

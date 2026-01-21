@@ -9,8 +9,9 @@ use iced::theme::Palette;
 use iced::widget::{button, container, progress_bar, text_input};
 use iced::{Border, Color, Shadow, Theme, Vector};
 
+use super::ThemeConfig;
+use super::context::{colors, current_config};
 use super::spacing;
-use super::{SemanticColor, ThemeConfig};
 
 // =============================================================================
 // THEME CREATION
@@ -21,13 +22,15 @@ use super::{SemanticColor, ThemeConfig};
 /// This is the primary theme creation function that respects accessibility
 /// settings and theme mode (light/dark).
 pub fn clinical_theme(config: &ThemeConfig) -> Theme {
+    let c = colors();
+
     let custom_palette = Palette {
-        background: config.resolve(SemanticColor::BackgroundPrimary),
-        text: config.resolve(SemanticColor::TextPrimary),
-        primary: config.resolve(SemanticColor::AccentPrimary),
-        success: config.resolve(SemanticColor::StatusSuccess),
-        warning: config.resolve(SemanticColor::StatusWarning),
-        danger: config.resolve(SemanticColor::StatusError),
+        background: c.background_primary,
+        text: c.text_primary,
+        primary: c.accent_primary,
+        success: c.status_success,
+        warning: c.status_warning,
+        danger: c.status_error,
     };
 
     let theme_name = format!(
@@ -45,7 +48,7 @@ pub fn clinical_theme(config: &ThemeConfig) -> Theme {
 /// with no accessibility modifications. For customized themes, use
 /// `clinical_theme()` with a `ThemeConfig`.
 pub fn clinical_light() -> Theme {
-    clinical_theme(&ThemeConfig::default())
+    clinical_theme(&current_config())
 }
 
 // =============================================================================
@@ -54,46 +57,42 @@ pub fn clinical_light() -> Theme {
 
 /// Primary button style - main actions
 pub fn button_primary(_theme: &Theme, status: button::Status) -> button::Style {
-    let config = ThemeConfig::default();
-    button_primary_themed(&config, status)
-}
+    let c = colors();
 
-/// Primary button style with theme configuration
-pub fn button_primary_themed(config: &ThemeConfig, status: button::Status) -> button::Style {
     match status {
         button::Status::Active => button::Style {
-            background: Some(config.resolve(SemanticColor::AccentPrimary).into()),
-            text_color: config.resolve(SemanticColor::TextOnAccent),
+            background: Some(c.accent_primary.into()),
+            text_color: c.text_on_accent,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: 0.0,
                 color: Color::TRANSPARENT,
             },
             shadow: Shadow {
-                color: config.resolve(SemanticColor::Shadow),
+                color: c.shadow,
                 offset: Vector::new(0.0, 1.0),
                 blur_radius: 2.0,
             },
             ..Default::default()
         },
         button::Status::Hovered => button::Style {
-            background: Some(config.resolve(SemanticColor::AccentHover).into()),
-            text_color: config.resolve(SemanticColor::TextOnAccent),
+            background: Some(c.accent_hover.into()),
+            text_color: c.text_on_accent,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: 0.0,
                 color: Color::TRANSPARENT,
             },
             shadow: Shadow {
-                color: config.resolve(SemanticColor::ShadowStrong),
+                color: c.shadow_strong,
                 offset: Vector::new(0.0, 2.0),
                 blur_radius: 4.0,
             },
             ..Default::default()
         },
         button::Status::Pressed => button::Style {
-            background: Some(config.resolve(SemanticColor::AccentPressed).into()),
-            text_color: config.resolve(SemanticColor::TextOnAccent),
+            background: Some(c.accent_pressed.into()),
+            text_color: c.text_on_accent,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: 0.0,
@@ -103,8 +102,8 @@ pub fn button_primary_themed(config: &ThemeConfig, status: button::Status) -> bu
             ..Default::default()
         },
         button::Status::Disabled => button::Style {
-            background: Some(config.resolve(SemanticColor::AccentDisabled).into()),
-            text_color: config.resolve(SemanticColor::TextMuted),
+            background: Some(c.accent_disabled.into()),
+            text_color: c.text_muted,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: 0.0,
@@ -118,53 +117,49 @@ pub fn button_primary_themed(config: &ThemeConfig, status: button::Status) -> bu
 
 /// Secondary button style - alternative actions
 pub fn button_secondary(_theme: &Theme, status: button::Status) -> button::Style {
-    let config = ThemeConfig::default();
-    button_secondary_themed(&config, status)
-}
+    let c = colors();
 
-/// Secondary button style with theme configuration
-pub fn button_secondary_themed(config: &ThemeConfig, status: button::Status) -> button::Style {
     match status {
         button::Status::Active => button::Style {
-            background: Some(config.resolve(SemanticColor::BackgroundElevated).into()),
-            text_color: config.resolve(SemanticColor::TextSecondary),
+            background: Some(c.background_elevated.into()),
+            text_color: c.text_secondary,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: spacing::BORDER_WIDTH_THIN,
-                color: config.resolve(SemanticColor::BorderDefault),
+                color: c.border_default,
             },
             shadow: Shadow::default(),
             ..Default::default()
         },
         button::Status::Hovered => button::Style {
-            background: Some(config.resolve(SemanticColor::BackgroundPrimary).into()),
-            text_color: config.resolve(SemanticColor::TextSecondary),
+            background: Some(c.background_primary.into()),
+            text_color: c.text_secondary,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: spacing::BORDER_WIDTH_THIN,
-                color: config.resolve(SemanticColor::TextDisabled),
+                color: c.text_disabled,
             },
             shadow: Shadow::default(),
             ..Default::default()
         },
         button::Status::Pressed => button::Style {
-            background: Some(config.resolve(SemanticColor::BackgroundSecondary).into()),
-            text_color: config.resolve(SemanticColor::TextSecondary),
+            background: Some(c.background_secondary.into()),
+            text_color: c.text_secondary,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: spacing::BORDER_WIDTH_THIN,
-                color: config.resolve(SemanticColor::BorderDefault),
+                color: c.border_default,
             },
             shadow: Shadow::default(),
             ..Default::default()
         },
         button::Status::Disabled => button::Style {
-            background: Some(config.resolve(SemanticColor::BackgroundSecondary).into()),
-            text_color: config.resolve(SemanticColor::TextDisabled),
+            background: Some(c.background_secondary.into()),
+            text_color: c.text_disabled,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: spacing::BORDER_WIDTH_THIN,
-                color: config.resolve(SemanticColor::BorderSubtle),
+                color: c.border_subtle,
             },
             shadow: Shadow::default(),
             ..Default::default()
@@ -174,46 +169,42 @@ pub fn button_secondary_themed(config: &ThemeConfig, status: button::Status) -> 
 
 /// Danger button style - destructive actions
 pub fn button_danger(_theme: &Theme, status: button::Status) -> button::Style {
-    let config = ThemeConfig::default();
-    button_danger_themed(&config, status)
-}
+    let c = colors();
 
-/// Danger button style with theme configuration
-pub fn button_danger_themed(config: &ThemeConfig, status: button::Status) -> button::Style {
     match status {
         button::Status::Active => button::Style {
-            background: Some(config.resolve(SemanticColor::StatusError).into()),
-            text_color: config.resolve(SemanticColor::TextOnAccent),
+            background: Some(c.status_error.into()),
+            text_color: c.text_on_accent,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: 0.0,
                 color: Color::TRANSPARENT,
             },
             shadow: Shadow {
-                color: config.resolve(SemanticColor::Shadow),
+                color: c.shadow,
                 offset: Vector::new(0.0, 1.0),
                 blur_radius: 2.0,
             },
             ..Default::default()
         },
         button::Status::Hovered => button::Style {
-            background: Some(config.resolve(SemanticColor::DangerHover).into()),
-            text_color: config.resolve(SemanticColor::TextOnAccent),
+            background: Some(c.danger_hover.into()),
+            text_color: c.text_on_accent,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: 0.0,
                 color: Color::TRANSPARENT,
             },
             shadow: Shadow {
-                color: config.resolve(SemanticColor::Shadow),
+                color: c.shadow,
                 offset: Vector::new(0.0, 1.0),
                 blur_radius: 2.0,
             },
             ..Default::default()
         },
         button::Status::Pressed => button::Style {
-            background: Some(config.resolve(SemanticColor::DangerPressed).into()),
-            text_color: config.resolve(SemanticColor::TextOnAccent),
+            background: Some(c.danger_pressed.into()),
+            text_color: c.text_on_accent,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: 0.0,
@@ -223,8 +214,8 @@ pub fn button_danger_themed(config: &ThemeConfig, status: button::Status) -> but
             ..Default::default()
         },
         button::Status::Disabled => button::Style {
-            background: Some(config.resolve(SemanticColor::AccentDisabled).into()),
-            text_color: config.resolve(SemanticColor::TextMuted),
+            background: Some(c.accent_disabled.into()),
+            text_color: c.text_muted,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: 0.0,
@@ -238,16 +229,12 @@ pub fn button_danger_themed(config: &ThemeConfig, status: button::Status) -> but
 
 /// Ghost button style - minimal visual weight
 pub fn button_ghost(_theme: &Theme, status: button::Status) -> button::Style {
-    let config = ThemeConfig::default();
-    button_ghost_themed(&config, status)
-}
+    let c = colors();
 
-/// Ghost button style with theme configuration
-pub fn button_ghost_themed(config: &ThemeConfig, status: button::Status) -> button::Style {
     match status {
         button::Status::Active => button::Style {
             background: None,
-            text_color: config.resolve(SemanticColor::AccentPrimary),
+            text_color: c.accent_primary,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: 0.0,
@@ -257,8 +244,8 @@ pub fn button_ghost_themed(config: &ThemeConfig, status: button::Status) -> butt
             ..Default::default()
         },
         button::Status::Hovered => button::Style {
-            background: Some(config.resolve(SemanticColor::AccentPrimaryLight).into()),
-            text_color: config.resolve(SemanticColor::AccentPrimary),
+            background: Some(c.accent_primary_light.into()),
+            text_color: c.accent_primary,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: 0.0,
@@ -268,8 +255,8 @@ pub fn button_ghost_themed(config: &ThemeConfig, status: button::Status) -> butt
             ..Default::default()
         },
         button::Status::Pressed => button::Style {
-            background: Some(config.resolve(SemanticColor::AccentPrimaryMedium).into()),
-            text_color: config.resolve(SemanticColor::AccentPressed),
+            background: Some(c.accent_primary_medium.into()),
+            text_color: c.accent_pressed,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: 0.0,
@@ -280,7 +267,7 @@ pub fn button_ghost_themed(config: &ThemeConfig, status: button::Status) -> butt
         },
         button::Status::Disabled => button::Style {
             background: None,
-            text_color: config.resolve(SemanticColor::TextDisabled),
+            text_color: c.text_disabled,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: 0.0,
@@ -298,21 +285,17 @@ pub fn button_ghost_themed(config: &ThemeConfig, status: button::Status) -> butt
 
 /// Card container style - elevated surface
 pub fn container_card(_theme: &Theme) -> container::Style {
-    let config = ThemeConfig::default();
-    container_card_themed(&config)
-}
+    let c = colors();
 
-/// Card container style with theme configuration
-pub fn container_card_themed(config: &ThemeConfig) -> container::Style {
     container::Style {
-        background: Some(config.resolve(SemanticColor::BackgroundElevated).into()),
+        background: Some(c.background_elevated.into()),
         border: Border {
             radius: spacing::BORDER_RADIUS_MD.into(),
             width: spacing::BORDER_WIDTH_THIN,
-            color: config.resolve(SemanticColor::BorderSubtle),
+            color: c.border_subtle,
         },
         shadow: Shadow {
-            color: config.resolve(SemanticColor::Shadow),
+            color: c.shadow,
             offset: Vector::new(0.0, 2.0),
             blur_radius: 8.0,
         },
@@ -323,21 +306,17 @@ pub fn container_card_themed(config: &ThemeConfig) -> container::Style {
 
 /// Modal container style - dialog overlay
 pub fn container_modal(_theme: &Theme) -> container::Style {
-    let config = ThemeConfig::default();
-    container_modal_themed(&config)
-}
+    let c = colors();
 
-/// Modal container style with theme configuration
-pub fn container_modal_themed(config: &ThemeConfig) -> container::Style {
     container::Style {
-        background: Some(config.resolve(SemanticColor::BackgroundElevated).into()),
+        background: Some(c.background_elevated.into()),
         border: Border {
             radius: spacing::BORDER_RADIUS_LG.into(),
             width: spacing::BORDER_WIDTH_THIN,
-            color: config.resolve(SemanticColor::BorderSubtle),
+            color: c.border_subtle,
         },
         shadow: Shadow {
-            color: config.resolve(SemanticColor::ShadowStrong),
+            color: c.shadow_strong,
             offset: Vector::new(0.0, 4.0),
             blur_radius: 16.0,
         },
@@ -348,14 +327,10 @@ pub fn container_modal_themed(config: &ThemeConfig) -> container::Style {
 
 /// Sidebar container style - navigation panel
 pub fn container_sidebar(_theme: &Theme) -> container::Style {
-    let config = ThemeConfig::default();
-    container_sidebar_themed(&config)
-}
+    let c = colors();
 
-/// Sidebar container style with theme configuration
-pub fn container_sidebar_themed(config: &ThemeConfig) -> container::Style {
     container::Style {
-        background: Some(config.resolve(SemanticColor::BackgroundSecondary).into()),
+        background: Some(c.background_secondary.into()),
         border: Border {
             radius: 0.0.into(),
             width: 0.0,
@@ -369,14 +344,10 @@ pub fn container_sidebar_themed(config: &ThemeConfig) -> container::Style {
 
 /// Surface container style - subtle elevation
 pub fn container_surface(_theme: &Theme) -> container::Style {
-    let config = ThemeConfig::default();
-    container_surface_themed(&config)
-}
+    let c = colors();
 
-/// Surface container style with theme configuration
-pub fn container_surface_themed(config: &ThemeConfig) -> container::Style {
     container::Style {
-        background: Some(config.resolve(SemanticColor::BackgroundSecondary).into()),
+        background: Some(c.background_secondary.into()),
         border: Border {
             radius: spacing::BORDER_RADIUS_SM.into(),
             width: 0.0,
@@ -390,18 +361,14 @@ pub fn container_surface_themed(config: &ThemeConfig) -> container::Style {
 
 /// Inset container style - recessed area
 pub fn container_inset(_theme: &Theme) -> container::Style {
-    let config = ThemeConfig::default();
-    container_inset_themed(&config)
-}
+    let c = colors();
 
-/// Inset container style with theme configuration
-pub fn container_inset_themed(config: &ThemeConfig) -> container::Style {
     container::Style {
-        background: Some(config.resolve(SemanticColor::BackgroundInset).into()),
+        background: Some(c.background_inset.into()),
         border: Border {
             radius: spacing::BORDER_RADIUS_SM.into(),
             width: spacing::BORDER_WIDTH_THIN,
-            color: config.resolve(SemanticColor::BorderSubtle),
+            color: c.border_subtle,
         },
         shadow: Shadow::default(),
         text_color: None,
@@ -415,63 +382,56 @@ pub fn container_inset_themed(config: &ThemeConfig) -> container::Style {
 
 /// Default text input style
 pub fn text_input_default(_theme: &Theme, status: text_input::Status) -> text_input::Style {
-    let config = ThemeConfig::default();
-    text_input_default_themed(&config, status)
-}
+    let c = colors();
 
-/// Default text input style with theme configuration
-pub fn text_input_default_themed(
-    config: &ThemeConfig,
-    status: text_input::Status,
-) -> text_input::Style {
     match status {
         text_input::Status::Active => text_input::Style {
-            background: config.resolve(SemanticColor::BackgroundElevated).into(),
+            background: c.background_elevated.into(),
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: spacing::BORDER_WIDTH_THIN,
-                color: config.resolve(SemanticColor::BorderDefault),
+                color: c.border_default,
             },
-            icon: config.resolve(SemanticColor::TextMuted),
-            placeholder: config.resolve(SemanticColor::TextDisabled),
-            value: config.resolve(SemanticColor::TextPrimary),
-            selection: config.resolve(SemanticColor::AccentPrimaryMedium),
+            icon: c.text_muted,
+            placeholder: c.text_disabled,
+            value: c.text_primary,
+            selection: c.accent_primary_medium,
         },
         text_input::Status::Hovered => text_input::Style {
-            background: config.resolve(SemanticColor::BackgroundElevated).into(),
+            background: c.background_elevated.into(),
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: spacing::BORDER_WIDTH_THIN,
-                color: config.resolve(SemanticColor::TextDisabled),
+                color: c.text_disabled,
             },
-            icon: config.resolve(SemanticColor::TextMuted),
-            placeholder: config.resolve(SemanticColor::TextDisabled),
-            value: config.resolve(SemanticColor::TextPrimary),
-            selection: config.resolve(SemanticColor::AccentPrimaryMedium),
+            icon: c.text_muted,
+            placeholder: c.text_disabled,
+            value: c.text_primary,
+            selection: c.accent_primary_medium,
         },
         text_input::Status::Focused { .. } => text_input::Style {
-            background: config.resolve(SemanticColor::BackgroundElevated).into(),
+            background: c.background_elevated.into(),
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: spacing::BORDER_WIDTH_MEDIUM,
-                color: config.resolve(SemanticColor::BorderFocused),
+                color: c.border_focused,
             },
-            icon: config.resolve(SemanticColor::TextMuted),
-            placeholder: config.resolve(SemanticColor::TextDisabled),
-            value: config.resolve(SemanticColor::TextPrimary),
-            selection: config.resolve(SemanticColor::AccentPrimaryMedium),
+            icon: c.text_muted,
+            placeholder: c.text_disabled,
+            value: c.text_primary,
+            selection: c.accent_primary_medium,
         },
         text_input::Status::Disabled => text_input::Style {
-            background: config.resolve(SemanticColor::BackgroundSecondary).into(),
+            background: c.background_secondary.into(),
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: spacing::BORDER_WIDTH_THIN,
-                color: config.resolve(SemanticColor::BorderDefault),
+                color: c.border_default,
             },
-            icon: config.resolve(SemanticColor::TextDisabled),
-            placeholder: config.resolve(SemanticColor::TextDisabled),
-            value: config.resolve(SemanticColor::TextMuted),
-            selection: config.resolve(SemanticColor::BorderSubtle),
+            icon: c.text_disabled,
+            placeholder: c.text_disabled,
+            value: c.text_muted,
+            selection: c.border_subtle,
         },
     }
 }
@@ -482,15 +442,11 @@ pub fn text_input_default_themed(
 
 /// Primary progress bar style
 pub fn progress_bar_primary(_theme: &Theme) -> progress_bar::Style {
-    let config = ThemeConfig::default();
-    progress_bar_primary_themed(&config)
-}
+    let c = colors();
 
-/// Primary progress bar style with theme configuration
-pub fn progress_bar_primary_themed(config: &ThemeConfig) -> progress_bar::Style {
     progress_bar::Style {
-        background: config.resolve(SemanticColor::BorderSubtle).into(),
-        bar: config.resolve(SemanticColor::AccentPrimary).into(),
+        background: c.border_subtle.into(),
+        bar: c.accent_primary.into(),
         border: Border {
             radius: spacing::BORDER_RADIUS_FULL.into(),
             width: 0.0,
@@ -501,15 +457,11 @@ pub fn progress_bar_primary_themed(config: &ThemeConfig) -> progress_bar::Style 
 
 /// Success progress bar style
 pub fn progress_bar_success(_theme: &Theme) -> progress_bar::Style {
-    let config = ThemeConfig::default();
-    progress_bar_success_themed(&config)
-}
+    let c = colors();
 
-/// Success progress bar style with theme configuration
-pub fn progress_bar_success_themed(config: &ThemeConfig) -> progress_bar::Style {
     progress_bar::Style {
-        background: config.resolve(SemanticColor::BorderSubtle).into(),
-        bar: config.resolve(SemanticColor::StatusSuccess).into(),
+        background: c.border_subtle.into(),
+        bar: c.status_success.into(),
         border: Border {
             radius: spacing::BORDER_RADIUS_FULL.into(),
             width: 0.0,

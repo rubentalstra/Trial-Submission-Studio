@@ -7,7 +7,7 @@ use iced::widget::{container, row, text};
 use iced::{Border, Element, Length};
 use iced_fonts::lucide;
 
-use crate::theme::{BORDER_RADIUS_FULL, SemanticColor, ThemeConfig};
+use crate::theme::{BORDER_RADIUS_FULL, colors};
 
 // =============================================================================
 // STATUS ENUM
@@ -30,35 +30,26 @@ pub enum Status {
 
 impl Status {
     /// Get the foreground color for this status.
-    pub fn color(&self, config: &ThemeConfig) -> iced::Color {
+    pub fn color(&self) -> iced::Color {
+        let c = colors();
         match self {
-            Status::Success => config.resolve(SemanticColor::StatusSuccess),
-            Status::Warning => config.resolve(SemanticColor::StatusWarning),
-            Status::Error => config.resolve(SemanticColor::StatusError),
-            Status::Info => config.resolve(SemanticColor::StatusInfo),
-            Status::Neutral => config.resolve(SemanticColor::TextMuted),
+            Status::Success => c.status_success,
+            Status::Warning => c.status_warning,
+            Status::Error => c.status_error,
+            Status::Info => c.status_info,
+            Status::Neutral => c.text_muted,
         }
     }
 
     /// Get the background color for this status.
-    pub fn background(&self, config: &ThemeConfig) -> iced::Color {
+    pub fn background(&self) -> iced::Color {
+        let c = colors();
         match self {
-            Status::Success => config.resolve(SemanticColor::StatusSuccessLight),
-            Status::Warning => config.resolve(SemanticColor::StatusWarningLight),
-            Status::Error => config.resolve(SemanticColor::StatusErrorLight),
-            Status::Info => config.resolve(SemanticColor::StatusInfoLight),
-            Status::Neutral => config.resolve(SemanticColor::TextDisabled),
-        }
-    }
-
-    /// Get the semantic color for this status (foreground).
-    pub fn semantic_color(&self) -> SemanticColor {
-        match self {
-            Status::Success => SemanticColor::StatusSuccess,
-            Status::Warning => SemanticColor::StatusWarning,
-            Status::Error => SemanticColor::StatusError,
-            Status::Info => SemanticColor::StatusInfo,
-            Status::Neutral => SemanticColor::TextMuted,
+            Status::Success => c.status_success_light,
+            Status::Warning => c.status_warning_light,
+            Status::Error => c.status_error_light,
+            Status::Info => c.status_info_light,
+            Status::Neutral => c.text_disabled,
         }
     }
 }
@@ -70,7 +61,6 @@ impl Status {
 /// Creates a status badge with colored indicator.
 ///
 /// A pill-shaped badge with background color based on status.
-/// Uses the default theme configuration.
 ///
 /// # Arguments
 ///
@@ -86,17 +76,8 @@ impl Status {
 /// let warning = status_badge("3 Issues", Status::Warning);
 /// ```
 pub fn status_badge<'a, M: 'a>(label: impl Into<String>, status: Status) -> Element<'a, M> {
-    status_badge_themed(&ThemeConfig::default(), label, status)
-}
-
-/// Creates a status badge with colored indicator using specific theme config.
-pub fn status_badge_themed<'a, M: 'a>(
-    config: &ThemeConfig,
-    label: impl Into<String>,
-    status: Status,
-) -> Element<'a, M> {
-    let bg_color = status.background(config);
-    let text_color = status.color(config);
+    let bg_color = status.background();
+    let text_color = status.color();
     let label_str = label.into();
 
     container(text(label_str).size(12).color(text_color))
@@ -115,24 +96,13 @@ pub fn status_badge_themed<'a, M: 'a>(
 /// Creates a status badge with an icon.
 ///
 /// Includes an icon before the label text.
-/// This function now accepts a lucide icon element directly.
 pub fn status_badge_with_icon<'a, M: 'a>(
     icon: impl Into<Element<'a, M>>,
     label: impl Into<String>,
     status: Status,
 ) -> Element<'a, M> {
-    status_badge_with_icon_themed(&ThemeConfig::default(), icon, label, status)
-}
-
-/// Creates a status badge with an icon using specific theme config.
-pub fn status_badge_with_icon_themed<'a, M: 'a>(
-    config: &ThemeConfig,
-    icon: impl Into<Element<'a, M>>,
-    label: impl Into<String>,
-    status: Status,
-) -> Element<'a, M> {
-    let bg_color = status.background(config);
-    let text_color = status.color(config);
+    let bg_color = status.background();
+    let text_color = status.color();
     let label_str = label.into();
 
     let label_text = text(label_str).size(12).color(text_color);
@@ -158,12 +128,7 @@ pub fn status_badge_with_icon_themed<'a, M: 'a>(
 ///
 /// A minimal status indicator without text, just a colored dot.
 pub fn status_dot<'a, M: 'a>(status: Status) -> Element<'a, M> {
-    status_dot_themed(&ThemeConfig::default(), status)
-}
-
-/// Creates a small dot indicator using specific theme config.
-pub fn status_dot_themed<'a, M: 'a>(config: &ThemeConfig, status: Status) -> Element<'a, M> {
-    let color = status.color(config);
+    let color = status.color();
 
     container(text(""))
         .width(Length::Fixed(8.0))
@@ -183,17 +148,8 @@ pub fn status_dot_themed<'a, M: 'a>(config: &ThemeConfig, status: Status) -> Ele
 ///
 /// A small circular badge typically used to show counts.
 pub fn count_badge<'a, M: 'a>(count: usize, status: Status) -> Element<'a, M> {
-    count_badge_themed(&ThemeConfig::default(), count, status)
-}
-
-/// Creates a count badge using specific theme config.
-pub fn count_badge_themed<'a, M: 'a>(
-    config: &ThemeConfig,
-    count: usize,
-    status: Status,
-) -> Element<'a, M> {
-    let bg_color = status.color(config);
-    let text_on_accent = config.resolve(SemanticColor::TextOnAccent);
+    let bg_color = status.color();
+    let text_on_accent = colors().text_on_accent;
     let count_text = if count > 99 {
         "99+".to_string()
     } else {
@@ -221,34 +177,22 @@ pub fn count_badge_themed<'a, M: 'a>(
 ///
 /// Specialized badge for variable mapping states.
 pub fn mapping_status_badge<'a, M: 'a>(mapped: bool, required: bool) -> Element<'a, M> {
-    mapping_status_badge_themed(&ThemeConfig::default(), mapped, required)
-}
-
-/// Creates a badge for mapping status using specific theme config.
-pub fn mapping_status_badge_themed<'a, M: 'a>(
-    config: &ThemeConfig,
-    mapped: bool,
-    required: bool,
-) -> Element<'a, M> {
-    let success_color = config.resolve(SemanticColor::StatusSuccess);
-    let error_color = config.resolve(SemanticColor::StatusError);
+    let c = colors();
 
     if mapped {
-        status_badge_with_icon_themed(
-            config,
-            lucide::check().size(11).color(success_color),
+        status_badge_with_icon(
+            lucide::check().size(11).color(c.status_success),
             "Mapped",
             Status::Success,
         )
     } else if required {
-        status_badge_with_icon_themed(
-            config,
-            lucide::triangle_alert().size(11).color(error_color),
+        status_badge_with_icon(
+            lucide::triangle_alert().size(11).color(c.status_error),
             "Required",
             Status::Error,
         )
     } else {
-        status_badge_themed(config, "Unmapped", Status::Neutral)
+        status_badge("Unmapped", Status::Neutral)
     }
 }
 
@@ -256,30 +200,17 @@ pub fn mapping_status_badge_themed<'a, M: 'a>(
 ///
 /// Shows validation state with issue count.
 pub fn validation_badge<'a, M: 'a>(errors: usize, warnings: usize) -> Element<'a, M> {
-    validation_badge_themed(&ThemeConfig::default(), errors, warnings)
-}
-
-/// Creates a badge for validation status using specific theme config.
-pub fn validation_badge_themed<'a, M: 'a>(
-    config: &ThemeConfig,
-    errors: usize,
-    warnings: usize,
-) -> Element<'a, M> {
-    let error_color = config.resolve(SemanticColor::StatusError);
-    let warning_color = config.resolve(SemanticColor::StatusWarning);
-    let success_color = config.resolve(SemanticColor::StatusSuccess);
+    let c = colors();
 
     if errors > 0 {
-        status_badge_with_icon_themed(
-            config,
-            lucide::circle_x().size(11).color(error_color),
+        status_badge_with_icon(
+            lucide::circle_x().size(11).color(c.status_error),
             format!("{} error{}", errors, if errors == 1 { "" } else { "s" }),
             Status::Error,
         )
     } else if warnings > 0 {
-        status_badge_with_icon_themed(
-            config,
-            lucide::triangle_alert().size(11).color(warning_color),
+        status_badge_with_icon(
+            lucide::triangle_alert().size(11).color(c.status_warning),
             format!(
                 "{} warning{}",
                 warnings,
@@ -288,9 +219,8 @@ pub fn validation_badge_themed<'a, M: 'a>(
             Status::Warning,
         )
     } else {
-        status_badge_with_icon_themed(
-            config,
-            lucide::check().size(11).color(success_color),
+        status_badge_with_icon(
+            lucide::check().size(11).color(c.status_success),
             "Valid",
             Status::Success,
         )

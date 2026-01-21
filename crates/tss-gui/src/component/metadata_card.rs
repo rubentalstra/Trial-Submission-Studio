@@ -4,9 +4,9 @@
 //! Used in mapping, normalization, and SUPP detail panels.
 
 use iced::widget::{Space, column, container, row, text};
-use iced::{Alignment, Border, Element, Length, Theme};
+use iced::{Alignment, Border, Color, Element, Length, Theme};
 
-use crate::theme::{BORDER_RADIUS_SM, GRAY_100, GRAY_600, GRAY_800, SPACING_MD, SPACING_SM};
+use crate::theme::{BORDER_RADIUS_SM, SPACING_MD, SPACING_SM, colors};
 
 // =============================================================================
 // METADATA ROW
@@ -22,15 +22,16 @@ pub fn metadata_row<'a, M: 'a>(
     label: impl Into<String>,
     value: impl Into<String>,
 ) -> Element<'a, M> {
-    let label_str = label.into();
-    let value_str = value.into();
+    let c = colors();
+    let label_color = c.text_muted;
+    let value_color = c.text_primary;
 
     row![
-        text(label_str)
+        text(label.into())
             .size(12)
-            .color(GRAY_600)
+            .color(label_color)
             .width(Length::Fixed(80.0)),
-        text(value_str).size(12).color(GRAY_800),
+        text(value.into()).size(12).color(value_color),
     ]
     .align_y(Alignment::Center)
     .into()
@@ -42,15 +43,16 @@ pub fn metadata_row_wide<'a, M: 'a>(
     value: impl Into<String>,
     label_width: f32,
 ) -> Element<'a, M> {
-    let label_str = label.into();
-    let value_str = value.into();
+    let c = colors();
+    let label_color = c.text_muted;
+    let value_color = c.text_primary;
 
     row![
-        text(label_str)
+        text(label.into())
             .size(12)
-            .color(GRAY_600)
+            .color(label_color)
             .width(Length::Fixed(label_width)),
-        text(value_str).size(12).color(GRAY_800),
+        text(value.into()).size(12).color(value_color),
     ]
     .align_y(Alignment::Center)
     .into()
@@ -73,14 +75,23 @@ pub fn metadata_row_wide<'a, M: 'a>(
 pub struct MetadataCard {
     rows: Vec<(String, String)>,
     title: Option<String>,
+    title_color: Color,
+    label_color: Color,
+    value_color: Color,
+    bg_color: Color,
 }
 
 impl MetadataCard {
-    /// Create a new empty metadata card.
+    /// Create a new metadata card with theme configuration.
     pub fn new() -> Self {
+        let c = colors();
         Self {
             rows: Vec::new(),
             title: None,
+            title_color: c.text_muted,
+            label_color: c.text_muted,
+            value_color: c.text_primary,
+            bg_color: c.background_secondary,
         }
     }
 
@@ -106,24 +117,36 @@ impl MetadataCard {
 
     /// Build the metadata card element.
     pub fn view<'a, M: 'a>(self) -> Element<'a, M> {
+        let title_color = self.title_color;
+        let label_color = self.label_color;
+        let value_color = self.value_color;
+        let bg_color = self.bg_color;
+
         let mut content = column![].spacing(SPACING_SM);
 
-        // Title if present
         if let Some(title) = self.title {
-            content = content.push(text(title).size(14).color(GRAY_600));
+            content = content.push(text(title).size(14).color(title_color));
             content = content.push(Space::new().height(SPACING_SM));
         }
 
-        // Metadata rows
         for (label, value) in self.rows {
-            content = content.push(metadata_row::<M>(&label, &value));
+            let row_el: Element<'a, M> = row![
+                text(label)
+                    .size(12)
+                    .color(label_color)
+                    .width(Length::Fixed(80.0)),
+                text(value).size(12).color(value_color),
+            ]
+            .align_y(Alignment::Center)
+            .into();
+            content = content.push(row_el);
         }
 
         container(content)
             .padding(SPACING_MD)
             .width(Length::Fill)
-            .style(|_theme: &Theme| container::Style {
-                background: Some(GRAY_100.into()),
+            .style(move |_theme: &Theme| container::Style {
+                background: Some(bg_color.into()),
                 border: Border {
                     radius: BORDER_RADIUS_SM.into(),
                     ..Default::default()

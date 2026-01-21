@@ -7,10 +7,7 @@ use iced::window;
 use iced::{Alignment, Border, Element, Length, Padding};
 
 use crate::message::{AboutMessage, DialogMessage, Message};
-use crate::theme::{
-    GRAY_100, GRAY_200, GRAY_500, GRAY_700, GRAY_800, GRAY_900, PRIMARY_500, SPACING_LG,
-    SPACING_MD, SPACING_SM, SPACING_XL, WHITE, button_primary,
-};
+use crate::theme::{SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XL, button_primary, colors};
 
 /// Embedded SVG logo bytes.
 const LOGO_SVG: &[u8] = include_bytes!("../../../assets/icon.svg");
@@ -20,13 +17,14 @@ const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Render the About dialog content for a standalone window.
 pub fn view_about_dialog_content<'a>(window_id: window::Id) -> Element<'a, Message> {
+    let c = colors();
     let content = view_dialog_content_inner(Some(window_id));
 
     container(content)
         .width(Length::Fill)
         .height(Length::Fill)
-        .style(|_| container::Style {
-            background: Some(WHITE.into()),
+        .style(move |_| container::Style {
+            background: Some(c.background_elevated.into()),
             ..Default::default()
         })
         .into()
@@ -34,6 +32,8 @@ pub fn view_about_dialog_content<'a>(window_id: window::Id) -> Element<'a, Messa
 
 /// Inner dialog content - RustRover style.
 fn view_dialog_content_inner<'a>(window_id: Option<window::Id>) -> Element<'a, Message> {
+    let c = colors();
+
     // Logo on the left
     let logo_handle = svg::Handle::from_memory(LOGO_SVG);
     let logo = svg(logo_handle).width(88).height(88);
@@ -45,45 +45,51 @@ fn view_dialog_content_inner<'a>(window_id: Option<window::Id>) -> Element<'a, M
     });
 
     // Title
-    let title = text("Trial Submission Studio").size(20).color(GRAY_900);
+    let title = text("Trial Submission Studio")
+        .size(20)
+        .color(c.text_primary);
 
     // Version
     let version_line = text(format!("Version {}", VERSION))
         .size(13)
-        .color(GRAY_500);
+        .color(c.text_muted);
 
     // Build number (derived from version)
     let build_line = text(format!("Build {}", get_build_number()))
         .size(13)
-        .color(GRAY_500);
+        .color(c.text_muted);
 
     // Target architecture
-    let target_info = text(get_target_triple()).size(13).color(GRAY_500);
+    let target_info = text(get_target_triple()).size(13).color(c.text_muted);
+
+    let accent_primary = c.accent_primary;
 
     // "Powered by open-source software" with link
-    let powered_label = text("Powered by ").size(13).color(GRAY_700);
-    let open_source_link = button(text("open-source software").size(13).color(PRIMARY_500))
+    let powered_label = text("Powered by ").size(13).color(c.text_secondary);
+    let open_source_link = button(text("open-source software").size(13).color(accent_primary))
         .on_press(Message::Dialog(DialogMessage::About(
             AboutMessage::OpenOpenSource,
         )))
         .padding(0)
-        .style(|_, _| button::Style {
+        .style(move |_, _| button::Style {
             background: None,
-            text_color: PRIMARY_500,
+            text_color: accent_primary,
             ..Default::default()
         });
     let powered_row = row![powered_label, open_source_link].align_y(Alignment::Center);
 
     // Copyright with link on author name
-    let copyright_label = text("Copyright © 2024–2026 ").size(13).color(GRAY_700);
-    let author_link = button(text("Ruben Talstra").size(13).color(PRIMARY_500))
+    let copyright_label = text("Copyright © 2024–2026 ")
+        .size(13)
+        .color(c.text_secondary);
+    let author_link = button(text("Ruben Talstra").size(13).color(accent_primary))
         .on_press(Message::Dialog(DialogMessage::About(
             AboutMessage::OpenGitHub,
         )))
         .padding(0)
-        .style(|_, _| button::Style {
+        .style(move |_, _| button::Style {
             background: None,
-            text_color: PRIMARY_500,
+            text_color: accent_primary,
             ..Default::default()
         });
     let copyright_row = row![copyright_label, author_link].align_y(Alignment::Center);
@@ -127,6 +133,11 @@ fn view_dialog_content_inner<'a>(window_id: Option<window::Id>) -> Element<'a, M
 
 /// Footer with Close and Copy and Close buttons (RustRover style).
 fn view_footer<'a>(window_id: Option<window::Id>) -> Element<'a, Message> {
+    let c = colors();
+    let bg_secondary = c.background_secondary;
+    let text_primary = c.text_primary;
+    let border_default = c.border_default;
+
     // Close button (secondary/outlined style)
     let close_btn = button(text("Close").size(13))
         .on_press(if let Some(id) = window_id {
@@ -135,15 +146,15 @@ fn view_footer<'a>(window_id: Option<window::Id>) -> Element<'a, Message> {
             Message::Dialog(DialogMessage::About(AboutMessage::Close))
         })
         .padding([SPACING_SM, SPACING_LG])
-        .style(|theme, status| {
+        .style(move |theme, status| {
             let base = button::secondary(theme, status);
             button::Style {
-                background: Some(GRAY_100.into()),
-                text_color: GRAY_800,
+                background: Some(bg_secondary.into()),
+                text_color: text_primary,
                 border: Border {
                     radius: 6.0.into(),
                     width: 1.0,
-                    color: GRAY_200,
+                    color: border_default,
                 },
                 ..base
             }

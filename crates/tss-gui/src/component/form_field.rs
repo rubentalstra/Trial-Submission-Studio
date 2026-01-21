@@ -3,11 +3,9 @@
 //! Input fields with labels, validation, and error display.
 
 use iced::widget::{column, container, text, text_input};
-use iced::{Border, Element, Length};
+use iced::{Border, Element, Length, Theme};
 
-use crate::theme::{
-    BORDER_RADIUS_SM, ERROR, GRAY_300, GRAY_600, GRAY_900, SPACING_XS, text_input_default,
-};
+use crate::theme::{BORDER_RADIUS_SM, SPACING_XS, colors, text_input_default};
 
 // =============================================================================
 // FORM FIELD
@@ -43,7 +41,11 @@ pub fn form_field<'a, M: Clone + 'a>(
     on_change: impl Fn(String) -> M + 'a,
     error: Option<&'a str>,
 ) -> Element<'a, M> {
-    let label_text = text(label).size(13).color(GRAY_600);
+    let c = colors();
+    let text_muted = c.text_muted;
+    let error_color = c.status_error;
+
+    let label_text = text(label).size(13).color(text_muted);
 
     let input = text_input(placeholder, value)
         .on_input(on_change)
@@ -58,7 +60,7 @@ pub fn form_field<'a, M: Clone + 'a>(
     let mut content = column![label_text, input].spacing(SPACING_XS);
 
     if let Some(err) = error {
-        let error_text = text(err).size(12).color(ERROR);
+        let error_text = text(err).size(12).color(error_color);
         content = content.push(error_text);
     }
 
@@ -97,9 +99,12 @@ pub fn number_field<'a, M: Clone + 'a>(
     min: Option<usize>,
     max: Option<usize>,
 ) -> Element<'a, M> {
+    let c = colors();
+    let text_muted = c.text_muted;
+
     let value_str = value.to_string();
 
-    let label_text = text(label).size(13).color(GRAY_600);
+    let label_text = text(label).size(13).color(text_muted);
 
     let input = text_input("0", &value_str)
         .on_input(move |s| {
@@ -123,16 +128,22 @@ pub fn number_field<'a, M: Clone + 'a>(
 ///
 /// Shows a value that cannot be edited (for display purposes).
 pub fn display_field<'a, M: 'a>(label: &'a str, value: &'a str) -> Element<'a, M> {
-    let label_text = text(label).size(13).color(GRAY_600);
+    let c = colors();
+    let text_muted = c.text_muted;
+    let text_primary = c.text_primary;
+    let bg_secondary = c.background_secondary;
+    let border_default = c.border_default;
 
-    let value_text = container(text(value).size(14).color(GRAY_900))
+    let label_text = text(label).size(13).color(text_muted);
+
+    let value_text = container(text(value).size(14).color(text_primary))
         .padding(10.0)
         .width(Length::Fill)
-        .style(|_theme| container::Style {
-            background: Some(crate::theme::GRAY_100.into()),
+        .style(move |_theme| container::Style {
+            background: Some(bg_secondary.into()),
             border: Border {
                 radius: BORDER_RADIUS_SM.into(),
-                color: GRAY_300,
+                color: border_default,
                 width: 1.0,
             },
             ..Default::default()
@@ -151,7 +162,10 @@ pub fn text_area_field<'a, M: Clone + 'a>(
     on_change: impl Fn(String) -> M + 'a,
     rows: u16,
 ) -> Element<'a, M> {
-    let label_text = text(label).size(13).color(GRAY_600);
+    let c = colors();
+    let text_muted = c.text_muted;
+
+    let label_text = text(label).size(13).color(text_muted);
 
     // Note: Iced doesn't have a native textarea, so we simulate with a taller text_input
     // For true multi-line, would need text_editor widget
@@ -177,9 +191,12 @@ pub fn text_area_field<'a, M: Clone + 'a>(
 // =============================================================================
 
 /// Text input style for error state
-fn text_input_error_style(_theme: &iced::Theme, status: text_input::Status) -> text_input::Style {
-    let mut style = text_input_default(_theme, status);
-    style.border.color = ERROR;
+fn text_input_error_style(theme: &Theme, status: text_input::Status) -> text_input::Style {
+    let c = colors();
+    let error_color = c.status_error;
+
+    let mut style = text_input_default(theme, status);
+    style.border.color = error_color;
     style.border.width = 2.0;
     style
 }

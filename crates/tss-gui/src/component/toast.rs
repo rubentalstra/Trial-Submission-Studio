@@ -8,7 +8,7 @@ use iced::{Alignment, Element, Length};
 use iced_fonts::lucide;
 
 use crate::message::Message;
-use crate::theme::{SPACING_MD, SPACING_SM, SPACING_XS, SemanticColor, ThemeConfig};
+use crate::theme::{SPACING_MD, SPACING_SM, SPACING_XS, colors};
 
 /// Toast notification state.
 #[derive(Debug, Clone)]
@@ -36,12 +36,13 @@ pub enum ToastType {
 
 impl ToastType {
     /// Get the semantic color for this toast type.
-    pub fn color(&self, config: &ThemeConfig) -> iced::Color {
+    pub fn color(&self) -> iced::Color {
+        let c = colors();
         match self {
-            ToastType::Success => config.resolve(SemanticColor::StatusSuccess),
-            ToastType::Info => config.resolve(SemanticColor::StatusInfo),
-            ToastType::Warning => config.resolve(SemanticColor::StatusWarning),
-            ToastType::Error => config.resolve(SemanticColor::StatusError),
+            ToastType::Success => c.status_success,
+            ToastType::Info => c.status_info,
+            ToastType::Warning => c.status_warning,
+            ToastType::Error => c.status_error,
         }
     }
 }
@@ -93,16 +94,12 @@ impl ToastState {
 ///
 /// The toast appears at the bottom-right of the screen and can be dismissed.
 pub fn view_toast(state: &ToastState) -> Element<'_, Message> {
-    view_toast_themed(&ThemeConfig::default(), state)
-}
-
-/// Renders a toast notification with specific theme config.
-pub fn view_toast_themed<'a>(config: &ThemeConfig, state: &'a ToastState) -> Element<'a, Message> {
-    let icon_color = state.toast_type.color(config);
-    let text_color = config.resolve(SemanticColor::TextSecondary);
-    let bg_color = config.resolve(SemanticColor::BackgroundSecondary);
-    let border_color = config.resolve(SemanticColor::BorderDefault);
-    let shadow_color = config.resolve(SemanticColor::Shadow);
+    let c = colors();
+    let icon_color = state.toast_type.color();
+    let text_color = c.text_secondary;
+    let bg_color = c.background_secondary;
+    let border_color = c.border_default;
+    let shadow_color = c.shadow;
 
     let icon = match state.toast_type {
         ToastType::Success => lucide::circle_check().size(18).color(icon_color),

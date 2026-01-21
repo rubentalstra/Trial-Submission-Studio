@@ -4,11 +4,9 @@
 //! and consistent styling.
 
 use iced::widget::{Space, column, row, text, text_input};
-use iced::{Border, Element, Length, Theme};
+use iced::{Border, Color, Element, Length, Theme};
 
-use crate::theme::{
-    BORDER_RADIUS_SM, ERROR, GRAY_200, GRAY_400, GRAY_500, GRAY_600, GRAY_900, PRIMARY_100, WHITE,
-};
+use crate::theme::{BORDER_RADIUS_SM, colors};
 
 // =============================================================================
 // TEXT FIELD
@@ -73,6 +71,19 @@ impl<M: Clone + 'static> TextField<M> {
 
     /// Build the text field element.
     pub fn view(self) -> Element<'static, M> {
+        let c = colors();
+        let error_color = c.status_error;
+        let text_muted = c.text_muted;
+        let text_disabled = c.text_disabled;
+        let text_primary = c.text_primary;
+        let border_default = c.border_default;
+        let bg_elevated = c.background_elevated;
+        let accent_primary = c.accent_primary;
+        let selection_bg = Color {
+            a: 0.15,
+            ..accent_primary
+        };
+
         let char_count = self.value.len();
         let is_over = self.max_length.is_some_and(|max| char_count > max);
         let has_error = self.error.is_some() || is_over;
@@ -88,7 +99,7 @@ impl<M: Clone + 'static> TextField<M> {
         let count_display: Element<'static, M> = if let Some(max) = self.max_length {
             text(format!("{}/{}", char_count, max))
                 .size(11)
-                .color(if is_over { ERROR } else { GRAY_400 })
+                .color(if is_over { error_color } else { text_disabled })
                 .into()
         } else {
             Space::new().width(0.0).into()
@@ -97,15 +108,17 @@ impl<M: Clone + 'static> TextField<M> {
         // Error message
         let error_el: Element<'static, M> = if let Some(err) = self.error {
             row![
-                iced_fonts::lucide::circle_alert().size(12).color(ERROR),
+                iced_fonts::lucide::circle_alert()
+                    .size(12)
+                    .color(error_color),
                 Space::new().width(4.0),
-                text(err).size(11).color(ERROR),
+                text(err).size(11).color(error_color),
             ]
             .into()
         } else if is_over {
             text("Character limit exceeded")
                 .size(11)
-                .color(ERROR)
+                .color(error_color)
                 .into()
         } else {
             Space::new().height(0.0).into()
@@ -117,7 +130,7 @@ impl<M: Clone + 'static> TextField<M> {
 
         column![
             row![
-                text(label_text).size(12).color(GRAY_600),
+                text(label_text).size(12).color(text_muted),
                 Space::new().width(Length::Fill),
                 count_display,
             ],
@@ -127,18 +140,22 @@ impl<M: Clone + 'static> TextField<M> {
                 .padding([10.0, 12.0])
                 .size(14)
                 .style(move |_: &Theme, _status| {
-                    let border_color = if has_error { ERROR } else { GRAY_200 };
+                    let border_color = if has_error {
+                        error_color
+                    } else {
+                        border_default
+                    };
                     iced::widget::text_input::Style {
-                        background: WHITE.into(),
+                        background: bg_elevated.into(),
                         border: Border {
                             color: border_color,
                             width: 1.0,
                             radius: BORDER_RADIUS_SM.into(),
                         },
-                        icon: GRAY_500,
-                        placeholder: GRAY_400,
-                        value: GRAY_900,
-                        selection: PRIMARY_100,
+                        icon: text_muted,
+                        placeholder: text_disabled,
+                        value: text_primary,
+                        selection: selection_bg,
                     }
                 }),
             error_el,

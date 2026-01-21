@@ -34,10 +34,7 @@ use iced::widget::{Space, button, column, container, row, text};
 use iced::{Alignment, Border, Element, Length};
 use iced_fonts::lucide;
 
-use crate::theme::{
-    BORDER_RADIUS_SM, ERROR, GRAY_100, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800,
-    PRIMARY_500, SPACING_LG, SPACING_MD, SPACING_SM, WHITE, button_primary,
-};
+use crate::theme::{BORDER_RADIUS_SM, SPACING_LG, SPACING_MD, SPACING_SM, button_primary, colors};
 
 // =============================================================================
 // EMPTY STATE
@@ -94,18 +91,22 @@ impl<'a, M: Clone + 'a> EmptyState<'a, M> {
 
     /// Build the element.
     pub fn view(self) -> Element<'a, M> {
+        let c = colors();
+        let text_muted = c.text_muted;
+        let text_on_accent = c.text_on_accent;
+
         let mut content = column![self.icon, Space::new().height(SPACING_MD),]
-            .push(text(self.title).size(16).color(GRAY_600));
+            .push(text(self.title).size(16).color(text_muted));
 
         if let Some(desc) = self.description {
             content = content
                 .push(Space::new().height(SPACING_SM))
-                .push(text(desc).size(13).color(GRAY_500));
+                .push(text(desc).size(13).color(text_muted));
         }
 
         if let Some((label, message)) = self.action {
             content = content.push(Space::new().height(SPACING_LG)).push(
-                button(text(label).size(14).color(WHITE))
+                button(text(label).size(14).color(text_on_accent))
                     .on_press(message)
                     .padding([10.0, 24.0])
                     .style(button_primary),
@@ -174,17 +175,22 @@ impl LoadingState {
 
     /// Build the element.
     pub fn view<'a, M: 'a>(self) -> Element<'a, M> {
+        let c = colors();
+        let accent_primary = c.accent_primary;
+        let text_primary = c.text_primary;
+        let text_muted = c.text_muted;
+
         let mut content = column![
-            lucide::loader().size(40).color(PRIMARY_500),
+            lucide::loader().size(40).color(accent_primary),
             Space::new().height(SPACING_LG),
-            text(self.title).size(18).color(GRAY_800),
+            text(self.title).size(18).color(text_primary),
         ]
         .align_x(Alignment::Center);
 
         if let Some(desc) = self.description {
             content = content
                 .push(Space::new().height(SPACING_SM))
-                .push(text(desc).size(13).color(GRAY_500));
+                .push(text(desc).size(13).color(text_muted));
         }
 
         if self.centered {
@@ -251,20 +257,27 @@ impl<M: Clone> ErrorState<M> {
     where
         M: 'a,
     {
+        let c = colors();
+        let error_color = c.status_error;
+        let text_primary = c.text_primary;
+        let text_muted = c.text_muted;
+        let bg_secondary = c.background_secondary;
+        let text_on_accent = c.text_on_accent;
+
         let mut content = column![
-            lucide::circle_alert().size(48).color(ERROR),
+            lucide::circle_alert().size(48).color(error_color),
             Space::new().height(SPACING_LG),
-            text(self.title).size(18).color(GRAY_800),
+            text(self.title).size(18).color(text_primary),
         ]
         .align_x(Alignment::Center)
         .max_width(400.0);
 
         if let Some(msg) = self.message {
             content = content.push(Space::new().height(SPACING_SM)).push(
-                container(text(msg).size(12).color(GRAY_600))
+                container(text(msg).size(12).color(text_muted))
                     .padding(SPACING_MD)
-                    .style(|_| container::Style {
-                        background: Some(GRAY_100.into()),
+                    .style(move |_| container::Style {
+                        background: Some(bg_secondary.into()),
                         border: Border {
                             radius: BORDER_RADIUS_SM.into(),
                             ..Default::default()
@@ -278,9 +291,9 @@ impl<M: Clone> ErrorState<M> {
             content = content.push(Space::new().height(SPACING_LG)).push(
                 button(
                     row![
-                        lucide::refresh_cw().size(14).color(WHITE),
+                        lucide::refresh_cw().size(14).color(text_on_accent),
                         Space::new().width(SPACING_SM),
-                        text("Retry").size(14).color(WHITE),
+                        text("Retry").size(14).color(text_on_accent),
                     ]
                     .align_y(Alignment::Center),
                 )
@@ -357,24 +370,29 @@ impl<M: Clone> NoFilteredResults<M> {
     where
         M: 'a,
     {
+        let c = colors();
+        let text_disabled = c.text_disabled;
+        let text_muted = c.text_muted;
+        let text_secondary = c.text_secondary;
+
         let mut content = column![
-            lucide::search().size(32).color(GRAY_400),
+            lucide::search().size(32).color(text_disabled),
             Space::new().height(SPACING_MD),
             text(format!("No {} found", self.filter_name))
                 .size(14)
-                .color(GRAY_600),
+                .color(text_muted),
         ]
         .align_x(Alignment::Center);
 
         if let Some(hint) = self.hint {
             content = content
                 .push(Space::new().height(SPACING_SM))
-                .push(text(hint).size(12).color(GRAY_500));
+                .push(text(hint).size(12).color(text_muted));
         }
 
         if let Some(clear_msg) = self.clear_action {
             content = content.push(Space::new().height(SPACING_MD)).push(
-                button(text("Clear filters").size(12).color(GRAY_700))
+                button(text("Clear filters").size(12).color(text_secondary))
                     .on_press(clear_msg)
                     .padding([6.0, 12.0]),
             );

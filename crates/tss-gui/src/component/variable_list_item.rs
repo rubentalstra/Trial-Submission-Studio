@@ -6,10 +6,7 @@
 use iced::widget::{Space, button, column, container, row, text};
 use iced::{Alignment, Border, Color, Element, Length, Theme};
 
-use crate::theme::{
-    BORDER_RADIUS_SM, GRAY_100, GRAY_200, GRAY_500, GRAY_800, GRAY_900, PRIMARY_100, PRIMARY_500,
-    SPACING_SM, WHITE,
-};
+use crate::theme::{BORDER_RADIUS_SM, SPACING_SM, colors};
 
 // =============================================================================
 // VARIABLE LIST ITEM
@@ -74,6 +71,15 @@ impl<'a, M: Clone + 'a> VariableListItem<'a, M> {
 
     /// Build the list item element.
     pub fn view(self) -> Element<'a, M> {
+        let c = colors();
+        let text_primary = c.text_primary;
+        let text_muted = c.text_muted;
+        let text_on_accent = c.text_on_accent;
+        let accent_primary = c.accent_primary;
+        let accent_light = c.accent_primary_light;
+        let bg_secondary = c.background_secondary;
+        let border_default = c.border_default;
+
         let is_selected = self.selected;
         let name = self.name;
         let label = self.label;
@@ -87,7 +93,7 @@ impl<'a, M: Clone + 'a> VariableListItem<'a, M> {
         // Trailing badge
         let trailing: Element<'a, M> = if let Some((badge_text, badge_color)) = self.trailing_badge
         {
-            container(text(badge_text).size(9).color(WHITE))
+            container(text(badge_text).size(9).color(text_on_accent))
                 .padding([2.0, 4.0])
                 .style(move |_theme: &Theme| container::Style {
                     background: Some(badge_color.into()),
@@ -103,9 +109,9 @@ impl<'a, M: Clone + 'a> VariableListItem<'a, M> {
         };
 
         // Name and label text
-        let name_text = text(name).size(13).color(GRAY_900);
+        let name_text = text(name).size(13).color(text_primary);
         let label_text: Element<'a, M> = if let Some(lbl) = label {
-            text(lbl).size(11).color(GRAY_500).into()
+            text(lbl).size(11).color(text_muted).into()
         } else {
             Space::new().height(0.0).into()
         };
@@ -124,17 +130,21 @@ impl<'a, M: Clone + 'a> VariableListItem<'a, M> {
             .width(Length::Fill)
             .style(move |_theme: &Theme, btn_status| {
                 let bg = if is_selected {
-                    Some(PRIMARY_100.into())
+                    Some(accent_light.into())
                 } else {
                     match btn_status {
-                        iced::widget::button::Status::Hovered => Some(GRAY_100.into()),
+                        iced::widget::button::Status::Hovered => Some(bg_secondary.into()),
                         _ => None,
                     }
                 };
-                let border_color = if is_selected { PRIMARY_500 } else { GRAY_200 };
+                let border_color = if is_selected {
+                    accent_primary
+                } else {
+                    border_default
+                };
                 iced::widget::button::Style {
                     background: bg,
-                    text_color: GRAY_900,
+                    text_color: text_primary,
                     border: Border {
                         radius: BORDER_RADIUS_SM.into(),
                         color: border_color,
@@ -192,12 +202,26 @@ impl<'a, M: Clone + 'a> SimpleListItem<'a, M> {
 
     /// Build the list item element.
     pub fn view(self) -> Element<'a, M> {
+        let c = colors();
+        let text_primary = c.text_primary;
+        let accent_primary = c.accent_primary;
+        let accent_light = c.accent_primary_light;
+        let bg_elevated = c.background_elevated;
+
         let is_selected = self.selected;
         let display_text = self.text;
         let on_click = self.on_click;
 
-        let bg_color = if is_selected { PRIMARY_100 } else { WHITE };
-        let text_color = if is_selected { PRIMARY_500 } else { GRAY_800 };
+        let bg_color = if is_selected {
+            accent_light
+        } else {
+            bg_elevated
+        };
+        let text_color = if is_selected {
+            accent_primary
+        } else {
+            text_primary
+        };
 
         // Leading icon or nothing
         let leading: Element<'a, M> = self

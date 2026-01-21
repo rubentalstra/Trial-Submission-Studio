@@ -7,7 +7,7 @@ use iced::{Alignment, Element, Length, Theme};
 use iced_fonts::lucide;
 
 use crate::message::{DialogMessage, Message, ThirdPartyMessage};
-use crate::theme::{GRAY_100, GRAY_500, GRAY_700, GRAY_900, SPACING_LG, SPACING_MD, SPACING_SM};
+use crate::theme::{SPACING_LG, SPACING_MD, SPACING_SM, colors, is_dark};
 
 /// Third-party license information (embedded at build time).
 const THIRD_PARTY_LICENSES: &str = include_str!("../../../../../THIRD_PARTY_LICENSES.md");
@@ -37,22 +37,24 @@ impl ThirdPartyState {
 /// Render the Third-party licenses dialog content for a standalone window (multi-window mode).
 ///
 /// This is the content that appears in a separate dialog window.
-pub fn view_third_party_dialog_content(state: &'_ ThirdPartyState) -> Element<'_, Message> {
+pub fn view_third_party_dialog_content<'a>(state: &'a ThirdPartyState) -> Element<'a, Message> {
+    let c = colors();
     let content = view_dialog_content(state);
 
+    let bg_secondary = c.background_secondary;
     // Wrap in a styled container for the window
     container(content)
         .width(Length::Fill)
         .height(Length::Fill)
-        .style(|_| container::Style {
-            background: Some(GRAY_100.into()),
+        .style(move |_| container::Style {
+            background: Some(bg_secondary.into()),
             ..Default::default()
         })
         .into()
 }
 
 /// Dialog content with header, scrollable content, and footer.
-fn view_dialog_content(state: &'_ ThirdPartyState) -> Element<'_, Message> {
+fn view_dialog_content<'a>(state: &'a ThirdPartyState) -> Element<'a, Message> {
     let header = view_header();
     let content = view_licenses_content(state.items());
     let footer = view_footer();
@@ -62,10 +64,12 @@ fn view_dialog_content(state: &'_ ThirdPartyState) -> Element<'_, Message> {
 
 /// Dialog header.
 fn view_header<'a>() -> Element<'a, Message> {
+    let c = colors();
+
     row![
-        lucide::scale().size(18).color(GRAY_700),
+        lucide::scale().size(18).color(c.text_secondary),
         Space::new().width(SPACING_SM),
-        text("Third-Party Licenses").size(18).color(GRAY_900),
+        text("Third-Party Licenses").size(18).color(c.text_primary),
     ]
     .align_y(Alignment::Center)
     .padding([SPACING_MD, SPACING_LG])
@@ -77,15 +81,20 @@ fn view_header<'a>() -> Element<'a, Message> {
 /// The markdown items are pre-parsed and cached in state, so we only
 /// build the widget tree here (no expensive parsing on every frame).
 fn view_licenses_content<'a>(items: &'a [markdown::Item]) -> Element<'a, Message> {
+    let c = colors();
+    let bg_secondary = c.background_secondary;
+
     if items.is_empty() {
         return text("No third-party licenses found.")
             .size(13)
-            .color(GRAY_500)
+            .color(c.text_muted)
             .into();
     }
 
+    // Use appropriate theme for markdown rendering based on dark/light mode
+    let md_theme = if is_dark() { Theme::Dark } else { Theme::Light };
     let markdown_content: Element<'a, Message> =
-        markdown::view(items, Theme::Light).map(|url| Message::OpenUrl(url.to_string()));
+        markdown::view(items, md_theme).map(|url| Message::OpenUrl(url.to_string()));
 
     let scroll = scrollable(
         container(markdown_content)
@@ -96,8 +105,8 @@ fn view_licenses_content<'a>(items: &'a [markdown::Item]) -> Element<'a, Message
     .width(Length::Fill);
 
     container(scroll)
-        .style(|_| container::Style {
-            background: Some(GRAY_100.into()),
+        .style(move |_| container::Style {
+            background: Some(bg_secondary.into()),
             ..Default::default()
         })
         .height(Length::Fill)
