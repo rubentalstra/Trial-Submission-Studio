@@ -167,9 +167,14 @@ pub enum ExportSettingsMessage {
 
 /// Display settings messages.
 #[derive(Debug, Clone)]
+#[allow(clippy::enum_variant_names)]
 pub enum DisplaySettingsMessage {
     /// Change preview rows per page
     PreviewRowsChanged(usize),
+    /// Change theme mode (light/dark/system)
+    ThemeModeChanged(crate::theme::ThemeMode),
+    /// Change accessibility mode
+    AccessibilityModeChanged(crate::theme::AccessibilityMode),
 }
 
 /// Update settings messages.

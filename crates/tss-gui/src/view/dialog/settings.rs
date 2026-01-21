@@ -1,4 +1,5 @@
 //! Settings dialog view.
+//! Settings dialog view.
 //!
 //! Master-detail layout with category sidebar and settings content.
 
@@ -17,8 +18,9 @@ use crate::message::{
 };
 use crate::state::{ExportFormat, Settings, XptVersion};
 use crate::theme::{
-    GRAY_100, GRAY_500, GRAY_700, GRAY_800, GRAY_900, PRIMARY_100, SPACING_LG, SPACING_MD,
-    SPACING_SM, SPACING_XL, SPACING_XS, button_primary,
+    AccessibilityMode, GRAY_100, GRAY_500, GRAY_700, GRAY_800, GRAY_900, PRIMARY_100, SPACING_LG,
+    SPACING_MD, SPACING_SM, SPACING_XL, SPACING_XS, SemanticColor, ThemeConfig, ThemeMode,
+    button_primary,
 };
 
 /// Width of the category sidebar.
@@ -213,7 +215,7 @@ fn view_category_content<'a>(
     let content: Element<'a, Message> = match category {
         SettingsCategory::General => view_general_settings(settings),
         SettingsCategory::Export => view_export_settings(settings),
-        SettingsCategory::Display => view_display_settings(),
+        SettingsCategory::Display => view_display_settings(settings),
         SettingsCategory::Updates => view_update_settings(settings),
         SettingsCategory::Developer => view_developer_settings(settings),
         SettingsCategory::Validation => view_validation_settings(settings),
@@ -369,7 +371,50 @@ fn view_export_settings(settings: &Settings) -> Element<'_, Message> {
 }
 
 /// Display settings section.
-fn view_display_settings<'a>() -> Element<'a, Message> {
+fn view_display_settings(settings: &Settings) -> Element<'_, Message> {
+    // Theme mode section
+    let theme_mode_section = column![
+        text("Appearance").size(14).color(GRAY_800),
+        text("Choose light or dark mode, or follow system preference")
+            .size(12)
+            .color(GRAY_500),
+        Space::new().height(SPACING_XS),
+        pick_list(
+            ThemeMode::ALL.to_vec(),
+            Some(settings.display.theme_mode),
+            |mode| Message::Dialog(DialogMessage::Settings(SettingsMessage::Display(
+                DisplaySettingsMessage::ThemeModeChanged(mode),
+            )))
+        )
+        .width(Length::Fixed(200.0)),
+    ]
+    .spacing(SPACING_XS);
+
+    // Accessibility mode section
+    let accessibility_section = column![
+        text("Color Vision Accessibility").size(14).color(GRAY_800),
+        text("Optimize colors for different types of color vision")
+            .size(12)
+            .color(GRAY_500),
+        Space::new().height(SPACING_XS),
+        pick_list(
+            AccessibilityMode::ALL.to_vec(),
+            Some(settings.display.accessibility_mode),
+            |mode| Message::Dialog(DialogMessage::Settings(SettingsMessage::Display(
+                DisplaySettingsMessage::AccessibilityModeChanged(mode),
+            )))
+        )
+        .width(Length::Fixed(250.0)),
+        Space::new().height(SPACING_SM),
+        // Live color preview
+        view_theme_preview(
+            settings.display.theme_mode,
+            settings.display.accessibility_mode,
+        ),
+    ]
+    .spacing(SPACING_XS);
+
+    // Preview rows section
     let preview_rows_section = column![
         text("Preview Rows").size(14).color(GRAY_800),
         text("Number of rows to show in data preview")
@@ -377,23 +422,38 @@ fn view_display_settings<'a>() -> Element<'a, Message> {
             .color(GRAY_500),
         Space::new().height(SPACING_XS),
         row![
-            radio("25", 25usize, Some(50), |v| {
-                Message::Dialog(DialogMessage::Settings(SettingsMessage::Display(
-                    DisplaySettingsMessage::PreviewRowsChanged(v),
-                )))
-            }),
+            radio(
+                "25",
+                25usize,
+                Some(settings.display.preview_rows_per_page),
+                |v| {
+                    Message::Dialog(DialogMessage::Settings(SettingsMessage::Display(
+                        DisplaySettingsMessage::PreviewRowsChanged(v),
+                    )))
+                }
+            ),
             Space::new().width(SPACING_MD),
-            radio("50", 50usize, Some(50), |v| {
-                Message::Dialog(DialogMessage::Settings(SettingsMessage::Display(
-                    DisplaySettingsMessage::PreviewRowsChanged(v),
-                )))
-            }),
+            radio(
+                "50",
+                50usize,
+                Some(settings.display.preview_rows_per_page),
+                |v| {
+                    Message::Dialog(DialogMessage::Settings(SettingsMessage::Display(
+                        DisplaySettingsMessage::PreviewRowsChanged(v),
+                    )))
+                }
+            ),
             Space::new().width(SPACING_MD),
-            radio("100", 100usize, Some(50), |v| {
-                Message::Dialog(DialogMessage::Settings(SettingsMessage::Display(
-                    DisplaySettingsMessage::PreviewRowsChanged(v),
-                )))
-            }),
+            radio(
+                "100",
+                100usize,
+                Some(settings.display.preview_rows_per_page),
+                |v| {
+                    Message::Dialog(DialogMessage::Settings(SettingsMessage::Display(
+                        DisplaySettingsMessage::PreviewRowsChanged(v),
+                    )))
+                }
+            ),
         ],
     ]
     .spacing(SPACING_XS);
@@ -401,9 +461,102 @@ fn view_display_settings<'a>() -> Element<'a, Message> {
     column![
         section_header("Display Settings"),
         Space::new().height(SPACING_MD),
+        theme_mode_section,
+        Space::new().height(SPACING_LG),
+        accessibility_section,
+        Space::new().height(SPACING_LG),
         preview_rows_section,
     ]
     .spacing(SPACING_SM)
+    .into()
+}
+
+/// Live preview showing the status colors for the selected theme/accessibility combination.
+fn view_theme_preview<'a>(
+    theme_mode: ThemeMode,
+    accessibility_mode: AccessibilityMode,
+) -> Element<'a, Message> {
+    let config = ThemeConfig::new(theme_mode, accessibility_mode);
+
+    let preview_bg = config.resolve(SemanticColor::BackgroundSecondary);
+    let text_color = config.resolve(SemanticColor::TextOnAccent);
+
+    let success_color = config.resolve(SemanticColor::StatusSuccess);
+    let warning_color = config.resolve(SemanticColor::StatusWarning);
+    let error_color = config.resolve(SemanticColor::StatusError);
+
+    let success_box = container(
+        row![
+            lucide::circle_check().size(12).color(text_color),
+            Space::new().width(4),
+            text("Success").size(11).color(text_color),
+        ]
+        .align_y(Alignment::Center),
+    )
+    .padding([4, 8])
+    .style(move |_| container::Style {
+        background: Some(success_color.into()),
+        border: Border {
+            radius: 4.0.into(),
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
+    let warning_box = container(
+        row![
+            lucide::triangle_alert().size(12).color(text_color),
+            Space::new().width(4),
+            text("Warning").size(11).color(text_color),
+        ]
+        .align_y(Alignment::Center),
+    )
+    .padding([4, 8])
+    .style(move |_| container::Style {
+        background: Some(warning_color.into()),
+        border: Border {
+            radius: 4.0.into(),
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
+    let error_box = container(
+        row![
+            lucide::circle_x().size(12).color(text_color),
+            Space::new().width(4),
+            text("Error").size(11).color(text_color),
+        ]
+        .align_y(Alignment::Center),
+    )
+    .padding([4, 8])
+    .style(move |_| container::Style {
+        background: Some(error_color.into()),
+        border: Border {
+            radius: 4.0.into(),
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
+    container(
+        row![
+            success_box,
+            Space::new().width(8),
+            warning_box,
+            Space::new().width(8),
+            error_box,
+        ]
+        .padding(SPACING_SM),
+    )
+    .style(move |_| container::Style {
+        background: Some(preview_bg.into()),
+        border: Border {
+            radius: 6.0.into(),
+            ..Default::default()
+        },
+        ..Default::default()
+    })
     .into()
 }
 

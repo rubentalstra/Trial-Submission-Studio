@@ -28,7 +28,7 @@ use iced::{Element, Size, Subscription, Task, Theme};
 
 use crate::message::{Message, SettingsCategory};
 use crate::state::{AppState, DialogType, Settings, ViewState};
-use crate::theme::clinical_light;
+use crate::theme::clinical_theme;
 use crate::view::dialog::third_party::ThirdPartyState;
 use crate::view::dialog::update::UpdateState;
 use crate::view::view_home;
@@ -553,7 +553,7 @@ impl App {
 
     /// Get the theme for a specific window.
     pub fn theme(&self, _id: window::Id) -> Theme {
-        clinical_light()
+        clinical_theme(&self.state.theme_config)
     }
 
     /// Subscribe to runtime events.

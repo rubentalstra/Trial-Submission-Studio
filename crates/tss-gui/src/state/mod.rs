@@ -42,6 +42,7 @@ pub use view_state::{
 use crate::component::toast::ToastState;
 #[cfg(not(target_os = "macos"))]
 use crate::menu::MenuDropdownState;
+use crate::theme::ThemeConfig;
 use iced::window;
 use tss_standards::TerminologyRegistry;
 
@@ -86,6 +87,9 @@ pub struct AppState {
 
     /// User settings (persisted to disk).
     pub settings: Settings,
+
+    /// Theme configuration (derived from settings, cached for quick access).
+    pub theme_config: ThemeConfig,
 
     /// CDISC Controlled Terminology registry.
     ///
@@ -230,10 +234,15 @@ pub enum DialogType {
 impl AppState {
     /// Create app state with loaded settings.
     pub fn with_settings(settings: Settings) -> Self {
+        let theme_config = ThemeConfig::new(
+            settings.display.theme_mode,
+            settings.display.accessibility_mode,
+        );
         Self {
             view: ViewState::default(),
             study: None,
             settings,
+            theme_config,
             terminology: None,
             error: None,
             is_loading: false,
