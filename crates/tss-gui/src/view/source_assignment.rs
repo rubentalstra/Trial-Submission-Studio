@@ -376,37 +376,58 @@ fn view_source_file_item<'a>(
 
 /// Build context menu options for an unassigned file.
 fn build_file_context_menu(file_index: usize) -> Element<'static, Message> {
-    container(
-        column![
-            context_menu_item(
-                "Mark as Metadata",
-                Message::SourceAssignment(SourceAssignmentMessage::MarkAsMetadata { file_index })
-            ),
-            context_menu_item(
-                "Mark as Skipped",
-                Message::SourceAssignment(SourceAssignmentMessage::MarkAsSkipped { file_index })
-            ),
-        ]
-        .spacing(2),
-    )
-    .padding(4)
-    .style(|theme: &Theme| container::Style {
-        background: Some(theme.clinical().background_elevated.into()),
-        border: Border {
-            width: 1.0,
-            radius: BORDER_RADIUS_SM.into(),
-            color: theme.clinical().border_default,
-        },
-        ..Default::default()
-    })
-    .into()
+    context_menu_container(column![
+        context_menu_button(
+            lucide::file_text().size(12),
+            "Mark as Metadata",
+            Message::SourceAssignment(SourceAssignmentMessage::MarkAsMetadata { file_index }),
+            |theme: &Theme| theme.clinical().mapping_suggested,
+        ),
+        context_menu_button(
+            lucide::file_x().size(12),
+            "Mark as Skipped",
+            Message::SourceAssignment(SourceAssignmentMessage::MarkAsSkipped { file_index }),
+            |theme: &Theme| theme.clinical().text_muted,
+        ),
+    ])
 }
 
-/// Create a single context menu item button.
-fn context_menu_item(label: &'static str, message: Message) -> Element<'static, Message> {
-    button(text(label).size(12).style(|theme: &Theme| text::Style {
-        color: Some(theme.extended_palette().background.base.text),
-    }))
+/// Wrapper container for context menu content.
+fn context_menu_container<'a>(content: impl Into<Element<'a, Message>>) -> Element<'a, Message> {
+    container(content)
+        .padding(4)
+        .style(|theme: &Theme| container::Style {
+            background: Some(theme.clinical().background_elevated.into()),
+            border: Border {
+                width: 1.0,
+                radius: BORDER_RADIUS_SM.into(),
+                color: theme.clinical().border_default,
+            },
+            ..Default::default()
+        })
+        .into()
+}
+
+/// Create a context menu button with icon.
+fn context_menu_button<'a>(
+    icon: impl Into<Element<'a, Message>>,
+    label: &'a str,
+    message: Message,
+    icon_color_fn: impl Fn(&Theme) -> iced::Color + 'a,
+) -> Element<'a, Message> {
+    button(
+        row![
+            container(icon).style(move |theme: &Theme| container::Style {
+                text_color: Some(icon_color_fn(theme)),
+                ..Default::default()
+            }),
+            Space::new().width(SPACING_SM),
+            text(label).size(12).style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text),
+            }),
+        ]
+        .align_y(Alignment::Center),
+    )
     .on_press(message)
     .padding([SPACING_XS, SPACING_SM])
     .style(context_menu_button_style)
@@ -484,24 +505,12 @@ fn view_marked_file_item<'a>(file: &'a SourceFileEntry, index: usize) -> Element
 
 /// Build context menu options for a marked file (metadata/skipped).
 fn build_marked_file_context_menu(file_index: usize) -> Element<'static, Message> {
-    container(
-        column![context_menu_item(
-            "Unmark",
-            Message::SourceAssignment(SourceAssignmentMessage::UnmarkFile { file_index })
-        ),]
-        .spacing(2),
-    )
-    .padding(4)
-    .style(|theme: &Theme| container::Style {
-        background: Some(theme.clinical().background_elevated.into()),
-        border: Border {
-            width: 1.0,
-            radius: BORDER_RADIUS_SM.into(),
-            color: theme.clinical().border_default,
-        },
-        ..Default::default()
-    })
-    .into()
+    context_menu_container(column![context_menu_button(
+        lucide::rotate_ccw().size(12),
+        "Unmark",
+        Message::SourceAssignment(SourceAssignmentMessage::UnmarkFile { file_index }),
+        |theme: &Theme| theme.clinical().text_secondary,
+    ),])
 }
 
 /// Render the domain panel (right side).
@@ -767,27 +776,15 @@ fn build_assigned_file_context_menu(
     file_index: usize,
     domain_code: String,
 ) -> Element<'static, Message> {
-    container(
-        column![context_menu_item(
-            "Unassign",
-            Message::SourceAssignment(SourceAssignmentMessage::UnassignFile {
-                domain_code,
-                file_index,
-            })
-        ),]
-        .spacing(2),
-    )
-    .padding(4)
-    .style(|theme: &Theme| container::Style {
-        background: Some(theme.clinical().background_elevated.into()),
-        border: Border {
-            width: 1.0,
-            radius: BORDER_RADIUS_SM.into(),
-            color: theme.clinical().border_default,
-        },
-        ..Default::default()
-    })
-    .into()
+    context_menu_container(column![context_menu_button(
+        lucide::x().size(12),
+        "Unassign",
+        Message::SourceAssignment(SourceAssignmentMessage::UnassignFile {
+            domain_code,
+            file_index,
+        }),
+        |theme: &Theme| theme.clinical().text_muted,
+    ),])
 }
 
 /// Render the footer with progress and continue button.
@@ -848,9 +845,15 @@ fn view_footer<'a>(assignment_ui: &'a SourceAssignmentUiState) -> Element<'a, Me
         row![
             text("Continue").size(14),
             Space::new().width(SPACING_SM),
-            container(lucide::arrow_right().size(14)).style(|theme: &Theme| container::Style {
-                text_color: Some(theme.clinical().text_on_accent),
-                ..Default::default()
+            container(lucide::arrow_right().size(14)).style(move |theme: &Theme| {
+                container::Style {
+                    text_color: Some(if can_continue {
+                        theme.clinical().text_on_accent
+                    } else {
+                        theme.clinical().text_muted
+                    }),
+                    ..Default::default()
+                }
             }),
         ]
         .align_y(Alignment::Center),
