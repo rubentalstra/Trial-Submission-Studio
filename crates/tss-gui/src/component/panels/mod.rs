@@ -1,14 +1,25 @@
-//! Panel components for list and detail views.
+//! Panel components for content organization.
 //!
-//! This module contains components for panel-based layouts:
+//! This module contains components for organizing content within panels:
 //!
-//! - **ListPanel**: Consolidates master_panel + search_filter_bar functionality
-//! - **DetailPanel**: Standard detail view panel with header and content
+//! - **ListPanel**: Comprehensive list panel with search, filters, and stats
+//! - **ScrollableListPanel**: ListPanel wrapped in a scrollable container
 //!
-//! # Planned Migration
+//! # Example
 //!
-//! Components to move here:
-//! - `master_panel.rs` + `search_filter_bar.rs` -> `list_panel.rs`
-//! - `detail_header.rs` -> `detail_panel.rs`
+//! ```ignore
+//! use tss_gui::component::panels::ListPanel;
+//!
+//! // Full-featured list panel
+//! ListPanel::new()
+//!     .title("Variables")
+//!     .search(&search, "Search...", |s| Msg::Search(s))
+//!     .filter("Unmapped", unmapped, Msg::ToggleUnmapped)
+//!     .stats("15/20 mapped")
+//!     .items(variable_items)
+//!     .view();
+//! ```
 
-// Components will be added as they are migrated
+mod list_panel;
+
+pub use list_panel::{ListPanel, ScrollableListPanel};

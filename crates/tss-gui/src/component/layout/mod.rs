@@ -2,13 +2,25 @@
 //!
 //! This module contains components for structuring page layouts:
 //!
-//! - **SplitView**: Master-detail split layout (consolidates master_detail variants)
-//! - **PageLayout**: Standard page structure with header/content/footer
+//! - **SplitView**: Flexible master-detail split layout with builder pattern
 //!
-//! # Planned Migration
+//! # Example
 //!
-//! Components to move here:
-//! - `master_detail.rs` -> `split_view.rs`
-//! - New `page_layout.rs` for consistent page structure
+//! ```ignore
+//! use tss_gui::component::layout::SplitView;
+//!
+//! // Simple split view
+//! SplitView::new(list_content, detail_content)
+//!     .master_width(280.0)
+//!     .view();
+//!
+//! // With pinned header on master panel
+//! SplitView::new(list_content, detail_content)
+//!     .master_width(300.0)
+//!     .master_header(search_bar)
+//!     .view();
+//! ```
 
-// Components will be added as they are migrated
+mod split_view;
+
+pub use split_view::{PanelScroll, SplitView, split_view, split_view_with_header};
