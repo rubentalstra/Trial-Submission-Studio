@@ -13,7 +13,7 @@ use std::str::FromStr;
 /// - **ADSL**: Subject-Level Analysis Dataset (one record per subject)
 /// - **BDS**: Basic Data Structure (multiple records per subject/parameter)
 /// - **OCCDS**: Occurrence Data Structure (for occurrence-type data like AEs)
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Serialize, Deserialize)]
 pub enum AdamDatasetType {
     /// Subject-Level Analysis Dataset.
     /// Contains one record per subject with all subject-level analysis variables.

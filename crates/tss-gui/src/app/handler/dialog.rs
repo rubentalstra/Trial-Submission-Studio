@@ -122,6 +122,9 @@ impl App {
                     GeneralSettingsMessage::ConfidenceThresholdChanged(threshold) => {
                         self.state.settings.general.mapping_confidence_threshold = threshold;
                     }
+                    GeneralSettingsMessage::AssignmentModeChanged(mode) => {
+                        self.state.settings.general.assignment_mode = mode;
+                    }
                 }
                 Task::none()
             }

@@ -2,10 +2,12 @@
 //!
 //! Provides unified access to SDTM, ADaM, and SEND standards.
 
-use crate::adam::AdamDataset;
+use std::collections::BTreeMap;
+
+use crate::adam::{AdamDataset, AdamDatasetType};
 use crate::ct::{CtVersion, TerminologyRegistry};
-use crate::sdtm::SdtmDomain;
-use crate::send::SendDomain;
+use crate::sdtm::{SdtmDatasetClass, SdtmDomain};
+use crate::send::{SendDatasetClass, SendDomain};
 use crate::traits::Standard;
 
 use crate::error::Result;
@@ -182,6 +184,59 @@ impl StandardsRegistry {
             .iter()
             .find(|d| d.name.eq_ignore_ascii_case(name))
     }
+
+    /// Get SDTM domains grouped by dataset class.
+    ///
+    /// Returns domains organized by their class for easy UI grouping.
+    /// Domains without a class are excluded from the result.
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let registry = StandardsRegistry::load_sdtm_only()?;
+    /// let grouped = registry.sdtm_domains_grouped_by_class();
+    ///
+    /// for (class, domains) in &grouped {
+    ///     println!("{}: {} domains", class, domains.len());
+    /// }
+    /// ```
+    pub fn sdtm_domains_grouped_by_class(&self) -> BTreeMap<SdtmDatasetClass, Vec<&SdtmDomain>> {
+        let mut grouped: BTreeMap<SdtmDatasetClass, Vec<&SdtmDomain>> = BTreeMap::new();
+        for domain in &self.sdtm_domains {
+            if let Some(class) = domain.class {
+                grouped.entry(class).or_default().push(domain);
+            }
+        }
+        grouped
+    }
+
+    /// Get ADaM datasets grouped by dataset type.
+    ///
+    /// Returns datasets organized by their type for easy UI grouping.
+    pub fn adam_datasets_grouped_by_type(&self) -> BTreeMap<AdamDatasetType, Vec<&AdamDataset>> {
+        let mut grouped: BTreeMap<AdamDatasetType, Vec<&AdamDataset>> = BTreeMap::new();
+        for dataset in &self.adam_datasets {
+            grouped
+                .entry(dataset.dataset_type)
+                .or_default()
+                .push(dataset);
+        }
+        grouped
+    }
+
+    /// Get SEND domains grouped by dataset class.
+    ///
+    /// Returns domains organized by their class for easy UI grouping.
+    /// Domains without a class are excluded from the result.
+    pub fn send_domains_grouped_by_class(&self) -> BTreeMap<SendDatasetClass, Vec<&SendDomain>> {
+        let mut grouped: BTreeMap<SendDatasetClass, Vec<&SendDomain>> = BTreeMap::new();
+        for domain in &self.send_domains {
+            if let Some(class) = domain.class {
+                grouped.entry(class).or_default().push(domain);
+            }
+        }
+        grouped
+    }
 }
 
 #[cfg(test)]
@@ -227,5 +282,45 @@ mod tests {
         let registry = StandardsRegistry::load_sdtm_only().expect("load registry");
         let suppqual = registry.find_suppqual_template();
         assert!(suppqual.is_some(), "Should find SUPPQUAL template");
+    }
+
+    #[test]
+    fn test_sdtm_domains_grouped_by_class() {
+        let registry = StandardsRegistry::load_sdtm_only().expect("load registry");
+        let grouped = registry.sdtm_domains_grouped_by_class();
+
+        // Should have multiple classes
+        assert!(!grouped.is_empty(), "Should have grouped domains");
+
+        // Check Events class has AE domain
+        use crate::sdtm::SdtmDatasetClass;
+        if let Some(events) = grouped.get(&SdtmDatasetClass::Events) {
+            assert!(
+                events.iter().any(|d| d.name == "AE"),
+                "Events class should contain AE domain"
+            );
+        }
+    }
+
+    #[test]
+    fn test_adam_datasets_grouped_by_type() {
+        let registry = StandardsRegistry::load_adam_workflow().expect("load registry");
+        let grouped = registry.adam_datasets_grouped_by_type();
+
+        // Should have datasets if ADaM is loaded
+        if registry.has_standard(Standard::Adam) {
+            assert!(!grouped.is_empty(), "Should have grouped datasets");
+        }
+    }
+
+    #[test]
+    fn test_send_domains_grouped_by_class() {
+        let registry = StandardsRegistry::load_send_only().expect("load registry");
+        let grouped = registry.send_domains_grouped_by_class();
+
+        // Should have domains if SEND is loaded
+        if registry.has_standard(Standard::Send) {
+            assert!(!grouped.is_empty(), "Should have grouped domains");
+        }
     }
 }

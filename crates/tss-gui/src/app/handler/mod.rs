@@ -22,6 +22,7 @@ mod mapping;
 mod menu;
 mod normalization;
 mod preview;
+mod source_assignment;
 mod supp;
 mod validation;
 

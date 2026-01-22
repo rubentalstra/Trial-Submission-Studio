@@ -46,6 +46,14 @@ pub enum ViewState {
         workflow_mode: WorkflowMode,
     },
 
+    /// Source assignment screen - map source files to target domains.
+    SourceAssignment {
+        /// Selected workflow mode (SDTM, ADaM, SEND).
+        workflow_mode: WorkflowMode,
+        /// Assignment UI state.
+        assignment_ui: SourceAssignmentUiState,
+    },
+
     /// Domain editor with tabbed interface.
     DomainEditor {
         /// Domain code being edited (e.g., "DM", "AE").
@@ -84,6 +92,22 @@ impl ViewState {
         }
     }
 
+    /// Create home view state with a specific workflow mode.
+    pub fn home_with_mode(workflow_mode: WorkflowMode) -> Self {
+        Self::Home { workflow_mode }
+    }
+
+    /// Create source assignment view state.
+    pub fn source_assignment(
+        workflow_mode: WorkflowMode,
+        assignment_ui: SourceAssignmentUiState,
+    ) -> Self {
+        Self::SourceAssignment {
+            workflow_mode,
+            assignment_ui,
+        }
+    }
+
     /// Create domain editor view state with custom rows per page.
     pub fn domain_editor_with_rows(
         domain: impl Into<String>,
@@ -111,6 +135,7 @@ impl ViewState {
     pub fn workflow_mode(&self) -> WorkflowMode {
         match self {
             Self::Home { workflow_mode, .. } => *workflow_mode,
+            Self::SourceAssignment { workflow_mode, .. } => *workflow_mode,
             _ => WorkflowMode::default(),
         }
     }
@@ -369,11 +394,267 @@ pub enum SuppFilterMode {
 }
 
 // =============================================================================
-// EXPORT VIEW STATE
+// SOURCE ASSIGNMENT STATE
 // =============================================================================
 
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::path::PathBuf;
+
+/// Status of a source file in the assignment workflow.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SourceFileStatus {
+    /// File is unassigned (ready to be assigned to a domain).
+    #[default]
+    Unassigned,
+    /// File is marked as metadata (e.g., Items.csv).
+    Metadata,
+    /// File is explicitly skipped.
+    Skipped,
+}
+
+/// A source file entry in the assignment screen.
+#[derive(Debug, Clone)]
+pub struct SourceFileEntry {
+    /// Full path to the CSV file.
+    pub path: PathBuf,
+    /// Filename without extension (for display).
+    pub file_stem: String,
+    /// Current status of this file.
+    pub status: SourceFileStatus,
+    /// Domain code this file is assigned to (if any).
+    pub assigned_domain: Option<String>,
+}
+
+impl SourceFileEntry {
+    /// Create a new source file entry from a path.
+    pub fn new(path: PathBuf) -> Self {
+        let file_stem = path
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .unwrap_or_default()
+            .to_string();
+        Self {
+            path,
+            file_stem,
+            status: SourceFileStatus::default(),
+            assigned_domain: None,
+        }
+    }
+
+    /// Check if this file is available for assignment (not metadata, not skipped, not assigned).
+    pub fn is_available(&self) -> bool {
+        self.status == SourceFileStatus::Unassigned && self.assigned_domain.is_none()
+    }
+
+    /// Check if this file needs action (not categorized yet).
+    pub fn needs_action(&self) -> bool {
+        self.status == SourceFileStatus::Unassigned && self.assigned_domain.is_none()
+    }
+}
+
+/// A target domain entry for the assignment screen.
+#[derive(Debug, Clone)]
+pub struct TargetDomainEntry {
+    /// Domain code (e.g., "DM", "AE").
+    pub code: String,
+    /// Human-readable label (e.g., "Demographics").
+    pub label: Option<String>,
+    /// Domain class (e.g., "Special-Purpose", "Events").
+    pub class: Option<String>,
+    /// Description for tooltip.
+    pub description: Option<String>,
+}
+
+impl TargetDomainEntry {
+    /// Create a new target domain entry.
+    pub fn new(code: String, label: Option<String>, class: Option<String>) -> Self {
+        Self {
+            code,
+            label,
+            class,
+            description: None,
+        }
+    }
+
+    /// Create with description.
+    pub fn with_description(mut self, desc: Option<String>) -> Self {
+        self.description = desc;
+        self
+    }
+
+    /// Get display name (label or code).
+    pub fn display_name(&self) -> &str {
+        self.label.as_deref().unwrap_or(&self.code)
+    }
+}
+
+/// UI state for the source assignment screen.
+#[derive(Debug, Clone, Default)]
+pub struct SourceAssignmentUiState {
+    /// Study folder path.
+    pub folder: PathBuf,
+    /// List of source CSV files.
+    pub source_files: Vec<SourceFileEntry>,
+    /// List of target domains (from standards).
+    pub target_domains: Vec<TargetDomainEntry>,
+    /// Domains grouped by class for display.
+    pub domains_by_class: BTreeMap<String, Vec<String>>,
+    /// Search filter for source files.
+    pub source_search: String,
+    /// Search filter for domains.
+    pub domain_search: String,
+    /// Currently selected file index (for click-to-assign mode).
+    pub selected_file: Option<usize>,
+    /// Currently dragging file index (for drag-and-drop mode).
+    pub dragging_file: Option<usize>,
+    /// Domain being hovered over during drag.
+    pub hover_domain: Option<String>,
+    /// Whether study creation is in progress.
+    pub is_creating_study: bool,
+}
+
+impl SourceAssignmentUiState {
+    /// Create new source assignment UI state.
+    pub fn new(
+        folder: PathBuf,
+        source_files: Vec<PathBuf>,
+        target_domains: Vec<TargetDomainEntry>,
+    ) -> Self {
+        // Group domains by class
+        let mut domains_by_class: BTreeMap<String, Vec<String>> = BTreeMap::new();
+        for domain in &target_domains {
+            let class = domain.class.clone().unwrap_or_else(|| "Other".to_string());
+            domains_by_class
+                .entry(class)
+                .or_default()
+                .push(domain.code.clone());
+        }
+
+        Self {
+            folder,
+            source_files: source_files.into_iter().map(SourceFileEntry::new).collect(),
+            target_domains,
+            domains_by_class,
+            source_search: String::new(),
+            domain_search: String::new(),
+            selected_file: None,
+            dragging_file: None,
+            hover_domain: None,
+            is_creating_study: false,
+        }
+    }
+
+    /// Get the number of assigned files.
+    pub fn assigned_count(&self) -> usize {
+        self.source_files
+            .iter()
+            .filter(|f| f.assigned_domain.is_some())
+            .count()
+    }
+
+    /// Get the number of metadata files.
+    pub fn metadata_count(&self) -> usize {
+        self.source_files
+            .iter()
+            .filter(|f| f.status == SourceFileStatus::Metadata)
+            .count()
+    }
+
+    /// Get the number of skipped files.
+    pub fn skipped_count(&self) -> usize {
+        self.source_files
+            .iter()
+            .filter(|f| f.status == SourceFileStatus::Skipped)
+            .count()
+    }
+
+    /// Get the number of remaining files (need action).
+    pub fn remaining_count(&self) -> usize {
+        self.source_files
+            .iter()
+            .filter(|f| f.needs_action())
+            .count()
+    }
+
+    /// Check if all files have been categorized.
+    pub fn all_categorized(&self) -> bool {
+        self.remaining_count() == 0
+    }
+
+    /// Get files assigned to a specific domain.
+    pub fn files_for_domain(&self, domain_code: &str) -> Vec<&SourceFileEntry> {
+        self.source_files
+            .iter()
+            .filter(|f| f.assigned_domain.as_deref() == Some(domain_code))
+            .collect()
+    }
+
+    /// Get assignments as a map (domain_code -> file_path).
+    pub fn get_assignments(&self) -> BTreeMap<String, PathBuf> {
+        self.source_files
+            .iter()
+            .filter_map(|f| {
+                f.assigned_domain
+                    .as_ref()
+                    .map(|d| (d.clone(), f.path.clone()))
+            })
+            .collect()
+    }
+
+    /// Get metadata file paths.
+    pub fn get_metadata_files(&self) -> Vec<PathBuf> {
+        self.source_files
+            .iter()
+            .filter(|f| f.status == SourceFileStatus::Metadata)
+            .map(|f| f.path.clone())
+            .collect()
+    }
+
+    /// Filter source files by search term.
+    ///
+    /// Returns only files that are available for assignment (not marked, not assigned)
+    /// and match the search term.
+    pub fn filtered_source_files(&self) -> Vec<(usize, &SourceFileEntry)> {
+        let search = self.source_search.to_lowercase();
+        self.source_files
+            .iter()
+            .enumerate()
+            .filter(|(_, f)| {
+                // Only show files available for assignment that match search
+                f.is_available()
+                    && (search.is_empty() || f.file_stem.to_lowercase().contains(&search))
+            })
+            .collect()
+    }
+
+    /// Filter domains by search term.
+    pub fn filtered_domains(&self) -> Vec<&TargetDomainEntry> {
+        let search = self.domain_search.to_lowercase();
+        self.target_domains
+            .iter()
+            .filter(|d| {
+                search.is_empty()
+                    || d.code.to_lowercase().contains(&search)
+                    || d.label
+                        .as_ref()
+                        .is_some_and(|l| l.to_lowercase().contains(&search))
+            })
+            .collect()
+    }
+
+    /// Get marked (metadata/skipped) files.
+    pub fn marked_files(&self) -> Vec<(usize, &SourceFileEntry)> {
+        self.source_files
+            .iter()
+            .enumerate()
+            .filter(|(_, f)| f.status != SourceFileStatus::Unassigned)
+            .collect()
+    }
+}
+
+// =============================================================================
+// EXPORT VIEW STATE
+// =============================================================================
 
 /// Export phase - tracks the current state of the export workflow.
 #[derive(Debug, Clone, Default)]

@@ -6,5 +6,5 @@
 pub mod domain;
 pub mod enums;
 
-pub use domain::{DatasetClass, SdtmDomain, SdtmVariable};
-pub use enums::VariableRole;
+pub use domain::{SdtmDomain, SdtmVariable};
+pub use enums::{SdtmDatasetClass, VariableRole};

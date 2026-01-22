@@ -14,6 +14,7 @@ pub mod dialog;
 pub mod domain_editor;
 pub mod export;
 pub mod home;
+pub mod source_assignment;
 
 // Re-export view functions for standalone window mode (multi-window)
 pub use dialog::{
@@ -25,3 +26,4 @@ pub use dialog::{
 pub use domain_editor::view_domain_editor;
 pub use export::view_export;
 pub use home::view_home;
+pub use source_assignment::view_source_assignment;

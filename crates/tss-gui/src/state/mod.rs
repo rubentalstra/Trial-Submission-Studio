@@ -31,11 +31,14 @@ mod view_state;
 
 // Re-exports
 pub use domain_state::{DomainSource, DomainState, SuppAction, SuppColumnConfig, SuppOrigin};
-pub use settings::{ExportFormat, RecentStudy, SdtmIgVersion, Settings, WorkflowType, XptVersion};
+pub use settings::{
+    AssignmentMode, ExportFormat, RecentStudy, SdtmIgVersion, Settings, WorkflowType, XptVersion,
+};
 pub use study::Study;
 pub use view_state::{
     EditorTab, ExportPhase, ExportResult, ExportViewState, MappingUiState, NormalizationUiState,
-    NotCollectedEdit, PreviewUiState, SeverityFilter, SuppEditDraft, SuppFilterMode, SuppUiState,
+    NotCollectedEdit, PreviewUiState, SeverityFilter, SourceAssignmentUiState, SourceFileEntry,
+    SourceFileStatus, SuppEditDraft, SuppFilterMode, SuppUiState, TargetDomainEntry,
     ValidationUiState, ViewState, WorkflowMode,
 };
 

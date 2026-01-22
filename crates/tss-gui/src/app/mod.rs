@@ -114,6 +114,13 @@ impl App {
             Message::Home(home_msg) => self.handle_home_message(home_msg),
 
             // =================================================================
+            // Source assignment view messages
+            // =================================================================
+            Message::SourceAssignment(assignment_msg) => {
+                self.handle_source_assignment_message(assignment_msg)
+            }
+
+            // =================================================================
             // Domain editor messages
             // =================================================================
             Message::DomainEditor(editor_msg) => self.handle_domain_editor_message(editor_msg),
@@ -464,6 +471,7 @@ impl App {
         // Main window content
         let content: Element<'_, Message> = match &self.state.view {
             ViewState::Home { .. } => view_home(&self.state),
+            ViewState::SourceAssignment { .. } => crate::view::view_source_assignment(&self.state),
             ViewState::DomainEditor { domain, tab, .. } => {
                 view_domain_editor(&self.state, domain, *tab)
             }
@@ -546,6 +554,9 @@ impl App {
             }
             ViewState::Home { .. } => {
                 format!("{} - Trial Submission Studio", study_name)
+            }
+            ViewState::SourceAssignment { .. } => {
+                "Assign Source Files - Trial Submission Studio".to_string()
             }
             ViewState::DomainEditor { domain, .. } => {
                 format!("{} ({}) - Trial Submission Studio", domain, study_name)

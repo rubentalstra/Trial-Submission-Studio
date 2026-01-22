@@ -9,5 +9,5 @@ mod loader;
 mod types;
 
 pub use application::{AppliedStudyMetadata, apply_study_metadata};
-pub use loader::load_study_metadata;
+pub use loader::load_items_metadata;
 pub use types::{SourceColumn, StudyCodelist, StudyMetadata};

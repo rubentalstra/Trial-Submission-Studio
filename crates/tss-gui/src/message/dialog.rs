@@ -126,6 +126,9 @@ pub enum GeneralSettingsMessage {
 
     /// Change mapping confidence threshold (0.0 to 1.0)
     ConfidenceThresholdChanged(f32),
+
+    /// Change assignment mode (drag-and-drop vs click-to-assign)
+    AssignmentModeChanged(crate::state::AssignmentMode),
 }
 
 /// Validation settings messages.

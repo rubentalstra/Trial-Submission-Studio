@@ -14,6 +14,7 @@ pub mod domain_editor;
 pub mod export;
 pub mod home;
 pub mod menu;
+pub mod source_assignment;
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -36,6 +37,7 @@ pub use domain_editor::DomainEditorMessage;
 pub use export::ExportMessage;
 pub use home::HomeMessage;
 pub use menu::MenuMessage;
+pub use source_assignment::SourceAssignmentMessage;
 
 // Toast message
 pub use crate::component::toast::ToastMessage;
@@ -80,6 +82,9 @@ pub enum Message {
     // =========================================================================
     /// Home view messages.
     Home(HomeMessage),
+
+    /// Source assignment view messages.
+    SourceAssignment(SourceAssignmentMessage),
 
     /// Domain editor messages (includes all tabs).
     DomainEditor(DomainEditorMessage),

@@ -11,11 +11,10 @@ use iced::window;
 use iced::{Size, Task};
 
 use crate::app::App;
-#[cfg(target_os = "macos")]
-use crate::app::util::read_csv_files_sync;
-use crate::app::util::{StudyLoadInput, load_study_async};
 use crate::message::{HomeMessage, Message};
-use crate::state::{EditorTab, ViewState};
+use crate::state::{
+    EditorTab, SourceAssignmentUiState, TargetDomainEntry, ViewState, WorkflowMode,
+};
 
 impl App {
     /// Handle home view messages.
@@ -129,41 +128,96 @@ impl App {
     }
 
     /// Load a study from a folder path.
+    ///
+    /// This navigates to the source assignment screen where users manually
+    /// map CSV files to CDISC domains.
     pub fn load_study(&mut self, path: PathBuf) -> Task<Message> {
-        self.state.is_loading = true;
-        let header_rows = self.state.settings.general.header_rows;
-        let confidence_threshold = self.state.settings.general.mapping_confidence_threshold;
+        // Get workflow mode
+        let workflow_mode = self.state.view.workflow_mode();
 
-        // On macOS, read CSV files synchronously on the main thread to maintain
-        // security-scoped file access from the file dialog. The hardened runtime
-        // restricts file access when crossing thread boundaries.
-        #[cfg(target_os = "macos")]
-        {
-            match read_csv_files_sync(&path, header_rows) {
-                Ok(csv_files) => {
-                    let input = StudyLoadInput::Preloaded {
-                        folder: path,
-                        csv_files,
-                    };
-                    Task::perform(
-                        async move { load_study_async(input, header_rows, confidence_threshold).await },
-                        Message::StudyLoaded,
-                    )
-                }
-                Err(e) => {
-                    self.state.is_loading = false;
-                    Task::done(Message::StudyLoaded(Err(e)))
-                }
+        // Navigate to source assignment screen
+        match self.navigate_to_source_assignment(path, workflow_mode) {
+            Ok(()) => Task::none(),
+            Err(e) => {
+                self.state.error = Some(e);
+                Task::none()
             }
         }
+    }
 
-        #[cfg(not(target_os = "macos"))]
-        {
-            let input = StudyLoadInput::Path(path);
-            Task::perform(
-                async move { load_study_async(input, header_rows, confidence_threshold).await },
-                Message::StudyLoaded,
-            )
+    /// Navigate to the source assignment screen.
+    ///
+    /// Lists CSV files in the folder and loads target domains from standards.
+    fn navigate_to_source_assignment(
+        &mut self,
+        folder: PathBuf,
+        workflow_mode: WorkflowMode,
+    ) -> Result<(), String> {
+        // List CSV files in the folder
+        let csv_files = self.list_csv_files(&folder)?;
+
+        if csv_files.is_empty() {
+            return Err("No CSV files found in the selected folder".to_string());
+        }
+
+        // Load target domains from standards
+        let target_domains = self.load_target_domains(workflow_mode)?;
+
+        // Create assignment UI state (handles source file entries and domain grouping)
+        let assignment_ui = SourceAssignmentUiState::new(folder, csv_files, target_domains);
+
+        // Navigate to source assignment view
+        self.state.view = ViewState::source_assignment(workflow_mode, assignment_ui);
+
+        Ok(())
+    }
+
+    /// List CSV files in a folder.
+    fn list_csv_files(&self, folder: &PathBuf) -> Result<Vec<PathBuf>, String> {
+        let entries =
+            std::fs::read_dir(folder).map_err(|e| format!("Failed to read folder: {}", e))?;
+
+        let csv_files: Vec<PathBuf> = entries
+            .filter_map(std::result::Result::ok)
+            .map(|entry| entry.path())
+            .filter(|path| {
+                path.extension()
+                    .map(|ext| ext.eq_ignore_ascii_case("csv"))
+                    .unwrap_or(false)
+            })
+            .collect();
+
+        Ok(csv_files)
+    }
+
+    /// Load target domains from standards based on workflow mode.
+    fn load_target_domains(
+        &self,
+        workflow_mode: WorkflowMode,
+    ) -> Result<Vec<TargetDomainEntry>, String> {
+        match workflow_mode {
+            WorkflowMode::Sdtm => {
+                let domains = tss_standards::load_sdtm_ig()
+                    .map_err(|e| format!("Failed to load SDTM-IG: {}", e))?;
+
+                let entries: Vec<TargetDomainEntry> = domains
+                    .iter()
+                    .map(|d| {
+                        TargetDomainEntry::new(
+                            d.name.clone(),
+                            d.label.clone(),
+                            d.class.map(|c| c.to_string()),
+                        )
+                        .with_description(d.structure.clone())
+                    })
+                    .collect();
+
+                Ok(entries)
+            }
+            WorkflowMode::Adam | WorkflowMode::Send => Err(format!(
+                "{} workflow not yet fully supported",
+                workflow_mode.display_name()
+            )),
         }
     }
 }

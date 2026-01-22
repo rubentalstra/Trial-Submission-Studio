@@ -72,8 +72,8 @@ pub fn normalize_study_id(study_id: &str) -> String {
 pub fn is_reference_domain(domain: &SdtmDomain) -> bool {
     matches!(
         domain.class,
-        Some(tss_standards::DatasetClass::TrialDesign)
-            | Some(tss_standards::DatasetClass::StudyReference)
+        Some(tss_standards::SdtmDatasetClass::TrialDesign)
+            | Some(tss_standards::SdtmDatasetClass::StudyReference)
     )
 }
 

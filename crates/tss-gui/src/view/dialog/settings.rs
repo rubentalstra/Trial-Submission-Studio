@@ -15,7 +15,7 @@ use crate::message::{
     GeneralSettingsMessage, Message, SettingsCategory, SettingsMessage, UpdateSettingsMessage,
     ValidationSettingsMessage,
 };
-use crate::state::{ExportFormat, Settings, XptVersion};
+use crate::state::{AssignmentMode, ExportFormat, Settings, XptVersion};
 use crate::theme::{
     AccessibilityMode, ClinicalColors, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XL, SPACING_XS,
     ThemeConfig, ThemeMode, button_primary,
@@ -307,12 +307,50 @@ fn view_general_settings(settings: &Settings) -> Element<'_, Message> {
     ]
     .spacing(SPACING_XS);
 
+    // Assignment mode section
+    let assignment_mode_section = column![
+        text("Assignment Mode")
+            .size(14)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text),
+            }),
+        text("How to assign source files to domains")
+            .size(12)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted),
+            }),
+        Space::new().height(SPACING_XS),
+        row![
+            // TODO: use the label here from the enum right??
+            radio(
+                "Drag and Drop",
+                AssignmentMode::DragAndDrop,
+                Some(settings.general.assignment_mode),
+                |v| Message::Dialog(DialogMessage::Settings(SettingsMessage::General(
+                    GeneralSettingsMessage::AssignmentModeChanged(v),
+                )))
+            ),
+            Space::new().width(SPACING_MD),
+            radio(
+                "Click to Assign",
+                AssignmentMode::ClickToAssign,
+                Some(settings.general.assignment_mode),
+                |v| Message::Dialog(DialogMessage::Settings(SettingsMessage::General(
+                    GeneralSettingsMessage::AssignmentModeChanged(v),
+                )))
+            ),
+        ],
+    ]
+    .spacing(SPACING_XS);
+
     column![
         section_header("General Settings"),
         Space::new().height(SPACING_MD),
         header_rows_section,
         Space::new().height(SPACING_LG),
         threshold_section,
+        Space::new().height(SPACING_LG),
+        assignment_mode_section,
     ]
     .spacing(SPACING_SM)
     .into()

@@ -37,17 +37,6 @@ pub struct ItemsSchema {
     pub content_length: Option<ColumnRole>,
 }
 
-/// Detected schema for CodeLists.csv metadata file.
-#[derive(Debug, Clone)]
-pub struct CodelistSchema {
-    /// Format name column: groups the codelist entries.
-    pub format_name: ColumnRole,
-    /// Code value column: the coded values.
-    pub code_value: ColumnRole,
-    /// Code text column: the decoded text.
-    pub code_text: ColumnRole,
-}
-
 /// Column analysis scores - purely statistical, no hardcoded keywords.
 #[derive(Debug, Clone)]
 struct ColumnScores {
@@ -301,110 +290,6 @@ pub fn detect_items_schema(df: &DataFrame, path: &std::path::Path) -> Result<Ite
     })
 }
 
-/// Detects the schema for a CodeLists.csv file using purely statistical patterns.
-///
-/// Detection strategy (no hardcoded keywords):
-/// - **FormatName column**: Lowest uniqueness (repeated values per group)
-/// - **CodeText column**: Longest average length (descriptive text)
-/// - **CodeValue column**: Shortest average length (codes are brief)
-pub fn detect_codelist_schema(df: &DataFrame, path: &std::path::Path) -> Result<CodelistSchema> {
-    let columns = df.get_columns();
-    if columns.len() < 3 {
-        return Err(IngestError::SchemaDetection {
-            file_type: "CodeLists".to_string(),
-            path: path.to_path_buf(),
-            reason: "need at least 3 columns".to_string(),
-        });
-    }
-
-    // Analyze all columns
-    let scores: Vec<ColumnScores> = columns
-        .iter()
-        .enumerate()
-        .filter_map(|(idx, col)| analyze_column(col, idx))
-        .collect();
-
-    if scores.len() < 3 {
-        return Err(IngestError::SchemaDetection {
-            file_type: "CodeLists".to_string(),
-            path: path.to_path_buf(),
-            reason: "could not analyze columns".to_string(),
-        });
-    }
-
-    // Format name: lowest uniqueness (repeated values per group)
-    // When uniqueness is tied, prefer shorter values (format names are typically short codes)
-    let format_scores = scores
-        .iter()
-        .min_by(|a, b| {
-            // Primary: lower uniqueness (more repeated values)
-            // Secondary: shorter avg length (format names are short)
-            let cmp = a.uniqueness.partial_cmp(&b.uniqueness).unwrap();
-            if cmp == std::cmp::Ordering::Equal {
-                a.avg_length.partial_cmp(&b.avg_length).unwrap()
-            } else {
-                cmp
-            }
-        })
-        .unwrap();
-
-    let format_name = ColumnRole {
-        index: format_scores.index,
-        name: format_scores.name.clone(),
-        confidence: 1.0 - format_scores.uniqueness,
-    };
-
-    // Code text: high uniqueness + longer values (excluding format name)
-    // CodeText has unique decode values, DataType has repeated type names
-    let text_scores = scores
-        .iter()
-        .filter(|s| s.index != format_name.index)
-        .max_by(|a, b| {
-            // Score = uniqueness * avg_length - prioritize unique, longer values
-            let score_a = a.uniqueness * a.avg_length;
-            let score_b = b.uniqueness * b.avg_length;
-            score_a.partial_cmp(&score_b).unwrap()
-        })
-        .ok_or_else(|| IngestError::SchemaDetection {
-            file_type: "CodeLists".to_string(),
-            path: path.to_path_buf(),
-            reason: "could not detect code text column".to_string(),
-        })?;
-
-    let code_text = ColumnRole {
-        index: text_scores.index,
-        name: text_scores.name.clone(),
-        confidence: if text_scores.avg_length > 5.0 {
-            0.8
-        } else {
-            0.5
-        },
-    };
-
-    // Code value: shortest average length (excluding format name and code text)
-    let value_scores = scores
-        .iter()
-        .filter(|s| s.index != format_name.index && s.index != code_text.index)
-        .min_by(|a, b| a.avg_length.partial_cmp(&b.avg_length).unwrap())
-        .ok_or_else(|| IngestError::SchemaDetection {
-            file_type: "CodeLists".to_string(),
-            path: path.to_path_buf(),
-            reason: "could not detect code value column".to_string(),
-        })?;
-
-    let code_value = ColumnRole {
-        index: value_scores.index,
-        name: value_scores.name.clone(),
-        confidence: 0.7,
-    };
-
-    Ok(CodelistSchema {
-        format_name,
-        code_value,
-        code_text,
-    })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -421,15 +306,6 @@ mod tests {
         .unwrap()
     }
 
-    fn create_codelist_df() -> DataFrame {
-        df! {
-            "FormatName" => &["SEX", "SEX", "RACE", "RACE", "RACE"],
-            "CodeValue" => &["M", "F", "1", "2", "3"],
-            "CodeText" => &["Male", "Female", "Asian", "Black", "White"],
-        }
-        .unwrap()
-    }
-
     #[test]
     fn test_detect_items_schema() {
         let df = create_items_df();
@@ -438,17 +314,6 @@ mod tests {
 
         assert_eq!(schema.id.name, "ID");
         assert_eq!(schema.label.name, "Label");
-    }
-
-    #[test]
-    fn test_detect_codelist_schema() {
-        let df = create_codelist_df();
-        let path = std::path::Path::new("test_codelists.csv");
-        let schema = detect_codelist_schema(&df, path).unwrap();
-
-        assert_eq!(schema.format_name.name, "FormatName");
-        assert_eq!(schema.code_value.name, "CodeValue");
-        assert_eq!(schema.code_text.name, "CodeText");
     }
 
     #[test]
