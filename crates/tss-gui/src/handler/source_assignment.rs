@@ -71,14 +71,14 @@ impl MessageHandler<SourceAssignmentMessage> for SourceAssignmentHandler {
             }
 
             SourceAssignmentMessage::DomainClicked { domain_code } => {
-                if let ViewState::SourceAssignment { assignment_ui, .. } = &mut state.view {
-                    if let Some(file_index) = assignment_ui.selected_file {
-                        if let Some(file) = assignment_ui.source_files.get_mut(file_index) {
-                            file.assigned_domain = Some(domain_code);
-                            file.status = SourceFileStatus::Unassigned;
-                        }
-                        assignment_ui.selected_file = None;
+                if let ViewState::SourceAssignment { assignment_ui, .. } = &mut state.view
+                    && let Some(file_index) = assignment_ui.selected_file
+                {
+                    if let Some(file) = assignment_ui.source_files.get_mut(file_index) {
+                        file.assigned_domain = Some(domain_code);
+                        file.status = SourceFileStatus::Unassigned;
                     }
+                    assignment_ui.selected_file = None;
                 }
                 Task::none()
             }

@@ -26,7 +26,10 @@ use iced::widget::container;
 use iced::window;
 use iced::{Element, Size, Subscription, Task, Theme};
 
-use crate::handler::{DomainEditorHandler, HomeHandler, MessageHandler, SourceAssignmentHandler};
+use crate::handler::{
+    DialogHandler, DomainEditorHandler, ExportHandler, HomeHandler, MenuActionHandler,
+    MenuMessageHandler, MessageHandler, SourceAssignmentHandler,
+};
 use crate::message::{Message, SettingsCategory};
 use crate::state::{AppState, DialogType, Settings, ViewState};
 use crate::theme::clinical_theme;
@@ -131,19 +134,19 @@ impl App {
             // =================================================================
             // Export messages
             // =================================================================
-            Message::Export(export_msg) => self.handle_export_message(export_msg),
+            Message::Export(export_msg) => ExportHandler.handle(&mut self.state, export_msg),
 
             // =================================================================
             // Dialog messages
             // =================================================================
-            Message::Dialog(dialog_msg) => self.handle_dialog_message(dialog_msg),
+            Message::Dialog(dialog_msg) => DialogHandler.handle(&mut self.state, dialog_msg),
 
             // =================================================================
             // Menu messages
             // =================================================================
-            Message::MenuAction(action) => self.handle_menu_action(action),
+            Message::MenuAction(action) => MenuActionHandler.handle(&mut self.state, action),
 
-            Message::Menu(menu_msg) => self.handle_menu_message(menu_msg),
+            Message::Menu(menu_msg) => MenuMessageHandler.handle(&mut self.state, menu_msg),
 
             Message::InitNativeMenu => {
                 // Initialize native menu on macOS
@@ -327,7 +330,16 @@ impl App {
                 verified,
             } => {
                 // Update dialog state to ReadyToInstall
-                self.set_update_ready_to_install(info, data, verified);
+                if let Some((id, _)) = self.state.dialog_windows.update {
+                    self.state.dialog_windows.update = Some((
+                        id,
+                        UpdateState::ReadyToInstall {
+                            info,
+                            data,
+                            verified,
+                        },
+                    ));
+                }
                 Task::none()
             }
 
@@ -389,8 +401,10 @@ impl App {
                         ToastActionType::ViewChangelog => {
                             // Open the update dialog
                             self.state.toast = None;
-                            return self
-                                .handle_menu_message(crate::message::MenuMessage::CheckUpdates);
+                            return MenuMessageHandler.handle(
+                                &mut self.state,
+                                crate::message::MenuMessage::CheckUpdates,
+                            );
                         }
                         ToastActionType::OpenUrl(url) => {
                             let _ = open::that(url);

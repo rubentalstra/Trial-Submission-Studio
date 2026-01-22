@@ -262,6 +262,7 @@ fn handle_mapping_message(state: &mut AppState, msg: MappingMessage) -> Task<Mes
 // NORMALIZATION HANDLER
 // =============================================================================
 
+#[allow(clippy::needless_pass_by_value)]
 fn handle_normalization_message(state: &mut AppState, msg: NormalizationMessage) -> Task<Message> {
     match msg {
         NormalizationMessage::RuleSelected(idx) => {
@@ -375,6 +376,7 @@ fn handle_validation_message(state: &mut AppState, msg: ValidationMessage) -> Ta
 // PREVIEW HANDLER
 // =============================================================================
 
+#[allow(clippy::needless_pass_by_value)]
 fn handle_preview_message(state: &mut AppState, msg: PreviewMessage) -> Task<Message> {
     let domain_code = match &state.view {
         ViewState::DomainEditor { domain, .. } => domain.clone(),
