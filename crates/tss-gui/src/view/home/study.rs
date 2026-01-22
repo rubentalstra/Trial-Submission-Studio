@@ -3,7 +3,7 @@
 //! Shows study info header, domain cards with progress, and export action.
 
 use iced::widget::{Space, button, column, container, row, scrollable, text};
-use iced::{Alignment, Color, Element, Length};
+use iced::{Alignment, Element, Length};
 use iced_fonts::lucide;
 
 use crate::component::{DomainCard, PageHeader};
@@ -106,6 +106,7 @@ fn view_domains<'a>(state: &'a AppState, study: &'a Study) -> Element<'a, Messag
     let domain_codes = study.domain_codes_dm_first();
 
     // Section header with domain count
+    let bg_inset = c.background_inset;
     let header = row![
         text("Domains").size(16).color(c.text_secondary),
         Space::new().width(SPACING_SM),
@@ -115,8 +116,8 @@ fn view_domains<'a>(state: &'a AppState, study: &'a Study) -> Element<'a, Messag
                 .color(c.text_muted)
         )
         .padding([2.0, 8.0])
-        .style(|_| container::Style {
-            background: Some(Color::from_rgba(0.0, 0.0, 0.0, 0.05).into()),
+        .style(move |_| container::Style {
+            background: Some(bg_inset.into()),
             border: iced::Border {
                 radius: 4.0.into(),
                 ..Default::default()

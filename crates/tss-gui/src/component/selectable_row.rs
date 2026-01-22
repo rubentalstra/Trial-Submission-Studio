@@ -55,10 +55,7 @@ impl<'a, M: Clone + 'a> SelectableRow<'a, M> {
             on_click,
             text_primary_color: c.text_primary,
             text_muted_color: c.text_muted,
-            selected_bg: {
-                let accent = c.accent_primary;
-                Color { a: 0.1, ..accent }
-            },
+            selected_bg: c.accent_primary_light,
             hover_bg: c.background_secondary,
             selected_border: c.accent_primary,
             default_border: c.border_default,

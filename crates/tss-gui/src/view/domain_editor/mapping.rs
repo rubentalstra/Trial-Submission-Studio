@@ -776,13 +776,14 @@ fn view_mapping_actions<'a>(
     var: &'a tss_standards::SdtmVariable,
     status: VariableStatus,
 ) -> Element<'a, Message> {
+    let c = colors();
     let var_name = var.name.clone();
     let mut actions = ActionButtonList::new().title("Actions");
 
     // Clear mapping (if mapped)
     if matches!(status, VariableStatus::Accepted) {
         actions = actions.button(ActionButton::secondary(
-            lucide::x().size(12),
+            lucide::x().size(12).color(c.text_secondary),
             "Clear Mapping",
             Message::DomainEditor(DomainEditorMessage::Mapping(MappingMessage::ClearMapping(
                 var_name.clone(),
@@ -798,7 +799,7 @@ fn view_mapping_actions<'a>(
         )
     {
         actions = actions.button(ActionButton::secondary(
-            lucide::ban().size(12),
+            lucide::ban().size(12).color(c.text_secondary),
             "Mark Not Collected",
             Message::DomainEditor(DomainEditorMessage::Mapping(
                 MappingMessage::MarkNotCollected {
@@ -816,7 +817,7 @@ fn view_mapping_actions<'a>(
             .unwrap_or("")
             .to_string();
         actions = actions.button(ActionButton::secondary(
-            lucide::pencil().size(12),
+            lucide::pencil().size(12).color(c.text_secondary),
             "Edit Reason",
             Message::DomainEditor(DomainEditorMessage::Mapping(
                 MappingMessage::EditNotCollectedReason {
@@ -826,7 +827,7 @@ fn view_mapping_actions<'a>(
             )),
         ));
         actions = actions.button(ActionButton::secondary(
-            lucide::undo().size(12),
+            lucide::undo().size(12).color(c.text_secondary),
             "Revert to Mapping",
             Message::DomainEditor(DomainEditorMessage::Mapping(
                 MappingMessage::ClearNotCollected(var_name.clone()),
@@ -842,7 +843,7 @@ fn view_mapping_actions<'a>(
         )
     {
         actions = actions.button(ActionButton::secondary(
-            lucide::eye_off().size(12),
+            lucide::eye_off().size(12).color(c.text_secondary),
             "Omit from Output",
             Message::DomainEditor(DomainEditorMessage::Mapping(MappingMessage::MarkOmitted(
                 var_name.clone(),
@@ -853,7 +854,7 @@ fn view_mapping_actions<'a>(
     // Clear Omit (if omitted)
     if matches!(status, VariableStatus::Omitted) {
         actions = actions.button(ActionButton::secondary(
-            lucide::eye().size(12),
+            lucide::eye().size(12).color(c.text_secondary),
             "Include in Output",
             Message::DomainEditor(DomainEditorMessage::Mapping(MappingMessage::ClearOmitted(
                 var_name,

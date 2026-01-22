@@ -7,7 +7,7 @@
 //! - **Right (Detail)**: Detailed view of the selected issue
 
 use iced::widget::{Space, button, column, container, row, rule, scrollable, text};
-use iced::{Alignment, Border, Color, Element, Length};
+use iced::{Alignment, Border, Element, Length};
 use iced_fonts::lucide;
 use tss_submit::{Issue, Severity, ValidationReport};
 
@@ -112,9 +112,12 @@ fn view_master_header<'a>(
 
     // Re-validate button
     let refresh_button = button(
-        row![lucide::refresh_cw().size(12), text("Re-validate").size(12),]
-            .spacing(6.0)
-            .align_y(Alignment::Center),
+        row![
+            lucide::refresh_cw().size(12).color(c.text_on_accent),
+            text("Re-validate").size(12),
+        ]
+        .spacing(6.0)
+        .align_y(Alignment::Center),
     )
     .on_press(Message::DomainEditor(DomainEditorMessage::Validation(
         ValidationMessage::RefreshValidation,
@@ -169,7 +172,7 @@ fn severity_filter_button<'a>(
     let c = colors();
     let is_selected = filter == current;
     let accent = c.accent_primary;
-    let accent_light = Color { a: 0.15, ..accent };
+    let accent_light = c.accent_primary_light;
 
     let msg_filter = match filter {
         SeverityFilter::All => MsgSeverityFilter::All,
@@ -435,9 +438,10 @@ fn view_issue_description<'a>(issue: &Issue) -> Element<'a, Message> {
 
 /// Build action buttons for issue details.
 fn view_issue_actions<'a>(variable_name: &str) -> Element<'a, Message> {
+    let c = colors();
     let go_to_button = button(
         row![
-            lucide::arrow_right().size(14),
+            lucide::arrow_right().size(14).color(c.text_on_accent),
             text("Go to Variable").size(13),
         ]
         .spacing(SPACING_XS)

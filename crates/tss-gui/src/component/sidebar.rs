@@ -3,7 +3,7 @@
 //! A vertical sidebar for domain/feature navigation.
 
 use iced::widget::{button, column, container, scrollable, space, text};
-use iced::{Border, Color, Element, Length, Padding};
+use iced::{Border, Element, Length, Padding};
 
 use crate::theme::{BORDER_RADIUS_SM, SIDEBAR_WIDTH, SPACING_SM, SPACING_XS, colors};
 
@@ -80,10 +80,7 @@ pub fn sidebar<'a, M: Clone + 'a>(
     let accent_primary = c.accent_primary;
     let accent_pressed = c.accent_pressed;
     // Light tint of accent for active background
-    let accent_light = Color {
-        a: 0.15,
-        ..accent_primary
-    };
+    let accent_light = c.accent_primary_light;
 
     let mut item_column = column![].spacing(SPACING_XS);
 
@@ -199,10 +196,7 @@ pub fn sidebar_with_header<'a, M: Clone + 'a>(
     let accent_primary = c.accent_primary;
     let accent_pressed = c.accent_pressed;
     // Light tint of accent for active background
-    let accent_light = Color {
-        a: 0.15,
-        ..accent_primary
-    };
+    let accent_light = c.accent_primary_light;
 
     let mut item_column = column![].spacing(SPACING_XS);
 

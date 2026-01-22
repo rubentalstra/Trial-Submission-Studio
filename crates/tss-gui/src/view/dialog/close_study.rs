@@ -32,7 +32,7 @@ pub fn view_close_study_dialog_content<'a>(window_id: window::Id) -> Element<'a,
     let text_on_accent = c.text_on_accent;
     let confirm_button = button(
         row![
-            lucide::trash().size(14),
+            lucide::trash().size(14).color(text_on_accent),
             Space::new().width(SPACING_SM),
             text("Close Study").size(14),
         ]

@@ -711,10 +711,7 @@ fn get_transform_color(transform_type: &NormalizationType) -> Color {
         NormalizationType::Iso8601DateTime
         | NormalizationType::Iso8601Date
         | NormalizationType::Iso8601Duration => c.status_info,
-        NormalizationType::StudyDay { .. } => {
-            // Purple - use a blend approach
-            Color::from_rgb(0.6, 0.4, 0.8)
-        }
+        NormalizationType::StudyDay { .. } => c.accent_primary_medium,
         NormalizationType::CtNormalization { .. } => c.status_success,
         NormalizationType::NumericConversion => c.status_warning,
         NormalizationType::CopyDirect => c.text_muted,

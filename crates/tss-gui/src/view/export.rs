@@ -372,7 +372,7 @@ fn view_output_directory<'a>(
 
     let change_btn = button(
         row![
-            lucide::folder_open().size(12),
+            lucide::folder_open().size(12).color(c.text_secondary),
             Space::new().width(SPACING_XS),
             text("Change").size(12),
         ]
@@ -486,6 +486,7 @@ fn view_define_xml_info<'a>() -> Element<'a, Message> {
 
 /// Export button.
 fn view_export_button(export_state: &ExportViewState) -> Element<'_, Message> {
+    let c = colors();
     let count = export_state.selection_count();
     let can_export = export_state.can_export();
 
@@ -500,7 +501,7 @@ fn view_export_button(export_state: &ExportViewState) -> Element<'_, Message> {
     };
 
     let btn_content = row![
-        lucide::download().size(16),
+        lucide::download().size(16).color(c.text_on_accent),
         Space::new().width(SPACING_SM),
         text(button_label).size(14),
     ]

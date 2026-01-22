@@ -134,53 +134,56 @@ fn view_master_detail<'a>(
 /// Category sidebar with navigation items.
 fn view_sidebar<'a>(active_category: SettingsCategory) -> Element<'a, Message> {
     let c = colors();
-    let text_primary = c.text_primary;
-    let text_secondary = c.text_secondary;
-    let accent_light = Color {
-        a: 0.15,
-        ..c.accent_primary
+
+    // Helper to determine icon color based on active state
+    let icon_color = |category: SettingsCategory| {
+        if active_category == category {
+            c.text_primary
+        } else {
+            c.text_secondary
+        }
     };
 
     column![
         view_sidebar_item(
             SettingsCategory::General,
-            lucide::sliders_horizontal(),
+            lucide::sliders_horizontal().color(icon_color(SettingsCategory::General)),
             active_category == SettingsCategory::General,
-            text_primary,
-            text_secondary,
-            accent_light,
+            c.text_primary,
+            c.text_secondary,
+            c.accent_primary_light,
         ),
         view_sidebar_item(
             SettingsCategory::Export,
-            lucide::file_output(),
+            lucide::file_output().color(icon_color(SettingsCategory::Export)),
             active_category == SettingsCategory::Export,
-            text_primary,
-            text_secondary,
-            accent_light,
+            c.text_primary,
+            c.text_secondary,
+            c.accent_primary_light,
         ),
         view_sidebar_item(
             SettingsCategory::Display,
-            lucide::monitor(),
+            lucide::monitor().color(icon_color(SettingsCategory::Display)),
             active_category == SettingsCategory::Display,
-            text_primary,
-            text_secondary,
-            accent_light,
+            c.text_primary,
+            c.text_secondary,
+            c.accent_primary_light,
         ),
         view_sidebar_item(
             SettingsCategory::Updates,
-            lucide::refresh_cw(),
+            lucide::refresh_cw().color(icon_color(SettingsCategory::Updates)),
             active_category == SettingsCategory::Updates,
-            text_primary,
-            text_secondary,
-            accent_light,
+            c.text_primary,
+            c.text_secondary,
+            c.accent_primary_light,
         ),
         view_sidebar_item(
             SettingsCategory::Developer,
-            lucide::code(),
+            lucide::code().color(icon_color(SettingsCategory::Developer)),
             active_category == SettingsCategory::Developer,
-            text_primary,
-            text_secondary,
-            accent_light,
+            c.text_primary,
+            c.text_secondary,
+            c.accent_primary_light,
         ),
     ]
     .spacing(SPACING_XS)

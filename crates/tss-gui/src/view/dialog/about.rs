@@ -134,9 +134,6 @@ fn view_dialog_content_inner<'a>(window_id: Option<window::Id>) -> Element<'a, M
 /// Footer with Close and Copy and Close buttons (RustRover style).
 fn view_footer<'a>(window_id: Option<window::Id>) -> Element<'a, Message> {
     let c = colors();
-    let bg_secondary = c.background_secondary;
-    let text_primary = c.text_primary;
-    let border_default = c.border_default;
 
     // Close button (secondary/outlined style)
     let close_btn = button(text("Close").size(13))
@@ -149,12 +146,12 @@ fn view_footer<'a>(window_id: Option<window::Id>) -> Element<'a, Message> {
         .style(move |theme, status| {
             let base = button::secondary(theme, status);
             button::Style {
-                background: Some(bg_secondary.into()),
-                text_color: text_primary,
+                background: Some(c.background_secondary.into()),
+                text_color: c.text_primary,
                 border: Border {
                     radius: 6.0.into(),
                     width: 1.0,
-                    color: border_default,
+                    color: c.border_default,
                 },
                 ..base
             }

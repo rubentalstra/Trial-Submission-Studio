@@ -113,6 +113,7 @@ pub fn view_dropdown_container<'a>(
     let bg_elevated = c.background_elevated;
     let border_default = c.border_default;
 
+    let shadow_color = c.shadow;
     container(content)
         .style(move |_theme: &Theme| container::Style {
             background: Some(bg_elevated.into()),
@@ -122,7 +123,7 @@ pub fn view_dropdown_container<'a>(
                 radius: BORDER_RADIUS_MD.into(),
             },
             shadow: iced::Shadow {
-                color: Color::from_rgba(0.0, 0.0, 0.0, 0.15),
+                color: shadow_color,
                 offset: iced::Vector::new(0.0, 4.0),
                 blur_radius: 8.0,
             },
