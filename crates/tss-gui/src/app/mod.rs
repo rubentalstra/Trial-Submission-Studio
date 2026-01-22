@@ -389,7 +389,7 @@ impl App {
 
     /// Handle toast notification messages.
     fn handle_toast_message(&mut self, msg: crate::message::ToastMessage) -> Task<Message> {
-        use crate::component::toast::{ToastActionType, ToastMessage};
+        use crate::component::feedback::toast::{ToastActionType, ToastMessage};
 
         match msg {
             ToastMessage::Dismiss => {
@@ -516,7 +516,7 @@ impl App {
 
         // If there's a toast, wrap content with an overlay
         if let Some(toast) = &self.state.toast {
-            use crate::component::toast::view_toast;
+            use crate::component::feedback::toast::view_toast;
             use iced::widget::{Space, column, stack};
 
             let toast_element = view_toast(toast);
@@ -648,7 +648,7 @@ impl App {
 ///
 /// This is called on app startup to show a notification when the app has been updated.
 /// The status file is written by the update helper and deleted after reading.
-fn check_update_status() -> Option<crate::component::toast::ToastState> {
+fn check_update_status() -> Option<crate::component::feedback::toast::ToastState> {
     use directories::ProjectDirs;
 
     // Get the status file path using the same location as the helper
@@ -673,9 +673,7 @@ fn check_update_status() -> Option<crate::component::toast::ToastState> {
             status.previous_version,
             status.version
         );
-        Some(crate::component::toast::ToastState::update_success(
-            &status.version,
-        ))
+        Some(crate::component::feedback::toast::ToastState::update_success(&status.version))
     } else {
         tracing::warn!("Update to {} failed: {:?}", status.version, status.error);
         None

@@ -46,7 +46,7 @@ pub use view_state::{
     ValidationUiState, ViewState, WorkflowMode,
 };
 
-use crate::component::toast::ToastState;
+use crate::component::feedback::toast::ToastState;
 use crate::error::GuiError;
 #[cfg(not(target_os = "macos"))]
 use crate::menu::MenuDropdownState;

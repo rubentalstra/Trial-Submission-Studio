@@ -12,11 +12,11 @@ use iced::widget::{
 use iced::{Alignment, Border, Element, Length, Theme};
 use iced_fonts::lucide;
 
-use crate::component::layout::SplitView;
-use crate::component::{
-    ActionButton, ActionButtonList, DetailHeader, EmptyState, FilterToggle, MetadataCard,
-    StatusCard, VariableListItem,
+use crate::component::display::{
+    ActionButton, ActionButtonList, EmptyState, MetadataCard, StatusCard, VariableListItem,
 };
+use crate::component::layout::SplitView;
+use crate::component::panels::{DetailHeader, FilterToggle};
 use crate::message::domain_editor::MappingMessage;
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{AppState, DomainState, MappingUiState, NotCollectedEdit, ViewState};

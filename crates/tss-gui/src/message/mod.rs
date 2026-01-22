@@ -40,7 +40,7 @@ pub use menu::MenuMessage;
 pub use source_assignment::SourceAssignmentMessage;
 
 // Toast message
-pub use crate::component::toast::ToastMessage;
+pub use crate::component::feedback::toast::ToastMessage;
 
 /// Re-export ValidationReport from tss_validate for convenience.
 pub type ValidationReport = tss_submit::ValidationReport;

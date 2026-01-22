@@ -128,6 +128,7 @@ pub fn number_field<'a, M: Clone + 'a>(
 /// Creates a read-only display field.
 ///
 /// Shows a value that cannot be edited (for display purposes).
+#[allow(dead_code)]
 pub fn display_field<'a, M: 'a>(label: &'a str, value: &'a str) -> Element<'a, M> {
     let label_text = text(label).size(13).style(|theme: &Theme| text::Style {
         color: Some(theme.clinical().text_muted),
@@ -157,6 +158,7 @@ pub fn display_field<'a, M: 'a>(label: &'a str, value: &'a str) -> Element<'a, M
 /// Creates a text area field (multi-line input).
 ///
 /// For longer text input like descriptions or notes.
+#[allow(dead_code)]
 pub fn text_area_field<'a, M: Clone + 'a>(
     label: &'a str,
     value: &'a str,

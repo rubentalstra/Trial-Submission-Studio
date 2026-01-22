@@ -257,6 +257,7 @@ pub fn data_table<'a, M: Clone + 'a>(
 /// Creates a simple table without pagination.
 ///
 /// For smaller datasets that don't need pagination.
+#[allow(dead_code)]
 pub fn simple_table<'a, M: 'a>(
     columns: &'a [TableColumn],
     rows: &'a [Vec<String>],
@@ -340,6 +341,7 @@ pub fn simple_table<'a, M: 'a>(
 /// Creates a selectable table row.
 ///
 /// Returns a row element that can be clicked.
+#[allow(dead_code)]
 pub fn selectable_row<'a, M: Clone + 'a>(
     columns: &[TableColumn],
     cells: &'a [String],

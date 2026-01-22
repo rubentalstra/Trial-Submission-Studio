@@ -190,6 +190,7 @@ pub fn confirm_modal<'a, M: Clone + 'a>(
 /// * `title` - Modal title
 /// * `message` - Alert message
 /// * `on_close` - Message when OK is clicked
+#[allow(dead_code)]
 pub fn alert_modal<'a, M: Clone + 'a>(
     base: Element<'a, M>,
     title: &'a str,

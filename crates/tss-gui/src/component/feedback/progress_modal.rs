@@ -143,6 +143,7 @@ pub fn progress_modal<'a, M: Clone + 'a>(
 ///
 /// * `base` - The background content
 /// * `message` - Loading message (e.g., "Loading study...")
+#[allow(dead_code)]
 pub fn loading_modal<'a, M: 'a>(base: Element<'a, M>, message: &'a str) -> Element<'a, M> {
     let message_owned = message.to_string();
 

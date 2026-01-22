@@ -134,6 +134,7 @@ pub fn tab_bar<'a, M: Clone + 'a>(tabs: Vec<Tab<M>>, active_index: usize) -> Ele
 /// Creates a tab bar with rounded container.
 ///
 /// Variant with rounded corners for use in cards or panels.
+#[allow(dead_code)]
 pub fn tab_bar_rounded<'a, M: Clone + 'a>(
     tabs: Vec<Tab<M>>,
     active_index: usize,

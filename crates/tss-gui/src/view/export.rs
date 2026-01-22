@@ -9,8 +9,9 @@ use iced::widget::{
 use iced::{Alignment, Border, Element, Length, Theme};
 use iced_fonts::lucide;
 
-use crate::component::layout::SplitView;
-use crate::component::{DetailHeader, EmptyState, MetadataCard, PageHeader};
+use crate::component::display::{EmptyState, MetadataCard};
+use crate::component::layout::{PageHeader, SplitView};
+use crate::component::panels::DetailHeader;
 use crate::message::{ExportMessage, Message};
 use crate::service::export::{domain_has_supp, domain_supp_count};
 use crate::state::{

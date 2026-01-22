@@ -65,6 +65,7 @@ pub fn create_menu() -> Menu {
 /// This uses muda's global event receiver with try_recv for non-blocking polling.
 /// Note: With the channel-based approach, this is mainly used as a fallback.
 /// The primary path is through the forwarder thread in `channel.rs`.
+#[allow(dead_code)]
 pub fn poll_menu_event() -> Option<MenuAction> {
     let receiver = MenuEvent::receiver();
 

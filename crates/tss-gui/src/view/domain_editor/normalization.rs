@@ -11,8 +11,9 @@ use iced::widget::{Space, column, container, row, rule, scrollable, text};
 use iced::{Alignment, Border, Color, Element, Length, Theme};
 use iced_fonts::lucide;
 
+use crate::component::display::{EmptyState, MetadataCard, VariableListItem};
 use crate::component::layout::SplitView;
-use crate::component::{DetailHeader, EmptyState, MetadataCard, VariableListItem};
+use crate::component::panels::DetailHeader;
 use crate::message::domain_editor::NormalizationMessage;
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{AppState, DomainState, NormalizationUiState, ViewState};

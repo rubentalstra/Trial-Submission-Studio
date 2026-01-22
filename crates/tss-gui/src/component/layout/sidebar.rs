@@ -185,6 +185,7 @@ pub fn sidebar<'a, M: Clone + 'a>(
 }
 
 /// Creates a sidebar with default width.
+#[allow(dead_code)]
 pub fn sidebar_default<'a, M: Clone + 'a>(
     items: Vec<SidebarItem<M>>,
     active_index: Option<usize>,
@@ -193,6 +194,7 @@ pub fn sidebar_default<'a, M: Clone + 'a>(
 }
 
 /// Creates a sidebar with a header.
+#[allow(dead_code)]
 pub fn sidebar_with_header<'a, M: Clone + 'a>(
     header: Element<'a, M>,
     items: Vec<SidebarItem<M>>,

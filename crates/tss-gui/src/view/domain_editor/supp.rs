@@ -22,10 +22,10 @@ use iced::{Alignment, Border, Color, Element, Length, Theme};
 use iced_fonts::lucide;
 use polars::prelude::AnyValue;
 
+use crate::component::display::{EmptyState, MetadataCard, NoFilteredResults};
+use crate::component::inputs::TextField;
 use crate::component::layout::SplitView;
-use crate::component::{
-    DetailHeader, EmptyState, FilterToggle, MetadataCard, NoFilteredResults, TextField,
-};
+use crate::component::panels::{DetailHeader, FilterToggle};
 use crate::message::domain_editor::SuppMessage;
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{

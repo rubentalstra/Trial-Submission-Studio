@@ -69,7 +69,7 @@ impl<M: Clone + 'static> MasterPanelHeader<M> {
 
     /// Build the master panel header element.
     pub fn view(self) -> Element<'static, M> {
-        use crate::component::FilterToggle;
+        use super::FilterToggle;
         use iced::widget::text_input;
 
         let mut content = column![];

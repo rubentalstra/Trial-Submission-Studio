@@ -16,7 +16,7 @@ use iced::{Alignment, Border, Color, Element, Length, Theme};
 use iced_fonts::lucide;
 use polars::prelude::DataFrame;
 
-use crate::component::{EmptyState, ErrorState, LoadingState};
+use crate::component::display::{EmptyState, ErrorState, LoadingState};
 use crate::message::domain_editor::PreviewMessage;
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{AppState, DomainState, PreviewUiState, ViewState};

@@ -11,8 +11,9 @@ use iced::{Alignment, Border, Element, Length, Theme};
 use iced_fonts::lucide;
 use tss_submit::{Issue, Severity, ValidationReport};
 
+use crate::component::display::{EmptyState, MetadataCard, NoFilteredResults, SelectableRow};
 use crate::component::layout::SplitView;
-use crate::component::{DetailHeader, EmptyState, MetadataCard, NoFilteredResults, SelectableRow};
+use crate::component::panels::DetailHeader;
 use crate::message::domain_editor::{SeverityFilter as MsgSeverityFilter, ValidationMessage};
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{AppState, SeverityFilter, ValidationUiState, ViewState};

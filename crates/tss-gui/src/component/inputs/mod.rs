@@ -3,15 +3,28 @@
 //! This module contains components for user input:
 //!
 //! - **SearchBox**: Search input with icon and clear button
-//! - **FilterBar**: Filter toggle chips
-//! - **TextField**: Text input with validation
-//! - **FormField**: Labeled form fields
+//! - **TextField**: Text input with validation and labels
+//! - **FormField**: Labeled form fields with various input types
 //!
-//! # Planned Migration
+//! # Example
 //!
-//! Components to move here:
-//! - `search_box.rs`
-//! - `text_field.rs`
-//! - `form_field.rs`
+//! ```ignore
+//! use tss_gui::component::inputs::{TextField, search_box};
+//!
+//! // Text field with validation
+//! TextField::new("Username", &value, "Enter username", |s| Msg::Input(s))
+//!     .required(true)
+//!     .max_length(50)
+//!     .view();
+//!
+//! // Search box
+//! search_box(&search_text, "Search...", |s| Msg::Search(s));
+//! ```
 
-// Components will be added as they are migrated
+mod form_field;
+mod search_box;
+mod text_field;
+
+pub use form_field::{form_field, number_field};
+pub use search_box::{search_box, search_box_compact, search_box_with_filter};
+pub use text_field::{TextAreaField, TextField};
