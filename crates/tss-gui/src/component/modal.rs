@@ -3,12 +3,12 @@
 //! Provides modal dialogs with backdrop, title, content, and action buttons.
 
 use iced::widget::{button, center, column, container, opaque, row, space, stack, text};
-use iced::{Border, Element, Length, Shadow, Vector};
+use iced::{Border, Element, Length, Shadow, Theme, Vector};
 use iced_fonts::lucide;
 
 use crate::theme::{
-    BACKDROP, BORDER_RADIUS_LG, GRAY_200, GRAY_500, GRAY_900, MODAL_WIDTH_MD, SHADOW_STRONG,
-    SPACING_LG, SPACING_MD, SPACING_SM, WHITE, button_ghost, button_primary, button_secondary,
+    BORDER_RADIUS_LG, ClinicalColors, MODAL_WIDTH_MD, SPACING_LG, SPACING_MD, SPACING_SM,
+    button_ghost, button_primary, button_secondary,
 };
 
 // =============================================================================
@@ -55,19 +55,30 @@ pub fn modal<'a, M: Clone + 'a>(
     let backdrop = container(column![])
         .width(Length::Fill)
         .height(Length::Fill)
-        .style(|_theme| container::Style {
-            background: Some(BACKDROP.into()),
+        .style(|theme: &Theme| container::Style {
+            background: Some(theme.clinical().backdrop.into()),
             ..Default::default()
         });
 
+    let title_owned = title.to_string();
+
     // Header with title and close button
     let header = row![
-        text(title).size(18).color(GRAY_900),
+        text(title_owned)
+            .size(18)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text),
+            }),
         space::horizontal(),
-        button(lucide::x().size(20).color(GRAY_500))
-            .on_press(on_close)
-            .padding([4.0, 8.0])
-            .style(button_ghost),
+        button(
+            container(lucide::x().size(20)).style(|theme: &Theme| container::Style {
+                text_color: Some(theme.clinical().text_muted),
+                ..Default::default()
+            })
+        )
+        .on_press(on_close)
+        .padding([4.0, 8.0])
+        .style(button_ghost),
     ]
     .align_y(iced::Alignment::Center);
 
@@ -91,19 +102,22 @@ pub fn modal<'a, M: Clone + 'a>(
     )
     .width(Length::Fixed(MODAL_WIDTH_MD))
     .padding(SPACING_LG)
-    .style(|_theme| container::Style {
-        background: Some(WHITE.into()),
-        border: Border {
-            radius: BORDER_RADIUS_LG.into(),
-            width: 1.0,
-            color: GRAY_200,
-        },
-        shadow: Shadow {
-            color: SHADOW_STRONG,
-            offset: Vector::new(0.0, 4.0),
-            blur_radius: 24.0,
-        },
-        ..Default::default()
+    .style(|theme: &Theme| {
+        let clinical = theme.clinical();
+        container::Style {
+            background: Some(clinical.background_elevated.into()),
+            border: Border {
+                radius: BORDER_RADIUS_LG.into(),
+                width: 1.0,
+                color: clinical.border_default,
+            },
+            shadow: Shadow {
+                color: clinical.shadow_strong,
+                offset: Vector::new(0.0, 4.0),
+                blur_radius: 24.0,
+            },
+            ..Default::default()
+        }
     });
 
     // Stack layers: base -> backdrop -> dialog

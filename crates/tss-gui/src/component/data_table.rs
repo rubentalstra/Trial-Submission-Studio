@@ -3,12 +3,11 @@
 //! Paginated table for displaying large datasets.
 
 use iced::widget::{button, column, container, row, rule, scrollable, space, text};
-use iced::{Border, Element, Length};
+use iced::{Border, Color, Element, Length, Theme};
 use iced_fonts::lucide;
 
 use crate::theme::{
-    GRAY_50, GRAY_100, GRAY_200, GRAY_500, GRAY_600, GRAY_700, GRAY_800, SPACING_SM,
-    TABLE_CELL_PADDING_X, TABLE_CELL_PADDING_Y, WHITE, button_ghost,
+    ClinicalColors, SPACING_SM, TABLE_CELL_PADDING_X, TABLE_CELL_PADDING_Y, button_ghost,
 };
 
 // =============================================================================
@@ -98,17 +97,21 @@ pub fn data_table<'a, M: Clone + 'a>(
     let header_row = {
         let mut header = row![].spacing(0);
         for col in columns {
+            let col_header = col.header.clone();
+            let col_width = col.width;
             header = header.push(
                 container(
-                    text(&col.header)
+                    text(col_header)
                         .size(12)
-                        .color(GRAY_600)
+                        .style(|theme: &Theme| text::Style {
+                            color: Some(theme.clinical().text_muted),
+                        })
                         .font(iced::Font::DEFAULT),
                 )
-                .width(col.width)
+                .width(col_width)
                 .padding([TABLE_CELL_PADDING_Y, TABLE_CELL_PADDING_X])
-                .style(|_theme| container::Style {
-                    background: Some(GRAY_100.into()),
+                .style(|theme: &Theme| container::Style {
+                    background: Some(theme.clinical().background_secondary.into()),
                     ..Default::default()
                 }),
             );
@@ -135,15 +138,28 @@ pub fn data_table<'a, M: Clone + 'a>(
                 .map(|c| c.width)
                 .unwrap_or(Length::Fill);
             let is_even = row_idx % 2 == 0;
+            let cell_text = cell.clone();
 
             data_row = data_row.push(
-                container(text(cell).size(13).color(GRAY_700))
-                    .width(width)
-                    .padding([TABLE_CELL_PADDING_Y, TABLE_CELL_PADDING_X])
-                    .style(move |_theme| container::Style {
-                        background: Some(if is_even { WHITE } else { GRAY_50 }.into()),
+                container(text(cell_text).size(13).style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_secondary),
+                }))
+                .width(width)
+                .padding([TABLE_CELL_PADDING_Y, TABLE_CELL_PADDING_X])
+                .style(move |theme: &Theme| {
+                    let clinical = theme.clinical();
+                    container::Style {
+                        background: Some(
+                            if is_even {
+                                clinical.background_elevated
+                            } else {
+                                theme.extended_palette().background.base.color
+                            }
+                            .into(),
+                        ),
                         ..Default::default()
-                    }),
+                    }
+                }),
             );
         }
         data_rows = data_rows.push(data_row);
@@ -156,11 +172,19 @@ pub fn data_table<'a, M: Clone + 'a>(
         let prev_enabled = page > 0;
         let next_enabled = page < total_pages.saturating_sub(1);
 
-        let prev_button = button(lucide::chevron_left().size(14).color(if prev_enabled {
-            GRAY_700
-        } else {
-            GRAY_500
-        }))
+        let prev_button = button(container(lucide::chevron_left().size(14)).style(
+            move |theme: &Theme| {
+                let clinical = theme.clinical();
+                container::Style {
+                    text_color: Some(if prev_enabled {
+                        clinical.text_secondary
+                    } else {
+                        clinical.text_disabled
+                    }),
+                    ..Default::default()
+                }
+            },
+        ))
         .on_press_maybe(if prev_enabled {
             Some(on_page_change.clone()(page - 1))
         } else {
@@ -169,11 +193,19 @@ pub fn data_table<'a, M: Clone + 'a>(
         .padding([4.0, 10.0])
         .style(button_ghost);
 
-        let next_button = button(lucide::chevron_right().size(14).color(if next_enabled {
-            GRAY_700
-        } else {
-            GRAY_500
-        }))
+        let next_button = button(container(lucide::chevron_right().size(14)).style(
+            move |theme: &Theme| {
+                let clinical = theme.clinical();
+                container::Style {
+                    text_color: Some(if next_enabled {
+                        clinical.text_secondary
+                    } else {
+                        clinical.text_disabled
+                    }),
+                    ..Default::default()
+                }
+            },
+        ))
         .on_press_maybe(if next_enabled {
             Some(on_page_change(page + 1))
         } else {
@@ -182,14 +214,12 @@ pub fn data_table<'a, M: Clone + 'a>(
         .padding([4.0, 10.0])
         .style(button_ghost);
 
-        let page_info = text(format!(
-            "Page {} of {} ({} rows)",
-            page + 1,
-            total_pages,
-            total_rows
-        ))
-        .size(12)
-        .color(GRAY_600);
+        let page_info_text = format!("Page {} of {} ({} rows)", page + 1, total_pages, total_rows);
+        let page_info = text(page_info_text)
+            .size(12)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted),
+            });
 
         row![
             space::horizontal(),
@@ -205,15 +235,15 @@ pub fn data_table<'a, M: Clone + 'a>(
     // Assemble table
     column![
         header_row,
-        rule::horizontal(1).style(|_theme| rule::Style {
-            color: GRAY_200,
+        rule::horizontal(1).style(|theme: &Theme| rule::Style {
+            color: theme.clinical().border_default,
             radius: 0.0.into(),
             fill_mode: rule::FillMode::Full,
             snap: true,
         }),
         scrollable(data_rows).height(Length::Fill),
-        rule::horizontal(1).style(|_theme| rule::Style {
-            color: GRAY_200,
+        rule::horizontal(1).style(|theme: &Theme| rule::Style {
+            color: theme.clinical().border_default,
             radius: 0.0.into(),
             fill_mode: rule::FillMode::Full,
             snap: true,
@@ -235,14 +265,22 @@ pub fn simple_table<'a, M: 'a>(
     let header_row = {
         let mut header = row![].spacing(0);
         for col in columns {
+            let col_header = col.header.clone();
+            let col_width = col.width;
             header = header.push(
-                container(text(&col.header).size(12).color(GRAY_600))
-                    .width(col.width)
-                    .padding([TABLE_CELL_PADDING_Y, TABLE_CELL_PADDING_X])
-                    .style(|_theme| container::Style {
-                        background: Some(GRAY_100.into()),
-                        ..Default::default()
-                    }),
+                container(
+                    text(col_header)
+                        .size(12)
+                        .style(|theme: &Theme| text::Style {
+                            color: Some(theme.clinical().text_muted),
+                        }),
+                )
+                .width(col_width)
+                .padding([TABLE_CELL_PADDING_Y, TABLE_CELL_PADDING_X])
+                .style(|theme: &Theme| container::Style {
+                    background: Some(theme.clinical().background_secondary.into()),
+                    ..Default::default()
+                }),
             );
         }
         header
@@ -258,15 +296,28 @@ pub fn simple_table<'a, M: 'a>(
                 .map(|c| c.width)
                 .unwrap_or(Length::Fill);
             let is_even = row_idx % 2 == 0;
+            let cell_text = cell.clone();
 
             data_row = data_row.push(
-                container(text(cell).size(13).color(GRAY_700))
-                    .width(width)
-                    .padding([TABLE_CELL_PADDING_Y, TABLE_CELL_PADDING_X])
-                    .style(move |_theme| container::Style {
-                        background: Some(if is_even { WHITE } else { GRAY_50 }.into()),
+                container(text(cell_text).size(13).style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_secondary),
+                }))
+                .width(width)
+                .padding([TABLE_CELL_PADDING_Y, TABLE_CELL_PADDING_X])
+                .style(move |theme: &Theme| {
+                    let clinical = theme.clinical();
+                    container::Style {
+                        background: Some(
+                            if is_even {
+                                clinical.background_elevated
+                            } else {
+                                theme.extended_palette().background.base.color
+                            }
+                            .into(),
+                        ),
                         ..Default::default()
-                    }),
+                    }
+                }),
             );
         }
         data_rows = data_rows.push(data_row);
@@ -274,8 +325,8 @@ pub fn simple_table<'a, M: 'a>(
 
     column![
         header_row,
-        rule::horizontal(1).style(|_theme| rule::Style {
-            color: GRAY_200,
+        rule::horizontal(1).style(|theme: &Theme| rule::Style {
+            color: theme.clinical().border_default,
             radius: 0.0.into(),
             fill_mode: rule::FillMode::Full,
             snap: true,
@@ -302,31 +353,48 @@ pub fn selectable_row<'a, M: Clone + 'a>(
             .get(col_idx)
             .map(|c| c.width)
             .unwrap_or(Length::Fill);
+        let cell_text = cell.clone();
 
         data_row = data_row.push(
             container(
-                text(cell)
+                text(cell_text)
                     .size(13)
-                    .color(if is_selected { GRAY_800 } else { GRAY_700 }),
+                    .style(move |theme: &Theme| text::Style {
+                        color: Some(if is_selected {
+                            theme.extended_palette().background.base.text
+                        } else {
+                            theme.clinical().text_secondary
+                        }),
+                    }),
             )
             .width(width)
             .padding([TABLE_CELL_PADDING_Y, TABLE_CELL_PADDING_X]),
         );
     }
 
-    let bg_color = if is_selected {
-        crate::theme::PRIMARY_100
-    } else {
-        WHITE
-    };
-
     button(data_row)
         .on_press(on_click)
         .width(Length::Fill)
         .padding(0)
-        .style(move |_theme, status| {
+        .style(move |theme: &Theme, status| {
+            let clinical = theme.clinical();
+            let accent_primary = theme.extended_palette().primary.base.color;
+            // Light tint of accent for selected background
+            let accent_light = Color {
+                a: 0.15,
+                ..accent_primary
+            };
+
+            let bg_color = if is_selected {
+                accent_light
+            } else {
+                clinical.background_elevated
+            };
+
             let bg = match status {
-                button::Status::Hovered if !is_selected => Some(GRAY_100.into()),
+                button::Status::Hovered if !is_selected => {
+                    Some(clinical.background_secondary.into())
+                }
                 _ => Some(bg_color.into()),
             };
             button::Style {

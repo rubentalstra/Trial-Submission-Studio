@@ -16,13 +16,29 @@
 //! ```
 
 use iced::widget::{Space, button, container, row, text};
-use iced::{Alignment, Border, Color, Element, Length};
+use iced::{Alignment, Border, Color, Element, Length, Theme};
 use iced_fonts::lucide;
 
-use crate::theme::{
-    GRAY_100, GRAY_200, GRAY_500, GRAY_900, SPACING_LG, SPACING_MD, SPACING_SM, WHITE,
-    button_secondary,
-};
+use crate::theme::{ClinicalColors, SPACING_LG, SPACING_MD, SPACING_SM, button_secondary};
+
+// =============================================================================
+// COLOR SPEC ENUM
+// =============================================================================
+
+/// Color specification - either a direct color or a theme-derived closure.
+enum ColorSpec {
+    Direct(Color),
+    Themed(fn(&Theme) -> Color),
+}
+
+impl ColorSpec {
+    fn resolve(&self, theme: &Theme) -> Color {
+        match self {
+            ColorSpec::Direct(c) => *c,
+            ColorSpec::Themed(f) => f(theme),
+        }
+    }
+}
 
 // =============================================================================
 // PAGE HEADER
@@ -32,7 +48,7 @@ use crate::theme::{
 pub struct PageHeader<'a, M> {
     title: String,
     on_back: Option<M>,
-    badge: Option<(String, Color)>,
+    badge: Option<(String, ColorSpec)>,
     metadata: Vec<(String, String)>,
     trailing: Option<Element<'a, M>>,
 }
@@ -55,9 +71,15 @@ impl<'a, M: Clone + 'a> PageHeader<'a, M> {
         self
     }
 
-    /// Add a colored badge next to the title.
+    /// Add a colored badge next to the title with direct color.
     pub fn badge(mut self, text: impl Into<String>, color: Color) -> Self {
-        self.badge = Some((text.into(), color));
+        self.badge = Some((text.into(), ColorSpec::Direct(color)));
+        self
+    }
+
+    /// Add a colored badge next to the title with theme-derived color.
+    pub fn badge_themed(mut self, text: impl Into<String>, color_fn: fn(&Theme) -> Color) -> Self {
+        self.badge = Some((text.into(), ColorSpec::Themed(color_fn)));
         self
     }
 
@@ -93,32 +115,50 @@ impl<'a, M: Clone + 'a> PageHeader<'a, M> {
         }
 
         // Badge
-        if let Some((badge_text, badge_color)) = self.badge {
-            let badge = container(text(badge_text).size(14).color(WHITE))
-                .padding([4.0, 12.0])
-                .style(move |_| container::Style {
+        if let Some((badge_text, badge_color_spec)) = self.badge {
+            let badge = container(
+                text(badge_text)
+                    .size(14)
+                    .style(|theme: &Theme| text::Style {
+                        color: Some(theme.clinical().text_on_accent),
+                    }),
+            )
+            .padding([4.0, 12.0])
+            .style(move |theme: &Theme| {
+                let badge_color = badge_color_spec.resolve(theme);
+                container::Style {
                     background: Some(badge_color.into()),
                     border: Border {
                         radius: 4.0.into(),
                         ..Default::default()
                     },
                     ..Default::default()
-                });
+                }
+            });
             header_row = header_row.push(badge);
             header_row = header_row.push(Space::new().width(SPACING_SM));
         }
 
         // Title
-        header_row = header_row.push(text(self.title).size(20).color(GRAY_900));
+        let title_text = self.title.clone();
+        header_row =
+            header_row.push(
+                text(title_text)
+                    .size(20)
+                    .style(|theme: &Theme| text::Style {
+                        color: Some(theme.extended_palette().background.base.text),
+                    }),
+            );
 
         // Fill space
         header_row = header_row.push(Space::new().width(Length::Fill));
 
         // Metadata items
         for (label, value) in self.metadata {
-            let meta_item = text(format!("{}: {}", label, value))
-                .size(12)
-                .color(GRAY_500);
+            let meta_text = format!("{}: {}", label, value);
+            let meta_item = text(meta_text).size(12).style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted),
+            });
             header_row = header_row.push(meta_item);
             header_row = header_row.push(Space::new().width(SPACING_MD));
         }
@@ -132,14 +172,17 @@ impl<'a, M: Clone + 'a> PageHeader<'a, M> {
         container(header_row)
             .width(Length::Fill)
             .padding([SPACING_MD, SPACING_LG])
-            .style(|_| container::Style {
-                background: Some(GRAY_100.into()),
-                border: Border {
-                    width: 0.0,
-                    radius: 0.0.into(),
-                    color: GRAY_200,
-                },
-                ..Default::default()
+            .style(|theme: &Theme| {
+                let clinical = theme.clinical();
+                container::Style {
+                    background: Some(clinical.background_secondary.into()),
+                    border: Border {
+                        width: 0.0,
+                        radius: 0.0.into(),
+                        color: clinical.border_default,
+                    },
+                    ..Default::default()
+                }
             })
             .into()
     }

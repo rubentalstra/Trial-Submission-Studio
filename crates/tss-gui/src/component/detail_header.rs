@@ -6,7 +6,7 @@
 use iced::widget::{Space, column, container, row, text};
 use iced::{Alignment, Border, Color, Element, Length, Theme};
 
-use crate::theme::{GRAY_600, GRAY_900, SPACING_XS, WHITE};
+use crate::theme::{ClinicalColors, SPACING_XS};
 
 // =============================================================================
 // DETAIL HEADER
@@ -62,12 +62,19 @@ impl<'a, M: 'a> DetailHeader<'a, M> {
 
     /// Build the detail header element.
     pub fn view(self) -> Element<'a, M> {
-        let title_text = text(self.title).size(20).color(GRAY_900);
+        let title_text = self.title.clone();
+        let title_element = text(title_text)
+            .size(20)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text),
+            });
 
         let subtitle_el: Element<'a, M> = if let Some(sub) = self.subtitle {
             column![
                 Space::new().height(SPACING_XS),
-                text(sub).size(14).color(GRAY_600),
+                text(sub).size(14).style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_muted),
+                }),
             ]
             .into()
         } else {
@@ -79,7 +86,11 @@ impl<'a, M: 'a> DetailHeader<'a, M> {
                 row![
                     icon,
                     Space::new().width(SPACING_XS),
-                    text(badge_text).size(11).color(WHITE),
+                    text(badge_text)
+                        .size(11)
+                        .style(|theme: &Theme| text::Style {
+                            color: Some(theme.clinical().text_on_accent),
+                        }),
                 ]
                 .align_y(Alignment::Center),
             )
@@ -98,7 +109,7 @@ impl<'a, M: 'a> DetailHeader<'a, M> {
         };
 
         column![
-            row![title_text, Space::new().width(Length::Fill), badge_el,]
+            row![title_element, Space::new().width(Length::Fill), badge_el,]
                 .align_y(Alignment::Center),
             subtitle_el,
         ]

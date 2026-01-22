@@ -28,7 +28,7 @@ use iced::{Element, Size, Subscription, Task, Theme};
 
 use crate::message::{Message, SettingsCategory};
 use crate::state::{AppState, DialogType, Settings, ViewState};
-use crate::theme::clinical_light;
+use crate::theme::clinical_theme;
 use crate::view::dialog::third_party::ThirdPartyState;
 use crate::view::dialog::update::UpdateState;
 use crate::view::view_home;
@@ -324,6 +324,11 @@ impl App {
             // =================================================================
             // Global events
             // =================================================================
+            Message::SystemThemeChanged(mode) => {
+                self.state.system_is_dark = matches!(mode, iced::theme::Mode::Dark);
+                Task::none()
+            }
+
             Message::KeyPressed(key, modifiers) => self.handle_key_press(key, modifiers),
 
             Message::FolderSelected(path) => {
@@ -553,12 +558,16 @@ impl App {
 
     /// Get the theme for a specific window.
     pub fn theme(&self, _id: window::Id) -> Theme {
-        clinical_light()
+        clinical_theme(
+            self.state.theme_config.theme_mode,
+            self.state.theme_config.accessibility_mode,
+            self.state.system_is_dark,
+        )
     }
 
     /// Subscribe to runtime events.
     pub fn subscription(&self) -> Subscription<Message> {
-        use iced::time;
+        use iced::{system, time};
         use std::time::Duration;
 
         // Keyboard events
@@ -568,6 +577,9 @@ impl App {
             }
             _ => Message::Noop,
         });
+
+        // System theme changes (for ThemeMode::System)
+        let system_theme_sub = system::theme_changes().map(Message::SystemThemeChanged);
 
         // Native menu event polling (macOS only, polls every 50ms for responsiveness)
         #[cfg(target_os = "macos")]
@@ -590,7 +602,13 @@ impl App {
             Subscription::none()
         };
 
-        Subscription::batch([keyboard_sub, menu_sub, window_sub, toast_sub])
+        Subscription::batch([
+            keyboard_sub,
+            system_theme_sub,
+            menu_sub,
+            window_sub,
+            toast_sub,
+        ])
     }
 }
 

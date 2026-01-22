@@ -149,6 +149,9 @@ pub enum Message {
     // =========================================================================
     // Global events
     // =========================================================================
+    /// System theme mode changed (light/dark).
+    SystemThemeChanged(iced::theme::Mode),
+
     /// Keyboard event.
     KeyPressed(keyboard::Key, keyboard::Modifiers),
 

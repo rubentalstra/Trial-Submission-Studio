@@ -6,10 +6,7 @@ use iced::widget::{Space, button, container, row, text};
 use iced::{Alignment, Border, Element, Length, Padding, Theme};
 
 use crate::message::Message;
-use crate::theme::{
-    BORDER_RADIUS_MD, GRAY_200, GRAY_400, GRAY_500, GRAY_600, GRAY_800, SPACING_SM, SPACING_XS,
-    WHITE,
-};
+use crate::theme::{BORDER_RADIUS_MD, ClinicalColors, SPACING_SM, SPACING_XS};
 
 /// Render a menu item with optional icon and shortcut.
 pub fn view_menu_item<'a>(
@@ -19,18 +16,32 @@ pub fn view_menu_item<'a>(
     on_press: Option<Message>,
 ) -> Element<'a, Message> {
     let is_enabled = on_press.is_some();
-    let text_color = if is_enabled { GRAY_800 } else { GRAY_600 };
 
     let content = row![
         container(icon).width(20),
         Space::new().width(SPACING_XS),
-        text(label).size(13).color(text_color),
+        text(label).size(13).style(move |theme: &Theme| {
+            let color = if is_enabled {
+                theme.extended_palette().background.base.text
+            } else {
+                theme.clinical().text_muted
+            };
+            text::Style { color: Some(color) }
+        }),
         Space::new().width(Length::Fill),
     ]
     .align_y(Alignment::Center);
 
     let content = if let Some(shortcut) = shortcut {
-        row![content, text(shortcut).size(11).color(GRAY_600),].align_y(Alignment::Center)
+        row![
+            content,
+            text(shortcut).size(11).style(|theme: &Theme| {
+                text::Style {
+                    color: Some(theme.clinical().text_muted),
+                }
+            }),
+        ]
+        .align_y(Alignment::Center)
     } else {
         content
     };
@@ -38,7 +49,15 @@ pub fn view_menu_item<'a>(
     let btn = button(content)
         .padding([SPACING_XS, SPACING_SM])
         .width(Length::Fill)
-        .style(menu_item_style);
+        .style(|theme: &Theme, _status: button::Status| button::Style {
+            background: None,
+            text_color: theme.extended_palette().background.base.text,
+            border: Border {
+                radius: 4.0.into(),
+                ..Default::default()
+            },
+            ..Default::default()
+        });
 
     if let Some(msg) = on_press {
         btn.on_press(msg).into()
@@ -55,7 +74,11 @@ pub fn view_menu_item_disabled<'a>(
     let content = row![
         container(icon).width(20),
         Space::new().width(SPACING_XS),
-        text(label).size(13).color(GRAY_400),
+        text(label).size(13).style(|theme: &Theme| {
+            text::Style {
+                color: Some(theme.clinical().text_disabled),
+            }
+        }),
     ]
     .align_y(Alignment::Center);
 
@@ -67,16 +90,18 @@ pub fn view_menu_item_disabled<'a>(
 
 /// Render a menu label (non-clickable section header).
 pub fn view_menu_label<'a>(label: &'a str) -> Element<'a, Message> {
-    container(text(label).size(11).color(GRAY_500))
-        .padding([SPACING_XS, SPACING_SM])
-        .into()
+    container(text(label).size(11).style(|theme: &Theme| text::Style {
+        color: Some(theme.clinical().text_muted),
+    }))
+    .padding([SPACING_XS, SPACING_SM])
+    .into()
 }
 
 /// Render a menu separator line.
 pub fn view_separator<'a>() -> Element<'a, Message> {
     container(Space::new().width(Length::Fill).height(1))
-        .style(|_theme: &Theme| container::Style {
-            background: Some(GRAY_200.into()),
+        .style(|theme: &Theme| container::Style {
+            background: Some(theme.clinical().border_default.into()),
             ..Default::default()
         })
         .padding(Padding::from([SPACING_XS, 0.0]))
@@ -89,15 +114,15 @@ pub fn view_dropdown_container<'a>(
     _left_offset: f32,
 ) -> Element<'a, Message> {
     container(content)
-        .style(|_theme: &Theme| container::Style {
-            background: Some(WHITE.into()),
+        .style(|theme: &Theme| container::Style {
+            background: Some(theme.clinical().background_elevated.into()),
             border: Border {
-                color: GRAY_200,
+                color: theme.clinical().border_default,
                 width: 1.0,
                 radius: BORDER_RADIUS_MD.into(),
             },
             shadow: iced::Shadow {
-                color: iced::Color::from_rgba(0.0, 0.0, 0.0, 0.15),
+                color: theme.clinical().shadow,
                 offset: iced::Vector::new(0.0, 4.0),
                 blur_radius: 8.0,
             },
@@ -105,17 +130,4 @@ pub fn view_dropdown_container<'a>(
         })
         .padding(SPACING_XS)
         .into()
-}
-
-/// Style for menu items (transparent background, hover effects).
-fn menu_item_style(_theme: &Theme, _status: button::Status) -> button::Style {
-    button::Style {
-        background: None,
-        text_color: GRAY_800,
-        border: Border {
-            radius: 4.0.into(),
-            ..Default::default()
-        },
-        ..Default::default()
-    }
 }

@@ -4,12 +4,11 @@
 
 use iced::widget::{Space, button, column, container, row, svg, text};
 use iced::window;
-use iced::{Alignment, Border, Element, Length, Padding};
+use iced::{Alignment, Border, Element, Length, Padding, Theme};
 
 use crate::message::{AboutMessage, DialogMessage, Message};
 use crate::theme::{
-    GRAY_100, GRAY_200, GRAY_500, GRAY_700, GRAY_800, GRAY_900, PRIMARY_500, SPACING_LG,
-    SPACING_MD, SPACING_SM, SPACING_XL, WHITE, button_primary,
+    ClinicalColors, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XL, button_primary,
 };
 
 /// Embedded SVG logo bytes.
@@ -25,8 +24,8 @@ pub fn view_about_dialog_content<'a>(window_id: window::Id) -> Element<'a, Messa
     container(content)
         .width(Length::Fill)
         .height(Length::Fill)
-        .style(|_| container::Style {
-            background: Some(WHITE.into()),
+        .style(|theme: &Theme| container::Style {
+            background: Some(theme.clinical().background_elevated.into()),
             ..Default::default()
         })
         .into()
@@ -45,47 +44,79 @@ fn view_dialog_content_inner<'a>(window_id: Option<window::Id>) -> Element<'a, M
     });
 
     // Title
-    let title = text("Trial Submission Studio").size(20).color(GRAY_900);
+    let title = text("Trial Submission Studio")
+        .size(20)
+        .style(|theme: &Theme| text::Style {
+            color: Some(theme.extended_palette().background.base.text),
+        });
 
     // Version
     let version_line = text(format!("Version {}", VERSION))
         .size(13)
-        .color(GRAY_500);
+        .style(|theme: &Theme| text::Style {
+            color: Some(theme.clinical().text_muted),
+        });
 
     // Build number (derived from version)
     let build_line = text(format!("Build {}", get_build_number()))
         .size(13)
-        .color(GRAY_500);
+        .style(|theme: &Theme| text::Style {
+            color: Some(theme.clinical().text_muted),
+        });
 
     // Target architecture
-    let target_info = text(get_target_triple()).size(13).color(GRAY_500);
+    let target_info = text(get_target_triple())
+        .size(13)
+        .style(|theme: &Theme| text::Style {
+            color: Some(theme.clinical().text_muted),
+        });
 
     // "Powered by open-source software" with link
-    let powered_label = text("Powered by ").size(13).color(GRAY_700);
-    let open_source_link = button(text("open-source software").size(13).color(PRIMARY_500))
-        .on_press(Message::Dialog(DialogMessage::About(
-            AboutMessage::OpenOpenSource,
-        )))
-        .padding(0)
-        .style(|_, _| button::Style {
-            background: None,
-            text_color: PRIMARY_500,
-            ..Default::default()
+    let powered_label = text("Powered by ")
+        .size(13)
+        .style(|theme: &Theme| text::Style {
+            color: Some(theme.clinical().text_secondary),
         });
+    let open_source_link = button(
+        text("open-source software")
+            .size(13)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().primary.base.color),
+            }),
+    )
+    .on_press(Message::Dialog(DialogMessage::About(
+        AboutMessage::OpenOpenSource,
+    )))
+    .padding(0)
+    .style(|theme: &Theme, _| button::Style {
+        background: None,
+        text_color: theme.extended_palette().primary.base.color,
+        ..Default::default()
+    });
     let powered_row = row![powered_label, open_source_link].align_y(Alignment::Center);
 
     // Copyright with link on author name
-    let copyright_label = text("Copyright © 2024–2026 ").size(13).color(GRAY_700);
-    let author_link = button(text("Ruben Talstra").size(13).color(PRIMARY_500))
-        .on_press(Message::Dialog(DialogMessage::About(
-            AboutMessage::OpenGitHub,
-        )))
-        .padding(0)
-        .style(|_, _| button::Style {
-            background: None,
-            text_color: PRIMARY_500,
-            ..Default::default()
+    let copyright_label = text("Copyright © 2024–2026 ")
+        .size(13)
+        .style(|theme: &Theme| text::Style {
+            color: Some(theme.clinical().text_secondary),
         });
+    let author_link = button(
+        text("Ruben Talstra")
+            .size(13)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().primary.base.color),
+            }),
+    )
+    .on_press(Message::Dialog(DialogMessage::About(
+        AboutMessage::OpenGitHub,
+    )))
+    .padding(0)
+    .style(|theme: &Theme, _| button::Style {
+        background: None,
+        text_color: theme.extended_palette().primary.base.color,
+        ..Default::default()
+    });
     let copyright_row = row![copyright_label, author_link].align_y(Alignment::Center);
 
     // Right side content
@@ -135,15 +166,15 @@ fn view_footer<'a>(window_id: Option<window::Id>) -> Element<'a, Message> {
             Message::Dialog(DialogMessage::About(AboutMessage::Close))
         })
         .padding([SPACING_SM, SPACING_LG])
-        .style(|theme, status| {
+        .style(|theme: &Theme, status| {
             let base = button::secondary(theme, status);
             button::Style {
-                background: Some(GRAY_100.into()),
-                text_color: GRAY_800,
+                background: Some(theme.clinical().background_secondary.into()),
+                text_color: theme.extended_palette().background.base.text,
                 border: Border {
                     radius: 6.0.into(),
                     width: 1.0,
-                    color: GRAY_200,
+                    color: theme.clinical().border_default,
                 },
                 ..base
             }

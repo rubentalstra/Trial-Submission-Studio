@@ -19,9 +19,8 @@ use iced_fonts::lucide;
 
 use crate::message::{DialogMessage, Message, UpdateMessage};
 use crate::theme::{
-    BORDER_RADIUS_SM, ERROR, GRAY_100, GRAY_200, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800,
-    GRAY_900, PRIMARY_500, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS, SUCCESS, WARNING, WHITE,
-    button_ghost, button_primary, button_secondary,
+    BORDER_RADIUS_SM, ClinicalColors, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS, button_ghost,
+    button_primary, button_secondary,
 };
 
 /// Current application version.
@@ -255,11 +254,11 @@ pub enum UpdateState {
 // =============================================================================
 
 /// Render the update dialog content for a standalone window.
-pub fn view_update_dialog_content(
-    state: &UpdateState,
+pub fn view_update_dialog_content<'a>(
+    state: &'a UpdateState,
     window_id: window::Id,
-) -> Element<'_, Message> {
-    let content: Element<'_, Message> = match state {
+) -> Element<'a, Message> {
+    let content: Element<'a, Message> = match state {
         UpdateState::Checking => view_checking(window_id),
         UpdateState::Available {
             info,
@@ -287,8 +286,8 @@ pub fn view_update_dialog_content(
         .width(Length::Fill)
         .height(Length::Fill)
         .padding(SPACING_LG)
-        .style(|_| container::Style {
-            background: Some(WHITE.into()),
+        .style(|theme: &Theme| container::Style {
+            background: Some(theme.clinical().background_elevated.into()),
             ..Default::default()
         })
         .into()
@@ -300,7 +299,10 @@ pub fn view_update_dialog_content(
 
 /// Checking state - initial state with spinner.
 fn view_checking(window_id: window::Id) -> Element<'static, Message> {
-    let spinner = lucide::loader().size(48).color(PRIMARY_500);
+    let spinner = container(lucide::loader().size(48)).style(|theme: &Theme| container::Style {
+        text_color: Some(theme.extended_palette().primary.base.color),
+        ..Default::default()
+    });
 
     let cancel_btn = button(text("Cancel").size(13))
         .on_press(Message::CloseWindow(window_id))
@@ -313,12 +315,16 @@ fn view_checking(window_id: window::Id) -> Element<'static, Message> {
         Space::new().height(SPACING_MD),
         text("Checking for Updates...")
             .size(18)
-            .color(GRAY_800)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text)
+            })
             .center(),
         Space::new().height(SPACING_XS),
         text(format!("Current version: {}", CURRENT_VERSION))
             .size(13)
-            .color(GRAY_500)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted)
+            })
             .center(),
         Space::new().height(SPACING_LG),
         Space::new().height(SPACING_LG),
@@ -341,11 +347,15 @@ fn view_available<'a>(
     let header = column![
         text(format!("Version {} Available", info.version_display()))
             .size(20)
-            .color(GRAY_900),
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text)
+            }),
         Space::new().height(SPACING_XS),
         text(format!("You have version {}", CURRENT_VERSION))
             .size(13)
-            .color(GRAY_500),
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted)
+            }),
     ]
     .align_x(Alignment::Center);
 
@@ -409,14 +419,24 @@ fn view_collapsible_changelog<'a>(
     expanded: bool,
 ) -> Element<'a, Message> {
     let chevron = if expanded {
-        lucide::chevron_up().size(16).color(GRAY_600)
+        container(lucide::chevron_up().size(16)).style(|theme: &Theme| container::Style {
+            text_color: Some(theme.clinical().text_secondary),
+            ..Default::default()
+        })
     } else {
-        lucide::chevron_down().size(16).color(GRAY_600)
+        container(lucide::chevron_down().size(16)).style(|theme: &Theme| container::Style {
+            text_color: Some(theme.clinical().text_secondary),
+            ..Default::default()
+        })
     };
 
     let header_btn = button(
         row![
-            text("Release Notes").size(14).color(GRAY_700),
+            text("Release Notes")
+                .size(14)
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_secondary)
+                }),
             Space::new().width(Length::Fill),
             chevron,
         ]
@@ -428,7 +448,7 @@ fn view_collapsible_changelog<'a>(
     )))
     .padding([SPACING_SM, SPACING_MD])
     .width(Length::Fill)
-    .style(|theme, status| {
+    .style(|theme: &Theme, status| {
         let mut style = button_secondary(theme, status);
         style.border.radius = BORDER_RADIUS_SM.into();
         style
@@ -450,10 +470,10 @@ fn view_collapsible_changelog<'a>(
         let changelog_container =
             container(changelog_view)
                 .width(Length::Fill)
-                .style(|_| container::Style {
-                    background: Some(GRAY_100.into()),
+                .style(|theme: &Theme| container::Style {
+                    background: Some(theme.clinical().background_secondary.into()),
                     border: iced::Border {
-                        color: GRAY_200,
+                        color: theme.clinical().border_default,
                         width: 1.0,
                         radius: BORDER_RADIUS_SM.into(),
                     },
@@ -471,7 +491,10 @@ fn view_collapsible_changelog<'a>(
 
 /// Up to date state.
 fn view_up_to_date(window_id: window::Id) -> Element<'static, Message> {
-    let icon = lucide::circle_check().size(48).color(SUCCESS);
+    let icon = container(lucide::circle_check().size(48)).style(|theme: &Theme| container::Style {
+        text_color: Some(theme.extended_palette().success.base.color),
+        ..Default::default()
+    });
 
     let close_btn = button(text("Close").size(13))
         .on_press(Message::CloseWindow(window_id))
@@ -482,14 +505,21 @@ fn view_up_to_date(window_id: window::Id) -> Element<'static, Message> {
         Space::new().height(SPACING_LG),
         center(icon).width(Length::Fill),
         Space::new().height(SPACING_MD),
-        text("You're Up to Date").size(20).color(GRAY_900).center(),
+        text("You're Up to Date")
+            .size(20)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text)
+            })
+            .center(),
         Space::new().height(SPACING_XS),
         text(format!(
             "Version {} is the latest version.",
             CURRENT_VERSION
         ))
         .size(13)
-        .color(GRAY_500)
+        .style(|theme: &Theme| text::Style {
+            color: Some(theme.clinical().text_muted)
+        })
         .center(),
         Space::new().height(SPACING_LG),
         Space::new().height(SPACING_LG),
@@ -512,30 +542,43 @@ fn view_downloading<'a>(
 
     let percentage_text = text(format!("{}%", percentage))
         .size(32)
-        .color(PRIMARY_500)
+        .style(|theme: &Theme| text::Style {
+            color: Some(theme.extended_palette().primary.base.color),
+        })
         .center();
 
     let title = text(format!("Downloading {}", info.version_display()))
         .size(18)
-        .color(GRAY_800)
+        .style(|theme: &Theme| text::Style {
+            color: Some(theme.extended_palette().background.base.text),
+        })
         .center();
 
     // Progress bar
-    let progress = progress_bar(0.0..=1.0, stats.fraction()).style(|_| progress_bar::Style {
-        background: GRAY_200.into(),
-        bar: PRIMARY_500.into(),
-        border: iced::Border {
-            radius: 4.0.into(),
-            width: 0.0,
-            color: iced::Color::TRANSPARENT,
-        },
-    });
+    let progress =
+        progress_bar(0.0..=1.0, stats.fraction()).style(|theme: &Theme| progress_bar::Style {
+            background: theme.clinical().border_default.into(),
+            bar: theme.extended_palette().primary.base.color.into(),
+            border: iced::Border {
+                radius: 4.0.into(),
+                width: 0.0,
+                color: iced::Color::TRANSPARENT,
+            },
+        });
 
     // Stats row
     let stats_row = row![
-        text(stats.size_display()).size(12).color(GRAY_500),
+        text(stats.size_display())
+            .size(12)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted)
+            }),
         Space::new().width(Length::Fill),
-        text(stats.speed_display()).size(12).color(GRAY_500),
+        text(stats.speed_display())
+            .size(12)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted)
+            }),
     ]
     .width(Length::Fill);
 
@@ -544,7 +587,9 @@ fn view_downloading<'a>(
     let eta_row = if !eta.is_empty() {
         row![
             Space::new().width(Length::Fill),
-            text(eta).size(12).color(GRAY_500),
+            text(eta).size(12).style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted)
+            }),
         ]
         .width(Length::Fill)
     } else {
@@ -589,9 +634,24 @@ fn view_ready_to_install<'a>(
 ) -> Element<'a, Message> {
     // Large icon based on verification status
     let icon: Element<'a, Message> = match verified {
-        None => lucide::shield_check().size(48).color(PRIMARY_500).into(), // Verifying
-        Some(true) => lucide::shield_check().size(48).color(SUCCESS).into(), // Verified
-        Some(false) => lucide::shield_alert().size(48).color(WARNING).into(), // Unverified
+        None => container(lucide::shield_check().size(48))
+            .style(|theme: &Theme| container::Style {
+                text_color: Some(theme.extended_palette().primary.base.color),
+                ..Default::default()
+            })
+            .into(), // Verifying
+        Some(true) => container(lucide::shield_check().size(48))
+            .style(|theme: &Theme| container::Style {
+                text_color: Some(theme.extended_palette().success.base.color),
+                ..Default::default()
+            })
+            .into(), // Verified
+        Some(false) => container(lucide::shield_alert().size(48))
+            .style(|theme: &Theme| container::Style {
+                text_color: Some(theme.extended_palette().warning.base.color),
+                ..Default::default()
+            })
+            .into(), // Unverified
     };
 
     // Verification status badge with styled container
@@ -600,17 +660,24 @@ fn view_ready_to_install<'a>(
             // Verifying in progress
             container(
                 row![
-                    lucide::loader().size(16).color(PRIMARY_500),
+                    container(lucide::loader().size(16)).style(|theme: &Theme| container::Style {
+                        text_color: Some(theme.extended_palette().primary.base.color),
+                        ..Default::default()
+                    }),
                     Space::new().width(SPACING_XS),
-                    text("Verifying Download...").size(14).color(PRIMARY_500),
+                    text("Verifying Download...")
+                        .size(14)
+                        .style(|theme: &Theme| text::Style {
+                            color: Some(theme.extended_palette().primary.base.color)
+                        }),
                 ]
                 .align_y(Alignment::Center),
             )
             .padding([SPACING_SM, SPACING_MD])
-            .style(|_| container::Style {
-                background: Some(iced::Color::from_rgb(0.93, 0.95, 1.0).into()), // Light blue
+            .style(|theme: &Theme| container::Style {
+                background: Some(theme.clinical().status_info_light.into()),
                 border: iced::Border {
-                    color: PRIMARY_500,
+                    color: theme.extended_palette().primary.base.color,
                     width: 1.0,
                     radius: BORDER_RADIUS_SM.into(),
                 },
@@ -624,38 +691,66 @@ fn view_ready_to_install<'a>(
             } else {
                 "Unverified Download"
             };
-            let badge_color = if is_verified { SUCCESS } else { WARNING };
-            let badge_bg = if is_verified {
-                iced::Color::from_rgb(0.9, 1.0, 0.9) // Light green
-            } else {
-                iced::Color::from_rgb(1.0, 0.98, 0.9) // Light yellow
-            };
 
-            let badge_icon: Element<'a, Message> = if is_verified {
-                lucide::shield_check().size(16).color(badge_color).into()
+            if is_verified {
+                container(
+                    row![
+                        container(lucide::shield_check().size(16)).style(|theme: &Theme| {
+                            container::Style {
+                                text_color: Some(theme.extended_palette().success.base.color),
+                                ..Default::default()
+                            }
+                        }),
+                        Space::new().width(SPACING_XS),
+                        text(badge_text)
+                            .size(14)
+                            .style(|theme: &Theme| text::Style {
+                                color: Some(theme.extended_palette().success.base.color)
+                            }),
+                    ]
+                    .align_y(Alignment::Center),
+                )
+                .padding([SPACING_SM, SPACING_MD])
+                .style(|theme: &Theme| container::Style {
+                    background: Some(theme.clinical().status_success_light.into()),
+                    border: iced::Border {
+                        color: theme.extended_palette().success.base.color,
+                        width: 1.0,
+                        radius: BORDER_RADIUS_SM.into(),
+                    },
+                    ..Default::default()
+                })
+                .into()
             } else {
-                lucide::shield_alert().size(16).color(badge_color).into()
-            };
-
-            container(
-                row![
-                    badge_icon,
-                    Space::new().width(SPACING_XS),
-                    text(badge_text).size(14).color(badge_color),
-                ]
-                .align_y(Alignment::Center),
-            )
-            .padding([SPACING_SM, SPACING_MD])
-            .style(move |_| container::Style {
-                background: Some(badge_bg.into()),
-                border: iced::Border {
-                    color: badge_color,
-                    width: 1.0,
-                    radius: BORDER_RADIUS_SM.into(),
-                },
-                ..Default::default()
-            })
-            .into()
+                container(
+                    row![
+                        container(lucide::shield_alert().size(16)).style(|theme: &Theme| {
+                            container::Style {
+                                text_color: Some(theme.extended_palette().warning.base.color),
+                                ..Default::default()
+                            }
+                        }),
+                        Space::new().width(SPACING_XS),
+                        text(badge_text)
+                            .size(14)
+                            .style(|theme: &Theme| text::Style {
+                                color: Some(theme.extended_palette().warning.base.color)
+                            }),
+                    ]
+                    .align_y(Alignment::Center),
+                )
+                .padding([SPACING_SM, SPACING_MD])
+                .style(|theme: &Theme| container::Style {
+                    background: Some(theme.clinical().status_warning_light.into()),
+                    border: iced::Border {
+                        color: theme.extended_palette().warning.base.color,
+                        width: 1.0,
+                        radius: BORDER_RADIUS_SM.into(),
+                    },
+                    ..Default::default()
+                })
+                .into()
+            }
         }
     };
 
@@ -690,18 +785,27 @@ fn view_ready_to_install<'a>(
         Space::new().height(SPACING_LG),
         center(icon).width(Length::Fill),
         Space::new().height(SPACING_MD),
-        text("Ready to Install").size(20).color(GRAY_900).center(),
+        text("Ready to Install")
+            .size(20)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text)
+            })
+            .center(),
         Space::new().height(SPACING_XS),
         text(format!("Version {}", info.version_display()))
             .size(14)
-            .color(GRAY_700)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_secondary)
+            })
             .center(),
         Space::new().height(SPACING_MD),
         center(verification_badge).width(Length::Fill),
         Space::new().height(SPACING_MD),
         text("The application will restart after installation.")
             .size(13)
-            .color(GRAY_500)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted)
+            })
             .center(),
         Space::new().height(SPACING_LG),
         row![Space::new().width(Length::Fill), cancel_btn, install_btn].spacing(SPACING_SM),
@@ -715,7 +819,10 @@ fn view_ready_to_install<'a>(
 
 /// Installing state - brief indicator.
 fn view_installing<'a>(info: &'a tss_updater::UpdateInfo) -> Element<'a, Message> {
-    let icon = lucide::loader().size(48).color(PRIMARY_500);
+    let icon = container(lucide::loader().size(48)).style(|theme: &Theme| container::Style {
+        text_color: Some(theme.extended_palette().primary.base.color),
+        ..Default::default()
+    });
 
     let content = column![
         Space::new().height(SPACING_LG),
@@ -723,17 +830,23 @@ fn view_installing<'a>(info: &'a tss_updater::UpdateInfo) -> Element<'a, Message
         Space::new().height(SPACING_MD),
         text("Installing Update...")
             .size(18)
-            .color(GRAY_800)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text)
+            })
             .center(),
         Space::new().height(SPACING_XS),
         text(format!("Installing version {}", info.version_display()))
             .size(13)
-            .color(GRAY_500)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted)
+            })
             .center(),
         Space::new().height(SPACING_XS),
         text("Please wait, do not close the application.")
             .size(12)
-            .color(GRAY_400)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_disabled)
+            })
             .center(),
         Space::new().height(SPACING_LG),
     ]
@@ -745,8 +858,11 @@ fn view_installing<'a>(info: &'a tss_updater::UpdateInfo) -> Element<'a, Message
 }
 
 /// Complete state - restart required.
-fn view_complete(version: &str) -> Element<'_, Message> {
-    let icon = lucide::circle_check().size(48).color(SUCCESS);
+fn view_complete(version: &str) -> Element<'static, Message> {
+    let icon = container(lucide::circle_check().size(48)).style(|theme: &Theme| container::Style {
+        text_color: Some(theme.extended_palette().success.base.color),
+        ..Default::default()
+    });
 
     let restart_btn = button(
         row![
@@ -766,16 +882,25 @@ fn view_complete(version: &str) -> Element<'_, Message> {
         Space::new().height(SPACING_LG),
         center(icon).width(Length::Fill),
         Space::new().height(SPACING_MD),
-        text("Update Installed").size(20).color(GRAY_900).center(),
+        text("Update Installed")
+            .size(20)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text)
+            })
+            .center(),
         Space::new().height(SPACING_SM),
         text(format!("Version {} installed successfully.", version))
             .size(13)
-            .color(GRAY_500)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted)
+            })
             .center(),
         Space::new().height(SPACING_XS),
         text("Restart to start using it.")
             .size(13)
-            .color(GRAY_500)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted)
+            })
             .center(),
         Space::new().height(SPACING_LG),
         center(restart_btn).width(Length::Fill),
@@ -793,22 +918,30 @@ fn view_error(
     error: &UpdateErrorInfo,
     can_retry: bool,
     window_id: window::Id,
-) -> Element<'_, Message> {
-    let icon = lucide::circle_x().size(48).color(ERROR);
+) -> Element<'static, Message> {
+    let icon = container(lucide::circle_x().size(48)).style(|theme: &Theme| container::Style {
+        text_color: Some(theme.extended_palette().danger.base.color),
+        ..Default::default()
+    });
 
-    let mut content_items: Vec<Element<'_, Message>> = vec![
+    let error_message = error.message.clone();
+    let mut content_items: Vec<Element<'static, Message>> = vec![
         Space::new().height(SPACING_LG).into(),
         center(icon).width(Length::Fill).into(),
         Space::new().height(SPACING_MD).into(),
         text("Update Failed")
             .size(18)
-            .color(GRAY_900)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text),
+            })
             .center()
             .into(),
         Space::new().height(SPACING_SM).into(),
-        text(&error.message)
+        text(error_message)
             .size(13)
-            .color(GRAY_600)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_secondary),
+            })
             .center()
             .into(),
     ];
@@ -816,20 +949,28 @@ fn view_error(
     // Suggestion box
     if let Some(suggestion) = &error.suggestion {
         content_items.push(Space::new().height(SPACING_MD).into());
+        let suggestion_text = suggestion.clone();
         let suggestion_box = container(
             row![
-                lucide::lightbulb().size(14).color(WARNING),
+                container(lucide::lightbulb().size(14)).style(|theme: &Theme| container::Style {
+                    text_color: Some(theme.extended_palette().warning.base.color),
+                    ..Default::default()
+                }),
                 Space::new().width(SPACING_SM),
-                text(suggestion).size(12).color(GRAY_700),
+                text(suggestion_text)
+                    .size(12)
+                    .style(|theme: &Theme| text::Style {
+                        color: Some(theme.clinical().text_secondary)
+                    }),
             ]
             .align_y(Alignment::Center),
         )
         .padding(SPACING_SM)
         .width(Length::Fill)
-        .style(|_| container::Style {
-            background: Some(iced::Color::from_rgb(1.0, 0.98, 0.9).into()),
+        .style(|theme: &Theme| container::Style {
+            background: Some(theme.clinical().status_warning_light.into()),
             border: iced::Border {
-                color: WARNING,
+                color: theme.extended_palette().warning.base.color,
                 width: 1.0,
                 radius: BORDER_RADIUS_SM.into(),
             },
@@ -843,9 +984,18 @@ fn view_error(
         content_items.push(Space::new().height(SPACING_SM).into());
         let link_btn = button(
             row![
-                lucide::external_link().size(12).color(PRIMARY_500),
+                container(lucide::external_link().size(12)).style(|theme: &Theme| {
+                    container::Style {
+                        text_color: Some(theme.extended_palette().primary.base.color),
+                        ..Default::default()
+                    }
+                }),
                 Space::new().width(4),
-                text("Download manually").size(12).color(PRIMARY_500),
+                text("Download manually")
+                    .size(12)
+                    .style(|theme: &Theme| text::Style {
+                        color: Some(theme.extended_palette().primary.base.color)
+                    }),
             ]
             .align_y(Alignment::Center),
         )

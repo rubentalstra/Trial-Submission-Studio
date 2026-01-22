@@ -530,18 +530,26 @@ impl Default for ValidationRuleSettings {
 // DISPLAY SETTINGS
 // =============================================================================
 
+use crate::theme::palette::{AccessibilityMode, ThemeMode};
+
 /// Display settings for the UI.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct DisplaySettings {
     /// Number of rows to show in data preview.
     pub preview_rows_per_page: usize,
+    /// Theme mode (light/dark/system).
+    pub theme_mode: ThemeMode,
+    /// Color vision accessibility mode.
+    pub accessibility_mode: AccessibilityMode,
 }
 
 impl Default for DisplaySettings {
     fn default() -> Self {
         Self {
             preview_rows_per_page: 50,
+            theme_mode: ThemeMode::Light,
+            accessibility_mode: AccessibilityMode::Standard,
         }
     }
 }

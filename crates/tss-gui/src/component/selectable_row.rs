@@ -11,25 +11,23 @@
 //!
 //! SelectableRow::new("STUDYID", Message::Selected(0))
 //!     .secondary("Study Identifier")
-//!     .leading(lucide::check().size(12).color(SUCCESS))
+//!     .leading(lucide::check().size(12).color(colors().status_success))
 //!     .trailing(core_badge(CoreDesignation::Required))
 //!     .selected(idx == selected_idx)
 //!     .view()
 //! ```
 
-use iced::widget::{Space, button, column, row, text};
-use iced::{Alignment, Border, Element, Length};
+use iced::widget::{Space, button, column, container, row, text};
+use iced::{Alignment, Border, Element, Length, Theme};
+use iced_fonts::lucide;
 
-use crate::theme::{
-    BORDER_RADIUS_SM, GRAY_100, GRAY_200, GRAY_500, GRAY_800, GRAY_900, PRIMARY_100, PRIMARY_500,
-    SPACING_SM, SPACING_XS,
-};
+use crate::theme::{BORDER_RADIUS_SM, ClinicalColors, SPACING_SM, SPACING_XS};
 
 // =============================================================================
 // SELECTABLE ROW
 // =============================================================================
 
-/// A selectable row for master lists with hover/selection states.
+/// A selectable row for master lists with hover/selection states and accessibility support.
 pub struct SelectableRow<'a, M> {
     primary: String,
     secondary: Option<String>,
@@ -79,6 +77,7 @@ impl<'a, M: Clone + 'a> SelectableRow<'a, M> {
     /// Build the element.
     pub fn view(self) -> Element<'a, M> {
         let is_selected = self.selected;
+        let primary_text = self.primary.clone();
 
         // Build content
         let mut content_row = row![].spacing(SPACING_SM).align_y(Alignment::Center);
@@ -90,14 +89,28 @@ impl<'a, M: Clone + 'a> SelectableRow<'a, M> {
 
         // Text section
         let text_section: Element<'a, M> = if let Some(secondary) = self.secondary {
+            let secondary_text = secondary.clone();
             column![
-                text(self.primary).size(13).color(GRAY_900),
-                text(secondary).size(11).color(GRAY_500),
+                text(primary_text)
+                    .size(13)
+                    .style(|theme: &Theme| text::Style {
+                        color: Some(theme.extended_palette().background.base.text),
+                    }),
+                text(secondary_text)
+                    .size(11)
+                    .style(|theme: &Theme| text::Style {
+                        color: Some(theme.clinical().text_muted),
+                    }),
             ]
             .spacing(2.0)
             .into()
         } else {
-            text(self.primary).size(13).color(GRAY_900).into()
+            text(primary_text)
+                .size(13)
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.extended_palette().background.base.text),
+                })
+                .into()
         };
         content_row = content_row.push(text_section);
 
@@ -113,20 +126,27 @@ impl<'a, M: Clone + 'a> SelectableRow<'a, M> {
         button(content_row.padding([SPACING_SM, SPACING_SM]))
             .on_press(self.on_click)
             .width(Length::Fill)
-            .style(move |_, status| {
+            .style(move |theme: &Theme, status| {
+                let clinical = theme.clinical();
                 let bg = if is_selected {
-                    Some(PRIMARY_100.into())
+                    Some(clinical.accent_primary_light.into())
                 } else {
                     match status {
-                        iced::widget::button::Status::Hovered => Some(GRAY_100.into()),
+                        iced::widget::button::Status::Hovered => {
+                            Some(clinical.background_secondary.into())
+                        }
                         _ => None,
                     }
                 };
-                let border_color = if is_selected { PRIMARY_500 } else { GRAY_200 };
+                let border_color = if is_selected {
+                    theme.extended_palette().primary.base.color
+                } else {
+                    clinical.border_default
+                };
 
                 iced::widget::button::Style {
                     background: bg,
-                    text_color: GRAY_800,
+                    text_color: theme.extended_palette().background.base.text,
                     border: Border {
                         radius: BORDER_RADIUS_SM.into(),
                         color: border_color,
@@ -143,7 +163,7 @@ impl<'a, M: Clone + 'a> SelectableRow<'a, M> {
 // DOMAIN LIST ITEM
 // =============================================================================
 
-/// Specialized list item for domain overview.
+/// Specialized list item for domain overview with accessibility support.
 ///
 /// Combines domain badge + status icon + name + row count.
 pub struct DomainListItem<M> {
@@ -191,24 +211,39 @@ impl<M: Clone> DomainListItem<M> {
     where
         M: 'a,
     {
-        use crate::theme::{PRIMARY_500, SUCCESS, WARNING, WHITE};
-        use iced::widget::container;
-        use iced_fonts::lucide;
+        let is_complete = self.is_complete;
+        let is_touched = self.is_touched;
+        let code = self.code;
+        let display_name = self.display_name;
+        let row_count = self.row_count;
 
         // Status icon
-        let status_icon: Element<'a, M> = if self.is_complete {
-            lucide::circle_check().size(14).color(SUCCESS).into()
-        } else if self.is_touched {
-            lucide::pencil().size(14).color(WARNING).into()
+        let status_icon: Element<'a, M> = if is_complete {
+            container(lucide::circle_check().size(14)).style(|theme: &Theme| container::Style {
+                text_color: Some(theme.extended_palette().success.base.color),
+                ..Default::default()
+            })
+        } else if is_touched {
+            container(lucide::pencil().size(14)).style(|theme: &Theme| container::Style {
+                text_color: Some(theme.extended_palette().warning.base.color),
+                ..Default::default()
+            })
         } else {
-            lucide::circle().size(14).color(GRAY_500).into()
-        };
+            container(lucide::circle().size(14)).style(|theme: &Theme| container::Style {
+                text_color: Some(theme.clinical().text_muted),
+                ..Default::default()
+            })
+        }
+        .into();
 
-        // Domain badge (inline to avoid lifetime issues with owned string)
-        let badge: Element<'a, M> = container(text(self.code).size(14).color(WHITE))
+        // Domain badge
+        let badge: Element<'a, M> =
+            container(text(code).size(14).style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_on_accent),
+            }))
             .padding([4.0, 12.0])
-            .style(|_| container::Style {
-                background: Some(PRIMARY_500.into()),
+            .style(|theme: &Theme| container::Style {
+                background: Some(theme.extended_palette().primary.base.color.into()),
                 border: Border {
                     radius: 4.0.into(),
                     ..Default::default()
@@ -223,11 +258,17 @@ impl<M: Clone> DomainListItem<M> {
             Space::new().width(SPACING_XS),
             badge,
             Space::new().width(SPACING_SM),
-            text(self.display_name).size(14).color(GRAY_800),
+            text(display_name)
+                .size(14)
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.extended_palette().background.base.text),
+                }),
             Space::new().width(Length::Fill),
-            text(format!("{} rows", self.row_count))
+            text(format!("{} rows", row_count))
                 .size(12)
-                .color(GRAY_500),
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_muted),
+                }),
         ]
         .align_y(Alignment::Center)
         .padding([SPACING_SM, SPACING_SM]);
@@ -235,14 +276,17 @@ impl<M: Clone> DomainListItem<M> {
         button(content)
             .on_press(self.on_click)
             .width(Length::Fill)
-            .style(|_, status| {
+            .style(|theme: &Theme, status| {
+                let clinical = theme.clinical();
                 let bg = match status {
-                    iced::widget::button::Status::Hovered => Some(GRAY_100.into()),
+                    iced::widget::button::Status::Hovered => {
+                        Some(clinical.background_secondary.into())
+                    }
                     _ => None,
                 };
                 iced::widget::button::Style {
                     background: bg,
-                    text_color: GRAY_800,
+                    text_color: theme.extended_palette().background.base.text,
                     border: Border {
                         radius: BORDER_RADIUS_SM.into(),
                         ..Default::default()

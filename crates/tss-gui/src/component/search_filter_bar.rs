@@ -4,12 +4,9 @@
 //! Used across mapping, normalization, and SUPP tabs.
 
 use iced::widget::{Space, button, column, row, text, text_input};
-use iced::{Alignment, Border, Element, Length, Theme};
+use iced::{Alignment, Border, Color, Element, Length, Theme};
 
-use crate::theme::{
-    BORDER_RADIUS_SM, GRAY_500, GRAY_600, PRIMARY_100, PRIMARY_500, SPACING_SM, SPACING_XS,
-    button_secondary,
-};
+use crate::theme::{BORDER_RADIUS_SM, ClinicalColors, SPACING_SM, SPACING_XS, button_secondary};
 
 // =============================================================================
 // FILTER TOGGLE
@@ -49,12 +46,17 @@ impl<M: Clone + 'static> FilterToggle<M> {
             .padding([4.0, 8.0])
             .style(move |theme: &Theme, status| {
                 if active {
+                    let accent_primary = theme.extended_palette().primary.base.color;
+                    let accent_light = Color {
+                        a: 0.15,
+                        ..accent_primary
+                    };
                     iced::widget::button::Style {
-                        background: Some(PRIMARY_100.into()),
-                        text_color: PRIMARY_500,
+                        background: Some(accent_light.into()),
+                        text_color: accent_primary,
                         border: Border {
                             radius: BORDER_RADIUS_SM.into(),
-                            color: PRIMARY_500,
+                            color: accent_primary,
                             width: 1.0,
                         },
                         ..Default::default()
@@ -153,9 +155,15 @@ impl<M: Clone + 'static> SearchFilterBar<M> {
             };
 
             row![
-                text(num_part).size(12).color(GRAY_600),
+                text(num_part).size(12).style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_secondary),
+                }),
                 Space::new().width(4.0),
-                text(label_part).size(11).color(GRAY_500),
+                text(label_part)
+                    .size(11)
+                    .style(|theme: &Theme| text::Style {
+                        color: Some(theme.clinical().text_muted),
+                    }),
             ]
             .align_y(Alignment::Center)
             .into()

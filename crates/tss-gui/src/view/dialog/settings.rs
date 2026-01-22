@@ -7,7 +7,7 @@ use iced::widget::{
     toggler,
 };
 use iced::window;
-use iced::{Alignment, Border, Color, Element, Length};
+use iced::{Alignment, Border, Color, Element, Length, Theme};
 use iced_fonts::lucide;
 
 use crate::message::{
@@ -17,8 +17,8 @@ use crate::message::{
 };
 use crate::state::{ExportFormat, Settings, XptVersion};
 use crate::theme::{
-    GRAY_100, GRAY_500, GRAY_700, GRAY_800, GRAY_900, PRIMARY_100, SPACING_LG, SPACING_MD,
-    SPACING_SM, SPACING_XL, SPACING_XS, button_primary,
+    AccessibilityMode, ClinicalColors, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XL, SPACING_XS,
+    ThemeConfig, ThemeMode, button_primary,
 };
 
 /// Width of the category sidebar.
@@ -27,30 +27,30 @@ const SIDEBAR_WIDTH: f32 = 200.0;
 /// Render the Settings dialog content for a standalone window (multi-window mode).
 ///
 /// This is the content that appears in a separate dialog window.
-pub fn view_settings_dialog_content(
-    settings: &Settings,
+pub fn view_settings_dialog_content<'a>(
+    settings: &'a Settings,
     active_category: SettingsCategory,
     window_id: window::Id,
-) -> Element<'_, Message> {
+) -> Element<'a, Message> {
     let content = view_dialog_content_for_window(settings, active_category, window_id);
 
     // Wrap in a styled container for the window
     container(content)
         .width(Length::Fill)
         .height(Length::Fill)
-        .style(|_| container::Style {
-            background: Some(GRAY_100.into()),
+        .style(|theme: &Theme| container::Style {
+            background: Some(theme.clinical().background_elevated.into()),
             ..Default::default()
         })
         .into()
 }
 
 /// Dialog content for window mode with window-specific close action.
-fn view_dialog_content_for_window(
-    settings: &Settings,
+fn view_dialog_content_for_window<'a>(
+    settings: &'a Settings,
     active_category: SettingsCategory,
     window_id: window::Id,
-) -> Element<'_, Message> {
+) -> Element<'a, Message> {
     let header = view_header();
     let body = view_master_detail(settings, active_category);
     let footer = view_footer_for_window(window_id);
@@ -100,9 +100,16 @@ fn view_footer_for_window<'a>(window_id: window::Id) -> Element<'a, Message> {
 fn view_header<'a>() -> Element<'a, Message> {
     row![
         Space::new().width(SPACING_LG),
-        lucide::settings().size(18).color(GRAY_700),
+        container(lucide::settings().size(18)).style(|theme: &Theme| container::Style {
+            text_color: Some(theme.clinical().text_secondary),
+            ..Default::default()
+        }),
         Space::new().width(SPACING_SM),
-        text("Settings").size(18).color(GRAY_900),
+        text("Settings")
+            .size(18)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text),
+            }),
         Space::new().width(Length::Fill),
     ]
     .align_y(Alignment::Center)
@@ -111,10 +118,10 @@ fn view_header<'a>() -> Element<'a, Message> {
 }
 
 /// Master-detail layout: category sidebar + settings content.
-fn view_master_detail(
-    settings: &Settings,
+fn view_master_detail<'a>(
+    settings: &'a Settings,
     active_category: SettingsCategory,
-) -> Element<'_, Message> {
+) -> Element<'a, Message> {
     let sidebar = view_sidebar(active_category);
     let content = view_category_content(settings, active_category);
 
@@ -132,28 +139,28 @@ fn view_sidebar<'a>(active_category: SettingsCategory) -> Element<'a, Message> {
     column![
         view_sidebar_item(
             SettingsCategory::General,
-            lucide::sliders_horizontal(),
-            active_category == SettingsCategory::General
+            lucide::sliders_horizontal().size(16),
+            active_category == SettingsCategory::General,
         ),
         view_sidebar_item(
             SettingsCategory::Export,
-            lucide::file_output(),
-            active_category == SettingsCategory::Export
+            lucide::file_output().size(16),
+            active_category == SettingsCategory::Export,
         ),
         view_sidebar_item(
             SettingsCategory::Display,
-            lucide::monitor(),
-            active_category == SettingsCategory::Display
+            lucide::monitor().size(16),
+            active_category == SettingsCategory::Display,
         ),
         view_sidebar_item(
             SettingsCategory::Updates,
-            lucide::refresh_cw(),
-            active_category == SettingsCategory::Updates
+            lucide::refresh_cw().size(16),
+            active_category == SettingsCategory::Updates,
         ),
         view_sidebar_item(
             SettingsCategory::Developer,
-            lucide::code(),
-            active_category == SettingsCategory::Developer
+            lucide::code().size(16),
+            active_category == SettingsCategory::Developer,
         ),
     ]
     .spacing(SPACING_XS)
@@ -167,25 +174,37 @@ fn view_sidebar_item<'a>(
     icon: impl Into<Element<'a, Message>>,
     is_active: bool,
 ) -> Element<'a, Message> {
-    let text_color = if is_active { GRAY_900 } else { GRAY_700 };
-    let bg_color = if is_active {
-        PRIMARY_100
-    } else {
-        Color::TRANSPARENT
-    };
+    let icon_container = container(icon.into()).style(move |theme: &Theme| container::Style {
+        text_color: Some(if is_active {
+            theme.extended_palette().background.base.text
+        } else {
+            theme.clinical().text_secondary
+        }),
+        ..Default::default()
+    });
 
-    let content = row![
-        icon.into(),
-        Space::new().width(SPACING_SM),
-        text(category.label()).size(14).color(text_color),
-    ]
-    .align_y(Alignment::Center)
-    .padding([SPACING_SM, SPACING_MD]);
+    let label_text = text(category.label())
+        .size(14)
+        .style(move |theme: &Theme| text::Style {
+            color: Some(if is_active {
+                theme.extended_palette().background.base.text
+            } else {
+                theme.clinical().text_secondary
+            }),
+        });
+
+    let content = row![icon_container, Space::new().width(SPACING_SM), label_text,]
+        .align_y(Alignment::Center)
+        .padding([SPACING_SM, SPACING_MD]);
 
     let item = container(content)
         .width(Length::Fill)
-        .style(move |_| container::Style {
-            background: Some(bg_color.into()),
+        .style(move |theme: &Theme| container::Style {
+            background: Some(if is_active {
+                theme.clinical().accent_primary_light.into()
+            } else {
+                Color::TRANSPARENT.into()
+            }),
             border: Border {
                 radius: 6.0.into(),
                 ..Default::default()
@@ -213,7 +232,7 @@ fn view_category_content<'a>(
     let content: Element<'a, Message> = match category {
         SettingsCategory::General => view_general_settings(settings),
         SettingsCategory::Export => view_export_settings(settings),
-        SettingsCategory::Display => view_display_settings(),
+        SettingsCategory::Display => view_display_settings(settings),
         SettingsCategory::Updates => view_update_settings(settings),
         SettingsCategory::Developer => view_developer_settings(settings),
         SettingsCategory::Validation => view_validation_settings(settings),
@@ -228,10 +247,16 @@ fn view_category_content<'a>(
 /// General settings section.
 fn view_general_settings(settings: &Settings) -> Element<'_, Message> {
     let header_rows_section = column![
-        text("CSV Header Rows").size(14).color(GRAY_800),
+        text("CSV Header Rows")
+            .size(14)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text),
+            }),
         text("Number of header rows in source CSV files")
             .size(12)
-            .color(GRAY_500),
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted),
+            }),
         Space::new().height(SPACING_XS),
         row![
             radio("1 row", 1usize, Some(settings.general.header_rows), |v| {
@@ -254,10 +279,14 @@ fn view_general_settings(settings: &Settings) -> Element<'_, Message> {
     let threshold_section = column![
         text("Mapping Confidence Threshold")
             .size(14)
-            .color(GRAY_800),
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text),
+            }),
         text("Minimum confidence score for auto-mapping suggestions")
             .size(12)
-            .color(GRAY_500),
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted),
+            }),
         Space::new().height(SPACING_XS),
         row![
             slider(0.0..=1.0, threshold, |v| {
@@ -270,7 +299,9 @@ fn view_general_settings(settings: &Settings) -> Element<'_, Message> {
             Space::new().width(SPACING_SM),
             text(format!("{:.0}%", threshold * 100.0))
                 .size(14)
-                .color(GRAY_700),
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_secondary),
+                }),
         ]
         .align_y(Alignment::Center),
     ]
@@ -290,10 +321,16 @@ fn view_general_settings(settings: &Settings) -> Element<'_, Message> {
 /// Export settings section.
 fn view_export_settings(settings: &Settings) -> Element<'_, Message> {
     let format_section = column![
-        text("Default Export Format").size(14).color(GRAY_800),
+        text("Default Export Format")
+            .size(14)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text),
+            }),
         text("Format used when exporting domain data")
             .size(12)
-            .color(GRAY_500),
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted),
+            }),
         Space::new().height(SPACING_XS),
         radio(
             ExportFormat::Xpt.label(),
@@ -315,10 +352,16 @@ fn view_export_settings(settings: &Settings) -> Element<'_, Message> {
     .spacing(SPACING_XS);
 
     let xpt_version_section = column![
-        text("XPT Version").size(14).color(GRAY_800),
+        text("XPT Version")
+            .size(14)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text),
+            }),
         text("SAS Transport file version for XPT exports")
             .size(12)
-            .color(GRAY_500),
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted),
+            }),
         Space::new().height(SPACING_XS),
         radio(
             XptVersion::V5.display_name(),
@@ -340,10 +383,16 @@ fn view_export_settings(settings: &Settings) -> Element<'_, Message> {
     .spacing(SPACING_XS);
 
     let sdtm_ig_section = column![
-        text("SDTM-IG Version").size(14).color(GRAY_800),
+        text("SDTM-IG Version")
+            .size(14)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text),
+            }),
         text("Implementation Guide version for Dataset-XML and Define-XML")
             .size(12)
-            .color(GRAY_500),
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted),
+            }),
         Space::new().height(SPACING_XS),
         pick_list(
             crate::state::SdtmIgVersion::ALL.to_vec(),
@@ -369,31 +418,107 @@ fn view_export_settings(settings: &Settings) -> Element<'_, Message> {
 }
 
 /// Display settings section.
-fn view_display_settings<'a>() -> Element<'a, Message> {
+fn view_display_settings(settings: &Settings) -> Element<'_, Message> {
+    // Theme mode section
+    let theme_mode_section = column![
+        text("Appearance")
+            .size(14)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text),
+            }),
+        text("Choose light or dark mode, or follow system preference")
+            .size(12)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted),
+            }),
+        Space::new().height(SPACING_XS),
+        pick_list(
+            ThemeMode::ALL.to_vec(),
+            Some(settings.display.theme_mode),
+            |mode| Message::Dialog(DialogMessage::Settings(SettingsMessage::Display(
+                DisplaySettingsMessage::ThemeModeChanged(mode),
+            )))
+        )
+        .width(Length::Fixed(200.0)),
+    ]
+    .spacing(SPACING_XS);
+
+    // Accessibility mode section
+    let accessibility_section = column![
+        text("Color Vision Accessibility")
+            .size(14)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text),
+            }),
+        text("Optimize colors for different types of color vision")
+            .size(12)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted),
+            }),
+        Space::new().height(SPACING_XS),
+        pick_list(
+            AccessibilityMode::ALL.to_vec(),
+            Some(settings.display.accessibility_mode),
+            |mode| Message::Dialog(DialogMessage::Settings(SettingsMessage::Display(
+                DisplaySettingsMessage::AccessibilityModeChanged(mode),
+            )))
+        )
+        .width(Length::Fixed(250.0)),
+        Space::new().height(SPACING_SM),
+        // Live color preview
+        view_theme_preview(
+            settings.display.theme_mode,
+            settings.display.accessibility_mode,
+        ),
+    ]
+    .spacing(SPACING_XS);
+
+    // Preview rows section
     let preview_rows_section = column![
-        text("Preview Rows").size(14).color(GRAY_800),
+        text("Preview Rows")
+            .size(14)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text),
+            }),
         text("Number of rows to show in data preview")
             .size(12)
-            .color(GRAY_500),
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted),
+            }),
         Space::new().height(SPACING_XS),
         row![
-            radio("25", 25usize, Some(50), |v| {
-                Message::Dialog(DialogMessage::Settings(SettingsMessage::Display(
-                    DisplaySettingsMessage::PreviewRowsChanged(v),
-                )))
-            }),
+            radio(
+                "25",
+                25usize,
+                Some(settings.display.preview_rows_per_page),
+                |v| {
+                    Message::Dialog(DialogMessage::Settings(SettingsMessage::Display(
+                        DisplaySettingsMessage::PreviewRowsChanged(v),
+                    )))
+                }
+            ),
             Space::new().width(SPACING_MD),
-            radio("50", 50usize, Some(50), |v| {
-                Message::Dialog(DialogMessage::Settings(SettingsMessage::Display(
-                    DisplaySettingsMessage::PreviewRowsChanged(v),
-                )))
-            }),
+            radio(
+                "50",
+                50usize,
+                Some(settings.display.preview_rows_per_page),
+                |v| {
+                    Message::Dialog(DialogMessage::Settings(SettingsMessage::Display(
+                        DisplaySettingsMessage::PreviewRowsChanged(v),
+                    )))
+                }
+            ),
             Space::new().width(SPACING_MD),
-            radio("100", 100usize, Some(50), |v| {
-                Message::Dialog(DialogMessage::Settings(SettingsMessage::Display(
-                    DisplaySettingsMessage::PreviewRowsChanged(v),
-                )))
-            }),
+            radio(
+                "100",
+                100usize,
+                Some(settings.display.preview_rows_per_page),
+                |v| {
+                    Message::Dialog(DialogMessage::Settings(SettingsMessage::Display(
+                        DisplaySettingsMessage::PreviewRowsChanged(v),
+                    )))
+                }
+            ),
         ],
     ]
     .spacing(SPACING_XS);
@@ -401,9 +526,109 @@ fn view_display_settings<'a>() -> Element<'a, Message> {
     column![
         section_header("Display Settings"),
         Space::new().height(SPACING_MD),
+        theme_mode_section,
+        Space::new().height(SPACING_LG),
+        accessibility_section,
+        Space::new().height(SPACING_LG),
         preview_rows_section,
     ]
     .spacing(SPACING_SM)
+    .into()
+}
+
+/// Live preview showing the status colors for the selected theme/accessibility combination.
+fn view_theme_preview(
+    theme_mode: ThemeMode,
+    accessibility_mode: AccessibilityMode,
+) -> Element<'static, Message> {
+    // TODO: is this really intentional, because it already updates on change of the settings and everything so why do we need to create a new theme here?
+    // Create a temporary Theme to resolve preview colors
+    // This is intentional - we want to show preview colors for the selected settings,
+    // not the currently active theme
+    let config = ThemeConfig::new(theme_mode, accessibility_mode);
+    let preview_theme = config.to_theme(false);
+    let preview_palette = preview_theme.extended_palette();
+    let preview_clinical = preview_theme.clinical();
+
+    let preview_bg = preview_clinical.background_elevated;
+    let text_color = preview_clinical.text_on_accent;
+
+    let success_color = preview_palette.success.base.color;
+    let warning_color = preview_palette.warning.base.color;
+    let error_color = preview_palette.danger.base.color;
+
+    let success_box = container(
+        row![
+            lucide::circle_check().size(12).color(text_color),
+            Space::new().width(4),
+            text("Success").size(11).color(text_color),
+        ]
+        .align_y(Alignment::Center),
+    )
+    .padding([4, 8])
+    .style(move |_| container::Style {
+        background: Some(success_color.into()),
+        border: Border {
+            radius: 4.0.into(),
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
+    let warning_box = container(
+        row![
+            lucide::triangle_alert().size(12).color(text_color),
+            Space::new().width(4),
+            text("Warning").size(11).color(text_color),
+        ]
+        .align_y(Alignment::Center),
+    )
+    .padding([4, 8])
+    .style(move |_| container::Style {
+        background: Some(warning_color.into()),
+        border: Border {
+            radius: 4.0.into(),
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
+    let error_box = container(
+        row![
+            lucide::circle_x().size(12).color(text_color),
+            Space::new().width(4),
+            text("Error").size(11).color(text_color),
+        ]
+        .align_y(Alignment::Center),
+    )
+    .padding([4, 8])
+    .style(move |_| container::Style {
+        background: Some(error_color.into()),
+        border: Border {
+            radius: 4.0.into(),
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+
+    container(
+        row![
+            success_box,
+            Space::new().width(8),
+            warning_box,
+            Space::new().width(8),
+            error_box,
+        ]
+        .padding(SPACING_SM),
+    )
+    .style(move |_| container::Style {
+        background: Some(preview_bg.into()),
+        border: Border {
+            radius: 6.0.into(),
+            ..Default::default()
+        },
+        ..Default::default()
+    })
     .into()
 }
 
@@ -411,10 +636,16 @@ fn view_display_settings<'a>() -> Element<'a, Message> {
 fn view_update_settings(settings: &Settings) -> Element<'_, Message> {
     let check_on_startup_section = row![
         column![
-            text("Check on Startup").size(14).color(GRAY_800),
+            text("Check on Startup")
+                .size(14)
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.extended_palette().background.base.text),
+                }),
             text("Automatically check for updates when the application starts")
                 .size(12)
-                .color(GRAY_500),
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_muted),
+                }),
         ]
         .width(Length::Fill),
         toggler(settings.updates.check_on_startup).on_toggle(|v| Message::Dialog(
@@ -425,12 +656,19 @@ fn view_update_settings(settings: &Settings) -> Element<'_, Message> {
     ]
     .align_y(Alignment::Center);
 
+    let channel_description = settings.updates.channel.description();
     let channel_section = row![
         column![
-            text("Update Channel").size(14).color(GRAY_800),
-            text(settings.updates.channel.description())
+            text("Update Channel")
+                .size(14)
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.extended_palette().background.base.text),
+                }),
+            text(channel_description)
                 .size(12)
-                .color(GRAY_500),
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_muted),
+                }),
         ]
         .width(Length::Fill),
         pick_list(
@@ -458,10 +696,16 @@ fn view_update_settings(settings: &Settings) -> Element<'_, Message> {
 fn view_developer_settings(settings: &Settings) -> Element<'_, Message> {
     let bypass_validation_section = row![
         column![
-            text("Bypass Validation Errors").size(14).color(GRAY_800),
+            text("Bypass Validation Errors")
+                .size(14)
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.extended_palette().background.base.text),
+                }),
             text("Allow export even with validation errors (use with caution)")
                 .size(12)
-                .color(GRAY_500),
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_muted),
+                }),
         ]
         .width(Length::Fill),
         toggler(settings.developer.bypass_validation).on_toggle(|v| Message::Dialog(
@@ -474,10 +718,16 @@ fn view_developer_settings(settings: &Settings) -> Element<'_, Message> {
 
     let dev_mode_section = row![
         column![
-            text("Developer Mode").size(14).color(GRAY_800),
+            text("Developer Mode")
+                .size(14)
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.extended_palette().background.base.text),
+                }),
             text("Enable additional debugging features")
                 .size(12)
-                .color(GRAY_500),
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_muted),
+                }),
         ]
         .width(Length::Fill),
         toggler(settings.developer.developer_mode).on_toggle(|v| Message::Dialog(
@@ -503,36 +753,18 @@ fn view_developer_settings(settings: &Settings) -> Element<'_, Message> {
 fn view_validation_settings(settings: &Settings) -> Element<'_, Message> {
     let rules = &settings.validation.rules;
 
-    // Helper to create rule toggle rows
-    fn rule_toggle<'a>(
-        label: &'a str,
-        description: &'a str,
-        enabled: bool,
-        rule_id: &'static str,
-    ) -> Element<'a, Message> {
-        row![
-            column![
-                text(label).size(14).color(GRAY_800),
-                text(description).size(12).color(GRAY_500),
-            ]
-            .width(Length::Fill),
-            toggler(enabled).on_toggle(move |v| {
-                Message::Dialog(DialogMessage::Settings(SettingsMessage::Validation(
-                    ValidationSettingsMessage::RuleToggled {
-                        rule_id: rule_id.to_string(),
-                        enabled: v,
-                    },
-                )))
-            }),
-        ]
-        .align_y(Alignment::Center)
-        .into()
-    }
-
     let strict_mode = row![
         column![
-            text("Strict Mode").size(14).color(GRAY_800),
-            text("Treat warnings as errors").size(12).color(GRAY_500),
+            text("Strict Mode")
+                .size(14)
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.extended_palette().background.base.text),
+                }),
+            text("Treat warnings as errors")
+                .size(12)
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_muted),
+                }),
         ]
         .width(Length::Fill),
         toggler(settings.validation.strict_mode).on_toggle(|v| {
@@ -548,58 +780,62 @@ fn view_validation_settings(settings: &Settings) -> Element<'_, Message> {
         Space::new().height(SPACING_MD),
         strict_mode,
         Space::new().height(SPACING_LG),
-        text("Validation Rules").size(14).color(GRAY_700),
+        text("Validation Rules")
+            .size(14)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_secondary),
+            }),
         Space::new().height(SPACING_SM),
-        rule_toggle(
+        view_rule_toggle(
             "Required Variables",
             "Check that required variables are present",
             rules.check_required_variables,
             "check_required_variables"
         ),
         Space::new().height(SPACING_XS),
-        rule_toggle(
+        view_rule_toggle(
             "Expected Variables",
             "Check that expected variables are present",
             rules.check_expected_variables,
             "check_expected_variables"
         ),
         Space::new().height(SPACING_XS),
-        rule_toggle(
+        view_rule_toggle(
             "Data Types",
             "Check data types match expected types",
             rules.check_data_types,
             "check_data_types"
         ),
         Space::new().height(SPACING_XS),
-        rule_toggle(
+        view_rule_toggle(
             "ISO 8601 Format",
             "Check date/time format compliance",
             rules.check_iso8601_format,
             "check_iso8601_format"
         ),
         Space::new().height(SPACING_XS),
-        rule_toggle(
+        view_rule_toggle(
             "Sequence Uniqueness",
             "Check sequence number uniqueness",
             rules.check_sequence_uniqueness,
             "check_sequence_uniqueness"
         ),
         Space::new().height(SPACING_XS),
-        rule_toggle(
+        view_rule_toggle(
             "Text Length",
             "Check text length against CDISC limits",
             rules.check_text_length,
             "check_text_length"
         ),
         Space::new().height(SPACING_XS),
-        rule_toggle(
+        view_rule_toggle(
             "Identifier Nulls",
             "Check identifier nulls (STUDYID, USUBJID)",
             rules.check_identifier_nulls,
             "check_identifier_nulls"
         ),
         Space::new().height(SPACING_XS),
-        rule_toggle(
+        view_rule_toggle(
             "Controlled Terminology",
             "Check controlled terminology values",
             rules.check_controlled_terminology,
@@ -610,7 +846,44 @@ fn view_validation_settings(settings: &Settings) -> Element<'_, Message> {
     .into()
 }
 
+/// Helper to create rule toggle rows.
+fn view_rule_toggle(
+    label: &'static str,
+    description: &'static str,
+    enabled: bool,
+    rule_id: &'static str,
+) -> Element<'static, Message> {
+    row![
+        column![
+            text(label).size(14).style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text),
+            }),
+            text(description)
+                .size(12)
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_muted),
+                }),
+        ]
+        .width(Length::Fill),
+        toggler(enabled).on_toggle(move |v| {
+            Message::Dialog(DialogMessage::Settings(SettingsMessage::Validation(
+                ValidationSettingsMessage::RuleToggled {
+                    rule_id: rule_id.to_string(),
+                    enabled: v,
+                },
+            )))
+        }),
+    ]
+    .align_y(Alignment::Center)
+    .into()
+}
+
 /// Section header helper.
 fn section_header(title: &str) -> Element<'_, Message> {
-    text(title).size(16).color(GRAY_900).into()
+    text(title)
+        .size(16)
+        .style(|theme: &Theme| text::Style {
+            color: Some(theme.extended_palette().background.base.text),
+        })
+        .into()
 }

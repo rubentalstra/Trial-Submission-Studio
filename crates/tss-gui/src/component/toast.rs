@@ -1,13 +1,14 @@
 //! Toast notification component.
 //!
 //! Shows a temporary notification message that auto-dismisses after a timeout.
+//! Uses the semantic color system for accessibility mode support.
 
 use iced::widget::{Space, button, container, row, text};
-use iced::{Alignment, Element, Length};
+use iced::{Alignment, Color, Element, Length, Theme};
 use iced_fonts::lucide;
 
 use crate::message::Message;
-use crate::theme::{GRAY_100, GRAY_700, SPACING_MD, SPACING_SM, SPACING_XS, SUCCESS};
+use crate::theme::{ClinicalColors, SPACING_MD, SPACING_SM, SPACING_XS};
 
 /// Toast notification state.
 #[derive(Debug, Clone)]
@@ -31,6 +32,19 @@ pub enum ToastType {
     Warning,
     /// Error notification (red X icon).
     Error,
+}
+
+impl ToastType {
+    /// Get the semantic color for this toast type.
+    pub fn color(&self, theme: &Theme) -> Color {
+        let palette = theme.extended_palette();
+        match self {
+            ToastType::Success => palette.success.base.color,
+            ToastType::Info => Color::from_rgb(0.25, 0.55, 0.85),
+            ToastType::Warning => palette.warning.base.color,
+            ToastType::Error => palette.danger.base.color,
+        }
+    }
 }
 
 /// Optional action for the toast.
@@ -79,17 +93,49 @@ impl ToastState {
 /// Renders a toast notification.
 ///
 /// The toast appears at the bottom-right of the screen and can be dismissed.
-pub fn view_toast(state: &ToastState) -> Element<'_, Message> {
-    let icon = match state.toast_type {
-        ToastType::Success => lucide::circle_check().size(18).color(SUCCESS),
-        ToastType::Info => lucide::info().size(18).color(GRAY_700),
-        ToastType::Warning => lucide::triangle_alert().size(18).color(GRAY_700),
-        ToastType::Error => lucide::circle_x().size(18).color(GRAY_700),
-    };
+pub fn view_toast<'a>(state: &'a ToastState) -> Element<'a, Message> {
+    let toast_type = state.toast_type;
 
-    let message_text = text(&state.message).size(14).color(GRAY_700);
+    // Icon wrapped in container for theme-aware color
+    let icon_element: Element<'a, Message> = match toast_type {
+        ToastType::Success => {
+            container(lucide::circle_check().size(18)).style(move |theme: &Theme| {
+                container::Style {
+                    text_color: Some(toast_type.color(theme)),
+                    ..Default::default()
+                }
+            })
+        }
+        ToastType::Info => {
+            container(lucide::info().size(18)).style(move |theme: &Theme| container::Style {
+                text_color: Some(toast_type.color(theme)),
+                ..Default::default()
+            })
+        }
+        ToastType::Warning => {
+            container(lucide::triangle_alert().size(18)).style(move |theme: &Theme| {
+                container::Style {
+                    text_color: Some(toast_type.color(theme)),
+                    ..Default::default()
+                }
+            })
+        }
+        ToastType::Error => {
+            container(lucide::circle_x().size(18)).style(move |theme: &Theme| container::Style {
+                text_color: Some(toast_type.color(theme)),
+                ..Default::default()
+            })
+        }
+    }
+    .into();
 
-    let mut content = row![icon, Space::new().width(SPACING_SM), message_text,]
+    let message_text = text(&state.message)
+        .size(14)
+        .style(|theme: &Theme| text::Style {
+            color: Some(theme.clinical().text_secondary),
+        });
+
+    let mut content = row![icon_element, Space::new().width(SPACING_SM), message_text,]
         .align_y(Alignment::Center)
         .spacing(SPACING_XS);
 
@@ -116,19 +162,22 @@ pub fn view_toast(state: &ToastState) -> Element<'_, Message> {
     container(content)
         .padding([SPACING_SM, SPACING_MD])
         .width(Length::Shrink)
-        .style(|_| container::Style {
-            background: Some(GRAY_100.into()),
-            border: iced::Border {
-                color: iced::Color::from_rgb(0.85, 0.85, 0.85),
-                width: 1.0,
-                radius: 8.0.into(),
-            },
-            shadow: iced::Shadow {
-                color: iced::Color::from_rgba(0.0, 0.0, 0.0, 0.1),
-                offset: iced::Vector::new(0.0, 2.0),
-                blur_radius: 8.0,
-            },
-            ..Default::default()
+        .style(|theme: &Theme| {
+            let clinical = theme.clinical();
+            container::Style {
+                background: Some(clinical.background_secondary.into()),
+                border: iced::Border {
+                    color: clinical.border_default,
+                    width: 1.0,
+                    radius: 8.0.into(),
+                },
+                shadow: iced::Shadow {
+                    color: clinical.shadow,
+                    offset: iced::Vector::new(0.0, 2.0),
+                    blur_radius: 8.0,
+                },
+                ..Default::default()
+            }
         })
         .into()
 }

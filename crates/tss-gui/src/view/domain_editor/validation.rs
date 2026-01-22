@@ -7,7 +7,7 @@
 //! - **Right (Detail)**: Detailed view of the selected issue
 
 use iced::widget::{Space, button, column, container, row, rule, scrollable, text};
-use iced::{Alignment, Border, Element, Length};
+use iced::{Alignment, Border, Element, Length, Theme};
 use iced_fonts::lucide;
 use tss_submit::{Issue, Severity, ValidationReport};
 
@@ -19,8 +19,7 @@ use crate::message::domain_editor::{SeverityFilter as MsgSeverityFilter, Validat
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{AppState, SeverityFilter, ValidationUiState, ViewState};
 use crate::theme::{
-    ERROR, GRAY_100, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800, MASTER_WIDTH, PRIMARY_100,
-    PRIMARY_500, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS, SUCCESS, WARNING, button_primary,
+    ClinicalColors, MASTER_WIDTH, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS, button_primary,
     button_secondary,
 };
 
@@ -33,7 +32,12 @@ pub fn view_validation_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Ele
     let domain = match state.domain(domain_code) {
         Some(d) => d,
         None => {
-            return text("Domain not found").size(14).color(GRAY_500).into();
+            return text("Domain not found")
+                .size(14)
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_muted),
+                })
+                .into();
         }
     };
 
@@ -99,16 +103,27 @@ fn view_master_header<'a>(
     filtered_count: usize,
 ) -> Element<'a, Message> {
     // Title
-    let title = text("Issues").size(14).color(GRAY_700).font(iced::Font {
-        weight: iced::font::Weight::Semibold,
-        ..Default::default()
-    });
+    let title = text("Issues")
+        .size(14)
+        .style(|theme: &Theme| text::Style {
+            color: Some(theme.clinical().text_secondary),
+        })
+        .font(iced::Font {
+            weight: iced::font::Weight::Semibold,
+            ..Default::default()
+        });
 
     // Re-validate button
     let refresh_button = button(
-        row![lucide::refresh_cw().size(12), text("Re-validate").size(12),]
-            .spacing(6.0)
-            .align_y(Alignment::Center),
+        row![
+            container(lucide::refresh_cw().size(12)).style(|theme: &Theme| container::Style {
+                text_color: Some(theme.clinical().text_on_accent),
+                ..Default::default()
+            }),
+            text("Re-validate").size(12),
+        ]
+        .spacing(6.0)
+        .align_y(Alignment::Center),
     )
     .on_press(Message::DomainEditor(DomainEditorMessage::Validation(
         ValidationMessage::RefreshValidation,
@@ -136,7 +151,11 @@ fn view_master_header<'a>(
     );
 
     let stats = row![
-        text(stats_text).size(11).color(GRAY_500),
+        text(stats_text)
+            .size(11)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted),
+            }),
         Space::new().width(Length::Fill),
     ];
 
@@ -161,6 +180,7 @@ fn severity_filter_button<'a>(
     current: SeverityFilter,
 ) -> Element<'a, Message> {
     let is_selected = filter == current;
+
     let msg_filter = match filter {
         SeverityFilter::All => MsgSeverityFilter::All,
         SeverityFilter::Errors => MsgSeverityFilter::Errors,
@@ -173,14 +193,16 @@ fn severity_filter_button<'a>(
             ValidationMessage::SeverityFilterChanged(msg_filter),
         )))
         .padding([4.0, 8.0])
-        .style(move |theme, status| {
+        .style(move |theme: &Theme, status| {
             if is_selected {
+                let accent = theme.extended_palette().primary.base.color;
+                let accent_light = theme.clinical().accent_primary_light;
                 iced::widget::button::Style {
-                    background: Some(PRIMARY_100.into()),
-                    text_color: PRIMARY_500,
+                    background: Some(accent_light.into()),
+                    text_color: accent,
                     border: Border {
                         radius: 4.0.into(),
-                        color: PRIMARY_500,
+                        color: accent,
                         width: 1.0,
                     },
                     ..Default::default()
@@ -225,10 +247,7 @@ fn view_issues_list<'a>(
 /// Single issue row in the master list using SelectableRow component.
 fn view_issue_row<'a>(issue: &'a Issue, idx: usize, is_selected: bool) -> Element<'a, Message> {
     let severity = issue.severity();
-    let severity_color = match severity {
-        Severity::Reject | Severity::Error => ERROR,
-        Severity::Warning => WARNING,
-    };
+    let severity_color = get_severity_color(severity);
 
     // Severity icon as leading element
     let severity_icon: Element<'a, Message> = match severity {
@@ -237,20 +256,6 @@ fn view_issue_row<'a>(issue: &'a Issue, idx: usize, is_selected: bool) -> Elemen
         }
         Severity::Warning => lucide::circle_alert().size(14).color(severity_color).into(),
     };
-
-    // Category badge as trailing element (commented out due to UI issues)
-    // let category = issue_category(issue);
-    // let category_badge: Element<'a, Message> = container(text(category).size(9).color(GRAY_600))
-    //     .padding([2.0, 5.0])
-    //     .style(|_| container::Style {
-    //         background: Some(GRAY_100.into()),
-    //         border: Border {
-    //             radius: 3.0.into(),
-    //             ..Default::default()
-    //         },
-    //         ..Default::default()
-    //     })
-    //     .into();
 
     // Short description (truncated)
     let short_msg = truncate_message(issue.message().as_str(), 40);
@@ -263,9 +268,17 @@ fn view_issue_row<'a>(issue: &'a Issue, idx: usize, is_selected: bool) -> Elemen
     )
     .secondary(short_msg)
     .leading(severity_icon)
-    // .trailing(category_badge)  // Commented out due to UI issues
     .selected(is_selected)
     .view()
+}
+
+/// Get the color for a severity level.
+/// Returns a static Color that works across themes.
+fn get_severity_color(severity: Severity) -> iced::Color {
+    match severity {
+        Severity::Reject | Severity::Error => iced::Color::from_rgb(0.90, 0.30, 0.25),
+        Severity::Warning => iced::Color::from_rgb(0.95, 0.65, 0.15),
+    }
 }
 
 // =============================================================================
@@ -275,10 +288,7 @@ fn view_issue_row<'a>(issue: &'a Issue, idx: usize, is_selected: bool) -> Elemen
 /// Detail view for selected issue.
 fn view_issue_detail<'a>(issue: &Issue) -> Element<'a, Message> {
     let severity = issue.severity();
-    let severity_color = match severity {
-        Severity::Reject | Severity::Error => ERROR,
-        Severity::Warning => WARNING,
-    };
+    let severity_color = get_severity_color(severity);
 
     let variable_name = issue.variable().to_string();
     let category = issue_category(issue);
@@ -410,41 +420,57 @@ fn view_issue_metadata<'a>(
 /// Build description section for issue details.
 fn view_issue_description<'a>(issue: &Issue) -> Element<'a, Message> {
     let title_row = row![
-        lucide::file_text().size(14).color(GRAY_600),
+        container(lucide::file_text().size(14)).style(|theme: &Theme| container::Style {
+            text_color: Some(theme.clinical().text_muted),
+            ..Default::default()
+        }),
         Space::new().width(SPACING_SM),
-        text("Description").size(14).color(GRAY_700),
+        text("Description")
+            .size(14)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_secondary),
+            }),
     ]
     .align_y(Alignment::Center);
 
-    let message_box = container(text(issue.message()).size(13).color(GRAY_800))
-        .padding(SPACING_SM)
-        .width(Length::Fill)
-        .style(|_| container::Style {
-            background: Some(GRAY_100.into()),
-            border: Border {
-                radius: 6.0.into(),
-                ..Default::default()
-            },
+    let message_text = issue.message();
+    let message_box = container(
+        text(message_text)
+            .size(13)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text),
+            }),
+    )
+    .padding(SPACING_SM)
+    .width(Length::Fill)
+    .style(|theme: &Theme| container::Style {
+        background: Some(theme.clinical().background_secondary.into()),
+        border: Border {
+            radius: 6.0.into(),
             ..Default::default()
-        });
+        },
+        ..Default::default()
+    });
 
     column![title_row, Space::new().height(SPACING_XS), message_box,].into()
 }
 
 /// Build action buttons for issue details.
 fn view_issue_actions<'a>(variable_name: &str) -> Element<'a, Message> {
+    let variable = variable_name.to_string();
     let go_to_button = button(
         row![
-            lucide::arrow_right().size(14),
+            container(lucide::arrow_right().size(14)).style(|theme: &Theme| container::Style {
+                text_color: Some(theme.clinical().text_on_accent),
+                ..Default::default()
+            }),
             text("Go to Variable").size(13),
         ]
         .spacing(SPACING_XS)
         .align_y(Alignment::Center),
     )
     .on_press(Message::DomainEditor(DomainEditorMessage::Validation(
-        ValidationMessage::GoToIssueSource {
-            variable: variable_name.to_string(),
-        },
+        ValidationMessage::GoToIssueSource { variable },
     )))
     .padding([10.0, 16.0])
     .style(button_primary);
@@ -459,7 +485,10 @@ fn view_issue_actions<'a>(variable_name: &str) -> Element<'a, Message> {
 /// Empty state when no issue is selected.
 fn view_no_selection<'a>() -> Element<'a, Message> {
     EmptyState::new(
-        lucide::mouse_pointer_click().size(48).color(GRAY_400),
+        container(lucide::mouse_pointer_click().size(48)).style(|theme: &Theme| container::Style {
+            text_color: Some(theme.clinical().text_disabled),
+            ..Default::default()
+        }),
         "Select an Issue",
     )
     .description("Choose a validation issue from the list to view details")
@@ -470,7 +499,10 @@ fn view_no_selection<'a>() -> Element<'a, Message> {
 /// Empty state when no validation has been run.
 fn view_no_validation_run<'a>() -> Element<'a, Message> {
     EmptyState::new(
-        lucide::shield_check().size(48).color(GRAY_400),
+        container(lucide::shield_check().size(48)).style(|theme: &Theme| container::Style {
+            text_color: Some(theme.clinical().text_disabled),
+            ..Default::default()
+        }),
         "No Validation Results",
     )
     .description("Click 'Re-validate' to check for CDISC conformance issues")
@@ -499,11 +531,16 @@ fn view_validation_passed<'a>() -> Element<'a, Message> {
 
     container(
         column![
-            lucide::circle_check().size(64).color(SUCCESS),
+            container(lucide::circle_check().size(64)).style(|theme: &Theme| container::Style {
+                text_color: Some(theme.extended_palette().success.base.color),
+                ..Default::default()
+            }),
             Space::new().height(SPACING_MD),
             text("All Checks Passed")
                 .size(20)
-                .color(SUCCESS)
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.extended_palette().success.base.color),
+                })
                 .font(iced::Font {
                     weight: iced::font::Weight::Semibold,
                     ..Default::default()
@@ -511,7 +548,9 @@ fn view_validation_passed<'a>() -> Element<'a, Message> {
             Space::new().height(SPACING_XS),
             text("No CDISC conformance issues were found")
                 .size(14)
-                .color(GRAY_600),
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_muted),
+                }),
             Space::new().height(SPACING_LG),
             refresh_btn,
         ]

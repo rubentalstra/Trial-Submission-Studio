@@ -21,9 +21,9 @@
 //! ```
 
 use iced::widget::{Space, column, container, row, text};
-use iced::{Alignment, Border, Color, Element, Length};
+use iced::{Alignment, Border, Color, Element, Length, Theme};
 
-use crate::theme::{BORDER_RADIUS_SM, GRAY_100, GRAY_200, GRAY_700, SPACING_MD, SPACING_SM};
+use crate::theme::{BORDER_RADIUS_SM, ClinicalColors, SPACING_MD, SPACING_SM};
 
 // =============================================================================
 // SECTION CARD
@@ -56,33 +56,45 @@ impl<'a, M: 'a> SectionCard<'a, M> {
 
     /// Build the element.
     pub fn view(self) -> Element<'a, M> {
-        // Build header
+        let title_text = self.title.clone();
+
         let header: Element<'a, M> = if let Some(icon) = self.icon {
             row![
                 icon,
                 Space::new().width(SPACING_SM),
-                text(self.title).size(14).color(GRAY_700),
+                text(title_text)
+                    .size(14)
+                    .style(|theme: &Theme| text::Style {
+                        color: Some(theme.clinical().text_secondary),
+                    }),
             ]
             .align_y(Alignment::Center)
             .into()
         } else {
-            text(self.title).size(14).color(GRAY_700).into()
+            text(title_text)
+                .size(14)
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_secondary),
+                })
+                .into()
         };
 
-        // Build card
         container(
             column![header, Space::new().height(SPACING_SM), self.content,].width(Length::Fill),
         )
         .padding(SPACING_MD)
         .width(Length::Fill)
-        .style(|_| container::Style {
-            background: Some(GRAY_100.into()),
-            border: Border {
-                radius: BORDER_RADIUS_SM.into(),
-                color: GRAY_200,
-                width: 1.0,
-            },
-            ..Default::default()
+        .style(|theme: &Theme| {
+            let clinical = theme.clinical();
+            container::Style {
+                background: Some(clinical.background_secondary.into()),
+                border: Border {
+                    radius: BORDER_RADIUS_SM.into(),
+                    color: clinical.border_default,
+                    width: 1.0,
+                },
+                ..Default::default()
+            }
         })
         .into()
     }
@@ -99,8 +111,8 @@ pub fn panel<'a, M: 'a>(content: impl Into<Element<'a, M>>) -> Element<'a, M> {
     container(content)
         .padding(SPACING_MD)
         .width(Length::Fill)
-        .style(|_| container::Style {
-            background: Some(GRAY_100.into()),
+        .style(|theme: &Theme| container::Style {
+            background: Some(theme.clinical().background_secondary.into()),
             border: Border {
                 radius: BORDER_RADIUS_SM.into(),
                 ..Default::default()
@@ -127,19 +139,20 @@ pub fn status_panel<'a, M: 'a>(
     border_color: Color,
     background: Option<Color>,
 ) -> Element<'a, M> {
-    let bg = background.unwrap_or(GRAY_100);
-
     container(content)
         .padding(SPACING_MD)
         .width(Length::Fill)
-        .style(move |_| container::Style {
-            background: Some(bg.into()),
-            border: Border {
-                radius: BORDER_RADIUS_SM.into(),
-                color: border_color,
-                width: 2.0,
-            },
-            ..Default::default()
+        .style(move |theme: &Theme| {
+            let bg = background.unwrap_or_else(|| theme.clinical().background_secondary);
+            container::Style {
+                background: Some(bg.into()),
+                border: Border {
+                    radius: BORDER_RADIUS_SM.into(),
+                    color: border_color,
+                    width: 2.0,
+                },
+                ..Default::default()
+            }
         })
         .into()
 }

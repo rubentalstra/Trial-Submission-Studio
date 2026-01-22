@@ -6,7 +6,7 @@
 use iced::widget::{Space, column, container, row, text};
 use iced::{Alignment, Border, Element, Length, Theme};
 
-use crate::theme::{BORDER_RADIUS_SM, GRAY_100, GRAY_600, GRAY_800, SPACING_MD, SPACING_SM};
+use crate::theme::{BORDER_RADIUS_SM, ClinicalColors, SPACING_MD, SPACING_SM};
 
 // =============================================================================
 // METADATA ROW
@@ -22,15 +22,19 @@ pub fn metadata_row<'a, M: 'a>(
     label: impl Into<String>,
     value: impl Into<String>,
 ) -> Element<'a, M> {
-    let label_str = label.into();
-    let value_str = value.into();
+    let label_str: String = label.into();
+    let value_str: String = value.into();
 
     row![
         text(label_str)
             .size(12)
-            .color(GRAY_600)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted)
+            })
             .width(Length::Fixed(80.0)),
-        text(value_str).size(12).color(GRAY_800),
+        text(value_str).size(12).style(|theme: &Theme| text::Style {
+            color: Some(theme.extended_palette().background.base.text)
+        }),
     ]
     .align_y(Alignment::Center)
     .into()
@@ -42,15 +46,19 @@ pub fn metadata_row_wide<'a, M: 'a>(
     value: impl Into<String>,
     label_width: f32,
 ) -> Element<'a, M> {
-    let label_str = label.into();
-    let value_str = value.into();
+    let label_str: String = label.into();
+    let value_str: String = value.into();
 
     row![
         text(label_str)
             .size(12)
-            .color(GRAY_600)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted)
+            })
             .width(Length::Fixed(label_width)),
-        text(value_str).size(12).color(GRAY_800),
+        text(value_str).size(12).style(|theme: &Theme| text::Style {
+            color: Some(theme.extended_palette().background.base.text)
+        }),
     ]
     .align_y(Alignment::Center)
     .into()
@@ -76,7 +84,7 @@ pub struct MetadataCard {
 }
 
 impl MetadataCard {
-    /// Create a new empty metadata card.
+    /// Create a new metadata card.
     pub fn new() -> Self {
         Self {
             rows: Vec::new(),
@@ -108,22 +116,35 @@ impl MetadataCard {
     pub fn view<'a, M: 'a>(self) -> Element<'a, M> {
         let mut content = column![].spacing(SPACING_SM);
 
-        // Title if present
         if let Some(title) = self.title {
-            content = content.push(text(title).size(14).color(GRAY_600));
+            content = content.push(text(title).size(14).style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted),
+            }));
             content = content.push(Space::new().height(SPACING_SM));
         }
 
-        // Metadata rows
         for (label, value) in self.rows {
-            content = content.push(metadata_row::<M>(&label, &value));
+            let row_el: Element<'a, M> = row![
+                text(label)
+                    .size(12)
+                    .style(|theme: &Theme| text::Style {
+                        color: Some(theme.clinical().text_muted)
+                    })
+                    .width(Length::Fixed(80.0)),
+                text(value).size(12).style(|theme: &Theme| text::Style {
+                    color: Some(theme.extended_palette().background.base.text)
+                }),
+            ]
+            .align_y(Alignment::Center)
+            .into();
+            content = content.push(row_el);
         }
 
         container(content)
             .padding(SPACING_MD)
             .width(Length::Fill)
-            .style(|_theme: &Theme| container::Style {
-                background: Some(GRAY_100.into()),
+            .style(|theme: &Theme| container::Style {
+                background: Some(theme.clinical().background_secondary.into()),
                 border: Border {
                     radius: BORDER_RADIUS_SM.into(),
                     ..Default::default()

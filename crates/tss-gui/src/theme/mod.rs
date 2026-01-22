@@ -1,182 +1,130 @@
 //! Theme module for Trial Submission Studio.
 //!
-//! This module provides the Professional Clinical theme with:
-//! - Color palette (`palette`)
-//! - Spacing constants (`spacing`)
-//! - Typography definitions (`typography`)
-//! - Custom widget styles (`clinical`)
+//! This module provides the Professional Clinical theme using idiomatic Iced 0.14 patterns:
+//!
+//! - **palette**: Clinical color palettes for all theme/accessibility combinations
+//! - **colors**: ClinicalColors extension trait for app-specific colors
+//! - **clinical**: Widget style functions that use the theme parameter
+//! - **spacing**: Layout spacing constants
+//! - **typography**: Text size constants
+//!
+//! # Architecture
+//!
+//! The theme system follows Iced's design patterns:
+//! - Style functions receive `&Theme` and use it to access colors
+//! - `theme.extended_palette()` provides standard widget colors
+//! - `theme.clinical()` (via ClinicalColors trait) provides app-specific colors
 //!
 //! # Usage
 //!
 //! ```rust,ignore
-//! use tss_gui::theme::{clinical_light, palette, spacing, typography};
+//! use crate::theme::{clinical_theme, ClinicalColors, spacing};
+//! use iced::Theme;
 //!
-//! // Create the theme
-//! let theme = clinical_light();
+//! // Create the theme (typically in App::theme())
+//! let theme = clinical_theme(theme_mode, accessibility_mode, system_is_dark);
 //!
-//! // Use palette colors
-//! let primary_color = palette::PRIMARY_500;
+//! // In style closures, use the theme parameter:
+//! .style(|theme: &Theme| {
+//!     let palette = theme.extended_palette();
+//!     let clinical = theme.clinical();
 //!
-//! // Use spacing constants
-//! let padding = spacing::SPACING_MD;
-//!
-//! // Use typography
-//! let font_size = typography::FONT_SIZE_BODY;
+//!     container::Style {
+//!         background: Some(palette.background.base.color.into()),
+//!         border: Border {
+//!             color: clinical.border_default,
+//!             ..Default::default()
+//!         },
+//!         ..Default::default()
+//!     }
+//! })
 //! ```
 
-// Allow unused imports - these are public API re-exports
-#![allow(unused_imports)]
-
 pub mod clinical;
+pub mod colors;
 pub mod palette;
 pub mod spacing;
 pub mod typography;
 
-// Re-export commonly used items
-pub use clinical::clinical_light;
-pub use palette::{
-    BACKDROP,
-    BLACK,
-    ERROR,
-    ERROR_LIGHT,
-    EXPORT_HAS_ERRORS,
-    EXPORT_INCOMPLETE,
-    EXPORT_READY,
-    GRAY_50,
-    // Grays
-    GRAY_100,
-    GRAY_200,
-    GRAY_300,
-    GRAY_400,
-    GRAY_500,
-    GRAY_600,
-    GRAY_700,
-    GRAY_800,
-    GRAY_900,
-    INFO,
-    INFO_LIGHT,
-    PRIMARY_50,
-    PRIMARY_100,
-    PRIMARY_200,
-    PRIMARY_300,
-    PRIMARY_400,
-    // Primary colors
-    PRIMARY_500,
-    PRIMARY_500 as PRIMARY,
-    PRIMARY_600,
-    PRIMARY_700,
-    PRIMARY_800,
-    PRIMARY_900,
-    SHADOW,
-    SHADOW_STRONG,
-    STATUS_IN_PROGRESS,
-    // Status colors
-    STATUS_MAPPED,
-    STATUS_NOT_MAPPED,
-    STATUS_UNMAPPED,
-    // Semantic colors
-    SUCCESS,
-    SUCCESS_LIGHT,
-    TRANSPARENT,
-    WARNING,
-    WARNING_LIGHT,
-    // Special
-    WHITE,
-};
+// Re-export ClinicalColors extension trait (main API for app-specific colors)
+pub use colors::ClinicalColors;
 
+// Re-export palette types
+pub use palette::{AccessibilityMode, ThemeMode};
+
+// Re-export theme creation function
+pub use clinical::clinical_theme;
+
+// Re-export spacing constants (only those currently used)
 pub use spacing::{
-    BORDER_RADIUS_FULL,
-    BORDER_RADIUS_LG,
-    BORDER_RADIUS_MD,
-    // Border radius
-    BORDER_RADIUS_SM,
-    BORDER_RADIUS_XL,
-    BORDER_WIDTH_MEDIUM,
-    BORDER_WIDTH_THICK,
-    // Border widths
-    BORDER_WIDTH_THIN,
-    BUTTON_HEIGHT_LG,
-    BUTTON_HEIGHT_MD,
-    // Button heights
-    BUTTON_HEIGHT_SM,
-    ICON_SIZE_LG,
-    ICON_SIZE_MD,
-    // Icon sizes
-    ICON_SIZE_SM,
-    ICON_SIZE_XL,
-    // Input heights
-    INPUT_HEIGHT,
-    INPUT_HEIGHT_LG,
-    // Layout widths
-    MASTER_WIDTH,
-    MODAL_WIDTH_LG,
-    MODAL_WIDTH_MD,
-    MODAL_WIDTH_SM,
-    MODAL_WIDTH_XL,
-    SCROLLBAR_RADIUS,
-    // Scrollbar
-    SCROLLBAR_WIDTH,
-    SETTINGS_WIDTH,
-    SIDEBAR_WIDTH,
-    SIDEBAR_WIDTH_NARROW,
-    SIDEBAR_WIDTH_WIDE,
-    SPACING_LG,
-    SPACING_MD,
-    SPACING_SM,
-    SPACING_XL,
-    // Spacing
-    SPACING_XS,
-    SPACING_XXL,
-    TAB_BAR_HEIGHT,
-    TAB_INDICATOR_HEIGHT,
-    // Table
-    TAB_PADDING_X,
-    TAB_PADDING_Y,
-    // Tab bar
-    TABLE_CELL_PADDING_X,
-    TABLE_CELL_PADDING_Y,
-    TABLE_HEADER_HEIGHT,
-    TABLE_ROW_HEIGHT_COMFORTABLE,
-    TABLE_ROW_HEIGHT_COMPACT,
-    TABLE_ROW_HEIGHT_DEFAULT,
+    BORDER_RADIUS_FULL, BORDER_RADIUS_LG, BORDER_RADIUS_MD, BORDER_RADIUS_SM, MASTER_WIDTH,
+    MODAL_WIDTH_MD, MODAL_WIDTH_SM, SIDEBAR_WIDTH, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XL,
+    SPACING_XS, TAB_PADDING_X, TAB_PADDING_Y, TABLE_CELL_PADDING_X, TABLE_CELL_PADDING_Y,
 };
 
-pub use typography::{
-    FONT_SIZE_BODY,
-    // Font sizes
-    FONT_SIZE_CAPTION,
-    FONT_SIZE_DISPLAY,
-    FONT_SIZE_HEADING,
-    FONT_SIZE_SMALL,
-    FONT_SIZE_SUBTITLE,
-    FONT_SIZE_TITLE,
-    LINE_HEIGHT_NORMAL,
-    LINE_HEIGHT_RELAXED,
-    // Line heights
-    LINE_HEIGHT_TIGHT,
-    MAX_CHARS_LABEL,
-    MAX_CHARS_SHORT_LABEL,
-    // Character limits
-    MAX_CHARS_SINGLE_LINE,
-    MAX_CHARS_VARIABLE_NAME,
-};
+// Re-export typography constants (only those currently used)
+pub use typography::{MAX_CHARS_SHORT_LABEL, MAX_CHARS_VARIABLE_NAME};
 
-// Re-export widget style functions
+// Re-export widget style functions (only those currently used)
 pub use clinical::{
-    button_danger,
-    button_ghost,
-    // Button styles
-    button_primary,
-    button_secondary,
-    // Container styles
-    container_card,
-    container_inset,
-    container_modal,
-    container_sidebar,
-    container_surface,
-    // Progress bar styles
-    progress_bar_primary,
-    progress_bar_success,
-    // Text input styles
-    text_input_default,
+    button_ghost, button_primary, button_secondary, progress_bar_primary, text_input_default,
 };
+
+use iced::Theme;
+use serde::{Deserialize, Serialize};
+
+// =============================================================================
+// THEME CONFIGURATION
+// =============================================================================
+
+/// Theme configuration for the application.
+///
+/// Combines appearance mode (light/dark/system) with accessibility mode.
+/// Changes apply immediately without app restart.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ThemeConfig {
+    /// Appearance mode (light/dark/system)
+    pub theme_mode: ThemeMode,
+    /// Color vision accessibility mode
+    pub accessibility_mode: AccessibilityMode,
+}
+
+impl Default for ThemeConfig {
+    fn default() -> Self {
+        Self {
+            theme_mode: ThemeMode::Light,
+            accessibility_mode: AccessibilityMode::Standard,
+        }
+    }
+}
+
+impl ThemeConfig {
+    /// Create with both theme mode and accessibility mode.
+    pub fn new(theme_mode: ThemeMode, accessibility_mode: AccessibilityMode) -> Self {
+        Self {
+            theme_mode,
+            accessibility_mode,
+        }
+    }
+
+    /// Create an Iced Theme from this configuration.
+    ///
+    /// This is useful for previewing themes (e.g., in settings dialogs)
+    /// where you need to show colors for a different configuration than
+    /// the currently active theme.
+    ///
+    /// # Arguments
+    ///
+    /// * `system_is_dark` - Whether the system is in dark mode (for System theme mode)
+    ///
+    /// # Example
+    ///
+    /// ```rust,ignore
+    /// let config = ThemeConfig::new(ThemeMode::Dark, AccessibilityMode::Standard);
+    /// let preview_theme = config.to_theme(false);
+    /// let colors = preview_theme.clinical();
+    /// ```
+    pub fn to_theme(self, system_is_dark: bool) -> Theme {
+        clinical_theme(self.theme_mode, self.accessibility_mode, system_is_dark)
+    }
+}

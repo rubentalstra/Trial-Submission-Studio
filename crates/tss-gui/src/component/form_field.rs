@@ -3,11 +3,9 @@
 //! Input fields with labels, validation, and error display.
 
 use iced::widget::{column, container, text, text_input};
-use iced::{Border, Element, Length};
+use iced::{Border, Element, Length, Theme};
 
-use crate::theme::{
-    BORDER_RADIUS_SM, ERROR, GRAY_300, GRAY_600, GRAY_900, SPACING_XS, text_input_default,
-};
+use crate::theme::{BORDER_RADIUS_SM, ClinicalColors, SPACING_XS, text_input_default};
 
 // =============================================================================
 // FORM FIELD
@@ -43,13 +41,17 @@ pub fn form_field<'a, M: Clone + 'a>(
     on_change: impl Fn(String) -> M + 'a,
     error: Option<&'a str>,
 ) -> Element<'a, M> {
-    let label_text = text(label).size(13).color(GRAY_600);
+    let has_error = error.is_some();
+
+    let label_text = text(label).size(13).style(|theme: &Theme| text::Style {
+        color: Some(theme.clinical().text_muted),
+    });
 
     let input = text_input(placeholder, value)
         .on_input(on_change)
         .padding(10.0)
         .width(Length::Fill)
-        .style(if error.is_some() {
+        .style(if has_error {
             text_input_error_style
         } else {
             text_input_default
@@ -58,7 +60,9 @@ pub fn form_field<'a, M: Clone + 'a>(
     let mut content = column![label_text, input].spacing(SPACING_XS);
 
     if let Some(err) = error {
-        let error_text = text(err).size(12).color(ERROR);
+        let error_text = text(err).size(12).style(|theme: &Theme| text::Style {
+            color: Some(theme.extended_palette().danger.base.color),
+        });
         content = content.push(error_text);
     }
 
@@ -99,7 +103,9 @@ pub fn number_field<'a, M: Clone + 'a>(
 ) -> Element<'a, M> {
     let value_str = value.to_string();
 
-    let label_text = text(label).size(13).color(GRAY_600);
+    let label_text = text(label).size(13).style(|theme: &Theme| text::Style {
+        color: Some(theme.clinical().text_muted),
+    });
 
     let input = text_input("0", &value_str)
         .on_input(move |s| {
@@ -123,20 +129,27 @@ pub fn number_field<'a, M: Clone + 'a>(
 ///
 /// Shows a value that cannot be edited (for display purposes).
 pub fn display_field<'a, M: 'a>(label: &'a str, value: &'a str) -> Element<'a, M> {
-    let label_text = text(label).size(13).color(GRAY_600);
+    let label_text = text(label).size(13).style(|theme: &Theme| text::Style {
+        color: Some(theme.clinical().text_muted),
+    });
 
-    let value_text = container(text(value).size(14).color(GRAY_900))
-        .padding(10.0)
-        .width(Length::Fill)
-        .style(|_theme| container::Style {
-            background: Some(crate::theme::GRAY_100.into()),
+    let value_text = container(text(value).size(14).style(|theme: &Theme| text::Style {
+        color: Some(theme.extended_palette().background.base.text),
+    }))
+    .padding(10.0)
+    .width(Length::Fill)
+    .style(|theme: &Theme| {
+        let clinical = theme.clinical();
+        container::Style {
+            background: Some(clinical.background_secondary.into()),
             border: Border {
                 radius: BORDER_RADIUS_SM.into(),
-                color: GRAY_300,
+                color: clinical.border_default,
                 width: 1.0,
             },
             ..Default::default()
-        });
+        }
+    });
 
     column![label_text, value_text].spacing(SPACING_XS).into()
 }
@@ -151,7 +164,9 @@ pub fn text_area_field<'a, M: Clone + 'a>(
     on_change: impl Fn(String) -> M + 'a,
     rows: u16,
 ) -> Element<'a, M> {
-    let label_text = text(label).size(13).color(GRAY_600);
+    let label_text = text(label).size(13).style(|theme: &Theme| text::Style {
+        color: Some(theme.clinical().text_muted),
+    });
 
     // Note: Iced doesn't have a native textarea, so we simulate with a taller text_input
     // For true multi-line, would need text_editor widget
@@ -177,9 +192,12 @@ pub fn text_area_field<'a, M: Clone + 'a>(
 // =============================================================================
 
 /// Text input style for error state
-fn text_input_error_style(_theme: &iced::Theme, status: text_input::Status) -> text_input::Style {
-    let mut style = text_input_default(_theme, status);
-    style.border.color = ERROR;
+fn text_input_error_style(theme: &Theme, status: text_input::Status) -> text_input::Style {
+    let clinical = theme.clinical();
+    let error_color = clinical.border_error;
+
+    let mut style = text_input_default(theme, status);
+    style.border.color = error_color;
     style.border.width = 2.0;
     style
 }

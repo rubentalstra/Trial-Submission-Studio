@@ -21,20 +21,41 @@ use crate::message::domain_editor::PreviewMessage;
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{AppState, DomainState, PreviewUiState, ViewState};
 use crate::theme::{
-    BORDER_RADIUS_SM, GRAY_100, GRAY_200, GRAY_300, GRAY_400, GRAY_500, GRAY_600, GRAY_700,
-    GRAY_800, GRAY_900, PRIMARY_100, PRIMARY_500, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS,
-    WHITE, button_ghost, button_primary,
+    BORDER_RADIUS_SM, ClinicalColors, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS, ThemeConfig,
+    button_ghost, button_primary,
 };
 
 // =============================================================================
-// SPECIAL COLUMN COLORS
+// SPECIAL COLUMN COLORS (inline functions for theming)
 // =============================================================================
 
-/// Light amber background for "Not Collected" columns - subtle but distinct
-const NOT_COLLECTED_BG: Color = Color::from_rgb(1.0, 0.98, 0.93); // #FFF9ED - very light amber
-const NOT_COLLECTED_BG_ALT: Color = Color::from_rgb(1.0, 0.96, 0.88); // #FFF5E0 - slightly darker for alternating rows
-const NOT_COLLECTED_HEADER_BG: Color = Color::from_rgb(1.0, 0.95, 0.85); // #FFF2D9 - header background
-const NOT_COLLECTED_BADGE_BG: Color = Color::from_rgb(0.95, 0.65, 0.05); // #F2A60D - amber badge
+/// Get the Not Collected colors for theming
+fn not_collected_colors(config: &ThemeConfig) -> NotCollectedColors {
+    // Use warning colors as base for "Not Collected" columns
+    let theme = config.to_theme(false);
+    let warning = theme.extended_palette().warning.base.color;
+    let warning_light = theme.clinical().status_warning_light;
+
+    NotCollectedColors {
+        bg: warning_light,
+        bg_alt: Color {
+            a: warning_light.a * 1.1,
+            ..warning_light
+        },
+        header_bg: Color {
+            a: warning_light.a * 1.2,
+            ..warning_light
+        },
+        badge_bg: warning,
+    }
+}
+
+struct NotCollectedColors {
+    bg: Color,
+    bg_alt: Color,
+    header_bg: Color,
+    badge_bg: Color,
+}
 
 // =============================================================================
 // CONSTANTS
@@ -59,10 +80,14 @@ const CHAR_WIDTH: f32 = 7.5;
 
 /// Render the preview tab content.
 pub fn view_preview_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Element<'a, Message> {
+    let config = &state.theme_config;
+
     let domain = match state.domain(domain_code) {
         Some(d) => d,
         None => {
-            return container(text("Domain not found").size(14).color(GRAY_500))
+            let theme = config.to_theme(false);
+            let text_muted = theme.clinical().text_muted;
+            return container(text("Domain not found").size(14).color(text_muted))
                 .width(Length::Fill)
                 .height(Length::Fill)
                 .center_x(Length::Shrink)
@@ -82,7 +107,7 @@ pub fn view_preview_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
     };
 
     // Header
-    let header = view_preview_header(preview_cache.as_ref(), preview_ui);
+    let header = view_preview_header(config, preview_cache.as_ref(), preview_ui);
 
     // Content based on state
     let content: Element<'a, Message> = if preview_ui.is_rebuilding {
@@ -90,9 +115,9 @@ pub fn view_preview_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
     } else if let Some(error) = &preview_ui.error {
         view_error_state(error.as_str())
     } else if let Some(df) = preview_cache {
-        view_data_table(df, preview_ui, domain)
+        view_data_table(config, df, preview_ui, domain)
     } else {
-        view_empty_state()
+        view_empty_state(config)
     };
 
     // Header with padding, table without padding for edge-to-edge look
@@ -116,10 +141,18 @@ pub fn view_preview_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Elemen
 
 /// Preview header with stats and rebuild button.
 fn view_preview_header<'a>(
+    config: &ThemeConfig,
     df: Option<&DataFrame>,
     preview_ui: &PreviewUiState,
 ) -> Element<'a, Message> {
-    let title = text("Data Preview").size(18).color(GRAY_900);
+    let theme = config.to_theme(false);
+    let text_primary = theme.extended_palette().background.base.text;
+    let text_secondary = theme.clinical().text_secondary;
+    let text_muted = theme.clinical().text_muted;
+    let text_on_accent = theme.clinical().text_on_accent;
+    let bg_secondary = theme.clinical().background_secondary;
+
+    let title = text("Data Preview").size(18).color(text_primary);
 
     // Stats based on DataFrame
     let stats: Element<'a, Message> = if let Some(df) = df {
@@ -128,17 +161,17 @@ fn view_preview_header<'a>(
         row![
             container(
                 row![
-                    lucide::table().size(12).color(GRAY_500),
+                    lucide::table().size(12).color(text_muted),
                     Space::new().width(SPACING_XS),
                     text(format!("{} columns", num_cols))
                         .size(12)
-                        .color(GRAY_600),
+                        .color(text_secondary),
                 ]
                 .align_y(Alignment::Center)
             )
             .padding([4.0, 8.0])
-            .style(|_: &Theme| container::Style {
-                background: Some(GRAY_100.into()),
+            .style(move |_: &Theme| container::Style {
+                background: Some(bg_secondary.into()),
                 border: Border {
                     radius: BORDER_RADIUS_SM.into(),
                     ..Default::default()
@@ -148,15 +181,17 @@ fn view_preview_header<'a>(
             Space::new().width(SPACING_SM),
             container(
                 row![
-                    lucide::list().size(12).color(GRAY_500),
+                    lucide::list().size(12).color(text_muted),
                     Space::new().width(SPACING_XS),
-                    text(format!("{} rows", num_rows)).size(12).color(GRAY_600),
+                    text(format!("{} rows", num_rows))
+                        .size(12)
+                        .color(text_secondary),
                 ]
                 .align_y(Alignment::Center)
             )
             .padding([4.0, 8.0])
-            .style(|_: &Theme| container::Style {
-                background: Some(GRAY_100.into()),
+            .style(move |_: &Theme| container::Style {
+                background: Some(bg_secondary.into()),
                 border: Border {
                     radius: BORDER_RADIUS_SM.into(),
                     ..Default::default()
@@ -167,15 +202,15 @@ fn view_preview_header<'a>(
         .align_y(Alignment::Center)
         .into()
     } else {
-        text("No data loaded").size(12).color(GRAY_500).into()
+        text("No data loaded").size(12).color(text_muted).into()
     };
 
     let rebuild_button = button(
         row![
             if preview_ui.is_rebuilding {
-                lucide::loader().size(14).color(WHITE)
+                lucide::loader().size(14).color(text_on_accent)
             } else {
-                lucide::refresh_cw().size(14).color(WHITE)
+                lucide::refresh_cw().size(14).color(text_on_accent)
             },
             Space::new().width(SPACING_SM),
             text(if preview_ui.is_rebuilding {
@@ -184,7 +219,7 @@ fn view_preview_header<'a>(
                 "Rebuild"
             })
             .size(13)
-            .color(WHITE),
+            .color(text_on_accent),
         ]
         .align_y(Alignment::Center),
     )
@@ -213,10 +248,15 @@ fn view_preview_header<'a>(
 
 /// Display the actual data table from DataFrame with horizontal scrolling.
 fn view_data_table<'a>(
+    config: &ThemeConfig,
     df: &DataFrame,
     preview_ui: &PreviewUiState,
     domain: &DomainState,
 ) -> Element<'a, Message> {
+    let theme = config.to_theme(false);
+    let bg_secondary = theme.clinical().background_secondary;
+    let border_default = theme.clinical().border_default;
+
     let col_names: Vec<String> = df
         .get_column_names()
         .iter()
@@ -242,14 +282,21 @@ fn view_data_table<'a>(
     let end = (start + page_size).min(total_rows);
 
     // Build the complete table (header + data)
-    let table_content =
-        build_table_content(df, &col_names, &col_widths, &not_collected_cols, start, end);
+    let table_content = build_table_content(
+        config,
+        df,
+        &col_names,
+        &col_widths,
+        &not_collected_cols,
+        start,
+        end,
+    );
 
     // Pagination controls
-    let pagination = view_pagination(page, total_rows, page_size);
+    let pagination = view_pagination(config, page, total_rows, page_size);
 
     // Rows per page selector
-    let rows_selector = view_rows_per_page_selector(preview_ui.rows_per_page);
+    let rows_selector = view_rows_per_page_selector(config, preview_ui.rows_per_page);
 
     // Bottom bar with pagination and rows selector
     let bottom_bar = container(
@@ -264,10 +311,10 @@ fn view_data_table<'a>(
         .align_y(Alignment::Center)
         .padding([SPACING_SM, SPACING_MD]),
     )
-    .style(|_: &Theme| container::Style {
-        background: Some(GRAY_100.into()),
+    .style(move |_: &Theme| container::Style {
+        background: Some(bg_secondary.into()),
         border: Border {
-            color: GRAY_200,
+            color: border_default,
             width: 1.0,
             radius: BORDER_RADIUS_SM.into(),
         },
@@ -298,9 +345,9 @@ fn view_data_table<'a>(
     )
     .width(Length::Fill)
     .height(Length::Fill)
-    .style(|_: &Theme| container::Style {
+    .style(move |_: &Theme| container::Style {
         border: Border {
-            color: GRAY_200,
+            color: border_default,
             width: 1.0,
             radius: BORDER_RADIUS_SM.into(),
         },
@@ -354,6 +401,7 @@ fn calculate_column_widths(df: &DataFrame, col_names: &[String]) -> Vec<f32> {
 
 /// Build the table content (header row + data rows).
 fn build_table_content<'a>(
+    config: &ThemeConfig,
     df: &DataFrame,
     col_names: &[String],
     col_widths: &[f32],
@@ -362,13 +410,14 @@ fn build_table_content<'a>(
     end: usize,
 ) -> Element<'a, Message> {
     // Header row
-    let header_row = build_header_row(col_names, col_widths, not_collected_cols);
+    let header_row = build_header_row(config, col_names, col_widths, not_collected_cols);
 
     // Data rows
     let mut data_rows = column![].spacing(0);
     for row_idx in start..end {
         let is_even = (row_idx - start).is_multiple_of(2);
         data_rows = data_rows.push(build_data_row(
+            config,
             df,
             col_names,
             col_widths,
@@ -383,10 +432,18 @@ fn build_table_content<'a>(
 
 /// Build the header row.
 fn build_header_row<'a>(
+    config: &ThemeConfig,
     col_names: &[String],
     col_widths: &[f32],
     not_collected_cols: &HashSet<&str>,
 ) -> Element<'a, Message> {
+    let theme = config.to_theme(false);
+    let text_secondary = theme.clinical().text_secondary;
+    let text_on_accent = theme.clinical().text_on_accent;
+    let bg_secondary = theme.clinical().background_secondary;
+    let border_default = theme.clinical().border_default;
+    let nc_colors = not_collected_colors(config);
+
     let mut header = row![].spacing(0);
 
     for (name, &width) in col_names.iter().zip(col_widths.iter()) {
@@ -397,7 +454,7 @@ fn build_header_row<'a>(
             row![
                 text(name.clone())
                     .size(12)
-                    .color(GRAY_700)
+                    .color(text_secondary)
                     .wrapping(Wrapping::None)
                     .font(iced::Font {
                         weight: iced::font::Weight::Semibold,
@@ -405,13 +462,13 @@ fn build_header_row<'a>(
                     }),
                 Space::new().width(SPACING_XS),
                 // "NC" badge
-                container(text("NC").size(9).color(WHITE).font(iced::Font {
+                container(text("NC").size(9).color(text_on_accent).font(iced::Font {
                     weight: iced::font::Weight::Bold,
                     ..Default::default()
                 }))
                 .padding([2.0, 4.0])
-                .style(|_: &Theme| container::Style {
-                    background: Some(NOT_COLLECTED_BADGE_BG.into()),
+                .style(move |_: &Theme| container::Style {
+                    background: Some(nc_colors.badge_bg.into()),
                     border: Border {
                         radius: 3.0.into(),
                         ..Default::default()
@@ -424,7 +481,7 @@ fn build_header_row<'a>(
         } else {
             text(name.clone())
                 .size(12)
-                .color(GRAY_700)
+                .color(text_secondary)
                 .wrapping(Wrapping::None)
                 .font(iced::Font {
                     weight: iced::font::Weight::Semibold,
@@ -435,9 +492,9 @@ fn build_header_row<'a>(
 
         // Determine background color based on Not Collected status
         let bg_color = if is_not_collected {
-            NOT_COLLECTED_HEADER_BG
+            nc_colors.header_bg
         } else {
-            GRAY_100
+            bg_secondary
         };
 
         let cell = container(cell_content)
@@ -446,7 +503,7 @@ fn build_header_row<'a>(
             .style(move |_: &Theme| container::Style {
                 background: Some(bg_color.into()),
                 border: Border {
-                    color: GRAY_200,
+                    color: border_default,
                     width: 1.0,
                     ..Default::default()
                 },
@@ -457,8 +514,8 @@ fn build_header_row<'a>(
     }
 
     container(header)
-        .style(|_: &Theme| container::Style {
-            background: Some(GRAY_100.into()),
+        .style(move |_: &Theme| container::Style {
+            background: Some(bg_secondary.into()),
             ..Default::default()
         })
         .into()
@@ -466,6 +523,7 @@ fn build_header_row<'a>(
 
 /// Build a single data row.
 fn build_data_row<'a>(
+    config: &ThemeConfig,
     df: &DataFrame,
     col_names: &[String],
     col_widths: &[f32],
@@ -473,6 +531,14 @@ fn build_data_row<'a>(
     row_idx: usize,
     is_even: bool,
 ) -> Element<'a, Message> {
+    let theme = config.to_theme(false);
+    let text_primary = theme.extended_palette().background.base.text;
+    let text_disabled = theme.clinical().text_disabled;
+    let bg_elevated = theme.clinical().background_elevated;
+    let bg_secondary = theme.clinical().background_secondary;
+    let border_default = theme.clinical().border_default;
+    let nc_colors = not_collected_colors(config);
+
     let mut data_row = row![].spacing(0);
 
     for (col_idx, col) in df.get_columns().iter().enumerate() {
@@ -482,14 +548,14 @@ fn build_data_row<'a>(
         // Determine background color based on Not Collected status and alternating rows
         let bg_color = if is_not_collected {
             if is_even {
-                NOT_COLLECTED_BG
+                nc_colors.bg
             } else {
-                NOT_COLLECTED_BG_ALT
+                nc_colors.bg_alt
             }
         } else if is_even {
-            WHITE
+            bg_elevated
         } else {
-            GRAY_100
+            bg_secondary
         };
 
         let value = col
@@ -498,7 +564,11 @@ fn build_data_row<'a>(
         let width = col_widths.get(col_idx).copied().unwrap_or(100.0);
 
         // Check if value is empty/null for styling
-        let text_color = if value.is_empty() { GRAY_400 } else { GRAY_800 };
+        let text_color = if value.is_empty() {
+            text_disabled
+        } else {
+            text_primary
+        };
         let display_value = if value.is_empty() {
             "—".to_string()
         } else {
@@ -516,7 +586,7 @@ fn build_data_row<'a>(
         .style(move |_: &Theme| container::Style {
             background: Some(bg_color.into()),
             border: Border {
-                color: GRAY_200,
+                color: border_default,
                 width: 0.5,
                 ..Default::default()
             },
@@ -530,7 +600,18 @@ fn build_data_row<'a>(
 }
 
 /// Pagination controls.
-fn view_pagination<'a>(page: usize, total_rows: usize, page_size: usize) -> Element<'a, Message> {
+fn view_pagination<'a>(
+    config: &ThemeConfig,
+    page: usize,
+    total_rows: usize,
+    page_size: usize,
+) -> Element<'a, Message> {
+    let theme = config.to_theme(false);
+    let text_secondary = theme.clinical().text_secondary;
+    let text_disabled = theme.clinical().text_disabled;
+    let bg_elevated = theme.clinical().background_elevated;
+    let border_default = theme.clinical().border_default;
+
     let total_pages = total_rows.div_ceil(page_size).max(1);
 
     let prev_enabled = page > 0;
@@ -538,9 +619,9 @@ fn view_pagination<'a>(page: usize, total_rows: usize, page_size: usize) -> Elem
 
     // First page button
     let first_button = button(lucide::chevrons_left().size(14).color(if prev_enabled {
-        GRAY_700
+        text_secondary
     } else {
-        GRAY_400
+        text_disabled
     }))
     .on_press_maybe(if prev_enabled {
         Some(Message::DomainEditor(DomainEditorMessage::Preview(
@@ -554,9 +635,9 @@ fn view_pagination<'a>(page: usize, total_rows: usize, page_size: usize) -> Elem
 
     // Previous page button
     let prev_button = button(lucide::chevron_left().size(14).color(if prev_enabled {
-        GRAY_700
+        text_secondary
     } else {
-        GRAY_400
+        text_disabled
     }))
     .on_press_maybe(if prev_enabled {
         Some(Message::DomainEditor(DomainEditorMessage::Preview(
@@ -579,13 +660,13 @@ fn view_pagination<'a>(page: usize, total_rows: usize, page_size: usize) -> Elem
             total_rows
         ))
         .size(12)
-        .color(GRAY_700),
+        .color(text_secondary),
     )
     .padding([6.0, 12.0])
-    .style(|_: &Theme| container::Style {
-        background: Some(WHITE.into()),
+    .style(move |_: &Theme| container::Style {
+        background: Some(bg_elevated.into()),
         border: Border {
-            color: GRAY_200,
+            color: border_default,
             width: 1.0,
             radius: BORDER_RADIUS_SM.into(),
         },
@@ -594,9 +675,9 @@ fn view_pagination<'a>(page: usize, total_rows: usize, page_size: usize) -> Elem
 
     // Next page button
     let next_button = button(lucide::chevron_right().size(14).color(if next_enabled {
-        GRAY_700
+        text_secondary
     } else {
-        GRAY_400
+        text_disabled
     }))
     .on_press_maybe(if next_enabled {
         Some(Message::DomainEditor(DomainEditorMessage::Preview(
@@ -610,9 +691,9 @@ fn view_pagination<'a>(page: usize, total_rows: usize, page_size: usize) -> Elem
 
     // Last page button
     let last_button = button(lucide::chevrons_right().size(14).color(if next_enabled {
-        GRAY_700
+        text_secondary
     } else {
-        GRAY_400
+        text_disabled
     }))
     .on_press_maybe(if next_enabled {
         Some(Message::DomainEditor(DomainEditorMessage::Preview(
@@ -638,19 +719,31 @@ fn view_pagination<'a>(page: usize, total_rows: usize, page_size: usize) -> Elem
 }
 
 /// Rows per page selector.
-fn view_rows_per_page_selector<'a>(current: usize) -> Element<'a, Message> {
+fn view_rows_per_page_selector<'a>(config: &ThemeConfig, current: usize) -> Element<'a, Message> {
+    let theme = config.to_theme(false);
+    let text_secondary = theme.clinical().text_secondary;
+    let accent_primary = theme.extended_palette().primary.base.color;
+    let bg_elevated = theme.clinical().background_elevated;
+    let border_default = theme.clinical().border_default;
+
+    // Create a lighter accent background for selected state
+    let accent_light = Color {
+        a: 0.15,
+        ..accent_primary
+    };
+
     let options = [25, 50, 100, 200];
 
-    let label = text("Rows:").size(12).color(GRAY_600);
+    let label = text("Rows:").size(12).color(text_secondary);
 
     let buttons: Vec<Element<'a, Message>> = options
         .iter()
         .map(|&n| {
             let is_selected = current == n;
             button(text(format!("{}", n)).size(11).color(if is_selected {
-                PRIMARY_500
+                accent_primary
             } else {
-                GRAY_600
+                text_secondary
             }))
             .on_press(Message::DomainEditor(DomainEditorMessage::Preview(
                 PreviewMessage::RowsPerPageChanged(n),
@@ -659,10 +752,10 @@ fn view_rows_per_page_selector<'a>(current: usize) -> Element<'a, Message> {
             .style(move |_: &Theme, _status| {
                 if is_selected {
                     iced::widget::button::Style {
-                        background: Some(PRIMARY_100.into()),
-                        text_color: PRIMARY_500,
+                        background: Some(accent_light.into()),
+                        text_color: accent_primary,
                         border: Border {
-                            color: PRIMARY_500,
+                            color: accent_primary,
                             width: 1.0,
                             radius: BORDER_RADIUS_SM.into(),
                         },
@@ -670,10 +763,10 @@ fn view_rows_per_page_selector<'a>(current: usize) -> Element<'a, Message> {
                     }
                 } else {
                     iced::widget::button::Style {
-                        background: Some(WHITE.into()),
-                        text_color: GRAY_600,
+                        background: Some(bg_elevated.into()),
+                        text_color: text_secondary,
                         border: Border {
-                            color: GRAY_300,
+                            color: border_default,
                             width: 1.0,
                             radius: BORDER_RADIUS_SM.into(),
                         },
@@ -756,9 +849,12 @@ fn view_error_state(error: &str) -> Element<'_, Message> {
 }
 
 /// Empty state when no preview is available.
-fn view_empty_state<'a>() -> Element<'a, Message> {
+fn view_empty_state<'a>(config: &ThemeConfig) -> Element<'a, Message> {
+    let theme = config.to_theme(false);
+    let text_disabled = theme.clinical().text_disabled;
+
     EmptyState::new(
-        lucide::table().size(48).color(GRAY_400),
+        lucide::table().size(48).color(text_disabled),
         "No Preview Available",
     )
     .description("Click 'Rebuild' to generate the transformed data preview")

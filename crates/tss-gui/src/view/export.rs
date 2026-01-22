@@ -6,7 +6,7 @@
 use iced::widget::{
     Space, button, checkbox, column, container, radio, row, rule, scrollable, text,
 };
-use iced::{Alignment, Border, Element, Length};
+use iced::{Alignment, Border, Element, Length, Theme};
 use iced_fonts::lucide;
 
 use crate::component::{
@@ -18,8 +18,7 @@ use crate::state::{
     AppState, DomainState, ExportFormat, ExportViewState, Study, ViewState, XptVersion,
 };
 use crate::theme::{
-    GRAY_100, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800, MASTER_WIDTH, PRIMARY_500,
-    SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS, SUCCESS, WARNING, WHITE, button_primary,
+    ClinicalColors, MASTER_WIDTH, SPACING_LG, SPACING_MD, SPACING_SM, SPACING_XS, button_primary,
     button_secondary,
 };
 
@@ -54,7 +53,10 @@ pub fn view_export(state: &AppState) -> Element<'_, Message> {
 /// View when no study is loaded.
 fn view_no_study<'a>() -> Element<'a, Message> {
     EmptyState::new(
-        lucide::folder_open().size(48).color(GRAY_500),
+        container(lucide::folder_open().size(48)).style(|theme: &Theme| container::Style {
+            text_color: Some(theme.clinical().text_muted),
+            ..Default::default()
+        }),
         "No Study Loaded",
     )
     .description("Open a study folder to export domains")
@@ -133,9 +135,15 @@ fn view_master_header<'a>(
     let stats = row![
         text(format!("{}/{}", selected, total))
             .size(12)
-            .color(GRAY_600),
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_secondary)
+            }),
         Space::new().width(4.0),
-        text("selected").size(11).color(GRAY_500),
+        text("selected")
+            .size(11)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted)
+            }),
     ]
     .align_y(Alignment::Center);
 
@@ -158,7 +166,14 @@ fn view_domain_list<'a>(
     let domain_codes = study.domain_codes();
 
     if domain_codes.is_empty() {
-        return column![text("No domains found").size(13).color(GRAY_500),].into();
+        return column![
+            text("No domains found")
+                .size(13)
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_muted)
+                }),
+        ]
+        .into();
     }
 
     let domain_items: Vec<Element<'a, Message>> = domain_codes
@@ -192,25 +207,46 @@ fn view_domain_row<'a>(
     };
 
     let status_icon: Element<'a, Message> = if mapped_ratio >= 0.9 {
-        lucide::circle_check().size(14).color(SUCCESS).into()
+        container(lucide::circle_check().size(14))
+            .style(|theme: &Theme| container::Style {
+                text_color: Some(theme.extended_palette().success.base.color),
+                ..Default::default()
+            })
+            .into()
     } else if mapped_ratio >= 0.5 {
-        lucide::circle_alert().size(14).color(WARNING).into()
+        container(lucide::circle_alert().size(14))
+            .style(|theme: &Theme| container::Style {
+                text_color: Some(theme.extended_palette().warning.base.color),
+                ..Default::default()
+            })
+            .into()
     } else {
-        lucide::circle().size(14).color(GRAY_400).into()
+        container(lucide::circle().size(14))
+            .style(|theme: &Theme| container::Style {
+                text_color: Some(theme.clinical().text_disabled),
+                ..Default::default()
+            })
+            .into()
     };
 
     let code_string = code.to_string();
     let checkbox_widget = checkbox(is_selected)
         .on_toggle(move |_| Message::Export(ExportMessage::DomainToggled(code_string.clone())));
 
-    let row_info = text(format!("{} rows", row_count)).size(11).color(GRAY_500);
+    let row_info = text(format!("{} rows", row_count))
+        .size(11)
+        .style(|theme: &Theme| text::Style {
+            color: Some(theme.clinical().text_muted),
+        });
 
     let main_row = row![
         checkbox_widget,
         Space::new().width(SPACING_XS),
         status_icon,
         Space::new().width(SPACING_XS),
-        text(code).size(13).color(GRAY_800),
+        text(code).size(13).style(|theme: &Theme| text::Style {
+            color: Some(theme.extended_palette().background.base.text)
+        }),
         Space::new().width(Length::Fill),
         row_info,
     ]
@@ -226,9 +262,18 @@ fn view_domain_row<'a>(
         // Show SUPP row below main domain
         let supp_row = row![
             Space::new().width(32.0), // Indent to align
-            lucide::corner_down_right().size(12).color(GRAY_400),
+            container(lucide::corner_down_right().size(12)).style(|theme: &Theme| {
+                container::Style {
+                    text_color: Some(theme.clinical().text_disabled),
+                    ..Default::default()
+                }
+            }),
             Space::new().width(SPACING_XS),
-            text(format!("SUPP{}", code)).size(12).color(PRIMARY_500),
+            text(format!("SUPP{}", code))
+                .size(12)
+                .style(|theme: &Theme| text::Style {
+                    color: Some(theme.extended_palette().primary.base.color)
+                }),
             Space::new().width(SPACING_SM),
             text(format!(
                 "({} qualifier{})",
@@ -236,14 +281,16 @@ fn view_domain_row<'a>(
                 if supp_count == 1 { "" } else { "s" }
             ))
             .size(11)
-            .color(GRAY_500),
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted)
+            }),
         ]
         .align_y(Alignment::Center)
         .padding([2.0, SPACING_SM]);
 
         container(column![main_row, supp_row].spacing(0.0))
-            .style(|_| container::Style {
-                background: Some(WHITE.into()),
+            .style(|theme: &Theme| container::Style {
+                background: Some(theme.clinical().background_elevated.into()),
                 border: Border {
                     radius: 4.0.into(),
                     ..Default::default()
@@ -253,8 +300,8 @@ fn view_domain_row<'a>(
             .into()
     } else {
         container(main_row)
-            .style(|_| container::Style {
-                background: Some(WHITE.into()),
+            .style(|theme: &Theme| container::Style {
+                background: Some(theme.clinical().background_elevated.into()),
                 border: Border {
                     radius: 4.0.into(),
                     ..Default::default()
@@ -331,21 +378,28 @@ fn view_output_directory<'a>(
 
     // Section title
     let title = row![
-        lucide::folder().size(14).color(GRAY_600),
+        container(lucide::folder().size(14)).style(|theme: &Theme| container::Style {
+            text_color: Some(theme.clinical().text_secondary),
+            ..Default::default()
+        }),
         Space::new().width(SPACING_SM),
-        text("Output Directory").size(14).color(GRAY_700),
+        text("Output Directory")
+            .size(14)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text)
+            }),
     ]
     .align_y(Alignment::Center);
 
-    let path_display = container(
-        text(output_dir.display().to_string())
-            .size(12)
-            .color(GRAY_600),
-    )
+    let path_display = container(text(output_dir.display().to_string()).size(12).style(
+        |theme: &Theme| text::Style {
+            color: Some(theme.clinical().text_secondary),
+        },
+    ))
     .padding([SPACING_SM, SPACING_MD])
     .width(Length::Fill)
-    .style(|_| container::Style {
-        background: Some(GRAY_100.into()),
+    .style(|theme: &Theme| container::Style {
+        background: Some(theme.clinical().background_secondary.into()),
         border: Border {
             radius: 4.0.into(),
             ..Default::default()
@@ -355,7 +409,10 @@ fn view_output_directory<'a>(
 
     let change_btn = button(
         row![
-            lucide::folder_open().size(12),
+            container(lucide::folder_open().size(12)).style(|theme: &Theme| container::Style {
+                text_color: Some(theme.clinical().text_secondary),
+                ..Default::default()
+            }),
             Space::new().width(SPACING_XS),
             text("Change").size(12),
         ]
@@ -381,9 +438,16 @@ fn view_format_selection(state: &AppState) -> Element<'_, Message> {
 
     // Section title
     let title = row![
-        lucide::file_output().size(14).color(GRAY_600),
+        container(lucide::file_output().size(14)).style(|theme: &Theme| container::Style {
+            text_color: Some(theme.clinical().text_secondary),
+            ..Default::default()
+        }),
         Space::new().width(SPACING_SM),
-        text("Data Format").size(14).color(GRAY_700),
+        text("Data Format")
+            .size(14)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text)
+            }),
     ]
     .align_y(Alignment::Center);
 
@@ -396,7 +460,9 @@ fn view_format_selection(state: &AppState) -> Element<'_, Message> {
         ),
         text(ExportFormat::Xpt.description())
             .size(11)
-            .color(GRAY_500),
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted)
+            }),
         Space::new().height(SPACING_SM),
         radio(
             ExportFormat::DatasetXml.label(),
@@ -406,7 +472,9 @@ fn view_format_selection(state: &AppState) -> Element<'_, Message> {
         ),
         text(ExportFormat::DatasetXml.description())
             .size(11)
-            .color(GRAY_500),
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted)
+            }),
     ]
     .spacing(SPACING_XS);
 
@@ -419,9 +487,16 @@ fn view_xpt_version(state: &AppState) -> Element<'_, Message> {
 
     // Section title
     let title = row![
-        lucide::settings().size(14).color(GRAY_600),
+        container(lucide::settings().size(14)).style(|theme: &Theme| container::Style {
+            text_color: Some(theme.clinical().text_secondary),
+            ..Default::default()
+        }),
         Space::new().width(SPACING_SM),
-        text("XPT Version").size(14).color(GRAY_700),
+        text("XPT Version")
+            .size(14)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text)
+            }),
     ]
     .align_y(Alignment::Center);
 
@@ -434,7 +509,9 @@ fn view_xpt_version(state: &AppState) -> Element<'_, Message> {
         ),
         text("Recommended for modern submissions")
             .size(11)
-            .color(GRAY_500),
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted)
+            }),
         Space::new().height(SPACING_SM),
         radio(
             XptVersion::V5.display_name(),
@@ -444,7 +521,9 @@ fn view_xpt_version(state: &AppState) -> Element<'_, Message> {
         ),
         text("Maximum compatibility with older software")
             .size(11)
-            .color(GRAY_500),
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted)
+            }),
     ]
     .spacing(SPACING_XS);
 
@@ -481,7 +560,10 @@ fn view_export_button(export_state: &ExportViewState) -> Element<'_, Message> {
     };
 
     let btn_content = row![
-        lucide::download().size(16),
+        container(lucide::download().size(16)).style(|theme: &Theme| container::Style {
+            text_color: Some(theme.clinical().text_on_accent),
+            ..Default::default()
+        }),
         Space::new().width(SPACING_SM),
         text(button_label).size(14),
     ]

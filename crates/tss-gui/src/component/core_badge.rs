@@ -1,6 +1,7 @@
 //! Core designation badge component.
 //!
 //! Badges for CDISC core designations (Required, Expected, Permissible).
+//! Uses the semantic color system for accessibility mode support.
 //!
 //! # Usage
 //!
@@ -14,12 +15,10 @@
 //! ```
 
 use iced::widget::{container, text};
-use iced::{Border, Element};
+use iced::{Border, Element, Theme};
 use tss_standards::CoreDesignation;
 
-use crate::theme::{
-    BORDER_RADIUS_SM, ERROR, ERROR_LIGHT, GRAY_100, GRAY_500, WARNING, WARNING_LIGHT,
-};
+use crate::theme::{BORDER_RADIUS_SM, ClinicalColors};
 
 /// Core designation badge.
 ///
@@ -28,23 +27,42 @@ use crate::theme::{
 /// - Expected: Amber ("Exp")
 /// - Permissible: Gray ("Perm")
 pub fn core_badge<'a, M: 'a>(designation: CoreDesignation) -> Element<'a, M> {
-    let (label, text_color, bg_color) = match designation {
-        CoreDesignation::Required => ("Req", ERROR, ERROR_LIGHT),
-        CoreDesignation::Expected => ("Exp", WARNING, WARNING_LIGHT),
-        CoreDesignation::Permissible => ("Perm", GRAY_500, GRAY_100),
+    let label = match designation {
+        CoreDesignation::Required => "Req",
+        CoreDesignation::Expected => "Exp",
+        CoreDesignation::Permissible => "Perm",
     };
 
-    container(text(label).size(10).color(text_color))
-        .padding([2.0, 6.0])
-        .style(move |_| container::Style {
+    container(text(label).size(10).style(move |theme: &Theme| {
+        let palette = theme.extended_palette();
+        let clinical = theme.clinical();
+        let text_color = match designation {
+            CoreDesignation::Required => palette.danger.base.color,
+            CoreDesignation::Expected => palette.warning.base.color,
+            CoreDesignation::Permissible => clinical.text_muted,
+        };
+        text::Style {
+            color: Some(text_color),
+        }
+    }))
+    .padding([2.0, 6.0])
+    .style(move |theme: &Theme| {
+        let clinical = theme.clinical();
+        let bg_color = match designation {
+            CoreDesignation::Required => clinical.status_error_light,
+            CoreDesignation::Expected => clinical.status_warning_light,
+            CoreDesignation::Permissible => clinical.background_secondary,
+        };
+        container::Style {
             background: Some(bg_color.into()),
             border: Border {
                 radius: BORDER_RADIUS_SM.into(),
                 ..Default::default()
             },
             ..Default::default()
-        })
-        .into()
+        }
+    })
+    .into()
 }
 
 /// Core designation badge from optional.

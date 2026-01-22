@@ -3,13 +3,33 @@
 //! Buttons and button lists for action sections in detail panels.
 //! Provides consistent styling for primary and secondary actions.
 
-use iced::widget::{Space, button, column, row, text};
+use iced::widget::{Space, button, column, container, row, text};
 use iced::{Alignment, Border, Color, Element, Length, Theme};
 
-use crate::theme::{
-    GRAY_300, GRAY_500, GRAY_600, GRAY_700, PRIMARY_100, PRIMARY_500, PRIMARY_600, PRIMARY_700,
-    SPACING_SM, SPACING_XS, WHITE, button_primary, button_secondary,
-};
+use crate::theme::{ClinicalColors, SPACING_SM, SPACING_XS, button_primary, button_secondary};
+
+// =============================================================================
+// ACTION BUTTON STYLE
+// =============================================================================
+
+/// Button style variants.
+#[derive(Clone)]
+pub enum ActionButtonStyle {
+    Primary,
+    Secondary,
+    Danger,
+    Ghost,
+}
+
+// =============================================================================
+// ICON COLOR ENUM
+// =============================================================================
+
+/// Icon color specification - either a direct color or a theme-derived closure.
+enum IconColor {
+    None,
+    Themed(fn(&Theme) -> Color),
+}
 
 // =============================================================================
 // ACTION BUTTON
@@ -19,19 +39,12 @@ use crate::theme::{
 ///
 /// # Example
 /// ```ignore
-/// ActionButton::secondary(lucide::x(), "Clear Mapping", Message::ClearMapping)
+/// ActionButton::secondary_themed(lucide::x(), |t| t.clinical().text_secondary, "Clear Mapping", Message::ClearMapping)
 ///     .view()
 /// ```
-#[derive(Clone)]
-pub enum ActionButtonStyle {
-    Primary,
-    Secondary,
-    Danger,
-    Ghost,
-}
-
 pub struct ActionButton<'a, M> {
     icon: Option<Element<'a, M>>,
+    icon_color: IconColor,
     label: String,
     on_press: M,
     style: ActionButtonStyle,
@@ -39,74 +52,102 @@ pub struct ActionButton<'a, M> {
 }
 
 impl<'a, M: Clone + 'a> ActionButton<'a, M> {
-    /// Create a primary action button.
-    pub fn primary(icon: impl Into<Element<'a, M>>, label: impl Into<String>, on_press: M) -> Self {
+    fn new_with_style(
+        icon: Option<Element<'a, M>>,
+        icon_color: IconColor,
+        label: impl Into<String>,
+        on_press: M,
+        style: ActionButtonStyle,
+    ) -> Self {
         Self {
-            icon: Some(icon.into()),
+            icon,
+            icon_color,
             label: label.into(),
             on_press,
-            style: ActionButtonStyle::Primary,
+            style,
             full_width: false,
         }
     }
 
-    /// Create a secondary action button.
-    pub fn secondary(
+    /// Create a primary action button with theme-derived icon color.
+    pub fn primary_themed(
         icon: impl Into<Element<'a, M>>,
+        icon_color_fn: fn(&Theme) -> Color,
         label: impl Into<String>,
         on_press: M,
     ) -> Self {
-        Self {
-            icon: Some(icon.into()),
-            label: label.into(),
+        Self::new_with_style(
+            Some(icon.into()),
+            IconColor::Themed(icon_color_fn),
+            label,
             on_press,
-            style: ActionButtonStyle::Secondary,
-            full_width: false,
-        }
+            ActionButtonStyle::Primary,
+        )
     }
 
-    /// Create a danger action button.
-    pub fn danger(icon: impl Into<Element<'a, M>>, label: impl Into<String>, on_press: M) -> Self {
-        Self {
-            icon: Some(icon.into()),
-            label: label.into(),
+    /// Create a secondary action button with theme-derived icon color.
+    pub fn secondary_themed(
+        icon: impl Into<Element<'a, M>>,
+        icon_color_fn: fn(&Theme) -> Color,
+        label: impl Into<String>,
+        on_press: M,
+    ) -> Self {
+        Self::new_with_style(
+            Some(icon.into()),
+            IconColor::Themed(icon_color_fn),
+            label,
             on_press,
-            style: ActionButtonStyle::Danger,
-            full_width: false,
-        }
+            ActionButtonStyle::Secondary,
+        )
+    }
+
+    /// Create a danger action button with theme-derived icon color.
+    pub fn danger_themed(
+        icon: impl Into<Element<'a, M>>,
+        icon_color_fn: fn(&Theme) -> Color,
+        label: impl Into<String>,
+        on_press: M,
+    ) -> Self {
+        Self::new_with_style(
+            Some(icon.into()),
+            IconColor::Themed(icon_color_fn),
+            label,
+            on_press,
+            ActionButtonStyle::Danger,
+        )
     }
 
     /// Create a ghost action button (text only, minimal styling).
     pub fn ghost(label: impl Into<String>, on_press: M) -> Self {
-        Self {
-            icon: None,
-            label: label.into(),
+        Self::new_with_style(
+            None,
+            IconColor::None,
+            label,
             on_press,
-            style: ActionButtonStyle::Ghost,
-            full_width: false,
-        }
+            ActionButtonStyle::Ghost,
+        )
     }
 
     /// Create a primary button without icon.
     pub fn primary_text(label: impl Into<String>, on_press: M) -> Self {
-        Self {
-            icon: None,
-            label: label.into(),
+        Self::new_with_style(
+            None,
+            IconColor::None,
+            label,
             on_press,
-            style: ActionButtonStyle::Primary,
-            full_width: false,
-        }
+            ActionButtonStyle::Primary,
+        )
     }
 
     /// Create a secondary button without icon.
     pub fn secondary_text(label: impl Into<String>, on_press: M) -> Self {
-        Self {
-            icon: None,
-            label: label.into(),
+        Self::new_with_style(
+            None,
+            IconColor::None,
+            label,
             on_press,
-            style: ActionButtonStyle::Secondary,
-            full_width: false,
-        }
+            ActionButtonStyle::Secondary,
+        )
     }
 
     /// Make the button full width.
@@ -119,50 +160,70 @@ impl<'a, M: Clone + 'a> ActionButton<'a, M> {
     pub fn view(self) -> Element<'a, M> {
         let label = self.label.clone();
         let label2 = self.label;
+        let icon_color = self.icon_color;
+
         let content: Element<'a, M> = if let Some(icon) = self.icon {
-            row![icon, Space::new().width(SPACING_XS), text(label).size(13),]
-                .align_y(Alignment::Center)
-                .into()
+            // Wrap the icon in a container for theming if needed
+            let themed_icon: Element<'a, M> = match icon_color {
+                IconColor::Themed(color_fn) => container(icon)
+                    .style(move |theme: &Theme| container::Style {
+                        text_color: Some(color_fn(theme)),
+                        ..Default::default()
+                    })
+                    .into(),
+                IconColor::None => icon,
+            };
+            row![
+                themed_icon,
+                Space::new().width(SPACING_XS),
+                text(label).size(13),
+            ]
+            .align_y(Alignment::Center)
+            .into()
         } else {
             text(label2).size(13).into()
         };
 
         let style = self.style.clone();
+
         let mut btn = button(content).on_press(self.on_press).padding([8.0, 16.0]);
 
         if self.full_width {
             btn = btn.width(Length::Fill);
         }
 
-        btn = btn.style(move |theme: &Theme, status| match style {
-            ActionButtonStyle::Primary => button_primary(theme, status),
-            ActionButtonStyle::Secondary => button_secondary(theme, status),
-            ActionButtonStyle::Danger => {
-                use crate::theme::ERROR;
-                let bg = match status {
-                    iced::widget::button::Status::Hovered => Color::from_rgb(0.85, 0.15, 0.15),
-                    iced::widget::button::Status::Pressed => Color::from_rgb(0.75, 0.12, 0.12),
-                    _ => ERROR,
-                };
-                iced::widget::button::Style {
-                    background: Some(bg.into()),
-                    text_color: WHITE,
-                    border: Border {
-                        radius: 4.0.into(),
+        btn = btn.style(move |theme: &Theme, status| {
+            let clinical = theme.clinical();
+            let palette = theme.extended_palette();
+            match style {
+                ActionButtonStyle::Primary => button_primary(theme, status),
+                ActionButtonStyle::Secondary => button_secondary(theme, status),
+                ActionButtonStyle::Danger => {
+                    let bg = match status {
+                        iced::widget::button::Status::Hovered => clinical.danger_hover,
+                        iced::widget::button::Status::Pressed => clinical.danger_pressed,
+                        _ => palette.danger.base.color,
+                    };
+                    iced::widget::button::Style {
+                        background: Some(bg.into()),
+                        text_color: clinical.text_on_accent,
+                        border: Border {
+                            radius: 4.0.into(),
+                            ..Default::default()
+                        },
                         ..Default::default()
-                    },
-                    ..Default::default()
+                    }
                 }
-            }
-            ActionButtonStyle::Ghost => {
-                let text_color = match status {
-                    iced::widget::button::Status::Hovered => GRAY_700,
-                    _ => GRAY_500,
-                };
-                iced::widget::button::Style {
-                    background: None,
-                    text_color,
-                    ..Default::default()
+                ActionButtonStyle::Ghost => {
+                    let text_color = match status {
+                        iced::widget::button::Status::Hovered => clinical.text_secondary,
+                        _ => clinical.text_muted,
+                    };
+                    iced::widget::button::Style {
+                        background: None,
+                        text_color,
+                        ..Default::default()
+                    }
                 }
             }
         });
@@ -180,8 +241,9 @@ impl<'a, M: Clone + 'a> ActionButton<'a, M> {
 /// # Example
 /// ```ignore
 /// ActionButtonList::new()
-///     .button(ActionButton::secondary(lucide::x(), "Clear Mapping", msg1))
-///     .button(ActionButton::secondary(lucide::ban(), "Mark Not Collected", msg2))
+///     .title("Actions")
+///     .button(ActionButton::secondary_themed(lucide::x(), |t| t.clinical().text_secondary, "Clear Mapping", msg1))
+///     .button(ActionButton::secondary_themed(lucide::ban(), |t| t.clinical().text_secondary, "Mark Not Collected", msg2))
 ///     .view()
 /// ```
 pub struct ActionButtonList<'a, M> {
@@ -226,7 +288,9 @@ impl<'a, M: Clone + 'a> ActionButtonList<'a, M> {
         let mut content = column![].spacing(SPACING_SM);
 
         if let Some(title) = self.title {
-            content = content.push(text(title).size(14).color(GRAY_700));
+            content = content.push(text(title).size(14).style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_secondary),
+            }));
             content = content.push(Space::new().height(SPACING_SM));
         }
 

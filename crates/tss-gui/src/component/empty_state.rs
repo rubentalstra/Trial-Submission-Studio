@@ -31,12 +31,11 @@
 //! ```
 
 use iced::widget::{Space, button, column, container, row, text};
-use iced::{Alignment, Border, Element, Length};
+use iced::{Alignment, Border, Element, Length, Theme};
 use iced_fonts::lucide;
 
 use crate::theme::{
-    BORDER_RADIUS_SM, ERROR, GRAY_100, GRAY_400, GRAY_500, GRAY_600, GRAY_700, GRAY_800,
-    PRIMARY_500, SPACING_LG, SPACING_MD, SPACING_SM, WHITE, button_primary,
+    BORDER_RADIUS_SM, ClinicalColors, SPACING_LG, SPACING_MD, SPACING_SM, button_primary,
 };
 
 // =============================================================================
@@ -94,21 +93,31 @@ impl<'a, M: Clone + 'a> EmptyState<'a, M> {
 
     /// Build the element.
     pub fn view(self) -> Element<'a, M> {
-        let mut content = column![self.icon, Space::new().height(SPACING_MD),]
-            .push(text(self.title).size(16).color(GRAY_600));
+        let title_text = text(self.title)
+            .size(16)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted),
+            });
+
+        let mut content = column![self.icon, Space::new().height(SPACING_MD),].push(title_text);
 
         if let Some(desc) = self.description {
-            content = content
-                .push(Space::new().height(SPACING_SM))
-                .push(text(desc).size(13).color(GRAY_500));
+            content =
+                content
+                    .push(Space::new().height(SPACING_SM))
+                    .push(text(desc).size(13).style(|theme: &Theme| text::Style {
+                        color: Some(theme.clinical().text_muted),
+                    }));
         }
 
         if let Some((label, message)) = self.action {
             content = content.push(Space::new().height(SPACING_LG)).push(
-                button(text(label).size(14).color(WHITE))
-                    .on_press(message)
-                    .padding([10.0, 24.0])
-                    .style(button_primary),
+                button(text(label).size(14).style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_on_accent),
+                }))
+                .on_press(message)
+                .padding([10.0, 24.0])
+                .style(button_primary),
             );
         }
 
@@ -174,17 +183,29 @@ impl LoadingState {
 
     /// Build the element.
     pub fn view<'a, M: 'a>(self) -> Element<'a, M> {
-        let mut content = column![
-            lucide::loader().size(40).color(PRIMARY_500),
-            Space::new().height(SPACING_LG),
-            text(self.title).size(18).color(GRAY_800),
-        ]
-        .align_x(Alignment::Center);
+        // For icons, we need to wrap in a container with style since lucide icons
+        // use .color() which doesn't have a theme closure
+        let icon = container(lucide::loader().size(40)).style(|theme: &Theme| container::Style {
+            text_color: Some(theme.extended_palette().primary.base.color),
+            ..Default::default()
+        });
+
+        let title_text = text(self.title)
+            .size(18)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text),
+            });
+
+        let mut content =
+            column![icon, Space::new().height(SPACING_LG), title_text,].align_x(Alignment::Center);
 
         if let Some(desc) = self.description {
-            content = content
-                .push(Space::new().height(SPACING_SM))
-                .push(text(desc).size(13).color(GRAY_500));
+            content =
+                content
+                    .push(Space::new().height(SPACING_SM))
+                    .push(text(desc).size(13).style(|theme: &Theme| text::Style {
+                        color: Some(theme.clinical().text_muted),
+                    }));
         }
 
         if self.centered {
@@ -251,20 +272,32 @@ impl<M: Clone> ErrorState<M> {
     where
         M: 'a,
     {
-        let mut content = column![
-            lucide::circle_alert().size(48).color(ERROR),
-            Space::new().height(SPACING_LG),
-            text(self.title).size(18).color(GRAY_800),
-        ]
-        .align_x(Alignment::Center)
-        .max_width(400.0);
+        // Error icon wrapped in container for theme-aware color
+        let error_icon =
+            container(lucide::circle_alert().size(48)).style(|theme: &Theme| container::Style {
+                text_color: Some(theme.extended_palette().danger.base.color),
+                ..Default::default()
+            });
+
+        let title_text = text(self.title)
+            .size(18)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.extended_palette().background.base.text),
+            });
+
+        let mut content = column![error_icon, Space::new().height(SPACING_LG), title_text,]
+            .align_x(Alignment::Center)
+            .max_width(400.0);
 
         if let Some(msg) = self.message {
+            let msg_text = text(msg).size(12).style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted),
+            });
             content = content.push(Space::new().height(SPACING_SM)).push(
-                container(text(msg).size(12).color(GRAY_600))
+                container(msg_text)
                     .padding(SPACING_MD)
-                    .style(|_| container::Style {
-                        background: Some(GRAY_100.into()),
+                    .style(|theme: &Theme| container::Style {
+                        background: Some(theme.clinical().background_secondary.into()),
                         border: Border {
                             radius: BORDER_RADIUS_SM.into(),
                             ..Default::default()
@@ -275,14 +308,21 @@ impl<M: Clone> ErrorState<M> {
         }
 
         if let Some(retry_msg) = self.retry {
+            // Retry icon wrapped in container for theme-aware color
+            let retry_icon =
+                container(lucide::refresh_cw().size(14)).style(|theme: &Theme| container::Style {
+                    text_color: Some(theme.clinical().text_on_accent),
+                    ..Default::default()
+                });
+
+            let retry_label = text("Retry").size(14).style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_on_accent),
+            });
+
             content = content.push(Space::new().height(SPACING_LG)).push(
                 button(
-                    row![
-                        lucide::refresh_cw().size(14).color(WHITE),
-                        Space::new().width(SPACING_SM),
-                        text("Retry").size(14).color(WHITE),
-                    ]
-                    .align_y(Alignment::Center),
+                    row![retry_icon, Space::new().width(SPACING_SM), retry_label,]
+                        .align_y(Alignment::Center),
                 )
                 .on_press(retry_msg)
                 .padding([10.0, 24.0])
@@ -357,26 +397,46 @@ impl<M: Clone> NoFilteredResults<M> {
     where
         M: 'a,
     {
+        // Search icon wrapped in container for theme-aware color
+        let search_icon =
+            container(lucide::search().size(32)).style(|theme: &Theme| container::Style {
+                text_color: Some(theme.clinical().text_disabled),
+                ..Default::default()
+            });
+
+        let no_results_text = text(format!("No {} found", self.filter_name))
+            .size(14)
+            .style(|theme: &Theme| text::Style {
+                color: Some(theme.clinical().text_muted),
+            });
+
         let mut content = column![
-            lucide::search().size(32).color(GRAY_400),
+            search_icon,
             Space::new().height(SPACING_MD),
-            text(format!("No {} found", self.filter_name))
-                .size(14)
-                .color(GRAY_600),
+            no_results_text,
         ]
         .align_x(Alignment::Center);
 
         if let Some(hint) = self.hint {
-            content = content
-                .push(Space::new().height(SPACING_SM))
-                .push(text(hint).size(12).color(GRAY_500));
+            content =
+                content
+                    .push(Space::new().height(SPACING_SM))
+                    .push(text(hint).size(12).style(|theme: &Theme| text::Style {
+                        color: Some(theme.clinical().text_muted),
+                    }));
         }
 
         if let Some(clear_msg) = self.clear_action {
             content = content.push(Space::new().height(SPACING_MD)).push(
-                button(text("Clear filters").size(12).color(GRAY_700))
-                    .on_press(clear_msg)
-                    .padding([6.0, 12.0]),
+                button(
+                    text("Clear filters")
+                        .size(12)
+                        .style(|theme: &Theme| text::Style {
+                            color: Some(theme.clinical().text_secondary),
+                        }),
+                )
+                .on_press(clear_msg)
+                .padding([6.0, 12.0]),
             );
         }
 

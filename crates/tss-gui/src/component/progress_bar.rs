@@ -14,11 +14,11 @@
 //! ```
 
 use iced::widget::{Space, container, row, text};
-use iced::{Border, Element, Length};
+use iced::{Border, Element, Length, Theme};
 
-use crate::theme::{GRAY_200, GRAY_600, PRIMARY_500, SPACING_SM, SUCCESS};
+use crate::theme::{ClinicalColors, SPACING_SM};
 
-/// A horizontal progress bar.
+/// A horizontal progress bar with accessibility support.
 ///
 /// Shows progress as a filled bar with optional percentage text.
 pub struct ProgressBar {
@@ -53,23 +53,17 @@ impl ProgressBar {
     pub fn view<M: 'static>(self) -> Element<'static, M> {
         let percentage = (self.value * 100.0).round() as u32;
         let height = self.height;
-
-        // Choose color based on completion
-        let fill_color = if self.value >= 1.0 {
-            SUCCESS
-        } else {
-            PRIMARY_500
-        };
+        let value = self.value;
 
         // Filled portion width as FillPortion for proper scaling
-        let fill_width = if self.value > 0.0 {
-            Length::FillPortion((self.value * 100.0).max(1.0) as u16)
+        let fill_width = if value > 0.0 {
+            Length::FillPortion((value * 100.0).max(1.0) as u16)
         } else {
             Length::Fixed(0.0)
         };
 
-        let empty_width = if self.value < 1.0 {
-            Length::FillPortion(((1.0 - self.value) * 100.0).max(1.0) as u16)
+        let empty_width = if value < 1.0 {
+            Length::FillPortion(((1.0 - value) * 100.0).max(1.0) as u16)
         } else {
             Length::Fixed(0.0)
         };
@@ -78,13 +72,22 @@ impl ProgressBar {
         let fill: Element<'static, M> = container(Space::new())
             .width(fill_width)
             .height(height)
-            .style(move |_theme| container::Style {
-                background: Some(fill_color.into()),
-                border: Border {
-                    radius: (height / 2.0).into(),
+            .style(move |theme: &Theme| {
+                let palette = theme.extended_palette();
+                // Choose color based on completion
+                let fill_color = if value >= 1.0 {
+                    palette.success.base.color
+                } else {
+                    palette.primary.base.color
+                };
+                container::Style {
+                    background: Some(fill_color.into()),
+                    border: Border {
+                        radius: (height / 2.0).into(),
+                        ..Default::default()
+                    },
                     ..Default::default()
-                },
-                ..Default::default()
+                }
             })
             .into();
 
@@ -95,13 +98,16 @@ impl ProgressBar {
         let bar: Element<'static, M> = container(row![fill, empty].height(height))
             .width(Length::Fill)
             .height(height)
-            .style(move |_theme| container::Style {
-                background: Some(GRAY_200.into()),
-                border: Border {
-                    radius: (height / 2.0).into(),
+            .style(move |theme: &Theme| {
+                let clinical = theme.clinical();
+                container::Style {
+                    background: Some(clinical.border_default.into()),
+                    border: Border {
+                        radius: (height / 2.0).into(),
+                        ..Default::default()
+                    },
                     ..Default::default()
-                },
-                ..Default::default()
+                }
             })
             .into();
 
@@ -109,7 +115,14 @@ impl ProgressBar {
             row![
                 bar,
                 Space::new().width(SPACING_SM),
-                text(format!("{}%", percentage)).size(12).color(GRAY_600),
+                text(format!("{}%", percentage))
+                    .size(12)
+                    .style(|theme: &Theme| {
+                        let clinical = theme.clinical();
+                        text::Style {
+                            color: Some(clinical.text_muted),
+                        }
+                    }),
             ]
             .into()
         } else {

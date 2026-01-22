@@ -1,80 +1,115 @@
 //! Professional Clinical theme implementation for Trial Submission Studio.
 //!
-//! This module provides the custom theme that gives the application its
-//! distinctive clinical/regulatory aesthetic.
+//! This module provides the custom theme and widget style functions that give
+//! the application its distinctive clinical/regulatory aesthetic.
+//!
+//! # Usage
+//!
+//! Style functions receive `&Theme` and use it to access colors:
+//!
+//! ```rust,ignore
+//! use crate::theme::{button_primary, ClinicalColors};
+//!
+//! // Use a pre-defined style function
+//! button(text("Save")).style(button_primary)
+//!
+//! // Or create custom styles inside closures
+//! container(content).style(|theme: &Theme| {
+//!     let palette = theme.extended_palette();
+//!     let clinical = theme.clinical();
+//!     container::Style {
+//!         background: Some(palette.background.base.color.into()),
+//!         border: Border { color: clinical.border_default, ..Default::default() },
+//!         ..Default::default()
+//!     }
+//! })
+//! ```
 
 #![allow(dead_code)]
 
-use iced::theme::Palette;
 use iced::widget::{button, container, progress_bar, text_input};
 use iced::{Border, Color, Shadow, Theme, Vector};
 
-use super::palette;
+use super::colors::ClinicalColors;
+use super::palette::{AccessibilityMode, ThemeMode, clinical_palette};
 use super::spacing;
 
 // =============================================================================
 // THEME CREATION
 // =============================================================================
 
-/// Creates the Professional Clinical light theme.
+/// Creates the Professional Clinical theme with the specified configuration.
 ///
-/// This is the primary theme for Trial Submission Studio, designed to:
-/// - Convey trust and precision for FDA/regulatory work
-/// - Provide excellent readability for long work sessions
-/// - Use medical-inspired teal/cyan accent colors
-pub fn clinical_light() -> Theme {
-    let custom_palette = Palette {
-        background: palette::GRAY_50,
-        text: palette::GRAY_900,
-        primary: palette::PRIMARY_500,
-        success: palette::SUCCESS,
-        warning: palette::WARNING,
-        danger: palette::ERROR,
-    };
+/// This is the primary theme creation function that respects accessibility
+/// settings and theme mode (light/dark/system).
+///
+/// # Arguments
+///
+/// * `theme_mode` - Light, Dark, or System mode
+/// * `accessibility_mode` - Color vision accessibility mode
+/// * `system_is_dark` - Whether the system is in dark mode (for System theme mode)
+pub fn clinical_theme(
+    theme_mode: ThemeMode,
+    accessibility_mode: AccessibilityMode,
+    system_is_dark: bool,
+) -> Theme {
+    let palette = clinical_palette(theme_mode, accessibility_mode, system_is_dark);
+    let is_dark = theme_mode.is_dark(system_is_dark);
 
-    Theme::custom("Clinical Light".to_string(), custom_palette)
+    let theme_name = format!(
+        "Clinical {} ({})",
+        if is_dark { "Dark" } else { "Light" },
+        accessibility_mode.label()
+    );
+
+    Theme::custom(theme_name, palette)
 }
 
 // =============================================================================
 // BUTTON STYLES
 // =============================================================================
 
-/// Primary button style - main actions
-pub fn button_primary(_theme: &Theme, status: button::Status) -> button::Style {
+/// Primary button style - main actions.
+///
+/// Uses the theme's primary color with appropriate text contrast.
+pub fn button_primary(theme: &Theme, status: button::Status) -> button::Style {
+    let palette = theme.extended_palette();
+    let clinical = theme.clinical();
+
     match status {
         button::Status::Active => button::Style {
-            background: Some(palette::PRIMARY_500.into()),
-            text_color: palette::WHITE,
+            background: Some(palette.primary.base.color.into()),
+            text_color: clinical.text_on_accent,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: 0.0,
                 color: Color::TRANSPARENT,
             },
             shadow: Shadow {
-                color: palette::SHADOW,
+                color: clinical.shadow,
                 offset: Vector::new(0.0, 1.0),
                 blur_radius: 2.0,
             },
             ..Default::default()
         },
         button::Status::Hovered => button::Style {
-            background: Some(palette::PRIMARY_600.into()),
-            text_color: palette::WHITE,
+            background: Some(clinical.accent_hover.into()),
+            text_color: clinical.text_on_accent,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: 0.0,
                 color: Color::TRANSPARENT,
             },
             shadow: Shadow {
-                color: palette::SHADOW_STRONG,
+                color: clinical.shadow_strong,
                 offset: Vector::new(0.0, 2.0),
                 blur_radius: 4.0,
             },
             ..Default::default()
         },
         button::Status::Pressed => button::Style {
-            background: Some(palette::PRIMARY_700.into()),
-            text_color: palette::WHITE,
+            background: Some(clinical.accent_pressed.into()),
+            text_color: clinical.text_on_accent,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: 0.0,
@@ -84,8 +119,8 @@ pub fn button_primary(_theme: &Theme, status: button::Status) -> button::Style {
             ..Default::default()
         },
         button::Status::Disabled => button::Style {
-            background: Some(palette::GRAY_300.into()),
-            text_color: palette::GRAY_500,
+            background: Some(clinical.accent_disabled.into()),
+            text_color: clinical.text_muted,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: 0.0,
@@ -97,49 +132,54 @@ pub fn button_primary(_theme: &Theme, status: button::Status) -> button::Style {
     }
 }
 
-/// Secondary button style - alternative actions
-pub fn button_secondary(_theme: &Theme, status: button::Status) -> button::Style {
+/// Secondary button style - alternative actions.
+///
+/// Uses a subtle background with border emphasis.
+pub fn button_secondary(theme: &Theme, status: button::Status) -> button::Style {
+    let palette = theme.extended_palette();
+    let clinical = theme.clinical();
+
     match status {
         button::Status::Active => button::Style {
-            background: Some(palette::WHITE.into()),
-            text_color: palette::GRAY_700,
+            background: Some(clinical.background_elevated.into()),
+            text_color: clinical.text_secondary,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: spacing::BORDER_WIDTH_THIN,
-                color: palette::GRAY_300,
+                color: clinical.border_default,
             },
             shadow: Shadow::default(),
             ..Default::default()
         },
         button::Status::Hovered => button::Style {
-            background: Some(palette::GRAY_50.into()),
-            text_color: palette::GRAY_700,
+            background: Some(palette.background.base.color.into()),
+            text_color: clinical.text_secondary,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: spacing::BORDER_WIDTH_THIN,
-                color: palette::GRAY_400,
+                color: clinical.text_disabled,
             },
             shadow: Shadow::default(),
             ..Default::default()
         },
         button::Status::Pressed => button::Style {
-            background: Some(palette::GRAY_100.into()),
-            text_color: palette::GRAY_700,
+            background: Some(clinical.background_secondary.into()),
+            text_color: clinical.text_secondary,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: spacing::BORDER_WIDTH_THIN,
-                color: palette::GRAY_300,
+                color: clinical.border_default,
             },
             shadow: Shadow::default(),
             ..Default::default()
         },
         button::Status::Disabled => button::Style {
-            background: Some(palette::GRAY_100.into()),
-            text_color: palette::GRAY_400,
+            background: Some(clinical.background_secondary.into()),
+            text_color: clinical.text_disabled,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: spacing::BORDER_WIDTH_THIN,
-                color: palette::GRAY_200,
+                color: clinical.border_subtle,
             },
             shadow: Shadow::default(),
             ..Default::default()
@@ -147,42 +187,47 @@ pub fn button_secondary(_theme: &Theme, status: button::Status) -> button::Style
     }
 }
 
-/// Danger button style - destructive actions
-pub fn button_danger(_theme: &Theme, status: button::Status) -> button::Style {
+/// Danger button style - destructive actions.
+///
+/// Uses the danger color with states for hover/pressed.
+pub fn button_danger(theme: &Theme, status: button::Status) -> button::Style {
+    let palette = theme.extended_palette();
+    let clinical = theme.clinical();
+
     match status {
         button::Status::Active => button::Style {
-            background: Some(palette::ERROR.into()),
-            text_color: palette::WHITE,
+            background: Some(palette.danger.base.color.into()),
+            text_color: clinical.text_on_accent,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: 0.0,
                 color: Color::TRANSPARENT,
             },
             shadow: Shadow {
-                color: palette::SHADOW,
+                color: clinical.shadow,
                 offset: Vector::new(0.0, 1.0),
                 blur_radius: 2.0,
             },
             ..Default::default()
         },
         button::Status::Hovered => button::Style {
-            background: Some(Color::from_rgb(0.75, 0.20, 0.20).into()),
-            text_color: palette::WHITE,
+            background: Some(clinical.danger_hover.into()),
+            text_color: clinical.text_on_accent,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: 0.0,
                 color: Color::TRANSPARENT,
             },
             shadow: Shadow {
-                color: palette::SHADOW,
+                color: clinical.shadow,
                 offset: Vector::new(0.0, 1.0),
                 blur_radius: 2.0,
             },
             ..Default::default()
         },
         button::Status::Pressed => button::Style {
-            background: Some(Color::from_rgb(0.65, 0.15, 0.15).into()),
-            text_color: palette::WHITE,
+            background: Some(clinical.danger_pressed.into()),
+            text_color: clinical.text_on_accent,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: 0.0,
@@ -192,8 +237,8 @@ pub fn button_danger(_theme: &Theme, status: button::Status) -> button::Style {
             ..Default::default()
         },
         button::Status::Disabled => button::Style {
-            background: Some(palette::GRAY_300.into()),
-            text_color: palette::GRAY_500,
+            background: Some(clinical.accent_disabled.into()),
+            text_color: clinical.text_muted,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: 0.0,
@@ -205,12 +250,17 @@ pub fn button_danger(_theme: &Theme, status: button::Status) -> button::Style {
     }
 }
 
-/// Ghost button style - minimal visual weight
-pub fn button_ghost(_theme: &Theme, status: button::Status) -> button::Style {
+/// Ghost button style - minimal visual weight.
+///
+/// Transparent background with text-only appearance.
+pub fn button_ghost(theme: &Theme, status: button::Status) -> button::Style {
+    let palette = theme.extended_palette();
+    let clinical = theme.clinical();
+
     match status {
         button::Status::Active => button::Style {
             background: None,
-            text_color: palette::PRIMARY_500,
+            text_color: palette.primary.base.color,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: 0.0,
@@ -220,8 +270,8 @@ pub fn button_ghost(_theme: &Theme, status: button::Status) -> button::Style {
             ..Default::default()
         },
         button::Status::Hovered => button::Style {
-            background: Some(palette::PRIMARY_50.into()),
-            text_color: palette::PRIMARY_500,
+            background: Some(clinical.accent_primary_light.into()),
+            text_color: palette.primary.base.color,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: 0.0,
@@ -231,8 +281,8 @@ pub fn button_ghost(_theme: &Theme, status: button::Status) -> button::Style {
             ..Default::default()
         },
         button::Status::Pressed => button::Style {
-            background: Some(palette::PRIMARY_100.into()),
-            text_color: palette::PRIMARY_700,
+            background: Some(clinical.accent_primary_medium.into()),
+            text_color: clinical.accent_pressed,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: 0.0,
@@ -243,7 +293,7 @@ pub fn button_ghost(_theme: &Theme, status: button::Status) -> button::Style {
         },
         button::Status::Disabled => button::Style {
             background: None,
-            text_color: palette::GRAY_400,
+            text_color: clinical.text_disabled,
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: 0.0,
@@ -259,17 +309,19 @@ pub fn button_ghost(_theme: &Theme, status: button::Status) -> button::Style {
 // CONTAINER STYLES
 // =============================================================================
 
-/// Card container style - elevated surface
-pub fn container_card(_theme: &Theme) -> container::Style {
+/// Card container style - elevated surface.
+pub fn container_card(theme: &Theme) -> container::Style {
+    let clinical = theme.clinical();
+
     container::Style {
-        background: Some(palette::WHITE.into()),
+        background: Some(clinical.background_elevated.into()),
         border: Border {
             radius: spacing::BORDER_RADIUS_MD.into(),
             width: spacing::BORDER_WIDTH_THIN,
-            color: palette::GRAY_200,
+            color: clinical.border_subtle,
         },
         shadow: Shadow {
-            color: palette::SHADOW,
+            color: clinical.shadow,
             offset: Vector::new(0.0, 2.0),
             blur_radius: 8.0,
         },
@@ -278,17 +330,19 @@ pub fn container_card(_theme: &Theme) -> container::Style {
     }
 }
 
-/// Modal container style - dialog overlay
-pub fn container_modal(_theme: &Theme) -> container::Style {
+/// Modal container style - dialog overlay.
+pub fn container_modal(theme: &Theme) -> container::Style {
+    let clinical = theme.clinical();
+
     container::Style {
-        background: Some(palette::WHITE.into()),
+        background: Some(clinical.background_elevated.into()),
         border: Border {
             radius: spacing::BORDER_RADIUS_LG.into(),
             width: spacing::BORDER_WIDTH_THIN,
-            color: palette::GRAY_200,
+            color: clinical.border_subtle,
         },
         shadow: Shadow {
-            color: palette::SHADOW_STRONG,
+            color: clinical.shadow_strong,
             offset: Vector::new(0.0, 4.0),
             blur_radius: 16.0,
         },
@@ -297,10 +351,12 @@ pub fn container_modal(_theme: &Theme) -> container::Style {
     }
 }
 
-/// Sidebar container style - navigation panel
-pub fn container_sidebar(_theme: &Theme) -> container::Style {
+/// Sidebar container style - navigation panel.
+pub fn container_sidebar(theme: &Theme) -> container::Style {
+    let clinical = theme.clinical();
+
     container::Style {
-        background: Some(palette::GRAY_100.into()),
+        background: Some(clinical.background_secondary.into()),
         border: Border {
             radius: 0.0.into(),
             width: 0.0,
@@ -312,10 +368,12 @@ pub fn container_sidebar(_theme: &Theme) -> container::Style {
     }
 }
 
-/// Surface container style - subtle elevation
-pub fn container_surface(_theme: &Theme) -> container::Style {
+/// Surface container style - subtle elevation.
+pub fn container_surface(theme: &Theme) -> container::Style {
+    let clinical = theme.clinical();
+
     container::Style {
-        background: Some(palette::GRAY_100.into()),
+        background: Some(clinical.background_secondary.into()),
         border: Border {
             radius: spacing::BORDER_RADIUS_SM.into(),
             width: 0.0,
@@ -327,14 +385,16 @@ pub fn container_surface(_theme: &Theme) -> container::Style {
     }
 }
 
-/// Inset container style - recessed area
-pub fn container_inset(_theme: &Theme) -> container::Style {
+/// Inset container style - recessed area.
+pub fn container_inset(theme: &Theme) -> container::Style {
+    let clinical = theme.clinical();
+
     container::Style {
-        background: Some(palette::GRAY_50.into()),
+        background: Some(clinical.background_inset.into()),
         border: Border {
             radius: spacing::BORDER_RADIUS_SM.into(),
             width: spacing::BORDER_WIDTH_THIN,
-            color: palette::GRAY_200,
+            color: clinical.border_subtle,
         },
         shadow: Shadow::default(),
         text_color: None,
@@ -346,56 +406,59 @@ pub fn container_inset(_theme: &Theme) -> container::Style {
 // TEXT INPUT STYLES
 // =============================================================================
 
-/// Default text input style
-pub fn text_input_default(_theme: &Theme, status: text_input::Status) -> text_input::Style {
+/// Default text input style.
+pub fn text_input_default(theme: &Theme, status: text_input::Status) -> text_input::Style {
+    let palette = theme.extended_palette();
+    let clinical = theme.clinical();
+
     match status {
         text_input::Status::Active => text_input::Style {
-            background: palette::WHITE.into(),
+            background: clinical.background_elevated.into(),
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: spacing::BORDER_WIDTH_THIN,
-                color: palette::GRAY_300,
+                color: clinical.border_default,
             },
-            icon: palette::GRAY_500,
-            placeholder: palette::GRAY_400,
-            value: palette::GRAY_900,
-            selection: palette::PRIMARY_100,
+            icon: clinical.text_muted,
+            placeholder: clinical.text_disabled,
+            value: palette.background.base.text,
+            selection: clinical.accent_primary_medium,
         },
         text_input::Status::Hovered => text_input::Style {
-            background: palette::WHITE.into(),
+            background: clinical.background_elevated.into(),
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: spacing::BORDER_WIDTH_THIN,
-                color: palette::GRAY_400,
+                color: clinical.text_disabled,
             },
-            icon: palette::GRAY_500,
-            placeholder: palette::GRAY_400,
-            value: palette::GRAY_900,
-            selection: palette::PRIMARY_100,
+            icon: clinical.text_muted,
+            placeholder: clinical.text_disabled,
+            value: palette.background.base.text,
+            selection: clinical.accent_primary_medium,
         },
         text_input::Status::Focused { .. } => text_input::Style {
-            background: palette::WHITE.into(),
+            background: clinical.background_elevated.into(),
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: spacing::BORDER_WIDTH_MEDIUM,
-                color: palette::PRIMARY_500,
+                color: clinical.border_focused,
             },
-            icon: palette::GRAY_500,
-            placeholder: palette::GRAY_400,
-            value: palette::GRAY_900,
-            selection: palette::PRIMARY_100,
+            icon: clinical.text_muted,
+            placeholder: clinical.text_disabled,
+            value: palette.background.base.text,
+            selection: clinical.accent_primary_medium,
         },
         text_input::Status::Disabled => text_input::Style {
-            background: palette::GRAY_100.into(),
+            background: clinical.background_secondary.into(),
             border: Border {
                 radius: spacing::BORDER_RADIUS_SM.into(),
                 width: spacing::BORDER_WIDTH_THIN,
-                color: palette::GRAY_300,
+                color: clinical.border_default,
             },
-            icon: palette::GRAY_400,
-            placeholder: palette::GRAY_400,
-            value: palette::GRAY_500,
-            selection: palette::GRAY_200,
+            icon: clinical.text_disabled,
+            placeholder: clinical.text_disabled,
+            value: clinical.text_muted,
+            selection: clinical.border_subtle,
         },
     }
 }
@@ -404,11 +467,14 @@ pub fn text_input_default(_theme: &Theme, status: text_input::Status) -> text_in
 // PROGRESS BAR STYLES
 // =============================================================================
 
-/// Primary progress bar style
-pub fn progress_bar_primary(_theme: &Theme) -> progress_bar::Style {
+/// Primary progress bar style.
+pub fn progress_bar_primary(theme: &Theme) -> progress_bar::Style {
+    let palette = theme.extended_palette();
+    let clinical = theme.clinical();
+
     progress_bar::Style {
-        background: palette::GRAY_200.into(),
-        bar: palette::PRIMARY_500.into(),
+        background: clinical.border_subtle.into(),
+        bar: palette.primary.base.color.into(),
         border: Border {
             radius: spacing::BORDER_RADIUS_FULL.into(),
             width: 0.0,
@@ -417,11 +483,14 @@ pub fn progress_bar_primary(_theme: &Theme) -> progress_bar::Style {
     }
 }
 
-/// Success progress bar style
-pub fn progress_bar_success(_theme: &Theme) -> progress_bar::Style {
+/// Success progress bar style.
+pub fn progress_bar_success(theme: &Theme) -> progress_bar::Style {
+    let palette = theme.extended_palette();
+    let clinical = theme.clinical();
+
     progress_bar::Style {
-        background: palette::GRAY_200.into(),
-        bar: palette::SUCCESS.into(),
+        background: clinical.border_subtle.into(),
+        bar: palette.success.base.color.into(),
         border: Border {
             radius: spacing::BORDER_RADIUS_FULL.into(),
             width: 0.0,

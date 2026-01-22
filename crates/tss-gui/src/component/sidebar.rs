@@ -3,12 +3,9 @@
 //! A vertical sidebar for domain/feature navigation.
 
 use iced::widget::{button, column, container, scrollable, space, text};
-use iced::{Border, Element, Length, Padding};
+use iced::{Border, Element, Length, Padding, Theme};
 
-use crate::theme::{
-    BORDER_RADIUS_SM, GRAY_50, GRAY_100, GRAY_200, GRAY_700, GRAY_800, PRIMARY_100, PRIMARY_500,
-    PRIMARY_700, SIDEBAR_WIDTH, SPACING_SM, SPACING_XS,
-};
+use crate::theme::{BORDER_RADIUS_SM, ClinicalColors, SIDEBAR_WIDTH, SPACING_SM, SPACING_XS};
 
 // =============================================================================
 // SIDEBAR ITEM
@@ -48,6 +45,7 @@ impl<M> SidebarItem<M> {
 /// Creates a vertical sidebar navigation.
 ///
 /// Renders a column of navigation items with optional badges.
+/// Uses Iced's theme system - colors are resolved inside style closures.
 ///
 /// # Arguments
 ///
@@ -83,27 +81,44 @@ pub fn sidebar<'a, M: Clone + 'a>(
         // Item content with optional badge
         let item_content = if let Some(badge) = item.badge {
             iced::widget::row![
-                text(label)
-                    .size(14)
-                    .color(if is_active { PRIMARY_700 } else { GRAY_700 }),
+                text(label).size(14).style(move |theme: &Theme| {
+                    let clinical = theme.clinical();
+                    text::Style {
+                        color: Some(if is_active {
+                            clinical.accent_pressed
+                        } else {
+                            clinical.text_secondary
+                        }),
+                    }
+                }),
                 space::horizontal(),
-                container(text(badge).size(11).color(GRAY_700))
-                    .padding([2.0, 6.0])
-                    .style(|_theme| container::Style {
-                        background: Some(GRAY_200.into()),
+                container(text(badge).size(11).style(|theme: &Theme| text::Style {
+                    color: Some(theme.clinical().text_secondary),
+                }))
+                .padding([2.0, 6.0])
+                .style(|theme: &Theme| {
+                    let clinical = theme.clinical();
+                    container::Style {
+                        background: Some(clinical.border_default.into()),
                         border: Border {
                             radius: 10.0.into(),
                             ..Default::default()
                         },
                         ..Default::default()
-                    }),
+                    }
+                }),
             ]
             .align_y(iced::Alignment::Center)
         } else {
-            iced::widget::row![text(label).size(14).color(if is_active {
-                PRIMARY_700
-            } else {
-                GRAY_700
+            iced::widget::row![text(label).size(14).style(move |theme: &Theme| {
+                let clinical = theme.clinical();
+                text::Style {
+                    color: Some(if is_active {
+                        clinical.accent_pressed
+                    } else {
+                        clinical.text_secondary
+                    }),
+                }
             })]
         };
 
@@ -114,11 +129,35 @@ pub fn sidebar<'a, M: Clone + 'a>(
         )
         .on_press(item.message)
         .width(Length::Fill)
-        .style(move |theme, status| {
+        .style(move |theme: &Theme, status| {
+            let palette = theme.extended_palette();
+            let clinical = theme.clinical();
+
             if is_active {
-                sidebar_item_active(theme, status)
+                button::Style {
+                    background: Some(clinical.accent_primary_light.into()),
+                    text_color: clinical.accent_pressed,
+                    border: Border {
+                        color: palette.primary.base.color,
+                        width: 0.0,
+                        radius: BORDER_RADIUS_SM.into(),
+                    },
+                    ..Default::default()
+                }
             } else {
-                sidebar_item_inactive(theme, status)
+                let bg = match status {
+                    button::Status::Hovered => Some(clinical.background_secondary.into()),
+                    _ => None,
+                };
+                button::Style {
+                    background: bg,
+                    text_color: palette.background.base.text,
+                    border: Border {
+                        radius: BORDER_RADIUS_SM.into(),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                }
             }
         });
 
@@ -129,14 +168,18 @@ pub fn sidebar<'a, M: Clone + 'a>(
         .width(Length::Fixed(width))
         .height(Length::Fill)
         .padding(SPACING_SM)
-        .style(|_theme| container::Style {
-            background: Some(GRAY_50.into()),
-            border: Border {
-                color: GRAY_200,
-                width: 1.0,
-                radius: 0.0.into(),
-            },
-            ..Default::default()
+        .style(|theme: &Theme| {
+            let palette = theme.extended_palette();
+            let clinical = theme.clinical();
+            container::Style {
+                background: Some(palette.background.base.color.into()),
+                border: Border {
+                    color: clinical.border_default,
+                    width: 1.0,
+                    radius: 0.0.into(),
+                },
+                ..Default::default()
+            }
         })
         .into()
 }
@@ -163,21 +206,50 @@ pub fn sidebar_with_header<'a, M: Clone + 'a>(
         let label = item.label.clone();
 
         let item_button = button(
-            container(
-                text(label)
-                    .size(14)
-                    .color(if is_active { PRIMARY_700 } else { GRAY_700 }),
-            )
+            container(text(label).size(14).style(move |theme: &Theme| {
+                let clinical = theme.clinical();
+                text::Style {
+                    color: Some(if is_active {
+                        clinical.accent_pressed
+                    } else {
+                        clinical.text_secondary
+                    }),
+                }
+            }))
             .padding([SPACING_SM, 12.0])
             .width(Length::Fill),
         )
         .on_press(item.message)
         .width(Length::Fill)
-        .style(move |theme, status| {
+        .style(move |theme: &Theme, status| {
+            let palette = theme.extended_palette();
+            let clinical = theme.clinical();
+
             if is_active {
-                sidebar_item_active(theme, status)
+                button::Style {
+                    background: Some(clinical.accent_primary_light.into()),
+                    text_color: clinical.accent_pressed,
+                    border: Border {
+                        color: palette.primary.base.color,
+                        width: 0.0,
+                        radius: BORDER_RADIUS_SM.into(),
+                    },
+                    ..Default::default()
+                }
             } else {
-                sidebar_item_inactive(theme, status)
+                let bg = match status {
+                    button::Status::Hovered => Some(clinical.background_secondary.into()),
+                    _ => None,
+                };
+                button::Style {
+                    background: bg,
+                    text_color: palette.background.base.text,
+                    border: Border {
+                        radius: BORDER_RADIUS_SM.into(),
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                }
             }
         });
 
@@ -194,48 +266,18 @@ pub fn sidebar_with_header<'a, M: Clone + 'a>(
     )
     .width(Length::Fixed(width))
     .height(Length::Fill)
-    .style(|_theme| container::Style {
-        background: Some(GRAY_50.into()),
-        border: Border {
-            color: GRAY_200,
-            width: 1.0,
-            radius: 0.0.into(),
-        },
-        ..Default::default()
+    .style(|theme: &Theme| {
+        let palette = theme.extended_palette();
+        let clinical = theme.clinical();
+        container::Style {
+            background: Some(palette.background.base.color.into()),
+            border: Border {
+                color: clinical.border_default,
+                width: 1.0,
+                radius: 0.0.into(),
+            },
+            ..Default::default()
+        }
     })
     .into()
-}
-
-// =============================================================================
-// SIDEBAR ITEM STYLES
-// =============================================================================
-
-fn sidebar_item_active(_theme: &iced::Theme, _status: button::Status) -> button::Style {
-    button::Style {
-        background: Some(PRIMARY_100.into()),
-        text_color: PRIMARY_700,
-        border: Border {
-            color: PRIMARY_500,
-            width: 0.0,
-            radius: BORDER_RADIUS_SM.into(),
-        },
-        ..Default::default()
-    }
-}
-
-fn sidebar_item_inactive(_theme: &iced::Theme, status: button::Status) -> button::Style {
-    let bg = match status {
-        button::Status::Hovered => Some(GRAY_100.into()),
-        _ => None,
-    };
-
-    button::Style {
-        background: bg,
-        text_color: GRAY_800,
-        border: Border {
-            radius: BORDER_RADIUS_SM.into(),
-            ..Default::default()
-        },
-        ..Default::default()
-    }
 }

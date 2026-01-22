@@ -13,7 +13,7 @@ use super::components::{
 use super::state::{DropdownId, MenuDropdownState};
 use crate::message::{HomeMessage, Message};
 use crate::state::AppState;
-use crate::theme::{GRAY_100, GRAY_200, GRAY_600, GRAY_800, SPACING_SM, SPACING_XS};
+use crate::theme::{ClinicalColors, SPACING_SM, SPACING_XS};
 
 use super::super::MenuAction;
 
@@ -40,10 +40,10 @@ pub fn view_menu_bar<'a>(
     let bar_container =
         container(bar)
             .width(Length::Fill)
-            .style(|_theme: &Theme| container::Style {
-                background: Some(GRAY_100.into()),
+            .style(|theme: &Theme| container::Style {
+                background: Some(theme.clinical().background_secondary.into()),
                 border: Border {
-                    color: GRAY_200,
+                    color: theme.clinical().border_default,
                     width: 0.0,
                     radius: 0.0.into(),
                 },
@@ -69,18 +69,18 @@ fn view_menu_button<'a>(
 ) -> Element<'a, Message> {
     let is_active = state.is_open(menu_id);
 
-    let style = move |_theme: &Theme, _status: button::Status| {
+    let style = move |theme: &Theme, _status: button::Status| {
         if is_active {
             button::Style {
-                background: Some(GRAY_200.into()),
-                text_color: GRAY_800,
+                background: Some(theme.clinical().border_default.into()),
+                text_color: theme.extended_palette().background.base.text,
                 border: Border::default(),
                 ..Default::default()
             }
         } else {
             button::Style {
                 background: None,
-                text_color: GRAY_600,
+                text_color: theme.clinical().text_muted,
                 border: Border::default(),
                 ..Default::default()
             }

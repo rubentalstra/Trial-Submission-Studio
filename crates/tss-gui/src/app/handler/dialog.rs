@@ -160,8 +160,28 @@ impl App {
                 }
                 Task::none()
             }
-            SettingsMessage::Display(_display_msg) => {
-                // Handle display settings
+            SettingsMessage::Display(display_msg) => {
+                use crate::message::DisplaySettingsMessage;
+                use crate::theme::ThemeConfig;
+
+                match display_msg {
+                    DisplaySettingsMessage::PreviewRowsChanged(rows) => {
+                        self.state.settings.display.preview_rows_per_page = rows;
+                        tracing::info!("Preview rows per page: {}", rows);
+                    }
+                    DisplaySettingsMessage::ThemeModeChanged(mode) => {
+                        self.state.settings.display.theme_mode = mode;
+                        self.state.theme_config =
+                            ThemeConfig::new(mode, self.state.settings.display.accessibility_mode);
+                        tracing::info!("Theme mode: {}", mode.label());
+                    }
+                    DisplaySettingsMessage::AccessibilityModeChanged(mode) => {
+                        self.state.settings.display.accessibility_mode = mode;
+                        self.state.theme_config =
+                            ThemeConfig::new(self.state.settings.display.theme_mode, mode);
+                        tracing::info!("Accessibility mode: {}", mode.label());
+                    }
+                }
                 Task::none()
             }
             SettingsMessage::Updates(update_msg) => {
