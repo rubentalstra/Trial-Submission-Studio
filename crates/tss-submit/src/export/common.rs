@@ -4,11 +4,11 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 
-use anyhow::{Context, Result, anyhow};
 use polars::prelude::{AnyValue, DataFrame};
 use quick_xml::Writer;
 use quick_xml::events::{BytesEnd, BytesStart, BytesText, Event};
 
+use crate::error::{Result, SubmitError};
 use tss_standards::any_to_string;
 use tss_standards::{CoreDesignation, SdtmDomain, SdtmVariable, VariableRole, VariableType};
 
@@ -46,7 +46,8 @@ pub fn ensure_parent_dir(path: &Path) -> Result<()> {
     if let Some(parent) = path.parent()
         && !parent.as_os_str().is_empty()
     {
-        fs::create_dir_all(parent).with_context(|| format!("create {}", parent.display()))?;
+        fs::create_dir_all(parent)
+            .map_err(|e| SubmitError::write_error("directory", parent.display().to_string(), e))?;
     }
     Ok(())
 }
@@ -54,7 +55,8 @@ pub fn ensure_parent_dir(path: &Path) -> Result<()> {
 /// Ensure an output subdirectory exists and return its path.
 pub fn ensure_output_dir(base_dir: &Path, name: &str) -> Result<PathBuf> {
     let dir = base_dir.join(name);
-    fs::create_dir_all(&dir).with_context(|| format!("create {}", dir.display()))?;
+    fs::create_dir_all(&dir)
+        .map_err(|e| SubmitError::write_error("directory", dir.display().to_string(), e))?;
     Ok(dir)
 }
 
@@ -81,7 +83,9 @@ pub fn is_reference_domain(domain: &SdtmDomain) -> bool {
 pub fn variable_length(variable: &SdtmVariable, df: &DataFrame) -> Result<u16> {
     if let Some(length) = variable.length {
         if length == 0 {
-            return Err(anyhow!("variable {} has zero length", variable.name));
+            return Err(SubmitError::InvalidConfig {
+                message: format!("variable {} has zero length", variable.name),
+            });
         }
         return Ok(length.min(u16::MAX as u32) as u16);
     }
@@ -89,9 +93,11 @@ pub fn variable_length(variable: &SdtmVariable, df: &DataFrame) -> Result<u16> {
         VariableType::Num => Ok(SAS_NUMERIC_LEN),
         VariableType::Char => {
             // Treat Char as variable-length strings
-            let series = df
-                .column(variable.name.as_str())
-                .with_context(|| format!("missing column {}", variable.name))?;
+            let series =
+                df.column(variable.name.as_str())
+                    .map_err(|_| SubmitError::ColumnNotFound {
+                        column: variable.name.clone(),
+                    })?;
             let mut max_len = 0usize;
             for idx in 0..df.height() {
                 let value = series.get(idx).unwrap_or(AnyValue::Null);
@@ -103,7 +109,9 @@ pub fn variable_length(variable: &SdtmVariable, df: &DataFrame) -> Result<u16> {
             }
             let len = max_len.max(1);
             if len > u16::MAX as usize {
-                return Err(anyhow!("variable {} length too large", variable.name));
+                return Err(SubmitError::InvalidConfig {
+                    message: format!("variable {} length {} exceeds maximum", variable.name, len),
+                });
             }
             Ok(len as u16)
         }

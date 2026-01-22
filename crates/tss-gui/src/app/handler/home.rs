@@ -139,7 +139,7 @@ impl App {
         match self.navigate_to_source_assignment(path, workflow_mode) {
             Ok(()) => Task::none(),
             Err(e) => {
-                self.state.error = Some(e);
+                self.state.error = Some(crate::error::GuiError::study_load(e));
                 Task::none()
             }
         }

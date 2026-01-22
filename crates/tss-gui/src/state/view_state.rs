@@ -139,6 +139,200 @@ impl ViewState {
             _ => WorkflowMode::default(),
         }
     }
+
+    // =========================================================================
+    // HELPER METHODS FOR COMMON PATTERNS
+    // =========================================================================
+    // VIEW STATE QUERY METHODS
+    // =========================================================================
+    // These methods are designed for use in the handler refactoring (Phase 4)
+    // and are kept even if currently unused to support the planned architecture.
+
+    /// Get the current domain code if in domain editor view.
+    ///
+    /// Returns `None` if not in domain editor view.
+    #[inline]
+    #[allow(dead_code)]
+    pub fn current_domain(&self) -> Option<&str> {
+        match self {
+            Self::DomainEditor { domain, .. } => Some(domain),
+            _ => None,
+        }
+    }
+
+    /// Get the current editor tab if in domain editor view.
+    ///
+    /// Returns `None` if not in domain editor view.
+    #[inline]
+    #[allow(dead_code)]
+    pub fn current_tab(&self) -> Option<EditorTab> {
+        match self {
+            Self::DomainEditor { tab, .. } => Some(*tab),
+            _ => None,
+        }
+    }
+
+    /// Check if currently in domain editor view.
+    #[inline]
+    #[allow(dead_code)]
+    pub fn is_domain_editor(&self) -> bool {
+        matches!(self, Self::DomainEditor { .. })
+    }
+
+    /// Check if currently in home view.
+    #[inline]
+    #[allow(dead_code)]
+    pub fn is_home(&self) -> bool {
+        matches!(self, Self::Home { .. })
+    }
+
+    /// Check if currently in source assignment view.
+    #[inline]
+    #[allow(dead_code)]
+    pub fn is_source_assignment(&self) -> bool {
+        matches!(self, Self::SourceAssignment { .. })
+    }
+
+    /// Check if currently in export view.
+    #[inline]
+    #[allow(dead_code)]
+    pub fn is_export(&self) -> bool {
+        matches!(self, Self::Export(_))
+    }
+
+    // =========================================================================
+    // HELPER METHODS FOR STATE ACCESS
+    // =========================================================================
+    // These methods provide convenient access to nested UI state.
+    // They are designed for use in the handler refactoring (Phase 4) and are
+    // kept even if currently unused to support the planned architecture.
+
+    /// Get mutable reference to mapping UI state.
+    ///
+    /// Returns `None` if not in domain editor view.
+    #[inline]
+    #[allow(dead_code)]
+    pub fn mapping_ui_mut(&mut self) -> Option<&mut MappingUiState> {
+        match self {
+            Self::DomainEditor { mapping_ui, .. } => Some(mapping_ui),
+            _ => None,
+        }
+    }
+
+    /// Get immutable reference to mapping UI state.
+    ///
+    /// Returns `None` if not in domain editor view.
+    #[inline]
+    #[allow(dead_code)]
+    pub fn mapping_ui(&self) -> Option<&MappingUiState> {
+        match self {
+            Self::DomainEditor { mapping_ui, .. } => Some(mapping_ui),
+            _ => None,
+        }
+    }
+
+    /// Get mutable reference to validation UI state.
+    ///
+    /// Returns `None` if not in domain editor view.
+    #[inline]
+    #[allow(dead_code)]
+    pub fn validation_ui_mut(&mut self) -> Option<&mut ValidationUiState> {
+        match self {
+            Self::DomainEditor { validation_ui, .. } => Some(validation_ui),
+            _ => None,
+        }
+    }
+
+    /// Get mutable reference to preview UI state.
+    ///
+    /// Returns `None` if not in domain editor view.
+    #[inline]
+    #[allow(dead_code)]
+    pub fn preview_ui_mut(&mut self) -> Option<&mut PreviewUiState> {
+        match self {
+            Self::DomainEditor { preview_ui, .. } => Some(preview_ui),
+            _ => None,
+        }
+    }
+
+    /// Get mutable reference to normalization UI state.
+    ///
+    /// Returns `None` if not in domain editor view.
+    #[inline]
+    #[allow(dead_code)]
+    pub fn normalization_ui_mut(&mut self) -> Option<&mut NormalizationUiState> {
+        match self {
+            Self::DomainEditor {
+                normalization_ui, ..
+            } => Some(normalization_ui),
+            _ => None,
+        }
+    }
+
+    /// Get mutable reference to SUPP UI state.
+    ///
+    /// Returns `None` if not in domain editor view.
+    #[inline]
+    #[allow(dead_code)]
+    pub fn supp_ui_mut(&mut self) -> Option<&mut SuppUiState> {
+        match self {
+            Self::DomainEditor { supp_ui, .. } => Some(supp_ui),
+            _ => None,
+        }
+    }
+
+    /// Invalidate (clear) the preview cache.
+    ///
+    /// Call this when data changes that would affect the preview.
+    /// The preview will be rebuilt on next access.
+    #[allow(dead_code)]
+    pub fn invalidate_preview(&mut self) {
+        if let Self::DomainEditor { preview_cache, .. } = self {
+            *preview_cache = None;
+        }
+    }
+
+    /// Get the cached preview DataFrame if available.
+    #[inline]
+    #[allow(dead_code)]
+    pub fn preview_cache(&self) -> Option<&DataFrame> {
+        match self {
+            Self::DomainEditor { preview_cache, .. } => preview_cache.as_ref(),
+            _ => None,
+        }
+    }
+
+    /// Set the preview cache.
+    #[allow(dead_code)]
+    pub fn set_preview_cache(&mut self, df: DataFrame) {
+        if let Self::DomainEditor { preview_cache, .. } = self {
+            *preview_cache = Some(df);
+        }
+    }
+
+    /// Get mutable reference to source assignment UI state.
+    ///
+    /// Returns `None` if not in source assignment view.
+    #[inline]
+    #[allow(dead_code)]
+    pub fn source_assignment_ui_mut(&mut self) -> Option<&mut SourceAssignmentUiState> {
+        match self {
+            Self::SourceAssignment { assignment_ui, .. } => Some(assignment_ui),
+            _ => None,
+        }
+    }
+
+    /// Get mutable reference to export view state.
+    ///
+    /// Returns `None` if not in export view.
+    #[inline]
+    #[allow(dead_code)]
+    pub fn export_state_mut(&mut self) -> Option<&mut ExportViewState> {
+        match self {
+            Self::Export(state) => Some(state),
+            _ => None,
+        }
+    }
 }
 
 // =============================================================================

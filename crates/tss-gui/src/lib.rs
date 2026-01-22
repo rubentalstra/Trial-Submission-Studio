@@ -5,8 +5,12 @@
 //!
 //! Built with Iced 0.14.0 using the Elm architecture.
 
+// Error types
+pub mod error;
+
 // Core modules (new Iced implementation)
 pub mod component;
+pub mod handler;
 pub mod menu;
 pub mod message;
 pub mod state;

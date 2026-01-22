@@ -144,3 +144,24 @@ pub use action_button::{ActionButton, ActionButtonList, ActionButtonStyle, edit_
 // Icons: Use iced_fonts::lucide directly
 // Re-export font bytes for convenience (load in main.rs)
 pub use iced_fonts::LUCIDE_FONT_BYTES;
+
+// =============================================================================
+// NEW COMPONENT ORGANIZATION (Phase 5)
+// =============================================================================
+// These subdirectories establish the new component hierarchy.
+// Components will be migrated here incrementally.
+
+/// Layout components (split views, page structure)
+pub mod layout;
+
+/// Panel components (list panels, detail panels)
+pub mod panels;
+
+/// Input components (search, text fields, forms)
+pub mod inputs;
+
+/// Display components (tables, badges, empty states)
+pub mod display;
+
+/// Feedback components (toasts, modals, progress)
+pub mod feedback;

@@ -5,12 +5,12 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::path::Path;
 
-use anyhow::{Context, Result, anyhow};
 use chrono::{SecondsFormat, Utc};
 use quick_xml::Writer;
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, Event};
 
 use super::types::{DomainFrame, domain_map_by_code};
+use crate::error::{Result, SubmitError};
 use tss_standards::ct::{Codelist, TerminologyCatalog, TerminologyRegistry};
 use tss_standards::{CtVersion, load_ct};
 use tss_standards::{SdtmDomain, SdtmVariable, VariableType};
@@ -77,7 +77,9 @@ pub fn write_define_xml(
     options: &DefineXmlOptions,
 ) -> Result<()> {
     if frames.is_empty() {
-        return Err(anyhow!("no datasets supplied for define-xml"));
+        return Err(SubmitError::NoDatasets {
+            format: "Define-XML".to_string(),
+        });
     }
     let study_id = normalize_study_id(study_id);
     let study_oid = format!("STDY.{study_id}");
@@ -91,12 +93,14 @@ pub fn write_define_xml(
         let code = frame.domain_code.to_uppercase();
         let domain = domain_lookup
             .get(&code)
-            .ok_or_else(|| anyhow!("missing domain definition for {code}"))?;
+            .ok_or_else(|| SubmitError::MissingDomain {
+                domain: code.clone(),
+            })?;
         entries.push((domain, frame));
     }
     entries.sort_by(|a, b| a.0.name.cmp(&b.0.name));
 
-    let ct_registry = load_ct(CtVersion::default()).context("load ct registry")?;
+    let ct_registry = load_ct(CtVersion::default())?;
     let mut item_defs: BTreeMap<String, ItemDefSpec> = BTreeMap::new();
     let mut code_lists: BTreeMap<String, CodeListSpec> = BTreeMap::new();
     let mut ct_standards: BTreeMap<String, CtStandard> = BTreeMap::new();
@@ -141,8 +145,9 @@ pub fn write_define_xml(
     }
 
     ensure_parent_dir(output_path)?;
-    let file =
-        File::create(output_path).with_context(|| format!("create {}", output_path.display()))?;
+    let file = File::create(output_path).map_err(|e| {
+        SubmitError::write_error("Define-XML", output_path.display().to_string(), e)
+    })?;
     let writer = BufWriter::new(file);
     let mut xml = Writer::new_with_indent(writer, b' ', 2);
 
@@ -344,12 +349,11 @@ fn resolve_codelist(
                 if let Some(resolved) = ct_registry.resolve(code, None) {
                     ct_entries.push((resolved.codelist, Some(resolved.catalog)));
                 } else {
-                    return Err(anyhow!(
-                        "missing codelist {} for {}.{}",
-                        raw,
-                        domain.name,
-                        variable.name
-                    ));
+                    return Err(SubmitError::MissingCodelist {
+                        codelist: raw.clone(),
+                        domain: domain.name.clone(),
+                        variable: variable.name.clone(),
+                    });
                 }
             }
         }

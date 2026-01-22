@@ -4,10 +4,10 @@
 
 use std::collections::HashSet;
 
-use polars::prelude::{AnyValue, DataFrame};
+use polars::prelude::DataFrame;
 use tss_standards::SdtmDomain;
-use tss_standards::any_to_string;
 
+use super::super::column_reader::ColumnReader;
 use super::super::issue::Issue;
 use super::super::util::CaseInsensitiveSet;
 
@@ -40,25 +40,18 @@ pub fn check(domain: &SdtmDomain, df: &DataFrame, columns: &CaseInsensitiveSet) 
 
 /// Count duplicate sequence values per subject.
 fn count_duplicate_sequences(df: &DataFrame, subject_col: &str, seq_col: &str) -> u64 {
-    let (Ok(subj_series), Ok(seq_series)) = (df.column(subject_col), df.column(seq_col)) else {
-        return 0;
-    };
+    let reader = ColumnReader::new(df);
+    let by_subject = reader.values_by_subject(subject_col, seq_col);
 
-    // Build map of (USUBJID, SEQ) pairs and count duplicates
-    let mut seen: HashSet<(String, String)> = HashSet::new();
+    // Count sequences that appear more than once per subject
     let mut duplicate_count = 0u64;
-
-    for idx in 0..df.height() {
-        let subj = any_to_string(subj_series.get(idx).unwrap_or(AnyValue::Null));
-        let seq = any_to_string(seq_series.get(idx).unwrap_or(AnyValue::Null));
-
-        let key = (subj.trim().to_string(), seq.trim().to_string());
-        if key.0.is_empty() || key.1.is_empty() {
-            continue;
-        }
-
-        if !seen.insert(key) {
-            duplicate_count += 1;
+    for values in by_subject.values() {
+        let mut seen: HashSet<&str> = HashSet::new();
+        for seq in values {
+            let trimmed = seq.trim();
+            if !trimmed.is_empty() && !seen.insert(trimmed) {
+                duplicate_count += 1;
+            }
         }
     }
 

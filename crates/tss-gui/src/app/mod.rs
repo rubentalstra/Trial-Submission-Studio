@@ -274,7 +274,7 @@ impl App {
                     }
                     Err(err) => {
                         tracing::error!("Failed to load study: {}", err);
-                        self.state.error = Some(err);
+                        self.state.error = Some(crate::error::GuiError::study_load(err));
                     }
                 }
                 Task::none()

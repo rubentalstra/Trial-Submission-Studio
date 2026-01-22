@@ -8,6 +8,7 @@
 // Module declarations
 mod app;
 mod component;
+mod error;
 mod menu;
 mod message;
 mod service;

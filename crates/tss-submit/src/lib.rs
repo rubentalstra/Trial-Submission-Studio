@@ -7,6 +7,11 @@
 //! - **Validation** (`validate`): CDISC conformance checking
 //! - **Export** (`export`): Output generation (XPT, Dataset-XML, Define-XML)
 //!
+//! # Error Handling
+//!
+//! This crate uses a unified [`SubmitError`] type for all operations, built with `thiserror`.
+//! Each submodule also provides more specific error types that can be converted to `SubmitError`.
+//!
 //! # Example
 //!
 //! ```ignore
@@ -22,10 +27,14 @@
 //! write_xpt_outputs(&domain_data, output_dir)?;
 //! ```
 
+pub mod error;
 pub mod export;
 pub mod map;
 pub mod normalize;
 pub mod validate;
+
+// Re-export unified error type
+pub use error::{Result, SubmitError};
 
 // Re-export commonly used types
 pub use map::{

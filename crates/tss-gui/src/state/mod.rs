@@ -24,12 +24,16 @@
 //! 3. **Derived data computed on demand** - Not cached in state
 //! 4. **UI state lives with views** - Not mixed with domain data
 
+mod dialog;
 mod domain_state;
 mod settings;
 mod study;
 mod view_state;
 
-// Re-exports
+// Re-exports - Dialog types are exported but local DialogWindows is kept for backward compatibility
+pub use dialog::{DialogRegistry, DialogState, ExportProgressState};
+// Re-export DialogType from dialog module (remove local definition)
+pub use dialog::DialogType;
 pub use domain_state::{DomainSource, DomainState, SuppAction, SuppColumnConfig, SuppOrigin};
 pub use settings::{
     AssignmentMode, ExportFormat, RecentStudy, SdtmIgVersion, Settings, WorkflowType, XptVersion,
@@ -43,6 +47,7 @@ pub use view_state::{
 };
 
 use crate::component::toast::ToastState;
+use crate::error::GuiError;
 #[cfg(not(target_os = "macos"))]
 use crate::menu::MenuDropdownState;
 use crate::theme::ThemeConfig;
@@ -104,10 +109,11 @@ pub struct AppState {
     /// and controlled term lookups.
     pub terminology: Option<TerminologyRegistry>,
 
-    /// Current error message to display (transient).
+    /// Current error to display (transient).
     ///
     /// Set when an operation fails, cleared on user acknowledgment.
-    pub error: Option<String>,
+    /// Use `GuiError` for structured error handling with categories and suggestions.
+    pub error: Option<GuiError>,
 
     /// Whether a background task is running (for UI feedback).
     pub is_loading: bool,
@@ -127,29 +133,7 @@ pub struct AppState {
     pub toast: Option<ToastState>,
 }
 
-/// State for export progress dialog.
-#[derive(Debug, Clone)]
-pub struct ExportProgressState {
-    /// Current domain being processed.
-    pub current_domain: Option<String>,
-    /// Current step label.
-    pub current_step: String,
-    /// Progress 0.0 to 1.0.
-    pub progress: f32,
-    /// Number of files written.
-    pub files_written: usize,
-}
-
-impl Default for ExportProgressState {
-    fn default() -> Self {
-        Self {
-            current_domain: None,
-            current_step: "Preparing...".to_string(),
-            progress: 0.0,
-            files_written: 0,
-        }
-    }
-}
+// ExportProgressState is now defined in dialog.rs and re-exported above
 
 /// Tracks open dialog windows.
 #[derive(Debug, Clone, Default)]
@@ -226,17 +210,7 @@ impl DialogWindows {
     }
 }
 
-/// Dialog type identifier.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DialogType {
-    About,
-    Settings,
-    ThirdParty,
-    Update,
-    CloseStudyConfirm,
-    ExportProgress,
-    ExportComplete,
-}
+// DialogType is now defined in dialog.rs and re-exported above
 
 impl AppState {
     /// Create app state with loaded settings.

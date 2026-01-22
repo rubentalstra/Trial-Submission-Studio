@@ -2,16 +2,17 @@
 //!
 //! Checks that character variables don't exceed their defined length.
 
-use polars::prelude::{AnyValue, DataFrame};
-use tss_standards::any_to_string;
+use polars::prelude::DataFrame;
 use tss_standards::{SdtmDomain, VariableType};
 
+use super::super::column_reader::ColumnReader;
 use super::super::issue::Issue;
 use super::super::util::CaseInsensitiveSet;
 
 /// Check that character variables don't exceed their defined length.
 pub fn check(domain: &SdtmDomain, df: &DataFrame, columns: &CaseInsensitiveSet) -> Vec<Issue> {
     let mut issues = Vec::new();
+    let reader = ColumnReader::new(df);
 
     for variable in &domain.variables {
         // Only check Char variables with a defined length
@@ -27,7 +28,7 @@ pub fn check(domain: &SdtmDomain, df: &DataFrame, columns: &CaseInsensitiveSet) 
             continue;
         };
 
-        let (exceeded_count, max_found) = collect_length_violations(df, column, max_length);
+        let (exceeded_count, max_found) = reader.length_violations(column, max_length);
         if exceeded_count > 0 {
             issues.push(Issue::TextTooLong {
                 variable: variable.name.clone(),
@@ -39,27 +40,4 @@ pub fn check(domain: &SdtmDomain, df: &DataFrame, columns: &CaseInsensitiveSet) 
     }
 
     issues
-}
-
-/// Collect values that exceed the specified length.
-fn collect_length_violations(df: &DataFrame, column: &str, max_length: u32) -> (u64, usize) {
-    let Ok(series) = df.column(column) else {
-        return (0, 0);
-    };
-
-    let mut count = 0u64;
-    let mut max_found = 0usize;
-
-    for idx in 0..df.height() {
-        let value = series.get(idx).unwrap_or(AnyValue::Null);
-        let str_value = any_to_string(value);
-        let len = str_value.len();
-
-        if len > max_length as usize {
-            count += 1;
-            max_found = max_found.max(len);
-        }
-    }
-
-    (count, max_found)
 }

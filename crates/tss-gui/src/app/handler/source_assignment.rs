@@ -181,8 +181,10 @@ impl App {
                     // Verify all files are categorized
                     if !assignment_ui.all_categorized() {
                         // Show error toast or message
-                        self.state.error =
-                            Some("Please categorize all files before continuing.".to_string());
+                        self.state.error = Some(crate::error::GuiError::Operation {
+                            operation: "Source Assignment".to_string(),
+                            reason: "Please categorize all files before continuing.".to_string(),
+                        });
                         return Task::none();
                     }
 
@@ -273,7 +275,7 @@ impl App {
                     }
                     Err(e) => {
                         tracing::error!("Failed to create study: {}", e);
-                        self.state.error = Some(e);
+                        self.state.error = Some(crate::error::GuiError::study_load(e));
                     }
                 }
                 Task::none()
