@@ -3,8 +3,11 @@
 //! Two-panel drag-and-drop interface for manually assigning CSV files
 //! to CDISC domains.
 
-use iced::widget::{Space, button, column, container, row, rule, scrollable, text, text_input};
+use iced::widget::{
+    Space, button, column, container, mouse_area, row, rule, scrollable, text, text_input,
+};
 use iced::{Alignment, Border, Element, Length, Theme};
+use iced_aw::ContextMenu;
 use iced_fonts::lucide;
 
 use crate::message::{Message, SourceAssignmentMessage};
@@ -281,6 +284,9 @@ fn view_source_panel<'a>(
 }
 
 /// Render a single source file item.
+///
+/// Unassigned files show NO icon - just filename (clean list).
+/// Actions via right-click context menu, not inline buttons.
 fn view_source_file_item<'a>(
     file: &'a SourceFileEntry,
     index: usize,
@@ -300,84 +306,123 @@ fn view_source_file_item<'a>(
             }),
         });
 
-    // Context menu items (simplified - actual implementation would use iced_aw)
+    // Clean file row: icon space (empty for unassigned) + filename only
     let content = row![
-        Space::new().width(20.0), // Icon space (reserved for alignment)
+        Space::new().width(20.0), // Icon space (reserved for alignment, empty for unassigned)
         file_name,
         Space::new().width(Length::Fill),
-        // Action buttons (inline for now, context menu in future)
-        button(
-            container(lucide::file_text().size(12)).style(|theme: &Theme| container::Style {
-                text_color: Some(theme.clinical().mapping_suggested),
-                ..Default::default()
-            })
-        )
-        .on_press(Message::SourceAssignment(
-            SourceAssignmentMessage::MarkAsMetadata { file_index: index }
-        ))
-        .padding(SPACING_XS)
-        .style(button_ghost),
-        button(
-            container(lucide::file_x().size(12)).style(|theme: &Theme| container::Style {
-                text_color: Some(theme.clinical().text_muted),
-                ..Default::default()
-            })
-        )
-        .on_press(Message::SourceAssignment(
-            SourceAssignmentMessage::MarkAsSkipped { file_index: index }
-        ))
-        .padding(SPACING_XS)
-        .style(button_ghost),
     ]
     .align_y(Alignment::Center)
     .spacing(SPACING_XS);
 
-    let on_press = match assignment_mode {
-        AssignmentMode::ClickToAssign => Some(Message::SourceAssignment(
-            SourceAssignmentMessage::FileClicked { file_index: index },
-        )),
-        AssignmentMode::DragAndDrop => None,
+    // Style for file item container
+    let item_style = move |theme: &Theme| container::Style {
+        background: if is_selected {
+            Some(theme.extended_palette().primary.weak.color.into())
+        } else if is_dragging {
+            Some(theme.clinical().background_inset.into())
+        } else {
+            None
+        },
+        border: Border {
+            color: if is_selected {
+                theme.extended_palette().primary.base.color
+            } else {
+                iced::Color::TRANSPARENT
+            },
+            width: if is_selected { 1.0 } else { 0.0 },
+            radius: BORDER_RADIUS_SM.into(),
+        },
+        ..Default::default()
     };
 
-    let item = button(content)
+    let item_container = container(content)
         .width(Length::Fill)
         .padding([SPACING_SM, SPACING_MD])
-        .style(move |theme: &Theme, status| {
-            let base = button_ghost(theme, status);
-            let bg = if is_selected {
-                Some(theme.extended_palette().primary.weak.color.into())
-            } else if is_dragging {
-                Some(theme.clinical().background_inset.into())
-            } else {
-                None
-            };
-            iced::widget::button::Style {
-                background: bg,
-                border: Border {
-                    color: if is_selected {
-                        theme.extended_palette().primary.base.color
-                    } else {
-                        iced::Color::TRANSPARENT
-                    },
-                    width: if is_selected { 1.0 } else { 0.0 },
-                    radius: BORDER_RADIUS_SM.into(),
-                },
-                ..base
-            }
-        });
+        .style(item_style);
 
-    if let Some(msg) = on_press {
-        item.on_press(msg).into()
-    } else {
-        item.into()
-    }
+    // Build context menu content for right-click
+    let context_menu_underlay: Element<'a, Message> = match assignment_mode {
+        AssignmentMode::DragAndDrop => {
+            // Drag-and-drop mode: wrap in mouse_area for drag handling
+            mouse_area(item_container)
+                .on_press(Message::SourceAssignment(
+                    SourceAssignmentMessage::DragStarted { file_index: index },
+                ))
+                .into()
+        }
+        AssignmentMode::ClickToAssign => {
+            // Click-to-assign mode: wrap in button for click handling
+            button(item_container)
+                .on_press(Message::SourceAssignment(
+                    SourceAssignmentMessage::FileClicked { file_index: index },
+                ))
+                .padding(0)
+                .style(|_, _| iced::widget::button::Style {
+                    background: None,
+                    border: Border::default(),
+                    ..Default::default()
+                })
+                .into()
+        }
+    };
+
+    // Wrap in ContextMenu for right-click actions
+    ContextMenu::new(context_menu_underlay, move || {
+        build_file_context_menu(index)
+    })
+    .into()
+}
+
+/// Build context menu options for an unassigned file.
+fn build_file_context_menu(file_index: usize) -> Element<'static, Message> {
+    container(
+        column![
+            context_menu_item(
+                "Mark as Metadata",
+                Message::SourceAssignment(SourceAssignmentMessage::MarkAsMetadata { file_index })
+            ),
+            context_menu_item(
+                "Mark as Skipped",
+                Message::SourceAssignment(SourceAssignmentMessage::MarkAsSkipped { file_index })
+            ),
+        ]
+        .spacing(2),
+    )
+    .padding(4)
+    .style(|theme: &Theme| container::Style {
+        background: Some(theme.clinical().background_elevated.into()),
+        border: Border {
+            width: 1.0,
+            radius: BORDER_RADIUS_SM.into(),
+            color: theme.clinical().border_default,
+        },
+        ..Default::default()
+    })
+    .into()
+}
+
+/// Create a single context menu item button.
+fn context_menu_item(label: &'static str, message: Message) -> Element<'static, Message> {
+    button(text(label).size(12).style(|theme: &Theme| text::Style {
+        color: Some(theme.extended_palette().background.base.text),
+    }))
+    .on_press(message)
+    .padding([SPACING_XS, SPACING_SM])
+    .style(context_menu_button_style)
+    .into()
 }
 
 /// Render a marked file item (metadata or skipped).
+///
+/// Metadata files show orange `file_text` icon as status indicator.
+/// Skipped files show greyed `file_x` icon as status indicator.
+/// Unmark action via right-click context menu, not inline button.
 fn view_marked_file_item<'a>(file: &'a SourceFileEntry, index: usize) -> Element<'a, Message> {
     let is_metadata = file.status == SourceFileStatus::Metadata;
     let is_skipped = file.status == SourceFileStatus::Skipped;
 
+    // Status icon (orange for metadata, greyed for skipped)
     let icon: Element<'a, Message> = if is_metadata {
         container(lucide::file_text().size(14))
             .style(|theme: &Theme| container::Style {
@@ -408,27 +453,17 @@ fn view_marked_file_item<'a>(file: &'a SourceFileEntry, index: usize) -> Element
             }),
         });
 
+    // Clean content: icon + filename only (no inline buttons)
     let content = row![
         icon,
         Space::new().width(SPACING_SM),
         file_name,
         Space::new().width(Length::Fill),
-        button(
-            container(lucide::rotate_ccw().size(12)).style(|theme: &Theme| container::Style {
-                text_color: Some(theme.clinical().text_muted),
-                ..Default::default()
-            })
-        )
-        .on_press(Message::SourceAssignment(
-            SourceAssignmentMessage::UnmarkFile { file_index: index }
-        ))
-        .padding(SPACING_XS)
-        .style(button_ghost),
     ]
     .align_y(Alignment::Center)
     .spacing(SPACING_XS);
 
-    container(content)
+    let item_container = container(content)
         .width(Length::Fill)
         .padding([SPACING_SM, SPACING_MD])
         .style(|theme: &Theme| container::Style {
@@ -438,8 +473,35 @@ fn view_marked_file_item<'a>(file: &'a SourceFileEntry, index: usize) -> Element
                 ..Default::default()
             },
             ..Default::default()
-        })
-        .into()
+        });
+
+    // Wrap in ContextMenu for right-click "Unmark" action
+    ContextMenu::new(item_container, move || {
+        build_marked_file_context_menu(index)
+    })
+    .into()
+}
+
+/// Build context menu options for a marked file (metadata/skipped).
+fn build_marked_file_context_menu(file_index: usize) -> Element<'static, Message> {
+    container(
+        column![context_menu_item(
+            "Unmark",
+            Message::SourceAssignment(SourceAssignmentMessage::UnmarkFile { file_index })
+        ),]
+        .spacing(2),
+    )
+    .padding(4)
+    .style(|theme: &Theme| container::Style {
+        background: Some(theme.clinical().background_elevated.into()),
+        border: Border {
+            width: 1.0,
+            radius: BORDER_RADIUS_SM.into(),
+            color: theme.clinical().border_default,
+        },
+        ..Default::default()
+    })
+    .into()
 }
 
 /// Render the domain panel (right side).
@@ -534,13 +596,15 @@ fn view_domain_panel<'a>(
 }
 
 /// Render a domain bucket with assigned files.
+///
+/// In drag-and-drop mode: uses mouse_area for hover/drop detection.
+/// In click-to-assign mode: uses button for click handling.
 fn view_domain_bucket<'a>(
     domain: &'a TargetDomainEntry,
     assignment_ui: &'a SourceAssignmentUiState,
     assignment_mode: AssignmentMode,
 ) -> Element<'a, Message> {
-    let assigned_files = assignment_ui.files_for_domain(&domain.code);
-    let has_files = !assigned_files.is_empty();
+    let has_files = !assignment_ui.files_for_domain(&domain.code).is_empty();
     let is_hover_target = assignment_ui.hover_domain.as_ref() == Some(&domain.code);
     let has_selected_file = assignment_ui.selected_file.is_some();
 
@@ -580,16 +644,6 @@ fn view_domain_bucket<'a>(
         content = content.push(view_assigned_file(&file.file_stem, file_idx, &domain.code));
     }
 
-    // Make domain clickable for click-to-assign mode
-    let on_press = match assignment_mode {
-        AssignmentMode::ClickToAssign if has_selected_file => Some(Message::SourceAssignment(
-            SourceAssignmentMessage::DomainClicked {
-                domain_code: domain.code.clone(),
-            },
-        )),
-        _ => None,
-    };
-
     let bucket = container(content)
         .width(Length::Fill)
         .padding(SPACING_MD)
@@ -619,27 +673,70 @@ fn view_domain_bucket<'a>(
             ..Default::default()
         });
 
-    if let Some(msg) = on_press {
-        button(bucket)
-            .on_press(msg)
-            .padding(0)
-            .style(|_, _| iced::widget::button::Style {
-                background: None,
-                border: Border::default(),
-                ..Default::default()
-            })
-            .into()
-    } else {
-        bucket.into()
+    // Capture domain code and dragging file for closures
+    let domain_code = domain.code.clone();
+    let domain_code_for_click = domain.code.clone();
+    let domain_code_for_drop = domain.code.clone();
+    let dragging_file_index = assignment_ui.dragging_file;
+
+    match assignment_mode {
+        AssignmentMode::DragAndDrop => {
+            // Drag-and-drop mode: use mouse_area for hover/drop detection
+            let mut area = mouse_area(bucket)
+                .on_enter(Message::SourceAssignment(
+                    SourceAssignmentMessage::DragOverDomain {
+                        domain_code: Some(domain_code),
+                    },
+                ))
+                .on_exit(Message::SourceAssignment(
+                    SourceAssignmentMessage::DragOverDomain { domain_code: None },
+                ));
+
+            // Only handle release if we're dragging a file
+            if let Some(file_index) = dragging_file_index {
+                area = area.on_release(Message::SourceAssignment(
+                    SourceAssignmentMessage::DroppedOnDomain {
+                        file_index,
+                        domain_code: domain_code_for_drop,
+                    },
+                ));
+            }
+
+            area.into()
+        }
+        AssignmentMode::ClickToAssign => {
+            // Click-to-assign mode: use button for click handling
+            if has_selected_file {
+                button(bucket)
+                    .on_press(Message::SourceAssignment(
+                        SourceAssignmentMessage::DomainClicked {
+                            domain_code: domain_code_for_click,
+                        },
+                    ))
+                    .padding(0)
+                    .style(|_, _| iced::widget::button::Style {
+                        background: None,
+                        border: Border::default(),
+                        ..Default::default()
+                    })
+                    .into()
+            } else {
+                bucket.into()
+            }
+        }
     }
 }
 
 /// Render an assigned file under a domain.
+///
+/// Shows just the filename (no icon) - location under domain makes status clear.
+/// Unassign action via right-click context menu, not inline button.
 fn view_assigned_file<'a>(
     file_stem: &'a str,
     file_index: usize,
     domain_code: &'a str,
 ) -> Element<'a, Message> {
+    // Clean content: indent + filename only (no inline buttons)
     let content = row![
         Space::new().width(SPACING_MD), // Indent
         text(format!("{}.csv", file_stem))
@@ -648,27 +745,49 @@ fn view_assigned_file<'a>(
                 color: Some(theme.clinical().text_secondary),
             }),
         Space::new().width(Length::Fill),
-        button(
-            container(lucide::x().size(10)).style(|theme: &Theme| container::Style {
-                text_color: Some(theme.clinical().text_muted),
-                ..Default::default()
-            })
-        )
-        .on_press(Message::SourceAssignment(
-            SourceAssignmentMessage::UnassignFile {
-                domain_code: domain_code.to_string(),
-                file_index,
-            }
-        ))
-        .padding(SPACING_XS)
-        .style(button_ghost),
     ]
     .align_y(Alignment::Center);
 
-    container(content)
+    let item_container = container(content)
         .width(Length::Fill)
-        .padding([SPACING_XS, 0.0])
-        .into()
+        .padding([SPACING_XS, 0.0]);
+
+    // Capture domain_code as owned String for the closure
+    let domain_code_owned = domain_code.to_string();
+
+    // Wrap in ContextMenu for right-click "Unassign" action
+    ContextMenu::new(item_container, move || {
+        build_assigned_file_context_menu(file_index, domain_code_owned.clone())
+    })
+    .into()
+}
+
+/// Build context menu options for an assigned file.
+fn build_assigned_file_context_menu(
+    file_index: usize,
+    domain_code: String,
+) -> Element<'static, Message> {
+    container(
+        column![context_menu_item(
+            "Unassign",
+            Message::SourceAssignment(SourceAssignmentMessage::UnassignFile {
+                domain_code,
+                file_index,
+            })
+        ),]
+        .spacing(2),
+    )
+    .padding(4)
+    .style(|theme: &Theme| container::Style {
+        background: Some(theme.clinical().background_elevated.into()),
+        border: Border {
+            width: 1.0,
+            radius: BORDER_RADIUS_SM.into(),
+            color: theme.clinical().border_default,
+        },
+        ..Default::default()
+    })
+    .into()
 }
 
 /// Render the footer with progress and continue button.
@@ -781,19 +900,6 @@ fn truncate_path(path: &str, max_len: usize) -> String {
     format!("...{}", &path[path.len().saturating_sub(max_len - 3)..])
 }
 
-/// Ghost button style (minimal, transparent background).
-fn button_ghost(
-    theme: &Theme,
-    _status: iced::widget::button::Status,
-) -> iced::widget::button::Style {
-    iced::widget::button::Style {
-        background: None,
-        text_color: theme.clinical().text_secondary,
-        border: Border::default(),
-        ..Default::default()
-    }
-}
-
 /// Disabled button style.
 fn button_disabled(
     theme: &Theme,
@@ -802,6 +908,27 @@ fn button_disabled(
     iced::widget::button::Style {
         background: Some(theme.clinical().background_inset.into()),
         text_color: theme.clinical().text_muted,
+        border: Border {
+            radius: BORDER_RADIUS_SM.into(),
+            ..Default::default()
+        },
+        ..Default::default()
+    }
+}
+
+/// Context menu item button style (hover highlight).
+fn context_menu_button_style(
+    theme: &Theme,
+    status: iced::widget::button::Status,
+) -> iced::widget::button::Style {
+    let is_hovered = matches!(status, iced::widget::button::Status::Hovered);
+    iced::widget::button::Style {
+        background: if is_hovered {
+            Some(theme.extended_palette().primary.weak.color.into())
+        } else {
+            None
+        },
+        text_color: theme.extended_palette().background.base.text,
         border: Border {
             radius: BORDER_RADIUS_SM.into(),
             ..Default::default()
