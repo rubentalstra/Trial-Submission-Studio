@@ -26,6 +26,7 @@ use iced::widget::container;
 use iced::window;
 use iced::{Element, Size, Subscription, Task, Theme};
 
+use crate::handler::{DomainEditorHandler, HomeHandler, MessageHandler, SourceAssignmentHandler};
 use crate::message::{Message, SettingsCategory};
 use crate::state::{AppState, DialogType, Settings, ViewState};
 use crate::theme::clinical_theme;
@@ -111,19 +112,21 @@ impl App {
             // =================================================================
             // Home view messages
             // =================================================================
-            Message::Home(home_msg) => self.handle_home_message(home_msg),
+            Message::Home(home_msg) => HomeHandler.handle(&mut self.state, home_msg),
 
             // =================================================================
             // Source assignment view messages
             // =================================================================
             Message::SourceAssignment(assignment_msg) => {
-                self.handle_source_assignment_message(assignment_msg)
+                SourceAssignmentHandler.handle(&mut self.state, assignment_msg)
             }
 
             // =================================================================
             // Domain editor messages
             // =================================================================
-            Message::DomainEditor(editor_msg) => self.handle_domain_editor_message(editor_msg),
+            Message::DomainEditor(editor_msg) => {
+                DomainEditorHandler.handle(&mut self.state, editor_msg)
+            }
 
             // =================================================================
             // Export messages
@@ -340,7 +343,7 @@ impl App {
 
             Message::FolderSelected(path) => {
                 if let Some(folder) = path {
-                    self.load_study(folder)
+                    crate::handler::home::load_study(&mut self.state, folder)
                 } else {
                     Task::none()
                 }

@@ -5,4 +5,5 @@
 
 pub mod export;
 pub mod preview;
+pub mod study;
 pub mod validation;

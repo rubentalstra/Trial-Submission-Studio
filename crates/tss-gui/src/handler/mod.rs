@@ -36,14 +36,19 @@
 //! }
 //! ```
 
-mod home;
+pub mod domain_editor;
+pub mod home;
+pub mod source_assignment;
 
 use iced::Task;
 
 use crate::message::Message;
 use crate::state::AppState;
 
+// Re-export handlers
+pub use domain_editor::DomainEditorHandler;
 pub use home::HomeHandler;
+pub use source_assignment::SourceAssignmentHandler;
 
 /// Trait for handling messages in the Iced architecture.
 ///
@@ -83,18 +88,4 @@ pub trait MessageHandler<M> {
     ///
     /// A `Task<Message>` for any async follow-up work, or `Task::none()` if complete.
     fn handle(&self, state: &mut AppState, msg: M) -> Task<Message>;
-}
-
-/// Extension trait for handlers that need additional context.
-///
-/// Some handlers may need access to resources beyond AppState, such as:
-/// - Terminology registry
-/// - Theme configuration
-/// - Window management
-///
-/// This trait allows handlers to receive additional context.
-#[allow(dead_code)]
-pub trait MessageHandlerWithContext<M, C> {
-    /// Handle a message with additional context.
-    fn handle_with_context(&self, state: &mut AppState, msg: M, ctx: &C) -> Task<Message>;
 }

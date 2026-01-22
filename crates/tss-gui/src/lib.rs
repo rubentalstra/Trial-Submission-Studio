@@ -9,6 +9,7 @@
 pub mod error;
 
 // Core modules (new Iced implementation)
+pub mod app;
 pub mod component;
 pub mod handler;
 pub mod menu;
