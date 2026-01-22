@@ -85,7 +85,7 @@ pub fn view_close_study_dialog_content<'a>(window_id: window::Id) -> Element<'a,
         .center_x(Length::Fill)
         .center_y(Length::Fill)
         .style(|theme: &Theme| container::Style {
-            background: Some(theme.clinical().background_secondary.into()),
+            background: Some(theme.clinical().background_elevated.into()),
             ..Default::default()
         })
         .into()

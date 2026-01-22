@@ -39,7 +39,7 @@ pub fn view_settings_dialog_content<'a>(
         .width(Length::Fill)
         .height(Length::Fill)
         .style(|theme: &Theme| container::Style {
-            background: Some(theme.clinical().background_secondary.into()),
+            background: Some(theme.clinical().background_elevated.into()),
             ..Default::default()
         })
         .into()
@@ -549,7 +549,7 @@ fn view_theme_preview(
     let preview_palette = preview_theme.extended_palette();
     let preview_clinical = preview_theme.clinical();
 
-    let preview_bg = preview_clinical.background_secondary;
+    let preview_bg = preview_clinical.background_elevated;
     let text_color = preview_clinical.text_on_accent;
 
     let success_color = preview_palette.success.base.color;
