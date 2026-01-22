@@ -541,6 +541,7 @@ fn view_theme_preview(
     theme_mode: ThemeMode,
     accessibility_mode: AccessibilityMode,
 ) -> Element<'static, Message> {
+    // TODO: is this really intentional, because it already updates on change of the settings and everything so why do we need to create a new theme here?
     // Create a temporary Theme to resolve preview colors
     // This is intentional - we want to show preview colors for the selected settings,
     // not the currently active theme
