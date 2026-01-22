@@ -3,9 +3,9 @@
 //! A vertical sidebar for domain/feature navigation.
 
 use iced::widget::{button, column, container, scrollable, space, text};
-use iced::{Border, Element, Length, Padding, Theme};
+use iced::{Border, Element, Length, Theme};
 
-use crate::theme::{BORDER_RADIUS_SM, ClinicalColors, SIDEBAR_WIDTH, SPACING_SM, SPACING_XS};
+use crate::theme::{BORDER_RADIUS_SM, ClinicalColors, SPACING_SM, SPACING_XS};
 
 // =============================================================================
 // SIDEBAR ITEM
@@ -182,104 +182,4 @@ pub fn sidebar<'a, M: Clone + 'a>(
             }
         })
         .into()
-}
-
-/// Creates a sidebar with default width.
-#[allow(dead_code)]
-pub fn sidebar_default<'a, M: Clone + 'a>(
-    items: Vec<SidebarItem<M>>,
-    active_index: Option<usize>,
-) -> Element<'a, M> {
-    sidebar(items, active_index, SIDEBAR_WIDTH)
-}
-
-/// Creates a sidebar with a header.
-#[allow(dead_code)]
-pub fn sidebar_with_header<'a, M: Clone + 'a>(
-    header: Element<'a, M>,
-    items: Vec<SidebarItem<M>>,
-    active_index: Option<usize>,
-    width: f32,
-) -> Element<'a, M> {
-    let mut item_column = column![].spacing(SPACING_XS);
-
-    for (index, item) in items.into_iter().enumerate() {
-        let is_active = active_index == Some(index);
-        let label = item.label.clone();
-
-        let item_button = button(
-            container(text(label).size(14).style(move |theme: &Theme| {
-                let clinical = theme.clinical();
-                text::Style {
-                    color: Some(if is_active {
-                        clinical.accent_pressed
-                    } else {
-                        clinical.text_secondary
-                    }),
-                }
-            }))
-            .padding([SPACING_SM, 12.0])
-            .width(Length::Fill),
-        )
-        .on_press(item.message)
-        .width(Length::Fill)
-        .style(move |theme: &Theme, status| {
-            let palette = theme.extended_palette();
-            let clinical = theme.clinical();
-
-            if is_active {
-                button::Style {
-                    background: Some(clinical.accent_primary_light.into()),
-                    text_color: clinical.accent_pressed,
-                    border: Border {
-                        color: palette.primary.base.color,
-                        width: 0.0,
-                        radius: BORDER_RADIUS_SM.into(),
-                    },
-                    ..Default::default()
-                }
-            } else {
-                let bg = match status {
-                    button::Status::Hovered => Some(clinical.background_secondary.into()),
-                    _ => None,
-                };
-                button::Style {
-                    background: bg,
-                    text_color: palette.background.base.text,
-                    border: Border {
-                        radius: BORDER_RADIUS_SM.into(),
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                }
-            }
-        });
-
-        item_column = item_column.push(item_button);
-    }
-
-    container(
-        column![
-            container(header).padding(Padding::new(SPACING_SM).bottom(0.0)),
-            scrollable(container(item_column).padding(Padding::new(SPACING_SM).top(0.0)))
-                .height(Length::Fill),
-        ]
-        .spacing(SPACING_SM),
-    )
-    .width(Length::Fixed(width))
-    .height(Length::Fill)
-    .style(|theme: &Theme| {
-        let palette = theme.extended_palette();
-        let clinical = theme.clinical();
-        container::Style {
-            background: Some(palette.background.base.color.into()),
-            border: Border {
-                color: clinical.border_default,
-                width: 1.0,
-                radius: 0.0.into(),
-            },
-            ..Default::default()
-        }
-    })
-    .into()
 }

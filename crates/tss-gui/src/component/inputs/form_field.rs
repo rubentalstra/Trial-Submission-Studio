@@ -3,9 +3,9 @@
 //! Input fields with labels, validation, and error display.
 
 use iced::widget::{column, container, text, text_input};
-use iced::{Border, Element, Length, Theme};
+use iced::{Element, Length, Theme};
 
-use crate::theme::{BORDER_RADIUS_SM, ClinicalColors, SPACING_XS, text_input_default};
+use crate::theme::{ClinicalColors, SPACING_XS, text_input_default};
 
 // =============================================================================
 // FORM FIELD
@@ -123,70 +123,6 @@ pub fn number_field<'a, M: Clone + 'a>(
         .style(text_input_default);
 
     column![label_text, input].spacing(SPACING_XS).into()
-}
-
-/// Creates a read-only display field.
-///
-/// Shows a value that cannot be edited (for display purposes).
-#[allow(dead_code)]
-pub fn display_field<'a, M: 'a>(label: &'a str, value: &'a str) -> Element<'a, M> {
-    let label_text = text(label).size(13).style(|theme: &Theme| text::Style {
-        color: Some(theme.clinical().text_muted),
-    });
-
-    let value_text = container(text(value).size(14).style(|theme: &Theme| text::Style {
-        color: Some(theme.extended_palette().background.base.text),
-    }))
-    .padding(10.0)
-    .width(Length::Fill)
-    .style(|theme: &Theme| {
-        let clinical = theme.clinical();
-        container::Style {
-            background: Some(clinical.background_secondary.into()),
-            border: Border {
-                radius: BORDER_RADIUS_SM.into(),
-                color: clinical.border_default,
-                width: 1.0,
-            },
-            ..Default::default()
-        }
-    });
-
-    column![label_text, value_text].spacing(SPACING_XS).into()
-}
-
-/// Creates a text area field (multi-line input).
-///
-/// For longer text input like descriptions or notes.
-#[allow(dead_code)]
-pub fn text_area_field<'a, M: Clone + 'a>(
-    label: &'a str,
-    value: &'a str,
-    placeholder: &'a str,
-    on_change: impl Fn(String) -> M + 'a,
-    rows: u16,
-) -> Element<'a, M> {
-    let label_text = text(label).size(13).style(|theme: &Theme| text::Style {
-        color: Some(theme.clinical().text_muted),
-    });
-
-    // Note: Iced doesn't have a native textarea, so we simulate with a taller text_input
-    // For true multi-line, would need text_editor widget
-    let input = text_input(placeholder, value)
-        .on_input(on_change)
-        .padding(10.0)
-        .width(Length::Fill)
-        .style(text_input_default);
-
-    // Create container with minimum height based on rows
-    let min_height = (rows as f32) * 20.0 + 20.0;
-
-    column![
-        label_text,
-        container(input).height(Length::Fixed(min_height)),
-    ]
-    .spacing(SPACING_XS)
-    .into()
 }
 
 // =============================================================================
