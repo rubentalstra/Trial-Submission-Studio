@@ -9,9 +9,8 @@ use iced::widget::{
 use iced::{Alignment, Border, Element, Length, Theme};
 use iced_fonts::lucide;
 
-use crate::component::{
-    DetailHeader, EmptyState, MetadataCard, PageHeader, master_detail_with_pinned_header,
-};
+use crate::component::layout::SplitView;
+use crate::component::{DetailHeader, EmptyState, MetadataCard, PageHeader};
 use crate::message::{ExportMessage, Message};
 use crate::service::export::{domain_has_supp, domain_supp_count};
 use crate::state::{
@@ -83,9 +82,11 @@ fn view_export_layout<'a>(
     // Detail panel (export settings)
     let detail = view_export_settings(state, export_state, study);
 
-    // Combine header with master-detail layout
-    let main_content =
-        master_detail_with_pinned_header(master_header, master_content, detail, MASTER_WIDTH);
+    // Combine header with split view layout
+    let main_content = SplitView::new(master_content, detail)
+        .master_width(MASTER_WIDTH)
+        .master_header(master_header)
+        .view();
 
     column![header, Space::new().height(SPACING_SM), main_content,]
         .height(Length::Fill)

@@ -11,9 +11,8 @@ use iced::widget::{Space, column, container, row, rule, scrollable, text};
 use iced::{Alignment, Border, Color, Element, Length, Theme};
 use iced_fonts::lucide;
 
-use crate::component::{
-    DetailHeader, EmptyState, MetadataCard, VariableListItem, master_detail_with_pinned_header,
-};
+use crate::component::layout::SplitView;
+use crate::component::{DetailHeader, EmptyState, MetadataCard, VariableListItem};
 use crate::message::domain_editor::NormalizationMessage;
 use crate::message::{DomainEditorMessage, Message};
 use crate::state::{AppState, DomainState, NormalizationUiState, ViewState};
@@ -73,7 +72,10 @@ pub fn view_normalization_tab<'a>(
         view_no_selection()
     };
 
-    master_detail_with_pinned_header(master_header, master_content, detail, MASTER_WIDTH)
+    SplitView::new(master_content, detail)
+        .master_width(MASTER_WIDTH)
+        .master_header(master_header)
+        .view()
 }
 
 // =============================================================================

@@ -53,7 +53,6 @@ mod data_table;
 mod domain_badge;
 mod empty_state;
 mod form_field;
-mod master_detail;
 mod modal;
 mod page_header;
 mod progress_modal;
@@ -77,10 +76,6 @@ mod text_field;
 pub mod toast;
 mod variable_list_item;
 
-// Layout components
-pub use master_detail::{
-    detail_master, master_detail, master_detail_with_header, master_detail_with_pinned_header,
-};
 pub use sidebar::{SidebarItem, sidebar};
 pub use tab_bar::{Tab, tab_bar};
 

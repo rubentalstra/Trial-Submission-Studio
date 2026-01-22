@@ -22,9 +22,9 @@ use iced::{Alignment, Border, Color, Element, Length, Theme};
 use iced_fonts::lucide;
 use polars::prelude::AnyValue;
 
+use crate::component::layout::SplitView;
 use crate::component::{
     DetailHeader, EmptyState, FilterToggle, MetadataCard, NoFilteredResults, TextField,
-    master_detail_with_pinned_header,
 };
 use crate::message::domain_editor::SuppMessage;
 use crate::message::{DomainEditorMessage, Message};
@@ -113,8 +113,11 @@ pub fn view_supp_tab<'a>(state: &'a AppState, domain_code: &'a str) -> Element<'
     // Build detail panel
     let detail = build_detail_panel(domain, supp_ui, domain_code);
 
-    // Use master-detail layout with pinned header
-    master_detail_with_pinned_header(master_header, master_content, detail, MASTER_WIDTH)
+    // Use split view layout with pinned header
+    SplitView::new(master_content, detail)
+        .master_width(MASTER_WIDTH)
+        .master_header(master_header)
+        .view()
 }
 
 // =============================================================================
